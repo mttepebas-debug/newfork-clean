@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 
 import type { PresetDragState } from "./SchedulePresetRows";
 import { ShiftCard } from "./ShiftCard";
+import type { ScheduleShiftTypeLook } from "../lib/scheduleCatalogNames";
 
 interface ShiftDragPreviewState {
   readonly pointerX: number;
@@ -31,7 +32,7 @@ export function ShiftDragPreview({
   readonly dragState: ShiftDragPreviewState;
   readonly shift: ScheduleEditableShift;
   readonly job: string;
-  readonly type: ScheduleReadModel["shift_types"][number] | undefined;
+  readonly type: ScheduleShiftTypeLook | undefined;
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
   readonly showClockTimes: boolean;

@@ -18,6 +18,7 @@ import {
 } from "../badgeAccessibility";
 import { Tooltip } from "../../shell/Tooltip";
 import type { TimeFormat } from "../timeInput";
+import type { ScheduleShiftTypeLook } from "../lib/scheduleCatalogNames";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
 import "./schedule-shift-save.css";
@@ -63,7 +64,7 @@ export function ShiftCard({
 }: {
   readonly shift: ScheduleShift & Pick<EffectiveScheduleShift, "optimistic" | "saving_state">;
   readonly job: string;
-  readonly type: ScheduleReadModel["shift_types"][number] | undefined;
+  readonly type: ScheduleShiftTypeLook | undefined;
   readonly locationName?: string | null;
   /** The row's person, named in the availability warning. */
   readonly employeeName?: string | null;
@@ -358,7 +359,7 @@ export function GhostShiftCard({
 }: {
   readonly shift: ScheduleShift;
   readonly job: string;
-  readonly type: ScheduleReadModel["shift_types"][number] | undefined;
+  readonly type: ScheduleShiftTypeLook | undefined;
   readonly locationName?: string | null;
   readonly employeeName?: string | null;
   readonly showShiftType: boolean;

@@ -88,8 +88,7 @@ function renderRow(overrides: Partial<Parameters<typeof ScheduleRow>[0]> = {}) {
     locations: [location],
     activeInteractionShiftLocationId: null,
     days: ["2026-08-17"],
-    jobs: [job],
-    shiftTypes: [shiftType],
+    catalog,
     closures: [],
     cellStateByKey: new Map(),
     editing: true,
@@ -117,6 +116,35 @@ function renderRow(overrides: Partial<Parameters<typeof ScheduleRow>[0]> = {}) {
     </div>,
   );
 }
+
+const catalog = {
+  jobs: [job],
+  shift_types: [shiftType],
+  referenced_jobs: [] as ScheduleReadModel["referenced_jobs"],
+  referenced_shift_types: [] as ScheduleReadModel["referenced_shift_types"],
+};
+
+describe("ScheduleRow shift card names (K8)", () => {
+  it("names a shift whose job and type were archived, and falls back to Shift only for an unknown job", () => {
+    const archived = {
+      jobs: [],
+      shift_types: [],
+      referenced_jobs: [{ id: job.id, name: "Line Cook" }],
+      referenced_shift_types: [{ id: shiftType.id, name: "Brunch" }],
+    };
+    const { unmount } = renderRow({ shifts: [shift], totalShifts: [shift], editing: false, selectedIds: [], catalog: archived });
+    expect(screen.getByText("Brunch-Line Cook")).toBeTruthy();
+    unmount();
+    renderRow({
+      shifts: [shift],
+      totalShifts: [shift],
+      editing: false,
+      selectedIds: [],
+      catalog: { ...archived, referenced_jobs: [], referenced_shift_types: [] },
+    });
+    expect(screen.getByText("Shift")).toBeTruthy();
+  });
+});
 
 describe("ScheduleRow blank-cell interactions", () => {
   it("keeps an open shift with a note out of the stack of matching ones, so its note shows (BL-199)", () => {
@@ -208,8 +236,7 @@ describe("ScheduleRow blank-cell interactions", () => {
           locations={[location]}
           activeInteractionShiftLocationId={null}
           days={["2026-08-17"]}
-          jobs={[job]}
-          shiftTypes={[shiftType]}
+          catalog={catalog}
           closures={[]}
           cellStateByKey={new Map()}
           editing
@@ -296,8 +323,7 @@ describe("ScheduleRow blank-cell interactions", () => {
           locations={[location]}
           activeInteractionShiftLocationId={null}
           days={["2026-08-17"]}
-          jobs={[job]}
-          shiftTypes={[shiftType]}
+          catalog={catalog}
           closures={[]}
           cellStateByKey={new Map()}
           editing

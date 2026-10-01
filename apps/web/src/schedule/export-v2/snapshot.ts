@@ -2,6 +2,7 @@ import { locationShortNameSchema } from "@newfork/shared";
 import type { ScheduleReadModel, ScheduleShift, ScheduleView } from "@newfork/shared/schedule";
 import { formatScheduleBadgeTimeRange, formatScheduleShiftBadgeTitle, formatShiftLabelDisplay } from "../components/ShiftCard";
 import { buildScheduleCellState, orderScheduleCellShifts, scheduleCellStateKey } from "../hooks/useCellState";
+import { scheduleJobName, scheduleShiftTypeOf } from "../lib/scheduleCatalogNames";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
 import { scheduleImportantDateCoversDate } from "../importantDateCoverage";
 import { addDays } from "../lib/scheduleDateTime";
@@ -124,8 +125,6 @@ export function createScheduleExportSnapshot(input: {
   const dateSet = new Set(dates);
   const visibleShifts = filtered.shifts.filter(shift => dateSet.has(shift.scheduled_date) &&
     (shift.employee_id === null ? grid.showUnassignedRow : visibleEmployees.has(shift.employee_id)));
-  const jobById = new Map(model.jobs.map(job => [job.id, job]));
-  const typeById = new Map(model.shift_types.map(type => [type.id, type]));
   const locationById = new Map(model.locations.map(location => [location.id, location]));
   const groupByEmployee = new Map(grid.showEmployeeGroupHeaders
     ? grid.employeeRowGroups.flatMap(group => group.employees.map(employee => [employee.id, group.job?.name ?? "No position"] as const))
@@ -143,8 +142,8 @@ export function createScheduleExportSnapshot(input: {
   if (grid.showUnassignedRow) rows.unshift({ id: null, name: "Unassigned", group: null, total: null });
   const displayOrder = new Map(orderScheduleCellShifts(model.shifts, [], model.shift_types).map((shift, index) => [shift.id, index]));
   const projectShift = (shift: ScheduleShift): ExportShift => {
-    const type = typeById.get(shift.shift_type_id ?? "");
-    const position = jobById.get(shift.job_id)?.name ?? "Shift";
+    const type = scheduleShiftTypeOf(model, shift.shift_type_id);
+    const position = scheduleJobName(model, shift.job_id) ?? "Shift";
     const showTime = display.showClockTimes && !shift.hide_time_on_badge;
     return {
       id: shift.id, employeeId: shift.employee_id, locationId: shift.location_id,

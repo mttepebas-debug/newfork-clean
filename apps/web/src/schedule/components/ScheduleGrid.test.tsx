@@ -42,6 +42,8 @@ function scheduleModel(
         sort_order: 0,
       },
     ],
+    referenced_jobs: [],
+    referenced_shift_types: [],
     shift_types: [
       {
         id: shiftTypeId,

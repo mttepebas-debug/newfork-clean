@@ -31,6 +31,13 @@ const shiftType: ScheduleReadModel["shift_types"][number] = {
   default_end_time: "22:00",
 };
 
+const catalog = {
+  jobs: [job],
+  shift_types: [shiftType],
+  referenced_jobs: [] as ScheduleReadModel["referenced_jobs"],
+  referenced_shift_types: [] as ScheduleReadModel["referenced_shift_types"],
+};
+
 const shift = {
   id: "shift-1",
   location_id: "loc-1",
@@ -93,13 +100,64 @@ it("bounds long badge content without reducing an explicit minimum width", () =>
 });
 
 describe("renderScheduleBadgeWidthMeasurer", () => {
+  it("measures an archived job and type by their names, never in the presets (K8)", () => {
+    render(
+      <>
+        {renderScheduleBadgeWidthMeasurer({
+          shifts: [shift],
+          catalog: {
+            jobs: [],
+            shift_types: [],
+            referenced_jobs: [{ id: job.id, name: "Line Cook" }],
+            referenced_shift_types: [{ id: shiftType.id, name: "Brunch" }],
+          },
+          locationGroups,
+          showShiftType: true,
+          showShiftLabels: false,
+          showClockTimes: false,
+          timeFormat: "12h",
+          showJobColorDot: false,
+          showLocationInBadge: false,
+          showShiftTypePresets: true,
+        })}
+      </>,
+    );
+    const labels = Array.from(
+      document.querySelectorAll<HTMLElement>(".schedule-badge-width-measure"),
+    ).map((item) => item.getAttribute("data-measure-label"));
+    expect(labels).toEqual(["Brunch-Line Cook"]);
+  });
+
+  it("falls back to Shift only for a job neither list knows", () => {
+    render(
+      <>
+        {renderScheduleBadgeWidthMeasurer({
+          shifts: [shift],
+          catalog: { ...catalog, jobs: [], shift_types: [] },
+          locationGroups,
+          showShiftType: true,
+          showShiftLabels: false,
+          showClockTimes: false,
+          timeFormat: "12h",
+          showJobColorDot: false,
+          showLocationInBadge: false,
+          showShiftTypePresets: false,
+        })}
+      </>,
+    );
+    expect(
+      document
+        .querySelector<HTMLElement>(".schedule-badge-width-measure")
+        ?.getAttribute("data-measure-label"),
+    ).toBe("Shift");
+  });
+
   it("includes shift and preset labels in the hidden measurement surface", () => {
     render(
       <>
         {renderScheduleBadgeWidthMeasurer({
           shifts: [shift],
-          jobs: [job],
-          shiftTypes: [shiftType],
+          catalog,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -139,8 +197,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       <>
         {renderScheduleBadgeWidthMeasurer({
           shifts: [shift],
-          jobs: [job],
-          shiftTypes: [shiftType],
+          catalog,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -181,8 +238,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       <>
         {renderScheduleBadgeWidthMeasurer({
           shifts: [openShift, { ...openShift, id: "open-2" }, liveShift],
-          jobs: [job],
-          shiftTypes: [shiftType],
+          catalog,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -224,8 +280,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
         <>
           {renderScheduleBadgeWidthMeasurer({
             shifts,
-            jobs: [job],
-            shiftTypes: [shiftType],
+            catalog,
             locationGroups,
             showShiftType: true,
             showShiftLabels: true,
@@ -262,8 +317,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       <>
         {renderScheduleBadgeWidthMeasurer({
           shifts: [warnedShift],
-          jobs: [job],
-          shiftTypes: [shiftType],
+          catalog,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -297,8 +351,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       <>
         {renderScheduleBadgeWidthMeasurer({
           shifts: [ghostShift],
-          jobs: [job],
-          shiftTypes: [shiftType],
+          catalog,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -322,8 +375,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       <>
         {renderScheduleBadgeWidthMeasurer({
           shifts: [],
-          jobs: [],
-          shiftTypes: [],
+          catalog: { ...catalog, jobs: [], shift_types: [] },
           locationGroups: [],
           showShiftType: true,
           showShiftLabels: true,

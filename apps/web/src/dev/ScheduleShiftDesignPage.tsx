@@ -69,6 +69,8 @@ const baseModel: ScheduleReadModel = {
       sort_order: 1,
     },
   ],
+  referenced_jobs: [],
+  referenced_shift_types: [],
   shift_types: [
     {
       id: lunchShiftTypeId,

@@ -201,6 +201,8 @@ describe("scheduleEmployeeSort", () => {
         }),
       ],
       shifts: [],
+      referenced_jobs: [],
+      referenced_shift_types: [],
       closures: [],
       important_dates: [],
       settings: { time_format: "12h" },

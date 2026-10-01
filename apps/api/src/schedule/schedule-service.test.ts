@@ -40,7 +40,7 @@ describe("createScheduleReadService read model", () => {
   it("loads short names only within the RPC-authorized workspace and location scope", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
       locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
-      departments: [], jobs: [], shift_types: [], employees: [], shifts: [],
+      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
     }, error: null });
     const locationEq = vi.fn(); const locationIn = vi.fn();
     mocks.from.mockImplementation((table: string) => {
@@ -76,7 +76,7 @@ describe("createScheduleReadService read model", () => {
       { id: "4b551d02-784b-4dcb-af8b-083a2885f894", job_ids: ["49f49836-56a9-49c9-ac67-7f469cc09e82"], display_name: "Ayse Person", location_ids: ["e92f96de-3eb0-4203-a15c-aff6edfd4c39"], employee_code: "E-0002", primary_job_id: "49f49836-56a9-49c9-ac67-7f469cc09e82", is_excluded_from_schedule: false },
     ];
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
-      locations: [], departments, jobs, shift_types: [], employees, shifts: [],
+      locations: [], departments, jobs, shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees, shifts: [],
     }, error: null });
     mocks.from.mockImplementation(() => {
       const chain = {
@@ -104,6 +104,8 @@ describe("createScheduleReadService read model", () => {
         locations: [],
         departments: [],
         jobs: [],
+        referenced_jobs: [],
+        referenced_shift_types: [],
         shift_types: [],
         shift_labels: [],
         employees: [],

@@ -43,6 +43,11 @@ import { ScheduleEmployeeCard } from "./ScheduleEmployeeCard";
 import type { PresetDragState } from "./SchedulePresetRows";
 import { ScheduleTotalValue } from "./ScheduleTotalsRow";
 import { GhostShiftCard, ShiftCard } from "./ShiftCard";
+import {
+  scheduleJobName,
+  scheduleShiftTypeOf,
+  type ScheduleCatalog,
+} from "../lib/scheduleCatalogNames";
 import { unassignedShiftStackKey } from "../lib/unassignedShiftStack";
 
 export interface ActiveScheduleEditorTarget {
@@ -66,8 +71,7 @@ export function ScheduleRow({
   activeEditorTarget = null,
   activeInteractionShiftLocationId,
   days,
-  jobs,
-  shiftTypes,
+  catalog,
   closures,
   cellStateByKey,
   editing,
@@ -107,8 +111,7 @@ export function ScheduleRow({
   readonly activeEditorTarget?: ActiveScheduleEditorTarget | null;
   readonly activeInteractionShiftLocationId: string | null;
   readonly days: readonly string[];
-  readonly jobs: ScheduleReadModel["jobs"];
-  readonly shiftTypes: ScheduleReadModel["shift_types"];
+  readonly catalog: ScheduleCatalog;
   readonly closures: ScheduleReadModel["closures"];
   readonly cellStateByKey: ScheduleCellStateMap;
   readonly editing: boolean;
@@ -193,7 +196,7 @@ export function ScheduleRow({
   );
   const unassignedLabelMode =
     isUnassignedRow && displayedOpenShiftCount > 1 ? "header" : "centered";
-  const rowVersion = `${employeeShifts.map((shift) => `${shift.id}:${shift.location_id}:${shift.shift_type_id ?? ""}:${shift.job_id}:${shift.start_time}:${shift.end_time}:${shift.crosses_midnight}:${shift.hide_time_on_badge}:${shift.warning_codes.join(",")}:${(shift.label_names ?? []).join(",")}`).join("|")}|${jobs.map((job) => `${job.id}:${job.name}`).join("|")}|${shiftTypes.map((shiftType) => `${shiftType.id}:${shiftType.name}`).join("|")}|${locations.map((location) => `${location.id}:${location.sourceNames.map((source) => source.name).join(",")}`).join("|")}|${editing}|${showShiftType}|${showShiftLabels}|${showClockTimes}|${timeFormat}|${showJobColorDot}|${showLocationInBadge}|${activeDraggedShiftId ?? ""}:${isUnassignedRowDrag(dragState) ? dragState.copy : ""}`;
+  const rowVersion = `${employeeShifts.map((shift) => `${shift.id}:${shift.location_id}:${shift.shift_type_id ?? ""}:${shift.job_id}:${shift.start_time}:${shift.end_time}:${shift.crosses_midnight}:${shift.hide_time_on_badge}:${shift.warning_codes.join(",")}:${(shift.label_names ?? []).join(",")}`).join("|")}|${catalog.jobs.map((job) => `${job.id}:${job.name}`).join("|")}|${catalog.shift_types.map((shiftType) => `${shiftType.id}:${shiftType.name}`).join("|")}|${locations.map((location) => `${location.id}:${location.sourceNames.map((source) => source.name).join(",")}`).join("|")}|${editing}|${showShiftType}|${showShiftLabels}|${showClockTimes}|${timeFormat}|${showJobColorDot}|${showLocationInBadge}|${activeDraggedShiftId ?? ""}:${isUnassignedRowDrag(dragState) ? dragState.copy : ""}`;
   const rowMinHeight = PREVIEW_SHIFT_BADGE_MIN_HEIGHT;
   const { anchorRef, badgeHeight, rowBadgeStackHeight } =
     useSynchronizedRowBadgeHeight({
@@ -235,7 +238,7 @@ export function ScheduleRow({
           const displayShifts = orderScheduleCellShifts(
             cellShifts,
             derivedGhostShifts,
-            shiftTypes,
+            catalog.shift_types,
           );
           const displayStacks = isUnassignedRow
             ? stackUnassignedCellShifts(displayShifts, activeDraggedShiftId)
@@ -377,7 +380,7 @@ export function ScheduleRow({
                     locationId: interactionLocationId,
                     employeeId: employee?.id ?? null,
                     jobId: employee
-                      ? primaryScheduleJobId(employee, jobs)
+                      ? primaryScheduleJobId(employee, catalog.jobs)
                       : null,
                     date: day,
                   },
@@ -398,13 +401,8 @@ export function ScheduleRow({
                   <GhostShiftCard
                     key={shift.id}
                     shift={shift}
-                    job={
-                      jobs.find((item) => item.id === shift.job_id)?.name ??
-                      "Shift"
-                    }
-                    type={shiftTypes.find(
-                      (item) => item.id === shift.shift_type_id,
-                    )}
+                    job={scheduleJobName(catalog, shift.job_id) ?? "Shift"}
+                    type={scheduleShiftTypeOf(catalog, shift.shift_type_id)}
                     locationName={shiftLocationName(shift)}
                     employeeName={employee?.display_name ?? null}
                     showShiftType={showShiftType}
@@ -419,13 +417,8 @@ export function ScheduleRow({
                   <ShiftCard
                     key={shift.id}
                     shift={shiftWithDerivedWarnings(shift, derivedCellState)}
-                    job={
-                      jobs.find((item) => item.id === shift.job_id)?.name ??
-                      "Shift"
-                    }
-                    type={shiftTypes.find(
-                      (item) => item.id === shift.shift_type_id,
-                    )}
+                    job={scheduleJobName(catalog, shift.job_id) ?? "Shift"}
+                    type={scheduleShiftTypeOf(catalog, shift.shift_type_id)}
                     locationName={shiftLocationName(shift)}
                     employeeName={employee?.display_name ?? null}
                     editing={editing}

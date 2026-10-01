@@ -137,6 +137,7 @@ import {
 import { isSameEditSession } from "../schedule/lib/scheduleMutationContext";
 import { followUpAfterUnpublish } from "../schedule/lib/scheduleUnpublishFollowUp";
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
+import { formatSchedulePasteConflictContext } from "../schedule/lib/scheduleCatalogNames";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
 import {
@@ -1929,23 +1930,15 @@ export function SchedulePage({
       const firstMessage = firstReason
         ? formatScheduleConflictMessage(firstReason)
         : "Scheduling policy blocks this assignment.";
-      const employeeLabel =
-        model.employees.find((employee) => employee.id === employeeId)
-          ?.display_name ?? "Open shift";
-      const locationLabel =
-        model.locations.find((location) => location.id === locationId)?.name ??
-        "Selected location";
-      const shiftTypeLabel =
-        model.shift_types.find(
-          (shiftType) => shiftType.id === conflictEntry.snapshot?.shift_type_id,
-        )?.name ?? "Shift";
-      const jobLabel =
-        model.jobs.find((job) => job.id === conflictEntry.snapshot?.job_id)
-          ?.name ?? "Job";
       setPasteBlockedReason(firstMessage);
       setShiftConflictMessages(conflictEntry.conflictReasons);
       setPasteConflictContext(
-        `${shiftTypeLabel} / ${jobLabel} / ${employeeLabel} / ${locationLabel} / ${date}`,
+        formatSchedulePasteConflictContext(model, {
+          snapshot: conflictEntry.snapshot,
+          employeeId,
+          locationId,
+          date,
+        }),
       );
       toast.error("Paste blocked", {
         dedupeKey: "schedule-paste-blocked-conflict",

@@ -359,10 +359,9 @@ export function ScheduleGrid({
       overlays={
         <ScheduleGridDragPreviews
           dragPreviewShift={dragPreviewShift}
-          jobs={model.jobs}
+          catalog={model}
           presetDragState={presetDrag.dragState}
           shiftDragState={shiftDrag.dragState}
-          shiftTypes={model.shift_types}
           showShiftType={showShiftType}
           showShiftLabels={showShiftLabels}
           showClockTimes={showClockTimes}
@@ -374,8 +373,7 @@ export function ScheduleGrid({
     >
       {renderScheduleBadgeWidthMeasurer({
         shifts: filtered.shifts,
-        jobs: model.jobs,
-        shiftTypes: model.shift_types,
+        catalog: model,
         locationGroups,
         showShiftType,
         showShiftLabels,

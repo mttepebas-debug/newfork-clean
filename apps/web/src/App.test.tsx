@@ -209,6 +209,8 @@ const scheduleFixture = vi.hoisted(() => ({
       sort_order: 0,
     },
   ],
+  referenced_jobs: [],
+  referenced_shift_types: [],
   shift_types: [
     {
       id: "44444444-4444-4444-8444-444444444444",

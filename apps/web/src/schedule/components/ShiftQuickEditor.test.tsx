@@ -70,6 +70,8 @@ const model: ScheduleReadModel = {
       system_key: null,
     },
   ],
+  referenced_jobs: [],
+  referenced_shift_types: [],
   shift_types: [
     {
       id: "44444444-4444-4444-8444-444444444444",

@@ -58,6 +58,8 @@ function model(shifts: readonly ScheduleShift[]): ScheduleReadModel {
     ],
     departments: [],
     jobs: [],
+    referenced_jobs: [],
+    referenced_shift_types: [],
     shift_types: [],
     shift_labels: [],
     employees: [

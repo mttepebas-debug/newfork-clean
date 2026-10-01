@@ -71,6 +71,8 @@ describe("employee team board read (BL-218)", () => {
     ],
     workspace_id: "085697c9-c2c4-47bd-8c3d-0a6673e4c3e1",
     week_start_day: "monday",
+    referenced_jobs: [],
+    referenced_shift_types: [],
     shift_types: [],
     shifts: [],
     closures: [],

@@ -169,8 +169,7 @@ export function ScheduleGridBody({
       activeEditorTarget={activeEditorTarget}
       activeInteractionShiftLocationId={activeInteractionShiftLocationId}
       days={days}
-      jobs={model.jobs}
-      shiftTypes={model.shift_types}
+      catalog={model}
       closures={model.closures}
       cellStateByKey={cellStateByKey}
       editing={editing}
@@ -216,8 +215,7 @@ export function ScheduleGridBody({
           activeEditorTarget={activeEditorTarget}
           activeInteractionShiftLocationId={activeInteractionShiftLocationId}
           days={days}
-          jobs={model.jobs}
-          shiftTypes={model.shift_types}
+          catalog={model}
           closures={model.closures}
           cellStateByKey={cellStateByKey}
           editing={editing}

@@ -79,6 +79,8 @@ describe("employee hub routes", () => {
       locations: [],
       departments: [],
       jobs: [],
+      referenced_jobs: [],
+      referenced_shift_types: [],
       shift_types: [],
       employees: [],
       shifts: [],

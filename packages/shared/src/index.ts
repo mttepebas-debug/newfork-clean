@@ -1251,6 +1251,9 @@ export const scheduleDepartmentSchema = scheduleReferenceSchema.extend({
   system_key: departmentSchema.shape.system_key,
 });
 
+export const scheduleCatalogNameSchema = scheduleReferenceSchema.pick({ id: true, name: true });
+export type ScheduleCatalogName = z.infer<typeof scheduleCatalogNameSchema>;
+
 export const scheduleJobSchema = scheduleReferenceSchema.extend({
   department_id: z.string().uuid().nullable(),
   system_key: jobSchema.shape.system_key,
@@ -1430,6 +1433,10 @@ export const scheduleReadModelSchema = z.object({
   important_dates: z.array(scheduleImportantDateSchema).default([]),
   // ponytail: optional because the employee board read shares this schema and never sends it.
   ghost_shifts: z.array(scheduleGhostShiftSchema).optional(),
+  // K8: archived (not deleted) jobs and shift types the week's shifts still point at,
+  // so an old shift keeps its name. Never in the pickers; those read jobs / shift_types.
+  referenced_jobs: z.array(scheduleCatalogNameSchema),
+  referenced_shift_types: z.array(scheduleCatalogNameSchema),
 });
 export type ScheduleReadModel = z.infer<typeof scheduleReadModelSchema>;
 

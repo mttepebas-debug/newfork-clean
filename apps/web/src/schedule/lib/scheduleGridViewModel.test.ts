@@ -73,6 +73,8 @@ function model(
     locations: [],
     departments: [],
     jobs,
+    referenced_jobs: [],
+    referenced_shift_types: [],
     shift_types: [],
     employees: [
       employee("44444444-4444-4444-8444-444444444444", "Alex Morgan"),

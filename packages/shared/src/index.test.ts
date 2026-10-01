@@ -704,6 +704,8 @@ describe("shared contracts", () => {
           note: "Private note",
         },
       ],
+      referenced_jobs: [],
+      referenced_shift_types: [],
     });
     expect(parsed.ghost_shifts).toEqual([
       expect.objectContaining({
@@ -751,6 +753,8 @@ describe("shared contracts", () => {
           shift_type_ids: [shiftTypeId],
         },
       ],
+      referenced_jobs: [],
+      referenced_shift_types: [],
     });
 
     expect(parsed.closures[0]?.shift_type_ids).toEqual([shiftTypeId]);
@@ -1476,6 +1480,8 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     employees: [],
     shifts: [],
     closures: [],
+    referenced_jobs: [],
+    referenced_shift_types: [],
   });
   const scheduleDepartment = { id: managementId, name: "Leadership", color: "#4478A8", sort_order: 0 };
   const scheduleJob = { id: ownerJobId, name: "Owner", color: "#4478A8", sort_order: 0, department_id: managementId };
@@ -1488,6 +1494,22 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     expect(parsed.jobs[0]?.system_key).toBe("owner");
     expect(() => scheduleReadModelSchema.parse(scheduleRead([scheduleDepartment], []))).toThrow();
     expect(() => scheduleReadModelSchema.parse(scheduleRead([], [scheduleJob]))).toThrow();
+  });
+
+  it("reads the archived jobs and shift types the week's shifts name, and refuses a read without them", () => {
+    const archived = { id: managementId, name: "Line Cook" };
+    const parsed = scheduleReadModelSchema.parse({
+      ...scheduleRead([], []),
+      referenced_jobs: [archived],
+      referenced_shift_types: [{ id: ownerJobId, name: "Brunch" }],
+    });
+    expect(parsed.referenced_jobs).toEqual([archived]);
+    expect(parsed.referenced_shift_types).toEqual([{ id: ownerJobId, name: "Brunch" }]);
+    const { referenced_jobs: _jobs, ...withoutJobs } = scheduleRead([], []);
+    const { referenced_shift_types: _types, ...withoutTypes } = scheduleRead([], []);
+    expect(() => scheduleReadModelSchema.parse(withoutJobs)).toThrow();
+    expect(() => scheduleReadModelSchema.parse(withoutTypes)).toThrow();
+    expect(() => scheduleReadModelSchema.parse({ ...scheduleRead([], []), referenced_jobs: null })).toThrow();
   });
 
   it("reads the drawer's departments and each job's department and system key", () => {

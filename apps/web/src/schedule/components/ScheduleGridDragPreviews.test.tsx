@@ -43,13 +43,19 @@ const shift = {
   warning_codes: [],
 } as ScheduleEditableShift;
 
+const catalog = {
+  jobs: [job],
+  shift_types: [shiftType],
+  referenced_jobs: [] as ScheduleReadModel["referenced_jobs"],
+  referenced_shift_types: [] as ScheduleReadModel["referenced_shift_types"],
+};
+
 describe("ScheduleGridDragPreviews", () => {
   it("renders shift and preset drag previews with reference states", () => {
     render(
       <ScheduleGridDragPreviews
         dragPreviewShift={shift}
-        jobs={[job]}
-        shiftTypes={[shiftType]}
+        catalog={catalog}
         shiftDragState={{
           activeShiftId: shift.id,
           label: "Dinner",
@@ -99,8 +105,7 @@ describe("ScheduleGridDragPreviews", () => {
     render(
       <ScheduleGridDragPreviews
         dragPreviewShift={undefined}
-        jobs={[job]}
-        shiftTypes={[shiftType]}
+        catalog={catalog}
         shiftDragState={{
           activeShiftId: shift.id,
           label: "Dinner",
@@ -125,5 +130,41 @@ describe("ScheduleGridDragPreviews", () => {
     );
 
     expect(document.querySelector(".schedule-shift-drag-preview")).toBeNull();
+  });
+
+  it("names a dragged shift whose job and type were archived (K8)", () => {
+    render(
+      <ScheduleGridDragPreviews
+        dragPreviewShift={shift}
+        catalog={{
+          jobs: [],
+          shift_types: [],
+          referenced_jobs: [{ id: job.id, name: "Line Cook" }],
+          referenced_shift_types: [{ id: shiftType.id, name: "Brunch" }],
+        }}
+        shiftDragState={{
+          activeShiftId: shift.id,
+          label: "Brunch",
+          pointerX: 10,
+          pointerY: 20,
+          previewWidth: 120,
+          previewHeight: 58,
+          targetKey: null,
+          targetLocationId: null,
+          targetDate: null,
+          targetStatus: null,
+          reason: null,
+          copy: false,
+        }}
+        presetDragState={null}
+        showShiftType
+        showShiftLabels
+        showClockTimes
+        timeFormat="12h"
+        showJobColorDot
+      />,
+    );
+
+    expect(screen.getByText("Brunch-Line Cook")).toBeTruthy();
   });
 });

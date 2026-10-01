@@ -197,6 +197,8 @@ const scheduleBoard = {
       warning_codes: [],
     },
   ],
+  referenced_jobs: [],
+  referenced_shift_types: [],
   closures: [],
   important_dates: [],
 } satisfies ScheduleReadModel;

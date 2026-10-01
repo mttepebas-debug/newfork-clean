@@ -17,6 +17,7 @@ import {
   type ScheduleConflictReason,
   scheduleConflictSeverity,
 } from "../schedule-conflicts";
+import { scheduleJobName } from "../lib/scheduleCatalogNames";
 import { formatTime } from "../lib/scheduleDateTime";
 import { toScheduleShiftMutation } from "../lib/scheduleShiftMutation";
 import { validatePresetCreateTarget } from "../lib/schedulePresetTargets";
@@ -49,8 +50,7 @@ export function formatScheduleDragShiftLabel(
   shift: ScheduleEditableShift | undefined,
 ): string {
   if (!shift) return "Shift";
-  const job =
-    model.jobs.find((item) => item.id === shift.job_id)?.name ?? "Shift";
+  const job = scheduleJobName(model, shift.job_id) ?? "Shift";
   return `${job}, ${formatTime(
     shift.start_time,
     model.settings.time_format,

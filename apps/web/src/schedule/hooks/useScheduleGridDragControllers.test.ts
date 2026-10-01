@@ -63,6 +63,8 @@ const model: ScheduleReadModel = {
       system_key: null,
     },
   ],
+  referenced_jobs: [],
+  referenced_shift_types: [],
   shift_types: [
     {
       id: shiftTypeId,
@@ -114,6 +116,12 @@ describe("useScheduleGridDragControllers helpers", () => {
       "Server, 9:00 AM - 5:30 PM",
     );
     expect(formatScheduleDragShiftLabel(model, undefined)).toBe("Shift");
+  });
+
+  it("names an archived job in the drag label and falls back only for an unknown job (K8)", () => {
+    const archived = { ...model, jobs: [], referenced_jobs: [{ id: jobId, name: "Line Cook" }] };
+    expect(formatScheduleDragShiftLabel(archived, shift)).toBe("Line Cook, 9:00 AM - 5:30 PM");
+    expect(formatScheduleDragShiftLabel({ ...archived, referenced_jobs: [] }, shift)).toBe("Shift, 9:00 AM - 5:30 PM");
   });
 
   it("blocks dropping a moved shift on its current cell", () => {

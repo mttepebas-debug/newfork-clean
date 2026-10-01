@@ -17,7 +17,7 @@ function shift(id: string, overrides: Partial<ScheduleShift> = {}): ScheduleShif
 function model(): ScheduleReadModel {
   return {
     workspace_id: "workspace-a", week_start: "2026-09-14", week_start_day: "monday",
-    settings: { time_format: "24h" }, departments: [], closures: [], important_dates: [],
+    settings: { time_format: "24h" }, departments: [], closures: [], important_dates: [], referenced_jobs: [], referenced_shift_types: [],
     locations: ["a", "b"].map((id, index) => ({ id: `loc-${id}`, name: `Location ${id}`,
       short_name: id === "a" ? "MRK" : "SHL", timezone: "America/Los_Angeles",
       sort_order: index, publication_status: "published", published_at: null })),
@@ -58,6 +58,14 @@ describe("Export v2 immutable preview projection", () => {
     expect(result.dates).toHaveLength(7);
     expect(result.filename).toBe("MRK_SHL_2026-09-14_2026-09-20");
     expect(result.shifts[0]).toMatchObject({ title: "AM-Server", label: "Training · Opening · Extra", color: "#aabbcc" });
+  });
+  it("exports an archived job and type by their names; only an unknown job falls back to Shift (K8)", () => {
+    const value = input();
+    value.model = { ...value.model, jobs: [], shift_types: [],
+      referenced_jobs: [{ id: "job", name: "Line Cook" }], referenced_shift_types: [{ id: "type", name: "Brunch" }] };
+    expect(ready(value).shifts[0]).toMatchObject({ position: "Line Cook", title: "Brunch-Line Cook", shiftType: "Brunch", color: "#54736a" });
+    value.model = { ...value.model, referenced_jobs: [], referenced_shift_types: [] };
+    expect(ready(value).shifts[0]).toMatchObject({ position: "Shift", title: "Shift", shiftType: null });
   });
   it("uses the current grid's location/employee filters and daily date", () => {
     const result = createScheduleExportSnapshot({ ...input(), view: "day",

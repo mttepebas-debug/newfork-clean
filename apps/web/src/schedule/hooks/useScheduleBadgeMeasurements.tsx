@@ -1,5 +1,4 @@
 import type {
-  ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
 import {
@@ -17,6 +16,11 @@ import {
   formatScheduleShiftBadgeTitle,
   ghostShiftLocation,
 } from "../components/ShiftCard";
+import {
+  scheduleJobName,
+  scheduleShiftTypeOf,
+  type ScheduleCatalog,
+} from "../lib/scheduleCatalogNames";
 import { escapeAttributeValue } from "../lib/scheduleInteractionTargets";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 import {
@@ -114,8 +118,7 @@ export function useUniformScheduleBadgeWidth({
 
 export function renderScheduleBadgeWidthMeasurer({
   shifts,
-  jobs,
-  shiftTypes,
+  catalog,
   locationGroups,
   showShiftType,
   showShiftLabels,
@@ -126,8 +129,7 @@ export function renderScheduleBadgeWidthMeasurer({
   showShiftTypePresets,
 }: {
   readonly shifts: readonly ScheduleShift[];
-  readonly jobs: ScheduleReadModel["jobs"];
-  readonly shiftTypes: ScheduleReadModel["shift_types"];
+  readonly catalog: ScheduleCatalog;
   readonly locationGroups: readonly ScheduleGridLocationGroup[];
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
@@ -144,8 +146,8 @@ export function renderScheduleBadgeWidthMeasurer({
     unassignedStackCounts.set(key, (unassignedStackCounts.get(key) ?? 0) + 1);
   }
   const shiftItems = shifts.map((shift) => {
-    const job = jobs.find((item) => item.id === shift.job_id)?.name ?? "Shift";
-    const type = shiftTypes.find((item) => item.id === shift.shift_type_id);
+    const job = scheduleJobName(catalog, shift.job_id) ?? "Shift";
+    const type = scheduleShiftTypeOf(catalog, shift.shift_type_id);
     const labelNames = shift.label_names ?? [];
     const locationName = showLocationInBadge
       ? (locationGroups
@@ -178,8 +180,8 @@ export function renderScheduleBadgeWidthMeasurer({
     };
   });
   const presetItems = showShiftTypePresets
-    ? jobs.flatMap((job) =>
-        shiftTypes.map((shiftType) => ({
+    ? catalog.jobs.flatMap((job) =>
+        catalog.shift_types.map((shiftType) => ({
           id: `${job.id}-${shiftType.id}`,
           isPreset: true,
           color: shiftType.color,
