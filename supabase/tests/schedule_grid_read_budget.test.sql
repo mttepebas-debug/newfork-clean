@@ -106,7 +106,7 @@ select is((select (length(model::text) - length(replace(model::text, s.id::text,
 select is((select model -> 'ghost_shifts' from wb_run where who = 'owner' and n = 1), '[]'::jsonb,
   'the owner reaches every location, so nothing is a ghost');
 
--- A ghost names the shift type as the grid does, and not once it is archived.
+-- A ghost names the shift type as the grid does, an archived one too (G8b, K8).
 -- ponytail: typed and archived by hand, after the measured reads.
 insert into public.shift_types (id, workspace_id, name, default_start_time, default_end_time)
 values (tests.remember('wb:type:double', gen_random_uuid()), tests.id('wb'), 'Double', '09:00', '15:00');
@@ -119,15 +119,16 @@ create function pg_temp.p3_ghost_type() returns text language sql as $$
 $$;
 select is(pg_temp.p3_ghost_type(), 'Double', 'a ghost names its shift type: Mina sees p3''s Besiktas shift is a Double');
 update public.shift_types set archived_at = now() where id = tests.id('wb:type:double');
-select is(pg_temp.p3_ghost_type(), null, 'an archived shift type is not named on a ghost');
+select is(pg_temp.p3_ghost_type(), 'Double', 'an archived shift type keeps its name on a ghost');
 
--- A job the grid no longer lists (archived) has no name on the ghost either.
+-- A job archived after its shifts were published keeps its name on the ghost
+-- (G8b, K8); the picker list leaves it out.
 -- ponytail: archived by hand, after the measured reads.
 update public.jobs set archived_at = now() where id = tests.id('wb:job:cook');
 select is(
   (select array_agg(distinct coalesce(g ->> 'job_name', 'null')) from jsonb_array_elements(
     public.get_schedule_read_model_service(tests.user('wb:mina'), tests.id('wb'), tests.week(1)) -> 'ghost_shifts') g),
-  array['null'], 'an archived job is not named on a ghost, as the grid does not name it');
+  array['Cook'], 'an archived job keeps its name on a ghost');
 
 -- A deleted location is gone from the grid and from the ghosts alike: the
 -- grid and the ghosts draw the same line (FB-6.1 .4, nf-guvenlik (a)).
