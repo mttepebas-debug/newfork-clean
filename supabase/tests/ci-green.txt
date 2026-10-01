@@ -147,3 +147,4 @@ supabase/tests/catalog_sorted_by_name.test.sql
 supabase/tests/archived_names_reach_the_schedule.test.sql
 supabase/tests/time_off_voting.test.sql
 supabase/tests/time_off_deadlines.test.sql
+supabase/tests/time_off_pending_publish_note.test.sql

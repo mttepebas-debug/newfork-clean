@@ -70,7 +70,8 @@ select ok(not has_function_privilege('authenticated','public.prepare_weekly_sche
 select ok(not has_function_privilege('service_role','public.prepare_weekly_schedule_assignment(uuid,uuid,jsonb,jsonb)','execute'),'raw preparer is internal, not an impersonation RPC');
 select ok(not has_function_privilege('authenticated','public.assess_weekly_schedule_assignment_service(uuid,uuid,jsonb,uuid,uuid)','execute'),'employee has no raw assessment RPC');
 -- Publication reads use the same staged assessment and retained acceptance.
-update public.schedule_time_off_requests set status='pending' where workspace_id=(select w from wp_fixture);
+-- The leave is out of the way while they do: denied (a pending one is a note, FB-6.3).
+update public.schedule_time_off_requests set status='denied' where workspace_id=(select w from wp_fixture);
 insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by)
  select 'ad421000-0000-4000-8000-000000000013',w,'2035-01-15','Weekly preflight',manager,manager from wp_fixture;
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
