@@ -14,5 +14,7 @@ metadata:
 - `packages/shared/src/authorization-matrix.expected.json` is a hash of the SQL matrix: any matrix edit needs the dump (`dump-authorization-matrix.ts`, `AUTHZ_MATRIX_PRELUDE` takes migration paths) — nf-backend's file.
 - GateGuard refuses the first Write/Edit of each file once: state the facts, retry.
 
+- All of .1-.4 is live and on main (2026-10-01). D1/D2 (`20261003033000`, sweep only) waits on `task/fb-6.3`: parked until a user approves the live push. The shared DB holds .3/.4 but not `tests.leave`: trials still need `builder-leave.sql` in the prelude.
+
 **Why:** FB-6.3 .3/.4, 2026-10-01.
 **How to apply:** before .7 (deletes) or any change to time off. See [[rollback-trial-runner]], [[new-notification-type]].
