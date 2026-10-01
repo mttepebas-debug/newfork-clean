@@ -536,7 +536,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Örnek: Beşiktaş müdürü Mehmet'in belgesi gecikmiş; Ali'nin talebinin son karar anına 12 saat kala hatırlatma admin/owner'a da gider ve bildirim "Beşiktaş'ta manager kalmadı" demez. Canlıya gönderimi kullanıcı onayı ister; kullanıcı dönene kadar park.
 - **Dayanak:** kullanıcının 2026-10-01 kuralı (KARARLAR "İzin" → "Belgesi gecikmiş manager": geçici kısıtta karar admin/owner'a gider) ve KARARLAR "Oylamanın ayrıntısı" (hatırlatma karar vermemiş lokasyonun karar verenlerine); `CLAUDE.md` §13.
 - **Geri alma:** ucuz — yalnız yeniden tanım migration'ı.
-- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verildi (2026-10-01; dal `task/fb-6.3`, worktree `xenodochial-knuth-943563`, kayıt anında uç `47bb6c17`, yeni commit yok — ölçüldü); incelemeden sonra dalda park (besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
+- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verildi (2026-10-01; dal `task/fb-6.3`, worktree `xenodochial-knuth-943563`, kayıt anında uç `47bb6c17`, yeni commit yok — ölçüldü); incelemeden sonra dalda park (besleme #45). Besleme #46: dalda bitti (`a54d9ee9`, `20261003033000_time_off_reminder_reaches_who_can_decide.sql` — ölçüldü), `nf-guvenlik` incelemesi koşuyor; KK-75'in migration'ıyla tek paket halinde canlı onayı bekler. Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
 - **Mert:** onaysız.
 
 ### KK-73 (2026-10-01) FB-6.3.5'te eski izin uçları (API) kalır, `.7`'de silinir
@@ -555,4 +555,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** `CLAUDE.md` §3, §4, §13 (süreç kararı).
 - **Geri alma:** ucuz.
 - **Durum:** yürürlükte; iki dal da `47bb6c17`'de açık (ölçüldü, besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle).
+- **Mert:** onaysız.
+
+### KK-75 (2026-10-01) Yayın penceresinin "bekleyen izin" notu veritabanında üretilir (`time_off_pending`)
+- **Karar:** KK-71'in yayın notu için yeni bulgu `time_off_pending` (soft, note; yayını engellemez) `preview_schedule_publication_service`'te üretilir; aynı kural web'de ikinci kez yazılmaz. Veritabanı kısmı yeni `nf-db` oturumunda (`local_a0051ad4…`, `20261003034000_…`), KK-72 ekiyle aynı park paketinde. `.5` bu bulgu boş gelecek şekilde main'e girer; shared şemaya enum değeri eklendi.
+- **Neden:** `.5`'te `nf-backend` ölçtü: yayın önizlemesi bekleyen izin talebini bilmiyor, API okuması yetmez. İkiz sistem yasak (`CLAUDE.md` §9).
+- **Uygulamada etkisi:** canlı onayından sonra Schedule → Publish penceresinde "Ali has time off waiting for a decision on Oct 3" gibi bir not çıkar; yayın yine yapılabilir. O zamana kadar ekranda değişiklik yok.
+- **Dayanak:** KARARLAR "İzin" (bekleyen izin uyarıdır, engel değil), KK-71, `CLAUDE.md` §9 ve §13 (süreç kararı).
+- **Geri alma:** ucuz — yalnız yeniden tanım migration'ı; canlıya çıkmadan önce dalda.
+- **Durum:** yürürlükte; veritabanı kısmı PARK (canlı onayı kullanıcıda, §0c satır 39). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #46).
 - **Mert:** onaysız.
