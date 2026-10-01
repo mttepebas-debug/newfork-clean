@@ -111,7 +111,7 @@ export function createEmployeeHubService(options: {
       ]);
       const parsed = employeeHubReadModelSchema.parse(
         typeof model === "object" && model !== null
-          ? { ...model, settings: { time_format: timeFormat } }
+          ? { ...model, settings: { ...(model as { settings?: object }).settings, time_format: timeFormat } }
           : model,
       );
       if (!parsed.locations.length) return parsed;

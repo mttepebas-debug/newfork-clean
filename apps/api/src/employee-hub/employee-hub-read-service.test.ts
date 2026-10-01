@@ -38,6 +38,18 @@ describe("employee hub weekly read boundary", () => {
     expect(result.settings.time_format).toBe("24h");
     expect(result.locations[0]?.timezone).toBe("America/Los_Angeles");
   });
+  it("passes the time-off zone and lead time the database adds, and reads without them (FB-6.3.5b)", async () => {
+    rpc.mockResolvedValue({ data: { ...model, time_off_timezone: "America/New_York", settings: { time_off_lead_hours: 48 } }, error: null });
+    const added = await service.get(input);
+    expect(added.time_off_timezone).toBe("America/New_York");
+    expect(added.settings).toEqual({ time_format: "24h", time_off_lead_hours: 48 });
+    rpc.mockResolvedValue({ data: model, error: null });
+    const today = await service.get(input);
+    expect(today).not.toHaveProperty("time_off_timezone");
+    expect(today.settings).toEqual({ time_format: "24h" });
+    rpc.mockResolvedValue({ data: { ...model, time_off_timezone: null, settings: { time_off_lead_hours: 721 } }, error: null });
+    await expect(service.get(input)).rejects.toThrow();
+  });
   it("does not hide errors in the canonical employee read", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "Employee access denied", code: "42501" } });
     await expect(service.get(input)).rejects.toMatchObject({ statusCode: 403, message: "Employee access denied" });

@@ -58,8 +58,12 @@ export const employeeHubReadModelSchema = z.object({
   settings: z
     .object({
       time_format: employeeHubTimeFormatSchema,
+      // Settings > Scheduling: how long before time off starts it must be decided (FB-6.3).
+      time_off_lead_hours: z.number().int().min(0).max(720).optional(),
     })
     .default({ time_format: "12h" }),
+  // The primary location's zone a time-off request is asked in; null for somebody who works nowhere.
+  time_off_timezone: z.string().min(1).nullable().optional(),
   employee: z.object({
     id: z.string().uuid(),
     display_name: z.string().min(1),
