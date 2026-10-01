@@ -441,6 +441,13 @@ describe("catalog navigation", () => {
     expect(screen.queryByText("Move up")).toBeNull();
     expect(screen.queryByText("Move down")).toBeNull();
   });
+
+  it("says 1 job, not 1 jobs, for a department with one job", async () => {
+    wrap(<JobsSettingsPage />);
+    const service = await screen.findByRole("region", { name: "Service" });
+    expect(within(service).getByText("1 job")).toBeTruthy();
+    expect(screen.queryByText(/1 jobs/)).toBeNull();
+  });
   function Url() {
     return <output data-testid="url">{useLocation().search}</output>;
   }

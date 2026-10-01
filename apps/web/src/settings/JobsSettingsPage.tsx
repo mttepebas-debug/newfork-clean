@@ -33,6 +33,11 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 type View = "hierarchy" | "departments" | "jobs";
 type SortKey = "name" | "department" | "jobs" | "employees";
+/** "1 job", "2 jobs". */
+function countLabel(count: number, one: string): string {
+  return `${count} ${count === 1 ? one : `${one}s`}`;
+}
+
 export default function JobsSettingsPage() {
   const { context } = useAuth();
   const canEdit =
@@ -573,7 +578,8 @@ export default function JobsSettingsPage() {
             <>
               <div className="job-catalog-caption">
                 <span>
-                  {groups.length} groups · {visibleJobs.length} jobs
+                  {countLabel(groups.length, "group")} ·{" "}
+                  {countLabel(visibleJobs.length, "job")}
                 </span>
                 <button
                   className="job-text-button"
@@ -626,15 +632,15 @@ export default function JobsSettingsPage() {
                           <span className="job-archived-label">Archived</span>
                         )}
                         <span className="job-group-count">
-                          {
+                          {countLabel(
                             jobs.filter(
                               (job) =>
                                 (dep
                                   ? job.department_id === dep.id
                                   : !job.department_id) && !job.archived_at,
-                            ).length
-                          }{" "}
-                          jobs
+                            ).length,
+                            "job",
+                          )}
                         </span>
                       </button>
                       {dep && (
@@ -730,11 +736,19 @@ export default function JobsSettingsPage() {
                       updateParams({ view: "hierarchy", q: dep.name });
                     }}
                   >
-                    {
-                      activeJobs.filter((job) => job.department_id === dep.id)
-                        .length
-                    }
-                    <span className="job-mobile-meta"> jobs</span>
+                    {(() => {
+                      const count = activeJobs.filter(
+                        (job) => job.department_id === dep.id,
+                      ).length;
+                      return (
+                        <>
+                          {count}
+                          <span className="job-mobile-meta">
+                            {count === 1 ? " job" : " jobs"}
+                          </span>
+                        </>
+                      );
+                    })()}
                   </button>
                   <span className="job-count-button">
                     <Users size={14} />
