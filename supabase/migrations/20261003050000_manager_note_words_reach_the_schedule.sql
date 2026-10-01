@@ -105,15 +105,15 @@ begin
       target_workspace_id, resolved_week_start,
       (select coalesce(array_agg(employee.id), '{}') from visible_employees employee),
       (select coalesce(array_agg(location.id), '{}') from allowed_locations location))
-  ), readable_notes as (
+  ), readable_notes as materialized (
     -- The note's words, by weekday from Sunday, for whoever the core lets read
     -- the note; nobody else gets them.
     select reminder.employee_id, to_jsonb(reminder.notes) as words
     from public.manager_weekly_reminders reminder
-    join visible_employees employee on employee.id = reminder.employee_id
     where reminder.workspace_id = target_workspace_id and reminder.enabled
+      and reminder.employee_id = any(array(select employee.id from visible_employees employee))
       and app_private.authz_reason(actor_user_id, target_workspace_id, 'availability.note_read',
-        target_person => employee.id) is null
+        target_person => reminder.employee_id) is null
   )
   select jsonb_build_object(
     'workspace_id', target_workspace_id,

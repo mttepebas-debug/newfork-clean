@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(17);
 
 -- FOUNDATION-B 5.3a: the Schedule grid, Edit mode and Employee Hub -> Schedule
 -- draw availability from the weekly marks. Every shift, published or being
@@ -64,8 +64,22 @@ select is(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:fili
   'null'::jsonb, 'a manager who may not read availability gets no words');
 select ok(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable' = 'true',
   'she still sees the marked hours');
+select ok(not (public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))::text like '%School mornings%'),
+  'the words appear nowhere in her read');
+-- A note row about a manager (the role trigger removes such notes; written
+-- here directly) still gives nobody its words.
+insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, notes, revision, updated_by)
+values (tests.id('wr'), tests.id('wr:ayse'),
+  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"range": {"start": "09:00", "end": "12:00"}}'),
+  true, array['', '', '', '', '', 'About Ayse', ''], 1, tests.user('wr:owner'));
 select is((select e -> 'weekly_availability' -> 0 -> 'manager_notes' from jsonb_array_elements(pg_temp.grid() -> 'employees') e
   where e ->> 'id' = tests.id('wr:ayse')::text), 'null'::jsonb, 'no words about a manager, Ayse herself included');
+delete from public.manager_weekly_reminders where employee_id = tests.id('wr:ayse');
+-- A note switched off reaches the Schedule not at all, words included.
+update public.manager_weekly_reminders set enabled = false where employee_id = tests.id('wr:ali');
+select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'manager_notes',
+  'null'::jsonb, 'a note switched off gives Ayse no words');
+update public.manager_weekly_reminders set enabled = true where employee_id = tests.id('wr:ali');
 
 -- Ali marks Thursday morning after the week went out (BL-184): the published
 -- shift shows it.
