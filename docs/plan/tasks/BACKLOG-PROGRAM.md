@@ -334,6 +334,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, Mert ile doğrudan): BL-204 (G14 dilim c) konuşması yapıldı — turuncu ve daha belirgin hücre taraması + bilgi veren ipucu, kartta turuncu ünlem; önce gerçek uygulamada mockup (`nf-arayuz`), koordinatöre iletildi.
 - 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, Mert ile doğrudan, iki tur çoktan seçmeli; taban `27d540be`): bekleyen dokuz karar verildi. Kapanan: BL-417 (görsün), BL-370 (bugünkü gibi). İşe dönüşen: BL-437 (Export paneline taşı) + BL-494 (owner/admin her kuralı, manager kendi lokasyonlarının), BL-118 (owner isteğe bağlı yükler), BL-419 (kurulum bitmeden davet yok). Kural: OPS-03'e silen işte ters sıra; ara sıra çalışan müdür teyit. BL-355 (3) zaten 09-29'da düşürülmüştü. Açık madde 287 → 285.
 - 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #76; taban `2fd65676`): yeni `nf-db` `local_7824e649…` FB-6.3.7'yi main'e alıyor; eski `nf-test` `local_17d5b65d…` devretti (ILERLEME §0c 61). Sayım değişmedi.
 - 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #75; taban `a1daf55a`): FB-6.3.6/.6b/.6c/.8 main'de ve canlıda (`d3d4e25c`, main CI 36897178954 yeşil). Mert: "Decide by" talebin diliminde (yeni FB-6.3.8d; BL-512'ye ilişki satırı), `.7`'ye ultrareview yok, 12 eski oturum arşivlendi. Sayım değişmedi: açık 287.
