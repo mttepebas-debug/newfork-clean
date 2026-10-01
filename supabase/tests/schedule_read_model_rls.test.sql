@@ -48,10 +48,10 @@ insert into public.locations (short_name,
 
 select tests.works_at('33000000-0000-4000-8000-000000000002', '34000000-0000-4000-8000-000000000001');
 
-insert into public.departments (id, workspace_id, name, color, sort_order)
-values ('35000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Dining', '#3C7A68', 0);
-insert into public.jobs (id, workspace_id, department_id, name, color, sort_order)
-values ('36000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '35000000-0000-4000-8000-000000000001', 'Server', '#4478A8', 0);
+insert into public.departments (id, workspace_id, name, color)
+values ('35000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Dining', '#3C7A68');
+insert into public.jobs (id, workspace_id, department_id, name, color)
+values ('36000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '35000000-0000-4000-8000-000000000001', 'Server', '#4478A8');
 insert into public.shift_types (id, workspace_id, name, color, default_start_time, default_end_time, sort_order)
 values ('37000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', 'Dinner', '#5279A6', '15:00', '23:00', 0);
 

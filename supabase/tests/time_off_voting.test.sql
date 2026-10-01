@@ -72,8 +72,6 @@ $$;
 -- 1. Sending -------------------------------------------------------------------
 
 select tests.remember('tv:ali:1', tests.leave('tv', 'ali', 1));
-select is((select r.location_id from public.schedule_time_off_requests r where r.id = tests.id('tv:ali:1')), null::uuid,
-  'a request has no location');
 select is(pg_temp.status(tests.id('tv:ali:1')), 'pending', 'it waits for a decision');
 select is(
   (select array_agg(l.short_name order by l.short_name) from public.time_off_required_locations x
@@ -358,6 +356,13 @@ select public.employee_request_action_service(tests.user('tv:emre'), tests.id('t
   (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('tv:emre:5')));
 select is(pg_temp.told(tests.id('tv:emre:5'), 'requests.time_off.decided'), pg_temp.users('ayse', 'can', 'derya'),
   'withdrawing it tells the people who would have decided');
+select is(pg_temp.status(tests.id('tv:emre:5')), 'revoked', 'a withdrawn request is closed');
+select is((select x ->> 'display_status' from jsonb_array_elements(public.get_employee_hub_service(tests.user('tv:emre'), tests.id('tv'),
+    tests.week(5), tests.week(5) + 6) -> 'requests') x where (x ->> 'id')::uuid = tests.id('tv:emre:5')),
+  'Withdrawn', 'Emre reads it as withdrawn, not revoked by a manager');
+select throws_ok(format($$select public.decide_time_off_service(%L, %L, %L, 'approve', '', %L)$$, tests.user('tv:ayse'), tests.id('tv'),
+    tests.id('tv:emre:5'), pg_temp.fingerprint(tests.id('tv:emre:5'))),
+  '40001', null, 'a vote arriving after the withdrawal is turned back');
 
 -- 7. What each side reads ------------------------------------------------------
 

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(24);
 
 -- BL-475 (user decisions 2026-09-30: "A to Z, no more ordering by hand";
 -- "departments too, Management with no privilege"). Departments and jobs come
@@ -100,18 +100,9 @@ select is(pg_temp.names((select t -> 'job_names' from jsonb_array_elements(
 
 -- 3. Nobody puts departments or jobs in order by hand any more ----------------------
 
-select is((select count(*)::integer from public.departments where sort_order <> 0), 0,
-  'no department carries a hand-given position');
-select is((select count(*)::integer from public.jobs where sort_order <> 0), 0,
-  'no job carries a hand-given position');
-select throws_ok(
-  format($$select tests.as_browser(%L, %L)$$, tests.user('az:owner'),
-    format('update public.departments set sort_order = 3 where id = %L', tests.id('az:kitchen'))),
-  '23514', null, 'the owner cannot give a department a position straight in the table');
-select throws_ok(
-  format($$select tests.as_browser(%L, %L)$$, tests.user('az:owner'),
-    format('update public.jobs set sort_order = 3 where id = %L', tests.id('az:job:zest'))),
-  '23514', null, 'the owner cannot give a job a position straight in the table');
+-- BL-496 (FB-6.3.7): the unused position column is gone from both tables.
+select hasnt_column('public', 'departments', 'sort_order', 'a department has no position column');
+select hasnt_column('public', 'jobs', 'sort_order', 'nor does a job');
 select hasnt_function('public', 'reorder_organization_entities_service', 'the reorder command is gone');
 select hasnt_function('public', 'reorder_organization_entities', 'and the function behind it');
 
@@ -123,10 +114,6 @@ select is(pg_temp.names(public.create_department_with_jobs_service(tests.user('a
   array['aperitivo', 'Spritz'], 'a department made with its jobs answers them A to Z');
 select is(pg_temp.names(pg_temp.settings() -> 'departments'), array['bakery', 'Bar', 'Kitchen', 'Management'],
   'the new department takes its A-to-Z place');
-select is((select sort_order from public.departments where workspace_id = tests.id('az') and name = 'Bar'), 0,
-  'and carries no position of its own');
-select is((select count(*)::integer from public.jobs where workspace_id = tests.id('az') and sort_order <> 0), 0,
-  'nor do its jobs');
 
 -- 5. When a primary job has to be chosen, A to Z chooses it -------------------------
 

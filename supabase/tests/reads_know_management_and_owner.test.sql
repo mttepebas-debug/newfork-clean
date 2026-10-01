@@ -86,9 +86,9 @@ $$;
 
 -- 1. The Schedule read names Management and Owner by key ------------------------------
 
-select is(pg_temp.keys(pg_temp.grid() -> 'departments' -> 0), array['color', 'id', 'name', 'sort_order', 'system_key'],
+select is(pg_temp.keys(pg_temp.grid() -> 'departments' -> 0), array['color', 'id', 'name', 'system_key'],
   'a Schedule department carries its system key');
-select is(pg_temp.keys(pg_temp.grid() -> 'jobs' -> 0), array['color', 'department_id', 'id', 'name', 'sort_order', 'system_key'],
+select is(pg_temp.keys(pg_temp.grid() -> 'jobs' -> 0), array['color', 'department_id', 'id', 'name', 'system_key'],
   'a Schedule job carries its system key');
 select is(pg_temp.keyed(pg_temp.grid() -> 'departments'), array['Kitchen=null', 'Management=management'],
   'Schedule knows which department is Management');
@@ -152,9 +152,9 @@ select is(
   pg_temp.primaries(pg_temp.grid(),
     array(select (e ->> 'id')::uuid from mk_board, jsonb_array_elements(answer -> 'employees') e)),
   'everybody on the team board has the primary job the manager''s Schedule reads');
-select is(pg_temp.keys((select answer from mk_board) -> 'departments' -> 0), array['color', 'id', 'name', 'sort_order', 'system_key'],
+select is(pg_temp.keys((select answer from mk_board) -> 'departments' -> 0), array['color', 'id', 'name', 'system_key'],
   'a team board department carries its system key');
-select is(pg_temp.keys((select answer from mk_board) -> 'jobs' -> 0), array['color', 'department_id', 'id', 'name', 'sort_order', 'system_key'],
+select is(pg_temp.keys((select answer from mk_board) -> 'jobs' -> 0), array['color', 'department_id', 'id', 'name', 'system_key'],
   'a team board job carries its system key');
 select is(
   pg_temp.keyed((select answer from mk_board) -> 'departments') || pg_temp.keyed((select answer from mk_board) -> 'jobs'),
