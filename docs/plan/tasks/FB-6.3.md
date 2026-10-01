@@ -1,135 +1,248 @@
-# FB-6.3 İzin dilimini yetki çekirdeğine taşı (FOUNDATION-B Aşama 6)
-Status: draft — S1–S3 cevaplı, S4 TBD; P1–P3 verildi (2026-09-27). Başlamadan önce: FB-6.2 main'de, BL-183 main'de; `.0` taze ölçüm.
-Session: -   Branch: task/FB-6.3   Worktree: newfork-wt/FB-6.3   DB: lock (migration + test:db + e2e)
-
-Program: `docs/plan/tasks/FOUNDATION-B.md` → Aşama 6 → dilim tablosu, satır FB-6.3. Ürün kuralları: `docs/plan/KARARLAR.md` → "İzin (time off)" (`:68-71`) ve "Rütbe" (`:44`). Kalıp: `FB-6.1.md`, `FB-6.2.md`.
-Önkoşullar: **FB-6.2** (kişi kapsamı, birincil lokasyon, lokasyonsuz kişi — FB-6.2 S1); **BL-183** (A şeridi; aynı bildirim fonksiyonuna dokunuyor, Ç-a).
-Reviewer: `nf-guvenlik` (her kod adımı); ekran değiştiren adımlarda (`.5`, `.6`) ayrıca `nf-gorsel-qa`. Onay biçimi `ONAY @<sha>`.
-
-## Tazelik ölçümü (2026-09-27)
-Ölçüm: `origin/main` `b4b6d02`; yerel DB yalnız SELECT (son migration `20260926230000` = main).
-
-| Ne (dilim tablosu / devir notu) | Bugün | Hüküm | Kanıt |
-|---|---|---|---|
-| "Talepten `location_id` kalkar" | `schedule_time_off_requests.location_id` **NOT NULL**; iki gönderim servisi `target_location_id` alıyor (`submit_employee_time_off_service`, `submit_employee_time_off_periods_service`). Yerel DB'de talep satırı 0. | **geçerli** | `information_schema.columns`, `pg_get_function_identity_arguments` |
-| "Onay oylaması çekirdeğe" | **Oylama hiç yok.** Karar tek lokasyonla veriliyor: `app_private.authorize_time_off_decision` → `authorize(..., 'time_off.decide', target_locations => array[place], target_person => requester)` (talebin lokasyonu). "O gün yayınlı vardiyası olan her lokasyonun müdürü oy verir" kuralının kodu yok. | **değişmiş (büyüdü)**: taşıma değil yeni karar motoru | fonksiyon gövdesi; `grep -li vote supabase/migrations` → izinle ilgisiz |
-| Rütbe (bir üst kademe, kendi talebini onaylamaz) | **bitti** (BL-177, main): `time_off.decide` rütbe kuralı çekirdekte, `known_gap` `time-off-rank` silinmiş; owner'ın talebi onaylı kaydoluyor (`app_private.record_owner_time_off`) | **kapandı** | `authorization_matrix.test.sql:546-553`; DONE BL-177 |
-| `known_gap` `time-off-needs-location` | duruyor (`authorization_matrix.test.sql:633-634`): lokasyonu olmayan kişi izin isteyemiyor | **geçerli** | matris |
-| "5 izin fonksiyonu `schedule_actor_*` yardımcılarında" | **3** kaldı: `mark_schedule_time_off_viewed_service`, `preview_time_off_assignment_decision_service`, `time_off_event_released_assignments`. `apply_time_off_period_decision` ve `decide_time_off_with_assignments_service` BL-177'de çekirdeğe geçti. | **değişmiş (küçüldü)** | `prosrc` sorgusu |
-| Sayaç katkısı (izin fonksiyonları, 31 ad) | `auth.uid()` 0, `request.jwt.claim` 0, `_base` 0; kendi kapsam/rütbe mantığı **1** (`notify_schedule_request_event_service`); izin tablolarında RLS politikası 0 | **yeni** — dilimin sayaç etkisi küçük; asıl iş kural | `authz_catalog` desenleri |
-| Çekirdek eylemleri | `time_off.request_own`, `time_off.decide` (2). İptal kararı için ayrı eylem yok (`apply_time_off_cancellation_decision` çekirdeğe sormuyor). | **yeni** | `app_private.authz_actions` |
-| API kapısı | `apps/api/src/schedule/schedule-requests-routes.ts`: route-yerel iki kapı `authorizeAnyActive` (`:272`) ve `authorizeAny` (`:303`), `context.permissions.includes` ile; **8 çağrı**. Kopya `requestError` (`:324`, BL-134). Employee Hub izin ucu `employee-hub-routes.ts:134`. | **yeni iş** (FB-6.1 E1 kalıbı) | grep |
-| Web | `ScheduleRequestsPage.tsx`'te `permissions.includes` **0** (FB-6.1.9); "Hours need verification" ölü dalı `:1036` (BL-110'un izin parçası); `legacy_location` zaman kaynağı toleransı (`packages/shared/src/time-off.ts:105`, `apps/web/src/employee-hub/TimeOffPeriods.tsx:25`) | **yeni** — eski veri toleransı silinir (CLAUDE.md §9) | grep |
-| Kırmızı dosyalar | izin dosyaları 8; **`time_off_partial_period_decisions` kırmızı** (yeşil listeye takvime bağlı olduğu için hiç girmedi, FOUNDATION-B `:82`); `time_off_published_assignment_disposition` CI'da yeşil ama yerelde kırmızı (BL-209 veri kayması); `schedule_requests` yeşil (FB-6.1) | **geçerli** | `ci-green.txt` |
-| e2e akış 8 "İzin" | spec yok (`e2e/flows/` 8 dosya, izin yok) | **yeni iş** | `ls e2e/flows` |
-
-**Sonuç:** Dilim tablosundaki büyüklük (0,5–1 kişi-hafta) **düşük**: oylama yeni bir karar motoru (oy kaydı, karar anında oy veren hesabı, kısmi oy durumu, bildirim) ve talepten lokasyonun kalkması saat dilimi kuralını açıyor (S3). Buna karşılık rütbe işi (BL-177) ve yardımcıların ikisi zaten bitti, sayaç etkisi küçük. Yeni tahmin **1–1,5 kişi-hafta** (ölçülmemiş; FB-6.1/6.2 bitince yeniden).
+# FB-6.3 İzin dilimi: lokasyon oylaması, geri alma, süre ve otomatik red (FOUNDATION-B Aşama 6)
+Status: plan — spec ve tasarım kullanıcı onaylı (2026-09-30, kayıt oturumunun penceresinde, plan modu); K10/S4 kapandı. Sürüm 2: önceki sürümün ("o gün yayınlı vardiyası olan lokasyonlar, yoksa birincil lokasyon" oylaması) yerine geçer; eski metin `git show b25ee449:docs/plan/tasks/FB-6.3.md`. Başlamadan önce: `.0` taze ölçüm.
+Session: -   Branch: task/fb63-<adım>   Worktree: newfork-wt/fb63-<adım>   DB: `.1`–`.4`, `.7`, `.8`
+Reviewer: `nf-guvenlik` her veritabanı adımında zorunlu (R3: yetki çekirdeği, yeni katalog anahtarları, veri silme, zamanlayıcı); ekran adımlarında (`.6`) `nf-gorsel-qa`; ultrareview önerilir. Onay biçimi `ONAY @<sha>`.
 
 ## Goal
-İzin kişinin talebidir: formda lokasyon seçilmez, talep bir lokasyona bağlı değildir. Karar KARARLAR'daki oylamayla verilir: o gün yayınlı vardiyası olan her lokasyonun müdürü oy verir, hepsi onaylayınca kesinleşir, biri reddederse red; yayınlı vardiya yoksa birincil lokasyonun müdürü; admin/owner her durumda tek başına; birincil lokasyonun müdürü yoksa (ya da kişi lokasyonsuzsa) talep admin/owner'a düşer. Kararın her giriş noktası `app_private.authorize()` / `scope_set()`'ten geçer.
-Örnek: Ali Pazartesi Kadıköy'de, Salı Beşiktaş'ta yayınlı vardiyalı; Pazartesi–Salı izin ister. Kadıköy müdürü Ayşe onaylar, talep "Beşiktaş'ın onayı bekleniyor" der; Beşiktaş müdürü Mehmet onaylayınca izin kesinleşir. Mehmet reddetseydi talep reddedilirdi. Admin ikisini beklemeden tek başına karar verebilir.
+İzin çalışanındır: çalışanın atandığı her lokasyonun manager'ı oy verir, admin/owner tek başına karar verebilir. Aynı kural iptal taleplerine uygulanır. Karar verilen izin, yayınlı ve başlamamış vardiyaları sistem eliyle open shift'e düşürür. Etkisi oy verene açıkça gösterilir. Süresi içinde karar çıkmayan talep otomatik reddedilir; önce karar vermeyenlere hatırlatma gider. Eski tek-lokasyon, tek-kişi, kısmi karar yolu silinir.
+
+Neden (kullanıcı, 2026-09-30): eski kural taslak hâlindeki ya da henüz programı olmayan günlerde karar vereni bulamıyordu.
+
+## Kurallar (spec — kullanıcı kararları 2026-09-30)
+**Kim karar verir**
+1. İzin çalışana bağlıdır; talepte lokasyon yoktur.
+2. Karar verenler: çalışanın atandığı canlı lokasyonların manager'ları ve admin/owner. Rütbe kuralı kalır (KARARLAR "Rütbe"):
+   - manager'ın talebine yalnız admin/owner karar verir;
+   - admin'in talebine yalnız owner karar verir;
+   - owner'ın kendi talebi onaysız kaydedilir;
+   - kimse kendi talebine karar veremez.
+3. Gereken lokasyonlar talep anında sabitlenir; sonradan eklenen lokasyon oy istemez.
+   - Listeden düşenler: arşivlenen lokasyon, çalışanın çıkarıldığı lokasyon, karar verebilecek manager'ı kalmayan lokasyon.
+   - Hiç lokasyon kalmazsa karar yalnız admin/owner'ındır ve bildirim onlara gider.
+
+**Oylama**
+4. Tek lokasyonda bir manager'ın onayı ya da reddi kesindir. Çok lokasyonda her lokasyondan en az bir onay gerekir. Birden çok lokasyonu yöneten manager'ın tek oyu hepsini kapsar.
+5. Tek bir red talebi hemen kapatır.
+6. Admin/owner kararı (onay ya da red) anında ve kesindir. Onay penceresi "hemen geçerli olur, çalışanın lokasyonlarının manager'larına bildirim gider" der.
+7. Kısmi onay yoktur. Red notu yazılabilir (ör. "yalnız 11–12'yi onaylayabilirim"); çalışan isterse yeniden talep gönderir. "Return to pending" kalkar.
+8. Oy, talep açıkken değiştirilebilir; onaydan redde dönmek talebi kapatır.
+9. Çalışan talep kapanana kadar yalnız "Pending" görür; kapanınca sonucu ve notu görür.
+10. Karar verenler ilerlemeyi görür: gereken lokasyonlar, kim onayladı ya da reddetti ve ne zaman, kalan sayı, son karar anı.
+
+**Geri alma ve iptal**
+11. **Revoke kalır.** Çalışanın lokasyonlarından herhangi birinin manager'ı ya da admin/owner tek başına geri alabilir.
+    - Gerekçe zorunlu, onay penceresi çıkar.
+    - Çalışana ve diğer manager'lara bildirim gider.
+    - Yalnız başlamamış kısım kalkar; geçmiş kısım kayıtta "taken until …" olarak kalır.
+12. Çalışanın iptal talebi aynı oylama kurallarıyla işler. Beklerken izin geçerli kalır.
+
+**Vardiyalara etkisi**
+13. Son onay anında sistem şunları yapar (oy verenin yayın yetkisi ya da vardiya vardiya seçim gerekmez):
+    - izinle çakışan, yayınlı ve henüz başlamamış vardiyaların tamamı open shift'e düşer;
+    - başlamış ya da geçmiş vardiya açılmaz;
+    - taslak vardiyaya dokunulmaz: çakışma görünür, yayın engellenir;
+    - gelecek günlere atama engellenir.
+    İptal ya da revoke sonrasında açılan vardiyalar açık kalır; manager'lara "çalışan yeniden müsait, açık vardiyalar duruyor" bildirimi gider.
+14. **Etki şeffaflığı.**
+    - Talep detayında etkilenecek yayınlı vardiyalar lokasyon lokasyon listelenir.
+    - Vardiya açacak oy ya da kararda onay penceresi "N vardiya open shift'e düşecek, emin misin?" diye sorar.
+    - Manager'ın onayı, verdiği andaki kendi lokasyonunun etkisine bağlıdır. Etkilenen yayınlı vardiyalar değişirse oy "bekliyor"a döner ve manager'a "yeniden bak" bildirimi gider.
+    - Bekleyen izinle çakışan vardiya yayınlanırken yayın penceresi bilgi notu gösterir.
+
+**Bildirimler**
+15. Kim neyi alır:
+
+| Olay | Alıcı |
+|---|---|
+| Yeni talep | Gereken lokasyonların manager'ları; uygun manager yoksa admin/owner |
+| Hatırlatma | Oy vermemiş lokasyonların manager'ları |
+| Kesin karar ya da otomatik red | Çalışan ve gereken lokasyonların manager'ları |
+| Vardiya açan onay | İlgili lokasyonların manager'ları |
+| Oy sıfırlanması | O manager |
+
+**Süre ve otomatik red**
+16. Workspace ayarı "izin karar süresi" saat cinsindendir, varsayılan 24; Settings → Scheduling'de owner/admin değiştirir. Son karar anı = iznin başlangıcı − süre.
+    - Süre içinde gönderilen talepte son karar anı iznin başlangıcıdır; form "acil durumda manager'ınla doğrudan konuş" der.
+    - Süre değişikliği yalnız yeni talepleri etkiler.
+17. Son karar anına kadar karar çıkmazsa sistem talebi reddeder ("Not decided in time"); çalışana ve manager'lara bildirim gider. İptal talebinde de aynı kural geçerli: süresi dolan iptal reddedilir, izin geçerli kalır.
+18. Son karar anından 12 saat önce bir kez hatırlatma gider. Talep zaten bu pencerede gönderildiyse hatırlatma gitmez.
+19. Bir talep tek ardışık tarih aralığıdır; gün başına saat seçimi kalır. Başlangıcı geçmiş talep gönderilemez ("bugün başlamış izin için manager'ınla doğrudan konuş").
 
 ## In scope
-- **Lokasyonsuz talep:** `schedule_time_off_requests.location_id` kalkar; iki gönderim servisi `target_location_id` almaz; talep saat dilimi S3'e göre sabitlenir; `legacy_location` zaman kaynağı ve onu okuyan dallar silinir. `known_gap` `time-off-needs-location` kapanır (lokasyonsuz kişi de izin ister).
-- **Oylama motoru:** karar anında oy verenleri hesaplayan tek fonksiyon (çekirdek üzerinden: `scope_set(..., 'time_off.decide')`; satır içi kapsam yok); oy kaydı (kim, hangi lokasyon adına, ne zaman, onay/ret); talep durumu "kısmen onaylandı / bekliyor: <lokasyonlar>"; ret tek oyla; admin/owner tek başına. `authorize_time_off_decision` bu motoru kullanır.
-- **İptal kararı** (onaylı iznin geri çekilmesi) aynı kurala bağlanır (S4); çekirdekte eylemi olur.
-- Kalan 3 yardımcı çağıranı çekirdeğe; `notify_schedule_request_event_service`'in satır içi kapsamı çekirdeğe (alıcılar = oy verenler).
-- **K-1 yardımcı kapanışı:** üç `schedule_actor_*` yardımcısının silinmesi ve matris kırpması **FB-6.4'te** (P2); FB-6.3 kendi 3 çağıranını taşır, yardımcılara dokunmaz.
-- **API:** `schedule-requests-routes.ts`'in iki route-yerel kapısı (8 çağrı) → `authorize(context, action)` (FB-6.1 E1 kalıbı); aynı dosyadaki `requestError` → `rpcFailure` (BL-134'ün bu dosyaya düşen parçası).
-- **Web:** Employee Hub → My availability → Time Off Requests formunda lokasyon yok; Schedule → Requests → Time off'ta oy durumu (hangi lokasyonun onayı bekleniyor) görünür; "Hours need verification" ölü dalı (BL-110 izin parçası) silinir. Görsel karar DEV'de 2–3 varyant.
-- Kırmızı `time_off_partial_period_decisions` yeşile ve `ci-green.txt`'e; `schedule_requests` yeşil kalır (dosya seviyesinde, yarım olamaz).
-- e2e akış 8 "İzin": iki lokasyonlu kişi, iki oy, ret dalı, admin tek başına.
+- Veri:
+  - talep anındaki lokasyon listesi tablosu;
+  - oy tablosu (oy + lokasyon başına etki parmak izi);
+  - talepte `decide_by`, `reminded_at`, `fallback_notified_at`;
+  - workspace ayarı `time_off_lead_hours`;
+  - olay eylemi `expired`.
+- Tek değerlendirme fonksiyonu `app_private.time_off_state`. Okuma, oy, zamanlayıcı ve bildirim aynı fonksiyonu kullanır.
+- Diğer fonksiyonlar ve servisler:
+  - `time_off_impact`, `time_off_settle`, `time_off_finalize`, `time_off_release_shifts`, `time_off_sweep`;
+  - `submit_time_off_service`, iptal talebi servisi;
+  - `decide_time_off_service(verdict, note, expected_impact)`;
+  - `revoke_time_off_service(reason)`.
+- Yetki kataloğu:
+  - `time_off.decide` (manager oyu, değişmez);
+  - `time_off.decide_alone` (yeni, admin/owner);
+  - `time_off.revoke` (yeni);
+  - `requests.read` kişi kapsamına geçer;
+  - `time_off.request_own` artık gerçekten sorulur.
+- `pg_cron` işi `time-off-deadlines`, 5 dakikada bir, doğrudan SQL.
+- Bildirim anahtarları:
+  - `requests.time_off.submitted`, `.reminder`, `.review_again`, `.status_changed`, `.decided`;
+  - `schedule.time_off.shifts_opened` (bugün yalnız owner izninde olan genelleşir).
+- API: `POST …/time-off/:id/verdict` ve `…/revoke`; okumalar `authorize(context,'requests.read')`. Shared şemalar.
+- Web:
+  - çalışan formu: lokasyonsuz, ardışık aralık, süre tavsiyesi, durumlar;
+  - Requests → Time off detayı: ilerleme paneli (DEV'de 2–3 varyant), lokasyon başına etkilenen vardiyalar, onay pencereleri, revoke gerekçesi;
+  - Settings → Scheduling'de süre alanı;
+  - yayın penceresinde bekleyen izin notu.
+- Kodda bulunan iki boşluk:
+  - kısıtlı kişi bugün izin talebi gönderebiliyor (`20260930162000:180`, `document_blocked` sorulmuyor);
+  - bildirim tetikleyicisi lokasyonsuz talepte hata veriyor (`20260929190000:733`).
 
 ## Out of scope
-- **BL-127** yöneticinin "izni kısalt ve ata" eylemi ve **BL-182** çalışanın takasta kendi iznini ezmesi — ikisi aynı "izin o saatler için kısalır" mekanizmasını ister; P1.
-- **BL-183** owner izni bildirimi — A şeridinde, bu dilimden önce main'e girer (Ç-a).
-- Bildirimin teslimi (e-posta, push) — FB-6.7 / bildirim projesi; bu dilim yalnız alıcıyı doğru hesaplar.
-- **BL-174** yayın yazma tetikleyicisinin izni atlaması — Schedule tarafı; FB-6.1'in `.14`'ünden önce ya da ayrı iş (bu dilim tetikleyiciye dokunmaz).
-- **BL-209** yerel veri kayması (D şeridi); bu dilimin testleri CI'ın temiz DB'sinde değerlendirilir.
+- Izgarada onaylı izin işareti (bugün hücrede işaret yok): BL-204 konuşmasına kalır.
+- Geçmişe dönük izin kaydı.
+- E-posta bildirimi (yalnız uygulama içi).
+- "İzin kısalır" ve takas tarafı FB-6.4'te (P1, 2026-09-27); bu dilim yalnız kısaltmanın yetkisini (`time_off.revoke`) ve `approved` bırakmasını değiştirir.
 
-## Açık sorular — S1–S3 cevaplandı 2026-09-27 (kullanıcı, `nf-planlama` penceresi); S4 açık (TBD)
-- **S1 — Çok günlü talepte oylama günlere göre mi, talebin bütününe mi?** Ali'nin Pazartesi (Kadıköy) + Salı (Beşiktaş) talebi.
-  - (a) **(Önerilen)** Talebin bütünü: iki günün bütün oy verenleri (Ayşe ve Mehmet) onaylayınca kesinleşir, biri reddederse bütün talep reddedilir. Gerekçe: KARARLAR'un "hepsi onaylayınca kesinleşir, biri reddederse red" cümlesiyle birebir; çalışan için tek sonuç. Admin/owner gerekirse yine gün gün (kısmi) karar verebilir — bu özellik bugün var (`time_off_decision_pieces`).
-  - (b) Gün gün: Pazartesi'yi yalnız Ayşe, Salı'yı yalnız Mehmet karar verir; Pazartesi onaylı, Salı reddedilmiş olabilir.
-  - **Cevap: (a) talebin bütünü.**
-- **S2 — Aynı lokasyonda birden çok müdür varsa lokasyonun oyunu kim verir?**
-  - (a) **(Önerilen)** O lokasyonun müdürlerinden herhangi biri, lokasyon adına; ikinci müdür aynı oyu tekrar vermez, kararı görür.
-  - (b) O lokasyonun bütün müdürleri ayrı ayrı onaylamalı.
-  - **Cevap: (a) herhangi biri.**
-- **S3 — Talepte lokasyon yokken izin saatleri hangi saat dilimiyle kaydedilir?** Bugün talep lokasyonun saat dilimini kullanıyor.
-  - (a) **(Önerilen)** Kişinin birincil lokasyonunun saat dilimi, talep anında kayda sabitlenir (sonradan birincil lokasyon değişse de talep değişmez). Birincil lokasyonu yoksa (lokasyonsuz kişi) çalışanın cihazının saat dilimi, yine talep anında sabitlenir — workspace'in kendi saat dilimi kolonu yok (yalnız `locations.timezone`).
-  - (b) Çalışanın cihazının saat dilimi, talep anında sabitlenir.
-  - **Cevap: (a) birincil lokasyonun saat dilimi** (lokasyonsuz kişide cihazınki), talep anında sabitlenir.
-- **S4 — Onaylı izni iptal isteği (çalışan "iznimi geri alıyorum" der) kimin kararıdır?**
-  - (a) **(Önerilen)** Talebin kendisiyle aynı kural: iptal edilen günlerde yayınlı vardiyası olan lokasyonların müdürleri, yoksa birincil lokasyonun müdürü; admin/owner tek başına.
-  - (b) Yalnız ilk izni onaylamış olanlar.
-  - **Cevap: TBD** — kullanıcı sonra karar verecek. Etki: iptal kararı (`.3`'ün iptal kısmı ve iptal eylemi hücreleri) cevaba kadar bekler; bugünkü iptal akışı değiştirilmez.
-
-Kuraldan çıkan, soru olmayan sonuçlar (KARARLAR'dan): kişi lokasyonsuzsa (FB-6.2 S1) ya da birincil lokasyonunun müdürü yoksa talep admin/owner'a düşer; oy verenler her kararda yeniden hesaplanır — arada yayınlanan yeni bir lokasyonun vardiyası o lokasyonun oyunu da gerektirir, artık yayınlı vardiyası olmayan lokasyonun verdiği oy sayılmaz.
-
-## Planlama kararları — verildi 2026-09-27 (koordinatör; üçü de öneri gibi)
-- **P1 — BL-127 ve BL-182 nerede?** **Karar: öneri gibi** — "izin kısalır" mekanizması FB-6.4'te bir kez yazılır (BL-182), BL-127 hemen ardından. İkisi de onaylı iznin bir kısmını kısaltan aynı mekanizmayı ister. **Öneri:** mekanizma bir kez, FB-6.4'te (takas, BL-182) yazılır; BL-127 onun üstüne FB-6.4'ten hemen sonra ayrı küçük iş. Elenen: FB-6.3'e katmak (oylama motoruyla birlikte dilimi ikiye katlar).
-- **P2 — K-1 silmesi hangi dilimde?** **Karar: FB-6.4.** Hangisi son kapanırsa (FB-6.3 / FB-6.4); FB-6.4 daha büyük olduğu için büyük ihtimalle FB-6.4. FB-6.3 kendi 3 çağıranını taşır, yardımcıya dokunmaz.
-- **P3 — BL-134'ün `schedule-requests` parçası bu dilimde mi?** **Karar: evet, `.5`'te.** **Öneri:** evet; aynı route dosyası, `.5`'te aynı commit.
+## Kenar durumlar (karara bağlandı)
+| Durum | Ne olur |
+|---|---|
+| Lokasyonsuz çalışan, manager'ın ya da admin'in talebi | admin/owner (rütbe kuralıyla) |
+| Owner'ın kendi talebi | onaylı kaydedilir; yalnız "vardiyalar açıldı" bildirimi |
+| Listedeki lokasyon arşivlenir, çalışan oradan çıkarılır ya da manager'ı kalmaz | lokasyon düşer; kalanlar onaylıysa talep kesinleşir |
+| Oy veren yetkisini kaybeder | oyu sayılmaz |
+| Değişmeden yeniden yayın | oy sıfırlanmaz (parmak izi kaynak shift id + saat) |
+| İzin gününe yeni vardiya yayını, yayından kaldırma ya da takas | o lokasyonun oyu sıfırlanır |
+| İki oy aynı anda | önce workspace kilidi, sonra satır kilidi; ikinci oy kesinleştirir |
+| Süre doldu, süpürme henüz koşmadı | oy anında önce süre kontrolü, sonra 40001 |
+| Talep süre içinde gönderildi | son karar anı = başlangıç; hatırlatma yok |
+| İzin sürerken revoke | geçmiş kısım kalır; bekleyen iptal kapanır |
+| İptal ya da revoke sonrası açılmış vardiyalar | açık kalır; "yeniden müsait" bildirimi |
+| Listede olmayan lokasyonda vardiya açılması | vardiya açılır; o lokasyonun manager'larına bildirim |
+| Çalışan bekleyen talebi geri çeker | karar vericilere bildirim |
+| Kısıtlı kişi | talep gönderemez, oy veremez |
+| Workspace kapalı | bugünkü `workspace_closed` reddi |
 
 ## Done when
-1. `schedule_time_off_requests` tablosunda `location_id` kolonu yok; iki gönderim servisinin imzasında lokasyon yok; `rg "legacy_location" apps packages supabase/tests` → 0 (migration geçmişi hariç).
-2. `authorization_matrix`: `time-off-needs-location` `known_gap`'ten silinmiş; `time_off.decide` hücreleri oylama kuralını sınar (iki lokasyonlu kişi, iki oy veren, ret, yayınsız gün → birincil, birincil müdürsüz → admin/owner, lokasyonsuz kişi, kendi talebi, rütbe); iptal eylemi satırı ve hücreleri var; `decide:` 0; TS ikizi güncel.
-3. Oylama pgTAP'ı (yeni dosya) yeşil listede: tek oy bekleyen talep kesinleşmez, ikinci oyla kesinleşir, tek ret reddeder, admin tek başına karar verir, arada yayınlanan lokasyon oy gerektirir.
-4. `time_off_partial_period_decisions` ve oylama dosyası `ci-green.txt`'te; `schedule_requests` ve diğer 6 izin dosyası yeşil kalır.
-5. İzin fonksiyonlarında `schedule_actor_*` çağrısı 0; `notify_schedule_request_event_service` kendi kapsam mantığı taşımıyor (katalog kapsam sayacı en az 1 düşer, tavan aynı commit'te).
-6. `grep -c "permissions.includes" apps/api/src/schedule/schedule-requests-routes.ts` → 0; dosyada `requestError` yok (`rpcFailure`).
-7. `rg "Hours need verification" apps/web/src` → 0.
-8. e2e akış 8 (yeni `e2e/flows/time-off.spec.ts`) yeşil: iki lokasyonlu kişi talep eder (formda lokasyon yok), ilk müdür onaylar → ekranda "waiting for <lokasyon>", ikinci onaylar → onaylı; ret dalı; admin tek başına.
-9. Her kural önce kırmızı hücreyle (commit sırası incelemede görülür).
+1. Matristeki her kenar durum satırı ve aşağıdaki kurallar birer hücre olarak yeşil:
+   - tek ve iki lokasyonlu oylama;
+   - iki lokasyonu yöneten tek manager;
+   - tek red;
+   - admin/owner tek başına;
+   - rütbe;
+   - etki değişince oyun sıfırlanması ve yanlış etkiyle 40001;
+   - başlamış ve taslak vardiyanın açılmaması;
+   - ardışıklık ve geçmiş başlangıç reddi;
+   - revoke gerekçesi ve geçmiş kısmın korunması;
+   - süre ve geç talep;
+   - hatırlatmanın bir kez gitmesi ya da hiç gitmemesi;
+   - süresi dolan talep ve iptal;
+   - cron işinin varlığı.
+2. `decide_alone`, `revoke` ve `requests.read` matrise girdi; `known_gap time-off-needs-location` silindi; `authz_catalog` sayaçları artmadı.
+3. "Envanter: silinecekler" listesindeki her nesne yok ve `retired_objects_stay_gone`'da.
+4. Ekranlar, kullanıcının seçtiği varyantla:
+   - Requests → Time off'ta ilerleme ve etki görünüyor;
+   - vardiya açan oyda ve admin/owner kararında onay penceresi çıkıyor;
+   - revoke gerekçe istiyor;
+   - çalışan yalnız "Pending" ve sonucu görüyor;
+   - Settings → Scheduling'de süre alanı var.
+   `nf-gorsel-qa` ONAY.
+5. e2e akışı (`e2e/flows/time-off-approval.spec.ts`) yeşil: Ali (Kadıköy + Beşiktaş) talep gönderir; Ayşe onaylar ve "waiting: Beşiktaş" görür; Mehmet "1 shift becomes open" onayıyla bitirir, talep Approved, vardiya open. Ek dallar: notlu red, admin'in tek başına kararı.
+6. Canlıda: migration'lar OPS-03 sırasıyla gönderildi (ekler önce canlı, silmeler önce main); fonksiyon gövdelerinin md5'i dosyayla aynı; güvenlik danışmanında yeni bulgu yok; `time-off-deadlines` cron işi var.
+7. KARARLAR "İzin" ve "Rütbe" bu kurallarla aynı; FOUNDATION-B ve ILERLEME kaydı güncel.
 
 ## Alt adımlar (sıra, sahip, DB kilidi)
-**Her adım için geçerli kabul kriteri (ratchet kuralı):** altı `authz_catalog` sayacı artmaz; yeni fonksiyon eskisini aynı commit'te silerek girer; her `nf-db` adımı kapanmadan `authz_catalog` → 0 not ok; migration önce tek transaction + rollback, ortak yerel DB'ye yalnız birleştirme penceresinde.
+Her adımda ratchet kuralı geçerli:
+- `authz_catalog` sayaçları artmaz;
+- yeni fonksiyon, eskisi aynı commit'te silinerek girer (dilim 1 eklerinde eski servisler `.7`'ye kadar kalır; yayındaki eski ekran çalışsın diye);
+- migration önce tek transaction + rollback ile denenir;
+- migration adları `20261003020000`'dan büyük.
 
 | Adım | İş | Sıra | Sahip | DB kilidi | Dosyalar |
 |---|---|---|---|---|---|
-| **FB-6.3.0** | Taze ölçüm (FB-6.2 ve BL-183 main'e girdikten sonra): bu tablo yeniden; `time_off_partial_period_decisions`'ın kırmızı kontrolleri adıyla. | 0 | `nf-planlama` (SELECT) + `nf-test` (koşturma) | Evet (yalnız `test:db`) | bu dosya |
-| **FB-6.3.1** | Matris: oylama ve iptal hücreleri, lokasyonsuz kişi, S1–S4 kuralları `expected()`'e; yeni hücreler kırmızı; TS ikizi. | 1. S1–S4'ten sonra | `nf-db` | Evet | `supabase/tests/authorization_matrix.test.sql`, `supabase/test-support/builder.sql`, `packages/shared/src/authorization-matrix.expected.json` |
-| **FB-6.3.2** | Şema: `location_id` kalkar, gönderim servisleri lokasyonsuz, saat dilimi S3, `legacy_location` silinir. **Sözleşme değişir** → `.5` ile aynı birleştirme penceresinde main'e (web/API aynı anda; BL-186'daki gibi). | 2 | `nf-db` | Evet | migration |
-| **FB-6.3.3** | Oylama motoru + oy kaydı + `authorize_time_off_decision`; iptal kararı aynı kurala; oylama pgTAP'ı. | 3 | `nf-db` | Evet | migration, `supabase/tests/time_off_voting.test.sql` |
-| **FB-6.3.4** | Kalan 3 yardımcı çağıranı + `notify_schedule_request_event_service` alıcıları çekirdeğe (alıcı = oy verenler). | 4 | `nf-db` | Evet | migration |
-| **FB-6.3.5** | API: iki route-yerel kapı → `authorize(context, action)`, `requestError` → `rpcFailure`; Employee Hub izin ucu lokasyonsuz; web veri katmanı (form lokasyonsuz, oy durumu sözleşmesi), shared `time-off.ts`. | 5. `.2`–`.4` sözleşmesi yazılınca; `.2` ile aynı pencerede main'e | `nf-backend` | Hayır | `apps/api/src/schedule/schedule-requests-*.ts`, `apps/api/src/employee-hub/**` (izin), `packages/shared/src/time-off.ts`, `apps/web/src/**/*-data.ts` |
-| **FB-6.3.6** | Görsel: formdan lokasyon alanı kalkar; Requests → Time off'ta oy durumu (DEV'de 2–3 varyant, kullanıcı seçer); "Hours need verification" dalı silinir. | 6. `.5` main'e girince | `nf-arayuz` → `nf-gorsel-qa` | Hayır | `ScheduleRequestsPage.tsx` sunum, `apps/web/src/employee-hub/TimeOff*.tsx`, CSS |
-| **FB-6.3.7** | Kırmızı dosya yeşile, `ci-green.txt`; `known_gap` satırı silinir; katalog tavanı. | 7. `.4`'ten sonra | `nf-test` | Evet | `supabase/tests/time_off_partial_period_decisions.test.sql`, `ci-green.txt`, `authz_catalog.test.sql` |
-| **FB-6.3.8** | e2e akış 8. | 8. `.6`'dan sonra | `nf-test` | Evet | `e2e/flows/time-off.spec.ts` |
-| **FB-6.3.9** | Kapanış: onaylar, tam kapı, main + CI, Notes, FOUNDATION-B kaydı; hosted gönderim paketine eklenir. | 9 | koordinatör | Evet (e2e) | bu dosya, `FOUNDATION-B.md` |
+| **FB-6.3.0** | Taze ölçüm: plan modundaki keşif `c345ed83`'te yapıldı; başlamadan `origin/main`'de yeniden. Ölçülecekler: `pg_proc` taramaları (`location_id`, `partially_approved`, decision pieces). | 0 | `nf-planlama` | Hayır | bu dosya |
+| **FB-6.3.1** | Matris ve yeni pgTAP dosyaları kırmızı: `time_off_voting.test.sql`, `time_off_deadlines.test.sql`; builder `tests.time_off` yeni servisle, varsayılan gelecek hafta. | 1 | `nf-db` | Evet | `supabase/tests`, `supabase/test-support/builder.sql` |
+| **FB-6.3.2** | Ekler: lokasyon listesi tablosu, oy tablosu, talepte yeni kolonlar, `location_id` ve `actor_user_id` nullable, `expired`, `time_off_lead_hours` (`20261003030000_time_off_is_decided_by_its_locations`). **Yalnız ekler: önce canlı, sonra main.** | 2 | `nf-db` | Evet | migration |
+| **FB-6.3.3** | Oylama motoru: `time_off_state`, `time_off_impact`, `time_off_settle`, `time_off_finalize`, `time_off_release_shifts`; `submit_time_off_service`, iptal servisi, `decide_time_off_service`, `revoke_time_off_service`; katalog `decide_alone` ve `revoke`; kısaltma `approved` bırakır. | 3 | `nf-db` | Evet | migration `…031000_time_off_reads_and_notices_follow_the_votes` |
+| **FB-6.3.4** | Okumalar (`get_schedule_requests_service` kişi bazında, `get_employee_hub_service`), bildirim tetikleyicisi (lokasyonsuz hatası kapanır), yayın notu, `time_off_sweep` ve cron işi (`…032000_time_off_deadlines_close_requests`). | 4 | `nf-db` | Evet | migration |
+| **FB-6.3.5** | API + shared + web veri katmanı: `verdict` ve `revoke` uçları, okumalarda `authorize`, şemalar (`progress`, `decide_by`, ardışıklık), eski uçlar kalkar. | 5. `.2`–`.4` main'de | `nf-backend` | Hayır | `apps/api/src/time-off/`, `schedule-requests-routes.ts`, `packages/shared`, `requests-data.ts` |
+| **FB-6.3.6** | Ekranlar: çalışan formu, Requests → Time off ilerleme paneli (DEV'de 2–3 varyant, kullanıcı seçer), onay pencereleri, revoke, Settings süre alanı, yayın notu. | 6. `.5`'ten sonra | `nf-arayuz` → `nf-gorsel-qa` | Hayır | `ScheduleRequestsPage.tsx`, `EmployeeHubPage.tsx`, `TimeOffCancellation.tsx`, Settings |
+| **FB-6.3.7** | Silmeler (`20261003040000_time_off_forgets_location_and_parts`): eski satırlar, `location_id`, `viewed_at`, `time_off_decision_pieces`, `partially_approved`, eski fonksiyonlar. **Alan silen iş: önce main, sonra canlı.** Kırmızılar yeşile, `ci-green.txt`. | 7. `.6` main'de | `nf-db` + `nf-test` | Evet | migration, `supabase/tests` |
+| **FB-6.3.8** | e2e akışı. | 8 | `nf-test` | Evet | `e2e/flows/time-off-approval.spec.ts` |
+| **FB-6.3.9** | Kapanış: onaylar, tam kapı, main + CI, canlı md5, Notes, FOUNDATION-B kaydı. | 9 | koordinatör | Evet (e2e) | bu dosya, `FOUNDATION-B.md` |
+
+## Envanter: silinecekler (`.7`; ikiz sistem kalmaz)
+- **Fonksiyonlar:**
+  - `decide_time_off_with_assignments_service`, `preview_time_off_assignment_decision_service`;
+  - `resolve_schedule_time_off_request_service`, `resolve_time_off_period_decision_service`;
+  - `apply_time_off_period_decision`, `apply_time_off_cancellation_decision`;
+  - `submit_employee_time_off_service`, `submit_employee_time_off_periods_service`, `mark_schedule_time_off_viewed_service`;
+  - `app_private.authorize_time_off_decision`, `app_private.authorize_time_off_request`;
+  - `time_off_proposed_approved_ranges`, `guard_time_off_decision_piece`, `notify_owner_time_off_open_shifts`;
+  - bildirim anahtarı `schedule.owner_time_off.shifts_opened`.
+- **Tablo ve alanlar:** `time_off_decision_pieces`; `location_id`, `viewed_at`; `partially_approved`; olay eylemleri `viewed`, `partially_approved`, `returned_to_pending`.
+- **API:** `/assignment-preview`, `/decision`, `/viewed` uçları.
+- **Shared:** kısmi karar, parça, dispozisyon ve önizleme şemaları; `legacy_location`.
+- **Web:** `TimeOffPartialDecision.tsx`, release kutuları, `restricted_count` engeli, Partial ve Return to pending düğmeleri, formdaki lokasyon seçimi.
+- **pgTAP:** `time_off_partial_period_decisions`, `time_off_published_assignment_disposition`, `time_off_decision_identity_guard`.
+- **Veri:** bütün eski izin satırları silinir (canlı veri yok; yeni kurala uymuyorlar).
 
 ## Touches
-- **`nf-db`:** `supabase/migrations/**` (3–4 migration), matris, builder, oylama pgTAP'ı.
-- **`nf-backend`:** `apps/api/src/schedule/schedule-requests-routes.ts`, `schedule-requests-service.ts`, `apps/api/src/employee-hub/**` (izin ucu), `packages/shared/src/time-off.ts`, web veri katmanı.
-- **`nf-test`:** `time_off_partial_period_decisions.test.sql`, `ci-green.txt`, `authz_catalog.test.sql`, `e2e/flows/time-off.spec.ts`.
-- **`nf-arayuz`:** `ScheduleRequestsPage.tsx` ve `TimeOff*.tsx` sunumu, CSS.
+- `supabase/migrations/`, yeni dört dosya. Dayanaklar:
+  - `20260930162000_refusals_answer_alike.sql`;
+  - `20260929190000_time_off_shortens_for_a_shift.sql`;
+  - `20260924123013` (katalog);
+  - `20261003000000` (`actor`, `authz_check`).
+- `supabase/tests/`:
+  - yeni: `time_off_voting`, `time_off_deadlines`;
+  - yeniden yazılacak: `time_off_requested_periods`, `_cancellation_requests`, `_decisions_go_one_rank_up`, `_doors_close_with_the_workspace`, `_shortens_for_a_shift`, `_physical_request_counts`, `owner_time_off_notifies_open_shifts` → `time_off_opens_shifts`, `authorization_matrix`, `authorization_coverage`, `retired_objects_stay_gone`.
+- `supabase/test-support/builder.sql`.
+- `packages/shared/src/index.ts`, `time-off.ts`, `employee-hub.ts`, `authorization.ts`, `authorization-matrix.expected.json`.
+- `apps/api/src/schedule/schedule-requests-routes.ts`, `apps/api/src/time-off/`, `apps/api/src/employee-hub/employee-hub-service.ts`.
+- `apps/web/src/views/ScheduleRequestsPage.tsx`, `views/EmployeeHubPage.tsx`, `employee-hub/TimeOffCancellation.tsx`, `TimeOffPeriods.tsx`, `schedule/requests-data.ts`, Settings → Scheduling, yayın penceresi.
 
 ## Test plan
-- Önce kırmızı matris hücresi, sonra migration (TDD). Oylama için tabloya bağlı senaryo: {yayınlı vardiya: 0 / 1 / 2 lokasyon} × {oy: yok / bir onay / iki onay / bir ret} × {karar veren: o lokasyonun müdürü / başka lokasyonun müdürü / admin / owner / kendisi}; ayrıca "oy verildikten sonra yeni lokasyon yayınlandı" ve "oy veren lokasyonun vardiyası geri çekildi".
-- Lokasyonsuz kişi (FB-6.2 S1) talep eder → admin/owner'a düşer.
-- Saat dilimi (S3): talep anındaki dilim kaydedilir; birincil lokasyon değişince talep saatleri değişmez.
-- API: route testleri 403/404 sözleşmesi (`authz.*`); ham hata yok.
-- e2e: Done when 8. Tam kapı: `lint`, `typecheck`, `test`, `build`, `test:db`, etkilenen e2e.
+- **pgTAP:** Done when 1–3.
+- **vitest:** `ScheduleRequestsPage`, `EmployeeHubPage`, `TimeOffCancellation`, Settings sayfası, API rotaları (403/404 sözleşmesi), shared ardışıklık şeması.
+- **e2e:** Done when 5.
+- **Tam kapı:** `lint`, `typecheck`, `test`, `build`, `test:db` (`db.lock` ile), etkilenen e2e.
+- **Canlı:** md5 karşılaştırması (besleme #22 dersi) ve güvenlik danışmanı.
 
 ## Risk
-- **Sözleşme kırılması (lokasyon kolonu).** Web/API ile migration ayrı girerse izin ekranları 500 verir (BL-186'da aynı risk vardı). Önlem: `.2` ve `.5` aynı birleştirme penceresinde; hosted'a da aynı anda (FB-6.1.14 paketinin sıra şartı).
-- **Oy verenlerin karar anında hesaplanması** yarış yaratır: iki müdür aynı anda oy verirken bir yayın değişir. Önlem: karar, talep satırında `revision` ile (bugünkü `time_off_commands` / revizyon kalıbı); oy verenler aynı transaction'da hesaplanır.
-- **Bildirim fonksiyonunda BL-183 ile çakışma** (Ç-a). Önlem: BL-183 önce main'e.
-- **Kırmızı dosyada beklentiyi gevşetmek yasak.** `time_off_partial_period_decisions` takvime bağlı olduğu için kırmızıydı (tarih/hafta); builder'ın `tests.week`'iyle yeniden yazılır, iddiası gevşetilmez.
-- **Yerel veri kayması (BL-209)** `time_off_published_assignment_disposition`'ı yerelde kırmızı gösteriyor; birleştirme penceresinde "bilinen yanlış alarm" (ILERLEME-PLANI Ç6), CI'daki sonuç esas.
-
-## Pre-mortem (2026-09-27, `nf-planlama`: "3 ay sonra bu dilim neden başarısız sayılır?")
-1. **Çok lokasyonlu çalışanın izni haftalarca "bekliyor"da kaldı.** Gizli varsayım: her lokasyonun müdürü zamanında oy verir. Kanıt: kural "hepsi onaylayınca kesinleşir"; bir müdür tatildeyse talep asılı kalır. **Düzeltme:** bekleyen oy için hatırlatma ve admin/owner'ın tek başına karar yetkisi ekranda görünür ("Decide as admin"); sürenin kendisi ürün kararı değilse backlog adayı.
-2. **Oylama çalışana anlaşılmadı.** "Onaylandı mı?" sorusuna ekran "kısmen" dedi. **Düzeltme:** `.6` varyantlarında çalışana tek durum ("Waiting for Beşiktaş manager"), müdüre ayrıntı.
-3. **Saat dilimi sessizce kaydı.** Lokasyon kalkınca saat dilimi tahmin edilirse iki şehirde çalışan kişinin izni bir saat kayar. **Düzeltme:** S3 kullanıcı kararı; talep anında dilim kayda yazılır, ekranda gösterilir.
-4. **Daha basit alternatif:** oylamayı yazmadan "birincil lokasyonun müdürü karar verir, diğerlerine bildirim" — KARARLAR ile çelişir (kullanıcı kararı oylama), öneri değil; ama S1 (a) ile oylama zaten tek sonuçlu ve basit tutuluyor.
-5. **Geri alınabilirlik:** lokasyon kolonunun silinmesi şema değişikliği; canlı veri yok (CLAUDE.md §9), yerel talep satırı 0. Risk düşük.
+- **R3.**
+- **Sözleşme iki adımda değişir:**
+  - `.2`–`.4` yalnız ekler; eski servisler kalır, yayındaki eski web çalışır.
+  - `.7` silmeleri ancak yeni web main'de ve canlıdayken gider.
+- **Zamanlayıcı tek transaction'da süpürür (500 talep sınırı):** hacim büyürse talep başına commit eden prosedüre çevrilir.
+- **Tahmini iş:** 3–4 gün.
 
 ## Skills
-Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans`. SQL/RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`. Önce kırmızı: `superpowers:test-driven-development`. Beklenmedik kırmızı: `superpowers:systematic-debugging`. İnceleme: `superpowers:requesting-code-review`, `security-review`, `superpowers:verification-before-completion`. Görsel: `frontend-design:frontend-design`.
+- Plan: `superpowers:writing-plans`; yürütme: `superpowers:executing-plans`.
+- SQL/RLS: `supabase:supabase`, `supabase:supabase-postgres-best-practices`.
+- Önce kırmızı: `superpowers:test-driven-development`.
+- Beklenmedik kırmızı: `superpowers:systematic-debugging`.
+- Ekran: `frontend-design:frontend-design`.
 
 ## Notes / Result
-- 2026-09-27 (koordinatör, kayıt `nf-planlama`): P1–P3 öneri gibi — "izin kısalır" FB-6.4'te (BL-182), BL-127 ardından; K-1 silmesi FB-6.4'te; BL-134'ün schedule-requests parçası `.5`'te.
-- 2026-09-27 (`nf-planlama`): kullanıcı S1 (a) talebin bütünü, S2 (a) lokasyonun herhangi bir müdürü, S3 (a) birincil lokasyonun saat dilimi dedi; S4 (iptalin onayı) TBD. İptal kısmı cevaba kadar kapsamda bekler; KARARLAR "İzin" güncellendi.
-- 2026-09-27 (`nf-planlama`): dosya açıldı (ILERLEME-PLANI E şeridi, 1. iş). Ön ölçüm `origin/main` `b4b6d02`. Dilim tablosuna göre değişenler: rütbe (BL-177) ve 2 yardımcı çağıranı zaten bitti; oylamanın kodu hiç yok (yeni motor); tahmin 0,5–1 → 1–1,5 kişi-hafta. Kullanıcıya dört soru (S1–S4), koordinatöre üç planlama kararı (P1–P3). Ç-a: BL-183 bu dilimden önce.
+- 2026-09-30 gece (kayıt oturumu `local_2c32c047…`; kullanıcının penceresinde plan modu, kullanıcı onayladı): sürüm 2 yazıldı. Kullanıcı K10'u cevaplarken izin kuralını baştan koydu ve on üç ayrıntıyı tek tek seçti:
+  - rütbe kalır;
+  - manager'sız lokasyon düşer;
+  - kısmi onay yok, red notu var;
+  - revoke tek kişiyle, gerekçeli;
+  - talep anındaki liste sabit;
+  - taslak dokunulmaz, geçmiş açılmaz;
+  - açılan vardiya açık kalır;
+  - etki değişince oy sıfırlanır;
+  - izin işareti BL-204'e;
+  - süre workspace ayarı, 24 saat;
+  - hatırlatma redden 12 saat önce;
+  - geç talep gönderilir, tavsiyeyle;
+  - tek ardışık aralık;
+  - geçmiş başlangıç gönderilemez.
+
+  Keşif üç salt okur ajanla `c345ed83`'te yapıldı; tasarım bir Plan ajanıyla. Plan dosyası: `~/.claude/plans/koordinat-r-session-n-n-di-er-sessionlar-purrfect-salamander.md`.
+
+  Sürüm 1'in kayıtları git'te: `git show b25ee449:docs/plan/tasks/FB-6.3.md`. 2026-09-27 kayıtları: P1–P3; S1 (a) talebin bütünü, bugün de geçerli; S2 (a) lokasyonun herhangi bir müdürü, bugün de geçerli; S3 (a) birincil lokasyonun saat dilimi, bugün de geçerli; S4, K10 ile bu sürümde kapandı.
