@@ -16,22 +16,21 @@ Devralan: `local_2464b099-317e-437f-ac12-5a506804d03d` ("Koordinatör"; sabitli,
 1. `get_session self`: başlığı "Koordinatör" yap, sabitle, Remote Control aç (kullanıcı istedi; açılmazsa söyle).
 2. **Posta kutusunu sahiplen:** `node scripts/inbox.mjs claim`, sonra arka planda `node scripts/inbox.mjs wait` (CLAUDE.md §3 el kitabı). Bu oturum kancaları baştan yüklediği için çalışmalı; "hook çalışmadı" derse oturumun `.claude/settings.json`'ı main'deki hâliyle mi bak.
 3. **BESLEME #26** kayıt oturumuna (`local_2c32c047-dab0-497c-8e5b-91d51a22e6a3`): yeni koordinatör kimliği; bu HANDOFF'un sha'sı. Kayıt oturumu şu an kullanıcıyla **K10 (onaylı iznin iptalini kim onaylar) için ayrıntılı plan** yapıyor — FB-6.3'ü o plan bitmeden başlatma; plan gelince FB-6.3'ü o planla yürüt.
-4. **Rollere yeni adresini bildir** (tek satır): nf-db `local_e9aa34f5-79fc-4de7-a3b5-499d3c4ad843`, nf-backend `local_44c01eca-fa54-4179-8629-1d99a49b013d`, nf-arayuz `local_0038c687-1790-4cc8-9238-7d12778fa31f`, nf-test `local_17d5b65d-25bc-435f-9d86-677996a391f2`, nf-guvenlik `local_7dfbe7d3-cdef-4231-afd7-2fa7d53fcd75`, nf-gorsel-qa `local_2a24338f-ba49-4311-acbe-4f916b5ae06d`, kayıt `local_2c32c047…`.
+4. **Rollere yeni adresini bildir** (tek satır): nf-db `local_e9aa34f5-79fc-4de7-a3b5-499d3c4ad843`, nf-backend `local_44c01eca-fa54-4179-8629-1d99a49b013d`, nf-arayuz `local_0038c687-1790-4cc8-9238-7d12778fa31f`, nf-test `local_17d5b65d-25bc-435f-9d86-677996a391f2`, nf-guvenlik `local_7dfbe7d3-cdef-4231-afd7-2fa7d53fcd75`, nf-gorsel-qa `local_2a24338f-ba49-4311-acbe-4f916b5ae06d`, kayıt `local_2c32c047…` (2026-10-01'den yeni kayıt `local_1238630c…`, §2).
 5. **Sıradaki iş (kullanıcıya sor, tek tık):** FB-6.3 K10 planına bağlı. Bekleyen hızlı işler: BL-498 (örtüşme uyarısında arşivli tip adı boş, `apps/web/src/schedule/schedule-conflicts.ts:389`, tek satır), BL-500 (gönderim koruması aynı komuttaki kilidi görmüyor), BL-496 (kullanılmayan `sort_order` kolonunun silinmesi; ALAN SİLEN iş → önce main sonra canlı; dokunulacak yerler `nf-db` BL-475 raporunda ve BL-496 maddesinde). Önerim: K10 planı gelene kadar bu üçü, sonra FB-6.3.
 
 ## 2. Oturumlar
 | Oturum | Kimlik | Durum |
 |---|---|---|
-| Rol: nf-planlama (Kayıt) | `local_2c32c047-dab0-497c-8e5b-91d51a22e6a3` | kullanıcıyla K10 planı yapıyor; son besleme #25 main'de (`c345ed83`); bağlam ~%52 → devir önermiş, yenisini koordinatör açar (havuz boş: kullanıcı oturum açar) |
+| Koordinatör (güncel) | `local_2464b099-317e-437f-ac12-5a506804d03d` | 2026-10-01'den; eski `nf-backend` oturumu, /clear ile koordinatör yapıldı |
+| Rol: nf-planlama (Kayıt) | `local_1238630c-2af8-4f7d-8f4a-00505653659c` | 2026-10-01'den (yedinci kayıt oturumu, besleme #29'dan); worktree `elastic-elbakyan-70e2c5`; sabitli, Remote Control açık. Önceki `local_2c32c047…` devretti, 2026-10-01'de arşivlendi |
 | Rol: nf-db | `local_e9aa34f5-…` | BL-475 ve G8b'yi bitirdi; boşta; bağlam ~%47 |
 | Rol: nf-backend | `local_44c01eca-…` | G8b web'i bitirdi; boşta; yeni (havuzdan 2026-09-30) |
 | Rol: nf-arayuz | `local_0038c687-…` | boşta; bağlam ~%53 → bir sonraki işte yenile |
 | Rol: nf-test | `local_17d5b65d-…` | boşta |
 | Rol: nf-guvenlik | `local_7dfbe7d3-…` | boşta; bağlam ~%55, açık işi yok → bir sonraki incelemede yeni oturum |
 | Rol: nf-gorsel-qa | `local_2a24338f-…` | boşta |
-| (eski) Rol: nf-backend — devredildi | `local_2464b099-…` | arşivlenebilir (kullanıcıya sor; sabit ve Remote Control açık — önce ikisini kapat) |
-| (eski) Koordinatör — devir 2026-09-30 öğleden sonra | `local_c575161a-…` | arşivlenebilir (kullanıcıya sor) |
-| Devreden koordinatör | `local_0ee21aaa-…` | devirden sonra arşivlenebilir |
+| (eski) Koordinatörler `local_c575161a-…`, `local_0ee21aaa-…` | — | 2026-10-01'de arşivlendi (worktree'ler temiz, commit'ler main'de) |
 | "Opus 5.5 karar verme ve sistem tasarımı" | `local_ba5d9903-…` | kullanıcının oturumu, ana klasörde; dokunma |
 | Kullanıcının oturumları | "Dev sunucusu başlat", "Bana Newfork-Clean E Bagli 30 Tane Boş Session Aç" | dokunma; ikincisi rol oturumlarının üst oturumu (arşivlenirse alt oturumları da arşivler) |
 
