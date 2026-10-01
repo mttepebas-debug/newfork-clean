@@ -49,6 +49,7 @@ supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/notification_outbox_relay.test.sql
 supabase/tests/notification_schedule_publish_atomic.test.sql
 supabase/tests/notification_user_preferences.test.sql
+supabase/tests/onboarding_composite_tenant_constraints.test.sql
 supabase/tests/one_workspace_cannot_see_another.test.sql
 supabase/tests/organization_basics_rls.test.sql
 supabase/tests/own_employment_record.test.sql
@@ -111,6 +112,7 @@ supabase/tests/weekly_schedule_batch.test.sql
 supabase/tests/weekly_schedule_integration.test.sql
 supabase/tests/weekly_schedule_read.test.sql
 supabase/tests/weekly_shift_availability_assessment.test.sql
+supabase/tests/weekly_team_availability.test.sql
 supabase/tests/workspace_lifecycle.test.sql
 supabase/tests/workspace_rls.test.sql
 supabase/tests/management_owner_job.test.sql

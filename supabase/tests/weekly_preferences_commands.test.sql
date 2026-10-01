@@ -50,22 +50,24 @@ select is((select count(*) from public.notifications where workspace_id=(select 
 select ok((select bool_and(action_url='/app/employees?employeeId='||(select emp::text from wp_fixture)||'&section=availability') from public.notifications where workspace_id=(select w from wp_fixture)),'final inbox link opens the exact employee availability drawer');
 select throws_ok($$select public.weekly_preferences_save_service(actor,w,command,gen_random_uuid()) from wp_fixture,wp_command$$,'PT409',null,'stale new command rejected');
 select throws_ok($$select public.weekly_preferences_save_service(manager,w,command,gen_random_uuid()) from wp_fixture,wp_command$$,'42501',null,'manager cannot write employee declaration');
-select throws_ok($$select public.weekly_preferences_save_service(actor,w,command||'{"confirm_clear":true}',request_key) from wp_fixture,wp_command$$,'22023',null,'reused key cannot carry a different command');
+select throws_ok($$select public.weekly_preferences_save_service(actor,w,command||'{"expected_revision":5}',request_key) from wp_fixture,wp_command$$,'22023',null,'reused key cannot carry a different command');
 update wp_command set command=jsonb_build_object('employee_id',emp,'source','manager','expected_revision',0,'settings_revision',0,'preference',p,'enabled',true,'notes',jsonb_build_array('','Private manager note','','','','','')),request_key=gen_random_uuid() from wp_fixture;
 select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(manager,w,command,request_key) from wp_fixture$$,'scoped manager saves separate reminders');
 select is(public.weekly_preferences_read_service(actor,w)->'manager','null'::jsonb,'employee never receives reminders') from wp_fixture;
 select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='weekly_availability'),1::bigint,'reminder save does not notify employee');
 select throws_ok($$select public.weekly_preferences_save_service(actor,w,command,gen_random_uuid()) from wp_fixture,wp_command$$,'42501',null,'employee cannot save manager reminder');
-update public.workspace_scheduling_settings set availability_input_mode='shift_type',availability_preferences_revision=1 where workspace_id=(select w from wp_fixture);
-update wp_command set command=command||jsonb_build_object('expected_revision',1,'settings_revision',1,'copy_employee_revision',1),request_key=gen_random_uuid();
-select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(manager,w,command,request_key) from wp_fixture$$,'exact employee copy allowed across modes');
-select is(result->'model'->'manager'->'preference'->>'input_mode','time_range','old mode retained without conversion') from wp_command;
+update wp_command set command=command||jsonb_build_object('expected_revision',1,'copy_employee_revision',1),request_key=gen_random_uuid();
+select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(manager,w,command,request_key) from wp_fixture$$,'exact employee copy allowed');
+select is(result->'model'->'manager'->'preference',(select p from wp_fixture),'copy saves the employee week') from wp_command;
 select is(result->'model'->'manager'->'notes'->>1,'Private manager note','copy retains manager notes') from wp_command;
 select throws_ok($$select public.weekly_preferences_save_service(manager,w,command||'{"expected_revision":2,"copy_employee_revision":99}',gen_random_uuid()) from wp_fixture,wp_command$$,'PT409',null,'stale employee copy rejected');
+-- A mode change converts every saved week in the same transaction (AVAIL-001), so a
+-- saved week is always in the current mode: no cross-mode copy or clear confirmation (BL-086).
+select ok(pg_get_functiondef('public.validate_weekly_preference_command(uuid,uuid,jsonb)'::regprocedure) not like '%confirm_clear%','no clear confirmation for a mode change');
+select ok(pg_get_functiondef('public.validate_weekly_preference_command(uuid,uuid,jsonb)'::regprocedure) not like '%and not copied and not%','a copy follows the current entry mode like any save');
 
 -- Complete pending-request scenarios use isolated upcoming request snapshots.
 update public.locations set timezone='UTC' where workspace_id=(select w from wp_fixture);
-update public.workspace_scheduling_settings set availability_input_mode='time_range',availability_preferences_revision=2 where workspace_id=(select w from wp_fixture);
 create temp table wp_requests as select i,gen_random_uuid() cid,gen_random_uuid() aid,gen_random_uuid() source_id from generate_series(1,5) i;
 insert into public.shift_exchange_cases(id,workspace_id,kind,owner_id,offered_source_id,requested_source_id,offered_snapshot,requested_snapshot,consent_fingerprint,expires_at,created_by)
 select r.cid,f.w,case when r.i=4 then 'swap' when r.i=5 then 'cover' else 'open_pickup' end,case when r.i in(4,5) then f.emp else null end,r.source_id,
@@ -76,7 +78,7 @@ select r.cid,f.w,case when r.i=4 then 'swap' when r.i=5 then 'cover' else 'open_
 insert into public.shift_exchange_applications(id,workspace_id,case_id,employee_id,status,consent_fingerprint)
  select r.aid,f.w,r.cid,f.emp,'pending_manager','test-consent' from wp_requests r,wp_fixture f where r.i in(1,2,3);
 update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,1,range}','{"start":"10:00","end":"12:00"}'),'{days,2,range}','{"start":"10:00","end":"12:00"}');
-update wp_command set command=jsonb_build_object('employee_id',emp,'source','employee','expected_revision',1,'settings_revision',2,'preference',p),request_key=gen_random_uuid() from wp_fixture;
+update wp_command set command=jsonb_build_object('employee_id',emp,'source','employee','expected_revision',1,'settings_revision',0,'preference',p),request_key=gen_random_uuid() from wp_fixture;
 select is(jsonb_array_length(public.weekly_preferences_preview_service(actor,w,command)->'items'),4,'three incoming applications and the swap receiver need decisions; outgoing cover excluded') from wp_fixture,wp_command;
 select throws_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'PT409',null,'missing decisions abort save');
 select is(public.weekly_preferences_read_service(actor,w)->'employee'->>'revision','1','failed save did not alter preferences') from wp_fixture;

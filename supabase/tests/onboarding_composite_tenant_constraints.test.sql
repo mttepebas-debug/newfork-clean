@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(7);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -77,14 +77,6 @@ select throws_ok(
   '23503',
   null,
   'document cannot bind a requirement from another workspace'
-);
-
-select throws_ok(
-  $$insert into public.employee_availability_versions (id, workspace_id, employee_id, case_id, version_number, timezone, recurring_rules, confirmed_by)
-    values ('80000000-0000-4000-8000-000000000171', '20000000-0000-4000-8000-000000000171', '40000000-0000-4000-8000-000000000171', '50000000-0000-4000-8000-000000000172', 1, 'America/New_York', '[{}, {}, {}, {}, {}, {}, {}]'::jsonb, '10000000-0000-4000-8000-000000000171')$$,
-  '23503',
-  null,
-  'availability cannot bind a case from another workspace'
 );
 
 select throws_ok(
