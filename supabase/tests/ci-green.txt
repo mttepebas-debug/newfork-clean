@@ -146,3 +146,4 @@ supabase/tests/time_off_voting.test.sql
 supabase/tests/time_off_deadlines.test.sql
 supabase/tests/time_off_pending_publish_note.test.sql
 supabase/tests/employee_hub_time_off_form.test.sql
+supabase/tests/time_off_seen_by_who_decides.test.sql

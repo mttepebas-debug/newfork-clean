@@ -1,5 +1,5 @@
 {
- "sourceSha256": "cb478ec75b6d52d64ff219655c283be4e208c006016e436cc255ecf133f93041",
+ "sourceSha256": "23849114ef220addd918293cff239e37a8bc718b00c836acd6c77d287c0b3a65",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -21394,25 +21394,25 @@
    "requests.read",
    "ayse",
    "to:ayse",
-   "allow"
-  ],
-  [
-   "requests.read",
-   "ayse",
-   "to:emre",
-   "allow"
-  ],
-  [
-   "requests.read",
-   "ayse",
-   "to:veli",
    "deny"
   ],
   [
    "requests.read",
    "ayse",
-   "to:zeynep",
+   "to:emre",
    "allow"
+  ],
+  [
+   "requests.read",
+   "ayse",
+   "to:veli",
+   "deny"
+  ],
+  [
+   "requests.read",
+   "ayse",
+   "to:zeynep",
+   "deny"
   ],
   [
    "requests.read",
@@ -21424,7 +21424,7 @@
    "requests.read",
    "can",
    "to:ayse",
-   "allow"
+   "deny"
   ],
   [
    "requests.read",
@@ -21442,7 +21442,7 @@
    "requests.read",
    "can",
    "to:zeynep",
-   "allow"
+   "deny"
   ],
   [
    "requests.read",
@@ -21532,7 +21532,7 @@
    "requests.read",
    "kaan",
    "to:zeynep",
-   "allow"
+   "deny"
   ],
   [
    "requests.read",
@@ -21574,7 +21574,7 @@
    "requests.read",
    "nil",
    "to:ayse",
-   "allow"
+   "deny"
   ],
   [
    "requests.read",
@@ -21592,7 +21592,7 @@
    "requests.read",
    "nil",
    "to:zeynep",
-   "allow"
+   "deny"
   ],
   [
    "requests.read",
@@ -21832,7 +21832,7 @@
    "requests.read",
    "zeynep",
    "to:zeynep",
-   "allow"
+   "deny"
   ],
   [
    "schedule.draft_delete",
