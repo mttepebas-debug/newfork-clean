@@ -9,7 +9,7 @@ import { round, roundWeek, signIn, type Person } from "../fixtures/world";
 // (Kadikoy) approves and one location is still to approve; Mehmet (Besiktas)
 // approves last, which opens their published Besiktas shift, so he confirms
 // that first. One denial closes a request and its note reaches the employee;
-// the owner decides alone, and revokes.
+// an admin decides alone; the owner decides alone, and revokes.
 //
 // Each test files its own person, so a rerun never meets the last run's
 // request. The panel's layout waits on a variant choice: nothing here reads it.
@@ -140,6 +140,21 @@ test("one denial closes the request, and the employee reads the note", async ({ 
   const row = ownRequest(employee, note);
   await expect(row).toContainText(/Denied/i);
   await expect(row).toContainText("Manager note: I can approve the first day only");
+});
+
+test("an admin decides alone, and the managers are told", async ({ browser }) => {
+  const asker = personAtBoth("admin");
+  const note = `Course ${round()}`;
+  const request = await askForTimeOff(asker, await signedIn(browser, asker), note);
+
+  const zeynep = await signedIn(browser, "zeynep");
+  await (await review(zeynep, request)).getByRole("button", { name: "Approve", exact: true }).click();
+  const approve = zeynep.getByRole("alertdialog", { name: "Approve time off?" });
+  await expect(approve).toContainText(`Takes effect now. Managers at ${asker.name}'s locations are notified.`);
+  await approve.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect(zeynep.getByText("Time off approved.")).toBeVisible();
+  // Neither Kadikoy nor Besiktas voted: the admin's word closed it.
+  expect(statusOf(request)).toBe("approved");
 });
 
 test("the owner decides alone, then revokes with a reason", async ({ browser }) => {
