@@ -503,3 +503,11 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KARARLAR OPS-03 (kodu yeni bir veritabanı alanına ya da kuralına dayanan işte önce canlı migration, sonra main); KK-65 düzeltmesi; BL-426 bayat (main zaten canlıya çıkıyor).
 - **Geri alma:** gerekmez. Yedekler `newfork-wt/coord/artifacts/g8a/` (canlı `hosted-*.sql`, yerel `schema-before-20261003000000.sql`).
 - **Durum:** yapıldı (koordinatörün aktardığı; migration dosyası main'de, ölçüldü).
+
+### KK-69 (2026-10-01) BL-496'nın kod kısmı FB-6.3.5'e (`nf-backend`), veritabanı kısmı FB-6.3.7'ye (`nf-db`)
+- **Karar:** BL-496'nın shared/web/API kısmı (`departmentSchema`, `jobSchema`, `scheduleReferenceSchema` bölünmesi, `index.test.ts`, `organization-data.ts:352,359`, 5 web kod dosyası, fikstürler, 3 API testi) FB-6.3.5'e girer, sahibi `nf-backend`; kod alanı okumayı bırakıp main'e girer. Veritabanı kısmı (iki okuma fonksiyonu, iki `create_*` kontrolü, iki CHECK, kolonlar, 3 pgTAP) FB-6.3.7'de `nf-db`'de kalır.
+- **Uygulamada etkisi:** ekranda değişiklik yok (Settings → Jobs ve Schedule'da departman ve iş sırası A→Z kalır). Canlıda kolon silinmeden önce yayındaki web onu okumayı bırakmış olur; silme hiçbir ekranı kırmaz.
+- **Dayanak:** `CLAUDE.md` §4 (shared, API ve web veri katmanı `nf-backend`'in); KARARLAR OPS-03 (alan silen işte önce main, sonra canlı); `CLAUDE.md` §13 (süreç kararı Claude'un); Mert'in 2026-10-01 kararı (BL-496 FB-6.3 `.7` silme penceresinde).
+- **Geri alma:** ucuz — yalnız görev dosyasındaki adım ataması.
+- **Durum:** `tasks/FB-6.3.md` `.5`, `.7` ve Envanter → BL-496'ya yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #33).
+- **Mert:** onaysız.

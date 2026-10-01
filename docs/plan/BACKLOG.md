@@ -793,6 +793,7 @@ Kaynak: `nf-db` BL-475 raporu ve `nf-guvenlik` BL-475 raporu (ONAY @`7bce0322`; 
   - **Karar bekleniyor 2026-10-01 (besleme #29):** soru kullanıcıya gitti; kullanıcı soruyu kapattı, karar vermedi (koordinatörün aktardığı). Koordinatörün önerisi: FB-6.3 `.7` silme adımıyla aynı pencerede (`tasks/FB-6.3.md` `.7`: alan silen iş). `ILERLEME-PLANI.md` §0c satır 30.
   - **Karar 2026-10-01 (kullanıcı; besleme #30): FB-6.3.7 silme penceresine katıldı.** Ayrı iş değil; FB-6.3 `.7` ile aynı canlı pencerede, önce main sonra canlı (OPS-03). Dokunulacak yerler FB-6.3 `.0` ölçümüyle `tasks/FB-6.3.md` `.7` envanterine girecek (koordinatör getirecek). **Program 2026-10-01 (kayıt oturumu): G23'ten GF'ye (FB-6.3).**
   - **FB-6.3 envanterine girdi 2026-10-01 (besleme #32):** dokunulacak yerler `tasks/FB-6.3.md` Envanter → BL-496 (FB-6.3.0, `32dbbd05`): shared üç şema + `index.test.ts`'te 6 yer, DB iki okuma ve iki oluşturma servisi + iki CHECK ve kolonlar, web 5 kod dosyası + fikstürler, üç API testi, üç pgTAP dosyası.
+  - **Sahiplik 2026-10-01 (KK-69, besleme #33):** kod kısmı (shared şemalar, web, API testleri) FB-6.3.5'te `nf-backend`; veritabanı kısmı (fonksiyonlar, CHECK'ler, kolonlar, pgTAP) FB-6.3.7'de `nf-db`.
 - **BL-497 (leave: low / do: safe) `bl052_document_notifications` ortak yerel veritabanında "more than one row returned by a subquery" ile düşüyor.** BL-475'in migration'ı uygulanmış ve uygulanmamış hâlde aynı; CI yeşil; yerel veri kayması olmalı. Neden önemli: birleştirme penceresinde yerel kırmızı listeyi büyütür, gerçek kırmızıyı gizler (BL-262 ailesi; aynı dosyanın kuyruk sayısı sorunu BL-245 / BL-296 ile kapanmıştı, bu başka bir sorgu). İş: hangi alt sorgunun iki satır bulduğunu ayırmak; test kendi satırını süzsün ya da kayma kaydedilsin. `nf-test`. Kaynak: `nf-db` BL-475 yerel ölçümü, koordinatör aktardı (besleme #21); kayıt oturumu ölçmedi.
   - **Program 2026-09-30 (kayıt oturumu): G12.**
 
@@ -800,6 +801,11 @@ Kaynak: `nf-db` BL-475 raporu ve `nf-guvenlik` BL-475 raporu (ONAY @`7bce0322`; 
 Kaynak: `nf-backend` G8b raporu (yolda bulunanlar) ve koordinatörün G8b gönderimi, koordinatör aktardı (besleme #25).
 - **BL-499 (leave: low / do: safe) Varsayılan saatleri gözden geçirme penceresi arşivli vardiya tipine "Saved shift type" yazıyor.** `apps/web/src/schedule/components/DefaultHoursReviewDialog.tsx:92` adı yalnız `model.shift_types` içinde arıyor, bulamazsa "Saved shift type" yazıyor; K8'den sonra gerçek ad gösterilebilir. Ürün kararı olabilir (pencere yeni vardiya üretmek için; arşivli tipin adı istenir mi). Kod satırı kayıt oturumunca ölçüldü (`b8613af0`). `nf-backend` / `nf-arayuz`. Kaynak: `nf-backend` G8b raporu.
   - **Program 2026-09-30 (kayıt oturumu): G8.**
+
+## Main CI'da görülenler (2026-10-01)
+Kaynak: koordinatör, besleme #33 (main CI 36830930928).
+- **BL-504 (leave: low / do: safe) Locations ayar sayfası testi yük altında kararsız.** `apps/web/src/settings/LocationsSettingsPage.test.tsx:35` "shows address and phone columns without short names": `findByRole("button", { name: /^Deniz/ })` varsayılan 1 saniyede bulamadı. Main CI 36830930928 (`32dbbd05`, KARAR-001) ilk denemede `check` bu tek testle kırmızı; KARAR-001 web'e dokunmadı, aynı web kodu `9444a0d5` koşusunda yeşildi, yerelde main'de 12/12 geçiyor (koordinatörün ölçümü); yalnız düşen iş yeniden koştu, ikinci deneme check + db + e2e yeşil (ölçüldü). Neden önemli: CI'ı nedensiz kırmızıya çeviriyor; her seferinde elle ayırma ve yeniden koşturma gerekiyor. İş: testin beklemesini sayfanın gerçek yüklenmesine bağlamak. `nf-test`.
+  - **Program 2026-10-01 (kayıt oturumu, besleme #33): G13.**
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
