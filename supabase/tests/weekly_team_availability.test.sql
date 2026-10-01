@@ -60,6 +60,10 @@ select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,und
 select is(public.weekly_team_read_service(manager,w)->'locations',jsonb_build_array(jsonb_build_object('id',loc,'name','West')),'location list does not disclose other location') from wt_fixture;
 select is(pg_temp.team_row(manager,w,emp)->'location_ids',jsonb_build_array(loc),'multi-location employee returns only visible location ids') from wt_fixture;
 select is(pg_temp.team_row(manager,w,emp)->>'submitted','true','explicit fully available week is submitted') from wt_fixture;
+-- can_open is availability.team_read on the person, the same reach that lists them:
+-- whoever is listed opens (an unassigned person only through org-wide reach).
+select is(pg_temp.team_row(manager,w,emp)->>'can_open','true','scoped manager can open a listed employee drawer') from wt_fixture;
+select ok((select bool_and((e->>'can_open')::boolean) from jsonb_array_elements(public.weekly_team_read_service(owner_id,w)->'employees') e),'all-location owner opens every listed person, unassigned included') from wt_fixture;
 select is(pg_temp.team_row(manager,w,undeclared)->>'submitted','false','absent record is not submitted') from wt_fixture;
 select is(pg_temp.team_row(manager,w,undeclared)->'preference',public.empty_weekly_preference('time_range'),'absent record projects a fully available week') from wt_fixture;
 select is(public.weekly_team_read_service(manager,w)->'shift_types','[]'::jsonb,'hidden employee and manager reminder types are not disclosed') from wt_fixture;
