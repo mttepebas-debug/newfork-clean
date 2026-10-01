@@ -601,3 +601,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** gerekmez (hata kaydı).
 - **Durum:** yürürlükte. Kayıt oturumu yazdı (besleme #80; koordinatörün isteği).
 - **Mert:** bilgi (şartı kendisi düşürdü).
+
+### KK-80 (2026-10-01) BL-204 yeniden açılır; müdür notu metni main'e girince yeniden kapanır
+- **Karar:** (b) BL-204 (Schedule hücresindeki müsaitlik uyarısı) yeniden açılır. Kalan tek parça: müdür notu metni Schedule müsaitlik ipucunda (G14; `nf-db` `local_4ba671c6…`, dal `task/g14-manager-note` var, worktree `newfork-wt/g14-note`, main'in önünde commit yok — ölçüldü 2026-10-01 ~22:26Z). O parça main'e girince BL-204 yeniden kapanır.
+- **Neden:** önceki koordinatörün açık talimatı ("müdür notu G14'ün parçası, BL-204 kapalı görünmesin"); kayıt gerçeği söylemeli. BL-204 besleme #85'te kapanmıştı (G14 dilim c, `144e8a18`), müdür notu metni besleme #86'da aynı işe eklendi ve henüz main'de değil.
+- **Reddedilen:** (a) BL-204 kapalı kalsın, alt parça yalnız G14'te izlensin.
+- **Uygulamada etkisi:** görünür değişiklik yok. Backlog'da BL-204 yeniden açık (açık madde 288 → 289); Schedule'daki müsaitlik ipucuna müdür notu metni gelince kapanır. Örnek: müdür Ayşe, Jordan Lee'nin pazartesisine "okul çıkışı" notunu yazdı; bugün ipucu yalnız "Manager note (only managers see this)" diyor, iş bitince notun kendisini gösterecek.
+- **Dayanak:** CLAUDE.md §13 (süreç ve kayıt kararı); ILKELER P11 (kayıt gerçeği söylesin).
+- **Geri alma:** kolay — madde yeniden kapatılır.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725-b572-4ac9-9d12-8505df3e7816` yazdı (besleme #88 eki; koordinatör `local_b355d250…`'ın isteği).
+- **Mert:** bilgi.
