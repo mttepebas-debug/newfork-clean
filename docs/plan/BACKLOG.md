@@ -233,6 +233,7 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
   - Telefon maskesi ve e-posta tekilliğinin hangi formlarda olduğu ölçülmedi.
 
   Neden önemli: Ayşe, José Peña'yı davet ederken bugün hangi alanın neyi kabul ettiği belli değil. Kural ile kod ayrışıyor. Neden bekledi: KARAR-001 karar kaydı işi, ürün kodu değişmez.
+  - **Program 2026-10-01 (kayıt oturumu, besleme #30): G17** (kişi kaydı ve davet formları; başlarken ekranlar başka gruplara değiyorsa bölünür). Kaynak: KARAR-001 (`ac75d1e9`).
 
 ## Kayıt bakımı (2026-09-25)
 - **BL-501 (leave: low / do: safe) Plan belgelerinde bayat satırlar.** Kod okuyan oturum bu satırları bugünün gerçeği sanıp yanlış dayanak kurabilir. Satırlar:
@@ -243,7 +244,9 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
   - `CLAUDE.md:17` "F0 → FJ → F1 → F2 → … → F6" yazıyor, `ROADMAP.md:17` ve `MVP-PLAN.md:120` ise "F0 → FJ → F1 → F6". Büyük olasılıkla kısaltma; ölçülmedi.
 
   Neden bekledi: KARAR-001'de yolda bulundu, işin önünde değil (2026-09-30).
+  - **Program 2026-10-01 (kayıt oturumu, besleme #30): G24.** Kaynak: KARAR-001 (`eedb4775`).
 - **BL-502 (leave: low / do: moderate) Bitmiş işlerin worktree'leri birikmiş.** 2026-09-30'da `newfork-clean/.claude/worktrees/` altında 19 worktree vardı, bir kısmı bitmiş dallarda (`task/g8b`, `task/bl-475`, `task/emp-001-c2`, `task/g14-plan` …). Biriktikçe hangi oturumun canlı olduğu okunmuyor. Her birinin birleşmesi doğrulanıp kapatılmalı; başka oturumlara ait oldukları için koordinatörün işi. Neden bekledi: KARAR-001 kapsamı dışında.
+  - **Program 2026-10-01 (kayıt oturumu, besleme #30): G24.** Kaynak: KARAR-001 (`eedb4775`).
 - **BL-125 (leave: low / do: safe) Kilitli kalan eski takım çalışma kopyası.** `newfork-clean/.claude/worktrees/team-nf-muhendislik-test-18f00157` klasörü 2026-09-25 temizliğinde Windows kilidi yüzünden silinemedi (git kaydı yok, içinde iş yok; yedek `backups/agent-teams-2026-09-25.zip`). Bilgisayar yeniden açılınca PowerShell `Remove-Item -LiteralPath '\\?\<yol>' -Recurse -Force` ile silinir.
   - **Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G24): geçerli** — `newfork-clean/.claude/worktrees/team-nf-muhendislik-test-18f00157` duruyor (14 girdilik tam checkout), `git worktree list`'te kaydı yok; yedek `C:/Users/TheWe/Documents/Codex/backups/agent-teams-2026-09-25.zip` mevcut.
 
@@ -787,6 +790,7 @@ Kaynak: `nf-db` BL-475 raporu ve `nf-guvenlik` BL-475 raporu (ONAY @`7bce0322`; 
   - **Program 2026-09-30 (kayıt oturumu): G23.**
   - **Tazelik 2026-10-01 (`202991ea`, koordinatör; besleme #28): değişmiş.** Shared'de `sort_order` 11 satır: 831 location, 841 department, 854 job, 1181 shiftType, 1217 shiftLabel, 1237 scheduleLocation, 1247 scheduleReference, 2428 permissionDefinition, 2439 workspaceRole, 2815 onboardingRequirement, 2993 documentType. İşe girenler 841, 854 ve 1247 — `scheduleReferenceSchema` vardiya tipi ve etiketin de tabanı, alan departman/iş dışındakilere taşınmalı. DB: `20261003010000` departman/iş okumaları hâlâ `sort_order` veriyor (:53, :61, :942, :949); kolonlarda `*_sort_order_unused check (sort_order = 0)`. Web: `organization-data.ts:352,359` + 20'den fazla test fikstürü. R2 (shared şema + DB fonksiyonu + canlıda DROP; önce main, sonra canlı). Kullanıcıya soruluyor (koordinatör).
   - **Karar bekleniyor 2026-10-01 (besleme #29):** soru kullanıcıya gitti; kullanıcı soruyu kapattı, karar vermedi (koordinatörün aktardığı). Koordinatörün önerisi: FB-6.3 `.7` silme adımıyla aynı pencerede (`tasks/FB-6.3.md` `.7`: alan silen iş). `ILERLEME-PLANI.md` §0c satır 30.
+  - **Karar 2026-10-01 (kullanıcı; besleme #30): FB-6.3.7 silme penceresine katıldı.** Ayrı iş değil; FB-6.3 `.7` ile aynı canlı pencerede, önce main sonra canlı (OPS-03). Dokunulacak yerler FB-6.3 `.0` ölçümüyle `tasks/FB-6.3.md` `.7` envanterine girecek (koordinatör getirecek). **Program 2026-10-01 (kayıt oturumu): G23'ten GF'ye (FB-6.3).**
 - **BL-497 (leave: low / do: safe) `bl052_document_notifications` ortak yerel veritabanında "more than one row returned by a subquery" ile düşüyor.** BL-475'in migration'ı uygulanmış ve uygulanmamış hâlde aynı; CI yeşil; yerel veri kayması olmalı. Neden önemli: birleştirme penceresinde yerel kırmızı listeyi büyütür, gerçek kırmızıyı gizler (BL-262 ailesi; aynı dosyanın kuyruk sayısı sorunu BL-245 / BL-296 ile kapanmıştı, bu başka bir sorgu). İş: hangi alt sorgunun iki satır bulduğunu ayırmak; test kendi satırını süzsün ya da kayma kaydedilsin. `nf-test`. Kaynak: `nf-db` BL-475 yerel ölçümü, koordinatör aktardı (besleme #21); kayıt oturumu ölçmedi.
   - **Program 2026-09-30 (kayıt oturumu): G12.**
 
