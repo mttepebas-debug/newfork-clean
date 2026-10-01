@@ -52,33 +52,26 @@ function PreferenceForm({
   const tabId = useId();
   const source = manager ? model.manager : model.employee;
   const [baseline, setBaseline] = useState(model);
-  const initialPreference = () =>
-    source?.preference.input_mode === model.settings.input_mode
-      ? source.preference
-      : emptyWeeklyPreference(model.settings.input_mode);
-  const [preference, setPreference] = useState(initialPreference);
+  // A mode change converts every saved week (AVAIL-001): a saved week is
+  // always in the current mode.
+  const [preference, setPreference] = useState(
+    () => source?.preference ?? emptyWeeklyPreference(model.settings.input_mode),
+  );
   const [enabled, setEnabled] = useState(model.manager?.enabled ?? true);
   const [notes, setNotes] = useState(
     model.manager?.notes ?? Array<string>(7).fill(""),
   );
   const [dirty, setDirty] = useState(false);
-  const [weekEdited, setWeekEdited] = useState(false);
   const [copyRevision, setCopyRevision] = useState<number>();
-  const [review, setReview] = useState<{
-    items: WeeklyCommitmentPreview["items"];
-    clearConfirmed: boolean;
-  } | null>(null);
+  const [review, setReview] = useState<WeeklyCommitmentPreview["items"] | null>(
+    null,
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
   const inFlight = useRef(false);
   const current = manager ? baseline.manager : baseline.employee;
-  const staleMode = Boolean(
-    current?.submitted &&
-    current.preference.input_mode !== baseline.settings.input_mode,
-  );
-  const hasChanges = dirty || !current?.submitted || staleMode;
+  const hasChanges = dirty || !current?.submitted;
   const latestModel =
     (source?.revision ?? 0) < (current?.revision ?? 0) ||
     model.settings.revision < baseline.settings.revision
@@ -86,25 +79,18 @@ function PreferenceForm({
       : model;
   const editing = !manager || tab === "manager";
   const locked = saving || review !== null || !canEdit || (manager && !enabled);
-  const copiedOldMode =
-    copyRevision !== undefined &&
-    preference.input_mode !== baseline.settings.input_mode;
 
   function reset(next: WeeklyPreferenceRead) {
     const record = manager ? next.manager : next.employee;
     setBaseline(next);
     setPreference(
-      record?.preference.input_mode === next.settings.input_mode
-        ? record.preference
-        : emptyWeeklyPreference(next.settings.input_mode),
+      record?.preference ?? emptyWeeklyPreference(next.settings.input_mode),
     );
     setNotes(next.manager?.notes ?? Array<string>(7).fill(""));
     setEnabled(next.manager?.enabled ?? true);
     setDirty(false);
-    setWeekEdited(false);
     setCopyRevision(undefined);
     setReview(null);
-    setConfirmClear(false);
     setError("");
   }
 
@@ -116,43 +102,20 @@ function PreferenceForm({
 
   function changed(week = false) {
     setDirty(true);
-    if (week) {
-      setWeekEdited(true);
-      setCopyRevision(undefined);
-    }
+    if (week) setCopyRevision(undefined);
     setSaved(false);
-    setConfirmClear(false);
     setError("");
   }
 
-  async function save(
-    clearConfirmed = false,
-    decisions?: WeeklyPreferenceSave["decisions"],
-  ) {
+  async function save(decisions?: WeeklyPreferenceSave["decisions"]) {
     if (inFlight.current || !hasChanges || !canEdit) return;
-    const outgoing =
-      manager && staleMode && dirty && !weekEdited && current
-        ? current.preference
-        : preference;
-    if (
-      staleMode &&
-      current &&
-      !preferenceIsEmpty(current.preference) &&
-      preferenceIsEmpty(outgoing) &&
-      copyRevision === undefined &&
-      !clearConfirmed
-    ) {
-      setConfirmClear(true);
-      return;
-    }
     const parsed = weeklyPreferenceSaveSchema.safeParse({
       employee_id: model.employee_id,
       source: manager ? "manager" : "employee",
       expected_revision: current?.revision ?? 0,
       settings_revision: baseline.settings.revision,
-      preference: outgoing,
+      preference,
       ...(manager ? { enabled, notes } : {}),
-      ...(clearConfirmed ? { confirm_clear: true } : {}),
       ...(copyRevision !== undefined
         ? { copy_employee_revision: copyRevision }
         : {}),
@@ -171,7 +134,7 @@ function PreferenceForm({
       if (onPreview && !decisions) {
         const preview = await onPreview(parsed.data);
         if (preview.items.length) {
-          setReview({ items: preview.items, clearConfirmed });
+          setReview(preview.items);
           return;
         }
       }
@@ -191,8 +154,7 @@ function PreferenceForm({
     }
   }
 
-  // Copying is exact, never a lossy conversion between input modes. A saved
-  // previous-mode week remains visible until the employee renews it.
+  // Copying is exact: both weeks are always in the current input mode.
   const copyAllowed = model.employee.submitted;
   const copyTitle = !model.employee.submitted
     ? "No employee preferences submitted"
@@ -360,52 +322,14 @@ function PreferenceForm({
                 Reminders are off. Saved rules and notes are kept.
               </p>
             )}
-            {staleMode && (
-              <div className="weekly-previous-preferences">
-                <p className="weekly-preferences-notice">
-                  Entry mode changed. Previous preferences remain in effect
-                  until you save.
-                </p>
-                <details>
-                  <summary>Previous preferences</summary>
-                  <WeeklyUnavailableEditor
-                    value={current!.preference}
-                    shiftTypes={model.shift_types}
-                    readOnly
-                    timeFormat={model.time_format}
-                  />
-                </details>
-              </div>
-            )}
-            {copiedOldMode && (
-              <div className="weekly-preferences-notice">
-                Copied preferences use the previous entry mode.{" "}
-                <button
-                  type="button"
-                  disabled={locked}
-                  onClick={() => {
-                    setPreference(
-                      emptyWeeklyPreference(baseline.settings.input_mode),
-                    );
-                    changed(true);
-                  }}
-                >
-                  Use current mode
-                </button>
-              </div>
-            )}
             <WeeklyUnavailableEditor
-              value={
-                manager && !enabled && staleMode && !weekEdited && current
-                  ? current.preference
-                  : preference
-              }
+              value={preference}
               onChange={(next) => {
                 setPreference(next);
                 changed(true);
               }}
               shiftTypes={model.shift_types}
-              disabled={locked || copiedOldMode}
+              disabled={locked}
               timeFormat={model.time_format}
               {...(manager
                 ? {
@@ -433,24 +357,6 @@ function PreferenceForm({
             <p className="weekly-preferences-error" role="alert">
               {error}
             </p>
-          )}
-          {confirmClear && (
-            <div className="weekly-clear-confirm" role="alert">
-              <p>
-                Remove your previous unavailable hours and mark the whole week
-                available?
-              </p>
-              <button type="button" onClick={() => setConfirmClear(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="weekly-primary"
-                onClick={() => void save(true)}
-              >
-                Clear and save
-              </button>
-            </div>
           )}
           <div className="weekly-preferences-actions">
             <span role="status">
@@ -487,12 +393,10 @@ function PreferenceForm({
       )}
       {review && (
         <WeeklyCommitmentReview
-          items={review.items}
+          items={review}
           timeFormat={model.time_format}
           onCancel={() => setReview(null)}
-          onContinue={(decisions) =>
-            void save(review.clearConfirmed, decisions)
-          }
+          onContinue={(decisions) => void save(decisions)}
         />
       )}
     </section>

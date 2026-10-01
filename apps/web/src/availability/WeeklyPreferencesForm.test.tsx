@@ -90,30 +90,6 @@ function setup(data = model(), audience: "employee" | "manager" = "manager") {
 }
 
 describe("weekly preference form", () => {
-  it("copies an old-mode employee week exactly and saves its source revision", async () => {
-    const data = model("time_range");
-    data.employee.preference = emptyWeeklyPreference("shift_type");
-    data.employee.preference.days[1]!.shift_type_ids = [typeId];
-    const { onSave } = setup(data);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Use employee preferences" }),
-    );
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Monday Dinner unavailable",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0]).toMatchObject({
-      preference: data.employee.preference,
-      copy_employee_revision: data.employee.revision,
-      notes: data.manager!.notes,
-    });
-  });
-
   it("requires a separate keep/cancel choice for every pending request before saving", async () => {
     const data = model();
     const item = {
@@ -288,23 +264,6 @@ describe("weekly preference form", () => {
     expect(screen.getByText("Submitted")).toBeTruthy();
   });
 
-  it("switching reminders off after an organization mode change preserves the old rules", async () => {
-    const data = model("time_range");
-    data.manager!.preference = emptyWeeklyPreference("shift_type");
-    data.manager!.preference.days[1]!.shift_type_ids = [typeId];
-    const { onSave } = setup(data);
-    fireEvent.click(
-      screen.getByRole("switch", { name: "Enable manager reminders" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0]).toMatchObject({
-      preference: data.manager!.preference,
-      enabled: false,
-    });
-    expect(screen.queryByRole("button", { name: "Clear and save" })).toBeNull();
-  });
-
   it("copies the employee week exactly, replacing selections but keeping notes", async () => {
     const data = model();
     data.employee.preference.days[2]!.all_day = true;
@@ -329,6 +288,7 @@ describe("weekly preference form", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0]).toMatchObject({
       preference: data.employee.preference,
+      copy_employee_revision: data.employee.revision,
       notes: data.manager!.notes,
       expected_revision: 4,
       settings_revision: 3,
@@ -553,24 +513,6 @@ describe("weekly preference form", () => {
       end: "24:00",
     });
     expect(onSave.mock.calls[0]![0]).not.toHaveProperty("notes");
-  });
-
-  it("requires confirmation to clear previous-mode restrictions with an empty week", async () => {
-    const data = model("time_range");
-    data.employee.preference = emptyWeeklyPreference("shift_type");
-    data.employee.preference.days[1]!.shift_type_ids = [typeId];
-    const { onSave } = setup(data, "employee");
-    fireEvent.click(
-      screen.getByRole("switch", { name: "Monday all day unavailable" }),
-    );
-    fireEvent.click(
-      screen.getByRole("switch", { name: "Monday all day unavailable" }),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(onSave).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Clear and save" }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0].confirm_clear).toBe(true);
   });
 
   it("shows current default times and lets a previously selected archived type be removed", () => {

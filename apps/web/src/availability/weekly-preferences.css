@@ -750,15 +750,6 @@
   font-size: 13px;
   line-height: 1.5;
 }
-.weekly-previous-preferences summary {
-  font-size: 12px;
-  cursor: pointer;
-  padding: 4px 0 12px;
-  color: var(--wp-muted);
-}
-.weekly-previous-preferences details {
-  margin-bottom: 12px;
-}
 .weekly-preferences-footer {
   position: sticky;
   bottom: 0;
@@ -794,20 +785,6 @@
   margin-right: auto;
   font-size: 11px;
   color: var(--wp-muted);
-}
-.weekly-clear-confirm {
-  border-left: 3px solid var(--wp-red);
-  padding: 8px 12px;
-  margin-bottom: 12px;
-  background: var(--wp-red-bg);
-  font-size: 12px;
-}
-.weekly-clear-confirm p {
-  margin: 0 0 8px;
-  line-height: 1.5;
-}
-.weekly-clear-confirm button {
-  margin-right: 8px;
 }
 @media (max-width: 720px) {
   .weekly-preferences-body {
