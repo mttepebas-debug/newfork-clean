@@ -243,9 +243,9 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   );
 }
 function TimeOffView({ model, refresh }: HubMutationProps) {
-  // ponytail: the first location's zone until the hub read names the primary
-  // one, which the server checks the request against (FB-6.3.6 contract ask).
-  const zone = model.locations[0]?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  // The primary location's zone, which the server checks the request against.
+  // ponytail: first location until the database sends time_off_timezone (FB-6.3.5b).
+  const zone = model.time_off_timezone ?? model.locations[0]?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
@@ -277,6 +277,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
   const candidate = { periods, reason, expected_timezone: zone };
   const validation = timeOffSubmitInputSchema.safeParse({ ...candidate, operation_id: retry.current.key });
   const started = timeOffStarted(periods, zone);
+  const urgent = !started && insideDecisionWindow(periods, zone, model.settings.time_off_lead_hours);
   const submit = useSubmitTimeOff(model.workspace_id);
   const timeOff = useMutation({
     mutationFn: () => {
@@ -376,6 +377,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
           {Object.keys(dateDrafts).some(date=>!selectedDates.includes(date)) ? <p>Some customized dates are outside this range and will not be submitted. Their edits are kept if you restore those dates before submitting.</p> : null}
           {periodMode !== "per_date" && Object.keys(dateDrafts).length ? <p>Your per-date edits are kept if you switch back before submitting. The current time choice applies to every selected date.</p> : null}
           {periodMode === "per_date" && selectedDates.length && !rangeTooLong ? <p>{periods.length} requested period(s) across {new Set(periods.map(period=>period.segment_date)).size} date(s).</p> : null}
+          {urgent ? <p className="time-off-urgent">This starts soon. Talk to your manager directly if it's urgent.</p> : null}
           {started ? <p role="alert">This time off has already started. Talk to your manager directly.</p>
             : start && !validation.success ? <p role="alert">{validation.error.issues[0]?.message}</p> : null}
           <label>
@@ -459,6 +461,16 @@ function timeOffStarted(periods: readonly { segment_date: string; start_time: st
   const now = timeOffWallParts(new Date().toISOString(), zone);
   if (first.segment_date !== now.date) return first.segment_date < now.date;
   return !first.start_time || first.start_time.slice(0, 5) <= now.clock.slice(0, 5);
+}
+// Rule 16: sent within the decision window, the decision is due when it starts.
+// Wall-clock hours in the request's zone; a DST day may be an hour off, the
+// server's decide_by is what counts.
+function insideDecisionWindow(periods: readonly { segment_date: string; start_time: string | null }[], zone: string, leadHours: number | undefined) {
+  const first = periods[0];
+  if (!first || leadHours === undefined) return false;
+  const now = timeOffWallParts(new Date().toISOString(), zone);
+  const hours = (Date.parse(first.segment_date + "T" + (first.start_time ?? "00:00").slice(0, 5) + ":00Z") - Date.parse(now.date + "T" + now.clock + "Z")) / 3_600_000;
+  return hours < leadHours;
 }
 function formatDecideBy(iso: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));

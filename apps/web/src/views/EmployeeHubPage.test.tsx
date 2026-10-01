@@ -764,6 +764,22 @@ describe("EmployeeHubPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
     expect((await screen.findByRole("status")).textContent).toBe("Request sent. It starts soon, so talk to your manager directly if it's urgent.");
   });
+  it("asks in the primary location's zone the hub names", async () => {
+    renderPageWithFixture({ ...fixture, time_off_timezone: "America/New_York" }, "/app/employee-hub/my-availability?section=time-off");
+    fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
+    expect(screen.getByText("Hours use America/New_York.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
+    await waitFor(() => expect(submitTimeOff).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ expected_timezone: "America/New_York" })));
+  });
+  it("warns before sending time off that starts inside the decision window (rule 16)", async () => {
+    renderPageWithFixture({ ...fixture, settings: { ...fixture.settings, time_off_lead_hours: 24 } }, "/app/employee-hub/my-availability?section=time-off");
+    const tomorrow = new Date(Date.parse(todayIn("America/Los_Angeles") + "T12:00:00Z") + 86_400_000).toISOString().slice(0, 10);
+    fireEvent.change(await screen.findByLabelText("Start"), { target: { value: tomorrow } });
+    expect(screen.getByText("This starts soon. Talk to your manager directly if it's urgent.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Submit request" })).toHaveProperty("disabled", false);
+    fireEvent.change(screen.getByLabelText("Start"), { target: { value: "2035-01-15" } });
+    expect(screen.queryByText(/This starts soon/)).toBeNull();
+  });
   it("shows a pending request as Pending with its decision time", async () => {
     const pending = { ...fixture.requests.find(request => request.kind === "time_off")!, status: "pending", display_status: "Pending", decide_by: "2035-01-14T17:00:00Z" };
     renderPageWithFixture({ ...fixture, requests: [pending] }, "/app/employee-hub/my-availability?section=time-off");

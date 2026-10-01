@@ -20,7 +20,7 @@ function setup(value = request) {
   const view = (current: typeof request) => <QueryClientProvider client={client}><TimeOffCancellation request={current} workspaceId={id} timeFormat="24h" onChanged={changed} /></QueryClientProvider>;
   return { ...render(view(value)), view };
 }
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(requestTimeOffCancellation).mockResolvedValue({ status: "pending", request_id: id, revision: 1 }); });
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(requestTimeOffCancellation).mockResolvedValue({ status: "pending", request_id: id, revision: 1, decide_by: null }); });
 afterEach(() => vi.restoreAllMocks());
 describe("approved leave cancellation", () => {
   it("moves focus into the cancellation form and restores it when keeping leave", () => {
