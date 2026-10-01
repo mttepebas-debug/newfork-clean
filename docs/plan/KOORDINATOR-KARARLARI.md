@@ -621,3 +621,39 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — madde FB-6.5'e geri yazılır.
 - **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #89; koordinatör `local_b355d250…`'ın isteği).
 - **Mert:** bilgi (FB-6.4'te teyit sorusu gelecek).
+
+### KK-82 (2026-10-01) Schedule balonunda müdür notu en çok 4 satır; tam metin Employees → Availability'de
+- **Karar:** uzun müdür notu Schedule balonunda en çok 4 satır gösterilir, sonu "…"; ekran okuyucu tam metni okur; tam metin Employees → kişi → Availability'de. Bilerek kabul edilen sonuç: 180 karakterlik normal bir cümle de 4. satırda kesilir.
+- **Neden:** `nf-gorsel-qa` uzun notun balondan taştığını buldu (DEĞİŞİKLİK @`6c7bb938`); düzeltme `db28e732`.
+- **Uygulamada etkisi:** Örnek: müdür Ayşe Jordan'ın pazartesisine uzun bir not yazdı; Schedule balonunda ilk 4 satırı ve "…" görünür, tamamı Employees → Jordan → Availability'de okunur.
+- **Dayanak:** uygulamadaki `overflow-wrap: anywhere` kalıbı; `nf-gorsel-qa` önerisi.
+- **Geri alma:** kolay — satır sınırı CSS'te.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #90; koordinatör `local_b355d250…`'ın isteği).
+- **Mert:** bilgi.
+
+### KK-83 (2026-10-01) FB-6.5'te shared `confirm_clear` alanı da silindi (Touches genişledi)
+- **Karar:** haftalık kayıt şemasındaki ölü `confirm_clear` alanı (`packages/shared`) aynı işte silindi (`58a1023c`); görev dosyasının Touches'ında yoktu.
+- **Neden:** sunucudaki `confirm_clear` dalı silinince shared alan ölü yol olarak kalacaktı.
+- **Uygulamada etkisi:** görünür değişiklik yok; API haftalık kayıtta bu alanı artık kabul etmiyor.
+- **Dayanak:** CLAUDE.md §9 (ikiz sistem yok, ölü yol kalmaz).
+- **Geri alma:** kolay — tek alan.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #90; koordinatör `local_b355d250…`'ın isteği).
+- **Mert:** bilgi.
+
+### KK-84 (2026-10-01) Müdür Team availability listesinde kendi satırını görür
+- **Karar:** müdür Team availability listesinde kendi satırını görür (bugünkü davranış); `weekly_team_availability.test.sql` buna kilitlendi.
+- **Neden:** görev dosyası bunu "doğrulanacak" diye bırakmıştı (`KARARLAR.md:67` açıkça söylemiyor); bugünkü davranış M2 kapsam modeliyle uyumlu: müdür kendi çalıştığı lokasyonun listesinde.
+- **Uygulamada etkisi:** görünür değişiklik yok. Örnek: Kadıköy müdürü Ayşe Team availability'de Can, owner ve admin'lerle birlikte kendi satırını da görür.
+- **Dayanak:** KARARLAR M2 (kapsam modeli); bugünkü davranış.
+- **Geri alma:** kolay — test ve okuma süzgeci.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #90; koordinatör `local_b355d250…`'ın isteği).
+- **Mert:** bilgi (ürün kuralı M2'nin birebir uygulaması; kapsamıyorsa söyleyebilir).
+
+### KK-85 (2026-10-01) `weekly_team_availability` hücre 23 silindi (kurulamaz durum)
+- **Karar:** testin 23. hücresi silindi; ürün içinden kurulabilen bir duruma çevrilmedi.
+- **Neden:** hücre ürünün oluşturamadığı bir durumu kuruyordu; kurulamaz durum için test yazılmaz.
+- **Uygulamada etkisi:** görünür değişiklik yok.
+- **Dayanak:** CLAUDE.md §9 "eski veri korunmaz"; ILKELER P23 (bugün oluşamayan durum kodlanmaz).
+- **Geri alma:** kolay — hücre geri yazılabilir.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #90; koordinatör `local_b355d250…`'ın isteği).
+- **Mert:** bilgi.
