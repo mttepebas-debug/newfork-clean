@@ -5,6 +5,7 @@ import type {
 } from "@newfork/shared/schedule";
 import { getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval } from "./lib/scheduleWeeklyAvailability";
+import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
 
 export type ScheduleConflictReason =
   string | { readonly message?: unknown; readonly [key: string]: unknown };
@@ -385,9 +386,7 @@ export function evaluateScheduleShiftConflicts(
         id: shift.id,
         start_time: shift.start_time,
         end_time: shift.end_time,
-        shift_type_label:
-          model.shift_types.find((type) => type.id === shift.shift_type_id)
-            ?.name ?? null,
+        shift_type_label: scheduleShiftTypeOf(model, shift.shift_type_id)?.name ?? null,
         location_name:
           model.locations.find((location) => location.id === shift.location_id)
             ?.name ?? "Unknown location",

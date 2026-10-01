@@ -166,6 +166,20 @@ describe("schedule conflict port", () => {
     );
   });
 
+  it("names an archived shift type on the shift it overlaps", () => {
+    const archivedTypeId = "22000000-0000-4000-8000-000000000009";
+    const withArchived = {
+      ...model,
+      shifts: [{ ...model.shifts[0]!, shift_type_id: archivedTypeId }],
+      referenced_shift_types: [{ id: archivedTypeId, name: "Brunch" }],
+    } satisfies ScheduleReadModel;
+    expect(formatScheduleConflictMessages(
+      evaluateScheduleShiftConflicts(withArchived, withArchived.shifts, input()),
+    )).toContain(
+      "Ada Lovelace already has Brunch 09:00-17:00 at Dining Room on 2026-08-19. Requested: Server at Dining Room.",
+    );
+  });
+
   it("pinpoints location and job assignment blocks independently", () => {
     expect(
       formatScheduleConflictMessages(
