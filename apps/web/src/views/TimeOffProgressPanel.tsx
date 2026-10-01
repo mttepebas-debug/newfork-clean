@@ -1,13 +1,14 @@
 import type { TimeOffImpactShift, TimeOffProgress } from "@newfork/shared";
 import { Check, Circle, Clock3 } from "lucide-react";
 import { formatAvailabilityClock } from "../availability/AvailabilityClockInput";
+import { formatTimeOffDay, formatTimeOffDeadline } from "../employee-hub/time-off-split";
 
 // Where a pending request stands (rules 10 and 14): a checklist of the
 // locations asked to approve, then the shifts that would open (P04, FB-6.3.6).
 type Place = { id: string; name: string; shifts: TimeOffImpactShift[] };
 
-export function TimeOffProgressPanel({ progress, timeFormat }: {
-  progress: TimeOffProgress; timeFormat: "12h" | "24h";
+export function TimeOffProgressPanel({ progress, timeFormat, zone }: {
+  progress: TimeOffProgress; timeFormat: "12h" | "24h"; zone: string | undefined;
 }) {
   const total = progress.locations.length;
   const approved = progress.locations.filter((place) => place.approved_by).length;
@@ -17,7 +18,7 @@ export function TimeOffProgressPanel({ progress, timeFormat }: {
     .filter(([, place]) => place.shifts.length)
     .map(([id, place]) => ({ id, name: place.shifts[0]!.location_name, shifts: place.shifts }));
   const hidden = progress.impact?.hidden_shift_count ?? 0;
-  const deadline = progress.decide_by ? `Decide by ${formatInstant(progress.decide_by)}` : null;
+  const deadline = progress.decide_by && zone ? `Decide by ${formatTimeOffDeadline(progress.decide_by, zone, timeFormat)}` : null;
   const status = progress.fallback
     ? "No location manager can decide. An admin or owner decides."
     : `${approved} of ${total} location${total === 1 ? "" : "s"} approved`;
@@ -58,7 +59,7 @@ export function TimeOffProgressPanel({ progress, timeFormat }: {
 function ShiftList({ shifts, timeFormat }: { shifts: TimeOffImpactShift[]; timeFormat: "12h" | "24h" }) {
   return (
     <ul className="tov-shifts">
-      {shifts.map((shift) => <li key={shift.id}>{formatDay(shift.scheduled_date)} · {shiftHours(shift, timeFormat)} · {shift.job_name}</li>)}
+      {shifts.map((shift) => <li key={shift.id}>{formatTimeOffDay(shift.scheduled_date)} · {shiftHours(shift, timeFormat)} · {shift.job_name}</li>)}
     </ul>
   );
 }
@@ -67,9 +68,6 @@ function shiftHours(shift: TimeOffImpactShift, timeFormat: "12h" | "24h") {
   if (shift.time_unknown || !shift.start_time || !shift.end_time) return "Hours need verification";
   return `${formatAvailabilityClock(shift.start_time, timeFormat)}–${formatAvailabilityClock(shift.end_time, timeFormat)}`;
 }
-function formatDay(date: string) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00`));
-}
-export function formatInstant(value: string) {
+function formatInstant(value: string) {
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(value));
 }

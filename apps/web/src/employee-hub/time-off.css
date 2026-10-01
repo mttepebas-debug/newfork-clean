@@ -84,4 +84,6 @@
 }
 /* FB-6.3.6: the form's one-line outcome and its "starts soon" warning. */
 .time-off-form .time-off-urgent { color: var(--theme-warning-text); }
+.time-off-form .time-off-zone-note { margin: 0; color: var(--theme-muted); font-size: 13px; }
+.time-off-request-list ol { margin: 0; padding: 0; list-style: none; }
 .time-off-sent { margin: 0.5rem 0 0; color: var(--theme-success); font-size: 0.875rem; }

@@ -33,3 +33,17 @@ export function formatTimeOffInstant(value: string, zone: string, format: "12h" 
   return new Intl.DateTimeFormat("en-US", { timeZone: zone, year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
     ...(new Date(value).getUTCSeconds() ? { second: "2-digit" as const } : {}), hour12: format === "12h", timeZoneName: "shortOffset" }).format(new Date(value));
 }
+
+export function formatTimeOffDay(date: string) {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }).format(new Date(`${date}T12:00:00Z`));
+}
+
+export function timeOffZoneName(zone: string) {
+  return `${zone.split("/").at(-1)!.replaceAll("_", " ")} time`;
+}
+
+// The decision deadline, as a person in the request's zone reads it (FB-6.3.8d).
+export function formatTimeOffDeadline(value: string, zone: string, format: "12h" | "24h") {
+  const at = new Intl.DateTimeFormat("en-US", { timeZone: zone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: format === "12h" }).format(new Date(value));
+  return `${at} ${timeOffZoneName(zone)}`;
+}

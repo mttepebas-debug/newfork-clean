@@ -19,7 +19,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
-import { formatInstant, TimeOffProgressPanel } from "./TimeOffProgressPanel";
+import { TimeOffProgressPanel } from "./TimeOffProgressPanel";
+import { formatTimeOffDeadline } from "../employee-hub/time-off-split";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
@@ -397,6 +398,7 @@ function ScheduleRequestsPageContent() {
                 <RequestRow
                   key={row.id}
                   row={row}
+                  timeFormat={timeFormat}
                   onSelect={() => selectRequest(row.id)}
                 />
               ))}
@@ -580,12 +582,15 @@ function ActDialog({
 
 function RequestRow({
   row,
+  timeFormat,
   onSelect,
 }: {
   row: TimeOffRequest;
+  timeFormat: "12h" | "24h";
   onSelect: () => void;
 }) {
   const opens = row.progress ? timeOffOpenedShiftCount(row.progress) : 0;
+  const zone = requestZone(row);
   return (
     <button
       type="button"
@@ -609,7 +614,7 @@ function RequestRow({
         {`${formatDate(row.start_date)} - ${formatDate(row.end_date)}`}
       </span>
       <span className="request-catalog-meta request-location-column">
-        {row.status === "pending" && row.decide_by ? formatInstant(row.decide_by) : ""}
+        {row.status === "pending" && row.decide_by && zone ? formatTimeOffDeadline(row.decide_by, zone, timeFormat) : ""}
       </span>
       <span
         className={`request-status status-${row.status.replaceAll("_", "-")}`}
@@ -713,7 +718,7 @@ function TimeOffDetail({
         <p>A cancellation request is waiting. The time off is still in effect.</p>
       ) : null}
       {progress ? (
-        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} />
+        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} zone={requestZone(request)} />
       ) : null}
       {request.reason ? (
         <section>
@@ -858,3 +863,7 @@ function statusLabel(value: string) {
 }
 
 export default ScheduleRequestsPage;
+// A request is asked in one zone; every period carries it (FB-6.3.8d).
+function requestZone(request: TimeOffRequest) {
+  return request.segments[0]?.time_timezone;
+}

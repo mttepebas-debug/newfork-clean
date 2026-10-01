@@ -19,7 +19,7 @@ import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffCancellation } from "../employee-hub/TimeOffCancellation";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import "../employee-hub/time-off.css";
-import { timeOffWallParts } from "../employee-hub/time-off-split";
+import { formatTimeOffDeadline, timeOffWallParts, timeOffZoneName } from "../employee-hub/time-off-split";
 import { useSubmitTimeOff } from "../schedule/requests-data";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -334,8 +334,8 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
           onSubmit={(event) => { event.preventDefault(); setSent(""); timeOff.mutate(); }}
         >
           <fieldset disabled={timeOff.isPending}>
-          <legend>Time off details</legend>
-          <p>Hours use {zone}.</p>
+          <legend className="sr-only">Time off details</legend>
+          <p className="time-off-zone-note">Hours use {timeOffZoneName(zone)}.</p>
           <div className="date-pair">
             <label>
               Start
@@ -406,7 +406,8 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
               <small>
                 {request.display_status ?? statusLabel(request.status)} · Submitted{" "}
                 {formatDate(request.created_at)}
-                {request.status === "pending" && request.decide_by ? ` · Decision by ${formatDecideBy(request.decide_by)}` : ""}
+                {request.status === "pending" && request.decide_by && request.periods?.[0]?.time_timezone
+                  ? ` · Decision by ${formatTimeOffDeadline(request.decide_by, request.periods[0].time_timezone, model.settings.time_format)}` : ""}
               </small>
               {request.periods ? <TimeOffPeriods periods={request.periods} timeFormat={model.settings.time_format} requestStatus={request.status} cancellation={request.request_type === "time_off_cancellation"} /> : null}
               <TimeOffCancellation request={request} workspaceId={model.workspace_id} timeFormat={model.settings.time_format} onChanged={refresh}
@@ -469,9 +470,6 @@ function insideDecisionWindow(periods: readonly { segment_date: string; start_ti
   const hours = (Date.parse(first.segment_date + "T" + (first.start_time ?? "00:00").slice(0, 5) + ":00Z") - Date.parse(now.date + "T" + now.clock + "Z")) / 3_600_000;
   return hours < leadHours;
 }
-function formatDecideBy(iso: string) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
-}
 
 interface HubMutationProps {
   model: EmployeeHubReadModel;
@@ -531,7 +529,8 @@ function formatDate(iso: string) {
   });
 }
 function statusLabel(status: string) {
-  return status.replaceAll("_", " ");
+  const label = status.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 function addDays(iso: string, count: number) {
   const date = new Date(`${iso}T12:00:00Z`);

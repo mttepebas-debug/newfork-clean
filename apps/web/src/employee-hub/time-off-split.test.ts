@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { resolveTimeOffSplit, timeOffWallParts } from "./time-off-split";
+import { formatTimeOffDeadline, resolveTimeOffSplit, timeOffWallParts, timeOffZoneName } from "./time-off-split";
+import { inDeviceZone, plain } from "./device-zone.testing";
+
+describe("time-off decision deadline (FB-6.3.8d)", () => {
+  it("is written in the request's zone with its name, the same on every device", async () => {
+    for (const device of ["America/Los_Angeles", "Asia/Tokyo", "UTC"]) {
+      await inDeviceZone(device, () => {
+        expect(plain(formatTimeOffDeadline("2035-10-09T02:04:00Z", "Europe/Istanbul", "12h"))).toBe("Oct 9, 5:04 AM Istanbul time");
+        expect(plain(formatTimeOffDeadline("2035-10-09T02:04:00Z", "Europe/Istanbul", "24h"))).toBe("Oct 9, 05:04 Istanbul time");
+      });
+    }
+  });
+  it("names a zone by its city", () => {
+    expect(timeOffZoneName("America/New_York")).toBe("New York time");
+    expect(timeOffZoneName("America/Argentina/Buenos_Aires")).toBe("Buenos Aires time");
+    expect(timeOffZoneName("UTC")).toBe("UTC time");
+  });
+});
 
 describe("time-off split clocks", () => {
   it("resolves the request zone without the browser zone and preserves seconds", () => {

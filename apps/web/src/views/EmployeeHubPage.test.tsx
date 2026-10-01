@@ -32,6 +32,7 @@ import {
 
 import { RequestError } from "../lib/request-error";
 import { todayIn } from "../lib/today";
+import { inDeviceZone, plain } from "../employee-hub/device-zone.testing";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const { context } = vi.hoisted(() => ({
   context: {
@@ -602,6 +603,8 @@ describe("EmployeeHubPage", () => {
     await screen.findByText(/Submitted Tue, Aug 18, 2026/);
     expect(screen.getByText(/Wed, Aug 19, 2026/)).toBeTruthy();
     expect(screen.queryByText(/Invalid Date/)).toBeNull();
+    // BL-512: the action reads as a word, not a code.
+    expect(screen.getByRole("list", { name: "Manager decisions" }).textContent).toMatch(/^Approved · Wed, Aug 19, 2026/);
   });
 
   it("retains an open cancellation when refreshed history omits its request and disables submission", async () => {
@@ -742,7 +745,7 @@ describe("EmployeeHubPage", () => {
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
     expect(screen.queryByLabelText("Location")).toBeNull();
-    expect(screen.getByText("Hours use America/Los_Angeles.")).toBeTruthy();
+    expect(screen.getByText("Hours use Los Angeles time.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
     await waitFor(() => expect(submitTimeOff).toHaveBeenCalledOnce());
     expect(vi.mocked(submitTimeOff).mock.calls[0]![1]).not.toHaveProperty("location_id");
@@ -769,7 +772,7 @@ describe("EmployeeHubPage", () => {
   it("asks in the primary location's zone the hub names", async () => {
     renderPageWithFixture({ ...fixture, time_off_timezone: "America/New_York" }, "/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
-    expect(screen.getByText("Hours use America/New_York.")).toBeTruthy();
+    expect(screen.getByText("Hours use New York time.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
     await waitFor(() => expect(submitTimeOff).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ expected_timezone: "America/New_York" })));
   });
@@ -783,10 +786,18 @@ describe("EmployeeHubPage", () => {
     fireEvent.change(screen.getByLabelText("Start"), { target: { value: "2035-01-15" } });
     expect(screen.queryByText(/This starts soon/)).toBeNull();
   });
-  it("shows a pending request as Pending with its decision time", async () => {
-    const pending = { ...fixture.requests.find(request => request.kind === "time_off")!, status: "pending", display_status: "Pending", decide_by: "2035-01-14T17:00:00Z" };
-    renderPageWithFixture({ ...fixture, requests: [pending] }, "/app/employee-hub/my-availability?section=time-off");
-    expect(await screen.findByText(/^Pending · Submitted .* · Decision by Jan 14/)).toBeTruthy();
+  it("shows a pending request as Pending with its decision time in the request's zone, named, on any device (FB-6.3.8d)", async () => {
+    // Asked from Istanbul; the phone may be anywhere.
+    const pending = { ...fixture.requests.find(request => request.kind === "time_off")!, status: "pending", display_status: "Pending", decide_by: "2035-01-14T17:00:00Z",
+      periods: [{ id: "af9c0000-0000-4000-8000-000000000002", segment_date: "2035-01-15", start_time: null, end_time: null, status: "pending" as const, time_timezone: "Europe/Istanbul" }] };
+    for (const device of ["America/Los_Angeles", "Asia/Tokyo"]) {
+      await inDeviceZone(device, async () => {
+        const view = renderPageWithFixture({ ...fixture, requests: [pending] }, "/app/employee-hub/my-availability?section=time-off");
+        const line = await screen.findByText(/^Pending · Submitted .* · Decision by /);
+        expect(plain(line.textContent)).toMatch(/ · Decision by Jan 14, 8:00 PM Istanbul time$/);
+        view.unmount();
+      });
+    }
   });
 
   it("copies overnight shift-type hours into an explicit time-off period", async () => {

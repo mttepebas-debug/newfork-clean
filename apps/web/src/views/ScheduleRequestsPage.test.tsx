@@ -12,6 +12,7 @@ import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { RequestError } from "../lib/request-error";
+import { inDeviceZone, plain } from "../employee-hub/device-zone.testing";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const requestId = "97200000-0000-4000-8000-000000000001";
@@ -91,7 +92,7 @@ const pending: TimeOffRequest = {
   decide_by: "2035-01-14T09:00:00Z",
   conflict_count: 0,
   segments: [
-    { id: "97300000-0000-4000-8000-000000000001", segment_date: "2035-01-15", start_time: null, end_time: null, status: "pending" },
+    { id: "97300000-0000-4000-8000-000000000001", segment_date: "2035-01-15", start_time: null, end_time: null, status: "pending", time_timezone: "UTC" },
   ],
   events: [],
   progress,
@@ -246,6 +247,21 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(panel.textContent).toContain("Ayşe Yılmaz");
     expect(panel.textContent).toContain("Waiting");
     expect(panel.textContent).toContain("Mon, Jan 15 · 3:00 PM–11:00 PM · Server");
+  });
+  it("writes the decide-by time in the request's zone and names it, on any device (FB-6.3.8d)", async () => {
+    // Ali asked from Istanbul; a manager in Los Angeles or Tokyo reads the same deadline.
+    withRequest({ segments: [{ ...pending.segments[0]!, time_timezone: "Europe/Istanbul" }] });
+    for (const device of ["America/Los_Angeles", "Asia/Tokyo"]) {
+      await inDeviceZone(device, async () => {
+        const view = renderPage();
+        const row = await screen.findByRole("button", { name: /Alex Kim/ });
+        expect(plain(row.textContent)).toContain("Jan 14, 12:00 PM Istanbul time");
+        const drawer = await openTimeOffRequest();
+        const panel = within(drawer).getByRole("region", { name: "Approval progress" });
+        expect(plain(panel.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
+        view.unmount();
+      });
+    }
   });
   it("draws one progress layout whatever the address asks for (P04: checklist)", async () => {
     renderPage("/app/schedule/requests?progressVariant=c");
