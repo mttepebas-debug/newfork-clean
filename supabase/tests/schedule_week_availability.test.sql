@@ -104,7 +104,7 @@ select is(public.time_off_assignment_impact(tests.id('wa'), tests.id('wa:emre'),
     tstzmultirange(tstzrange((tests.week(1) + 2 + time '15:00') at time zone 'Europe/Istanbul', (tests.week(1) + 3)::timestamp at time zone 'Europe/Istanbul'))),
   '[]'::jsonb, 'leave after the shift ends does not');
 
-select tests.time_off('wa', 'emre', 2);
+select tests.leave('wa', 'emre', 2);
 create temp table wa_leave as
   select public.preview_time_off_assignment_decision_service(tests.user('wa:owner'), tests.id('wa'), tests.id('wa:emre:time_off'), 1, 'approve', '[]') as preview;
 select public.decide_time_off_with_assignments_service(tests.user('wa:owner'), tests.id('wa'), tests.id('wa:emre:time_off'), 1, 'approve', '',

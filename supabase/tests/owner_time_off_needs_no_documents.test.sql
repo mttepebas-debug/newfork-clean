@@ -34,7 +34,7 @@ where source_id = (select id from required_document) and lifecycle_user_id = tes
 select ok(app_private.document_actor_blocked(tests.user('od:owner'), tests.id('od')),
   'the owner misses a required document');
 
-select tests.time_off('od', 'owner', 1);
+select tests.leave('od', 'owner', 1);
 
 select is(
   (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('od:owner:time_off')),

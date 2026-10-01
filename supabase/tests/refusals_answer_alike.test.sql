@@ -22,7 +22,7 @@ select tests.publish_week('m', 1, '[
   {"label": "veli-b", "person": "veli", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
   {"label": "emre-k", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
 ]');
-select tests.time_off('m', 'veli', 2);
+select tests.leave('m', 'veli', 2);
 
 -- The whole answer: code, reason and message.
 create function pg_temp.answer(statement text) returns text language plpgsql as $$

@@ -31,8 +31,8 @@ $$;
 
 -- Olcay (the owner) records his own time off; Zeynep (an admin) asks for hers,
 -- and her review notice is lost.
-select tests.time_off('tc', 'owner', 1);
-select tests.time_off('tc', 'zeynep', 2);
+select tests.leave('tc', 'owner', 1);
+select tests.leave('tc', 'zeynep', 2);
 delete from public.notification_outbox o
 where o.workspace_id = tests.id('tc') and o.event_id = pg_temp.submitted(tests.id('tc:zeynep:time_off'));
 
@@ -57,7 +57,7 @@ update public.workspaces set lifecycle_status = 'suspended' where id = tests.id(
 select is(pg_temp.refusal(format($$select app_private.authorize_time_off_decision(%L, %L, %L, %L, 'approve')$$,
     tests.user('tc:zeynep'), tests.id('tc'), tests.id('tc:zeynep'), tests.id('tc:K'))),
   '42501 authz.workspace_closed', 'in a closed workspace the owner''s shortcut is closed too');
-select is(pg_temp.refusal($$select tests.time_off('tc', 'ali', 3)$$),
+select is(pg_temp.refusal($$select tests.leave('tc', 'ali', 3)$$),
   '42501 authz.workspace_closed', 'Ali cannot ask for time off in a closed workspace');
 select is(pg_temp.refusal(format($$select public.submit_employee_time_off_cancellation_service(%L, %L, %L, 1, '', '[]', gen_random_uuid())$$,
     tests.user('tc:owner'), tests.id('tc'), tests.id('tc:owner:time_off'))),

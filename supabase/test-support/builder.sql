@@ -326,39 +326,42 @@ begin
 end;
 $$;
 
--- A time-off request the person files from Employee Hub, for the Wednesday of
--- tests.week(n), at their primary location. Label: <w>:<label>:time_off.
-create or replace function tests.time_off(w text, person_label text, n integer default 0)
+drop function if exists tests.time_off(text, text, integer);
+
+-- Approved time off for a test about what leave does to a draft, an
+-- assignment or a read, not about deciding it. Built in today's shape: a
+-- pending request with its period snapshotted in `place`'s time zone (whole
+-- day without clocks), then approved.
+-- ponytail: skips the votes, so no published shift is opened; a test about the
+-- decision files tests.leave and decides with decide_time_off_service.
+create or replace function tests.approved_leave(
+  w uuid, employee uuid, by_user uuid, place uuid, day date,
+  start_time time default null, end_time time default null, rid uuid default gen_random_uuid()
+)
 returns uuid
 language plpgsql
 set search_path = ''
 as $$
 declare
-  employee uuid := tests.id(w || ':' || person_label);
-  location uuid := (
-    select l.location_id from public.employee_location_assignments l
-    where l.employee_id = employee and l.ended_at is null
-    order by l.is_primary desc, l.assigned_at limit 1
-  );
-  request uuid;
+  resolved jsonb := public.time_off_resolve_period(jsonb_strip_nulls(jsonb_build_object('segment_date', day,
+    'start_time', to_char(start_time, 'HH24:MI'), 'end_time', to_char(end_time, 'HH24:MI'))),
+    (select l.timezone from public.locations l where l.id = place));
 begin
-  perform public.submit_employee_time_off_service(
-    tests.user(w || ':' || person_label), tests.id(w), location, 'test world', array[tests.week(n) + 2]
-  );
-  select r.id into request from public.schedule_time_off_requests r
-  where r.employee_id = employee order by r.created_at desc limit 1;
-  perform tests.settle();
-  return tests.remember(w || ':' || person_label || ':time_off', request);
+  insert into public.schedule_time_off_requests (id, workspace_id, employee_id, created_by) values (rid, w, employee, by_user);
+  insert into public.schedule_time_off_segments (workspace_id, request_id, segment_date, start_time, end_time, time_timezone, starts_at, ends_at, ends_next_day)
+  values (w, rid, day, start_time, end_time, resolved ->> 'time_timezone', (resolved ->> 'starts_at')::timestamptz,
+    (resolved ->> 'ends_at')::timestamptz, (resolved ->> 'ends_at')::timestamptz > ((day + 1)::timestamp at time zone (resolved ->> 'time_timezone')));
+  update public.schedule_time_off_segments set status = 'approved' where request_id = rid;
+  update public.schedule_time_off_requests set status = 'approved', revision = revision + 1 where id = rid;
+  return rid;
 end;
 $$;
 
--- A time-off request the person sends from Employee Hub the way it is sent
--- since FB-6.3: no location, whole days from the Wednesday of tests.week(n)
--- for `days` days in a row, in the person's primary location's time zone (or
--- Istanbul for somebody with no location, as their device would say).
--- Returns the request id; the caller remembers it under a label of its own.
--- ponytail: tests.time_off keeps filing the old single-location request for
--- the old services' tests; the two meet when those services go (FB-6.3.7).
+-- A time-off request the person sends from Employee Hub: no location, whole
+-- days from the Wednesday of tests.week(n) for `days` days in a row, in the
+-- person's primary location's time zone (or Istanbul for somebody with no
+-- location, as their device would say). Label: <w>:<label>:time_off (the
+-- latest one).
 create or replace function tests.leave(w text, person_label text, n integer default 0, days integer default 1)
 returns uuid
 language plpgsql
@@ -381,7 +384,7 @@ begin
     'test world', zone_name, gen_random_uuid()
   );
   perform tests.settle();
-  return (sent ->> 'request_id')::uuid;
+  return tests.remember(w || ':' || person_label || ':time_off', (sent ->> 'request_id')::uuid);
 end;
 $$;
 

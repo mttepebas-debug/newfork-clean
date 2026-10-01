@@ -94,11 +94,9 @@ supabase/tests/tenant_owned_composite_foreign_keys.test.sql
 supabase/tests/test_world.test.sql
 supabase/tests/the_schedule_uses_the_preferred_name.test.sql
 supabase/tests/time_off_cancellation_requests.test.sql
-supabase/tests/time_off_decision_identity_guard.test.sql
 supabase/tests/time_off_decisions_go_one_rank_up.test.sql
 supabase/tests/time_off_doors_close_with_the_workspace.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql
-supabase/tests/time_off_published_assignment_disposition.test.sql
 supabase/tests/time_off_requested_periods.test.sql
 supabase/tests/timezone_names.test.sql
 supabase/tests/weekly_assignment_candidates.test.sql
@@ -131,7 +129,6 @@ supabase/tests/scheduled_export_sends_only_live_locations.test.sql
 supabase/tests/account_checks_count_in_the_database.test.sql
 supabase/tests/time_off_shortens_for_a_shift.test.sql
 supabase/tests/employee_hub.test.sql
-supabase/tests/time_off_partial_period_decisions.test.sql
 supabase/tests/refusals_say_why.test.sql
 supabase/tests/employees_on_the_core.test.sql
 supabase/tests/invitations_on_the_core.test.sql

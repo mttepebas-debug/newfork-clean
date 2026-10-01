@@ -21,3 +21,5 @@ metadata:
 
 **Why:** FB-6.3 .3/.4, 2026-10-01.
 **How to apply:** before .7 (deletes) or any change to time off. See [[rollback-trial-runner]], [[new-notification-type]].
+
+- FB-6.3.7 (branch `task/fb-6.3.7-db`, 2026-10-01): migration `20261003040000` drafted from `pg_get_functiondef` of the 25 readers, then edited; TRUNCATE (not DELETE) clears time off because the period/history guards block row deletes. `tests.time_off` is gone: `tests.leave` remembers `<w>:<label>:time_off`; `tests.approved_leave(w, employee, by_user, place, day, start, end)` builds approved leave in today's shape for fixtures that used raw old-shape inserts. Old fixtures inserting approved requests straight away now fail the period guard (periods only join a pending request).

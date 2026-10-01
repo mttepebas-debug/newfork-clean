@@ -27,7 +27,7 @@ select tests.publish_week('sto', 1, '[
 -- Every test world draft is left open (builder trap 4); nothing here counts drafts.
 
 -- Ali takes Wednesday of week 1 off; Mert approves it.
-select tests.time_off('sto', 'ali', 1);
+select tests.leave('sto', 'ali', 1);
 select public.resolve_schedule_time_off_request_service(tests.user('sto:mert'), tests.id('sto'), tests.id('sto:ali:time_off'),
   (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ali:time_off')), 'approve', '');
 select tests.settle();
@@ -144,7 +144,7 @@ select is((select count(*)::integer from jsonb_array_elements(public.reconcile_n
    where m ->> 'workspace_id' = tests.id('sto')::text), 0, 'the notification check counts nothing missing');
 
 -- 7. The manager's way (BL-127): whoever could decide the leave shortens it.
-select tests.time_off('sto', 'ali', 2);
+select tests.leave('sto', 'ali', 2);
 select tests.remember('sto:ali:time_off:2', (select s.request_id from public.schedule_time_off_segments s
   where s.workspace_id = tests.id('sto') and s.segment_date = tests.week(2) + 2 and s.request_id in
    (select r.id from public.schedule_time_off_requests r where r.employee_id = tests.id('sto:ali') and r.request_type = 'time_off')));
@@ -166,7 +166,7 @@ select is(pg_temp.refusal($$select pg_temp.shorten('ali', (select periods from c
 select is(pg_temp.refusal($$select pg_temp.shorten('emre', (select periods from cut))$$), '42501 authz.missing_permission', 'another employee cannot');
 select is(pg_temp.refusal($$select pg_temp.shorten('can', (select periods from cut))$$), '42501 authz.out_of_scope', 'a manager who does not manage Ali cannot');
 -- Ayse's own approved leave (the owner approved it): she cannot shorten it herself.
-select tests.time_off('sto', 'ayse', 3);
+select tests.leave('sto', 'ayse', 3);
 select tests.remember('sto:ayse:time_off:3', (select s.request_id from public.schedule_time_off_segments s
   join public.schedule_time_off_requests r on r.id = s.request_id
   where r.employee_id = tests.id('sto:ayse') and r.request_type = 'time_off' and s.segment_date = tests.week(3) + 2));

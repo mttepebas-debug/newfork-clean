@@ -128,7 +128,7 @@ select ok(
               where (t ->> 'id')::uuid = tests.id('m:todo:veli')),
   'and not the one about somebody at another location'
 );
-select tests.time_off('m', 'veli');
+select tests.leave('m', 'veli');
 select is(
   (public.get_workspace_dashboard_service(tests.user('m:selin'), tests.id('m')) #>> '{metrics,pending_time_off_count}')::integer,
   1, 'a manager excluded from the Schedule counts their location''s pending time off on Workspace home'

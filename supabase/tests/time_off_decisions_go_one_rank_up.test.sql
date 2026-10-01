@@ -30,11 +30,11 @@ values (tests.id('to'), tests.id('to:owner'), tests.id('to:job:cook'), tests.use
 select tests.publish_week('to', 0, '[
   {"label": "owner-wed", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
 ]');
-select tests.time_off('to', 'emre');
-select tests.time_off('to', 'ayse');
-select tests.time_off('to', 'zeynep');
-select tests.time_off('to', 'zafer');
-select tests.time_off('to', 'owner');
+select tests.leave('to', 'emre');
+select tests.leave('to', 'ayse');
+select tests.leave('to', 'zeynep');
+select tests.leave('to', 'zafer');
+select tests.leave('to', 'owner');
 
 -- What a call answers: 'allowed', or the error code and its authz hint.
 create function pg_temp.outcome(statement text)

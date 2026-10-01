@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(17);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -282,6 +282,32 @@ insert into retired (kind, name, step) values
   ('function', 'reorder_organization_entities', 'BL-475'),
   ('constraint', 'jobs_sort_order_check', 'BL-475'),
   ('constraint', 'departments_sort_order_check', 'BL-475');
+-- FB-6.3.7: time off belongs to the person and is decided by its locations'
+-- votes. The location on the request, the "viewed" mark, partial decisions
+-- and the old submit, decide and preview path go; every request carries its
+-- own time-zone snapshot, so the request's period version goes too.
+insert into retired (kind, name, step) values
+  ('table', 'time_off_decision_pieces', 'FB-6.3.7'),
+  ('column', 'schedule_time_off_requests.location_id', 'FB-6.3.7'),
+  ('column', 'schedule_time_off_requests.viewed_at', 'FB-6.3.7'),
+  ('column', 'schedule_time_off_requests.period_version', 'FB-6.3.7'),
+  ('notification', 'schedule.owner_time_off.shifts_opened', 'FB-6.3.7'),
+  ('constraint', 'time_off_period_snapshot_complete', 'FB-6.3.7'),
+  ('constraint', 'schedule_time_off_requests_period_version_check', 'FB-6.3.7');
+insert into retired (kind, name, step)
+select 'function', name, 'FB-6.3.7' from unnest(array[
+  'decide_time_off_with_assignments_service', 'preview_time_off_assignment_decision_service',
+  'resolve_schedule_time_off_request_service', 'resolve_time_off_period_decision_service',
+  'apply_time_off_period_decision', 'apply_time_off_cancellation_decision',
+  'submit_employee_time_off_service', 'submit_employee_time_off_periods_service',
+  'mark_schedule_time_off_viewed_service', 'submit_employee_time_off_cancellation_service',
+  'authorize_time_off_decision', 'authorize_time_off_request', 'time_off_proposed_approved_ranges',
+  'guard_time_off_decision_piece', 'notify_owner_time_off_open_shifts', 'record_owner_time_off'
+]) name;
+-- BL-496: departments and jobs carry no position at all.
+insert into retired (kind, name, step) values
+  ('column', 'departments.sort_order', 'BL-496'), ('column', 'jobs.sort_order', 'BL-496'),
+  ('constraint', 'departments_sort_order_unused', 'BL-496'), ('constraint', 'jobs_sort_order_unused', 'BL-496');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -366,6 +392,18 @@ select ok(
     where conname = 'weekly_preference_commitment_decisions_kind_check' and pg_get_constraintdef(oid) like '%lineup_offer%'
   ),
   'the Line Up offer request kind stays gone'
+);
+select ok(
+  not ('partially_approved' = any (enum_range(null::public.time_off_request_status)::text[])),
+  'a partly approved time-off request stays gone'
+);
+select ok(
+  not exists (
+    select 1 from pg_constraint
+    where conname = 'schedule_time_off_events_action_check'
+      and pg_get_constraintdef(oid) ~ '''(viewed|partially_approved|returned_to_pending)'''
+  ),
+  'the viewed, partly approved and returned-to-pending time-off events stay gone'
 );
 select is(
   array(select r.name from retired r join app_private.authz_actions a on a.key = r.name where r.kind = 'action' order by 1),

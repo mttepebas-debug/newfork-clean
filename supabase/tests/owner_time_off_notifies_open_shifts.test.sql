@@ -33,7 +33,7 @@ create function pg_temp.outbox(request uuid, type_key text) returns setof public
 $$;
 
 -- 1. Olcay takes Wednesday off (tests.time_off asks for the Wednesday of the week).
-select tests.time_off('ot', 'owner', 1);
+select tests.leave('ot', 'owner', 1);
 select is((select count(*)::integer from pg_temp.outbox(tests.id('ot:owner:time_off'), 'requests.time_off.submitted')), 0,
   'nobody is asked to review the owner''s time off');
 select is((select employee_id from public.schedule_published_shifts where id = tests.id('ot:shift:olcay-k')), null::uuid,
@@ -68,7 +68,7 @@ select is(
   1, 'Ayse finds it in her notifications');
 
 -- 2. Time off that leaves no shift open tells nobody anything.
-select tests.time_off('ot', 'owner', 2);
+select tests.leave('ot', 'owner', 2);
 -- ponytail: one transaction has one now(), so tests.time_off may remember the
 -- first request; the week-2 one is found by its day.
 select tests.remember('ot:owner:time_off:2', (select s.request_id from public.schedule_time_off_segments s
@@ -80,7 +80,7 @@ select is(
   0, 'the owner''s time off with no shift in it sends nothing');
 
 -- 3. An employee's request still asks the reviewers.
-select tests.time_off('ot', 'ali', 1);
+select tests.leave('ot', 'ali', 1);
 select is((select count(*)::integer from pg_temp.outbox(tests.id('ot:ali:time_off'), 'requests.time_off.submitted')), 1,
   'Ali''s time-off request still asks for review');
 select is((select count(*)::integer from pg_temp.outbox(tests.id('ot:ali:time_off'), 'schedule.owner_time_off.shifts_opened')), 0,
