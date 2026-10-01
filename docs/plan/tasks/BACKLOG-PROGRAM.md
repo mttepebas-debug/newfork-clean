@@ -334,6 +334,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #51; taban `be9a2ebc`): FB-6.3.5 canlıda (Vercel `13b7c8cd`, ölçüldü). FOUNDATION-B Aşama 6–7 %54,3 → %63,9 (FB-6.3.0–.5). Sayım değişmedi: açık 276.
 - 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #50; taban `13b7c8cd`): FB-6.3.5 main'de (`13b7c8cd`, ölçüldü; BL-496'nın kod kısmı dahil, madde `.7`'ye kadar açık); main CI 36856018169 check + db + e2e yeşil (ölçüldü, kayıt gönderiminden hemen sonra). Yayın notu (KK-75) dalda, ONAY KOŞULLU; KK-76; `.6` başladı. Park paketi: KK-72 + KK-75 + KK-76. Sayım değişmedi: açık 276.
 - 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #49; taban `327d0971`): FB-6.3.5 `nf-guvenlik` ONAY @`c1f9ea87` (`newfork-wt/coord/artifacts/coord/fb-6.3/nf-guvenlik-reviews.md` §5 — ölçüldü); dal yeniden tabanlandı, `task/fb-6.3.5` @`e4de51cf`, kod farkı yok (ölçüldü). İncelemenin iki düşük bulgusu yeni madde: BL-508 (G9, izin ilerlemesini kimin gördüğü; kullanıcıya sorulacak) ve BL-509 (G11, 23514 → 409). Sayım: açık 274 → **276**, en yüksek BL-509.
 - 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #48; taban `c8d74ec0`): FB-6.3.5 dalda bitti (`task/fb-6.3.5` @`c1f9ea87`, ölçüldü), inceleme koşuyor; BL-496'nın kod kısmı aynı dalda (madde açık, `.7`'de kapanır). Sayım değişmedi: açık 274.
