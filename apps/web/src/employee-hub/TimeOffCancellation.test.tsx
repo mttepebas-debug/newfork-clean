@@ -4,9 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { TimeOffCancellation } from "./TimeOffCancellation";
 import { TimeOffPeriods } from "./TimeOffPeriods";
-import { actOnEmployeeRequest } from "./employee-hub-data";
+import { requestTimeOffCancellation } from "../schedule/requests-data";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
-vi.mock("./employee-hub-data", () => ({ actOnEmployeeRequest: vi.fn() }));
+vi.mock("../schedule/requests-data", () => ({ requestTimeOffCancellation: vi.fn() }));
 const id = "af9c0000-0000-4000-8000-000000000001";
 const request: EmployeeHubReadModel["requests"][number] = {
   id, kind: "time_off", status: "partially_approved", title: "Time off", detail: "", revision: 2, created_at: "2035-01-01T00:00:00Z", can_cancel: false,
@@ -20,7 +20,7 @@ function setup(value = request) {
   const view = (current: typeof request) => <QueryClientProvider client={client}><TimeOffCancellation request={current} workspaceId={id} timeFormat="24h" onChanged={changed} /></QueryClientProvider>;
   return { ...render(view(value)), view };
 }
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(actOnEmployeeRequest).mockResolvedValue({ status: "pending", request_id: id, revision: 1 }); });
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(requestTimeOffCancellation).mockResolvedValue({ status: "pending", request_id: id, revision: 1 }); });
 afterEach(() => vi.restoreAllMocks());
 describe("approved leave cancellation", () => {
   it("moves focus into the cancellation form and restores it when keeping leave", () => {
@@ -28,7 +28,7 @@ describe("approved leave cancellation", () => {
     expect(document.activeElement?.textContent).toBe("Cancel approved leave");
     fireEvent.click(screen.getByRole("button", { name: "Keep approved leave" }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Request leave cancellation" }));
-    expect(actOnEmployeeRequest).not.toHaveBeenCalled();
+    expect(requestTimeOffCancellation).not.toHaveBeenCalled();
   });
   it("submits a shortened piece with seconds while keeping the original approved bounds", async () => {
     setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
@@ -41,8 +41,8 @@ describe("approved leave cancellation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply hours for period 1" }));
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Choose hours for period 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
-    await waitFor(() => expect(actOnEmployeeRequest).toHaveBeenCalledOnce());
-    expect(vi.mocked(actOnEmployeeRequest).mock.calls[0]?.[1]).toMatchObject({ periods: [{ segment_id: id, starts_at: "2035-01-15T10:30:01.000Z", ends_at: "2035-01-15T11:30:02.000Z" }] });
+    await waitFor(() => expect(requestTimeOffCancellation).toHaveBeenCalledOnce());
+    expect(vi.mocked(requestTimeOffCancellation).mock.calls[0]?.[2]).toMatchObject({ periods: [{ segment_id: id, starts_at: "2035-01-15T10:30:01.000Z", ends_at: "2035-01-15T11:30:02.000Z" }] });
     expect(request.periods![0]!.effective_intervals![0]!.start_at).toBe("2035-01-15T09:00:00Z");
   });
   it("rejects crossing an unapproved gap and keeps unfinished edits out of submission", () => {
@@ -55,7 +55,7 @@ describe("approved leave cancellation", () => {
     fireEvent.change(screen.getByLabelText("End time, period 1"), { target: { value: "11:" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply hours for period 1" }));
     expect(screen.getByText("Enter the cancellation date and time.")).toBeTruthy();
-    expect(actOnEmployeeRequest).not.toHaveBeenCalled();
+    expect(requestTimeOffCancellation).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Discard these edits for period 1" }));
     expect(screen.getByRole("button", { name: "Send cancellation request" })).toHaveProperty("disabled", false);
   });
@@ -72,8 +72,8 @@ describe("approved leave cancellation", () => {
     fireEvent.change(screen.getByLabelText("End time, period 3"), { target: { value: "12:00" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply hours for period 3" }));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
-    await waitFor(() => expect(actOnEmployeeRequest).toHaveBeenCalledOnce());
-    expect(vi.mocked(actOnEmployeeRequest).mock.calls[0]?.[1]).toMatchObject({ periods: [
+    await waitFor(() => expect(requestTimeOffCancellation).toHaveBeenCalledOnce());
+    expect(vi.mocked(requestTimeOffCancellation).mock.calls[0]?.[2]).toMatchObject({ periods: [
       { segment_id: id, starts_at: "2035-01-15T09:00:00Z", ends_at: "2035-01-15T10:00:00.000Z" },
       { segment_id: id, starts_at: "2035-01-15T11:00:00.000Z", ends_at: "2035-01-15T12:00:00.000Z" },
     ] });
@@ -90,21 +90,21 @@ describe("approved leave cancellation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply hours for period 1" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Cancel period 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
-    await waitFor(() => expect(actOnEmployeeRequest).toHaveBeenCalledOnce());
-    expect(vi.mocked(actOnEmployeeRequest).mock.calls[0]?.[1]).toMatchObject({ periods: [{ segment_id: id, starts_at: "2035-01-15T11:00:00.000Z", ends_at: "2035-01-15T12:00:00Z" }] });
+    await waitFor(() => expect(requestTimeOffCancellation).toHaveBeenCalledOnce());
+    expect(vi.mocked(requestTimeOffCancellation).mock.calls[0]?.[2]).toMatchObject({ periods: [{ segment_id: id, starts_at: "2035-01-15T11:00:00.000Z", ends_at: "2035-01-15T12:00:00Z" }] });
   });
   it("preserves an uncertain operation retry even after its requested hours start", async () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2035-01-15T08:00:00Z"));
-    vi.mocked(actOnEmployeeRequest).mockRejectedValueOnce(new Error("Connection lost"));
+    vi.mocked(requestTimeOffCancellation).mockRejectedValueOnce(new Error("Connection lost"));
     const ui = setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Cancel period 2" }));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
     await screen.findByText("Connection lost");
-    const first = vi.mocked(actOnEmployeeRequest).mock.calls[0]?.[1];
+    const first = vi.mocked(requestTimeOffCancellation).mock.calls[0]?.[2];
     now.mockReturnValue(Date.parse("2035-01-15T10:00:00Z")); ui.rerender(ui.view(request));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
-    await waitFor(() => expect(actOnEmployeeRequest).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(actOnEmployeeRequest).mock.calls[1]?.[1]).toEqual(first);
+    await waitFor(() => expect(requestTimeOffCancellation).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(requestTimeOffCancellation).mock.calls[1]?.[2]).toEqual(first);
   });
   it("requires explicit DST occurrences for edited repeated clocks", async () => {
     setup({ ...request, periods: [{ ...request.periods![0]!, segment_date: "2035-11-04", time_timezone: "America/New_York",
@@ -120,8 +120,8 @@ describe("approved leave cancellation", () => {
     fireEvent.change(screen.getByLabelText("Repeated time, end, period 1"), { target: { value: "later" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply hours for period 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
-    await waitFor(() => expect(actOnEmployeeRequest).toHaveBeenCalledOnce());
-    expect(vi.mocked(actOnEmployeeRequest).mock.calls[0]?.[1]).toMatchObject({ periods: [{ segment_id: id, starts_at: "2035-11-04T05:10:00.000Z", ends_at: "2035-11-04T06:40:00.000Z" }] });
+    await waitFor(() => expect(requestTimeOffCancellation).toHaveBeenCalledOnce());
+    expect(vi.mocked(requestTimeOffCancellation).mock.calls[0]?.[2]).toMatchObject({ periods: [{ segment_id: id, starts_at: "2035-11-04T05:10:00.000Z", ends_at: "2035-11-04T06:40:00.000Z" }] });
   });
   it("retains an edit but cannot send it for a different request identity", () => {
     const ui = setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
@@ -148,22 +148,22 @@ describe("approved leave cancellation", () => {
     act(()=>requestAvailabilityNavigation(navigate));
     fireEvent.click(screen.getByRole("button",{name:"Discard and leave"}));
     expect(screen.queryByLabelText("Cancellation note")).toBeNull();
-    expect(navigate).toHaveBeenCalledOnce(); expect(actOnEmployeeRequest).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledOnce(); expect(requestTimeOffCancellation).not.toHaveBeenCalled();
   });
   it("submits only selected approved pieces and preserves note and operation identity after a network failure", async () => {
-    vi.mocked(actOnEmployeeRequest).mockRejectedValueOnce(new Error("Connection lost"));
+    vi.mocked(requestTimeOffCancellation).mockRejectedValueOnce(new Error("Connection lost"));
     setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
     fireEvent.click(screen.getAllByRole("checkbox")[1]!);
     fireEvent.change(screen.getByLabelText("Cancellation note"), { target: { value: "Plans changed" } });
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
     await screen.findByText("Connection lost");
-    const first = vi.mocked(actOnEmployeeRequest).mock.calls[0]?.[1];
-    expect(first).toEqual({ request_id: id, kind: "time_off", action: "request_cancellation", expected_revision: 2, operation_id: expect.any(String), reason: "Plans changed",
+    const first = vi.mocked(requestTimeOffCancellation).mock.calls[0]?.[2];
+    expect(first).toEqual({ expected_revision: 2, operation_id: expect.any(String), reason: "Plans changed",
       periods: [{ segment_id: id, starts_at: "2035-01-15T09:00:00Z", ends_at: "2035-01-15T12:00:00Z" }] });
     expect((screen.getByLabelText("Cancellation note") as HTMLTextAreaElement).value).toBe("Plans changed");
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
     await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(actOnEmployeeRequest).mock.calls[1]?.[1]).toEqual(first);
+    expect(vi.mocked(requestTimeOffCancellation).mock.calls[1]?.[2]).toEqual(first);
     expect(screen.getByRole("status").textContent).toContain("approved leave stays in effect");
   });
   it("retains a local draft but blocks submission after the approved leave changes", () => {
@@ -173,7 +173,7 @@ describe("approved leave cancellation", () => {
     expect(screen.getByRole("alert").textContent).toContain("approved leave changed");
     expect((screen.getByRole("button", { name: "Send cancellation request" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("Cancellation note") as HTMLTextAreaElement).value).toBe("My draft");
-    expect(actOnEmployeeRequest).not.toHaveBeenCalled();
+    expect(requestTimeOffCancellation).not.toHaveBeenCalled();
   });
   it("shows pending cancellation without offering another request", () => {
     setup({ ...request, cancellation: { ...request.cancellation!, pending_request_id: id, can_request: false } });

@@ -57,10 +57,6 @@
 .time-off-partial-editor input, .time-off-partial-editor select { width: 100%; min-width: 0; }
 .time-off-piece { padding: 0.5rem 0; border-bottom: 1px solid #c5ccd6; }
 .request-dialog:has(.time-off-partial-editor) { max-height: calc(100dvh - 2rem); overflow-y: auto; }
-.request-dialog:has(.time-off-assignment-review) { max-height: calc(100dvh - 2rem); overflow-y: auto; }
-.time-off-assignment-review { display: grid; gap: 0.65rem; min-width: 0; overflow-wrap: anywhere; }
-.time-off-assignment-choice { display: flex; align-items: flex-start; gap: 0.5rem; }
-.time-off-assignment-choice input[type="checkbox"] { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; margin-top: 0.2rem; }
 .time-off-cancellation fieldset { display: grid; gap: 0.65rem; min-width: 0; margin: 0; padding: 0.75rem; border: 1px solid #c5ccd6; border-radius: 0.5rem; }
 .time-off-cancellation label { display: flex; align-items: flex-start; gap: 0.5rem; overflow-wrap: anywhere; }
 .time-off-cancellation label:has(textarea) { display: grid; }

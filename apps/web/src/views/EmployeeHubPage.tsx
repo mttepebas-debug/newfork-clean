@@ -1,5 +1,5 @@
 import { todayIn } from "../lib/today";
-import { employeeTimeOffInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
+import { timeOffSubmitInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
 import {
@@ -18,11 +18,12 @@ import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffCancellation } from "../employee-hub/TimeOffCancellation";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import "../employee-hub/time-off.css";
+import { timeOffWallParts } from "../employee-hub/time-off-split";
+import { useSubmitTimeOff } from "../schedule/requests-data";
 import { useAuth } from "../auth/AuthContext";
 import {
   actOnEmployeeRequest,
   getEmployeeHub,
-  submitEmployeeTimeOff,
 } from "../employee-hub/employee-hub-data";
 
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
@@ -242,10 +243,9 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   );
 }
 function TimeOffView({ model, refresh }: HubMutationProps) {
-  const client = useQueryClient();
-  const [location, setLocation] = useState(model.locations[0]?.id ?? "");
-  const initialLocation = useRef(location);
-  const [zone, setZone] = useState(model.locations[0]?.timezone);
+  // ponytail: the first location's zone until the hub read names the primary
+  // one, which the server checks the request against (FB-6.3.6 contract ask).
+  const zone = model.locations[0]?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
@@ -254,6 +254,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
   const [dateDrafts,setDateDrafts] = useState<TimeOffDateDrafts>({});
   const [dateDefaults,setDateDefaults] = useState<TimeOffDateDraft>({mode:"full_day",hours:[{...defaultTimeOffHours}]});
   const dateDefaultsChosen = useRef(false);
+  const [sent, setSent] = useState("");
   const [cancellationDrafts, setCancellationDrafts] = useState(new Map<string, EmployeeHubReadModel["requests"][number]>());
   const retry = useRef({ signature: "", key: crypto.randomUUID() });
   const availability = useQuery({
@@ -264,8 +265,6 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
   const presets = (availability.data?.shift_types ?? []).flatMap(type =>
     !type.archived && type.selectable && type.start_time && type.end_time
       ? [{ id: type.id, name: type.name, start_time: type.start_time, end_time: type.end_time }] : []);
-  const latestZone = model.locations.find((item) => item.id === location)?.timezone;
-  const staleZone = Boolean(zone && latestZone && zone !== latestZone);
   const today = todayIn(zone);
   const selectedDates = dateRange(start,end || start);
   const rangeTooLong = selectedDates.length > 31;
@@ -275,34 +274,36 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
     return choice.mode === "full_day" ? [{segment_date,start_time:null,end_time:null,ends_next_day:false}]
       : choice.hours.map(range=>({...range,segment_date}));
   });
-  const candidate = { location_id: location, reason, periods, expected_timezone: zone };
-  const validation = employeeTimeOffInputSchema.safeParse({ ...candidate, request_id: retry.current.key });
+  const candidate = { periods, reason, expected_timezone: zone };
+  const validation = timeOffSubmitInputSchema.safeParse({ ...candidate, operation_id: retry.current.key });
+  const started = timeOffStarted(periods, zone);
+  const submit = useSubmitTimeOff(model.workspace_id);
   const timeOff = useMutation({
     mutationFn: () => {
       if (rangeTooLong) throw new Error("Choose a date range of at most 31 calendar days.");
-      if (staleZone || !latestZone) throw new Error("Review the location time zone before submitting.");
+      if (started) throw new Error("This time off has already started. Talk to your manager directly.");
       const signature = JSON.stringify(candidate);
       if (retry.current.signature !== signature) retry.current = { signature, key: crypto.randomUUID() };
-      const command = employeeTimeOffInputSchema.safeParse({ ...candidate, request_id: retry.current.key });
+      const command = timeOffSubmitInputSchema.safeParse({ ...candidate, operation_id: retry.current.key });
       if (!command.success) throw new Error(command.error.issues[0]?.message ?? "Check the requested dates and hours.");
-      return submitEmployeeTimeOff(model.workspace_id, command.data);
+      return submit.mutateAsync(command.data);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Sent inside the decision window: the decision is due when it starts (rule 16).
+      const first = periods[0];
+      const due = result.decide_by ? timeOffWallParts(result.decide_by, zone) : null;
+      const late = Boolean(first && due && due.date === first.segment_date && due.clock.slice(0, 5) === (first.start_time ?? "00:00").slice(0, 5));
+      setSent(late ? "Request sent. It starts soon, so talk to your manager directly if it's urgent." : "Request sent.");
       setStart("");
       setEnd("");
       setReason("");
       setPeriodMode("full_day");
       setHours([{ ...defaultTimeOffHours }]);
       setDateDrafts({}); dateDefaultsChosen.current = false;
-      initialLocation.current = location;
       retry.current = { signature: "", key: crypto.randomUUID() };
-      void client.invalidateQueries({ queryKey: ["schedule-requests", model.workspace_id] });
       refresh();
     },
   });
-  useEffect(() => {
-    if (!start && !end && !reason && periodMode === "full_day" && !Object.keys(dateDrafts).length && !timeOff.isPending) setZone(latestZone);
-  }, [latestZone, start, end, reason, periodMode, dateDrafts, timeOff.isPending]);
   const actionMutation = useMutation({
     mutationFn: (action: Parameters<typeof actOnEmployeeRequest>[1]) =>
       actOnEmployeeRequest(model.workspace_id, action),
@@ -313,13 +314,13 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
     .filter(request => !currentTimeOffRequests.some(current => current.id === request.id))
     .map(request => ({...request, cancellation:request.cancellation ? {...request.cancellation,can_request:false} : undefined}))];
   const navigationDialog = useAvailabilityNavigationGuard({
-    dirty: Boolean(start || end || reason || periodMode !== "full_day" || Object.keys(dateDrafts).length || location !== initialLocation.current),
+    dirty: Boolean(start || end || reason || periodMode !== "full_day" || Object.keys(dateDrafts).length),
     busy: timeOff.isPending || actionMutation.isPending,
     labels: timeOffNavigationLabels,
     onDiscard: () => {
       setStart(""); setEnd(""); setReason(""); setPeriodMode("full_day"); setHours([{...defaultTimeOffHours}]);
       setDateDrafts({}); dateDefaultsChosen.current = false;
-      initialLocation.current = location; timeOff.reset();
+      timeOff.reset();
     },
   });
   return (
@@ -332,31 +333,11 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
       >
         <form
           className="time-off-form"
-          onSubmit={(event) => { event.preventDefault(); timeOff.mutate(); }}
+          onSubmit={(event) => { event.preventDefault(); setSent(""); timeOff.mutate(); }}
         >
           <fieldset disabled={timeOff.isPending}>
           <legend>Time off details</legend>
-          <label>
-            Location
-            <select
-              required
-              value={location}
-              onChange={(event) => {
-                setLocation(event.target.value);
-                setZone(model.locations.find((item) => item.id === event.target.value)?.timezone);
-              }}
-            >
-              {model.locations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p>{zone ? `Hours use ${zone}. Once submitted, these hours keep that time zone.` : "Refresh locations to choose the time zone for this request."}</p>
-          {staleZone ? <p role="alert">The location time zone changed from {zone} to {latestZone}. Review your entered hours before continuing.
-            {" "}<button type="button" onClick={() => setZone(latestZone)}>Use current location time zone</button>
-          </p> : null}
+          <p>Hours use {zone}.</p>
           <div className="date-pair">
             <label>
               Start
@@ -395,7 +376,8 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
           {Object.keys(dateDrafts).some(date=>!selectedDates.includes(date)) ? <p>Some customized dates are outside this range and will not be submitted. Their edits are kept if you restore those dates before submitting.</p> : null}
           {periodMode !== "per_date" && Object.keys(dateDrafts).length ? <p>Your per-date edits are kept if you switch back before submitting. The current time choice applies to every selected date.</p> : null}
           {periodMode === "per_date" && selectedDates.length && !rangeTooLong ? <p>{periods.length} requested period(s) across {new Set(periods.map(period=>period.segment_date)).size} date(s).</p> : null}
-          {start && !validation.success ? <p role="alert">{validation.error.issues[0]?.message}</p> : null}
+          {started ? <p role="alert">This time off has already started. Talk to your manager directly.</p>
+            : start && !validation.success ? <p role="alert">{validation.error.issues[0]?.message}</p> : null}
           <label>
             Note
             <textarea
@@ -405,11 +387,12 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
               placeholder="Optional context"
             />
           </label>
-          <button className="primary-button" disabled={timeOff.isPending || !validation.success || staleZone || !latestZone || rangeTooLong}>
+          <button className="primary-button" disabled={timeOff.isPending || !validation.success || started || rangeTooLong}>
             Submit request
           </button>
           </fieldset>
         </form>
+        {sent ? <p className="time-off-sent" role="status">{sent}</p> : null}
         {timeOff.error ? <InlineError error={timeOff.error} /> : null}
       </HubSection>
       <HubSection
@@ -422,8 +405,9 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
               <strong>{request.title}</strong>
               <span>{request.detail}</span>
               <small>
-                {statusLabel(request.status)} · Submitted{" "}
+                {request.display_status ?? statusLabel(request.status)} · Submitted{" "}
                 {formatDate(request.created_at)}
+                {request.status === "pending" && request.decide_by ? ` · Decision by ${formatDecideBy(request.decide_by)}` : ""}
               </small>
               {request.periods ? <TimeOffPeriods periods={request.periods} timeFormat={model.settings.time_format} requestStatus={request.status} cancellation={request.request_type === "time_off_cancellation"} /> : null}
               <TimeOffCancellation request={request} workspaceId={model.workspace_id} timeFormat={model.settings.time_format} onChanged={refresh}
@@ -466,6 +450,18 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
       </HubSection>
     </div>
   );
+}
+
+// Rule 19: time off that has begun in the request's zone cannot be asked for.
+function timeOffStarted(periods: readonly { segment_date: string; start_time: string | null }[], zone: string) {
+  const first = periods[0];
+  if (!first) return false;
+  const now = timeOffWallParts(new Date().toISOString(), zone);
+  if (first.segment_date !== now.date) return first.segment_date < now.date;
+  return !first.start_time || first.start_time.slice(0, 5) <= now.clock.slice(0, 5);
+}
+function formatDecideBy(iso: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
 interface HubMutationProps {

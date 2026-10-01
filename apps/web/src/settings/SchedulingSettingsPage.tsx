@@ -24,6 +24,7 @@ const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
   time_format: "12h",
+  time_off_lead_hours: 24,
 };
 
 type SchedulingSettingsDraft = Omit<
@@ -211,6 +212,26 @@ export default function SchedulingSettingsPage() {
                     })
                   }
                 />
+              </SettingsChoiceRow>
+              <SettingsChoiceRow
+                label="Time off decision window"
+                description="Managers decide this many hours before time off starts. Undecided requests are declined."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  max={720}
+                  step={1}
+                  required
+                  aria-label="Time off decision window (hours)"
+                  value={Number.isFinite(draft.time_off_lead_hours) ? draft.time_off_lead_hours : ""}
+                  onChange={(event) =>
+                    updateDraft({
+                      time_off_lead_hours: event.target.value === "" ? Number.NaN : Number(event.target.value),
+                    })
+                  }
+                />
+                <span className="setting-unit">hours</span>
               </SettingsChoiceRow>
               {mutation.error ? (
                 <p className="form-error" role="alert">

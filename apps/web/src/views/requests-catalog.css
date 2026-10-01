@@ -330,46 +330,8 @@
   border-color: var(--job-border);
   font-size: 12px;
 }
-.requests-decision-drawer .catalog-drawer-body,
 .requests-exchange-drawer .catalog-drawer-body {
   padding: 16px;
-}
-.requests-decision-drawer .catalog-drawer-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 13px;
-}
-.requests-decision-drawer .catalog-drawer-body > p {
-  margin: 0;
-  color: var(--job-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.requests-decision-drawer .job-editor-footer {
-  justify-content: flex-end;
-}
-.requests-catalog-page .time-off-assignment-review,
-.requests-catalog-page .partial-decisions > div {
-  border: 1px solid var(--job-border);
-  border-radius: 6px;
-  padding: 12px;
-  background: var(--job-subtle);
-}
-.requests-catalog-page .time-off-assignment-review h3 {
-  font-size: 13px;
-  margin: 0 0 8px;
-}
-.requests-catalog-page .decision-note {
-  display: grid;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.requests-catalog-page .decision-note > span {
-  color: var(--job-muted);
-  font-weight: 400;
-  font-size: 11px;
 }
 /* Manager shift requests use the same catalog list; the employee hub is untouched. */
 .requests-catalog-page .sx-root,
@@ -586,4 +548,209 @@
 .requests-catalog-page .sx-actions {
   flex-wrap: wrap;
   gap: 8px;
+}
+/* FB-6.3.6: approval progress of a pending request. a = checklist, b = one
+   card per location, c = meter + table; DEV ?progressVariant= until Mert picks. */
+.requests-review-drawer .tov {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--job-border);
+}
+.requests-review-drawer .tov h2,
+.requests-review-drawer .tov h3 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--job-text);
+}
+.requests-review-drawer .tov p {
+  margin: 0;
+}
+.requests-review-drawer .tov .tov-muted {
+  color: var(--job-muted);
+  font-size: 12px;
+}
+.requests-review-drawer .tov-mine {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--job-accent);
+}
+.requests-review-drawer .tov-shifts {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--job-text);
+}
+/* a: checklist */
+.requests-review-drawer .tov-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.requests-review-drawer .tov-head > span {
+  font-size: 12px;
+  color: var(--job-muted);
+}
+.requests-review-drawer .tov-deadline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--theme-warning-text);
+}
+.requests-review-drawer .tov-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.requests-review-drawer .tov-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--job-muted);
+}
+.requests-review-drawer .tov-steps li.approved > svg {
+  color: var(--theme-success);
+}
+.requests-review-drawer .tov-steps li > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.requests-review-drawer .tov-steps li > span {
+  display: grid;
+}
+.requests-review-drawer .tov-steps strong {
+  font-size: 13px;
+  color: var(--job-text);
+}
+.requests-review-drawer .tov-steps small,
+.requests-review-drawer .tov-place > strong {
+  font-size: 12px;
+}
+.requests-review-drawer .tov-place {
+  display: grid;
+  gap: 2px;
+}
+/* b: one card per location */
+.requests-review-drawer .tov-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+  font-size: 12px;
+}
+.requests-review-drawer .tov-banner span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.requests-review-drawer .tov-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.requests-review-drawer .tov-cards article {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--job-border);
+  border-radius: 6px;
+  background: var(--job-bg);
+}
+.requests-review-drawer .tov-cards article.approved {
+  border-color: var(--theme-success);
+  background: var(--theme-success-soft);
+}
+.requests-review-drawer .tov-cards header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.requests-review-drawer .tov-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--job-muted);
+}
+.requests-review-drawer .approved .tov-badge {
+  color: var(--theme-success);
+}
+/* c: meter + table */
+.requests-review-drawer .tov-meter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 12px;
+}
+.requests-review-drawer .tov-meter {
+  display: flex;
+  flex: 1 1 120px;
+  gap: 3px;
+}
+.requests-review-drawer .tov-meter span {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--job-border);
+}
+.requests-review-drawer .tov-meter span.filled {
+  background: var(--theme-success);
+}
+.requests-review-drawer .tov-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.requests-review-drawer .tov-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.requests-review-drawer .tov-pills li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--job-border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--job-muted);
+}
+.requests-review-drawer .tov-pills li.approved {
+  border-color: var(--theme-success);
+  color: var(--theme-success);
+}
+.requests-review-drawer .tov-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.requests-review-drawer .tov-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--job-muted);
+}
+.requests-review-drawer .tov-table :is(th, td) {
+  padding: 5px 6px 5px 0;
+  border-bottom: 1px solid var(--job-border);
 }

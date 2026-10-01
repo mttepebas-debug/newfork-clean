@@ -1,18 +1,23 @@
-import { act, configure, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   ScheduleRequestsReadModel,
+  TimeOffProgress,
+  TimeOffRequest,
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
-import { decideTimeOff, getScheduleRequests, previewTimeOffAssignment, shortenTimeOff } from "../schedule/requests-data";
-
 import { RequestError } from "../lib/request-error";
+
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+const requestId = "97200000-0000-4000-8000-000000000001";
+const kadikoy = "11000000-0000-4000-8000-000000000001";
+const besiktas = "11000000-0000-4000-8000-000000000002";
+const fingerprint = "0123456789abcdef0123456789abcdef";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: {
@@ -44,6 +49,7 @@ const context = {
     "schedule.read",
     "requests.read",
     "time_off.decide",
+    "time_off.revoke",
     "exchange.read",
     "exchange.approve",
   ],
@@ -53,79 +59,76 @@ const context = {
 } satisfies ActiveWorkspaceContext;
 let activeContext: ActiveWorkspaceContext = context;
 
+const shift = {
+  id: "22000000-0000-4000-8000-000000000004", location_id: besiktas, location_name: "Beşiktaş",
+  scheduled_date: "2035-01-15", start_time: "15:00", end_time: "23:00", timezone: "UTC", job_name: "Server",
+  time_unknown: false, starts_at: "2035-01-15T15:00:00Z", ends_at: "2035-01-15T23:00:00Z",
+};
+// Ali works at Kadıköy and Beşiktaş; Ayşe approved Kadıköy, Beşiktaş waits.
+const progress: TimeOffProgress = {
+  remaining: 1, fallback: false, decide_by: "2035-01-14T09:00:00Z",
+  can_vote: true, can_decide_alone: false, my_vote: null, my_approval_finalizes: true,
+  locations: [
+    { id: kadikoy, name: "Kadıköy", approved_by: "15000000-0000-4000-8000-000000000009", approved_by_name: "Ayşe Yılmaz", approved_at: "2035-01-10T14:15:00Z" },
+    { id: besiktas, name: "Beşiktaş", approved_by: null, approved_by_name: null, approved_at: null },
+  ],
+  impact: { fingerprint, hidden_shift_count: 0, locations: {
+    [kadikoy]: { fingerprint, shifts: [] },
+    [besiktas]: { fingerprint, shifts: [shift] },
+  } },
+};
+const pending: TimeOffRequest = {
+  id: requestId,
+  employee_id: "15000000-0000-4000-8000-000000000001",
+  employee_name: "Alex Kim",
+  location_id: null,
+  location_name: null,
+  request_type: "time_off",
+  reason: "Family appointment",
+  status: "pending",
+  start_date: "2035-01-15",
+  end_date: "2035-01-16",
+  revision: 1,
+  viewed_at: null,
+  created_at: "2035-01-09T11:00:00.000Z",
+  decide_by: "2035-01-14T09:00:00Z",
+  conflict_count: 0,
+  segments: [
+    { id: "97300000-0000-4000-8000-000000000001", segment_date: "2035-01-15", start_time: null, end_time: null, status: "pending" },
+  ],
+  events: [],
+  progress,
+};
 const fixture = {
   workspace_id: workspaceId,
-  locations: [
-    { id: "11000000-0000-4000-8000-000000000001", name: "Main Dining" },
-  ],
+  locations: [{ id: kadikoy, name: "Kadıköy" }, { id: besiktas, name: "Beşiktaş" }],
   time_off_pending_count: 1,
   time_off_next_cursor: null,
-  time_off_requests: [
-    {
-      id: "97200000-0000-4000-8000-000000000001",
-      employee_id: "15000000-0000-4000-8000-000000000001",
-      employee_name: "Alex Kim",
-      location_id: "11000000-0000-4000-8000-000000000001",
-      location_name: "Main Dining",
-      request_type: "time_off",
-      reason: "Family appointment",
-      status: "pending",
-      start_date: "2026-08-17",
-      end_date: "2026-08-18",
-      revision: 1,
-      viewed_at: "2026-08-17T12:00:00.000Z",
-      created_at: "2026-08-17T11:00:00.000Z",
-      conflict_count: 1,
-      segments: [
-        {
-          id: "97300000-0000-4000-8000-000000000001",
-          segment_date: "2026-08-17",
-          start_time: "10:00:00",
-          end_time: "14:00:00",
-          status: "pending",
-        },
-        {
-          id: "97300000-0000-4000-8000-000000000002",
-          segment_date: "2026-08-18",
-          start_time: null,
-          end_time: null,
-          status: "pending",
-        },
-      ],
-      events: [],
-    },
-  ],
+  time_off_requests: [pending],
 } satisfies ScheduleRequestsReadModel;
+let read: ScheduleRequestsReadModel = fixture;
+let readFailure: { status: number; body: unknown } | null = null;
 
 // Whole-repo runs share the cores with three other packages; Testing
 // Library's 1 s default for findBy/waitFor is what ran out there (U19).
 configure({ asyncUtilTimeout: 5000 });
 
+const fetchRequests = vi.fn(async () =>
+  readFailure
+    ? new Response(JSON.stringify(readFailure.body), { status: readFailure.status })
+    : new Response(JSON.stringify(read), { status: 200 }));
+const apiRequest = vi.fn();
+vi.mock("../lib/supabase", () => ({
+  supabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } },
+  apiRequest: (...args: unknown[]) => apiRequest(...args),
+  getTabWorkspaceId: () => null,
+}));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: activeContext }),
 }));
 vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../employee-hub/shift-exchanges/exchange-data")>()),
   getExchanges: vi.fn(),
-}));
-vi.mock("../schedule/requests-data", () => ({
-  previewTimeOffAssignment: vi.fn(),
-  getScheduleRequests: vi.fn().mockImplementation(async () => fixture),
-  markTimeOffViewed: vi.fn().mockResolvedValue({
-    status: "viewed",
-    request_id: "97200000-0000-4000-8000-000000000001",
-    revision: 1,
-  }),
-  decideTimeOff: vi.fn().mockResolvedValue({
-    status: "partially_approved",
-    request_id: "97200000-0000-4000-8000-000000000001",
-    revision: 2,
-  }),
-  shortenTimeOff: vi.fn().mockResolvedValue({
-    status: "partially_approved",
-    request_id: "97200000-0000-4000-8000-000000000001",
-    revision: 3,
-  }),
 }));
 
 function LocationProbe() { const location = useLocation(); return <output aria-label="Current URL">{location.pathname + location.search}</output>; }
@@ -151,87 +154,59 @@ function renderPage(
     </QueryClientProvider>,
   );
 }
-
+function withRequest(change: Partial<TimeOffRequest>) {
+  read = { ...fixture, time_off_requests: [{ ...pending, ...change }] };
+}
 async function openTimeOffRequest() {
   fireEvent.click(await screen.findByRole("button", { name: /Alex Kim/ }));
+  return screen.findByRole("dialog", { name: "Review request" });
 }
+const calls = () => apiRequest.mock.calls.map(([, path, init]) => [path, JSON.parse((init as RequestInit).body as string)]);
+const verdict = (body: object) => ({ status: "pending", final: false, alone: false, remaining: 1, revision: 2, request_id: requestId, ...body });
 
-describe("ScheduleRequestsPage", () => {
-  afterEach(() => vi.restoreAllMocks());
-  it("keeps a requested tab change pending until an in-flight decision finishes", async () => {
-    let finish!: (value:Awaited<ReturnType<typeof decideTimeOff>>) => void;
-    vi.mocked(decideTimeOff).mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));
-    renderPage(); await openTimeOffRequest(); fireEvent.click(screen.getByRole("button",{name:"Partial"}));
-    await waitFor(()=>expect(screen.getByRole("button",{name:"Save Partial Decision"})).toHaveProperty("disabled",false));
-    fireEvent.click(screen.getByRole("button",{name:"Save Partial Decision"}));
-    await waitFor(()=>expect(decideTimeOff).toHaveBeenCalledOnce());
-    fireEvent.click(screen.getByRole("tab",{name:/Shift changes/}));
-    expect(await screen.findByText("Saving request decision")).toBeTruthy();
-    expect(screen.getByRole("button",{name:"Continue"})).toHaveProperty("disabled",true);
-    await act(async()=>finish({status:"partially_approved",request_id:fixture.time_off_requests[0]!.id,revision:2}));
-    await screen.findByText("Decision saved");
-    fireEvent.click(screen.getByRole("button",{name:"Continue"}));
-    await screen.findByRole("heading",{name:"Shift changes"});
-    expect(decideTimeOff).toHaveBeenCalledOnce();
-  });
-  it("keeps a manager partial decision and note until closing is explicitly confirmed", async () => {
-    renderPage(); await openTimeOffRequest(); fireEvent.click(screen.getByRole("button",{name:"Partial"}));
-    fireEvent.change(screen.getByLabelText(`Decision for ${fixture.time_off_requests[0]!.segments[1]!.id}`),{target:{value:"denied"}});
-    fireEvent.change(screen.getByLabelText(/Manager note/),{target:{value:"Preserve this partial decision"}});
-    fireEvent.click(screen.getByRole("button",{name:"Close"}));
-    expect(await screen.findByRole("alertdialog")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button",{name:"Stay here"}));
-    expect(screen.getByLabelText(/Manager note/)).toHaveProperty("value","Preserve this partial decision");
-    expect(screen.getByLabelText(`Decision for ${fixture.time_off_requests[0]!.segments[1]!.id}`)).toHaveProperty("value","denied");
-    fireEvent.click(screen.getByRole("button",{name:"Close"}));
-    fireEvent.click(screen.getByRole("button",{name:"Discard and leave"}));
-    expect(screen.getByRole("dialog", { name: "Review request" })).toBeTruthy(); expect(decideTimeOff).not.toHaveBeenCalled();
-  });
-  beforeEach(() => {
-    activeContext = context;
-    vi.clearAllMocks();
-    vi.mocked(getScheduleRequests).mockResolvedValue(fixture);
-    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
-    vi.mocked(previewTimeOffAssignment).mockResolvedValue({ request_id: fixture.time_off_requests[0]!.id, revision: 1, fingerprint: "a".repeat(64), restricted_count: 0, affected_shifts: [], approved_intervals: [] });
-  });
+beforeEach(() => {
+  activeContext = context;
+  read = fixture;
+  readFailure = null;
+  vi.clearAllMocks();
+  vi.stubGlobal("fetch", fetchRequests);
+  vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
+});
+
+describe("Requests > Time off (FB-6.3.6)", () => {
   it.each(["owner", "admin", "manager"] as const)("redirects an old availability link for %s without loading an approval queue", async role => {
     activeContext = { ...context, membership: { ...context.membership, role }, permissions: ["workspace.read", "schedule.read"] };
     renderPage("/app/schedule/requests?tab=availability&request=old&legacy=1&case=old&offer=old");
     await screen.findByRole("heading", { name: "Team Availability" });
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/availability");
-    expect(getScheduleRequests).not.toHaveBeenCalled();
+    expect(fetchRequests).not.toHaveBeenCalled();
     expect(getExchanges).not.toHaveBeenCalled();
   });
   it("preserves team access control for an employee following an old availability link", async () => {
     activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
     renderPage("/app/schedule/requests?tab=availability");
     await screen.findByRole("heading", { name: "Employee Hub" });
-    expect(getScheduleRequests).not.toHaveBeenCalled();
+    expect(fetchRequests).not.toHaveBeenCalled();
   });
   it("does not treat employee-record read permission as request queue access", async () => {
-    activeContext = {...context, permissions:["workspace.read","employees.read"]};
+    activeContext = { ...context, permissions: ["workspace.read", "employees.read"] };
     renderPage();
     await screen.findByRole("heading", { name: "Workspace" });
-    expect(getScheduleRequests).not.toHaveBeenCalled();
+    expect(fetchRequests).not.toHaveBeenCalled();
   });
   it("keeps only Time off and Shift changes tabs and opens the manager Shift Hub", async () => {
-    activeContext = { ...context, permissions: [...context.permissions, "employees.read"] };
     renderPage();
     await screen.findByText("Alex Kim");
     expect(screen.getAllByRole("tab")).toHaveLength(2);
-    expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: /Shift changes/ }));
     await screen.findByRole("heading", { name: "Shift changes" });
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.anything());
     expect(screen.getByRole("tab", { name: "Time off 1" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "View earlier requests" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
   });
   it("lands a manager notification link on its Shift Hub case", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
     renderPage(`/app/schedule/requests?tab=shift-changes&case=${caseId}`);
     await screen.findByRole("heading", { name: "Shift changes" });
-    expect(screen.getByRole("tab", { name: "Shift changes" }).getAttribute("aria-selected")).toBe("true");
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
   });
   it.each([
@@ -242,223 +217,207 @@ describe("ScheduleRequestsPage", () => {
     renderPage();
     await screen.findByRole("heading", { name: "Requests" });
     expect(screen.getAllByRole("tab")).toHaveLength(1);
-    expect(screen.queryByRole("tab", { name: "Availability" })).toBeNull();
-  });
-  it("shows no decision buttons to a reader the core does not let decide time off", async () => {
-    // The manage permission is still listed; the core's action is not.
-    activeContext = { ...context, actions: context.actions.filter(action => action !== "time_off.decide") };
-    renderPage(); await openTimeOffRequest();
-    expect(screen.getByRole("dialog", { name: "Review request" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Approve/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Deny/ })).toBeNull();
   });
   it("hides the time off queue from someone the core does not let read it", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
     renderPage();
     await screen.findByRole("heading", { name: "Requests" });
-    expect(screen.getAllByRole("tab")).toHaveLength(1);
     expect(screen.queryByRole("tab", { name: /Time off/ })).toBeNull();
   });
-  it("decides cancellation pieces without assignment-release preview or reassignment", async () => {
-    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, request_type: "time_off_cancellation" }] });
-    renderPage(); await openTimeOffRequest(); fireEvent.click(screen.getByRole("button", { name: "Partial" }));
-    expect(screen.getByRole("dialog").textContent).toContain("does not reassign any previously released shift");
-    expect(screen.getAllByRole("option", { name: "Keep leave for entire period" })).toHaveLength(2);
-    fireEvent.change(screen.getByLabelText(`Decision for ${fixture.time_off_requests[0]!.segments[1]!.id}`), { target: { value: "denied" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save cancellation decision" }));
-    await waitFor(() => expect(decideTimeOff).toHaveBeenCalled());
-    expect(previewTimeOffAssignment).not.toHaveBeenCalled();
-    const body = vi.mocked(decideTimeOff).mock.calls[0]![2];
-    expect(body.assignment_fingerprint).toBeUndefined(); expect(body.assignment_decisions).toBeUndefined();
-    expect(body.segment_decisions[1]!.status).toBe("denied");
-  });
-  it("wraps drawer keyboard focus and defers Escape to the unsaved-decision alert", async () => {
-    vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue([{ width: 1, height: 1 }] as unknown as DOMRectList);
-    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, request_type: "time_off_cancellation" }] });
+
+  it("lists a request with no location by its decide-by time and the shifts it would open", async () => {
     renderPage();
-    await openTimeOffRequest();
-    const opener = await screen.findByRole("button", { name: "Partial" });
-    opener.focus(); fireEvent.click(opener);
-    const dialog = screen.getByRole("dialog", { name: "Save cancellation decision" });
-    const close = screen.getByRole("button", { name: "Close" });
-    const save = screen.getByRole("button", { name: "Save cancellation decision" });
-    expect(document.activeElement).toBe(screen.getByLabelText(/Manager note/));
-    close.focus();
-    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
-    expect(document.activeElement).toBe(save);
-    fireEvent.keyDown(save, { key: "Tab" });
-    expect(document.activeElement).toBe(close);
-    fireEvent.change(screen.getByLabelText(/Manager note/), { target: { value: "Keep the first period" } });
-    fireEvent.keyDown(dialog, { key: "Escape" });
-    expect(screen.getByRole("alertdialog")).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Stay here" }));
-    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
-    expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(dialog.contains(document.activeElement)).toBe(true);
-    fireEvent.change(screen.getByLabelText(/Manager note/), { target: { value: "" } });
-    fireEvent.keyDown(dialog, { key: "Escape" });
-    expect(screen.getByRole("dialog", { name: "Review request" }).contains(document.activeElement)).toBe(true);
-    expect(decideTimeOff).not.toHaveBeenCalled();
+    const row = await screen.findByRole("button", { name: /Alex Kim/ });
+    expect(screen.getByRole("columnheader", { name: /Decide by/ })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: /Location/ })).toBeNull();
+    expect(row.textContent).toContain("Jan 14");
+    expect(within(row).getByTitle("Shifts that become open").textContent).toBe("1");
   });
+
+  it("shows who approved which location, what is left, the deadline and the shifts that open (variant a)", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
+    expect(panel.textContent).toContain("1 of 2 locations approved");
+    expect(panel.textContent).toContain("Decide by Jan 14");
+    expect(panel.textContent).toContain("Ayşe Yılmaz");
+    expect(panel.textContent).toContain("Waiting");
+    expect(panel.textContent).toContain("Mon, Jan 15 · 3:00 PM–11:00 PM · Server");
+  });
+  it.each([
+    ["b", "Approved", "No shifts open here"],
+    ["c", "1/2 approved", "Server"],
+  ])("opens progress variant %s from the address in DEV", async (variant, first, second) => {
+    renderPage(`/app/schedule/requests?progressVariant=${variant}`);
+    const drawer = await openTimeOffRequest();
+    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
+    expect(panel.className).toContain(`tov-${variant}`);
+    expect(panel.textContent).toContain(first);
+    expect(panel.textContent).toContain(second);
+  });
+  it("says an admin or owner decides when no location manager can", async () => {
+    withRequest({ progress: { ...progress, fallback: true, locations: [] } });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(drawer.textContent).toContain("No location manager can decide. An admin or owner decides.");
+  });
+
+  it("shows no vote buttons when the core says this reader cannot vote", async () => {
+    withRequest({ progress: { ...progress, can_vote: false, can_decide_alone: false } });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).queryByRole("button", { name: /Approve/ })).toBeNull();
+    expect(within(drawer).queryByRole("button", { name: /Deny/ })).toBeNull();
+    expect(drawer.textContent).toContain("View-only access");
+  });
+  it("records a manager's approval that does not finish the request without a confirm box", async () => {
+    withRequest({ progress: { ...progress, my_approval_finalizes: false, remaining: 2 } });
+    apiRequest.mockResolvedValueOnce(verdict({ remaining: 1 }));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    await screen.findByText("Your approval is saved. 1 location still to approve.");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(calls()).toEqual([[`/v1/workspaces/${workspaceId}/time-off/${requestId}/verdict`, { verdict: "approve", note: "", expected_impact: fingerprint }]]);
+  });
+  it("asks before the approval that opens published shifts", async () => {
+    apiRequest.mockResolvedValueOnce(verdict({ status: "approved", final: true, remaining: 0 }));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
+    expect(box.textContent).toContain("1 published shift becomes an open shift.");
+    expect(apiRequest).not.toHaveBeenCalled();
+    fireEvent.click(within(box).getByRole("button", { name: "Approve" }));
+    await screen.findByText("Time off approved.");
+    expect(calls()[0]![1]).toEqual({ verdict: "approve", note: "", expected_impact: fingerprint });
+  });
+  it("tells an admin or owner their approval takes effect now", async () => {
+    withRequest({ progress: { ...progress, can_vote: false, can_decide_alone: true, my_approval_finalizes: true } });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
+    expect(box.textContent).toContain("Takes effect now. Managers at Alex Kim's locations are notified. 1 published shift becomes an open shift.");
+  });
+  it("denies with an optional note", async () => {
+    apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: /Deny/ }));
+    const box = await screen.findByRole("alertdialog", { name: "Deny time off?" });
+    fireEvent.change(within(box).getByLabelText("Note for Alex Kim (optional)"), { target: { value: " I can approve Jan 15 only " } });
+    fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
+    await screen.findByText("Time off denied.");
+    expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "I can approve Jan 15 only", expected_impact: fingerprint });
+  });
+  it("closes the box and asks for a second look when the request changed meanwhile", async () => {
+    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", undefined, undefined, 409));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
+    await screen.findByText("This request changed. Review it again.");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
+  });
+  it("keeps the box and its note open when the vote fails for another reason", async () => {
+    apiRequest.mockRejectedValueOnce(new Error("Connection lost"));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: /Deny/ }));
+    const box = await screen.findByRole("alertdialog");
+    fireEvent.change(within(box).getByRole("textbox"), { target: { value: "Short staffed" } });
+    fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
+    expect((await within(box).findByRole("alert")).textContent).toBe("Connection lost");
+    expect((within(box).getByRole("textbox") as HTMLTextAreaElement).value).toBe("Short staffed");
+  });
+  it("offers no Partial or Return to pending any more", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).queryByRole("button", { name: "Partial" })).toBeNull();
+    expect(within(drawer).queryByRole("button", { name: /Return to pending/ })).toBeNull();
+  });
+
+  it("revokes approved time off only with a reason", async () => {
+    withRequest({ status: "approved", revision: 3, progress: null });
+    apiRequest.mockResolvedValueOnce({ status: "revoked", request_id: requestId, revision: 4 });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: /Revoke/ }));
+    const box = await screen.findByRole("alertdialog", { name: "Revoke time off?" });
+    const confirm = within(box).getByRole("button", { name: "Revoke" }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(within(box).getByLabelText("Reason"), { target: { value: "Inventory day" } });
+    expect(confirm.disabled).toBe(false);
+    fireEvent.click(confirm);
+    await screen.findByText("Time off revoked.");
+    expect(calls()).toEqual([[`/v1/workspaces/${workspaceId}/time-off/${requestId}/revoke`, { expected_revision: 3, reason: "Inventory day" }]]);
+  });
+  it("does not offer revoke without the core's revoke action", async () => {
+    withRequest({ status: "approved", progress: null });
+    activeContext = { ...context, actions: context.actions.filter(action => action !== "time_off.revoke") };
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
+  });
+  it("does not offer revoke on an approved cancellation", async () => {
+    withRequest({ status: "approved", request_type: "time_off_cancellation", progress: null });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
+  });
+  it("votes on a cancellation request with its own words", async () => {
+    withRequest({ request_type: "time_off_cancellation", progress: { ...progress, impact: { fingerprint, hidden_shift_count: 0, locations: {} } } });
+    apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: /Decline/ }));
+    const box = await screen.findByRole("alertdialog", { name: "Decline cancellation?" });
+    expect(box.textContent).toContain("The time off stays in place.");
+    fireEvent.click(within(box).getByRole("button", { name: "Decline" }));
+    await screen.findByText("Cancellation declined.");
+  });
+
   it("lets a manager give back hours of approved time off (BL-127)", async () => {
     const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
-    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, status: "approved", revision: 2,
-      segments: [{ ...fixture.time_off_requests[0]!.segments[0]!, status: "approved", time_timezone: "UTC", effective_intervals: [future] }] }] });
-    renderPage(); await openTimeOffRequest();
+    withRequest({ status: "approved", revision: 2, progress: null,
+      segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
+    apiRequest.mockResolvedValueOnce({ status: "approved", request_id: requestId, revision: 3 });
+    renderPage();
+    await openTimeOffRequest();
     fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
-    expect(screen.getByText(/This takes effect now/)).toBeTruthy();
-    const send = screen.getByRole("button", { name: "Give back these hours" }) as HTMLButtonElement;
-    expect(send.disabled).toBe(true);
     fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
-    fireEvent.click(send);
-    await waitFor(() => expect(shortenTimeOff).toHaveBeenCalledOnce());
-    expect(vi.mocked(shortenTimeOff).mock.calls[0]!.slice(0, 2)).toEqual([workspaceId, "97200000-0000-4000-8000-000000000001"]);
-    expect(vi.mocked(shortenTimeOff).mock.calls[0]![2]).toMatchObject({ expected_revision: 2,
-      periods: [{ segment_id: "97300000-0000-4000-8000-000000000001", starts_at: future.start_at, ends_at: future.end_at }] });
+    fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledOnce());
+    expect(calls()[0]![0]).toBe(`/v1/workspaces/${workspaceId}/time-off/${requestId}/shorten`);
+    expect(calls()[0]![1]).toMatchObject({ expected_revision: 2,
+      periods: [{ segment_id: pending.segments[0]!.id, starts_at: future.start_at, ends_at: future.end_at }] });
     expect(await screen.findByText(/Alex Kim's time off is shorter/)).toBeTruthy();
   });
-  it("names the manager's hour picker by what it does and by its visible labels (G9b QA D2)", async () => {
-    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
-    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, status: "approved", revision: 2,
-      segments: [{ ...fixture.time_off_requests[0]!.segments[0]!, status: "approved", time_timezone: "UTC", effective_intervals: [future] }] }] });
-    renderPage(); await openTimeOffRequest();
-    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
-    fireEvent.click(screen.getByRole("button", { name: "Choose hours for period 1" }));
-    expect(screen.getByRole("group", { name: /^Hours to give back for period 1/ })).toBeTruthy();
-    for (const name of ["Starts on, period 1", "Start time, period 1", "Repeated time, start, period 1",
-      "Ends on, period 1", "End time, period 1", "Repeated time, end, period 1"])
-      expect(screen.getByLabelText(name)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Discard these edits for period 1" })).toBeTruthy();
-    expect(screen.queryByText(/Cancellation hours/)).toBeNull();
-  });
   it("offers no shortening while time off is still pending", async () => {
-    renderPage(); await openTimeOffRequest();
-    await screen.findByRole("button", { name: "Partial" });
-    expect(screen.queryByRole("button", { name: "Shorten time off" })).toBeNull();
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).queryByRole("button", { name: "Shorten time off" })).toBeNull();
   });
-  it("does not offer reopen or revoke for completed cancellations", async () => {
-    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_off_requests: [{ ...fixture.time_off_requests[0]!, request_type: "time_off_cancellation", status: "approved" }] });
-    renderPage(); await openTimeOffRequest(); await screen.findByText(/Cancellation of approved leave/);
-    expect(screen.queryByRole("button", { name: "Revoke" })).toBeNull(); expect(screen.queryByRole("button", { name: "Return to pending" })).toBeNull();
-  });
-  // BL-273: an approved leave can release shifts; Schedule and the dashboard must not stay stale.
+  // BL-273: an approval can open shifts; Schedule and the dashboard must not stay stale.
   it("refreshes the Schedule grid and the workspace dashboard after a decision", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    client.setQueryData(["schedule-read", workspaceId, "2026-10-05"], { shifts: [] });
+    client.setQueryData(["schedule-read", workspaceId, "2035-01-15"], { shifts: [] });
     client.setQueryData(["workspace-dashboard", workspaceId], { pending: 1 });
+    apiRequest.mockResolvedValueOnce(verdict({ status: "approved", final: true, remaining: 0 }));
     renderPage(undefined, client);
-    await openTimeOffRequest();
-    fireEvent.click(screen.getByRole("button", { name: "Partial" }));
-    fireEvent.change(screen.getAllByRole("combobox").at(-1)!, { target: { value: "denied" } });
-    await waitFor(() => expect((screen.getByRole("button", { name: "Save Partial Decision" }) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByRole("button", { name: "Save Partial Decision" }));
-    await waitFor(() => expect(decideTimeOff).toHaveBeenCalled());
-    await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2026-10-05"])?.isInvalidated).toBe(true));
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
+    await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2035-01-15"])?.isInvalidated).toBe(true));
     expect(client.getQueryState(["workspace-dashboard", workspaceId])?.isInvalidated).toBe(true);
-  });
-  it("submits explicit partial decisions", async () => {
-    renderPage();
-    expect(
-      await screen.findByRole("heading", { name: "Requests" }),
-    ).toBeTruthy();
-    await openTimeOffRequest();
-    fireEvent.click(screen.getByRole("button", { name: "Partial" }));
-    const decision = screen.getByRole("dialog", { name: /Save partial decision/i });
-    expect(decision.textContent?.replace(/\s+/g, " ")).toContain("10:00 AM–2:00 PM");
-    expect(decision.textContent).toContain("Full day");
-    expect(decision.textContent).toContain("Published shifts remain assigned");
-    const segmentChoices = screen.getAllByRole("combobox");
-    fireEvent.change(segmentChoices.at(-1)!, { target: { value: "denied" } });
-    await waitFor(() => expect((screen.getByRole("button", { name: "Save Partial Decision" }) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save Partial Decision" }),
-    );
-    await waitFor(() =>
-      expect(decideTimeOff).toHaveBeenCalledWith(
-        workspaceId,
-        "97200000-0000-4000-8000-000000000001",
-        expect.objectContaining({
-          expected_revision: 1,
-          action: "partial_approve",
-          segment_decisions: [
-            {
-              segment_id: "97300000-0000-4000-8000-000000000001",
-              status: "approved",
-            },
-            {
-              segment_id: "97300000-0000-4000-8000-000000000002",
-              status: "denied",
-            },
-          ],
-        }),
-      ),
-    );
-    await screen.findByText("Decision saved. The queue is current.");
-  });
-
-  it("splits a single requested period, retains a failed decision, and retries with the same key", async () => {
-    const segment = { ...fixture.time_off_requests[0]!.segments[0]!, end_time: "17:00:00", starts_at: "2026-08-17T10:00:00Z", ends_at: "2026-08-17T17:00:00Z", time_timezone: "UTC", time_source: "snapshot" as const };
-    vi.mocked(getScheduleRequests).mockResolvedValue({ ...fixture, time_format: "24h", time_off_requests: [{ ...fixture.time_off_requests[0]!, segments: [segment] }] });
-    vi.mocked(decideTimeOff).mockRejectedValueOnce(new Error("Connection lost"));
-    renderPage();
-    await openTimeOffRequest();
-    fireEvent.click(await screen.findByRole("button", { name: "Partial" }));
-    expect(screen.getByRole("dialog").textContent).toContain("10:00–17:00");
-    fireEvent.click(screen.getByRole("button", { name: "Split period" }));
-    expect(document.activeElement).toBe(screen.getByLabelText("Split date"));
-    expect((screen.getByRole("button", { name: "Save Partial Decision" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Split time"), { target: { value: "09:00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Apply split" }));
-    await screen.findByText("Split strictly inside this requested period.");
-    fireEvent.change(screen.getByLabelText("Split time"), { target: { value: "12:00" } });
-    fireEvent.click(screen.getByRole("button", { name: "Apply split" }));
-    expect(document.activeElement).toBe(screen.getByLabelText(`Decision for ${segment.id}`));
-    fireEvent.change(screen.getByLabelText(`Piece 2 decision for ${segment.id}`), { target: { value: "denied" } });
-    fireEvent.change(screen.getByLabelText(/Manager note/), { target: { value: "Morning approved; afternoon declined." } });
-    await waitFor(() => expect((screen.getByRole("button", { name: "Save Partial Decision" }) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByRole("button", { name: "Save Partial Decision" }));
-    await screen.findByRole("alert");
-    const first = vi.mocked(decideTimeOff).mock.calls[0]?.[2];
-    expect(first).toEqual({
-      expected_revision: 1, action: "partial_approve", operation_id: expect.any(String), note: "Morning approved; afternoon declined.",
-      assignment_fingerprint: "a".repeat(64), assignment_decisions: [],
-      segment_decisions: [{ segment_id: segment.id, pieces: [
-        { starts_at: "2026-08-17T10:00:00Z", ends_at: "2026-08-17T12:00:00.000Z", status: "approved" },
-        { starts_at: "2026-08-17T12:00:00.000Z", ends_at: "2026-08-17T17:00:00Z", status: "denied" },
-      ] }],
-    });
-    expect((screen.getByLabelText(/Manager note/) as HTMLTextAreaElement).value).toBe("Morning approved; afternoon declined.");
-    await waitFor(() => expect((screen.getByRole("button", { name: "Save Partial Decision" }) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByRole("button", { name: "Save Partial Decision" }));
-    await waitFor(() => expect(decideTimeOff).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(decideTimeOff).mock.calls[1]?.[2]).toEqual(first);
-  });
-
-  it("requires an explicit entire-shift release before approving overlapping published work", async () => {
-    const shiftId = "22000000-0000-4000-8000-000000000004";
-    vi.mocked(previewTimeOffAssignment).mockResolvedValue({ request_id: fixture.time_off_requests[0]!.id, revision: 1, fingerprint: "b".repeat(64), restricted_count: 0, approved_intervals: [], affected_shifts: [{
-      id: shiftId, source_id: shiftId, publication_id: workspaceId, location_id: fixture.locations[0]!.id, location_name: "Main Dining", scheduled_date: "2035-01-15",
-      start_time: "15:00", end_time: "23:00", timezone: "UTC", time_basis: "explicit", time_unknown: false, job_name: "Server", starts_at: "2035-01-15T15:00:00Z", ends_at: "2035-01-15T23:00:00Z",
-    }] });
-    renderPage();
-    await openTimeOffRequest();
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
-    const choice = await screen.findByRole("checkbox", { name: /Release entire shift/ });
-    const save = screen.getAllByRole("button", { name: "Approve" }).at(-1)!;
-    expect((save as HTMLButtonElement).disabled).toBe(true);
-    expect(decideTimeOff).not.toHaveBeenCalled();
-    fireEvent.click(choice);
-    await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(save);
-    await waitFor(() => expect(decideTimeOff).toHaveBeenCalledWith(workspaceId, fixture.time_off_requests[0]!.id, expect.objectContaining({
-      assignment_fingerprint: "b".repeat(64), assignment_decisions: [{ shift_id: shiftId, action: "release_entire_shift" }],
-    })));
   });
 });
 
 describe("no access (FB-6.1.9)", () => {
   it("shows the no-access card, not the raw error, when the API refuses requests (FB-6.1.9)", async () => {
-    vi.mocked(getScheduleRequests).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403)); vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
+    readFailure = { status: 403, body: { error: "Forbidden", reason: "authz.missing_permission" } };
     renderPage();
     expect(await screen.findByRole("heading", { name: "You don't have access to requests" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();

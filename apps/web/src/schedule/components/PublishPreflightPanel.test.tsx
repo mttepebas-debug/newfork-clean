@@ -55,6 +55,20 @@ const availabilityWarning = {
 };
 
 describe("PublishPreflightPanel", () => {
+  it("shows time off waiting for a decision as a note that does not stop publishing (FB-6.3.6)", () => {
+    const pendingTimeOff = {
+      ...preview.findings[0]!, id: "time_off_pending:0001", code: "time_off_pending" as const, overrideable: false, tier: "note" as const,
+      employee_name: "Ali Kaya", message: "Ali Kaya has time off waiting for a decision on Aug 17",
+      time_off_request_id: "55555555-5555-4555-8555-555555555555",
+    };
+    const ready = { ...preview, status: "publish_ready" as const, findings: [pendingTimeOff] };
+    expect(publishHardBlockers(ready)).toEqual([]);
+    expect(publishGatingRisks(ready)).toEqual([]);
+    render(<PublishPreflightPanel preview={ready} locations={[mainDining]} />);
+    expect(screen.getByText("Ready to publish")).toBeTruthy();
+    expect(screen.getByText("Notes and already-live issues")).toBeTruthy();
+    expect(screen.getByText("Ali Kaya has time off waiting for a decision on Aug 17")).toBeTruthy();
+  });
   it("separates new weekly conflicts from collapsed accepted conflicts without reason inputs", () => {
     const fresh = { ...preview.findings[0]!, code: "schedule_conflict" as const, availability_state: "new" as const, warning_policy: "confirm" as const, tier: "risk" as const, employee_name: "Alex" };
     const accepted = { ...fresh, id: "accepted-00001", availability_state: "accepted" as const, tier: "note" as const, employee_name: "Taylor" };

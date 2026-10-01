@@ -2,12 +2,8 @@ import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "./requests-catalog.css";
-import type {
-  TimeOffRequest,
-  TimeOffSegmentDecision,
-  TimeOffAssignmentDisposition,
-} from "@newfork/shared";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { timeOffOpenedShiftCount, type TimeOffRequest } from "@newfork/shared";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CalendarOff,
@@ -15,17 +11,19 @@ import {
   ChevronRight,
   Clock3,
   History,
-  RotateCcw,
   Search,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { formatAvailabilityClock } from "../availability/AvailabilityClockInput";
-import { TimeOffPartialDecision } from "../employee-hub/TimeOffPartialDecision";
+import { useMemo, useState, type ReactNode } from "react";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
-import { formatTimeOffInstant } from "../employee-hub/time-off-split";
+import {
+  formatInstant,
+  progressVariant,
+  TimeOffProgressPanel,
+  type ProgressVariant,
+} from "./TimeOffProgressPanel";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
@@ -34,29 +32,22 @@ import { can } from "../auth/can";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import {
   AvailabilityDraftScope,
-  leaveAvailability,
   requestAvailabilityNavigation,
-  timeOffNavigationLabels,
-  useAvailabilityNavigationGuard,
-  type AvailabilityNavigationRef,
 } from "../availability/availability-navigation";
 import {
-  decideTimeOff,
-  getScheduleRequests,
-  markTimeOffViewed,
-  previewTimeOffAssignment,
+  isStaleTimeOff,
+  useRevokeTimeOff,
+  useScheduleRequests,
+  useVoteOnTimeOff,
 } from "../schedule/requests-data";
+import { ConfirmDialog } from "../shell/ConfirmDialog";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 type Tab = "time-off" | "shift-changes";
-type RequestSortKey = "employee" | "date" | "location" | "status" | "review";
-type Decision = {
-  request: TimeOffRequest;
-  action:
-    "approve" | "deny" | "partial_approve" | "return_to_pending" | "revoke";
-};
+type RequestSortKey = "employee" | "date" | "decide_by" | "status" | "review";
+type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -88,6 +79,7 @@ function ScheduleRequestsPageContent() {
   const { context } = useAuth();
   const client = useQueryClient();
   const [params, setParams] = useSearchParams();
+  const workspaceId = context?.workspace.id ?? "";
   const canReadTimeOff = can(context, "requests.read");
   const canReadShift = can(context, "exchange.read");
   const requestedTab = params.get("tab");
@@ -97,6 +89,7 @@ function ScheduleRequestsPageContent() {
       : canReadTimeOff
         ? "time-off"
         : "shift-changes";
+  const variant = progressVariant(params);
   const [timeOffQueue, setTimeOffQueue] = useState<"needs_review" | "closed">(
     "needs_review",
   );
@@ -108,26 +101,18 @@ function ScheduleRequestsPageContent() {
   }>({ key: "date", descending: false });
   const [timeOffCursor, setTimeOffCursor] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
-  const [decision, setDecision] = useState<Decision | null>(null);
+  const [act, setAct] = useState<Act | null>(null);
+  const [actText, setActText] = useState("");
+  const [actError, setActError] = useState("");
   const [notice, setNotice] = useState("");
+  const vote = useVoteOnTimeOff(workspaceId);
+  const revoke = useRevokeTimeOff(workspaceId);
   // Also loaded under Shift changes, so the Time off tab keeps its count.
-  const query = useQuery({
-    queryKey: [
-      "schedule-requests",
-      context?.workspace.id,
-      timeOffQueue,
-      locationId,
-      search,
-      timeOffCursor,
-    ],
-    queryFn: () =>
-      getScheduleRequests(context!.workspace.id, {
-        timeOffQueue,
-        locationId,
-        search,
-        timeOffCursor,
-      }),
-    enabled: Boolean(context) && canReadTimeOff,
+  const query = useScheduleRequests(canReadTimeOff ? context?.workspace.id : undefined, {
+    timeOffQueue,
+    locationId,
+    search,
+    timeOffCursor,
   });
   const rows = query.data?.time_off_requests;
   const sortedRows = useMemo(
@@ -145,13 +130,6 @@ function ScheduleRequestsPageContent() {
     () => rows?.find((row) => row.id === selectedId) ?? null,
     [rows, selectedId],
   );
-  useEffect(() => {
-    if (tab === "time-off" && selected && !selected.viewed_at && context) {
-      void markTimeOffViewed(context.workspace.id, selected.id).then(() =>
-        client.invalidateQueries({ queryKey: ["schedule-requests"] }),
-      );
-    }
-  }, [client, context, selected, tab]);
 
   function changeTab(next: Tab) {
     requestAvailabilityNavigation(() => {
@@ -181,53 +159,60 @@ function ScheduleRequestsPageContent() {
       { preventScrollReset: true },
     );
   }
-  async function refreshed(message: string) {
-    setDecision(null);
-    setNotice(message);
-    setSelectedId("");
-    // A decision or a shortened leave can release shifts: every surface that
-    // shows them (Schedule grid, dashboard, hub, notifications) refreshes.
-    await refreshExchangeSurfaces(client, context!.workspace.id);
+  function startAct(request: TimeOffRequest, kind: Act["kind"]) {
+    setActText("");
+    setActError("");
+    const progress = request.progress;
+    // A manager's plain vote needs no box; one that opens shifts, a deny
+    // (its note) and an admin's or owner's decision do (rules 6, 7, 14).
+    const ask =
+      kind !== "approve" ||
+      Boolean(
+        progress &&
+          (progress.can_decide_alone ||
+            (progress.my_approval_finalizes &&
+              timeOffOpenedShiftCount(progress) > 0)),
+      );
+    if (ask) setAct({ request, kind });
+    else void runAct({ request, kind }, "");
   }
-  async function submit(
-    current: Decision,
-    note: string,
-    segmentDecisions: TimeOffSegmentDecision[],
-    operationId: string,
-    assignment?: {
-      fingerprint: string;
-      decisions: TimeOffAssignmentDisposition[];
-    },
-  ) {
+  async function runAct(current: Act, text: string) {
+    const { request, kind } = current;
     try {
-      await decideTimeOff(context!.workspace.id, current.request.id, {
-        operation_id: operationId,
-        ...(assignment
-          ? {
-              assignment_fingerprint: assignment.fingerprint,
-              assignment_decisions: assignment.decisions,
-            }
-          : {}),
-        expected_revision: current.request.revision,
-        action: current.action,
-        note,
-        segment_decisions:
-          current.action === "partial_approve" ? segmentDecisions : [],
-      });
-      await refreshed("Decision saved. The queue is current.");
-      return null;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Decision failed";
-      if (message.includes("stale") || message.includes("changed")) {
-        await client.invalidateQueries({ queryKey: ["schedule-requests"] });
-        setNotice(
-          "This request changed. Close this decision to review the refreshed request.",
-        );
+      let message: string;
+      let closed = true;
+      if (kind === "revoke") {
+        await revoke.mutateAsync({
+          requestId: request.id,
+          revoke: { expected_revision: request.revision, reason: text },
+        });
+        message = "Time off revoked.";
       } else {
-        setNotice(message);
+        const result = await vote.mutateAsync({
+          requestId: request.id,
+          verdict: {
+            verdict: kind,
+            note: text,
+            expected_impact: request.progress!.impact!.fingerprint,
+          },
+        });
+        closed = result.final;
+        message = verdictMessage(request, kind, result.final, result.remaining);
       }
-      return message;
+      setAct(null);
+      setNotice(message);
+      if (closed) selectRequest("");
+      // A decision can open shifts: every surface that shows them refreshes.
+      await refreshExchangeSurfaces(client, workspaceId);
+    } catch (error) {
+      if (isStaleTimeOff(error)) {
+        setAct(null);
+        setNotice("This request changed. Review it again.");
+        return;
+      }
+      const message = error instanceof Error ? error.message : "Decision failed";
+      if (kind === "approve" && !act) setNotice(message);
+      else setActError(message);
     }
   }
   const header = (
@@ -300,6 +285,7 @@ function ScheduleRequestsPageContent() {
         error
       />
     );
+  const timeFormat = query.data.time_format ?? "12h";
 
   return (
     <section
@@ -386,7 +372,7 @@ function ScheduleRequestsPageContent() {
               [
                 ["employee", "Employee", undefined],
                 ["date", "Dates", undefined],
-                ["location", "Location", "request-location-column"],
+                ["decide_by", "Decide by", "request-location-column"],
                 ["status", "Status", undefined],
                 ["review", "Review", "request-impact-column"],
               ] as const
@@ -463,54 +449,143 @@ function ScheduleRequestsPageContent() {
             </div>
           )}
         </div>
-        {selected && !decision && (
+        {selected && (
           <CatalogDrawer
             label="Review request"
             className="requests-catalog-page requests-review-drawer"
             onClose={() => selectRequest("")}
           >
-            {selected ? (
-              <TimeOffDetail
-                request={selected}
-                timeFormat={query.data.time_format ?? "12h"}
-                // ponytail: "may they decide somewhere"; the row has no
-                // requester role for the per-person rule, so the API decides.
-                canManage={can(context, "time_off.decide")}
-                onClose={() => selectRequest("")}
-                onDecision={(action) =>
-                  setDecision({ request: selected, action })
-                }
-                shorten={
-                  <TimeOffShorten
-                    key={`${selected.id}:${selected.revision}`}
-                    request={selected}
-                    workspaceId={context!.workspace.id}
-                    timeFormat={query.data.time_format ?? "12h"}
-                    onDone={(message) => void refreshed(message)}
-                  />
-                }
-              />
-            ) : (
-              <div className="requests-empty detail-empty">
-                <ChevronRight size={22} />
-                <strong>Select a request</strong>
-                <span>Review details, conflicts, and history.</span>
-              </div>
-            )}
+            <TimeOffDetail
+              request={selected}
+              timeFormat={timeFormat}
+              variant={variant}
+              busy={vote.isPending || revoke.isPending}
+              // ponytail: "may they revoke somewhere"; the API asks per person.
+              canRevoke={can(context, "time_off.revoke")}
+              onClose={() => selectRequest("")}
+              onAct={(kind) => startAct(selected, kind)}
+              shorten={
+                <TimeOffShorten
+                  key={`${selected.id}:${selected.revision}`}
+                  request={selected}
+                  workspaceId={workspaceId}
+                  timeFormat={timeFormat}
+                  onDone={(message) => {
+                    setNotice(message);
+                    selectRequest("");
+                    void refreshExchangeSurfaces(client, workspaceId);
+                  }}
+                />
+              }
+            />
           </CatalogDrawer>
         )}
       </div>
-      {decision ? (
-        <DecisionDialog
-          decision={decision}
-          timeFormat={query.data.time_format ?? "12h"}
-          onCancel={() => setDecision(null)}
-          onSubmit={(note, segments, operationId, assignment) =>
-            submit(decision, note, segments, operationId, assignment)
-          }
+      {act ? (
+        <ActDialog
+          act={act}
+          text={actText}
+          error={actError}
+          busy={vote.isPending || revoke.isPending}
+          onText={setActText}
+          onCancel={() => setAct(null)}
+          onConfirm={() => void runAct(act, actText.trim())}
         />
       ) : null}
     </section>
+  );
+}
+
+function verdictMessage(
+  request: TimeOffRequest,
+  kind: "approve" | "deny",
+  final: boolean,
+  remaining: number,
+) {
+  const cancellation = request.request_type === "time_off_cancellation";
+  if (kind === "deny") return cancellation ? "Cancellation declined." : "Time off denied.";
+  if (final) return cancellation ? "Cancellation approved." : "Time off approved.";
+  return `Your approval is saved. ${plural(remaining, "location")} still to approve.`;
+}
+
+function ActDialog({
+  act,
+  text,
+  error,
+  busy,
+  onText,
+  onCancel,
+  onConfirm,
+}: {
+  act: Act;
+  text: string;
+  error: string;
+  busy: boolean;
+  onText: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { request, kind } = act;
+  const name = request.employee_name;
+  const cancellation = request.request_type === "time_off_cancellation";
+  const opens = request.progress ? timeOffOpenedShiftCount(request.progress) : 0;
+  const opensLine = opens
+    ? `${plural(opens, "published shift")} become${opens === 1 ? "s an open shift" : " open shifts"}.`
+    : "";
+  const alone = Boolean(request.progress?.can_decide_alone);
+  const copy =
+    kind === "revoke"
+      ? {
+          title: "Revoke time off?",
+          description: `Hours not yet taken stop being time off. ${name} and the managers are notified.`,
+          confirm: "Revoke",
+          field: "Reason",
+        }
+      : kind === "deny"
+        ? {
+            title: cancellation ? "Decline cancellation?" : "Deny time off?",
+            description: cancellation
+              ? "The time off stays in place."
+              : "One denial closes the request.",
+            confirm: cancellation ? "Decline" : "Deny",
+            field: `Note for ${name} (optional)`,
+          }
+        : {
+            title: cancellation ? "Approve cancellation?" : "Approve time off?",
+            description: alone
+              ? `Takes effect now. Managers at ${name}'s locations are notified.${opensLine ? ` ${opensLine}` : ""}`
+              : opensLine,
+            confirm: "Approve",
+            field: null,
+          };
+  return (
+    <ConfirmDialog
+      open
+      title={copy.title}
+      description={copy.description}
+      confirmLabel={busy ? "Saving..." : copy.confirm}
+      destructive={kind !== "approve"}
+      busy={busy}
+      confirmDisabled={kind === "revoke" && !text.trim()}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    >
+      {copy.field ? (
+        <label className="app-confirm-field">
+          <span>{copy.field}</span>
+          <textarea
+            rows={3}
+            autoFocus
+            maxLength={1000}
+            required={kind === "revoke"}
+            value={text}
+            placeholder={kind === "deny" && !cancellation ? "e.g. I can approve Jan 11–12 only" : undefined}
+            onChange={(event) => onText(event.target.value)}
+          />
+        </label>
+      ) : null}
+      {error ? <p role="alert">{error}</p> : null}
+    </ConfirmDialog>
   );
 }
 
@@ -521,6 +596,7 @@ function RequestRow({
   row: TimeOffRequest;
   onSelect: () => void;
 }) {
+  const opens = row.progress ? timeOffOpenedShiftCount(row.progress) : 0;
   return (
     <button
       type="button"
@@ -543,11 +619,8 @@ function RequestRow({
       <span className="request-catalog-meta">
         {`${formatDate(row.start_date)} - ${formatDate(row.end_date)}`}
       </span>
-      <span
-        className="request-catalog-meta request-location-column"
-        title={row.location_name ?? undefined}
-      >
-        {row.location_name}
+      <span className="request-catalog-meta request-location-column">
+        {row.status === "pending" && row.decide_by ? formatInstant(row.decide_by) : ""}
       </span>
       <span
         className={`request-status status-${row.status.replaceAll("_", "-")}`}
@@ -555,13 +628,13 @@ function RequestRow({
         {statusLabel(row.status)}
       </span>
       <span className="request-impact-column request-catalog-meta">
-        {row.request_type !== "time_off_cancellation" && row.conflict_count ? (
+        {opens ? (
           <span
             className="request-conflict-count"
-            title="Published assignments to review"
+            title="Shifts that become open"
           >
             <AlertTriangle size={14} />
-            {row.conflict_count}
+            {opens}
           </span>
         ) : (
           <ChevronRight size={15} aria-hidden />
@@ -577,8 +650,8 @@ function requestSortValue(
 ): string | number {
   if (key === "employee") return row.employee_name;
   if (key === "date") return row.start_date;
-  if (key === "location") return row.location_name ?? "";
-  if (key === "review") return row.conflict_count;
+  if (key === "decide_by") return row.decide_by ?? "";
+  if (key === "review") return row.progress ? timeOffOpenedShiftCount(row.progress) : 0;
   return row.status;
 }
 
@@ -595,23 +668,27 @@ function compareValues(left: string | number, right: string | number): number {
 function TimeOffDetail({
   request,
   timeFormat,
-  canManage,
+  variant,
+  busy,
+  canRevoke,
   onClose,
-  onDecision,
+  onAct,
   shorten,
 }: {
   request: TimeOffRequest;
   timeFormat: "12h" | "24h";
-  canManage: boolean;
+  variant: ProgressVariant;
+  busy: boolean;
+  canRevoke: boolean;
   onClose: () => void;
   shorten?: ReactNode;
-  onDecision: (
-    action:
-      "approve" | "deny" | "partial_approve" | "return_to_pending" | "revoke",
-  ) => void;
+  onAct: (kind: Act["kind"]) => void;
 }) {
-  const decide = onDecision;
   const cancellation = request.request_type === "time_off_cancellation";
+  const progress = request.progress;
+  const canVote = Boolean(progress && (progress.can_vote || progress.can_decide_alone));
+  const approved = request.status === "approved" || request.status === "partially_approved";
+  const revocable = !cancellation && approved && canRevoke;
   return (
     <div className="request-detail-inner">
       <DetailHeader
@@ -627,45 +704,18 @@ function TimeOffDetail({
           </dd>
         </div>
         <div>
-          <dt>Location</dt>
-          <dd>{request.location_name}</dd>
-        </div>
-        <div>
           <dt>Submitted</dt>
           <dd>{formatDate(request.created_at)}</dd>
         </div>
-        <div>
-          <dt>Published assignments to review</dt>
-          <dd>
-            {cancellation
-              ? "Cancellation does not change assignments"
-              : `${request.conflict_count} published shifts`}
-          </dd>
-        </div>
       </dl>
-      {!cancellation ? (
-        <p>
-          Counts use{" "}
-          {request.status === "pending"
-            ? "requested hours"
-            : "remaining approved hours"}{" "}
-          across locations, including overnight work and shifts whose hours need
-          verification. The approval review checks the exact hours you choose to
-          approve.
-        </p>
-      ) : null}
       {cancellation ? (
-        <p>
-          Cancellation of approved leave. Accepting removes only the approved
-          cancellation hours. Declining keeps the leave. Previously released
-          shifts will not be reassigned automatically.
-        </p>
+        <p>Cancellation of approved time off. The time off stays in place until this is approved.</p>
       ) : null}
       {request.cancellation?.pending_request_id ? (
-        <p>
-          A cancellation request is awaiting review. Approved leave is still in
-          effect.
-        </p>
+        <p>A cancellation request is waiting. The time off is still in effect.</p>
+      ) : null}
+      {progress ? (
+        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} variant={variant} />
       ) : null}
       {request.reason ? (
         <section>
@@ -674,7 +724,7 @@ function TimeOffDetail({
         </section>
       ) : null}
       <section>
-        <h2>Requested periods and decisions</h2>
+        <h2>Requested periods</h2>
         <TimeOffPeriods
           periods={request.segments}
           timeFormat={timeFormat}
@@ -683,58 +733,29 @@ function TimeOffDetail({
         />
       </section>
       <Timeline events={request.events} timeFormat={timeFormat} />
-      {canManage ? (
+      {canVote ? (
         <div className="request-decisions">
-          {request.status === "pending" ? (
-            <>
-              <button className="nf-button" onClick={() => decide("approve")}>
-                <Check size={16} /> Approve
-              </button>
-              {request.segments.length > 1 ||
-              request.segments.some((p) => p.time_source === "snapshot") ? (
-                <button
-                  className="nf-button secondary"
-                  onClick={() => decide("partial_approve")}
-                >
-                  Partial
-                </button>
-              ) : null}
-              <button
-                className="nf-button danger"
-                onClick={() => decide("deny")}
-              >
-                <X size={16} /> Deny
-              </button>
-            </>
-          ) : (
-            <>
-              {!cancellation &&
-              !request.cancellation?.has_completed_cancellation &&
-              request.status !== "revoked" ? (
-                <button
-                  className="nf-button secondary"
-                  onClick={() => decide("return_to_pending")}
-                >
-                  <RotateCcw size={16} /> Return to pending
-                </button>
-              ) : null}
-              {!cancellation &&
-              (request.status === "approved" ||
-                request.status === "partially_approved") ? (
-                <button
-                  className="nf-button danger"
-                  onClick={() => decide("revoke")}
-                >
-                  <X size={16} /> Revoke
-                </button>
-              ) : null}
-              {!cancellation &&
-              (request.status === "approved" ||
-                request.status === "partially_approved")
-                ? shorten
-                : null}
-            </>
-          )}
+          <button
+            className="nf-button danger"
+            disabled={busy}
+            onClick={() => onAct("deny")}
+          >
+            <X size={16} /> {cancellation ? "Decline" : "Deny"}
+          </button>
+          <button
+            className="nf-button"
+            disabled={busy || !progress?.impact}
+            onClick={() => onAct("approve")}
+          >
+            <Check size={16} /> Approve
+          </button>
+        </div>
+      ) : revocable ? (
+        <div className="request-decisions">
+          <button className="nf-button danger" disabled={busy} onClick={() => onAct("revoke")}>
+            <X size={16} /> Revoke
+          </button>
+          {shorten}
         </div>
       ) : (
         <p className="view-only-note">View-only access</p>
@@ -805,323 +826,6 @@ function Timeline({
   );
 }
 
-function DecisionDialog({
-  decision,
-  timeFormat,
-  onCancel,
-  onSubmit,
-}: {
-  decision: Decision;
-  timeFormat: "12h" | "24h";
-  onCancel: () => void;
-  onSubmit: (
-    note: string,
-    segments: TimeOffSegmentDecision[],
-    operationId: string,
-    assignment?: {
-      fingerprint: string;
-      decisions: TimeOffAssignmentDisposition[];
-    },
-  ) => Promise<string | null>;
-}) {
-  const { context } = useAuth();
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [editingSplits, setEditingSplits] = useState<Record<string, boolean>>(
-    {},
-  );
-  const retry = useRef({ signature: "", key: crypto.randomUUID() });
-  const [segments, setSegments] = useState<TimeOffSegmentDecision[]>(
-    decision.action === "partial_approve"
-      ? decision.request.segments.map((segment) => ({
-          segment_id: segment.id,
-          status: "approved",
-        }))
-      : [],
-  );
-  const initialSegments = useRef(JSON.stringify(segments));
-  const decisionNavigation: AvailabilityNavigationRef = useRef(null);
-  const cancellation =
-    decision.request.request_type === "time_off_cancellation";
-  const approval =
-    !cancellation &&
-    (decision.action === "approve" || decision.action === "partial_approve");
-  const decisionLabel = cancellation
-    ? decision.action === "approve"
-      ? "Approve cancellation"
-      : decision.action === "deny"
-        ? "Decline cancellation"
-        : "Save cancellation decision"
-    : actionLabel(decision.action);
-  const hasUnfinishedSplit = Object.values(editingSplits).some(Boolean);
-  const [releases, setReleases] = useState<{
-    fingerprint: string;
-    ids: string[];
-  }>({ fingerprint: "", ids: [] });
-  const impact = useQuery({
-    queryKey: [
-      "time-off-assignment-preview",
-      context?.workspace.id,
-      decision.request.id,
-      decision.request.revision,
-      decision.action,
-      segments,
-    ],
-    queryFn: () =>
-      previewTimeOffAssignment(context!.workspace.id, decision.request.id, {
-        expected_revision: decision.request.revision,
-        action: decision.action as "approve" | "partial_approve",
-        segment_decisions: segments,
-      }),
-    enabled: Boolean(context && approval && !busy && !hasUnfinishedSplit),
-    retry: false,
-  });
-  const releaseIds =
-    releases.fingerprint === impact.data?.fingerprint ? releases.ids : [];
-  const assignmentReady =
-    !approval ||
-    Boolean(
-      impact.data &&
-      !impact.isFetching &&
-      !impact.isError &&
-      !impact.data.restricted_count &&
-      impact.data.affected_shifts.every((s) => releaseIds.includes(s.id)),
-    );
-  const navigationDialog = useAvailabilityNavigationGuard({
-    dirty: Boolean(
-      note ||
-      hasUnfinishedSplit ||
-      releases.ids.length ||
-      error ||
-      JSON.stringify(segments) !== initialSegments.current,
-    ),
-    busy,
-    navigationRef: decisionNavigation,
-    labels: timeOffNavigationLabels,
-    onDiscard: onCancel,
-  });
-  const closeDecision = () => leaveAvailability(decisionNavigation, onCancel);
-  async function confirm() {
-    setBusy(true);
-    const assignment =
-      approval && impact.data
-        ? {
-            fingerprint: impact.data.fingerprint,
-            decisions: releaseIds.map((shift_id) => ({
-              shift_id,
-              action: "release_entire_shift" as const,
-            })),
-          }
-        : undefined;
-    const signature = JSON.stringify({ note, segments, assignment });
-    if (signature !== retry.current.signature)
-      retry.current = { signature, key: crypto.randomUUID() };
-    try {
-      setError(await onSubmit(note, segments, retry.current.key, assignment));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <CatalogDrawer
-      label={decisionLabel}
-      className="requests-catalog-page requests-decision-drawer"
-      busy={busy}
-      onClose={closeDecision}
-    >
-      {navigationDialog}
-      <div className="job-catalog-editor">
-        <header className="job-editor-title">
-          <div>
-            <small>Confirm decision</small>
-            <h2 id="decision-title">{decisionLabel}</h2>
-          </div>
-          <button
-            className="icon-button"
-            aria-label="Close"
-            disabled={busy}
-            onClick={closeDecision}
-          >
-            <X size={18} />
-          </button>
-        </header>
-        <div className="catalog-drawer-body">
-          {cancellation ? (
-            <p>
-              Only hours marked for cancellation will stop being approved leave.
-              Keeping a period preserves the leave. This decision does not
-              reassign any previously released shift.
-            </p>
-          ) : null}
-          {decision.action === "partial_approve" ? (
-            <div className="partial-decisions">
-              <p>
-                {cancellation
-                  ? "Choose which requested hours to cancel and which to keep as approved leave."
-                  : "Decide each requested period. Published shifts remain assigned until you confirm an explicit assignment change with this decision."}
-              </p>
-              {decision.request.segments.map((segment) => (
-                <div key={segment.id}>
-                  <span>
-                    {formatDate(segment.segment_date)} ·{" "}
-                    {segment.start_time && segment.end_time
-                      ? `${formatAvailabilityClock(segment.start_time, timeFormat)}–${formatAvailabilityClock(segment.end_time, timeFormat)}`
-                      : "Full day"}
-                    {segment.ends_next_day ||
-                    segment.end_time?.startsWith("24:")
-                      ? " (+1 day)"
-                      : ""}
-                    {segment.time_timezone ? ` · ${segment.time_timezone}` : ""}
-                  </span>
-                  <TimeOffPartialDecision
-                    period={segment}
-                    timeFormat={timeFormat}
-                    disabled={busy}
-                    cancellation={cancellation}
-                    decision={segments.find(
-                      (item) => item.segment_id === segment.id,
-                    )!}
-                    onEditing={(editing) =>
-                      setEditingSplits((current) => ({
-                        ...current,
-                        [segment.id]: editing,
-                      }))
-                    }
-                    onChange={(value) =>
-                      setSegments((current) =>
-                        current.map((item) =>
-                          item.segment_id === segment.id ? value : item,
-                        ),
-                      )
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          ) : null}
-          {approval ? (
-            <section
-              className="time-off-assignment-review"
-              aria-label="Published assignment decisions"
-            >
-              <h3>Published assignments</h3>
-              {impact.isFetching ? (
-                <p role="status">Checking affected published shifts…</p>
-              ) : null}
-              {impact.isError ? (
-                <p role="alert">
-                  {impact.error instanceof Error
-                    ? impact.error.message
-                    : "Could not check published assignments."}
-                </p>
-              ) : null}
-              {impact.data?.restricted_count ? (
-                <p role="alert">
-                  {impact.data.restricted_count} affected shift(s) require
-                  publishing access at another location. Keep this request
-                  pending for a manager with access to all affected locations.
-                </p>
-              ) : null}
-              {impact.data &&
-              !impact.data.affected_shifts.length &&
-              !impact.data.restricted_count ? (
-                <p>No published assignments overlap the approved hours.</p>
-              ) : null}
-              {impact.data?.affected_shifts.length ? (
-                <p>
-                  Choose what happens to every affected shift. Releasing a shift
-                  below removes the employee from its entire duration and leaves
-                  open coverage. If they will work the remaining hours, adjust
-                  the Schedule first, then review this request again.
-                </p>
-              ) : null}
-              {impact.data?.affected_shifts.map((shift) => (
-                <label key={shift.id} className="time-off-assignment-choice">
-                  <input
-                    type="checkbox"
-                    disabled={busy || impact.isFetching}
-                    checked={releaseIds.includes(shift.id)}
-                    onChange={(event) =>
-                      setReleases({
-                        fingerprint: impact.data!.fingerprint,
-                        ids: event.target.checked
-                          ? [...releaseIds, shift.id]
-                          : releaseIds.filter((id) => id !== shift.id),
-                      })
-                    }
-                  />
-                  <span>
-                    <strong>Release entire shift to open coverage</strong>
-                    <br />
-                    {shift.location_name} · {shift.job_name}
-                    <br />
-                    {shift.starts_at && shift.ends_at
-                      ? `${formatTimeOffInstant(shift.starts_at, shift.timezone, timeFormat)} – ${formatTimeOffInstant(shift.ends_at, shift.timezone, timeFormat)}`
-                      : `${shift.scheduled_date} · Hours need verification`}
-                  </span>
-                </label>
-              ))}
-              <button
-                type="button"
-                disabled={busy || impact.isFetching}
-                onClick={() => void impact.refetch()}
-              >
-                Refresh affected assignments
-              </button>
-              <button type="button" disabled={busy} onClick={closeDecision}>
-                Keep request pending
-              </button>
-              {impact.data?.affected_shifts.length && assignmentReady ? (
-                <p>
-                  Saving this decision releases the selected entire shifts and
-                  approves only the leave hours shown above.
-                </p>
-              ) : null}
-            </section>
-          ) : null}
-          <label className="decision-note">
-            Manager note <span>Optional</span>
-            <textarea
-              rows={4}
-              maxLength={1000}
-              disabled={busy}
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </label>
-          {error ? <p role="alert">{error}</p> : null}
-          {decision.action === "revoke" ? (
-            <p>
-              Revoking leave does not reassign previously released shifts.
-              Review the Schedule separately if the employee will work.
-            </p>
-          ) : null}
-          {Object.values(editingSplits).some(Boolean) ? (
-            <p>Apply or cancel the open split before saving your decision.</p>
-          ) : null}
-        </div>
-        <footer className="job-editor-footer">
-          <button
-            className="nf-button secondary"
-            disabled={busy}
-            onClick={closeDecision}
-          >
-            Cancel
-          </button>
-          <button
-            className={`nf-button ${decision.action === "deny" || decision.action === "revoke" ? "danger" : ""}`}
-            disabled={busy || hasUnfinishedSplit || !assignmentReady}
-            onClick={() => void confirm()}
-          >
-            {busy ? "Saving..." : decisionLabel}
-          </button>
-        </footer>
-      </div>
-    </CatalogDrawer>
-  );
-}
-
 function RequestState({
   text,
   error = false,
@@ -1136,6 +840,9 @@ function RequestState({
   );
 }
 
+function plural(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -1147,11 +854,6 @@ function statusLabel(value: string) {
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-function actionLabel(value: Decision["action"]) {
-  return statusLabel(
-    value === "partial_approve" ? "Save partial decision" : value,
-  );
 }
 
 export default ScheduleRequestsPage;

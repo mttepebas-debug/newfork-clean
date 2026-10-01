@@ -55,6 +55,7 @@ const settings = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
   time_format: "12h",
+  time_off_lead_hours: 24,
 } satisfies SchedulingSettings;
 
 vi.mock("../auth/AuthContext", () => ({
@@ -153,6 +154,22 @@ describe("SchedulingSettingsPage checklist mode", () => {
         }),
       ),
     );
+  });
+
+  it("saves the time off decision window with the other rules (FB-6.3.6)", async () => {
+    renderPage("/app/settings/scheduling");
+    const hours = (await screen.findByLabelText("Time off decision window (hours)")) as HTMLInputElement;
+    expect(hours.value).toBe("24");
+    fireEvent.change(hours, { target: { value: "48" } });
+    fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
+    await waitFor(() =>
+      expect(saveSchedulingSettings).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ time_off_lead_hours: 48 })),
+    );
+    fireEvent.change(hours, { target: { value: "721" } });
+    fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
+    // The browser's own range check stops 721 before anything is sent.
+    expect(hours.validity.rangeOverflow).toBe(true);
+    expect(saveSchedulingSettings).toHaveBeenCalledOnce();
   });
 
   it("keeps the normal settings route prefilled", async () => {

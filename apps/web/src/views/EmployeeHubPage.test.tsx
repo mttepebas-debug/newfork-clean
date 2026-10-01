@@ -28,10 +28,10 @@ import {
   getEmployeeScheduleBoard,
   getEmployeePersonalTasks,
   changeEmployeePersonalTask,
-  submitEmployeeTimeOff,
 } from "../employee-hub/employee-hub-data";
 
 import { RequestError } from "../lib/request-error";
+import { todayIn } from "../lib/today";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const { context } = vi.hoisted(() => ({
   context: {
@@ -204,6 +204,15 @@ const scheduleBoard = {
 } satisfies ScheduleReadModel;
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
+// The real hook, its request swapped: what the form sends is what is checked.
+const { submitTimeOff } = vi.hoisted(() => ({ submitTimeOff: vi.fn() }));
+vi.mock("../schedule/requests-data", async (importOriginal) => {
+  const { useMutation } = await import("@tanstack/react-query");
+  return {
+    ...(await importOriginal<typeof import("../schedule/requests-data")>()),
+    useSubmitTimeOff: (workspace: string) => useMutation({ mutationFn: (request: unknown) => submitTimeOff(workspace, request) }),
+  };
+});
 vi.mock("../communications/communications-data", () => ({
   getAnnouncements: vi.fn(),
   getNotifications: vi.fn(),
@@ -213,11 +222,6 @@ vi.mock("../employee-hub/employee-hub-data", () => ({
   changeEmployeePersonalTask: vi.fn().mockResolvedValue([]),
   getEmployeeHub: vi.fn(),
   getEmployeeScheduleBoard: vi.fn(),
-  submitEmployeeTimeOff: vi.fn().mockResolvedValue({
-    status: "pending",
-    request_id: "98300000-0000-4000-8000-000000000001",
-    revision: 1,
-  }),
   actOnEmployeeRequest: vi.fn(),
 }));
 
@@ -265,6 +269,7 @@ function weeklyModel(): WeeklyPreferenceRead {
 describe("EmployeeHubPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    submitTimeOff.mockResolvedValue({ status: "pending", request_id: "98300000-0000-4000-8000-000000000001", revision: 1, decide_by: null });
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
     vi.mocked(saveWeeklyPreferences).mockImplementation(async (_workspace, command) => {
@@ -543,7 +548,7 @@ describe("EmployeeHubPage", () => {
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledWith(workspaceId,
       expect.objectContaining({ source: "employee", employee_id: fixture.employee.id, expected_revision: 0 }),
       expect.any(String), false));
-    expect(submitEmployeeTimeOff).not.toHaveBeenCalled();
+    expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
   it("discards an unsaved weekly draft without a prompt but protects a time-off draft on tab changes", async () => {
@@ -560,7 +565,7 @@ describe("EmployeeHubPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
     expect(await screen.findByRole("switch", { name: "Monday all day unavailable" })).toHaveProperty("checked", false);
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
-    expect(submitEmployeeTimeOff).not.toHaveBeenCalled();
+    expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
   it("opens time-off request deep links and keeps time off usable when weekly data fails", async () => {
@@ -568,7 +573,7 @@ describe("EmployeeHubPage", () => {
     renderPage("/app/employee-hub/my-availability#request-98200000-0000-4000-8000-000000000003");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
-    await waitFor(() => expect(submitEmployeeTimeOff).toHaveBeenCalledOnce());
+    await waitFor(() => expect(submitTimeOff).toHaveBeenCalledOnce());
   });
 
   it("preserves time-off drafts before a programmatic departure", async () => {
@@ -586,7 +591,7 @@ describe("EmployeeHubPage", () => {
     expect(navigate).toHaveBeenCalledOnce();
     expect(screen.getByLabelText("Note")).toHaveProperty("value","");
     expect(screen.queryByLabelText("Starts on")).toBeNull();
-    expect(submitEmployeeTimeOff).not.toHaveBeenCalled();
+    expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
   it("formats real timestamp values in leave submission and manager decision history", async () => {
@@ -617,7 +622,7 @@ describe("EmployeeHubPage", () => {
     expect(actOnEmployeeRequest).not.toHaveBeenCalled();
   });
 
-  it("submits full-day, custom-hour, skipped and overnight dates in one exact request", async () => {
+  it("submits full-day, custom-hour and overnight dates as one run of days", async () => {
     vi.mocked(loadWeeklyPreferences).mockResolvedValue({...(await loadWeeklyPreferences(workspaceId)),shift_types:[{id:"night",name:"Night",start_time:"23:00",end_time:"02:00",archived:false,selectable:true}]});
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"),{target:{value:"2035-01-15"}});
@@ -629,11 +634,16 @@ describe("EmployeeHubPage", () => {
     fireEvent.change(screen.getByLabelText("Requested time on 2035-01-17"),{target:{value:"skip"}});
     fireEvent.change(screen.getByLabelText("Requested time on 2035-01-18"),{target:{value:"hours"}});
     fireEvent.change(screen.getByLabelText("Time off hours from shift type on 2035-01-18"),{target:{value:"night"}});
+    // Rule 19: one run of days in a row; a skipped middle day breaks it.
+    expect(screen.getByRole("alert").textContent).toBe("A request is one run of days in a row.");
+    expect(screen.getByRole("button",{name:"Submit request"})).toHaveProperty("disabled",true);
+    fireEvent.change(screen.getByLabelText("Requested time on 2035-01-17"),{target:{value:"full_day"}});
     fireEvent.click(screen.getByRole("button",{name:"Submit request"}));
-    await waitFor(()=>expect(submitEmployeeTimeOff).toHaveBeenCalledWith(workspaceId,expect.objectContaining({
+    await waitFor(()=>expect(submitTimeOff).toHaveBeenCalledWith(workspaceId,expect.objectContaining({
       expected_timezone:"America/Los_Angeles",periods:[
         {segment_date:"2035-01-15",start_time:null,end_time:null,ends_next_day:false},
         {segment_date:"2035-01-16",start_time:"10:00",end_time:"14:00",ends_next_day:false},
+        {segment_date:"2035-01-17",start_time:null,end_time:null,ends_next_day:false},
         {segment_date:"2035-01-18",start_time:"23:00",end_time:"02:00",ends_next_day:true},
       ],
     })));
@@ -656,7 +666,7 @@ describe("EmployeeHubPage", () => {
     fireEvent.change(screen.getByLabelText("Start"),{target:{value:"2035-01-15"}});
     expect(screen.getByLabelText("Time off start 1 on 2035-01-15")).toHaveProperty("value","11:30 AM");
     expect(screen.getByLabelText("Time off start 1 on 2035-01-16")).toHaveProperty("value","10:15 AM");
-    expect(submitEmployeeTimeOff).not.toHaveBeenCalled();
+    expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
   it("rejects an oversized range even when skipping one date would disguise truncation", async () => {
@@ -670,36 +680,35 @@ describe("EmployeeHubPage", () => {
     expect(screen.getByRole("button",{name:"Submit request"})).toHaveProperty("disabled",true);
     fireEvent.submit(screen.getByRole("button",{name:"Submit request"}).closest("form")!);
     await screen.findByText("Choose a date range of at most 31 calendar days.");
-    expect(submitEmployeeTimeOff).not.toHaveBeenCalled();
+    expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
   it("submits explicit date segments for time off", async () => {
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), {
-      target: { value: "2026-08-30" },
+      target: { value: "2035-08-30" },
     });
     fireEvent.change(screen.getByLabelText("End"), {
-      target: { value: "2026-08-31" },
+      target: { value: "2035-08-31" },
     });
     fireEvent.submit(
       screen.getByRole("button", { name: "Submit request" }).closest("form")!,
     );
     await waitFor(() =>
-      expect(submitEmployeeTimeOff).toHaveBeenCalledWith(workspaceId, {
-        location_id: "11000000-0000-4000-8000-000000000001",
+      expect(submitTimeOff).toHaveBeenCalledWith(workspaceId, {
         reason: "",
-        request_id: expect.any(String),
+        operation_id: expect.any(String),
         expected_timezone: "America/Los_Angeles",
         periods: [
-          { segment_date: "2026-08-30", start_time: null, end_time: null, ends_next_day: false },
-          { segment_date: "2026-08-31", start_time: null, end_time: null, ends_next_day: false },
+          { segment_date: "2035-08-30", start_time: null, end_time: null, ends_next_day: false },
+          { segment_date: "2035-08-31", start_time: null, end_time: null, ends_next_day: false },
         ],
       }),
     );
   });
 
   it("submits exact overnight hours and reuses the operation key after a network failure", async () => {
-    vi.mocked(submitEmployeeTimeOff).mockRejectedValueOnce(new Error("Connection lost"));
+    vi.mocked(submitTimeOff).mockRejectedValueOnce(new Error("Connection lost"));
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
     fireEvent.change(screen.getByLabelText("Requested time"), { target: { value: "hours" } });
@@ -709,11 +718,11 @@ describe("EmployeeHubPage", () => {
     fireEvent.click(screen.getByLabelText("Ends the next day (+1 day)"));
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
     await screen.findByText("Connection lost");
-    const first = vi.mocked(submitEmployeeTimeOff).mock.calls.at(-1)?.[1];
+    const first = vi.mocked(submitTimeOff).mock.calls.at(-1)?.[1];
     expect(first?.periods).toEqual([{ segment_date: "2035-01-15", start_time: "23:00:01", end_time: "02:00:02", ends_next_day: true }]);
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
-    await waitFor(() => expect(submitEmployeeTimeOff).toHaveBeenCalledTimes(2));
-    expect(vi.mocked(submitEmployeeTimeOff).mock.calls[1]?.[1].request_id).toBe(first?.request_id);
+    await waitFor(() => expect(submitTimeOff).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(submitTimeOff).mock.calls[1]?.[1].operation_id).toBe(first?.operation_id);
   });
 
   it("does not submit a silently truncated date range or unfinished hours", async () => {
@@ -725,26 +734,40 @@ describe("EmployeeHubPage", () => {
     fireEvent.change(screen.getByLabelText("Requested time"), { target: { value: "hours" } });
     fireEvent.change(screen.getByLabelText("Time off start 1"), { target: { value: "1:" } });
     expect((screen.getByRole("button", { name: "Submit request" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(submitEmployeeTimeOff).not.toHaveBeenCalled();
+    expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
-  it("preserves entered hours and requires review when the location time zone changes", async () => {
-    const { client } = renderPageWithFixture(fixture, "/app/employee-hub/my-availability?section=time-off");
+  it("asks for no location and sends the hours in the employee's zone (FB-6.3.6)", async () => {
+    renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
-    fireEvent.change(screen.getByLabelText("Requested time"), { target: { value: "hours" } });
-    fireEvent.change(screen.getByLabelText("Time off start 1"), { target: { value: "10:15 AM" } });
-    const updated = { ...fixture, locations: [{ ...fixture.locations[0]!, timezone: "America/New_York" }] };
-    vi.mocked(getEmployeeHub).mockResolvedValue(updated);
-    act(() => { client.setQueriesData({ queryKey: ["employee-hub", workspaceId] }, updated); });
-    await screen.findByText(/The location time zone changed from America\/Los_Angeles to America\/New_York/);
-    expect((screen.getByLabelText("Time off start 1") as HTMLInputElement).value).toBe("10:15 AM");
-    expect((screen.getByRole("button", { name: "Submit request" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Use current location time zone" }));
+    expect(screen.queryByLabelText("Location")).toBeNull();
+    expect(screen.getByText("Hours use America/Los_Angeles.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
-    await waitFor(() => expect(submitEmployeeTimeOff).toHaveBeenCalledWith(workspaceId, expect.objectContaining({
-      expected_timezone: "America/New_York",
-      periods: [{ segment_date: "2035-01-15", start_time: "10:15", end_time: "17:00", ends_next_day: false }],
-    })));
+    await waitFor(() => expect(submitTimeOff).toHaveBeenCalledOnce());
+    expect(vi.mocked(submitTimeOff).mock.calls[0]![1]).not.toHaveProperty("location_id");
+    expect((await screen.findByRole("status")).textContent).toBe("Request sent.");
+  });
+  it("does not send time off that has already started (rule 19)", async () => {
+    renderPage("/app/employee-hub/my-availability?section=time-off");
+    fireEvent.change(await screen.findByLabelText("Start"), { target: { value: todayIn("America/Los_Angeles") } });
+    expect(screen.getByRole("alert").textContent).toBe("This time off has already started. Talk to your manager directly.");
+    expect(screen.getByRole("button", { name: "Submit request" })).toHaveProperty("disabled", true);
+    fireEvent.submit(screen.getByRole("button", { name: "Submit request" }).closest("form")!);
+    await waitFor(() => expect(screen.getAllByText(/already started/).length).toBe(2));
+    expect(submitTimeOff).not.toHaveBeenCalled();
+  });
+  it("tells the employee to talk to their manager when the request lands inside the decision window (rule 16)", async () => {
+    // Decide-by equal to the start: midnight Jan 15 in Los Angeles.
+    vi.mocked(submitTimeOff).mockResolvedValueOnce({ status: "pending", request_id: "98300000-0000-4000-8000-000000000001", revision: 1, decide_by: "2035-01-15T08:00:00Z" });
+    renderPage("/app/employee-hub/my-availability?section=time-off");
+    fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Request sent. It starts soon, so talk to your manager directly if it's urgent.");
+  });
+  it("shows a pending request as Pending with its decision time", async () => {
+    const pending = { ...fixture.requests.find(request => request.kind === "time_off")!, status: "pending", display_status: "Pending", decide_by: "2035-01-14T17:00:00Z" };
+    renderPageWithFixture({ ...fixture, requests: [pending] }, "/app/employee-hub/my-availability?section=time-off");
+    expect(await screen.findByText(/^Pending · Submitted .* · Decision by Jan 14/)).toBeTruthy();
   });
 
   it("copies overnight shift-type hours into an explicit time-off period", async () => {
@@ -758,7 +781,7 @@ describe("EmployeeHubPage", () => {
     fireEvent.change(await screen.findByLabelText("Time off hours from shift type"), { target: { value: "night" } });
     expect((screen.getByLabelText("Ends the next day (+1 day)") as HTMLInputElement).checked).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Submit request" }));
-    await waitFor(() => expect(submitEmployeeTimeOff).toHaveBeenCalledWith(workspaceId, expect.objectContaining({
+    await waitFor(() => expect(submitTimeOff).toHaveBeenCalledWith(workspaceId, expect.objectContaining({
       periods: [{ segment_date: "2035-01-15", start_time: "23:00", end_time: "02:00", ends_next_day: true }],
     })));
   });

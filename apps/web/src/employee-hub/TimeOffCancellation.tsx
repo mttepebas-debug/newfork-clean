@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { employeeRequestActionInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
+import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { actOnEmployeeRequest } from "./employee-hub-data";
+import { requestTimeOffCancellation } from "../schedule/requests-data";
 import { formatTimeOffInstant } from "./time-off-split";
 import { timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { cancellationSelectionError, TimeOffCancellationHours, type CancellationChoice } from "./TimeOffCancellationHours";
@@ -43,9 +43,8 @@ export function TimeOffCancellation({ request, workspaceId, timeFormat, onChange
       const currentError = cancellationSelectionError(choices, retry.current.signature === signature);
       if (currentError) throw new Error(currentError);
       if (signature !== retry.current.signature) retry.current = { signature, key: crypto.randomUUID() };
-      const input = employeeRequestActionInputSchema.parse({ request_id: request.id, kind: "time_off", action: "request_cancellation",
+      return requestTimeOffCancellation(workspaceId, request.id, {
         expected_revision: draft.revision, operation_id: retry.current.key, periods, reason });
-      return actOnEmployeeRequest(workspaceId, input);
     },
     onSuccess: () => {
       noticeRevision.current = draft?.revision ?? null;
