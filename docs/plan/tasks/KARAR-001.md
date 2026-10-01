@@ -4,7 +4,7 @@ Session: kullanıcının tekil oturumu (2026-09-30)   Branch: task/karar-001   W
 
 Goal: Sorulardaki "(Önerilen)" seçenek Mert'in istediğini daha sık bulsun. Kapsanan kararlar sorulmadan,
 dayanağıyla verilsin. Mert'in seçenek dışı her cevabı kurala dönüşsün. Ölçüm (2026-09-30, eski oturum
-kayıtları): öneri kabulü %68 (622 tek seçimli önerili soru); hedef en az %85.
+kayıtları): öneri kabulü %68 (420/617 tek seçimli önerili soru); hedef en az %85.
 
 In scope:
 - `docs/plan/ILKELER.md`: vizyon, ödünleşim sırası, 25 karar ilkesi (koşul ve kanıtla), Claude'un
@@ -76,3 +76,10 @@ Reviewer: bir bağımsız `/code-review` (hook betiği).
 ```
 - 2026-10-01 mülakat 1. tur: müşteri 2-5 lokasyon / 20-100 kişi; "hepsi eşit önemde, MVP önceliği müdür ve owner, sonra aynı kalitede employee arayüzü ve app" (serbest cevap; ILKELER A'ya yazıldı); müdür masaüstü / çalışan telefon; rakip yalnız referans.
 - 2026-10-01 geriye dönük test: ilkesiz %70,6, ilkeli %68,6, o günkü öneri %71,8 (255 soru). Ayrıntı: research dosyası "Geriye dönük test". Hedef %85'in yolu serbest cevapları azaltmak (doğru seçeneğin listede olması), seçimi iyileştirmek değil.
+- 2026-10-01 bağımsız inceleme (`feature-dev:code-reviewer`): 3 önemli bulgu düzeltildi:
+  - "[No preference]" serbest cevap sayılıyordu.
+  - "(not recommended)" / "(önerilmez)" öneri sanılıyordu.
+  - Tek bozuk günlük satırı okumayı boşaltıp geçmiş yüklemesini ikiletiyordu.
+
+  Dört küçük bulgu da düzeltildi: kayıt hatasında geri çevirme kaybolmuyor; boş "Dayanak:" geçmiyor; "(ÖNERİLEN)" yakalanıyor; toplam satırı ne saydığını söylüyor. Kalan: hafta sınırı UTC (en çok 3 saat kayma). Yeni 3 test eski kodda kırmızı, yenide yeşil (14/14).
+- 2026-10-01 günlük yeniden kuruldu: yedek `.newfork-inbox/decisions.backup-2026-10-01.jsonl` (804 satır, eski sınıflama). Yeni dosya 819 satır. KARAR-001 öncesi başlangıç çizgisi 420/617 = %68,1. Bu oturumdaki şablonlu mülakat sorularında 14/15, ama küçük ve kolay örnek; kanıt sayılmaz.

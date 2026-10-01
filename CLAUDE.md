@@ -414,5 +414,5 @@ Kısa yaz, ham araç çıktısı yapıştırma.
 
   Yeni KARARLAR satırı "Neden" ve "Reddedilen" bilgisini taşır.
 - **Ölçüm:** `node scripts/decision-log.mjs stats` haftalık önerilen-kabul oranını verir. Başlangıç
-  %68 (622 soru, 2026-09-30 ölçümü); hedef en az %85. `nf-planlama` haftada bir kaçırmaları
+  %68 (420/617 soru, KARAR-001 öncesi; 2026-10-01 ölçümü); hedef en az %85. `nf-planlama` haftada bir kaçırmaları
   sınıflar ve ILKELER'i günceller.

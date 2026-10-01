@@ -48,6 +48,39 @@ test("a variant recommendation label goes back to Claude", () => {
   }
 });
 
+test("a warning label is not a recommendation; an empty Dayanak line is not a basis", () => {
+  const warned = {
+    question: Q,
+    header: "Uyarı",
+    multiSelect: false,
+    options: [
+      { label: "Vardiya kalır (Önerilen)", description: "Dayanak: ILKELER P09" },
+      { label: "Force push (not recommended)", description: "" },
+      { label: "Hepsini sil (önerilmez)", description: "" },
+    ],
+  };
+  assert.equal(runHook("pre", ask([warned])), "");
+  assert.equal(decision(runHook("pre", ask([question("Dayanak:\nYayınlanmış vardiya korunur.")]))).permissionDecision, "deny");
+  assert.equal(decision(runHook("pre", ask([question("x", "Vardiya kalır (ÖNERİLEN)")]))).permissionDecision, "deny");
+});
+
+test("a skipped question ([No preference]) is not free text", () => {
+  const q = question("Dayanak: ILKELER P09");
+  assert.equal(runHook("post", ask([q], { tool_response: { questions: [q], answers: { [Q]: "[No preference]" } } })), "");
+  assert.equal(readLog()[0].kind, "unanswered");
+  assert.equal(stats(readLog()).total.free, 0);
+});
+
+test("one unreadable log line drops only that line and backfill does not duplicate", () => {
+  const q = question("Dayanak: ILKELER P09");
+  runHook("post", ask([q], { tool_use_id: "t9", tool_response: { questions: [q], answers: { [Q]: "Vardiya düşer" } } }));
+  const log = path.join(process.env.NEWFORK_INBOX_DIR, "decisions.jsonl");
+  fs.writeFileSync(log, "﻿" + fs.readFileSync(log, "utf8") + '{"torn":');
+  assert.equal(readLog().length, 1);
+  runHook("post", ask([q], { tool_use_id: "t10", tool_response: { questions: [q], answers: { [Q]: "Vardiya düşer" } } }));
+  assert.equal(readLog().length, 2);
+});
+
 test("a question without a recommendation and other tools pass untouched", () => {
   const plain = { question: Q, header: "x", multiSelect: false, options: [{ label: "A", description: "" }, { label: "B", description: "" }] };
   assert.equal(runHook("pre", ask([plain])), "");

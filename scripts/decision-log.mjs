@@ -19,28 +19,48 @@ import { INBOX_DIR } from "./inbox.mjs";
 
 export const LOG = path.join(INBOX_DIR, "decisions.jsonl");
 const LABEL = "(Önerilen)";
-const REC_ANY = /\([^)]*?(önerilen|onerilen|öneri|tavsiye|recommended)[^)]*\)/iu;
-const DAYANAK = /dayanak\s*:\s*([^\n]*)/iu;
+const REC_ANY = /\([^)]*?(önerilen|onerilen|öneri|oneri|tavsiye|recommended)[^)]*\)/iu;
+// "(not recommended)", "(önerilmez)" warn against an option; they are not a recommendation.
+const NEG = /\([^)]*?(not\s+recommended|önerilmez|önerilmeyen|tavsiye\s+edilmez)[^)]*\)/giu;
+const DAYANAK = /dayanak\s*:[ \t]*(\S[^\n]*)/iu;
+// Claude Code's own value when Mert skips a question; not text he typed.
+const NO_CHOICE = /^\[no preference\]$/i;
 
-const isRec = (label) => REC_ANY.test(String(label ?? ""));
+// "İ" does not case-fold under /iu, so labels are lower-cased the Turkish way first.
+const isRec = (label) => REC_ANY.test(String(label ?? "").toLocaleLowerCase("tr").replace(NEG, ""));
 const clip = (s, n) => (String(s).length > n ? `${String(s).slice(0, n)}…` : String(s));
 
 function append(rows) {
   if (!rows.length) return;
   fs.mkdirSync(path.dirname(LOG), { recursive: true });
-  fs.appendFileSync(LOG, rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  let lead = "";
+  try {
+    const text = fs.readFileSync(LOG, "utf8");
+    if (text && !text.endsWith("\n")) lead = "\n"; // never glue a row onto a torn last line
+  } catch {}
+  fs.appendFileSync(LOG, lead + rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
 }
 
+// One unreadable line (a BOM from Notepad, a torn write) drops that line only, never the log:
+// an empty read would make backfill append every past answer a second time.
 export function readLog() {
+  let raw;
   try {
-    return fs
-      .readFileSync(LOG, "utf8")
-      .split("\n")
-      .filter(Boolean)
-      .map((l) => JSON.parse(l));
+    raw = fs.readFileSync(LOG, "utf8");
   } catch {
     return [];
   }
+  return raw
+    .replace(/^﻿/, "")
+    .split("\n")
+    .filter((l) => l.trim())
+    .flatMap((l) => {
+      try {
+        return [JSON.parse(l)];
+      } catch {
+        return [];
+      }
+    });
 }
 
 export function checkQuestions(questions) {
@@ -65,6 +85,7 @@ export function classify(q, rawAnswer) {
   const rec = labels.find(isRec) ?? null;
   if (rawAnswer == null || rawAnswer === "") return { rec, answer: null, kind: "unanswered" };
   const answer = Array.isArray(rawAnswer) ? rawAnswer.map(String).join(", ") : String(rawAnswer).trim();
+  if (NO_CHOICE.test(answer)) return { rec, answer, kind: "unanswered" };
   if (q.multiSelect) {
     let rest = answer;
     for (const l of [...labels].sort((a, b) => b.length - a.length)) if (l) rest = rest.split(l).join("");
@@ -147,7 +168,9 @@ export function runHook(kind, input, now = new Date()) {
     if (kind === "pre") {
       const problems = checkQuestions(input.tool_input?.questions);
       if (!problems.length) return "";
-      append([{ ts: now.toISOString(), type: "blocked", session_id: input.session_id ?? null, problems }]);
+      try {
+        append([{ ts: now.toISOString(), type: "blocked", session_id: input.session_id ?? null, problems }]);
+      } catch {} // a log that cannot be written must not let the bad question through
       const reason =
         `Soru Mert'e gitmedi (KARAR-001, CLAUDE.md §13):\n- ${problems.join("\n- ")}\n` +
         `Düzeltip yeniden sor. Önerilen seçeneğin etiketi tam "${LABEL}"; açıklamasının sonunda tek satır: ` +
@@ -271,7 +294,7 @@ async function main() {
       );
     const t = s.total;
     console.log(
-      `toplam: ${t.rec}/${t.rec + t.other + t.free} önerilen seçildi (%${t.pct ?? "-"}), ${t.other} başka, ${t.free} serbest; ` +
+      `toplam (bütün haftalar): ${t.rec}/${t.rec + t.other + t.free} önerilen seçildi (%${t.pct ?? "-"}), ${t.other} başka, ${t.free} serbest; ` +
         `${t.blocked} soru biçim yüzünden geri döndü`,
     );
     return;
