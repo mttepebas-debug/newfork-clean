@@ -55,7 +55,9 @@ insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,pre
  select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),
   array['private-note','','','','','',''],1,manager from ws;
 select ok((pg_temp.project()->'days'->0->>'has_unavailable')::boolean,'enabled manager interval marks the matching day');
-select ok(not (pg_temp.read_model()::text like '%private-note%'),'Schedule read does not expose manager notes');
+-- G14 (user decision 2026-10-01): the manager the note is for reads its words
+-- in the Schedule; who may not is in schedule_reads_weekly_availability.
+select is(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'->0->'manager_notes'->>0,'private-note','the manager reads the note''s words in the Schedule');
 select ok(not ((pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'->0) ? 'manager_intervals'),'Schedule projection does not disclose source identity');
 select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 02:00Z'::timestamptz,'West rules use West timezone');
 select is((pg_temp.project('2035-01-15',other_loc)->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-15 23:00Z'::timestamptz,'same recurring rule uses target East timezone') from ws;

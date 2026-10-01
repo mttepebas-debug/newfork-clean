@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(15);
 
 -- FOUNDATION-B 5.3a: the Schedule grid, Edit mode and Employee Hub -> Schedule
 -- draw availability from the weekly marks. Every shift, published or being
@@ -11,6 +11,15 @@ select plan(10);
 select tests.world('wr');
 select tests.person('wr', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('wr', 'ali', 'employee', array['K', 'B'], array['cook']);
+-- A manager whose role reads the Schedule but not availability (G14).
+select tests.role('wr', 'floor lead', 'manager', array(
+  select rp.permission_key
+  from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('wr') and r.system_key = 'manager'
+    and rp.permission_key not in ('availability.read', 'availability.manage')
+));
+select tests.person('wr', 'filiz', 'floor lead', array['K'], array['cook']);
 
 create function pg_temp.mark(preference jsonb, day integer, change jsonb) returns jsonb language sql as $$
   select jsonb_set(preference, array['days', day::text], (preference -> 'days' -> day) || change)
@@ -20,10 +29,10 @@ insert into public.employee_weekly_preferences (workspace_id, employee_id, prefe
 values (tests.id('wr'), tests.id('wr:ali'),
   pg_temp.mark(public.empty_weekly_preference('time_range'), 1, '{"range": {"start": "18:00", "end": "22:00"}}'),
   1, tests.user('wr:ali'));
-insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
+insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, notes, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ali'),
   pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"range": {"start": "09:00", "end": "12:00"}}'),
-  true, 1, tests.user('wr:ayse'));
+  true, array['', '', '', '', '', 'School mornings', ''], 1, tests.user('wr:ayse'));
 
 select tests.publish_week('wr', 1, '[{"label": "thu", "person": "ali", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}]');
 
@@ -46,6 +55,17 @@ select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'days' ->
   'the manager sees the private reminder in the grid');
 select ok(not coalesce(pg_temp.codes(pg_temp.grid(), tests.id('wr:shift:thu')) ? 'availability', false),
   'a published shift in free hours shows no warning');
+
+-- G14: the note's words reach the grid for whoever may read the note
+-- (availability.note_read), by weekday from Sunday; null for anybody else.
+select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'manager_notes',
+  '["", "", "", "", "", "School mornings", ""]'::jsonb, 'Ayse reads the words of the Friday note in the grid');
+select is(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))) -> 'weekly_availability' -> 0 -> 'manager_notes',
+  'null'::jsonb, 'a manager who may not read availability gets no words');
+select ok(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable' = 'true',
+  'she still sees the marked hours');
+select is((select e -> 'weekly_availability' -> 0 -> 'manager_notes' from jsonb_array_elements(pg_temp.grid() -> 'employees') e
+  where e ->> 'id' = tests.id('wr:ayse')::text), 'null'::jsonb, 'no words about a manager, Ayse herself included');
 
 -- Ali marks Thursday morning after the week went out (BL-184): the published
 -- shift shows it.
@@ -81,6 +101,9 @@ $$;
 select is((select jsonb_agg(p -> 'days' -> 0 ->> 'has_unavailable' order by p ->> 'location_id') || jsonb_agg(p -> 'days' -> 4 ->> 'has_unavailable' order by p ->> 'location_id')
    from jsonb_array_elements(pg_temp.ali(pg_temp.board()) -> 'weekly_availability') p),
   '["true", "true", "false", "false"]'::jsonb, 'Ali sees his Monday evening at both locations and no trace of the Friday note');
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.board() -> 'employees') e
+  cross join jsonb_array_elements(coalesce(e -> 'weekly_availability', '[]')) p where p ? 'manager_notes'),
+  'Ali''s board carries no note words, not even an empty field');
 select ok(not exists (select 1 from jsonb_array_elements(pg_temp.board() -> 'employees') e
   where e ->> 'id' <> tests.id('wr:ali')::text and e ? 'weekly_availability'), 'he sees nobody else''s availability');
 

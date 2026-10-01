@@ -13,12 +13,9 @@ function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
 }
 
-// The manager's note text is not in the Schedule read yet; the line says
-// whose it is until it is (G14, data contract asked of nf-backend).
 function sourceLine(window: AvailabilityWindow, name: string): string {
-  return window.source === "manager"
-    ? "Manager note (only managers see this)"
-    : `${firstName(name)}'s own availability`;
+  if (window.source === "employee") return `${firstName(name)}'s own availability`;
+  return window.note ? `Manager note: ${window.note}` : "Manager note (only managers see this)";
 }
 
 function WindowLines({ windows, name, timeFormat }: {

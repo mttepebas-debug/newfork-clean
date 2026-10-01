@@ -1284,6 +1284,9 @@ export const scheduleWeeklyLocationSchema = z
     unavailable_intervals: z.array(scheduleWeeklyIntervalSchema),
     // The employee's own marks; the rest of unavailable_intervals is a manager's reminder.
     employee_intervals: z.array(scheduleWeeklyIntervalSchema).optional(),
+    // The manager note's words by weekday from Sunday ("" for none); null for a
+    // reader the note is not for. Absent on the team board an employee reads.
+    manager_notes: z.array(z.string()).length(7).nullable().optional(),
     leave_intervals: z.array(scheduleWeeklyIntervalSchema),
     clock_segments: z.array(
       scheduleWeeklyIntervalSchema.extend({ offset_seconds: z.number().int() }),

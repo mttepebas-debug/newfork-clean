@@ -52,6 +52,29 @@ describe("scheduleAvailabilityMarks", () => {
     expect(marks.get("2026-10-19")).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 960, source: "manager" }] });
   });
 
+  it("puts the note's words for that weekday on the manager's hours only (G14)", () => {
+    const mine = { start_at: "2026-10-19T20:00:00Z", end_at: "2026-10-19T22:00:00Z" };
+    const notes = ["", "School mornings", "", "", "", "", ""];
+    const marks = scheduleAvailabilityMarks(projection({
+      unavailable_intervals: [{ start_at: "2026-10-19T04:00:00Z", end_at: "2026-10-19T16:00:00Z" }, mine],
+      employee_intervals: [mine],
+      manager_notes: notes,
+      days: marked(["2026-10-19"]),
+    }));
+    expect(marks.get("2026-10-19")).toEqual({ kind: "unavailable", windows: [
+      { from: 0, to: 720, source: "manager", note: "School mornings" },
+      { from: 960, to: 1080, source: "employee" },
+    ] });
+  });
+
+  it("leaves the words out when there are none to read", () => {
+    const night = { start_at: "2026-10-20T04:00:00Z", end_at: "2026-10-20T10:00:00Z" };
+    for (const manager_notes of [null, undefined, ["", "Mornings", " ", "", "", "", ""]]) {
+      const marks = scheduleAvailabilityMarks(projection({ unavailable_intervals: [night], manager_notes, days: marked(["2026-10-20"]) }));
+      expect(marks.get("2026-10-20")).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 360, source: "manager" }] });
+    }
+  });
+
   it("marks approved time off red even on a day with no unavailable flag", () => {
     const marks = scheduleAvailabilityMarks(projection({
       leave_intervals: [{ start_at: "2026-10-24T04:00:00Z", end_at: "2026-10-25T04:00:00Z" }],

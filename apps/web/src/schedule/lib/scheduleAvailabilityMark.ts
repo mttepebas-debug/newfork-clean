@@ -11,6 +11,8 @@ export interface AvailabilityRange {
 export interface AvailabilityWindow extends AvailabilityRange {
   /** "manager": only a manager's private note covers these hours (BL-186). */
   readonly source: "employee" | "manager";
+  /** The manager note's words for the day, when this reader may read them. */
+  readonly note?: string;
 }
 /** What a Schedule cell says about its person's day (G14, BL-204). */
 export type ScheduleAvailabilityMark =
@@ -56,11 +58,12 @@ export function scheduleAvailabilityMarks(projection: Projection): Map<string, S
     }
     if (!has_unavailable) continue;
     const own = projection.employee_intervals;
-    const windows = projection.unavailable_intervals.flatMap((interval) => {
+    const note = projection.manager_notes?.[new Date(`${date}T00:00:00Z`).getUTCDay()]?.trim();
+    const windows = projection.unavailable_intervals.flatMap((interval): AvailabilityWindow[] => {
       const range = rangeOnDay(interval, date, projection);
       if (!range) return [];
-      const source = own === undefined || own.some((mine) => touches(mine, interval)) ? "employee" : "manager";
-      return [{ ...range, source } as const];
+      if (own === undefined || own.some((mine) => touches(mine, interval))) return [{ ...range, source: "employee" }];
+      return [{ ...range, source: "manager", ...(note ? { note } : {}) }];
     });
     if (windows.length) marks.set(date, { kind: "unavailable", windows });
   }

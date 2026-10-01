@@ -58,6 +58,15 @@ describe("ScheduleAvailabilityCellTip (G14)", () => {
     );
   });
 
+  it("shows the words of a manager's note", () => {
+    const { anchor } = renderCell({
+      kind: "unavailable",
+      windows: [{ from: 0, to: 960, source: "manager", note: "School mornings" }],
+    });
+    fireEvent.focus(anchor);
+    expect(screen.getByRole("tooltip").textContent).toContain("Unavailable until 4:00 PMManager note: School mornings");
+  });
+
   it("marks approved time off as a block", () => {
     const { anchor } = renderCell({ kind: "time_off", ranges: [{ from: 0, to: 1440 }] });
     fireEvent.focus(anchor);
