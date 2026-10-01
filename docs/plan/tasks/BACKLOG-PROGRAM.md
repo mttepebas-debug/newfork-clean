@@ -334,6 +334,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #76; taban `2fd65676`): yeni `nf-db` `local_7824e649…` FB-6.3.7'yi main'e alıyor; eski `nf-test` `local_17d5b65d…` devretti (ILERLEME §0c 61). Sayım değişmedi.
 - 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #75; taban `a1daf55a`): FB-6.3.6/.6b/.6c/.8 main'de ve canlıda (`d3d4e25c`, main CI 36897178954 yeşil). Mert: "Decide by" talebin diliminde (yeni FB-6.3.8d; BL-512'ye ilişki satırı), `.7`'ye ultrareview yok, 12 eski oturum arşivlendi. Sayım değişmedi: açık 287.
 - 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #74; taban `af4fa0a2`): FB-6.3.6c dalda bitti (`task/fb-6.3.6b` @`58387d6e`); sayım değişmedi.
 - 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #73; taban `40cf0cc9`): on ikinci kayıt oturumu devraldı. Eski `nf-db` `local_a0051ad4…` devretti; dalları `task/fb-6.3-pubnote` ve `task/fb-6.3` main'de (ILERLEME §0c 60). Sayım değişmedi: açık 287, kapanan 259, en yüksek BL-520.
