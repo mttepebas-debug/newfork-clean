@@ -57,12 +57,42 @@ export function overrideReason(segs, i) {
 
 // ponytail: shell-ish split on && || ; | newline; quoting inside a segment is not parsed, and a
 // push wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not seen.
-export const segments = (cmd) =>
-  cmd
-    .split(/&&|\|\||[;|\n]/)
-    .map((s) => s.trim().replace(/^\$?\(+\s*/, "").replace(/\s*\)+$/, ""))
-    .filter(Boolean);
+// Each segment carries the operator in front of it; an empty segment between two
+// operators keeps the weaker one (anything but && breaks a chain).
+const SEP = /(&&|\|\||[;|\n])/;
+export function chain(cmd) {
+  const out = [];
+  let sep = null;
+  for (const part of cmd.split(SEP)) {
+    if (/^(&&|\|\||[;|\n])$/.test(part)) {
+      sep = sep && sep !== "&&" ? sep : part;
+      continue;
+    }
+    const seg = part.trim().replace(/^\$?\(+\s*/, "").replace(/\s*\)+$/, "");
+    if (!seg) continue;
+    out.push({ seg, sep });
+    sep = null;
+  }
+  return out;
+}
+export const segments = (cmd) => chain(cmd).map((c) => c.seg);
 const words = (seg) => (seg.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map((w) => w.replace(/^["']|["']$/g, ""));
+
+// BL-500: `node scripts/lock.mjs take main "…" && … && git push …` takes the lock only
+// when the command runs, after this hook. Joined by && alone, the push runs only if
+// the take succeeded, so the chain counts as holding the lock.
+const takesMain = (seg) => {
+  const w = words(seg);
+  const n = w.findIndex((x) => /(^|[\\/])node(\.exe)?$/.test(x));
+  return n >= 0 && /(^|[\\/])lock\.mjs$/.test(w[n + 1] ?? "") && w[n + 2] === "take" && w[n + 3] === "main";
+};
+export function takesMainBefore(links, i) {
+  for (let j = i; j > 0; j--) {
+    if (links[j].sep !== "&&") return false;
+    if (takesMain(links[j - 1].seg)) return true;
+  }
+  return false;
+}
 
 // Arguments after the git subcommand, and the -C directory if one was given.
 function gitCall(seg, sub) {
@@ -157,12 +187,17 @@ export function evaluate(input) {
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
 
-    segs = segments(cmd);
+    const links = chain(cmd);
+    segs = links.map((l) => l.seg);
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i];
       for (const entry of backupBranches(seg, cwd, base)) audit(entry);
 
       if (!pushesMain(seg, cwd)) continue;
+      if (takesMainBefore(links, i)) {
+        audit({ ...base, event: "push-main-take-chained" });
+        continue;
+      }
       const lock = lockStatus().find((l) => l.name === "main");
       const lockInfo = lock.free ? "boş" : `${lock.identity}, ${lock.ageMinutes ?? "?"} dk${lock.stale ? " (stale)" : ""}`;
       if (!lock.free && !lock.stale) {

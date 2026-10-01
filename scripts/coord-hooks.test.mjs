@@ -60,6 +60,26 @@ test("push to main with main.lock held passes", () => {
   assert.equal(auditLines().at(-1).event, "push-main-locked");
 });
 
+test("main.lock taken in the same command, chained with &&, lets the push through (BL-500)", () => {
+  for (const cmd of [
+    'node scripts/lock.mjs take main "koordinator, push" && git push origin HEAD:main',
+    'node scripts/lock.mjs take main "k, p" && git fetch origin && git rebase origin/main && git push origin HEAD:main',
+  ]) {
+    assert.equal(evaluate(bash(cmd)).block, false, cmd);
+    assert.equal(auditLines().at(-1).event, "push-main-take-chained");
+  }
+  for (const cmd of [
+    'node scripts/lock.mjs take main "k, p"; git push origin HEAD:main',
+    'node scripts/lock.mjs take main "k, p" || git push origin HEAD:main',
+    'node scripts/lock.mjs take main "k, p"\ngit push origin HEAD:main',
+    'node scripts/lock.mjs take main "k, p" && echo x; git push origin HEAD:main',
+    'node scripts/lock.mjs take db "k, p" && git push origin HEAD:main',
+    'git push origin HEAD:main && node scripts/lock.mjs take main "k, p"',
+  ]) {
+    assert.equal(evaluate(bash(cmd)).block, true, cmd);
+  }
+});
+
 test("push to a task branch or a commit message mentioning push is not the guard's business", () => {
   assert.equal(evaluate(bash("git push -u origin task/x")).block, false);
   assert.equal(evaluate(bash('git commit -m "push main later"')).block, false);
