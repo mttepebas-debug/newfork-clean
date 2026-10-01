@@ -31,3 +31,4 @@
 - [Sistem işlemcisi ve kısıt bayrakları](checklist-system-actor-and-restriction-flags.md) — actor null'da kayıt ile bildirim süzgecini ayrı oku; "kısıt bir yana" yalnız tek sebebi ve yalnız liste üyeliğini etkiler (FB-6.3)
 - [Önce rapor, sonra mesaj](feedback-report-before-message.md) — rapor yazımı ile send_message paralel gitmez; "File created" görülmeden mesaj yok (2026-09-30, iki kez)
 - [Devir 2026-09-29](handoff-2026-09-29.md) — açık tekrar incelemeler (BL-335 onboarding alanı, G6 6b681623..62782c12), çalışan rapor kanalı send_message, deneme kuralı; kapanınca sil
+- [Shared schema field changes](checklist-shared-schema-field-changes.md) — removing a field breaks open old tabs; API overwriting a DB sub-object (settings) drops new keys
