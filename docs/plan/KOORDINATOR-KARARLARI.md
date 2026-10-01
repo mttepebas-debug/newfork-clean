@@ -520,7 +520,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Örnek: Ali Kadıköy ve Beşiktaş'a atanmış; Kadıköy müdürü Ayşe onaylar; Beşiktaş'ın tek müdürü Mehmet işten çıkarılır, Beşiktaş düşer. Kararsız dalda talep son karar anına kadar "Pending" kalıp "Not decided in time" diye reddedilirdi (`nf-guvenlik` O3); bu kararla en geç beş dakika içinde onaylanır ve olay listesinde "System" onayı görünür.
 - **Dayanak:** KARARLAR "Ürün kuralları" → "İzin (time off)" → Onay (kullanıcı kararları 2026-09-30): "karar verebilecek manager'ı kalmayan lokasyon düşer" ve "çok lokasyonda her lokasyondan en az bir onay gerekir"; `CLAUDE.md` §13 (KARARLAR satırı durumu birebir kapsıyor).
 - **Geri alma:** ucuz — `.3`+`.4` main'e ve canlıya girmeden `nf-db`'nin düzeltmesinde; sonrası yeni migration.
-- **Durum:** `nf-db`'ye düzeltme olarak verildi (O1, O2, D1, D2 ile birlikte), ardından yeniden inceleme; `tasks/FB-6.3.md` Notes'a yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #42).
+- **Durum:** `nf-db`'ye düzeltme olarak verildi (O1, O2, D1, D2 ile birlikte), ardından yeniden inceleme; `tasks/FB-6.3.md` Notes'a yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #42). **Daraltıldı (kullanıcı kararı 2026-10-01, besleme #44):** belge gecikmesi gibi geçici kısıtta lokasyon düşmez, karar admin/owner'a gider; otomatik onay yalnız manager gerçekten kalmadıysa (KARARLAR "İzin"; `8d84f278`). Canlıda ve main'de 2026-10-01.
 - **Mert:** onaysız (2026-10-01: senaryoyu sordu, örnekle anlatıldı; itiraz yok — koordinatörün aktardığı, besleme #43).
 
 ### KK-71 (2026-10-01) İzin işinin yayın notu `.5` ve `.6`'ya taşınır, ayrı backlog maddesi açılmaz
@@ -529,4 +529,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** `tasks/FB-6.3.md` Kurallar ("Bekleyen izinle çakışan vardiya yayınlanırken yayın penceresi bilgi notu gösterir"), In scope ("yayın penceresinde bekleyen izin notu") ve `.4` satırı — yeni fikir değil, kapsamdaki işin eksiği; `CLAUDE.md` §13 (süreç kararı Claude'un).
 - **Geri alma:** ucuz — yalnız görev dosyasındaki adım ataması.
 - **Durum:** `tasks/FB-6.3.md` `.4`, `.5`, `.6` satırlarına ve Notes'a yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #43).
+- **Mert:** onaysız.
+
+### KK-72 (2026-10-01) Geçici kısıtlı lokasyonda son 12 saat hatırlatması admin/owner'a gider; "No manager … is left" metni düzelir
+- **Karar:** FB-6.3 üçüncü incelemesinin iki düşük bulgusu küçük bir ek migration'la kapanır (`20261003033000_…`, yalnız yeniden tanım; `nf-db`): (1) manager'ı geçici kısıtlı (`unattended`) lokasyonda son karar anından 12 saat önceki hatırlatma admin/owner'a gider (bugün hatırlatma yalnız onaylamamış lokasyonun oy verenlerine gidiyor, `20261003032000_time_off_deadlines_close_requests.sql`:311-321); (2) admin/owner bildirimindeki "No manager who may decide this request is left at its locations." metni belge gecikmesinde yanlış (aynı dosya `:305`) → "No manager can decide this now".
+- **Uygulamada etkisi:** Örnek: Beşiktaş müdürü Mehmet'in belgesi gecikmiş; Ali'nin talebinin son karar anına 12 saat kala hatırlatma admin/owner'a da gider ve bildirim "Beşiktaş'ta manager kalmadı" demez. Canlıya gönderimi kullanıcı onayı ister; kullanıcı dönene kadar park.
+- **Dayanak:** kullanıcının 2026-10-01 kuralı (KARARLAR "İzin" → "Belgesi gecikmiş manager": geçici kısıtta karar admin/owner'a gider) ve KARARLAR "Oylamanın ayrıntısı" (hatırlatma karar vermemiş lokasyonun karar verenlerine); `CLAUDE.md` §13.
+- **Geri alma:** ucuz — yalnız yeniden tanım migration'ı.
+- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verilecek (HANDOFF `47bb6c17` §2 Sıradaki 1). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
 - **Mert:** onaysız.
