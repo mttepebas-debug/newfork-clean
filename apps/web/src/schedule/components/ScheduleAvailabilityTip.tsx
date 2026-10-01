@@ -34,12 +34,19 @@ function WindowLines({ windows, name, timeFormat }: {
   ));
 }
 
-function Head({ kind, children }: { readonly kind: ScheduleAvailabilityMark["kind"]; readonly children: string }) {
+// `plain` leaves out the decorative "!" / "×" for the screen reader text.
+function Head({ kind, plain, children }: {
+  readonly kind: ScheduleAvailabilityMark["kind"];
+  readonly plain: boolean;
+  readonly children: string;
+}) {
   return (
     <span className="schedule-availability-tip-head">
-      <span className="schedule-availability-tip-dot" data-kind={kind} aria-hidden="true">
-        {kind === "time_off" ? "×" : "!"}
-      </span>
+      {plain ? null : (
+        <span className="schedule-availability-tip-dot" data-kind={kind} aria-hidden="true">
+          {kind === "time_off" ? "×" : "!"}
+        </span>
+      )}
       <strong>{children}</strong>
     </span>
   );
@@ -62,9 +69,9 @@ export function ScheduleAvailabilityCellTip({ mark, employeeName, day, timeForma
   readonly timeFormat: TimeFormat;
 }) {
   const dayText = formatAvailabilityMarkDay(day);
-  const content = (
+  const body = (plain: boolean) => (
     <>
-      <Head kind={mark.kind}>{`${employeeName} · ${dayText}`}</Head>
+      <Head kind={mark.kind} plain={plain}>{`${employeeName} · ${dayText}`}</Head>
       {mark.kind === "time_off" ? (
         markLines(mark, timeFormat).map((line) => <strong key={line}>{line}</strong>)
       ) : (
@@ -84,20 +91,22 @@ export function ScheduleAvailabilityCellTip({ mark, employeeName, day, timeForma
       areaExcept="[data-shift-badge]"
       rich
       label={`${employeeName}, ${dayText}: ${markLines(mark, timeFormat).join(", ")}`}
-      content={content}
+      content={body(false)}
+      description={body(true)}
       data-availability-anchor="true"
     />
   );
 }
 
 /** The bubble on a shift card's "!" (the approved prototype's card tip). */
-export function ScheduleAvailabilityCardTip({ employeeName, day, startTime, endTime, windows, timeFormat }: {
+export function ScheduleAvailabilityCardTip({ employeeName, day, startTime, endTime, windows, timeFormat, plain = false }: {
   readonly employeeName: string;
   readonly day: string;
   readonly startTime: string;
   readonly endTime: string;
   readonly windows: readonly AvailabilityWindow[];
   readonly timeFormat: TimeFormat;
+  readonly plain?: boolean;
 }) {
   const clock = (value: string) => {
     const [hour = "0", minute = "0"] = value.split(":");
@@ -105,7 +114,7 @@ export function ScheduleAvailabilityCardTip({ employeeName, day, startTime, endT
   };
   return (
     <>
-      <Head kind="unavailable">{`${employeeName} shows as unavailable for this shift`}</Head>
+      <Head kind="unavailable" plain={plain}>{`${employeeName} shows as unavailable for this shift`}</Head>
       <span>{`${formatAvailabilityMarkDay(day)} · ${clock(startTime)} – ${clock(endTime)}`}</span>
       <WindowLines windows={windows} name={employeeName} timeFormat={timeFormat} />
       <span className="schedule-availability-tip-foot">Publish asks you to confirm it.</span>

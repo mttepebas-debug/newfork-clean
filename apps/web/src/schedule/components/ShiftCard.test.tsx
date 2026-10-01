@@ -92,6 +92,7 @@ describe("ShiftCard", () => {
       .map((id) => document.getElementById(id)?.textContent)
       .join(" ");
     expect(description).toContain("Unavailable after 2:00 PM");
+    expect(description).not.toContain("!Ali");
 
     const over = new Event("pointerover", { bubbles: true });
     Object.defineProperties(over, { pointerType: { value: "mouse" }, buttons: { value: 0 } });
@@ -103,6 +104,35 @@ describe("ShiftCard", () => {
         "Unavailable after 2:00 PMAli's own availability" +
         "Publish asks you to confirm it.",
     );
+  });
+  it("opens the \"!\" bubble on a tap without the tap reaching the card, and closes it on a tap elsewhere (G14)", () => {
+    const onSelect = vi.fn();
+    const onFocus = vi.fn();
+    const onEdit = vi.fn();
+    renderShiftCard({
+      shift: { ...shift, scheduled_date: "2026-10-20", start_time: "16:00", end_time: "22:00", warning_codes: ["availability"] },
+      employeeName: "Ali Kaya",
+      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440, source: "employee" }] },
+      onSelect,
+      onFocus,
+      onEdit,
+    });
+    const flag = document.querySelector(".schedule-shift-availability-flag")!;
+    // On a phone the grid can swallow the pointerdown; only the click arrives.
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    Object.defineProperty(click, "pointerType", { value: "touch" });
+    fireEvent(flag, click);
+    expect(screen.getByRole("tooltip").textContent).toContain("Unavailable after 2:00 PM");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onFocus).not.toHaveBeenCalled();
+    expect(onEdit).not.toHaveBeenCalled();
+
+    const outside = new Event("pointerdown", { bubbles: true });
+    Object.defineProperty(outside, "pointerType", { value: "touch" });
+    act(() => {
+      document.body.dispatchEvent(outside);
+    });
+    expect(screen.queryByRole("tooltip")).toBeNull();
   });
   it("shows no availability mark while the shift has none (the optimistic cell before saving)", () => {
     renderShiftCard({ shift: { ...shift, optimistic: true }, employeeName: "Ali Kaya" });

@@ -108,12 +108,15 @@ export function Tooltip({
   rich = false,
   area = false,
   areaExcept = OWN_CONTROLS,
+  description = content,
   tabIndex,
   children,
   ...attributes
 }: {
   readonly label: string;
   readonly content: ReactNode;
+  /** What a screen reader hears, when it should differ from the bubble (no decorative marks). */
+  readonly description?: ReactNode;
   readonly className?: string;
   readonly unstyled?: boolean;
   readonly rich?: boolean;
@@ -144,24 +147,57 @@ export function Tooltip({
   useEffect(() => {
     const parent = area ? trigger.current?.parentElement : null;
     if (!parent) return;
+    // A tap is followed by the browser's own mouse events; they must not
+    // close what the tap just opened (G14 visual QA, 390px phone).
+    let touchedAt = -Infinity;
+    const afterTouch = () => performance.now() - touchedAt < 800;
+    const excepted = (target: EventTarget | null) => {
+      const control = target instanceof Element ? target.closest(areaExcept) : null;
+      return Boolean(control && control !== trigger.current && parent.contains(control));
+    };
     const onOver = (event: MouseEvent) => {
       // A pressed button means a drag is passing over the cell.
-      if (event.buttons !== 0) return;
-      const control = event.target instanceof Element ? event.target.closest(areaExcept) : null;
-      if (control && control !== trigger.current && parent.contains(control)) {
+      if (event.buttons !== 0 || afterTouch()) return;
+      if (excepted(event.target)) {
         closeSoon();
         return;
       }
       if (openRef.current) cancel();
       else showRef.current(parent.getBoundingClientRect());
     };
+    const onLeave = () => {
+      if (!afterTouch()) closeSoon();
+    };
+    // A mouse press means a click or a drag: the cell keeps it. A tap
+    // toggles the bubble, as a tap on a Tooltip button does.
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType !== "touch") {
+        close();
+        return;
+      }
+      touchedAt = performance.now();
+      if (excepted(event.target) || openRef.current) close();
+      else showRef.current(parent.getBoundingClientRect());
+    };
+    // A tap anywhere else closes it; the bubble itself keeps it.
+    const onOutside = (event: Event) => {
+      if (!openRef.current || !(event.target instanceof Node)) return;
+      if (parent.contains(event.target)) return;
+      if (event.target instanceof Element && event.target.closest("[role='tooltip']")) return;
+      close();
+    };
     parent.addEventListener("mouseover", onOver);
-    parent.addEventListener("mouseleave", closeSoon);
-    parent.addEventListener("pointerdown", close);
+    parent.addEventListener("mouseleave", onLeave);
+    parent.addEventListener("pointerdown", onDown);
+    // A tap on a card elsewhere may send no pointerdown here, only its click.
+    document.addEventListener("pointerdown", onOutside, true);
+    document.addEventListener("click", onOutside, true);
     return () => {
+      document.removeEventListener("click", onOutside, true);
       parent.removeEventListener("mouseover", onOver);
-      parent.removeEventListener("mouseleave", closeSoon);
-      parent.removeEventListener("pointerdown", close);
+      parent.removeEventListener("mouseleave", onLeave);
+      parent.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("pointerdown", onOutside, true);
     };
   }, [area, areaExcept, cancel, close, closeSoon]);
 
@@ -203,7 +239,7 @@ export function Tooltip({
     >
       {children}
       <span id={descriptionId} hidden>
-        {content}
+        {description}
       </span>
       {tooltip.bubble}
     </button>

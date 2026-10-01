@@ -8,6 +8,7 @@ import type {
   CSSProperties,
   MouseEvent,
   PointerEvent as ReactPointerEvent,
+  SyntheticEvent,
 } from "react";
 import { useEffect, useId, useRef } from "react";
 
@@ -135,6 +136,30 @@ export function ShiftCard({
       />
     ) : availabilityWarning;
   const availabilityTip = useTooltip(availabilityTipContent, true);
+  const flagTappedAt = useRef(-Infinity);
+  // The browser's mouse events after a tap on the "!" must not reach the card.
+  const keepTapOnFlag = (event: SyntheticEvent) => {
+    if (performance.now() - flagTappedAt.current > 800) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const closeAvailabilityTip = availabilityTip.close;
+  useEffect(() => {
+    if (!availabilityTip.isOpen) return;
+    // A tap or click anywhere but the "!" and its bubble closes it.
+    const onOutside = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".schedule-shift-availability-flag, [role='tooltip']")) return;
+      closeAvailabilityTip();
+    };
+    // A tap on another card may send no pointerdown here, only its click.
+    document.addEventListener("pointerdown", onOutside, true);
+    document.addEventListener("click", onOutside, true);
+    return () => {
+      document.removeEventListener("pointerdown", onOutside, true);
+      document.removeEventListener("click", onOutside, true);
+    };
+  }, [availabilityTip.isOpen, closeAvailabilityTip]);
   // The manager's note (BL-199): an ink corner, the note on a mouse hover of
   // that corner, and the text as the card's description for screen readers.
   const note = shift.note.trim();
@@ -304,7 +329,17 @@ export function ShiftCard({
       ) : null}
       {availabilityWarning ? (
         <span id={availabilityDescriptionId} className="sr-only">
-          {availabilityTipContent}
+          {availabilityWarning && employeeName && availabilityMark?.kind === "unavailable" ? (
+            <ScheduleAvailabilityCardTip
+              employeeName={employeeName}
+              day={shift.scheduled_date}
+              startTime={shift.start_time}
+              endTime={shift.end_time}
+              windows={windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)}
+              timeFormat={timeFormat}
+              plain
+            />
+          ) : availabilityWarning}
         </span>
       ) : null}
       {noteCorner.corner}
@@ -323,7 +358,32 @@ export function ShiftCard({
               onPointerLeave={(event) => {
                 if (event.pointerType === "mouse") availabilityTip.closeSoon();
               }}
-              onPointerDown={availabilityTip.close}
+              // A mouse press is the card's (a click or a drag). A tap on the
+              // "!" is the flag's own: it toggles the bubble and goes no further.
+              // The grid can swallow a touch pointerdown on a card, so the tap
+              // is read from the click it still sends.
+              onPointerDown={(event) => {
+                if (event.pointerType === "touch") {
+                  event.stopPropagation();
+                  flagTappedAt.current = performance.now();
+                } else availabilityTip.close();
+              }}
+              onMouseDown={keepTapOnFlag}
+              onClick={(event) => {
+                const touch =
+                  (event.nativeEvent as PointerEvent).pointerType === "touch" ||
+                  performance.now() - flagTappedAt.current < 800;
+                if (!touch) return;
+                event.preventDefault();
+                event.stopPropagation();
+                flagTappedAt.current = performance.now();
+                if (availabilityTip.isOpen) availabilityTip.close();
+                else {
+                  const badge = event.currentTarget.closest("[data-shift-badge]") ?? event.currentTarget;
+                  availabilityTip.show(badge.getBoundingClientRect());
+                }
+              }}
+              onDoubleClick={keepTapOnFlag}
             >
               !
             </span>

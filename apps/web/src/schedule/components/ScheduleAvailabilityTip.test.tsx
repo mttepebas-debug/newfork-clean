@@ -20,6 +20,18 @@ function renderCell(mark: ScheduleAvailabilityMark) {
   };
 }
 
+// jsdom has no PointerEvent; the listeners read pointerType off the event.
+function tap(element: Element) {
+  const down = new Event("pointerdown", { bubbles: true });
+  Object.defineProperty(down, "pointerType", { value: "touch" });
+  fireEvent(element, down);
+  // What a phone sends after a tap.
+  fireEvent.mouseOver(element);
+  fireEvent.mouseDown(element);
+  fireEvent.click(element);
+  fireEvent.mouseOver(element);
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -76,6 +88,37 @@ describe("ScheduleAvailabilityCellTip (G14)", () => {
       vi.advanceTimersByTime(500);
     });
     expect(screen.getByRole("tooltip").textContent).toContain("Unavailable all day");
+  });
+
+  it("stays open after a tap and the mouse events a phone sends with it, until a tap elsewhere", () => {
+    vi.useFakeTimers();
+    const { cell } = renderCell({ kind: "unavailable", windows: [{ from: 840, to: 1080, source: "employee" }] });
+    tap(cell);
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByRole("tooltip").textContent).toContain("Unavailable 2:00 PM – 6:00 PM");
+
+    tap(document.body);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("toggles on a second tap of the same cell and stays shut on a tap of a card in it", () => {
+    const { cell, card } = renderCell({ kind: "unavailable", windows: [{ from: 0, to: 1440, source: "employee" }] });
+    tap(cell);
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    tap(cell);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    tap(card);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("gives a screen reader the text without the decorative mark", () => {
+    const { anchor } = renderCell({ kind: "time_off", ranges: [{ from: 0, to: 1440 }] });
+    const description = document.getElementById(anchor.getAttribute("aria-describedby")!)!;
+    expect(description.textContent).toBe(
+      "Alex Kim · Tue, Oct 20Approved time off, all dayShifts can't be scheduled on this day.",
+    );
   });
 
   it("closes when the cell is pressed, so a click or a drag keeps the cell", () => {
