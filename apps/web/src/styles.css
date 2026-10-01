@@ -5955,6 +5955,16 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-availability-tip-source {
   color: var(--theme-muted);
 }
+/* A note can be long (1000 characters) and unbroken; the bubble shows four
+   lines and Employees > Availability the rest. Screen readers get all of it. */
+.schedule-availability-tip-source[data-note] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .schedule-availability-tip-foot {
   margin-top: 4px;
   border-top: 1px solid var(--theme-border);

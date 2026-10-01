@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -65,6 +67,29 @@ describe("ScheduleAvailabilityCellTip (G14)", () => {
     });
     fireEvent.focus(anchor);
     expect(screen.getByRole("tooltip").textContent).toContain("Unavailable until 4:00 PMManager note: School mornings");
+  });
+
+  it("keeps a long note inside the bubble: wrapped anywhere, four lines, the full words still in the text", () => {
+    const words = `School mornings ${"https://example.com/".repeat(10)} ${"x".repeat(900)}`;
+    const { anchor } = renderCell({ kind: "unavailable", windows: [{ from: 0, to: 960, source: "manager", note: words }] });
+    fireEvent.focus(anchor);
+    const notes = screen.getByRole("tooltip").querySelectorAll("[data-note]");
+    expect(notes).toHaveLength(1);
+    expect(notes[0]!.textContent).toBe(`Manager note: ${words}`);
+    // The clamp is visual only: the described text keeps every word.
+    expect(screen.getAllByText(`Manager note: ${words}`)).toHaveLength(2);
+
+    const rule = readFileSync("src/styles.css", "utf8").match(/\.schedule-availability-tip-source\[data-note\]\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(rule).toContain("overflow-wrap: anywhere");
+    expect(rule).toContain("-webkit-line-clamp: 4");
+    expect(rule).toContain("line-clamp: 4");
+    expect(rule).toContain("overflow: hidden");
+  });
+
+  it("marks no other line of the bubble as a note", () => {
+    const { anchor } = renderCell({ kind: "unavailable", windows: [{ from: 0, to: 960, source: "manager" }, { from: 1000, to: 1100, source: "employee" }] });
+    fireEvent.focus(anchor);
+    expect(screen.getByRole("tooltip").querySelectorAll("[data-note]")).toHaveLength(0);
   });
 
   it("marks approved time off as a block", () => {

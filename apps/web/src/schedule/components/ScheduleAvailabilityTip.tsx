@@ -26,7 +26,9 @@ function WindowLines({ windows, name, timeFormat }: {
   return windows.map((window) => (
     <span key={`${window.from}-${window.to}-${window.source}`} className="schedule-availability-tip-window">
       <strong>{formatAvailabilityRange("unavailable", window, timeFormat)}</strong>
-      <span className="schedule-availability-tip-source">{sourceLine(window, name)}</span>
+      <span className="schedule-availability-tip-source" data-note={window.note ? "" : undefined}>
+        {sourceLine(window, name)}
+      </span>
     </span>
   ));
 }
