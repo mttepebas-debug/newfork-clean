@@ -134,6 +134,7 @@
   (Management departmanı ve Owner işi sistem kaydı).
 - Kanıt: 09-28 "Muafiyet kalksın"; 09-27 "Önce atanmalı", "Owner sadece otomatik olarak
   management departmanı owner jobına atanır".
+- İstisna (kullanıcı kararı 2026-10-01, FB-6.3): owner belge son tarihlerinden ve kısıtlamalarından her zaman muaftır (KARARLAR "Ürün kuralları"). P08 belge kısıtı dışında geçerli.
 
 **P09. Veri sessizce düşmez; yayınlanmış veri geriye dönük değişmez.**
 - Kural: düşmesi gereken veri için kullanıcı uyarılır. "Exclude" gibi işaretler yalnız yeni

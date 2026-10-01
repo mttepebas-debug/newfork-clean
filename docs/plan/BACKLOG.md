@@ -797,6 +797,7 @@ Kaynak: `nf-db` BL-475 raporu ve `nf-guvenlik` BL-475 raporu (ONAY @`7bce0322`; 
   - **Sahiplik 2026-10-01 (KK-69, besleme #33):** kod kısmı (shared şemalar, web, API testleri) FB-6.3.5'te `nf-backend`; veritabanı kısmı (fonksiyonlar, CHECK'ler, kolonlar, pgTAP) FB-6.3.7'de `nf-db`.
 - **BL-497 (leave: low / do: safe) `bl052_document_notifications` ortak yerel veritabanında "more than one row returned by a subquery" ile düşüyor.** BL-475'in migration'ı uygulanmış ve uygulanmamış hâlde aynı; CI yeşil; yerel veri kayması olmalı. Neden önemli: birleştirme penceresinde yerel kırmızı listeyi büyütür, gerçek kırmızıyı gizler (BL-262 ailesi; aynı dosyanın kuyruk sayısı sorunu BL-245 / BL-296 ile kapanmıştı, bu başka bir sorgu). İş: hangi alt sorgunun iki satır bulduğunu ayırmak; test kendi satırını süzsün ya da kayma kaydedilsin. `nf-test`. Kaynak: `nf-db` BL-475 yerel ölçümü, koordinatör aktardı (besleme #21); kayıt oturumu ölçmedi.
   - **Program 2026-09-30 (kayıt oturumu): G12.**
+  - **Yine görüldü 2026-10-01 (besleme #38):** FB-6.3.2'nin rollback'li ölçümünde (`nf-db`) CI-yeşil 147 dosyanın tek kırmızısı bu; migration'sız da aynı hata, CI'da yeşil (main CI 36830930928). Kayıt oturumu ölçmedi.
 
 ## G8b raporlarında ve gönderiminde bulunanlar (2026-09-30)
 Kaynak: `nf-backend` G8b raporu (yolda bulunanlar) ve koordinatörün G8b gönderimi, koordinatör aktardı (besleme #25).
