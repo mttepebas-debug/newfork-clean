@@ -1,7 +1,7 @@
 # Koordinatör devri — 2026-10-01 gece (kullanıcı uyanık)
 
 Devreden: "Koordinatör" (`local_0ee21aaa-9f24-4054-9a31-f2b30ed80270`); bağlamı %56, iş sınırında (G8b canlıda) devrediyor; kullanıcı "Şimdi devret" dedi.
-Devralan: kullanıcının açtığı yeni oturum (havuz boşaldı). **Güncel koordinatör kimliği, devralan oturumun kendi `local_` kimliğidir**; ilk iş onu kayıt oturumuna BESLEME ile bildirmek (o, bu satırı ve ILERLEME §0'ı günceller).
+Devralan: `local_2464b099-317e-437f-ac12-5a506804d03d` ("Koordinatör"; sabitli, Remote Control açık — ölçüldü). Eski `nf-backend` oturumuydu; kullanıcı /clear ile temizleyip koordinatör yaptı (besleme #27). Çalışma klasörü `optimistic-blackburn-f4a88f`. Posta kutusu 2026-10-01T06:40Z'de sahiplenildi (`.newfork-inbox/coordinator.json`, ölçüldü), `wait` arka planda.
 Ölçüm anı: `origin/main` = bu commit; altındaki son kod `b8613af0` (G8b); main CI 36816535884 check + db + e2e yeşil. **Canlı veritabanı = main** (son migration `20261003020000`, MCP ile ölçüldü). Ortak yerel DB = main (`20261003020000`). Kilitler boş.
 
 ## 0. Temel gerçekler (oku)
