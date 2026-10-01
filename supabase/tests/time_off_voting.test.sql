@@ -423,6 +423,19 @@ select is(pg_temp.refusal(format($$select public.decide_time_off_service(%L, %L,
     tests.user('tr:hande'), tests.id('tr'), tests.id('tr:cem:1'),
     app_private.time_off_impact(tests.id('tr'), tests.id('tr:cem:1')) ->> 'fingerprint')),
   '42501 authz.document_blocked', 'nor vote on one');
+-- The owner is never held back by a document (user decision 2026-10-01): the
+-- owner's copy is overdue too, yet the owner reads the queue and decides.
+update public.employee_onboarding_requirements
+set lifecycle_exempt = false, deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('tr:owner');
+select ok(app_private.document_actor_blocked(tests.user('tr:owner'), tests.id('tr')), 'the owner misses the document too');
+select is(
+  (select jsonb_build_object('alone', x -> 'progress' -> 'can_decide_alone', 'seen', x -> 'progress' -> 'impact' ? 'fingerprint')
+   from jsonb_array_elements(public.get_schedule_requests_service(tests.user('tr:owner'), tests.id('tr'), 'needs_review') -> 'time_off_requests') x
+   where (x ->> 'id')::uuid = tests.id('tr:cem:1')),
+  '{"alone": true, "seen": true}'::jsonb, 'the owner still reads the queue, may decide alone and sees the shifts it would open');
+select is((public.decide_time_off_service(tests.user('tr:owner'), tests.id('tr'), tests.id('tr:cem:1'), 'approve', '',
+    app_private.time_off_impact(tests.id('tr'), tests.id('tr:cem:1')) ->> 'fingerprint') ->> 'status'), 'approved', 'and decides it');
 
 -- 9. A closed workspace --------------------------------------------------------
 

@@ -32,9 +32,9 @@ as $$
   select jsonb_build_object(
     'fingerprint', impact ->> 'fingerprint',
     'locations', coalesce((select jsonb_object_agg(x.key, x.value) from jsonb_each(impact -> 'locations') x
-      where app_private.authz_reason(actor, w, 'schedule.read', array[x.key::uuid]) is null), '{}'),
+      where app_private.time_off_reason(actor, w, 'schedule.read', null, x.key::uuid) is null), '{}'),
     'hidden_shift_count', (select coalesce(sum(jsonb_array_length(x.value -> 'shifts')), 0)::integer from jsonb_each(impact -> 'locations') x
-      where app_private.authz_reason(actor, w, 'schedule.read', array[x.key::uuid]) is not null))
+      where app_private.time_off_reason(actor, w, 'schedule.read', null, x.key::uuid) is not null))
   from (select app_private.time_off_impact(w, rid) impact) seen;
 $$;
 
@@ -126,7 +126,7 @@ begin
  -- The people whose time off the actor reads.
  -- ponytail: one core call per person of the workspace; ask per page if workspaces grow past a few hundred people.
  reached := coalesce((select array_agg(e.id) from public.employee_profiles e where e.workspace_id = target_workspace_id
-   and app_private.authz_reason(actor_user_id, target_workspace_id, 'requests.read', null, e.id) is null), '{}');
+   and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', e.id) is null), '{}');
  can_time_off := cardinality(reached) > 0;
  can_shift := cardinality(shift_scope) > 0;
  -- Neither list anywhere: say why not.
@@ -134,7 +134,10 @@ begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'requests.read', target_locations => time_scope);
  end if;
  if target_location_id is not null then
-  if can_time_off then perform app_private.authorize(actor_user_id, target_workspace_id, 'requests.read', array[target_location_id]); end if;
+  if can_time_off and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', null, target_location_id) is not null then
+   raise exception 'Not allowed' using errcode = '42501', detail = 'requests.read',
+     hint = 'authz.' || app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', null, target_location_id);
+  end if;
   if can_shift then perform app_private.authorize(actor_user_id, target_workspace_id, 'exchange.read', array[target_location_id]); end if;
  end if;
  select coalesce(jsonb_agg(jsonb_build_object('id', l.id, 'name', l.name) order by l.name), '[]') into locations
@@ -232,7 +235,9 @@ end;
 $$;
 
 -- Every five minutes. One transaction, at most 500 requests per pass.
--- ponytail: commit per request in a procedure if a pass ever runs long.
+-- ponytail: one transaction per pass, at most 500 requests, each workspace's
+-- lock held to the end of the pass; past that, a procedure that commits per
+-- request (and loops until nothing is due) replaces it.
 create function app_private.time_off_sweep()
 returns integer
 language plpgsql
@@ -251,14 +256,22 @@ begin
     where q.status = 'pending' and q.decide_by is not null and q.decide_by <= now()
     order by q.decide_by, q.id limit 500 loop
     perform public.availability_lock_workspace(r.workspace_id);
-    perform app_private.time_off_finalize(r.workspace_id, r.id, 'deny', null, 'Not decided in time', false, true);
-    done := done + 1;
+    -- Read again under the lock: a withdrawal or a last vote may have closed it.
+    if exists (select 1 from public.schedule_time_off_requests q where q.id = r.id and q.status = 'pending' and q.decide_by <= now()) then
+      perform app_private.time_off_finalize(r.workspace_id, r.id, 'deny', null, 'Not decided in time', false, true);
+      done := done + 1;
+    end if;
   end loop;
 
   for r in select q.* from public.schedule_time_off_requests q
     where q.status = 'pending' and q.decide_by > now()
     order by q.decide_by, q.id limit 500 loop
     perform public.availability_lock_workspace(r.workspace_id);
+    -- Read again under the lock: a withdrawal or a last vote may have closed it.
+    select q.* into r from public.schedule_time_off_requests q where q.id = r.id;
+    if r.status <> 'pending' or r.decide_by <= now() then
+      continue;
+    end if;
     st := app_private.time_off_state(r.workspace_id, r.id);
 
     -- A vote on shifts that changed is let go; its manager looks again.
@@ -268,6 +281,14 @@ begin
         'Look at this time off again', 'The shifts it affects changed, so your approval no longer counts.');
       done := done + 1;
     end loop;
+
+    -- Every location still deciding has approved (another dropped out, KARARLAR
+    -- "İzin" 2026-09-30): the request is settled, by the system.
+    if (st ->> 'remaining')::integer = 0 and not (st ->> 'fallback')::boolean then
+      perform app_private.time_off_finalize(r.workspace_id, r.id, 'approve', null, 'All deciding locations approved', false);
+      done := done + 1;
+      continue;
+    end if;
 
     -- Only an admin or the owner can decide it now: tell them once.
     if (st ->> 'fallback')::boolean and r.fallback_notified_at is null

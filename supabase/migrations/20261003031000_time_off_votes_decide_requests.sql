@@ -148,6 +148,9 @@ declare
   rule_row app_private.authz_actions;
 begin
   select * into rule_row from app_private.authz_actions a where a.key = action;
+  if not found then
+    raise exception 'Unknown action %', action using errcode = '22023';
+  end if;
   if state.class = 'owner' then
     state.document_blocked := false;
   end if;
@@ -391,7 +394,8 @@ begin
   ), managers as (
    select m.user_id from public.workspace_memberships m
    where m.workspace_id = w and m.status = 'active' and m.user_id is distinct from actor
-    and (app_private.actor(m.user_id, w)).class = 'manager'
+    -- A manager: deciding alone is not theirs anywhere (the core, no role reading).
+    and app_private.authz_reason(m.user_id, w, 'time_off.decide_alone') is not null
   ), told as (
    select mg.user_id, o.* from managers mg join opened o
     on app_private.authz_reason(mg.user_id, w, 'schedule.edit', array[o.location_id]) is null
@@ -476,6 +480,10 @@ declare
   remaining tstzmultirange;
 begin
   select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w for update;
+  -- Whoever got here first closed it (a withdrawal, a last vote, the job).
+  if r.status <> 'pending' then
+    raise exception 'This request is already closed' using errcode = '40001';
+  end if;
   if verdict = 'approve' and r.request_type = 'time_off_cancellation' then
     select p.* into parent from public.time_off_cancellation_links cl
     join public.schedule_time_off_requests p on p.id = cl.parent_request_id and p.workspace_id = cl.workspace_id
@@ -494,7 +502,9 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('segment_id', s.id, 'status', s.status) order by s.starts_at, s.id), '[]') into decided
   from public.schedule_time_off_segments s where s.request_id = rid and s.workspace_id = w;
   if verdict = 'approve' and r.request_type = 'time_off' then
-    released := app_private.time_off_release_shifts(w, rid, actor, r.revision);
+    -- The job settles it with no actor; the release names the last approval.
+    released := app_private.time_off_release_shifts(w, rid, coalesce(actor, (select v.voter_user_id from public.time_off_votes v
+      where v.request_id = rid and v.verdict = 'approve' order by v.updated_at desc limit 1)), r.revision);
   end if;
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, note, metadata)
   values (w, rid, case when expired then 'expired' else r.status::text end, actor, coalesce(note, ''),

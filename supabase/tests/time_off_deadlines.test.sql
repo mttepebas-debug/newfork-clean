@@ -149,6 +149,29 @@ select is((select count(*)::integer from public.time_off_votes v where v.request
 select is(pg_temp.told(tests.id('td:ali:8'), 'requests.time_off.review_again'), pg_temp.users('ayse'),
   'and asks Ayse, once, to look again');
 
+-- 4b. Every location still deciding has approved: the job settles it ----------
+
+select tests.remember('td:ali:11', tests.leave('td', 'ali', 11));
+select pg_temp.decide('ayse', tests.id('td:ali:11'), 'approve');
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('td') and m.user_id = tests.user('td:mehmet')), tests.id('td:B'));
+select app_private.time_off_sweep();
+select is(
+  (select jsonb_build_object('status', pg_temp.status(tests.id('td:ali:11')), 'actor', e.actor_user_id, 'note', e.note)
+   from public.schedule_time_off_events e where e.request_id = tests.id('td:ali:11') and e.action = 'approved'),
+  jsonb_build_object('status', 'approved', 'actor', null, 'note', 'All deciding locations approved'),
+  'Besiktas lost its manager after Kadikoy approved: the system settles it approved');
+select is(pg_temp.told(tests.id('td:ali:11'), 'requests.time_off.status_changed'), pg_temp.users('ali'), 'and Ali hears it');
+
+-- 4c. A request closes once; the core's answer is never a yes by default -----
+
+select is(pg_temp.refusal(format($$select app_private.time_off_finalize(%L, %L, 'deny', null, 'late', false, true)$$,
+    tests.id('td'), tests.id('td:emre:1'))),
+  '40001', 'a request already closed is not closed again (a late job, a last vote)');
+select is(pg_temp.refusal(format($$select app_private.time_off_reason(%L, %L, 'time_off.no_such_action')$$,
+    tests.user('td:owner'), tests.id('td'))),
+  '22023', 'an action the core does not know is refused, not allowed');
+
 -- 5. When only an admin or the owner can decide -------------------------------
 
 select tests.remember('td:emre:9', tests.leave('td', 'emre', 9));
