@@ -35,8 +35,17 @@ Hangisinin eksik olduğunu yalnız üç kontrol birlikte gösteriyor.
 - Başka bir ajanın aynı anda ölçtüğü grubun madde satırlarına dokunulmaz (2026-09-30, G14).
 
 **Betik:** sayım ve grup kontrolü `backlog_sayim.py` (bu klasörde; repo kökünden `python .claude/agent-memory/nf-planlama/backlog_sayim.py`,
-yalnız okur). 2026-09-30 sonu beklenen çıktı: açık 239 (210 + 29), kapanan 225 (187 + 38), en yüksek BL-437, işaretsiz 0,
-grupsuz yalnız BL-426.
+yalnız okur). Beklenen çıktı burada tutulmaz (bayatlıyordu): `docs/plan/ILERLEME-PLANI.md` §0d(b) madde 4, her beslemede
+güncellenir. Betikteki "BL-426 bilerek grupsuz" notu eski; grupsuz madde çıkarsa yeni gelen maddedir, gruplanır.
+
+**Yedinci oturumun dersleri (2026-10-01, besleme #29–#39):**
+- Koordinatörün tekrar beslemesi (aynı içerik, yeni numara; #34): kayıt yazılmaz, cevap verilmez (kullanıcı kuralı, işlenmiş
+  mesajın kopyası); yeni tek bilgi bir sonraki kayda bir satır olarak girer.
+- Koşullu talimat ("yeşil çıkarsa BL aç") koşul ölçülerek hemen uygulanır; koordinatörün ayrı beslemesi beklenmez (#33, BL-504).
+- Koordinatörün "şu satıra yaz" dediği yer önce `grep` ile bulunur; bir kez başka dosyadaydı (KARARLAR sanılan kenar durum
+  `tasks/FB-6.3.md`'de). Bulunamazsa doğru yere yazılır ve uyuşmazlık söylenir.
+- Rol hafızası `docs/` dışında: koordinatör "docs-only tarifinle gönder" dese de main'e kayıt oturumu göndermez; yerel dala
+  commit, sha koordinatöre (KARARLAR OPS-04).
 
 **İlk oturumun dersleri (2026-09-30, dört besleme):**
 - Envanterde dosyaları baştan sona okuma. `BACKLOG-PROGRAM.md` ~65 bin token, G7 satırı tek başına 9 bin karakter; ilk okuma
