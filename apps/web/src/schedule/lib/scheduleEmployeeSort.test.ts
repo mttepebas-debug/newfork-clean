@@ -14,7 +14,7 @@ const jobs: ScheduleReadModel["jobs"] = [
     id: "11111111-1111-4111-8111-111111111111",
     name: "Host",
     color: "#f59e0b",
-    sort_order: 0,
+    
     department_id: null,
     system_key: null,
   },
@@ -22,7 +22,7 @@ const jobs: ScheduleReadModel["jobs"] = [
     id: "22222222-2222-4222-8222-222222222222",
     name: "Server",
     color: "#10b981",
-    sort_order: 1,
+    
     department_id: null,
     system_key: null,
   },
@@ -114,8 +114,8 @@ describe("scheduleEmployeeSort", () => {
 
   it("uses the reference job order for by-job sorting instead of re-sorting jobs", () => {
     const referenceOrderedJobs: ScheduleReadModel["jobs"] = [
-      { ...jobs[1]!, sort_order: 99 },
-      { ...jobs[0]!, sort_order: 0 },
+      { ...jobs[1]!, },
+      { ...jobs[0]!, },
     ];
     const sorted = sortScheduleEmployees(
       [
@@ -335,14 +335,14 @@ describe("Management's groups and the owner's row in Job/Position (EMP-001 C)", 
   const management = "d0000000-0000-4000-8000-000000000001";
   const kitchen = "d0000000-0000-4000-8000-000000000002";
   const c2Departments: ScheduleReadModel["departments"] = [
-    { id: management, name: "Leadership", color: "#3C7A68", sort_order: 0, system_key: "management" },
-    { id: kitchen, name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
+    { id: management, name: "Leadership", color: "#3C7A68", system_key: "management" },
+    { id: kitchen, name: "Kitchen", color: "#3C7A68", system_key: null },
   ];
   // Management's jobs come first in the Schedule's own job order here, so only
   // the rule can put them last.
-  const owner = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", sort_order: 0, department_id: management, system_key: "owner" as const };
-  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", sort_order: 1, department_id: management, system_key: null };
-  const cook = { id: "ff000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", sort_order: 2, department_id: kitchen, system_key: null };
+  const owner = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", department_id: management, system_key: "owner" as const };
+  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", department_id: management, system_key: null };
+  const cook = { id: "ff000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", department_id: kitchen, system_key: null };
   const c2Jobs: ScheduleReadModel["jobs"] = [owner, manager, cook];
 
   const person = (n: number, display_name: string, job_ids: string[], primary_job_id: string | null) =>

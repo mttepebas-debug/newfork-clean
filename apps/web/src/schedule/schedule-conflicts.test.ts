@@ -48,7 +48,7 @@ const model = {
       id: jobId,
       name: "Server",
       color: "#112233",
-      sort_order: 0,
+      
       department_id: null,
       system_key: null,
     },
@@ -56,7 +56,7 @@ const model = {
       id: otherJobId,
       name: "Bartender",
       color: "#223344",
-      sort_order: 1,
+      
       department_id: null,
       system_key: null,
     },

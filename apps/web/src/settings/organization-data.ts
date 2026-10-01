@@ -349,14 +349,14 @@ export async function saveJob(
         .eq("id", id)
         .eq("workspace_id", workspaceId)
         .select(
-          "id,workspace_id,department_id,name,color,sort_order,archived_at,system_key",
+          "id,workspace_id,department_id,name,color,archived_at,system_key",
         )
         .single()
     : client()
         .from("jobs")
         .insert({ ...values, workspace_id: workspaceId })
         .select(
-          "id,workspace_id,department_id,name,color,sort_order,archived_at,system_key",
+          "id,workspace_id,department_id,name,color,archived_at,system_key",
         )
         .single();
   const { data, error } = await query;

@@ -122,7 +122,7 @@ const department = {
   workspace_id: workspaceId,
   name: "Front of house",
   color: "#3C7A68",
-  sort_order: 0,
+  
   archived_at: null,
   system_key: null,
 } satisfies Department;
@@ -133,7 +133,7 @@ const job = {
   department_id: departmentId,
   name: "Server",
   color: "#4478A8",
-  sort_order: 0,
+  
   archived_at: null,
   system_key: null,
 } satisfies Job;

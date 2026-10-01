@@ -55,8 +55,8 @@ describe("employee team board read (BL-218)", () => {
   // lists left empty.
   const board = {
     jobs: [
-      { id: "29173f20-8534-4650-a445-362954990e7e", name: "Owner", color: "#4478A8", sort_order: 0, system_key: "owner", department_id: "4a942fbd-77f0-47ca-8fc9-98863b5730ec" },
-      { id: "a6e9c461-82fb-48a3-a7b6-cf92fc1911d5", name: "Cook", color: "#D39A36", sort_order: 1, system_key: null, department_id: "f3a14873-2fa4-455d-97e3-8ec992dd9e50" },
+      { id: "29173f20-8534-4650-a445-362954990e7e", name: "Owner", color: "#4478A8", system_key: "owner", department_id: "4a942fbd-77f0-47ca-8fc9-98863b5730ec" },
+      { id: "a6e9c461-82fb-48a3-a7b6-cf92fc1911d5", name: "Cook", color: "#D39A36", system_key: null, department_id: "f3a14873-2fa4-455d-97e3-8ec992dd9e50" },
     ],
     settings: { time_format: "12h" },
     employees: [
@@ -66,8 +66,8 @@ describe("employee team board read (BL-218)", () => {
     locations: [{ id: "a237a14a-76c9-441f-bc45-5eae2b13f5e0", name: "Kadikoy", timezone: "Europe/Istanbul", sort_order: 0, published_at: null, publication_status: "unpublished" }],
     week_start: "2026-09-28",
     departments: [
-      { id: "4a942fbd-77f0-47ca-8fc9-98863b5730ec", name: "Management", color: "#3C7A68", sort_order: 0, system_key: "management" },
-      { id: "f3a14873-2fa4-455d-97e3-8ec992dd9e50", name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
+      { id: "4a942fbd-77f0-47ca-8fc9-98863b5730ec", name: "Management", color: "#3C7A68", system_key: "management" },
+      { id: "f3a14873-2fa4-455d-97e3-8ec992dd9e50", name: "Kitchen", color: "#3C7A68", system_key: null },
     ],
     workspace_id: "085697c9-c2c4-47bd-8c3d-0a6673e4c3e1",
     week_start_day: "monday",

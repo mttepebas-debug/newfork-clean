@@ -32,7 +32,7 @@ const model: ScheduleReadModel = {
       id: "22222222-2222-4222-8222-222222222222",
       name: "Server",
       color: "#0f766e",
-      sort_order: 0,
+      
       department_id: null,
       system_key: null,
     },
@@ -290,9 +290,9 @@ describe("the job a new shift starts with (BL-218)", () => {
   const management = "d0000000-0000-4000-8000-000000000001";
   const kitchen = "d0000000-0000-4000-8000-000000000002";
   // Real order: setup makes Owner first (sort_order 0).
-  const ownerJob = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", sort_order: 0, department_id: management, system_key: "owner" as const };
-  const cook = { id: "00000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", sort_order: 1, department_id: kitchen, system_key: null };
-  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", sort_order: 2, department_id: management, system_key: null };
+  const ownerJob = { id: "0f000000-0000-4000-8000-000000000001", name: "Owner", color: "#4478A8", department_id: management, system_key: "owner" as const };
+  const cook = { id: "00000000-0000-4000-8000-00000000000c", name: "Cook", color: "#D39A36", department_id: kitchen, system_key: null };
+  const manager = { id: "0f000000-0000-4000-8000-000000000002", name: "Manager", color: "#4478A8", department_id: management, system_key: null };
   // Archived: still in job_ids, gone from the Schedule's job list.
   const archivedId = "00000000-0000-4000-8000-000000000001";
   const person = (id: string, jobIds: string[], primary: string | null) => ({
@@ -301,8 +301,8 @@ describe("the job a new shift starts with (BL-218)", () => {
   const bl218: ScheduleReadModel = {
     ...model,
     departments: [
-      { id: kitchen, name: "Kitchen", color: "#3C7A68", sort_order: 0, system_key: null },
-      { id: management, name: "Leadership", color: "#3C7A68", sort_order: 1, system_key: "management" },
+      { id: kitchen, name: "Kitchen", color: "#3C7A68", system_key: null },
+      { id: management, name: "Leadership", color: "#3C7A68", system_key: "management" },
     ],
     jobs: [ownerJob, cook, manager],
     employees: [

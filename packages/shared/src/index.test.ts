@@ -9,6 +9,9 @@ import {
   canAccessWorkspace,
   departmentInputSchema,
   departmentSchema,
+  scheduleDepartmentSchema,
+  scheduleJobSchema,
+  scheduleShiftLabelSchema,
   documentTypeInputSchema,
   employeeInputSchema,
   employeeReferenceDataSchema,
@@ -622,7 +625,6 @@ describe("shared contracts", () => {
           id: jobId,
           name: "Server",
           color: "#4478A8",
-          sort_order: 0,
           department_id: null,
           system_key: null,
         },
@@ -1483,8 +1485,8 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     referenced_jobs: [],
     referenced_shift_types: [],
   });
-  const scheduleDepartment = { id: managementId, name: "Leadership", color: "#4478A8", sort_order: 0 };
-  const scheduleJob = { id: ownerJobId, name: "Owner", color: "#4478A8", sort_order: 0, department_id: managementId };
+  const scheduleDepartment = { id: managementId, name: "Leadership", color: "#4478A8" };
+  const scheduleJob = { id: ownerJobId, name: "Owner", color: "#4478A8", department_id: managementId };
 
   it("reads the Schedule's system keys and refuses a read without them", () => {
     const parsed = scheduleReadModelSchema.parse(
@@ -1679,13 +1681,26 @@ describe("organization basics schemas", () => {
     });
   });
 
+  it("orders departments and jobs by name, so no read carries a hand order (BL-496)", () => {
+    const id = "30000000-0000-4000-8000-000000000009";
+    const scheduleDepartment = { id, name: "Leadership", color: "#4478A8" };
+    const scheduleJob = { ...scheduleDepartment, department_id: id };
+    const base = { ...scheduleDepartment, workspace_id: workspaceId, archived_at: null, sort_order: 3 };
+    expect(departmentSchema.parse({ ...base, system_key: null })).not.toHaveProperty("sort_order");
+    expect(jobSchema.parse({ ...base, department_id: null, system_key: null })).not.toHaveProperty("sort_order");
+    expect(scheduleDepartmentSchema.parse({ ...scheduleDepartment, sort_order: 3, system_key: null })).not.toHaveProperty("sort_order");
+    expect(scheduleJobSchema.parse({ ...scheduleJob, sort_order: 3, system_key: null })).not.toHaveProperty("sort_order");
+    // Shift types and labels keep the order a manager sets by hand.
+    expect(scheduleShiftLabelSchema.parse({ id, name: "Training", color: "#A855F7", sort_order: 3 }).sort_order).toBe(3);
+    expect(scheduleShiftLabelSchema.safeParse({ id, name: "Training", color: "#A855F7" }).success).toBe(false);
+  });
+
   it("keeps the system key that tells Management and the Owner job apart (BL-218)", () => {
     const department = {
       id: "10000000-0000-4000-8000-000000000001",
       workspace_id: workspaceId,
       name: "Leadership",
       color: "#4478A8",
-      sort_order: 0,
       archived_at: null,
     };
     const job = { ...department, id: "20000000-0000-4000-8000-000000000001", department_id: department.id, name: "Owner" };

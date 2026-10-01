@@ -65,7 +65,7 @@ const model: ScheduleReadModel = {
       id: "33333333-3333-4333-8333-333333333333",
       name: "Server",
       color: "#2563eb",
-      sort_order: 0,
+      
       department_id: null,
       system_key: null,
     },

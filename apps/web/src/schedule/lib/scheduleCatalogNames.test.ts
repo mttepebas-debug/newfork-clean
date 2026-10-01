@@ -6,7 +6,7 @@ import {
   scheduleShiftTypeOf,
 } from "./scheduleCatalogNames";
 
-const liveJob = { id: "10000000-0000-4000-8000-000000000001", name: "Server", color: "#4478A8", sort_order: 0, department_id: null, system_key: null };
+const liveJob = { id: "10000000-0000-4000-8000-000000000001", name: "Server", color: "#4478A8", department_id: null, system_key: null };
 const liveType = { id: "20000000-0000-4000-8000-000000000001", name: "Dinner", color: "#A84478", sort_order: 0, default_start_time: null, default_end_time: null };
 const archivedJob = { id: "10000000-0000-4000-8000-000000000002", name: "Line Cook" };
 const archivedType = { id: "20000000-0000-4000-8000-000000000002", name: "Brunch" };

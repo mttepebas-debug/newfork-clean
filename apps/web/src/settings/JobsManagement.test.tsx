@@ -82,7 +82,6 @@ const department = {
   workspace_id: "workspace",
   name: "Service",
   color: "#3C7A68",
-  sort_order: 0,
   archived_at: null,
 } as Department;
 const job = {

@@ -21,7 +21,7 @@ function model(): ScheduleReadModel {
     locations: ["a", "b"].map((id, index) => ({ id: `loc-${id}`, name: `Location ${id}`,
       short_name: id === "a" ? "MRK" : "SHL", timezone: "America/Los_Angeles",
       sort_order: index, publication_status: "published", published_at: null })),
-    jobs: [{ id: "job", name: "Server", color: "#123456", sort_order: 0, department_id: null , system_key: null}],
+    jobs: [{ id: "job", name: "Server", color: "#123456", department_id: null , system_key: null}],
     shift_types: [{ id: "type", name: "AM", color: "#aabbcc", sort_order: 0,
       default_start_time: "09:00", default_end_time: "13:00" }],
     employees: ["a", "b"].map(id => ({ id: `person-${id}`, display_name: "Same Name",

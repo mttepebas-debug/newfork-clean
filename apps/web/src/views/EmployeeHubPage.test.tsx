@@ -142,7 +142,7 @@ const scheduleBoard = {
       id: "13000000-0000-4000-8000-000000000001",
       name: "Server",
       color: "#2d8c64",
-      sort_order: 1,
+      
       department_id: null,
       system_key: null,
     },

@@ -17,7 +17,7 @@ const job: ScheduleReadModel["jobs"][number] = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Server",
   color: "#2563eb",
-  sort_order: 0,
+  
   department_id: null,
   system_key: null,
 };

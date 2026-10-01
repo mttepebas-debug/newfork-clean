@@ -839,7 +839,6 @@ export const departmentSchema = z.object({
   workspace_id: z.string().uuid(),
   name: entityNameSchema,
   color: colorSchema,
-  sort_order: z.number().int().nonnegative(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
   // Set by workspace setup on the one department that is Management (BL-218).
   system_key: z.enum(["management"]).nullable(),
@@ -852,7 +851,6 @@ export const jobSchema = z.object({
   department_id: z.string().uuid().nullable(),
   name: entityNameSchema,
   color: colorSchema,
-  sort_order: z.number().int().nonnegative(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
   // Set by workspace setup on the one job that is Owner (BL-218).
   system_key: z.enum(["owner"]).nullable(),
@@ -1243,10 +1241,13 @@ export const scheduleLocationSchema = z.object({
 });
 export type ScheduleLocation = z.infer<typeof scheduleLocationSchema>;
 
+// Departments and jobs go A to Z (BL-475); shift types and labels keep a hand order.
 export const scheduleReferenceSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
   color: colorSchema,
+});
+const scheduleOrderedReferenceSchema = scheduleReferenceSchema.extend({
   sort_order: z.coerce.number().int().nonnegative(),
 });
 
@@ -1262,13 +1263,13 @@ export const scheduleJobSchema = scheduleReferenceSchema.extend({
   system_key: jobSchema.shape.system_key,
 });
 
-export const scheduleShiftTypeSchema = scheduleReferenceSchema.extend({
+export const scheduleShiftTypeSchema = scheduleOrderedReferenceSchema.extend({
   default_start_time: timeOfDaySchema.nullable(),
   default_end_time: timeOfDaySchema.nullable(),
   default_revision: z.number().int().positive().optional(),
 });
 
-export const scheduleShiftLabelSchema = scheduleReferenceSchema;
+export const scheduleShiftLabelSchema = scheduleOrderedReferenceSchema;
 export type ScheduleShiftLabel = z.infer<typeof scheduleShiftLabelSchema>;
 
 const scheduleWeeklyIntervalSchema = z.object({

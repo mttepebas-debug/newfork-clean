@@ -13,14 +13,12 @@ const jobs = [
     id: "11111111-1111-4111-8111-111111111111",
     name: "Server",
     color: "#2563eb",
-    sort_order: 0,
     department_id: null,
   },
   {
     id: "22222222-2222-4222-8222-222222222222",
     name: "Bar",
     color: "#0f766e",
-    sort_order: 1,
     department_id: null,
   },
 ] as ScheduleReadModel["jobs"];

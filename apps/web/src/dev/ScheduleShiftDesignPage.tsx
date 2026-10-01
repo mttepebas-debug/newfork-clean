@@ -58,7 +58,7 @@ const baseModel: ScheduleReadModel = {
       system_key: null,
       name: "Server",
       color: "#2563eb",
-      sort_order: 0,
+      
     },
     {
       id: bartenderJobId,
@@ -66,7 +66,7 @@ const baseModel: ScheduleReadModel = {
       system_key: null,
       name: "Bartender",
       color: "#059669",
-      sort_order: 1,
+      
     },
   ],
   referenced_jobs: [],

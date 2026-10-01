@@ -39,7 +39,7 @@ function scheduleModel(
         system_key: null,
         name: "Server",
         color: "#2563EB",
-        sort_order: 0,
+        
       },
     ],
     referenced_jobs: [],

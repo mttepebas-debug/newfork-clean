@@ -64,12 +64,12 @@ describe("createScheduleReadService read model", () => {
     // BL-218 .3a migration applied and rolled back: the owner works only the
     // Owner job and has no primary; Ayse's primary is Cook.
     const departments = [
-      { id: "893f064e-2952-49ae-80f7-cc5ab30e192a", name: "Management", color: "#3C7A68", sort_order: 0, system_key: "management" },
-      { id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939", name: "Kitchen", color: "#3C7A68", sort_order: 1, system_key: null },
+      { id: "893f064e-2952-49ae-80f7-cc5ab30e192a", name: "Management", color: "#3C7A68", system_key: "management" },
+      { id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939", name: "Kitchen", color: "#3C7A68", system_key: null },
     ];
     const jobs = [
-      { id: "285cb253-3c31-41c3-950a-74c93ded13fb", name: "Owner", color: "#4478A8", sort_order: 0, system_key: "owner", department_id: "893f064e-2952-49ae-80f7-cc5ab30e192a" },
-      { id: "49f49836-56a9-49c9-ac67-7f469cc09e82", name: "Cook", color: "#D39A36", sort_order: 1, system_key: null, department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
+      { id: "285cb253-3c31-41c3-950a-74c93ded13fb", name: "Owner", color: "#4478A8", system_key: "owner", department_id: "893f064e-2952-49ae-80f7-cc5ab30e192a" },
+      { id: "49f49836-56a9-49c9-ac67-7f469cc09e82", name: "Cook", color: "#D39A36", system_key: null, department_id: "b2ab1ea5-1a32-4f1c-8da8-6d6422205939" },
     ];
     const employees = [
       { id: "0ece5bab-720d-40f7-88f8-6833c661558e", job_ids: ["285cb253-3c31-41c3-950a-74c93ded13fb"], display_name: "Olcay Owner", location_ids: ["e92f96de-3eb0-4203-a15c-aff6edfd4c39", "eddd6f15-289e-416a-8727-e4ce6bca5600"], employee_code: "E-0001", primary_job_id: null, is_excluded_from_schedule: false },

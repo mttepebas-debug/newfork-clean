@@ -24,7 +24,7 @@ const job = {
   system_key: null,
   name: "Server",
   color: "#2563eb",
-  sort_order: 0,
+  
 } satisfies ScheduleReadModel["jobs"][number];
 
 const employee = {
