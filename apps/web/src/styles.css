@@ -66,6 +66,7 @@
   --schedule-badge-radius: 4px;
   --schedule-cell-edit-inset: 4px;
   --schedule-cell-preview-inset: 1px;
+  --schedule-location-boundary-width: 3px;
   --schedule-badge-edit-gap: 2px;
   --schedule-badge-preview-gap: 1px;
   --schedule-add-shift-lane-height: 28px;
@@ -4879,13 +4880,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
     var(--schedule-grid-line-color);
 }
 .schedule-grid-exact > [data-location-boundary="start"] {
-  box-shadow: inset 3px 0 #8fa098;
+  box-shadow: inset var(--schedule-location-boundary-width) 0 #8fa098;
 }
 .schedule-grid-sticky {
   position: sticky;
   left: 0;
   z-index: 2;
-  box-shadow: 1px 0 #cfd7d3;
+  /* Drawn inside the column so Monday's cards keep their 1px of air. */
+  box-shadow: inset -1px 0 #cfd7d3;
 }
 .schedule-grid-exact > [data-schedule-pinned-cell="employee"] {
   z-index: 4;
@@ -5702,6 +5704,18 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-cell[data-editing="false"] {
   padding: var(--schedule-cell-preview-inset);
   padding-bottom: var(--schedule-unassigned-line-width);
+}
+/* The location stripe sits inside the cell; cards start after it. */
+.schedule-cell[data-editing="true"][data-location-boundary="start"] {
+  padding-left: calc(
+    var(--schedule-location-boundary-width) + var(--schedule-cell-edit-inset)
+  );
+}
+.schedule-cell[data-editing="false"][data-location-boundary="start"] {
+  padding-left: calc(
+    var(--schedule-location-boundary-width) +
+      var(--schedule-cell-preview-inset)
+  );
 }
 .schedule-cell[data-editing="false"] > .schedule-shift-badge {
   padding-top: 4px;
