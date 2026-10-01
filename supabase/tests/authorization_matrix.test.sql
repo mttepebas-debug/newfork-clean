@@ -762,11 +762,13 @@ begin
   when 'workspace.close', 'workspace.transfer_ownership' then
     return 'allow';  -- owner only, checked above
 
-  when 'time_off.decide', 'time_off.revoke' then
+  when 'time_off.decide', 'time_off.revoke', 'requests.read' then
     -- Requests go one rank up and nobody decides their own. The managers of
     -- every location the person works at vote; admin and owner decide alone
     -- (FB-6.3, KARARLAR "İzin"). Any of those managers, or an admin or the
-    -- owner, revokes approved time off alone, by the same rank.
+    -- owner, revokes approved time off alone, by the same rank. The Requests
+    -- queue reads only what its reader decides (FB-6.3.8c): a peer's request
+    -- is not theirs to read, and one's own waits on Employee hub.
     if is_self then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
@@ -778,13 +780,6 @@ begin
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
     return 'deny';
-
-  when 'requests.read' then
-    -- The Requests queue shows time off of the people the actor reaches:
-    -- everybody for admin and owner, whoever works at one of their locations
-    -- for a manager (FB-6.3).
-    if p.class in ('owner', 'admin') then return 'allow'; end if;
-    return case when shares then 'allow' else 'deny' end;
 
   when 'legacy.schedule_can_manage', 'legacy.schedule_capability', 'legacy.schedule_can_publish',
        'legacy.communication_capability' then

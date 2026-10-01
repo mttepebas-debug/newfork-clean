@@ -365,9 +365,11 @@ export function expected<A extends TargetedAuthzAction>(
 
     case "time_off.decide":
     case "time_off.revoke":
+    case "requests.read":
       // Requests go one rank up and nobody decides their own. The managers of
       // every location the person works at vote; admin and owner decide alone
-      // (FB-6.3). The same people revoke approved time off, by the same rank.
+      // (FB-6.3). The same people revoke approved time off, by the same rank,
+      // and only they read it in the Requests queue (FB-6.3.8c).
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       if (actor.role === "admin") return targetRank < rankOf.admin;
@@ -378,11 +380,6 @@ export function expected<A extends TargetedAuthzAction>(
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       return actor.role === "admin" && targetRank < rankOf.admin;
-
-    case "requests.read":
-      // The Requests queue: everybody's time off for admin and owner, whoever
-      // works at one of their locations for a manager (FB-6.3).
-      return high || shares;
 
     case "exchange.approve":
       // A pickup or cover is approved at the shift's location only.
