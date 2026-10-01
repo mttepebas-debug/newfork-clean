@@ -437,6 +437,30 @@ select is(
 select is((public.decide_time_off_service(tests.user('tr:owner'), tests.id('tr'), tests.id('tr:cem:1'), 'approve', '',
     app_private.time_off_impact(tests.id('tr'), tests.id('tr:cem:1')) ->> 'fingerprint') ->> 'status'), 'approved', 'and decides it');
 
+-- A passing restriction does not drop a location (user decision 2026-10-01):
+-- Hande, Kadikoy's only manager, misses a document. Cem's request keeps
+-- Kadikoy, goes to an admin and the owner, and Hande votes once it is in.
+select tests.remember('tr:cem:2', tests.leave('tr', 'cem', 2));
+select is(
+  (select array_agg(l.short_name) from public.time_off_required_locations x join public.locations l on l.id = x.location_id
+   where x.request_id = tests.id('tr:cem:2')),
+  array['KDK'], 'a manager held back by a missing document does not drop Kadikoy');
+select app_private.time_off_sweep();
+select app_private.time_off_sweep();
+select is((select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('tr:cem:2')), 'pending',
+  'so nothing settles it on its own');
+select is(
+  (select count(*)::integer from public.notification_outbox o
+   where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:cem:2')::text
+     and o.payload -> 'recipient_user_ids' ? tests.user('tr:owner')::text),
+  1, 'the owner hears of it once');
+select is((app_private.time_off_state(tests.id('tr'), tests.id('tr:cem:2')) ->> 'fallback')::boolean, false, 'Kadikoy still counts');
+update public.employee_onboarding_requirements set deadline_at = now() + interval '7 days'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('tr:hande');
+select is((public.decide_time_off_service(tests.user('tr:hande'), tests.id('tr'), tests.id('tr:cem:2'), 'approve', '',
+    app_private.time_off_impact(tests.id('tr'), tests.id('tr:cem:2')) ->> 'fingerprint') ->> 'status'), 'approved',
+  'once her document is in, Hande votes and settles it');
+
 -- 9. A closed workspace --------------------------------------------------------
 
 select tests.remember('tv:emre:6', tests.leave('tv', 'emre', 6));

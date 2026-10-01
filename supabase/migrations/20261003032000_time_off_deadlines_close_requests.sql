@@ -298,7 +298,7 @@ begin
     end if;
 
     -- Only an admin or the owner can decide it now: tell them once.
-    if (st ->> 'fallback')::boolean and r.fallback_notified_at is null
+    if ((st ->> 'fallback')::boolean or (st ->> 'unattended')::integer > 0) and r.fallback_notified_at is null
        and exists (select 1 from public.time_off_required_locations x where x.request_id = r.id) then
       perform app_private.time_off_notice(r.workspace_id, r.id, 'requests.time_off.reminder',
         app_private.time_off_alone_deciders(r.workspace_id, r.employee_id), 'time_off_fallback_deciders',

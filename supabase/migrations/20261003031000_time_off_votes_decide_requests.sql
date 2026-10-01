@@ -137,7 +137,7 @@ end $$;
 
 -- The core's answer for the time-off services, with one difference: the owner
 -- is never held back by a missing document (user decision 2026-10-01).
-create function app_private.time_off_reason(actor uuid, w uuid, action text, person uuid default null, place uuid default null)
+create function app_private.time_off_reason(actor uuid, w uuid, action text, person uuid default null, place uuid default null, documents_aside boolean default false)
 returns text
 language plpgsql
 stable security definer
@@ -151,7 +151,8 @@ begin
   if not found then
     raise exception 'Unknown action %', action using errcode = '22023';
   end if;
-  if state.class = 'owner' then
+  -- documents_aside: whether somebody could act once a missing document is in (a passing restriction).
+  if state.class = 'owner' or documents_aside then
     state.document_blocked := false;
   end if;
   return app_private.authz_check(state, rule_row, case when place is null then null else array[place] end, person, null);
@@ -199,6 +200,21 @@ as $$
     and app_private.time_off_reason(m.user_id, w, 'time_off.decide_alone', person) is null;
 $$;
 
+-- A manager who may decide the person's time off at a location, a missing
+-- document aside: a passing restriction does not drop the location (user
+-- decision 2026-10-01); while nobody can vote there, an admin or the owner decides.
+create function app_private.time_off_location_staffed(w uuid, person uuid, place uuid)
+returns boolean
+language sql
+stable security definer
+set search_path = ''
+as $$
+  select exists (select 1 from public.workspace_memberships m
+    where m.workspace_id = w and m.status = 'active'
+      and app_private.time_off_reason(m.user_id, w, 'time_off.decide', person, place, true) is null
+      and app_private.time_off_reason(m.user_id, w, 'time_off.decide_alone', person, null, true) is not null);
+$$;
+
 -- The locations of a person whose managers would decide a request sent now.
 create function app_private.time_off_deciding_locations(w uuid, person uuid)
 returns uuid[]
@@ -211,7 +227,7 @@ as $$
   join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id
   where a.workspace_id = w and a.employee_id = person and a.ended_at is null
     and app_private.location_is_live(l)
-    and cardinality(app_private.time_off_location_voters(w, person, a.location_id)) > 0;
+    and app_private.time_off_location_staffed(w, person, a.location_id);
 $$;
 
 -- The fixed list as it stands now: still live, still the person's, still with
@@ -235,7 +251,7 @@ as $$
   where app_private.location_is_live(l)
     and exists (select 1 from public.employee_location_assignments a
                 where a.workspace_id = w and a.employee_id = r.employee_id and a.location_id = listed.place and a.ended_at is null)
-    and cardinality(app_private.time_off_location_voters(w, r.employee_id, listed.place)) > 0;
+    and app_private.time_off_location_staffed(w, r.employee_id, listed.place);
 $$;
 
 -- Who hears of a request: the managers of its locations, or an admin and the
@@ -253,8 +269,11 @@ begin
   select coalesce(array_agg(distinct v order by v), '{}') into voters
   from unnest(app_private.time_off_live_locations(w, rid)) place,
        unnest(app_private.time_off_location_voters(w, person, place)) v;
-  if cardinality(voters) = 0 and fallback_ok then
-    return app_private.time_off_alone_deciders(w, person);
+  -- No live location, or one where nobody can vote now: an admin and the owner hear of it too.
+  if fallback_ok and (cardinality(app_private.time_off_live_locations(w, rid)) = 0 or exists (
+      select 1 from unnest(app_private.time_off_live_locations(w, rid)) place
+      where cardinality(app_private.time_off_location_voters(w, person, place)) = 0)) then
+    return array(select distinct u from unnest(voters || app_private.time_off_alone_deciders(w, person)) u order by u);
   end if;
   return voters;
 end;
@@ -361,6 +380,9 @@ begin
     'fallback', cardinality(live) = 0,
     'locations', places,
     'remaining', (select count(*)::integer from jsonb_array_elements(places) p where p -> 'approved_by' = 'null'::jsonb),
+    -- Fixed locations still to approve where nobody can vote now (a passing restriction).
+    'unattended', (select count(*)::integer from jsonb_array_elements(places) p where p -> 'approved_by' = 'null'::jsonb
+      and cardinality(app_private.time_off_location_voters(w, r.employee_id, (p ->> 'id')::uuid)) = 0),
     'votes', votes,
     'decide_by', r.decide_by,
     'fingerprint', pictured ->> 'fingerprint');
@@ -629,6 +651,10 @@ begin
   select rid, w, place from unnest(app_private.time_off_deciding_locations(w, employee.id)) place;
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, metadata)
   values (w, rid, 'submitted', actor, jsonb_build_object('periods', asked, 'operation_id', submit_time_off_service.operation_id));
+  -- Sent straight to an admin and the owner (nobody can vote somewhere): that was their one notice.
+  update public.schedule_time_off_requests set fallback_notified_at = now()
+  where id = rid and exists (select 1 from (select app_private.time_off_state(w, rid) s) x
+    where (x.s ->> 'fallback')::boolean or (x.s ->> 'unattended')::integer > 0);
   -- The owner's own time off is recorded approved (K12, BL-221).
   if public.time_off_is_the_owners_own(actor, w, rid) then
     perform app_private.time_off_finalize(w, rid, 'approve', actor, '', true);
@@ -715,6 +741,10 @@ begin
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, note, metadata)
   values (w, rid, 'submitted', actor, btrim(coalesce(reason, '')),
     jsonb_build_object('parent_request_id', parent.id, 'parent_revision', parent.revision, 'operation_id', request_time_off_cancellation_service.operation_id));
+  -- Sent straight to an admin and the owner (nobody can vote somewhere): that was their one notice.
+  update public.schedule_time_off_requests set fallback_notified_at = now()
+  where id = rid and exists (select 1 from (select app_private.time_off_state(w, rid) s) x
+    where (x.s ->> 'fallback')::boolean or (x.s ->> 'unattended')::integer > 0);
   if public.time_off_is_the_owners_own(actor, w, rid) then
     perform app_private.time_off_finalize(w, rid, 'approve', actor, '', true);
   end if;
@@ -1017,7 +1047,8 @@ $$;
 -- 10. Who may call what -------------------------------------------------------
 
 revoke all on function
-  app_private.time_off_reason(uuid, uuid, text, uuid, uuid),
+  app_private.time_off_reason(uuid, uuid, text, uuid, uuid, boolean),
+  app_private.time_off_location_staffed(uuid, uuid, uuid),
   app_private.time_off_authorize(uuid, uuid, text, uuid),
   app_private.time_off_location_voters(uuid, uuid, uuid),
   app_private.time_off_alone_deciders(uuid, uuid),
