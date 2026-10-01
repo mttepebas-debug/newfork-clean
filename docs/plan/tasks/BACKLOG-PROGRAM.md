@@ -334,6 +334,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #54; taban `d02a2b16`): eski `nf-gorsel-qa`'nın git dışı 92 kanıtı arşive kopyalandı (ölçüldü). Beslemede "BL-505 kapandı" yazıyordu; madde bir görsel QA turu olduğu için kapatılmadı, yolu güncellendi, uyuşmazlık koordinatöre soruldu. BL-512 (3) `.6` düzeltmesiyle. Kayıt oturumu devri (dokuzuncu oturum #45b–#54). Sayım değişmedi: açık 279.
 - 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #53; taban `025c4645`): FB-6.3.6 dalda bitti (`task/fb-6.3.6` @`33949914`, ölçüldü); panel varyant seçimi kullanıcıda, görsel QA sürüyor. Yolda bulunan dört kırıntı iki madde oldu: BL-511 (Account → Workspaces düğmesi), BL-512 (izin ekranları); ikisi G15. Sayım: 277 → **279**, en yüksek BL-512.
 - 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #52; taban `bdd7b859`): FB-6.3.5b main'de (`bdd7b859`, main CI 36857609804 yeşil — ölçüldü); FB-6.3 park paketi kapandı (`task/fb-6.3-pubnote` @`85745a04`), canlı onayı kullanıcıda. Yeni madde BL-510 (G10). Sayım: açık 276 → **277**, en yüksek BL-510.
 - 2026-10-01 (kayıt oturumu `local_09f7902d…`, koordinatör beslemesi #51; taban `be9a2ebc`): FB-6.3.5 canlıda (Vercel `13b7c8cd`, ölçüldü). FOUNDATION-B Aşama 6–7 %54,3 → %63,9 (FB-6.3.0–.5). Sayım değişmedi: açık 276.
