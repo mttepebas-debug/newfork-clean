@@ -255,17 +255,24 @@ begin
   for r in select q.id, q.workspace_id from public.schedule_time_off_requests q
     where q.status = 'pending' and q.decide_by is not null and q.decide_by <= now()
     order by q.decide_by, q.id limit 500 loop
-    perform public.availability_lock_workspace(r.workspace_id);
-    -- Read again under the lock: a withdrawal or a last vote may have closed it.
-    if exists (select 1 from public.schedule_time_off_requests q where q.id = r.id and q.status = 'pending' and q.decide_by <= now()) then
-      perform app_private.time_off_finalize(r.workspace_id, r.id, 'deny', null, 'Not decided in time', false, true);
-      done := done + 1;
-    end if;
+    -- Each request on its own: one that fails is rolled back alone and named,
+    -- the rest of the pass and every other workspace go on.
+    begin
+      perform public.availability_lock_workspace(r.workspace_id);
+      -- Read again under the lock: a withdrawal or a last vote may have closed it.
+      if exists (select 1 from public.schedule_time_off_requests q where q.id = r.id and q.status = 'pending' and q.decide_by <= now()) then
+        perform app_private.time_off_finalize(r.workspace_id, r.id, 'deny', null, 'Not decided in time', false, true);
+        done := done + 1;
+      end if;
+    exception when others then
+      raise warning 'time-off-deadlines: request % of workspace % failed: % %', r.id, r.workspace_id, sqlstate, sqlerrm;
+    end;
   end loop;
 
   for r in select q.* from public.schedule_time_off_requests q
     where q.status = 'pending' and q.decide_by > now()
     order by q.decide_by, q.id limit 500 loop
+    begin
     perform public.availability_lock_workspace(r.workspace_id);
     -- Read again under the lock: a withdrawal or a last vote may have closed it.
     select q.* into r from public.schedule_time_off_requests q where q.id = r.id;
@@ -316,6 +323,9 @@ begin
       update public.schedule_time_off_requests set reminded_at = now() where id = r.id;
       done := done + 1;
     end if;
+    exception when others then
+      raise warning 'time-off-deadlines: request % of workspace % failed: % %', r.id, r.workspace_id, sqlstate, sqlerrm;
+    end;
   end loop;
   return done;
 end;

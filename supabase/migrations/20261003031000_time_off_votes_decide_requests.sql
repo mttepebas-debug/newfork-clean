@@ -428,7 +428,7 @@ $$;
 
 -- The last approval opens every published shift of the time off that has not
 -- started, at every location; the release is kept for the record.
-create function app_private.time_off_release_shifts(w uuid, rid uuid, actor uuid, decision integer)
+create function app_private.time_off_release_shifts(w uuid, rid uuid, actor uuid, decision integer, recorded_by uuid default null)
 returns jsonb
 language plpgsql
 security definer
@@ -436,24 +436,26 @@ set search_path = ''
 as $$
 declare
   person uuid := (select r.employee_id from public.schedule_time_off_requests r where r.id = rid and r.workspace_id = w);
+  -- The records need a person; the job (no actor) names an approval that counts.
+  who uuid := coalesce(actor, recorded_by);
   s jsonb;
   changes jsonb := '[]';
   other record;
 begin
   for s in select x from jsonb_array_elements(app_private.time_off_impact(w, rid) -> 'shifts') x loop
     insert into public.time_off_assignment_releases(workspace_id, request_id, decision_revision, published_shift_id, before_assignment, actor_user_id)
-    values (w, rid, decision, (s ->> 'id')::uuid, s, actor);
+    values (w, rid, decision, (s ->> 'id')::uuid, s, who);
     update public.schedule_published_shifts set employee_id = null where workspace_id = w and id = (s ->> 'id')::uuid and employee_id = person;
     if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = '40001'; end if;
     changes := changes || jsonb_build_array(s || jsonb_build_object('new_employee_id', null));
   end loop;
   if jsonb_array_length(changes) > 0 then
-    perform public.shift_exchange_reconcile_batch(actor, w, changes);
+    perform public.shift_exchange_reconcile_batch(who, w, changes);
     for other in select c.id from public.shift_exchange_cases c where c.workspace_id = w and c.status = 'open'
      and exists (select 1 from jsonb_array_elements(changes) x where (x ->> 'source_id')::uuid in (c.offered_source_id, c.requested_source_id)) loop
       update public.shift_exchange_cases set status = 'invalidated', revision = revision + 1, updated_at = now() where id = other.id;
       update public.shift_exchange_applications set status = 'invalidated', updated_at = now() where case_id = other.id and status in ('invited', 'pending_manager');
-      perform public.shift_exchange_emit(actor, w, other.id, null, 'invalidated', 'An involved assignment was released with approved time off. Review the current schedule.');
+      perform public.shift_exchange_emit(who, w, other.id, null, 'invalidated', 'An involved assignment was released with approved time off. Review the current schedule.');
     end loop;
     perform realtime.send(jsonb_build_object('workspace_id', w, 'request_id', rid), 'changed', 'shift-exchanges:' || w::text, true);
     perform app_private.time_off_notify_shifts_opened(actor, w, rid, decision);
@@ -502,9 +504,10 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('segment_id', s.id, 'status', s.status) order by s.starts_at, s.id), '[]') into decided
   from public.schedule_time_off_segments s where s.request_id = rid and s.workspace_id = w;
   if verdict = 'approve' and r.request_type = 'time_off' then
-    -- The job settles it with no actor; the release names the last approval.
-    released := app_private.time_off_release_shifts(w, rid, coalesce(actor, (select v.voter_user_id from public.time_off_votes v
-      where v.request_id = rid and v.verdict = 'approve' order by v.updated_at desc limit 1)), r.revision);
+    -- The job settles it with no actor; the records name an approval that still counts.
+    released := app_private.time_off_release_shifts(w, rid, actor, r.revision, case when actor is null then
+      (select (x ->> 'approved_by')::uuid from jsonb_array_elements(app_private.time_off_state(w, rid) -> 'locations') x
+       where x -> 'approved_by' <> 'null'::jsonb order by x ->> 'approved_at' desc limit 1) end);
   end if;
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, note, metadata)
   values (w, rid, case when expired then 'expired' else r.status::text end, actor, coalesce(note, ''),
@@ -1025,7 +1028,7 @@ revoke all on function
   app_private.time_off_impact(uuid, uuid),
   app_private.time_off_state(uuid, uuid),
   app_private.time_off_notify_shifts_opened(uuid, uuid, uuid, integer),
-  app_private.time_off_release_shifts(uuid, uuid, uuid, integer),
+  app_private.time_off_release_shifts(uuid, uuid, uuid, integer, uuid),
   app_private.time_off_finalize(uuid, uuid, text, uuid, text, boolean, boolean),
   app_private.time_off_decide_by(uuid, timestamptz)
 from public, anon, authenticated, service_role;
@@ -1125,11 +1128,26 @@ begin
   end loop;
   insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note,metadata)
    values(w,rid,'submitted',actor,said,jsonb_build_object('parent_request_id',parent.id,'parent_revision',parent.revision,'shortened',true,'source',source));
-  perform public.apply_time_off_period_decision(actor,w,rid,1,'approve',said,'[]');
+  -- The hours given back are settled at once (a request with no location has no zone for the old decision path).
+  update public.schedule_time_off_segments set status='approved' where request_id=rid and workspace_id=w;
+  update public.schedule_time_off_requests set status='approved',revision=revision+1,updated_at=now() where id=rid;
+  insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note,metadata)
+   values(w,rid,'approved',actor,said,jsonb_build_object('revision',2,'shortened',true,'source',source));
   select coalesce(range_agg(p.span),'{}') into remaining from public.schedule_time_off_segments s
    cross join lateral unnest(public.time_off_effective_ranges(s.id)) p(span) where s.request_id=parent.id and s.workspace_id=w;
   next_status:=case when isempty(remaining) then 'revoked'::public.time_off_request_status else parent.status end;
   update public.schedule_time_off_requests set status=next_status,revision=revision+1,updated_at=now() where id=parent.id returning * into parent;
+  -- Nothing of the time off is left: a cancellation waiting on it closes (as a revoke does).
+  if next_status = 'revoked' then
+   update public.schedule_time_off_requests cr set status='revoked',revision=cr.revision+1,updated_at=now()
+   from public.time_off_cancellation_links cl
+   where cl.request_id=cr.id and cl.parent_request_id=parent.id and cl.workspace_id=w and cr.status='pending' and cr.id<>rid;
+   insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note,metadata)
+   select w,cr.id,'revoked',actor,'Closed because the time off was given back in full.',jsonb_build_object('parent_request_id',parent.id)
+   from public.time_off_cancellation_links cl join public.schedule_time_off_requests cr on cr.id=cl.request_id
+   where cl.parent_request_id=parent.id and cl.workspace_id=w and cr.id<>rid and cr.status='revoked'
+    and not exists(select 1 from public.schedule_time_off_events e where e.request_id=cr.id and e.action='revoked');
+  end if;
   insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note,metadata)
    values(w,parent.id,next_status::text,actor,said,jsonb_build_object('revision',parent.revision,'cancellation_request_id',rid,
     'cancelled_intervals',public.availability_ranges_json(given),'shortened',true,'source',source));

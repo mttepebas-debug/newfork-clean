@@ -151,6 +151,7 @@ select is(pg_temp.told(tests.id('td:ali:8'), 'requests.time_off.review_again'), 
 
 -- 4b. Every location still deciding has approved: the job settles it ----------
 
+select tests.publish_week('td', 11, '[{"label": "ali-k11", "person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}]');
 select tests.remember('td:ali:11', tests.leave('td', 'ali', 11));
 select pg_temp.decide('ayse', tests.id('td:ali:11'), 'approve');
 select tests.stops_working_at((select m.id from public.workspace_memberships m
@@ -162,6 +163,8 @@ select is(
   jsonb_build_object('status', 'approved', 'actor', null, 'note', 'All deciding locations approved'),
   'Besiktas lost its manager after Kadikoy approved: the system settles it approved');
 select is(pg_temp.told(tests.id('td:ali:11'), 'requests.time_off.status_changed'), pg_temp.users('ali'), 'and Ali hears it');
+select is(pg_temp.told(tests.id('td:ali:11'), 'schedule.time_off.shifts_opened'), pg_temp.users('ayse'),
+  'the shift it opened at Kadikoy is told to Ayse: the system leaves nobody out');
 
 -- 4c. A request closes once; the core's answer is never a yes by default -----
 
@@ -190,6 +193,47 @@ select is(
    where o.workspace_id = tests.id('td') and o.payload ->> 'request_id' = tests.id('td:emre:9')::text
      and o.payload ->> 'audience_contract' = 'time_off_fallback_deciders'),
   pg_temp.users('owner', 'zeynep'), 'it goes to them');
+
+-- 5b. Shortening and one request that cannot be settled -----------------------
+
+select tests.world('tz');
+select tests.person('tz', 'zk', 'manager', array['K'], array['cook']);
+select tests.person('tz', 'zb', 'manager', array['B'], array['cook']);
+select tests.person('tz', 'ali', 'employee', array['K', 'B'], array['cook']);
+create function pg_temp.cancel_all(label text) returns uuid language sql as $$
+  select (public.request_time_off_cancellation_service(tests.user('tz:ali'), tests.id('tz'), tests.id(label),
+    (select r.revision from public.schedule_time_off_requests r where r.id = tests.id(label)),
+    (select jsonb_agg(jsonb_build_object('segment_id', s.id, 'starts_at', s.starts_at, 'ends_at', s.ends_at))
+     from public.schedule_time_off_segments s where s.request_id = tests.id(label)),
+    'Plans changed', gen_random_uuid()) ->> 'request_id')::uuid
+$$;
+select tests.remember('tz:ali:3', tests.leave('tz', 'ali', 3));
+select public.decide_time_off_service(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:ali:3'), 'approve', '',
+  app_private.time_off_impact(tests.id('tz'), tests.id('tz:ali:3')) ->> 'fingerprint');
+select tests.remember('tz:ali:3:cancel', pg_temp.cancel_all('tz:ali:3'));
+select app_private.shorten_time_off(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:ali'),
+  (select range_agg(tstzrange(s.starts_at, s.ends_at, '[)')) from public.schedule_time_off_segments s where s.request_id = tests.id('tz:ali:3')),
+  'Given back', '{"source": "manager"}');
+select is(pg_temp.status(tests.id('tz:ali:3')), 'revoked', 'time off with no location is given back in full');
+select is(pg_temp.status(tests.id('tz:ali:3:cancel')), 'revoked', 'and the cancellation waiting on it closes');
+
+-- ponytail: the time off is closed by hand under a cancellation two locations
+-- approved, the shape no path leaves any more; the job must step over it.
+select tests.remember('tz:ali:4', tests.leave('tz', 'ali', 4));
+select public.decide_time_off_service(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:ali:4'), 'approve', '',
+  app_private.time_off_impact(tests.id('tz'), tests.id('tz:ali:4')) ->> 'fingerprint');
+select tests.remember('tz:ali:4:cancel', pg_temp.cancel_all('tz:ali:4'));
+select public.decide_time_off_service(tests.user('tz:zk'), tests.id('tz'), tests.id('tz:ali:4:cancel'), 'approve', '',
+  app_private.time_off_impact(tests.id('tz'), tests.id('tz:ali:4:cancel')) ->> 'fingerprint');
+update public.schedule_time_off_requests set status = 'revoked' where id = tests.id('tz:ali:4');
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('tz') and m.user_id = tests.user('tz:zb')), tests.id('tz:B'));
+select tests.remember('td:emre:13', tests.leave('td', 'emre', 13));
+select pg_temp.due(tests.id('td:emre:13'), now() - interval '1 minute');
+select app_private.time_off_sweep();
+select is(pg_temp.status(tests.id('td:emre:13')), 'denied',
+  'a request another workspace cannot settle does not stop this one''s deadline');
+select is(pg_temp.status(tests.id('tz:ali:4:cancel')), 'pending', 'the one that failed is left as it was');
 
 -- 6. The job ---------------------------------------------------------------------
 
