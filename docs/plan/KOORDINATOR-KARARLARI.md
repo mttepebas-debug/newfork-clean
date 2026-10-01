@@ -536,5 +536,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Örnek: Beşiktaş müdürü Mehmet'in belgesi gecikmiş; Ali'nin talebinin son karar anına 12 saat kala hatırlatma admin/owner'a da gider ve bildirim "Beşiktaş'ta manager kalmadı" demez. Canlıya gönderimi kullanıcı onayı ister; kullanıcı dönene kadar park.
 - **Dayanak:** kullanıcının 2026-10-01 kuralı (KARARLAR "İzin" → "Belgesi gecikmiş manager": geçici kısıtta karar admin/owner'a gider) ve KARARLAR "Oylamanın ayrıntısı" (hatırlatma karar vermemiş lokasyonun karar verenlerine); `CLAUDE.md` §13.
 - **Geri alma:** ucuz — yalnız yeniden tanım migration'ı.
-- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verilecek (HANDOFF `47bb6c17` §2 Sıradaki 1). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
+- **Durum:** PARK — canlı gönderim kullanıcı onayı ister (kullanıcı yok kipi, 2026-10-01 ~10:30); `nf-db` `local_6b0b5907…`'e verilecek (HANDOFF `47bb6c17` §2 Sıradaki 1); dalda hazırlanıp park (besleme #45). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #44).
 - **Mert:** onaysız.
