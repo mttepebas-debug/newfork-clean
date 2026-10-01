@@ -77,14 +77,14 @@ select is(
 -- 3. An unknown time-off request answers as one out of reach (BL-354) ----------------------
 
 select is(
-  pg_temp.answer(format($$select public.decide_time_off_with_assignments_service(%L, %L, %L, 1, 'reject', '', '[]', gen_random_uuid(), null, '[]')$$,
+  pg_temp.answer(format($$select public.decide_time_off_service(%L, %L, %L, 'deny', '', null)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
-  pg_temp.answer(format($$select public.decide_time_off_with_assignments_service(%L, %L, %L, 1, 'reject', '', '[]', gen_random_uuid(), null, '[]')$$,
+  pg_temp.answer(format($$select public.decide_time_off_service(%L, %L, %L, 'deny', '', null)$$,
     tests.user('m:ayse'), tests.id('m'), tests.id('m:veli:time_off'))),
   'deciding: an unknown request gets the answer a request at another location gets'
 );
 select is(
-  pg_temp.refusal(format($$select public.decide_time_off_with_assignments_service(%L, %L, %L, 1, 'reject', '', '[]', gen_random_uuid(), null, '[]')$$,
+  pg_temp.refusal(format($$select public.decide_time_off_service(%L, %L, %L, 'deny', '', null)$$,
     tests.user('m:ayse'), tests.id('m'), gen_random_uuid())),
   '42501 authz.out_of_scope', 'and that answer is out of scope'
 );

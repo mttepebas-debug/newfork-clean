@@ -1,14 +1,15 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(21);
 
 -- BL-177: a time-off request goes one rank up (REUSE "Rütbe"). A manager
 -- decides an employee's request at their location, never another manager's;
 -- an admin decides a manager's, never the owner's; the owner decides an
--- admin's; nobody decides their own. Every decision path (approve, partial
--- approve, the assignment-aware entry point) asks the core,
--- app_private.authorize(..., 'time_off.decide', target_person => requester),
--- and a no is 42501 with an authz.* hint.
+-- admin's; nobody decides their own. A vote (decide_time_off_service) and a
+-- revoke (revoke_time_off_service) ask the core, app_private.authorize(...,
+-- 'time_off.decide' / 'time_off.revoke', target_person => requester), and a no
+-- is 42501 with an authz.* hint. FB-6.3.7: no partial decision, one entry
+-- point for a vote.
 --
 -- The owner's own request needs no approval: it is recorded approved when
 -- filed, through the same approval step (decision event by the owner,
@@ -53,56 +54,26 @@ exception when others then
 end;
 $$;
 
--- Decide a request whole, the way the Requests screen does.
+-- A vote on a request, the way the Requests screen sends it; 'revoke' takes
+-- approved leave back.
 create function pg_temp.resolve(actor_label text, holder text, verb text default 'approve')
 returns text
 language sql
 as $$
-  select pg_temp.outcome(format(
-    'select public.resolve_schedule_time_off_request_service(%L, %L, %L, %s, %L, %L)',
-    tests.user('to:' || actor_label), tests.id('to'), tests.id('to:' || holder || ':time_off'),
-    (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('to:' || holder || ':time_off')),
-    verb, ''
-  ))
-$$;
-
--- Approve the first half of the day and deny the rest.
-create function pg_temp.approve_half(actor_label text, holder text)
-returns text
-language sql
-as $$
-  select pg_temp.outcome(format(
-    'select public.resolve_time_off_period_decision_service(%L, %L, %L, %s, %L, %L, %L::jsonb, %L)',
-    tests.user('to:' || actor_label), tests.id('to'), s.request_id, r.revision, 'partial_approve', '',
-    jsonb_build_array(jsonb_build_object('segment_id', s.id, 'pieces', jsonb_build_array(
-      jsonb_build_object('starts_at', lower(span), 'ends_at', lower(span) + (upper(span) - lower(span)) / 2, 'status', 'approved'),
-      jsonb_build_object('starts_at', lower(span) + (upper(span) - lower(span)) / 2, 'ends_at', upper(span), 'status', 'denied')
-    ))),
-    gen_random_uuid()
-  ))
-  from public.schedule_time_off_segments s
-  join public.schedule_time_off_requests r on r.id = s.request_id
-  cross join lateral public.time_off_period_span(s.id) span
-  where s.request_id = tests.id('to:' || holder || ':time_off')
-$$;
-
--- The assignment-aware entry point the API calls.
-create function pg_temp.decide(actor_label text, holder text)
-returns text
-language sql
-as $$
-  select pg_temp.outcome(format(
-    'select public.decide_time_off_with_assignments_service(%L, %L, %L, %s, %L, %L, %L::jsonb, %L, null, %L::jsonb)',
-    tests.user('to:' || actor_label), tests.id('to'), tests.id('to:' || holder || ':time_off'),
-    (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('to:' || holder || ':time_off')),
-    'approve', '', '[]', gen_random_uuid(), '[]'
-  ))
+  select pg_temp.outcome(case when verb = 'revoke' then format(
+    'select public.revoke_time_off_service(%L, %L, %L, %s, %L)',
+    tests.user('to:' || actor_label), tests.id('to'), r.id, r.revision, 'test')
+  else format(
+    'select public.decide_time_off_service(%L, %L, %L, %L, %L, %L)',
+    tests.user('to:' || actor_label), tests.id('to'), r.id, verb, '',
+    app_private.time_off_impact(tests.id('to'), r.id) ->> 'fingerprint') end)
+  from public.schedule_time_off_requests r where r.id = tests.id('to:' || holder || ':time_off')
 $$;
 
 -- 1. The owner's request is recorded approved when filed.
 select is(
-  (select r.status::text || ' ' || r.revision from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off')),
-  'approved 2', 'the owner''s request is approved as soon as it is filed'
+  (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off')),
+  'approved', 'the owner''s request is approved as soon as it is filed'
 );
 select is(
   (select array_agg(e.action || ' by ' || case when e.actor_user_id = tests.user('to:owner') then 'owner' else 'someone else' end order by e.action)
@@ -119,11 +90,7 @@ select is(
    where x.request_id = tests.id('to:owner:time_off') and x.published_shift_id = tests.id('to:shift:owner-wed')),
   1, 'and the release is on record'
 );
--- Recording approves only the owner's own request, never one handed to it.
-select is(
-  app_private.record_owner_time_off(tests.user('to:owner'), tests.id('to'), tests.id('to:emre:time_off')),
-  null::jsonb, 'the owner''s recording step leaves Emre''s request alone'
-);
+-- Approving on filing is only for the owner's own request.
 select is(
   (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('to:emre:time_off')),
   'pending', 'Emre''s request is still pending'
@@ -136,20 +103,17 @@ select is(pg_temp.resolve('zeynep', 'zeynep'), '42501 authz.rank', 'Zeynep (admi
 
 -- 3. A manager decides an employee's request, not another manager's.
 select is(pg_temp.resolve('ali', 'ayse'), '42501 authz.rank', 'Ali (manager, Kadikoy) cannot approve Ayse''s request (manager, Kadikoy)');
-select is(pg_temp.approve_half('ali', 'ayse'), '42501 authz.rank', 'nor approve half of it');
-select is(pg_temp.decide('ali', 'ayse'), '42501 authz.rank', 'nor through the assignment-aware entry point');
 select is(pg_temp.resolve('ali', 'zeynep'), '42501 authz.rank', 'Ali (manager) cannot approve Zeynep''s request (admin)');
 select is(pg_temp.resolve('mehmet', 'emre'), '42501 authz.out_of_scope', 'Mehmet (manager, Besiktas) cannot decide Emre''s Kadikoy request');
-select is(pg_temp.approve_half('ali', 'emre'), 'allowed', 'Ali approves half of Emre''s request (employee, Kadikoy)');
+select is(pg_temp.resolve('ali', 'emre'), 'allowed', 'Ali approves Emre''s request (employee, Kadikoy)');
 
 -- 4. An admin decides a manager's request, never the owner's.
 select is(pg_temp.resolve('zeynep', 'owner', 'revoke'), '42501 authz.rank', 'Zeynep (admin) cannot revoke the owner''s leave');
-select is(pg_temp.approve_half('zeynep', 'owner'), '42501 authz.rank', 'nor decide part of it');
 select is(pg_temp.resolve('zeynep', 'zafer'), '42501 authz.rank', 'Zeynep (admin) cannot approve Zafer''s request (admin)');
 select is(pg_temp.resolve('zeynep', 'ayse'), 'allowed', 'Zeynep (admin) approves Ayse''s request (manager)');
 
 -- 5. The owner decides an admin's request.
-select is(pg_temp.decide('owner', 'zeynep'), 'allowed', 'the owner approves Zeynep''s request (admin)');
+select is(pg_temp.resolve('owner', 'zeynep'), 'allowed', 'the owner approves Zeynep''s request (admin)');
 
 -- 6. What the refusals left behind: nothing.
 select is(
@@ -164,12 +128,12 @@ select is(
 
 -- 7. The owner's cancellation of their own leave is recorded approved too.
 create temporary table owner_cancel as
-select public.submit_employee_time_off_cancellation_service(
-  tests.user('to:owner'), tests.id('to'), r.id, r.revision, 'plans changed',
+select public.request_time_off_cancellation_service(
+  tests.user('to:owner'), tests.id('to'), r.id, r.revision,
   (select jsonb_agg(jsonb_build_object('segment_id', s.id, 'starts_at', lower(span), 'ends_at', upper(span)))
    from public.schedule_time_off_segments s cross join lateral unnest(public.time_off_effective_ranges(s.id)) span
    where s.request_id = r.id),
-  gen_random_uuid()
+  'plans changed', gen_random_uuid()
 ) as result
 from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off');
 select is((select result ->> 'status' from owner_cancel), 'approved', 'the owner''s cancellation is approved as soon as it is filed');

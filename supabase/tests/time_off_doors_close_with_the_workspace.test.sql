@@ -47,19 +47,19 @@ select public.respond_workspace_ownership_transfer_service(tests.user('tc:zeynep
 select is(pg_temp.drift(), array[pg_temp.submitted(tests.id('tc:zeynep:time_off'))],
   'after the handover the check says the same: who owns the workspace today changes nothing');
 
-select is(pg_temp.refusal(format($$select app_private.authorize_time_off_decision(%L, %L, %L, %L, 'approve')$$,
-    tests.user('tc:zeynep'), tests.id('tc'), tests.id('tc:zeynep'), tests.id('tc:K'))),
-  'allowed', 'Zeynep, now the owner, may approve her own time off');
+-- FB-6.3.7: the owner's shortcut is filing their own time off approved.
+select tests.leave('tc', 'zeynep', 3);
+select is((select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('tc:zeynep:time_off')),
+  'approved', 'Zeynep, now the owner, records her own time off approved');
 
 -- The workspace closes.
 update public.workspaces set lifecycle_status = 'suspended' where id = tests.id('tc');
 
-select is(pg_temp.refusal(format($$select app_private.authorize_time_off_decision(%L, %L, %L, %L, 'approve')$$,
-    tests.user('tc:zeynep'), tests.id('tc'), tests.id('tc:zeynep'), tests.id('tc:K'))),
+select is(pg_temp.refusal($$select tests.leave('tc', 'zeynep', 4)$$),
   '42501 authz.workspace_closed', 'in a closed workspace the owner''s shortcut is closed too');
 select is(pg_temp.refusal($$select tests.leave('tc', 'ali', 3)$$),
   '42501 authz.workspace_closed', 'Ali cannot ask for time off in a closed workspace');
-select is(pg_temp.refusal(format($$select public.submit_employee_time_off_cancellation_service(%L, %L, %L, 1, '', '[]', gen_random_uuid())$$,
+select is(pg_temp.refusal(format($$select public.request_time_off_cancellation_service(%L, %L, %L, 1, '[]', '', gen_random_uuid())$$,
     tests.user('tc:owner'), tests.id('tc'), tests.id('tc:owner:time_off'))),
   '42501 authz.workspace_closed', 'nor can anybody ask to cancel approved time off');
 

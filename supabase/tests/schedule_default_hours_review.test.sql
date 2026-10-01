@@ -98,8 +98,7 @@ select is(preview->'shifts'->0->'after_assessment'->>'operation','warning_requir
 update dhr set command=command||jsonb_build_object('overrides',jsonb_build_array(jsonb_build_object('shift_id',named,'note','Reviewed the new service reference hours')));
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,0,'authorized reason permits reviewing the soft override') from dhr;
-create temp table dhr_leave as select (public.submit_employee_time_off_periods_service(employee_actor,w,loc,'Default review leave',jsonb_build_array(jsonb_build_object('segment_date',week,'start_time','13:00','end_time','14:00')),gen_random_uuid(),'UTC')->>'request_id')::uuid id from dhr;
-select public.resolve_schedule_time_off_request_service(actor,w,(select id from dhr_leave),1,'approve') from dhr;
+select tests.approved_leave(w,emp,actor,loc,week,'13:00','14:00') from dhr;
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'approved leave arriving after review makes the fingerprint stale');
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,1,'approved leave stays a hard block') from dhr;
