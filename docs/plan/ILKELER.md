@@ -23,19 +23,28 @@
 - Mert aynı gün fikir değiştirebilir (ör. "Create your own business" görünürlüğü): son açık karar
   geçerlidir (P22) ve kayda geçer.
 
-## A. Vizyon (mülakatla tamamlanacak)
-- **Bilinen:**
+## A. Vizyon
+- **Ürün:**
   - ABD'deki restoranlar için çok kiracılı vardiya planlama.
-  - Çok lokasyon; müdür hem yönetir hem vardiya alır.
   - Hedef self-serve, ücretli ABD lansmanı. Arayüz İngilizce.
   - MVP sonucu: `ROADMAP.md` ilk paragraf.
   - Mert'in sözü: "uygulama bir kokpit".
-- **Açık (mülakat):**
-  - İşletme büyüklüğü ve lokasyon sayısı.
-  - Satın alan (owner) ile kullanan (müdür, saatlik çalışan) farkı.
-  - Müdürün ve çalışanın cihazı.
-  - Rakiplerden alınan ve alınmayan.
-  - Anti-hedefler: "nasıl bir ürün olmayız".
+- **Müşteri** (Mert, 2026-10-01): ilk ödeyen müşteri 2-5 lokasyonlu, 20-100 kişilik restoran
+  işletmesi. Ör. Kadıköy ve Beşiktaş şubeli bir zincir; her şubede bir müdür, owner merkezde. Çok
+  lokasyon kuralları (lokasyon müdürü, ghost vardiya, çok lokasyonlu çalışan) varsayılandır; tek
+  lokasyon da çalışır.
+- **Kimin için** (Mert, 2026-10-01, kendi sözü): "hepsi eşit önemde. MVP önceliği müdür ve owner;
+  daha sonra aynı kalitede employee arayüzü ve app".
+  - MVP'de müdür ve owner ekranları önce gelir.
+  - Çalışan arayüzü ve uygulaması sonra gelir ama ikinci sınıf değildir; aynı kalitede yapılır.
+  - Reddedilen öneri: "müdür kazanır".
+- **Cihaz** (Mert, 2026-10-01): müdür masaüstünden, çalışan telefondan kullanır. Yönetim ekranları
+  masaüstüne göre tasarlanır, telefonda çalışır. Çalışan ekranları telefona göre tasarlanır.
+- **Rakipler** (Mert, 2026-10-01): kendi yolumuz; rakip yalnız referanstır. 7shifts, Homebase,
+  When I Work ve Deputy ne yapıyor araştırılır ve gösterilir; karar Mert'in kurallarından ve bu
+  ilkelerden çıkar. Reddedilen seçenekler: "restoran akışında 7shifts esas", "sadelikte Homebase
+  esas".
+- **Açık (mülakat):** anti-hedefler, yani "nasıl bir ürün olmayız".
 
 ## B. Ödünleşim sırası
 1. Doğru veri > şık ama tahmine dayalı UX (P11).

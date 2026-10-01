@@ -74,3 +74,5 @@ Reviewer: bir bağımsız `/code-review` (hook betiği).
 "PreToolUse":  { "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/decision-log.mjs\" hook pre",  "timeout": 15 }] }
 "PostToolUse": { "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/decision-log.mjs\" hook post", "timeout": 15 }] }
 ```
+- 2026-10-01 mülakat 1. tur: müşteri 2-5 lokasyon / 20-100 kişi; "hepsi eşit önemde, MVP önceliği müdür ve owner, sonra aynı kalitede employee arayüzü ve app" (serbest cevap; ILKELER A'ya yazıldı); müdür masaüstü / çalışan telefon; rakip yalnız referans.
+- 2026-10-01 geriye dönük test: ilkesiz %70,6, ilkeli %68,6, o günkü öneri %71,8 (255 soru). Ayrıntı: research dosyası "Geriye dönük test". Hedef %85'in yolu serbest cevapları azaltmak (doğru seçeneğin listede olması), seçimi iyileştirmek değil.

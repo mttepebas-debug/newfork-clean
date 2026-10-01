@@ -579,3 +579,36 @@ Hafıza dosyaları (M/):
 - (dilim 3) UI zevki: varyantlar yalnız yüzeysel stil farkı sunuyor. Mert ise minimalizm (açıklama metni yok, gereksiz bölüm yok), tutarlılık (aynı bileşenin soluk/taralı hâli, global tarza sadakat, aktif öğede tıklanabilir düğme) ve bilgi mimarisi değişikliği (alan sırası, standart terimler) istiyor. Katalogda sistem kayıtları ayrıcalıksız; çalışma ekranlarında özel konum alıyor. — idx 139, 175, 207, 503, 515, 703, 747, 775, 695, 651
 - (dilim 3) Karar formatı Mert'te: toplu 'hepsi önerilen gibi' paketlerini ve Claude'un 'sonra konuşalım' ya da 'backlog'a yaz' ile karar kesinleştirmesini reddediyor. Büyük kuralları sohbette ya da TBD olarak bekletiyor, emin olmadığında SaaS emsaline dayalı gerekçeli öneri istiyor, küçük görsel/erişilebilirlik kararlarını ise tamamen Claude'a bırakıyor. — idx 559, 491, 583, 339, 367, 591, 635
 - (dilim 3) Kod ≠ vizyon: öneriler mevcut kodu ve yapıyı baz alıp artımlı ilerliyor; Mert yapının yanlış kurulmuş olabileceğini söylüyor ve kök nedeni veri modelinde çözüyor (Management/Owner otomatik kaydı, account sekmesini yeniden düşünme). Ölçüm notu: '(öneri)', '(Öneri)', '(Onerilen)', '(B′, Önerilen)' gibi etiketler regex'e takılmadığı için bu dilimdeki 9 isabetli öneri no_rec sayıldı; gerçek kabul oranı raporlanandan biraz yüksek. — idx 287, 347, 535, 127, 3, 63, 83, 275, 355
+
+## Geriye dönük test (2026-10-01)
+
+**Yöntem.**
+- İlkeler yalnız 2026-09-26 ve öncesindeki 509 cevaptan, 2 ajan ve bir birleştirme ajanıyla çıkarıldı. Mert bu ilkeleri düzeltmedi.
+- Test kümesi: 2026-09-27..30 arasındaki 255 tek seçimli, önerili soru. Öneri etiketi silindi.
+- İki tahmin kolu karşılaştırıldı: (a) yalnız o günkü KARARLAR (`REUSE.md` @ `b4b6d023`), (b) KARARLAR ve çıkarılan ilkeler. Her kol 3 ajanla koştu, her ajan 85 soru aldı.
+- Puan: Mert'in seçtiği seçenek tahminle aynı mı.
+
+| Yöntem | Hepsi (255) | Seçenek seçilen sorular (205) | Yanlış önerinin düzeltilmesi | Doğru önerinin korunması |
+|---|---|---|---|---|
+| O günkü "(Önerilen)" (oturumun bütün bağlamıyla) | %71,8 | %89,3 | — | — |
+| (a) yalnız kurallar | %70,6 | %87,8 | 5/22 | 175/183 |
+| (b) kurallar + ilkeler | %68,6 | %85,4 | 8/22 | 167/183 |
+
+**Sonuç.**
+- İlkeler, verilen seçenekler arasından seçme isabetini artırmadı.
+- Yanlış önerileri biraz daha sık yakaladı (5'e karşı 8), ama doğru önerileri daha sık bozdu.
+- Kaybın büyüğü 50 serbest cevapta (%20). Bu sorularda Mert'in istediği seçenek hiç yoktu.
+
+**Ne demek:** %85 hedefine giden yol, istenen cevabın seçeneklerde bulunmasıdır. Bunu taşıyacak üç şey:
+- Seçenek dışı cevabın kurala dönmesi.
+- Örnekli soru şablonu.
+- Eksik kuralların yazılması.
+
+İlke dosyasının asıl işi sorulmadan verilen kararlar ve önerinin dayanağıdır.
+
+**Sınırlar.**
+- Tahminciler yalnız soru metnini gördü, oturumun bağlamını görmedi.
+- Bu ilkeler Mert'in düzeltmesinden geçmedi.
+- Elle doğrulanan satır: T010.
+
+Çıkarılan ilkeler: oturum scratchpad `backtest/derived-principles.txt`.
