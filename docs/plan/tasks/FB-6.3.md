@@ -1,6 +1,6 @@
 # FB-6.3 İzin dilimi: lokasyon oylaması, geri alma, süre ve otomatik red (FOUNDATION-B Aşama 6)
-Status: plan — spec ve tasarım kullanıcı onaylı (2026-09-30, kayıt oturumunun penceresinde, plan modu); K10/S4 kapandı. Sürüm 2: önceki sürümün ("o gün yayınlı vardiyası olan lokasyonlar, yoksa birincil lokasyon" oylaması) yerine geçer; eski metin `git show b25ee449:docs/plan/tasks/FB-6.3.md`. Başlamadan önce: `.0` taze ölçüm.
-Session: -   Branch: task/fb63-<adım>   Worktree: newfork-wt/fb63-<adım>   DB: `.1`–`.4`, `.7`, `.8`
+Status: in progress — `.0` bitti 2026-10-01 (geçerli; Notes); `.1`–`.4` `nf-db` rol oturumunda (`local_e9aa34f5…`, R3; dal `task/fb-6.3`). Plan: spec ve tasarım kullanıcı onaylı (2026-09-30, kayıt oturumunun penceresinde, plan modu); K10/S4 kapandı. Sürüm 2: önceki sürümün ("o gün yayınlı vardiyası olan lokasyonlar, yoksa birincil lokasyon" oylaması) yerine geçer; eski metin `git show b25ee449:docs/plan/tasks/FB-6.3.md`. Başlamadan önce: `.0` taze ölçüm.
+Session: `nf-db` `local_e9aa34f5…` (`.1`–`.4`; koordinatörün aktardığı)   Branch: `task/fb-6.3` (koordinatörün aktardığı, 2026-10-01; plan adım başına `task/fb63-<adım>` diyordu)   Worktree: -   DB: `.1`–`.4`, `.7`, `.8`
 Reviewer: `nf-guvenlik` her veritabanı adımında zorunlu (R3: yetki çekirdeği, yeni katalog anahtarları, veri silme, zamanlayıcı); ekran adımlarında (`.6`) `nf-gorsel-qa`; ultrareview önerilir. Onay biçimi `ONAY @<sha>`.
 
 ## Goal
@@ -99,7 +99,9 @@ Neden (kullanıcı, 2026-09-30): eski kural taslak hâlindeki ya da henüz progr
   - yayın penceresinde bekleyen izin notu.
 - Kodda bulunan iki boşluk:
   - kısıtlı kişi bugün izin talebi gönderebiliyor (`20260930162000:180`, `document_blocked` sorulmuyor);
+    - Tazelik 2026-10-01 (FB-6.3.0, `32dbbd05`): geçerli — `employee_hub_actor_service` (`20260930162000:180`) son tanım; `time_off.request_own` katalogda `restricted_ok = false` ama hiçbir fonksiyon bu eylemi sormuyor; iki eski gönderme servisi kontrolsüz.
   - bildirim tetikleyicisi lokasyonsuz talepte hata veriyor (`20260929190000:733`).
+    - 2026-10-01 (FB-6.3.0): düzeltme `.4`'ten `.3`'e taşındı (Alt adımlar).
 
 ## Out of scope
 - Izgarada onaylı izin işareti (bugün hücrede işaret yok): BL-204 konuşmasına kalır.
@@ -160,17 +162,18 @@ Her adımda ratchet kuralı geçerli:
 - yeni fonksiyon, eskisi aynı commit'te silinerek girer (dilim 1 eklerinde eski servisler `.7`'ye kadar kalır; yayındaki eski ekran çalışsın diye);
 - migration önce tek transaction + rollback ile denenir;
 - migration adları `20261003020000`'dan büyük.
+- Ölçüm 2026-10-01 (FB-6.3.0, `32dbbd05`; alt ajan, yerel DB SELECT dahil): yedi sayacın yedisi tavanda — `auth.uid()` fonksiyon 24/24, JWT köprüsü 24/24, kendi kapsam mantığı 41/41, `_base/_vN/_legacy` 13/13, `auth.uid()` politika 10/10, ertelenmiş trigger 10/10, hint'siz 42501 173/173: yeni fonksiyon hiçbir kalıbı taşıyamaz. `ci-green.txt` 147 satır. `known_gap time-off-needs-location` (`authorization_matrix.test.sql:817`). `pg_cron` kurulu, 4 iş; `time-off-deadlines` yok. Bildirim anahtarları `requests.time_off.reminder`, `.review_again`, `.decided` yok; `schedule.owner_time_off.shifts_opened` aktif.
 
 | Adım | İş | Sıra | Sahip | DB kilidi | Dosyalar |
 |---|---|---|---|---|---|
-| **FB-6.3.0** | Taze ölçüm: plan modundaki keşif `c345ed83`'te yapıldı; başlamadan `origin/main`'de yeniden. Ölçülecekler: `pg_proc` taramaları (`location_id`, `partially_approved`, decision pieces). | 0 | `nf-planlama` | Hayır | bu dosya |
+| **FB-6.3.0** | Taze ölçüm: plan modundaki keşif `c345ed83`'te yapıldı; başlamadan `origin/main`'de yeniden. Ölçülecekler: `pg_proc` taramaları (`location_id`, `partially_approved`, decision pieces). **Bitti 2026-10-01 (`32dbbd05`): geçerli; sekiz düzeltme bu dosyaya yazıldı (Notes).** | 0 | `nf-planlama` | Hayır | bu dosya |
 | **FB-6.3.1** | Matris ve yeni pgTAP dosyaları kırmızı: `time_off_voting.test.sql`, `time_off_deadlines.test.sql`; builder `tests.time_off` yeni servisle, varsayılan gelecek hafta. | 1 | `nf-db` | Evet | `supabase/tests`, `supabase/test-support/builder.sql` |
 | **FB-6.3.2** | Ekler: lokasyon listesi tablosu, oy tablosu, talepte yeni kolonlar, `location_id` ve `actor_user_id` nullable, `expired`, `time_off_lead_hours` (`20261003030000_time_off_is_decided_by_its_locations`). **Yalnız ekler: önce canlı, sonra main.** | 2 | `nf-db` | Evet | migration |
-| **FB-6.3.3** | Oylama motoru: `time_off_state`, `time_off_impact`, `time_off_settle`, `time_off_finalize`, `time_off_release_shifts`; `submit_time_off_service`, iptal servisi, `decide_time_off_service`, `revoke_time_off_service`; katalog `decide_alone` ve `revoke`; kısaltma `approved` bırakır. | 3 | `nf-db` | Evet | migration `…031000_time_off_reads_and_notices_follow_the_votes` |
-| **FB-6.3.4** | Okumalar (`get_schedule_requests_service` kişi bazında, `get_employee_hub_service`), bildirim tetikleyicisi (lokasyonsuz hatası kapanır), yayın notu, `time_off_sweep` ve cron işi (`…032000_time_off_deadlines_close_requests`). | 4 | `nf-db` | Evet | migration |
+| **FB-6.3.3** | Oylama motoru: `time_off_state`, `time_off_impact`, `time_off_settle`, `time_off_finalize`, `time_off_release_shifts`; `submit_time_off_service`, iptal servisi, `decide_time_off_service`, `revoke_time_off_service`; katalog `decide_alone` ve `revoke`; kısaltma `approved` bırakır. Bildirim tetikleyicisinin lokasyonsuz talep düzeltmesi de burada (`notify_schedule_request_event_service`, `20260929190000:733–734`, `raise 'schedule request location not found'`; 2026-10-01'de `.4`'ten taşındı: `.2` `location_id`'yi nullable yapar, `.3`'ün `submit_time_off_service`'i lokasyonsuz `submitted` olayı yazar, düzeltme `.4`'te kalsa `.3`'ün testleri kırmızı kalır). | 3 | `nf-db` | Evet | migration `…031000_time_off_reads_and_notices_follow_the_votes` |
+| **FB-6.3.4** | Okumalar (`get_schedule_requests_service` kişi bazında, `get_employee_hub_service`), yayın notu, `time_off_sweep` ve cron işi (`…032000_time_off_deadlines_close_requests`). Bildirim tetikleyicisi 2026-10-01'de `.3`'e taşındı. | 4 | `nf-db` | Evet | migration |
 | **FB-6.3.5** | API + shared + web veri katmanı: `verdict` ve `revoke` uçları, okumalarda `authorize`, şemalar (`progress`, `decide_by`, ardışıklık), eski uçlar kalkar. | 5. `.2`–`.4` main'de | `nf-backend` | Hayır | `apps/api/src/time-off/`, `schedule-requests-routes.ts`, `packages/shared`, `requests-data.ts` |
 | **FB-6.3.6** | Ekranlar: çalışan formu, Requests → Time off ilerleme paneli (DEV'de 2–3 varyant, kullanıcı seçer), onay pencereleri, revoke, Settings süre alanı, yayın notu. | 6. `.5`'ten sonra | `nf-arayuz` → `nf-gorsel-qa` | Hayır | `ScheduleRequestsPage.tsx`, `EmployeeHubPage.tsx`, `TimeOffCancellation.tsx`, Settings |
-| **FB-6.3.7** | Silmeler (`20261003040000_time_off_forgets_location_and_parts`): eski satırlar, `location_id`, `viewed_at`, `time_off_decision_pieces`, `partially_approved`, eski fonksiyonlar. **Alan silen iş: önce main, sonra canlı.** Kırmızılar yeşile, `ci-green.txt`. | 7. `.6` main'de | `nf-db` + `nf-test` | Evet | migration, `supabase/tests` |
+| **FB-6.3.7** | Silmeler (`20261003040000_time_off_forgets_location_and_parts`): eski satırlar, `location_id`, `viewed_at`, `time_off_decision_pieces`, `partially_approved`, eski fonksiyonlar. **Alan silen iş: önce main, sonra canlı.** Kırmızılar yeşile, `ci-green.txt`. **BL-496 de bu adımda** (kullanıcı kararı 2026-10-01; Envanter → BL-496). | 7. `.6` main'de | `nf-db` + `nf-test` | Evet | migration, `supabase/tests`; BL-496: `packages/shared`, `apps/web`, `apps/api` testleri |
 | **FB-6.3.8** | e2e akışı. | 8 | `nf-test` | Evet | `e2e/flows/time-off-approval.spec.ts` |
 | **FB-6.3.9** | Kapanış: onaylar, tam kapı, main + CI, canlı md5, Notes, FOUNDATION-B kaydı. | 9 | koordinatör | Evet (e2e) | bu dosya, `FOUNDATION-B.md` |
 
@@ -183,11 +186,19 @@ Her adımda ratchet kuralı geçerli:
   - `app_private.authorize_time_off_decision`, `app_private.authorize_time_off_request`;
   - `time_off_proposed_approved_ranges`, `guard_time_off_decision_piece`, `notify_owner_time_off_open_shifts`;
   - bildirim anahtarı `schedule.owner_time_off.shifts_opened`.
-- **Tablo ve alanlar:** `time_off_decision_pieces`; `location_id`, `viewed_at`; `partially_approved`; olay eylemleri `viewed`, `partially_approved`, `returned_to_pending`.
-- **API:** `/assignment-preview`, `/decision`, `/viewed` uçları.
+- **Tablo ve alanlar:** `time_off_decision_pieces`; `location_id`, `viewed_at`; `partially_approved` (CHECK değil, `time_off_request_status` enum değeri — pending, approved, denied, partially_approved, revoked; `.7`'de enum yeniden kurulur); olay eylemleri `viewed`, `partially_approved`, `returned_to_pending`.
+  - Envanterde olmayan izin tabloları (FB-6.3.0, 2026-10-01): `time_off_assignment_releases`, `time_off_commands`, `time_off_cancellation_links`, `time_off_cancellation_periods`, `schedule_time_off_segments`. "Kalır / silinir" kararını `nf-db` `.1`'de verir ve gerekçesiyle raporlar (teknik iç ayrıntı, `CLAUDE.md` §13); karar gelince buraya yazılır.
+- **Yeniden yazılacak okuyucular** (FB-6.3.0, 2026-10-01; `partially_approved` okuyan, silme listesinde olmayan 11 kalem): `time_off_decided_ranges`, `time_off_request_periods`, `time_off_cancelled_ranges`, `time_off_cancellation_context`, `notify_time_off_shortened`, `reconcile_notification_platform_service`, `schedule_week_availability`, `assess_weekly_shift_availability`, `get_employee_hub_service`, `shorten_time_off_service` / `shorten_time_off`, `submit_employee_time_off_cancellation_service`.
+- **API:** `/assignment-preview` (yalnız izin ucu; belge ucu `apps/api/src/employees/document-lifecycle-routes.ts:72,204`, `apps/web/src/documents/document-data.ts:207` kalır), `/decision`, `/viewed` uçları.
 - **Shared:** kısmi karar, parça, dispozisyon ve önizleme şemaları; `legacy_location`.
 - **Web:** `TimeOffPartialDecision.tsx`, release kutuları, `restricted_count` engeli, Partial ve Return to pending düğmeleri, formdaki lokasyon seçimi.
 - **pgTAP:** `time_off_partial_period_decisions`, `time_off_published_assignment_disposition`, `time_off_decision_identity_guard`.
+- **BL-496 (kullanıcı kararı 2026-10-01; `.7` ile aynı canlı pencerede, önce main sonra canlı):** kullanılmayan departman ve iş `sort_order`'u düşer. Ölçüm FB-6.3.0 (`32dbbd05`):
+  - Shared: `packages/shared/src/index.ts` `departmentSchema` `:841`, `jobSchema` `:854`, `scheduleReferenceSchema` `:1247` — taban şema bölünür (vardiya tipi `:1262` ve etiket `:1268` `sort_order`'u korur); `index.test.ts`'te 6 yer.
+  - DB: `app_private.schedule_departments_and_jobs` ve `public.read_settings_jobs_service` (son tanım `20261003010000`); `create_department_jobs_service` ve `create_department_with_jobs_service`'in satır JSON'ı kontrol edilir; `departments_sort_order_unused`, `jobs_sort_order_unused` CHECK'leri ve kolonlar düşer.
+  - Web: `organization-data.ts:352,359` + 5 kod dosyası (`ScheduleShiftDesignPage`, `PublishReturn.preview`, `useCellState`, `scheduleGridLayout`, `organization-data`) + fikstürler (47 test dosyasında `sort_order` var; departman ve iş olanlar iş sırasında ayrılır).
+  - API testleri: `employee-hub-read-service.test.ts`, `schedule-service.test.ts`, `settings-reads-routes.test.ts`.
+  - pgTAP: `catalog_sorted_by_name` (6), `reads_know_management_and_owner` (4), `schedule_read_model_rls` (2).
 - **Veri:** bütün eski izin satırları silinir (canlı veri yok; yeni kurala uymuyorlar).
 
 ## Touches
@@ -202,6 +213,7 @@ Her adımda ratchet kuralı geçerli:
 - `supabase/test-support/builder.sql`.
 - `packages/shared/src/index.ts`, `time-off.ts`, `employee-hub.ts`, `authorization.ts`, `authorization-matrix.expected.json`.
 - `apps/api/src/schedule/schedule-requests-routes.ts`, `apps/api/src/time-off/`, `apps/api/src/employee-hub/employee-hub-service.ts`.
+- FB-6.3.0 ile eklenenler (2026-10-01): `apps/api/src/schedule/schedule-requests-service.ts` (eski çağrılar `:50` preview, `:70` viewed, `:79` decide, `:93` resolve), `apps/api/src/schedule/time-off-decision-service.test.ts`, `apps/api/src/employee-hub/employee-time-off-service.test.ts`, `supabase/tests/owner_time_off_needs_no_documents.test.sql`, `e2e/flows/shift-hub-time-off.spec.ts`.
 - `apps/web/src/views/ScheduleRequestsPage.tsx`, `views/EmployeeHubPage.tsx`, `employee-hub/TimeOffCancellation.tsx`, `TimeOffPeriods.tsx`, `schedule/requests-data.ts`, Settings → Scheduling, yayın penceresi.
 
 ## Test plan
@@ -246,3 +258,7 @@ Her adımda ratchet kuralı geçerli:
   Keşif üç salt okur ajanla `c345ed83`'te yapıldı; tasarım bir Plan ajanıyla. Plan dosyası: `~/.claude/plans/koordinat-r-session-n-n-di-er-sessionlar-purrfect-salamander.md`.
 
   Sürüm 1'in kayıtları git'te: `git show b25ee449:docs/plan/tasks/FB-6.3.md`. 2026-09-27 kayıtları: P1–P3; S1 (a) talebin bütünü, bugün de geçerli; S2 (a) lokasyonun herhangi bir müdürü, bugün de geçerli; S3 (a) birincil lokasyonun saat dilimi, bugün de geçerli; S4, K10 ile bu sürümde kapandı.
+- 2026-10-01 (kayıt oturumu `local_1238630c…`, koordinatör beslemesi #32): **FB-6.3.0 bitti — plan başlamaya hazır.** Kaynak: `nf-planlama` alt ajanı (salt okuma, `origin/main` `32dbbd05` + ortak yerel DB SELECT; koordinatörün aktardığı). Kayıt oturumu `250c345c`'de elle doğruladı (`32dbbd05`'ten beri yalnız `docs/` değişti): `c345ed83..32dbbd05` 13 commit, `supabase/`'ta 0; 404 migration, son `20261003020000`; `20260929190000:733–734` hata satırı `:711`'de başlayan `notify_schedule_request_event_service`'te; `time_off.request_own` migration'larda yalnız katalog satırında; `time_off_request_status` enum'u; beş tablonun migration'ı; belge ucu satırları; `schedule-requests-service.ts`'in dört çağrısı; Touches'a giren dört test/e2e dosyası; `ci-green.txt` 147; `authorization_matrix.test.sql:817`; shared `:841`, `:854`, `:1247`, `:1262`, `:1268`; `index.test.ts`'te 6 `sort_order`; `organization-data.ts:352,359`; `catalog_sorted_by_name` dosyası. Ölçülmeyen (alt ajanın): yerel DB (404 = main, `pg_cron` 4 iş, bildirim anahtarları), ratchet sayaçları, 11 okuyucu, 47 test dosyası, BL-496'nın DB fonksiyonları.
+  - **Tazelik 2026-10-01 (`32dbbd05`): geçerli** — `c345ed83`'ten beri `supabase/` değişmedi (13 commit, hepsi web/script/belge); yerel DB = main (404 migration, son `20261003020000`).
+  - Yazılan düzeltmeler (8): `.3`'e bildirim tetikleyicisi (`.4`'ten); Envanter → Tablo ve alanlar (enum; envanterde olmayan beş tablo, kararı `nf-db` `.1`'de); Envanter → yeniden yazılacak okuyucular; Envanter → API (belge ucu kalır); Touches'a beş dosya; Alt adımlar → ratchet ölçümü; `.7`'ye BL-496 (Envanter → BL-496); In scope → iki boşluğun tazeliği.
+  - Sıradaki: `.1`–`.4` `nf-db` (`local_e9aa34f5…`, R3), dal `task/fb-6.3` (koordinatörün aktardığı; kayıt anında dal yok, ölçüldü).
