@@ -38,11 +38,11 @@ const refusal = (hint: string) =>
 
 describe("A manager shortens approved time off (BL-127)", () => {
   it("asks the database as the signed-in manager and answers with the leave's new state", async () => {
-    const rpc = vi.fn(async () => ({ data: { status: "partially_approved", request_id: requestId, revision: 3 }, error: null }));
+    const rpc = vi.fn(async () => ({ data: { status: "approved", request_id: requestId, revision: 3 }, error: null }));
     const built = app(timeOffShortenService({ rpc }));
     const response = await post(built, change);
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "partially_approved", request_id: requestId, revision: 3 });
+    expect(response.json()).toEqual({ status: "approved", request_id: requestId, revision: 3 });
     expect(rpc).toHaveBeenCalledExactlyOnceWith("shorten_time_off_service", {
       actor: userId, w: workspaceId, rid: requestId, expected_revision: 2,
       periods: change.periods, note: change.note, operation_id: change.operation_id,

@@ -77,8 +77,8 @@ describe("what the deciders and the person read (FB-6.3.5)", () => {
     starts_at: "2035-01-15T14:00:00+00:00", ends_at: "2035-01-15T22:00:00+00:00",
   };
   const request = {
-    id, employee_id: id, employee_name: "Ali Kaya", location_id: null, location_name: null, request_type: "time_off",
-    reason: "", status: "pending", start_date: "2035-01-15", end_date: "2035-01-16", revision: 1, viewed_at: null,
+    id, employee_id: id, employee_name: "Ali Kaya", request_type: "time_off",
+    reason: "", status: "pending", start_date: "2035-01-15", end_date: "2035-01-16", revision: 1,
     created_at: "2035-01-01T10:00:00+00:00", decide_by: "2035-01-14T14:00:00+00:00", conflict_count: 1, segments: [],
     events: [{ id: other, action: "expired", actor_name: "System", note: "Not decided in time", created_at: "2035-01-14T14:00:00+00:00" }],
     progress: {
@@ -93,7 +93,7 @@ describe("what the deciders and the person read (FB-6.3.5)", () => {
   };
   it("reads a request with no location, its deadline and its progress", () => {
     const parsed = timeOffRequestSchema.parse(request);
-    expect(parsed.location_id).toBeNull();
+    expect(parsed).not.toHaveProperty("location_id");
     expect(parsed.progress?.locations.map((l) => l.approved_by_name)).toEqual(["Ayse", null]);
     expect(parsed.progress?.impact?.hidden_shift_count).toBe(2);
   });

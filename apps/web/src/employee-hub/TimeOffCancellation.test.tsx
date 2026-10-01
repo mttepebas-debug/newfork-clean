@@ -9,9 +9,9 @@ import { requestAvailabilityNavigation } from "../availability/availability-navi
 vi.mock("../schedule/requests-data", () => ({ requestTimeOffCancellation: vi.fn() }));
 const id = "af9c0000-0000-4000-8000-000000000001";
 const request: EmployeeHubReadModel["requests"][number] = {
-  id, kind: "time_off", status: "partially_approved", title: "Time off", detail: "", revision: 2, created_at: "2035-01-01T00:00:00Z", can_cancel: false,
+  id, kind: "time_off", status: "approved", title: "Time off", detail: "", revision: 2, created_at: "2035-01-01T00:00:00Z", can_cancel: false,
   cancellation: { parent_request_id: null, parent_revision: null, pending_request_id: null, has_completed_cancellation: false, can_request: true },
-  periods: [{ id, segment_date: "2035-01-15", start_time: "09:00", end_time: "17:00", status: "approved", time_timezone: "UTC", time_source: "snapshot",
+  periods: [{ id, segment_date: "2035-01-15", start_time: "09:00", end_time: "17:00", status: "approved", time_timezone: "UTC",
     effective_intervals: [{ start_at: "2035-01-15T09:00:00Z", end_at: "2035-01-15T12:00:00Z" }, { start_at: "2035-01-15T14:00:00Z", end_at: "2035-01-15T17:00:00Z" }] }],
 };
 const changed = vi.fn();
@@ -180,10 +180,9 @@ describe("approved leave cancellation", () => {
     expect(screen.getByText(/Cancellation awaiting manager review/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Request leave cancellation" })).toBeNull();
   });
-  it("distinguishes historical approval, cancelled hours, and remaining approved leave", () => {
-    render(<TimeOffPeriods periods={[{ ...request.periods![0]!, cancelled_intervals: [{ start_at: "2035-01-15T12:00:00Z", end_at: "2035-01-15T14:00:00Z" }],
-      decision_pieces: [{ id, starts_at: "2035-01-15T09:00:00Z", ends_at: "2035-01-15T17:00:00Z", time_timezone: "UTC", status: "approved" }] }]} timeFormat="24h" requestStatus="partially_approved" />);
-    expect(screen.getByText("Previously approved")).toBeTruthy(); expect(screen.getByText("Cancelled leave")).toBeTruthy();
+  it("distinguishes cancelled hours from remaining approved leave", () => {
+    render(<TimeOffPeriods periods={[{ ...request.periods![0]!, cancelled_intervals: [{ start_at: "2035-01-15T12:00:00Z", end_at: "2035-01-15T14:00:00Z" }] }]} timeFormat="24h" requestStatus="approved" />);
+    expect(screen.getByText("Cancelled leave")).toBeTruthy();
     expect(screen.getAllByText("Still approved")).toHaveLength(2);
   });
 });

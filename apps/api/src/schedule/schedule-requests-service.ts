@@ -1,16 +1,11 @@
 import {
-  scheduleRequestMutationResultSchema,
   scheduleRequestsReadModelSchema,
-  type ScheduleRequestMutationResult,
   type ScheduleRequestsReadModel,
-  type TimeOffDecisionInput,
 } from "@newfork/shared/schedule";
 import { createClient } from "@supabase/supabase-js";
-import { timeOffAssignmentPreviewSchema, type TimeOffAssignmentPreview, type TimeOffAssignmentPreviewInput } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
 
 export interface ScheduleRequestsService {
-  previewTimeOffAssignment(input: { actorUserId: string; workspaceId: string; requestId: string; decision: TimeOffAssignmentPreviewInput }): Promise<TimeOffAssignmentPreview>;
   get(input: {
     actorUserId: string;
     workspaceId: string;
@@ -20,17 +15,6 @@ export interface ScheduleRequestsService {
     timeOffCursor: string | null;
     limit: number;
   }): Promise<ScheduleRequestsReadModel>;
-  markTimeOffViewed(input: {
-    actorUserId: string;
-    workspaceId: string;
-    requestId: string;
-  }): Promise<ScheduleRequestMutationResult>;
-  resolveTimeOff(input: {
-    actorUserId: string;
-    workspaceId: string;
-    requestId: string;
-    decision: TimeOffDecisionInput;
-  }): Promise<ScheduleRequestMutationResult>;
 }
 
 export function createScheduleRequestsService(options: {
@@ -46,12 +30,6 @@ export function createScheduleRequestsService(options: {
     return data;
   }
   return {
-    async previewTimeOffAssignment(input) {
-      return timeOffAssignmentPreviewSchema.parse(await rpc("preview_time_off_assignment_decision_service", {
-        actor: input.actorUserId, w: input.workspaceId, rid: input.requestId, expected_revision: input.decision.expected_revision,
-        action: input.decision.action, decisions: input.decision.segment_decisions,
-      }));
-    },
     async get(input) {
       return scheduleRequestsReadModelSchema.parse(
         await rpc("get_schedule_requests_service", {
@@ -62,42 +40,6 @@ export function createScheduleRequestsService(options: {
           target_search: input.search,
           target_time_off_cursor: input.timeOffCursor,
           target_limit: input.limit,
-        }),
-      );
-    },
-    async markTimeOffViewed(input) {
-      return scheduleRequestMutationResultSchema.parse(
-        await rpc("mark_schedule_time_off_viewed_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_request_id: input.requestId,
-        }),
-      );
-    },
-    async resolveTimeOff(input) {
-      if (input.decision.assignment_fingerprint) return scheduleRequestMutationResultSchema.parse(
-        await rpc("decide_time_off_with_assignments_service", {
-          actor: input.actorUserId, w: input.workspaceId, rid: input.requestId, expected_revision: input.decision.expected_revision,
-          action: input.decision.action, note: input.decision.note, decisions: input.decision.segment_decisions, operation_id: input.decision.operation_id,
-          expected_impact: input.decision.assignment_fingerprint, dispositions: input.decision.assignment_decisions ?? [],
-        }),
-      );
-      if (input.decision.operation_id) return scheduleRequestMutationResultSchema.parse(
-        await rpc("resolve_time_off_period_decision_service", {
-          actor_user_id: input.actorUserId, w: input.workspaceId, request_id: input.requestId,
-          expected_revision: input.decision.expected_revision, action: input.decision.action,
-          note: input.decision.note, decisions: input.decision.segment_decisions, operation_id: input.decision.operation_id,
-        }),
-      );
-      return scheduleRequestMutationResultSchema.parse(
-        await rpc("resolve_schedule_time_off_request_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_request_id: input.requestId,
-          target_expected_revision: input.decision.expected_revision,
-          target_action: input.decision.action,
-          target_note: input.decision.note,
-          target_segment_decisions: input.decision.segment_decisions,
         }),
       );
     },

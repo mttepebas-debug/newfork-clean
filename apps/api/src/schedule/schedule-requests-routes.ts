@@ -1,14 +1,10 @@
-import { timeOffDecisionInputSchema } from "@newfork/shared/schedule";
 import type { Permission } from "@newfork/shared";
-import { timeOffAssignmentPreviewInputSchema } from "@newfork/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleRequestsService } from "./schedule-requests-service";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
-const requestParams = workspaceParams.extend({ requestId: z.string().uuid() });
-const activeRequestParams = z.object({ requestId: z.string().uuid() });
 const explicitWorkspaceHeaderSchema = z.string().uuid();
 const querySchema = z.object({
   time_off_queue: z.enum(["needs_review", "closed"]).default("needs_review"),
@@ -25,21 +21,6 @@ export function registerScheduleRequestsRoutes(
     contextResolver: WorkspaceContextResolver | null;
   },
 ) {
-  for (const explicit of [false, true]) app.post(
-    `${explicit ? "/v1/workspaces/:workspaceId" : ""}/schedule/requests/time-off/:requestId/assignment-preview`,
-    async (request, reply) => {
-      const params = (explicit ? requestParams : activeRequestParams).safeParse(request.params);
-      const body = timeOffAssignmentPreviewInputSchema.safeParse(request.body);
-      if (!params.success || !body.success) return reply.status(400).send({ error: "Valid time off approval preview required" });
-      const context = explicit && "workspaceId" in params.data
-        ? await authorizeAny(request.headers.authorization, params.data.workspaceId as string, ["schedule.time_off_requests.manage"], options)
-        : await authorizeAnyActive(request, ["schedule.time_off_requests.manage"], options);
-      if (context === "workspace_mismatch") return reply.status(404).send({ error: "Workspace not found" });
-      if (!context) return reply.status(403).send({ error: "Time off management access required" });
-      if (!options.service) return reply.status(503).send({ error: "Schedule request service is not configured" });
-      return reply.send(await options.service.previewTimeOffAssignment({ actorUserId: context.userId, workspaceId: context.workspace.id, requestId: params.data.requestId, decision: body.data }));
-    },
-  );
   app.get(
     "/v1/workspaces/:workspaceId/schedule/requests",
     async (request, reply) => {
@@ -82,74 +63,6 @@ export function registerScheduleRequestsRoutes(
     },
   );
 
-  app.post(
-    "/v1/workspaces/:workspaceId/schedule/requests/time-off/:requestId/viewed",
-    async (request, reply) => {
-      const params = requestParams.safeParse(request.params);
-      if (!params.success)
-        return reply.status(400).send({ error: "Valid request required" });
-      const context = await authorizeAny(
-        request.headers.authorization,
-        params.data.workspaceId,
-        ["schedule.time_off_requests.read"],
-        options,
-      );
-      if (context === "workspace_mismatch")
-        return reply.status(404).send({ error: "Workspace not found" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Time off read access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule request service is not configured" });
-      return reply.send(
-        await options.service.markTimeOffViewed({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          requestId: params.data.requestId,
-        }),
-      );
-    },
-  );
-
-  app.post(
-    "/v1/workspaces/:workspaceId/schedule/requests/time-off/:requestId/decision",
-    async (request, reply) => {
-      const params = requestParams.safeParse(request.params);
-      const body = timeOffDecisionInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid time off decision required" });
-      const context = await authorizeAny(
-        request.headers.authorization,
-        params.data.workspaceId,
-        ["schedule.time_off_requests.manage"],
-        options,
-      );
-      if (context === "workspace_mismatch")
-        return reply.status(404).send({ error: "Workspace not found" });
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Time off management access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule request service is not configured" });
-      return reply.send(
-        await options.service.resolveTimeOff({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-          requestId: params.data.requestId,
-          decision: body.data,
-        }),
-      );
-    },
-  );
-
   app.get("/schedule/requests", async (request, reply) => {
     const query = querySchema.safeParse(request.query);
     if (!query.success)
@@ -185,62 +98,6 @@ export function registerScheduleRequestsRoutes(
     );
   });
 
-  app.post("/schedule/requests/time-off/:requestId/viewed", async (request, reply) => {
-    const params = activeRequestParams.safeParse(request.params);
-    if (!params.success)
-      return reply.status(400).send({ error: "Valid request required" });
-    const context = await authorizeAnyActive(
-      request,
-      ["schedule.time_off_requests.read"],
-      options,
-    );
-    if (!context)
-      return reply.status(403).send({ error: "Time off read access required" });
-    if (!options.service)
-      return reply
-        .status(503)
-        .send({ error: "Schedule request service is not configured" });
-    return reply.send(
-      await options.service.markTimeOffViewed({
-        actorUserId: context.userId,
-        workspaceId: context.workspace.id,
-        requestId: params.data.requestId,
-      }),
-    );
-  });
-
-  app.post(
-    "/schedule/requests/time-off/:requestId/decision",
-    async (request, reply) => {
-      const params = activeRequestParams.safeParse(request.params);
-      const body = timeOffDecisionInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid time off decision required" });
-      const context = await authorizeAnyActive(
-      request,
-        ["schedule.time_off_requests.manage"],
-        options,
-      );
-      if (!context)
-        return reply
-          .status(403)
-          .send({ error: "Time off management access required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule request service is not configured" });
-      return reply.send(
-        await options.service.resolveTimeOff({
-          actorUserId: context.userId,
-          workspaceId: context.workspace.id,
-          requestId: params.data.requestId,
-          decision: body.data,
-        }),
-      );
-    },
-  );
 }
 
 async function authorizeAnyActive(

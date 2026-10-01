@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { timeOffCancellationContextSchema, timeOffCancellationPeriodSchema, timeOffDecisionEventSchema, timeOffPeriodInputSchema, timeOffPeriodReadSchema } from "./time-off";
+import { timeOffCancellationContextSchema, timeOffDecisionEventSchema, timeOffPeriodReadSchema } from "./time-off";
 import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
 
 const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/);
@@ -101,39 +101,12 @@ export type EmployeePersonalTaskInput = z.infer<
   typeof employeePersonalTaskInputSchema
 >;
 
-export const employeeTimeOffInputSchema = z.object({
-  location_id: z.string().uuid(),
-  reason: z.string().trim().max(1000).default(""),
-  dates: z.array(z.string().date()).min(1).max(31).optional(),
-  periods: z.array(timeOffPeriodInputSchema).min(1).max(124).optional(),
-  request_id: z.string().uuid().optional(),
-  expected_timezone: z.string().trim().min(1).max(64).optional(),
-}).superRefine((value, ctx) => {
-  if (Boolean(value.dates) === Boolean(value.periods))
-    ctx.addIssue({ code: "custom", path: ["periods"], message: "Choose dates or specific periods for the request." });
-  if (value.periods && !value.request_id)
-    ctx.addIssue({ code: "custom", path: ["request_id"], message: "A request key is required for retrying these hours safely." });
-  if (value.periods && !value.expected_timezone)
-    ctx.addIssue({ code: "custom", path: ["expected_timezone"], message: "Refresh the location time zone before requesting hours." });
-  if (value.periods && new Set(value.periods.map((p) => p.segment_date)).size > 31)
-    ctx.addIssue({ code: "custom", path: ["periods"], message: "Request at most 31 calendar dates at a time." });
-});
-export type EmployeeTimeOffInput = z.infer<typeof employeeTimeOffInputSchema>;
-
-export const employeeRequestActionInputSchema = z.union([z.object({
+export const employeeRequestActionInputSchema = z.object({
   request_id: z.string().uuid(),
   kind: z.literal("time_off"),
   action: z.literal("cancel"),
   expected_revision: z.number().int().positive(),
-}), z.object({
-  request_id: z.string().uuid(), kind: z.literal("time_off"), action: z.literal("request_cancellation"),
-  expected_revision: z.number().int().positive(), operation_id: z.string().uuid(),
-  reason: z.string().trim().max(1000), periods: z.array(timeOffCancellationPeriodSchema).min(1).max(124),
-}).superRefine((value, ctx) => {
-  const ordered = [...value.periods].sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  if (ordered.some((p, index) => index > 0 && Date.parse(p.starts_at) < Date.parse(ordered[index - 1]!.ends_at)))
-    ctx.addIssue({ code: "custom", path: ["periods"], message: "Cancellation periods must not overlap." });
-})]);
+});
 export type EmployeeRequestActionInput = z.infer<
   typeof employeeRequestActionInputSchema
 >;

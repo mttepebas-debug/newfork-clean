@@ -11,11 +11,9 @@ import {
 export * from "./role-permissions";
 import {
   timeOffCancellationContextSchema,
-  timeOffAssignmentDispositionSchema,
   timeOffPeriodReadSchema,
   timeOffProgressSchema,
   timeOffReleasedAssignmentSchema,
-  timeOffSegmentDecisionSchema,
 } from "./time-off";
 export * from "./time-off";
 import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "./availability-assessment";
@@ -2305,7 +2303,6 @@ export const timeOffRequestStatusSchema = z.enum([
   "pending",
   "approved",
   "denied",
-  "partially_approved",
   "revoked",
 ]);
 export const timeOffSegmentStatusSchema = z.enum([
@@ -2318,9 +2315,6 @@ export const timeOffRequestSchema = z.object({
   id: z.string().uuid(),
   employee_id: z.string().uuid(),
   employee_name: z.string().trim().min(1).max(160),
-  // Null since FB-6.3: time off belongs to the person, not to a location.
-  location_id: z.string().uuid().nullable(),
-  location_name: z.string().trim().min(1).max(120).nullable(),
   request_type: z.enum(["time_off", "time_off_cancellation"]),
   cancellation: timeOffCancellationContextSchema.optional(),
   reason: z.string().max(1000),
@@ -2328,7 +2322,6 @@ export const timeOffRequestSchema = z.object({
   start_date: z.string().date(),
   end_date: z.string().date(),
   revision: z.number().int().positive(),
-  viewed_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
   decide_by: z.string().datetime({ offset: true }).nullable().optional(),
   conflict_count: z.number().int().nonnegative(),
@@ -2354,78 +2347,6 @@ export const scheduleRequestsReadModelSchema = z.object({
 });
 export type ScheduleRequestsReadModel = z.infer<
   typeof scheduleRequestsReadModelSchema
->;
-
-export const timeOffDecisionInputSchema = z
-  .object({
-    operation_id: z.string().uuid().optional(),
-    assignment_fingerprint: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/)
-      .optional(),
-    assignment_decisions: z
-      .array(timeOffAssignmentDispositionSchema)
-      .max(1000)
-      .optional(),
-    expected_revision: z.number().int().positive(),
-    action: z.enum([
-      "approve",
-      "deny",
-      "partial_approve",
-      "return_to_pending",
-      "revoke",
-    ]),
-    note: z.string().trim().max(1000).default(""),
-    segment_decisions: z.array(timeOffSegmentDecisionSchema).default([]),
-  })
-  .superRefine((value, ctx) => {
-    if (
-      (value.assignment_decisions || value.assignment_fingerprint) &&
-      (!value.assignment_fingerprint ||
-        !value.operation_id ||
-        !["approve", "partial_approve"].includes(value.action))
-    )
-      ctx.addIssue({
-        code: "custom",
-        path: ["assignment_decisions"],
-        message:
-          "Review the assignment preview before approving and releasing shifts.",
-      });
-    if (
-      value.assignment_decisions &&
-      new Set(value.assignment_decisions.map((s) => s.shift_id.toLowerCase()))
-        .size !== value.assignment_decisions.length
-    )
-      ctx.addIssue({
-        code: "custom",
-        path: ["assignment_decisions"],
-        message: "Decide each affected assignment exactly once.",
-      });
-    if (value.action !== "partial_approve") return;
-    if (
-      !value.segment_decisions.length ||
-      new Set(
-        value.segment_decisions.map((segment) =>
-          segment.segment_id.toLowerCase(),
-        ),
-      ).size !== value.segment_decisions.length
-    )
-      ctx.addIssue({
-        code: "custom",
-        path: ["segment_decisions"],
-        message: "Review each requested time-off segment exactly once.",
-      });
-  });
-export type TimeOffDecisionInput = z.infer<typeof timeOffDecisionInputSchema>;
-
-export const scheduleRequestMutationResultSchema = z.object({
-  status: z.string().trim().min(1).max(48),
-  request_id: z.string().uuid(),
-  revision: z.number().int().positive(),
-  released_shift_count: z.number().int().nonnegative().optional(),
-});
-export type ScheduleRequestMutationResult = z.infer<
-  typeof scheduleRequestMutationResultSchema
 >;
 
 export const customRoleAccessClassSchema = z.enum(["manager", "employee"]);

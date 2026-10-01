@@ -676,7 +676,7 @@ function TimeOffDetail({
   const cancellation = request.request_type === "time_off_cancellation";
   const progress = request.progress;
   const canVote = Boolean(progress && (progress.can_vote || progress.can_decide_alone));
-  const approved = request.status === "approved" || request.status === "partially_approved";
+  const approved = request.status === "approved";
   const revocable = !cancellation && approved && canRevoke;
   return (
     <div className="request-detail-inner">

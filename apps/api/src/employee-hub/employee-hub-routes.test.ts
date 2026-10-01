@@ -52,22 +52,24 @@ function employeeHubServiceMock(): EmployeeHubService {
     changePersonalTask: vi.fn(),
     get: vi.fn(),
     getScheduleBoard: vi.fn(),
-    submitTimeOff: vi.fn(),
     actOnRequest: vi.fn(),
   };
 }
 
 describe("employee hub routes", () => {
-  it("binds cancellation to the authenticated actor and requires a safe retry key", async () => {
-    const service = employeeHubServiceMock(); vi.mocked(service.actOnRequest).mockResolvedValue({ status: "pending", request_id: requestId, revision: 1 });
+  it("binds a withdrawal to the signed-in person; the old submit and cancellation-request paths are gone (FB-6.3.7)", async () => {
+    const service = employeeHubServiceMock(); vi.mocked(service.actOnRequest).mockResolvedValue({ status: "revoked", request_id: requestId, revision: 2 });
     const app = buildApp({ contextResolver: { resolve: async () => activeContext }, employeeHubService: service });
-    const command = { request_id: requestId, kind: "time_off", action: "request_cancellation", expected_revision: 2, operation_id: requestId, reason: "Plans changed",
-      periods: [{ segment_id: requestId, starts_at: "2035-01-15T09:00:00Z", ends_at: "2035-01-15T12:00:00Z" }] };
+    const command = { request_id: requestId, kind: "time_off", action: "cancel", expected_revision: 1 };
     const response = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`, headers: { authorization: "Bearer token" }, payload: { ...command, actor: otherWorkspaceId, workspace_id: otherWorkspaceId } });
     expect(response.statusCode).toBe(200);
     expect(service.actOnRequest).toHaveBeenCalledWith({ actorUserId: userId, workspaceId, action: command });
-    const invalid = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`, headers: { authorization: "Bearer token" }, payload: { ...command, operation_id: undefined } });
-    expect(invalid.statusCode).toBe(400); expect(service.actOnRequest).toHaveBeenCalledTimes(1); await app.close();
+    const cancellation = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`, headers: { authorization: "Bearer token" },
+      payload: { ...command, action: "request_cancellation", operation_id: requestId, reason: "", periods: [{ segment_id: requestId, starts_at: "2035-01-15T09:00:00Z", ends_at: "2035-01-15T12:00:00Z" }] } });
+    expect(cancellation.statusCode).toBe(400);
+    const submit = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/time-off`, headers: { authorization: "Bearer token" }, payload: { location_id: locationId, dates: ["2035-01-15"] } });
+    expect(submit.statusCode).toBe(404);
+    expect(service.actOnRequest).toHaveBeenCalledTimes(1); await app.close();
   });
   it("binds the schedule board to the authenticated actor and requires a calendar date", async () => {
     const service = employeeHubServiceMock();
@@ -178,16 +180,6 @@ describe("employee hub routes", () => {
       },
       {
         method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-off`,
-        payload: {
-          location_id: locationId,
-          reason: "Family event",
-          dates: ["2026-08-20"],
-        },
-        serviceMethod: "submitTimeOff",
-      },
-      {
-        method: "POST",
         url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`,
         payload: {
           request_id: requestId,
@@ -216,10 +208,6 @@ describe("employee hub routes", () => {
   it("ignores spoofed actor and workspace fields in write bodies", async () => {
     const service = employeeHubServiceMock();
     const mutationResult = { status: "saved", revision: 1 };
-    vi.mocked(service.submitTimeOff).mockResolvedValue({
-      ...mutationResult,
-      request_id: requestId,
-    });
     vi.mocked(service.actOnRequest).mockResolvedValue(mutationResult);
     const app = buildApp({
       contextResolver: { resolve: async () => activeContext },
@@ -232,12 +220,6 @@ describe("employee hub routes", () => {
       workspaceId: otherWorkspaceId,
       workspace_id: otherWorkspaceId,
     };
-    const timeOff = {
-      ...spoofedIdentity,
-      location_id: locationId,
-      reason: "Family event",
-      dates: ["2026-08-20"],
-    };
     const requestAction = {
       ...spoofedIdentity,
       request_id: requestId,
@@ -247,12 +229,6 @@ describe("employee hub routes", () => {
     };
 
     const requests = [
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/employee-hub/time-off`,
-        payload: timeOff,
-        expectedStatus: 200,
-      },
       {
         method: "POST",
         url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`,
@@ -272,15 +248,6 @@ describe("employee hub routes", () => {
     }
 
     expect(service).not.toHaveProperty("saveAvailability");
-    expect(service.submitTimeOff).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      request: {
-        location_id: timeOff.location_id,
-        reason: timeOff.reason,
-        dates: timeOff.dates,
-      },
-    });
     expect(service.actOnRequest).toHaveBeenCalledWith({
       actorUserId: userId,
       workspaceId,

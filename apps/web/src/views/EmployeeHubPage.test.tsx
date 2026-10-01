@@ -607,7 +607,7 @@ describe("EmployeeHubPage", () => {
   it("retains an open cancellation when refreshed history omits its request and disables submission", async () => {
     const approved = {...fixture.requests.find(request=>request.kind === "time_off")!,status:"approved" as const,can_cancel:false,
       cancellation:{parent_request_id:null,parent_revision:null,pending_request_id:null,has_completed_cancellation:false,can_request:true},
-      periods:[{id:"af9c0000-0000-4000-8000-000000000001",segment_date:"2035-01-15",start_time:"09:00",end_time:"17:00",status:"approved" as const,time_timezone:"UTC",time_source:"snapshot" as const,
+      periods:[{id:"af9c0000-0000-4000-8000-000000000001",segment_date:"2035-01-15",start_time:"09:00",end_time:"17:00",status:"approved" as const,time_timezone:"UTC",
         effective_intervals:[{start_at:"2035-01-15T09:00:00Z",end_at:"2035-01-15T17:00:00Z"}]}]};
     const model = {...fixture,requests:[approved]};
     const {client} = renderPageWithFixture(model,"/app/employee-hub/my-availability?section=time-off");

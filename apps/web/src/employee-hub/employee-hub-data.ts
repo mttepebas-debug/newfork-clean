@@ -6,7 +6,6 @@ import {
   employeeHubReadModelSchema,
   scheduleReadModelSchema,
   type EmployeeRequestActionInput,
-  type EmployeeTimeOffInput,
 } from "@newfork/shared";
 import {
   getApiAccessToken,
@@ -73,17 +72,6 @@ export async function changeEmployeePersonalTask(
     await request(workspaceId, "/personal-tasks", {
       method: "POST",
       body: JSON.stringify(task),
-    }),
-  );
-}
-export async function submitEmployeeTimeOff(
-  workspaceId: string,
-  input: EmployeeTimeOffInput,
-) {
-  return employeeHubMutationResultSchema.parse(
-    await request(workspaceId, "/time-off", {
-      method: "POST",
-      body: JSON.stringify(input),
     }),
   );
 }

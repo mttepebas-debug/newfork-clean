@@ -1,18 +1,14 @@
 import { RequestError, requestFailure } from "../lib/request-error";
 import {
-  scheduleRequestMutationResultSchema,
   scheduleRequestsReadModelSchema,
-  type TimeOffDecisionInput,
 } from "@newfork/shared/schedule";
 import { apiRequest, getTabWorkspaceId, supabaseClient } from "../lib/supabase";
 import {
-  timeOffAssignmentPreviewSchema,
   timeOffRevokeResultSchema,
   timeOffShortenResultSchema,
   timeOffSubmitInputSchema,
   timeOffSubmitResultSchema,
   timeOffVerdictResultSchema,
-  type TimeOffAssignmentPreviewInput,
   type TimeOffCancellationRequestInput,
   type TimeOffRevokeInput,
   type TimeOffShortenInput,
@@ -70,36 +66,6 @@ export async function getScheduleRequests(
   return scheduleRequestsReadModelSchema.parse(
     await request(workspaceId, `?${query}`),
   );
-}
-
-export async function markTimeOffViewed(
-  workspaceId: string,
-  requestId: string,
-) {
-  return scheduleRequestMutationResultSchema.parse(
-    await request(workspaceId, `/time-off/${requestId}/viewed`, {
-      method: "POST",
-    }),
-  );
-}
-
-export async function decideTimeOff(
-  workspaceId: string,
-  requestId: string,
-  decision: TimeOffDecisionInput,
-) {
-  return scheduleRequestMutationResultSchema.parse(
-    await request(workspaceId, `/time-off/${requestId}/decision`, {
-      method: "POST",
-      body: JSON.stringify(decision),
-    }),
-  );
-}
-
-export async function previewTimeOffAssignment(workspaceId: string, requestId: string, decision: TimeOffAssignmentPreviewInput) {
-  return timeOffAssignmentPreviewSchema.parse(await request(workspaceId, `/time-off/${requestId}/assignment-preview`, {
-    method: "POST", body: JSON.stringify(decision),
-  }));
 }
 
 /** BL-127: a manager gives back hours of approved time off; the core decides who may. */

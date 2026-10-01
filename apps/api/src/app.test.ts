@@ -443,68 +443,6 @@ describe("api app", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("validates employee time off input before the service boundary", async () => {
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: {} as EmployeeHubService,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-off`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: { location_id: "not-a-uuid", dates: [] },
-    });
-    expect(response.statusCode).toBe(400);
-  });
-
-  it("binds hourly time-off input to the authenticated actor and requires its retry key", async () => {
-    const submitTimeOff = vi
-      .fn()
-      .mockResolvedValue({
-        status: "pending",
-        request_id: "af990000-0000-4000-8000-000000000005",
-        revision: 1,
-      });
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      employeeHubService: { submitTimeOff } as unknown as EmployeeHubService,
-    });
-    const payload = {
-      location_id: "11000000-0000-4000-8000-000000000001",
-      reason: "Appointment",
-      expected_timezone: "UTC",
-      periods: [
-        { segment_date: "2035-01-15", start_time: "10:00", end_time: "14:00" },
-      ],
-    };
-    const url = `/v1/workspaces/${resolvedContext.workspace.id}/employee-hub/time-off`;
-    const missing = await app.inject({
-      method: "POST",
-      url,
-      headers: { authorization: "Bearer valid-token" },
-      payload,
-    });
-    expect(missing.statusCode).toBe(400);
-    expect(submitTimeOff).not.toHaveBeenCalled();
-    const request_id = "af990000-0000-4000-8000-000000000006";
-    const valid = await app.inject({
-      method: "POST",
-      url,
-      headers: { authorization: "Bearer valid-token" },
-      payload: { ...payload, request_id, actor_user_id: request_id },
-    });
-    expect(valid.statusCode).toBe(200);
-    expect(submitTimeOff).toHaveBeenCalledWith({
-      actorUserId: resolvedContext.userId,
-      workspaceId: resolvedContext.workspace.id,
-      request: {
-        ...payload,
-        request_id,
-        periods: [{ ...payload.periods[0], ends_next_day: false }],
-      },
-    });
-  });
-
   it("forwards a revision-guarded employee request action", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
@@ -938,29 +876,14 @@ describe("api app", () => {
             time_off_requests: [],
           };
         },
-        markTimeOffViewed: async (
-          input: Parameters<ScheduleRequestsService["markTimeOffViewed"]>[0],
-        ) => {
-          calls.push({ kind: "viewed", input });
-          return { status: "viewed", request_id: input.requestId, revision: 3 };
-        },
       } as unknown as ScheduleRequestsService,
     });
-    const requestId = "97200000-0000-4000-8000-000000000001";
-
     const read = await app.inject({
       method: "GET",
       url: "/schedule/requests?time_off_queue=closed&search=alex&limit=25",
       headers: { authorization: "Bearer valid-token" },
     });
-    const viewed = await app.inject({
-      method: "POST",
-      url: `/schedule/requests/time-off/${requestId}/viewed`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-
     expect(read.statusCode).toBe(200);
-    expect(viewed.statusCode).toBe(200);
     expect(calls).toEqual([
       {
         kind: "get",
@@ -974,49 +897,22 @@ describe("api app", () => {
           limit: 25,
         },
       },
-      {
-        kind: "viewed",
-        input: {
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          requestId,
-        },
-      },
     ]);
   });
 
   it("returns generic not found for Schedule Requests workspace mismatches", async () => {
     const get = vi.fn();
-    const markTimeOffViewed = vi.fn();
-    const resolveTimeOff = vi.fn();
     const app = buildApp({
       contextResolver: { resolve: async () => workspaceMismatchContext() },
       scheduleRequestsService: {
         get,
-        markTimeOffViewed,
-        resolveTimeOff,
       } as unknown as ScheduleRequestsService,
     });
     const workspaceId = resolvedContext.workspace.id;
-    const requestId = "97200000-0000-4000-8000-000000000001";
     const requests = [
       {
         method: "GET" as const,
         url: `/v1/workspaces/${workspaceId}/schedule/requests?time_off_queue=closed&search=alex&limit=25`,
-      },
-      {
-        method: "POST" as const,
-        url: `/v1/workspaces/${workspaceId}/schedule/requests/time-off/${requestId}/viewed`,
-      },
-      {
-        method: "POST" as const,
-        url: `/v1/workspaces/${workspaceId}/schedule/requests/time-off/${requestId}/decision`,
-        payload: {
-          expected_revision: 1,
-          action: "approve",
-          note: "Approved.",
-          segment_decisions: [],
-        },
       },
     ];
 
@@ -1029,222 +925,24 @@ describe("api app", () => {
       expect(response.json()).toEqual({ error: "Workspace not found" });
     }
     expect(get).not.toHaveBeenCalled();
-    expect(markTimeOffViewed).not.toHaveBeenCalled();
-    expect(resolveTimeOff).not.toHaveBeenCalled();
   });
 
-  it("rejects duplicate partial time-off decisions before both service routes", async () => {
-    const resolveTimeOff = vi.fn();
+  it("has no old time-off decision, viewed or approval-preview route (FB-6.3.7)", async () => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: {
-        resolveTimeOff,
-      } as unknown as ScheduleRequestsService,
+      scheduleRequestsService: { get: vi.fn() } as unknown as ScheduleRequestsService,
     });
     const requestId = "97200000-0000-4000-8000-000000000001";
-    for (const prefix of [
-      `/v1/workspaces/${resolvedContext.workspace.id}`,
-      "",
-    ]) {
-      const response = await app.inject({
-        method: "POST",
-        url: `${prefix}/schedule/requests/time-off/${requestId}/decision`,
-        headers: { authorization: "Bearer valid-token" },
-        payload: {
-          expected_revision: 1,
-          action: "partial_approve",
-          segment_decisions: [
-            {
-              segment_id: "ab730000-0000-4000-8000-000000000001",
-              status: "approved",
-            },
-            {
-              segment_id: "AB730000-0000-4000-8000-000000000001",
-              status: "denied",
-            },
-          ],
-        },
-      });
-      expect(response.statusCode).toBe(400);
-    }
-    expect(resolveTimeOff).not.toHaveBeenCalled();
-  });
-
-  it("authorizes time-off assignment previews on both routes and preserves explicit releases", async () => {
-    const requestId = "97200000-0000-4000-8000-000000000001";
-    const operationId = "97200000-0000-4000-8000-000000000002";
-    const previewTimeOffAssignment = vi
-      .fn()
-      .mockResolvedValue({
-        request_id: requestId,
-        revision: 1,
-        fingerprint: "a".repeat(64),
-        restricted_count: 0,
-        affected_shifts: [],
-        approved_intervals: [],
-      });
-    const resolveTimeOff = vi
-      .fn()
-      .mockResolvedValue({
-        request_id: requestId,
-        revision: 2,
-        status: "approved",
-        released_shift_count: 1,
-      });
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: {
-        previewTimeOffAssignment,
-        resolveTimeOff,
-      } as unknown as ScheduleRequestsService,
-    });
-    for (const prefix of [
-      `/v1/workspaces/${resolvedContext.workspace.id}`,
-      "",
-    ]) {
-      const url = `${prefix}/schedule/requests/time-off/${requestId}`;
-      const preview = await app.inject({
-        method: "POST",
-        url: `${url}/assignment-preview`,
-        headers: { authorization: "Bearer valid-token" },
-        payload: {
-          expected_revision: 1,
-          action: "approve",
-          actor_user_id: operationId,
-        },
-      });
-      expect(preview.statusCode).toBe(200);
-      expect(previewTimeOffAssignment).toHaveBeenLastCalledWith({
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        requestId,
-        decision: {
-          expected_revision: 1,
-          action: "approve",
-          segment_decisions: [],
-        },
-      });
-      const assignment_decisions = [
-        { shift_id: operationId, action: "release_entire_shift" },
-      ];
-      const decision = await app.inject({
-        method: "POST",
-        url: `${url}/decision`,
-        headers: { authorization: "Bearer valid-token" },
-        payload: {
-          expected_revision: 1,
-          action: "approve",
-          operation_id: operationId,
-          assignment_fingerprint: "a".repeat(64),
-          assignment_decisions,
-        },
-      });
-      expect(decision.statusCode).toBe(200);
-      expect(resolveTimeOff).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          decision: expect.objectContaining({
-            assignment_fingerprint: "a".repeat(64),
-            assignment_decisions,
-            operation_id: operationId,
-          }),
-        }),
-      );
-      const duplicate = await app.inject({
-        method: "POST",
-        url: `${url}/decision`,
-        headers: { authorization: "Bearer valid-token" },
-        payload: {
-          expected_revision: 1,
-          action: "approve",
-          operation_id: operationId,
-          assignment_fingerprint: "a".repeat(64),
-          assignment_decisions: [
-            ...assignment_decisions,
-            ...assignment_decisions,
-          ],
-        },
-      });
-      expect(duplicate.statusCode).toBe(400);
-    }
-    expect(resolveTimeOff).toHaveBeenCalledTimes(2);
-  });
-
-  it("forwards revision-guarded time off decisions", async () => {
-    const calls: unknown[] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: {
-        resolveTimeOff: async (
-          input: Parameters<ScheduleRequestsService["resolveTimeOff"]>[0],
-        ) => {
-          calls.push(input);
-          return {
-            status: "partially_approved",
-            request_id: input.requestId,
-            revision: 2,
-          };
-        },
-      } as unknown as ScheduleRequestsService,
-    });
-    const requestId = "97200000-0000-4000-8000-000000000001";
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests/time-off/${requestId}/decision`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: {
-        expected_revision: 1,
-        action: "partial_approve",
-        note: "First day approved",
-        segment_decisions: [
-          {
-            segment_id: "97300000-0000-4000-8000-000000000001",
-            status: "approved",
-          },
-        ],
-      },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        requestId,
-        decision: {
-          expected_revision: 1,
-          action: "partial_approve",
-          note: "First day approved",
-          segment_decisions: [
-            {
-              segment_id: "97300000-0000-4000-8000-000000000001",
-              status: "approved",
-            },
-          ],
-        },
-      },
-    ]);
-  });
-
-  it("denies Schedule Requests mutations without the matching manage capability", async () => {
-    const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...resolvedContext,
-          permissions: resolvedContext.permissions.filter(
-            (permission) =>
-              permission !== "schedule.time_off_requests.manage",
-          ),
-        }),
-      },
-      scheduleRequestsService: {} as ScheduleRequestsService,
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests/time-off/97200000-0000-4000-8000-000000000001/decision`,
-      headers: { authorization: "Bearer valid-token" },
-      payload: { expected_revision: 1, action: "approve", note: "Approved.", segment_decisions: [] },
-    });
-    expect(response.statusCode).toBe(403);
+    for (const prefix of [`/v1/workspaces/${resolvedContext.workspace.id}`, ""])
+      for (const step of ["decision", "viewed", "assignment-preview"]) {
+        const response = await app.inject({
+          method: "POST",
+          url: `${prefix}/schedule/requests/time-off/${requestId}/${step}`,
+          headers: { authorization: "Bearer valid-token" },
+          payload: { expected_revision: 1, action: "approve" },
+        });
+        expect(response.statusCode).toBe(404);
+      }
   });
 
   it("prepares and retries employee invitations only inside the authorized workspace", async () => {

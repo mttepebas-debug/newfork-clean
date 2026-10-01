@@ -9,7 +9,6 @@ import {
   type EmployeeHubReadModel,
   type ScheduleReadModel,
   type EmployeeRequestActionInput,
-  type EmployeeTimeOffInput,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { rpcFailure } from "../http-error";
@@ -35,11 +34,6 @@ export interface EmployeeHubService {
     workspaceId: string;
     targetDate: string;
   }): Promise<ScheduleReadModel>;
-  submitTimeOff(input: {
-    actorUserId: string;
-    workspaceId: string;
-    request: EmployeeTimeOffInput;
-  }): Promise<EmployeeHubMutationResult>;
   actOnRequest(input: {
     actorUserId: string;
     workspaceId: string;
@@ -134,38 +128,7 @@ export function createEmployeeHubService(options: {
         })),
       };
     },
-    async submitTimeOff(input) {
-      if (input.request.periods) {
-        return employeeHubMutationResultSchema.parse(
-          await rpc("submit_employee_time_off_periods_service", {
-            actor_user_id: input.actorUserId,
-            target_workspace_id: input.workspaceId,
-            target_location_id: input.request.location_id,
-            target_reason: input.request.reason,
-            target_periods: input.request.periods,
-            target_operation_id: input.request.request_id,
-            target_expected_timezone: input.request.expected_timezone,
-          }),
-        );
-      }
-      return employeeHubMutationResultSchema.parse(
-        await rpc("submit_employee_time_off_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          target_location_id: input.request.location_id,
-          target_reason: input.request.reason,
-          target_dates: input.request.dates,
-        }),
-      );
-    },
     async actOnRequest(input) {
-      if (input.action.action === "request_cancellation") {
-        return employeeHubMutationResultSchema.parse(await rpc("submit_employee_time_off_cancellation_service", {
-          actor: input.actorUserId, w: input.workspaceId, parent_id: input.action.request_id,
-          expected_revision: input.action.expected_revision, reason: input.action.reason,
-          periods: input.action.periods, operation_id: input.action.operation_id,
-        }));
-      }
       return employeeHubMutationResultSchema.parse(
         await rpc("employee_request_action_service", {
           actor_user_id: input.actorUserId,
