@@ -127,6 +127,32 @@ export function pushesMain(seg, cwd) {
   });
 }
 
+// e2e before a push (CLAUDE.md §6, Mert 2026-10-01 "warning mode", ILKELER P16):
+// e2e/e2e-pass-reporter.mjs appends a line here after a local run that passed on
+// a clean tree. A push to main that changes screen, API or e2e code and has no
+// such run on the same content gets a warning and an audit line; never a block.
+const E2E_PASS = () => path.join(INBOX_DIR, "e2e-pass.jsonl");
+const E2E_CODE = /^(apps\/web\/src|apps\/api\/src|packages\/(shared|ui)\/src|e2e)\//;
+const sameContent = (dir, sha) => {
+  try {
+    git(dir, ["diff", "--quiet", sha, "HEAD", "--", "apps", "packages", "e2e", "supabase"]);
+    return true;
+  } catch {
+    return false;
+  }
+};
+export function e2eGap(dir) {
+  const files = tryGit(dir, ["diff", "--name-only", "origin/main...HEAD"])
+    .split("\n")
+    .filter((f) => E2E_CODE.test(f) && !/\.test\.tsx?$/.test(f));
+  if (!files.length) return [];
+  let shas = [];
+  try {
+    shas = fs.readFileSync(E2E_PASS(), "utf8").trim().split("\n").slice(-30).map((l) => JSON.parse(l).sha);
+  } catch {}
+  return shas.some((sha) => sameContent(dir, sha)) ? [] : files;
+}
+
 function audit(entry) {
   fs.mkdirSync(INBOX_DIR, { recursive: true });
   const line = { at: new Date().toISOString(), ...entry };
@@ -184,6 +210,7 @@ export function evaluate(input) {
   const cwd = input.cwd ?? process.cwd();
   const base = { session_id: input.session_id ?? "", cwd, tool: input.tool_name ?? "", command: cmd };
   let segs = [];
+  let warn = null;
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
 
@@ -194,6 +221,14 @@ export function evaluate(input) {
       for (const entry of backupBranches(seg, cwd, base)) audit(entry);
 
       if (!pushesMain(seg, cwd)) continue;
+      const pushDir = gitCall(seg, "push")?.cwd ? path.resolve(cwd, gitCall(seg, "push").cwd) : cwd;
+      const gap = e2eGap(pushDir);
+      if (gap.length) {
+        audit({ ...base, event: "push-main-e2e-missing", files: gap.slice(0, 10) });
+        warn =
+          `Uyarı: bu push ekran/API/e2e kodu değiştiriyor (${gap.length} dosya, ör. ${gap[0]}) ama aynı içerikte ` +
+          `geçen yerel e2e koşusu yok (CLAUDE.md §6). Commit'ten sonra etkilenen e2e'yi db.lock ile koştur. Push engellenmedi.`;
+      }
       if (takesMainBefore(links, i)) {
         audit({ ...base, event: "push-main-take-chained" });
         continue;
@@ -219,7 +254,7 @@ export function evaluate(input) {
           `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
       };
     }
-    return { block: false };
+    return { block: false, warn };
   } catch (err) {
     const overridden = segs.some((_, i) => overrideReason(segs, i));
     const risky = /\bpush\b/.test(cmd) && /\bmain\b/.test(cmd) && !overridden;
@@ -244,6 +279,13 @@ async function main() {
   if (r.block) {
     process.stderr.write(r.message);
     process.exitCode = 2; // PreToolUse: exit 2 = refuse, stderr goes back to the model
+  } else if (r.warn) {
+    process.stdout.write(
+      JSON.stringify({
+        systemMessage: r.warn,
+        hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: r.warn },
+      }),
+    );
   }
 }
 

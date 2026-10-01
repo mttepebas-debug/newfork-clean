@@ -185,3 +185,23 @@ test("board: heartbeat shows branch and flags a silent working session as stuck"
   await inbox.runHook("stop", bash("", { session_id: "worker-2" }));
   assert.equal(inbox.board(Date.now() + 30 * 60000)[0].stuck, false); // idle is not stuck
 });
+
+test("e2e gap: screen code ahead of origin/main warns until a passing run stamps the same content", async () => {
+  const { e2eGap } = await import("./guard.mjs");
+  const work = path.join(root, "repo-e2e");
+  execFileSync("git", ["clone", "-q", origin, work], { stdio: "ignore" });
+  const commit = (file) => {
+    fs.mkdirSync(path.dirname(path.join(work, file)), { recursive: true });
+    fs.writeFileSync(path.join(work, file), "x");
+    git(work, "add", file);
+    git(work, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", file);
+  };
+  commit("apps/web/src/Thing.test.tsx");
+  assert.deepEqual(e2eGap(work), []); // a test file alone needs no e2e
+  commit("apps/web/src/Thing.tsx");
+  assert.deepEqual(e2eGap(work), ["apps/web/src/Thing.tsx"]);
+  fs.mkdirSync(process.env.NEWFORK_INBOX_DIR, { recursive: true });
+  const sha = git(work, "rev-parse", "HEAD");
+  fs.appendFileSync(path.join(process.env.NEWFORK_INBOX_DIR, "e2e-pass.jsonl"), `${JSON.stringify({ sha })}\n`);
+  assert.deepEqual(e2eGap(work), []);
+});
