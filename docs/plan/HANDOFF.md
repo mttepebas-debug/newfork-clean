@@ -1,69 +1,57 @@
-# Koordinatör devri — 2026-10-01 ~14:05Z (kullanıcı PC başında DEĞİL)
+# Koordinatör devri — 2026-10-01 ~22:00Z (kullanıcı PC başında, devri kendisi onayladı)
 
-Devreden: "Koordinatör" (`local_199f5c39-3dc3-442a-9870-aa3b80d35890`, havuz (59), worktree `intelligent-bartik-b0e305`); bağlam %58, iş sınırında devrediyor.
-Devralan: havuzdan "(71)" `local_353d5a30-43c0-42ad-a441-672bec294a0d` (worktree `sharp-wescoff-6267c7`) — **güncel koordinatör kimliği, devralan oturumun kendi `local_` kimliğidir**; ilk iş onu kayıt oturumuna BESLEME ile bildirmek.
-**Kullanıcı yok (2026-10-01 ~10:30'dan beri):** "sen yönet ilerlemeyi, geldiğimde raporu alırım." → hafıza `user-away-mode`; CLAUDE.md §13: ürün kararı yalnız KARARLAR/ILKELER birebir kapsıyorsa (KK'ya yaz); P04 görsel seçim, P18 temel model, canlı (hosted) DDL, geri alınamaz, ücretli, arşiv → PARK. **Yeni canlı gönderim için onay YOK.**
+Devreden: "Koordinatör" `local_353d5a30-43c0-42ad-a441-672bec294a0d` (worktree `sharp-wescoff-6267c7`); bağlam yarıyı geçti, iş sınırında devrediyor.
+Devralan: havuzdan "(51)" `local_b355d250-87e7-4503-b04c-16a7ebc581d1` (worktree `busy-kowalevski-4eedf7`) — **güncel koordinatör kimliği, devralan oturumun kendi `local_` kimliğidir.**
+Kullanıcı (Mert) bu akşam PC başındaydı; son kararları ~21:50Z. Sorular çoktan seçmeli, tek turda, CLAUDE.md §13 şablonuyla.
 
-## 0. Temel gerçekler (önceki devirden geçerli; kısaltıldı)
-1. Main her gönderimde CANLIYA çıkar (Vercel). Canlı yayın sha'sı: `gh api repos/mttepebas-debug/newfork-clean/deployments?per_page=5`.
-2. OPS-03: alan EKLEYEN migration önce canlı → ortak yerel DB → main; alan SİLEN iş önce main, sonra canlı. Canlı her gönderim kullanıcı onayı.
-3. Canlı gönderim yolu (onay varsa): yedek (md5 + ACL) → `apply_migration` (büyük dosyada dar talimatlı alt ajan) → `schema_migrations.version` dosya adına eşle → md5 canlı = yerel → `get_advisors security`. Hafıza `hosted-migration-push-via-mcp`.
-4. Main'e almada ortak yerel DB'ye uygula (`lock.mjs take db` ayrı adım → `npx supabase migration up --local`).
-5. Kilitler ayrı adımda: `node scripts/lock.mjs take main "<kim>, <amaç>"` → işlem → `release`. Zincirleme yok.
-6. **Yeni pgTAP dosyası içeren her main gönderiminden önce** `bash scripts/ci-green-guard.sh <origin/main sha>` (bugün main bu yüzden bir kez kırıldı, `b9c665f2` düzeltti).
-7. Posta kutusu: `node scripts/inbox.mjs claim` **çıplak komut** (boru/zincir varsa kanca tanımaz); `node scripts/inbox.mjs wait 600` arka planda (`run_in_background`), her uyanışta okunan `ack`, yeniden başlat.
-8. Havuz: "Bekle: handoff raporu gelene kadar idle (NN)" = boş oturum. Kurulum: `set_session_model claude-opus-5-5` + `set_session_effort high` + başlık "Rol: <rol> (<uzmanlık>)" + `set_pinned` + rol ataması mesajı ("DEVRALDIM" ile başla) + `set_remote_control` (ilk mesajdan sonra). Kullanılanlar: (56)–(71). **Boş kalanlar: (72)–(80).** (51)–(55) eski yol taşır, kullanma.
-9. İnceleme: R3 → `nf-guvenlik` alt ajanı (`subagent_type: nf-guvenlik`, `model: opus` — Haiku başlamıyor). Kayıt: `C:/Users/TheWe/Documents/Codex/newfork-wt/coord/artifacts/coord/fb-6.3/nf-guvenlik-reviews.md` (§1–§7).
-10. Bütün ilerleme kayıtlarını kayıt oturumu yazar; sen BESLEME gönderirsin (son: #61).
+## 0. Temel gerçekler
+1. **Önce kendi worktree'ni tazele:** (51) 16 saat önceki main'den (`e013c442`) açıldı; yüklediğin CLAUDE.md/ILKELER eski. İlk komut: `git fetch origin && git checkout --detach origin/main` (kendi worktree'nde), sonra `CLAUDE.md`, `DELEGASYON.md`, `docs/plan/ILKELER.md` dosyalarını yeniden oku. Hook betikleri (`scripts/*.mjs`) çalışma anında okunur, tazelenince yenisi geçer.
+2. Main her gönderimde CANLIYA çıkar (Vercel). OPS-03: alan EKLEYEN migration önce canlı (kullanıcı onayı, bu pencerede) → ortak yerel DB → main; alan SİLEN iş önce main, sonra canlı.
+3. Canlı gönderim yolu: Supabase MCP'li alt ajan — yedek → `apply_migration` → `schema_migrations.version` dosya adına eşle → md5 dosya = canlı `prosrc` → `get_advisors security`. CLI `supabase db push` yasak.
+4. Kilitler ayrı Bash çağrısında: `node scripts/lock.mjs take main "<rol/oturum>, <amaç>"` → işlem → `release`. `lock take && git push` zinciri guard'da engellenir.
+5. Yeni pgTAP dosyası taşıyan push'tan önce `bash scripts/ci-green-guard.sh origin/main`.
+6. **YENİ (main `1b88c0d9`, Mert kararı "Uyarı modunda kapı kur"):** yerel Playwright koşusu temiz ağaçta geçince `<inbox>/e2e-pass.jsonl`'a damga düşer; main push'u ekran/API/e2e kodu değiştirip aynı içerikte damga yoksa guard uyarır + audit `push-main-e2e-missing`. Engellemez. Kural: **commit'ten sonra** etkilenen e2e'yi db.lock ile koş, sonra push. (e2e unutma main'i 3 kez kırdı; sonuncusu bugün G14, benim hatam.)
+7. Posta kutusu: `node scripts/inbox.mjs claim` çıplak komut; arka planda `node scripts/inbox.mjs wait 3600`; her uyanışta oku → bağımsız doğrula (commit, CI) → `ack` → yeniden başlat.
+8. İnceleme: R3 → `nf-guvenlik` alt ajanı (`model: opus`). Kayıt: `C:/Users/TheWe/Documents/Codex/newfork-wt/coord/artifacts/coord/fb-6.3/nf-guvenlik-reviews.md` (§1–§9). Görsel QA → `nf-gorsel-qa` alt ajanı; **telefonda gerçek dokunma testi** iste (`hasTouch` + `touchscreen.tap`), fareyle 390px kanıt sayılmaz.
+9. Bütün ilerleme kayıtlarını kayıt oturumu yazar; sen BESLEME gönderirsin (son: **#86**; sha'sı bekleniyor).
+10. coord worktree (`../newfork-wt/coord`) artık `node_modules` taşıyor; birleştirme ve tam kapı orada koşar (`git checkout -B <ad> <dal>` → `rebase origin/main` → kapı → push → `checkout --detach origin/main`).
 
 ## 1. İlk işler (sırayla)
-1. `get_session self`: başlık "Koordinatör" (ben koydum), sabit ve RC'yi doğrula.
-2. `node scripts/inbox.mjs claim` (çıplak), sonra arka planda `wait 600`.
-3. BESLEME #62 kayıt oturumuna: yeni koordinatör kimliği + bu HANDOFF'un sha'sı.
-4. Rollere yeni adres (tek satır; §3'teki aktif/boşta satırları).
-5. Eski koordinatörü (`local_199f5c39…`) kullanıcı dönünce arşivlemeyi sor (rapora yaz).
+1. §0.1 tazeleme. `get_session self`: başlığı "Koordinatör" yap, sabitle, RC aç.
+2. `node scripts/inbox.mjs claim` (çıplak), sonra arka planda `wait 3600`.
+3. BESLEME #87 kayıt oturumuna: yeni koordinatör kimliği + bu HANDOFF'un sha'sı (kayıt ILERLEME §0'ı günceller).
+4. Müdür notu oturumuna (`local_4ba671c6`) yeni adres (tek satır).
+5. Kullanıcıya: devreden oturumu (`local_353d5a30`) arşivlemeyi sor (dalı yok, worktree temiz; bilgisi bu dosyada).
 
-## 2. Aktif iş: FB-6.3 (izin oylaması) — `docs/plan/tasks/FB-6.3.md`
-| Adım | Durum | Nerede |
-|---|---|---|
-| `.0`–`.4` | canlıda + main'de | (önceki devir) |
-| `.5` API+shared+web veri | **canlıda + main'de** `13b7c8cd` (nf-guvenlik ONAY @c1f9ea87; CI yeşil; Vercel success 11:33Z) | — |
-| `.5b` hub opsiyonel alanlar | **main'de** `bdd7b859` (R1, koordinatör okuması; CI yeşil) | — |
-| DB park paketi (KK-72 D1/D2 `033000`, KK-75 yayın notu `034000`, KK-76 hub alanları `035000`) | dalda, üçü ONAY (§4 @a54d9ee9, §6 @edafa6ec koşullu, §7 @56c1910e); **kullanıcı canlı onayını bekliyor** | `task/fb-6.3-pubnote` @`85745a04` (nf-db `local_a0051ad4…`, worktree `happy-mahavira-b02a84`). Sıra/md5: 033 `bbf83394…` → 034 `799443d4…` → 035 `9bec7851…`. Koşul: canlı md5 `ddd1b0f7…` (preflight), `ed23a481…` (decisions) = yerel; sonra advisors; sonra main'e rebase + tam kapı + yerel DB; sonra `.6`'daki geçici yol (`EmployeeHubPage.tsx` `ponytail:`) silinir |
-| `.6` ekranlar + `.6b` QA düzeltmeleri | dalda; görsel QA ONAY @`8d6cae82`; **kullanıcının panel varyant seçimini bekliyor** (`?progressVariant=a|b|c`; ilk görüntüler `newfork-clean/artifacts/nf-arayuz/fb-6.3.6/02-panel-*`, düzeltilmiş hâli `newfork-clean/.claude/worktrees/objective-shamir-b06952/artifacts/nf-arayuz/fb-6.3.6b/02-panel-*`) | `task/fb-6.3.6` @`33949914` → `task/fb-6.3.6b` @`8d6cae82`. Seçim sonrası tur (nf-arayuz `local_d16ba31f…`): seçilmeyen iki varyant silinir + 409 satırı uyarı tonu + son QA bakışı (nf-gorsel-qa `local_66ae0bcc…`) + tam kapı |
-| `.8` e2e | dalda bitti, 4 senaryo (yerel 32/32) | `task/fb-6.3.8` @`73c1ec7c` (= 6 + 6b + 8 tek çizgi) |
-| `.7` DB silmeleri | **sürüyor** — nf-db `local_055397b2…` (havuz 69), dal `task/fb-6.3.7-db2` (`9e03f22a`'dan); kalan A–E (devir raporu `.newfork-inbox/done/20261001T135432-nf-db-local-72a35150-fb-6-3-7-db.md`) | migration `20261003040000_time_off_forgets_location_and_parts.sql` |
-| `.7` kod silmeleri | **sürüyor** — nf-backend `local_19f398bb…` (havuz 70), dal `task/fb-6.3.7-code` (`73c1ec7c`'den) | R3 → bitince nf-guvenlik (alt ajan) — DB + kod birlikte incelensin |
-| `.7` e2e | sırada — nf-test: `e2e/flows/shift-hub-time-off.spec.ts:32-33` → `tests.leave(` + `decide_time_off_service(…)` (DB raporu §5.3) | DB dalı bitince |
-| `.9` kapanış | sırada | — |
+## 2. Aktif işler
+**FB-6.3 (izin oylaması)** — `docs/plan/tasks/FB-6.3.md`. `.0`–`.8` (8b, 8c, 8d dahil) main'de ve canlıda; son: `.8c` "izin talebini yalnız karar veren görür" `21abd43e`, CI `36915443169` yeşil. **Kalan `.9` kapanış** (onaylı planın sıradaki adımı; sorulmadan yürür): Done-when kanıtları task dosyasına, ROADMAP/FOUNDATION-B kaydı, KARARLAR `:370` ve "İzin" satırı düzeltmesi (nf-db raporunun notu) — kayıt oturumuyla.
 
-**Main'e alma sırası (kullanıcı dönünce):** (1) DB park paketi canlı onayı → canlı → main; (2) varyant seçimi → `.6b` üstüne seçim turu → QA → `.6`+`.6b`+`.8` main; (3) `.7` DB + kod + e2e tek gönderim main'e (alan silen: önce main), sonra canlı DROP (onay). `.7` için ultrareview önerilir (veri silme + şema; CLAUDE.md §5) — yalnız kullanıcı başlatır.
+**G14 / BL-204 (Schedule müsaitlik ve onaylı izin işaretleri)** — kullanıcının doğrudan istediği, paralel iş.
+- Dilim c **main'de**: `8ff3a6ce`, `aedf014f`, `144e8a18` + e2e düzeltmesi `f707e047`; CI `36927026697` yeşil. Görsel QA (alt ajan) ilk turda telefon dokunmasını yakaladı, düzeltildi.
+- **Sürüyor: müdür notu metni** (Mert "Şimdi göster"): havuz (80) `local_4ba671c6` "Rol: nf-db — G14 müdür notu metni", dal `task/g14-manager-note`, worktree `../newfork-wt/g14-note`. R3 (kim görür kuralı yetki çekirdeğinde, `packages/shared/src/authorization.ts:274`): nf-guvenlik zorunlu; shared şemaya nullable alan → OPS-03 migration önce canlı (kullanıcı onayı). Ürün sorusu dönerse (ör. eş müdür görür mü) KARARLAR'da yoksa kullanıcıya sor. Rapor `G14-note` adıyla posta kutusuna gelir. Bitince ekran değiştiği için görsel QA (dokunma dahil).
+- Yolda: Publish → Pre-flight'ta üç grubun ortak amber kenar çizgisi + ad sütunu simgesi → BL-524 (low/safe); renk körlüğü → BL-525 (Mert: backlog'a, ertelendi).
 
 ## 3. Oturumlar
 | Oturum | Kimlik | Durum |
 |---|---|---|
-| Rol: nf-planlama (Kayıt) | `local_793b68ab-4f8b-4ce6-ac97-a947cf47e996` (66) | aktif, bağlam ~%33; #61'e kadar yazdı |
-| Rol: nf-db — FB-6.3.7 devam | `local_055397b2-034d-4630-a747-0d57af9027eb` (69) | **çalışıyor** |
-| Rol: nf-backend | `local_19f398bb-72f0-4438-b6ce-2db9d3452e4e` (70) | **çalışıyor** |
-| Rol: nf-db (park paketi sahibi) | `local_a0051ad4-a061-45d4-9626-99a551dafafe` (62) | boşta; paketi ve dalı tutar, canlı gönderim günü çağrılır |
-| Rol: nf-arayuz | `local_d16ba31f-57a1-4ae7-ba0f-1b338015ede8` (67) | boşta; seçim sonrası turu yapar |
-| Rol: nf-gorsel-qa | `local_66ae0bcc-7e85-48a4-8e48-4a84970b1bd0` (65) | boşta (~%37); betikleri scratchpad'inde; seçim sonrası son bakış |
-| Rol: nf-test | `local_17d5b65d-25bc-435f-9d86-677996a391f2` | boşta (~%35); `.7` e2e onun |
-| Rol: nf-guvenlik | `local_7dfbe7d3-cdef-4231-afd7-2fa7d53fcd75` | boşta (incelemeler alt ajanla) |
-| "(eski)" başlıklı oturumlar | koordinatör `local_2464b099…`; kayıt `local_b0d3be14…`, `local_09f7902d…`; nf-db `local_6b0b5907…`, `local_72a35150…`; nf-backend `local_44c01eca…`, `local_ea5837d3…`; nf-arayuz `local_0038c687…`, `local_a142f44f…`; nf-gorsel-qa `local_2a24338f…` | hepsi durdu; **arşiv kullanıcı dönünce** (kayıtta §0c). Dal tutanlar: `task/fb-6.3` (6b0b5907; main'de, silinebilir), `task/fb-6.3.5`/`.5b` (ea5837d3; main'de), `task/fb-6.3.6` (a142f44f; `.6b`'nin tabanı — main'e girene kadar tut), `task/fb-6.3.7-db` (72a35150; `db2`'nin tabanı — tut) |
+| Rol: nf-planlama (Kayıt ve ilerleme) | `local_dfa3c062-8f57-4624-89e4-18878a8dd629` | aktif, sabit, RC açık, bağlam ~%40 |
+| Rol: nf-db — G14 müdür notu metni | `local_4ba671c6-7f81-43ed-8a10-9bfa1048db9a` (80) | **çalışıyor** (~21:52Z başladı) |
+| Rol: nf-guvenlik | `local_7dfbe7d3-cdef-4231-afd7-2fa7d53fcd75` | boşta; incelemeler alt ajanla yapılıyor |
+| (eski) Koordinatör — öğlen | `local_2464b099…` | **"Bilgisayarı uyanık tut" açık; yalnız kullanıcı kapatabilir**, sonra arşiv |
+| Devreden koordinatör | `local_353d5a30…` | arşiv kullanıcıya sorulacak |
+| Havuz boş | (52)–(55): `local_43ff0725…`, `local_3dd6f9d4…`, `local_abc4d126…`, `local_10a5177a…` | hepsi `e013c442` tabanlı: kullanırken önce worktree'yi origin/main'e taze. Başka boş oturum yok — gerekirse kullanıcıdan yeni havuz istenir |
 | Kullanıcının oturumları | "Opus 5.5 karar verme…", "Slash komutları…", "Dev sunucusu başlat", "Bana Newfork-Clean E Bagli 30 Tane Boş Session Aç" | dokunma |
 
-## 4. Kullanıcı dönünce verilecek rapor (CLAUDE.md §10) — bu devirde bitenler (2026-10-01 10:47–14:05Z)
-- **Canlıya çıkan:** FB-6.3.5 (izin gönderme/iptal/oy/geri alma uçları, Requests kuyruğunda ilerleme ve son karar anı, Employee Hub'da durum; BL-496 kod kısmı — departman/iş sırası okunmuyor). Görünür değişiklik yok (ekranlar `.6`'da). FB-6.3.5b (hub opsiyonel alanlar).
-- **Main kırıldı ve düzeldi:** `8d84f278` CI `db` kırmızı (iki yeni pgTAP yeşil listede yoktu) → eski koordinatör `b9c665f2`; ders §0.6.
-- **Kullanıcıdan istenecekler (kayıtta ILERLEME §0c):** (39) DB park paketi canlı onayı; (49) panel varyant seçimi; (45) aynı turda admin'e iki bildirim (öneri: tek bildirim); (46) ilerlemeyi kim görür (BL-508; öneri: yalnız karar verenler); (47) yayın notunu izin okuma izni olmayan yayıncı görsün mü (öneri: evet); (53) "Decide by" saat dilimi gösterimi (P18 — sohbette); eski oturum arşivleri.
-- **Koordinatör kararları (Mert onaysız):** KK-73 (eski izin uçları `.7`'ye kadar kalır), KK-74 (`.5` ayrı dal), KK-75 (bekleyen izin notu DB'den), KK-76 (hub'a dilim + süre), KK-77 (lokasyonsuz talepte yalnız "Takes effect now."). Her birinin "Uygulamada etkisi" KOORDINATOR-KARARLARI'nda.
-- **Yeni backlog:** BL-508…BL-515 (kayıt oturumunun yazdığı; ayrıntı BACKLOG). BL-505 açık (QA turu), kanıtları arşivde.
-- **Hatam:** BL-505'i "kapandı" diye besledim; kayıt oturumu yakaladı, kapatılmadı.
+Bugün arşivlenenler (hepsi main'de doğrulandı): FB-6.3.6/6b/7/8b/8c/8d rol oturumları, eski kayıt `d0ebd71f`, G14 üretim `6c5affee`, G14 mockup `ea341890`. Silinen dallar `refs/nf-backup/branch/...` altında.
+
+## 4. Temizlik artıkları
+- Üç boş worktree klasörü kilitli (git listesinde yok): `.claude/worktrees/elastic-austin-a0eb0f`, `modest-nightingale-f80f25`, `strange-vaughan-f53be3`. PowerShell `Remove-Item -LiteralPath '\\?\<yol>' -Recurse -Force` ile sonra yeniden dene.
+- `task/g14-a` (main'de, +0; silinebilir), `task/g14-plan` (+1 docs commit, worktree `agent-a4489d63f38f27eeb` — sahibini ölç, sonra karar), `refs/nf-backup/fb637-pre-reword` (FB-6.3.7 main'de; silinebilir).
+- Ortak yerel DB'de G14 test verisi (Meyhouse: Alex Kim 10 Ekim izni, Jordan Lee pazartesi müdür notu, 5–11 Ekim taslağı) — müdür notu işi bunu kullanabilir; zararsız.
 
 ## 5. Dersler (bu devir)
-- `inbox.mjs claim` boru/zincirle koşulursa kanca kaydetmez; çıplak koş.
-- BL kapatmadan önce maddenin işini oku (BL-505).
-- Karşılaştırmayı bozan varyant kusuru seçimden ÖNCE düzeltilir (a varyantı gri görünüyordu).
-- Rol oturumları ~%45–55'te devrediyor: büyük işi (`.7`) baştan iki oturuma (DB/kod) bölmek bekleme süresini kısalttı.
-- Önceki devirlerin dersleri: `git show 47bb6c17:docs/plan/HANDOFF.md`.
+- e2e: commit'ten sonra, push'tan önce (§0.6). Kapı artık uyarıyor; uyarıyı gördüğünde dur ve koş.
+- Görsel QA'da telefon = gerçek dokunma; uygulayıcının "telefon" görüntüsü fareyle alınmıştı.
+- Yeniden yazılmış (reword/rebase) dalın main'de olduğunu sha ile değil `git cherry -v origin/main <dal>` + başlık eşleşmesiyle ölç.
+- Arşiv bazen worktree kaydını bırakır: temizse `git worktree remove`, uzun yol hatasında PowerShell `\\?\`.
+- Önceki devirlerin dersleri: `git show 66ff28aa:docs/plan/HANDOFF.md`.
