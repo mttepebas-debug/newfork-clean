@@ -1,7 +1,10 @@
-# Koordinatör kararları (kullanıcı yokken)
+# Koordinatör kararları
 
-Kullanıcı talimatı 2026-09-29: "Karar vermen gereken yerde benim vizyonuma, uygulamamızın planına göre
-karar ver ve verdiğin kararları tek tek ayrı bir md'ye logla. Ben gelince bana raporlayacaksın."
+Koordinatörün Mert yerine verdiği her süreç ve teknik kararı, ve bir KARARLAR satırının ya da onaylı
+bir ilkenin birebir kapsadığı ürün/ekran kararı burada (CLAUDE.md §13; kullanıcı kararı 2026-10-01,
+KARARLAR OPS-04). Mert orada olsun olmasın yazılır. Başlangıç, kullanıcı talimatı 2026-09-29: "Karar
+vermen gereken yerde benim vizyonuma, uygulamamızın planına göre karar ver ve verdiğin kararları tek tek
+ayrı bir md'ye logla. Ben gelince bana raporlayacaksın." (o zaman yalnız kullanıcı yokken geçerliydi).
 Dayanak sırası (2026-09-30, KARAR-001; önceden "SaaS mantığı" en üstteydi): `docs/plan/ILKELER.md` başındaki sıra: Mert'in en güncel açık kararı > `KARARLAR.md` > ILKELER > bu dosya > sektör emsali. Ürün bağlamı: çok kiracılı, çok
 lokasyonlu, çok rollü; çalışan birden fazla lokasyonda çalışabilir; yönetici hem yönetir hem vardiya alır;
 lokasyonlar farklı saat dilimlerinde olabilir. Uygulamanın yönünü değiştiren kritik kararda önce alt
