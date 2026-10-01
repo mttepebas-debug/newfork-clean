@@ -21,7 +21,7 @@ function cellState(conflictingShiftIds: readonly string[]): ScheduleCellState {
     isClosedAllDay: false,
     closedTitle: null,
     closedShiftTypeIds: [],
-    hasUnavailability: false,
+    availabilityMark: null,
   };
 }
 

@@ -212,3 +212,29 @@ describe("PublishPreflightPanel", () => {
     ).toBeTruthy();
   });
 });
+
+describe("PublishPreflightPanel availability hours (G14)", () => {
+  it("adds the hours the Schedule already holds to the warning line, with the orange mark", () => {
+    const aliId = "66666666-6666-4666-8666-666666666666";
+    const after2 = { start_at: "2026-08-17T21:00:00Z", end_at: "2026-08-18T07:00:00Z" };
+    const ali = {
+      id: aliId,
+      weekly_availability: [{
+        location_id: mainDining.id, location_name: "Main Dining", timezone: "America/Los_Angeles", week_start: "2026-08-17",
+        status: "ready", unavailable_intervals: [after2], employee_intervals: [after2], leave_intervals: [],
+        clock_segments: [{ start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-25T07:00:00Z", offset_seconds: -7 * 3600 }],
+        days: ["2026-08-17", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-22", "2026-08-23"]
+          .map((date) => ({ date, has_unavailable: date === "2026-08-17", all_day: false })),
+      }],
+    } as unknown as NonNullable<Parameters<typeof PublishPreflightPanel>[0]["employees"]>[number];
+    render(
+      <PublishPreflightPanel
+        preview={{ ...preview, findings: [{ ...availabilityWarning, employee_id: aliId }] }}
+        locations={[mainDining]}
+        employees={[ali]}
+      />,
+    );
+    expect(screen.getByText("Ali Kaya shows as unavailable for this shift. (unavailable after 2:00 PM)")).toBeTruthy();
+    expect(document.querySelectorAll(".schedule-publish-weekly-availability .schedule-availability-tip-dot")).toHaveLength(2);
+  });
+});

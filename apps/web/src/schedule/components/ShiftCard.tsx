@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { CalendarOff, Check, CloudOff, Edit3, MapPin } from "lucide-react";
+import { Check, CloudOff, Edit3, MapPin } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -16,7 +16,12 @@ import {
   formatScheduleBadgeAriaLabel,
   formatScheduleShiftWarningAria,
 } from "../badgeAccessibility";
-import { Tooltip } from "../../shell/Tooltip";
+import { Tooltip, useTooltip } from "../../shell/Tooltip";
+import {
+  windowsDuringShift,
+  type ScheduleAvailabilityMark,
+} from "../lib/scheduleAvailabilityMark";
+import { ScheduleAvailabilityCardTip } from "./ScheduleAvailabilityTip";
 import type { TimeFormat } from "../timeInput";
 import type { ScheduleShiftTypeLook } from "../lib/scheduleCatalogNames";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
@@ -41,6 +46,7 @@ export function ShiftCard({
   type,
   locationName,
   employeeName = null,
+  availabilityMark = null,
   editing = false,
   showShiftType,
   showShiftLabels,
@@ -68,6 +74,8 @@ export function ShiftCard({
   readonly locationName?: string | null;
   /** The row's person, named in the availability warning. */
   readonly employeeName?: string | null;
+  /** The cell's availability (G14): the hours behind the card's "!". */
+  readonly availabilityMark?: ScheduleAvailabilityMark | null;
   readonly editing?: boolean;
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
@@ -113,8 +121,20 @@ export function ShiftCard({
   const availabilityWarning = shift.warning_codes.includes("availability")
     ? formatAvailabilityWarning(employeeName)
     : null;
-  // TBD (user, 2026-09-26): cell availability warning look to be redesigned
   const showAvailabilityCorner = Boolean(availabilityWarning);
+  const availabilityDescriptionId = useId();
+  const availabilityTipContent =
+    availabilityWarning && employeeName && availabilityMark?.kind === "unavailable" ? (
+      <ScheduleAvailabilityCardTip
+        employeeName={employeeName}
+        day={shift.scheduled_date}
+        startTime={shift.start_time}
+        endTime={shift.end_time}
+        windows={windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)}
+        timeFormat={timeFormat}
+      />
+    ) : availabilityWarning;
+  const availabilityTip = useTooltip(availabilityTipContent, true);
   // The manager's note (BL-199): an ink corner, the note on a mouse hover of
   // that corner, and the text as the card's description for screen readers.
   const note = shift.note.trim();
@@ -169,7 +189,11 @@ export function ShiftCard({
         locationText: locationName ?? "",
         warningText,
       }) + (note ? ", has a manager note" : "")}
-      aria-describedby={note ? noteDescriptionId : undefined}
+      aria-describedby={
+        [note ? noteDescriptionId : null, availabilityWarning ? availabilityDescriptionId : null]
+          .filter(Boolean)
+          .join(" ") || undefined
+      }
       data-has-note={note ? "true" : undefined}
       data-shift-badge="true"
       data-shift-id={shift.id}
@@ -184,7 +208,6 @@ export function ShiftCard({
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
       data-availability-warning={availabilityWarning ? "true" : undefined}
-      title={availabilityWarning ?? undefined}
       data-focused={focused}
       data-current={focused}
       data-stack-count={stackCount > 1 ? stackCount : undefined}
@@ -279,12 +302,30 @@ export function ShiftCard({
           {note}
         </span>
       ) : null}
+      {availabilityWarning ? (
+        <span id={availabilityDescriptionId} className="sr-only">
+          {availabilityTipContent}
+        </span>
+      ) : null}
       {noteCorner.corner}
       {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
           {showAvailabilityCorner ? (
-            <span className="schedule-shift-availability-flag" aria-hidden="true">
-              <CalendarOff size={12} strokeWidth={2.4} />
+            <span
+              className="schedule-shift-availability-flag"
+              aria-hidden="true"
+              onPointerEnter={(event) => {
+                // A pressed button means a drag is passing.
+                if (event.pointerType !== "mouse" || event.buttons !== 0 || dragging) return;
+                const badge = event.currentTarget.closest("[data-shift-badge]") ?? event.currentTarget;
+                availabilityTip.show(badge.getBoundingClientRect());
+              }}
+              onPointerLeave={(event) => {
+                if (event.pointerType === "mouse") availabilityTip.closeSoon();
+              }}
+              onPointerDown={availabilityTip.close}
+            >
+              !
             </span>
           ) : null}
           {publicationState === "locked" ? (
@@ -339,6 +380,7 @@ export function ShiftCard({
       </span>
     </button>
     {noteCorner.card}
+    {availabilityTip.bubble}
     </>
   );
 }

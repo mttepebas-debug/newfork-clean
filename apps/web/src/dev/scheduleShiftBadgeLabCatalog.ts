@@ -1153,7 +1153,7 @@ export const labStates: readonly LabStateDefinition[] = [
   state(
     "unavailable",
     "Unavailable",
-    '[data-unavailable="true"]',
+    '[data-availability-kind="unavailable"]',
     "Employee-unavailable cell state.",
   ),
   state(

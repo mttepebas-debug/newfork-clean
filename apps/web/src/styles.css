@@ -40,6 +40,12 @@
   --theme-danger-border: #ad3f36;
   --theme-danger-text: #653b36;
   --theme-danger-strong: #a43830;
+  /* Schedule availability (G14, Mert 2026-10-01): orange is a preference the
+     manager may still schedule over, red is approved time off (a block). */
+  --theme-availability: #d9730d;
+  --theme-availability-soft: #fff1e2;
+  --theme-time-off: #d4162a;
+  --theme-time-off-soft: #ffe2e5;
   --theme-accent-focus: #236844;
   /* Schedule publication state (BL-312): green when the whole week is live,
      amber when only some locations are. Kept at their exact values. */
@@ -5889,13 +5895,71 @@ button.workspace-switcher-item:hover:not(:disabled) {
     rgba(155, 75, 60, 0.07) 7px 9px
   );
 }
-.schedule-cell[data-unavailable="true"] {
-  background-color: #fff6f4;
+/* A marked day (G14, BL-204): wash, a 135° hatch that stays under the cards
+   and a 1px frame on all four sides. Orange = unavailable, red = time off. */
+.schedule-cell[data-availability-kind] {
+  --schedule-availability-edge: var(--theme-availability);
+  --schedule-availability-line: color-mix(
+    in srgb,
+    var(--theme-availability) 26%,
+    transparent
+  );
+  background-color: var(--theme-availability-soft);
   background-image: repeating-linear-gradient(
     135deg,
-    transparent 0 8px,
-    rgba(196, 91, 67, 0.08) 8px 10px
+    transparent 0 6px,
+    var(--schedule-availability-line) 6px 9px
   );
+  box-shadow: inset 0 0 0 1px var(--schedule-availability-edge);
+}
+.schedule-cell[data-availability-kind="time_off"] {
+  --schedule-availability-edge: var(--theme-time-off);
+  --schedule-availability-line: color-mix(
+    in srgb,
+    var(--theme-time-off) 32%,
+    transparent
+  );
+  background-color: var(--theme-time-off-soft);
+}
+.schedule-cell[data-availability-kind][data-location-boundary="start"] {
+  box-shadow:
+    inset var(--schedule-location-boundary-width) 0 #8fa098,
+    inset 0 0 0 1px var(--schedule-availability-edge);
+}
+.schedule-availability-tip-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.schedule-availability-tip-dot {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+  font-size: 10px;
+  font-weight: 800;
+}
+.schedule-availability-tip-dot[data-kind="time_off"] {
+  background: var(--theme-time-off);
+}
+.schedule-availability-tip-window {
+  display: grid;
+}
+.schedule-availability-tip-source {
+  color: var(--theme-muted);
+}
+.schedule-availability-tip-foot {
+  margin-top: 4px;
+  border-top: 1px solid var(--theme-border);
+  padding-top: 6px;
+  color: var(--theme-muted);
 }
 .schedule-cell[data-overlap="true"] {
   box-shadow: inset 2px 0 0 #c45b43;
@@ -8923,6 +8987,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 12px;
 }
 .schedule-publish-availability-row strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
 }
 .schedule-publish-availability-row small {
@@ -10707,17 +10774,19 @@ button.workspace-switcher-item:hover:not(:disabled) {
     animation: none;
   }
 }
-/* "Ali shows as unavailable for this shift" (BL-186): a preference, so a
-   quiet amber mark, never the red of a conflict. */
+/* "Ali shows as unavailable for this shift" (BL-186, G14): an orange "!",
+   never the red of time off. Its hover opens the card tip. */
 .schedule-shift-badge .schedule-shift-availability-flag {
   display: inline-grid;
   place-items: center;
   width: 18px;
   height: 18px;
-  border: 1px solid var(--theme-warning);
   border-radius: 999px;
-  background: var(--theme-warning-soft);
-  color: var(--theme-warning);
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
 }.schedule-shift-stack-count {
   position: absolute;
   right: 5px;

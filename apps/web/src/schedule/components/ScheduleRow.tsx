@@ -42,6 +42,7 @@ import type { CellContextMenuTarget } from "./ScheduleContextMenu";
 import { ScheduleEmployeeCard } from "./ScheduleEmployeeCard";
 import type { PresetDragState } from "./SchedulePresetRows";
 import { ScheduleTotalValue } from "./ScheduleTotalsRow";
+import { ScheduleAvailabilityCellTip } from "./ScheduleAvailabilityTip";
 import { GhostShiftCard, ShiftCard } from "./ShiftCard";
 import {
   scheduleJobName,
@@ -248,9 +249,9 @@ export function ScheduleRow({
                 stackCount: 1,
               }));
           const cellHasOverlap = Boolean(derivedCellState?.hasOverlap);
-          const cellHasUnavailability = Boolean(
-            derivedCellState?.hasUnavailability,
-          );
+          const availabilityMark = employee
+            ? (derivedCellState?.availabilityMark ?? null)
+            : null;
           const cellKey = `${rowKey}-${location.id}-${day}`;
           const editorOwnsCell = Boolean(
             activeEditorTarget &&
@@ -280,9 +281,6 @@ export function ScheduleRow({
             (derivedCellState?.isClosedAllDay
               ? { title: derivedCellState.closedTitle ?? "Closed" }
               : null);
-          const cellTitle =
-            closure?.title ??
-            (cellHasUnavailability ? "Employee unavailable" : undefined);
           const addShiftLabel = `Add shift for ${
             employee?.display_name ?? "unassigned"
           } at ${location.name} on ${day}`;
@@ -333,9 +331,9 @@ export function ScheduleRow({
               data-unassigned-cell={isUnassignedRow}
               data-unassigned-frozen={isUnassignedRow && unassignedFrozen}
               data-closed={Boolean(closure)}
-              data-unavailable={cellHasUnavailability}
+              data-availability-kind={availabilityMark?.kind}
               data-overlap={cellHasOverlap}
-              title={cellTitle}
+              title={closure?.title}
               data-editing={editing}
               data-drop-target={
                 dragOverCell === cellKey || dragOverCell === dropTargetKey
@@ -396,6 +394,14 @@ export function ScheduleRow({
                 })
               }
             >
+              {availabilityMark && employee ? (
+                <ScheduleAvailabilityCellTip
+                  mark={availabilityMark}
+                  employeeName={employee.display_name}
+                  day={day}
+                  timeFormat={timeFormat}
+                />
+              ) : null}
               {displayStacks.map(({ shift, groupedShiftIds, stackCount }) =>
                 isGhostScheduleShift(shift) ? (
                   <GhostShiftCard
@@ -417,6 +423,7 @@ export function ScheduleRow({
                   <ShiftCard
                     key={shift.id}
                     shift={shiftWithDerivedWarnings(shift, derivedCellState)}
+                    availabilityMark={availabilityMark}
                     job={scheduleJobName(catalog, shift.job_id) ?? "Shift"}
                     type={scheduleShiftTypeOf(catalog, shift.shift_type_id)}
                     locationName={shiftLocationName(shift)}

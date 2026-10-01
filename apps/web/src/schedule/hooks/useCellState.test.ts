@@ -83,13 +83,15 @@ describe("buildScheduleCellState", () => {
     const base = model([]);
     const changed: ScheduleReadModel = { ...base, employees: [{ ...base.employees[0]!,
       weekly_availability: [{ location_id: mainLocationId, location_name: "Main", timezone: "America/Los_Angeles", week_start: base.week_start,
-        status: "ready", unavailable_intervals: [], leave_intervals: [], clock_segments: [], days: [{ date: "2026-08-18", has_unavailable: true, all_day: true }],
+        status: "ready", unavailable_intervals: [{ start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-19T07:00:00Z" }], leave_intervals: [],
+        clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+        days: [{ date: "2026-08-17", has_unavailable: false, all_day: false }, { date: "2026-08-18", has_unavailable: true, all_day: true }],
       }],
     }] };
     const cells = buildScheduleCellState(changed);
-    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.hasUnavailability).toBe(true);
-    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.hasUnavailability).toBeUndefined();
-    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.hasUnavailability).toBeUndefined();
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.availabilityMark).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 1440, source: "employee" }] });
+    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.availabilityMark).toBeUndefined();
   });
   it("marks every cell in a multi-day all-day closure range", () => {
     const closedModel = {

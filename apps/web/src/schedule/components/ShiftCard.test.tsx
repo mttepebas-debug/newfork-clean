@@ -74,14 +74,35 @@ describe("ShiftCard", () => {
     expect(badge.querySelector(".schedule-shift-badge-markers")).toBeNull();
     expect(badge.getAttribute("aria-label")).toContain("conflicts with another shift");
   });
-  it("says the person shows as unavailable with an amber corner mark (BL-186)", () => {
-    renderShiftCard({ shift: { ...shift, warning_codes: ["availability"] }, employeeName: "Ali Kaya" });
+  it("says the person shows as unavailable with an orange \"!\" and its hours (BL-186, G14)", () => {
+    renderShiftCard({
+      shift: { ...shift, scheduled_date: "2026-10-20", start_time: "16:00", end_time: "22:00", warning_codes: ["availability"] },
+      employeeName: "Ali Kaya",
+      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440, source: "employee" }] },
+    });
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
     expect(badge.getAttribute("aria-label")).toContain("Ali Kaya shows as unavailable for this shift");
-    expect(badge.getAttribute("title")).toBe("Ali Kaya shows as unavailable for this shift.");
+    expect(badge.getAttribute("title")).toBeNull();
     expect(badge.getAttribute("data-availability-warning")).toBe("true");
     expect(badge.getAttribute("data-has-markers")).toBe("true");
-    expect(badge.querySelector(".schedule-shift-availability-flag")).not.toBeNull();
+    const flag = badge.querySelector(".schedule-shift-availability-flag")!;
+    expect(flag.textContent).toBe("!");
+    const description = badge.getAttribute("aria-describedby")!
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(" ");
+    expect(description).toContain("Unavailable after 2:00 PM");
+
+    const over = new Event("pointerover", { bubbles: true });
+    Object.defineProperties(over, { pointerType: { value: "mouse" }, buttons: { value: 0 } });
+    fireEvent(flag, over);
+    const bubble = screen.getByRole("tooltip");
+    expect(bubble.textContent).toBe(
+      "!Ali Kaya shows as unavailable for this shift" +
+        "Tue, Oct 20 · 4:00 PM – 10:00 PM" +
+        "Unavailable after 2:00 PMAli's own availability" +
+        "Publish asks you to confirm it.",
+    );
   });
   it("shows no availability mark while the shift has none (the optimistic cell before saving)", () => {
     renderShiftCard({ shift: { ...shift, optimistic: true }, employeeName: "Ali Kaya" });

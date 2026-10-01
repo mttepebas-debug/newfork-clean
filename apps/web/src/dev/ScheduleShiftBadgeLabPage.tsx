@@ -1322,7 +1322,7 @@ function mirroredStateAttribute(
     active: { name: "data-shift-editor-active-cell", value: "true" },
     closed: { name: "data-closed", value: "true" },
     partialClosed: { name: "data-partial-closed", value: "true" },
-    unavailable: { name: "data-unavailable", value: "true" },
+    unavailable: { name: "data-availability-kind", value: "unavailable" },
     overlap: { name: "data-overlap", value: "true" },
     today: { name: "data-today", value: "true" },
     viewed: { name: "data-viewed", value: "true" },

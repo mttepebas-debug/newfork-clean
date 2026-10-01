@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import type { ScheduleReadModel, ScheduleShift } from "@newfork/shared/schedule";
 
+import {
+  mergeAvailabilityMarks,
+  scheduleAvailabilityMarks,
+  type ScheduleAvailabilityMark,
+} from "../lib/scheduleAvailabilityMark";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 
 export interface ScheduleCellState {
@@ -10,7 +15,7 @@ export interface ScheduleCellState {
   readonly isClosedAllDay: boolean;
   readonly closedTitle: string | null;
   readonly closedShiftTypeIds: readonly string[];
-  readonly hasUnavailability: boolean;
+  readonly availabilityMark: ScheduleAvailabilityMark | null;
 }
 
 export type ScheduleCellStateMap = ReadonlyMap<string, ScheduleCellState>;
@@ -50,8 +55,8 @@ export function buildScheduleCellState(model: ScheduleReadModel): ScheduleCellSt
   const cells = new Map<string, MutableScheduleCellState>();
   for (const employee of model.employees) {
     for (const location of employee.weekly_availability ?? []) {
-      for (const day of location.days) {
-        if (day.has_unavailable) ensureCell(cells, scheduleCellStateKey(location.location_id, day.date, employee.id)).hasUnavailability = true;
+      for (const [date, mark] of scheduleAvailabilityMarks(location)) {
+        ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id)).availabilityMark = mark;
       }
     }
   }
@@ -185,7 +190,7 @@ interface MutableScheduleCellState {
   isClosedAllDay: boolean;
   closedTitle: string | null;
   closedShiftTypeIds: string[];
-  hasUnavailability: boolean;
+  availabilityMark: ScheduleAvailabilityMark | null;
 }
 
 function ensureCell(
@@ -201,7 +206,7 @@ function ensureCell(
     isClosedAllDay: false,
     closedTitle: null,
     closedShiftTypeIds: [],
-    hasUnavailability: false,
+    availabilityMark: null,
   };
   cells.set(key, next);
   return next;
@@ -249,8 +254,10 @@ function mergeCellState(
   target.closedShiftTypeIds = Array.from(
     new Set([...target.closedShiftTypeIds, ...source.closedShiftTypeIds]),
   );
-  target.hasUnavailability =
-    target.hasUnavailability || source.hasUnavailability;
+  target.availabilityMark = mergeAvailabilityMarks(
+    target.availabilityMark,
+    source.availabilityMark,
+  );
 }
 
 function makeGhostShift(shift: ScheduleShift, sourceLocationName: string | null): ScheduleShift {

@@ -789,6 +789,7 @@ export function PublishScheduleDialog({
             <PublishPreflightPanel
               preview={preview}
               locations={locations}
+              employees={employees}
               availabilityAcknowledged={availabilityAcknowledged}
               onAvailabilityAcknowledgedChange={(value) =>
                 setAvailabilityAckFingerprint(value ? preview.fingerprint : null)
