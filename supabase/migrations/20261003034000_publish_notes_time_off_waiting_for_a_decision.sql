@@ -115,8 +115,9 @@ begin
   else 'publish_ready' end,'fingerprint',encode(extensions.digest(convert_to(unsigned::text,'UTF8'),'sha256'),'hex'));
 end; $function$;
 
--- A soft finding nobody can override (the time-off note) asks for nothing at
--- publish and leaves no record in schedule_publication_overrides.
+-- A note nobody can override (the time-off note) asks for nothing at publish
+-- and leaves no record in schedule_publication_overrides. Above a note, a
+-- soft finding still has to be reviewed.
 create or replace function public.weekly_publication_decisions(preview jsonb, decisions jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -127,7 +128,7 @@ declare result jsonb:='[]'; f jsonb; decision jsonb;
 begin
  if jsonb_typeof(coalesce(decisions,'[]')) is distinct from 'array' then raise exception 'publication overrides must be an array' using errcode='22023'; end if;
  for f in select value from jsonb_array_elements(preview->'findings') where value->>'severity'='soft' loop
-  if not coalesce((f->>'overrideable')::boolean,true) then continue; end if;
+  if not coalesce((f->>'overrideable')::boolean,true) and f->>'tier'='note' then continue; end if;
   -- An availability warning acknowledged at an earlier publish keeps that record.
   if f->>'code'='availability' and f->>'availability_state'='accepted' then continue; end if;
   select d into decision from jsonb_array_elements(coalesce(decisions,'[]')) d where d->>'finding_id'=f->>'id' limit 1;

@@ -88,6 +88,12 @@ select is((select public.publish_schedule_draft_service(tests.user('tp:ayse'), t
 select is((select count(*)::integer from public.schedule_publication_overrides o
   where o.workspace_id = tests.id('tp') and o.finding_code = 'time_off_pending'), 0,
   'a note leaves no confirmation record');
+-- Only a note is passed over: a soft finding above that level that nobody can
+-- override still asks to be reviewed.
+select throws_ok($$select public.weekly_publication_decisions(jsonb_build_object('findings', jsonb_build_array(
+    jsonb_build_object('id', 'not-a-note-0001', 'code', 'time_off_pending', 'severity', 'soft', 'overrideable', false, 'tier', 'risk'))),
+  '[]'::jsonb)$$,
+  '22023', 'Review the current schedule conflicts before publishing', 'a soft finding above a note is not passed over');
 
 -- 4. Decided requests ---------------------------------------------------------
 
