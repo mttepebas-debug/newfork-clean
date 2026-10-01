@@ -16,5 +16,8 @@ metadata:
 
 - All of .1-.4 is live and on main (2026-10-01). D1/D2 (`20261003033000`, sweep only) waits on `task/fb-6.3`: parked until a user approves the live push. The shared DB holds .3/.4 but not `tests.leave`: trials still need `builder-leave.sql` in the prelude.
 
+- Publish note (`20261003034000`, branch `task/fb-6.3-pubnote`): `time_off_pending` is built in `weekly_schedule_publication_preflight`'s shift loop, not in `preview_schedule_publication_service` (the preflight drops the preview's own raw codes). Pending leave range = `time_off_effective_ranges(seg)` (asked period while pending). Trap: `weekly_publication_decisions` emits a decision for every soft finding and publish stores it in `schedule_publication_overrides`, whose CHECK refuses unknown codes: a new soft finding needs `overrideable=false` skipped there, or publish crashes. `weekly_schedule_acceptance` used `status='pending'` to put leave aside; now `'denied'`.
+- Never edit a bash script while a background run of it is going: bash reads it by byte offset and the tail breaks.
+
 **Why:** FB-6.3 .3/.4, 2026-10-01.
 **How to apply:** before .7 (deletes) or any change to time off. See [[rollback-trial-runner]], [[new-notification-type]].
