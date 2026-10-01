@@ -79,6 +79,8 @@
   olarak sun.
 - Kanıt: 09-23 "Görünür olsun. İşe yarar bir özellik bu. Test edilsin. Çalışsın."; 07-31 "Gerçek
   sertifikasyona başla".
+- Kanıt (2026-10-01, ters seçim): owner'ın gönüllü belge yüklemesi (BL-118) yan iş diye "şimdi
+  değil, backlog" önerildi; Mert "evet, yükleyebilsin" seçti. Yan işte de değerli eksik kurulabilir.
 
 **P03. Görünüm turunda yalnız görünüm değişir.**
 - Kural: Mert işi görünüm turu diye çerçevelediyse akış, adım sayısı ve hata düzeltmeleri
@@ -280,6 +282,8 @@
   ediyor.
 - Kanıt: 09-18 "Continue setup + Discard"; 09-19 "Süre dolunca otomatik iptal", "Kalsın, sonucu
   net yazılsın".
+- Kanıt (2026-10-01, ters seçim): vardiyasız yayın için "yayında sayılsın, geri alınabilsin"
+  önerildi; Mert "bugünkü gibi kalsın" seçti (BL-370). Geri alınabilirlik her uç durumda iş açmaz.
 
 **P26. Pencere kapanırken yalnız kayıp büyükse sorulur.** (Mert, 2026-10-01)
 - Kural: uzun yazılmış ya da geri getirilemeyecek iş varken "Discard unsaved changes?" sorulur;
