@@ -1,45 +1,52 @@
-# Koordinatör devri — 2026-09-30 öğleden sonra (kullanıcı PC başında)
+# Koordinatör devri — 2026-10-01 gece (kullanıcı uyanık)
 
-Devreden: "Koordinatör" (`local_c575161a-0a35-45af-ae96-d4e74880bc97`); bağlamı %71, iş sınırında (G8a main'e girdi) devrediyor.
-Devralan: havuzdan "Bekle … (47)" (`local_0ee21aaa-9f24-4054-9a31-f2b30ed80270`); yeni başlık "Koordinatör". **Güncel koordinatör kimliği budur** (`CLAUDE.md` §3 ve §12 buraya işaret eder).
-Ölçüm anı (12:10): `origin/main` = bu commit; altındaki son kod `3c07c15d` (G8a + BL-480 + `nf-guvenlik` notları); main CI koşuyordu — ilk iş sonucunu kontrol et. **Canlı veritabanı = main** (son migration `20261003000000`, MCP ile ölçüldü; danışman yeni bulgu yok). Ortak yerel DB = main. Kilitler boş. Haftalık kullanım %86 (sınır %90; `get_usage`).
+Devreden: "Koordinatör" (`local_0ee21aaa-9f24-4054-9a31-f2b30ed80270`); bağlamı %56, iş sınırında (G8b canlıda) devrediyor; kullanıcı "Şimdi devret" dedi.
+Devralan: kullanıcının açtığı yeni oturum (havuz boşaldı). **Güncel koordinatör kimliği, devralan oturumun kendi `local_` kimliğidir**; ilk iş onu kayıt oturumuna BESLEME ile bildirmek (o, bu satırı ve ILERLEME §0'ı günceller).
+Ölçüm anı: `origin/main` = bu commit; altındaki son kod `b8613af0` (G8b); main CI 36816535884 check + db + e2e yeşil. **Canlı veritabanı = main** (son migration `20261003020000`, MCP ile ölçüldü). Ortak yerel DB = main (`20261003020000`). Kilitler boş.
 
-**Kullanıcı UYANIK ve bu pencerede konuşuyor.** Kararları o verir (tek tık, önerilen ilk). Pano: `docs/plan/ILERLEME-PLANI.md` §0 (kayıt oturumu tutar). Kayıtları kendin yazma; kayıt oturumuna "BESLEME #n" gönder (sıradaki #18).
-
-## 0. Bu devirde değişen iki temel gerçek (oku)
-1. **Main her gönderimde CANLIYA çıkıyor.** Vercel projesi `mert-2a14/newfork-clean-api`, üretim `https://newfork-clean-api.vercel.app`, canlı veritabanı `hvyvyisrqyathtliyyyv`. Vercel MCP başka hesaba bağlı (eski `newfork` projesi) — canlıyı onunla değil `npx vercel ls newfork-clean-api --scope mert-2a14` ile ölç. Hafıza: `vercel-live-deploy`. BL-426 bu yüzden bayat kapandı.
-2. **OPS-03 gevşemez:** kodu yeni bir veritabanı alanına/kuralına dayanan işte önce canlı migration, sonra main. 2026-09-30 sabah EMP-001 C bu kurala uyulmadan girdi; canlıda çekmece ~2 saat 20 dakika açılmadı (benim hatam). G8a doğru sırayla girdi.
+## 0. Temel gerçekler (oku)
+1. **Main her gönderimde CANLIYA çıkıyor** (Vercel `mert-2a14/newfork-clean-api`; `https://www.tepebash.com` ve `newfork-clean-api.vercel.app`). `vercel` CLI proje yasak listesinde (`.claude/settings.json`); gerekirse kullanıcıdan bu iş için kaldırmasını iste, iş bitince geri koydur.
+2. **OPS-03:** alan EKLEYEN işte önce canlı migration, sonra ortak yerel DB, sonra main. Alan SİLEN işte (BL-496 gibi) sıra ters: önce main (kod alanı okumayı bırakır), sonra canlı DB (§0c satır 5 hâlâ karar bekliyor; KK-43 bu yolu izledi).
+3. **Canlı gönderim:** `supabase db push` ve `--linked` ajanlara kapalı (deny). Kullanıcı PC başında değilse ve tek seferlik "Sen gönder, MCP ile" derse: yedek (`execute_sql` ile değişen fonksiyonların tanımı + grant) → `apply_migration` → `schema_migrations.version`'ı repo sürümüne düzelt → her fonksiyonun `md5(prosrc)`'ı ile dosyadaki gövdenin md5'i aynı mı → `get_advisors security`. Onay her gönderim için ayrı alınır. Hafıza: `hosted-migration-push-via-mcp`.
+4. **Main'e alma adımında ortak yerel DB'ye uygulamayı UNUTMA** (`node scripts/lock.mjs take db …` → `npx supabase migration up --local`). BL-475'te unutuldu, G8b'den önce düzeltildi.
+5. **Gönderim koruması (COORD-CTRL, main `940b6be0`) çalışıyor:** `main.lock` yoksa push'u kanca reddeder. Kilidi push'la AYNI komutta alma; ayrı adımda al (BL-500). Belge gönderimi (yalnız `docs/`, `.claude/agent-memory/`) main CI'ı tetiklemiyor, koşanı iptal etmiyor.
+6. **Haftalık kullanım limiti iş erteleme gerekçesi değil** (kullanıcı kararı 2026-10-01; hafıza `weekly-limit-not-a-brake`). Hız ve kalite önce.
 
 ## 1. İlk işler (sırayla)
-1. `get_session self`: başlık "Koordinatör", sabitli, Remote Control açık (devreden ayarladı; doğrula). Main CI'ı (`3c07c15d`) kontrol et: `gh run list --limit 5 --json databaseId,headSha,headBranch,status,conclusion` — koşuyu `headSha`'dan bul (`--branch main --limit 1` eski koşu döndürüyor). Yeşilse kullanıcının ana klasörünü ileri sar: `git -C C:/Users/TheWe/Documents/Codex/newfork-clean merge --ff-only origin/main`.
-2. **BESLEME #18** (kayıt oturumu `local_021d990c-f27a-4277-b47e-81e2a5f65129`): G8a main'de (`3c07c15d`; toplu dal `task/batch-t13`; dal CI 36762141166 yeşil; `nf-guvenlik` üç tur, ONAY @`53c70344`; kullanıcının ultrareview'ü iki bulgu — ikisi de düzeltildi; canlı migration kullanıcı tarafından main'den ÖNCE gönderildi, yedek `newfork-wt/coord/artifacts/g8a/hosted-*.sql`; yerel yedek `…/g8a/schema-before-20261003000000.sql`). BL-132 kapanır (G8a). BL-480 kapanır: kullanıcı B'yi seçti (kurulum sihirbazı 3. adım, yalnız Management varken "Your structure"da "<Management adı> comes with every workspace. Add a department for the jobs your team works."). Notlar backlog'a: arşivli atamada "Remove" ret, çıkış "geri al → çıkar → arşivle" (BL-493 zaten açıldı); `nf-guvenlik` N2 (bütün lokasyonları arşivli dışa aktarma kuralını müdür düzenleyemez, owner/admin düzenler; low); sihirbazda Management satırında "Remove" düğmesi (low / safe, `nf-arayuz` BL-480 raporu). KK: G8a sırası — önce canlı, sonra main (OPS-03, KK-65 düzeltmesiyle). Raporlar: `…/optimistic-dewdney-c78421/artifacts/nf-db/g8a/RAPOR.md`, `…/friendly-blackwell-4012e6/artifacts/nf-guvenlik/g8a/RAPOR.md`, `…/wonderful-gates-d0f15a/artifacts/nf-arayuz/bl-480/RAPOR.md`.
-3. **`www.tepebash.com` taşıma — kullanıcı ONAYLADI ("Evet, G8a'dan sonra"), şimdi sırası.** Adımlar: (a) alan adını eski hesaptaki (`theweiwuer-1163's projects`, proje `newfork`) projeden çıkarmak — kullanıcı, eski hesabın Vercel paneli (ajan aracı yok); (b) `npx vercel domains add www.tepebash.com newfork-clean-api --scope mert-2a14` (ya da panel) — Vercel DNS doğrulaması isteyebilir, DNS kaydını kullanıcı ekler; (c) `newfork-clean-api` üretim ortamında `APP_URL=https://www.tepebash.com` (gizli değer değil; e-posta bağlantıları için); (d) Supabase → Authentication → URL Configuration: izinli yönlendirmelere `https://www.tepebash.com` (kullanıcı). Sonra canlıda giriş ve bir iki ekran kontrolü. Gizli anahtar girme; eski projenin ortam ayarlarına dokunma.
-4. **Sıradaki iş (kullanıcıya sor, tek tık):** (a) BL-475 veritabanı kısmı — `nf-db`: işlerin okumaları ve iki seçim (yeni birincil iş, Employees listesindeki iş adı) `lower(name)` ile sıralanır, `reorder_organization_entities` yalnız departmanları kabul eder; ardından `nf-arayuz` Settings → Jobs'ta işlerin "Move up / Move down"unu söker (kullanıcı kararı "A→Z, elle sıralama kalksın"; `nf-arayuz` ölçümü BL-475 mesajında: `task/bl-475` boş). Yeni migration → OPS-03 sırası. (b) G8b / BL-254 (arşivli iş ve vardiya tipi adı; `tasks/G8.md` G8b; `nf-db` + `nf-backend`, R2). Kullanıcının genel sırası "küçükler, sonra G8a → G8b" idi; BL-475 sonradan geldi. Öneri: BL-475 önce (küçük, kullanıcının istediği), sonra G8b.
+1. `get_session self`: başlığı "Koordinatör" yap, sabitle, Remote Control aç (kullanıcı istedi; açılmazsa söyle).
+2. **Posta kutusunu sahiplen:** `node scripts/inbox.mjs claim`, sonra arka planda `node scripts/inbox.mjs wait` (CLAUDE.md §3 el kitabı). Bu oturum kancaları baştan yüklediği için çalışmalı; "hook çalışmadı" derse oturumun `.claude/settings.json`'ı main'deki hâliyle mi bak.
+3. **BESLEME #26** kayıt oturumuna (`local_2c32c047-dab0-497c-8e5b-91d51a22e6a3`): yeni koordinatör kimliği; bu HANDOFF'un sha'sı. Kayıt oturumu şu an kullanıcıyla **K10 (onaylı iznin iptalini kim onaylar) için ayrıntılı plan** yapıyor — FB-6.3'ü o plan bitmeden başlatma; plan gelince FB-6.3'ü o planla yürüt.
+4. **Rollere yeni adresini bildir** (tek satır): nf-db `local_e9aa34f5-79fc-4de7-a3b5-499d3c4ad843`, nf-backend `local_44c01eca-fa54-4179-8629-1d99a49b013d`, nf-arayuz `local_0038c687-1790-4cc8-9238-7d12778fa31f`, nf-test `local_17d5b65d-25bc-435f-9d86-677996a391f2`, nf-guvenlik `local_7dfbe7d3-cdef-4231-afd7-2fa7d53fcd75`, nf-gorsel-qa `local_2a24338f-ba49-4311-acbe-4f916b5ae06d`, kayıt `local_2c32c047…`.
+5. **Sıradaki iş (kullanıcıya sor, tek tık):** FB-6.3 K10 planına bağlı. Bekleyen hızlı işler: BL-498 (örtüşme uyarısında arşivli tip adı boş, `apps/web/src/schedule/schedule-conflicts.ts:389`, tek satır), BL-500 (gönderim koruması aynı komuttaki kilidi görmüyor), BL-496 (kullanılmayan `sort_order` kolonunun silinmesi; ALAN SİLEN iş → önce main sonra canlı; dokunulacak yerler `nf-db` BL-475 raporunda ve BL-496 maddesinde). Önerim: K10 planı gelene kadar bu üçü, sonra FB-6.3.
 
 ## 2. Oturumlar
 | Oturum | Kimlik | Durum |
 |---|---|---|
-| Rol: nf-planlama (Kayıt) | `local_021d990c-f27a-4277-b47e-81e2a5f65129` | boşta, bağlam ~%42; #17 main'de (`27fe4bb4`) |
-| Rol: nf-db | `local_8918dfd6-f929-4312-857e-58362641f3a4` | G8a bitti; bağlam ölç (yarıyı geçtiyse BL-475'ten önce yenile) |
-| Rol: nf-backend | `local_2464b099-317e-437f-ac12-5a506804d03d` | boşta, bağlam ~%56 → bir sonraki işte yenile |
-| Rol: nf-arayuz | `local_0038c687-1790-4cc8-9238-7d12778fa31f` | BL-480 bitti; BL-475 web kısmını bekliyor |
-| Rol: nf-test | `local_17d5b65d-25bc-435f-9d86-677996a391f2` | boşta |
-| Rol: nf-guvenlik | `local_7dfbe7d3-cdef-4231-afd7-2fa7d53fcd75` | boşta; notları main'de (`3c07c15d`) |
-| Rol: nf-gorsel-qa | `local_2a24338f-ba49-4311-acbe-4f916b5ae06d` | boşta, bağlam ~%50 |
-| Havuz | "Bekle … (48)", "(49)", "(50)" | boş |
-| "Bana Newfork-Clean E Bagli 30 Tane Boş Session Aç" | `local_5834dbdf…` | **ARŞİVLEME:** bütün rol oturumları onun alt oturumu; arşivlenirse boştaki alt oturumları da arşivler |
-| Kullanıcının oturumları | "Employee drawer UI improvements", "Dev sunucusu başlat" | dokunma |
+| Rol: nf-planlama (Kayıt) | `local_2c32c047-dab0-497c-8e5b-91d51a22e6a3` | kullanıcıyla K10 planı yapıyor; son besleme #25 main'de (`c345ed83`); bağlam ~%52 → devir önermiş, yenisini koordinatör açar (havuz boş: kullanıcı oturum açar) |
+| Rol: nf-db | `local_e9aa34f5-…` | BL-475 ve G8b'yi bitirdi; boşta; bağlam ~%47 |
+| Rol: nf-backend | `local_44c01eca-…` | G8b web'i bitirdi; boşta; yeni (havuzdan 2026-09-30) |
+| Rol: nf-arayuz | `local_0038c687-…` | boşta; bağlam ~%53 → bir sonraki işte yenile |
+| Rol: nf-test | `local_17d5b65d-…` | boşta |
+| Rol: nf-guvenlik | `local_7dfbe7d3-…` | boşta; bağlam ~%55, açık işi yok → bir sonraki incelemede yeni oturum |
+| Rol: nf-gorsel-qa | `local_2a24338f-…` | boşta |
+| (eski) Rol: nf-backend — devredildi | `local_2464b099-…` | arşivlenebilir (kullanıcıya sor; sabit ve Remote Control açık — önce ikisini kapat) |
+| (eski) Koordinatör — devir 2026-09-30 öğleden sonra | `local_c575161a-…` | arşivlenebilir (kullanıcıya sor) |
+| Devreden koordinatör | `local_0ee21aaa-…` | devirden sonra arşivlenebilir |
+| "Opus 5.5 karar verme ve sistem tasarımı" | `local_ba5d9903-…` | kullanıcının oturumu, ana klasörde; dokunma |
+| Kullanıcının oturumları | "Dev sunucusu başlat", "Bana Newfork-Clean E Bagli 30 Tane Boş Session Aç" | dokunma; ikincisi rol oturumlarının üst oturumu (arşivlenirse alt oturumları da arşivler) |
 
-2026-09-30'da 14 eski oturum arşivlendi (raporları `newfork-wt/coord/artifacts/archive-2026-09-30/`); klasörleri uygulamanın "hazır" havuzunda. Kalan 5 alt ajan klasörü (`agent-a…`) notları main'de, silinmeye hazır (kullanıcı henüz istemedi).
-Worktree'lerin: `newfork-wt/coord` (docs, `CLAUDE.md`, canlı gönderim buradan — `supabase/.temp` bağlantısı orada; `git switch --detach origin/main` ile başla), `newfork-wt/merge-account` (toplu dallar; son `task/batch-t13`).
+Arşivleme: sabitli ya da Remote Control açık oturum arşivlenmez; önce ikisi kapatılır. Git'e girmeyen raporlar arşivden önce `newfork-wt/coord/artifacts/archive-<tarih>/<worktree>/`'a kopyalanır.
 
-## 3. Kullanıcıda bekleyen (pano §0c'nin güncel özeti; ayrıntı orada)
-BL-204 konuşması; BL-118 (owner kendi belgesi; öneri: şimdi değil); BL-437 (zamanlanmış dışa aktarma); OPS-03'e "alan silen işte sıra ters" cümlesi; `CLAUDE.md` bekleyen üç kural parçası (4b, 4c, 4d); BL-417, BL-419, BL-073, BL-355(3), BL-370; onaylar BL-105, BL-382, sürüm atlamaları; uzak dal silme komutu (48+ dal; `task/batch-t12`, `task/batch-t13`, `task/g8a` de eklendi); K10, K7.
+## 3. Bu devirde biten (2026-09-30 öğleden sonra → 2026-10-01 gece)
+- BL-475: departmanlar ve işler her yerde A→Z, elle taşıma kalktı; Management iki çalışma ekranında (çekmece iş seçicisi, Schedule Job/Position) sonda kalıyor (kullanıcı kararı). Main `1a608c01`, `31d4c67b` ("1 jobs" düzeltmesi).
+- `www.tepebash.com` yeni projeye taşındı; `APP_URL` canlıda. **AÇIK (kullanıcıda):** Supabase → Authentication → URL Configuration → Redirect URLs'e `https://www.tepebash.com/**`.
+- COORD-CTRL main'de (`940b6be0`).
+- G8b (BL-254): arşivli iş/tip adı eski vardiyalarda her yerde. Main `b8613af0`; G8 programı bitti.
+- Arşivlendi: eski nf-db `local_8918dfd6…`, eski kayıt `local_021d990c…`.
 
 ## 4. Dersler (bu devir)
-- **GateGuard kancası** ilk Bash'i, dal değiştiren / push eden / yeni dosya yazan / hafıza düzenleyen çağrıyı önce reddeder; istenen gerçekleri yazıp AYNI çağrıyı yinele.
-- **Git Bash yol çevirisi:** `git rev-parse "origin/main:.claude/…"` ve `git show origin/main:<yol>` yanlış sonuç veriyor (MSYS yol çevirisi). `export MSYS_NO_PATHCONV=1` kullan; ama o açıkken `git -C /c/...` çalışmaz — Windows yolu (`C:/Users/...`) ver.
-- **Kayıt oturumu ve öteki roller kullanıcıdan karar alabilir;** canlı işlem ve geri alınamaz silme onayı yine koordinatörün penceresinde yeniden alınır (`CLAUDE.md` §8).
-- **Test dosyası ekranın yolunu kanıtlamaz:** G8a'da tabloyu doğrudan okuyan hücre Settings → Locations'ın servis yolunu kaçırdı (Y2). Lokasyon/yetki işinde görevi verirken "hücreler ekranın çağırdığı servisten" yaz.
-- **Uygulamanın arşivi klasörleri silmiyor**, "hazır" havuzuna alıyor; kaydedilmemiş değişikliği olan klasörü "kept after archive" diye tutuyor → `get_storage_usage` + `discard_kept_worktree` (kullanıcı onay kartı).
-- Önceki devirlerin dersleri git geçmişinde: `git show a98b0671:docs/plan/HANDOFF.md`.
+- **Kanca ve GateGuard:** GateGuard ilk Bash'i, yeni dosya yazımını ve git'i değiştiren komutları önce reddeder; istenen gerçekleri yazıp aynı çağrıyı yinele. COORD-CTRL kancası kilidi komut BAŞLAMADAN arar.
+- **Git Bash:** `git show origin/main:.claude/…` yanlış sonuç verir; `export MSYS_NO_PATHCONV=1` ve Windows yolu.
+- **Rol "rapor dosyası şurada" derse** dosyanın diskte olduğunu kontrol et (nf-guvenlik iki kez erken bildirdi; hafızasına not eklendi `f8da5ce7`).
+- **Eski dala yeni commit:** rol, main'e alınmış dala commit eklerse (BL-475 "1 jobs") cherry-pick ile al; role "dal bitti, yeni işi main'den aç" de.
+- Önceki devirlerin dersleri: `git show f8c1d5fe:docs/plan/HANDOFF.md`, `git show a98b0671:docs/plan/HANDOFF.md`.
