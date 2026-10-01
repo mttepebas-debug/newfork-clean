@@ -574,3 +574,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** ucuz.
 - **Durum:** yürürlükte; veritabanı kısmı dalda bitti (`c80a707e` + test `85745a04`, `20261003035000_employee_hub_gives_the_time_off_form.sql`; §7 ONAY @`56c1910e`), shared kısmı main'de (`bdd7b859`, FB-6.3.5b). Besleme #52: incelendi, ONAY, canlı onayı bekliyor — park paketi kapandı (`task/fb-6.3-pubnote` @`85745a04`; sıra ve md5'ler ILERLEME §0c satır 39). Kayıt oturumu yazdı (koordinatörün isteğiyle; besleme #50).
 - **Mert:** onaysız.
+
+### KK-77 (2026-10-01) Lokasyonu kalmamış izin talebinde onay penceresi bildirim cümlesi söylemez
+- **Karar:** admin/owner'ın onay penceresi lokasyonu kalmamış izin talebinde yalnız "Takes effect now." der; "Managers at <ad>'s locations are notified." cümlesi yalnız lokasyonu olan talepte çıkar.
+- **Neden:** lokasyonsuz talepte bildirim gidecek lokasyon müdürü yok; cümle çelişkili (`nf-gorsel-qa` FB-6.3.6 QA §5, görüntü `03b-approve-fallback-owner-desktop.png`).
+- **Uygulamada etkisi:** Requests → Time off → lokasyonu olmayan Deniz'in talebinde owner Approve'a basınca pencerede bildirim cümlesi yok (kimseye bildirim gitmeyeceği için).
+- **Dayanak:** `tasks/FB-6.3.md` Kural 6; ILKELER P21 (kısa, tek mesaj); `CLAUDE.md` §13.
+- **Geri alma:** ucuz.
+- **Durum:** yürürlükte; uygulama `.6b` düzeltme turunda (`task/fb-6.3.6b`, yeni `nf-arayuz` `local_d16ba31f-57a1-4ae7-ba0f-1b338015ede8`). Kayıt oturumu yazdı (besleme #56; koordinatörün aktardığı).
+- **Mert:** onaysız.
