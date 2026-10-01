@@ -126,6 +126,7 @@
 - Koşul: yayın anındaki müsaitlik uyarısını, rütbesinden bağımsız olarak yayınlayan onaylar. Eş
   müdür bilgi bildirimi alabilir.
 - Kanıt: 09-23 "İstekler hep üst kademelere gider onay için", "Komple işten çıkarmayı admin
+- Kanıt (2026-10-01, ters seçim): bekleyen izni kim görür sorusunda önerilen M2'nin genişliğine ("talebi görsün, ilerlemeyi değil") dayandı; Mert daralttı: bekleyen talebi yalnız karar veren ve sahibi görür, eş rütbe görmez ("Kendi pozisyondan arkadaşın değil"). Onay zincirinde görünürlük de bir üst kademeyle sınırlıdır.
   yapar"; 09-26 "Yalnız lokasyon müdürleri". KARARLAR "Ürün kuralları".
 
 **P08. Ayrıcalık bugünkü rolden gelir.**
