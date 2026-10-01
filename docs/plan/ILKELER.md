@@ -75,7 +75,7 @@
 **P02. O anki işin çekirdeğinde tam çözüm.**
 - Kural: MVP içindeki işte kozmetik, en ucuz ya da "bugünkü gibi kalsın" önerilmez. Eksik
   yetenek kurulur; gizli ama değerli özellik görünür yapılır.
-- Koşul: yolda bulunan yan işte Mert çoğu zaman backlog ya da dar v1 seçiyor; orada bunu seçenek
+- Koşul: yolda bulunan yan işte Mert çoğu zaman backlog ya da dar v1 seçiyor (2026-10-01: renk körlüğü için şekil farkı, önerilen "2 varyant göster" yerine "Backlog'a yaz"); orada bunu seçenek
   olarak sun.
 - Kanıt: 09-23 "Görünür olsun. İşe yarar bir özellik bu. Test edilsin. Çalışsın."; 07-31 "Gerçek
   sertifikasyona başla".
