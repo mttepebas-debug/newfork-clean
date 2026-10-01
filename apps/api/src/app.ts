@@ -108,6 +108,11 @@ import {
   createTimeOffShortenService,
   type TimeOffShortenService,
 } from "./time-off/time-off-shorten-service";
+import { registerTimeOffVotingRoutes } from "./time-off/time-off-voting-routes";
+import {
+  createTimeOffVotingService,
+  type TimeOffVotingService,
+} from "./time-off/time-off-voting-service";
 import {
   createSettingsReadsService,
   type SettingsReadsService,
@@ -186,6 +191,7 @@ export interface BuildAppOptions {
   readonly organizationSettingsService?: OrganizationSettingsService | null;
   readonly settingsReadsService?: SettingsReadsService | null;
   readonly timeOffShortenService?: TimeOffShortenService | null;
+  readonly timeOffVotingService?: TimeOffVotingService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationOutboxCron?: {
@@ -347,6 +353,8 @@ export function buildApp(options: BuildAppOptions = {}) {
     options.settingsReadsService ?? createSettingsReadsServiceFromEnvironment();
   const timeOffShortenService =
     options.timeOffShortenService ?? createTimeOffShortenServiceFromEnvironment();
+  const timeOffVotingService =
+    options.timeOffVotingService ?? createTimeOffVotingServiceFromEnvironment();
   const rolesService =
     options.rolesService ?? createRolesServiceFromEnvironment();
   const signatureSettingsService =
@@ -855,6 +863,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: timeOffShortenService,
     contextResolver,
   });
+  registerTimeOffVotingRoutes(app, {
+    service: timeOffVotingService,
+    contextResolver,
+  });
   registerSettingsReadsRoutes(app, {
     service: settingsReadsService,
     contextResolver,
@@ -1087,6 +1099,14 @@ function createTimeOffShortenServiceFromEnvironment(): TimeOffShortenService | n
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && serviceRoleKey
     ? createTimeOffShortenService({ url, serviceRoleKey })
+    : null;
+}
+
+function createTimeOffVotingServiceFromEnvironment(): TimeOffVotingService | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && serviceRoleKey
+    ? createTimeOffVotingService({ url, serviceRoleKey })
     : null;
 }
 

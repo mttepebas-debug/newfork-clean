@@ -35,6 +35,9 @@ export const employeeHubRequestSchema = z.object({
   request_type: z.enum(["time_off", "time_off_cancellation"]).optional(),
   cancellation: timeOffCancellationContextSchema.optional(),
   decision_events: z.array(timeOffDecisionEventSchema).optional(),
+  // FB-6.3: "Pending" until it closes, then the outcome; never who voted.
+  display_status: z.string().min(1).optional(),
+  decide_by: z.string().datetime({ offset: true }).nullable().optional(),
 });
 
 export const employeeHubTeamMemberSchema = z.object({

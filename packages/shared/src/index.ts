@@ -13,6 +13,7 @@ import {
   timeOffCancellationContextSchema,
   timeOffAssignmentDispositionSchema,
   timeOffPeriodReadSchema,
+  timeOffProgressSchema,
   timeOffReleasedAssignmentSchema,
   timeOffSegmentDecisionSchema,
 } from "./time-off";
@@ -1091,6 +1092,8 @@ export const schedulingSettingsSchema = z.object({
   conflict_rules: scheduleConflictRulesSchema.optional(),
   conflict_rules_revision: z.number().int().positive().optional(),
   time_format: scheduleTimeFormatSchema,
+  // Settings > Scheduling: a request must be decided this many hours before it starts.
+  time_off_lead_hours: z.number().int().min(0).max(720).optional(),
 });
 export type SchedulingSettings = z.infer<typeof schedulingSettingsSchema>;
 export const schedulingSettingsInputSchema = schedulingSettingsSchema.omit({
@@ -1721,6 +1724,8 @@ export const schedulePublishFindingCodeSchema = z.enum([
   "solo_opener",
   // A shift change approved after the last publication that the draft would undo (BL-198).
   "shift_exchange_undone",
+  // A shift that meets time off still waiting for a decision: a note, never a block (FB-6.3).
+  "time_off_pending",
 ]);
 export const schedulePublishFindingSchema = z.object({
   id: z.string().min(12).max(64),
@@ -1758,6 +1763,8 @@ export const schedulePublishFindingSchema = z.object({
   to_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
   draft_employee_id: z.string().uuid().nullable().optional(),
   draft_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
+  // time_off_pending only: the request waiting for a decision.
+  time_off_request_id: z.string().uuid().optional(),
 });
 export type SchedulePublishFinding = z.infer<
   typeof schedulePublishFindingSchema
@@ -2310,8 +2317,9 @@ export const timeOffRequestSchema = z.object({
   id: z.string().uuid(),
   employee_id: z.string().uuid(),
   employee_name: z.string().trim().min(1).max(160),
-  location_id: z.string().uuid(),
-  location_name: z.string().trim().min(1).max(120),
+  // Null since FB-6.3: time off belongs to the person, not to a location.
+  location_id: z.string().uuid().nullable(),
+  location_name: z.string().trim().min(1).max(120).nullable(),
   request_type: z.enum(["time_off", "time_off_cancellation"]),
   cancellation: timeOffCancellationContextSchema.optional(),
   reason: z.string().max(1000),
@@ -2321,9 +2329,12 @@ export const timeOffRequestSchema = z.object({
   revision: z.number().int().positive(),
   viewed_at: z.string().datetime({ offset: true }).nullable(),
   created_at: z.string().datetime({ offset: true }),
+  decide_by: z.string().datetime({ offset: true }).nullable().optional(),
   conflict_count: z.number().int().nonnegative(),
   segments: z.array(timeOffRequestSegmentSchema),
   events: z.array(scheduleRequestEventSchema),
+  // Pending requests only; null once closed.
+  progress: timeOffProgressSchema.nullable().optional(),
 });
 export type TimeOffRequest = z.infer<typeof timeOffRequestSchema>;
 

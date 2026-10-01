@@ -545,7 +545,7 @@ function RequestRow({
       </span>
       <span
         className="request-catalog-meta request-location-column"
-        title={row.location_name}
+        title={row.location_name ?? undefined}
       >
         {row.location_name}
       </span>
@@ -577,7 +577,7 @@ function requestSortValue(
 ): string | number {
   if (key === "employee") return row.employee_name;
   if (key === "date") return row.start_date;
-  if (key === "location") return row.location_name;
+  if (key === "location") return row.location_name ?? "";
   if (key === "review") return row.conflict_count;
   return row.status;
 }

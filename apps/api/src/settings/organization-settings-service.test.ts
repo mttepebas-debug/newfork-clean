@@ -26,6 +26,18 @@ describe("shared scheduling travel policy", () => {
   it.each([-1, 241, 30.5, null, "30"])("rejects invalid minimum %s before a write", (minimum) => {
     expect(schedulingSettingsInputSchema.safeParse({ ...settings, minimum_travel_minutes: minimum }).success).toBe(false);
   });
+  it("reads and saves the time-off decision lead time (Settings > Scheduling, FB-6.3)", async () => {
+    let columns = "";
+    const row = { workspace_id: workspaceId, ...settings, time_off_lead_hours: 48 };
+    const from = vi.fn(() => ({ select: (picked: string) => { columns = picked; return { eq: () => ({ single: async () => ({ data: row, error: null }) }) }; } }));
+    const rpc = vi.fn(async () => ({ data: row, error: null }));
+    const service = createOrganizationSettingsServiceWithClient({ rpc, from } as never);
+    expect((await service.readSchedulingSettings({ workspaceId })).time_off_lead_hours).toBe(48);
+    expect(columns.split(",")).toContain("time_off_lead_hours");
+    const input = schedulingSettingsInputSchema.parse({ ...settings, time_off_lead_hours: 48 });
+    expect((await service.updateSchedulingSettings({ workspaceId, actorUserId, settings: input })).time_off_lead_hours).toBe(48);
+    for (const hours of [-1, 721, 2.5]) expect(schedulingSettingsInputSchema.safeParse({ ...settings, time_off_lead_hours: hours }).success).toBe(false);
+  });
   it("retains a transaction conflict code for the API retry response", async () => {
     const service = createOrganizationSettingsServiceWithClient({ from: vi.fn(), rpc: vi.fn(async () => ({
       data: null, error: { message: "The schedule is being updated", code: "PT409" },
