@@ -15,7 +15,6 @@ const ownerJob = {
   department_id: "30000000-0000-4000-8000-000000000001",
   name: "Owner",
   color: "#4478A8",
-  sort_order: 0,
   archived_at: null,
   system_key: "owner",
 };

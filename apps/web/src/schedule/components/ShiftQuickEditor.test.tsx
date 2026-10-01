@@ -574,13 +574,11 @@ describe("ShiftQuickEditor", () => {
       id: "66666666-6666-4666-8666-666666666666",
       name: "Host",
       color: "#f97316",
-      sort_order: 0,
       department_id: null,
       system_key: null,
     };
     const serverJob = {
       ...model.jobs[0]!,
-      sort_order: 1,
     };
     const editorModel: ScheduleReadModel = {
       ...model,
