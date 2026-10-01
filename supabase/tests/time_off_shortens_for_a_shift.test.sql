@@ -28,8 +28,8 @@ select tests.publish_week('sto', 1, '[
 
 -- Ali takes Wednesday of week 1 off; Mert approves it.
 select tests.leave('sto', 'ali', 1);
-select public.resolve_schedule_time_off_request_service(tests.user('sto:mert'), tests.id('sto'), tests.id('sto:ali:time_off'),
-  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ali:time_off')), 'approve', '');
+select public.decide_time_off_service(tests.user('sto:mert'), tests.id('sto'), tests.id('sto:ali:time_off'), 'approve', '',
+  app_private.time_off_impact(tests.id('sto'), tests.id('sto:ali:time_off')) ->> 'fingerprint');
 select tests.settle();
 
 create function pg_temp.leave(request uuid) returns tstzmultirange language sql as $$
@@ -148,8 +148,8 @@ select tests.leave('sto', 'ali', 2);
 select tests.remember('sto:ali:time_off:2', (select s.request_id from public.schedule_time_off_segments s
   where s.workspace_id = tests.id('sto') and s.segment_date = tests.week(2) + 2 and s.request_id in
    (select r.id from public.schedule_time_off_requests r where r.employee_id = tests.id('sto:ali') and r.request_type = 'time_off')));
-select public.resolve_schedule_time_off_request_service(tests.user('sto:mert'), tests.id('sto'), tests.id('sto:ali:time_off:2'),
-  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ali:time_off:2')), 'approve', '');
+select public.decide_time_off_service(tests.user('sto:mert'), tests.id('sto'), tests.id('sto:ali:time_off:2'), 'approve', '',
+  app_private.time_off_impact(tests.id('sto'), tests.id('sto:ali:time_off:2')) ->> 'fingerprint');
 select tests.settle();
 create temp table cut as select jsonb_build_array(jsonb_build_object('segment_id', s.id,
   'starts_at', to_jsonb((tests.week(2) + 2 + time '10:00') at time zone s.time_timezone),
@@ -170,8 +170,8 @@ select tests.leave('sto', 'ayse', 3);
 select tests.remember('sto:ayse:time_off:3', (select s.request_id from public.schedule_time_off_segments s
   join public.schedule_time_off_requests r on r.id = s.request_id
   where r.employee_id = tests.id('sto:ayse') and r.request_type = 'time_off' and s.segment_date = tests.week(3) + 2));
-select public.resolve_schedule_time_off_request_service(tests.user('sto:owner'), tests.id('sto'), tests.id('sto:ayse:time_off:3'),
-  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ayse:time_off:3')), 'approve', '');
+select public.decide_time_off_service(tests.user('sto:owner'), tests.id('sto'), tests.id('sto:ayse:time_off:3'), 'approve', '',
+  app_private.time_off_impact(tests.id('sto'), tests.id('sto:ayse:time_off:3')) ->> 'fingerprint');
 select tests.settle();
 select is(pg_temp.refusal(format($$select public.shorten_time_off_service(%L, %L, %L, %s, %L, '', gen_random_uuid())$$,
     tests.user('sto:ayse'), tests.id('sto'), tests.id('sto:ayse:time_off:3'),

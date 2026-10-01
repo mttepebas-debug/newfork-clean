@@ -53,7 +53,7 @@ supabase/tests/one_workspace_cannot_see_another.test.sql
 supabase/tests/organization_basics_rls.test.sql
 supabase/tests/own_employment_record.test.sql
 supabase/tests/owner_employee_record.test.sql
-supabase/tests/owner_time_off_notifies_open_shifts.test.sql
+supabase/tests/time_off_opens_shifts.test.sql
 supabase/tests/owner_legal_name.test.sql
 supabase/tests/preferred_name_approval.test.sql
 supabase/tests/public_roles_reach_no_table_directly.test.sql
