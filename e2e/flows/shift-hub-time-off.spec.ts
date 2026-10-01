@@ -29,10 +29,11 @@ test("an employee takes a shift inside their approved time off and it shortens a
     select tests.publish_week('${run}', 6, '[
       {"label": "emre-wed6", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "10:00", "end": "14:00"}
     ]');
-    select tests.time_off('${run}', 'ali', 6);
-    select public.resolve_schedule_time_off_request_service(tests.user('${run}:zeynep'), tests.id('${run}'), r.id, r.revision, 'approve', '')
-      from public.schedule_time_off_requests r join public.schedule_time_off_segments s on s.request_id = r.id
-      where r.employee_id = tests.id('${run}:ali') and r.request_type = 'time_off' and s.segment_date = tests.week(6) + 2;
+    select tests.leave('${run}', 'ali', 6);
+    -- An admin decides alone (FB-6.3 rule 6), against the impact it reads now.
+    select public.decide_time_off_service(tests.user('${run}:zeynep'), tests.id('${run}'),
+      tests.id('${run}:ali:time_off'), 'approve', '',
+      app_private.time_off_impact(tests.id('${run}'), tests.id('${run}:ali:time_off')) ->> 'fingerprint');
     select public.shift_exchanges_command_service(tests.user('${run}:emre'), tests.id('${run}'),
       jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('${run}:shift:emre-wed6')),
       gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
