@@ -8,6 +8,8 @@ sıkıştırıldıktan sonra bu dosyayı yeniden oku.
 
 İşi kimin yapacağı ve kimin inceleyeceği (risk sınıfı R0–R3): @DELEGASYON.md
 
+Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden önce): @docs/plan/ILKELER.md
+
 ## 1. Ürün ve vizyon
 - Newfork: ABD'deki restoranlar için çok kiracılı (multi-tenant) vardiya planlama SaaS'ı.
   Hedef: self-serve, ücretli ABD lansmanı. Arayüz dili İngilizce (ABD).
@@ -289,7 +291,8 @@ Kısa yaz, ham araç çıktısı yapıştırma.
 2. **Kullanıcıyla konuşmak.** Kullanıcı kod yazmaz. Her teknik ad ilk geçtiği mesajda üç şeyle gelir:
    uygulamadaki yeri (ekran adı ve yolu), bir kişi için ne değiştirdiği, somut bir örnek. Backlog
    numarası tek başına yazılmaz ("CI'ı hızlandırmak (BL-112)"). Sorular tek tıkla cevaplanır:
-   seçenekler adlı, önerilen ilk sırada ve "(Önerilen)" etiketli; sorular toplanıp tek turda sorulur.
+   seçenekler adlı, önerilen ilk sırada, "(Önerilen)" etiketli ve dayanağıyla (bölüm 13); sorular
+   toplanıp tek turda sorulur.
    Tekrarlayan maliyet ilk mesajda DOLAR olarak, kaynağıyla. Hata saklanmaz: "benim hatam" denir.
 3. **İşin başında.** Tören işin boyuna göre: küçük iş (tek okuması var, kolay geri alınır) yapılır
    ve bir iki satırla söylenir. Gerçek iş (birden fazla okuması var, geri dönüşü pahalı ya da ortak
@@ -370,3 +373,44 @@ Kısa yaz, ham araç çıktısı yapıştırma.
   yeni oturum Remote Control açık ve kenar çubuğunda sabitlenmiş (pinned) başlar, başlığı
   "Rol: <rol> (<uzmanlık>)" biçimindedir. Koordinatör açıldıktan sonra ikisini doğrular
   (kullanıcı kararı 2026-09-27).
+
+## 13. Karar verme ve soru sorma (KARAR-001, kullanıcı kararı 2026-09-30)
+- Kaynaklar: Mert'in vizyonu ve karar ilkeleri `docs/plan/ILKELER.md` (her oturuma yüklü), ürün ve
+  ekran kuralları `docs/plan/KARARLAR.md`. Dayanak sırası ILKELER'in başında yazılıdır.
+- **Kim karar verir (konuya göre):**
+  - Süreç ve teknik (iş sırası, test, dal, merge, şemanın iç ayrıntısı, araç): Claude verir. Kararı
+    karar defterine bir satır olarak yazar (koordinatör `KOORDINATOR-KARARLARI.md`'ye, diğerleri
+    raporuna) ve iş raporunda "Senin yerine verdiğim kararlar" listesinde gösterir.
+  - Ürün kuralı ve ekran: bir KARARLAR satırı ya da bir ilke (koşulu tutarak) durumu birebir
+    kapsıyorsa Claude verir, dayanağını yazar, aynı listede gösterir. Kapsamıyorsa sorar.
+  - Yeni görsel tasarım (P04) ve temel modeller (yetki kapsamı, saat dilimi, izin iptali; P18):
+    her zaman Mert'e sorulur; temel modeller önce sohbette konuşulur.
+  - Mert bir kararı düzeltirse kaydı "ters çevrildi" olur; ilgili ilke ya da kural aynı işte
+    güncellenir.
+- **Soru şablonu** (ürün ve ekran sorusu):
+  1. Bugün ne oluyor: ekran → menü → düğme.
+  2. İsimli örnek: "Ayşe'nin Salı 9-5 vardiyası varken…".
+  3. Her seçenekte sonuç: ne olur, kime görünür, engel mi uyarı mı, varsa dolar maliyeti.
+  4. Önerilen seçeneğin açıklamasının son satırı:
+     `Dayanak: <KARARLAR bölümü / ILKELER P-xx / Mert'in <tarih> kararı>` ya da
+     `Dayanak: yok — yeni karar`.
+  5. Gerekirse kaçış seçeneği: "Claude karar versin", "Backlog'a yaz", "Önce sohbette konuşalım".
+- **Kurallar:**
+  - Öneri etiketi tek biçimde yazılır: "(Önerilen)".
+  - İç ad ve BL numarası tek başına kullanılmaz.
+  - Kategori sorusu çoklu seçimle sorulur.
+  - "Hepsi önerilen gibi" paketi sunulmaz.
+  - Görsel karar yazıyla değil, gerçek ekranda varyantla verilir.
+  - Sormadan önce ILKELER ve KARARLAR taranır; ortam ve kod ölçülür.
+- **Zorlama:** `scripts/decision-log.mjs` hook'u (`.claude/settings.json`) dayanaksız ya da farklı
+  etiketli öneriyi Mert'e göstermeden Claude'a geri çevirir. Her cevabı git dışındaki
+  `.newfork-inbox/decisions.jsonl` dosyasına yazar.
+- **Cevap kurala döner:** Mert seçenek dışı cevap verir ya da not eklerse o cevap aynı oturumda
+  yazılır:
+  - Ürün ya da ekran kuralıysa KARARLAR'a: tarih, kaynak "kullanıcı", neden, reddedilen seçenek.
+  - Genel bir karar biçimiyse ILKELER'e, kanıt olarak.
+
+  Yeni KARARLAR satırı "Neden" ve "Reddedilen" bilgisini taşır.
+- **Ölçüm:** `node scripts/decision-log.mjs stats` haftalık önerilen-kabul oranını verir. Başlangıç
+  %68 (622 soru, 2026-09-30 ölçümü); hedef en az %85. `nf-planlama` haftada bir kaçırmaları
+  sınıflar ve ILKELER'i günceller.

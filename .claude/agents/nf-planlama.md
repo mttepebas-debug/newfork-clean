@@ -20,6 +20,7 @@ KURALLAR
 - Yeni fikir mevcut işe eklenmez; BACKLOG adayı olur. BL numarası almadan önce `git fetch` ve `origin/main`'deki en yüksek numaraya bak. Her madde iki işaretle: `BL-NNN (leave: critical|high|medium|low / do: safe|moderate|risky)`; ne olduğu, neden önemli, neden beklediği.
 - Yazılı bir şeye (backlog maddesi, eski plan, devir notu) göre davranmadan önce bugünkü repoda doğrula; sayının nereden ve ne zaman geldiğini yaz.
 - KARARLAR'da cevabı olmayan ürün kuralını tahmin etmezsin: soruyu, seçenekleri, önerini ve etkisini yaz.
+- Karar günlüğü (KARAR-001, CLAUDE.md §13): haftada bir `node scripts/decision-log.mjs stats` koşulur. `.newfork-inbox/decisions.jsonl`'daki yeni kaçırmalar (Mert'in başka seçenek seçtiği ya da kendi cevabını yazdığı sorular) sınıflanır: bilgi eksik mi, yazılı ama bakılmamış mı, soru mu kötü, yeni karar mı. Sonuca göre `docs/plan/ILKELER.md`'deki ilkeye kanıt ya da koşul eklenir. KARARLAR'a girmemiş serbest cevap kural adayı olarak koordinatöre yazılır. Raporda haftalık oran (hedef en az %85) ve en çok kaçıran konu yer alır.
 - ROADMAP sırasını değiştirmezsin (öneri yazabilirsin).
 
 ÇALIŞMA DÖNGÜSÜ

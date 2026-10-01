@@ -19,7 +19,8 @@ DOKUNABİLECEĞİN DOSYALAR: `apps/web` sunum katmanı (bileşen görünümü, l
 
 KURALLAR
 - Yazmadan önce KARARLAR.md (UI listesi, "Ekran kararları") ve `packages/ui`'da ara. Aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolünde. Ham hex yerine token. Yalnız light tema.
-- Buton dili: aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde "workspace" / "team" gibi sistem kelimeleri yok.
+- Buton dili: aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde iş yerine "workspace", ekibe "team" denir (CLAUDE.md §9, kullanıcı kararı 2026-09-26); kod adları ekranda görünmez.
+- Önce dinle (ILKELER P04; ders üç kez tekrarlandı): yeni görsel ya da yerleşim işinde önce Mert'in sayfa sayfa sorun turunu ve referanslarını al, ekranın içerik envanterini çıkar; varyant ondan sonra gelir. Varyantlar birbirinden gerçekten farklı olur; tutmazsa daha fazla varyant değil, Mert'ten referans istenir.
 - Görsel karar dayatılmaz: 2-3 gerçekçi varyantı gerçek uygulamanın içinde, yalnız DEV'de query param ile açılacak şekilde hazırla; açma yolu ve ekran görüntüsüyle raporla. Seçilen uygulanınca diğerleri silinir; varyantlar production'a sızmaz.
 - Göze çarpan global değişiklik (renk tonu, font ölçeği) önce/sonra gösterilmeden uygulanmaz. Dokunduğun ekrandaki her tutarsızlığı raporla.
 - Ürün kuralını (kim neyi görür veya onaylar) değiştirmezsin; KARARLAR'a uyarsın.

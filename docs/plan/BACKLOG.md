@@ -222,6 +222,15 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
   - **Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G21): geçerli** — veri duruyor (`20260909041700_weekly_availability_preferences.sql:65-68`: `notes`, `updated_by`, `updated_at`); okuma modeli son düzenleyenin adını vermiyor, yalnız `updated_at` (`20260926130000_manager_note_is_about_employees.sql:280`); Takvim okuma modeli nota bakmıyor (`20260926220000` sonrası `manager_weekly_reminders` yalnız drop satırlarında, `:730`, `:732`). Bekleme nedeni kısmen kalktı: FB-6.1'in işlevsel kısmı main'de (`ILERLEME-PLANI.md:48`, `:65`), yalnız `.13`/`.14` bekliyor (`:50-51`).
 
 ## Kayıt bakımı (2026-09-25)
+- **BL-501 (leave: low / do: safe) Plan belgelerinde bayat satırlar.** Kod okuyan oturum bu satırları bugünün gerçeği sanıp yanlış dayanak kurabilir. Satırlar:
+  - `docs/plan/MVP-PLAN.md:18`: canlı Supabase olarak eski `ndcqztpwwzxcqlidgcwi`'yi anlatıyor; bugünkü canlı veritabanı `hvyvyisrqyathtliyyyv`.
+  - `MVP-PLAN.md:19`: "Vercel cron dakikada bir" diyor; OPS-014 cron'ları pg_cron'a taşıdı.
+  - `MVP-PLAN.md:6`: Line Up ve push'u MVP'de sayıyor; KARARLAR'da ikisi de kapsam dışı.
+  - `docs/plan/KARARLAR.md`: başındaki "(rescue) kaynakları RESCUE-001 bitene kadar" notu bayat; RESCUE-001 bitti.
+  - `CLAUDE.md:17` "F0 → FJ → F1 → F2 → … → F6" yazıyor, `ROADMAP.md:17` ve `MVP-PLAN.md:120` ise "F0 → FJ → F1 → F6". Büyük olasılıkla kısaltma; ölçülmedi.
+
+  Neden bekledi: KARAR-001'de yolda bulundu, işin önünde değil (2026-09-30).
+- **BL-502 (leave: low / do: moderate) Bitmiş işlerin worktree'leri birikmiş.** 2026-09-30'da `newfork-clean/.claude/worktrees/` altında 19 worktree vardı, bir kısmı bitmiş dallarda (`task/g8b`, `task/bl-475`, `task/emp-001-c2`, `task/g14-plan` …). Biriktikçe hangi oturumun canlı olduğu okunmuyor. Her birinin birleşmesi doğrulanıp kapatılmalı; başka oturumlara ait oldukları için koordinatörün işi. Neden bekledi: KARAR-001 kapsamı dışında.
 - **BL-125 (leave: low / do: safe) Kilitli kalan eski takım çalışma kopyası.** `newfork-clean/.claude/worktrees/team-nf-muhendislik-test-18f00157` klasörü 2026-09-25 temizliğinde Windows kilidi yüzünden silinemedi (git kaydı yok, içinde iş yok; yedek `backups/agent-teams-2026-09-25.zip`). Bilgisayar yeniden açılınca PowerShell `Remove-Item -LiteralPath '\\?\<yol>' -Recurse -Force` ile silinir.
   - **Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G24): geçerli** — `newfork-clean/.claude/worktrees/team-nf-muhendislik-test-18f00157` duruyor (14 girdilik tam checkout), `git worktree list`'te kaydı yok; yedek `C:/Users/TheWe/Documents/Codex/backups/agent-teams-2026-09-25.zip` mevcut.
 

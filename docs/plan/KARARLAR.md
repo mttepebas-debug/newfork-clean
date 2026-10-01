@@ -2,6 +2,22 @@
 
 Kullanıcının kararları ve ortak parçalar tek yerde. Eski adı `REUSE.md` (2026-09-29'a kadar); kodda, migration'larda ve eski belgelerde geçen "REUSE" bu dosyadır.
 
+**Kaynak okuma (KARAR-001, 2026-09-30):**
+- "kullanıcı kararı <tarih>" Mert'in kararıdır. Dayanak sırasında ilk sıradadır (`docs/plan/ILKELER.md`).
+- "koordinatör kararı KK-xx" Mert yokken verildi ve Mert onaylayana kadar onaysızdır. Durumu
+  `KOORDINATOR-KARARLARI.md`'deki "Mert:" satırındadır; bu kararlar dayanak sırasında ILKELER'in
+  altındadır. "Ürün kuralları" başlığındaki "Kullanıcı kararları" ifadesi bu işaretli maddeleri
+  kapsamaz.
+
+**Yeni madde biçimi:**
+- Kaynak ve tarih.
+- Kural.
+- Neden: Mert'in gerekçesi ya da sözü.
+- Reddedilen seçenek: neyin yerine seçildi.
+- Gerekiyorsa isimli örnek.
+
+Mert'in seçenek dışı cevabı aynı oturumda buraya yazılır (CLAUDE.md §13).
+
 Yeni UI ya da akış yazmadan önce buradaki girdiye bak. Ölçü ve CSS değerlerini buraya kopyalama; kaynak dosyayı aç. `(rescue)` işaretli kaynaklar RESCUE-001 tamamlanana kadar yalnızca `wip/rescue-2026-09-16` branch'inde bulunur.
 
 | ID | Ne zaman | Kaynak | Sınır |

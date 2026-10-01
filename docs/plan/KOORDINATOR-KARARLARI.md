@@ -2,13 +2,13 @@
 
 Kullanıcı talimatı 2026-09-29: "Karar vermen gereken yerde benim vizyonuma, uygulamamızın planına göre
 karar ver ve verdiğin kararları tek tek ayrı bir md'ye logla. Ben gelince bana raporlayacaksın."
-Dayanak sırası: SaaS mantığı, `ROADMAP.md` MVP sonucu, `KARARLAR.md`. Ürün bağlamı: çok kiracılı, çok
+Dayanak sırası (2026-09-30, KARAR-001; önceden "SaaS mantığı" en üstteydi): `docs/plan/ILKELER.md` başındaki sıra: Mert'in en güncel açık kararı > `KARARLAR.md` > ILKELER > bu dosya > sektör emsali. Ürün bağlamı: çok kiracılı, çok
 lokasyonlu, çok rollü; çalışan birden fazla lokasyonda çalışabilir; yönetici hem yönetir hem vardiya alır;
 lokasyonlar farklı saat dilimlerinde olabilir. Uygulamanın yönünü değiştiren kritik kararda önce alt
 ajanlarla tartışılır.
 
 Her madde: kimlik, tarih, karar, uygulamada etkisi, dayanak, geri almanın maliyeti, durum. "Uygulamada etkisi" 2026-09-30 akşamından (KK-38) itibaren zorunludur (kullanıcı talimatı: "kararın sonucunu app'te hangi özellik nasıl çalıştı/değişti diye nokta atışı anlat"): ekran adı ve yolu; kim ne yapınca önce ne oluyordu, şimdi ne oluyor; isimli örnek; ekran adı koddan ölçülür. Kullanıcı düzeltirse maddenin
-altına "Kullanıcı: …" yazılır ve madde uygulanır. Başka oturumların kendi karar dosyaları:
+altına "Kullanıcı: …" yazılır ve madde uygulanır. 2026-09-30'dan (KARAR-001) itibaren her maddenin son satırı **Mert:** durumudur: onaysız (varsayılan; yazılmamışsa onaysızdır) / onaylandı <tarih> / değişti <tarih> / ters <tarih>. Koordinatör kararları iş raporunda "Senin yerine verdiğim kararlar" listesiyle Mert'e gösterilir; sessizlik onay sayılmaz. Ters çevrilen karar ILKELER'deki ilgili ilkeyi düzeltir. Başka oturumların kendi karar dosyaları:
 `docs/plan/tasks/ACCOUNT-REDESIGN-kararlar.md` (Account yeniden tasarımı, K-P1…K-8; `task/account-redesign` dalında).
 
 ## Çalışma biçimi (kullanıcının koyduğu, 2026-09-29)
@@ -324,6 +324,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** `nf-guvenlik` E1: iş alan siliyor; migration önce giderse yayındaki eski kod kırılır ("Employees listesi ve çekmecesi 500 verir"). KARARLAR OPS-03'ün "önce canlı migration" sırası alan ekleyen iş içindir. Kullanıcıya soru: OPS-03'e bu cümle eklensin mi (`ILERLEME-PLANI.md` §0c).
 - **Geri alma:** orta (migration'lar yerelde uygulandı; geri dönüş yeni migration ister).
 - **Durum:** main'de `9733f42c`; main CI 36720132559 check + db + e2e yeşil; canlıda 2026-09-30 (kullanıcı gönderdi; besleme #16).
+- **Mert:** değişti 2026-09-30 — dayanaktaki "site bu repodan yayın almıyor" yanlıştı (bkz. KK-65 düzeltmesi, BL-426 bayat); OPS-03'e cümle ekleme sorusu bu yüzden konusuz.
 
 ### KK-44 (2026-09-30) Kayıt yolunda lokasyonsuz müdüre veritabanı genel cümleyi verir
 - **Karar:** Remote ve "Exclude from schedule" kapalıyken lokasyonsuz kaydedilen kişide veritabanı önce genel "lokasyon zorunlu" cevabını verir; müdüre özel cümle Remove, rol ve davet yollarında (ve işaretli müdürün kaydında) çıkar.
@@ -380,6 +381,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** kullanıcı sabah çalışabilsin.
 - **Geri alma:** gerekmez.
 - **Durum:** geçerli.
+- **Mert:** ters 2026-10-01 — "Haftalık limiti şu an için dert etme": kullanım yüzdesi iş erteleme gerekçesi değildir.
 
 ### KK-52 (2026-09-30) `nf-backend` rol oturumu yenilendi
 - **Karar:** eski `local_7a9cd29c…` (bağlam %53) → yeni `local_2464b099-317e-437f-ac12-5a506804d03d` (koordinatörün aktardığı).
@@ -422,6 +424,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KK-51 (%90'da yeni iş başlatılmaz); sabaha kullanıcıya pay kalsın.
 - **Geri alma:** gerekmez.
 - **Durum:** geçerli.
+- **Mert:** ters 2026-10-01 — KK-51 ile birlikte; kullanım yüzdesi yeni işi durdurmaz.
 
 ### KK-58 (2026-09-30) Oturum yenilemeleri: `nf-db`, `nf-gorsel-qa`, kayıt oturumu, koordinatör
 - **Karar:** `nf-db` üçüncü oturum `local_8918dfd6-f929-4312-857e-58362641f3a4` (C1); `nf-gorsel-qa` yeni `local_2a24338f-ba49-4311-acbe-4f916b5ae06d`; kayıt oturumu `local_6fe24435-0391-4db7-bf3c-d448e03044da` (dördüncü; önceki `local_6c8429c0…` durdu) — koordinatörün aktardığı. Aynı gece koordinatör de devretti: yeni `local_c575161a-0a35-45af-ae96-d4e74880bc97`, önceki `local_2022ee49…` (`HANDOFF.md` `a98b0671`; ölçüldü).
@@ -478,6 +481,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** kullanıcı uyuyor; canlı gönderim yalnız kullanıcının (`CLAUDE.md` §8); canlı site eski repodan yayın aldığı için kırılan ekran yok.
 - **Geri alma:** gerekmez; gönderim yapılınca kapanır.
 - **Durum:** kapandı 2026-09-30: kullanıcı dört migration'ı canlıya gönderdi; canlı = main (kayıt oturumu ölçtü, Supabase MCP salt okuma). Ş1 ve Ş2 kalktı; birincil işi olmayan tek kayıt yalnız Owner işi olan bir owner (kurala uygun; koordinatör ölçtü). **Düzeltme 2026-09-30 (besleme #17): dayanak yanlıştı.** "Site bu repodan yayın almıyor" doğru değildi: bu repo Vercel `mert-2a14/newfork-clean-api`'den main'e her gönderimde üretime çıkıyor (BL-426 bayat). EMP-001 C main'e ~08:20'de girdi, canlı migration ~10:40'ta gönderildi; arada canlıda Employees çekmecesi açılmadı. KARARLAR OPS-03 geçerli ve gevşetilmez: kodu yeni bir veritabanı alanına ya da kuralına dayanan işte önce canlı migration, sonra main.
+- **Mert:** ters 2026-09-30 — dayanak yanlıştı (site bu repodan yayın alıyor); OPS-03 geçerli: önce canlı migration, sonra main.
 
 ### KK-66 (2026-09-30) Migration'lı işte görsel QA main'den önce, `main.lock` penceresinde
 - **Karar:** EMP-001 C'nin görsel QA'sı, migration ortak yerel veritabanına uygulandıktan sonra ve push'tan önce, aynı `main.lock` penceresinde yapıldı.
