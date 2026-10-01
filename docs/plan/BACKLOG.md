@@ -221,6 +221,19 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
 - **BL-135 (leave: medium / do: safe) "Manager note": yöneticiler arası ortak müsaitlik/plan notu.** Kullanıcı kararı (KARARLAR "Manager note"): Team availability'deki not ekranda "Manager note" olarak adlandırılır ve açıklanır; Takvim'de çalışanın satırında not işareti, üzerine gelince not okunur; notun altında "Last edited by <ad> · <tarih>". Veri zaten var (`manager_weekly_reminders.notes`, `updated_by`, `updated_at`); iş: `nf-backend` okuma modeline son düzenleyen adı ve Takvim okuma modeline not özeti, `nf-arayuz` ekran (DEV'de 2-3 varyant), `nf-gorsel-qa`. Yetki değişmez (FB-6.1 `.2`: yazma alt rütbe, okuma yöneten herkes). Bekleme nedeni: FB-6.1 main'e girmeden Schedule okuma modeline dokunulmaz.
   - **Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G21): geçerli** — veri duruyor (`20260909041700_weekly_availability_preferences.sql:65-68`: `notes`, `updated_by`, `updated_at`); okuma modeli son düzenleyenin adını vermiyor, yalnız `updated_at` (`20260926130000_manager_note_is_about_employees.sql:280`); Takvim okuma modeli nota bakmıyor (`20260926220000` sonrası `manager_weekly_reminders` yalnız drop satırlarında, `:730`, `:732`). Bekleme nedeni kısmen kalktı: FB-6.1'in işlevsel kısmı main'de (`ILERLEME-PLANI.md:48`, `:65`), yalnız `.13`/`.14` bekliyor (`:50-51`).
 
+## Form kuralları (KARAR-001, 2026-10-01)
+- **BL-503 (leave: medium / do: moderate) Onaylanan form kuralları kodda her alanda uygulanmıyor.** Mert 2026-10-01'de KARARLAR "Form ve girdi kuralları (ABD)"yı onayladı. Kurallar:
+  - Türkçeye özgü harfler (ş, ğ, ı, İ) yasak, Latin aksanlar (José) serbest, tire serbest.
+  - Telefon yalnız rakam, +1 sabit, (xxx) xxx-xxxx maskesi.
+  - E-posta workspace içinde tekil; çakışma yazarken uyarılır.
+
+  Ölçüm 2026-10-01 (`8a131c58` üstü, `task/karar-001`):
+  - Harf kuralı yalnız lokasyon kısa adında var (`packages/shared/src/location-short-name.test.ts`; o da yalnız A-Z, José'yi de reddeder).
+  - Legal name şemasında karakter kuralı yok (`packages/shared/src/index.ts:419`).
+  - Telefon maskesi ve e-posta tekilliğinin hangi formlarda olduğu ölçülmedi.
+
+  Neden önemli: Ayşe, José Peña'yı davet ederken bugün hangi alanın neyi kabul ettiği belli değil. Kural ile kod ayrışıyor. Neden bekledi: KARAR-001 karar kaydı işi, ürün kodu değişmez.
+
 ## Kayıt bakımı (2026-09-25)
 - **BL-501 (leave: low / do: safe) Plan belgelerinde bayat satırlar.** Kod okuyan oturum bu satırları bugünün gerçeği sanıp yanlış dayanak kurabilir. Satırlar:
   - `docs/plan/MVP-PLAN.md:18`: canlı Supabase olarak eski `ndcqztpwwzxcqlidgcwi`'yi anlatıyor; bugünkü canlı veritabanı `hvyvyisrqyathtliyyyv`.

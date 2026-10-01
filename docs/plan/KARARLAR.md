@@ -135,6 +135,64 @@ Kaynak: `docs/plan/research/fb61-dis-degerlendirme-2026-09-25.md` bölüm B, do�
 - Yetki çekirdeği (Aşama 4a, migration `20260924123013_authorization_core.sql`): bir giriş noktasının ilk ifadesi `perform app_private.authorize(actor, w, '<işlem>', target_locations => ..., target_person => ...)`; okuma modeli `location_id = any (app_private.scope_set(actor, w, '<işlem>'))`; RLS `app_private.rls_can(w, '<işlem>', ...)`. Kural `app_private.authz_actions` satırında (izin, owner'a özel, rütbe, kapsam sınıfı), manager'ın erişimi `authz_scope_rules`'ta (model M2). Yeni işlem: önce `authz_actions` satırı ve matriste hücresi (`authorization_matrix.test.sql`), sonra giriş noktası. Kural TypeScript'te yeniden yazılmaz.
 - Kapsam dışı bırakılanlar (sonra sıfırdan tasarlanacak): Line Up, bildirim platformu. Silinenler: kiosk, zaman takibi, eski availability sistemi, eski Requests → Shift changes takas akışı.
 
+## Katılım ve giriş akışı
+
+Kaynak: Mert'in 2026-09-16..30 cevapları; hepsi 2026-10-01'de "doğru aktarılmış" diye onaylandı (KARAR-001). Neden: kullanıcı zorlanmaz, niyeti sorulur, ilerlemesi kaybolmaz (ILKELER P10).
+
+- **Girişten sonra yönlendirme.**
+  - Bekleyen yeni davet her girişte ilk ekranda "Active invitation found" olarak gösterilir.
+  - "Not now" denirse tek workspace varsa oraya, birden fazla varsa davetin de listelendiği seçim ekranına gidilir.
+  - Tek workspace'i olan kişi doğrudan rolüne göre ilgili ekrana iner.
+- **Davetin önceliği.** Hiç workspace'i olmayan ve bekleyen daveti olan kişi önce daveti kabul ya da reddeder (sert engel). Daha önce işletme kurmuş kişi bekleyen davet yüzünden durdurulmaz.
+- **"Create your own business" görünürlüğü** (son açık karar 2026-09-18 10:03).
+  - Yalnız 0 ya da 1 bekleyen davet varken, uygun ekranda görünür.
+  - 2 bekleyen davet varsa, ya da 1 davet ve en az 1 yarım kurulum varsa gizlenir.
+  - Reddedilenler: "her zaman görünsün" ve "2+ ise gizlensin" (tek başına).
+- **Kendi işletmesini açma.** Owner olmadığı bir workspace'te aktif üyeliği bulunan hesap kendi işletmesini açamaz; bunun için ayrı hesap gerekir.
+- **Welcome back.**
+  - Owner kurulumunu yarıda bırakan kişi zorla kuruluma sokulmaz.
+  - Ekran davetleri ve yarım işi listeler, "Create" ve "I am waiting for another invitation" seçeneklerini sunar, niyeti sorar.
+  - Bir kez karşılanmış kişi (workspace'i kapansa, devretse ya da çıkarılsa da) yeniden "yeni" sayılmaz.
+- **Kurulumdan çıkmak vazgeçmek değildir.**
+  - İlerleme kaydedilir; kişi kaldığı yerden sürdürür. Yarım kurulumda "Continue setup" ve "Discard" bulunur.
+  - Kaybedilecek kişi ya da veri yoksa silmek için parola istenmez. Bu eylem "start over"dan ayrıdır.
+- **"Create" düğmesi** doğrudan kurulumun ilk adımını açar. Arada workspace adı penceresi ya da hesap ayarları sayfası yoktur.
+- **Üyelik durumları.**
+  - terminated: listeden tamamen düşer.
+  - pending ya da suspended: listede görünür ama erişim vermez.
+  - Aktif üyelik yoksa "no organization" ekranı açılır.
+- **Çalışan kurulumunda sıfırlama (reset) yoktur.** Testler ve kod buna göre yazılır.
+- **Favori workspace.** Favori ya da varsayılan işaretlenen workspace sunucuda saklanır ve cihazlar arası geçerlidir. İşaretli yoksa sistem tahmin etmez, her girişte sorar.
+
+## Form ve girdi kuralları (ABD)
+
+Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001); aksanlı harf kuralı kullanıcı kararı 2026-10-01. Neden: pazar ABD (ILKELER P12), doğru veri tahminden önce gelir (P11). Kodda uygulanma durumu ölçülecek (BL-503).
+
+- **Harfler.** Metin alanlarında Türkçeye özgü harfler yasaktır (ş, Ş, ğ, Ğ, ı, İ); tire serbesttir.
+  - Öteki Latin aksanlı harfler serbesttir (é, ñ, ü, ö, ç): "José Peña" doğru yazılır.
+  - Reddedilen: "yalnız A-Z".
+- **Telefon.**
+  - Yalnız rakam girilir; +1 sabittir. Ülke seçici ve uluslararası numara yoktur.
+  - Yazarken (xxx) xxx-xxxx maskesi uygulanır; mevcut şema kullanılır.
+  - Reddedilenler: "serbest metin" ve "uluslararası +E.164".
+- **E-posta tekil.** Bir workspace'te e-posta tekildir; aynı e-postayla davetli ya da davetsiz ikinci bir kayıt açılamaz. Çakışma kaydederken değil, çekmeceye yazıldığı anda uyarılır.
+- **Legal name.**
+  - Boş kalamaz; tahminle ya da kopyayla doldurulmaz.
+  - Davette employer girer; kişi zorunlu alan olarak kendisi yazar.
+  - Middle name ve preferred name dışındaki bütün alanlar zorunludur.
+- **Preferred name.** Workspace ayarındaki iki moddan biriyle çalışır.
+  - Auto approve: anında yayınlanır, yöneticiye bildirim gider.
+  - Manager approval: onay bekler; reddedilirse sessizce iptal olur.
+  - Preferred name legal belgelerde asla kullanılmaz.
+
+## MVP sınırı
+
+Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001). Neden: self-serve ücretli ABD lansmanı önce (ILKELER P13).
+
+- Compliance, payroll, time tracking ve break ile ilgili her şey MVP sonrasıdır.
+- Stripe billing şimdilik yoktur; ödeme kapısı ve entitlements işine girilmez.
+- Sonradan sıfırdan tasarlanacak modüle (Line Up) bugün yatırım yapılmaz.
+
 ## Ekran kararları
 
 Yalnız koddan çıkarılamayanlar: kullanıcının bir ekran için verdiği karar ve
@@ -142,6 +200,16 @@ bilerek öyle bırakılan ya da bilinip bekletilen davranış. Kod özeti, dosya
 yolu, bileşen listesi yazılmaz; kod okunur. Bir iş buradaki bir maddeyi
 değiştiriyorsa madde aynı işte düzeltilir; "iş girince yazılır" notu
 bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
+
+### Genel (her ekran)
+
+Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001).
+
+- **Erişim yönlendirme metni.** Kişi adı değil rol yazılır: owner'ın adı yerine "Admin". Kullanıcı metni geliştirici ya da sistem mesajı gibi yazılmaz.
+- **Masaüstü önceliği.** Varsayılan tasarım önceliği masaüstüdür; yönetim ekranları masaüstüne, çalışan ekranları telefona göre yapılır (ILKELER A).
+- **Gezinme.** Sayfa içi hub sekmeleri kaldırılır; bütün gezinme sol menüdedir. Henüz yapılmamış sayfalar menüde yer tutucu olarak durur.
+- **Kaydetme.** Bir pencerede tek kaydetme noktası vardır: sağ alttaki Save. Bölüm içinde ayrı Save düğmesi olmaz.
+- **Pencereyi kapatmak** (kullanıcı kararı 2026-10-01, ILKELER P26). Yalnız kayıp büyükse "Discard unsaved changes?" sorulur.
 
 ### Giriş ekranları (Sign in, Forgot password, Reset password)
 - Sign in'de ikinci düğme (giriş ↔ hesap oluşturma) hiç yeşil değil, beyaz:
@@ -168,6 +236,8 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
   kararı 2026-09-30, BL-489, `bc7c5ebc`).
 
 ### Account
+- Profile düzeni: fotoğraf en tepede, özenli tasarımla; legal name üstte. "How you appear" bölümü çıkarılır; "Who to reach" adı "Emergency contact" olur; workspace adı etiketi gösterilmez; düzen kompakttır (kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001)).
+- Workspaces listesinde aktif satırın "Open" düğmesi de yeşil ve tıklanabilir kalır (kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001)).
 - Profile: "Remove" fotoğrafı yalnız taslaktan kaldırır; "Save changes"e
   basılana kadar silinmez, Discard geri getirir.
 - Security: bekleyen e-posta değişikliğini geri çeken düğme kırmızı ve adı
@@ -225,6 +295,10 @@ bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 - Owner'ın kaydını sunucu söyler (koordinatör kararı KK-54, EMP-001 C1 + C2; BL-421): çekmece owner'ı rol adından değil okuma cevabındaki `is_workspace_owner`'dan tanır; rolün kilidi, Owner işinin ve lokasyonların kilidi buna bağlıdır.
 
 ### Schedule
+- Şablon uygulanırken düşen ya da değişen veri için kullanıcı uyarılır; veri sessizce düşürülmez (kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001)).
+- Vardiya tipinin varsayılan saatini taslaktaki vardiyalara uygulatan gizli özellik (BL-062) silinmez; görünür yapılır, test edilir, çalışır (kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001)).
+- Kartta not yalnız ikonun üzerine gelince açılır; tıklama ya da sürükleme onu kapatır. Etkileşim fare odaklıdır, mobil hareket tasarlanmaz (kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001)).
+- "Save as template" hem taslak ekranında hem Templates ekranında bulunur (kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001)).
 - "Job/Position" sıralaması (EMP-001 In scope madde 13, `tasks/EMP-001.md:78`; owner tek satır kuralı kullanıcı kararı K5; 2026-09-30, EMP-001 C2; `eb97ac27`): Management'ın iş grupları (Owner, Manager ve eklenenler) her zaman en altta; owner tek satır (iki grupta ayrı satır açmaz). BL-475'ten sonra da böyle kalır (kullanıcı kararı 2026-09-30, aşağıda Settings → Jobs).
 - Silme ve üstüne yazma iki tık (UI-12): taslak/şablon silme, taslağın
   üstüne yazma, şablon penceresinde "Delete". Yayınlanmış taslağın satırında

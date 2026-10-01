@@ -154,7 +154,9 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
    Docs-only, küçük metin ya da CSS işinde önerilmez. Yalnız kullanıcı başlatır; ajan tetiklemez.
    Branch'in worktree oturumunda koşar; ana klasörde (main) fark olmadığından koşmaz. Başlangıçta 3
    ücretsiz hak var; kalan hakkı ve tahmini tutarı açılış penceresi gösterir. Ücretsiz haklar bitince
-   öneride dolar tutarı da yazılır. Bulgular `nf-guvenlik` incelemesine eklenir; onun yerine geçmez.
+   (kullanıcı kararı 2026-10-01, KARAR-001) yalnız en riskli işte önerilir (yetki çekirdeği, RLS,
+   grant, veri silme) ve öneride dolar tutarı yazılır. Bulgular `nf-guvenlik` incelemesine eklenir;
+   onun yerine geçmez.
 6. Entegrasyon: koordinatör (bölüm 6).
 7. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
    (`nf-planlama` ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.

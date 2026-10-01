@@ -44,7 +44,15 @@
   When I Work ve Deputy ne yapıyor araştırılır ve gösterilir; karar Mert'in kurallarından ve bu
   ilkelerden çıkar. Reddedilen seçenekler: "restoran akışında 7shifts esas", "sadelikte Homebase
   esas".
-- **Açık (mülakat):** anti-hedefler, yani "nasıl bir ürün olmayız".
+- **Anti-hedefler** (Mert, 2026-10-01; dördü de seçildi): Newfork asla şunlar olmaz:
+  - Ayar cehennemi. Doğru varsayılan konur; ayar yalnız işletmeler gerçekten farklı çalışıyorsa
+    eklenir.
+  - Bildirim gürültüsü. Bildirim karar verene ve işi doğrudan etkilenene gider.
+  - Kurumsal hantallık. Müdürün 5 dakikalık işi 20 dakika sürmez.
+  - Oyuncak görünüm. Rozet ve pazarlama dili yok; ciddi bir iş aracı.
+
+  "Bu ayarı ekleyelim mi?", "herkese bildirim gitsin mi?", "bir onay adımı daha koyalım mı?" gibi
+  sorularda varsayılan cevap hayırdır.
 
 ## B. Ödünleşim sırası
 1. Doğru veri > şık ama tahmine dayalı UX (P11).
@@ -102,8 +110,9 @@
 - Kural: altyapı ve araç seçeneklerinde aylık ya da tek seferlik dolar maliyeti yazılır. Ücretsiz
   ve anahtarsız yol önce gelir; ücretsiz katmanlar birleşebiliyorsa ikisi birden kullanılır.
   Lansman öncesi yeni ücretli hesap açılmaz.
-- Koşul: ücretli ek inceleme (ultrareview) kararı tutarsız: ücretsiz hak varken ve riskli
-  yüzeyde istendi. Mülakatta netleşecek.
+- Ultrareview (Mert, 2026-10-01): riskli işte (yetki, satır erişimi, migration, veri silme) ve
+  ücretsiz hak varken önerilir. Hak bitince yalnız en riskli işte (yetki çekirdeği gibi), dolar
+  tutarıyla önerilir (CLAUDE.md §5).
 - Kanıt: 09-24 "$ cost bilgisi verir misin"; 07-12 "Leaflet + OpenStreetMap (ücretsiz)"; 09-16
   "vercel logları + sentry… ücretsiz olsun".
 
@@ -137,7 +146,7 @@
   - Tek workspace'i olan doğrudan rolüne göre iner.
   - Yarım kurulum kaydedilir; kişi devam edebilir ya da silebilir.
 - Koşul: hiç workspace'i olmayan ve bekleyen daveti olan kişi önce daveti çözer (sert engel).
-  "Create your own business" görünürlüğü aynı gün üç kez değişti; yeniden sorulacak.
+  Ayrıntılı kurallar KARARLAR "Katılım ve giriş akışı"nda (onay 2026-10-01).
 - Kanıt: 09-17 "tek organizasyonu varsa direk ona giriş yapsın, rolüne göre land olsun"; 09-18
   "zorlamayalım belki employer olacak belki", "yeni invitelar her zaman… ilk olarak gösterilsin".
 
@@ -148,9 +157,10 @@
   name boş kalamaz. employer invite ederken burayı doldurup invite eder".
 
 **P12. Pazar ABD, dil İngilizce; bu yeniden sorulmaz.**
-- Kural: metin alanında Türkçe harf yoktur, tire serbesttir. Telefon alanına yalnız rakam girilir;
-  +1 sabittir, ülke seçici yoktur, yazarken maske uygulanır.
-- Koşul: José gibi aksanlı Latin harflerinin durumu açık; mülakatta sorulacak.
+- Kural: metin alanında Türkçeye özgü harfler yoktur (ş, ğ, ı, İ); tire serbesttir. Öteki Latin
+  aksanlı harfler serbesttir: "José Peña" doğru yazılır (Mert, 2026-10-01). Telefon alanına yalnız
+  rakam girilir; +1 sabittir, ülke seçici yoktur, yazarken maske uygulanır. Ayrıntı: KARARLAR
+  "Form ve girdi kuralları (ABD)".
 - Kanıt: 09-16 "ABD, İngilizce"; 09-17 "TİRE SERBEST TR HARFLER YASAK", "sadece rakam yazılabilir…
   +1 dışında alan adı kullanılamaz".
 
@@ -191,6 +201,8 @@
   olarak sunulur.
 - Koşul: aynı işle doğrudan ilgili küçük bulgular, güvenlik hataları ve görsel hatalar mevcut işe
   eklenir.
+- İkinci iş (Mert, 2026-10-01): yalnız Mert isterse açılır. Bağımsız bir iş bulunursa Claude onu
+  seçenek olarak sunar; kendisi açmaz.
 - Kanıt: 09-28 "Tek hat. Bir taske başlayınca o task bitene kadar ilerleyelim", "1 taski küçük
   parçalara bölüp aynı anda birden fazla sessionda ilerletme".
 
@@ -263,6 +275,14 @@
   ediyor.
 - Kanıt: 09-18 "Continue setup + Discard"; 09-19 "Süre dolunca otomatik iptal", "Kalsın, sonucu
   net yazılsın".
+
+**P26. Pencere kapanırken yalnız kayıp büyükse sorulur.** (Mert, 2026-10-01)
+- Kural: uzun yazılmış ya da geri getirilemeyecek iş varken "Discard unsaved changes?" sorulur;
+  ör. Ayşe bir belgeyi inceleyip ret gerekçesi yazdıysa. Birkaç alanlık kısa formda sorulmaz,
+  hızlı çıkış geçerlidir; ör. Ali'nin lokasyonu değişip Esc'e basıldıysa.
+- Bugün: Employees çekmecesi sormaz (K7), belge çekmecesi sorar (BL-467). İkisi de bu kurala
+  uyuyor; yeni ekranlar da bu kurala göre yapılır.
+- Reddedilen seçenekler: "hiçbir pencere sormaz", "her pencere sorar".
 
 ## D. Claude'un bilinen yanlış eğilimleri
 
