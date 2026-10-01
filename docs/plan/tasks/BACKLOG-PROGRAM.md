@@ -334,6 +334,7 @@ Hükümler BACKLOG.md'de ("Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G…)
 - (6) Account'ta iki telefon alanı → **BL-335** (yeni, veri kararı), GK.
 
 ## Notes / Result
+- 2026-10-01 (kayıt oturumu `local_d0ebd71f…`, koordinatör beslemesi #73; taban `40cf0cc9`): on ikinci kayıt oturumu devraldı. Eski `nf-db` `local_a0051ad4…` devretti; dalları `task/fb-6.3-pubnote` ve `task/fb-6.3` main'de (ILERLEME §0c 60). Sayım değişmedi: açık 287, kapanan 259, en yüksek BL-520.
 - 2026-10-01 (kayıt oturumu `local_72f983e6…`, koordinatör beslemesi #68; taban `e34701e0`): FB-6.3.7 güvenlik incelemesi DEĞİŞİKLİK İSTEDİ (seed engeli + dört düzeltme, aynı dalda). Önerilerinden: yeni **BL-520** (yerel Meyhouse verisi `.7`'nin sildiği kolonlara yazıyor; medium / safe), G24; BL-518 ve BL-519'a alt satır; BL-179 tazelendi (kalan tek fonksiyon `time_off_event_released_assignments`). → açık madde 286 → **287**.
 - 2026-10-01 (kayıt oturumu `local_72f983e6…`, koordinatör beslemesi #66; taban `cf648935`): FB-6.3.7 veritabanı kısmı dalda bitti (`task/fb-6.3.7-db2` @`f84e3667`, 33 dosya +193/−317 ölçüldü; testler yazarın). Yazarın yolda bulduğu: yeni **BL-519** (dört haftalık pgTAP testi onaylı izni ham UPDATE ile `pending`/`denied`'a çeviriyor; low / safe), G12. → açık madde 285 → **286**.
 - 2026-10-01 (kayıt oturumu `local_72f983e6…`, koordinatör beslemesi #65; taban `c679174d`): on birinci kayıt oturumu devraldı (`cf648935`). Sayım değişmedi: açık 285.
