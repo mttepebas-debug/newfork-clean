@@ -145,3 +145,5 @@ supabase/tests/name_settings_and_own_contact_ask_the_core.test.sql
 supabase/tests/archived_location_counts_nowhere.test.sql
 supabase/tests/catalog_sorted_by_name.test.sql
 supabase/tests/archived_names_reach_the_schedule.test.sql
+supabase/tests/time_off_voting.test.sql
+supabase/tests/time_off_deadlines.test.sql
