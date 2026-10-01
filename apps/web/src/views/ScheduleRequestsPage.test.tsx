@@ -126,6 +126,12 @@ vi.mock("../lib/supabase", () => ({
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: activeContext }),
 }));
+// A decision that closes the drawer reports through the shared toast.
+const toast = vi.hoisted(() => ({ success: vi.fn(), warning: vi.fn(), error: vi.fn(), info: vi.fn() }));
+vi.mock("@newfork/ui", async (original) => ({
+  ...(await original<typeof import("@newfork/ui")>()),
+  useToast: () => toast,
+}));
 vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../employee-hub/shift-exchanges/exchange-data")>()),
   getExchanges: vi.fn(),
@@ -255,6 +261,26 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(panel.textContent).toContain(first);
     expect(panel.textContent).toContain(second);
   });
+  it("writes who approved and when as text in variant c, not only in a hover tip", async () => {
+    renderPage("/app/schedule/requests?progressVariant=c");
+    const drawer = await openTimeOffRequest();
+    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
+    const kadikoyPill = within(panel).getByText("Kadıköy").closest("li")!;
+    expect(kadikoyPill.textContent).toContain("Ayşe Yılmaz");
+    expect(kadikoyPill.textContent).toContain("Jan 10");
+    expect(panel.querySelector("[title]")).toBeNull();
+  });
+  it.each(["a", "c"])("titles the shifts that open like the drawer's other sections (variant %s)", async (variant) => {
+    renderPage(`/app/schedule/requests?progressVariant=${variant}`);
+    const drawer = await openTimeOffRequest();
+    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
+    expect(within(panel).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H2");
+  });
+  it("does not repeat the request's pending state under every period", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).queryByText(/Awaiting decision/)).toBeNull();
+  });
   it("says an admin or owner decides when no location manager can", async () => {
     withRequest({ progress: { ...progress, fallback: true, locations: [] } });
     renderPage();
@@ -276,7 +302,11 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage();
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
-    await screen.findByText("Your approval is saved. 1 location still to approve.");
+    // QA D1: the drawer stays open, so the word is said inside it, where the
+    // reader is; the page behind the drawer is inert, and so is the toast there.
+    expect((await within(drawer).findByRole("status")).textContent).toBe("Your approval is saved. 1 location still to approve.");
+    expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
+    expect(toast.success).not.toHaveBeenCalled();
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(calls()).toEqual([[`/v1/workspaces/${workspaceId}/time-off/${requestId}/verdict`, { verdict: "approve", note: "", expected_impact: fingerprint }]]);
   });
@@ -289,7 +319,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(box.textContent).toContain("1 published shift becomes an open shift.");
     expect(apiRequest).not.toHaveBeenCalled();
     fireEvent.click(within(box).getByRole("button", { name: "Approve" }));
-    await screen.findByText("Time off approved.");
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off approved."));
     expect(calls()[0]![1]).toEqual({ verdict: "approve", note: "", expected_impact: fingerprint });
   });
   it("tells an admin or owner their approval takes effect now", async () => {
@@ -300,6 +330,16 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
     expect(box.textContent).toContain("Takes effect now. Managers at Alex Kim's locations are notified. 1 published shift becomes an open shift.");
   });
+  it("names no managers to notify when the request has no location (P21)", async () => {
+    withRequest({ progress: { ...progress, fallback: true, locations: [], can_vote: false, can_decide_alone: true,
+      impact: { fingerprint, hidden_shift_count: 0, locations: {} } } });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
+    expect(box.textContent).toContain("Takes effect now.");
+    expect(box.textContent).not.toContain("Managers at");
+  });
   it("denies with an optional note", async () => {
     apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
     renderPage();
@@ -308,7 +348,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const box = await screen.findByRole("alertdialog", { name: "Deny time off?" });
     fireEvent.change(within(box).getByLabelText("Note for Alex Kim (optional)"), { target: { value: " I can approve Jan 15 only " } });
     fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
-    await screen.findByText("Time off denied.");
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off denied."));
     expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "I can approve Jan 15 only", expected_impact: fingerprint });
   });
   it("closes the box and asks for a second look when the request changed meanwhile", async () => {
@@ -317,7 +357,9 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
     fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
-    await screen.findByText("This request changed. Review it again.");
+    // QA D1: the request is still pending, so the drawer stays open and says it.
+    expect((await within(drawer).findByRole("status")).textContent).toBe("This request changed. Review it again.");
+    expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
   });
@@ -329,7 +371,10 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const box = await screen.findByRole("alertdialog");
     fireEvent.change(within(box).getByRole("textbox"), { target: { value: "Short staffed" } });
     fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
-    expect((await within(box).findByRole("alert")).textContent).toBe("Connection lost");
+    const alert = await within(box).findByRole("alert");
+    expect(alert.textContent).toBe("Connection lost");
+    // QA D2: red like every other form error.
+    expect(alert.className).toBe("form-error");
     expect((within(box).getByRole("textbox") as HTMLTextAreaElement).value).toBe("Short staffed");
   });
   it("offers no Partial or Return to pending any more", async () => {
@@ -351,7 +396,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.change(within(box).getByLabelText("Reason"), { target: { value: "Inventory day" } });
     expect(confirm.disabled).toBe(false);
     fireEvent.click(confirm);
-    await screen.findByText("Time off revoked.");
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off revoked."));
     expect(calls()).toEqual([[`/v1/workspaces/${workspaceId}/time-off/${requestId}/revoke`, { expected_revision: 3, reason: "Inventory day" }]]);
   });
   it("does not offer revoke without the core's revoke action", async () => {
@@ -376,7 +421,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const box = await screen.findByRole("alertdialog", { name: "Decline cancellation?" });
     expect(box.textContent).toContain("The time off stays in place.");
     fireEvent.click(within(box).getByRole("button", { name: "Decline" }));
-    await screen.findByText("Cancellation declined.");
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancellation declined."));
   });
 
   it("lets a manager give back hours of approved time off (BL-127)", async () => {
@@ -393,7 +438,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(calls()[0]![0]).toBe(`/v1/workspaces/${workspaceId}/time-off/${requestId}/shorten`);
     expect(calls()[0]![1]).toMatchObject({ expected_revision: 2,
       periods: [{ segment_id: pending.segments[0]!.id, starts_at: future.start_at, ends_at: future.end_at }] });
-    expect(await screen.findByText(/Alex Kim's time off is shorter/)).toBeTruthy();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Alex Kim's time off is shorter/)));
   });
   it("offers no shortening while time off is still pending", async () => {
     renderPage();

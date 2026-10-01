@@ -74,15 +74,16 @@ export function TimeOffProgressPanel({ progress, timeFormat, variant }: {
         {mine}
         <ul className="tov-pills">
           {progress.locations.map((place) => (
-            <li key={place.id} className={place.approved_by ? "approved" : ""}
-              title={place.approved_by ? `${place.approved_by_name} · ${formatInstant(place.approved_at!)}` : "Waiting"}>
+            <li key={place.id} className={place.approved_by ? "approved" : ""}>
               {place.approved_by ? <Check size={13} aria-hidden /> : <Circle size={11} aria-hidden />}
               {place.name}
-              <span className="sr-only">{place.approved_by ? `approved by ${place.approved_by_name}` : "waiting"}</span>
+              {place.approved_by
+                ? <small>· <span className="sr-only">approved by </span>{place.approved_by_name} · {formatInstant(place.approved_at!)}</small>
+                : <span className="sr-only">waiting</span>}
             </li>
           ))}
         </ul>
-        <h3>Shifts that become open</h3>
+        <h2>Shifts that become open</h2>
         {places.length ? (
           <table className="tov-table">
             <thead><tr><th>Date</th><th>Time</th><th>Job</th><th>Location</th></tr></thead>
@@ -119,7 +120,7 @@ export function TimeOffProgressPanel({ progress, timeFormat, variant }: {
           </li>
         ))}
       </ol>
-      <h3>Shifts that become open</h3>
+      <h2>Shifts that become open</h2>
       {places.length ? places.map((place) => (
         <div key={place.id} className="tov-place">
           <strong>{place.name}</strong>

@@ -7186,6 +7186,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 600;
   line-height: 1.45;
 }
+/* An error line in the box stays red; the box's own p rule would grey it. */
+.app-confirm p.form-error {
+  color: #a23725;
+}
 .app-confirm-field {
   display: grid;
   gap: 6px;
@@ -11744,6 +11748,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin: 0;
   padding: 0 24px 16px;
 }
+/* Scheduling's messages sit in its fieldset, under rows that end in a rule. */
+.scheduling-form > fieldset > :is(.form-error, .form-success) {
+  margin: 0;
+  padding: 16px 24px;
+}
 .form-field {
   display: block;
   min-width: 0;
@@ -12125,6 +12134,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   justify-content: flex-end;
   gap: 8px;
 }
+/* A number with its unit: the pair takes the select's width, so left edges line up. */
+.setting-control:has(> .setting-unit) {
+  justify-self: end;
+  width: min(100%, 250px);
+}
 .setting-control > :is(select, input) {
   width: min(100%, 250px);
   height: 40px;
@@ -12133,6 +12147,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 0 10px;
   background: var(--theme-surface);
   color: var(--theme-text-body);
+}
+.setting-control:has(> .setting-unit) > input {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .conflict-setting-controls {
   display: grid;
@@ -12325,6 +12343,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .setting-control {
     justify-content: stretch;
   }
+  .setting-control:has(> .setting-unit) {
+    justify-self: stretch;
+    width: auto;
+  }
   .setting-control > select,
   .settings-segmented {
     width: 100%;
@@ -12477,18 +12499,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 0 10px;
   color: inherit;
   font: inherit;
-  font-size: 13px;
-}
-.request-notice {
-  margin-bottom: 12px;
-  padding: 9px 10px 9px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-left: 3px solid #39775f;
-  background: #e8f1ed;
-  color: #285541;
   font-size: 13px;
 }
 .requests-workbench {

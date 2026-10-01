@@ -101,6 +101,11 @@ export default function SchedulingSettingsPage() {
       setValidationError("Choose week start and time format before saving.");
       return;
     }
+    const hours = draft.time_off_lead_hours;
+    if (hours !== undefined && !(Number.isInteger(hours) && hours >= 0 && hours <= 720)) {
+      setValidationError("Enter a time off decision window from 0 to 720 hours.");
+      return;
+    }
     const parsed = schedulingSettingsInputSchema.safeParse(draft);
     if (!parsed.success) {
       setValidationError("Choose valid scheduling settings before saving.");
@@ -150,7 +155,7 @@ export default function SchedulingSettingsPage() {
           <h2 className="scheduling-section-title" id="schedule-basics-title">
             Schedule basics
           </h2>
-          <form className="organization-form scheduling-form" onSubmit={submit}>
+          <form className="organization-form scheduling-form" noValidate onSubmit={submit}>
             <fieldset
               disabled={!canEdit}
               style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}

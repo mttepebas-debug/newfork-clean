@@ -3,6 +3,7 @@ import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type TimeOffRequest } from "@newfork/shared";
+import { useToast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -104,7 +105,10 @@ function ScheduleRequestsPageContent() {
   const [act, setAct] = useState<Act | null>(null);
   const [actText, setActText] = useState("");
   const [actError, setActError] = useState("");
-  const [notice, setNotice] = useState("");
+  const toast = useToast();
+  // Said inside the drawer while it stays open; the page behind it, the toast
+  // included, is inert then (CatalogDrawer).
+  const [drawerNotice, setDrawerNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const vote = useVoteOnTimeOff(workspaceId);
   const revoke = useRevokeTimeOff(workspaceId);
   // Also loaded under Shift changes, so the Time off tab keeps its count.
@@ -140,7 +144,6 @@ function ScheduleRequestsPageContent() {
       nextParams.delete("offer");
       setParams(nextParams);
       setSelectedId("");
-      setNotice("");
     });
   }
   function resetPaging() {
@@ -149,6 +152,7 @@ function ScheduleRequestsPageContent() {
   }
   function selectRequest(id: string) {
     setSelectedId(id);
+    setDrawerNotice(null);
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -178,6 +182,7 @@ function ScheduleRequestsPageContent() {
   }
   async function runAct(current: Act, text: string) {
     const { request, kind } = current;
+    setDrawerNotice(null);
     try {
       let message: string;
       let closed = true;
@@ -200,18 +205,20 @@ function ScheduleRequestsPageContent() {
         message = verdictMessage(request, kind, result.final, result.remaining);
       }
       setAct(null);
-      setNotice(message);
-      if (closed) selectRequest("");
+      if (closed) {
+        selectRequest("");
+        toast.success(message);
+      } else setDrawerNotice({ text: message });
       // A decision can open shifts: every surface that shows them refreshes.
       await refreshExchangeSurfaces(client, workspaceId);
     } catch (error) {
       if (isStaleTimeOff(error)) {
         setAct(null);
-        setNotice("This request changed. Review it again.");
+        setDrawerNotice({ text: "This request changed. Review it again." });
         return;
       }
       const message = error instanceof Error ? error.message : "Decision failed";
-      if (kind === "approve" && !act) setNotice(message);
+      if (kind === "approve" && !act) setDrawerNotice({ text: message, error: true });
       else setActError(message);
     }
   }
@@ -349,19 +356,6 @@ function ScheduleRequestsPageContent() {
           </label>
         </div>
       </div>
-      {notice ? (
-        <div className="request-notice" role="status">
-          {notice}
-          <button
-            className="icon-button"
-            aria-label="Dismiss"
-            onClick={() => setNotice("")}
-          >
-            <X size={16} />
-          </button>
-        </div>
-      ) : null}
-
       <div className="requests-workbench">
         <div
           className="requests-list job-catalog"
@@ -459,6 +453,7 @@ function ScheduleRequestsPageContent() {
               request={selected}
               timeFormat={timeFormat}
               variant={variant}
+              notice={drawerNotice}
               busy={vote.isPending || revoke.isPending}
               // ponytail: "may they revoke somewhere"; the API asks per person.
               canRevoke={can(context, "time_off.revoke")}
@@ -471,8 +466,8 @@ function ScheduleRequestsPageContent() {
                   workspaceId={workspaceId}
                   timeFormat={timeFormat}
                   onDone={(message) => {
-                    setNotice(message);
                     selectRequest("");
+                    toast.success(message);
                     void refreshExchangeSurfaces(client, workspaceId);
                   }}
                 />
@@ -553,7 +548,7 @@ function ActDialog({
         : {
             title: cancellation ? "Approve cancellation?" : "Approve time off?",
             description: alone
-              ? `Takes effect now. Managers at ${name}'s locations are notified.${opensLine ? ` ${opensLine}` : ""}`
+              ? `Takes effect now.${request.progress?.locations.length ? ` Managers at ${name}'s locations are notified.` : ""}${opensLine ? ` ${opensLine}` : ""}`
               : opensLine,
             confirm: "Approve",
             field: null,
@@ -584,7 +579,7 @@ function ActDialog({
           />
         </label>
       ) : null}
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
     </ConfirmDialog>
   );
 }
@@ -669,6 +664,7 @@ function TimeOffDetail({
   request,
   timeFormat,
   variant,
+  notice,
   busy,
   canRevoke,
   onClose,
@@ -678,6 +674,7 @@ function TimeOffDetail({
   request: TimeOffRequest;
   timeFormat: "12h" | "24h";
   variant: ProgressVariant;
+  notice: { text: string; error?: boolean } | null;
   busy: boolean;
   canRevoke: boolean;
   onClose: () => void;
@@ -695,7 +692,16 @@ function TimeOffDetail({
         title={request.employee_name}
         status={request.status}
         onClose={onClose}
-      />
+      >
+        {notice ? (
+          <p
+            className={notice.error ? "request-drawer-notice error" : "request-drawer-notice"}
+            role={notice.error ? "alert" : "status"}
+          >
+            {notice.text}
+          </p>
+        ) : null}
+      </DetailHeader>
       <dl className="request-facts">
         <div>
           <dt>Dates</dt>
@@ -768,10 +774,12 @@ function DetailHeader({
   title,
   status,
   onClose,
+  children,
 }: {
   title: string;
   status: string;
   onClose: () => void;
+  children?: ReactNode;
 }) {
   return (
     <header className="request-detail-header">
@@ -789,6 +797,7 @@ function DetailHeader({
       >
         <X size={18} />
       </button>
+      {children}
     </header>
   );
 }

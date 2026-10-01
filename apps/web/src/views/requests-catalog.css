@@ -123,11 +123,6 @@
   color: var(--job-muted);
   font-size: 13px;
 }
-.requests-catalog-page .request-notice {
-  color: var(--job-text);
-  background: var(--job-soft);
-  border-color: var(--job-accent);
-}
 .requests-catalog-page
   :is(
     .nf-button,
@@ -261,6 +256,24 @@
   border-bottom: 1px solid var(--job-border);
   display: flex;
   gap: 10px;
+}
+/* A result that keeps the drawer open is said under its sticky title. */
+.requests-review-drawer .request-detail-header {
+  flex-wrap: wrap;
+}
+.requests-review-drawer .request-detail-header .request-drawer-notice {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+  font-size: 12px;
+  font-weight: 700;
+}
+.requests-review-drawer .request-detail-header .request-drawer-notice.error {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
 }
 .requests-review-drawer .request-detail-header > div {
   min-width: 0;
@@ -570,7 +583,7 @@
   color: var(--job-muted);
   font-size: 12px;
 }
-.requests-review-drawer .tov-mine {
+.requests-review-drawer .tov .tov-mine {
   font-size: 12px;
   font-weight: 600;
   color: var(--job-accent);
@@ -595,7 +608,7 @@
   font-size: 12px;
   color: var(--job-muted);
 }
-.requests-review-drawer .tov-deadline {
+.requests-review-drawer .tov .tov-deadline {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -684,6 +697,10 @@
   font-weight: 600;
   color: var(--job-muted);
 }
+/* --job-muted on the green card is 4.44:1; the stronger muted passes AA. */
+.requests-review-drawer .tov-cards article.approved .tov-muted {
+  color: var(--theme-muted-strong);
+}
 .requests-review-drawer .approved .tov-badge {
   color: var(--theme-success);
 }
@@ -735,6 +752,10 @@
   border-radius: 999px;
   font-size: 12px;
   color: var(--job-muted);
+}
+.requests-review-drawer .tov-pills small {
+  font-size: 12px;
+  color: var(--theme-muted-strong);
 }
 .requests-review-drawer .tov-pills li.approved {
   border-color: var(--theme-success);

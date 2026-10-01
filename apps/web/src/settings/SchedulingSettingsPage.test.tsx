@@ -165,10 +165,15 @@ describe("SchedulingSettingsPage checklist mode", () => {
     await waitFor(() =>
       expect(saveSchedulingSettings).toHaveBeenCalledWith(workspaceId, expect.objectContaining({ time_off_lead_hours: 48 })),
     );
-    fireEvent.change(hours, { target: { value: "721" } });
-    fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
-    // The browser's own range check stops 721 before anything is sent.
-    expect(hours.validity.rangeOverflow).toBe(true);
+    // Out of range or empty: the page's own red line, not the browser's bubble.
+    for (const value of ["721", ""]) {
+      fireEvent.change(hours, { target: { value } });
+      fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe("Enter a time off decision window from 0 to 720 hours.");
+      expect(alert.className).toBe("form-error");
+    }
+    expect(hours.closest("form")!.noValidate).toBe(true);
     expect(saveSchedulingSettings).toHaveBeenCalledOnce();
   });
 

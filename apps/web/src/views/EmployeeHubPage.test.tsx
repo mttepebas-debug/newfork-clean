@@ -775,7 +775,8 @@ describe("EmployeeHubPage", () => {
     renderPageWithFixture({ ...fixture, settings: { ...fixture.settings, time_off_lead_hours: 24 } }, "/app/employee-hub/my-availability?section=time-off");
     const tomorrow = new Date(Date.parse(todayIn("America/Los_Angeles") + "T12:00:00Z") + 86_400_000).toISOString().slice(0, 10);
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: tomorrow } });
-    expect(screen.getByText("This starts soon. Talk to your manager directly if it's urgent.")).toBeTruthy();
+    // A live region, so a screen reader hears the warning when it appears.
+    expect(screen.getByText("This starts soon. Talk to your manager directly if it's urgent.").getAttribute("role")).toBe("status");
     expect(screen.getByRole("button", { name: "Submit request" })).toHaveProperty("disabled", false);
     fireEvent.change(screen.getByLabelText("Start"), { target: { value: "2035-01-15" } });
     expect(screen.queryByText(/This starts soon/)).toBeNull();

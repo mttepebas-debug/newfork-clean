@@ -378,7 +378,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
           {Object.keys(dateDrafts).some(date=>!selectedDates.includes(date)) ? <p>Some customized dates are outside this range and will not be submitted. Their edits are kept if you restore those dates before submitting.</p> : null}
           {periodMode !== "per_date" && Object.keys(dateDrafts).length ? <p>Your per-date edits are kept if you switch back before submitting. The current time choice applies to every selected date.</p> : null}
           {periodMode === "per_date" && selectedDates.length && !rangeTooLong ? <p>{periods.length} requested period(s) across {new Set(periods.map(period=>period.segment_date)).size} date(s).</p> : null}
-          {urgent ? <p className="time-off-urgent">This starts soon. Talk to your manager directly if it's urgent.</p> : null}
+          {urgent ? <p className="time-off-urgent" role="status">This starts soon. Talk to your manager directly if it's urgent.</p> : null}
           {started ? <p role="alert">This time off has already started. Talk to your manager directly.</p>
             : start && !validation.success ? <p role="alert">{validation.error.issues[0]?.message}</p> : null}
           <label>
