@@ -89,11 +89,12 @@ select is(
 -- functions; 253 after FB-6.2.3; 226 after FB-6.2.4; 205 after FB-6.2.5; 189 after FB-6.2.6's
 -- jobs, 181 after its dashboard, 177 after its refusals (BL-354),
 -- 176 after the onboarding review, 175 after the Workspace layout (KK-36),
--- 173 after the reorder command went (BL-475). Target 0.
+-- 173 after the reorder command went (BL-475), 171 after the old time-off
+-- decision paths went (FB-6.3.7). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 173, 'refusals without an authz hint only go down'
+  '<=', 171, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
