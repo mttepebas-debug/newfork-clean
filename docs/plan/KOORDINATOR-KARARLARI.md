@@ -521,4 +521,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KARARLAR "Ürün kuralları" → "İzin (time off)" → Onay (kullanıcı kararları 2026-09-30): "karar verebilecek manager'ı kalmayan lokasyon düşer" ve "çok lokasyonda her lokasyondan en az bir onay gerekir"; `CLAUDE.md` §13 (KARARLAR satırı durumu birebir kapsıyor).
 - **Geri alma:** ucuz — `.3`+`.4` main'e ve canlıya girmeden `nf-db`'nin düzeltmesinde; sonrası yeni migration.
 - **Durum:** `nf-db`'ye düzeltme olarak verildi (O1, O2, D1, D2 ile birlikte), ardından yeniden inceleme; `tasks/FB-6.3.md` Notes'a yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #42).
+- **Mert:** onaysız (2026-10-01: senaryoyu sordu, örnekle anlatıldı; itiraz yok — koordinatörün aktardığı, besleme #43).
+
+### KK-71 (2026-10-01) İzin işinin yayın notu `.5` ve `.6`'ya taşınır, ayrı backlog maddesi açılmaz
+- **Karar:** FB-6.3 `.4`'te yapılmayan yayın notu (yayın penceresinde "bekleyen izin talebiyle çakışıyor" bilgisi) aynı işin eksiğidir: veri tarafı (yayın penceresinin okuması "bu haftada bekleyen izin talepleriyle çakışan vardiyalar") `.5`'te `nf-backend`, ekran metni `.6`'da `nf-arayuz`. Ayrı BL açılmaz. Veri için veritabanı okuması gerekirse `.5`'ten önce küçük bir `nf-db` eki olur; `nf-backend` sözleşmeyi okurken söyler.
+- **Uygulamada etkisi:** Örnek: Ayşe Kadıköy'ün gelecek haftasını yayınlarken Ali'nin o haftaya düşen bekleyen izin talebi varsa yayın penceresi bunu bilgi notu olarak söyler. `.6` main'e girene kadar ekranda değişiklik yok.
+- **Dayanak:** `tasks/FB-6.3.md` Kurallar ("Bekleyen izinle çakışan vardiya yayınlanırken yayın penceresi bilgi notu gösterir"), In scope ("yayın penceresinde bekleyen izin notu") ve `.4` satırı — yeni fikir değil, kapsamdaki işin eksiği; `CLAUDE.md` §13 (süreç kararı Claude'un).
+- **Geri alma:** ucuz — yalnız görev dosyasındaki adım ataması.
+- **Durum:** `tasks/FB-6.3.md` `.4`, `.5`, `.6` satırlarına ve Notes'a yazıldı (kayıt oturumu, koordinatörün isteğiyle; besleme #43).
 - **Mert:** onaysız.
