@@ -60,12 +60,13 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   await editor.getByRole("button", { name: "Add shift", exact: true }).click();
   await expect(editor).toHaveCount(0);
 
-  // The write itself is silent -- no confirmation dialog, no block. The cell
-  // is where the warning shows: an icon, an accessible name and a hover title
-  // that says Ali's status, not that anything changed.
+  // The write itself is silent -- no confirmation dialog, no block. The card
+  // is where the warning shows: an orange mark, an accessible name and a
+  // description that say Ali's status, not that anything changed (G14).
   const shiftBadge = ayse.getByRole("button", { name: /shows as unavailable for this shift/ });
   await expect(shiftBadge).toBeVisible();
-  await expect(shiftBadge).toHaveAttribute("title", "Ali Person shows as unavailable for this shift.");
+  await expect(shiftBadge).toHaveAttribute("data-availability-warning", "true");
+  await expect(shiftBadge).toHaveAccessibleDescription(/^Ali Person shows as unavailable for this shift/);
 
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
   await ayse.getByLabel("Draft name").fill(draftName("Ayse week"));
