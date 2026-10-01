@@ -27,5 +27,7 @@
 - [Kardeş uçlarda aynı koruma](checklist-sibling-endpoints-same-guard.md) — bir uca eklenen şart (kabul) aynı kaydı aynı anahtarla bulan liste/ret/sayım uçlarında da var mı; yazanlar Orta
 - [Canlı yayın iddiasını ölç](feedback-live-deploy-claim.md) — sıra (OPS-03) cevabı kayda değil `vercel ls <proje> --scope <ekip> --prod` ya da canlı paketteki Supabase adresine dayanır; ölçülemezse OPS-03 gevşetilmez (2026-09-30, canlıda çekmece 500)
 - [Ekranın yolu + arşivli lokasyon](checklist-screen-path-and-archived-location.md) — tablo hücresi ekranın servis yolunu kanıtlamaz; lokasyon/kapsam işinde arşivli lokasyondaki kişiyi ve owner'ın kendi kaydını kaydet, Settings → Locations'a bak
+- [Cron'da zehirli satır](checklist-cron-poison-row.md) — çok workspace'li cron tek transaction'da koşmaz; satır başına begin/exception, içinde http yok, iki workspace'li test (FB-6.3)
+- [Sistem işlemcisi ve kısıt bayrakları](checklist-system-actor-and-restriction-flags.md) — actor null'da kayıt ile bildirim süzgecini ayrı oku; "kısıt bir yana" yalnız tek sebebi ve yalnız liste üyeliğini etkiler (FB-6.3)
 - [Önce rapor, sonra mesaj](feedback-report-before-message.md) — rapor yazımı ile send_message paralel gitmez; "File created" görülmeden mesaj yok (2026-09-30, iki kez)
 - [Devir 2026-09-29](handoff-2026-09-29.md) — açık tekrar incelemeler (BL-335 onboarding alanı, G6 6b681623..62782c12), çalışan rapor kanalı send_message, deneme kuralı; kapanınca sil

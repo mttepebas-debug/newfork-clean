@@ -21,3 +21,5 @@ The same holds in the web: a change to a grouping or identity key needs a check 
 **Why:** BL-199 (34a9de49, 2026-09-28). `unassignedShiftStackKey` in `ScheduleRow.tsx` gained the note. Its copy `scheduleBadgeMeasurementStackKey` in `useScheduleBadgeMeasurements.tsx` did not. The rows drew two cards, but the measurement still counted one ×2 stack.
 
 **How to apply:** grep for the key's field list, not the function name. Here that was `clock-hidden|same-day` joined with `|`. Ask for one exported function in place of the copy. Related: [[checklist-protected-record-all-columns]].
+
+Same for end states: sibling paths that bring a record to the same state must do the same closing step. FB-6.3 (2026-10-01): revoke closed the pending cancellation, shortening (`app_private.shorten_time_off`) did not; the leftover row then poisoned the deadline cron ([[checklist-cron-poison-row]]).
