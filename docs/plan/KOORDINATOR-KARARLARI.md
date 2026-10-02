@@ -888,3 +888,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — puanlar ILERLEME §3'te.
 - **Durum:** yürürlükte (C-veri 3 puanı sayıldı). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın kararı, besleme #112).
 - **Mert:** bilgi (sabah listesinde).
+
+### KK-110 (2026-10-02) "Bir kez sor" hızlı düzenleyicide de geçerli
+- **Karar (ne):** "Closed location" ayarı "Confirm once per editing session" iken düzenleme oturumunun "sordum" hafızası Schedule'daki iki kayıt yolunda (Scheduling rule kutusu ve hızlı düzenleyici, `ShiftQuickEditor`) tek kaynaktan okunur.
+- **Nerede:** Schedule → vardiya hızlı düzenleyicisi (`task/fb-6.7-ui`).
+- **Ne zaman:** FB-6.7 ekran işiyle (dal `task/fb-6.7-ui`), main'e onunla girer.
+- **Ne için:** KARARLAR K17 yol ayırmıyor (Mert'in sözü: oturumda bir kez); iki yolun ayrı hafızası aynı kişiye aynı soruyu iki kez sordururdu.
+- **Uygulamada etkisi:** ayar "Confirm once per editing session" iken Ayşe 24 Ekim'e ilk vardiyayı sürükleyip onayladıktan sonra hızlı düzenleyiciden ikinci vardiyayı yazınca yeniden sorulmaz (önce: hızlı düzenleyici her kayıtta soruyordu).
+- **Dayanak:** KARARLAR K17; ILKELER (tek kaynak, CLAUDE.md §9 "ikiz sistem yok").
+- **Geri alma:** kolay — dalda.
+- **Durum:** yürürlükte (dalda). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın kararı, besleme #113).
+- **Mert:** bilgi (sabah listesinde).
