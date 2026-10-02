@@ -1155,9 +1155,10 @@ export const importantDateHistorySchema = z.object({
     z.object({
       id: z.string().uuid(),
       action: z.enum(["created", "updated", "unpublished", "republished", "archived", "restored"]),
-      changed_at: z.string().datetime({ offset: true }),
+      // Null on a change the reader may not see: who and when are masked (K6).
+      changed_at: z.string().datetime({ offset: true }).nullable(),
       actor_user_id: z.string().uuid().nullable(),
-      actor_name: z.string(),
+      actor_name: z.string().nullable(),
       before: z.record(z.string(), z.unknown()).nullable(),
       after: z.record(z.string(), z.unknown()).nullable(),
     }),

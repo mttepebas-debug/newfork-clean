@@ -18,6 +18,7 @@ import {
   employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
+  importantDateHistorySchema,
   importantDateInputSchema,
   jobInputSchema,
   jobSchema,
@@ -2009,5 +2010,19 @@ describe("publish finding: an approved shift change the draft would undo (BL-198
     const pickup = { ...undone, exchange_kind: "open_pickup", from_employee_id: null, from_employee_name: null,
       draft_employee_id: null, draft_employee_name: null, shift_ids: [] };
     expect(schedulePublishFindingSchema.parse(pickup)).toEqual(pickup);
+  });
+});
+
+describe("important date history", () => {
+  it("accepts a change the reader may not see, with who and when masked (K6)", () => {
+    const hidden = {
+      id: "70000000-0000-4000-8000-000000000001", action: "created", changed_at: null,
+      actor_user_id: null, actor_name: null, before: null, after: { hidden: true },
+    };
+    const parsed = importantDateHistorySchema.parse({
+      important_date_id: "70000000-0000-4000-8000-000000000002", author_user_id: null, author_name: "Workspace member",
+      changes: [hidden],
+    });
+    expect(parsed.changes[0]).toEqual(hidden);
   });
 });

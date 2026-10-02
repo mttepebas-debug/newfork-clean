@@ -428,7 +428,8 @@ stable
 security definer
 set search_path = ''
 as $$
-  select state.status = 'active' and (
+  -- coalesce: somebody who is not a member (no status) gets a plain no.
+  select coalesce(state.status = 'active', false) and coalesce(
     state.manages && live
     or (everywhere and cardinality(state.manages) > 0)
     or ((roles is null or state.class = any (roles))
@@ -442,7 +443,7 @@ as $$
           select 1 from public.employee_job_assignments assignment
           join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
           where assignment.workspace_id = w and assignment.employee_id = state.employee_id
-            and assignment.ended_at is null and job.archived_at is null and job.id = any (job_ids)))))
+            and assignment.ended_at is null and job.archived_at is null and job.id = any (job_ids)))), false)
 $$;
 
 create function app_private.communication_audience(w uuid, stored uuid[], roles public.workspace_role[], department_ids uuid[], job_ids uuid[])
@@ -1440,8 +1441,11 @@ end;
 $$;
 
 -- A past version of an important date as somebody who manages these
--- locations may see it: one kept only at locations they do not manage (or
--- only at archived ones) is hidden (K6).
+-- locations (reach: actor().manages, live locations only) may see it: a
+-- version with none of its locations in reach is hidden (K6). An archived
+-- location counts nowhere (KK-86): a version kept only at archived Moda is
+-- hidden from everybody, Moda's own former manager and the owner included. A
+-- version at no location (the whole workspace) is shown.
 create function app_private.important_date_version_seen(reach uuid[], version jsonb)
 returns jsonb
 language sql
@@ -1481,13 +1485,21 @@ begin
     'author_name', coalesce((select profile.display_name from public.user_profiles profile where profile.user_id = item.created_by), 'Workspace member'),
     'changes', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', change.id, 'action', change.action, 'changed_at', change.changed_at,
-        'actor_user_id', change.actor_user_id,
-        'actor_name', coalesce(actor.display_name, 'Workspace member'),
-        'before', app_private.important_date_version_seen(reach, change.before),
-        'after', app_private.important_date_version_seen(reach, change.after)) order by change.changed_at desc, change.id)
+        'id', change.id, 'action', change.action,
+        -- A change that shows nothing the reader may see does not say who
+        -- made it or when either (K6).
+        'changed_at', case when seen.anything then change.changed_at end,
+        'actor_user_id', case when seen.anything then change.actor_user_id end,
+        'actor_name', case when seen.anything then coalesce(actor.display_name, 'Workspace member') end,
+        'before', seen.before,
+        'after', seen.after) order by change.changed_at desc, change.id)
       from public.important_date_changes change
       left join public.user_profiles actor on actor.user_id = change.actor_user_id
+      cross join lateral (
+        select versions.before, versions.after,
+          coalesce(not (versions.before ? 'hidden'), false) or coalesce(not (versions.after ? 'hidden'), false) as anything
+        from (select app_private.important_date_version_seen(reach, change.before) as before,
+                     app_private.important_date_version_seen(reach, change.after) as after) versions) seen
       where change.important_date_id = item.id and change.workspace_id = target_workspace_id), '[]'::jsonb)
   );
 end;

@@ -27,6 +27,7 @@ select tests.as_browser(tests.user('r:owner'), format(
   $sql$insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
        values (%L, %L, 'Moda', 'MDA', '3 Moda Cd', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul')$sql$,
   tests.remember('r:M', gen_random_uuid()), tests.id('r')));
+select tests.person('r', 'oya', 'manager', array['K', 'M'], array['cook']);
 
 -- 2. Helpers --------------------------------------------------------------------------
 
@@ -218,6 +219,11 @@ select is(pg_temp.try(format('select public.get_announcements_service(%L, %L)', 
   'O2: and its workspace''s announcements still open');
 drop trigger edge_cases_break_release on public.announcements;
 
+-- Somebody who is not a member is reached by nothing: a plain no, never an
+-- unknown that a caller might read either way (fail closed).
+select is(app_private.communication_reaches(app_private.actor(tests.user('n:owner'), tests.id('r')), tests.id('r'),
+  '{}', true, null, null, null), false, 'an outsider is not reached by a workspace-wide record: false, not null');
+
 -- 6. A scheduled announcement without its time is a draft (KK-92 a) ----------------------------
 
 select tests.remember('r:ann:untimed', pg_temp.save_ann('owner', array['K'], 'Untimed', publish_at => now() + interval '1 hour'));
@@ -248,7 +254,14 @@ select tests.remember('r:ann:km', pg_temp.save_ann('owner', array['K', 'M'], 'Ka
 select tests.remember('r:ann:m', pg_temp.save_ann('owner', array['M'], 'Moda only'));
 select tests.remember('r:ann:k', pg_temp.save_ann('owner', array['K'], 'Kadikoy only'));
 select tests.remember('r:date:m', pg_temp.save_date('owner', array['M'], 'Moda date'));
+select tests.remember('r:date:moda-first', pg_temp.save_date('owner', array['M'], 'Moda first'));
 update public.locations set archived_at = now() where id = tests.id('r:M');
+-- Oya managed Moda too. Moved to Kadikoy after Moda closed, the date's Moda
+-- version stays hidden from her: an archived location counts nowhere (KK-86).
+select pg_temp.save_date('owner', array['K'], 'Moda first', id => tests.id('r:date:moda-first'));
+select is((select c -> 'after' from jsonb_array_elements(public.read_important_date_history_service(pg_temp.u('oya'), tests.id('r'),
+    tests.id('r:date:moda-first')) -> 'changes') c where c ->> 'action' = 'created'), '{"hidden": true}'::jsonb,
+  'KK-86: a version only at archived Moda is hidden even from Oya, who was Moda''s manager');
 select is((select array_agg(id::uuid order by id) from jsonb_array_elements_text(pg_temp.sees_ann('owner', tests.id('r:ann:km')) -> 'location_ids') id),
   (select array_agg(id order by id) from unnest(pg_temp.locs(array['K', 'M'])) id),
   'KK-86: the announcement still lists archived Moda, so an edit keeps it');
@@ -274,6 +287,11 @@ select is((select c -> 'before' from moved_history where c ->> 'action' = 'updat
   'KK-92 b: not as the change''s old value either');
 select is((select c -> 'after' ->> 'title' from moved_history where c ->> 'action' = 'updated'), 'Moved date',
   'KK-92 b: she sees the Kadikoy version');
+select is((select jsonb_build_array(c -> 'actor_user_id', c -> 'actor_name', c -> 'changed_at') from moved_history where c ->> 'action' = 'created'),
+  '[null, null, null]'::jsonb, 'K6: nor who wrote the hidden version, or when');
+select ok((select c ->> 'actor_user_id' is not null and c ->> 'actor_name' is not null and c ->> 'changed_at' is not null
+           from moved_history where c ->> 'action' = 'updated'),
+  'K6: the change that brought it to Kadikoy, which she sees, keeps who and when');
 select is((select count(*)::integer from jsonb_array_elements(public.read_important_date_history_service(pg_temp.u('owner'), tests.id('r'),
   tests.id('r:date:moved')) -> 'changes') c where c -> 'after' ? 'hidden' or c -> 'before' ? 'hidden'), 0,
   'KK-92 b: the owner sees every version');
