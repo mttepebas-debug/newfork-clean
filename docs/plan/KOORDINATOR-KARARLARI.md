@@ -827,7 +827,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Karar (ne):** Settings → Conflict handling → "Closed location" satırında yalnız üç değer kalır: block / her seferinde onay / düzenleme başına bir kez onay. "warn" değeri kalkar; eski "warn" kaydı silinir.
 - **Nerede:** `ConflictHandlingSettingsPage.tsx` ve `closed_location` değerleri; FB-6.7 C-veri işçisi `local_863130bd…`.
 - **Ne zaman:** FB-6.7 C ile (gece, 2026-10-02).
-- **Ne için:** KARARLAR K17 üç derece sayıyor; KARARLAR'ın başka yeri "bugün confirm / block" diyor, kod "warn"ı da tutuyor. Bugünkü kurala uymayan kayıt silinir (CLAUDE.md §9).
+- **Ne için:** KARARLAR K17 üç derece sayıyor ve "(bugün confirm / block)" diyor (KARARLAR:166 — ölçüldü); kod `closed_location` için "warn"ı da tutuyor (`ConflictHandlingSettingsPage.tsx:31` `["warn", "confirm", "block"]` — ölçüldü). Bugünkü kurala uymayan kayıt silinir (CLAUDE.md §9).
 - **Uygulamada etkisi:** müdür Settings → Conflict handling → Closed location'ı açınca "Warn" seçeneğini görmez. Önce Downtown'da "Warn" seçiliyse kapalı güne vardiya yazılır ve yalnız uyarılırdı; sonra en hafifi "Ask once per edit" (ilk vardiyada bir kez onay).
 - **Dayanak:** KARARLAR K17; CLAUDE.md §9 (eski veri korunmaz); ILKELER P01.
 - **Geri alma:** kolay — ayar değerleri tek yerde.
