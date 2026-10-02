@@ -36,3 +36,4 @@
 - [security_invoker view + service_role](checklist-invoker-view-service-role.md) — tablo view olunca API service_role ile okuyabiliyor mu (lives_ok), seed.sql o adı hâlâ yazıyor mu (FB-6.7 A, Schedule açılmazdı)
 - [Geçmiş okumasında eski kapsam sızıntısı](checklist-history-old-scope-leak.md) — taşınan/daralan kaydın eski sürümü okuyanın göremeyeceği lokasyonu açığa çıkarıyor mu (FB-6.7 A)
 - [NULL görünürlük + kayan pencere](checklist-null-visibility-and-rolling-window.md) — visible() üye olmayana NULL, 'not f()' raise'ı atlar; 'bu haftadan' süzgeci geçmiş haftayı hafta dönünce değiştirir
+- [Geçmiş sınırı taslakta da](checklist-past-line-on-drafts.md) — yeniden hesaplayan yazımda (republish) taslak listesi de geçmiş sınırına bağlı mı; yalnız yayınlanmışı süzmek yetmez
