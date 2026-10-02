@@ -1,3 +1,4 @@
+- [Hosted push via MCP](hosted-push-via-mcp.md) — backup in one execute_sql, scratch-copy md5 before apply, statements md5 proof, version fix, advisors diff
 - [Rollback trial runner](rollback-trial-runner.md) — unapplied migration + pgTAP in one rolled-back tx; pgtap prelude; seed/builder-block trick; db.lock wait; `own` skips owner_only
 - [Core call cost](core-call-cost.md) — authz_reason/scope_set ~0.33 ms each; compute scope once; audience per list row = actor() x members (255 -> 14 ms fix)
 - [Folding a chain](folding-chains.md) — labeled nested block per inner layer, drop overloads before adding defaults, retired signatures, mocked seams, message text, TS twin
