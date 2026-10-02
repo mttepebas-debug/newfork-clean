@@ -18,6 +18,7 @@ select tests.person('r', 'zeynep', 'admin', array['K'], array['server']);
 select tests.person('r', 'hande', 'admin', array['K'], array['server']);
 select tests.person('r', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('r', 'mina', 'manager', array['K'], array['cook']);
+select tests.person('r', 'selin', 'manager', array['K'], array['cook']);
 select tests.person('r', 'veli', 'manager', array['B'], array['cook']);
 select tests.person('r', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('r', 'ali', 'employee', array['K', 'B'], array['server']);
@@ -156,6 +157,24 @@ select is(pg_temp.try(format($$select pg_temp.save_date('owner', array['K'], 'Ch
   'ok', 'K2: the owner changes it');
 select is(pg_temp.try(format($$select pg_temp.save_ann('zeynep', array['K'], 'Changed by Zeynep', id => %L)$$, tests.id('r:ann:hande'))),
   'ok', 'K2: an admin changes it');
+
+-- Selin, a Kadikoy manager, has left: her rank is the last role she had, so
+-- her records stay a manager's (Mert, 2026-10-02: "En nihayetinde o da
+-- müdürdü."). Kadikoy's other managers act on them (K3); Besiktas's do not.
+select tests.remember('r:ann:selin', pg_temp.save_ann('selin', array['K'], 'Selin at K'));
+select pg_temp.publish('selin', tests.id('r:ann:selin'));
+select tests.remember('r:date:selin', pg_temp.save_date('selin', array['K'], 'Selin''s date'));
+select public.remove_employee_access_service(pg_temp.u('owner'), tests.id('r'), tests.id('r:selin'));
+select is(pg_temp.try(format($$select pg_temp.save_ann('ayse', array['K'], 'Selin at K, by Ayse', id => %L)$$, tests.id('r:ann:selin'))),
+  'ok', 'K2: manager Selin has left; Ayse, Kadikoy''s manager too, still changes her announcement');
+select is(pg_temp.try(format($$select public.set_announcement_state_service(pg_temp.u('ayse'), tests.id('r'), %1$L, pg_temp.rev(%1$L), 'unpublish')$$,
+  tests.id('r:ann:selin'))), 'ok', 'K2: and unpublishes it');
+select is(pg_temp.try(format($$select pg_temp.save_date('ayse', array['K'], 'Selin''s date, by Ayse', id => %L)$$, tests.id('r:date:selin'))),
+  'ok', 'K2: and changes her important date');
+select is(pg_temp.try(format($$select pg_temp.set_date('ayse', %L, 'archive')$$, tests.id('r:date:selin'))),
+  'ok', 'K2: and archives it');
+select is(pg_temp.try(format($$select pg_temp.save_ann('veli', array['K'], 'Selin at K, by Veli', id => %L)$$, tests.id('r:ann:selin'))),
+  '42501 authz.out_of_scope', 'K3: Veli, Besiktas''s manager only, does not');
 
 -- Mina's account is gone, and the date no longer says who wrote it: missing
 -- author information never lets a manager in (CLAUDE.md §9, fail closed).
@@ -380,6 +399,8 @@ select tests.remember('r:date:tomorrow', pg_temp.save_date('owner', array['K'], 
   starts => (current_date - interval '3 years' + interval '1 day')::date, recurrence => 'annual'));
 select is((select o.payload ->> 'action_url' from public.notification_outbox o where o.subject_id = tests.id('r:date:tomorrow')::text),
   '/app/schedule?date=' || (current_date + 1)::text, 'a yearly date''s notice opens the week of its coming day');
+select is((select o.payload ->> 'body' from public.notification_outbox o where o.subject_id = tests.id('r:date:tomorrow')::text),
+  to_char(current_date + 1, 'Mon FMDD, YYYY'), 'and its text names that day, not its first year''s');
 select is((select o.payload ->> 'action_url' from public.notification_outbox o where o.subject_id = tests.id('r:date:yearly')::text),
   '/app/schedule?date=' || (current_date - 1 + interval '1 year')::date::text, 'one whose day passed this year opens next year''s');
 

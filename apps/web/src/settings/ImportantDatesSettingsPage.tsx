@@ -132,7 +132,7 @@ export default function ImportantDatesSettingsPage() {
     onError: (error) => setFormError(errorText(error)),
   });
 
-  const items = query.data?.dates ?? [];
+  const items = useMemo(() => query.data?.dates ?? [], [query.data]);
   const normalizedSearch = search.trim().toLowerCase();
   const visible = useMemo(
     () =>

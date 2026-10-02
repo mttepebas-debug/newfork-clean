@@ -171,7 +171,7 @@ select is((public.create_workspace_todo_service('a8000000-0000-4000-8000-0000000
 with saved as (
  select public.create_workspace_todo_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Owner follow-up','',null,null) result
 ) update communication_state set manual_todo_id=(result->>'id')::uuid from saved;
-select throws_ok($$select public.resolve_workspace_todo_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select id from public.workspace_todos where source_type='employee_document_expiry' limit 1))$$,'42501','system todo resolves from source','system-generated todos cannot be manually resolved');
+select is(pg_temp.refusal($$select public.resolve_workspace_todo_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select id from public.workspace_todos where source_type='employee_document_expiry' limit 1))$$),'42501 authz.missing_permission','system-generated todos cannot be manually resolved, not even by the owner');
 select is((select public.resolve_workspace_todo_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',manual_todo_id)->>'status' from communication_state),'resolved','manual Workspace todos can be resolved directly');
 update public.employee_documents set review_status='superseded' where id='a9700000-0000-4000-8000-000000000004';
 insert into public.employee_documents(id,workspace_id,employee_id,requirement_id,version_number,object_path,original_filename,media_type,size_bytes,review_status,expiry_date,uploaded_by)

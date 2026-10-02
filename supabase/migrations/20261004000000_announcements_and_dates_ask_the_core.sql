@@ -342,7 +342,8 @@ $$;
 -- K1-K3: may this person change a record kept at these locations, written by
 -- this author? A record at one live location is a place action; anything else
 -- (several, or none: the whole workspace, or only archived ones) is the org's.
--- An author who has left, or one no longer known: admin and owner only (O1).
+-- An admin or owner who has left, or an author no longer known: admin and
+-- owner only (O1); a manager who has left still ranks as a manager.
 -- It takes the actor's state (app_private.actor), so a list reads it once.
 create function app_private.communication_reason(state app_private.actor_state, w uuid, kind text, stored uuid[], author uuid)
 returns text
@@ -357,19 +358,28 @@ declare
     select membership.user_id from public.workspace_memberships membership
     where membership.workspace_id = w and membership.user_id = author and membership.status = 'active'
   );
+  -- The role the author last had here, whether they are still here or not.
+  last_role public.workspace_role := (
+    select role.access_class from public.workspace_memberships membership
+    join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+    where membership.workspace_id = w and membership.user_id = author
+  );
   narrow app_private.authz_actions;
   wide app_private.authz_actions;
   reason text;
 begin
   select * into strict narrow from app_private.authz_actions a where a.key = kind || '.write';
   select * into strict wide from app_private.authz_actions a where a.key = kind || '.write_wide';
-  -- An author who has left protects the record harder, not softer: only an
-  -- admin or the owner changes it (Mert, 2026-10-02, O1; fail closed). So
-  -- does a record that no longer says who wrote it (a deleted account).
-  if writer is null then
+  -- An admin or owner who has left protects the record harder, not softer:
+  -- only an admin or the owner changes it (Mert, 2026-10-02, O1; fail
+  -- closed). So does a record that no longer says who wrote it (a deleted
+  -- account). A manager who has left ranks as the manager they were ("En
+  -- nihayetinde o da müdürdü.", Mert, 2026-10-02): the K3 rule goes on.
+  if writer is null and (last_role is null or last_role in ('owner', 'admin')) then
     reason := app_private.authz_check(state, wide, null, null, null);
     return case when reason = 'out_of_scope' then 'rank' else reason end;
   end if;
+  writer := author;
   if cardinality(stored) > 0 and cardinality(live) = 1 then
     return app_private.authz_check(state, narrow, live, null, writer);
   end if;
@@ -1115,6 +1125,10 @@ set search_path = ''
 as $$
 declare
   event_id uuid := gen_random_uuid();
+  -- Its next time: a yearly date's coming days, in the text and the link.
+  first_day date := app_private.important_date_next_day(item);
+  last_day date := (item.ends_on + make_interval(
+    years => extract(year from first_day)::integer - extract(year from item.starts_on)::integer))::date;
 begin
   if cardinality(recipients) = 0 then
     return;
@@ -1131,10 +1145,10 @@ begin
       'audience_contract', 'important_date_targeted_members',
       'category', 'schedule',
       'title', item.title,
-      'body', case when item.starts_on = item.ends_on then to_char(item.starts_on, 'Mon FMDD, YYYY')
-                   else to_char(item.starts_on, 'Mon FMDD') || ' - ' || to_char(item.ends_on, 'Mon FMDD, YYYY') end,
+      'body', case when first_day = last_day then to_char(first_day, 'Mon FMDD, YYYY')
+                   else to_char(first_day, 'Mon FMDD') || ' - ' || to_char(last_day, 'Mon FMDD, YYYY') end,
       'safe_preview', 'An important date was added to the schedule.',
-      'action_url', '/app/schedule?date=' || app_private.important_date_next_day(item)::text,
+      'action_url', '/app/schedule?date=' || first_day::text,
       'group_key', 'important_date:' || item.id::text,
       'visible_at', now()),
     now());
