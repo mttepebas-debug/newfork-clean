@@ -320,6 +320,8 @@ describe("Phase 8 communication pages", () => {
     vi.mocked(getAnnouncements).mockResolvedValue({
       workspace_id: workspaceId,
       can_manage: true,
+      // An owner or admin: a one-location writer would start at their location (K1).
+      can_target_workspace: true,
       locations: [
         { id: "11000000-0000-4000-8000-000000000001", name: "Main Dining" },
       ],
@@ -354,6 +356,19 @@ describe("Phase 8 communication pages", () => {
         }),
       ),
     );
+  });
+
+  it("starts a one-location manager's new announcement at their location (K1)", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      workspace_id: workspaceId,
+      can_manage: true,
+      can_target_workspace: false,
+      locations: [{ id: "11000000-0000-4000-8000-000000000001", name: "Main Dining" }],
+      announcements: [],
+    });
+    renderRoute("/app/announcements", <AnnouncementsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add announcement" }));
+    expect((screen.getByLabelText("Main Dining") as HTMLInputElement).checked).toBe(true);
   });
 
   it("requires a second animated delete click without opening a confirmation panel", async () => {

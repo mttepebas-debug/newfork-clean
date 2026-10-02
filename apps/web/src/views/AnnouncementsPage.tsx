@@ -477,7 +477,7 @@ export function AnnouncementsPage() {
   );
 }
 
-function draftFrom(item: AnnouncementRecord | null): AnnouncementInput {
+function draftFrom(item: AnnouncementRecord | null, model: AnnouncementList): AnnouncementInput {
   return {
     title: item?.title ?? "",
     body: item?.body ?? "",
@@ -486,7 +486,12 @@ function draftFrom(item: AnnouncementRecord | null): AnnouncementInput {
       item?.audience_roles.length === 4
         ? []
         : [...(item?.audience_roles ?? [])],
-    location_ids: [...(item?.location_ids ?? [])],
+    // A manager writes for one location (K1): a new one starts at theirs.
+    location_ids: item
+      ? [...item.location_ids]
+      : !model.can_target_workspace && model.locations.length === 1
+        ? [model.locations[0]!.id]
+        : [],
     department_ids: [...(item?.department_ids ?? [])],
     job_ids: [...(item?.job_ids ?? [])],
     publish_at: item?.publish_at ?? null,
@@ -523,7 +528,7 @@ function AnnouncementEditor({
   const client = useQueryClient();
   const navigate = useNavigate();
   const [initialItem] = useState(item);
-  const [baseline] = useState(() => draftFrom(item));
+  const [baseline] = useState(() => draftFrom(item, model));
   const [draft, setDraft] = useState(baseline);
   const editable = item ? item.can_edit : model.can_manage;
   const changed = comparable(draft) !== comparable(baseline);
