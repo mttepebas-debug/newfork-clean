@@ -820,7 +820,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** görünürde bir şey değişmez; Mert'in sabah gördüğü ilerleme yüzdesi düşer: Aşama 6–7 %70,1 → %68,9 (166 / 241), program %77,4 → %76,5 (244 / 319). Bitmeyen ekran işi bitmiş sayılmaz.
 - **Dayanak:** KK-88, KK-94; ILKELER P11 (doğru veri).
 - **Geri alma:** kolay — puanlar ILERLEME §3'te.
-- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın kararı).
+- **Durum:** yürürlükte; C'nin 6'sı veri 3 + ekran 3 bölündü (KK-109, besleme #112). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın kararı).
 - **Mert:** bilgi.
 
 ### KK-104 (2026-10-02) "Closed location" ayarında yalnız üç derece kalır, "warn" kalkar
@@ -831,7 +831,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** müdür Settings → Conflict handling → Closed location'ı açınca "Warn" seçeneğini görmez. Önce Downtown'da "Warn" seçiliyse kapalı güne vardiya yazılır ve yalnız uyarılırdı; sonra en hafifi "Ask once per edit" (ilk vardiyada bir kez onay).
 - **Dayanak:** KARARLAR K17; CLAUDE.md §9 (eski veri korunmaz); ILKELER P01.
 - **Geri alma:** kolay — ayar değerleri tek yerde.
-- **Durum:** yürürlükte (C-veri işinde). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #106; KK-101 gece biçimi).
+- **Durum:** canlıda — iki migration da canlıda (`20261005010000` ~11:55Z, KK-108; kayıt oturumu ölçtü, besleme #112). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #106; KK-101 gece biçimi).
 - **Mert:** bilgi (sabah listesinde).
 
 ### KK-105 (2026-10-02) FB-6.7 C incelemesinin altı bulgusu aynı turda düzeltilir
@@ -864,5 +864,27 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** canlıda bir günü kapalı ilan etmek o günün yayınlanmış vardiyalarını listeleyip açığa düşürmeye hazır (ekran bağlanınca görünür); Settings → Conflict handling'deki "Closed location" ayarı şimdilik eskisi gibi; "warn" seçili workspace yoktu (0).
 - **Dayanak:** CLAUDE.md §8 "Sürekli yetki" (`636b76ee`: canlıya migration koordinatör sormadan); KARARLAR OPS-03; `nf-guvenlik` ONAY @`22d58021` (KK-106).
 - **Geri alma:** orta — yeni nesneleri düşür, yedek tanımları sırayla çalıştır, `schema_migrations`'tan `20261005000000`'ı sil; veri silinmedi.
-- **Durum:** canlıda (kayıt oturumu ölçtü: son sürüm `20261005000000`, beslemesi #111). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #111).
+- **Durum:** tamamlandı — `20261005000000` canlıda (#111); silen yarı `20261005010000` da koşulları sağlanınca canlıya gitti (KK-108, besleme #112). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #111).
+- **Mert:** bilgi (sabah listesinde).
+
+### KK-108 (2026-10-02) FB-6.7 C'nin "warn"ı silen migration'ı canlıya
+- **Karar (ne):** `20261005010000_closed_location_loses_warn` canlıya gönderildi (koordinatör, Supabase MCP, yedekli).
+- **Nerede:** canlı Supabase `hvyvyisrqyathtliyyyv`; kısıt yedeği `newfork-wt/coord/artifacts/coord/fb-6.7c/` (`constraint__…sql`).
+- **Ne zaman:** 2026-10-02 ~11:55Z; KK-107'nin koşulları sağlanınca: `nf-guvenlik` ONAY @`22d58021` (+ `00401d79` idempotent satırı koordinatör okudu), main CI 37002680529 yeşil, yeni kod Vercel'de canlı (`closure-preview` ucu 400, olmayan uç 404).
+- **Ne için:** OPS-03 sırası: önce ekleyen yarı, sonra yeni kod, en son silen yarı; eski ekranın "warn"ı yazamayacağı ana kadar beklendi.
+- **Uygulamada etkisi:** Settings → Conflict handling → Closed location'da "Warn" artık kaydedilemez; seçenekler Require confirmation / Confirm once per editing session / Block. Örnek: bir owner eski sekmeden "Warn" kaydetmeye çalışırsa kayıt reddedilir. Canlıda "warn" seçili workspace yoktu (3'ün 3'ü "confirm").
+- **Dayanak:** CLAUDE.md §8 "Sürekli yetki" (`636b76ee`); KARARLAR OPS-03; KK-104, KK-107.
+- **Geri alma:** orta — yedekteki eski kısıt tanımı çalıştırılır, `schema_migrations`'tan `20261005010000` silinir; veri silinmedi.
+- **Durum:** canlıda (kayıt oturumu MCP ile ölçtü: son sürüm `20261005010000`, saklanan metin md5 `8fe3c04f…` = dosya, kısıt "warn"sız; MCP'nin ilk yazdığı `20261002115538` sürümü düzeltilmiş). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #112).
+- **Mert:** bilgi (sabah listesinde).
+
+### KK-109 (2026-10-02) FB-6.7 C'nin 6 puanı veri 3 + ekran 3 olarak sayılır
+- **Karar (ne):** KK-103'teki C 6 puanı iki parçaya bölünür: C-veri 3, C-ekran 3. C-veri main'e ve canlıya girdiği için 3 puanı şimdi sayılır; C-ekran'ın 3'ü B ile birlikte ekran main'e girince.
+- **Nerede:** ILERLEME §0a, §1 (iki yüzde satırı), §3 FB-6.7 satırı; FOUNDATION-B dilim tablosunun FB-6.7 satırı.
+- **Ne zaman:** 2026-10-02, besleme #112 (C-veri kapandı).
+- **Ne için:** C'nin veri kısmı (kapalı günün vardiyalara etkisi, geçmiş kilidi, süre dolumu, iki migration) bitti ve canlıda; ekranı ayrı iş ve Mert'in seçimini bekliyor. Biten işin puanı beklemez, bitmeyen ekran da sayılmaz.
+- **Uygulamada etkisi:** ekranda yok. Mert'in gördüğü ilerleme: Aşama 6–7 %68,9 → %70,1 (169 / 241), program %76,5 → %77,4 (247 / 319).
+- **Dayanak:** KK-103 (bölüş), KK-94 (C ≈ 0,75 kişi-hafta); ILKELER P11 (doğru veri). Yarı yarıya bölüş koordinatörün tahmini (veri: iki migration + API + R3 iki tur; ekran: varyant bağlama + e2e + görsel QA).
+- **Geri alma:** kolay — puanlar ILERLEME §3'te.
+- **Durum:** yürürlükte (C-veri 3 puanı sayıldı). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın kararı, besleme #112).
 - **Mert:** bilgi (sabah listesinde).
