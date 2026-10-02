@@ -16,3 +16,7 @@ FB-6.7 A yeniden inceleme (2026-10-02, uç `d78d477c`):
   satır üretiyor: Pazartesi gelince geçen haftanın kapalı günü ve `closed_location` uyarısı geçmiş haftadan
   silinir. "Geçmiş kilitli hafta değişmez" kuralının tersi yönde değişim. Kontrol: tarih penceresi `now()`
   ile kayıyorsa, pencereden çıkan geçmiş satır da yok oluyor mu, kural buna izin veriyor mu.
+- Maske ekli liste (FB-6.7 ek fark `242b9d56`): bir satırın kim/ne zaman alanı null'a çekilince sıralama
+  anahtarı (`order by changed_at`) ve üst başlık alanları (`author_*` = ilk sürümün yazarı) aynı bilgiyi
+  dolaylı verir mi; liste ucunda (`created_by`, `updated_at`) zaten görünüyorsa sızıntı yeni değildir, öneri.
+  Kırmızı kanıtı: deneme dosyasında düzeltme satırlarını `sed` ile geri al, aynı testler `not ok` olmalı.
