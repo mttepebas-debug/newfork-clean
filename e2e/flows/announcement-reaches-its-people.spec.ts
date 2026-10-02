@@ -71,9 +71,14 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   // Ali, at Kadikoy and Besiktas, sees it and acknowledges it.
   const ali = await openAs(browser, "ali", "/app/announcements");
   await expect(announcementRow(ali, title)).toBeVisible();
-  await announcementRow(ali, title).click();
-  await ali.getByRole("button", { name: "Acknowledge" }).click();
-  await expect(ali.getByLabel("Acknowledged")).toBeVisible();
+  // Acknowledge from the row: opening the row first would put the drawer
+  // over the row's own button.
+  const aliRow = ali
+    .getByRole("table", { name: "Announcements" })
+    .getByRole("row")
+    .filter({ hasText: title });
+  await aliRow.getByRole("button", { name: "Acknowledge" }).click();
+  await expect(aliRow.getByLabel("Acknowledged")).toBeVisible();
 
   // The other Kadikoy manager was not aimed at (employees only) and sees it
   // anyway; Mehmet, the Besiktas manager, does not (K5, K6).
