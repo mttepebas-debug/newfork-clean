@@ -154,3 +154,5 @@ supabase/tests/notification_preference_resolver_and_producers.test.sql
 supabase/tests/notification_settings_admin.test.sql
 supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
 supabase/tests/announcements_and_dates_edge_cases.test.sql
+supabase/tests/closed_days_reach_the_shifts.test.sql
+supabase/tests/past_dates_and_ended_announcements.test.sql

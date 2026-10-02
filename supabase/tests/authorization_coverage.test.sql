@@ -146,6 +146,8 @@ insert into service_class values
   ('prepare_account_deletion_recovery_resend_service', 'account.self'),
   ('prepare_employee_invitation_service', 'employee.invite'),
   ('preview_document_publication_service', 'settings.documents.write'),
+  -- also schedule.edit where the closed day opens shifts (FB-6.7 C, K13)
+  ('preview_important_date_closure_service', 'important_date.write'),
   ('preview_employee_document_assignments_service', 'settings.documents.write'),
   ('preview_employee_invitation_service', 'exempt:token'),
   ('preview_notification_policy_service', 'settings.notifications.write'),

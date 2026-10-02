@@ -375,10 +375,11 @@ select ok(not pg_temp.has_notice('deniz', tests.id('r:date:narrow')),
   'BL-534: an important date narrowed before delivery never reaches Deniz');
 select ok(pg_temp.has_notice('emre', tests.id('r:date:narrow')), 'BL-534: it reaches Emre');
 
--- 13. A closed day closes the weeks still being planned, never a locked one (P09) ------------------
+-- 13. A closed day closes the weeks still being planned, never a locked one (P09, K11) -------------
 
-select tests.remember('r:date:last-week', pg_temp.save_date('owner', array['K'], 'Last Tuesday closed',
-  starts => public.schedule_current_week_start_service(tests.id('r')) - 6, kind => 'closed_day'));
+select is(pg_temp.try($$select pg_temp.save_date('owner', array['K'], 'Last Tuesday closed',
+  starts => public.schedule_current_week_start_service(tests.id('r')) - 6, kind => 'closed_day')$$),
+  'P0001 important_date.past', 'K11: a closed day cannot be put on last week''s Tuesday');
 select tests.remember('r:date:this-week', pg_temp.save_date('owner', array['K'], 'This Tuesday closed',
   starts => public.schedule_current_week_start_service(tests.id('r')) + 1, kind => 'closed_day'));
 select tests.remember('r:date:yearly-closed', pg_temp.save_date('owner', array['K'], 'Yearly closed',
@@ -395,16 +396,18 @@ select is((select count(*)::integer from public.schedule_closures c where c.work
 
 -- 14. A date already over tells nobody ("bildirim gürültüsü") -------------------------------------
 
-select pg_temp.mark();
-select tests.remember('r:date:over', pg_temp.save_date('owner', array['K'], 'Yesterday''s tasting',
-  starts => ((now() at time zone 'Europe/Istanbul')::date - 1)));
-select is(pg_temp.told(tests.id('r:date:over')), '{}'::text[], 'a date that ended yesterday at Kadikoy tells nobody when it is added');
-select pg_temp.save_date('owner', array['K'], 'Yesterday''s tasting, renamed', id => tests.id('r:date:over'),
-  starts => ((now() at time zone 'Europe/Istanbul')::date - 1));
-select is(pg_temp.told(tests.id('r:date:over')), '{}'::text[], 'nor when it is changed');
-select pg_temp.set_date('owner', tests.id('r:date:over'), 'unpublish');
-select pg_temp.set_date('owner', tests.id('r:date:over'), 'republish');
-select is(pg_temp.told(tests.id('r:date:over')), '{}'::text[], 'nor when it is republished');
+-- Whether a day earlier this week can still be written depends on the weekday
+-- (K11), so the rule a save, a change and a republish all ask is asked
+-- directly, of dates put in place the way an older save left them.
+create function pg_temp.notified(title text, starts date, keys text[]) returns uuid[] language sql as $$
+  insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling,
+    location_ids, location_id, created_by, updated_by)
+  values (tests.id('r'), title, 'event', starts, starts, 'none', '', true, pg_temp.locs(keys),
+    case when cardinality(keys) = 1 then tests.id('r:' || keys[1]) end, pg_temp.u('owner'), pg_temp.u('owner'));
+  select app_private.important_date_notified(d) from public.important_dates d where d.workspace_id = tests.id('r') and d.title = notified.title
+$$;
+select is(pg_temp.notified('Yesterday''s tasting', (now() at time zone 'Europe/Istanbul')::date - 1, array['K']), '{}'::uuid[],
+  'a date that ended yesterday at Kadikoy tells nobody');
 select tests.remember('r:date:yearly', pg_temp.save_date('owner', array['K'], 'Yearly party',
   starts => (current_date - interval '3 years' - interval '1 day')::date, recurrence => 'annual'));
 select ok('emre' = any (pg_temp.told(tests.id('r:date:yearly'))),
@@ -413,12 +416,11 @@ select ok('emre' = any (pg_temp.told(tests.id('r:date:yearly'))),
 -- ponytail: the time zones change by hand; the rule under test is the date's.
 update public.locations set timezone = 'Pacific/Pago_Pago' where id = tests.id('r:K');
 update public.locations set timezone = 'Pacific/Kiritimati' where id = tests.id('r:B');
-select pg_temp.mark();
-select tests.remember('r:date:split', pg_temp.save_date('owner', array['K', 'B'], 'Today at Kadikoy only',
-  starts => (now() at time zone 'Pacific/Pago_Pago')::date));
-select ok('emre' = any (pg_temp.told(tests.id('r:date:split'))) and 'ali' = any (pg_temp.told(tests.id('r:date:split'))),
+create temporary table split_told as
+  select pg_temp.notified('Today at Kadikoy only', (now() at time zone 'Pacific/Pago_Pago')::date, array['K', 'B']) who;
+select ok(pg_temp.u('emre') = any ((select who from split_told)::uuid[]) and pg_temp.u('ali') = any ((select who from split_told)::uuid[]),
   'a date still on at Kadikoy tells Kadikoy''s people');
-select ok(not 'deniz' = any (pg_temp.told(tests.id('r:date:split'))) and not 'veli' = any (pg_temp.told(tests.id('r:date:split'))),
+select ok(not pg_temp.u('deniz') = any ((select who from split_told)::uuid[]) and not pg_temp.u('veli') = any ((select who from split_told)::uuid[]),
   'not Besiktas''s, where it is already over');
 update public.locations set timezone = 'Europe/Istanbul' where id in (tests.id('r:K'), tests.id('r:B'));
 
