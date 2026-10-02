@@ -1032,3 +1032,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — dallar ayrı kalır, döküm ayrı commit'le yenilenir.
 - **Durum:** yürürlükte. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #123).
 - **Mert:** bilgi.
+
+### KK-123 (2026-10-02) FB-6.6 A1b'nin teknik kararları kabul
+- **Karar (ne):** (1) S1 (resmî ad onayını yalnız owner / admin verir) yeni çekirdek eylemi `onboarding.legal_name` ile uygulanır, satır içi rol kontrolüyle değil (CLAUDE.md §9). (2) S2'de gizli bekleyen belgeye tekil erişim `authz.out_of_scope` döner: bilinmeyen ve kapsam dışı hedef aynı cevabı alır.
+- **Nerede:** `task/fb-6.6-a1` @`a2b75bfb`, `supabase/migrations/20261006010000_pending_documents_legal_names_one_document_permission.sql`.
+- **Ne zaman:** 2026-10-02 ~22:55Z.
+- **Ne için:** yetki kuralı tek yerde (çekirdek) kalır; gizli satırın varlığı cevaptan anlaşılmaz.
+- **Uygulamada etkisi:** Ayşe (rolünde özel izin olsa da) Can'ın resmî ad düzeltmesini onaylayamaz; Deniz'in bekleyen belgesini açmaya çalışan Ayşe "yok" cevabı alır.
+- **Dayanak:** KARARLAR "Ürün kuralları" (S1, S2, 2026-10-02); CLAUDE.md §9 ("Hayır" sözleşmesi; satır içi kapsam mantığı eklenmez); ILKELER P19.
+- **Geri alma:** orta — yeni migration'la.
+- **Durum:** yürürlükte. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #124).
+- **Mert:** bilgi.
