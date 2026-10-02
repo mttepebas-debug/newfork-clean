@@ -977,3 +977,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — dalda.
 - **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #117).
 - **Mert:** bilgi (dönüş listesinde).
+
+### KK-118 (2026-10-02) FB-6.6 A2, A1a ile aynı main penceresinde ve ondan sonra girer
+- **Karar (ne):** `task/fb-6.6-a2` main'e tek başına girmez; A1a (`task/fb-6.6-a1`) ile aynı main penceresinde, A1a'dan hemen sonra girer.
+- **Nerede:** main'e gönderim (CLAUDE.md §6); dallar `task/fb-6.6-a1`, `task/fb-6.6-a2`.
+- **Ne zaman:** ikisi de `nf-guvenlik` ONAY'ı aldıktan sonra, tek pencerede.
+- **Ne için:** A2 owner'ın muaf belgesine yüklemeyi API'de açıyor; DB tarafı A1a'da. A2 tek başına girerse owner yüklemesi veritabanında "closed" ile düşer.
+- **Uygulamada etkisi:** görünür fark yok; sıra yanlış olsaydı owner Account → Documents'tan yükleme yaparken hata alırdı (düğme B ile gelecek).
+- **Dayanak:** CLAUDE.md §4 (veri / sunum sırası: işlevsel kısım önce), §6; ILKELER P19 (saf teknik iç karar).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #119).
+- **Mert:** bilgi (dönüş listesinde).
