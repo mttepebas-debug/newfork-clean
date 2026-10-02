@@ -775,3 +775,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — kapsam C'de.
 - **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #101).
 - **Mert:** bilgi.
+
+### KK-99 (2026-10-02) Önemli tarih geçmişini owner ve admin tamamen görür
+- **Karar:** önemli tarihin değişiklik geçmişinde owner ve admin bütün sürümleri aktör ve zamanıyla görür; lokasyonunu göremeyen kişiye o sürüm gizli satır olarak gelir (aktör ve zaman maskeli).
+- **Neden:** admin bütün lokasyonları görür (KARARLAR:60, "Admin: bütün lokasyonlar ve çalışanlar"); geçmiş sessizce eksik gösterilmez (P09). FB-6.7 A ek fark incelemesinin 25. maddesi.
+- **Uygulamada etkisi:** B'deki History görünümünde owner Zeynep "Inventory day" tarihinin Moda'ya ait eski sürümünü de görür; Moda'dan ayrılmış eski müdür görmez.
+- **Dayanak:** KARARLAR:60 (admin kapsamı); ILKELER P09.
+- **Geri alma:** kolay — okuma kuralı tek yerde (main `56618b03`).
+- **Durum:** yürürlükte (main'de). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #102).
+- **Mert:** bilgi.
