@@ -1,6 +1,6 @@
 # FB-6.7 Duyurular ve önemli tarihler — yetki çekirdeğe, K1–K6 kuralları, üç bildirim testi yeşile
 Status: in progress — 2026-10-02 (#93): A işçi oturumu başladı. Önceki: ready — 2026-10-02 (kapsam onayı: Mert, koordinatör `local_abc4d126…`'ın penceresinde, "FB-6.7'ye katsın (Önerilen)"; kurallar KARARLAR "Duyurular ve önemli tarihler" K1–K6; koordinatör beslemesi #92 ve eki). Uygulama başlamadı.
-Session: A — işçi oturumu "FB-6.7 A: Duyuru ve önemli tarih yetkisi + kuralları" `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` (havuz "(55)", Opus 5.5 / high, sabitli, Remote Control açık — `get_session` ile ölçüldü 2026-10-02 ~05:17Z; planlanan worktree `newfork-wt/fb-6.7` ve dal `task/fb-6.7` o an henüz yoktu — ölçüldü; oturum kendi worktree'sinde `agitated-bartik-839c9b`); B — henüz yok   Branch: task/fb-6.7   Worktree: newfork-wt/fb-6.7   DB: `db.lock` (pgTAP, migration denemesi, e2e)
+Session: A — işçi oturumu "FB-6.7 A: Duyuru ve önemli tarih yetkisi + kuralları" `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` (havuz "(55)", Opus 5.5 / high, sabitli, Remote Control açık — `get_session` ile ölçüldü 2026-10-02 ~05:17Z; worktree `newfork-wt/fb-6.7` ve dal `task/fb-6.7` #94'te kuruldu, taban `2f544451` — ölçüldü; #93 anında henüz yoktu); B — henüz yok   Branch: task/fb-6.7   Worktree: newfork-wt/fb-6.7   DB: `db.lock` (pgTAP, migration denemesi, e2e)
 Reviewer: `nf-guvenlik` zorunlu (R3: yetki, RLS, grant kaldırma, nesne silme) — A ve B ayrı ONAY; `nf-gorsel-qa` (B, ekran teslim edilen şey); kullanıcıya ultrareview önerisi (yetki + grant + silme yüzeyi, büyük diff).
 
 **Tazelik 2026-10-02 (koordinatör `local_abc4d126…`'ın ölçümü, `nf-planlama` alt ajanı salt okuma; rapor `docs/plan/research/FB-6.7-olcumler-2026-10-01.md`; kayıt oturumu `55591525`'te yeniden ölçtü — "ölçüldü" yazanlar): değişmiş.** FOUNDATION-B dilim satırındaki sayılar eskimiş:
@@ -31,13 +31,16 @@ In scope:
   - Önemli tarihte yazar ve değişiklik geçmişi (kim, ne zaman, eski → yeni değer).
   - Üç bildirim dosyası yeşil (sabit sayı yerine değişmez kural; silinmiş `location_id` yazımı kalkar); `known_gap` güncellemesi (madde 6).
   - Akış 7 e2e.
+  - **Kapsama alındı 2026-10-02 (kullanıcı kararı 2026-10-02, Mert, işçi oturumu `local_10a5177a…`'ın penceresinde: "BL-530, BL-531, BL-532'nin fix edilmesini plana dahil et, bu sessionda bitirelim."; koordinatör beslemesi #94):**
+    - BL-530: "Closed day" önemli tarihi vardiya engelinin tek kaynağı olur; `schedule_closures` tablosu silinir ve `retired_objects_stay_gone`'a eklenir; şiddet bugünkü `closed_location` çakışma ayarından gelir (`packages/shared/src/availability-assessment.ts:12`, varsayılan "confirm" `:32` — ölçüldü). Schedule'daki sonucun Mert'e teyidi işçi oturumunda bekliyor.
+    - BL-531: iş–lokasyon bağı (bugün `employee_job_assignments`'ta lokasyon yok). Temel model Mert'le işçi penceresinde konuşuluyor; karar ayrı beslemeyle gelecek, o zamana kadar bu maddenin ayrıntısı ve puanı açık.
+    - BL-532: davet iptali bildirimi (`security.account_invitation_cancelled`) `scope_set` ile davetin lokasyonuna daralır.
 - **B — ekran** (`nf-arayuz`, A main'e girdikten sonra yeni `origin/main`'den): duyuru ve önemli tarihte Edit / Unpublish / Republish, içerik değişince yeniden onay isteğinin görünümü, önemli tarih History görünümü. ILKELER P04: önce gerçek uygulamada DEV'de query param ile 2–3 varyant, Mert seçer.
 
 Out of scope:
 - Bildirim platformunun geri kalanı (iki gelen kutusu, `_v2` / `_base` sürüm çözücüsü, tercih ekranları; ILKELER P13) — ayrı proje.
 - ANN-001 kişiye özel hedefleme; BL-043, BL-044, BL-045, BL-046.
 - `known_gap` `restricted-no-notifications` (FB-6.6); `legacy-blank-location` satırının silinmesi (FB-6.4, K-1).
-- Besleme #92'nin backlog adayları: BL-530 (closed day ikizi), BL-531 (iş / departman hedefi), BL-532 (davet iptal bildirimi).
 
 Done when:
 1. `communication_actor_has_capability_service`, `communication_actor_has_all_locations_service`, `communication_actor_can_control_announcement_service` ve `publish_announcement_service_legacy_notifications` veritabanında yok ve `retired_objects_stay_gone` listesinde; duyuru ve önemli tarih giriş noktalarının ilk ifadesi `app_private.authorize()`; katalog sayaçları yalnız azaldı (`_legacy` dahil).
@@ -49,12 +52,15 @@ Done when:
 7. Zamanlanmış duyuru saati gelince yayınlanmış duruma geçer; o andan sonra `scheduled` olarak düzenlenemez (pgTAP).
 8. Önemli tarihte yazar ve her değişikliğin eski → yeni değeri, kim ve ne zaman bilgisiyle okunabilir (pgTAP).
 9. Akış 7 e2e `e2e/flows/` altında yeşil (main CI e2e): müdür tek lokasyona duyuru açar, iki lokasyonlu çalışan görür ve onaylar, müdür başka lokasyonu hedefleyemez (K1), müdür hedefte olmasa da duyuruyu alır (K5).
-10. B: Edit / Unpublish / Republish, yeniden onay isteği ve History görünümü main'de; Mert'in seçtiği varyant; `nf-gorsel-qa` ONAY; masaüstü + telefon ekran görüntüsü.
-11. `nf-guvenlik` ONAY @<sha> (A ve B); migration'lar canlıda KARARLAR OPS-03 sırasıyla (ekleyen önce canlı, silen / grant kaldıran önce main), kullanıcı onayıyla; Supabase güvenlik danışmanında yeni tür bulgu yok.
-12. FOUNDATION-B ve ILERLEME kayıtları; Notes / Result'ta kanıtlar (komut + sonuç, sha, CI koşusu).
+10. BL-530: `schedule_closures` veritabanında yok ve `retired_objects_stay_gone` listesinde; "Closed day" türündeki önemli tarih o lokasyonun o gününe vardiya yazımında `closed_location` ayarının şiddetiyle (warn / confirm / block) sonuç verir — pgTAP; `schedule_grid_read_budget` ≤ 50 ms korunur (CI `db` yeşil).
+11. BL-531: karar beslemesi geldikten sonra yazılır (şimdilik açık); iş / departman hedefli duyuru yalnız o işi o lokasyonda yapanlara gider — Kadıköy'de garson, Erenköy'de bartender olan Can "Kadıköy Bartender'ları" duyurusunu almaz (pgTAP, karar modeline göre).
+12. BL-532: davetli kişi hesabını silince `security.account_invitation_cancelled` bildirimi yalnız davetin lokasyonunda yetkili müdürlere (ve owner / admin'e) gider; başka lokasyonun müdürü almaz — pgTAP.
+13. B: Edit / Unpublish / Republish, yeniden onay isteği ve History görünümü main'de; Mert'in seçtiği varyant; `nf-gorsel-qa` ONAY; masaüstü + telefon ekran görüntüsü.
+14. `nf-guvenlik` ONAY @<sha> (A ve B); migration'lar canlıda KARARLAR OPS-03 sırasıyla (ekleyen önce canlı, silen / grant kaldıran önce main), kullanıcı onayıyla; Supabase güvenlik danışmanında yeni tür bulgu yok.
+15. FOUNDATION-B ve ILERLEME kayıtları; Notes / Result'ta kanıtlar (komut + sonuç, sha, CI koşusu).
 
 Touches:
-- A: `nf-db` → `supabase/migrations/` (yeni), `supabase/tests/notification_platform_core.test.sql`, `notification_preference_resolver_and_producers.test.sql`, `notification_settings_admin.test.sql`, `authorization_matrix.test.sql` (`known_gap`), `retired_objects_stay_gone.test.sql`, yeni duyuru / önemli tarih pgTAP dosyası, `ci-green.txt`, `ci-not-green.txt`. `nf-backend` → `apps/api` duyuru ve önemli tarih rotaları, `packages/shared` tipleri, web veri katmanı (önemli tarih hook'ları, `can()`). `nf-test` → `e2e/flows/` akış 7.
+- A: `nf-db` → `supabase/migrations/` (yeni), `supabase/tests/notification_platform_core.test.sql`, `notification_preference_resolver_and_producers.test.sql`, `notification_settings_admin.test.sql`, `authorization_matrix.test.sql` (`known_gap`), `retired_objects_stay_gone.test.sql`, BL-530 / BL-532 testleri, `schedule_grid_read_budget`, yeni duyuru / önemli tarih pgTAP dosyası, `ci-green.txt`, `ci-not-green.txt`. `nf-backend` → `apps/api` duyuru ve önemli tarih rotaları, `packages/shared` tipleri, web veri katmanı (önemli tarih hook'ları, `can()`). `nf-test` → `e2e/flows/` akış 7.
 - B: `nf-arayuz` → duyuru ekranları ve `apps/web/src/settings/ImportantDatesSettingsPage.tsx` görünümü (+ ilgili testler).
 - Sıra (CLAUDE.md §4): A'nın veri + çalışan ekran kısmı main'e girer, sözleşme (tip, hook, durumlar) yazılı verilir; B yeni `origin/main`'den.
 
@@ -66,3 +72,4 @@ Risk: R3 — yetki çekirdeği, RLS, grant kaldırma, nesne silme. Grant önce k
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #92 eki; taban `55591525`): görev dosyası açıldı. Koordinatörün tazelik raporu dosya olarak bulunamadı (worktree ve geçici klasörde yalnız repo kopyaları ve SQL sorguları vardı); maddeleri beslemeden aldım, kodda ölçebildiklerimi "ölçüldü" diye işaretledim. FOUNDATION-B akış 7 tanımı (`:153`) K1 ile çelişiyordu ("yönetici kendi lokasyon(lar)ına"), aynı commit'te düzeltildi.
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatörün #92 eki cevabı; taban `7667a5d6`): koordinatörün üç raporu (tazelik, kod kenar durumları, rakip araştırması) repoya alındı: `docs/plan/research/FB-6.7-olcumler-2026-10-01.md` (içerik aynen). Tazelikteki "koordinatörün" maddelerine kaynak gösterildi. Puan 5 → 10 (KK-88); yazar kendi kaydının bildirimini almaz (KK-89).
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #93): A başladı — işçi oturumu "FB-6.7 A: Duyuru ve önemli tarih yetkisi + kuralları" `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` (havuz "(55)", Opus 5.5 / high, sabitli, Remote Control açık — `get_session` ile ölçüldü 2026-10-02 ~05:17Z; planlanan worktree `newfork-wt/fb-6.7` ve dal `task/fb-6.7` o an henüz yoktu — ölçüldü; oturum kendi worktree'sinde `agitated-bartik-839c9b`). Havuzda boş oturum kalmadı (koordinatörün aktardığı).
+- 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #94): kapsam genişledi — BL-530, BL-531, BL-532 In scope A'ya alındı, Out'tan çıktı, Done when 10–12 eklendi (kullanıcı kararı 2026-10-02, Mert, işçi oturumu `local_10a5177a…`'ın penceresinde: "BL-530, BL-531, BL-532'nin fix edilmesini plana dahil et, bu sessionda bitirelim."; koordinatör beslemesi #94). Worktree `newfork-wt/fb-6.7` + dal `task/fb-6.7` kuruldu (taban `2f544451`, commit yok — ölçüldü). Puan BL-531 kararı gelene kadar 10'da kalıyor (koordinatörün talimatı).
