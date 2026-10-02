@@ -7,7 +7,7 @@ import { listSignatureSettings } from "./signature-templates-data";
 
 const auth = vi.hoisted(() => ({
   // The role still lists the key; only the core's answer (actions) may decide.
-  permissions: ["signature_templates.read", "signature_templates.manage"],
+  permissions: ["documents.read", "documents.manage"],
   actions: [] as string[],
 }));
 vi.mock("../auth/AuthContext", () => ({

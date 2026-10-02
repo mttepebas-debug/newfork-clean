@@ -2,12 +2,11 @@ import {
   documentApplyCommandSchema,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
-  type Permission,
 } from "@newfork/shared";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
-  resolveWorkspaceAuthorization,
+  resolveActor,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type { SignatureSettingsService } from "./signature-settings-service";
@@ -19,6 +18,8 @@ const templateParams = workspaceParams.extend({
 });
 const archiveBody = z.object({ archived: z.boolean() });
 
+// Who is asking is resolved here; whether they may is the database's
+// (settings.documents.write, FB-6.6), its no mapped by rpcFailure.
 export function registerSignatureSettingsRoutes(
   app: FastifyInstance,
   options: {
@@ -30,8 +31,7 @@ export function registerSignatureSettingsRoutes(
     app.route({ method: operation === "target-options" ? "GET" : "POST", url: operation === "target-options" ? "/v1/workspaces/:workspaceId/signature-templates/target-options" : `/v1/workspaces/:workspaceId/signature-versions/:versionId/${operation}`, handler: async (request, reply) => {
       const params = workspaceParams.extend({ versionId: z.string().uuid().optional() }).safeParse(request.params);
       if (!params.success) return reply.status(400).send({ error: "Valid policy required" });
-      const context = await authorize(request.headers.authorization, params.data.workspaceId, "signature_templates.manage", options.contextResolver, reply);
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service) return reply.status(503).send({ error: "Signature settings service is not configured" });
       try {
         if (operation === "target-options") return await options.service.targetOptions(context.userId, params.data.workspaceId);
@@ -51,14 +51,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid retention policy details required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -82,14 +75,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid retention policy details required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -113,14 +99,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid retention policy required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -142,14 +121,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid retention policy required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -172,14 +144,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid archive state required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -203,14 +168,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid acknowledgement template details required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -234,14 +192,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid acknowledgement template details required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -265,14 +216,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid acknowledgement template required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -294,14 +238,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid acknowledgement template required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -324,14 +261,7 @@ export function registerSignatureSettingsRoutes(
         return reply
           .status(400)
           .send({ error: "Valid archive state required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "signature_templates.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
       if (!options.service)
         return reply
           .status(503)
@@ -345,27 +275,4 @@ export function registerSignatureSettingsRoutes(
       return reply.status(204).send();
     },
   );
-}
-
-async function authorize(
-  authorization: string | undefined,
-  workspaceId: string,
-  permission: Permission,
-  resolver: WorkspaceContextResolver | null,
-  reply: FastifyReply,
-) {
-  const result = await resolveWorkspaceAuthorization({
-    authorization,
-    workspaceId,
-    permission,
-    resolver,
-  });
-  if (result.context) return result.context;
-  reply.status(result.denied === "workspace_not_found" ? 404 : 403).send({
-    error:
-      result.denied === "workspace_not_found"
-        ? "Workspace not found"
-        : "Acknowledgement template management required",
-  });
-  return null;
 }

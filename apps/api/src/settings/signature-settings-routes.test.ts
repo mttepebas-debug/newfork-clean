@@ -1,6 +1,7 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
+import { rpcFailure } from "../http-error";
 import type { SignatureSettingsService } from "./signature-settings-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -40,7 +41,7 @@ const context: ActiveWorkspaceContext = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["signature_templates.read", "signature_templates.manage"],
+  permissions: ["documents.read", "documents.manage"],
   actions: [],
   onboarding: { status: "complete", currentStep: 2 },
   documentAccess: { restricted: false },
@@ -273,29 +274,48 @@ describe("signature settings routes", () => {
     });
   });
 
-  it("requires template management permission before saving drafts", async () => {
-    const saveTemplateDraft = vi.fn();
+  // FB-6.6: the route asks no permission key; the database asks the core
+  // (settings.documents.write) and its no reaches the person as is.
+  it("leaves template writing to the core, whatever the role lists", async () => {
+    const saveTemplateDraft = vi.fn(async () => "a1000000-0000-4000-8000-000000000009");
     const app = buildApp({
-      contextResolver: {
-        resolve: async () => ({
-          ...context,
-          permissions: ["signature_templates.read"],
-        }),
-      },
-      signatureSettingsService: {
-        saveTemplateDraft,
-      } as unknown as SignatureSettingsService,
+      contextResolver: { resolve: async () => ({ ...context, permissions: [] }) },
+      signatureSettingsService: { saveTemplateDraft } as unknown as SignatureSettingsService,
     });
-
     const response = await app.inject({
       method: "POST",
       url: `/v1/workspaces/${workspaceId}/signature-templates`,
       headers: { authorization: "Bearer valid-token" },
       payload: templateInput,
     });
+    expect(response.statusCode, response.body).toBeLessThan(300);
+    expect(saveTemplateDraft).toHaveBeenCalledOnce();
+  });
 
+  it("answers the core's no on template writing with 403 and its reason", async () => {
+    const saveTemplateDraft = vi.fn(async () => {
+      throw rpcFailure({
+        code: "42501",
+        message: "Not allowed",
+        hint: "authz.out_of_scope",
+        details: "settings.documents.write",
+      });
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      signatureSettingsService: { saveTemplateDraft } as unknown as SignatureSettingsService,
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/signature-templates`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: templateInput,
+    });
     expect(response.statusCode).toBe(403);
-    expect(saveTemplateDraft).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({
+      reason: "authz.out_of_scope",
+      detail: "settings.documents.write",
+    });
   });
 
   it("returns a generic not found for every route when the active workspace mismatches the path", async () => {
@@ -381,7 +401,10 @@ describe("signature settings routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(response.json()).toEqual({ error: "Workspace not found" });
+      expect(response.json()).toMatchObject({
+        error: "Workspace not found",
+        reason: "authz.not_member",
+      });
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
   });

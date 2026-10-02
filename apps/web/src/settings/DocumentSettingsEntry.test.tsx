@@ -47,7 +47,7 @@ it.each(["settings.documents.read", "documents.read", "settings.signature_templa
 
 it("keeps out somebody the core holds back, whatever their role lists", () => {
   // An admin whose required document is overdue.
-  auth.permissions = ["documents.read", "employee_documents.read", "signature_templates.read"];
+  auth.permissions = ["documents.read", "employee_documents.read"];
   mount();
   expect(screen.getByText("App home")).toBeTruthy();
 });

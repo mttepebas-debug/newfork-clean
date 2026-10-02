@@ -174,7 +174,6 @@ const settingsNavItem: NavItem = {
     "workspace.manage",
     "roles.read",
     "documents.read",
-    "signature_templates.read",
   ],
   section: "management",
 };

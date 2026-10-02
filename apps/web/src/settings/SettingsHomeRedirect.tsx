@@ -22,8 +22,6 @@ export default function SettingsHomeRedirect() {
                 ? "/app/settings/roles"
                 : permissions.has("documents.read")
                   ? "/app/settings/documents"
-                  : permissions.has("signature_templates.read")
-                    ? "/app/settings/acknowledgements"
-                    : "/app/schedule";
+                  : "/app/schedule";
   return <Navigate to={destination} replace />;
 }

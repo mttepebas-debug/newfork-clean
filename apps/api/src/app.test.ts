@@ -46,8 +46,6 @@ const resolvedContext: ActiveWorkspaceContext = {
     "roles.manage",
     "documents.read",
     "documents.manage",
-    "signature_templates.read",
-    "signature_templates.manage",
     "employees.read",
     "employees.manage",
     "employees.archive",

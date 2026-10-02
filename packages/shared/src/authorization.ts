@@ -154,7 +154,7 @@ export const targetedAuthzActions = {
   "settings.important_dates.read": { permission: "important_dates.read" },
   "settings.roles.read": { permission: "roles.read" },
   "settings.documents.read": { permission: "documents.read" },
-  "settings.signature_templates.read": { permission: "signature_templates.read" },
+  "settings.signature_templates.read": { permission: "documents.read" },
   "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.decide_alone": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.request_own": { permission: null, own: true },

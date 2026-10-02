@@ -92,7 +92,7 @@ const groups = [
         to: "/app/settings/acknowledgements",
         label: "Acknowledgements",
         icon: ScrollText,
-        permissions: ["signature_templates.read"],
+        permissions: ["documents.read"],
       },
     ],
   },

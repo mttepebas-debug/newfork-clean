@@ -1860,15 +1860,15 @@ describe("roles and permissions schemas", () => {
     ).toThrow("schedule.shift_change_requests.manage requires its read access");
   });
 
-  it("requires template read access before template management", () => {
+  it("requires document read access before document management", () => {
     expect(() =>
       workspaceRoleInputSchema.parse({
         name: "Policy manager",
         description: "",
         access_class: "manager",
-        permission_keys: ["workspace.read", "signature_templates.manage"],
+        permission_keys: ["workspace.read", "documents.manage"],
       }),
-    ).toThrow("signature_templates.manage requires its read access");
+    ).toThrow("documents.manage requires its read access");
   });
 
   it("requires employee read and role access for employee management", () => {

@@ -237,7 +237,6 @@ export const rolePermissionDependencies: Readonly<
   "announcements.manage": ["announcements.read"],
   "important_dates.manage": ["important_dates.read"],
   "documents.manage": ["documents.read"],
-  "signature_templates.manage": ["signature_templates.read"],
   "roles.manage": ["roles.read"],
   "notifications.settings.write": ["notifications.settings.read"],
   ...Object.fromEntries(
