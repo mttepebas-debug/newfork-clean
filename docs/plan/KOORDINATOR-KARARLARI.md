@@ -833,3 +833,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — ayar değerleri tek yerde.
 - **Durum:** yürürlükte (C-veri işinde). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #106; KK-101 gece biçimi).
 - **Mert:** bilgi (sabah listesinde).
+
+### KK-105 (2026-10-02) FB-6.7 C incelemesinin altı bulgusu aynı turda düzeltilir
+- **Karar (ne):** `nf-guvenlik` tur 1'in iki orta (O1, O2) ve dört düşük (D1–D4) bulgusunun hepsi bu turda C-veri işçisinde düzeltilir; düşükler backlog'a gitmez.
+- **Nerede:** `task/fb-6.7c` — migration `20261005000000` / `20261005010000`, `apps/api/src/schedule/schedule-service.ts`, shared sözleşme.
+- **Ne zaman:** şimdi (gece), main ve canlıdan önce; yeniden inceleme yalnız fark + O1 pgTAP satırı.
+- **Ne için:** yetki ve görünürlük bulguları beklemez (ILKELER P17 koşulu: aynı işle ilgili güvenlik bulguları mevcut işe eklenir); hepsi küçük. O2 sıralaması OPS-03 sırasında 500'ü önler.
+- **Uygulamada etkisi:** yalnız "Important dates manage" izni olan özel rol, kapalı gün önizlemesinde göremediği lokasyonun vardiyalarını artık görmez (sayısını görür); çalışan Alex duyuruda "24 kişiye gitti" sayısını görmez; geçmiş haftanın taslağındaki Can, Republish'te silinmez.
+- **Dayanak:** ILKELER P17 (koşul), P09; KARARLAR K11; CLAUDE.md §9.
+- **Geri alma:** kolay — dalda.
+- **Durum:** yürürlükte (işçide). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #108).
+- **Mert:** bilgi (sabah listesinde).
