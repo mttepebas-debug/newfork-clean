@@ -657,7 +657,32 @@ create or replace function public.initialize_employee_onboarding_service(target_
 as $function$
 begin
   perform app_private.authorize(target_user_id, app_private.onboarding_self_workspace(target_user_id, null, false), 'onboarding.self');
-  return public.initialize_employee_onboarding_service(target_user_id, null::uuid);
+  return app_private.initialize_employee_onboarding(target_user_id, null::uuid);
+end;
+$function$;
+
+create or replace function public.preview_policy_definition_apply_service(actor_user_id uuid, target_workspace_id uuid, target_version_id uuid)
+ returns jsonb
+ language plpgsql
+ stable security definer
+ set search_path to ''
+as $function$
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.documents.write');
+  return app_private.preview_lifecycle_definition(actor_user_id, target_workspace_id, target_version_id, 'acknowledgement');
+end;
+$function$;
+
+create or replace function public.apply_policy_definition_service(actor_user_id uuid, target_workspace_id uuid, target_version_id uuid, expected_revision integer, expected_preview_token text, apply_reason text)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to ''
+as $function$
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.documents.write');
+  return app_private.apply_lifecycle_definition(actor_user_id, target_workspace_id, target_version_id, expected_revision,
+    expected_preview_token, apply_reason, 'acknowledgement');
 end;
 $function$;
 
@@ -1805,7 +1830,9 @@ begin
 end;
 $function$;
 
-create or replace function public.initialize_employee_onboarding_service(target_user_id uuid, target_workspace_id uuid)
+-- Starting somebody's onboarding is internal work: the employee's own call
+-- asks the core first; accepting an invitation has passed its own gate.
+create function app_private.initialize_employee_onboarding(target_user_id uuid, target_workspace_id uuid)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1817,7 +1844,6 @@ declare
   onboarding_case_id uuid;
   should_snapshot_requirements boolean;
 begin
- perform app_private.authorize(target_user_id, app_private.onboarding_self_workspace(target_user_id, target_workspace_id, false), 'onboarding.self');
   select profile.*
   into employee
   from public.employee_profiles profile
@@ -1936,6 +1962,19 @@ begin
   return onboarding_case_id;
 end;
 $function$;
+revoke all on function app_private.initialize_employee_onboarding(uuid, uuid) from public, anon, authenticated;
+
+create or replace function public.initialize_employee_onboarding_service(target_user_id uuid, target_workspace_id uuid)
+ returns uuid
+ language plpgsql
+ security definer
+ set search_path to ''
+as $function$
+begin
+  perform app_private.authorize(target_user_id, app_private.onboarding_self_workspace(target_user_id, target_workspace_id, false), 'onboarding.self');
+  return app_private.initialize_employee_onboarding(target_user_id, target_workspace_id);
+end;
+$function$;
 
 create or replace function public.get_employee_onboarding_service(target_user_id uuid, target_workspace_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
@@ -1954,7 +1993,7 @@ declare
   first_path text;
 begin
  perform app_private.authorize(target_user_id, app_private.onboarding_self_workspace(target_user_id, target_workspace_id, false), 'onboarding.self');
-  perform public.initialize_employee_onboarding_service(target_user_id, target_workspace_id);
+  perform app_private.initialize_employee_onboarding(target_user_id, target_workspace_id);
   select onboarding.* into target_case
   from public.employee_onboarding_cases onboarding
   where onboarding.id = app_private.employee_onboarding_case_id(target_user_id, target_workspace_id);
@@ -2876,6 +2915,145 @@ begin
     'resolved', resolved_count,
     'notifications_enqueued', notification_count
   );
+end;
+$function$;
+
+create or replace function app_private.accept_employee_invitation_for_user(target_user_id uuid, target_invitation_id uuid, invitation_token_hash text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  invitation public.employee_invitations%rowtype;
+  employee_role public.workspace_roles%rowtype;
+  normalized_user_email text;
+  email_confirmed boolean;
+  membership public.workspace_memberships%rowtype;
+  accepted_membership_id uuid;
+begin
+  if target_invitation_id is null and invitation_token_hash is null then
+    raise exception 'active invitation not found' using errcode = 'P0002';
+  end if;
+
+  select *
+  into invitation
+  from public.employee_invitations
+  where status = 'pending'
+    and (
+      (target_invitation_id is not null and id = target_invitation_id)
+      or (invitation_token_hash is not null and token_hash = invitation_token_hash)
+    )
+  for update;
+
+  if invitation.id is null or invitation.expires_at <= now() then
+    if invitation.id is not null then
+      update public.employee_invitations
+      set status = 'expired'::public.employee_invitation_status,
+          updated_at = now()
+      where id = invitation.id;
+    end if;
+    raise exception 'active invitation not found' using errcode = 'P0002';
+  end if;
+
+  select lower(email), email_confirmed_at is not null
+  into normalized_user_email, email_confirmed
+  from auth.users
+  where id = target_user_id;
+
+  if normalized_user_email is null or normalized_user_email <> invitation.email then
+    raise exception 'invitation email does not match authenticated account' using errcode = '42501';
+  end if;
+  if not email_confirmed then
+    raise exception 'the account email address is not confirmed' using errcode = '42501', hint = 'authz.not_active';
+  end if;
+
+  select *
+  into employee_role
+  from public.workspace_roles
+  where id = invitation.role_id
+    and workspace_id = invitation.workspace_id;
+
+  if employee_role.id is null then
+    raise exception 'invitation role is unavailable' using errcode = '22023';
+  end if;
+
+  select *
+  into membership
+  from public.workspace_memberships
+  where workspace_id = invitation.workspace_id
+    and user_id = target_user_id
+  for update;
+
+  if membership.id is not null
+    and membership.status <> 'suspended'::public.membership_status then
+    raise exception 'workspace membership already exists' using errcode = '23505';
+  end if;
+
+  update public.employee_profiles
+  set user_id = target_user_id,
+      revision = revision + 1,
+      updated_at = now()
+  where id = invitation.employee_id
+    and workspace_id = invitation.workspace_id
+    and user_id is null
+    and archived_at is null;
+
+  if not found then
+    raise exception 'invitable employee is unavailable' using errcode = 'P0002';
+  end if;
+
+  perform set_config('app.employee_invitation_accept', 'on', true);
+
+  if membership.id is not null then
+    update public.workspace_memberships
+    set role = employee_role.access_class::public.workspace_role,
+        role_id = invitation.role_id,
+        status = 'pending_activation'::public.membership_status,
+        all_locations = invitation.all_locations,
+        updated_at = now()
+    where id = membership.id
+    returning id into accepted_membership_id;
+  else
+    insert into public.workspace_memberships (
+      workspace_id, user_id, role, role_id, status, all_locations
+    ) values (
+      invitation.workspace_id,
+      target_user_id,
+      employee_role.access_class::public.workspace_role,
+      invitation.role_id,
+      'pending_activation'::public.membership_status,
+      invitation.all_locations
+    )
+    returning id into accepted_membership_id;
+  end if;
+
+  perform app_private.reset_employee_onboarding_for_rehire(
+    invitation.workspace_id,
+    invitation.employee_id,
+    accepted_membership_id,
+    target_user_id
+  );
+
+  update public.employee_invitations
+  set status = 'accepted'::public.employee_invitation_status,
+      accepted_at = now(),
+      updated_at = now()
+  where id = invitation.id;
+
+  insert into public.employee_events (
+    workspace_id, employee_id, actor_user_id, action, summary
+  )
+  values (
+    invitation.workspace_id,
+    invitation.employee_id,
+    target_user_id,
+    'employee.invitation_accepted',
+    'Employee invitation accepted; activation pending'
+  );
+
+  perform app_private.initialize_employee_onboarding(target_user_id, invitation.workspace_id);
+  return invitation.workspace_id;
 end;
 $function$;
 

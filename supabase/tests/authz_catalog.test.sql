@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(10);
+select plan(11);
 
 -- How far the database is from one authorization core (FOUNDATION-B stage
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
@@ -147,6 +147,24 @@ select is(
   ),
   '{}'::text[],
   'the old permission helper is asked by at most 11 functions, none about documents or onboarding'
+);
+
+-- Every document, signature template and employee onboarding entry point asks
+-- the core before anything else (FB-6.6). Not these: the owner's own setup
+-- (FB-6.8), background work, and the Schedule's document-conflict predicates.
+select is(
+  array(
+    select p.oid::regprocedure::text from pg_proc p
+    where p.pronamespace = 'public'::regnamespace and p.proname like '%\_service'
+      and p.proname ~ '(document|onboarding|signature|lifecycle|policy_definition)'
+      and p.proname !~ 'owner_onboarding'
+      and p.proname not in ('sync_expiring_document_todos_service', 'documents_maintain_service',
+        'employee_has_hard_document_schedule_conflict_service', 'schedule_draft_has_hard_document_conflicts_service')
+      and coalesce(substring(p.prosrc from '(?i)\mbegin\M\s*(.*)$'), '') !~* '^\s*(perform|if [^;]*then\s+perform) app_private\.authorize\('
+    order by 1
+  ),
+  '{}'::text[],
+  'every document and onboarding entry point asks the core first'
 );
 
 select * from finish();

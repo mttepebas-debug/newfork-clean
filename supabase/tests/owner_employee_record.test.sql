@@ -356,8 +356,8 @@ select throws_ok(
     false, 'because I said so'
   )$$,
   '42501',
-  'an owner is not asked for the documents they ask of everyone else',
-  'the excuse is not a decision a reviewer can take back'
+  'Not allowed',
+  'the excuse is not a decision a reviewer can take back: nobody decides on their own document'
 );
 
 select * from finish();
