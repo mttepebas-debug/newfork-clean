@@ -943,6 +943,8 @@ Kaynak: FB-6.7 A işçisi `local_10a5177a…` raporu `.newfork-inbox/done/202610
   - **Program 2026-10-02 (kayıt oturumu, besleme #96): G23.**
 - **BL-537 (leave: low / do: safe) Kapanış görünümü (`schedule_closures`) sorgu planında bütün workspace'lerin lokasyonlarını tarıyor.** Bugün 461 satır, 0,07 ms; lokasyon sayısı büyüdükçe Schedule okuması uzar (≤50 ms bütçesi, CLAUDE.md §9). Öneri: görünüme workspace süzgeci. Neden önemli: Kadıköy müdürü Ayşe'nin haftası, bütün müşterilerin lokasyonları taranarak çiziliyor. Neden bekledi: bugün ölçülemeyecek kadar küçük. Kaynak: FB-6.7 A düzeltme turu 2 (`nf-db` alt ajanı, `task/fb-6.7-fix` @`9b549792`), koordinatör aktardı (besleme #100); ölçüm alt ajanın.
   - **Program 2026-10-02 (kayıt oturumu, besleme #100): G20.**
+- **BL-539 (leave: low / do: moderate) Duyurunun hedefi daraltılırken bildirim gönderici o anda işliyorsa çıkarılan kişiye bildirim yine ulaşabilir.** Nadir yarış: daraltma (BL-534'ün geri çekme mekanizması) ile gönderici aynı anda koşarsa, geri çekmeden sonra gönderici eski hedefe yazabilir. Örnek: Zeynep duyurudan Erenköy'ü çıkarırken dakikalık gönderici çalışıyorsa Erenköy müdürü Veli yine bildirim alabilir. Neden önemli: kişi artık hedefinde olmadığı duyurunun bildirimini alır. Neden bekledi: nadir yarış; FB-6.7 A'nın kapsamı dışında (koordinatörün işaretleri). Kaynak: FB-6.7 A yeniden incelemesi (`nf-guvenlik` ONAY @`d78d477c`), koordinatör aktardı (besleme #101).
+  - **Program 2026-10-02 (kayıt oturumu, besleme #101): G6** (bildirim teslimi; BL-534 ile aynı mekanizma).
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.

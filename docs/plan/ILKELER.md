@@ -117,6 +117,7 @@
   ücretsiz hak varken önerilir. Hak bitince yalnız en riskli işte (yetki çekirdeği gibi), dolar
   tutarıyla önerilir (CLAUDE.md §5).
 - Kanıt (2026-10-01, ters seçim): FB-6.3.7 (veri silme) için ultrareview önerildi; Mert "hayır,
+- Kanıt (2026-10-02, ikinci ters seçim): FB-6.7 A (yetki çekirdeği, grant, nesne silme) için ultrareview önerildi; Mert "Hayır, iki inceleme yeter" dedi — yetki çekirdeği işinde de iki iç inceleme + yeniden inceleme (`nf-guvenlik` ONAY) yeterli görüldü.
   güvenlik onayı yeter" dedi — iki tur `nf-guvenlik` ONAY'ı olan işte gerekli görmedi.
 - Kanıt: 09-24 "$ cost bilgisi verir misin"; 07-12 "Leaflet + OpenStreetMap (ücretsiz)"; 09-16
   "vercel logları + sentry… ücretsiz olsun".

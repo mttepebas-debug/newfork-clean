@@ -748,3 +748,30 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — yetki kuralı dalda (`task/fb-6.7-fix` @`9b549792`).
 - **Durum:** yürürlükte (dalda). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #100).
 - **Mert:** bilgi.
+
+### KK-96 (2026-10-02) FB-6.7 A gönderiminde canlı API'nin kısa süre 500 vermesi kabul
+- **Karar:** OPS-03 penceresinde FB-6.7 A'nın migration 1'i canlıya gidip main henüz yayınlanmamışken eski API'nin duyuru listesi 500 döner; bu kabul edilir. Migration 1 ve main arka arkaya gönderilir.
+- **Neden:** canlı kullanıcı yok (ILKELER P01); geriye uyumlu ara katman yazmak tören olur.
+- **Uygulamada etkisi:** gönderim sırasında birkaç dakika Announcements listesi açılmaz; main yayına girince düzelir. Örnek: o dakikalarda owner Zeynep Announcements'ı açarsa hata görür.
+- **Dayanak:** ILKELER P01; KARARLAR OPS-03.
+- **Geri alma:** gerekmez (geçici pencere).
+- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #101).
+- **Mert:** bilgi.
+
+### KK-97 (2026-10-02) Geçmiş kapalı günler FB-6.7 C'de kalıcı görünür
+- **Karar:** FB-6.7 A'nın kapanış görünümü "bu haftadan itibaren" okur; hafta dönünce geçen haftanın kapalı günü görünümden kalkar (kayan pencere). A böyle main'e girer; C'de K11 kilidiyle birlikte geçmiş kapalı günler kalıcı gösterilir (FB-6.7 C In scope ve Done when 7).
+- **Neden:** geçmiş veri sessizce kaybolmamalı (P09); geçmiş önemli tarih zaten K11 ile kilitli.
+- **Uygulamada etkisi:** C'ye kadar müdür geçen haftaya dönünce kapalı günü Schedule'da göremez. Örnek: Kadıköy 28 Eylül'de kapalıydı; 5 Ekim'den sonra o hafta Schedule'da kapalı görünmez — C'den sonra görünür.
+- **Dayanak:** KARARLAR K11; ILKELER P09.
+- **Geri alma:** kolay — kapsam C'de.
+- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #101).
+- **Mert:** bilgi.
+
+### KK-98 (2026-10-02) Yayınlanamayan zamanlanmış duyuru görünür olur (FB-6.7 C)
+- **Karar:** otomatik yayında hata alan zamanlanmış duyuru hata metniyle kaydedilir ve listede "yayınlanamadı" durumunda görünür (FB-6.7 C In scope ve Done when 8).
+- **Neden:** bugün sessizce Scheduled kalıyor; sessiz düşen veri kullanıcıya söylenir (P09).
+- **Uygulamada etkisi:** C'den sonra yazar ve müdür, saatinde çıkmayan duyuruyu listede görür. Örnek: Zeynep'in 09:00'a kurduğu duyuru hata alırsa listede "yayınlanamadı" yazar.
+- **Dayanak:** ILKELER P09.
+- **Geri alma:** kolay — kapsam C'de.
+- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #101).
+- **Mert:** bilgi.
