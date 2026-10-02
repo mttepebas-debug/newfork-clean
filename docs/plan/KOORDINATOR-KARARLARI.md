@@ -1075,5 +1075,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Deniz'in geçerli Food Handler'ı varken yenisini yükledi; Ayşe eski geçerli belgeyi ve geçerlilik durumunu görmeye devam eder, yalnız bekleyen yeni dosyayı görmez.
 - **Dayanak:** KARARLAR "Ürün kuralları" — "Bekleyen belgeyi yalnız karar veren ve sahibi görür" (Mert, 2026-10-02, S2): "Onaylanmış belge M2'ye göre görünür." Kural birebir kapsıyor; yeni soru değil.
 - **Geri alma:** orta — migration.
-- **Durum:** yürürlükte, uygulanıyor (`nf-db`). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #127).
+- **Durum:** yürürlükte; dalda uygulandı `3c891ee7` (`app_private.document_view`, migration `20261006020000` — ölçüldü, #128). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #127).
 - **Mert:** bilgi.
