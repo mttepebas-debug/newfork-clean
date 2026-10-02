@@ -721,3 +721,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** dal main'e girmeden önce kolay.
 - **Durum:** işçinin 13 maddelik düzeltme listesinde (`task/fb-6.7`). Kayıt oturumu `local_43ff0725…` yazdı (besleme #97; koordinatörün isteği).
 - **Mert:** bilgi.
+
+### KK-93 (2026-10-02) FB-6.7 A düzeltme turunun 15–17. maddeleri: kapalı gün ve önemli tarihte geçmiş ile bildirim
+- **Karar:** (15) kapalı gün görünümü (`schedule_closures` view) yalnız düzenlenebilir haftadan itibaren kapanış üretir; geçmiş, kilitli hafta geriye dönük değişmez. (16) Bitişi bugünden önce olan önemli tarih bildirim üretmez. (17) Yıllık önemli tarihin bildirim bağlantısı bugünden sonraki ilk tekrara gider.
+- **Neden:** (15) geçmiş hafta kilitlidir (P09; main'de de geçmişte uyarı yok); (16) geçmiş bir tarih için bildirim kimsenin işine yaramaz (anti-hedef "bildirim gürültüsü"); (17) kişi tıkladığında geçen yılın değil önündeki günün kaydını görmeli.
+- **Uygulamada etkisi:** (15) geçen ayın bir gününe sonradan "Closed day" konsa da o haftanın Schedule'ında uyarı çıkmaz. (16) owner geçen haftaya ait bir tarihi düzeltirse kimseye bildirim gitmez. (17) "Christmas — Closed day" bildirimine tıklayan çalışan bu yılın 25 Aralık'ını görür.
+- **Dayanak:** ILKELER P09; anti-hedef "Bildirim gürültüsü"; KARARLAR K11, Ekran kararları → Schedule "Geçmiş hafta kilidi".
+- **Geri alma:** dal main'e girmeden önce kolay.
+- **Durum:** işçinin düzeltme listesinde (madde 15–17, `task/fb-6.7`). Kayıt oturumu `local_43ff0725…` yazdı (besleme #98; koordinatörün isteği).
+- **Mert:** bilgi.

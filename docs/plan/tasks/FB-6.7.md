@@ -1,5 +1,5 @@
 # FB-6.7 Duyurular ve önemli tarihler — yetki çekirdeğe, K1–K6 kuralları, üç bildirim testi yeşile
-Status: in progress — 2026-10-02 (#97): A düzeltme turunda (inceleme DEĞİŞİKLİK İSTE @`93d3eb1c`; 13 maddelik liste işçide); B bekliyor. Önceki (#96): A dalda (`task/fb-6.7` @`93d3eb1c`), `nf-guvenlik` incelemesinde. Önceki (#93): A işçi oturumu başladı. Önceki: ready — 2026-10-02 (kapsam onayı: Mert, koordinatör `local_abc4d126…`'ın penceresinde, "FB-6.7'ye katsın (Önerilen)"; kurallar KARARLAR "Duyurular ve önemli tarihler" K1–K6; koordinatör beslemesi #92 ve eki). Uygulama başlamadı.
+Status: in progress — 2026-10-02 (#98): C bölümü tanımlandı (A main'e girdikten sonra; açık sorular Mert'le sohbette). (#97): A düzeltme turunda (inceleme DEĞİŞİKLİK İSTE @`93d3eb1c`; 13 maddelik liste işçide); B bekliyor. Önceki (#96): A dalda (`task/fb-6.7` @`93d3eb1c`), `nf-guvenlik` incelemesinde. Önceki (#93): A işçi oturumu başladı. Önceki: ready — 2026-10-02 (kapsam onayı: Mert, koordinatör `local_abc4d126…`'ın penceresinde, "FB-6.7'ye katsın (Önerilen)"; kurallar KARARLAR "Duyurular ve önemli tarihler" K1–K6; koordinatör beslemesi #92 ve eki). Uygulama başlamadı.
 Session: A — işçi oturumu "FB-6.7 A: Duyuru ve önemli tarih yetkisi + kuralları" `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` (havuz "(55)", Opus 5.5 / high, sabitli, Remote Control açık — `get_session` ile ölçüldü 2026-10-02 ~05:17Z; worktree `newfork-wt/fb-6.7` ve dal `task/fb-6.7` #94'te kuruldu, taban `2f544451` — ölçüldü; #93 anında henüz yoktu); B — henüz yok   Branch: task/fb-6.7   Worktree: newfork-wt/fb-6.7   DB: `db.lock` (pgTAP, migration denemesi, e2e)
 Reviewer: `nf-guvenlik` zorunlu (R3: yetki, RLS, grant kaldırma, nesne silme) — A ve B ayrı ONAY; `nf-gorsel-qa` (B, ekran teslim edilen şey); kullanıcıya ultrareview önerisi (yetki + grant + silme yüzeyi, büyük diff).
 
@@ -69,6 +69,32 @@ Touches:
 Test plan: her migration önce tek transaction + rollback ile ortak yerel DB'de; `pnpm.cmd test:db` (`db.lock`) — üç bildirim dosyası, matris, `retired_objects_stay_gone` ve yeni dosya yeşil, başka dosya kırmızıya dönmez; API ve web için ilgili vitest, `typecheck`, `lint`; akış 7 ve etkilenen e2e (`db.lock`); push öncesi tam kapı (lint, typecheck, test, build) + `test:db`; B'de masaüstü + telefon ekran görüntüsü.
 
 Risk: R3 — yetki çekirdeği, RLS, grant kaldırma, nesne silme. Grant önce kalkarsa tarayıcının bugünkü doğrudan yazımı kırılır: önce API yolu, sonra grant (OPS-03: ekleyen önce canlı, silen / grant kaldıran önce main — iki aşama). K4'te onayların sıfırlanması bilinçli; e2e ile kanıtlanır. Tahmin 1–1,5 kişi-hafta (koordinatörün; ölçülmedi); puan 10 (orta nokta 1,25 × 8; KK-88). Tazelikteki ve kenar durumlarındaki kod satırlarının kaynağı `docs/plan/research/FB-6.7-olcumler-2026-10-01.md`; kayıt oturumu raporun satırlarını tek tek yeniden ölçmedi (yalnız tazelikte "ölçüldü" yazanları).
+
+## C — Closed day'in vardiyalara etkisi, geçmiş önemli tarih kilidi, süresi dolan duyuru (2026-10-02, taslak)
+Kaynak: kullanıcı kararı 2026-10-02, Mert, koordinatör `local_abc4d126…`'ın penceresinde, brainstorming: kod ölçümü (`nf-planlama` alt ajanı, `origin/main` `fa477e4b` + dal `93d3eb1c`) ve rakip araştırması (7shifts, Homebase, When I Work, Deputy, Connecteam, Sling resmi yardım sayfaları, 2026-10-02); koordinatör beslemesi #98; Closed day isteği işçi raporu `.newfork-inbox/done/20261002T072251-isci-fb-6-7-fb-6-7.md` "YENİ ÜRÜN İSTEĞİ" (Mert'in sözleri aynen). Sıra: A main'e girdikten sonra. Reddedilen: "hepsi A'ya"; "backlog".
+
+Goal (C): kapalı gün ilan edilince etkilenen vardiyalar görünür ve kişi ne olacağını seçer; geçmiş önemli tarihler Schedule gibi kilitlenir; süresi dolan duyuru zilden çekilir.
+
+In scope (C):
+- K11: tamamen geçmişteki önemli tarih herkese salt okunur; çok günlü / yıllık kayıtta değişiklik yalnız bugünden ilerisini etkiler.
+- K12: süresi dolan duyurunun bildirimi zilden çekilir (BL-534 mekanizması), müdür ve yazar listede "Expired" görür; süre isteğe bağlı, varsayılan yok.
+- Closed day'in vardiyalara etkisi (Mert, işçi penceresi): yayınlanmış programı olan güne "Closed day" yayınlanırken etkilenen vardiyalar gösterilir, "open'a düşsün / kalsın" sorulur ("Dükkân kapalı olsa bile çalışan prep, temizlik ya da training için gelebilir"); taslak haftada da kural (aşağıdaki soru 4); sonradan o güne vardiya yazılınca her hücrede uyarı. Ekran ILKELER P04 ile: önce gerçek uygulamada 2–3 varyant. Rakip emsali: When I Work "Business Closed" eklenince dört seçenek (bırak / yayından kaldır / açık vardiyaya taşı / sil).
+
+Out of scope (C): bildirim platformunun geri kalanı (P13); BL-238'in UTC hafta sınırı düzeltmesi (ayrı madde, ama C aynı sınırı kullanır).
+
+Açık sorular (önce sohbette, Mert'e; cevaplar gelmeden Done when kesinleşmez):
+1. Seçim vardiya başına mı, toptan mı?
+2. Open'a düşen vardiyanın sahibine bildirim gitsin mi?
+3. Closed day kaldırılırsa open'a düşen vardiyalar geri gelsin mi?
+4. Taslakta: (a) yayınlanmış haftadaki gibi önizleme + "open'a düşsün / kalsın" sorusu mu, (b) sorulmadan open'a düşme mi? Mert: "Aynı kural taslaklar için de geçerli. Taslak shift olan bir günde closure post edilirse shiftler open'a düşer; …" — cümlenin ikinci yarısı (b)'ye, "aynı kural" (a)'ya yakın (işçinin notu).
+5. Sonradan yazılan vardiyadaki uyarı, workspace'in "Closed location" ayarı "block" iken de yalnız uyarı mı olsun? (işçi raporunda, koordinatörün listesinde yoktu)
+6. **Çelişki, Mert'e sorulacak:** KARARLAR Ekran kararları → Schedule "Müsaitlik bir tercih" maddesi "sonradan girilen işaret yayınlanmış işi geriye dönük uyarıya çevirmez" diyor; kod yorumu "Today's marks and approved leave: a mark made after publishing shows …" (`supabase/migrations/20261003050000_manager_note_words_reach_the_schedule.sql:204` — ölçüldü) ve KARARLAR Ürün kuralları'ndaki "Yayından sonra gelen işaret de aynı kuralla işler: yayınlanmış vardiya düşmez, bir sonraki yayında 'değişen' uyarı olarak onay ister" satırı tersini söylüyor. Kapalı günün sonradan yayınlanmış haftaya etkisi buna bağlı.
+
+Done when (C, taslak — sorular cevaplanınca kesinleşir):
+1. K11: geçmiş önemli tarih kaydı / düzenleme isteği reddedilir (owner dahil); çok günlü kayıtta geçmiş günler değişmez — pgTAP.
+2. K12: süresi dolan duyurunun bildirimi alıcıların gelen kutusundan kalkar; listede "Expired" durumu — pgTAP + ekran görüntüsü.
+3. Closed day: etkilenen vardiyaların önizlemesi ve seçimli kaydetme (sorular 1–5'e göre); sonradan yazılan vardiyada uyarı — pgTAP + e2e; Mert'in seçtiği varyant; `nf-gorsel-qa` ONAY.
+4. `schedule_grid_read_budget` ≤ 50 ms korunur.
 
 ## Notes / Result
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #92 eki; taban `55591525`): görev dosyası açıldı. Koordinatörün tazelik raporu dosya olarak bulunamadı (worktree ve geçici klasörde yalnız repo kopyaları ve SQL sorguları vardı); maddeleri beslemeden aldım, kodda ölçebildiklerimi "ölçüldü" diye işaretledim. FOUNDATION-B akış 7 tanımı (`:153`) K1 ile çelişiyordu ("yönetici kendi lokasyon(lar)ına"), aynı commit'te düzeltildi.
