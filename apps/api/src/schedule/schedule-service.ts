@@ -68,6 +68,7 @@ import {
   type LegacyScheduleShiftList,
   type UpdateSchedulePendingOpInput,
   type UpdateScheduleExportScheduleInput,
+  importantDateCoversDate,
 } from "@newfork/shared/schedule";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -475,8 +476,9 @@ export function createScheduleReadService(options: {
               "id,location_id,closed_date,end_date,title,is_all_day,shift_type_ids",
             )
             .in("location_id", allowedLocationIds)
+            // One row per closed day (FB-6.7, BL-530): this week's days only.
             .lte("closed_date", weekEnd)
-            .or(`end_date.gte.${weekStart},end_date.is.null`)
+            .gte("closed_date", weekStart)
             .order("closed_date")
             .order("title")
           : Promise.resolve({ data: [], error: null }),
@@ -1359,32 +1361,10 @@ function importantDateTouchesRange(
 ): boolean {
   if (importantDate.recurrence === "annual") {
     return datesInRange(start, end).some((date) =>
-      annualDateCoversDate(
-        importantDate.starts_on,
-        importantDate.ends_on,
-        date,
-      ),
+      importantDateCoversDate(importantDate, date),
     );
   }
   return importantDate.starts_on <= end && start <= importantDate.ends_on;
-}
-
-function annualDateCoversDate(
-  start: string,
-  end: string,
-  date: string,
-): boolean {
-  const target = monthDayNumber(date);
-  const startMonthDay = monthDayNumber(start);
-  const endMonthDay = monthDayNumber(end);
-  if (startMonthDay <= endMonthDay) {
-    return startMonthDay <= target && target <= endMonthDay;
-  }
-  return target >= startMonthDay || target <= endMonthDay;
-}
-
-function monthDayNumber(iso: string): number {
-  return Number(iso.slice(5, 7)) * 100 + Number(iso.slice(8, 10));
 }
 
 function datesInRange(start: string, end: string): string[] {

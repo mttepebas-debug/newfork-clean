@@ -175,6 +175,8 @@ describe("ImportantDatesSettingsPage", () => {
           location_ids: [locationId],
           affects_scheduling: true,
         }),
+        // A new date: no id yet, so no revision to name (KK-92 c).
+        undefined,
         undefined,
       ),
     );

@@ -47,7 +47,7 @@ describe("createScheduleReadService read model", () => {
       const chain = {
         select: () => chain, eq: (...args: unknown[]) => { if (table === "locations") locationEq(...args); return chain; },
         in: (...args: unknown[]) => { if (table === "locations") locationIn(...args); return chain; },
-        is: () => chain, order: () => chain, lte: () => chain, or: () => chain,
+        is: () => chain, order: () => chain, lte: () => chain, gte: () => chain,
         maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
         then: (resolve: (value: unknown) => unknown) => resolve({ data: table === "locations" ? [{ id: locationId, short_name: "MAIN" }] : [], error: null }),
       }; return chain;
@@ -57,6 +57,45 @@ describe("createScheduleReadService read model", () => {
     expect(result.locations[0]).toMatchObject({ id: locationId, short_name: "MAIN" });
     expect(locationEq).toHaveBeenCalledWith("workspace_id", workspaceId);
     expect(locationIn).toHaveBeenCalledWith("id", [locationId]);
+  });
+  it("reads only the week's closed days, not every closed day before it (FB-6.7)", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
+      locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
+      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+    }, error: null });
+    const closureCalls: unknown[][] = [];
+    mocks.from.mockImplementation((table: string) => {
+      const record = (name: string) => (...args: unknown[]) => {
+        if (table === "schedule_closures") closureCalls.push([name, ...args]);
+        return chain;
+      };
+      const chain = {
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain,
+        lte: record("lte"), gte: record("gte"), or: record("or"),
+        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
+      }; return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
+    expect(closureCalls).toEqual([["lte", "closed_date", "2026-09-20"], ["gte", "closed_date", "2026-09-14"]]);
+  });
+  it("keeps a yearly 29 February date in a week with 28 February only, as the Schedule closes that day (KK-92 d)", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2027-02-22", week_start_day: "monday",
+      locations: [], departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+    }, error: null });
+    const leapDay = { id: "70000000-0000-4000-8000-000000000001", location_id: null, location_ids: [], title: "Leap closure",
+      type: "closed_day", starts_on: "2024-02-29", ends_on: "2024-02-29", recurrence: "annual" };
+    mocks.from.mockImplementation((table: string) => {
+      const chain = {
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: table === "important_dates" ? [leapDay] : [], error: null }),
+      }; return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const result = await service.getReadModel(actorUserId, workspaceId, "2027-02-22");
+    expect(result.important_dates.map((date) => date.title)).toEqual(["Leap closure"]);
   });
   it("hands the Schedule Management's and Owner's system keys and the stored primary job (BL-218)", async () => {
     // From get_schedule_read_model_service on the "r" world of
@@ -80,7 +119,7 @@ describe("createScheduleReadService read model", () => {
     }, error: null });
     mocks.from.mockImplementation(() => {
       const chain = {
-        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, or: () => chain,
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain,
         maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
         then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
       }; return chain;

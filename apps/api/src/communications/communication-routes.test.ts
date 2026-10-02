@@ -432,6 +432,23 @@ describe("communication routes", () => {
       await app.close();
     });
 
+    it("refuses a change to an announcement that names no revision, so a second save is not lost (KK-92 c)", async () => {
+      const service = communicationServiceMock();
+      vi.mocked(service.saveAnnouncement).mockResolvedValue({
+        announcement_id: announcementId, status: "draft", revision: 4, recipient_count: 0,
+      } as Awaited<ReturnType<typeof service.saveAnnouncement>>);
+      const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+      const url = `/v1/workspaces/${workspaceId}/communications/announcements`;
+      const headers = { authorization: "Bearer manager-token" };
+      const unnamed = await app.inject({ method: "POST", url, headers, payload: { announcement_id: announcementId, announcement } });
+      expect(unnamed.statusCode).toBe(400);
+      expect(service.saveAnnouncement).not.toHaveBeenCalled();
+      const named = await app.inject({ method: "POST", url, headers, payload: { announcement_id: announcementId, expected_revision: 3, announcement } });
+      expect(named.statusCode).toBe(200);
+      expect(service.saveAnnouncement).toHaveBeenCalledWith(expect.objectContaining({ announcementId, expectedRevision: 3 }));
+      await app.close();
+    });
+
     it("passes the state action through and refuses an unknown one", async () => {
       const service = communicationServiceMock();
       vi.mocked(service.setAnnouncementState).mockResolvedValue({

@@ -57,4 +57,11 @@ describe("scheduleImportantDateCoversDate", () => {
     expect(scheduleImportantDateCoversDate(yearEndRange, "2027-01-01")).toBe(true);
     expect(scheduleImportantDateCoversDate(yearEndRange, "2027-01-03")).toBe(false);
   });
+
+  it("shows a 29 February closed day on 28 February in a year without it, as the Schedule closes it (KK-92 d)", () => {
+    const leapDay = importantDate({ starts_on: "2024-02-29", ends_on: "2024-02-29", recurrence: "annual" });
+
+    expect(scheduleImportantDateCoversDate(leapDay, "2027-02-28")).toBe(true);
+    expect(scheduleImportantDateCoversDate(leapDay, "2028-02-28")).toBe(false);
+  });
 });
