@@ -784,3 +784,21 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — okuma kuralı tek yerde (main `56618b03`).
 - **Durum:** yürürlükte (main'de). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #102).
 - **Mert:** bilgi.
+
+### KK-100 (2026-10-02) Yeni e2e testi main'e gitmeden yerelde koşulur (koordinatörün hatası)
+- **Karar:** yeni ya da değişen bir e2e senaryosu main'e gönderilmeden önce yerelde (`db.lock` ile) en az bir kez koşulur; işçi raporu "ilk koşuda düzeltme gerekebilir" diyorsa bu koşu atlanmaz.
+- **Neden:** FB-6.7 A'da akış 7 e2e'si yerelde hiç koşmadan main'e gitti; main CI 36991471128 yalnız o testte kırmızı oldu (test, açık çekmecenin arkasındaki düğmeye basıyordu; ürün doğruydu). İşçi raporu bunu önceden söylemişti. Koordinatörün hatası, kendisi yazdı.
+- **Uygulamada etkisi:** görünür değişiklik yok; main'in kırmızı kalması ve ikinci CI koşusunun bilgisayara bindirdiği yük önlenir. Örnek: FB-6.7 C'nin e2e'si yerelde geçmeden main'e alınmaz.
+- **Dayanak:** CLAUDE.md §6 (tam kapı: etkilenen e2e senaryoları) ve §11.5.
+- **Geri alma:** gerekmez (süreç kuralı).
+- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #103).
+- **Mert:** bilgi.
+
+### KK-101 (2026-10-02) Gece tam otomasyon: kararlar KK'ye beş soruyla yazılır
+- **Karar:** Mert gece için koordinatöre tam otomasyon verdi (kullanıcı kararı 2026-10-02, koordinatörün penceresi). Gece verilen her karar KK'ye ne / nerede / nasıl / ne zaman / ne için ve uygulamada etkisiyle yazılır; sabah Mert'e liste olarak gösterilir.
+- **Neden:** iş geceleyin durmadan sürsün; Mert sabah ne değiştiğini tek yerden okusun.
+- **Uygulamada etkisi:** gece FB-6.7 C (veri) ve B + C (ekran varyantları) iki işçide yürür; ekran seçimi yine Mert'te (varyantlar sabah gösterilir, ILKELER P04). Örnek: kapalı gün penceresinin üç varyantı gece hazırlanır, hangisinin kalacağını Mert seçer.
+- **Dayanak:** Mert'in açık kararı (2026-10-02 gece); ILKELER P15, P04; CLAUDE.md §13.
+- **Geri alma:** Mert'in sözüyle biter.
+- **Durum:** yürürlükte (gece). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #103).
+- **Mert:** kendi kararı.
