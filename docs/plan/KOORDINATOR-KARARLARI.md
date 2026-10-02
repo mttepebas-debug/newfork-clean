@@ -822,3 +822,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — puanlar ILERLEME §3'te.
 - **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın kararı).
 - **Mert:** bilgi.
+
+### KK-104 (2026-10-02) "Closed location" ayarında yalnız üç derece kalır, "warn" kalkar
+- **Karar (ne):** Settings → Conflict handling → "Closed location" satırında yalnız üç değer kalır: block / her seferinde onay / düzenleme başına bir kez onay. "warn" değeri kalkar; eski "warn" kaydı silinir.
+- **Nerede:** `ConflictHandlingSettingsPage.tsx` ve `closed_location` değerleri; FB-6.7 C-veri işçisi `local_863130bd…`.
+- **Ne zaman:** FB-6.7 C ile (gece, 2026-10-02).
+- **Ne için:** KARARLAR K17 üç derece sayıyor; KARARLAR'ın başka yeri "bugün confirm / block" diyor, kod "warn"ı da tutuyor. Bugünkü kurala uymayan kayıt silinir (CLAUDE.md §9).
+- **Uygulamada etkisi:** müdür Settings → Conflict handling → Closed location'ı açınca "Warn" seçeneğini görmez. Önce Downtown'da "Warn" seçiliyse kapalı güne vardiya yazılır ve yalnız uyarılırdı; sonra en hafifi "Ask once per edit" (ilk vardiyada bir kez onay).
+- **Dayanak:** KARARLAR K17; CLAUDE.md §9 (eski veri korunmaz); ILKELER P01.
+- **Geri alma:** kolay — ayar değerleri tek yerde.
+- **Durum:** yürürlükte (C-veri işinde). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #106; KK-101 gece biçimi).
+- **Mert:** bilgi (sabah listesinde).
