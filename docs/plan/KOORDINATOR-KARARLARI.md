@@ -902,7 +902,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 
 ### KK-111 (2026-10-02) Sıradaki iş FB-6.6 Belgeler / onboarding
 - **Karar (ne):** FB-6.7 ekranı Mert'in varyant seçimine park edilirken ILERLEME §4 sırasından bir sonraki iş olarak FB-6.6 (Belgeler / onboarding çekirdeğe) başlatılır.
-- **Nerede:** FB-6.6 görev dosyası + tazelik ölçümü; işçi `local_863130bd…`, dal `task/fb-6.6-plan` (kayıt oturumu ölçtü: dal var, `origin/main` üstünde henüz commit yok; worktree `newfork-wt/fb-6.6-plan`).
+- **Nerede:** FB-6.6 görev dosyası + tazelik ölçümü; işçi `local_863130bd-957d-498b-9dfb-71a39090e29e` (başlık "FB-6.6 tazelik + görev dosyası: belgeler / onboarding", sabitli, Remote Control açık, Opus 5.5 / high, oturum klasörü `.claude/worktrees/gallant-feistel-508e83` — `get_session` ile ölçüldü 2026-10-02 ~17:50Z), dal `task/fb-6.6-plan` (kayıt oturumu ölçtü: dal var, `origin/main` üstünde henüz commit yok; worktree `newfork-wt/fb-6.6-plan`).
 - **Nasıl:** hazır iki satır karşılaştırıldı — FB-6.4 Takas / Shift Hub (11 puan) ile FB-6.6 (8 puan); bağımlılık zinciri eşit, ikisi de birer satır açıyor → §4 kuralının (iii) adımı: küçük puanlı önce.
 - **Ne zaman:** 2026-10-02 ~13:30Z (devreden koordinatör `local_d8686bdf…` verdi; devirle kayda girdi).
 - **Ne için:** Mert'in 2026-10-02 ~13:00Z talimatı: "Otomasyon olarak bir sonraki taski seçip, sessionlara delege et ve ilerlemeye devam et… Bu bir engel ise, bu taski atla." (HANDOFF `e30f3de3` §0). FB-6.7 ekranı varyant seçimini beklerken boşta kalınmaz.
