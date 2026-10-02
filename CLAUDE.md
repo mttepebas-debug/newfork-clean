@@ -96,7 +96,7 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
   - Boştaki oturuma iş, görev dosyasını gösteren `send_message` ile verilir; rolün modeli ve
     effort'u `set_session_model` / `set_session_effort` ile ayarlanır.
   - Takılan oturum: önce pano + `git -C <worktree> status/log`, sonra `stop_session`, sonra kayıt.
-    Arşivleme her seferinde kullanıcıya sorulur.
+    Oturum arşivlenmez ve silinmez; temizlenip havuza döner (aşağıda "Sürekli yetki").
   - `.newfork-inbox/audit.log` her iş sonunda okunur: `push-main-override`, `push-main-blocked`,
     `deny-pattern` satırı kullanıcı raporunda adıyla söylenir.
 - **Kullanıcının açtığı tekil oturum** (koordinatör dışında) kullanıcıyla doğrudan konuşur; bu
@@ -266,8 +266,10 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
     + bağımsız SELECT. Silen migration main CI yeşil olunca gider. Canlıda gerçek veri satırı
     siliniyorsa (tablo boş değilse) yetki yoktur, Mert'e sorulur.
   - Oturum yönetimi: yeni oturum açmak, havuz oturumuna iş vermek, model/effort ayarlamak, Remote
-    Control açıp kapamak, sabitlemek; işi bitmiş oturumu arşivlemek ya da `/clear` ile temizleyip
-    devir raporuyla yeniden kullanmak. Koşul: commit'leri main'de, worktree temiz ya da içeriği
+    Control açıp kapamak, sabitlemek; işi bitmiş oturumu `/clear` ile temizleyip "(havuz) boş"
+    başlığıyla havuza döndürmek ve devir raporuyla yeniden kullanmak. Oturum arşivlenmez ve
+    silinmez (kullanıcı kararı 2026-10-02, KARARLAR OPS-07). `clear_session` yalnız koordinatörün
+    açtığı oturumda çalışır; ötekine "kendini temizle" mesajı gider. Koşul: commit'leri main'de, worktree temiz ya da içeriği
     main'de doğrulanmış, arkada iş yok, bildiği her şey kayıtta. Kullanıcının kendi açtığı
     oturumlara dokunulmaz.
   - Birleşmesi doğrulanmış dal ve temiz worktree silmek (guard yedeği alır; `--force` yasak kalır).
@@ -405,9 +407,9 @@ Kısa yaz, ham araç çıktısı yapıştırma.
 - Birden fazla rol gerektiren uzun işte oturum rolleri sırayla üstlenir ya da koordinatör işi
   rollere göre ayrı oturumlara böler; aynı dosyaya iki oturum aynı anda konmaz.
 - Kapanış: koordinatör doğrular (commit main'de, worktree ve branch silinmiş, arkada iş yok,
-  bildiği her şey kayıtta) ve kullanıcıya "arşivlenebilir" der. Arşiv, telefon bağlantısı (Remote
-  Control) açıkken reddedilir; kapatmak için her seferinde kullanıcıya sorulur.
-- Rol oturumu yenileme: bağlamı dolan rol oturumu arşivlenmeden önce yerine YENİ bir oturum açılır;
+  bildiği her şey kayıtta) ve oturumu temizleyip havuza döndürür (arşiv yok). Temizlik, telefon
+  bağlantısı (Remote Control) ya da arkada iş varken reddedilir; önce onlar kapatılır.
+- Rol oturumu yenileme: bağlamı dolan rol oturumu temizlenmeden önce yerine YENİ bir oturum açılır;
   yeni oturum Remote Control açık ve kenar çubuğunda sabitlenmiş (pinned) başlar, başlığı
   "Rol: <rol> (<uzmanlık>)" biçimindedir. Koordinatör açıldıktan sonra ikisini doğrular
   (kullanıcı kararı 2026-09-27).
