@@ -22,6 +22,12 @@ select tests.person('c', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('c', 'can', 'employee', array['K'], array['cook']);
 select tests.person('c', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('c', 'deniz', 'employee', array['B'], array['server']);
+-- Dina keeps Kadikoy's important dates and nothing of its Schedule.
+select tests.role('c', 'dates keeper', 'manager', array(
+  select rp.permission_key from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('c') and r.system_key = 'manager' and rp.permission_key not like 'schedule.%'));
+select tests.person('c', 'dina', 'dates keeper', array['K'], array['cook']);
 select tests.publish_week('c', 0, $$[
   {"label": "ali_mon", "person": "ali", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "17:00"},
   {"label": "can_mon", "person": "can", "loc": "K", "job": "cook", "day": 0, "start": "07:00", "end": "11:00"},
@@ -94,6 +100,15 @@ select is(pg_temp.listed_ids(pg_temp.preview('ayse', array['K'], tests.week(0), 
   'K13: a date that does not close anything lists nothing');
 select is(pg_temp.try($$select pg_temp.preview('veli', array['K'], tests.week(0))$$), '42501 authz.out_of_scope',
   'K13: Veli, Besiktas''s manager, cannot look at Kadikoy''s shifts this way');
+
+select is(pg_temp.listed_ids(pg_temp.preview('dina', array['K'], tests.week(0))), '{}'::text[],
+  'D1: Dina, who may not read Kadikoy''s Schedule, is not shown whose shifts they are');
+select is((pg_temp.preview('dina', array['K'], tests.week(0)) ->> 'hidden_shift_count')::integer, 2,
+  'D1: she is told two shifts she cannot see are on that day');
+select is(pg_temp.try($$select pg_temp.close_day('dina', array['K'], 'Dina closes', tests.week(0),
+  fingerprint => pg_temp.preview('dina', array['K'], tests.week(0)) ->> 'fingerprint')$$),
+  '42501 authz.missing_permission', 'D4: she cannot drop them: closing over shifts needs schedule.edit there');
+select is(pg_temp.holder('ali_mon'), tests.id('c:ali'), 'D4: Ali keeps his shift');
 
 select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0))$$),
   '40001 important_date.closure_changed', 'K13: closing it without having seen the shifts is refused');
@@ -192,6 +207,32 @@ select is((select count(*)::integer from public.schedule_draft_shifts d where d.
            and d.scheduled_date = tests.week(1) + 1 and d.employee_id = tests.id('c:can')), 1, 'K16: its Tuesday did not');
 select is(pg_temp.notices('can', tests.id('c:date:draft')), array['Plumbing'],
   'K16: Can hears that Kadikoy is closed, nothing about a draft shift');
+
+-- O1 (K11): Can's Tuesday shift sits in a draft four years back, and a yearly
+-- closed day that began that day is republished.
+-- ponytail: the old draft and the yearly date are put in place directly; the
+-- rule under test is what the republish reaches.
+update public.schedule_draft_shifts set scheduled_date = (tests.week(1) + 1 - interval '4 years')::date
+where draft_id = tests.id('c:draft') and scheduled_date = tests.week(1) + 1;
+insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling,
+  location_ids, location_id, created_by, updated_by, status)
+values (tests.id('c'), 'Founders closed', 'closed_day', (tests.week(1) + 1 - interval '4 years')::date,
+  (tests.week(1) + 1 - interval '4 years')::date, 'annual', '', true, array[tests.id('c:K')], tests.id('c:K'),
+  pg_temp.u('ayse'), pg_temp.u('ayse'), 'unpublished');
+select tests.remember('c:date:yearly', (select d.id from public.important_dates d
+  where d.workspace_id = tests.id('c') and d.title = 'Founders closed'));
+create function pg_temp.yearly_preview() returns jsonb language sql as $$
+  select public.preview_important_date_closure_service(pg_temp.u('ayse'), tests.id('c'), tests.id('c:date:yearly'),
+    'closed_day', (tests.week(1) + 1 - interval '4 years')::date, (tests.week(1) + 1 - interval '4 years')::date,
+    'annual', array[tests.id('c:K')])
+$$;
+select is((pg_temp.yearly_preview() ->> 'draft_shift_count')::integer, 0,
+  'O1: the yearly closed day counts no draft shift in years already past');
+select public.set_important_date_state_service(pg_temp.u('ayse'), tests.id('c'), tests.id('c:date:yearly'), 'republish',
+  '{}', pg_temp.yearly_preview() ->> 'fingerprint');
+select is((select d.employee_id from public.schedule_draft_shifts d where d.draft_id = tests.id('c:draft')
+           and d.scheduled_date = (tests.week(1) + 1 - interval '4 years')::date), tests.id('c:can'),
+  'O1: republishing it leaves Can on the draft shift four years back');
 
 -- 6. K17: three steps for writing onto a closed day ------------------------------------------
 

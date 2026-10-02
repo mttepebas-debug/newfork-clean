@@ -475,6 +475,8 @@ export function createScheduleReadService(options: {
             .select(
               "id,location_id,closed_date,end_date,title,is_all_day,shift_type_ids",
             )
+            // One workspace's closed days are walked, not every workspace's.
+            .eq("workspace_id", workspaceId)
             .in("location_id", allowedLocationIds)
             // One row per closed day (FB-6.7, BL-530): this week's days only.
             .lte("closed_date", weekEnd)

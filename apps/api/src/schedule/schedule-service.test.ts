@@ -70,7 +70,7 @@ describe("createScheduleReadService read model", () => {
         return chain;
       };
       const chain = {
-        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain,
+        select: () => chain, eq: record("eq"), in: () => chain, is: () => chain, order: () => chain,
         lte: record("lte"), gte: record("gte"), or: record("or"),
         maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
         then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
@@ -78,7 +78,10 @@ describe("createScheduleReadService read model", () => {
     });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
     await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
-    expect(closureCalls).toEqual([["lte", "closed_date", "2026-09-20"], ["gte", "closed_date", "2026-09-14"]]);
+    // D2: one workspace's closed days only.
+    expect(closureCalls).toEqual([
+      ["eq", "workspace_id", workspaceId], ["lte", "closed_date", "2026-09-20"], ["gte", "closed_date", "2026-09-14"],
+    ]);
   });
   it("keeps a yearly 29 February date in a week with 28 February only, as the Schedule closes that day (KK-92 d)", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2027-02-22", week_start_day: "monday",

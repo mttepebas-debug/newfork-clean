@@ -1189,7 +1189,10 @@ export type ImportantDateClosureShift = z.infer<typeof importantDateClosureShift
 /** What a closed day would land on; the fingerprint goes back with the save. */
 export const importantDateClosurePreviewSchema = z.object({
   fingerprint: z.string(),
+  /** Only shifts at locations the person reads the Schedule of. */
   shifts: z.array(importantDateClosureShiftSchema),
+  /** Listed shifts at locations the person may not read: they drop too, and dropping needs schedule.edit there. */
+  hidden_shift_count: z.coerce.number().int().nonnegative(),
   /** A saved draft's own shifts on the newly closed days: they drop to open without asking (K16). */
   draft_shift_count: z.coerce.number().int().nonnegative(),
 });

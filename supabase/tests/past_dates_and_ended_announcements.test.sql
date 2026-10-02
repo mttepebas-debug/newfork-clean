@@ -178,6 +178,8 @@ select tests.remember('p:ann:tasting', (public.save_announcement_audience_servic
 select pg_temp.publish_ann('ayse', tests.id('p:ann:tasting'));
 select pg_temp.deliver();
 select ok(pg_temp.has_notice('emre', tests.id('p:ann:tasting')), 'K12: while it runs, Emre has the notice');
+select is(pg_temp.listed_ann('emre', tests.id('p:ann:tasting')) ->> 'recipient_count', null,
+  'D3: Emre is not told how many it reached');
 select is((pg_temp.listed_ann('ayse', tests.id('p:ann:tasting')) ->> 'recipient_count')::integer, 2,
   'B1: Ayse sees how many it is out to: Emre and the owner (K5), not herself (KK-89)');
 -- ponytail: its end comes by hand; the rule under test is the release's.
@@ -197,6 +199,19 @@ select is((select count(*)::integer from public.notification_outbox o where o.su
 select app_private.announcement_release(tests.id('p'));
 select is((select count(*)::integer from public.notification_outbox o where o.subject_id = tests.id('p:ann:tasting')::text
            and o.status in ('pending', 'retry')), 0, 'K12: nor does the next minute');
+
+-- D4: the owner's announcement at Kadikoy ran out; Ayse, Kadikoy's manager,
+-- may not change it (K2) and still sees it as expired.
+select tests.remember('p:ann:owner', (public.save_announcement_audience_service(pg_temp.u('owner'), tests.id('p'), null, null,
+  'Owner note', 'From the owner', 'general', array['employee'], array[tests.id('p:K')], null,
+  now() + interval '1 day', null, '{}', '{}') ->> 'announcement_id')::uuid);
+select pg_temp.publish_ann('owner', tests.id('p:ann:owner'));
+update public.announcements set publish_at = now() - interval '1 hour', published_at = now() - interval '1 hour',
+  expires_at = now() - interval '1 minute' where id = tests.id('p:ann:owner');
+select app_private.announcement_release(tests.id('p'));
+select is(pg_temp.listed_ann('ayse', tests.id('p:ann:owner')) ->> 'can_edit', 'false', 'K12: Ayse may not change the owner''s');
+select is(pg_temp.listed_ann('ayse', tests.id('p:ann:owner')) ->> 'display_status', 'expired',
+  'K12: but she manages Kadikoy and sees it expired');
 
 select tests.remember('p:ann:open-ended', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
   'Open ended', 'No end', 'general', array['employee'], array[tests.id('p:K')], null, null, null, '{}', '{}') ->> 'announcement_id')::uuid);
@@ -239,6 +254,27 @@ select is((select a.release_error from public.announcements a where a.id = tests
   'KK-98: saving it again clears the error');
 select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'display_status', 'published',
   'KK-98: and it goes out at the next try');
+
+-- D4: a release refused by the core reads as not allowed, not as a plain failure.
+select tests.remember('p:ann:refused', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
+  'Refused', 'Refused body', 'general', array['employee'], array[tests.id('p:K')], now() + interval '1 hour',
+  null, null, '{}', '{}') ->> 'announcement_id')::uuid);
+select pg_temp.publish_ann('ayse', tests.id('p:ann:refused'));
+update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:refused');
+-- ponytail: a trigger stands in for a refusal; the rule under test is how the list names it.
+create function pg_temp.refuse() returns trigger language plpgsql as $$
+begin
+  if new.subject_id = tests.id('p:ann:refused')::text then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope';
+  end if;
+  return new;
+end;
+$$;
+create trigger past_dates_refuses before insert on public.notification_outbox for each row execute function pg_temp.refuse();
+select app_private.announcement_release(tests.id('p'));
+drop trigger past_dates_refuses on public.notification_outbox;
+select is(pg_temp.listed_ann('ayse', tests.id('p:ann:refused')) ->> 'publish_error_code', 'not_allowed',
+  'KK-98: a release the core refused reads "not_allowed"');
 
 -- 6. B2: the content changed since Emre acknowledged it (K4) -------------------------------
 

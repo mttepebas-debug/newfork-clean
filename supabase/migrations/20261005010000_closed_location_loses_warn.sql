@@ -1,11 +1,8 @@
 -- FB-6.7 C (the removing half): "Closed location" has three steps (KARARLAR
 -- K17: block, confirm each cell, confirm once per editing session); "warn" was
 -- not one of them. Runs on hosted after main's Settings > Conflict handling no
--- longer offers it (KARARLAR OPS-03). A workspace left on "warn" takes the
--- softest of the three.
-update public.workspace_scheduling_settings
-set conflict_rules = jsonb_set(conflict_rules, '{closed_location}', '"confirm_once"')
-where conflict_rules ->> 'closed_location' = 'warn';
+-- longer offers it (KARARLAR OPS-03); the adding half already moved every
+-- workspace off "warn".
 
 alter table public.workspace_scheduling_settings drop constraint scheduling_conflict_rules_valid;
 alter table public.workspace_scheduling_settings add constraint scheduling_conflict_rules_valid check (

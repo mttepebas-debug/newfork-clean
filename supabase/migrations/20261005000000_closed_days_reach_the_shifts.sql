@@ -82,8 +82,9 @@ revoke all on function app_private.closure_days(uuid, public.important_date_type
 grant execute on function app_private.closure_days(uuid, public.important_date_type, date, date, public.important_date_recurrence, uuid[])
   to service_role;
 
--- KK-97: no lower bound any more. Its readers filter by workspace, so only one
--- workspace's closed days are walked.
+-- KK-97: no lower bound any more. Every reader names its workspace (the
+-- Schedule read, the conflict engine, the API), so only that workspace's
+-- closed days are walked.
 create or replace view public.schedule_closures
 with (security_invoker = true)
 as
@@ -179,8 +180,9 @@ $$;
 -- 4. K13-K16: a closed day and the shifts on it -----------------------------------------------------
 
 -- The published shifts a version of a date would newly close: assigned, in a
--- current publication, not started yet, on a day this version closes that the
--- stored one (published) did not. "days" are the newly closed days, for the
+-- current publication, not started yet, on a day from the Schedule's editable
+-- week on (K11) that this version closes and the stored one (published) did
+-- not. "days" are the newly closed days, for the
 -- drafts (K16). The fingerprint changes with any listed shift, its person or
 -- its hours, so a save on a stale list is refused (K13).
 create function app_private.important_date_closure_impact(w uuid, stored public.important_dates, kind text,
@@ -195,6 +197,7 @@ as $$
     select day.location_id, day.closed_date
     from app_private.closure_days(w, kind::public.important_date_type, starts, ends,
       recurrence::public.important_date_recurrence, coalesce(location_ids, '{}')) day
+    where day.closed_date >= public.schedule_current_week_start_service(w)
     except
     select day.location_id, day.closed_date
     from app_private.closure_days(w, stored.type, stored.starts_on, stored.ends_on, stored.recurrence,
@@ -383,7 +386,9 @@ as $$
 $$;
 
 -- K13: what a closed day would land on, for the screen to list before saving.
--- Whoever may save the date may look (K1-K3).
+-- Whoever may save the date may look (K1-K3); the list shows the shifts at the
+-- locations they read the Schedule of, the rest only as a count. The
+-- fingerprint covers them all, and dropping any needs schedule.edit there.
 create function public.preview_important_date_closure_service(actor_user_id uuid, target_workspace_id uuid,
   target_important_date_id uuid, target_type text, target_starts_on date, target_ends_on date, target_recurrence text,
   target_location_ids uuid[])
@@ -413,10 +418,17 @@ begin
      or target_starts_on is null or target_ends_on is null or target_ends_on < target_starts_on then
     raise exception 'valid important date required' using errcode = '22023';
   end if;
-  return (select impact - 'days' - 'draft_shift_ids'
-                 || jsonb_build_object('draft_shift_count', jsonb_array_length(impact -> 'draft_shift_ids'))
-          from app_private.important_date_closure_impact(target_workspace_id, stored, target_type, target_starts_on,
-            target_ends_on, target_recurrence, target_location_ids) impact);
+  return (
+    select jsonb_build_object(
+      'fingerprint', impact ->> 'fingerprint',
+      'shifts', coalesce((select jsonb_agg(x order by ord) from jsonb_array_elements(impact -> 'shifts') with ordinality listed(x, ord)
+                          where (x ->> 'location_id')::uuid = any (reach)), '[]'::jsonb),
+      'hidden_shift_count', (select count(*) from jsonb_array_elements(impact -> 'shifts') x
+                             where not (x ->> 'location_id')::uuid = any (reach)),
+      'draft_shift_count', jsonb_array_length(impact -> 'draft_shift_ids'))
+    from app_private.important_date_closure_impact(target_workspace_id, stored, target_type, target_starts_on,
+      target_ends_on, target_recurrence, target_location_ids) impact,
+      lateral (select app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.read') reach) scope);
 end;
 $$;
 revoke all on function public.preview_important_date_closure_service(uuid, uuid, uuid, text, date, date, text, uuid[]) from public, anon, authenticated;
@@ -1041,8 +1053,9 @@ begin
         'read_at', null,
         'acknowledged_at', acknowledgement.acknowledged_at,
         'acknowledged_count', (select count(*) from public.announcement_acknowledgements a where a.announcement_id = item.id),
-        -- Everybody it is out to now ("18 of 24 acknowledged"); none once it is not out.
-        'recipient_count', case when item.status = 'published' and item.archived_at is null
+        -- Everybody it is out to now ("18 of 24 acknowledged"), for whoever may
+        -- change it; none once it is not out.
+        'recipient_count', case when control.allowed and item.status = 'published' and item.archived_at is null
           and (item.expires_at is null or item.expires_at > now()) then cardinality(item.delivered_to) end,
         'publish_failed_at', item.release_failed_at,
         -- The reader acknowledged an earlier content and not this one (K4).
@@ -1099,6 +1112,11 @@ alter table public.workspace_scheduling_settings add constraint scheduling_confl
   and conflict_rules ->> 'document_conditional_overdue' = any (array['confirm', 'block'])
   and array_position(array['warn', 'confirm', 'block'], conflict_rules ->> 'document_conditional_overdue')
       >= array_position(array['warn', 'confirm', 'block'], conflict_rules ->> 'document_conditional_grace'));
+-- A workspace on "warn" takes the softest of the three steps now, before the
+-- code that no longer knows "warn" is live (KARARLAR OPS-03).
+update public.workspace_scheduling_settings
+set conflict_rules = jsonb_set(conflict_rules, '{closed_location}', '"confirm_once"')
+where conflict_rules ->> 'closed_location' = 'warn';
 
 -- K17: a closed day's "confirm once" asks like "confirm" and says the answer
 -- holds for the editing session (confirm_scope).
