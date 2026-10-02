@@ -693,3 +693,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — FB-6.7 alıcı sorgusunda.
 - **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (koordinatör `local_abc4d126…`'ın isteği, #92 eki cevabı).
 - **Mert:** bilgi.
+
+### KK-90 (2026-10-02) Kayıt oturumu devri, Mert yeni boş oturum açınca yapılır
+- **Karar:** on dördüncü kayıt oturumu (`local_43ff0725-b572-4ac9-9d12-8505df3e7816`) bağlamı ~%50'ye gelince devri önerdi; havuzda boş oturum yok ve Mert PC başında değil (telefondan yeni oturum açılamıyor). Devir, Mert yeni boş oturum açınca yapılır; o zamana kadar kayıt oturumu beslemeleri almaya devam eder. Bağlam %70'i geçerse yeni beslemeyi almadan önce koordinatöre yazar, ILERLEME §0d(d)'ye devir notunu yazar ve beklemeye geçer. Devir notunun taslağı şimdiden §0d(d)'de tutulur ve her beslemede güncellenir.
+- **Neden:** devir için boş oturum gerekiyor ve yalnız Mert açabiliyor; kayıtlar beklememeli. %70 sınırı kalite düşmeden önceki son güvenli nokta.
+- **Uygulamada etkisi:** görünür değişiklik yok.
+- **Dayanak:** CLAUDE.md §11.10 (yarıyı geçince bir sonraki sınırda devir önerilir); KARARLAR OPS-04.
+- **Geri alma:** gerekmez.
+- **Durum:** yürürlükte. Kayıt oturumu yazdı (koordinatör `local_abc4d126…`'ın isteği, #94 sonrası).
+- **Mert:** bilgi (yeni boş oturum açması gerekiyor).
