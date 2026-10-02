@@ -239,6 +239,27 @@ describe("schedule conflict port", () => {
     );
   });
 
+  it("asks on a closed day set to confirm once, as a confirmation (K17)", () => {
+    const reasons = evaluateScheduleShiftConflicts(
+      {
+        ...model,
+        settings: {
+          ...model.settings,
+          conflict_rules: {
+            approved_time_off: "block", closed_location: "confirm_once", minimum_travel: "confirm", minimum_rest: "confirm",
+          },
+        },
+        closures: [{
+          id: "66000000-0000-4000-8000-000000000002", location_id: locationId, closed_date: "2026-08-19",
+          end_date: null, title: "Inventory", is_all_day: true, shift_type_ids: [],
+        }],
+      } as ScheduleReadModel,
+      [],
+      input({ scheduled_date: "2026-08-19" }),
+    );
+    expect(reasons).toEqual(expect.arrayContaining([expect.objectContaining({ type: "closed_day", severity: "confirm" })]));
+  });
+
   it("blocks shifts inside a multi-day all-day closure range", () => {
     const messages = formatScheduleConflictMessages(
       evaluateScheduleShiftConflicts(

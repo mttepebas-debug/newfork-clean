@@ -64,6 +64,13 @@ export const announcementRecordSchema = z.object({
   body: z.string(),
   category: announcementCategorySchema,
   status: announcementStatusSchema,
+  /**
+   * What the list shows: "expired" once past its end (K12), "publish_failed"
+   * when the scheduled release could not publish it (KK-98); otherwise status.
+   */
+  display_status: z.enum(["draft", "scheduled", "published", "unpublished", "expired", "publish_failed"]).optional(),
+  /** Why a scheduled release failed: the author may no longer publish there, or it failed. */
+  publish_error_code: z.enum(["not_allowed", "failed"]).nullable().optional(),
   audience_roles: z.array(announcementAudienceRoleSchema),
   location_ids: z.array(z.string().uuid()),
   location_names: z.array(z.string()),

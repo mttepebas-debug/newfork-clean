@@ -9,7 +9,8 @@ export const scheduleConflictRulesSchema = z.strictObject({
   // Approved time off always blocks a manager's assignment (FB-6.1 T5); the
   // key stays required because the database constraint expects it.
   approved_time_off: z.literal("block"),
-  closed_location: z.enum(["warn", "confirm", "block"]),
+  // K17: block, confirm each cell, or confirm once per editing session.
+  closed_location: z.enum(["confirm", "confirm_once", "block"]),
   minimum_travel: z.enum(["warn", "confirm", "block"]),
   minimum_rest: z.enum(["warn", "confirm", "block"]),
   document_required: z.enum(["warn", "confirm", "block"]).optional(),
@@ -33,6 +34,20 @@ export const DEFAULT_SCHEDULE_CONFLICT_RULES: ScheduleConflictRules = {
   minimum_travel: "confirm", minimum_rest: "confirm",
   document_required: "confirm", document_conditional_grace: "warn", document_conditional_overdue: "confirm",
 };
+
+/**
+ * K17: "confirm once" asks like "confirm"; the Schedule keeps the answer for
+ * the rest of its editing session (the server reports confirm_scope:
+ * "edit_session" on the reason).
+ */
+export function closedLocationSeverity(rule: ScheduleConflictRules["closed_location"]): ScheduleConflictSeverity {
+  return rule === "confirm_once" ? "confirm" : rule;
+}
+
+/** K17: whether a cell on a closed day still asks, given this editing session's answers so far. */
+export function closedLocationAsks(rule: ScheduleConflictRules["closed_location"], confirmedThisSession: boolean): boolean {
+  return rule === "confirm" || (rule === "confirm_once" && !confirmedThisSession);
+}
 
 export function highestScheduleConflictSeverity(values: readonly ScheduleConflictSeverity[]): ScheduleConflictSeverity {
   const order: readonly ScheduleConflictSeverity[] = ["allow", "warn", "confirm", "block"];

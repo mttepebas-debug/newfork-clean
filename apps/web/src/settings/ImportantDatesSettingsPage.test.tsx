@@ -117,8 +117,8 @@ vi.mock("./organization-data", () => ({
 function renderPage() {
   // What may be done comes from the server (FB-6.7): the owner, anywhere.
   vi.mocked(listImportantDates).mockResolvedValue({ dates, locations: [location], can_manage: true, can_target_workspace: true });
-  vi.mocked(saveImportantDate).mockResolvedValue(undefined);
-  vi.mocked(setImportantDateState).mockResolvedValue(undefined);
+  vi.mocked(saveImportantDate).mockResolvedValue({ important_date_id: "71000000-0000-4000-8000-000000000001", status: "published" });
+  vi.mocked(setImportantDateState).mockResolvedValue({ important_date_id: "71000000-0000-4000-8000-000000000001", status: "unpublished" });
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SCHEDULE_CONFLICT_RULES, scheduleConflictRulesSchema } from "./availability-assessment";
+import { closedLocationAsks, closedLocationSeverity, DEFAULT_SCHEDULE_CONFLICT_RULES, scheduleConflictRulesSchema } from "./availability-assessment";
 import { schedulePublicationOverrideInputSchema, schedulePublishFindingSchema } from "./index";
 
 describe("scheduleConflictRulesSchema", () => {
@@ -12,6 +12,22 @@ describe("scheduleConflictRulesSchema", () => {
   it("has no availability rule: availability is a preference, never a conflict (BL-186)", () => {
     expect("availability" in DEFAULT_SCHEDULE_CONFLICT_RULES).toBe(false);
     expect(scheduleConflictRulesSchema.safeParse({ ...DEFAULT_SCHEDULE_CONFLICT_RULES, availability: "warn" }).success).toBe(false);
+  });
+});
+
+describe("closed location in three steps (K17)", () => {
+  it("is block, confirm each cell, or confirm once per editing session; warn is not one of them", () => {
+    for (const step of ["block", "confirm", "confirm_once"] as const)
+      expect(scheduleConflictRulesSchema.safeParse({ ...DEFAULT_SCHEDULE_CONFLICT_RULES, closed_location: step }).success).toBe(true);
+    expect(scheduleConflictRulesSchema.safeParse({ ...DEFAULT_SCHEDULE_CONFLICT_RULES, closed_location: "warn" }).success).toBe(false);
+  });
+  it("asks once a session on confirm_once, every cell on confirm, never on block (it refuses)", () => {
+    expect(closedLocationSeverity("confirm_once")).toBe("confirm");
+    expect(closedLocationSeverity("block")).toBe("block");
+    expect(closedLocationAsks("confirm_once", false)).toBe(true);
+    expect(closedLocationAsks("confirm_once", true)).toBe(false);
+    expect(closedLocationAsks("confirm", true)).toBe(true);
+    expect(closedLocationAsks("block", false)).toBe(false);
   });
 });
 

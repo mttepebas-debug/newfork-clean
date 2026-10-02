@@ -28,7 +28,8 @@ const conflictRuleChoices: readonly {
     key: "closed_location",
     label: "Closed location or shift type",
     description: "Assignments on a closed date.",
-    actions: ["warn", "confirm", "block"],
+    // K17: block, confirm each cell, or confirm once per editing session.
+    actions: ["confirm", "confirm_once", "block"],
   },
   {
     key: "minimum_travel",
@@ -48,6 +49,7 @@ const conflictActionLabels: Record<string, string> = {
   allow: "Allow",
   warn: "Warn",
   confirm: "Require confirmation",
+  confirm_once: "Confirm once per editing session",
   block: "Block",
 };
 

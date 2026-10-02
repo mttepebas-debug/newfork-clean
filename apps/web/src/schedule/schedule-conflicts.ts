@@ -3,7 +3,7 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
+import { closedLocationSeverity, getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
 
@@ -24,7 +24,9 @@ function applyConflictPolicy(reasons: ScheduleConflictReason[], model: ScheduleR
   return reasons.map(reason => {
     if (typeof reason === "string") return reason;
     const key = ruleKeys[String(reason.type)];
-    return { ...reason, severity: reason.severity ?? (key ? rules?.[key] ?? "confirm" : scheduleConflictSeverity(reason)) };
+    // K17: "confirm once" asks like "confirm"; the editor keeps the answer for its session.
+    const rule = key === "closed_location" && rules ? closedLocationSeverity(rules.closed_location) : key ? rules?.[key] : undefined;
+    return { ...reason, severity: reason.severity ?? (key ? rule ?? "confirm" : scheduleConflictSeverity(reason)) };
   }).filter(reason => scheduleConflictSeverity(reason) !== "allow");
 }
 

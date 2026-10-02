@@ -1133,6 +1133,8 @@ export const importantDateSchema = z.object({
   created_by: z.string().uuid().nullable().optional(),
   author_name: z.string().optional(),
   updated_at: z.string().datetime({ offset: true }).optional(),
+  /** Wholly before the Schedule's editable week: read-only to everybody (K11). */
+  is_past: z.boolean().optional(),
   // What this person may do to it (K1-K3, from the server).
   can_edit: z.boolean().optional(),
   can_unpublish: z.boolean().optional(),
@@ -1165,6 +1167,68 @@ export const importantDateHistorySchema = z.object({
   ),
 });
 export type ImportantDateHistory = z.infer<typeof importantDateHistorySchema>;
+
+/** A published shift a closed day would land on (K13): the screen lists them before saving. */
+export const importantDateClosureShiftSchema = z.object({
+  /** The published shift; what keep_shift_ids names. */
+  id: z.string().uuid(),
+  source_id: z.string().uuid(),
+  employee_id: z.string().uuid(),
+  employee_name: z.string().nullable(),
+  location_id: z.string().uuid(),
+  location_name: z.string(),
+  job_name: z.string(),
+  scheduled_date: z.string().date(),
+  start_time: z.string().nullable(),
+  end_time: z.string().nullable(),
+  starts_at: z.string(),
+  ends_at: z.string(),
+});
+export type ImportantDateClosureShift = z.infer<typeof importantDateClosureShiftSchema>;
+
+/** What a closed day would land on; the fingerprint goes back with the save. */
+export const importantDateClosurePreviewSchema = z.object({
+  fingerprint: z.string(),
+  shifts: z.array(importantDateClosureShiftSchema),
+});
+export type ImportantDateClosurePreview = z.infer<typeof importantDateClosurePreviewSchema>;
+
+/** The date as it would be saved (or republished: its own values), and which date it is. */
+export const importantDateClosurePreviewInputSchema = z
+  .object({
+    important_date_id: z.string().uuid().nullable().optional(),
+    type: importantDateTypeSchema,
+    starts_on: z.string().date(),
+    ends_on: z.string().date(),
+    recurrence: importantDateRecurrenceSchema,
+    location_ids: z.array(z.string().uuid()).max(100),
+  })
+  .refine((value) => value.ends_on >= value.starts_on, { path: ["ends_on"], message: "End date must be on or after the start date" });
+export type ImportantDateClosurePreviewInput = z.infer<typeof importantDateClosurePreviewInputSchema>;
+
+/**
+ * The choice made on the list (K13): every listed shift drops to an open shift
+ * but the kept ones. A save or republish over published shifts without the
+ * fingerprint it was shown is refused (409 important_date.closure_changed).
+ */
+export const importantDateClosureChoiceSchema = z.object({
+  keep_shift_ids: z.array(z.string().uuid()).max(500).default([]),
+  expected_fingerprint: z.string().max(64).nullable().default(null),
+});
+export type ImportantDateClosureChoice = z.infer<typeof importantDateClosureChoiceSchema>;
+
+/** What a save or a state change did. */
+export const importantDateSavedSchema = z.object({
+  important_date_id: z.string().uuid(),
+  status: z.enum(["published", "unpublished"]),
+  archived_at: z.string().datetime({ offset: true }).nullable().optional(),
+  recipient_count: z.coerce.number().int().nonnegative().optional(),
+  /** Shifts this change opened (K13). */
+  shifts_opened: z.coerce.number().int().nonnegative().optional(),
+  /** Shifts the date opened that stay open now that it no longer closes their day (K15: "3 shifts stay open"). */
+  shifts_stay_open: z.coerce.number().int().nonnegative().optional(),
+});
+export type ImportantDateSaved = z.infer<typeof importantDateSavedSchema>;
 
 export const importantDateInputSchema = importantDateSchema
   .pick({
@@ -1407,6 +1471,8 @@ export const scheduleShiftSchema = z.object({
   warning_codes: z.array(
     z.enum(["availability", "closed_location", "overlap"]),
   ),
+  /** K18: the unavailable mark behind the "availability" warning came after publishing. */
+  availability_changed_after_publish: z.boolean().optional(),
 });
 export type ScheduleShift = z.infer<typeof scheduleShiftSchema>;
 
@@ -3147,6 +3213,8 @@ export const settingsReadSchemas = {
     // May add a date at one location / several or the whole workspace (K1).
     can_manage: z.boolean().optional(),
     can_target_workspace: z.boolean().optional(),
+    /** K11: no day before this one may be written (the Schedule's editable week). */
+    locked_before: z.string().date().optional(),
   }),
   roles: z.object({ permissions: z.array(permissionDefinitionSchema), roles: z.array(workspaceRoleRecordSchema) }),
   "document-types": z.array(documentTypeSchema),

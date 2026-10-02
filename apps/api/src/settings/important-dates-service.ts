@@ -1,22 +1,22 @@
 import {
+  importantDateClosurePreviewSchema,
   importantDateHistorySchema,
+  importantDateSavedSchema,
+  type ImportantDateClosurePreview,
   type ImportantDateHistory,
   type ImportantDateInput,
+  type ImportantDateSaved,
   type ImportantDateStateAction,
 } from "@newfork/shared";
-import { z } from "zod";
 import { rpcFailure } from "../http-error";
 import type { JobsRpcClient } from "./jobs-management-service";
 
 type Actor = { actorUserId: string; workspaceId: string };
-
-const savedSchema = z.object({
-  important_date_id: z.string().uuid(),
-  status: z.enum(["published", "unpublished"]),
-  archived_at: z.string().datetime({ offset: true }).nullable().optional(),
-  recipient_count: z.coerce.number().int().nonnegative().optional(),
-});
-export type ImportantDateSaved = z.infer<typeof savedSchema>;
+/** K13: the shifts kept on a closed day, and the fingerprint of the list it was shown. */
+type Closure = { keepShiftIds: string[]; expectedFingerprint: string | null };
+type ClosureQuery = {
+  importantDateId: string | null; type: string; startsOn: string; endsOn: string; recurrence: string; locationIds: string[];
+};
 
 /**
  * Settings > Important dates writes through the server (FB-6.7): the database
@@ -24,9 +24,11 @@ export type ImportantDateSaved = z.infer<typeof savedSchema>;
  * history.
  */
 export interface ImportantDatesService {
-  save(input: Actor & { importantDateId: string | null; expectedRevision: number | null; date: ImportantDateInput }): Promise<ImportantDateSaved>;
-  setState(input: Actor & { importantDateId: string; action: ImportantDateStateAction }): Promise<ImportantDateSaved>;
+  save(input: Actor & { importantDateId: string | null; expectedRevision: number | null; date: ImportantDateInput; closure?: Closure }): Promise<ImportantDateSaved>;
+  setState(input: Actor & { importantDateId: string; action: ImportantDateStateAction; closure?: Closure }): Promise<ImportantDateSaved>;
   history(input: Actor & { importantDateId: string }): Promise<ImportantDateHistory>;
+  /** K13: the published shifts a closed day would land on. */
+  previewClosure(input: Actor & ClosureQuery): Promise<ImportantDateClosurePreview>;
 }
 
 export function createImportantDatesService(client: JobsRpcClient): ImportantDatesService {
@@ -42,7 +44,7 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
   return {
     async save(input) {
       const locations = input.date.location_ids ?? (input.date.location_id ? [input.date.location_id] : []);
-      return savedSchema.parse(
+      return importantDateSavedSchema.parse(
         await rpc("save_important_date_service", input, {
           target_important_date_id: input.importantDateId,
           target_title: input.date.title,
@@ -54,14 +56,18 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
           target_affects_scheduling: input.date.affects_scheduling,
           target_location_ids: [...new Set(locations)],
           target_expected_revision: input.expectedRevision,
+          target_keep_shift_ids: input.closure?.keepShiftIds ?? [],
+          target_expected_fingerprint: input.closure?.expectedFingerprint ?? null,
         }),
       );
     },
     async setState(input) {
-      return savedSchema.parse(
+      return importantDateSavedSchema.parse(
         await rpc("set_important_date_state_service", input, {
           target_important_date_id: input.importantDateId,
           target_action: input.action,
+          target_keep_shift_ids: input.closure?.keepShiftIds ?? [],
+          target_expected_fingerprint: input.closure?.expectedFingerprint ?? null,
         }),
       );
     },
@@ -69,6 +75,18 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
       return importantDateHistorySchema.parse(
         await rpc("read_important_date_history_service", input, {
           target_important_date_id: input.importantDateId,
+        }),
+      );
+    },
+    async previewClosure(input) {
+      return importantDateClosurePreviewSchema.parse(
+        await rpc("preview_important_date_closure_service", input, {
+          target_important_date_id: input.importantDateId,
+          target_type: input.type,
+          target_starts_on: input.startsOn,
+          target_ends_on: input.endsOn,
+          target_recurrence: input.recurrence,
+          target_location_ids: [...new Set(input.locationIds)],
         }),
       );
     },

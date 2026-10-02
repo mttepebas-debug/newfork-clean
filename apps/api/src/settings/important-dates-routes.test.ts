@@ -66,6 +66,7 @@ function serviceMock(): ImportantDatesService {
     save: vi.fn().mockResolvedValue({ important_date_id: dateId, status: "published", recipient_count: 4 }),
     setState: vi.fn().mockResolvedValue({ important_date_id: dateId, status: "unpublished", archived_at: null }),
     history: vi.fn().mockResolvedValue({ important_date_id: dateId, author_user_id: userId, author_name: "Ayse", changes: [] }),
+    previewClosure: vi.fn().mockResolvedValue({ fingerprint: "f1", shifts: [] }),
   };
 }
 
@@ -151,6 +152,67 @@ describe("important date routes", () => {
     const response = await app.inject({ method: "PUT", url: `${base}/${dateId}`, headers: auth, payload: { ...date, expected_revision: 3 } });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ reason: "authz.rank" });
+    await app.close();
+  });
+
+  // K13: a closed day lists the published shifts it lands on before it is saved.
+  it("previews what a closed day lands on, as the signed-in person", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({
+      method: "POST", url: `${base}/closure-preview`, headers: auth,
+      payload: { important_date_id: dateId, type: "closed_day", starts_on: "2026-12-25", ends_on: "2026-12-25", recurrence: "none", location_ids: [kadikoy] },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ fingerprint: "f1", shifts: [] });
+    expect(service.previewClosure).toHaveBeenCalledWith(expect.objectContaining({
+      actorUserId: userId, workspaceId, importantDateId: dateId, type: "closed_day", startsOn: "2026-12-25", locationIds: [kadikoy],
+    }));
+    await app.close();
+  });
+
+  it("refuses a preview with no dates without asking the database", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({ method: "POST", url: `${base}/closure-preview`, headers: auth, payload: { type: "closed_day" } });
+    expect(response.statusCode).toBe(400);
+    expect(service.previewClosure).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("passes the shifts kept on a closed day and the list it was shown (K13)", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const kept = "81000000-0000-4000-8000-000000000001";
+    const response = await app.inject({
+      method: "POST", url: base, headers: auth,
+      payload: { ...date, type: "closed_day", keep_shift_ids: [kept], expected_fingerprint: "f1" },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(service.save).toHaveBeenCalledWith(expect.objectContaining({ closure: { keepShiftIds: [kept], expectedFingerprint: "f1" } }));
+    await app.close();
+  });
+
+  it("passes them when a closed day is republished", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({
+      method: "POST", url: `${base}/${dateId}/republish`, headers: auth, payload: { keep_shift_ids: [], expected_fingerprint: "f1" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(service.setState).toHaveBeenCalledWith(expect.objectContaining({ closure: { keepShiftIds: [], expectedFingerprint: "f1" } }));
+    await app.close();
+  });
+
+  it("answers a closed day saved on a stale list with 409 and its reason", async () => {
+    const service = serviceMock();
+    vi.mocked(service.save).mockRejectedValue(
+      new HttpError("Request conflicts with the current state", 409, { reason: "important_date.closure_changed" }),
+    );
+    const app = appWith(service);
+    const response = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, type: "closed_day" } });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ reason: "important_date.closure_changed" });
     await app.close();
   });
 
