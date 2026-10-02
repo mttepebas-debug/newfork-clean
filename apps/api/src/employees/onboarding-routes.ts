@@ -122,8 +122,8 @@ export function registerEmployeeOnboardingRoutes(
           .send({ error: "Valid bearer session required" });
       if (context.workspace.id !== params.data.workspaceId)
         return reply.status(404).send({ error: "Workspace not found" });
-      // The service asks the authorization core (employee.read); its no is
-      // 42501 + authz.*, mapped by rpcFailure.
+      // The service asks the authorization core (onboarding.review); its no
+      // is 42501 + authz.*, mapped by rpcFailure.
       return serviceReply(reply, () =>
         options.service.getReview(
           context.userId,

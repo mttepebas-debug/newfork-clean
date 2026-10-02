@@ -1,12 +1,11 @@
 import {
   documentPublishCommandSchema,
   documentTypeInputSchema,
-  type Permission,
 } from "@newfork/shared";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
-  resolveWorkspaceAuthorization,
+  resolveActor,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type { DocumentTypesService } from "./document-types-service";
@@ -18,6 +17,8 @@ const documentTypeParams = workspaceParams.extend({
 const archiveBody = z.object({ archived: z.boolean() });
 const reorderBody = z.object({ orderedIds: z.array(z.string().uuid()) });
 
+// Who is asking is resolved here; whether they may is the database's
+// (settings.documents.write, FB-6.6), its no mapped by rpcFailure.
 export function registerDocumentTypesRoutes(
   app: FastifyInstance,
   options: {
@@ -34,14 +35,11 @@ export function registerDocumentTypesRoutes(
           return reply
             .status(400)
             .send({ error: "Valid document type required" });
-        const context = await authorize(
+        const context = await resolveActor(
           request.headers.authorization,
           params.data.workspaceId,
-          "documents.manage",
           options.contextResolver,
-          reply,
         );
-        if (!context) return;
         if (!options.service)
           return reply
             .status(503)
@@ -69,14 +67,11 @@ export function registerDocumentTypesRoutes(
       const params = workspaceParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "documents.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(
+          request.headers.authorization,
+          params.data.workspaceId,
+          options.contextResolver,
+        );
       if (!options.service)
         return reply
           .status(503)
@@ -96,14 +91,11 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(400)
           .send({ error: "Valid document type details required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "documents.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(
+          request.headers.authorization,
+          params.data.workspaceId,
+          options.contextResolver,
+        );
       if (!options.service)
         return reply
           .status(503)
@@ -127,14 +119,11 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(400)
           .send({ error: "Valid document type details required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "documents.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(
+          request.headers.authorization,
+          params.data.workspaceId,
+          options.contextResolver,
+        );
       if (!options.service)
         return reply
           .status(503)
@@ -159,14 +148,11 @@ export function registerDocumentTypesRoutes(
         return reply
           .status(400)
           .send({ error: "Valid archive state required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "documents.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(
+          request.headers.authorization,
+          params.data.workspaceId,
+          options.contextResolver,
+        );
       if (!options.service)
         return reply
           .status(503)
@@ -188,14 +174,11 @@ export function registerDocumentTypesRoutes(
       const body = reorderBody.safeParse(request.body);
       if (!params.success || !body.success)
         return reply.status(400).send({ error: "Valid order required" });
-      const context = await authorize(
-        request.headers.authorization,
-        params.data.workspaceId,
-        "documents.manage",
-        options.contextResolver,
-        reply,
-      );
-      if (!context) return;
+      const context = await resolveActor(
+          request.headers.authorization,
+          params.data.workspaceId,
+          options.contextResolver,
+        );
       if (!options.service)
         return reply
           .status(503)
@@ -208,27 +191,4 @@ export function registerDocumentTypesRoutes(
       return reply.status(204).send();
     },
   );
-}
-
-async function authorize(
-  authorization: string | undefined,
-  workspaceId: string,
-  permission: Permission,
-  resolver: WorkspaceContextResolver | null,
-  reply: FastifyReply,
-) {
-  const result = await resolveWorkspaceAuthorization({
-    authorization,
-    workspaceId,
-    permission,
-    resolver,
-  });
-  if (result.context) return result.context;
-  reply.status(result.denied === "workspace_not_found" ? 404 : 403).send({
-    error:
-      result.denied === "workspace_not_found"
-        ? "Workspace not found"
-        : "Document management required",
-  });
-  return null;
 }

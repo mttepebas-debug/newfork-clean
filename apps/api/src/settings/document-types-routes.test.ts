@@ -144,11 +144,20 @@ describe("document type routes", () => {
     });
   });
 
-  it("requires document management permission before archiving", async () => {
-    const setArchived = vi.fn();
+  // FB-6.6: the route asks no permission key; the database asks the core
+  // (settings.documents.write) and its no reaches the person as is.
+  it("leaves archiving to the core: its no is 403 with the reason", async () => {
+    const setArchived = vi.fn(async () => {
+      throw rpcFailure({
+          code: "42501",
+          message: "Not allowed",
+          hint: "authz.out_of_scope",
+          details: "settings.documents.write",
+        });
+    });
     const app = buildApp({
       contextResolver: {
-        resolve: async () => ({ ...context, permissions: ["documents.read"] }),
+        resolve: async () => ({ ...context, permissions: [] }),
       },
       documentTypesService: {
         setArchived,
@@ -162,8 +171,12 @@ describe("document type routes", () => {
       payload: { archived: true },
     });
 
+    expect(setArchived).toHaveBeenCalledOnce();
     expect(response.statusCode).toBe(403);
-    expect(setArchived).not.toHaveBeenCalled();
+    expect(response.json()).toMatchObject({
+      reason: "authz.out_of_scope",
+      detail: "settings.documents.write",
+    });
   });
 
   it("returns a generic not found for every route when the active workspace mismatches the path", async () => {
@@ -221,14 +234,17 @@ describe("document type routes", () => {
       });
 
       expect(response.statusCode).toBe(404);
-      expect(response.json()).toEqual({ error: "Workspace not found" });
+      expect(response.json()).toMatchObject({
+        error: "Workspace not found",
+        reason: "authz.not_member",
+      });
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
   });
 });
 
 describe("document publication routes", () => {
-  it("requires management permission and binds actor/path for a publication transition", async () => {
+  it("binds actor/path for a publication transition and answers the core's no", async () => {
     const publish = vi.fn(async () => ({ publication_status: "published" }));
     const app = buildApp({
       contextResolver: { resolve: async () => context },
@@ -258,28 +274,34 @@ describe("document publication routes", () => {
       targetStatus: "published",
     });
     await app.close();
+    const refused = vi.fn(async () => {
+      throw rpcFailure({
+          code: "42501",
+          message: "Not allowed",
+          hint: "authz.out_of_scope",
+          details: "settings.documents.write",
+        });
+    });
     const denied = buildApp({
       contextResolver: {
-        resolve: async () => ({ ...context, permissions: ["documents.read"] }),
+        resolve: async () => ({ ...context, permissions: [] }),
       },
-      documentTypesService: { ...documentTypesServiceMock(), publish },
+      documentTypesService: { ...documentTypesServiceMock(), publish: refused },
     });
-    expect(
-      (
-        await denied.inject({
-          method: "POST",
-          url: `/v1/workspaces/${workspaceId}/document-types/${documentTypeId}/unpublish`,
-          headers: { authorization: "Bearer test" },
-          payload: {
-            revision: 2,
-            publication_revision: 1,
-            preview_token: "preview",
-            reason: "Pause",
-          },
-        })
-      ).statusCode,
-    ).toBe(403);
-    expect(publish).toHaveBeenCalledTimes(1);
+    const response2 = await denied.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/document-types/${documentTypeId}/unpublish`,
+      headers: { authorization: "Bearer test" },
+      payload: {
+        revision: 2,
+        publication_revision: 1,
+        preview_token: "preview",
+        reason: "Pause",
+      },
+    });
+    expect(response2.statusCode).toBe(403);
+    expect(response2.json()).toMatchObject({ reason: "authz.out_of_scope" });
+    expect(refused).toHaveBeenCalledOnce();
     await denied.close();
   });
   it("rejects missing publication revision and surfaces stale impact as conflict", async () => {
