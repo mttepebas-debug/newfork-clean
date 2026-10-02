@@ -2,7 +2,10 @@
 -- K17: block, confirm each cell, confirm once per editing session); "warn" was
 -- not one of them. Runs on hosted after main's Settings > Conflict handling no
 -- longer offers it (KARARLAR OPS-03); the adding half already moved every
--- workspace off "warn".
+-- workspace off "warn". Again here, in case one was set back in between.
+update public.workspace_scheduling_settings
+set conflict_rules = jsonb_set(conflict_rules, '{closed_location}', '"confirm_once"')
+where conflict_rules ->> 'closed_location' = 'warn';
 
 alter table public.workspace_scheduling_settings drop constraint scheduling_conflict_rules_valid;
 alter table public.workspace_scheduling_settings add constraint scheduling_conflict_rules_valid check (
