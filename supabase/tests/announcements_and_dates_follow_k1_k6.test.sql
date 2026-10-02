@@ -65,7 +65,7 @@ create function pg_temp.publish(person text, id uuid) returns jsonb language sql
 $$;
 
 create function pg_temp.save_date(person text, keys text[], title text, id uuid default null,
-  starts date default '2026-12-25', kind text default 'event', recurrence text default 'none') returns uuid language sql as $$
+  starts date default current_date + 60, kind text default 'event', recurrence text default 'none') returns uuid language sql as $$
   select (public.save_important_date_service(pg_temp.u(person), tests.id('m'), id, title, kind, starts, starts,
     recurrence, '', true, pg_temp.locs(keys), (select d.revision from public.important_dates d where d.id = save_date.id)) ->> 'important_date_id')::uuid
 $$;
@@ -139,7 +139,7 @@ select is(pg_temp.try(format($$select pg_temp.save_date('ayse', array['K'], 'Cha
   '42501 authz.rank', 'K2: the Kadikoy manager cannot change the owner''s "Inventory day"');
 select is(pg_temp.try(format($$select pg_temp.save_date('zeynep', array['K'], 'Inventory day moved', id => %L)$$, tests.id('m:date:inventory'))),
   '42501 authz.rank', 'K2: an admin cannot change the owner''s date either');
-select is(pg_temp.try(format($$select pg_temp.save_date('owner', array['K'], 'Inventory day', id => %L, starts => '2026-12-26')$$, tests.id('m:date:inventory'))),
+select is(pg_temp.try(format($$select pg_temp.save_date('owner', array['K'], 'Inventory day', id => %L, starts => current_date + 61)$$, tests.id('m:date:inventory'))),
   'ok', 'K2: the owner changes their own date');
 
 -- Kaan writes a date as an admin and is made a manager: his date is a
@@ -209,7 +209,7 @@ select pg_temp.save_date('owner', array['K', 'B'], 'Staff party', id => tests.id
 select is(pg_temp.told(tests.id('m:date:k4')), array['deniz', 'veli'],
   'K4: adding a location to an important date tells only the new people');
 select pg_temp.mark();
-select pg_temp.save_date('owner', array['K', 'B'], 'Staff party', id => tests.id('m:date:k4'), starts => '2026-12-27');
+select pg_temp.save_date('owner', array['K', 'B'], 'Staff party', id => tests.id('m:date:k4'), starts => current_date + 62);
 select ok('emre' = any (pg_temp.told(tests.id('m:date:k4'))), 'K4: moving the date tells everybody again');
 
 -- 7. K5: who an announcement reaches ----------------------------------------------------------
@@ -280,15 +280,15 @@ select is(pg_temp.try(format($$select public.read_important_date_history_service
 
 -- 11. BL-530: a "Closed day" important date closes the location -----------------------------------
 
-select tests.remember('m:date:closed', pg_temp.save_date('owner', array['K'], 'Christmas', starts => '2026-12-25', kind => 'closed_day', recurrence => 'annual'));
-select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = '2026-12-25'),
+select tests.remember('m:date:closed', pg_temp.save_date('owner', array['K'], 'Christmas', starts => current_date + 60, kind => 'closed_day', recurrence => 'annual'));
+select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = current_date + 60),
   'BL-530: a Kadikoy closed day closes Kadikoy that day');
-select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = '2027-12-25'),
+select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = (current_date + 60 + interval '1 year')::date),
   'BL-530: a yearly closed day closes it the next year too');
-select ok(not exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:B') and c.closed_date = '2026-12-25'),
+select ok(not exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:B') and c.closed_date = current_date + 60),
   'BL-530: Besiktas stays open');
 select public.set_important_date_state_service(pg_temp.u('owner'), tests.id('m'), tests.id('m:date:closed'), 'unpublish');
-select ok(not exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = '2026-12-25'),
+select ok(not exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = current_date + 60),
   'BL-530: an unpublished closed day closes nothing');
 
 -- 12. BL-532: a cancelled invitation reaches whoever could have sent it ----------------------------

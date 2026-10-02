@@ -342,8 +342,9 @@ $$;
 -- K1-K3: may this person change a record kept at these locations, written by
 -- this author? A record at one live location is a place action; anything else
 -- (several, or none: the whole workspace, or only archived ones) is the org's.
--- An author who has left: admin and owner only (O1).
-create function app_private.communication_reason(actor uuid, w uuid, kind text, stored uuid[], author uuid)
+-- An author who has left, or one no longer known: admin and owner only (O1).
+-- It takes the actor's state (app_private.actor), so a list reads it once.
+create function app_private.communication_reason(state app_private.actor_state, w uuid, kind text, stored uuid[], author uuid)
 returns text
 language plpgsql
 stable
@@ -356,18 +357,23 @@ declare
     select membership.user_id from public.workspace_memberships membership
     where membership.workspace_id = w and membership.user_id = author and membership.status = 'active'
   );
+  narrow app_private.authz_actions;
+  wide app_private.authz_actions;
   reason text;
 begin
+  select * into strict narrow from app_private.authz_actions a where a.key = kind || '.write';
+  select * into strict wide from app_private.authz_actions a where a.key = kind || '.write_wide';
   -- An author who has left protects the record harder, not softer: only an
-  -- admin or the owner changes it (Mert, 2026-10-02, O1; fail closed).
-  if author is not null and writer is null then
-    reason := app_private.authz_reason(actor, w, kind || '.write_wide');
+  -- admin or the owner changes it (Mert, 2026-10-02, O1; fail closed). So
+  -- does a record that no longer says who wrote it (a deleted account).
+  if writer is null then
+    reason := app_private.authz_check(state, wide, null, null, null);
     return case when reason = 'out_of_scope' then 'rank' else reason end;
   end if;
   if cardinality(stored) > 0 and cardinality(live) = 1 then
-    return app_private.authz_reason(actor, w, kind || '.write', live, null, writer);
+    return app_private.authz_check(state, narrow, live, null, writer);
   end if;
-  return app_private.authz_reason(actor, w, kind || '.write_wide', null, null, writer);
+  return app_private.authz_check(state, wide, null, null, writer);
 end;
 $$;
 
@@ -383,7 +389,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  reason text := app_private.communication_reason(actor, w, kind, stored, author);
+  reason text := app_private.communication_reason(app_private.actor(actor, w), w, kind, stored, author);
 begin
   if reason is null and exists (
     select 1 from unnest(stored) id
@@ -402,7 +408,33 @@ $$;
 -- targeted people: their role class, where they work, their department and
 -- job. No locations means the whole workspace. A record left only at archived
 -- locations reaches nobody (KK-86). A null roles list (an important date)
--- targets every role.
+-- targets every role. communication_reaches is the rule for one person (a
+-- read asks it of its reader only); communication_audience asks it of every
+-- active member.
+create function app_private.communication_reaches(state app_private.actor_state, w uuid, live uuid[], everywhere boolean, roles public.workspace_role[], department_ids uuid[], job_ids uuid[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select state.status = 'active' and (
+    state.manages && live
+    or (everywhere and cardinality(state.manages) > 0)
+    or ((roles is null or state.class = any (roles))
+        and (everywhere or state.works && live)
+        and (cardinality(coalesce(department_ids, '{}')) = 0 or exists (
+          select 1 from public.employee_job_assignments assignment
+          join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
+          where assignment.workspace_id = w and assignment.employee_id = state.employee_id
+            and assignment.ended_at is null and job.archived_at is null and job.department_id = any (department_ids)))
+        and (cardinality(coalesce(job_ids, '{}')) = 0 or exists (
+          select 1 from public.employee_job_assignments assignment
+          join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
+          where assignment.workspace_id = w and assignment.employee_id = state.employee_id
+            and assignment.ended_at is null and job.archived_at is null and job.id = any (job_ids)))))
+$$;
+
 create function app_private.communication_audience(w uuid, stored uuid[], roles public.workspace_role[], department_ids uuid[], job_ids uuid[])
 returns setof uuid
 language sql
@@ -412,33 +444,20 @@ set search_path = ''
 as $$
   with live as (
     select app_private.live_locations(w, stored) ids, cardinality(stored) = 0 everywhere
-  ), member as (
-    select membership.user_id, app_private.actor(membership.user_id, w) state
-    from public.workspace_memberships membership
-    where membership.workspace_id = w and membership.status = 'active'
   )
-  select member.user_id
-  from member, live
-  where (member.state).manages && live.ids
-     or (live.everywhere and cardinality((member.state).manages) > 0)
-     or ((roles is null or (member.state).class = any (roles))
-         and (live.everywhere or (member.state).works && live.ids)
-         and (cardinality(coalesce(department_ids, '{}')) = 0 or exists (
-           select 1 from public.employee_job_assignments assignment
-           join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
-           where assignment.workspace_id = w and assignment.employee_id = (member.state).employee_id
-             and assignment.ended_at is null and job.archived_at is null and job.department_id = any (department_ids)))
-         and (cardinality(coalesce(job_ids, '{}')) = 0 or exists (
-           select 1 from public.employee_job_assignments assignment
-           join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
-           where assignment.workspace_id = w and assignment.employee_id = (member.state).employee_id
-             and assignment.ended_at is null and job.archived_at is null and job.id = any (job_ids))))
+  select membership.user_id
+  from public.workspace_memberships membership, live
+  where membership.workspace_id = w and membership.status = 'active'
+    and app_private.communication_reaches(app_private.actor(membership.user_id, w), w, live.ids, live.everywhere,
+          roles, department_ids, job_ids)
 $$;
 
 -- Takes back what a record told people: the events queued or projected for it
 -- go to 'superseded' (its content changed) or 'cancelled' (unpublished,
--- archived), and the copies in the old inbox go.
-create function app_private.communication_withdraw(w uuid, type_key text, subject_type text, subject_id text, visibility text)
+-- archived), and the copies in the old inbox go. Given people, it takes it back
+-- from them only: those a narrower audience no longer reaches (BL-534) lose it
+-- from their inboxes, and a notice not yet delivered leaves them out.
+create function app_private.communication_withdraw(w uuid, type_key text, subject_type text, subject_id text, visibility text, people uuid[] default null)
 returns void
 language plpgsql
 security definer
@@ -455,6 +474,31 @@ begin
       and outbox.subject_id = communication_withdraw.subject_id
     for update
   loop
+    if people is not null then
+      update public.notification_outbox outbox
+      set payload = jsonb_set(outbox.payload, '{recipient_user_ids}', coalesce((
+            select jsonb_agg(who) from jsonb_array_elements_text(outbox.payload -> 'recipient_user_ids') who
+            where not who::uuid = any (people)), '[]'::jsonb))
+      where outbox.id = outbox_row.id and outbox.status in ('pending', 'retry');
+
+      select coalesce(array_agg(item.legacy_notification_id), '{}') into legacy_ids
+      from public.notification_inbox_items item
+      join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
+      where recipient.workspace_id = w and recipient.event_id = outbox_row.event_id
+        and recipient.recipient_user_id = any (people) and item.legacy_notification_id is not null;
+
+      update public.notification_inbox_items item
+      set visibility_state = visibility, legacy_notification_id = null
+      from public.notification_recipients recipient
+      where recipient.id = item.recipient_projection_id
+        and recipient.workspace_id = w and recipient.event_id = outbox_row.event_id
+        and recipient.recipient_user_id = any (people) and item.visibility_state = 'visible';
+
+      delete from public.notifications notification
+      where notification.id = any (legacy_ids) and notification.workspace_id = w;
+      continue;
+    end if;
+
     perform public.project_notification_event_service(outbox_row.id);
     update public.notification_events event
     set cancelled_at = coalesce(event.cancelled_at, now())
@@ -593,6 +637,22 @@ end;
 $$;
 select cron.schedule('announcements-due', '* * * * *', 'select app_private.announcement_release()');
 
+-- Is an announcement out and does it reach this person (K5, K6)? The list
+-- asks it with its reader's state, read once.
+create function app_private.announcement_out_to(state app_private.actor_state, item public.announcements, places uuid[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select item.status = 'published' and item.archived_at is null
+     and (item.expires_at is null or item.expires_at > now())
+     and app_private.communication_reaches(state, item.workspace_id,
+           app_private.live_locations(item.workspace_id, places), cardinality(places) = 0,
+           item.audience_roles, item.department_ids, item.job_ids)
+$$;
+
 -- Who may see an announcement: whoever may change it, in any state (K3), and
 -- whoever it reaches while it is out (K5, K6).
 create function app_private.announcement_visible(actor uuid, item public.announcements)
@@ -602,13 +662,12 @@ stable
 security definer
 set search_path = ''
 as $$
-  select app_private.communication_reason(actor, item.workspace_id, 'announcement',
-           app_private.announcement_places(item.id), item.created_by) is null
-      or (item.status = 'published' and item.archived_at is null
-          and (item.expires_at is null or item.expires_at > now())
-          and actor in (select app_private.communication_audience(item.workspace_id,
-                app_private.announcement_places(item.id),
-                item.audience_roles, item.department_ids, item.job_ids)))
+  with me as (
+    select app_private.actor(actor, item.workspace_id) state, app_private.announcement_places(item.id) places
+  )
+  select app_private.communication_reason(me.state, item.workspace_id, 'announcement', me.places, item.created_by) is null
+      or app_private.announcement_out_to(me.state, item, me.places)
+  from me
 $$;
 
 create or replace function public.get_announcements_service(actor_user_id uuid, target_workspace_id uuid)
@@ -620,9 +679,11 @@ as $$
 declare
   writable uuid[];
   wide boolean;
+  reader app_private.actor_state;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
   perform app_private.announcement_release(target_workspace_id);
+  reader := app_private.actor(actor_user_id, target_workspace_id);
   writable := app_private.scope_set(actor_user_id, target_workspace_id, 'announcement.write');
   wide := app_private.authz_reason(actor_user_id, target_workspace_id, 'announcement.write_wide') is null;
   return jsonb_build_object(
@@ -679,11 +740,13 @@ begin
         where target.announcement_id = item.id) targets on true
       left join public.announcement_acknowledgements acknowledgement
         on acknowledgement.announcement_id = item.id and acknowledgement.user_id = actor_user_id
+      cross join lateral (select app_private.announcement_places(item.id) places) kept
       cross join lateral (
-        select app_private.communication_reason(actor_user_id, target_workspace_id, 'announcement',
-          app_private.announcement_places(item.id), item.created_by) is null allowed) control
+        select app_private.communication_reason(reader, target_workspace_id, 'announcement',
+          kept.places, item.created_by) is null allowed) control
+      -- announcement_visible, with the reader's state read once for the list.
       where item.workspace_id = target_workspace_id
-        and app_private.announcement_visible(actor_user_id, item)), '[]'::jsonb)
+        and (control.allowed or app_private.announcement_out_to(reader, item, kept.places))), '[]'::jsonb)
   );
 end;
 $$;
@@ -703,6 +766,7 @@ declare
   stored uuid[];
   content_changed boolean := false;
   reached uuid[];
+  dropped uuid[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
   target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
@@ -718,9 +782,10 @@ begin
     stored := app_private.announcement_places(before.id);
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', stored, before.created_by, stored);
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', target_location_ids, before.created_by, stored);
-    -- A record kept at locations (archived ones too) never becomes the whole
-    -- workspace by losing them (KK-86).
-    if cardinality(stored) > 0 and cardinality(target_location_ids) = 0 then
+    -- A record kept at an archived location never becomes the whole workspace
+    -- by losing its locations (KK-86); the owner may still widen a live one (K1).
+    if cardinality(target_location_ids) = 0
+       and cardinality(stored) > cardinality(app_private.live_locations(target_workspace_id, stored)) then
       raise exception 'Choose at least one location' using errcode = '22023';
     end if;
   end if;
@@ -801,14 +866,16 @@ begin
         'announcement', item.id::text, 'superseded');
       perform app_private.announcement_deliver(item, reached);
     else
+      -- Those it no longer reaches lose it (BL-534); the new people are told.
+      dropped := array(select who from unnest(item.delivered_to) who where not who = any (reached));
+      if cardinality(dropped) > 0 then
+        perform app_private.communication_withdraw(target_workspace_id, 'communications.announcement.available',
+          'announcement', item.id::text, 'cancelled', dropped);
+      end if;
       perform app_private.announcement_deliver(item,
         array(select who from unnest(reached) who where not who = any (item.delivered_to)));
     end if;
-    update public.announcements
-    set delivered_to = case when content_changed then reached
-                            else array(select distinct who from unnest(item.delivered_to || reached) who) end
-    where id = item.id
-    returning * into item;
+    update public.announcements set delivered_to = reached where id = item.id returning * into item;
   elsif content_changed then
     update public.announcements set delivered_to = '{}' where id = item.id returning * into item;
   end if;
@@ -986,6 +1053,60 @@ as $$
   where who is distinct from item.created_by
 $$;
 
+-- Who is told about an important date now: its recipients at the locations
+-- where it is not over yet, by each location's own today. A one-time date
+-- already over tells nobody (anti-goal "notification noise"); a yearly one
+-- comes again and is never over.
+create function app_private.important_date_notified(item public.important_dates)
+returns uuid[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  places uuid[] := app_private.live_locations(item.workspace_id,
+    case when cardinality(item.location_ids) = 0
+      then array(select location.id from public.locations location where location.workspace_id = item.workspace_id)
+      else item.location_ids end);
+  open_places uuid[];
+begin
+  if item.recurrence = 'annual' then
+    return app_private.important_date_recipients(item);
+  end if;
+  open_places := array(
+    select location.id from public.locations location
+    where location.id = any (places) and item.ends_on >= (now() at time zone location.timezone)::date
+    order by location.id);
+  if cardinality(open_places) = 0 then
+    return '{}';
+  end if;
+  if cardinality(open_places) = cardinality(places) then
+    return app_private.important_date_recipients(item);
+  end if;
+  return coalesce((
+    select array_agg(distinct who order by who)
+    from app_private.communication_audience(item.workspace_id, open_places, null, null, null) who
+    where who is distinct from item.created_by), '{}');
+end;
+$$;
+
+-- The day an important date's notice opens: its own first day, or for a
+-- yearly one, its next time from today on.
+create function app_private.important_date_next_day(item public.important_dates)
+returns date
+language sql
+stable
+set search_path = ''
+as $$
+  select case when item.recurrence <> 'annual' then item.starts_on else coalesce((
+    select (item.starts_on + make_interval(years => n))::date
+    from generate_series(greatest(extract(year from current_date)::integer - extract(year from item.starts_on)::integer - 1, 0),
+                         greatest(extract(year from current_date)::integer - extract(year from item.starts_on)::integer + 1, 0)) n
+    where (item.ends_on + make_interval(years => n))::date >= current_date
+    order by n limit 1), item.starts_on) end
+$$;
+
 create function app_private.important_date_deliver(item public.important_dates, recipients uuid[])
 returns void
 language plpgsql
@@ -1013,11 +1134,25 @@ begin
       'body', case when item.starts_on = item.ends_on then to_char(item.starts_on, 'Mon FMDD, YYYY')
                    else to_char(item.starts_on, 'Mon FMDD') || ' - ' || to_char(item.ends_on, 'Mon FMDD, YYYY') end,
       'safe_preview', 'An important date was added to the schedule.',
-      'action_url', '/app/schedule?date=' || item.starts_on::text,
+      'action_url', '/app/schedule?date=' || app_private.important_date_next_day(item)::text,
       'group_key', 'important_date:' || item.id::text,
       'visible_at', now()),
     now());
 end;
+$$;
+
+-- Is an important date out and does it reach this person (K5, K6)?
+create function app_private.important_date_out_to(state app_private.actor_state, item public.important_dates)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select item.status = 'published' and item.archived_at is null
+     and app_private.communication_reaches(state, item.workspace_id,
+           app_private.live_locations(item.workspace_id, item.location_ids), cardinality(item.location_ids) = 0,
+           null, null, null)
 $$;
 
 -- Who may see an important date: whoever may change it, in any state, and
@@ -1029,9 +1164,10 @@ stable
 security definer
 set search_path = ''
 as $$
-  select app_private.communication_reason(actor, item.workspace_id, 'important_date', item.location_ids, item.created_by) is null
-      or (item.status = 'published' and item.archived_at is null
-          and actor in (select app_private.communication_audience(item.workspace_id, item.location_ids, null, null, null)))
+  with me as (select app_private.actor(actor, item.workspace_id) state)
+  select app_private.communication_reason(me.state, item.workspace_id, 'important_date', item.location_ids, item.created_by) is null
+      or app_private.important_date_out_to(me.state, item)
+  from me
 $$;
 
 create function app_private.important_date_snapshot(item public.important_dates)
@@ -1059,6 +1195,8 @@ declare
   before public.important_dates;
   content_changed boolean := true;
   reached uuid[];
+  told uuid[];
+  dropped uuid[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
   target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
@@ -1077,6 +1215,11 @@ begin
     end if;
     if before.revision is distinct from target_expected_revision then
       raise exception 'This date changed. Reload and try again.' using errcode = '40001';
+    end if;
+    -- The same as an announcement's (KK-86).
+    if cardinality(target_location_ids) = 0
+       and cardinality(before.location_ids) > cardinality(app_private.live_locations(target_workspace_id, before.location_ids)) then
+      raise exception 'Choose at least one location' using errcode = '22023';
     end if;
   end if;
 
@@ -1118,22 +1261,28 @@ begin
   end if;
 
   if item.status = 'published' then
+    -- Everybody it is for, and those told now: not where it is already over.
     reached := app_private.important_date_recipients(item);
+    told := app_private.important_date_notified(item);
     if content_changed then
       if before.id is not null then
         perform app_private.communication_withdraw(target_workspace_id, 'schedule.important_date.available',
           'important_date', item.id::text, 'superseded');
       end if;
-      perform app_private.important_date_deliver(item, reached);
+      perform app_private.important_date_deliver(item, told);
     else
+      -- Those it no longer reaches lose it (BL-534); the new people are told.
+      dropped := array(select who from unnest(item.delivered_to) who where not who = any (reached));
+      if cardinality(dropped) > 0 then
+        perform app_private.communication_withdraw(target_workspace_id, 'schedule.important_date.available',
+          'important_date', item.id::text, 'cancelled', dropped);
+      end if;
       perform app_private.important_date_deliver(item,
-        array(select who from unnest(reached) who where not who = any (item.delivered_to)));
+        array(select who from unnest(told) who where not who = any (item.delivered_to)));
+      told := array(select distinct who from unnest(told || array(
+        select who from unnest(item.delivered_to) who where who = any (reached))) who);
     end if;
-    update public.important_dates
-    set delivered_to = case when content_changed then reached
-                            else array(select distinct who from unnest(item.delivered_to || reached) who) end
-    where id = item.id
-    returning * into item;
+    update public.important_dates set delivered_to = told where id = item.id returning * into item;
   end if;
 
   insert into public.important_date_changes (workspace_id, important_date_id, actor_user_id, action, before, after)
@@ -1159,6 +1308,8 @@ declare
   item public.important_dates;
   before public.important_dates;
   reached uuid[];
+  opened uuid[];
+  told uuid[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
   select * into before from public.important_dates
@@ -1191,9 +1342,10 @@ begin
 
   if target_action = 'republish' then
     reached := app_private.important_date_recipients(item);
-    perform app_private.important_date_deliver(item, array(
+    -- Who opened the current content already is not told again (K7).
+    opened := array(
       select who from unnest(reached) who
-      where not exists (
+      where exists (
         select 1 from public.notification_outbox outbox
         join public.notification_recipients recipient
           on recipient.workspace_id = outbox.workspace_id and recipient.event_id = outbox.event_id
@@ -1201,8 +1353,11 @@ begin
         where outbox.workspace_id = item.workspace_id and outbox.type_key = 'schedule.important_date.available'
           and outbox.subject_type = 'important_date' and outbox.subject_id = item.id::text
           and outbox.payload ->> 'content_revision' = item.content_revision::text
-          and recipient.recipient_user_id = who and inbox.read_at is not null)));
-    update public.important_dates set delivered_to = reached where id = item.id returning * into item;
+          and recipient.recipient_user_id = who and inbox.read_at is not null));
+    told := array(select who from unnest(app_private.important_date_notified(item)) who where not who = any (opened));
+    perform app_private.important_date_deliver(item, told);
+    update public.important_dates set delivered_to = array(select distinct who from unnest(told || opened) who)
+    where id = item.id returning * into item;
   end if;
 
   insert into public.important_date_changes (workspace_id, important_date_id, actor_user_id, action, before, after)
@@ -1227,8 +1382,10 @@ as $$
 declare
   writable uuid[];
   wide boolean;
+  reader app_private.actor_state;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
+  reader := app_private.actor(actor_user_id, target_workspace_id);
   writable := app_private.scope_set(actor_user_id, target_workspace_id, 'important_date.write');
   wide := app_private.authz_reason(actor_user_id, target_workspace_id, 'important_date.write_wide') is null;
   return jsonb_build_object(
@@ -1257,10 +1414,11 @@ begin
         from public.important_dates date_row
         left join public.user_profiles author on author.user_id = date_row.created_by
         cross join lateral (
-          select app_private.communication_reason(actor_user_id, target_workspace_id, 'important_date',
+          select app_private.communication_reason(reader, target_workspace_id, 'important_date',
             date_row.location_ids, date_row.created_by) is null allowed) control
+        -- important_date_visible, with the reader's state read once for the list.
         where date_row.workspace_id = target_workspace_id
-          and app_private.important_date_visible(actor_user_id, date_row)
+          and (control.allowed or app_private.important_date_out_to(reader, date_row))
       ) d),
     'locations', app_private.settings_locations(target_workspace_id, writable)
   );

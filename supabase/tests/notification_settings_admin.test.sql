@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(19);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -42,13 +42,31 @@ select is(
   'true',
   'a settings writer receives write capability'
 );
+-- What the list holds, by rule rather than by count (BL-373): the notices a
+-- workspace sends, never a person's own account notices, never a retired type.
+insert into public.notification_catalog
+select (jsonb_populate_record(null::public.notification_catalog, to_jsonb(c)
+  || '{"type_key": "test.retired_notice", "template_key": "test.retired_notice.v1", "lifecycle": "retired"}')).*
+from public.notification_catalog c where c.type_key = 'schedule.published';
+create temporary table listed_types as
+select entry->>'type_key' as type_key
+from jsonb_array_elements(public.get_notification_settings_service(
+  'e2100000-0000-4000-8000-000000000001', 'e2110000-0000-4000-8000-000000000001')->'catalog') entry;
+select ok(
+  (select array_agg(type_key) from listed_types) @> array[
+    'schedule.published', 'requests.time_off.submitted',
+    'communications.announcement.available', 'schedule.important_date.available'],
+  'the workspace''s notices are listed, the important date one too'
+);
 select is(
-  jsonb_array_length(public.get_notification_settings_service(
-    'e2100000-0000-4000-8000-000000000001',
-    'e2110000-0000-4000-8000-000000000001'
-  )->'catalog'),
-  (select count(*)::integer from public.notification_catalog where lifecycle = 'active' and notification_scope = 'workspace'),
-  'only the active workspace catalog types are returned, however many there are (BL-373)'
+  (select count(*)::integer from listed_types where type_key like 'security.account.%'),
+  0,
+  'a person''s own account notices are not workspace policy'
+);
+select is(
+  (select count(*)::integer from listed_types where type_key = 'test.retired_notice'),
+  0,
+  'a retired type is not listed'
 );
 select throws_ok(
   $$select public.get_notification_settings_service('e2100000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000001')$$,

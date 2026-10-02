@@ -153,3 +153,4 @@ supabase/tests/notification_platform_core.test.sql
 supabase/tests/notification_preference_resolver_and_producers.test.sql
 supabase/tests/notification_settings_admin.test.sql
 supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
+supabase/tests/announcements_and_dates_edge_cases.test.sql

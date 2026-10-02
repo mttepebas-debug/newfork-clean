@@ -20,6 +20,13 @@ $$;
 -- function's default execute grant does not reach past the connecting role.
 grant execute on function pg_temp.said(text) to public;
 
+-- A day of this week (Monday + n). The fixture lives in the week still being
+-- planned: a closed day no longer reaches a locked past week (ILKELER P09).
+create function pg_temp.wk(n integer) returns date language sql stable as $$
+  select current_date - (extract(isodow from current_date)::integer - 1) + n
+$$;
+grant execute on function pg_temp.wk(integer) to public;
+
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
   ('31000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'schedule-owner@example.test', '', '{}', '{}', now(), now()),
@@ -70,13 +77,13 @@ values
   ('40000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000002', '36000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001');
 
 insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
-values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', array['34000000-0000-4000-8000-000000000001']::uuid[], ('2026-08-18')::date, ('2026-08-18')::date, 'Closed fixture', 'closed_day', '31000000-0000-4000-8000-000000000001');
+values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', array['34000000-0000-4000-8000-000000000001']::uuid[], pg_temp.wk(1), pg_temp.wk(1), 'Closed fixture', 'closed_day', '31000000-0000-4000-8000-000000000001');
 
 insert into public.schedule_location_publications (
   id, workspace_id, location_id, week_start, version_number, status, published_by
 ) values
-  ('43000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', '2026-08-17', 1, 'current', '31000000-0000-4000-8000-000000000001'),
-  ('43000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000002', '2026-08-17', 1, 'current', '31000000-0000-4000-8000-000000000001');
+  ('43000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', pg_temp.wk(0), 1, 'current', '31000000-0000-4000-8000-000000000001'),
+  ('43000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000002', pg_temp.wk(0), 1, 'current', '31000000-0000-4000-8000-000000000001');
 -- The closed-day shift used to belong to the employee who is excluded from
 -- the schedule. Neither can be assigned any more -- somebody excluded from
 -- the schedule holds no shifts -- so it is an open shift instead. The
@@ -86,8 +93,8 @@ insert into public.schedule_published_shifts (
   id, workspace_id, location_id, publication_id, employee_id, job_id,
   shift_type_id, scheduled_date, start_time, end_time, source_shift_id
 ) values
-  ('44000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', '43000000-0000-4000-8000-000000000001', null, '36000000-0000-4000-8000-000000000001', '37000000-0000-4000-8000-000000000001', '2026-08-18', '15:00', '23:00', '45000000-0000-4000-8000-000000000001'),
-  ('44000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000002', '43000000-0000-4000-8000-000000000002', '38000000-0000-4000-8000-000000000002', '36000000-0000-4000-8000-000000000001', '37000000-0000-4000-8000-000000000001', '2026-08-19', '15:00', '23:00', '45000000-0000-4000-8000-000000000002');
+  ('44000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', '43000000-0000-4000-8000-000000000001', null, '36000000-0000-4000-8000-000000000001', '37000000-0000-4000-8000-000000000001', pg_temp.wk(1), '15:00', '23:00', '45000000-0000-4000-8000-000000000001'),
+  ('44000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000002', '43000000-0000-4000-8000-000000000002', '38000000-0000-4000-8000-000000000002', '36000000-0000-4000-8000-000000000001', '37000000-0000-4000-8000-000000000001', pg_temp.wk(2), '15:00', '23:00', '45000000-0000-4000-8000-000000000002');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '31000000-0000-4000-8000-000000000002', true);
@@ -99,38 +106,38 @@ select throws_ok($$select * from public.schedule_closures$$, '42501', null, 'aut
 
 set local role service_role;
 select lives_ok(
-  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
+  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))$$,
   'owner reads the schedule model'
 );
-select is((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->>'week_start'), '2026-08-17', 'target date resolves workspace week start');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'locations'), 2, 'owner receives both locations');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees'), 3, 'owner receives every assigned employee, the Visible Room manager included');
+select is((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->>'week_start'), pg_temp.wk(0)::text, 'target date resolves workspace week start');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'locations'), 2, 'owner receives both locations');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'employees'), 3, 'owner receives every assigned employee, the Visible Room manager included');
 select is((
   select employee->>'is_excluded_from_schedule'
-  from jsonb_array_elements(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'employees') employee
+  from jsonb_array_elements(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'employees') employee
   where employee->>'id' = '38000000-0000-4000-8000-000000000001'
 ), 'true', 'schedule read model projects employee schedule exclusion flag');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'shifts'), 2, 'owner receives both published shifts');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'locations'), 1, 'scoped manager receives one location');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'shifts'), 1, 'scoped manager receives one location shift');
-select ok((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '2026-08-19')->'shifts'->0->'warning_codes') ? 'closed_location', 'read model projects closure warning');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'shifts'), 2, 'owner receives both published shifts');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'locations'), 1, 'scoped manager receives one location');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'shifts'), 1, 'scoped manager receives one location shift');
+select ok((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'shifts'->0->'warning_codes') ? 'closed_location', 'read model projects closure warning');
 select throws_ok(
-  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
+  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))$$,
   '42501', 'Not allowed', 'employee access class cannot read manager Schedule'
 );
-select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$),
+select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))$$),
   '42501 authz.missing_permission schedule.read', 'employee access class is refused for missing permission, not some other reason');
 select throws_ok(
-  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$,
+  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))$$,
   '42501', 'Not allowed', 'cross-tenant Schedule read is denied'
 );
-select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', '2026-08-19')$$),
+select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))$$),
   '42501 authz.not_member schedule.read', 'a true outsider is refused as not a member, not some other reason');
 select throws_ok(
-  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', '2026-08-19')$$,
+  $$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', pg_temp.wk(2))$$,
   '42501', 'Not allowed', 'same account employee role in another tenant cannot read manager Schedule'
 );
-select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', '2026-08-19')$$),
+select is(pg_temp.said($$select public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000002', pg_temp.wk(2))$$),
   '42501 authz.missing_permission schedule.read', 'the same account is a member there too, just without the permission, not some other reason');
 
 select * from finish();

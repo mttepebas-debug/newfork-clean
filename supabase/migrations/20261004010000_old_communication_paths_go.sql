@@ -34,7 +34,10 @@ drop function public.normalize_important_date_locations();
 -- year from its first to two years ahead. A closed day at no location closes
 -- every live location. The workspace's "closed location" conflict rule still
 -- decides whether it warns or blocks. A closure for one shift type had no
--- screen and goes (ILKELER P23).
+-- screen and goes (ILKELER P23). Only the weeks still being planned are closed:
+-- from this week's start (the Schedule's editable week,
+-- schedule_current_week_start_service) on, so a date added, changed or archived
+-- today never rewrites a locked past week (ILKELER P09).
 -- ponytail: the view keeps the old table's name and columns, so the Schedule's
 -- six readers and the API read it unchanged.
 drop table public.schedule_closures;
@@ -65,8 +68,11 @@ cross join lateral generate_series(
     then greatest(extract(year from current_date)::integer + 2 - extract(year from date_row.starts_on)::integer, 0)
     else 0 end
 ) as years(n)
+cross join lateral (
+  select public.schedule_current_week_start_service(date_row.workspace_id) as week_start
+) as editable
 cross join lateral generate_series(
-  date_row.starts_on + make_interval(years => years.n),
+  greatest(date_row.starts_on + make_interval(years => years.n), editable.week_start),
   date_row.ends_on + make_interval(years => years.n),
   interval '1 day'
 ) as days(day)

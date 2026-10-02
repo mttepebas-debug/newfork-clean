@@ -1,6 +1,20 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(48);
+
+-- A refusal's code and the reason the core gives, '42501 authz.out_of_scope'
+-- (FOUNDATION-B "hayır" contract).
+create function pg_temp.refusal(statement text) returns text language plpgsql as $f$
+declare state text; hint text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics state = returned_sqlstate, hint = pg_exception_hint;
+  return state || ' ' || coalesce(hint, '');
+end;
+$f$;
+grant execute on function pg_temp.refusal(text) to service_role;
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
  ('a8000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','comms-manager@example.test','','{}','{}',now(),now()),
@@ -37,10 +51,10 @@ select throws_ok($$select * from public.announcements$$,'42501',null,'browser ro
 select throws_ok($$select public.get_announcements_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501',null,'browser roles cannot invoke service announcement RPCs');
 reset role;
 
-select throws_ok($$select public.get_announcements_service('a8000000-0000-4000-8000-000000000004','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','Not allowed','cross-tenant announcement reads fail closed');
-select throws_ok($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'No access','Body','general',array['employee'],array['11000000-0000-4000-8000-000000000001']::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$,'42501','Not allowed','employees cannot manage announcements');
-select throws_ok($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Other location','Body','operations',array['employee'],array['11000000-0000-4000-8000-000000000002']::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$,'42501','Not allowed','location-scoped manager cannot target another location');
-select throws_ok($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Everywhere','Body','general',array['employee'],array[]::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$,'42501','Not allowed','location-scoped manager cannot broadcast workspace-wide (K1)');
+select is(pg_temp.refusal($$select public.get_announcements_service('a8000000-0000-4000-8000-000000000004','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$),'42501 authz.not_member','cross-tenant announcement reads fail closed: not a member');
+select is(pg_temp.refusal($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'No access','Body','general',array['employee'],array['11000000-0000-4000-8000-000000000001']::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$),'42501 authz.missing_permission','employees cannot manage announcements: no permission');
+select is(pg_temp.refusal($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Other location','Body','operations',array['employee'],array['11000000-0000-4000-8000-000000000002']::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$),'42501 authz.out_of_scope','location-scoped manager cannot target another location: out of scope');
+select is(pg_temp.refusal($$select public.save_announcement_audience_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Everywhere','Body','general',array['employee'],array[]::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$),'42501 authz.out_of_scope','location-scoped manager cannot broadcast workspace-wide (K1): out of scope');
 select is((public.save_announcement_audience_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,'Owner draft','Private owner draft','general',array['owner'],array[]::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])->>'status'),'draft','owner can create an all-location draft');
 select is((select count(*)::integer from jsonb_array_elements(public.get_announcements_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements') item where item->>'title'='Owner draft'),0,'scoped manager cannot inspect an all-location draft outside control scope');
 
@@ -99,7 +113,7 @@ select is((select jsonb_array_length(public.get_announcements_service('a8000000-
 select is((select jsonb_array_length(public.get_announcements_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements')),0,'employee at another location cannot see the announcement');
 update public.workspace_memberships set all_locations=true where id='a8100000-0000-4000-8000-000000000003';
 select is((select jsonb_array_length(public.get_announcements_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements')),0,'all-location employee membership without a matching location assignment cannot see the announcement');
-select throws_ok($$select public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))$$,'42501','Not allowed','employee cannot acknowledge an announcement outside their assignments');
+select is(pg_temp.refusal($$select public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))$$),'42501 authz.out_of_scope','employee cannot acknowledge an announcement outside their assignments: out of scope, as an unknown one');
 select isnt((public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))->>'acknowledged_at'),null,'target employee can acknowledge the announcement');
 select isnt((public.get_announcements_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements'->0->>'acknowledged_at'),null,'acknowledged announcement stays listed with its acknowledgement');
 select throws_ok($$select public.publish_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state),1)$$,'40001','stale announcement revision','publication is revision guarded');
@@ -151,7 +165,8 @@ select is((select count(*)::integer from public.notification_outbox where type_k
 select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos'->0->>'body'),'Alex Kim - Food handler card','Workspace dashboard lists scoped document-expiry todo');
 select is((select count(*)::integer from public.workspace_todos where source_type='employee_document_expiry' and source_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry todo sync is deduped by source');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.employee_document.expiring' and subject_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry notification sync is deduped by source');
-select throws_ok($$select public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Employee task','',null,null)$$,'42501','Not allowed','employee-only users cannot create Workspace todos');
+select is(pg_temp.refusal($$select public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Employee task','',null,null)$$),'42501 authz.missing_permission','employee-only users cannot create Workspace todos: no permission');
+select is(pg_temp.refusal($$select public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$),'42501 authz.missing_permission','employee-only users cannot open manager Workspace: no permission');
 select is((public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Scoped follow-up','Review employee file','15000000-0000-4000-8000-000000000001',now()+interval '1 day')->>'employee_id'),'15000000-0000-4000-8000-000000000001','manager can create a manual todo for an employee in scope');
 with saved as (
  select public.create_workspace_todo_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Owner follow-up','',null,null) result
@@ -167,7 +182,7 @@ update public.employee_documents set expiry_date=current_date + 1 where id='a970
 update public.workspaces set lifecycle_status='deleted', closed_at=now(), closed_by='a8000000-0000-4000-8000-000000000001' where id='6ea5d512-bc7f-4cf3-aad4-2f0815de00fd';
 set local role service_role;
 select is((public.sync_expiring_document_todos_service('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->>'opened_or_refreshed')::integer,0,'closed workspaces do not create document-expiry todos');
-select throws_ok($$select public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$,'42501','Not allowed','employee-only users cannot open manager Workspace');
+select is(pg_temp.refusal($$select public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$),'42501 authz.workspace_closed','a deleted workspace opens to nobody: closed comes before any permission');
 set local role postgres;
 select is((select count(*)::integer from public.audit_events event join communication_state state on event.target_id=state.announcement_id::text where event.action='announcement.published'),1,'announcement publication writes an audit event');
 
