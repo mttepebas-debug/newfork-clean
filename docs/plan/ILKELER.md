@@ -132,6 +132,7 @@
 - Kanıt: 09-23 "İstekler hep üst kademelere gider onay için", "Komple işten çıkarmayı admin
 - Kanıt (2026-10-01, ters seçim): bekleyen izni kim görür sorusunda önerilen M2'nin genişliğine ("talebi görsün, ilerlemeyi değil") dayandı; Mert daralttı: bekleyen talebi yalnız karar veren ve sahibi görür, eş rütbe görmez ("Kendi pozisyondan arkadaşın değil"). Onay zincirinde görünürlük de bir üst kademeyle sınırlıdır.
   yapar"; 09-26 "Yalnız lokasyon müdürleri". KARARLAR "Ürün kuralları".
+- Kanıt (2026-10-02, ters seçim): duyuru teslimi için "admin bildirim almasın" önerildi; Mert "admin'ler de alsın" seçti. Duyuru / önemli tarihte admin her kaydı alır; P07'nin "admin gürültüsü yok" kısmı onay bildirimleri için geçerli kalır (KARARLAR "Duyurular ve önemli tarihler" K5).
 
 **P08. Ayrıcalık bugünkü rolden gelir.**
 - Kural: kurucuya ya da owner'a "saygı" istisnası yapılmaz. Rol düşünce muafiyet de düşer; owner

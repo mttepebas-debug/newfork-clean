@@ -657,3 +657,21 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — hücre geri yazılabilir.
 - **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (besleme #90; koordinatör `local_b355d250…`'ın isteği).
 - **Mert:** bilgi.
+
+### KK-86 (2026-10-02) Duyuru ve önemli tarihte arşivli lokasyon kapsamda sayılmaz
+- **Karar:** K1 ve K6'da "çok lokasyonlu" ve "atanmadığı lokasyon" sayılırken arşivli lokasyon hesaba katılmaz.
+- **Neden:** KARARLAR Q-C (silinmiş / arşivli lokasyon hiçbir yerde sayılmaz) bu alana da uyar; ayrı kural gerekmez.
+- **Uygulamada etkisi:** bugün görünür değişiklik yok. Örnek: owner'ın "Kadıköy + Moda" tarihinde Moda arşivlenirse kayıt tek lokasyonlu (Kadıköy) sayılır; Kadıköy müdürü Ayşe görür.
+- **Dayanak:** KARARLAR Q-C (2026-09-26), `20261003000000_an_archived_location_counts_nowhere.sql`.
+- **Geri alma:** kolay — kural FB-6.7'de yazılırken değiştirilebilir.
+- **Durum:** yürürlükte (uygulama FB-6.7'de). Kayıt oturumu `local_43ff0725…` yazdı (besleme #92; koordinatör `local_abc4d126…`'ın isteği).
+- **Mert:** bilgi.
+
+### KK-87 (2026-10-02) Duyuru ve önemli tarihte rütbe, yazarın bugünkü rolüdür
+- **Karar:** K2'deki rütbe karşılaştırmasında kaydı açan kişinin açtığı günkü değil, bugünkü rolü sayılır.
+- **Neden:** ayrıcalık bugünkü rolden gelir; rolü düşen kişinin eski kayıtları üst rütbe koruması taşımaz.
+- **Uygulamada etkisi:** bugün görünür değişiklik yok. Örnek: Hande admin iken bir tarih açtı, sonra müdüre indirildi; o tarihi artık öteki müdürler düzenleyebilir.
+- **Dayanak:** ILKELER P08.
+- **Geri alma:** kolay — FB-6.7'de yazılırken değiştirilebilir.
+- **Durum:** yürürlükte (uygulama FB-6.7'de). Kayıt oturumu `local_43ff0725…` yazdı (besleme #92; koordinatör `local_abc4d126…`'ın isteği).
+- **Mert:** bilgi.
