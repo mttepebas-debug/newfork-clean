@@ -33,3 +33,5 @@
 - [Devir 2026-09-29](handoff-2026-09-29.md) — açık tekrar incelemeler (BL-335 onboarding alanı, G6 6b681623..62782c12), çalışan rapor kanalı send_message, deneme kuralı; kapanınca sil
 - [Silen migration: seed + RESTRICT zinciri](checklist-drop-migration-seed-and-restrict.md) — kolon düşerken seed.sql'i, satır silerken RESTRICT bağlı tabloları tara; rolled-back deneme ikisini de göstermez (FB-6.3.7)
 - [Shared schema field changes](checklist-shared-schema-field-changes.md) — removing a field breaks open old tabs; API overwriting a DB sub-object (settings) drops new keys
+- [security_invoker view + service_role](checklist-invoker-view-service-role.md) — tablo view olunca API service_role ile okuyabiliyor mu (lives_ok), seed.sql o adı hâlâ yazıyor mu (FB-6.7 A, Schedule açılmazdı)
+- [Geçmiş okumasında eski kapsam sızıntısı](checklist-history-old-scope-leak.md) — taşınan/daralan kaydın eski sürümü okuyanın göremeyeceği lokasyonu açığa çıkarıyor mu (FB-6.7 A)
