@@ -95,6 +95,16 @@ create function pg_temp.sees_date(person text, id uuid) returns jsonb language s
   where (d ->> 'id')::uuid = id
 $$;
 
+-- Every entry point asks the core first (FB-6.7, done-when 1).
+select is(array(
+  select p.proname::text from pg_proc p
+  where p.pronamespace = 'public'::regnamespace and p.proname in (
+    'get_announcements_service', 'save_announcement_audience_service', 'publish_announcement_service',
+    'set_announcement_state_service', 'acknowledge_announcement_service', 'save_important_date_service',
+    'set_important_date_state_service', 'read_settings_important_dates_service', 'read_important_date_history_service')
+    and p.prosrc !~* '\mbegin\M\s*perform\s+app_private\.authorize\('
+  order by 1), '{}'::text[], 'every announcement and important date entry point starts with app_private.authorize()');
+
 -- 3. K1: several locations, or the whole workspace, is an admin's or the owner's ------------
 
 select is(pg_temp.try($$select pg_temp.save_ann('ayse', array['K'], 'Ayse at K')$$), 'ok',

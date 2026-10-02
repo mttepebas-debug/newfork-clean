@@ -4,8 +4,5 @@ supabase/tests/bl052_document_access.test.sql  # red in CI run 36588987982 (2026
 supabase/tests/bl052_document_definitions.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 6-12 (BL-368)
 supabase/tests/bl052_document_employee_assignment_preview.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 1, 5-7 (BL-368)
 supabase/tests/employee_onboarding_rls.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 10, 21, 25, 27, 37; aborts (exit 3) (BL-368)
-supabase/tests/notification_platform_core.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): test 13 (BL-368)
-supabase/tests/notification_preference_resolver_and_producers.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 2-4; aborts (exit 3) (BL-368)
-supabase/tests/notification_settings_admin.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): test 6 (BL-368)
 supabase/tests/scheduling_settings_shift_types_rls.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 12-13, 23 (BL-368)
 supabase/tests/weekly_exchange_changed_terms.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): aborts after 28 tests (exit 3) (BL-368)

@@ -385,11 +385,12 @@ begin
 end;
 $$;
 
--- K5: everybody a record reaches. Its targeted people (where they work, their
--- role class, department and job), every manager working at one of its live
--- locations, the owner and the admins. No locations means the whole workspace;
--- only archived ones reach nobody but the owner and the admins. A null roles
--- list (an important date) targets every role.
+-- K5: everybody a record reaches: whoever manages one of its live locations
+-- (the owner, the admins, its managers; the core's actor().manages), and its
+-- targeted people: their role class, where they work, their department and
+-- job. No locations means the whole workspace. A record left only at archived
+-- locations reaches nobody (KK-86). A null roles list (an important date)
+-- targets every role.
 create function app_private.communication_audience(w uuid, stored uuid[], roles public.workspace_role[], department_ids uuid[], job_ids uuid[])
 returns setof uuid
 language sql
@@ -400,35 +401,25 @@ as $$
   with live as (
     select app_private.live_locations(w, stored) ids, cardinality(stored) = 0 everywhere
   ), member as (
-    select membership.user_id, role.access_class, profile.id employee_id,
-      coalesce((
-        select array_agg(assignment.location_id)
-        from public.employee_location_assignments assignment
-        join public.locations location on location.id = assignment.location_id
-        where assignment.workspace_id = w and assignment.employee_id = profile.id
-          and assignment.ended_at is null and app_private.location_is_live(location)
-      ), '{}') works
+    select membership.user_id, app_private.actor(membership.user_id, w) state
     from public.workspace_memberships membership
-    join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
-    left join public.employee_profiles profile
-      on profile.workspace_id = w and profile.user_id = membership.user_id and profile.archived_at is null
     where membership.workspace_id = w and membership.status = 'active'
   )
   select member.user_id
   from member, live
-  where member.access_class in ('owner', 'admin')
-     or (member.access_class = 'manager' and (live.everywhere or member.works && live.ids))
-     or ((roles is null or member.access_class = any (roles))
-         and (live.everywhere or member.works && live.ids)
+  where (member.state).manages && live.ids
+     or (live.everywhere and cardinality((member.state).manages) > 0)
+     or ((roles is null or (member.state).class = any (roles))
+         and (live.everywhere or (member.state).works && live.ids)
          and (cardinality(coalesce(department_ids, '{}')) = 0 or exists (
            select 1 from public.employee_job_assignments assignment
            join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
-           where assignment.workspace_id = w and assignment.employee_id = member.employee_id
+           where assignment.workspace_id = w and assignment.employee_id = (member.state).employee_id
              and assignment.ended_at is null and job.archived_at is null and job.department_id = any (department_ids)))
          and (cardinality(coalesce(job_ids, '{}')) = 0 or exists (
            select 1 from public.employee_job_assignments assignment
            join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
-           where assignment.workspace_id = w and assignment.employee_id = member.employee_id
+           where assignment.workspace_id = w and assignment.employee_id = (member.state).employee_id
              and assignment.ended_at is null and job.archived_at is null and job.id = any (job_ids))))
 $$;
 
@@ -687,11 +678,11 @@ declare
   content_changed boolean := false;
   reached uuid[];
 begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
   target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
   if target_announcement_id is null then
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', target_location_ids, actor_user_id);
   else
-    perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
     perform app_private.announcement_release(target_workspace_id);
     select * into before from public.announcements
     where id = target_announcement_id and workspace_id = target_workspace_id for update;
@@ -1032,6 +1023,7 @@ declare
   content_changed boolean := true;
   reached uuid[];
 begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
   target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
   if target_important_date_id is null then
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, actor_user_id);
@@ -1128,6 +1120,7 @@ declare
   before public.important_dates;
   reached uuid[];
 begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
   select * into before from public.important_dates
   where id = target_important_date_id and workspace_id = target_workspace_id for update;
   if before.id is null or not app_private.important_date_visible(actor_user_id, before) then
@@ -1531,3 +1524,24 @@ insert into public.account_deletion_requests (
   );
 end;
 $function$;
+
+-- 9. Workspace's notifications card still reads the old inbox; it asks the core
+-- for one's own notifications instead of the old capability helper.
+CREATE OR REPLACE FUNCTION public.get_notifications_service(actor_user_id uuid, target_workspace_id uuid, target_category text DEFAULT NULL::text, target_unread_only boolean DEFAULT false, target_cursor timestamp with time zone DEFAULT NULL::timestamp with time zone, target_limit integer DEFAULT 30)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare result jsonb;
+begin
+ perform app_private.authorize(actor_user_id,target_workspace_id,'notifications.read_own');
+ if target_category is not null and target_category not in('announcement','request','schedule') then raise exception 'valid notification category required' using errcode='22023'; end if;
+ select jsonb_build_object(
+  'workspace_id',target_workspace_id,
+  'unread_count',(select count(*) from public.notifications where workspace_id=target_workspace_id and recipient_user_id=actor_user_id and dismissed_at is null and read_at is null and created_at<=now()),
+  'next_cursor',(select min(page.created_at) from (select notification.created_at from public.notifications notification where notification.workspace_id=target_workspace_id and notification.recipient_user_id=actor_user_id and notification.dismissed_at is null and notification.created_at<=now() and (target_category is null or notification.category::text=target_category) and (not target_unread_only or notification.read_at is null) and (target_cursor is null or notification.created_at<target_cursor) order by notification.created_at desc,notification.id limit greatest(1,least(target_limit,50))+1) page having count(*)>greatest(1,least(target_limit,50))),
+  'notifications',coalesce((select jsonb_agg(jsonb_build_object('id',page.id,'workspace_id',page.workspace_id,'category',page.category,'title',page.title,'body',page.body,'action_url',page.action_url,'source_type',page.source_type,'source_id',page.source_id,'created_at',page.created_at,'read_at',page.read_at) order by page.created_at desc,page.id) from (select notification.* from public.notifications notification where notification.workspace_id=target_workspace_id and notification.recipient_user_id=actor_user_id and notification.dismissed_at is null and notification.created_at<=now() and (target_category is null or notification.category::text=target_category) and (not target_unread_only or notification.read_at is null) and (target_cursor is null or notification.created_at<target_cursor) order by notification.created_at desc,notification.id limit greatest(1,least(target_limit,50))) page),'[]'::jsonb)
+ ) into result;
+ return result;
+end; $function$;

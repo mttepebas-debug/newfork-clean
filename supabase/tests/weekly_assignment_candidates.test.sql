@@ -85,10 +85,10 @@ update public.workspace_memberships set status='active' where workspace_id=(sele
 update public.employee_profiles set is_excluded_from_schedule=true where workspace_id=(select w from ws);
 select is(pg_temp.candidate()->>'status','ineligible','excluded employee remains ineligible');
 update public.employee_profiles set is_excluded_from_schedule=false where workspace_id=(select w from ws);
-insert into public.schedule_closures(id,workspace_id,location_id,closed_date,title,created_by)
- select 'ad426000-0000-4000-8000-000000000015',w,loc,'2035-01-15','Closed',owner_id from ws;
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
+ select 'ad426000-0000-4000-8000-000000000015', w, loc, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, 'Closed', 'closed_day', owner_id from ws;
 select is(pg_temp.candidate()->>'status','ineligible','location closure is not an availability override');
-delete from public.schedule_closures where id='ad426000-0000-4000-8000-000000000015';
+delete from public.important_dates where id='ad426000-0000-4000-8000-000000000015';
 select tests.approved_leave(w,emp,employee_user,other_loc,'2035-01-15','21:00','22:00','ad426000-0000-4000-8000-000000000016') from ws;
 select is(pg_temp.candidate()->>'status','ineligible','approved leave remains a blocker even with preferences');
 select ok((pg_temp.candidate()->'reasons'->>0) like 'Approved time off%','leave blocker is explained separately');

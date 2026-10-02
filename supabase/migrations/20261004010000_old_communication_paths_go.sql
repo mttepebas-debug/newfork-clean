@@ -6,8 +6,6 @@
 -- Every announcement entry point asks the core now (20261004000000).
 drop function public.publish_announcement_service_legacy_notifications(uuid, uuid, uuid, integer);
 drop function public.cancel_announcement_service(uuid, uuid, uuid, integer);
--- The old in-app inbox read; the API reads get_notification_inbox_v2_service.
-drop function public.get_notifications_service(uuid, uuid, text, boolean, timestamp with time zone, integer);
 drop function public.communication_actor_can_control_announcement_service(uuid, uuid, uuid);
 drop function public.communication_actor_has_all_locations_service(uuid, uuid);
 drop function public.communication_actor_has_capability_service(uuid, uuid, text, uuid);

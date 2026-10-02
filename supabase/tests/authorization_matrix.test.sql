@@ -385,13 +385,20 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('requests.read', 'time_off', 'schedule.time_off_requests.read', false, true,
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service($1, $2, 'needs_review')
        -> 'time_off_requests') r where (r ->> 'id')::uuid = $3)$$),
+  -- One location (FB-6.7 K1); a blank location is no location, never everywhere.
   ('announcement.write', 'location', 'announcements.manage', false, false,
    $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
-       coalesce(array_remove(array[$3], null), '{}'), null, null, null, '{}', '{}') is not null$$),
-  ('important_date.write', 'location', 'important_dates.manage', false, true,
-   $$select tests.as_browser($1, format(
-       'insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling, location_ids, location_id) values (%L, ''Probe'', ''event'', %L, %L, ''none'', '''', false, %L::uuid[], %L)',
-       $2, tests.week(0), tests.week(0), coalesce(array_remove(array[$3], null), '{}'), $3)) > 0$$);
+       array[$3], null, null, null, '{}', '{}') is not null$$),
+  ('important_date.write', 'location', 'important_dates.manage', false, false,
+   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '', false,
+       array[$3]) is not null$$),
+  -- The whole workspace (K1); several locations ask the same rule.
+  ('announcement.write_wide', 'workspace', 'announcements.manage', false, false,
+   $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
+       '{}', null, null, null, '{}', '{}') is not null$$),
+  ('important_date.write_wide', 'workspace', 'important_dates.manage', false, false,
+   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '', false,
+       '{}') is not null$$);
 
 -- A draft or a template with several locations, and the locations a publish
 -- or an export names (FB-6.1 .4). The export and the publish preview are asked
@@ -476,9 +483,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('legacy.schedule_capability', 'location', 'schedule.manage', false, true,
    $$select public.schedule_actor_has_capability_service($1, $2, 'schedule.manage', $3)$$),
   ('legacy.schedule_can_publish', 'location', 'schedule.publish', false, true,
-   $$select public.schedule_actor_can_publish_service($1, $2, $3)$$),
-  ('legacy.communication_capability', 'location', 'announcements.manage', false, true,
-   $$select public.communication_actor_has_capability_service($1, $2, 'announcements.manage', $3)$$);
+   $$select public.schedule_actor_can_publish_service($1, $2, $3)$$);
 
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template, member, restricted_ok) values
   ('notifications.read_own', 'workspace', null, false, false,
@@ -551,14 +556,15 @@ insert into core_action (key, core_key, blank) values
   ('time_off.decide_alone', 'time_off.decide_alone', 'null'),
   ('time_off.revoke', 'time_off.revoke', 'null'),
   ('requests.read', 'requests.read', 'null'),
-  ('announcement.write', 'announcement.write', 'org'),
-  ('important_date.write', 'important_date.write', 'org'),
+  ('announcement.write', 'announcement.write', 'null'),
+  ('important_date.write', 'important_date.write', 'null'),
+  ('announcement.write_wide', 'announcement.write_wide', 'null'),
+  ('important_date.write_wide', 'important_date.write_wide', 'null'),
   ('read.membership', 'membership.read', 'null'),
   ('read.audit', 'audit.read', 'null'),
   ('legacy.schedule_can_manage', 'schedule.edit', 'null'),
   ('legacy.schedule_capability', 'schedule.edit', 'null'),
   ('legacy.schedule_can_publish', 'schedule.publish', 'null'),
-  ('legacy.communication_capability', 'announcement.write', 'null'),
   ('notifications.read_own', 'notifications.read_own', 'null'),
   ('exchange.offer_own', 'exchange.offer_own', 'null'),
   ('time_off.request_own', 'time_off.request_own', 'null'),
@@ -781,8 +787,7 @@ begin
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
     return 'deny';
 
-  when 'legacy.schedule_can_manage', 'legacy.schedule_capability', 'legacy.schedule_can_publish',
-       'legacy.communication_capability' then
+  when 'legacy.schedule_can_manage', 'legacy.schedule_capability', 'legacy.schedule_can_publish' then
     -- Manage reach at one location: admin and owner anywhere in the
     -- workspace, a manager where they work, nobody at a blank location.
     if t.locs is null then return 'deny'; end if;
@@ -815,10 +820,16 @@ begin
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 
   when 'announcement.write', 'important_date.write' then
-    -- Managers write for their own locations; the whole organization is admin
-    -- and owner.
+    -- A record at one location (KARARLAR "Duyurular ve önemli tarihler" K1):
+    -- an admin or the owner anywhere, a manager where they manage; nobody at
+    -- no location.
+    if t.locs is null then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
+
+  when 'announcement.write_wide', 'important_date.write_wide' then
+    -- Several locations or the whole workspace: an admin's or the owner's (K1).
+    return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 
   else
     raise exception 'expected(): no rule for action %', action_key;
@@ -840,12 +851,10 @@ create temporary table known_gap (
   reason text not null
 );
 insert into known_gap values
-  ('important-date-no-as-validation', null, '{important_date.write}', '{K,B,x:K}',
-   'an important date at a location out of reach or in another workspace is refused as 23514 "Choose a location in this workspace", not as a permission no: the browser insert runs its trigger before row security (stage 6, announcements)'),
   ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
    'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
   ('legacy-blank-location', null,
-   '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish,legacy.communication_capability}', '{none}',
+   '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish}', '{none}',
    'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)');
 
 create temporary table known_hit (id text primary key);

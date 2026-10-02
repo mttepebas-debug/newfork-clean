@@ -15,10 +15,11 @@ where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 
 -- Reads the signed-in user from the JWT; at the end only app_private.rls_can()
 -- (stage 4a), which this count leaves out. FB-6.2.6 dropped can_access_employee (27 -> 25)
--- and can_manage_employee_record (25 -> 24).
+-- and can_manage_employee_record (25 -> 24), FB-6.7 can_manage_important_date and the
+-- important date audit trigger (24 -> 22).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 24, 'functions that call auth.uid() only go down'
+  '<=', 22, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
@@ -38,19 +39,20 @@ select cmp_ok(
 -- FB-6.2.6 Workspace home's counts and the Schedule's week list, BL-155 (47 -> 45), and
 -- can_access_employee's two copies (45 -> 43), can_manage_employee_record (43 -> 42),
 -- the to-do list's own role reading (42 -> 41), FB-6.3.3 the time-off notice
--- trigger's membership scopes (41 -> 40).
+-- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
+-- and the announcement matchers (40 -> 32).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 40, 'functions with their own scope or rank logic only go down'
+  '<=', 32, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
 -- folded Schedule's 24 into one function per job (37 -> 13), and with them
--- the grid's own scope reading (60 -> 59 above).
+-- the grid's own scope reading (60 -> 59 above). FB-6.7 the _legacy announcement publish (13 -> 12).
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 13, '_base, _vN and _legacy functions only go down'
+  '<=', 12, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.
@@ -90,11 +92,12 @@ select is(
 -- jobs, 181 after its dashboard, 177 after its refusals (BL-354),
 -- 176 after the onboarding review, 175 after the Workspace layout (KK-36),
 -- 173 after the reorder command went (BL-475), 171 after the old time-off
--- decision paths went (FB-6.3.7). Target 0.
+-- decision paths went (FB-6.3.7), 161 after announcements and important dates moved to the
+-- core (FB-6.7). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 171, 'refusals without an authz hint only go down'
+  '<=', 161, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
@@ -103,7 +106,7 @@ select cmp_ok(
 select is(
   array(select a.key from app_private.authz_actions a order by a.key collate "C"),
   array[
-    'account.self', 'announcement.acknowledge', 'announcement.read', 'announcement.write', 'audit.read',
+    'account.self', 'announcement.acknowledge', 'announcement.read', 'announcement.write', 'announcement.write_wide', 'audit.read',
     'availability.note_read', 'availability.own', 'availability.team_read', 'availability.team_write',
     'documents.read', 'documents.review', 'documents.self', 'employee.archive', 'employee.change_role',
     'employee.create', 'employee.decide_preferred_name', 'employee.invite', 'employee.list',
@@ -111,7 +114,7 @@ select is(
     'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save',
     'employee.save_own_contact', 'employee.terminate',
     'employee_hub.read', 'employee_hub.self', 'exchange.apply_own', 'exchange.approve', 'exchange.offer_own',
-    'exchange.read', 'important_date.write', 'membership.read', 'notifications.read_own', 'onboarding.review',
+    'exchange.read', 'important_date.write', 'important_date.write_wide', 'membership.read', 'notifications.read_own', 'onboarding.review',
     'onboarding.self', 'requests.read', 'schedule.edit', 'schedule.export', 'schedule.publish', 'schedule.read',
     'schedule.templates', 'schedule.templates.read', 'settings.availability.read', 'settings.availability.write',
     'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',

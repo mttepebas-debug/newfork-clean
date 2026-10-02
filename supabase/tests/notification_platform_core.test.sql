@@ -16,9 +16,9 @@ select has_table('public', 'notification_template_versions', 'template versions 
 select has_table('public', 'notification_audit_log', 'notification audit log exists');
 
 select is(
-  (select count(*)::integer from public.notification_catalog),
-  9,
-  'the approved catalog seed contains nine types'
+  (select count(*)::integer from public.notification_catalog where not 'in_app' = any (supported_channels)),
+  0,
+  'every catalog type can reach the in-app inbox, however many types there are (BL-373)'
 );
 
 select is(

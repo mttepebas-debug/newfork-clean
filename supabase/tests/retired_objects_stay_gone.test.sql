@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(19);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -308,6 +308,16 @@ select 'function', name, 'FB-6.3.7' from unnest(array[
 insert into retired (kind, name, step) values
   ('column', 'departments.sort_order', 'BL-496'), ('column', 'jobs.sort_order', 'BL-496'),
   ('constraint', 'departments_sort_order_unused', 'BL-496'), ('constraint', 'jobs_sort_order_unused', 'BL-496');
+-- FB-6.7: announcements and important dates ask the core; the browser writes no
+-- important date; a closed day is the Schedule's closure (BL-530).
+insert into retired (kind, name, step)
+select 'function', name, '6.7' from unnest(array[
+  'communication_actor_has_capability_service', 'communication_actor_has_all_locations_service',
+  'communication_actor_can_control_announcement_service', 'publish_announcement_service_legacy_notifications',
+  'cancel_announcement_service', 'announcement_member_matches_jobs_service',
+  'announcement_member_matches_locations_service', 'synchronize_announcement_notification_lifecycle_service',
+  'can_manage_important_date', 'audit_important_date_change', 'normalize_important_date_locations'
+]) name;
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -416,6 +426,15 @@ select is(
 select is(
   array(select r.name from retired r where r.kind = 'checklist' and r.name = any (app_private.owner_setup_checklist_item_ids()) order by 1),
   '{}'::text[], 'retired owner setup steps stay gone'
+);
+
+select ok(
+  not ('cancelled' = any (enum_range(null::public.announcement_status)::text[])),
+  'a final, unrecoverable Cancel on an announcement stays gone (unpublish and archive come back)'
+);
+select is(
+  (select c.relkind::text from pg_class c where c.oid = 'public.schedule_closures'::regclass), 'v',
+  'schedule_closures is the closed days, never a table of its own again (BL-530)'
 );
 
 select * from finish();

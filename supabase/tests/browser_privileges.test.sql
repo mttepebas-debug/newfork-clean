@@ -33,7 +33,6 @@ select set_eq(
   array[
     -- RLS helpers the policies call.
     'app_private.can_access_location',
-    'app_private.can_manage_important_date',
     'app_private.can_manage_workspace',
     'app_private.is_workspace_member',
     'app_private.rls_can',
@@ -55,7 +54,6 @@ select set_eq(
   array[
     -- Settings > Organization
     'authenticated departments INSERT', 'authenticated departments UPDATE',
-    'authenticated important_dates INSERT', 'authenticated important_dates UPDATE',
     'authenticated jobs INSERT', 'authenticated jobs UPDATE',
     'authenticated locations INSERT', 'authenticated locations UPDATE',
     'authenticated shift_labels INSERT', 'authenticated shift_labels UPDATE',
@@ -96,7 +94,7 @@ select set_eq(
   $$,
   array[
     'account_notification_items', 'account_organization_history', 'audit_events', 'departments',
-    'employee_onboarding_settings', 'important_dates', 'jobs', 'locations',
+    'employee_onboarding_settings', 'jobs', 'locations',
     'shift_labels', 'shift_types', 'user_preferences', 'user_profiles', 'user_workspace_preferences',
     'workspace_closure_requests', 'workspace_entitlements', 'workspace_memberships', 'workspace_onboarding',
     'workspace_ownership_transfers', 'workspace_roles',

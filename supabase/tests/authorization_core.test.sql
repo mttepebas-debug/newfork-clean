@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(45);
 
 -- The authorization core (FOUNDATION-B stage 4a): how it says no, what a
 -- blank, unknown or foreign target gets, what scope_set() returns, and what
@@ -94,8 +94,11 @@ update public.workspaces set lifecycle_status = 'active' where id = tests.id('ac
 select is(pg_temp.reason('owner', 'schedule.read'), 'out_of_scope', 'no location is not every location');
 select is(pg_temp.reason('owner', 'schedule.read', array[null]::uuid[]), 'out_of_scope', 'a blank location is not every location');
 select is(pg_temp.reason('owner', 'schedule.read', '{}'), 'out_of_scope', 'one place means exactly one location');
-select is(pg_temp.reason('owner', 'announcement.write', '{}'), 'allowed', 'an empty set is the whole organization, open to the owner');
-select is(pg_temp.reason('ayse', 'announcement.write', '{}'), 'out_of_scope', 'and closed to a manager');
+select is(pg_temp.reason('owner', 'schedule.edit', '{}'), 'allowed', 'an empty set is the whole organization, open to the owner');
+select is(pg_temp.reason('ayse', 'schedule.edit', '{}'), 'out_of_scope', 'and closed to a manager');
+-- FB-6.7 K1: a record at several locations or the whole workspace is the org's.
+select is(pg_temp.reason('owner', 'announcement.write_wide'), 'allowed', 'K1: the owner writes for the whole workspace');
+select is(pg_temp.reason('ayse', 'announcement.write_wide'), 'out_of_scope', 'K1: a manager does not');
 select is(pg_temp.reason('owner', 'schedule.read', array[tests.id('other:K')]), 'out_of_scope', 'a location in another workspace is out of reach, even for the owner');
 select is(
   pg_temp.reason('ayse', 'employee.read', null, gen_random_uuid()),

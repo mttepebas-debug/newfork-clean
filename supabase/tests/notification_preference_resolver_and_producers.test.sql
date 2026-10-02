@@ -3,9 +3,16 @@ create extension if not exists pgtap with schema extensions;
 select plan(21);
 
 select has_table('public', 'notification_recipient_decisions', 'recipient allow and deny decisions are durable');
-select is((select count(*)::integer from public.notification_catalog where lifecycle = 'active'), 9, 'all approved catalog types are active');
-select is((select count(distinct type_key)::integer from public.notification_template_versions where channel = 'in_app' and status = 'published'), 9, 'every active type has a published in-app template');
-select is((select count(*)::integer from public.notification_producer_registry where integration_contract = 'outbox_v1'), 9, 'every active type has an outbox producer registration');
+-- Rules, not a count: the catalog grows with every producer (BL-373).
+select is(array(select c.type_key from public.notification_catalog c where c.lifecycle = 'defined' order by 1), '{}'::text[],
+  'no catalog type is left defined and never switched on');
+select is(array(select c.type_key from public.notification_catalog c where c.lifecycle = 'active' and not exists (
+    select 1 from public.notification_template_versions t
+    where t.type_key = c.type_key and t.schema_version = c.schema_version and t.channel = 'in_app' and t.status = 'published')
+  order by 1), '{}'::text[], 'every active type has a published in-app template');
+select is(array(select c.type_key from public.notification_catalog c where c.lifecycle = 'active' and not exists (
+    select 1 from public.notification_producer_registry r where r.type_key = c.type_key and r.schema_version = c.schema_version)
+  order by 1), '{}'::text[], 'every active type has a producer registration');
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -35,8 +42,6 @@ values
   ('T00021','e1730000-0000-4000-8000-000000000002', 'e1710000-0000-4000-8000-000000000001', 'Not Scoped', '2 Main St', 'Los Angeles', 'CA', '90002', 'US', 'America/Los_Angeles'),
   ('T00022','e1730000-0000-4000-8000-000000000003', 'e1710000-0000-4000-8000-000000000002', 'Other', '3 Main St', 'Los Angeles', 'CA', '90003', 'US', 'America/Los_Angeles');
 
-select tests.works_at('e1720000-0000-4000-8000-000000000002', 'e1730000-0000-4000-8000-000000000001');
-
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, created_by
 )
@@ -45,6 +50,8 @@ values (
   'e1700000-0000-4000-8000-000000000002', 'E-1701', 'Resolver', 'Employee',
   'e1700000-0000-4000-8000-000000000001'
 );
+select tests.works_at('e1720000-0000-4000-8000-000000000002', 'e1730000-0000-4000-8000-000000000001');
+
 
 select is(
   public.resolve_notification_policy_v1_service(
@@ -138,11 +145,11 @@ update public.employee_profiles set archived_at = null, archived_by = null
 where id = 'e1740000-0000-4000-8000-000000000001';
 
 insert into public.schedule_time_off_requests (
-  id, workspace_id, employee_id, location_id, reason, created_by
+  id, workspace_id, employee_id, reason, created_by
 )
 values (
   'e1750000-0000-4000-8000-000000000001', 'e1710000-0000-4000-8000-000000000001',
-  'e1740000-0000-4000-8000-000000000001', 'e1730000-0000-4000-8000-000000000001',
+  'e1740000-0000-4000-8000-000000000001',
   'Vacation', 'e1700000-0000-4000-8000-000000000002'
 );
 insert into public.schedule_time_off_events (

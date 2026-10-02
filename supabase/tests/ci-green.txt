@@ -149,3 +149,7 @@ supabase/tests/time_off_deadlines.test.sql
 supabase/tests/time_off_pending_publish_note.test.sql
 supabase/tests/employee_hub_time_off_form.test.sql
 supabase/tests/time_off_seen_by_who_decides.test.sql
+supabase/tests/notification_platform_core.test.sql
+supabase/tests/notification_preference_resolver_and_producers.test.sql
+supabase/tests/notification_settings_admin.test.sql
+supabase/tests/announcements_and_dates_follow_k1_k6.test.sql

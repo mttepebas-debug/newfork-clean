@@ -47,8 +47,8 @@ select is(
     'e2100000-0000-4000-8000-000000000001',
     'e2110000-0000-4000-8000-000000000001'
   )->'catalog'),
-  9,
-  'only the nine active catalog types are returned'
+  (select count(*)::integer from public.notification_catalog where lifecycle = 'active' and notification_scope = 'workspace'),
+  'only the active workspace catalog types are returned, however many there are (BL-373)'
 );
 select throws_ok(
   $$select public.get_notification_settings_service('e2100000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000001')$$,

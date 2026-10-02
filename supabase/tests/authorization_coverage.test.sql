@@ -25,8 +25,6 @@ insert into service_class values
   ('act_on_notification_inbox_item_v2_service', 'notifications.read_own'),
   ('activate_employee_onboarding_case_service', 'onboarding.review'),
   ('add_schedule_pending_op_service', 'schedule.edit'),
-  ('announcement_member_matches_jobs_service', 'exempt:predicate'),
-  ('announcement_member_matches_locations_service', 'exempt:predicate'),
   ('apply_policy_definition_service', 'settings.documents.write'),
   ('apply_schedule_auto_fill_service', 'schedule.edit'),
   ('apply_schedule_default_hours_service', 'schedule.edit'),
@@ -38,13 +36,9 @@ insert into service_class values
   ('cancel_account_email_change_service', 'account.self'),
   ('claim_account_recovery_resend_service', 'account.self'),
   ('claim_password_reset_send_service', 'account.self'),
-  ('cancel_announcement_service', 'announcement.write'),
   ('cancel_workspace_closure_service', 'workspace.close'),
   ('cancel_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
   ('claim_account_deletion_work_service', 'exempt:worker'),
-  ('communication_actor_can_control_announcement_service', 'exempt:predicate'),
-  ('communication_actor_has_all_locations_service', 'exempt:predicate'),
-  ('communication_actor_has_capability_service', 'exempt:predicate'),
   ('complete_account_deletion_work_service', 'exempt:worker'),
   ('count_account_attention_service', 'account.self'),
   ('create_department_jobs_service', 'settings.jobs.write'),
@@ -84,6 +78,7 @@ insert into service_class values
   ('flush_shift_exchange_notifications_service', 'exempt:worker'),
   ('get_account_deletion_blockers_service', 'account.self'),
   ('get_announcements_service', 'announcement.read'),
+  ('get_notifications_service', 'notifications.read_own'),
   ('get_employee_avatar_path_service', 'employee.read'),
   ('get_employee_detail_service', 'employee.read'),
   ('get_employee_document_access_service', 'documents.read'),
@@ -97,7 +92,6 @@ insert into service_class values
   ('get_notification_inbox_v2_service', 'notifications.read_own'),
   ('get_notification_settings_service', 'settings.notifications.read'),
   ('get_notification_user_preferences_service', 'notifications.read_own'),
-  ('get_notifications_service', 'notifications.read_own'),
   ('get_own_employee_avatar_path_service', 'account.self'),
   ('get_own_legal_name_service', 'workspace.setup'),
   ('get_owner_setup_checklist_progress_service', 'workspace.setup'),
@@ -171,6 +165,7 @@ insert into service_class values
   ('publish_signature_template_service', 'settings.documents.write'),
   ('queue_owner_onboarding_invitation_intent_service', 'workspace.setup'),
   ('read_employee_references_service', 'employee.references.read'),
+  ('read_important_date_history_service', 'settings.important_dates.read'),
   ('read_job_assignments_service', 'employee.list'),
   ('read_new_job_assignments_service', 'employee.list'),
   ('read_role_workspace_service', 'settings.roles.read'),
@@ -213,6 +208,7 @@ insert into service_class values
   ('save_employee_document_draft_file_service', 'documents.self'),
   ('save_employee_onboarding_profile_service', 'onboarding.self'),
   ('save_employee_service', 'employee.save'),
+  ('save_important_date_service', 'important_date.write'),
   ('save_notification_policy_service', 'settings.notifications.write'),
   ('save_notification_user_preferences_service', 'notifications.read_own'),
   ('save_own_employment_contact_service', 'employee.save_own_contact'),
@@ -234,7 +230,9 @@ insert into service_class values
   ('set_document_publication_service', 'settings.documents.write'),
   ('set_document_type_archived_service', 'settings.documents.write'),
   ('set_employee_archived_service', 'employee.archive'),
+  ('set_announcement_state_service', 'announcement.write'),
   ('set_employee_document_exemption_service', 'documents.review'),
+  ('set_important_date_state_service', 'important_date.write'),
   ('set_employee_document_timezone_service', 'documents.review'),
   ('set_employee_name_settings_service', 'settings.people'),
   ('set_owner_setup_checklist_closed_service', 'workspace.setup'),
@@ -254,7 +252,6 @@ insert into service_class values
   ('submit_employee_onboarding_service', 'onboarding.self'),
   ('submit_time_off_service', 'time_off.request_own'),
   ('sync_expiring_document_todos_service', 'exempt:worker'),
-  ('synchronize_announcement_notification_lifecycle_service', 'exempt:worker'),
   ('terminate_employee_service', 'employee.terminate'),
   ('touch_workspace_membership_service', 'account.self'),
   ('unapprove_signature_retention_policy_service', 'settings.documents.write'),
@@ -318,7 +315,8 @@ select ok(
     'exempt:worker', 'exempt:token', 'exempt:predicate')),
   'every exemption is one of the stated reasons'
 );
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 16, 'permission helpers only go down');
+-- FB-6.7 took the announcement helpers (16 -> 11).
+select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 11, 'permission helpers only go down');
 
 select * from finish();
 rollback;

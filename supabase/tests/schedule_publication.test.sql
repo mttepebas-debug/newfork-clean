@@ -60,8 +60,8 @@ insert into public.schedule_draft_shifts (id, workspace_id, draft_id, location_i
 (tests.id('pub:shift:closure-conflict'), tests.id('pub'), tests.id('pub:draft:main'), tests.id('pub:B'), tests.id('pub:closureemp'), tests.id('pub:job:cook'), null, tests.week(1) + 5, '09:00', '17:00', 'Falls on a closure', 1);
 select tests.remember('pub:timeoff:leave', gen_random_uuid());
 select tests.approved_leave(tests.id('pub'), tests.id('pub:leaveemp'), tests.user('pub:owner'), tests.id('pub:K'), tests.week(1) + 2, '10:00', '14:00', tests.id('pub:timeoff:leave'));
-insert into public.schedule_closures (id, workspace_id, location_id, closed_date, title, is_all_day, created_by)
-select gen_random_uuid(), tests.id('pub'), tests.id('pub:B'), tests.week(1) + 5, 'Deep clean', true, tests.user('pub:owner');
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
+ select gen_random_uuid(), tests.id('pub'), tests.id('pub:B'), array[tests.id('pub:B')]::uuid[], (tests.week(1) + 5)::date, (tests.week(1) + 5)::date, 'Deep clean', 'closed_day', tests.user('pub:owner');
 
 -- authenticated/service_role have no USAGE on the tests schema, so every id a
 -- role-switched statement needs is resolved here first, while still postgres.
