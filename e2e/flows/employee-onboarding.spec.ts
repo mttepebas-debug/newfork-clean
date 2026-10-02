@@ -1,7 +1,18 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { password } from "../global-setup";
-import { signIn } from "../fixtures/world";
-import { card, lastLine, ownJob, publishedDocument, run, sql, standing, tag } from "../fixtures/documents";
+import { emailOf, signIn } from "../fixtures/world";
+import {
+  card,
+  lastLine,
+  ownJob,
+  publishedDocument,
+  run,
+  signInAs,
+  sql,
+  standing,
+  tag,
+  tokenFor,
+} from "../fixtures/documents";
 
 // FOUNDATION-B flow 3 (FB-6.6 A3): somebody invited to a Kadikoy job accepts,
 // fills their profile, skips availability, sends the required document and
@@ -10,9 +21,9 @@ import { card, lastLine, ownJob, publishedDocument, run, sql, standing, tag } fr
 // Ayse approves the document; access opens and they land in the employee
 // interface. Employee onboarding has no "Start over".
 //
-// Left out until Mert answers (FB-6.6 S1): who approves a legal name typed
-// differently from the invitation. The person types it as invited, so the
-// profile needs no review.
+// A legal name typed differently from the invitation is approved only by an
+// owner or an admin (FB-6.6 S1, Mert 2026-10-02): the manager who reviews the
+// rest of the onboarding cannot approve it.
 
 test("an invited employee onboards, waits on the document, and lands in the employee hub once it is approved", async ({
   browser,
@@ -77,21 +88,7 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   await invitee.getByRole("button", { name: "Begin" }).click();
 
   // Profile: the legal name as invited, so nobody has to review it.
-  await expect(invitee.getByRole("heading", { name: "Your details" })).toBeVisible();
-  await invitee.getByLabel("Legal first name", { exact: true }).fill(firstName);
-  await invitee.getByLabel("Legal last name", { exact: true }).fill("Invitee");
-  await invitee.getByLabel("Phone", { exact: true }).fill("4155550142");
-  await invitee.getByLabel("Date of birth", { exact: true }).fill("1996-04-12");
-  await invitee.getByLabel("Street address", { exact: true }).fill("12 Moda Cd");
-  await invitee.getByLabel("City", { exact: true }).fill("Istanbul");
-  await invitee.getByLabel("State", { exact: true }).fill("Istanbul");
-  await invitee.getByLabel("ZIP code", { exact: true }).fill("34710");
-  await invitee.getByRole("button", { name: "Continue" }).click();
-  await expect(invitee.getByRole("heading", { name: "Who we call in an emergency" })).toBeVisible();
-  await invitee.getByLabel("Full name", { exact: true }).fill("Deniz Contact");
-  await invitee.getByLabel("Relationship", { exact: true }).selectOption("Friend");
-  await invitee.getByLabel("Phone", { exact: true }).fill("4155550100");
-  await invitee.getByRole("button", { name: "Save and continue" }).click();
+  await fillProfile(invitee, firstName, "Invitee");
   await expect(steps.getByRole("button", { name: "Profile, done", exact: true })).toBeVisible();
 
   // The required document: a photo or a file, sent for review.
@@ -137,3 +134,93 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   await invitee.goto(welcome);
   await expect(invitee).toHaveURL(/\/app\/employee-hub/);
 });
+
+test("a legal name typed differently from the invitation is approved by an admin, not by the manager", async ({
+  page,
+}) => {
+  // Ayse's record says Emre Yilmaz; Emre has accepted and starts onboarding.
+  const key = `ln${tag()}`;
+  const firstName = `Emre${tag()}`;
+  const email = lastLine(
+    sql(`
+    select tests.new_user('${run}:${key}', '${firstName} Yilmaz');
+    select tests.password('${run}:${key}', '${password}');`),
+  );
+  const employeeId = lastLine(
+    sql(`
+    with created as (
+      select public.create_employee_command_service(
+        tests.user('${run}:owner'), tests.id('${run}'), gen_random_uuid(),
+        jsonb_build_object(
+          'first_name', '${firstName}', 'middle_name', '', 'last_name', 'Yilmaz', 'preferred_name', '',
+          'invitation_email', '${email}', 'start_date', '', 'internal_note', '',
+          'location_ids', jsonb_build_array(tests.id('${run}:K')),
+          'primary_location_id', tests.id('${run}:K'),
+          'job_ids', jsonb_build_array(tests.id('${run}:job:cook')),
+          'primary_job_id', tests.id('${run}:job:cook'),
+          'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
+        (select id from public.workspace_roles
+         where workspace_id = tests.id('${run}') and system_key = 'employee')) as employee
+    )
+    select public.accept_employee_invitation_by_id_service(
+      tests.user('${run}:${key}'), (employee ->> 'invitation_id')::uuid) is not null from created;
+    select tests.settle();
+    select id from public.employee_profiles where workspace_id = tests.id('${run}') and user_id = tests.user('${run}:${key}');`),
+  );
+
+  // He writes his legal name as it is on his ID: Emre Can Yilmaz.
+  await signInAs(page, email);
+  await page.goto("/welcome");
+  await page.getByRole("button", { name: "Begin" }).click();
+  await fillProfile(page, `${firstName} Can`, "Yilmaz");
+  const profile = () =>
+    lastLine(
+      sql(`
+      select json_build_object('requirement', r.id, 'status', r.status, 'revision', c.revision)::text
+      from public.employee_onboarding_requirements r
+      join public.employee_onboarding_cases c on c.id = r.case_id
+      where r.employee_id = '${employeeId}' and r.kind = 'profile';`),
+    );
+  await expect.poll(() => JSON.parse(profile()).status).toBe("awaiting_review");
+
+  const onboarding = `${process.env.E2E_API_URL}/v1/workspaces/${lastLine(sql(`select tests.id('${run}');`))}/employees/${employeeId}/onboarding`;
+  const acceptLegalName = async (reviewer: string) => {
+    const { requirement, revision } = JSON.parse(profile()) as { requirement: string; revision: number };
+    return (
+      await fetch(`${onboarding}/review`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await tokenFor(reviewer)}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "accept_requirement", requirementId: requirement, reason: "", revision }),
+      })
+    ).status;
+  };
+
+  // Ayse reviews his onboarding, but the legal name is not hers to approve.
+  const ayse = emailOf("ayse");
+  expect((await fetch(onboarding, { headers: { Authorization: `Bearer ${await tokenFor(ayse)}` } })).status).toBe(200);
+  expect(await acceptLegalName(ayse)).toBe(403);
+  expect(JSON.parse(profile()).status).toBe("awaiting_review");
+
+  // Zeynep, an admin, approves it.
+  expect(await acceptLegalName(emailOf("zeynep"))).toBe(200);
+  expect(JSON.parse(profile()).status).toBe("completed");
+});
+
+/** Both profile pages of employee onboarding, saved: the details, then the emergency contact. */
+async function fillProfile(page: Page, legalFirstName: string, legalLastName: string) {
+  await expect(page.getByRole("heading", { name: "Your details" })).toBeVisible();
+  await page.getByLabel("Legal first name", { exact: true }).fill(legalFirstName);
+  await page.getByLabel("Legal last name", { exact: true }).fill(legalLastName);
+  await page.getByLabel("Phone", { exact: true }).fill("4155550142");
+  await page.getByLabel("Date of birth", { exact: true }).fill("1996-04-12");
+  await page.getByLabel("Street address", { exact: true }).fill("12 Moda Cd");
+  await page.getByLabel("City", { exact: true }).fill("Istanbul");
+  await page.getByLabel("State", { exact: true }).fill("Istanbul");
+  await page.getByLabel("ZIP code", { exact: true }).fill("34710");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("heading", { name: "Who we call in an emergency" })).toBeVisible();
+  await page.getByLabel("Full name", { exact: true }).fill("Deniz Contact");
+  await page.getByLabel("Relationship", { exact: true }).selectOption("Friend");
+  await page.getByLabel("Phone", { exact: true }).fill("4155550100");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+}

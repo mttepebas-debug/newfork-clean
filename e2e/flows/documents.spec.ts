@@ -24,11 +24,12 @@ import {
 // one approval settles it (D2). An overdue required card restricts the person
 // until it is approved, and a manager whose own card is overdue approves
 // nobody (D3). The owner may send their own card; it goes on file, never to a
-// review queue (D5).
+// review queue (D5). A card waiting for review is seen only by who may decide
+// it and by its holder; a fellow manager sees it once approved (S2, Mert
+// 2026-10-02).
 //
 // Every test makes its own job and people, so what it publishes reaches only
-// them. Left out until Mert answers (FB-6.6 S2): whether a fellow manager sees
-// a card still waiting for review.
+// them.
 
 test("an admin's draft reaches nobody; published, it lands on the people its job targets", async ({ page }) => {
   const key = `doc${tag()}`;
@@ -131,6 +132,49 @@ test("a manager approves neither their own card nor a fellow manager's; an admin
   // One rank up, the same request goes through.
   expect(await approveAs(emailOf("zeynep"), documentId, first)).toBe(200);
   expect(standing(documentId, first)).toBe("completed accepted");
+});
+
+test("a fellow manager doesn't see a manager's card while it waits for review, only once it is approved", async ({
+  browser,
+}) => {
+  const key = `doc${tag()}`;
+  const title = `Food handler card ${key}`;
+  const jobId = ownJob(key, `Barista ${key}`);
+  // Deniz manages Kadikoy alongside Ayse.
+  const deniz = personWithPassword(`${key}-deniz`, "manager", ["K"], key);
+  const documentId = publishedDocument(title, [jobId]);
+  const holder = await (await browser.newContext()).newPage();
+  await signInAs(holder, deniz);
+  await sendOwnDocument(holder, title);
+
+  const documentsOf = async (person: "ayse" | "zeynep") => {
+    const page = await (await browser.newContext()).newPage();
+    await signIn(page, person);
+    await page.goto("/app/employees/documents");
+    await page.getByLabel("Search employee documents").fill(`${key}-deniz`);
+    return {
+      page,
+      row: page.getByRole("table", { name: "Employee documents" }).getByRole("row", { name: new RegExp(title) }),
+    };
+  };
+
+  // Employees > Documents: while it waits, Ayse has no row for it; Zeynep,
+  // who decides it, does.
+  const zeynep = await documentsOf("zeynep");
+  await expect(zeynep.row.getByText("Needs review", { exact: true })).toBeVisible();
+  const ayse = await documentsOf("ayse");
+  await expect(ayse.page.getByText("No documents match these filters.")).toBeVisible();
+  await expect(ayse.row).toHaveCount(0);
+
+  // Zeynep approves it; now Ayse sees it like any approved card at Kadikoy.
+  await zeynep.row.click();
+  const review = zeynep.page.getByRole("dialog", { name: title });
+  await review.getByRole("button", { name: "Approve", exact: true }).click();
+  await expect(review.getByRole("status")).toHaveText("Decision saved");
+  expect(standing(documentId, deniz)).toBe("completed accepted");
+  await ayse.page.reload();
+  await ayse.page.getByLabel("Search employee documents").fill(`${key}-deniz`);
+  await expect(ayse.row.getByText("Completed", { exact: true })).toBeVisible();
 });
 
 test("an overdue card restricts the person until it is approved, and an overdue manager approves nobody", async ({
