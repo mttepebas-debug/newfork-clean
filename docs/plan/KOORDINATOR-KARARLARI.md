@@ -1043,3 +1043,15 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** orta — yeni migration'la.
 - **Durum:** yürürlükte. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #124).
 - **Mert:** bilgi.
+
+### KK-124 (2026-10-02) Resmî ad düğmeleri çekirdeğin `onboarding.legal_name` cevabına bakar
+- **Karar (ne):** Employees → kişi → çekmece → "Legal name review"daki Accept / Request changes düğmeleri `can(…, "onboarding.legal_name")` ile açılır; Activate `onboarding_review`'da kalır. Seçenek (a). FB-6.6 A2'ye eklendi (işin önünde: S1'den sonra müdür düğmeyi açık görüp 403 alırdı).
+- **Nerede:** `apps/web/src/employees/EmployeeDrawer.tsx:1704` (`canReview={allowed?.onboarding_review ?? false}`; main ve `task/fb-6.6-a2` @`44f1ad83`'te — ölçüldü), dal `task/fb-6.6-a2`.
+- **Ne zaman:** 2026-10-02 ~23:25Z.
+- **Ne için:** ekran çekirdeğin cevabını gösterir; kapalı işlem için açık düğme gösterilmez.
+- **Uygulamada etkisi:** Kadıköy müdürü Ayşe, Employees → Emre → çekmece → "Legal name review"da Accept / Request changes düğmelerini görmez; admin Zeynep görür.
+- **Dayanak:** KARARLAR "Ürün kuralları" — resmî ad düzeltmesini yalnız owner / admin onaylar (Mert, 2026-10-02, S1); CLAUDE.md §9 (web'de izin anahtarı kontrolü yok, karar çekirdekte).
+- **Reddedilen:** (b) DB'ye yeni bayrak (iki rol yazar), (c) bırak, müdür 403 görsün.
+- **Geri alma:** kolay — tek kapı satırı.
+- **Durum:** kabul; dalda henüz uygulanmadı (ölçüldü, #125). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #125).
+- **Mert:** bilgi.
