@@ -120,6 +120,34 @@ select is(pg_temp.approve('emre', 'veli'), '42501 authz.missing_permission', 'an
 select is(pg_temp.approve('owner', 'kaan'), 'ok', 'the owner approves an admin''s');
 select is(pg_temp.approve('zeynep', 'deniz'), 'ok', 'an admin approves a manager''s');
 select ok(pg_temp.lists('ayse', 'deniz'), 'once decided, Ayse sees Deniz''s Food Handler under M2');
+-- Deniz uploads a renewal over her valid approval: the approved one stays seen
+-- under M2, the waiting upload is her deciders' and hers (S2 as Mert chose it).
+create temp table deniz_approved as
+select s.id as submission_id, f.file_id from public.employee_document_submissions s
+join public.employee_document_submission_files f on f.submission_id = s.id
+where s.id = (pg_temp.req('deniz')).approved_document_id;
+select pg_temp.upload('deniz');
+create function pg_temp.row_of(actor text, person text) returns jsonb language sql as $$
+  select o from jsonb_array_elements(public.list_employee_document_lifecycle_service(pg_temp.usr(actor), tests.id('m'), false)) o
+  where (o ->> 'id')::uuid = (pg_temp.req(person)).id$$;
+create function pg_temp.detail(actor text, person text) returns jsonb language sql as $$
+  select public.get_employee_document_lifecycle_service(pg_temp.usr(actor), tests.id('m'), (pg_temp.req(person)).id, false)$$;
+select is(pg_temp.row_of('ayse', 'deniz') ->> 'status', 'completed', 'Ayse still sees Deniz''s Food Handler as valid');
+select is(pg_temp.row_of('ayse', 'deniz') ->> 'submitted_id', null, 'but not that a renewal waits');
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.detail('ayse', 'deniz') -> 'submissions') x where x ->> 'state' = 'pending_review'),
+  'nor the waiting upload in its history of versions');
+select ok(exists (select 1 from jsonb_array_elements(pg_temp.detail('ayse', 'deniz') -> 'submissions') x where x ->> 'state' = 'accepted'),
+  'while the approved version is there');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_path_service(%L, %L, %L, %L, %L, false)',
+  pg_temp.usr('ayse'), tests.id('m'), (pg_temp.req('deniz')).id, (pg_temp.req('deniz')).submitted_document_id,
+  (select f.file_id from public.employee_document_submission_files f where f.submission_id = (pg_temp.req('deniz')).submitted_document_id))),
+  'P0002', 'she cannot download the waiting file');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_path_service(%L, %L, %L, %L, %L, false)',
+  pg_temp.usr('ayse'), tests.id('m'), (pg_temp.req('deniz')).id, (select submission_id from deniz_approved), (select file_id from deniz_approved))),
+  'ok', 'and downloads the approved one');
+select is(pg_temp.row_of('zeynep', 'deniz') ->> 'status', 'pending_review', 'Zeynep, who decides on it, sees the renewal waiting');
+select ok(exists (select 1 from jsonb_array_elements(pg_temp.detail('zeynep', 'deniz') -> 'submissions') x where x ->> 'state' = 'pending_review'),
+  'and its upload');
 select is(pg_temp.approve('ayse', 'emre'), 'ok', 'Ayse approves Emre''s, an employee where she works');
 select is(pg_temp.approve('mehmet', 'veli'), '42501 authz.out_of_scope', 'Mehmet does not decide at Kadikoy');
 
