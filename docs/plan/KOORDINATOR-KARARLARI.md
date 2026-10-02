@@ -1021,3 +1021,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — Mert sonradan ultrareview başlatabilir.
 - **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #121).
 - **Mert:** bilgi (dönüş listesinde); ultrareview isterse açabilir.
+
+### KK-122 (2026-10-02) FB-6.6 A1 ve A2 tek dalda main'e gider
+- **Karar (ne):** A1b bitince `task/fb-6.6-a2`, `task/fb-6.6-a1`'in üstüne rebase edilir; yetki matrisi dökümü (`packages/shared/src/authorization-matrix.expected.json`) A1a + A1b migration'larıyla (rollback'li) yenilenir; tek dal `nf-guvenlik` incelemesine ve main'e gider.
+- **Nerede:** `task/fb-6.6-a1`, `task/fb-6.6-a2` (@`9b7bbdaa`).
+- **Ne zaman:** 2026-10-02 ~22:40Z.
+- **Ne için:** döküm A1'in migration'larına bağlı; A2 dökümsüz girseydi CI'daki shared testi kırmızı olurdu (bugün dalda shared 201/202, tek kırmızı bu — işçinin). KK-118'in "aynı main penceresinde önce A1, sonra A2" sırasını tek dala çevirir.
+- **Uygulamada etkisi:** yok (süreç).
+- **Dayanak:** ILKELER P19 (saf teknik iç karar).
+- **Geri alma:** kolay — dallar ayrı kalır, döküm ayrı commit'le yenilenir.
+- **Durum:** yürürlükte. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #123).
+- **Mert:** bilgi.
