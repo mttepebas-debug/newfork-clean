@@ -141,6 +141,7 @@
 - Kanıt: 09-28 "Muafiyet kalksın"; 09-27 "Önce atanmalı", "Owner sadece otomatik olarak
   management departmanı owner jobına atanır".
 - İstisna (kullanıcı kararı 2026-10-01, FB-6.3): owner belge son tarihlerinden ve kısıtlamalarından her zaman muaftır (KARARLAR "Ürün kuralları"). P08 belge kısıtı dışında geçerli.
+- Kanıt (2026-10-02, ters seçim): workspace'ten ayrılan müdürün duyurusunu "yalnız admin ve owner değiştirsin" önerildi; Mert "En nihayetinde o da müdürdü" dedi — kayıt son rolüyle sayılır, o lokasyonun öteki müdürleri düzenler, başka müdür kalmadıysa admin / owner (KARARLAR K2 Ek 2). Ayrılmak rolü düşürmez; ayrılan kişide "bugünkü rol" son rolüdür.
 
 **P09. Veri sessizce düşmez; yayınlanmış veri geriye dönük değişmez.**
 - Kural: düşmesi gereken veri için kullanıcı uyarılır. "Exclude" gibi işaretler yalnız yeni

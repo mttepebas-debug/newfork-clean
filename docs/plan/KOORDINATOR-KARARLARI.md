@@ -739,3 +739,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — puan ILERLEME §3'te.
 - **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725-b572-4ac9-9d12-8505df3e7816` yazdı (koordinatör `local_abc4d126…`'ın isteği, #98 sonrası).
 - **Mert:** bilgi.
+
+### KK-95 (2026-10-02) Yazarı bilinmeyen duyuru / önemli tarih yalnız admin ve owner'a açık
+- **Karar:** `created_by` boş kayıt (yazar bilgisi yok) müdür tarafından düzenlenemez; yalnız admin ve owner değiştirir.
+- **Neden:** FB-6.7 A düzeltme turu 2'de `nf-db` alt ajanı, yazarı bilinmeyen kaydın müdüre açık olduğunu buldu — CLAUDE.md §9 fail-open yasağı. K2 ekinin "yazar bilgisi eksikse izin verilmez" cümlesinin uygulaması.
+- **Uygulamada etkisi:** bugün görünür değişiklik yok. Örnek: yazarı bilinmeyen bir "Inventory day" tarihini Kadıköy müdürü Ayşe düzenleyemez, owner Zeynep düzenler.
+- **Dayanak:** CLAUDE.md §9; KARARLAR K2 eki ve Ek 2.
+- **Geri alma:** kolay — yetki kuralı dalda (`task/fb-6.7-fix` @`9b549792`).
+- **Durum:** yürürlükte (dalda). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #100).
+- **Mert:** bilgi.
