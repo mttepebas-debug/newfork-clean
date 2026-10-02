@@ -1,0 +1,151 @@
+# FB-6.6 Belgeler ve çalışan onboarding'i — yetki çekirdeğe, dört kırmızı test yeşile, akış 3 ve 4 e2e
+Status: active — 2026-10-02: tazelik ölçüldü, görev dosyası yazıldı (`nf-planlama`, dal `task/fb-6.6-plan`). Koordinatör D1–D7'yi ve puanı (11) onayladı; S1, S2 Mert dönene kadar park. A1a ve A2'nin web kısmı başlıyor.
+Session: -   Branch: task/fb-6.6-<parça>   Worktree: newfork-wt/fb-6.6-<parça>   DB: evet (`db.lock` yalnız kalıcı migration, `test:db`, e2e sırasında)
+Reviewer: `nf-guvenlik` zorunlu (R3: yetki, `security definer`, fonksiyon silme) — A için; B için koordinatörün okuması + ekran görüntüsü (R1), `nf-gorsel-qa` yalnız S2 (a) seçilirse; kullanıcıya ultrareview önerisi (yetki çekirdeğine taşıma + nesne silme, büyük diff; ücretsiz hak bittiyse yalnız dolar tutarıyla — CLAUDE.md §5).
+
+## Tazelik 2026-10-02 (`origin/main` `7b656c9a`; yerel DB main'le aynı — 419 migration, son `20261005010000`, ölçüldü; yalnız SELECT, testler tek dosya + rollback, `db.lock` ile)
+
+FOUNDATION-B.md satır 173'teki FB-6.6 satırı madde madde:
+
+| # | Satırdaki iddia | Hüküm | Kanıt (bugün) |
+|---|---|---|---|
+| 1 | "11 belge/imza köprüsü" | **geçerli** | `request.jwt` yazan 24 fonksiyondan 11'i belge/imza: `approve_signature_retention_policy_service`, `publish_signature_template_service`, `reorder_document_types_service`, `save_document_type_service` (11 argümanlı), `save_signature_retention_policy_service`, `save_signature_template_draft_service`, `set_document_type_archived_service`, `set_signature_retention_policy_archived_service`, `set_signature_template_archived_service`, `unapprove_signature_retention_policy_service`, `unpublish_signature_template_service`. Her biri sahte JWT yazıp aynı adlı iç fonksiyonu çağırıyor; 11 iç fonksiyon `auth.uid()` + `public.workspace_has_permission` ile kapı tutuyor (`pg_proc.prosrc`). |
+| 2 | "2 onboarding köprüsü" | **değişmiş** | İkisi artık sahte JWT yazmıyor (FB-6.2'de düzeldi). `review_employee_onboarding_before_availability_service` çekirdeğe soruyor ama gövdesinde hâlâ `service_actor_has_permission` + `service_actor_can_access_employee` ve 6 ipuçsuz 42501 var; `activate_employee_onboarding_case_service`'te hiç kapı yok (yalnız `service_role` çağırıyor; kapsam testinde `onboarding.review` etiketli, `supabase/tests/authorization_coverage.test.sql:26`). İş "köprü katlama" değil, "çekirdeğe sor + eski kapıyı sil". |
+| 3 | (satırda yok, ölçüldü) belge/onboarding servislerinin yetki yolu | **ölçüldü** | Belge/onboarding/imza adlı `public.*_service`: 55 fonksiyon (52 ad; üç ad iki imzalı). Yalnız çekirdeğe soran 8 (dördü owner kurulumuna ait, FB-6.8); eski kapı `service_actor_has_permission` 12; yalnız `app_private.document_actor_can_read` 6 (o da eski kapı + `service_actor_can_access_employee`); yukarıdaki köprü 11; kendi vakasına `employee_onboarding_case_id` ile bakan çalışan-onboarding servisi 4 (çekirdek yok); yalnız `service_actor_can_access_employee` 1 (`sync_expiring_document_todos_service`); kalan 13'ün çoğu başka servise devreden sarmalayıcı (`get_employee_document_lifecycle_path_service`, `review_employee_onboarding_service`, `save_document_type_draft_service`, 10 argümanlı `save_document_type_service`, tek argümanlı `initialize_employee_onboarding_service`), ötekiler kendi küçük yardımcısıyla (`get_employee_document_access_service`, `set_employee_document_timezone_service`, `documents_maintain_service`), satır içi üyelik kontrolüyle (iki argümanlı `initialize_employee_onboarding_service`) ya da kapısız (`activate_employee_onboarding_case_service`, `employee_has_hard_document_schedule_conflict_service`; ikisi de yalnız `service_role` ile çağrılabiliyor — `authenticated` ve `anon` için `execute` yok, ölçüldü); `update_owner_onboarding_service` (iki imza) FB-6.8 (sayım yerel DB, 2026-10-02, elle iki kez). `app_private`'ta eski kapıyı kullanan 4 belge yardımcısı (`document_actor_can_read`, `document_notification_policy`, `document_timezone_admin`, `enqueue_document_notification`) ve 2 yaşam döngüsü yardımcısı (`apply_lifecycle_definition`, `preview_lifecycle_definition`). Toplam: eski kapıyı çağıran 30 fonksiyonun **18'i** bu dilimin; `service_actor_can_access_employee`'yi çağıran 15 fonksiyonun **15'i** bu dilimin (FB-6.2'nin saydığı 15 ile aynı). Belge/onboarding servislerinde ipuçsuz 42501 **32** (tavan bugün 175, `supabase/tests/authz_catalog.test.sql:93`). |
+| 4 | "taslak belgenin etkisi sıfır" | **değişmiş — kural main'de duruyor** | Taslak tanıma bağlı zorunluluk satırı yazılamıyor: `employee_onboarding_requirements` üzerindeki `a_document_requirement_publication` tetikleyicisi (`app_private.guard_document_requirement_publication`) yayınlanmamış tanımın satırını sessizce düşürüyor (önce süzer); 7 servis `app_private.assert_document_published` ile taslakta hata veriyor (sonra kapı). `document_publication.test.sql` yeşil listede (`ci-green.txt:31`), hücre "draft has no assignments after dynamic reconciliation" (`:50`). Yerel DB: yayınlanmamış tanıma bağlı açık zorunluluk **0**. Kalan iş: çekirdeğe taşırken bu sıranın korunması; `acknowledge_document_lifecycle_service` ve `withdraw_document_acknowledgement_service` `assert_document_published` çağırmıyor — politika onayı yolunun da taslağa kapalı olduğu pgTAP'la gösterilir (`nf-db` ölçer). |
+| 5 | dört dosya yeşil listede olmalı | **geçerli — dördü de kırmızı, CI'daki hücrelerle birebir** | `supabase/tests/ci-not-green.txt:3-6`'da. Yerel tek dosya koşusu (2026-10-02): `bl052_document_access` 10/11 (hücre 9: iki engelden biri kalkınca erişim yanlışlıkla açılıyor); `bl052_document_definitions` 6/13 (hücre 6–12: yeni tanımın revizyonu 2, yaşam döngüsü kopyalanmıyor, son tarih başlamıyor; hücre 10 `PT409 document type changed`); `bl052_document_employee_assignment_preview` 5/9 (hücre 1, 5, 6, 7: önizleme `NULL` dönüyor); `employee_onboarding_rls` 32 geçti / 5 düştü (10, 21, 25, 27, 37) ve hücre 37'de silinmiş `confirm_employee_document_service` çağrısıyla yarıda kesiliyor (69 planlı hücrenin 37'si koşuyor). Hücre 10: müdür resmî ad düzeltmesini onaylamaya çalışınca beklenen "owner or admin approval required" yerine `P0002 onboarding case unavailable` (S1'e bağlı). |
+| 6 | `known_gap`'ten `important-date-no-as-validation` silinmiş | **bayat** | FB-6.7 sildi (`cc7b3ac2`); `known_gap` bugün 2 satır (`supabase/tests/authorization_matrix.test.sql:853-858`). |
+| 7 | `restricted-no-notifications`'ın "belge yarısı" | **değişmiş** | Satır tek parça: onboarding'i bitmemiş Aydan kendi bildirimlerini açamıyor (`:854`, eylem `notifications.read_own`). Çekirdek katalogda eylem kısıtlı kişiye açık (`restricted_ok = true`, yerel DB); takılan, uygulamanın gerçek okuma yolu. FB-6.7 satırın tamamını bu dilime bıraktı (`tasks/FB-6.7.md:44`). Bu dilim satırın **tamamını** siler (2 → 1). |
+| 8 | akış 3 ve 4 e2e | **geçerli — ikisi de yok** | `e2e/flows/` 18 dosya; "document" geçen yok; `invite.spec.ts:97` davetin listede "Onboarding" görünmesinde bitiyor, çalışanın onboarding'ini yürümüyor. BL-461 (G13) aynı boşluk; akış 4 e2e'si onu kapatır. |
+| 9 | BL-080 | **bayat — kapandı** | Main'de (`917f68b4`, `faf47442`); `owner_legal_name.test.sql` yeşil; e2e `owner-legal-name-setup.spec.ts`. Bitiş kriterinden çıkar. |
+| 10 | BL-118 (owner gönüllü yükleme) | **geçerli — karar var, kod yok** | KARARLAR "Ürün kuralları" (Mert, 2026-10-01: owner muaf kalır ama Account → Documents'ta isteğe bağlı yükler). Bugün üç servis `lifecycle_exempt` satırını "document obligation is closed" ile reddediyor: `save_employee_document_draft_file_service`, `submit_employee_document_lifecycle_service`, `review_employee_document_lifecycle_service` (`20260915235543_bl052_document_lifecycle.sql:155`, `:196`, `:258`; yerel DB'de üçü de bu metni taşıyor); API de ayrıca reddediyor (`apps/api/src/employees/document-lifecycle-service.ts:316`). |
+| 11 | `service_actor_can_access_employee` silinmiş | **geçerli** | Fonksiyon duruyor; 15 çağıranının 15'i bu dilimde (madde 3). |
+| 12 | `onboarding_review_on_the_core` hücre 5 `P0002` → `passes` | **bayat** | Hücre 5 bugün geçiyor (yerel koşu 2026-10-02: "and so does a manager who is excluded from the Schedule…"); düzelten `bf52f5e1` (EMP-001). Çekmecenin `allowed.onboarding_review` bayrağı ile komutun aynı cevabı verdiği yine de A1'de bir hücreyle kilitlenir (ikisi ayrı yoldan karar veriyor). |
+| 13 | `bl052_document_notifications` (BL-528) bu dilime mi ait | **hayır** | Yeşil listede (`ci-green.txt:19`) ve CI'da yeşil; yalnız ortak yerel DB'deki veri kayması yüzünden yerelde düşüyor (BL-497, BL-528). Bu dilim belge bildirim yardımcılarını (`document_notification_policy`, `enqueue_document_notification`) çekirdeğe taşıdığı için dosyanın **yeşil kalması** Done when'e girer; yerel kayma ayrı iş. |
+| 14 | (satırda yok, ölçüldü) API ve web'deki belge kapıları | **ölçüldü** | Web'de belge/imza için `permissions.includes` 8 yer: `apps/web/src/documents/DocumentsSettingsRoute.tsx:17-18`, `EmployeeDocumentPanel.tsx:7`, `:12`, `EmployeeDocumentsPage.tsx:25`, `apps/web/src/settings/DocumentsSettingsPage.tsx:83-84`, `SignatureTemplatesSettingsPage.tsx:90`. API'de yerel kapı `apps/api/src/employees/onboarding-routes.ts:125`, `:164`. |
+
+Backlog'da bu dilime bağlı açık maddeler (`BACKLOG.md`, 2026-10-02):
+- **Bu dilimde kapanır:** BL-118 (`:276`); BL-264 (`set_document_exemption` gereksiz `security definer`, `:425`; bugün hâlâ definer — ölçüldü); BL-276'nın (2) parçası (üç belge servisi eski kapıda; admin kendi belgesini onaylar / muaf tutar / süresini uzatır, `:434-438`); BL-133'ün açık kısmı (`activate_employee_onboarding_case_service`, `:213-218`); BL-096'nın `employee_onboarding_rls` kısmı (`:177`) ve beş dosyalık pgTAP borcu maddesi (`:116-117`; `onboarding_composite_tenant_constraints` o zamandan beri yeşil — `ci-green.txt:52`); BL-461 (belgeler için e2e yok, `:710`).
+- **Bu dilimde değil (dokunulmaz):** BL-497 / BL-528 (yerel veri kayması), BL-344 (`bl052_document_onboarding` kararsız hücre), BL-382 (SSN kalıntıları), BL-468, BL-469, BL-470, BL-476 (belge çekmecesi küçükleri, G18), BL-360 (saklama silmesinde logo), BL-248 (owner izin testinin elle kurulan fixture'ı), BL-079 (ad tek kaynak).
+
+## Ürün kararları
+
+### Dayanağı yazılı olanlar (koordinatör karar verir; KK'ye yazılır)
+- **D1 — Belge incelemesinde rütbe.** Kimse kendi belgesini onaylamaz, muaf tutmaz, süresini uzatmaz; eş rütbe birbirininkini incelemez: çalışanınkini lokasyonunun müdürü, admin ya da owner; müdürünkini admin ya da owner; admin'inkini yalnız owner. Örnek: Kadıköy müdürü Ayşe, Deniz'in (öteki Kadıköy müdürü) Food Handler belgesini onaylayamaz; admin Zeynep kendi belgesini de Kaan'ınkini (öteki admin) de onaylayamaz. Dayanak: KARARLAR "Ürün kuralları" rütbe satırı ("talepler hep bir üst kademeye gider… kimse kendi talebini onaylayamaz") + KK-24 (eş rütbe) + ILKELER P07. Çekirdek katalog zaten böyle: `documents.review` `no_self = true`, `rank_below = true` (yerel DB, ölçüldü); servisler kataloğa sormadığı için bugün uygulanmıyor (BL-276 (2)).
+- **D2 — İki lokasyonlu çalışanın belgesi tek onayla.** Ali Kadıköy ve Beşiktaş'ta çalışıyor; Food Handler belgesini Ayşe (Kadıköy) de Mehmet (Beşiktaş) de görür, biri onaylayınca karar verilmiş olur, Ali iki lokasyonda da açılır. Dayanak: FOUNDATION-B akış 4 (Mert, 2026-09-23: "kapsamdaki yönetici inceler/onaylar… iki lokasyonlu çalışanın belgesini iki lokasyonun yöneticisi de görür") + KARARLAR M2 "kişi ortak".
+- **D3 — Kısıtlı yönetici belge ve onboarding incelemez.** Belgesi gecikmiş ya da onboarding'i bitmemiş müdür kişinin belgesini görür ama onaylayamaz / reddedemez. Dayanak: KARARLAR "Kısıtlı kişi… yönetim işleri kapalı" + "İzin" S3 (belgesi gecikmiş müdür talebi görür, oy veremez). Onboarding tarafı bugün böyle (`onboarding_review_on_the_core`: "a manager still finishing their own onboarding reviews nobody").
+- **D4 — Kısıtlı kişi kendi bildirimlerini okur.** Aydan onboarding'ini bitirmeden zildeki bildirimlerini açar. Dayanak: KARARLAR "Kısıtlı kişi… yalnız kendi eksiğini tamamlar: belge yükleme, onboarding adımları, kendi profili, bildirimleri, çıkış". `known_gap` `restricted-no-notifications` silinir.
+- **D5 — Owner'ın gönüllü yüklediği belge incelemeye gitmez.** Owner Account → Documents'ta Food Handler sertifikasını yükler; belge "dosyada" olarak durur, kimsenin onay kuyruğuna düşmez; son tarih, kısıt ve hatırlatma yoktur. Dayanak: KARARLAR "Owner kendi belgesini isteğe bağlı yükleyebilir" (muaf kalır) + ILKELER P07 (kimse kendini onaylamaz; owner'ın üst kademesi yok) + Anti-hedef ("bir onay adımı daha koyalım mı?" → hayır). Görünürlük M2'ye göre (owner'ın çalıştığı lokasyonun müdürü görür); owner'ın belgesi "bekleyen" olmadığı için S2'nin cevabı bunu değiştirmez.
+- **D6 (teknik) — Taslak belgenin etkisizliği bugünkü sırayla korunur:** önce tetikleyici süzer, sonra servis kapısı taslakta hata verir (ters sıra davet kabulünü çökertir; FOUNDATION-B Aşama 6 madde 6). ILKELER P19.
+- **D7 (teknik) — İmza şablonu ve saklama politikası yazımı `settings.documents.write` eyleminde kalır** (kapsam testinde bugün öyle etiketli; yeni eylem açılmaz). `nf-db` farklı görürse raporunda gerekçesiyle yazar. ILKELER P19.
+
+### Mert'e sorulacaklar (tek turda; CLAUDE.md §13 şablonu)
+
+**S1 — Onboarding'de resmî ad düzeltmesini kim onaylar?**
+1. Bugün: Employees → kişi → Onboarding. Çalışan onboarding'de resmî adını davette yazılandan farklı girerse adım "inceleme bekliyor" olur. Bugünkü kod bunu yalnız owner ya da admin'e onaylatıyor; onboarding'in geri kalanını inceleyen lokasyon müdürü bu adımı onaylayamıyor. Kural KARARLAR'da yazılı değil; `employee_onboarding_rls` hücre 10'u yazmak için kural lazım.
+2. Örnek: Ayşe (Kadıköy müdürü) Emre'yi "Emre Yilmaz" diye davet etti. Emre onboarding'de kimliğindeki gibi "Emre Can Yilmaz" yazdı.
+3. Seçenekler:
+   - **(a) Onboarding'i inceleyen müdür de onaylar (Önerilen).** Ayşe Emre'nin onboarding'ini incelerken resmî ad düzeltmesini de onaylar; bir müdürün kendi resmî ad düzeltmesini admin ya da owner onaylar. Bekleme kısalır; Ayşe zaten Emre'nin profilini ve belgelerini görüyor. Engel değil, normal onay adımı.
+     Dayanak: ILKELER P07 (talep bir üst kademeye gider: çalışan → lokasyonun müdürü) + KARARLAR "Legal name" (davette employer girer, kişi kendisi yazar).
+   - (b) Yalnız owner ya da admin onaylar (bugünkü gibi). Ayşe Emre'nin onboarding'ini tek başına bitiremez; resmî ad adımı admin'e düşer. Resmî ad bordroda ve resmî belgelerde kullanılacağı için daha dar bir el.
+   - (c) Onay yok: kişinin yazdığı geçerli olur, değişiklik denetim kaydına girer, admin ve owner'a bilgi bildirimi gider.
+   - Kaçış: "Claude karar versin", "Backlog'a yaz", "Önce sohbette konuşalım".
+
+**S2 — İncelenmeyi bekleyen belgeyi kim görür?**
+1. Bugün: Employees → kişi → Documents. KARARLAR M2'ye göre müdür lokasyonunda çalışan herkesin belgelerini görür, bekleyen belge dahil. İzinde Mert 2026-10-01'de bunu daraltmıştı: bekleyen izin talebini yalnız ona karar verebilenler ve sahibi görür, eş rütbe görmez. Belgeler için böyle bir kural yazılı değil; bu dilim okuma kuralını çekirdekte kilitleyecek.
+2. Örnek: Kadıköy'de iki müdür var, Ayşe ve Deniz. Deniz Food Handler sertifikasını yükledi, admin'in onayını bekliyor (D1: eş rütbe incelemez).
+3. Seçenekler:
+   - **(a) Bekleyen belgeyi yalnız karar verebilenler ve sahibi görür; onaylanmış belge M2'ye göre görünür (Önerilen).** Ayşe Deniz'in bekleyen dosyasını görmez; admin ve owner görür; onaylanınca Ayşe de görür. Deniz belgesi eksik diye programa yazılamıyorsa Ayşe bunu Schedule'da bugünkü gibi uyarı / engel olarak görür (dosyayı değil, "belge eksik" bilgisini). Ekranda değişen: Employees → Deniz → Documents'ta bekleyen satır Ayşe'ye görünmez.
+     Dayanak: ILKELER P07 (2026-10-01 kanıtı: "onay zincirinde görünürlük de bir üst kademeyle sınırlıdır") + KARARLAR "İzin" (S1–S3, aynı gerekçe). Not: KARARLAR M2 satırı "belgeler"i görünür sayıyor; (a) seçilirse M2'ye izindeki gibi bir istisna yazılır.
+   - (b) Bugünkü gibi: lokasyondaki her müdür bekleyen belge dahil hepsini görür. Dayanak KARARLAR M2'nin bugünkü metni; kod değişmez.
+   - Kaçış: "Claude karar versin", "Backlog'a yaz", "Önce sohbette konuşalım".
+
+## Goal
+Belge, imza ve çalışan onboarding'inin bütün giriş noktaları yetki çekirdeğine (`app_private.authorize()` / `scope_set()`) taşınır; 11 sahte-JWT köprüsü katlanır; eski kapılar (`service_actor_has_permission` bu alanda, `service_actor_can_access_employee` tümden) silinir; dört kırmızı pgTAP dosyası bugünkü kurallara göre yeniden yazılıp yeşil listeye girer; owner belgesini isteğe bağlı yükleyebilir (BL-118); akış 3 (çalışan onboarding'i) ve akış 4 (belgeler) e2e ile kanıtlanır. Bir kişi için: Ayşe Deniz'in belgesini onaylamaya çalışınca "hayır"ı nedeniyle (`authz.rank`) alır; owner Food Handler sertifikasını Account → Documents'ta yükler; Aydan onboarding'i bitmeden bildirimlerini okur.
+
+## In scope
+- **A1 — veri, yetki, kural (`nf-db`; R3)** — yalnız `supabase/**`:
+  1. 11 belge/imza köprüsü: iç fonksiyonun gövdesi `*_service`'e katlanır, ilk ifade `perform app_private.authorize(...)`; 11 iç fonksiyon silinir ve `retired_objects_stay_gone`'a girer. İmza ve dönüş şekli aynı kalır.
+  2. Eski kapıdaki 18 belge/onboarding fonksiyonu (tazelik madde 3) çekirdeğe; `service_actor_can_access_employee` silinir ve `retired_objects_stay_gone`'da (koordinatör kararı P3, `FB-6.2.md`). `document_actor_can_read` gibi ara yardımcılar ya çekirdeğe döner ya silinir — ikiz bırakılmaz.
+  3. `activate_employee_onboarding_case_service` ve `review_employee_onboarding_before_availability_service`: çekirdek tek kapı; eski kapı kalıntısı ve 6 ipuçsuz 42501 gider.
+  4. Kendi vakasına bakan çalışan-onboarding servisleri ve 6 `documents.self` servisi `authorize(onboarding.self / documents.self)`'e (kısıtlı kişiye açık eylemler).
+  5. D1–D5 ve S1, S2'nin cevabı çekirdekte ve pgTAP'ta; D6 korunur.
+  6. BL-118 (veri yarısı): owner'ın muaf zorunluluğuna isteğe bağlı yükleme ve gönderme açılır, inceleme kuyruğuna düşmez (D5); muafiyetin kendisi (son tarih, kısıt, hatırlatma yok) değişmez.
+  7. BL-264: `app_private.set_document_exemption` `security invoker`.
+  8. Dört dosya bugünkü kurala göre yeniden yazılır, `ci-green.txt`'e alınır, `ci-not-green.txt`'ten çıkar: `bl052_document_access`, `bl052_document_definitions`, `bl052_document_employee_assignment_preview`, `employee_onboarding_rls` (silinmiş yükleme / imza / indirme çağrıları yeni belge yoluna; hücre 10 S1'in cevabına göre).
+  9. Matris: `documents.read`, `documents.review`, `documents.self`, `onboarding.review`, `onboarding.self` satırları `stage='core'`; `decide:` 0; `known_gap` `restricted-no-notifications` silinir (uygulamanın gerçek okuma yolu düzelir, D4).
+  10. Çekmecenin `allowed.onboarding_review` bayrağı ile komut aynı kişide aynı cevabı verir (bir hücre).
+- **A2 — API ve web'in veri/yetki katmanı (`nf-backend`; R3, A1'in sözleşmesiyle):**
+  1. "Hayır" sözleşmesi: `authz.not_member` → 404, öteki `authz.*` → 403; değişen her ekran için bir `isNoAccess` vitest.
+  2. `onboarding-routes.ts:125`, `:164` yerel kapıları silinir.
+  3. BL-118 (API yarısı): `document-lifecycle-service.ts:316`'daki owner reddi kalkar.
+  4. Web'de belge/imza için 8 `permissions.includes` → `can()` (tazelik madde 14).
+- **A3 — e2e (`nf-test`; R2)** — yazımı A1'le paralel başlar, koşu A1 + A2 main'e girince:
+  1. Akış 3: davet kabulü → profil → müsaitlik adımı (atlanabilir) → zorunlu belge → tamamlanınca çalışan arayüzüne iner; onboarding'de "Start over" yok; kısıtlı kişi yalnız eksiğini görür ve bildirimlerini açar.
+  2. Akış 4: admin belge tanımı yazar (taslak; çalışana hiçbir şey düşmez) → yayınlar → lokasyon/iş hedefindeki çalışana atanır → çalışan yükler → kapsamdaki müdür onaylar (müdür kendi ve eş müdürün belgesini onaylayamaz) → süresi geçen zorunlu belge kişiyi kısıtlar, tamamlanınca açılır; iki lokasyonlu çalışanın belgesini iki müdür de görür (D2); owner kendi belgesini isteğe bağlı yükler (D5).
+- **B — ekran (`nf-arayuz`; R1)** — A2 main'e girdikten sonra yeni `origin/main`'den:
+  1. Account → Documents: owner için "Upload" (bugünkü çalışan çekmecesinin aynısı, yeni bileşen yok) ve muaf belgenin "dosyada" durumu.
+  2. Çekirdeğin yeni "hayır" cevaplarında boş / "erişim yok" hâlleri: Employees → Documents, Settings → Documents, Settings → Signature templates.
+  3. S2 (a) seçilirse: Employees → kişi → Documents'ta bekleyen satırın karar veremeyen müdüre görünmemesi (veri A1'den; ekranda yalnız boş durum metni).
+  Yeni görsel tasarım yok (ILKELER P04 tetiklenmez): mevcut çekmece ve liste bileşenleri. Görünür bir yerleşim değişikliği çıkarsa 2–3 varyant hazırlanır, Mert seçer.
+
+## Out of scope
+- Owner kurulumu (akış 1): `update_owner_onboarding_service` (iki imza), `reset_owner_onboarding_service`, owner davet niyetleri (`list_/mark_/queue_owner_onboarding_invitation_intent*`) — FB-6.8.
+- BL-497 / BL-528 (yerel veri kayması), BL-344, BL-382 (SSN), BL-468, BL-469, BL-470, BL-476, BL-360, BL-248, BL-079 — backlog'da kalır.
+- Belge bildirimlerinin içeriği ve alıcı kuralları (bildirim platformu, ILKELER P13); yalnız yetki yolu taşınır.
+- Belge çekmecesinin görsel yeniden tasarımı.
+
+## Done when
+1. `service_actor_can_access_employee` veritabanında yok ve `retired_objects_stay_gone` listesinde.
+2. `service_actor_has_permission`'ı çağıran fonksiyon 30 → **≤ 12**; belge / onboarding / imza adlı ya da `*_lifecycle_definition` olanlardan 0 (`pg_proc.prosrc` sayımı; komut ve sonuç raporda).
+3. `request.jwt` yazan fonksiyon 24 → **13**; 11 iç fonksiyon (`approve_signature_retention_policy`, `publish_signature_template`, `reorder_document_types`, `save_document_type` (iki imza), `save_signature_retention_policy`, `save_signature_template_draft`, `set_document_type_archived`, `set_signature_retention_policy_archived`, `set_signature_template_archived`, `unapprove_signature_retention_policy`, `unpublish_signature_template`) yok ve `retired_objects_stay_gone`'da; `workspace_has_permission`'ı çağıran 21 → **≤ 10**.
+4. Belge / onboarding / imza adlı her `public.*_service`'in (owner kurulumu hariç) ilk ifadesi `app_private.authorize(`; `authz_catalog` sayaçları yalnız azaldı; ipuçsuz 42501 tavanı 175 → **≤ 143** (`authz_catalog.test.sql`).
+5. `bl052_document_access`, `bl052_document_definitions`, `bl052_document_employee_assignment_preview`, `employee_onboarding_rls` `ci-green.txt`'te, `ci-not-green.txt`'te değil; yeşil listedeki öteki `bl052_document_*`, `document_publication`, `document_types_rls`, `onboarding_review_on_the_core`, `employee_onboarding_workspace_selection`, `weekly_onboarding_preferences` yeşil kalır; main CI `db` yeşil.
+6. `known_gap` 2 → 1 (`restricted-no-notifications` yok); belge / onboarding eylemleri matriste `stage='core'`, `decide:` 0.
+7. D1–D5 ve S1, S2'nin cevabı pgTAP'ta, her biri en az bir olumlu ve bir olumsuz hücre ("hayır" = 42501 + `authz.*`): Ayşe → Deniz'in belgesi `authz.rank`; Zeynep → kendi belgesi `authz.rank`; Mehmet Ali'nin belgesini onaylar ve Ali iki lokasyonda açılır; belgesi gecikmiş müdür onaylayamaz; Aydan bildirimlerini okur; owner yükler ve kuyruğa düşmez.
+8. Taslak tanım hiçbir çalışana zorunluluk ya da engel üretmez, politika onayı yolu dahil (pgTAP); onboarding başlatmada "önce süz, sonra kapı" sırası bir hücreyle kilitli.
+9. `app_private.set_document_exemption` `prosecdef = false`.
+10. API: owner'ın muaf zorunluluğuna yükleme `document-lifecycle-service.ts`'te reddedilmiyor (kalan "closed" reddi yalnız kapanmış / yerine geçilmiş zorunluluk için); `onboarding-routes.ts`'te `permissions.includes` 0; web'de belge / imza için `permissions.includes` 8 → 0.
+11. Akış 3 ve akış 4 e2e `e2e/flows/` altında, main CI `e2e` yeşil. BL-461 kapanır.
+12. B: Account → Documents'ta owner "Upload" görünür ve çalışır; masaüstü + telefon ekran görüntüsü; vitest yeşil.
+13. KARARLAR "Ürün kuralları"na D1, D2, D5 ve S1, S2'nin cevabı yazılı (D3, D4 zaten yazılı); KOORDINATOR-KARARLARI'na D1–D7.
+14. Tam kapı yeşil (`lint`, `typecheck`, `test`, `build`, `test:db`); `nf-guvenlik` `ONAY @<sha>` (A1 + A2).
+
+## Parçalar, puan, sıra
+| Parça | Rol | Risk | Puan (öneri) | Bağlı soru | Başlayabilir mi |
+|---|---|---|---|---|---|
+| A1a — köprüler, eski kapılar, dört kırmızı dosya (hücre 10 hariç), matris, D1–D6, BL-264, BL-118 veri | `nf-db` | R3 | 5 | yok | **evet, hemen** |
+| A1b — S1 ve S2'nin cevabı (hücre 10; bekleyen belge okuma kuralı) | `nf-db` | R3 | 1 | S1, S2 | Mert cevaplayınca; A1a'nın dalında |
+| A2 — API kapıları, BL-118 API, web `can()` / `isNoAccess` | `nf-backend` | R3 | 2 | yok | web `can()` kısmı A1a'yla paralel; API kısmı A1a'nın sözleşmesi (eylem adları, "hayır" kodları) raporla gelince |
+| A3 — akış 3 ve 4 e2e | `nf-test` | R2 | 2 | S2 (akış 4'te bekleyen belgeyi kimin gördüğü adımı) | yazımı A1a'yla paralel; koşu A1 + A2 main'e girince |
+| B — Account → Documents owner yüklemesi, boş / erişim yok hâlleri | `nf-arayuz` | R1 | 1 | S2 (a) seçilirse boş durum | A2 main'e girince |
+
+Toplam öneri **11**. ILERLEME §4'teki 8 ölçümden önce yazılmıştı; ölçülen kapsam 55 servis + 6 yardımcı + 11 köprü + 4 test dosyası + 2 e2e. Puanı koordinatör karara bağlar (KK-88 emsali: "biten iş azalmadı, kalan büyüdü").
+
+Aynı dosyaya iki rol aynı anda değmez: `nf-db` yalnız `supabase/**`; `nf-backend` yalnız `apps/api/**`, `packages/shared/**` ve web'in `can()` / `isNoAccess` satırları; `nf-test` yalnız `e2e/**`; `nf-arayuz` A2 main'e girdikten sonra `apps/web` sunum dosyalarına (A2'nin dokunduğu beş ekran dosyasına `nf-backend` bitirmeden girmez). Paralel yürüyebilenler: A1a ‖ A2'nin web `can()` kısmı ‖ A3'ün yazımı. Ağır işler (`test:db`, e2e) aynı anda en çok iki (CLAUDE.md §3).
+
+## Touches
+- `nf-db`: `supabase/migrations/**` (yeni migration'lar), `supabase/tests/bl052_document_access.test.sql`, `bl052_document_definitions.test.sql`, `bl052_document_employee_assignment_preview.test.sql`, `employee_onboarding_rls.test.sql`, `authorization_matrix.test.sql`, `authz_catalog.test.sql`, `authorization_coverage.test.sql`, `retired_objects_stay_gone` testi, `ci-green.txt`, `ci-not-green.txt`, gerekirse `supabase/test-support/builder.sql`.
+- `nf-backend`: `apps/api/src/employees/document-lifecycle-routes.ts`, `document-lifecycle-service.ts`, `onboarding-routes.ts`, `onboarding-service.ts`, `apps/api/src/settings/document-types-routes.ts`, `document-types-service.ts`, `signature-settings-routes.ts`, `signature-settings-service.ts`; web `apps/web/src/documents/DocumentsSettingsRoute.tsx`, `EmployeeDocumentPanel.tsx`, `EmployeeDocumentsPage.tsx`, `apps/web/src/settings/DocumentsSettingsPage.tsx`, `SignatureTemplatesSettingsPage.tsx` (yalnız yetki satırları), belge `*-data.ts` dosyaları.
+- `nf-test`: `e2e/flows/` altında iki yeni dosya, gerekirse `e2e/fixtures/**`.
+- `nf-arayuz`: `apps/web/src/documents/**` ve Account belge görünümü (sunum), ilgili CSS.
+- `nf-planlama` / koordinatör: `docs/plan/KARARLAR.md`, `KOORDINATOR-KARARLARI.md`, bu dosya, FOUNDATION-B satır 173 (tazelik sonucu: madde 2, 6, 7, 9, 12 düzeltilir — kayıt oturumunun işi).
+
+## Test plan
+- Migration önce tek transaction + rollback (CLAUDE.md §7); kalıcı uygulama `main.lock` penceresinde, `nf-guvenlik` onayından sonra.
+- pgTAP: dört dosya tek tek (yerelde `db.lock` + rollback), sonra `test:db`; yeni hücreler Done when 7–8; `authz_catalog`, `authorization_coverage`, `retired_objects_stay_gone` aynı commit'te.
+- `bl052_document_notifications` ortak yerel DB'de veri kayması yüzünden düşebilir (BL-528); hüküm CI'dan verilir.
+- vitest: değişen her ekran için bir `isNoAccess` testi; Account → Documents owner yüklemesi.
+- e2e: akış 3 ve 4 (`pnpm.cmd e2e`, `db.lock`; önce `gh run list --limit 3`).
+- Tam kapı: `pnpm.cmd lint`, `typecheck`, `test`, `build`, `test:db`.
+
+## Risk
+- **Sıra tuzağı (D6):** çekirdek kapısı taslak tanımda hata verirken onboarding başlatma süzgeçten önce koşarsa davet kabulü çöker; Done when 8'deki hücre bunu kilitler.
+- **Ratchet:** altı sayaç tavanda; bu dilim yeni `_base` ya da yeni `auth.uid()` eklerse `authz_catalog` aynı commit'te kırılır. İç fonksiyonlar silinince `auth.uid()` sayacı düşer — tavan aynı commit'te indirilir.
+- **Bildirim yardımcıları:** `enqueue_document_notification` ve `document_notification_policy` taşınırken `bl052_document_notifications` (yeşil) bozulabilir; CI'da bakılır, yerel kayma (BL-528) karıştırılmaz.
+- **`employee_onboarding_rls` 499 satır ve yarıda kesiliyor:** 37. hücreden sonrası bugün hiç koşmuyor; yeniden yazımda yeni kırmızılar çıkabilir. Silinmiş kurala ait hücreler silinir, tolerans yazılmaz (CLAUDE.md §9 "eski veri korunmaz").
+- **Canlı:** migration'lar hosted'a OPS-03 sırasıyla (önce main, sonra canlı; yedek + doğrulama). Nesne silme var ama gerçek veri silme yok — koordinatörün sürekli yetkisi içinde.
+
+## Notes / Result
+- 2026-10-02: görev dosyası açıldı (`nf-planlama`, dal `task/fb-6.6-plan`, taban `7b656c9a`). Tekrar için ölçüm komutları: `pg_proc.prosrc ~ 'service_actor_has_permission\('`, `~ 'service_actor_can_access_employee\('`, `~ 'request\.jwt'` sayımları (şema `public` + `app_private`); dört dosya `(cat <dosya>; echo "rollback;") | docker exec -i supabase_db_newfork-clean psql -U postgres -At -q`, `db.lock` ile.
+- 2026-10-02 ~18:05Z, koordinatör (`local_91ac4f8d…`): bağımsız ölçüm yerel DB'de — `request.jwt` 24, `service_actor_can_access_employee` çağıranı 15, `service_actor_has_permission` çağıranı 30 (rapordakiyle aynı); `app_private.authz_actions`: `documents.review` ve `onboarding.review` `no_self = t`, `rank_below = t`, `restricted_ok = f`; `documents.self`, `onboarding.self`, `notifications.read_own` `restricted_ok = t`. Kararlar: D1–D7 dosyadaki dayanaklarıyla kabul; puan 8 → 11 (KK-88 emsali: ölçülen kapsam büyüdü). S1 ve S2 Mert'e park (S2'de KARARLAR M2 metni ile ILKELER P07'nin 2026-10-01 kanıtı çelişiyor; birebir kapsayan kural yok). A1a (`nf-db`) ve A2'nin web `can()` kısmı (`nf-backend`) ayrı işçi oturumlarında başlıyor; A3 yazımı makine yükü yüzünden A1a'nın ilk raporundan sonra.
