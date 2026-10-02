@@ -684,6 +684,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — puan ILERLEME §3'te.
 - **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (koordinatör `local_abc4d126…`'ın isteği, #92 eki cevabı).
 - **Mert:** bilgi.
+- **Ek (2026-10-02, besleme #96 sonrası):** puan 10'da kalır — BL-531 kodsuz kapandı ama BL-530 (kapanışlar → "Closed day") ve BL-532 kapsama girdi; net iş 1–1,5 kişi-hafta tahminini aşmadı (koordinatörün kararı).
 
 ### KK-89 (2026-10-02) Yazar kendi duyurusunun ve önemli tarihinin bildirimini almaz
 - **Karar:** K5'teki "o lokasyonun müdürleri, owner ve admin'ler her kaydı alır" kuralı kaydı yazan kişiyi kapsamaz; yazar kendi kaydının bildirimini almaz.
