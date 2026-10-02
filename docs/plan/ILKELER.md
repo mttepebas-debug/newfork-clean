@@ -203,6 +203,7 @@
   seçiyor.
 - Kanıt: 09-30 "orta sert - kural eğer ki bypass edilirse, detaylı bir logu tutulsun"; 09-19
   "Kur, uyarı olarak"; 09-24 "Uyar/soft engel/hard engel".
+- Kanıt (2026-10-02, ürün tarafında üçüncü kademe): kapalı güne sonradan vardiya yazma için Mert seçenek dışı yazdı: "3 derece olsun. 1-asla shift yazılmaz 2-her celle shift yazılınca onay ister 3-bir kere onay verince o edit kapanana kadar bir daha uyarı vermez." İki dereceli öneri (ayar belirlesin) reddedildi (KARARLAR K17). Koşuldaki "ürün iş kurallarında kesin engel" eğilimi sürüyor ama kademe sayısı ürün ayarında da üçe çıktı.
 
 **P17. Tek hat; hızlanmak işi bölmektir.**
 - Kural: başlanan iş bitene kadar sürer; yolda bulunanlar backlog'a yazılır. "Hızlanmak", tek

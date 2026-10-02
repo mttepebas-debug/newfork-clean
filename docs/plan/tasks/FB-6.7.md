@@ -82,19 +82,21 @@ In scope (C):
 
 Out of scope (C): bildirim platformunun geri kalanı (P13); BL-238'in UTC hafta sınırı düzeltmesi (ayrı madde, ama C aynı sınırı kullanır).
 
-Açık sorular (önce sohbette, Mert'e; cevaplar gelmeden Done when kesinleşmez):
-1. Seçim vardiya başına mı, toptan mı?
-2. Open'a düşen vardiyanın sahibine bildirim gitsin mi?
-3. Closed day kaldırılırsa open'a düşen vardiyalar geri gelsin mi?
-4. Taslakta: (a) yayınlanmış haftadaki gibi önizleme + "open'a düşsün / kalsın" sorusu mu, (b) sorulmadan open'a düşme mi? Mert: "Aynı kural taslaklar için de geçerli. Taslak shift olan bir günde closure post edilirse shiftler open'a düşer; …" — cümlenin ikinci yarısı (b)'ye, "aynı kural" (a)'ya yakın (işçinin notu).
-5. Sonradan yazılan vardiyadaki uyarı, workspace'in "Closed location" ayarı "block" iken de yalnız uyarı mı olsun? (işçi raporunda, koordinatörün listesinde yoktu)
-6. **Çelişki, Mert'e sorulacak:** KARARLAR Ekran kararları → Schedule "Müsaitlik bir tercih" maddesi "sonradan girilen işaret yayınlanmış işi geriye dönük uyarıya çevirmez" diyor; kod yorumu "Today's marks and approved leave: a mark made after publishing shows …" (`supabase/migrations/20261003050000_manager_note_words_reach_the_schedule.sql:204` — ölçüldü) ve KARARLAR Ürün kuralları'ndaki "Yayından sonra gelen işaret de aynı kuralla işler: yayınlanmış vardiya düşmez, bir sonraki yayında 'değişen' uyarı olarak onay ister" satırı tersini söylüyor. Kapalı günün sonradan yayınlanmış haftaya etkisi buna bağlı.
+Açık sorular — **cevaplandı 2026-10-02** (kullanıcı kararı 2026-10-02, Mert, koordinatör `local_abc4d126…`'ın penceresinde, çoktan seçmeli; koordinatör beslemesi #98 eki; KARARLAR K13–K18):
+1. Seçim → K13: etkilenen vardiyalar listelenir, hepsi "open'a düşsün" seçili, tek tek "kalsın" yapılabilir.
+2. Bildirim → K14: vardiyası düşene kapanış + "your shift was removed" tek bildirimde; vardiyası kalana yalnız kapanış.
+3. Geri alma → K15: kapanış kaldırılınca düşenler geri gelmez; kaldırana "3 shifts stay open" yazılır.
+4. Taslak → K16: sorulmadan open'a düşer, önizleme ve bildirim yok.
+5. Sonradan yazma → K17: "Closed location" ayarı üç derece — engel / her hücrede onay / oturumda bir kez onay.
+6. Çelişki → K18: yayından sonra değişen müsaitlik yayınlanmış vardiyada uyarı olarak görünür, "!" kartının altında "yayından sonra değişti"; KARARLAR'daki iki yer düzeltildi.
 
-Done when (C, taslak — sorular cevaplanınca kesinleşir):
+Done when (C; 2026-10-02, sorular cevaplandı):
 1. K11: geçmiş önemli tarih kaydı / düzenleme isteği reddedilir (owner dahil); çok günlü kayıtta geçmiş günler değişmez — pgTAP.
 2. K12: süresi dolan duyurunun bildirimi alıcıların gelen kutusundan kalkar; listede "Expired" durumu — pgTAP + ekran görüntüsü.
-3. Closed day: etkilenen vardiyaların önizlemesi ve seçimli kaydetme (sorular 1–5'e göre); sonradan yazılan vardiyada uyarı — pgTAP + e2e; Mert'in seçtiği varyant; `nf-gorsel-qa` ONAY.
+3. Closed day (K13–K16): kayıtta etkilenen yayınlanmış vardiyalar listelenir, hepsi "open'a düşsün" seçili, tek tek "kalsın"; düşen kişiye tek bildirim (K14), kalana yalnız kapanış; kapanış kaldırılınca düşenler geri gelmez ve sonuç yazılır (K15); taslakta sorusuz düşer, bildirim yok (K16) — pgTAP + e2e; ekran Mert'in seçtiği varyant (P04); `nf-gorsel-qa` ONAY.
 4. `schedule_grid_read_budget` ≤ 50 ms korunur.
+5. K17: "Closed location" ayarı üç dereceli (engel / her hücrede onay / oturumda bir kez onay); her derece pgTAP + web testiyle; Settings'teki ayar ekranı varyantla.
+6. K18: yayından sonra değişen müsaitlik yayınlanmış vardiyanın "!" kartında "yayından sonra değişti" cümlesiyle görünür; vardiya değişmez — web testi + ekran görüntüsü.
 
 ## Notes / Result
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #92 eki; taban `55591525`): görev dosyası açıldı. Koordinatörün tazelik raporu dosya olarak bulunamadı (worktree ve geçici klasörde yalnız repo kopyaları ve SQL sorguları vardı); maddeleri beslemeden aldım, kodda ölçebildiklerimi "ölçüldü" diye işaretledim. FOUNDATION-B akış 7 tanımı (`:153`) K1 ile çelişiyordu ("yönetici kendi lokasyon(lar)ına"), aynı commit'te düzeltildi.
@@ -105,3 +107,4 @@ Done when (C, taslak — sorular cevaplanınca kesinleşir):
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #97): **A inceleme: DEĞİŞİKLİK İSTE** (`nf-guvenlik` + bağımsız doğruluk incelemesi, uç `93d3eb1c`; koordinatörün aktardığı). Kritik: `seed.sql` silinen tabloya / artık view olan nesneye yazıyor → CI `db` ve e2e kırılırdı. Yüksek: `schedule_closures` view'ı `service_role` ile okunamıyor → Schedule açılmazdı. Orta: ayrılan yazar fail-open; dakikalık yayın işi tek bozuk satırla kilitleniyor; `publish_at` boşaltılınca `scheduled`'da takılı; arşivli lokasyonlu duyuru düzenlenince bütün workspace'e açılıyor. Düşük: geçmişte görülemeyen lokasyon sızıntısı, eşzamanlı düzenleme, 29 Şubat, kapanış sorgusunun alt sınırı, süresi geçmiş zamanlanmış duyuru, zayıflayan testler, performans ölçümü. 13 maddelik düzeltme listesi işçiye gitti. Kararlar: K2 eki (ayrılan yazar, Mert), KK-92 (beş kenar durum). Dal ucu hâlâ `93d3eb1c` (ölçüldü).
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #97 eki 2): BL-530'un Schedule sonucu Mert'ten teyitli → KARARLAR K10 ("Closed day" → "Location is closed" çakışması, şiddet "Closed location" ayarından, müdür kendi lokasyonuna kapalı gün açabilir). İşçi: `schedule_grid_read_budget` 17/17 (Done when 10'un bütçe kısmı), `schedule_closures` görünüm, retired testi `relkind 'v'`.
 - 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #97 eki): BL-534 FB-6.7 A düzeltme turuna madde 14 olarak alındı (In scope A, Done when 12b). Koordinatör önce "BL-535" yazmıştı; anlatım BL-534'ün tarifiydi, kayıt oturumu sordu, BL-534 teyit edildi (koordinatörün hatası, kendisi söyledi). BL-535'e dokunulmadı.
+- 2026-10-02 (kayıt oturumu `local_43ff0725…`, koordinatör beslemesi #98 eki): C'nin altı açık sorusu cevaplandı → KARARLAR K13–K18; C bölümündeki sorular kapatıldı, Done when (C) kesinleşti (6 madde). K18, KARARLAR'daki iki çelişen yeri düzeltti; kod zaten K18 gibi (kod yorumu `20261003050000…:204`, kayıt oturumu kodu değiştirmez).
