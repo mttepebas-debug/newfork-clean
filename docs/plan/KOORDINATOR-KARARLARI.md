@@ -675,3 +675,21 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — FB-6.7'de yazılırken değiştirilebilir.
 - **Durum:** yürürlükte (uygulama FB-6.7'de). Kayıt oturumu `local_43ff0725…` yazdı (besleme #92; koordinatör `local_abc4d126…`'ın isteği).
 - **Mert:** bilgi.
+
+### KK-88 (2026-10-02) FB-6.7 puanı kapsam büyümesiyle yeniden hesaplandı
+- **Karar:** FB-6.7'nin puanı 5'ten 10'a çıktı (kişi-hafta orta noktası × 8: eski 0,5–0,75 → 5, yeni 1–1,5 → 10). Aşama 6–7 toplamı 230 → 235, program toplamı 308 → 313.
+- **Neden:** Mert 2026-10-02 kapsamı onayladı ("FB-6.7'ye katsın"); K1–K6 ve ekran parçası eklenince iş yaklaşık iki katına çıktı. Doğru veri eski sayıdan önce gelir.
+- **Uygulamada etkisi:** görünür değişiklik yok. İlerleme yüzdesi düştü: Aşama 6–7 %69,1 (159 / 230) → %67,7 (159 / 235); program %76,9 → %75,7. Biten iş azalmadı, kalan iş büyüdü.
+- **Dayanak:** ILKELER P11 (kayıt gerçeği söylesin); ILERLEME "Büyüklük ölçütü (puan)".
+- **Geri alma:** kolay — puan ILERLEME §3'te.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (koordinatör `local_abc4d126…`'ın isteği, #92 eki cevabı).
+- **Mert:** bilgi.
+
+### KK-89 (2026-10-02) Yazar kendi duyurusunun ve önemli tarihinin bildirimini almaz
+- **Karar:** K5'teki "o lokasyonun müdürleri, owner ve admin'ler her kaydı alır" kuralı kaydı yazan kişiyi kapsamaz; yazar kendi kaydının bildirimini almaz.
+- **Neden:** yazar kaydı zaten görür; kendi yaptığı iş için bildirim gürültüdür. Bugün yayınlayan kendi bildirimini alıyor (`docs/plan/research/FB-6.7-olcumler-2026-10-01.md` §1 ek bulgular).
+- **Uygulamada etkisi:** FB-6.7'de uygulanacak. Örnek: owner Zeynep Kadıköy'e duyuru yayınlar; Kadıköy müdürü Ali ve admin'ler bildirim alır, Zeynep almaz.
+- **Dayanak:** ILKELER anti-hedef "Bildirim gürültüsü"; P07 ("bildirim işi doğrudan etkilenene").
+- **Geri alma:** kolay — FB-6.7 alıcı sorgusunda.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725…` yazdı (koordinatör `local_abc4d126…`'ın isteği, #92 eki cevabı).
+- **Mert:** bilgi.
