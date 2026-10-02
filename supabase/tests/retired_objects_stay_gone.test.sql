@@ -329,6 +329,8 @@ select 'function', name, '6.6' from unnest(array[
   'unapprove_signature_retention_policy', 'unpublish_signature_template',
   'service_actor_can_access_employee', 'document_publication_can_access', 'activate_employee_onboarding_case_service'
 ]) name;
+-- FB-6.6 A1b: acknowledgements open with the documents permissions.
+insert into retired (kind, name, step) values ('permission', 'signature_templates.%', '6.6');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

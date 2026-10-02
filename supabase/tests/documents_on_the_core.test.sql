@@ -24,7 +24,9 @@ select tests.role('m', 'doc manager', 'manager', array(
   from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('m') and r.system_key = 'manager'
-  union select unnest(array['documents.read', 'employee_documents.read', 'employee_documents.review'])
+  union select unnest(array['documents.read', 'employee_documents.read', 'employee_documents.review',
+    -- the permission that used to approve legal names: it no longer does (S1)
+    'employees.private.read', 'employees.private.manage'])
 ));
 select tests.person('m', 'zeynep', 'admin', array['K'], array['server']);
 select tests.person('m', 'kaan', 'admin', array['B'], array['server']);
@@ -92,11 +94,23 @@ select pg_temp.upload(p) from unnest(array['deniz', 'emre', 'veli', 'zeynep', 'k
 
 -- D1 ---------------------------------------------------------------------------------
 select is(pg_temp.approve('ayse', 'deniz'), '42501 authz.rank', 'Ayse cannot approve Deniz''s Food Handler: a peer manager');
+-- S2: a document waiting for review is its deciders' and its owner's.
+create function pg_temp.lists(actor text, person text) returns boolean language sql as $$
+  select exists (select 1 from jsonb_array_elements(public.list_employee_document_lifecycle_service(pg_temp.usr(actor), tests.id('m'), false)) o
+    where (o ->> 'id')::uuid = (pg_temp.req(person)).id)$$;
+select ok(not pg_temp.lists('ayse', 'deniz'), 'Ayse does not see Deniz''s Food Handler while it waits for review (S2)');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_service(%L, %L, %L, false)',
+  pg_temp.usr('ayse'), tests.id('m'), (pg_temp.req('deniz')).id)), '42501 authz.out_of_scope', 'nor opens it');
+select ok(pg_temp.lists('zeynep', 'deniz'), 'an admin, who decides on it, sees it');
+select ok(pg_temp.lists('ayse', 'emre'), 'Ayse sees Emre''s waiting one: she decides on it');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_service(%L, %L, %L, true)',
+  pg_temp.usr('deniz'), tests.id('m'), (pg_temp.req('deniz')).id)), 'ok', 'Deniz sees her own');
 select is(pg_temp.approve('zeynep', 'zeynep'), '42501 authz.rank', 'Zeynep cannot approve her own');
 select is(pg_temp.approve('zeynep', 'kaan'), '42501 authz.rank', 'nor Kaan''s: a peer admin');
 select is(pg_temp.approve('emre', 'veli'), '42501 authz.missing_permission', 'an employee approves nobody''s');
 select is(pg_temp.approve('owner', 'kaan'), 'ok', 'the owner approves an admin''s');
 select is(pg_temp.approve('zeynep', 'deniz'), 'ok', 'an admin approves a manager''s');
+select ok(pg_temp.lists('ayse', 'deniz'), 'once decided, Ayse sees Deniz''s Food Handler under M2');
 select is(pg_temp.approve('ayse', 'emre'), 'ok', 'Ayse approves Emre''s, an employee where she works');
 select is(pg_temp.approve('mehmet', 'veli'), '42501 authz.out_of_scope', 'Mehmet does not decide at Kadikoy');
 
@@ -106,6 +120,28 @@ select is(app_private.document_obligation_state(pg_temp.req('ali'), now()), 'com
 select ok(not app_private.document_actor_blocked(pg_temp.usr('ali'), tests.id('m')), 'and Ali is open at both locations');
 select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_service(%L, %L, %L, false)',
   pg_temp.usr('ayse'), tests.id('m'), (pg_temp.req('ali')).id)), 'ok', 'Ayse at Kadikoy reads the decided document too');
+
+-- S1: a legal name typed in onboarding -------------------------------------------------
+-- Can is invited as "Can Person" and types "Can Emre Person", as on his ID.
+select tests.person('m', 'can', 'employee', array['K'], array['cook'], 'onboarding');
+select public.save_employee_onboarding_profile_service(pg_temp.usr('can'),
+  jsonb_build_object('legal_first_name', 'Can Emre', 'legal_last_name', 'Person', 'phone', '4155550123',
+    'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'),
+  (select c.revision from public.employee_onboarding_cases c where c.employee_id = pg_temp.emp('can')), tests.id('m'));
+create function pg_temp.legal_name(actor text) returns text language sql as $$
+  select pg_temp.attempt(format(
+    'select public.review_employee_onboarding_service(%L, %L, %L, ''accept_requirement'', %L, '''', %s, true)',
+    pg_temp.usr(actor), tests.id('m'), pg_temp.emp('can'),
+    (select r.id from public.employee_onboarding_requirements r where r.employee_id = pg_temp.emp('can') and r.kind = 'profile'),
+    (select c.revision from public.employee_onboarding_cases c where c.employee_id = pg_temp.emp('can'))))$$;
+select is((select status::text from public.employee_onboarding_requirements where employee_id = pg_temp.emp('can') and kind = 'profile'),
+  'awaiting_review', 'the changed legal name waits for approval');
+select is(app_private.authz_reason(pg_temp.usr('ayse'), tests.id('m'), 'onboarding.review', null, pg_temp.emp('can')), null,
+  'Ayse reviews Can''s onboarding');
+select is(pg_temp.legal_name('ayse'), '42501 authz.out_of_scope',
+  'but not his legal name, though her role holds employees.private.manage (S1)');
+select is(pg_temp.legal_name('zeynep'), 'ok', 'an admin approves it');
+select is((select first_name from public.employee_profiles where id = pg_temp.emp('can')), 'Can Emre', 'and the record takes it');
 
 -- D3 ---------------------------------------------------------------------------------
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day' where id = (pg_temp.req('hande')).id;

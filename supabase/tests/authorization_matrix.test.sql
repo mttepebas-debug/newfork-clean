@@ -146,6 +146,9 @@ create temporary table matrix_badge_preview (p jsonb);
 insert into matrix_badge_preview select public.preview_document_publication_service(tests.user('m:owner'), tests.id('m'), id) from matrix_badge;
 select public.set_document_publication_service(tests.user('m:owner'), tests.id('m'), b.id, (v.p ->> 'revision')::int,
   (v.p ->> 'publication_revision')::int, v.p ->> 'preview_token', 'Matrix', 'published') from matrix_badge b, matrix_badge_preview v;
+-- Everybody's legal name waits for approval (FB-6.6 S1): what onboarding.legal_name acts on.
+update public.employee_onboarding_requirements set requires_review = true, status = 'awaiting_review'
+where workspace_id = tests.id('m') and kind = 'profile';
 create function pg_temp.badge(person uuid) returns uuid language sql stable as $$
   select r.id from public.employee_onboarding_requirements r
   where r.employee_id = person and r.source_id = (select id from matrix_badge) and r.lifecycle_retired_at is null$$;
@@ -185,7 +188,7 @@ insert into persona values
 -- manager-type role (settings_reads_ask_the_core.test.sql).
 update persona set permissions_removed = permissions_removed || array[
   'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-  'roles.read', 'documents.read', 'signature_templates.read',
+  'roles.read', 'documents.read',
   -- nor anybody's documents (FB-6.6): an owner grants these to a manager-type role
   'employee_documents.read', 'employee_documents.review']
 where class = 'manager';
@@ -463,7 +466,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.read_role_workspace_service($1, $2) is not null$$),
   ('settings.documents.read', 'workspace', 'documents.read', false, false,
    $$select public.list_settings_document_types_service($1, $2) is not null$$),
-  ('settings.signature_templates.read', 'workspace', 'signature_templates.read', false, false,
+  ('settings.signature_templates.read', 'workspace', 'documents.read', false, false,
    $$select public.read_signature_settings_service($1, $2) is not null$$);
 
 -- Removing somebody from one location (FB-6.2 S1), and answering a preferred
@@ -511,7 +514,11 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.set_employee_document_exemption_service($1, $2, pg_temp.badge($3),
        (select r.lifecycle_revision from public.employee_onboarding_requirements r where r.id = pg_temp.badge($3)), true, 'matrix probe') is not null$$),
   ('onboarding.review', 'person', 'employee_onboarding.review', false, true,
-   $$select public.get_employee_onboarding_review_service($1, $2, $3) is not null$$);
+   $$select public.get_employee_onboarding_review_service($1, $2, $3) is not null$$),
+  ('onboarding.legal_name', 'person', 'employee_onboarding.review', false, false,
+   $$select public.review_employee_onboarding_before_availability_service($1, $2, $3, 'accept_requirement',
+       (select r.id from public.employee_onboarding_requirements r where r.employee_id = $3 and r.kind = 'profile'), '',
+       (select c.revision from public.employee_onboarding_cases c where c.employee_id = $3), true) is not null$$);
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template, member, restricted_ok) values
   -- One's own document and onboarding, open to somebody still finishing it.
   ('documents.self', 'person', null, false, true,
@@ -602,6 +609,7 @@ insert into core_action (key, core_key, blank) values
   ('documents.review', 'documents.review', 'null'),
   ('documents.self', 'documents.self', 'null'),
   ('onboarding.review', 'onboarding.review', 'null'),
+  ('onboarding.legal_name', 'onboarding.legal_name', 'null'),
   ('onboarding.self', 'onboarding.self', 'null'),
   ('exchange.offer_own', 'exchange.offer_own', 'null'),
   ('time_off.request_own', 'time_off.request_own', 'null'),
@@ -761,6 +769,16 @@ begin
       return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
     end if;
     return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
+
+  when 'onboarding.legal_name' then
+    -- A legal name is approved by an owner or an admin only, one rank up
+    -- (Mert, 2026-10-02, FB-6.6 S1); a manager never, whatever their role holds.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then
+      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
+    end if;
+    return 'deny';
 
   when 'employee.make_admin' then
     -- Owner only (checked above); nobody changes their own role.

@@ -19,7 +19,7 @@ select tests.role('s', 'catalog lead', 'manager', array(
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('s') and r.system_key = 'manager'
 ) || array['settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-           'documents.read', 'signature_templates.read']);
+           'documents.read']);
 select tests.person('s', 'lale', 'catalog lead', array['K'], array['cook']);
 select tests.person('s', 'nuri', 'catalog lead', null, null);
 select tests.person('s', 'emre', 'employee', array['K'], array['cook']);

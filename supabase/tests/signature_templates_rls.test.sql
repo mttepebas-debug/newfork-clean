@@ -23,14 +23,14 @@ values
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000001', true);
-select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'signature_templates.read'), 'owner receives signature_templates.read');
-select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'signature_templates.manage'), 'owner receives signature_templates.manage');
+select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.read'), 'owner receives documents.read, which opens acknowledgements too');
+select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.manage'), 'owner receives documents.manage');
 
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000002', true);
-select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'signature_templates.manage'), 'admin receives signature_templates.manage');
+select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.manage'), 'admin receives documents.manage');
 
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000003', true);
-select isnt(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'signature_templates.read'), true, 'manager has no acknowledgement access by default');
+select isnt(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.read'), true, 'manager has no acknowledgement access by default');
 
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000001', true);
 set local role postgres;
@@ -232,13 +232,13 @@ insert into signature_role_state
 select public.save_workspace_role_service(
   '15000000-0000-4000-8000-000000000002',
   '25000000-0000-4000-8000-000000000001', null, 'Policy coordinator', '', 'manager',
-  array['workspace.read', 'signature_templates.read', 'signature_templates.manage']::text[]
+  array['workspace.read', 'documents.read', 'documents.manage']::text[]
 );
 set local role postgres;
 select is((select count(*)::integer from signature_role_state), 1, 'admin can create a custom acknowledgement role');
 select is(
-  (select count(*)::integer from public.workspace_role_permissions where role_id = (select role_id from signature_role_state) and permission_key like 'signature_templates.%'),
-  2, 'custom role stores both acknowledgement permissions'
+  (select count(*)::integer from public.workspace_role_permissions where role_id = (select role_id from signature_role_state) and permission_key like 'documents.%'),
+  2, 'custom role stores both documents permissions, which open acknowledgements too'
 );
 select lives_ok(
   $$update public.workspace_memberships set role_id = (select role_id from signature_role_state)
@@ -260,7 +260,7 @@ select throws_ok(
     '25000000-0000-4000-8000-000000000001', null, 'Short notices',
     'signed_at', 365, 'Workspace notices', 'Internal schedule'
   )$$,
-  '42501', 'Not allowed', 'a manager-type role with signature_templates.manage still cannot create a retention policy'
+  '42501', 'Not allowed', 'a manager-type role with documents.manage still cannot create a retention policy'
 );
 
 set local role postgres;

@@ -135,9 +135,7 @@ select is(public.save_employee_onboarding_profile_service(
     'share_email_with_teammates', false
   ), 1), 2, 'changed legal name profile save advances revision');
 select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000002' and kind = 'profile'), 'awaiting_review', 'changed legal name waits for owner or admin review');
--- Who approves a legal name typed in onboarding is an open product question
--- (FB-6.6 S1); the cell runs as TODO until it is answered.
-select todo('FB-6.6 S1: who approves a legal name correction', 1);
+-- Only an owner or an admin approves a legal name (Mert, 2026-10-02, FB-6.6 S1).
 select throws_ok(
   $$select public.review_employee_onboarding_service(
     '17000000-0000-4000-8000-000000000002',
@@ -146,7 +144,7 @@ select throws_ok(
     (select id from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000002' and kind = 'profile'),
     '', 2, true
   )$$,
-  '42501', 'owner or admin approval required for legal name changes', 'manager cannot approve legal name correction'
+  '42501', 'Not allowed', 'manager cannot approve legal name correction'
 );
 select lives_ok(
   $$select public.review_employee_onboarding_service(
