@@ -1444,8 +1444,9 @@ $$;
 -- locations (reach: actor().manages, live locations only) may see it: a
 -- version with none of its locations in reach is hidden (K6). An archived
 -- location counts nowhere (KK-86): a version kept only at archived Moda is
--- hidden from everybody, Moda's own former manager and the owner included. A
--- version at no location (the whole workspace) is shown.
+-- hidden from every manager, Moda's own former manager included. A version at
+-- no location (the whole workspace) is shown. The owner and the admins are not
+-- masked at all (read_important_date_history_service).
 create function app_private.important_date_version_seen(reach uuid[], version jsonb)
 returns jsonb
 language sql
@@ -1471,10 +1472,17 @@ set search_path = ''
 as $$
 declare
   item public.important_dates;
+  reader app_private.actor_state;
   reach uuid[];
+  everything boolean;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
-  reach := (app_private.actor(actor_user_id, target_workspace_id)).manages;
+  reader :=app_private.actor(actor_user_id, target_workspace_id);
+  -- The mask is a manager's scope (K6); the owner and the admins see every
+  -- location, so every version, one left only at an archived location too
+  -- (coordinator decision 2026-10-02; nothing hidden from them, P09, P11).
+  everything := coalesce(reader.class in ('owner', 'admin'), false);
+  reach := reader.manages;
   select * into item from public.important_dates where id = target_important_date_id and workspace_id = target_workspace_id;
   if item.id is null or not app_private.important_date_visible(actor_user_id, item) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'settings.important_dates.read';
@@ -1498,8 +1506,8 @@ begin
       cross join lateral (
         select versions.before, versions.after,
           coalesce(not (versions.before ? 'hidden'), false) or coalesce(not (versions.after ? 'hidden'), false) as anything
-        from (select app_private.important_date_version_seen(reach, change.before) as before,
-                     app_private.important_date_version_seen(reach, change.after) as after) versions) seen
+        from (select case when everything then change.before else app_private.important_date_version_seen(reach, change.before) end as before,
+                     case when everything then change.after else app_private.important_date_version_seen(reach, change.after) end as after) versions) seen
       where change.important_date_id = item.id and change.workspace_id = target_workspace_id), '[]'::jsonb)
   );
 end;

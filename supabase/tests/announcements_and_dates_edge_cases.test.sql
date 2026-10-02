@@ -262,6 +262,17 @@ select pg_temp.save_date('owner', array['K'], 'Moda first', id => tests.id('r:da
 select is((select c -> 'after' from jsonb_array_elements(public.read_important_date_history_service(pg_temp.u('oya'), tests.id('r'),
     tests.id('r:date:moda-first')) -> 'changes') c where c ->> 'action' = 'created'), '{"hidden": true}'::jsonb,
   'KK-86: a version only at archived Moda is hidden even from Oya, who was Moda''s manager');
+select is((select c -> 'after' from jsonb_array_elements(public.read_important_date_history_service(pg_temp.u('ayse'), tests.id('r'),
+    tests.id('r:date:moda-first')) -> 'changes') c where c ->> 'action' = 'created'), '{"hidden": true}'::jsonb,
+  'KK-86: and from Ayse, Kadikoy''s manager');
+-- The mask is the managers' scope; the owner and the admins see every
+-- location, so nothing is hidden from them (KARARLAR Settings S4, P09, P11).
+select is((select c -> 'after' ->> 'title' from jsonb_array_elements(public.read_important_date_history_service(pg_temp.u('owner'), tests.id('r'),
+    tests.id('r:date:moda-first')) -> 'changes') c where c ->> 'action' = 'created'), 'Moda first',
+  'the owner sees the version that stayed at archived Moda');
+select is((select c ->> 'actor_name' from jsonb_array_elements(public.read_important_date_history_service(pg_temp.u('zeynep'), tests.id('r'),
+    tests.id('r:date:moda-first')) -> 'changes') c where c ->> 'action' = 'created'), 'Olcay Owner',
+  'an admin sees it too, with who wrote it');
 select is((select array_agg(id::uuid order by id) from jsonb_array_elements_text(pg_temp.sees_ann('owner', tests.id('r:ann:km')) -> 'location_ids') id),
   (select array_agg(id order by id) from unnest(pg_temp.locs(array['K', 'M'])) id),
   'KK-86: the announcement still lists archived Moda, so an edit keeps it');
