@@ -702,3 +702,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** gerekmez.
 - **Durum:** yürürlükte. Kayıt oturumu yazdı (koordinatör `local_abc4d126…`'ın isteği, #94 sonrası).
 - **Mert:** bilgi (yeni boş oturum açması gerekiyor).
+
+### KK-91 (2026-10-02) FB-6.7 A işçisinin teknik kararları
+- **Karar:** FB-6.7 A işçisi (`local_10a5177a…`) şu teknik kararları verdi (ILKELER P19, saf teknik iç karar): (a) K1 çekirdekte `*.write_wide` eylemiyle (org / write); tek lokasyonlu kayıt `place` kapsamıyla. (b) K2 çekirdek bayrağı `outranked_no`; üyeliği olmayan yazar "kimse" sayılır (rütbesi yok). (c) K4'te içerik alanları — duyuru: başlık, metin, kategori, link; önemli tarih: başlık, tür, başlangıç, bitiş, tekrar, not, "affects scheduling"; yayın ve bitiş saati içerik değildir. (d) Owner'ın taslağı müdüre görünmez (`authz.out_of_scope`). (e) Kayıttaki arşivli lokasyon düzenlemede kalabilir, yeni kayda eklenemez. (f) BL-530'da vardiya türüne özel kapanış düştü; workspace geneli "Closed day" bütün canlı lokasyonları kapatır. (g) BL-532'nin alıcı ölçüsü `employee.invite` izni.
+- **Neden:** çekirdeğin mevcut eylem / kapsam dilini kullanmak (ikinci bir kural dili yazmamak); K2 ve K4'ün sınırını ölçülebilir kılmak; BL-530'daki tek kaynağa geçişte kullanılmayan ayrıntıyı taşımamak.
+- **Uygulamada etkisi:** (f) görünür: workspace geneli kapalı gün her lokasyonun Schedule'ında o günü kapatır; vardiya türüne göre kısmi kapanış artık yok. Örnek: owner 25 Aralık'ı workspace geneli "Closed day" yapar; Kadıköy ve Erenköy'de o güne vardiya yazımı `closed_location` ayarının şiddetiyle uyarı / onay / engel verir. (d) Ayşe owner'ın henüz yayınlanmamış taslağını görmez. Diğerleri görünür değişiklik getirmez.
+- **Dayanak:** ILKELER P19; KARARLAR K1, K2, K4; CLAUDE.md §9 (ikiz sistem yok).
+- **Geri alma:** dal main'e girmeden önce kolay; sonra yeni migration.
+- **Durum:** dalda (`task/fb-6.7` @`93d3eb1c`), `nf-guvenlik` incelemesinde. Kayıt oturumu `local_43ff0725…` yazdı (besleme #96; koordinatör `local_abc4d126…`'ın isteği).
+- **Mert:** bilgi ((f) Schedule sonucu işçi penceresinde teyit ediliyordu).
