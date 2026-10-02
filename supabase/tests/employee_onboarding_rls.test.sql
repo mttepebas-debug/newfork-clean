@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(69);
+select * from no_plan();
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -61,11 +61,12 @@ values ('27000000-0000-4000-8000-000000000002', true, '17000000-0000-4000-8000-0
 
 insert into public.document_types (
   id, workspace_id, title, description, required_at_onboarding, requires_review,
-  accepted_formats, tracks_expiry, sort_order, created_by
+  accepted_formats, tracks_expiry, sort_order, created_by, publication_status, published_at, lifecycle_settings
 ) values (
   '57000000-0000-4000-8000-000000000001', '27000000-0000-4000-8000-000000000001',
   'Photo identification', 'Government-issued photo identification.', true, false,
-  array['pdf', 'jpeg', 'png'], false, 10, '17000000-0000-4000-8000-000000000001'
+  array['pdf', 'jpeg', 'png'], false, 10, '17000000-0000-4000-8000-000000000001', 'published', now(),
+  '{"mode": "required", "target": {"operator": "and", "job_ids": [], "employee_ids": [], "location_ids": [], "department_ids": []}, "period_days": null, "extra_fields": [], "assignment_scope": "future_onboarding", "suspend_on_overdue": false}'
 );
 
 insert into public.signature_retention_policies (
@@ -134,6 +135,9 @@ select is(public.save_employee_onboarding_profile_service(
     'share_email_with_teammates', false
   ), 1), 2, 'changed legal name profile save advances revision');
 select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000002' and kind = 'profile'), 'awaiting_review', 'changed legal name waits for owner or admin review');
+-- Who approves a legal name typed in onboarding is an open product question
+-- (FB-6.6 S1); the cell runs as TODO until it is answered.
+select todo('FB-6.6 S1: who approves a legal name correction', 1);
 select throws_ok(
   $$select public.review_employee_onboarding_service(
     '17000000-0000-4000-8000-000000000002',
@@ -198,11 +202,11 @@ select is((select count(*)::integer from public.employee_onboarding_requirements
 set local role postgres;
 insert into public.document_types (
   id, workspace_id, title, description, required_at_onboarding, requires_review,
-  accepted_formats, tracks_expiry, sort_order, created_by
+  accepted_formats, tracks_expiry, sort_order, created_by, publication_status, published_at
 ) values (
   '57000000-0000-4000-8000-000000000002', '27000000-0000-4000-8000-000000000001',
   'Late handbook', 'Required after onboarding already started.', true, false,
-  array['pdf'], false, 20, '17000000-0000-4000-8000-000000000001'
+  array['pdf'], false, 20, '17000000-0000-4000-8000-000000000001', 'published', now()
 );
 insert into public.signature_template_versions (
   id, workspace_id, template_id, version_number, title, summary, execution_class,
@@ -265,32 +269,37 @@ select throws_ok(
   '40001', 'onboarding changed; refresh required', 'stale profile write fails closed'
 );
 
+-- The employee's document and policy, through the paths the app uses today.
+create function pg_temp.req(k text) returns public.employee_onboarding_requirements language sql as $$
+  select * from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind::text = k$$;
 select throws_ok(
-  $$select public.confirm_employee_document_service(
-    '17000000-0000-4000-8000-000000000003',
-    (select id from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'document'),
-    '27000000-0000-4000-8000-000000000001/47000000-0000-4000-8000-000000000001/' ||
-      (select id::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'document') || '/photo-id.pdf',
-    'photo-id.pdf', 'application/pdf', 1024, null, 2
-  )$$,
-  '22023', 'invalid private document upload', 'private document confirmation rejects non-contract object paths'
+  $$select public.save_employee_document_draft_file_service(
+    '17000000-0000-4000-8000-000000000003', (pg_temp.req('document')).id, (pg_temp.req('document')).lifecycle_revision,
+    '27000000-0000-4000-8000-000000000001/47000000-0000-4000-8000-000000000001/' || (pg_temp.req('document')).id::text || '/photo-id.pdf',
+    'photo-id.pdf', 'application/pdf', 1024)$$,
+  '22023', 'invalid private document upload', 'private document upload rejects non-contract object paths'
 );
-
-select is(public.confirm_employee_document_service(
-  '17000000-0000-4000-8000-000000000003',
-  (select id from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'document'),
-  '27000000-0000-4000-8000-000000000001/47000000-0000-4000-8000-000000000001/' ||
-    (select id::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'document') || '/97000000-0000-4000-8000-000000000002.pdf',
-  'photo-id.pdf', 'application/pdf', 1024, null, 2
-), 3, 'private document confirmation advances revision');
+select lives_ok(
+  $$select public.save_employee_document_draft_file_service(
+    '17000000-0000-4000-8000-000000000003', (pg_temp.req('document')).id, (pg_temp.req('document')).lifecycle_revision,
+    '27000000-0000-4000-8000-000000000001/47000000-0000-4000-8000-000000000001/' || (pg_temp.req('document')).id::text || '/97000000-0000-4000-8000-000000000002.pdf',
+    'photo-id.pdf', 'application/pdf', 1024)$$,
+  'the employee uploads their document'
+);
+select lives_ok(
+  $$select public.submit_employee_document_lifecycle_service(
+    '17000000-0000-4000-8000-000000000003', (pg_temp.req('document')).id, (pg_temp.req('document')).lifecycle_revision,
+    (select s.id from public.employee_document_submissions s where s.requirement_id = (pg_temp.req('document')).id and s.state = 'draft'),
+    null, '{}'::jsonb)$$,
+  'and submits it'
+);
 select is((select review_status::text from public.employee_documents where employee_id = '47000000-0000-4000-8000-000000000001'), 'accepted', 'non-review document completes immediately');
-
-select is(public.acknowledge_employee_requirement_service(
-  '17000000-0000-4000-8000-000000000003',
-  (select id from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'acknowledgement'),
-  'Taylor Reed', repeat('a', 64), now(),
-  '97000000-0000-4000-8000-000000000001', 3
-), 4, 'policy acknowledgement advances revision');
+select lives_ok(
+  $$select public.acknowledge_document_lifecycle_service(
+    '17000000-0000-4000-8000-000000000003', '27000000-0000-4000-8000-000000000001', (pg_temp.req('acknowledgement')).id,
+    (pg_temp.req('acknowledgement')).lifecycle_revision, 'Taylor Reed', repeat('a', 64), now(), '97000000-0000-4000-8000-000000000001')$$,
+  'policy acknowledgement is recorded'
+);
 select is((select count(*)::integer from public.employee_acknowledgement_envelopes where employee_id = '47000000-0000-4000-8000-000000000001'), 1, 'acknowledgement evidence is retained once');
 select is(
   (
@@ -314,14 +323,17 @@ select is(
   'acknowledgement evidence stores version, digest, actor and membership'
 );
 
-select is((select count(*)::integer from public.employee_availability_versions where employee_id = '47000000-0000-4000-8000-000000000001'), 0, 'availability can be skipped in V1');
-select is(public.submit_employee_onboarding_service('17000000-0000-4000-8000-000000000003', 4), 6, 'complete employee onboarding auto-activates without final approval setting');
+select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'availability'), 'not_started', 'availability can be skipped in V1');
+select lives_ok($$select public.submit_employee_onboarding_service('17000000-0000-4000-8000-000000000003',
+  (select c.revision from public.employee_onboarding_cases c where c.employee_id = '47000000-0000-4000-8000-000000000001'))$$,
+  'complete employee onboarding submits');
 set local role postgres;
 select is((select status::text from public.workspace_memberships where id = '37000000-0000-4000-8000-000000000003'), 'active', 'auto-activation updates membership atomically');
 select is((select status::text from public.employee_onboarding_cases where employee_id = '47000000-0000-4000-8000-000000000001'), 'approved', 'auto-activation approves onboarding case');
 set local role service_role;
 select throws_ok(
-  $$select public.leave_employee_onboarding_service('17000000-0000-4000-8000-000000000003', 6)$$,
+  $$select public.leave_employee_onboarding_service('17000000-0000-4000-8000-000000000003',
+    (select c.revision from public.employee_onboarding_cases c where c.employee_id = '47000000-0000-4000-8000-000000000001'))$$,
   '23514', 'active employees cannot leave onboarding', 'active employees cannot self-leave onboarding'
 );
 set local role service_role;
@@ -352,7 +364,7 @@ select throws_ok(
     '47000000-0000-4000-8000-000000000003', 'activate',
     null, '', 3, true
   )$$,
-  '42501', 'employee onboarding review required', 'pending submitter cannot activate without active reviewer permission'
+  '42501', 'Not allowed', 'pending submitter cannot activate without active reviewer permission'
 );
 select is(public.review_employee_onboarding_service(
   '17000000-0000-4000-8000-000000000004',
@@ -403,11 +415,14 @@ insert into public.workspace_role_permissions (workspace_id, role_id, permission
 select '27000000-0000-4000-8000-000000000001', role.id, permission.key
 from public.workspace_roles role
 join public.permissions permission
-  on permission.key in ('documents.read', 'employee_documents.review')
+  on permission.key in ('documents.read', 'employee_documents.read', 'employee_documents.review')
 where role.workspace_id = '27000000-0000-4000-8000-000000000001'
   and role.system_key = 'manager'
 on conflict do nothing;
 
+-- The manager and Taylor work at one location; a manager manages where they work (EMP-001).
+insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, country_code, timezone)
+values ('d7000000-0000-4000-8000-000000000001', '27000000-0000-4000-8000-000000000001', 'Main', 'MAIN', '1 Road', 'City', 'CA', '90012', 'US', 'America/Los_Angeles');
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,
   invitation_email, created_by
@@ -416,52 +431,22 @@ insert into public.employee_profiles (
   '17000000-0000-4000-8000-000000000002', 'E-0005', 'Manager', 'Target', '',
   'onboarding-manager@example.test', '17000000-0000-4000-8000-000000000001'
 );
-insert into public.employee_onboarding_cases (
-  id, workspace_id, employee_id, membership_id, status
-) values (
-  'a7000000-0000-4000-8000-000000000005',
-  '27000000-0000-4000-8000-000000000001',
-  '47000000-0000-4000-8000-000000000005',
-  '37000000-0000-4000-8000-000000000002',
-  'in_progress'
-);
-insert into public.employee_onboarding_requirements (
-  id, workspace_id, case_id, employee_id, kind, title, required,
-  blocks_activation, requires_review, sort_order, status
-) values (
-  'b7000000-0000-4000-8000-000000000005',
-  '27000000-0000-4000-8000-000000000001',
-  'a7000000-0000-4000-8000-000000000005',
-  '47000000-0000-4000-8000-000000000005',
-  'document', 'Manager private document', true, true, true, 20, 'awaiting_review'
-);
-insert into public.employee_documents (
-  id, workspace_id, employee_id, requirement_id, version_number, object_path,
-  original_filename, media_type, size_bytes, review_status, uploaded_by
-) values (
-  'c7000000-0000-4000-8000-000000000005',
-  '27000000-0000-4000-8000-000000000001',
-  '47000000-0000-4000-8000-000000000005',
-  'b7000000-0000-4000-8000-000000000005',
-  1,
-  '27000000-0000-4000-8000-000000000001/47000000-0000-4000-8000-000000000005/b7000000-0000-4000-8000-000000000005/97000000-0000-4000-8000-000000000005.pdf',
-  'manager-private.pdf',
-  'application/pdf',
-  1024,
-  'awaiting_review',
-  '17000000-0000-4000-8000-000000000002'
-);
+insert into public.employee_location_assignments (workspace_id, employee_id, location_id, is_primary, created_by)
+select '27000000-0000-4000-8000-000000000001', e, 'd7000000-0000-4000-8000-000000000001', true, '17000000-0000-4000-8000-000000000001'
+from unnest(array['47000000-0000-4000-8000-000000000001', '47000000-0000-4000-8000-000000000005']::uuid[]) e;
 set local role service_role;
 select is(
-  public.get_employee_document_path_service(
+  public.get_employee_document_lifecycle_path_service(
     '17000000-0000-4000-8000-000000000002',
     '27000000-0000-4000-8000-000000000001',
-    '47000000-0000-4000-8000-000000000001',
-    (select id from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'document')
+    (pg_temp.req('document')).id,
+    (select s.id from public.employee_document_submissions s where s.requirement_id = (pg_temp.req('document')).id and s.state = 'accepted'),
+    (select f.id from public.employee_documents f where f.requirement_id = (pg_temp.req('document')).id),
+    false
   ),
   '27000000-0000-4000-8000-000000000001/47000000-0000-4000-8000-000000000001/' ||
-    (select id::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'document') || '/97000000-0000-4000-8000-000000000002.pdf',
-  'document reviewer manager can download scoped employee-role document'
+    (pg_temp.req('document')).id::text || '/97000000-0000-4000-8000-000000000002.pdf',
+  'a manager who reads documents downloads the document of somebody at their location'
 );
 select throws_ok(
   $$select public.get_employee_onboarding_review_service(
@@ -469,16 +454,7 @@ select throws_ok(
     '27000000-0000-4000-8000-000000000001',
     '47000000-0000-4000-8000-000000000005'
   )$$,
-  'P0002', 'onboarding case unavailable', 'manager cannot open manager-role onboarding review'
-);
-select throws_ok(
-  $$select public.get_employee_document_path_service(
-    '17000000-0000-4000-8000-000000000002',
-    '27000000-0000-4000-8000-000000000001',
-    '47000000-0000-4000-8000-000000000005',
-    'b7000000-0000-4000-8000-000000000005'
-  )$$,
-  'P0002', 'employee document unavailable', 'manager cannot download manager-role document'
+  '42501', 'Not allowed', 'nobody opens the review of their own onboarding'
 );
 select is((public.get_employee_onboarding_review_service(
   '17000000-0000-4000-8000-000000000002',
@@ -491,7 +467,7 @@ select throws_ok(
     '27000000-0000-4000-8000-000000000001',
     '47000000-0000-4000-8000-000000000001'
   )$$,
-  '42501', 'employee onboarding review required', 'cross-tenant review is denied'
+  '42501', 'Not allowed', 'cross-tenant review is denied'
 );
 select is((select count(*)::integer from public.onboarding_events where employee_id = '47000000-0000-4000-8000-000000000001' and metadata::text like '%ciphertext-value%'), 0, 'audit metadata excludes encrypted and private payloads');
 

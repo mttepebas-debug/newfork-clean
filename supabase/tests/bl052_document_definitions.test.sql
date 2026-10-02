@@ -30,19 +30,27 @@ select '25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000
 
 select is(jsonb_array_length(public.document_definition_target_options_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001')->'locations'),2,'owner sees active location choices');
 select is(jsonb_array_length(public.document_definition_target_options_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001')->'employees'),1,'owner sees employee choice');
-select throws_ok($$select public.document_definition_target_options_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001')$$,'42501','document management access required','employee cannot enumerate manager selectors');
+select throws_ok($$select public.document_definition_target_options_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001')$$,'42501','Not allowed','employee cannot enumerate manager selectors');
 select throws_ok($$select app_private.assert_document_definition_target('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','{"location_ids":["85200000-0000-4000-8000-000000000099"]}')$$,'42501','document target access denied','forged location selection denied');
 select throws_ok($$select app_private.assert_document_definition_target('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','{"job_ids":["a5200000-0000-4000-8000-000000000099"]}')$$,'42501','document target access denied','forged job selection denied');
 create temp table definition_test(id uuid);
 insert into definition_test select public.save_document_type_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',null,null,'{"title":"Safety","description":"Document","requires_review":true,"accepted_formats":["pdf"],"tracks_expiry":false,"expiry_warning_days":30,"lifecycle_settings":{"mode":"conditional","assignment_scope":"all_active","target":{"operator":"and","location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"period_days":7,"suspend_on_overdue":false,"extra_fields":[]}}');
 select is((select lifecycle_revision from public.document_types where id=(select id from definition_test)),1,'new definition revision is one');
-insert into public.employee_onboarding_requirements(id,workspace_id,employee_id,case_id,kind,source_id,title,required,blocks_activation,requires_review,sort_order,source_snapshot)
-select '65200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','55200000-0000-4000-8000-000000000001','document',id,'Safety',true,true,true,2,'{}' from definition_test;
-select is((select lifecycle_settings->>'mode' from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),'conditional','requirement copies definition lifecycle');
-select is((select deadline_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),now()+interval '7 days','active assignment starts defined deadline');
-select ok((select not required and not blocks_activation from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),'conditional snapshot does not masquerade as required activation blocker');
+-- A definition reaches people only once it is published (D6); publishing assigns it.
+create temp table publication_preview(preview jsonb);
+insert into publication_preview select public.preview_document_publication_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',id) from definition_test;
+select public.set_document_publication_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',d.id,(p.preview->>'revision')::int,(p.preview->>'publication_revision')::int,p.preview->>'preview_token','Publish','published') from definition_test d, publication_preview p;
+select is((select lifecycle_settings->>'mode' from public.employee_onboarding_requirements where source_id=(select id from definition_test)),'conditional','requirement copies definition lifecycle');
+select is((select deadline_at from public.employee_onboarding_requirements where source_id=(select id from definition_test)),now()+interval '7 days','active assignment starts defined deadline');
+select ok((select not required and not blocks_activation from public.employee_onboarding_requirements where source_id=(select id from definition_test)),'conditional snapshot does not masquerade as required activation blocker');
+-- A published definition is edited after it is unpublished; unpublishing pauses
+-- what it asked of people.
+delete from publication_preview;
+insert into publication_preview select public.preview_document_publication_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',id) from definition_test;
+select public.set_document_publication_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',d.id,(p.preview->>'revision')::int,(p.preview->>'publication_revision')::int,p.preview->>'preview_token','Edit','draft') from definition_test d, publication_preview p;
+select is((select deadline_at from public.employee_onboarding_requirements where source_id=(select id from definition_test)),null,'an unpublished definition holds no running deadline');
 select lives_ok($$select public.save_document_type_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test),1,jsonb_set(to_jsonb(d),'{lifecycle_settings,period_days}','14')) from public.document_types d where id=(select id from definition_test)$$,'definition revision can be edited');
-select is((select lifecycle_settings->>'period_days' from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),'7','editing definition does not mutate assigned snapshot');
-select is((select deadline_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002'),now()+interval '7 days','editing definition preserves existing UTC deadline');
+select is((select lifecycle_revision from public.document_types where id=(select id from definition_test)),2,'one save moves the definition one revision');
+select is((select lifecycle_settings->>'period_days' from public.employee_onboarding_requirements where source_id=(select id from definition_test)),'7','editing definition does not mutate assigned snapshot');
 select throws_ok($$select public.save_document_type_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',(select id from definition_test),1,to_jsonb(d)) from public.document_types d where id=(select id from definition_test)$$,'PT409','document type changed; refresh required','stale definition edit is rejected');
 select * from finish(); rollback;

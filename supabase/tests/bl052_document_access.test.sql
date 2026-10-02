@@ -43,8 +43,12 @@ insert into public.workspaces(id,name,created_by) values('25200000-0000-4000-800
 insert into public.workspace_memberships(workspace_id,user_id,role,status) values('25200000-0000-4000-8000-000000000002','15200000-0000-4000-8000-000000000002','employee','active');
 select ok(public.service_actor_has_permission('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000002','schedule.read'),'other organization permissions remain available');
 select is(public.get_employee_document_access_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000002')->>'restricted','false','restriction is scoped to one organization');
-insert into public.employee_onboarding_requirements(workspace_id,employee_id,case_id,kind,source_id,title,required,blocks_activation,requires_review,sort_order,lifecycle_settings)
-select workspace_id,employee_id,case_id,kind,'65200000-0000-4000-8000-000000000099'::uuid,'Second blocker',required,blocks_activation,requires_review,2,lifecycle_settings from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001';
+-- A second document asked of the same person: a published definition, as every
+-- assigned document is (a draft one is never assigned, FB-6.6 D6).
+insert into public.document_types(id,workspace_id,title,publication_status,published_at,created_by)
+values('65200000-0000-4000-8000-000000000099','25200000-0000-4000-8000-000000000001','Second blocker','published',now(),'15200000-0000-4000-8000-000000000001');
+insert into public.employee_onboarding_requirements(workspace_id,employee_id,case_id,kind,source_id,title,required,blocks_activation,requires_review,sort_order,lifecycle_settings,lifecycle_user_id)
+select workspace_id,employee_id,case_id,kind,'65200000-0000-4000-8000-000000000099'::uuid,'Second blocker',required,blocks_activation,requires_review,2,lifecycle_settings,lifecycle_user_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001';
 update public.employee_onboarding_requirements set deadline_at=now()-interval '1 day' where title='Second blocker';
 select public.set_employee_document_exemption_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',1,true,'Exception');
 select is(public.get_employee_document_access_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001')->>'restricted','true','resolving one of multiple blockers does not reopen access');

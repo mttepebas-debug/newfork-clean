@@ -156,3 +156,7 @@ supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
 supabase/tests/announcements_and_dates_edge_cases.test.sql
 supabase/tests/closed_days_reach_the_shifts.test.sql
 supabase/tests/past_dates_and_ended_announcements.test.sql
+supabase/tests/bl052_document_access.test.sql
+supabase/tests/bl052_document_definitions.test.sql
+supabase/tests/bl052_document_employee_assignment_preview.test.sql
+supabase/tests/employee_onboarding_rls.test.sql

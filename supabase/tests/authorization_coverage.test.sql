@@ -85,7 +85,7 @@ insert into service_class values
   ('get_employee_document_lifecycle_service', 'documents.read'),
   ('get_employee_hub_service', 'employee_hub.read'),
   ('get_employee_name_settings_service', 'settings.people.read'),
-  ('get_employee_onboarding_review_service', 'employee.read'),
+  ('get_employee_onboarding_review_service', 'onboarding.review'),
   ('get_employee_onboarding_service', 'onboarding.self'),
   ('get_employee_schedule_board_service', 'employee_hub.read'),
   ('get_notification_inbox_v2_service', 'notifications.read_own'),

@@ -1322,7 +1322,7 @@ begin
   document_payload->>'title',coalesce(document_payload->>'description',''),settings->>'mode'='required',
   (document_payload->>'requires_review')::boolean,array(select jsonb_array_elements_text(document_payload->'accepted_formats')),
   (document_payload->>'tracks_expiry')::boolean,(document_payload->>'expiry_warning_days')::integer,'track_only');
- update public.document_types set lifecycle_settings=settings,lifecycle_revision=case when target_document_type_id is null then 1 else lifecycle_revision+1 end where id=saved_id;
+ update public.document_types set lifecycle_settings=settings,lifecycle_revision=case when target_document_type_id is null then 1 else expected_revision+1 end where id=saved_id;
  return saved_id;
 end;
 $function$;
@@ -2337,7 +2337,7 @@ create or replace function public.get_employee_onboarding_review_service(actor_u
 AS $function$
 declare target_case public.employee_onboarding_cases%rowtype; requirement_rows jsonb; total_count integer; completed_count integer;
 begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.read', target_person => target_employee_id);
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'onboarding.review', target_person => target_employee_id);
   select * into target_case from public.employee_onboarding_cases
   where workspace_id = target_workspace_id and employee_id = target_employee_id;
   if target_case.id is null then raise exception 'onboarding case unavailable' using errcode = 'P0002'; end if;
@@ -2883,6 +2883,26 @@ revoke all on function app_private.activate_employee_onboarding_case(uuid, uuid,
 
 -- BL-264: no reason to run as its owner; every caller already does.
 alter function app_private.set_document_exemption(public.employee_onboarding_requirements, uuid, boolean, text, integer) security invoker;
+
+-- One save of a draft definition is one revision. A save writes the row twice
+-- (its fields, then its lifecycle settings); the second write in the same
+-- transaction is the same revision, so a new definition starts at 1.
+create or replace function app_private.guard_document_definition_edit()
+ returns trigger
+ language plpgsql
+ set search_path to ''
+as $function$
+begin
+ if old.publication_status='published' and
+  (new.title,new.description,new.required_at_onboarding,new.requires_review,new.accepted_formats,new.tracks_expiry,new.expiry_warning_days,new.expiry_schedule_impact,new.lifecycle_settings,new.lifecycle_revision)
+  is distinct from
+  (old.title,old.description,old.required_at_onboarding,old.requires_review,old.accepted_formats,old.tracks_expiry,old.expiry_warning_days,old.expiry_schedule_impact,old.lifecycle_settings,old.lifecycle_revision)
+ then raise exception 'Published documents cannot be edited; unpublish first' using errcode='PT409'; end if;
+ if old.publication_status='draft' and new.lifecycle_revision=old.lifecycle_revision and old.updated_at is distinct from now()
+  and (new.title,new.description,new.required_at_onboarding,new.requires_review,new.accepted_formats,new.tracks_expiry,new.expiry_warning_days,new.expiry_schedule_impact,new.lifecycle_settings) is distinct from (old.title,old.description,old.required_at_onboarding,old.requires_review,old.accepted_formats,old.tracks_expiry,old.expiry_warning_days,old.expiry_schedule_impact,old.lifecycle_settings) then new.lifecycle_revision:=old.lifecycle_revision+1; end if;
+ return new;
+end;
+$function$;
 
 -- 4. What goes ---------------------------------------------------------------------------
 
