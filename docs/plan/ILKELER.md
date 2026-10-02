@@ -194,6 +194,7 @@
 - Koşul: makine düzeyinde yeniden başlatma, oturum arşivi, başka oturumun dosyaları ve kalıcı yetki
   her seferinde tek tek sorulur. Mert çoğu zaman izin veriyor, ama yine sorulur.
 - Kanıt: 09-16 "İkisi de otomatik"; 09-30 "Hemen bağla", "Sen gönder, MCP ile".
+- Kanıt (2026-10-02, süreç kuralı; CLAUDE.md §5 adım 4 "Sormadan açılan skill'ler", main `da6874d6` + `a80f687a`): her oturum brainstorming, systematic-debugging, test-driven-development, supabase-postgres-best-practices, receiving-code-review ve verification-before-completion'ı kendi yargısıyla açar; ölçü §11.5 (sonucu değiştirecekse açılır; belli, kanıtlanmış ya da küçük işte açılmaz), raporda tek satır. Mert: "Overengineering yada gereksiz test/kanıtlanmış/obvious olan şeyler için zaman ve token waste etmesinler ama sadece senin onlara söylediğin dar senaryoları da beklemesinler." Reddedilen (koordinatör önermedi; süreçle çakışır): writing-plans, executing-plans, finishing-a-development-branch, gsd-*, frontend-design.
 
 **P16. Geliştirici araç kuralları orta serttir.**
 - Kural: yeni lint, hook ya da denetim önce uyarı modunda gelir. Bypass edilirse ayrıntılı log
