@@ -802,3 +802,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** Mert'in sözüyle biter.
 - **Durum:** yürürlükte (gece). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #103).
 - **Mert:** kendi kararı.
+
+### KK-102 (2026-10-02) Sürekli yetki için izin listesine dokunulmadı
+- **Karar:** CLAUDE.md §8'e "Sürekli yetki" yazıldı (main `636b76ee`); `.claude/settings.json`'daki engel (deny) listesi gevşetilmedi.
+- **Neden:** engel listesi otomasyonu durdurmuyor: canlı migration Supabase MCP ile, Vercel yayını main'den kendiliğinden gidiyor; gevşetmek kazanç getirmeden risk açar.
+- **Uygulamada etkisi:** görünür değişiklik yok. Koordinatör canlıya migration'ı, oturum açma / arşivlemeyi ve birleşmiş dal temizliğini Mert'e sormadan yapar; `db reset`, canlıda gerçek veri silme, force push yine engellidir.
+- **Dayanak:** CLAUDE.md §8 (Sürekli yetki, kullanıcı kararı 2026-10-02); ILKELER P15, P16.
+- **Geri alma:** kolay — liste değişmedi.
+- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #104).
+- **Mert:** bilgi.
