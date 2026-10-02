@@ -842,5 +842,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** yalnız "Important dates manage" izni olan özel rol, kapalı gün önizlemesinde göremediği lokasyonun vardiyalarını artık görmez (sayısını görür); çalışan Alex duyuruda "24 kişiye gitti" sayısını görmez; geçmiş haftanın taslağındaki Can, Republish'te silinmez.
 - **Dayanak:** ILKELER P17 (koşul), P09; KARARLAR K11; CLAUDE.md §9.
 - **Geri alma:** kolay — dalda.
-- **Durum:** yürürlükte (işçide). Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #108).
+- **Durum:** yürürlükte; altı bulgu dalda düzeltildi (`task/fb-6.7c` @`22d58021`, besleme #109; kayıt oturumu `local_10a5177a…`), tur 2 incelemede. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #108).
 - **Mert:** bilgi (sabah listesinde).
