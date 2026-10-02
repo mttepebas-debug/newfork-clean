@@ -129,11 +129,12 @@
   - Manager yalnız kendi lokasyonunda karar verir; tamamen işten çıkarma admin ya da owner'ındır.
   - Bildirim karar verene ve işi doğrudan etkilenene gider; admin gürültüsü yoktur.
 - Koşul: yayın anındaki müsaitlik uyarısını, rütbesinden bağımsız olarak yayınlayan onaylar. Eş
-  müdür bilgi bildirimi alabilir.
+  müdür bilgi bildirimi alabilir. Resmî ad gibi bordro / kimlik verisinin onayı bir üst kademeye değil owner / admin'e gider (2026-10-02).
 - Kanıt: 09-23 "İstekler hep üst kademelere gider onay için", "Komple işten çıkarmayı admin
 - Kanıt (2026-10-01, ters seçim): bekleyen izni kim görür sorusunda önerilen M2'nin genişliğine ("talebi görsün, ilerlemeyi değil") dayandı; Mert daralttı: bekleyen talebi yalnız karar veren ve sahibi görür, eş rütbe görmez ("Kendi pozisyondan arkadaşın değil"). Onay zincirinde görünürlük de bir üst kademeyle sınırlıdır.
   yapar"; 09-26 "Yalnız lokasyon müdürleri". KARARLAR "Ürün kuralları".
 - Kanıt (2026-10-02, ters seçim): duyuru teslimi için "admin bildirim almasın" önerildi; Mert "admin'ler de alsın" seçti. Duyuru / önemli tarihte admin her kaydı alır; P07'nin "admin gürültüsü yok" kısmı onay bildirimleri için geçerli kalır (KARARLAR "Duyurular ve önemli tarihler" K5).
+- Kanıt (2026-10-02, ters seçim): onboarding'de resmî ad düzeltmesi için "bir üst kademe (lokasyon müdürü) onaylar" önerildi; Mert "yalnız owner ya da admin" seçti. Resmî ad gibi bordro / kimlik verisinde onay bir üst kademeye değil owner / admin'e gider (KARARLAR "Onboarding'de resmî ad düzeltmesini yalnız owner ya da admin onaylar"; FB-6.6 S1).
 
 **P08. Ayrıcalık bugünkü rolden gelir.**
 - Kural: kurucuya ya da owner'a "saygı" istisnası yapılmaz. Rol düşünce muafiyet de düşer; owner

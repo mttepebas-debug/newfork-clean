@@ -953,7 +953,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** şimdilik yok; yalnız A1b (1 puan) bekliyor, A1a / A2 / A3 yazımı / B sürüyor. Bugün ekranda: Emre'nin resmî ad düzeltmesini yalnız owner / admin onaylıyor; Ayşe, Deniz'in bekleyen belgesini görüyor.
 - **Dayanak:** CLAUDE.md §13 (kim karar verir), HANDOFF `e30f3de3` §0 (kapsamayan soru park edilir).
 - **Geri alma:** kolay.
-- **Durum:** park (Mert'in cevabını bekliyor). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
+- **Durum:** cevaplandı 2026-10-02 ~19:10Z (Mert): S1 → (b) yalnız owner ya da admin — önerilenin tersi, ILKELER P07'ye ters seçim kanıtı; S2 → (a) karar verenler + sahibi, önerilen; ikisi KARARLAR "Ürün kuralları"nda (besleme #121). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
 - **Mert:** karar (§0c 66–67).
 
 ### KK-116 (2026-10-02) FB-6.6 D3 düzeltildi: kısıtlı müdür / admin başkasının belgesini görmez
@@ -988,3 +988,36 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #119).
 - **Mert:** bilgi (dönüş listesinde).
+
+### KK-119 (2026-10-02) İmza şablonu izinleri belge izinlerine katlanır
+- **Karar (ne):** `signature_templates.*` izinleri `documents.read` / `documents.manage`'a katlanır (seçenek a); ayrı `settings.signature_templates.write` eylemi açılmaz.
+- **Nerede:** DB `nf-db` (FB-6.6 A1b, `task/fb-6.6-a1`); API + shared + web `nf-backend` (A2).
+- **Ne zaman:** 2026-10-02 ~19:15Z; A1b ve A2 ile.
+- **Ne için:** D7 sonrası imza şablonu anahtarları ayrı bir yetki yolu olarak kalıyordu (ikiz sistem); ayrı izin, ayar cehennemine bir kutu daha ekler.
+- **Uygulamada etkisi:** Settings → Roles'ta "Signature templates" kutuları kalkar; Documents izni olan kişi Settings → Acknowledgements'ı da açar ve yazar.
+- **Dayanak:** KARARLAR K14 S3; CLAUDE.md §9 (ikiz sistem yok); ILKELER anti-hedef "ayar cehennemi". Reddedilen: (b) ayrı `settings.signature_templates.write` eylemi.
+- **Geri alma:** orta — rol kayıtlarındaki izin satırları taşınır; dalda.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #121).
+- **Mert:** bilgi (dönüş listesinde).
+
+### KK-120 (2026-10-02) FB-6.6 A1a'nın iki davranış değişikliği kabul
+- **Karar (ne):** (i) Süresi yaklaşan belge yapılacağı yalnız o belgeyi açabilene gider. (ii) Müdür tipi özel rol `documents.manage` taşısa da Settings → Documents'a yazamaz.
+- **Nerede:** `task/fb-6.6-a1` (migration `20261006000000`).
+- **Ne zaman:** 2026-10-02 ~19:15Z (A1a raporu üzerine).
+- **Ne için:** (i) bildirim karar verene ve işi doğrudan etkilenene gider; (ii) ayar yazımı owner / admin'in.
+- **Uygulamada etkisi:** (i) Varsayılan müdür Ayşe "Emre's Food Handler expires" yapılacağını artık almaz (belgeyi açabilen alır). (ii) owner Mert özel "Shift lead" rolüne Documents manage verse de Ayşe Settings → Documents'ta kayıt yapamaz (rol editöründeki kutu için BL-555).
+- **Dayanak:** (i) ILKELER anti-hedef "bildirim gürültüsü", P07; (ii) KARARLAR M2 (ayar yazımı owner / admin), K14.
+- **Geri alma:** kolay — dalda.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #121).
+- **Mert:** bilgi (dönüş listesinde).
+
+### KK-121 (2026-10-02) FB-6.6 A1a'nın teknik kararları kabul; ultrareview önerilmedi
+- **Karar (ne):** A1a raporundaki teknik kararlar 1–5 kabul. FB-6.6 A1 + A2 için ultrareview önerilmez; inceleme `nf-guvenlik` A1 + A2 birlikte.
+- **Nerede:** A1a raporu (posta kutusu); `task/fb-6.6-a1`, `task/fb-6.6-a2`.
+- **Ne zaman:** 2026-10-02 ~19:15Z.
+- **Ne için:** Teknik iç kararlar Claude'un (P19). Ultrareview: Mert 2026-10-02 FB-6.7 A'da "iki inceleme yeter" dedi.
+- **Uygulamada etkisi:** görünür değişiklik yok.
+- **Dayanak:** ILKELER P19; P06 kanıtı (2026-10-02 ikinci ters seçim: "Hayır, iki inceleme yeter"); CLAUDE.md §5.
+- **Geri alma:** kolay — Mert sonradan ultrareview başlatabilir.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #121).
+- **Mert:** bilgi (dönüş listesinde); ultrareview isterse açabilir.
