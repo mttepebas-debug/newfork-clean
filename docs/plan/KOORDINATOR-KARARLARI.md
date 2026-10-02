@@ -897,5 +897,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** ayar "Confirm once per editing session" iken Ayşe 24 Ekim'e ilk vardiyayı sürükleyip onayladıktan sonra hızlı düzenleyiciden ikinci vardiyayı yazınca yeniden sorulmaz (önce: hızlı düzenleyici her kayıtta soruyordu).
 - **Dayanak:** KARARLAR K17; ILKELER (tek kaynak, CLAUDE.md §9 "ikiz sistem yok").
 - **Geri alma:** kolay — dalda.
-- **Durum:** yürürlükte (dalda). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın kararı, besleme #113).
+- **Durum:** dalda uygulandı (`task/fb-6.7-ui` @`a9f1bd39`, tek modül `apps/web/src/schedule/lib/closedDayConfirmation.ts`; besleme #114); main'e ekran işiyle girer. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın kararı, besleme #113).
 - **Mert:** bilgi (sabah listesinde).
