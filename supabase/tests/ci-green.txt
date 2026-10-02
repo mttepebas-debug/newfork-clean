@@ -160,3 +160,4 @@ supabase/tests/bl052_document_access.test.sql
 supabase/tests/bl052_document_definitions.test.sql
 supabase/tests/bl052_document_employee_assignment_preview.test.sql
 supabase/tests/employee_onboarding_rls.test.sql
+supabase/tests/documents_on_the_core.test.sql

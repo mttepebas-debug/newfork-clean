@@ -134,6 +134,21 @@ select tests.remember('m:nr:' || h, (
     select r.id from public.employee_preferred_name_requests r
     where r.employee_id = tests.id('m:' || h) and r.status = 'pending'))
 from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep', 'kaan']) h;
+-- A published document asked of everybody, optional so it restricts nobody
+-- (FB-6.6): what documents.read, .review and .self act on.
+create temporary table matrix_badge (id uuid);
+insert into matrix_badge select public.save_document_type_lifecycle_service(tests.user('m:owner'), tests.id('m'), null, null,
+  '{"title": "Matrix badge", "description": "", "requires_review": true, "accepted_formats": ["pdf"], "tracks_expiry": false,
+    "expiry_warning_days": 30, "lifecycle_settings": {"mode": "optional", "assignment_scope": "all_active",
+    "target": {"operator": "and", "location_ids": [], "department_ids": [], "job_ids": [], "employee_ids": []},
+    "period_days": null, "suspend_on_overdue": false, "extra_fields": []}}');
+create temporary table matrix_badge_preview (p jsonb);
+insert into matrix_badge_preview select public.preview_document_publication_service(tests.user('m:owner'), tests.id('m'), id) from matrix_badge;
+select public.set_document_publication_service(tests.user('m:owner'), tests.id('m'), b.id, (v.p ->> 'revision')::int,
+  (v.p ->> 'publication_revision')::int, v.p ->> 'preview_token', 'Matrix', 'published') from matrix_badge b, matrix_badge_preview v;
+create function pg_temp.badge(person uuid) returns uuid language sql stable as $$
+  select r.id from public.employee_onboarding_requirements r
+  where r.employee_id = person and r.source_id = (select id from matrix_badge) and r.lifecycle_retired_at is null$$;
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee. status: active | suspended |
@@ -170,7 +185,9 @@ insert into persona values
 -- manager-type role (settings_reads_ask_the_core.test.sql).
 update persona set permissions_removed = permissions_removed || array[
   'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-  'roles.read', 'documents.read', 'signature_templates.read']
+  'roles.read', 'documents.read', 'signature_templates.read',
+  -- nor anybody's documents (FB-6.6): an owner grants these to a manager-type role
+  'employee_documents.read', 'employee_documents.review']
 where class = 'manager';
 
 create temporary table actor as
@@ -485,7 +502,22 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('legacy.schedule_can_publish', 'location', 'schedule.publish', false, true,
    $$select public.schedule_actor_can_publish_service($1, $2, $3)$$);
 
+-- Somebody's documents (FB-6.6): read, and decided on. Exempting is the
+-- decision a probe can make on any badge without a submission.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('documents.read', 'person', 'employee_documents.read', false, true,
+   $$select public.get_employee_document_lifecycle_service($1, $2, pg_temp.badge($3), false) is not null$$),
+  ('documents.review', 'person', 'employee_documents.review', false, false,
+   $$select public.set_employee_document_exemption_service($1, $2, pg_temp.badge($3),
+       (select r.lifecycle_revision from public.employee_onboarding_requirements r where r.id = pg_temp.badge($3)), true, 'matrix probe') is not null$$),
+  ('onboarding.review', 'person', 'employee_onboarding.review', false, true,
+   $$select public.get_employee_onboarding_review_service($1, $2, $3) is not null$$);
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template, member, restricted_ok) values
+  -- One's own document and onboarding, open to somebody still finishing it.
+  ('documents.self', 'person', null, false, true,
+   $$select public.get_employee_document_lifecycle_service($1, $2, pg_temp.badge($3), true) is not null$$, true, true),
+  ('onboarding.self', 'workspace', null, false, true,
+   $$select public.get_employee_onboarding_service($1, $2) is not null$$, true, true),
   ('notifications.read_own', 'workspace', null, false, false,
    $$select public.get_notification_inbox_v2_service($1, $2) is not null$$, true, true),
   ('exchange.offer_own', 'shift', null, false, false,
@@ -566,6 +598,11 @@ insert into core_action (key, core_key, blank) values
   ('legacy.schedule_capability', 'schedule.edit', 'null'),
   ('legacy.schedule_can_publish', 'schedule.publish', 'null'),
   ('notifications.read_own', 'notifications.read_own', 'null'),
+  ('documents.read', 'documents.read', 'null'),
+  ('documents.review', 'documents.review', 'null'),
+  ('documents.self', 'documents.self', 'null'),
+  ('onboarding.review', 'onboarding.review', 'null'),
+  ('onboarding.self', 'onboarding.self', 'null'),
   ('exchange.offer_own', 'exchange.offer_own', 'null'),
   ('time_off.request_own', 'time_off.request_own', 'null'),
   ('settings.people', 'settings.people', 'null'),
@@ -700,6 +737,24 @@ begin
   when 'employee.decide_preferred_name', 'employee.pending_names' then
     -- A request goes one rank up and nobody answers their own (BL-099); the
     -- owner's own request passes by itself (KK-17), so it never waits here.
+    if is_self then return 'deny'; end if;
+    if p.class = 'owner' then return 'allow'; end if;
+    if p.class = 'admin' then
+      return case when pg_temp.rank(t.class) < pg_temp.rank('admin') then 'allow' else 'deny' end;
+    end if;
+    return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
+
+  when 'documents.read' then
+    -- M2: whoever reads documents reads everybody's where they manage; the
+    -- owner and admins everybody's (FB-6.6). A restricted reader reads
+    -- nobody's (D3, above).
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when shares then 'allow' else 'deny' end;
+
+  when 'documents.review', 'onboarding.review' then
+    -- One rank up, never one's own nor a peer's (D1, P07): an employee's at a
+    -- manager's locations, an admin or the owner; a manager's by an admin or
+    -- the owner; an admin's by the owner only.
     if is_self then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then
