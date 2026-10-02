@@ -434,6 +434,7 @@ declare
   line date := public.schedule_current_week_start_service(target_workspace_id);
   content_changed boolean := true;
   untouched boolean := false;
+  was public.important_dates;
   ahead integer;
   impact jsonb;
   opened jsonb := '[]';
@@ -517,6 +518,8 @@ begin
   end if;
 
   if before.id is not null and not untouched then
+    -- The history keeps the version as it was, not the part left ahead.
+    was := before;
     before := app_private.important_date_keep_past(before, line);
   end if;
 
@@ -580,7 +583,7 @@ begin
   insert into public.important_date_changes (workspace_id, important_date_id, actor_user_id, action, before, after)
   values (target_workspace_id, item.id, actor_user_id,
     case when before.id is null then 'created' else 'updated' end,
-    case when before.id is null then null else app_private.important_date_snapshot(before) end,
+    case when before.id is null then null else app_private.important_date_snapshot(coalesce(was, before)) end,
     app_private.important_date_snapshot(item));
   return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
     'recipient_count', cardinality(item.delivered_to),
@@ -607,6 +610,7 @@ declare
   item public.important_dates;
   before public.important_dates;
   line date := public.schedule_current_week_start_service(target_workspace_id);
+  was public.important_dates;
   impact jsonb;
   opened jsonb := '[]';
   removed uuid[] := '{}';
@@ -643,6 +647,7 @@ begin
     end if;
   end if;
 
+  was := before;
   before := app_private.important_date_keep_past(before, line);
   if target_action in ('unpublish', 'archive') then
     perform app_private.communication_withdraw(target_workspace_id, 'schedule.important_date.available',
@@ -683,7 +688,7 @@ begin
   values (target_workspace_id, item.id, actor_user_id,
     case target_action when 'unpublish' then 'unpublished' when 'republish' then 'republished'
       when 'archive' then 'archived' else 'restored' end,
-    app_private.important_date_snapshot(before), app_private.important_date_snapshot(item));
+    app_private.important_date_snapshot(was), app_private.important_date_snapshot(item));
   return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
     'archived_at', item.archived_at,
     'shifts_opened', jsonb_array_length(opened),

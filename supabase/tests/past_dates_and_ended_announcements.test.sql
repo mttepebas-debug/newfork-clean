@@ -99,6 +99,8 @@ select is((select count(*)::integer from public.important_dates d where d.worksp
            and d.title = 'Inventory week' and d.starts_on = pg_temp.b() - 3 and d.ends_on = pg_temp.b() - 1
            and d.recurrence = 'none' and d.status = 'published'), 1,
   'K11: last week''s days stay "Inventory week", as they were');
+select is((select c.before ->> 'starts_on' from public.important_date_changes c where c.important_date_id = tests.id('p:date:week')
+           and c.action = 'updated'), (pg_temp.b() - 3)::text, 'K11: its history keeps the date as it was, from last week');
 select is(pg_temp.try(format($$select pg_temp.save_date('owner', 'Stock count', id => %L, starts => %L, ends => %L)$$,
   tests.id('p:date:week'), pg_temp.b() - 1, pg_temp.b() + 3)), 'P0001 important_date.past',
   'K11: moving its start to a past day is refused');
