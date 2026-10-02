@@ -142,6 +142,13 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 3. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
 4. Uygulama: risk sınıfına göre koordinatör ya da ilgili rol (`DELEGASYON.md`). Hata için önce onu
    yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test.
+   **Sormadan açılan skill'ler** (kullanıcı kararı 2026-10-02): her oturum (koordinatör, rol, işçi)
+   şu anlarda skill'i kendisi açar, onay istemez; açtığını raporda tek satırla söyler:
+   - `superpowers:brainstorming` — Mert bir fikir, kural ya da temel model (ILKELER P18) önerdiğinde
+     ve karar vermeden önce: fikir sınanır (açık nokta, uç durum, rakip emsali, 2–3 yol, öneri +
+     dayanak), sonra karar istenir. Mert'in fikrini sınamadan kurala çevirmek yasak.
+   - `superpowers:systematic-debugging` — bir test, CI işi ya da ekran beklenmedik biçimde
+     bozulduğunda, düzeltmeden önce: kök neden kanıtla bulunur; beklenti gevşetilmez (bölüm 9).
 5. İnceleme: risk sınıfının istediği kadar (`DELEGASYON.md` §3): R0 yok; R1 koordinatörün kendi
    okuması + ekran görüntüsü; R2 tek bağımsız inceleme; R3 `nf-guvenlik` zorunlu (ekran değiştiyse
    `nf-gorsel-qa` da). Onay `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına
