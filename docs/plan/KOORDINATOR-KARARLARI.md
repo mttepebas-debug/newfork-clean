@@ -911,3 +911,47 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — görev dosyası aşamasında.
 - **Durum:** yürürlükte (görev dosyası ve tazelik işçide). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın devir beslemesi, #115).
 - **Mert:** bilgi (dönüş listesinde).
+
+### KK-112 (2026-10-02) FB-6.6 belge ve onboarding incelemesinin beş ürün kuralı (D1–D5) kabul
+- **Karar (ne):** D1 rütbe: kimse kendi belgesini onaylamaz, eş rütbe birbirininkini incelemez (çalışanınkini lokasyon müdürü / admin / owner, müdürünkini admin / owner, admin'inkini yalnız owner); D2 iki lokasyonlu çalışanın belgesine tek onay yeter; D3 kısıtlı müdür belge ve onboarding incelemez (görür, karar veremez); D4 kısıtlı kişi kendi bildirimlerini okur; D5 owner'ın gönüllü yüklediği belge kimsenin onay kuyruğuna düşmez.
+- **Nerede:** `tasks/FB-6.6.md` "Ürün kararları → Dayanağı yazılı olanlar"; uygulaması A1a (`nf-db`, `task/fb-6.6-a1`), A2 (`nf-backend`), B (Account → Documents).
+- **Ne zaman:** 2026-10-02 ~18:05Z (koordinatör); ekrana A1 + A2 + B bitince gelir. KARARLAR'a D1, D2, D5 yazımı Done when 13 — dilim kapanırken.
+- **Ne için:** Her biri bir KARARLAR satırı ya da ilkeyle birebir kapsanıyor (CLAUDE.md §13); işçilerin beklemeden yazabilmesi.
+- **Uygulamada etkisi:** Kadıköy müdürü Ayşe öteki müdür Deniz'in belgesini onaylayamaz; admin Zeynep kendi belgesini onaylayamaz; owner Account → Documents'ta Food Handler sertifikasını yükler, kimsenin kuyruğuna düşmez; onboarding'i bitmemiş Aydan zildeki bildirimlerini açar; Ali'nin (Kadıköy + Beşiktaş) belgesini Ayşe ya da Mehmet onaylayınca iki lokasyonda da açılır.
+- **Dayanak:** KARARLAR "Ürün kuralları" (rütbe satırı, kısıtlı kişi, owner gönüllü yükleme), KK-24, FOUNDATION-B akış 4 (Mert, 2026-09-23), KARARLAR M2, ILKELER P07. Bağımsız kanıt (yerel DB, ~18:05Z koordinatör, ~18:10Z kayıt oturumu): `app_private.authz_actions` — `documents.review` / `onboarding.review` `no_self = t`, `rank_below = t`, `restricted_ok = f`; `documents.self`, `onboarding.self`, `notifications.read_own` `restricted_ok = t`.
+- **Geri alma:** kolay — dalda; main'e girmeden kod yok.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
+- **Mert:** bilgi (dönüş listesinde).
+
+### KK-113 (2026-10-02) FB-6.6'nın iki teknik kararı (D6, D7)
+- **Karar (ne):** D6: taslak belgenin etkisizliği bugünkü sırayla korunur — önce tetikleyici süzer, sonra servis kapısı taslakta hata verir. D7: imza şablonu ve saklama politikası yazımı `settings.documents.write` eyleminde kalır, yeni eylem açılmaz.
+- **Nerede:** `tasks/FB-6.6.md` D6, D7; A1a (`nf-db`).
+- **Ne zaman:** 2026-10-02 ~18:05Z (koordinatör).
+- **Ne için:** D6: ters sıra davet kabulünü çökertir (FOUNDATION-B Aşama 6 madde 6). D7: kapsam testinde bugün öyle etiketli; yeni eylem katalog sayacını büyütür.
+- **Uygulamada etkisi:** görünür değişiklik yok.
+- **Dayanak:** ILKELER P19 (saf teknik iç karar); `nf-db` farklı görürse raporunda gerekçesiyle yazar.
+- **Geri alma:** kolay — dalda.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
+- **Mert:** bilgi (dönüş listesinde).
+
+### KK-114 (2026-10-02) FB-6.6 puanı 8 → 11
+- **Karar (ne):** FB-6.6'nın puanı 8'den 11'e çıkar: A1a 5 + A1b 1 + A2 2 + A3 2 + B 1.
+- **Nerede:** ILERLEME §1 (iki yüzde satırı), §0a, §3 FB-6.6 satırı.
+- **Ne zaman:** 2026-10-02 ~18:05Z (koordinatör), görev dosyası main'e girince.
+- **Ne için:** 8, ölçümden önce yazılmıştı; tazelik kapsamı 55 servis + 6 yardımcı + 11 köprü + 4 test dosyası + 2 e2e ölçtü.
+- **Uygulamada etkisi:** ekranda yok. Mert'in gördüğü ilerleme: Aşama 6–7 %70,1 → %69,3 (169 / 244), program %77,4 → %76,7 (247 / 322) — biten iş azalmadı, kalan büyüdü.
+- **Dayanak:** KK-88 emsali (FB-6.7 puanı kapsamla büyüdü); ILKELER P11 (doğru veri).
+- **Geri alma:** kolay — puanlar ILERLEME §3'te.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
+- **Mert:** bilgi (dönüş listesinde).
+
+### KK-115 (2026-10-02) FB-6.6'nın iki ürün sorusu (S1, S2) Mert'e park
+- **Karar (ne):** S1 (onboarding'de resmî ad düzeltmesini kim onaylar) ve S2 (incelenmeyi bekleyen belgeyi kim görür) koordinatör karar vermeden Mert'e bırakılır; dönüşte tek turda sorulur.
+- **Nerede:** `tasks/FB-6.6.md` "Mert'e sorulacaklar"; ILERLEME §0c 66–67.
+- **Ne zaman:** 2026-10-02 ~18:05Z park; Mert dönünce.
+- **Ne için:** S1'i birebir kapsayan kural yok. S2'de iki dayanak çelişiyor: KARARLAR M2 metni (müdür lokasyondaki herkesin belgelerini görür) ile ILKELER P07'nin 2026-10-01 kanıtı (bekleyen talebi yalnız karar veren ve sahibi görür) — CLAUDE.md §13: kapsamayan ürün sorusu sorulur.
+- **Uygulamada etkisi:** şimdilik yok; yalnız A1b (1 puan) bekliyor, A1a / A2 / A3 yazımı / B sürüyor. Bugün ekranda: Emre'nin resmî ad düzeltmesini yalnız owner / admin onaylıyor; Ayşe, Deniz'in bekleyen belgesini görüyor.
+- **Dayanak:** CLAUDE.md §13 (kim karar verir), HANDOFF `e30f3de3` §0 (kapsamayan soru park edilir).
+- **Geri alma:** kolay.
+- **Durum:** park (Mert'in cevabını bekliyor). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
+- **Mert:** karar (§0c 66–67).
