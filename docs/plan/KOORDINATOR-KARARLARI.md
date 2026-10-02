@@ -913,7 +913,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Mert:** bilgi (dönüş listesinde).
 
 ### KK-112 (2026-10-02) FB-6.6 belge ve onboarding incelemesinin beş ürün kuralı (D1–D5) kabul
-- **Karar (ne):** D1 rütbe: kimse kendi belgesini onaylamaz, eş rütbe birbirininkini incelemez (çalışanınkini lokasyon müdürü / admin / owner, müdürünkini admin / owner, admin'inkini yalnız owner); D2 iki lokasyonlu çalışanın belgesine tek onay yeter; D3 kısıtlı müdür belge ve onboarding incelemez (görür, karar veremez); D4 kısıtlı kişi kendi bildirimlerini okur; D5 owner'ın gönüllü yüklediği belge kimsenin onay kuyruğuna düşmez.
+- **Karar (ne):** D1 rütbe: kimse kendi belgesini onaylamaz, eş rütbe birbirininkini incelemez (çalışanınkini lokasyon müdürü / admin / owner, müdürünkini admin / owner, admin'inkini yalnız owner); D2 iki lokasyonlu çalışanın belgesine tek onay yeter; D3 kısıtlı müdür belge ve onboarding incelemez (**düzeltildi, KK-116:** kısıtlı müdür / admin başkasının belgesini görmez de; ilk metin "görür, karar veremez" diyordu); D4 kısıtlı kişi kendi bildirimlerini okur; D5 owner'ın gönüllü yüklediği belge kimsenin onay kuyruğuna düşmez.
 - **Nerede:** `tasks/FB-6.6.md` "Ürün kararları → Dayanağı yazılı olanlar"; uygulaması A1a (`nf-db`, `task/fb-6.6-a1`), A2 (`nf-backend`), B (Account → Documents).
 - **Ne zaman:** 2026-10-02 ~18:05Z (koordinatör); ekrana A1 + A2 + B bitince gelir. KARARLAR'a D1, D2, D5 yazımı Done when 13 — dilim kapanırken.
 - **Ne için:** Her biri bir KARARLAR satırı ya da ilkeyle birebir kapsanıyor (CLAUDE.md §13); işçilerin beklemeden yazabilmesi.
@@ -955,3 +955,25 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** park (Mert'in cevabını bekliyor). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #116).
 - **Mert:** karar (§0c 66–67).
+
+### KK-116 (2026-10-02) FB-6.6 D3 düzeltildi: kısıtlı müdür / admin başkasının belgesini görmez
+- **Karar (ne):** Belgesi gecikmiş ya da onboarding'i bitmemiş müdür ya da admin başkalarının belgelerini görmez ve incelemez (KK-112'deki D3 "görür ama onaylayamaz" diyordu, yanlıştı).
+- **Nerede:** `tasks/FB-6.6.md` D3 (metin düzeltildi); A1a / A2 (`can()` cevabı); Employees → kişi → Documents, Settings → Documents.
+- **Ne zaman:** 2026-10-02 ~18:20Z (koordinatör, A2-web incelemesinde).
+- **Ne için:** Kısıtlı kişi kuralı yönetim işlerini bütünüyle kapatıyor; izindeki "görür, oy veremez" istisnası yalnız izin için konmuştu ve belgeye genişletilmedi. Bugünkü çekirdek ve DB zaten böyle.
+- **Uygulamada etkisi:** Food Handler belgesi gecikmiş müdür Hande, Kadıköy'deki Ali'nin belgesini Employees → Ali → Documents'ta görmez; kendi eksiğini tamamlayınca görür.
+- **Dayanak:** KARARLAR "Ürün kuralları" kısıtlı kişi (`KARARLAR.md:83`); "İzin" S3 (`:112`) yalnız izin istisnası; çekirdek `documents.read` `restricted_ok = f` (yerel DB, kayıt oturumu ölçtü ~18:25Z).
+- **Geri alma:** kolay — dalda.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #117).
+- **Mert:** bilgi (dönüş listesinde).
+
+### KK-117 (2026-10-02) FB-6.6 belge rota kapıları A2'nin ikinci parçasına eklenir
+- **Karar (ne):** A2-web'in yolda bulduğu belge rota kapıları (`App.tsx:410` `employees/documents`, `:574` imza şablonları, `PermissionRoute.tsx:7-20` Settings giriş listesindeki belge anahtarları) çekirdeğin cevabına bağlanır; iş A2'nin ikinci parçasına eklenir, ayrı iş açılmaz.
+- **Nerede:** `apps/web/src/App.tsx`, `apps/web/src/auth/PermissionRoute.tsx` (`nf-backend`, `task/fb-6.6-a2`).
+- **Ne zaman:** 2026-10-02 ~18:20Z; A2'nin ikinci parçasıyla.
+- **Ne için:** Aynı işle doğrudan ilgili küçük bulgu; kapı ekranda düğmeyi gizlerken rota açık kalırsa kişi boş ya da hatalı sayfaya düşer.
+- **Uygulamada etkisi:** Kısıtlı admin Employees → Documents sayfasını artık açamayacak (bugün açıyor, liste boş ya da hata).
+- **Dayanak:** ILKELER P17 koşulu (aynı işle doğrudan ilgili küçük bulgular mevcut işe eklenir); CLAUDE.md §9 (route-yerel yetki kapısı yeni eklenmez).
+- **Geri alma:** kolay — dalda.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #117).
+- **Mert:** bilgi (dönüş listesinde).
