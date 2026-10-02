@@ -35,6 +35,16 @@ select is((public.get_employee_onboarding_service('a6600000-0000-4000-8000-00000
   'a6600000-0000-4000-8000-000000000402'::uuid, 'default selection prefers the open case over the older approved one');
 select throws_ok($q$select public.get_employee_onboarding_service('a6600000-0000-4000-8000-000000000002', 'a6600000-0000-4000-8000-000000000103')$q$,
   '42501', 'Not allowed', 'unrelated workspace is unavailable');
+-- The default read asks the core about the workspace of the case it opens:
+-- suspended in Multi Two, the open case there is not read through Multi One.
+set local role postgres;
+update public.workspace_memberships set status = 'suspended' where id = 'a6600000-0000-4000-8000-000000000202';
+set local role service_role;
+select throws_ok($q$select public.get_employee_onboarding_service('a6600000-0000-4000-8000-000000000002')$q$,
+  '42501', 'Not allowed', 'the default read is refused where the open case is, not let in through another workspace');
+set local role postgres;
+update public.workspace_memberships set status = 'pending_activation' where id = 'a6600000-0000-4000-8000-000000000202';
+set local role service_role;
 select is((select count(*)::int from pg_proc where oid::regprocedure::text like 'get_employee_onboarding_service(%'), 1, 'getter has a single signature');
 select is((select count(*)::int from pg_proc where proname in ('save_employee_onboarding_profile_service', 'submit_employee_onboarding_service', 'leave_employee_onboarding_service')), 3, 'mutations have a single signature each');
 

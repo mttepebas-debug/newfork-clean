@@ -28,7 +28,16 @@ select tests.role('m', 'doc manager', 'manager', array(
     -- the permission that used to approve legal names: it no longer does (S1)
     'employees.private.read', 'employees.private.manage'])
 ));
+-- A manager who reads documents and reviews onboarding, but decides on no document.
+select tests.role('m', 'doc reader', 'manager', array(
+  select rp.permission_key
+  from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('m') and r.system_key = 'manager'
+  union select unnest(array['documents.read', 'employee_documents.read'])
+));
 select tests.person('m', 'zeynep', 'admin', array['K'], array['server']);
+select tests.person('m', 'lale', 'doc reader', array['K'], array['cook']);
 select tests.person('m', 'kaan', 'admin', array['B'], array['server']);
 select tests.person('m', 'ayse', 'doc manager', array['K'], array['cook']);
 select tests.person('m', 'deniz', 'doc manager', array['K'], array['cook']);
@@ -142,6 +151,18 @@ select is(pg_temp.legal_name('ayse'), '42501 authz.out_of_scope',
   'but not his legal name, though her role holds employees.private.manage (S1)');
 select is(pg_temp.legal_name('zeynep'), 'ok', 'an admin approves it');
 select is((select first_name from public.employee_profiles where id = pg_temp.emp('can')), 'Can Emre', 'and the record takes it');
+
+-- S2 in the onboarding review: Veli's Food Handler still waits for review -----------------
+create function pg_temp.review_read(actor text, person text) returns jsonb language sql as $$
+  select public.get_employee_onboarding_review_service(pg_temp.usr(actor), tests.id('m'), pg_temp.emp(person))$$;
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.review_read('lale', 'veli') -> 'requirements') q
+    where (q ->> 'id')::uuid = (pg_temp.req('veli')).id),
+  'Lale, who reads documents but decides on none, does not see Veli''s waiting Food Handler in his onboarding');
+select ok(exists (select 1 from jsonb_array_elements(pg_temp.review_read('ayse', 'veli') -> 'requirements') q
+    where (q ->> 'id')::uuid = (pg_temp.req('veli')).id),
+  'Ayse, who decides on it, does');
+select is((pg_temp.review_read('lale', 'veli') ->> 'progress_total')::int, (pg_temp.review_read('ayse', 'veli') ->> 'progress_total')::int - 1,
+  'and Lale''s progress does not count the row she cannot see');
 
 -- D3 ---------------------------------------------------------------------------------
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day' where id = (pg_temp.req('hande')).id;
