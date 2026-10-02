@@ -26,7 +26,8 @@ const context = {
     "settings.locations.read", "settings.jobs.read", "settings.shift_catalog.read", "important_dates.read",
     "roles.read", "documents.read", "signature_templates.read", "employees.read",
   ],
-  actions: [],
+  // Pages gated by can() read the core's answer instead.
+  actions: ["settings.documents.read"],
   onboarding: { status: "complete", currentStep: 4 },
   documentAccess: { restricted: false },
   locationScope: { allLocations: false, locationIds: [] },

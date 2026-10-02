@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import { EmployeeDocumentsList } from "./EmployeeDocumentsList";
 import "../settings/jobs-settings.css";
@@ -21,9 +22,7 @@ export default function EmployeeDocumentsPage() {
       <EmployeeDocumentsList
         audience={{ workspaceId: context?.workspace.id ?? "", selfOnly: false }}
         userId={context?.userId ?? ""}
-        canReview={
-          context?.permissions.includes("employee_documents.review") ?? false
-        }
+        canReview={can(context, "documents.review")}
         kind="document"
         initialRequirementId={search.get("requirement")}
       />

@@ -11,12 +11,14 @@ import {
 } from "./documents-data";
 const auth = vi.hoisted(() => ({
   permissions: ["documents.read", "documents.manage"],
+  actions: ["settings.documents.read", "settings.documents.write"],
 }));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       workspace: { id: "00000000-0000-4000-8000-000000000001" },
       permissions: auth.permissions,
+      actions: auth.actions,
     },
   }),
 }));
@@ -64,6 +66,7 @@ function mount() {
 beforeEach(() => {
   vi.clearAllMocks();
   auth.permissions = ["documents.read", "documents.manage"];
+  auth.actions = ["settings.documents.read", "settings.documents.write"];
   vi.mocked(listDocumentTypes).mockResolvedValue([record]);
 });
 it("opens from row cells and blank space without swallowing menu actions", async () => {
@@ -91,7 +94,8 @@ it("opens from row cells and blank space without swallowing menu actions", async
   expect(screen.getAllByRole("dialog")).toHaveLength(1);
 });
 it("keeps read-only rows closed and retains a native keyboard edit button", async () => {
-  auth.permissions = ["documents.read"];
+  // The role still lists documents.manage; the core does not open writing.
+  auth.actions = ["settings.documents.read"];
   mount();
   const row = (await screen.findByTitle("Safety certificate")).closest(
     ".job-catalog-row",
@@ -179,4 +183,9 @@ it("shows the load error and disables creation when document types cannot be rea
   ).toHaveProperty("disabled", true);
   expect(screen.queryByText("No document types")).toBeNull();
   expect(saveDocumentType).not.toHaveBeenCalled();
+});
+it("does not read definitions the core does not open", () => {
+  auth.actions = [];
+  mount();
+  expect(listDocumentTypes).not.toHaveBeenCalled();
 });

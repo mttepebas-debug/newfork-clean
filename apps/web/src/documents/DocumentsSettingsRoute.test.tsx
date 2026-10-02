@@ -6,13 +6,15 @@ import { DocumentsSettingsRoute } from "./DocumentsSettingsRoute";
 import { PermissionRoute } from "../auth/PermissionRoute";
 const auth = vi.hoisted(() => ({
   permissions: ["workspace.read", "documents.read"],
+  // The gates read the core's answer (can()), never the permission keys.
+  actions: ["workspace.read", "settings.documents.read"],
 }));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     // Where a refused route lands is the core's answer (resolveLanding).
     context: {
       permissions: auth.permissions,
-      actions: ["workspace.read"],
+      actions: auth.actions,
       membership: { role: "manager" },
     },
   }),
@@ -57,6 +59,7 @@ function mount(path: string) {
 }
 beforeEach(() => {
   auth.permissions = ["workspace.read", "documents.read"];
+  auth.actions = ["workspace.read", "settings.documents.read"];
 });
 it("opens only definitions at Settings", async () => {
   mount("/app/settings/documents");
@@ -64,6 +67,7 @@ it("opens only definitions at Settings", async () => {
 });
 it("preserves legacy requirement, workspace and other query values on redirect", async () => {
   auth.permissions.push("employee_documents.read");
+  auth.actions.push("documents.read");
   mount(
     "/app/settings/documents?requirement=abc&workspace=xyz&filter=missing#review",
   );
@@ -75,6 +79,7 @@ it("preserves legacy requirement, workspace and other query values on redirect",
 });
 it("supports old employee-only settings bookmarks without granting definition access", async () => {
   auth.permissions = ["workspace.read", "employee_documents.read"];
+  auth.actions = ["workspace.read", "documents.read"];
   mount("/app/settings/documents");
   expect(await screen.findByText("Employee documents")).toBeTruthy();
 });
@@ -84,5 +89,13 @@ it("denies the employee route without employee_documents.read", async () => {
 });
 it("does not turn a legacy employee deep link into definition permission", async () => {
   mount("/app/settings/documents?requirement=abc");
+  expect(await screen.findByText("Workspace fallback")).toBeTruthy();
+});
+it("does not open definitions to somebody the core holds back, whatever their role grants", async () => {
+  // An admin whose required document is overdue: the role still lists the
+  // keys, the core (and the API) refuse.
+  auth.permissions = ["workspace.read", "documents.read", "employee_documents.read"];
+  auth.actions = ["workspace.read"];
+  mount("/app/settings/documents");
   expect(await screen.findByText("Workspace fallback")).toBeTruthy();
 });

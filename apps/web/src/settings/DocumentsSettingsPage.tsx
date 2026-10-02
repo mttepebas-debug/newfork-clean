@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
@@ -79,9 +80,8 @@ export default function DocumentsSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const canReadSettings =
-    context?.permissions.includes("documents.read") ?? false;
-  const canManage = context?.permissions.includes("documents.manage") ?? false;
+  const canReadSettings = can(context, "settings.documents.read");
+  const canManage = can(context, "settings.documents.write");
   const queryKey = ["document-types", workspaceId];
   const query = useQuery({
     queryKey,

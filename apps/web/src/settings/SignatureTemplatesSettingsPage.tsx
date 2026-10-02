@@ -30,6 +30,7 @@ import {
   type FormEvent,
 } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
@@ -86,8 +87,8 @@ export default function SignatureTemplatesSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const canManage =
-    context?.permissions.includes("signature_templates.manage") ?? false;
+  // Templates and retention policies are document settings (D7, FB-6.6).
+  const canManage = can(context, "settings.documents.write");
   const queryKey = ["signature-settings", workspaceId];
   const query = useQuery({
     queryKey,
