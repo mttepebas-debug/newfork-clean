@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route, useLocation } from "react-router";
 import { beforeEach, expect, it, vi } from "vitest";
 import { DocumentsSettingsRoute } from "./DocumentsSettingsRoute";
-import { PermissionRoute } from "../auth/PermissionRoute";
+import { ActionRoute } from "../auth/ActionRoute";
 const auth = vi.hoisted(() => ({
   permissions: ["workspace.read", "documents.read"],
   // The gates read the core's answer (can()), never the permission keys.
@@ -43,9 +43,9 @@ function mount(path: string) {
           <Route
             path="/app/employees/documents"
             element={
-              <PermissionRoute anyOf={["employee_documents.read"]}>
+              <ActionRoute action="documents.read">
                 <EmployeePage />
-              </PermissionRoute>
+              </ActionRoute>
             }
           />
           <Route
@@ -83,7 +83,7 @@ it("supports old employee-only settings bookmarks without granting definition ac
   mount("/app/settings/documents");
   expect(await screen.findByText("Employee documents")).toBeTruthy();
 });
-it("denies the employee route without employee_documents.read", async () => {
+it("denies the employee route when the core does not open documents.read", async () => {
   mount("/app/employees/documents");
   expect(await screen.findByText("Workspace fallback")).toBeTruthy();
 });

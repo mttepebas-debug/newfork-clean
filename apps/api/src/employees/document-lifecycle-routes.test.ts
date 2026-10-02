@@ -114,16 +114,14 @@ describe("document routes", () => {
   it("does not convert forbidden or absent private records into successful responses", async () => {
     const { app, service } = setup();
     service.list.mockRejectedValue(
-      rpcFailure({ message: "employee document access required", code: "42501" }),
+      rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.out_of_scope", details: "documents.read" }),
     );
-    expect(
-      (
-        await app.inject({
-          url: `/v1/workspaces/${workspace}/employee-documents`,
-          headers: { authorization: "Bearer test" },
-        })
-      ).statusCode,
-    ).toBe(403);
+    const response = await app.inject({
+      url: `/v1/workspaces/${workspace}/employee-documents`,
+      headers: { authorization: "Bearer test" },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ reason: "authz.out_of_scope", detail: "documents.read" });
     await app.close();
   });
 

@@ -1553,6 +1553,59 @@ describe("api app", () => {
     expect(review).not.toHaveBeenCalled();
   });
 
+  it("lets the core, not the role's keys, answer manager onboarding reads and reviews (FB-6.6)", async () => {
+    // A role listing none of the old keys still reaches the service: the
+    // database asks the authorization core (employee.read, onboarding.review).
+    const keyless = { ...resolvedContext, permissions: [] };
+    const getReview = vi.fn(async () => null);
+    const review = vi.fn(async () => 3);
+    const app = buildApp({
+      contextResolver: { resolve: async () => keyless },
+      onboardingService: onboardingServiceMock({ getReview, review }),
+    });
+    const base = `/v1/workspaces/${resolvedContext.workspace.id}/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/onboarding`;
+    const read = await app.inject({ method: "GET", url: base, headers: { authorization: "Bearer valid-token" } });
+    const decided = await app.inject({
+      method: "POST",
+      url: `${base}/review`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { action: "activate", requirementId: null, revision: 2 },
+    });
+    expect(read.statusCode, read.body).toBe(200);
+    expect(decided.statusCode, decided.body).toBe(200);
+    expect(decided.json()).toEqual({ revision: 3 });
+    expect(getReview).toHaveBeenCalledOnce();
+    expect(review).toHaveBeenCalledOnce();
+  });
+
+  it("answers the core's no on manager onboarding: rank 403, not a member 404 (FB-6.6)", async () => {
+    const refusal = (hint: string, details: string) =>
+      rpcFailure({ code: "42501", message: "not allowed", hint, details });
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      onboardingService: onboardingServiceMock({
+        getReview: vi.fn(async () => {
+          throw refusal("authz.not_member", "employee.read");
+        }),
+        review: vi.fn(async () => {
+          throw refusal("authz.rank", "onboarding.review");
+        }),
+      }),
+    });
+    const base = `/v1/workspaces/${resolvedContext.workspace.id}/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/onboarding`;
+    const read = await app.inject({ method: "GET", url: base, headers: { authorization: "Bearer valid-token" } });
+    const decided = await app.inject({
+      method: "POST",
+      url: `${base}/review`,
+      headers: { authorization: "Bearer valid-token" },
+      payload: { action: "activate", requirementId: null, revision: 2 },
+    });
+    expect(read.statusCode).toBe(404);
+    expect(read.json()).toMatchObject({ reason: "authz.not_member" });
+    expect(decided.statusCode).toBe(403);
+    expect(decided.json()).toMatchObject({ reason: "authz.rank", detail: "onboarding.review" });
+  });
+
   it("forwards manager onboarding review from context and path identity", async () => {
     const review = vi.fn(async () => 2);
     const service = onboardingServiceMock({ review });

@@ -68,7 +68,7 @@ describe("employee onboarding review availability", () => {
   });
 
   it.each([
-    { code: "42501", message: "employee onboarding review required" },
+    { code: "42501", message: "Not allowed", hint: "authz.out_of_scope", details: "employee.read" },
     { code: "P0002", message: "Unexpected record missing" },
   ])("preserves other failures: $code", async (error) => {
     mocks.rpc.mockResolvedValue({ data: null, error });

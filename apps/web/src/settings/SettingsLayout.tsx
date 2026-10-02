@@ -14,7 +14,7 @@ import {
 import { NavLink, Navigate, Outlet, useLocation } from "react-router";
 import type { Permission } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
-import { settingsEntryPermissions } from "../auth/PermissionRoute";
+import { canEnterSettings } from "../auth/PermissionRoute";
 
 const groups = [
   {
@@ -112,12 +112,7 @@ const groups = [
 export default function SettingsLayout() {
   const { context } = useAuth();
   const location = useLocation();
-  if (
-    !context ||
-    !settingsEntryPermissions.some((permission) =>
-      context.permissions.includes(permission),
-    )
-  ) {
+  if (!canEnterSettings(context)) {
     return <Navigate to="/app" replace />;
   }
 

@@ -6,10 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ActionRoute } from "./auth/ActionRoute";
-import {
-  PermissionRoute,
-  settingsEntryPermissions,
-} from "./auth/PermissionRoute";
+import { PermissionRoute } from "./auth/PermissionRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
 import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
@@ -407,7 +404,7 @@ export function App() {
                     </PermissionRoute>
                   }
                 />
-                <Route path="employees/documents" element={<PermissionRoute anyOf={["employee_documents.read"]}><EmployeeDocumentsPage /></PermissionRoute>} />
+                <Route path="employees/documents" element={<ActionRoute action="documents.read"><EmployeeDocumentsPage /></ActionRoute>} />
                 <Route
                   path="employees/archive"
                   element={
@@ -560,29 +557,20 @@ export function App() {
                   />
                   <Route
                     path="documents"
-                    element={
-                      <PermissionRoute
-                        anyOf={["documents.read", "employee_documents.read"]}
-                      >
-                        <DocumentsSettingsRoute />
-                      </PermissionRoute>
-                    }
+                    element={<DocumentsSettingsRoute />}
                   />
                   <Route
                     path="acknowledgements"
                     element={
-                      <PermissionRoute anyOf={["signature_templates.read"]}>
+                      <ActionRoute action="settings.signature_templates.read">
                         <SignatureTemplatesSettingsPage />
-                      </PermissionRoute>
+                      </ActionRoute>
                     }
                   />
                   <Route
                     path="support"
-                    element={
-                      <PermissionRoute anyOf={settingsEntryPermissions}>
-                        <SupportSettingsPage />
-                      </PermissionRoute>
-                    }
+                    // SettingsLayout already lets in only who may enter Settings.
+                    element={<SupportSettingsPage />}
                   />
                 </Route>
               </Route>

@@ -122,10 +122,8 @@ export function registerEmployeeOnboardingRoutes(
           .send({ error: "Valid bearer session required" });
       if (context.workspace.id !== params.data.workspaceId)
         return reply.status(404).send({ error: "Workspace not found" });
-      if (!context.permissions.includes("employees.read"))
-        return reply
-          .status(403)
-          .send({ error: "Employee onboarding review required" });
+      // The service asks the authorization core (employee.read); its no is
+      // 42501 + authz.*, mapped by rpcFailure.
       return serviceReply(reply, () =>
         options.service.getReview(
           context.userId,
@@ -155,20 +153,8 @@ export function registerEmployeeOnboardingRoutes(
           .send({ error: "Valid bearer session required" });
       if (context.workspace.id !== params.data.workspaceId)
         return reply.status(404).send({ error: "Workspace not found" });
-      if (
-        ![
-          "employee_onboarding.review",
-          "employee_documents.review",
-          "employees.private.manage",
-        ].some((permission) =>
-          context.permissions.includes(
-            permission as import("@newfork/shared").Permission,
-          ),
-        )
-      )
-        return reply
-          .status(403)
-          .send({ error: "Employee onboarding review required" });
+      // The service asks the core (onboarding.review; a document step also
+      // documents.review).
       return serviceReply(reply, async () => ({
         revision: await options.service.review(
           context.userId,

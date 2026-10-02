@@ -312,7 +312,14 @@ export function createDocumentLifecycleServiceWithClient(
         sizeBytes > employeeOnboardingDocumentMaxBytes
       )
         throw new HttpError("File must be at most 10 MiB", 400);
-      if (detail.obligation.publication_paused || ["removed", "exempt", "paused"].includes(detail.obligation.status))
+      // BL-118: the owner's excused document stays open to a voluntary upload
+      // (exemption_locked marks the owner's row); any other exemption is closed.
+      const ownerExcused =
+        detail.obligation.status === "exempt" && detail.obligation.exemption_locked === true;
+      if (
+        detail.obligation.publication_paused ||
+        (!ownerExcused && ["removed", "exempt", "paused"].includes(detail.obligation.status))
+      )
         throw new HttpError("This obligation is closed", 400);
       const prefix = buildEmployeeOnboardingDocumentPrefix({
         workspaceId,
