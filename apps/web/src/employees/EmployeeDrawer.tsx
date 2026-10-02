@@ -191,6 +191,21 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     references.data?.inviteRoles.find((role) => role.id === roleId)?.accessClass;
   const managerRecord =
     !props.creating && roleClass(detail.data?.role_id) === "manager";
+  // FB-6.6 S1: a legal name is approved by an owner or an admin, one rank up,
+  // never one's own. A role the reader may not give is a peer's or a
+  // senior's: closed.
+  const personRole: WorkspaceRole | undefined = detail.data?.is_workspace_owner
+    ? "owner"
+    : roleClass(detail.data?.role_id);
+  const canDecideLegalName =
+    detail.data !== undefined &&
+    personRole !== undefined &&
+    can(context, "onboarding.legal_name", {
+      person: {
+        role: personRole,
+        isSelf: detail.data.user_id !== null && detail.data.user_id === context?.userId,
+      },
+    });
   const managerRefusal = managerLocationRefusal(
     managerRecord ? "manager" : null,
     draft,
@@ -1120,6 +1135,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                           detail.data.user_id === context.userId &&
                           detail.data.is_workspace_owner,
                       ),
+                      canDecideLegalName,
                       {
                         onRemove: (locationId) =>
                           removeFromLocationMutation.mutate(locationId),
@@ -1673,6 +1689,7 @@ function renderSection(
   changingRole: boolean,
   /** The viewer is looking at their own record, and they own the workspace. */
   ownOwnerRecord: boolean,
+  canDecideLegalName: boolean,
   locationActions: EmployeeLocationActions,
   creating = false,
 ) {
@@ -1702,6 +1719,7 @@ function renderSection(
         onReview={onReview}
         reviewing={reviewing}
         canReview={allowed?.onboarding_review ?? false}
+        canDecideLegalName={canDecideLegalName}
       />
     );
   if (section === "employment")
@@ -1763,9 +1781,12 @@ function OnboardingReviewPanel({
   onReview,
   reviewing,
   canReview,
+  canDecideLegalName,
 }: {
   /** The server's answer: may the reader review this onboarding. */
   readonly canReview: boolean;
+  /** Accepting or sending back the legal name (onboarding.legal_name). */
+  readonly canDecideLegalName: boolean;
   readonly onboarding: EmployeeOnboardingManager | null | undefined;
   readonly loading: boolean;
   readonly onReview: (
@@ -1834,7 +1855,7 @@ function OnboardingReviewPanel({
                   type="button"
                   className="secondary-button"
                   aria-label={`Request changes for ${requirement.title}`}
-                  disabled={reviewing || !canReview}
+                  disabled={reviewing || !canDecideLegalName}
                   onClick={() => {
                     setChangesNote("");
                     setChangesFor({
@@ -1848,7 +1869,7 @@ function OnboardingReviewPanel({
                 <Button
                   type="button"
                   aria-label={`Accept ${requirement.title}`}
-                  disabled={reviewing || !canReview}
+                  disabled={reviewing || !canDecideLegalName}
                   onClick={() =>
                     onReview("accept_requirement", requirement.id, "")
                   }
@@ -1916,10 +1937,13 @@ function ProfileSection({
   onReview,
   reviewing,
   canReview,
+  canDecideLegalName,
 }: {
   creating?: boolean;
   /** The server's answer: may the reader review this onboarding. */
   canReview: boolean;
+  /** The core's answer: may the reader approve this person's legal name. */
+  canDecideLegalName: boolean;
   draft: EmployeeInput;
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>;
   readOnly: boolean;
@@ -2118,6 +2142,7 @@ function ProfileSection({
             onReview={onReview}
             reviewing={reviewing}
             canReview={canReview}
+            canDecideLegalName={canDecideLegalName}
           />
         </section>
       ) : null}

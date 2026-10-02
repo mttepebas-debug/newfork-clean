@@ -1582,6 +1582,7 @@ describe("EmployeeDrawer", () => {
     // The server gives the private contact to who may read it (KK-35 S3).
     renderDrawer("profile", {
       ...detail,
+      role_id: employeeRoleId,
       private_contact: {
         legal_first_name: "Alex",
         legal_last_name: "Kim",
@@ -1641,6 +1642,97 @@ describe("EmployeeDrawer", () => {
         },
       ),
     );
+  });
+
+  // FB-6.6 S1: a legal name typed in onboarding is approved by an owner or an
+  // admin, one rank up, never one's own; a manager never. Activation stays
+  // with onboarding review.
+  describe("legal name review asks the core", () => {
+    const adminRoleId = "5d0a1f3e-7c2b-4e8a-9f61-2b3c4d5e6f70";
+    const legalNameCase: EmployeeOnboardingManager = {
+      case_id: "aa000000-0000-4000-8000-000000000001",
+      employee_id: employeeId,
+      case_status: "submitted",
+      revision: 4,
+      submitted_at: "2026-09-02T19:00:00.000Z",
+      progress_completed: 2,
+      progress_total: 3,
+      ssn_present: false,
+      requirements: [
+        {
+          id: "ab000000-0000-4000-8000-000000000001",
+          kind: "profile",
+          title: "Profile and privacy",
+          description: "Legal name differs from the provisional employee name.",
+          status: "awaiting_review",
+          required: true,
+          blocks_activation: true,
+          requires_review: true,
+          sort_order: 10,
+          source_id: null,
+          accepted_formats: [],
+          content_text: null,
+          content_digest: null,
+          intent_statement: null,
+          rejection_reason: null,
+        },
+      ],
+    };
+    async function reviewButtons(overrides: Partial<EmployeeDetail> = {}) {
+      renderDrawer(
+        "profile",
+        {
+          ...detail,
+          role_id: employeeRoleId,
+          private_contact: {
+            legal_first_name: "Alex",
+            legal_last_name: "Kim",
+            phone: null,
+            date_of_birth: null,
+            emergency_contact_name: null,
+            emergency_contact_relationship: null,
+            emergency_contact_email: "",
+            emergency_contact_phone: null,
+            share_phone_with_teammates: false,
+            share_email_with_teammates: false,
+          },
+          ...overrides,
+        },
+        legalNameCase,
+      );
+      await screen.findByText("Legal name review");
+      return {
+        accept: screen.getByRole("button", { name: "Accept Profile and privacy" }) as HTMLButtonElement,
+        changes: screen.getByRole("button", {
+          name: "Request changes for Profile and privacy",
+        }) as HTMLButtonElement,
+      };
+    }
+
+    it("closes it to a manager, whatever onboarding review they hold", async () => {
+      currentContext = {
+        ...context,
+        membership: { ...context.membership, role: "manager" },
+        locationScope: { allLocations: false, locationIds: detail.locations.map((l) => l.id) },
+      };
+      const { accept, changes } = await reviewButtons();
+      expect(accept.disabled).toBe(true);
+      expect(changes.disabled).toBe(true);
+    });
+
+    it("opens it to an admin for an employee", async () => {
+      currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
+      const { accept, changes } = await reviewButtons();
+      expect(accept.disabled).toBe(false);
+      expect(changes.disabled).toBe(false);
+    });
+
+    it("closes it on one's own legal name", async () => {
+      currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
+      inviteRolesFixture.push({ id: adminRoleId, name: "Admin", systemKey: "admin", accessClass: "admin" });
+      const { accept } = await reviewButtons({ role_id: adminRoleId, user_id: context.userId });
+      expect(accept.disabled).toBe(true);
+    });
   });
 
   it("opens the shared document detail from the employee-scoped list", async () => {
