@@ -142,13 +142,24 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 3. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
 4. Uygulama: risk sınıfına göre koordinatör ya da ilgili rol (`DELEGASYON.md`). Hata için önce onu
    yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test.
-   **Sormadan açılan skill'ler** (kullanıcı kararı 2026-10-02): her oturum (koordinatör, rol, işçi)
-   şu anlarda skill'i kendisi açar, onay istemez; açtığını raporda tek satırla söyler:
-   - `superpowers:brainstorming` — Mert bir fikir, kural ya da temel model (ILKELER P18) önerdiğinde
-     ve karar vermeden önce: fikir sınanır (açık nokta, uç durum, rakip emsali, 2–3 yol, öneri +
-     dayanak), sonra karar istenir. Mert'in fikrini sınamadan kurala çevirmek yasak.
-   - `superpowers:systematic-debugging` — bir test, CI işi ya da ekran beklenmedik biçimde
-     bozulduğunda, düzeltmeden önce: kök neden kanıtla bulunur; beklenti gevşetilmez (bölüm 9).
+   **Sormadan açılan skill'ler** (kullanıcı kararları 2026-10-02): her oturum (koordinatör, rol,
+   işçi) aşağıdaki skill'leri kendi yargısıyla açar; onay istemez, görev mesajında yazmasını da
+   beklemez. Ölçü bölüm 11.5'tekiyle aynı: skill, sonucu değiştirecekse açılır. Açılmaz: sonuç
+   zaten belli, aynı şey bu oturumda kanıtlandı, iş tek okumalı ve küçük (yazım, ad, yorum, docs).
+   Açılan skill raporda tek satırla söylenir. Örnek anlar yol gösterir, sınır çizmez:
+   - `superpowers:brainstorming` — bir fikir, kural ya da model karara bağlanacakken (ör. Mert yeni
+     bir ürün kuralı ya da temel model önerdi, ILKELER P18). Fikir sınanır: açık nokta, uç durum,
+     rakip emsali, 2–3 yol, öneri + dayanak; sonra karar istenir. Sınanmadan kurala çevrilmez.
+   - `superpowers:systematic-debugging` — bir test, CI işi ya da ekran beklenmedik bozulduğunda,
+     düzeltmeden önce. Kök neden kanıtla bulunur; beklenti gevşetilmez (bölüm 9).
+   - `superpowers:test-driven-development` — davranış değişen ya da hata düzelten kodda (ör. yetki
+     kuralı, RLS, servis fonksiyonu). Önce kırmızı test, sonra kod.
+   - `supabase:supabase-postgres-best-practices` — migration, RLS, grant ya da sorgu yazarken ve
+     performansa dokunurken (ör. Schedule ≤50 ms).
+   - `superpowers:receiving-code-review` — inceleme bulgusu geldiğinde: her bulgu önce doğrulanır,
+     yanlışsa gerekçeyle itiraz edilir; körü körüne uygulanmaz.
+   - `superpowers:verification-before-completion` — "bitti", "yeşil", "düzeldi", "main'de" demeden
+     önce: iddia komut + sonuç, sha ya da CI koşusuyla kanıtlanır.
 5. İnceleme: risk sınıfının istediği kadar (`DELEGASYON.md` §3): R0 yok; R1 koordinatörün kendi
    okuması + ekran görüntüsü; R2 tek bağımsız inceleme; R3 `nf-guvenlik` zorunlu (ekran değiştiyse
    `nf-gorsel-qa` da). Onay `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına
