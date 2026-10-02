@@ -1055,3 +1055,25 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — tek kapı satırı.
 - **Durum:** yürürlükte; dalda uygulandı `85267a22` (ölçüldü, #126; #125'te henüz uygulanmamıştı). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #125).
 - **Mert:** bilgi.
+
+### KK-125 (2026-10-03) FB-6.6 güvenlik tur 1'in üç düşük bulgusu bu işte kapanır
+- **Karar (ne):** `nf-guvenlik` tur 1'in düşük bulguları #2, #3, #4 FB-6.6 içinde düzeltilir; #1 backlog'a (BL-557). #2: `apps/api/src/settings/document-types-routes.ts`'teki yerel `documents.manage` kapısı → `resolveActor` + veritabanı kararı (`nf-backend`). #3: `get_employee_onboarding_review_service` için pgTAP hücresi; `progress_total` gizli satırı saymaz (`nf-db`). #4: `get_employee_onboarding_service` okumasında `by_case = true` (`nf-db`, tek satır).
+- **Nerede:** dallar `task/fb-6.6-a1`, `task/fb-6.6-a2`; rapor `newfork-clean/artifacts/nf-guvenlik/fb-6.6/review-1.md` (git dışı).
+- **Ne zaman:** 2026-10-03 ~00:00Z.
+- **Ne için:** aynı işle doğrudan ilgili küçük bulgu bu işte kapanır; ikiz yetki kapısı CLAUDE.md §9'a ters.
+- **Uygulamada etkisi:** görünür fark yok. Settings → Documents'ta yetkisiz yazma denemesinin "hayır"ı artık nedenini taşır; onboarding incelemesinde ilerleme sayısı ("3 / 4" gibi) karar veremeyen müdüre gizli belgeyi saydırmaz.
+- **Dayanak:** ILKELER P17 (koşul: aynı işle doğrudan ilgili küçük bulgu mevcut işe eklenir); CLAUDE.md §9 (ikiz sistem yok).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #127).
+- **Mert:** bilgi.
+
+### KK-126 (2026-10-03) S2'de yenilemesi bekleyen belgenin eski onaylı hâli görünür kalır
+- **Karar (ne):** bekleyen belgeyi karar veremeyen müdürden saklama kuralı yalnız bekleyen yeni dosyayı gizler; aynı satırın eski onaylı belgesi ve geçerlilik durumu M2'ye göre görünür kalır. Uygulama bugün ikisini birden gizliyordu; `nf-db` düzeltir (model ayıramıyorsa seçenekle geri gelir).
+- **Nerede:** `app_private.document_row_readable` (`20261006010000…`), dal `task/fb-6.6-a1`; incelemenin önerisi `newfork-clean/artifacts/nf-guvenlik/fb-6.6/review-1.md` (git dışı).
+- **Ne zaman:** 2026-10-03 ~00:00Z.
+- **Ne için:** Mert'in seçtiği metin "onaylanmış belge M2'ye göre görünür" diyor; yenileme bekleyen satırda onaylı belge kaybolmamalı.
+- **Uygulamada etkisi:** Deniz'in geçerli Food Handler'ı varken yenisini yükledi; Ayşe eski geçerli belgeyi ve geçerlilik durumunu görmeye devam eder, yalnız bekleyen yeni dosyayı görmez.
+- **Dayanak:** KARARLAR "Ürün kuralları" — "Bekleyen belgeyi yalnız karar veren ve sahibi görür" (Mert, 2026-10-02, S2): "Onaylanmış belge M2'ye göre görünür." Kural birebir kapsıyor; yeni soru değil.
+- **Geri alma:** orta — migration.
+- **Durum:** yürürlükte, uygulanıyor (`nf-db`). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #127).
+- **Mert:** bilgi.
