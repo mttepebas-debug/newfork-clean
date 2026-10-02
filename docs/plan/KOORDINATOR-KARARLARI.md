@@ -712,3 +712,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** dal main'e girmeden önce kolay; sonra yeni migration.
 - **Durum:** dalda (`task/fb-6.7` @`93d3eb1c`), `nf-guvenlik` incelemesinde. Kayıt oturumu `local_43ff0725…` yazdı (besleme #96; koordinatör `local_abc4d126…`'ın isteği).
 - **Mert:** bilgi ((f) Schedule sonucu işçi penceresinde teyit ediliyordu).
+
+### KK-92 (2026-10-02) FB-6.7 A düzeltme turunda beş kenar durum kararı
+- **Karar:** (a) `publish_at`'i boşaltılan zamanlanmış duyuru taslağa (draft) döner (ILKELER P10). (b) Önemli tarih geçmişinde, okuyanın göremeyeceği bir lokasyonu taşıyan eski sürümler maskelenir (KARARLAR K6). (c) Duyuruda `expected_revision` zorunlu olur, önemli tarihe de `expected_revision` eklenir — eşzamanlı düzenlemede sonraki kayıt öncekini sessizce ezmez (P11). (d) Yıllık kapalı gün 29 Şubat ise artık yıl olmayan yılda 28 Şubat sayılır; Schedule görünümü ve gün şeridi aynı kuralı kullanır (P23). (e) Saati geçmiş zamanlanmış duyuru yayınlanmaz, Unpublished olur, bildirim gitmez (P25).
+- **Neden:** `nf-guvenlik` ve bağımsız doğruluk incelemesinin (uç `93d3eb1c`) orta ve düşük bulgularının ürünü bozmadan kapanması: takılı kalan duyuru, geçmişten lokasyon sızıntısı, kaybolan düzenleme, 29 Şubat boşluğu, geç kalmış yayının habersiz gitmesi.
+- **Uygulamada etkisi:** (a) Zeynep zamanlanmış duyurunun saatini silerse duyuru Drafts'a döner, kimseye gitmez. (b) Kadıköy müdürü Ayşe önemli tarihin History'sinde eskiden yalnız Erenköy'e ait olan sürümü maskeli görür. (c) Ayşe ile Hande aynı duyuruyu aynı anda düzenlerse ikinci kayıt "kayıt değişti, yenileyin" uyarısı alır. (d) 29 Şubat'a konan yıllık "Closed day" 2027'de 28 Şubat'ı kapatır. (e) Sistem kapalıyken saati geçen duyuru sonradan sessizce gönderilmez, Unpublished'ta bekler.
+- **Dayanak:** ILKELER P10, P11, P23, P25; KARARLAR K6.
+- **Geri alma:** dal main'e girmeden önce kolay.
+- **Durum:** işçinin 13 maddelik düzeltme listesinde (`task/fb-6.7`). Kayıt oturumu `local_43ff0725…` yazdı (besleme #97; koordinatörün isteği).
+- **Mert:** bilgi.
