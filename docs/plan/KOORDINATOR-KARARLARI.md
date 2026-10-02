@@ -842,5 +842,16 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** yalnız "Important dates manage" izni olan özel rol, kapalı gün önizlemesinde göremediği lokasyonun vardiyalarını artık görmez (sayısını görür); çalışan Alex duyuruda "24 kişiye gitti" sayısını görmez; geçmiş haftanın taslağındaki Can, Republish'te silinmez.
 - **Dayanak:** ILKELER P17 (koşul), P09; KARARLAR K11; CLAUDE.md §9.
 - **Geri alma:** kolay — dalda.
-- **Durum:** yürürlükte; altı bulgu dalda düzeltildi (`task/fb-6.7c` @`22d58021`, besleme #109; kayıt oturumu `local_10a5177a…`), tur 2 incelemede. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #108).
+- **Durum:** uygulandı — `nf-guvenlik` tur 2 ONAY @`22d58021` (besleme #110; kayıt oturumu `local_10a5177a…`); altı bulgu dalda düzeltildi (`task/fb-6.7c` @`22d58021`, besleme #109; kayıt oturumu `local_10a5177a…`), tur 2 incelemede. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #108).
 - **Mert:** bilgi (sabah listesinde).
+
+### KK-106 (2026-10-02) FB-6.7 C ultrareview'siz, yalnız `nf-guvenlik` ile main'e gider
+- **Karar (ne):** FB-6.7 C-veri için ultrareview Mert'e önerildi, cevap gelmedi; iş beklemez, `nf-guvenlik` R3 incelemesi (tur 1 DEĞİŞİKLİK İSTE, tur 2 ONAY @`22d58021`) ile main'e ve canlıya gider.
+- **Nerede:** `task/fb-6.7c` (migration `20261005000000` / `20261005010000`, `schedule-service.ts`, shared sözleşme).
+- **Ne zaman:** şimdi (gece), tam kapıdan sonra.
+- **Ne için:** ultrareview yalnız kullanıcının başlattığı, öneri niteliğinde bir ek (CLAUDE.md §5); R3'ün zorunlu incelemesi `nf-guvenlik` (DELEGASYON §3) ve iki turda tamamlandı. Gece tam otomasyon (KK-101).
+- **Uygulamada etkisi:** kapalı gün vardiyalara yansıma, geçmiş önemli tarih kilidi ve süresi dolan duyuru görünürlüğü sabah beklemeden canlıya girer; ek bir bağımsız tarama yapılmamış olur.
+- **Dayanak:** CLAUDE.md §5 (ultrareview yalnız önerilir, kullanıcı başlatır), DELEGASYON.md §3 (R3: `nf-guvenlik` zorunlu; büyük diff'te ultrareview yalnız kullanıcıya önerilir); KK-101. Koordinatör "FB-6.7 A'daki 'iki inceleme yeter' kararı"nı da dayanak gösterdi — bu ifade KK'de ve `tasks/FB-6.7.md`'de yazılı bulunamadı (kayıt oturumu `grep` ile aradı); A, `nf-guvenlik` + bağımsız doğruluk incelemesiyle geçmişti (FB-6.7 Notes #97).
+- **Geri alma:** kolay — Mert sonradan ultrareview başlatabilir; bulgu çıkarsa yeni dalda düzeltilir.
+- **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #110).
+- **Mert:** bilgi (sabah listesinde); ultrareview isterse hâlâ açabilir.
