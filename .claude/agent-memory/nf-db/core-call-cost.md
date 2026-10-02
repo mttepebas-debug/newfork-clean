@@ -9,4 +9,6 @@ Measured 2026-09-25 on the local DB (500-call loops, manager actor): scope_set 0
 
 **Why:** actor() runs ~7 queries every call; nothing caches it inside a transaction.
 
+FB-6.7 (2026-10-02): an audience check "is the reader in communication_audience(...)" per list row costs actor() for every member per row (20 announcements x 24 members: employee 255 ms). Ask the rule of the reader only (`app_private.communication_reaches(state, ...)`) and pass a state read once (`communication_reason(state, ...)` uses `authz_check(state, rule_row, ...)` directly): 14 ms.
+
 **How to apply:** compute scope_set once into a variable (plpgsql) or an initplan `any ((select app_private.scope_set(...))::uuid[])` (SQL) and filter rows against it. Per-row authz_reason is only acceptable when the row count is small. Known cost after FB-6.1 .2: `schedule_availability_read_projection` asks per shift, so opening a draft's shifts (`list_schedule_weekly_shifts_service`, 60 shifts) went 13.6 -> 36.7 ms; the grid read model (`get_schedule_read_model_service`) was unaffected (12.7 -> 13.0 ms). See [[rollback-trial-runner]].

@@ -54,6 +54,11 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 - `sed -i` in this Git Bash rewrites CRLF files (ci-green.txt) as LF: append to the list with `printf '...\r\n' >>` only.
 - A test fixture that picks a department with `limit 1` and no ORDER BY follows whichever index the planner takes; dropping an index flipped `owner_employee_record` onto Management. Pick by name.
 
+- Red-before for fixes already written (FB-6.7 fix round): export the older commit's migrations with one plain `git show <sha>:<path> > artifacts/...` per call (the worktree guard refuses combined git lines), run the new test file against them; a signature the old code lacked gets a tiny shim in the red prelude that ignores the new argument. Runner with base/fix0/now/mut modes: `artifacts/nf-db/fb67fix/trial.sh` (gitignored, in that worktree).
+- A temp helper called after `set local role service_role` needs `grant execute on function pg_temp.f(...) to service_role` (or public).
+- A rule that reads "today" (P09 closures from this week on, a past date tells nobody) turns fixed future dates in tests into time bombs: write `current_date + n`.
+- `bl052_document_notifications` errors on the shared DB ("more than one row returned by a subquery") with no migration at all (2026-10-02): not a branch's fault.
+
 **Why:** 2026-09-25 the unquoted `echo begin;` from this note applied the FB-6.1 .2 migration to the shared DB for 8 minutes during review (undone).
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
