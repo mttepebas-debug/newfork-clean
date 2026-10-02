@@ -45,6 +45,7 @@ export const authzActionKeys = [
   "important_date.write_wide",
   "membership.read",
   "notifications.read_own",
+  "onboarding.legal_name",
   "onboarding.review",
   "onboarding.self",
   "requests.read",
@@ -114,6 +115,9 @@ export const targetedAuthzActions = {
   "availability.note_read": { person: true, permission: "availability.read" },
   "availability.team_read": { person: true, permission: "availability.read" },
   "availability.team_write": { person: true, permission: "availability.manage" },
+  "documents.read": { person: true, permission: "employee_documents.read" },
+  "documents.review": { person: true, permission: "employee_documents.review" },
+  "documents.self": { person: true, permission: null, own: true, restrictedOk: true },
   "employee.archive": { person: true, permission: "employees.archive" },
   "employee.change_role": { person: true, permission: "employees.manage" },
   "employee.create": { permission: "employees.manage" },
@@ -133,6 +137,9 @@ export const targetedAuthzActions = {
   "important_date.write_wide": { permission: "important_dates.manage" },
   "membership.read": { person: true, permission: null },
   "notifications.read_own": { permission: null, own: true, restrictedOk: true },
+  "onboarding.legal_name": { person: true, permission: "employee_onboarding.review" },
+  "onboarding.review": { person: true, permission: "employee_onboarding.review" },
+  "onboarding.self": { permission: null, own: true, restrictedOk: true },
   "requests.read": { person: true, permission: "schedule.time_off_requests.read" },
   "schedule.edit": { permission: "schedule.manage" },
   "schedule.export": { permission: "schedule.export" },
@@ -258,6 +265,8 @@ export function expected<A extends TargetedAuthzAction>(
     case "employee.read":
     case "employee.list":
     case "membership.read":
+    case "documents.read":
+      // Documents under M2 like the person's record (FB-6.6).
       return high || shares;
 
     case "employee.save":
@@ -378,6 +387,8 @@ export function expected<A extends TargetedAuthzAction>(
     case "time_off.decide":
     case "time_off.revoke":
     case "requests.read":
+    case "documents.review":
+    case "onboarding.review":
       // Requests go one rank up and nobody decides their own. The managers of
       // every location the person works at vote; admin and owner decide alone
       // (FB-6.3). The same people revoke approved time off, by the same rank,
@@ -388,7 +399,9 @@ export function expected<A extends TargetedAuthzAction>(
       return person?.role === "employee" && shares;
 
     case "time_off.decide_alone":
-      // At once and final: an admin or the owner, one rank up.
+    case "onboarding.legal_name":
+      // At once and final: an admin or the owner, one rank up. A legal name
+      // typed in onboarding the same; a manager never (FB-6.6 S1).
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       return actor.role === "admin" && targetRank < rankOf.admin;
@@ -399,6 +412,8 @@ export function expected<A extends TargetedAuthzAction>(
       return high || covers;
 
     case "employee.save_own_contact":
+    case "documents.self":
+    case "onboarding.self":
     case "exchange.offer_own":
     case "notifications.read_own":
     case "time_off.request_own":
