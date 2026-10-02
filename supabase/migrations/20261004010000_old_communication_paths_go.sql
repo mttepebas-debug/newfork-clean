@@ -55,7 +55,9 @@ select
 from public.important_dates date_row
 join public.locations location
   on location.workspace_id = date_row.workspace_id
- and app_private.location_is_live(location)
+ -- An archived location counts nowhere (KK-86). Written on the column, not
+ -- app_private.location_is_live(): the API reads this view as service_role.
+ and location.archived_at is null
  and (cardinality(date_row.location_ids) = 0 or location.id = any (date_row.location_ids))
 cross join lateral generate_series(
   0,
@@ -71,3 +73,6 @@ cross join lateral generate_series(
 where date_row.type = 'closed_day' and date_row.status = 'published' and date_row.archived_at is null;
 revoke all on public.schedule_closures from anon, authenticated;
 grant select on public.schedule_closures to service_role;
+-- The view runs as its reader; service_role reads a location's id and workspace
+-- already, and now whether it is archived.
+grant select (archived_at) on public.locations to service_role;

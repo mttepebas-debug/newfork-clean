@@ -1129,6 +1129,7 @@ export const importantDateSchema = z.object({
   archived_at: z.string().datetime({ offset: true }).nullable(),
   /** Unpublished: hidden from its people and the Schedule, still editable (Mert, 2026-10-02). */
   status: z.enum(["published", "unpublished"]).optional(),
+  revision: z.coerce.number().int().positive().optional(),
   created_by: z.string().uuid().nullable().optional(),
   author_name: z.string().optional(),
   updated_at: z.string().datetime({ offset: true }).optional(),

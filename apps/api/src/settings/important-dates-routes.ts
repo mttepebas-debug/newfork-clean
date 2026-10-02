@@ -7,6 +7,8 @@ import type { ImportantDatesService } from "./important-dates-service";
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const dateParams = workspaceParams.extend({ importantDateId: z.string().uuid() });
 const stateParams = dateParams.extend({ action: importantDateStateActionSchema });
+// A change names the revision it was made on: the second of two saves is refused, not lost.
+const revisionBody = z.object({ expected_revision: z.number().int().positive() });
 
 // No gate here: every one of these asks the core in the database (FB-6.7,
 // important_date.write / .write_wide, settings.important_dates.read), and its
@@ -26,7 +28,7 @@ export function registerImportantDatesRoutes(
     if (!options.service) return reply.status(503).send(unavailable);
     return reply.status(201).send(
       await options.service.save({
-        actorUserId: context.userId, workspaceId: params.data.workspaceId, importantDateId: null, date: body.data,
+        actorUserId: context.userId, workspaceId: params.data.workspaceId, importantDateId: null, expectedRevision: null, date: body.data,
       }),
     );
   });
@@ -34,13 +36,14 @@ export function registerImportantDatesRoutes(
   app.put(`${base}/:importantDateId`, async (request, reply) => {
     const params = dateParams.safeParse(request.params);
     const body = importantDateInputSchema.safeParse(request.body);
-    if (!params.success || !body.success) return reply.status(400).send({ error: "Valid important date required" });
+    const revision = revisionBody.safeParse(request.body);
+    if (!params.success || !body.success || !revision.success) return reply.status(400).send({ error: "Valid important date required" });
     const context = await resolveActor(request.headers.authorization, params.data.workspaceId, options.contextResolver);
     if (!options.service) return reply.status(503).send(unavailable);
     return reply.send(
       await options.service.save({
         actorUserId: context.userId, workspaceId: params.data.workspaceId,
-        importantDateId: params.data.importantDateId, date: body.data,
+        importantDateId: params.data.importantDateId, expectedRevision: revision.data.expected_revision, date: body.data,
       }),
     );
   });

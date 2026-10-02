@@ -67,7 +67,7 @@ $$;
 create function pg_temp.save_date(person text, keys text[], title text, id uuid default null,
   starts date default '2026-12-25', kind text default 'event', recurrence text default 'none') returns uuid language sql as $$
   select (public.save_important_date_service(pg_temp.u(person), tests.id('m'), id, title, kind, starts, starts,
-    recurrence, '', true, pg_temp.locs(keys)) ->> 'important_date_id')::uuid
+    recurrence, '', true, pg_temp.locs(keys), (select d.revision from public.important_dates d where d.id = save_date.id)) ->> 'important_date_id')::uuid
 $$;
 
 -- The people one notification told: every outbox row for the subject made

@@ -24,11 +24,17 @@ const announcementParams = workspaceParams.extend({
 const todoParams = workspaceParams.extend({
   todoId: z.string().uuid(),
 });
-const announcementSaveBody = z.object({
-  announcement_id: z.string().uuid().nullable().default(null),
-  expected_revision: z.number().int().positive().nullable().default(null),
-  announcement: announcementInputSchema,
-});
+const announcementSaveBody = z
+  .object({
+    announcement_id: z.string().uuid().nullable().default(null),
+    expected_revision: z.number().int().positive().nullable().default(null),
+    announcement: announcementInputSchema,
+  })
+  // A change names the revision it was made on (P11): the second of two saves
+  // is refused, not lost.
+  .refine((body) => body.announcement_id === null || body.expected_revision !== null, {
+    path: ["expected_revision"],
+  });
 const revisionBody = z.object({
   expected_revision: z.number().int().positive(),
 });

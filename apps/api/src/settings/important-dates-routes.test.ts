@@ -91,9 +91,18 @@ describe("important date routes", () => {
   it("changes a date by its id", async () => {
     const service = serviceMock();
     const app = appWith(service);
-    const response = await app.inject({ method: "PUT", url: `${base}/${dateId}`, headers: auth, payload: date });
+    const response = await app.inject({ method: "PUT", url: `${base}/${dateId}`, headers: auth, payload: { ...date, expected_revision: 3 } });
     expect(response.statusCode).toBe(200);
-    expect(service.save).toHaveBeenCalledWith(expect.objectContaining({ importantDateId: dateId }));
+    expect(service.save).toHaveBeenCalledWith(expect.objectContaining({ importantDateId: dateId, expectedRevision: 3 }));
+    await app.close();
+  });
+
+  it("refuses a change that does not name its revision (P11)", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({ method: "PUT", url: `${base}/${dateId}`, headers: auth, payload: date });
+    expect(response.statusCode).toBe(400);
+    expect(service.save).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -139,7 +148,7 @@ describe("important date routes", () => {
       new HttpError("Not allowed", 403, { reason: "authz.rank", detail: "important_date.write" }),
     );
     const app = appWith(service);
-    const response = await app.inject({ method: "PUT", url: `${base}/${dateId}`, headers: auth, payload: date });
+    const response = await app.inject({ method: "PUT", url: `${base}/${dateId}`, headers: auth, payload: { ...date, expected_revision: 3 } });
     expect(response.statusCode).toBe(403);
     expect(response.json()).toMatchObject({ reason: "authz.rank" });
     await app.close();

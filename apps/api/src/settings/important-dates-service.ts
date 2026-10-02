@@ -24,7 +24,7 @@ export type ImportantDateSaved = z.infer<typeof savedSchema>;
  * history.
  */
 export interface ImportantDatesService {
-  save(input: Actor & { importantDateId: string | null; date: ImportantDateInput }): Promise<ImportantDateSaved>;
+  save(input: Actor & { importantDateId: string | null; expectedRevision: number | null; date: ImportantDateInput }): Promise<ImportantDateSaved>;
   setState(input: Actor & { importantDateId: string; action: ImportantDateStateAction }): Promise<ImportantDateSaved>;
   history(input: Actor & { importantDateId: string }): Promise<ImportantDateHistory>;
 }
@@ -53,6 +53,7 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
           target_note: input.date.note,
           target_affects_scheduling: input.date.affects_scheduling,
           target_location_ids: [...new Set(locations)],
+          target_expected_revision: input.expectedRevision,
         }),
       );
     },

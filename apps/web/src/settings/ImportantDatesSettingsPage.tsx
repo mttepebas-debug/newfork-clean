@@ -115,8 +115,8 @@ export default function ImportantDatesSettingsPage() {
     ]);
   };
   const saveMutation = useMutation({
-    mutationFn: ({ values, id }: { values: ImportantDateInput; id?: string }) =>
-      saveImportantDate(workspaceId, values, id),
+    mutationFn: ({ values, id, revision }: { values: ImportantDateInput; id?: string; revision?: number }) =>
+      saveImportantDate(workspaceId, values, id, revision),
     onSuccess: async () => {
       await refresh();
       setEditing(null);
@@ -213,7 +213,7 @@ export default function ImportantDatesSettingsPage() {
     setFormError(null);
     saveMutation.mutate({
       values: parsedDraft.data,
-      ...(editing !== "new" && editing ? { id: editing.id } : {}),
+      ...(editing !== "new" && editing ? { id: editing.id, revision: editing.revision } : {}),
     });
   };
 

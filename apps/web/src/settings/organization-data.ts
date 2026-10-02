@@ -411,6 +411,7 @@ export async function saveImportantDate(
   workspaceId: string,
   input: ImportantDateInput,
   id?: string,
+  expectedRevision?: number,
 ): Promise<void> {
   // Through the server (FB-6.7): the database decides who may (K1-K3), tells
   // the people it reaches and keeps the history; the browser writes nothing.
@@ -426,6 +427,7 @@ export async function saveImportantDate(
       ...values,
       location_ids: locationIds,
       location_id: locationIds.length === 1 ? locationIds[0] : null,
+      ...(id ? { expected_revision: expectedRevision } : {}),
     }),
   });
 }

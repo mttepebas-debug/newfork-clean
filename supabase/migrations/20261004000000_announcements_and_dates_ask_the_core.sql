@@ -267,14 +267,19 @@ drop type public.announcement_status_old;
 -- told about the current content.
 alter table public.announcements
   add column content_revision integer not null default 1,
-  add column delivered_to uuid[] not null default '{}';
+  add column delivered_to uuid[] not null default '{}',
+  -- A scheduled one that could not be published is set aside, not retried
+  -- every minute in everybody's way.
+  add column release_failed_at timestamptz;
 
 alter table public.important_dates
   add column status text not null default 'published' check (status in ('published', 'unpublished')),
   add column created_by uuid references auth.users (id) on delete set null,
   add column updated_by uuid references auth.users (id) on delete set null,
   add column content_revision integer not null default 1,
-  add column delivered_to uuid[] not null default '{}';
+  add column delivered_to uuid[] not null default '{}',
+  -- Two people editing the same date: the second save is refused, not lost (P11).
+  add column revision integer not null default 1;
 -- ponytail: dates written before an author was kept count as the workspace
 -- creator's; there is no live data (CLAUDE.md §9).
 update public.important_dates date_row
@@ -337,7 +342,7 @@ $$;
 -- K1-K3: may this person change a record kept at these locations, written by
 -- this author? A record at one live location is a place action; anything else
 -- (several, or none: the whole workspace, or only archived ones) is the org's.
--- An author who has left counts as nobody.
+-- An author who has left: admin and owner only (O1).
 create function app_private.communication_reason(actor uuid, w uuid, kind text, stored uuid[], author uuid)
 returns text
 language plpgsql
@@ -349,9 +354,16 @@ declare
   live uuid[] := app_private.live_locations(w, stored);
   writer uuid := (
     select membership.user_id from public.workspace_memberships membership
-    where membership.workspace_id = w and membership.user_id = author
+    where membership.workspace_id = w and membership.user_id = author and membership.status = 'active'
   );
+  reason text;
 begin
+  -- An author who has left protects the record harder, not softer: only an
+  -- admin or the owner changes it (Mert, 2026-10-02, O1; fail closed).
+  if author is not null and writer is null then
+    reason := app_private.authz_reason(actor, w, kind || '.write_wide');
+    return case when reason = 'out_of_scope' then 'rank' else reason end;
+  end if;
   if cardinality(stored) > 0 and cardinality(live) = 1 then
     return app_private.authz_reason(actor, w, kind || '.write', live, null, writer);
   end if;
@@ -554,16 +566,27 @@ begin
     select * from public.announcements announcement
     where (w is null or announcement.workspace_id = w)
       and announcement.status = 'scheduled' and announcement.archived_at is null
-      and announcement.publish_at <= now()
+      and announcement.publish_at <= now() and announcement.release_failed_at is null
     for update skip locked
   loop
-    update public.announcements
-    set status = 'published', published_at = item.publish_at, revision = revision + 1,
-        delivered_to = app_private.announcement_recipients(item)
-    where id = item.id
-    returning * into item;
-    perform app_private.announcement_deliver(item, item.delivered_to);
-    released := released + 1;
+    begin
+      if item.expires_at is not null and item.expires_at <= now() then
+        -- Its time ran out before it went out: it does not (P25).
+        update public.announcements set status = 'unpublished', revision = revision + 1 where id = item.id;
+      else
+        update public.announcements
+        set status = 'published', published_at = item.publish_at, revision = revision + 1,
+            delivered_to = app_private.announcement_recipients(item)
+        where id = item.id
+        returning * into item;
+        perform app_private.announcement_deliver(item, item.delivered_to);
+        released := released + 1;
+      end if;
+    exception when others then
+      -- One broken row must not hold up every workspace's, nor the read that
+      -- called this (O2).
+      update public.announcements set release_failed_at = now() where id = item.id;
+    end;
   end loop;
   return released;
 end;
@@ -623,7 +646,10 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id', item.id, 'workspace_id', item.workspace_id, 'title', item.title, 'body', item.body,
         'category', item.category, 'status', item.status, 'audience_roles', item.audience_roles,
+        -- Every location it is kept at, archived ones too, so an edit keeps them;
+        -- live_location_ids are where it reaches (KK-86).
         'location_ids', coalesce(targets.ids, '{}'::uuid[]), 'location_names', coalesce(targets.names, '{}'::text[]),
+        'live_location_ids', app_private.live_locations(target_workspace_id, coalesce(targets.ids, '{}'::uuid[])),
         'department_ids', item.department_ids, 'job_ids', item.job_ids, 'archived_at', item.archived_at,
         'department_names', coalesce((select jsonb_agg(d.name order by lower(d.name), d.id) from public.departments d
           where d.workspace_id = target_workspace_id and d.id = any (item.department_ids)), '[]'::jsonb),
@@ -650,7 +676,7 @@ begin
                array_agg(location.name order by location.sort_order, location.name) names
         from public.announcement_locations target
         join public.locations location on location.id = target.location_id
-        where target.announcement_id = item.id and app_private.location_is_live(location)) targets on true
+        where target.announcement_id = item.id) targets on true
       left join public.announcement_acknowledgements acknowledgement
         on acknowledgement.announcement_id = item.id and acknowledgement.user_id = actor_user_id
       cross join lateral (
@@ -692,6 +718,11 @@ begin
     stored := app_private.announcement_places(before.id);
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', stored, before.created_by, stored);
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', target_location_ids, before.created_by, stored);
+    -- A record kept at locations (archived ones too) never becomes the whole
+    -- workspace by losing them (KK-86).
+    if cardinality(stored) > 0 and cardinality(target_location_ids) = 0 then
+      raise exception 'Choose at least one location' using errcode = '22023';
+    end if;
   end if;
 
   target_department_ids := coalesce(target_department_ids, '{}');
@@ -733,7 +764,7 @@ begin
       actor_user_id, actor_user_id)
     returning * into item;
   else
-    if before.revision <> target_expected_revision then
+    if before.revision is distinct from target_expected_revision then
       raise exception 'stale announcement revision' using errcode = '40001';
     end if;
     if before.archived_at is not null then
@@ -748,6 +779,9 @@ begin
         department_ids = array(select distinct unnest(target_department_ids)),
         job_ids = array(select distinct unnest(target_job_ids)),
         content_revision = content_revision + case when content_changed then 1 else 0 end,
+        -- A scheduled one with its time taken away waits as a draft (P10).
+        status = case when status = 'scheduled' and target_publish_at is null then 'draft' else status end,
+        release_failed_at = null,
         revision = revision + 1, updated_by = actor_user_id, updated_at = now()
     where id = before.id
     returning * into item;
@@ -812,14 +846,17 @@ begin
   perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement',
     app_private.announcement_places(item.id),
     item.created_by, app_private.announcement_places(item.id));
-  if item.revision <> target_expected_revision or item.archived_at is not null
+  if item.revision is distinct from target_expected_revision or item.archived_at is not null
      or item.status not in ('draft', 'scheduled', 'unpublished') then
     raise exception 'stale announcement revision' using errcode = '40001';
   end if;
 
+  if item.expires_at is not null and item.expires_at <= now() then
+    raise exception 'This announcement has expired' using errcode = '22023';
+  end if;
   if item.publish_at is not null and item.publish_at > now() then
     update public.announcements
-    set status = 'scheduled', published_at = null, revision = revision + 1, updated_by = actor_user_id, updated_at = now()
+    set status = 'scheduled', release_failed_at = null, published_at = null, revision = revision + 1, updated_by = actor_user_id, updated_at = now()
     where id = item.id returning * into item;
     told := '{}';
   else
@@ -868,7 +905,7 @@ begin
   if target_action not in ('unpublish', 'archive', 'restore') then
     raise exception 'valid announcement action required' using errcode = '22023';
   end if;
-  if item.revision <> target_expected_revision
+  if item.revision is distinct from target_expected_revision
      or (target_action = 'unpublish' and (item.archived_at is not null or item.status not in ('scheduled', 'published')))
      or (target_action = 'archive' and item.archived_at is not null)
      or (target_action = 'restore' and item.archived_at is null) then
@@ -1011,7 +1048,7 @@ $$;
 -- Adds an important date, or changes one (K1-K4). A new date is out at once
 -- and tells its people; a content change tells everybody again; adding
 -- locations tells only the new people.
-create function public.save_important_date_service(actor_user_id uuid, target_workspace_id uuid, target_important_date_id uuid, target_title text, target_type text, target_starts_on date, target_ends_on date, target_recurrence text, target_note text, target_affects_scheduling boolean, target_location_ids uuid[])
+create function public.save_important_date_service(actor_user_id uuid, target_workspace_id uuid, target_important_date_id uuid, target_title text, target_type text, target_starts_on date, target_ends_on date, target_recurrence text, target_note text, target_affects_scheduling boolean, target_location_ids uuid[], target_expected_revision integer)
 returns jsonb
 language plpgsql
 security definer
@@ -1037,6 +1074,9 @@ begin
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, before.created_by, before.location_ids);
     if before.archived_at is not null then
       raise exception 'Restore this date before you edit it' using errcode = '40001';
+    end if;
+    if before.revision is distinct from target_expected_revision then
+      raise exception 'This date changed. Reload and try again.' using errcode = '40001';
     end if;
   end if;
 
@@ -1072,7 +1112,7 @@ begin
         location_ids = target_location_ids,
         location_id = case when cardinality(target_location_ids) = 1 then target_location_ids[1] end,
         content_revision = content_revision + case when content_changed then 1 else 0 end,
-        updated_by = actor_user_id, updated_at = now()
+        revision = revision + 1, updated_by = actor_user_id, updated_at = now()
     where id = before.id
     returning * into item;
   end if;
@@ -1101,8 +1141,8 @@ begin
     case when before.id is null then 'created' else 'updated' end,
     case when before.id is null then null else app_private.important_date_snapshot(before) end,
     app_private.important_date_snapshot(item));
-  return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'recipient_count',
-    cardinality(item.delivered_to));
+  return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
+    'recipient_count', cardinality(item.delivered_to));
 end;
 $$;
 
@@ -1145,7 +1185,7 @@ begin
   set status = case when target_action in ('unpublish', 'restore') then 'unpublished'
                     when target_action = 'republish' then 'published' else status end,
       archived_at = case target_action when 'archive' then now() when 'restore' then null else archived_at end,
-      updated_by = actor_user_id, updated_at = now()
+      revision = revision + 1, updated_by = actor_user_id, updated_at = now()
   where id = before.id
   returning * into item;
 
@@ -1170,7 +1210,8 @@ begin
     case target_action when 'unpublish' then 'unpublished' when 'republish' then 'republished'
       when 'archive' then 'archived' else 'restored' end,
     app_private.important_date_snapshot(before), app_private.important_date_snapshot(item));
-  return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'archived_at', item.archived_at);
+  return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
+    'archived_at', item.archived_at);
 end;
 $$;
 
@@ -1198,7 +1239,7 @@ begin
       from (
         select date_row.id, date_row.workspace_id, date_row.location_id, date_row.location_ids,
           date_row.title, date_row.type, date_row.starts_on, date_row.ends_on, date_row.recurrence,
-          date_row.note, date_row.affects_scheduling, date_row.archived_at, date_row.status,
+          date_row.note, date_row.affects_scheduling, date_row.archived_at, date_row.status, date_row.revision,
           date_row.created_by, coalesce(author.display_name, 'Workspace member') as author_name,
           date_row.updated_at,
           (select location.name from public.locations location
@@ -1226,6 +1267,23 @@ begin
 end;
 $$;
 
+-- A past version of an important date as somebody who manages these
+-- locations may see it: one kept only at locations they do not manage (or
+-- only at archived ones) is hidden (K6).
+create function app_private.important_date_version_seen(reach uuid[], version jsonb)
+returns jsonb
+language sql
+immutable
+set search_path = ''
+as $fn$
+  select case
+    when version is null then null
+    when jsonb_array_length(coalesce(version -> 'location_ids', '[]'::jsonb)) = 0 then version
+    when exists (select 1 from jsonb_array_elements_text(version -> 'location_ids') id where id::uuid = any (reach)) then version
+    else jsonb_build_object('hidden', true)
+  end
+$fn$;
+
 -- An important date's history: who changed what, when, from what to what
 -- (FB-6.7, done-when 8). Whoever may see the date reads it.
 create function public.read_important_date_history_service(actor_user_id uuid, target_workspace_id uuid, target_important_date_id uuid)
@@ -1237,8 +1295,10 @@ set search_path = ''
 as $$
 declare
   item public.important_dates;
+  reach uuid[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
+  reach := (app_private.actor(actor_user_id, target_workspace_id)).manages;
   select * into item from public.important_dates where id = target_important_date_id and workspace_id = target_workspace_id;
   if item.id is null or not app_private.important_date_visible(actor_user_id, item) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'settings.important_dates.read';
@@ -1252,7 +1312,8 @@ begin
         'id', change.id, 'action', change.action, 'changed_at', change.changed_at,
         'actor_user_id', change.actor_user_id,
         'actor_name', coalesce(actor.display_name, 'Workspace member'),
-        'before', change.before, 'after', change.after) order by change.changed_at desc, change.id)
+        'before', app_private.important_date_version_seen(reach, change.before),
+        'after', app_private.important_date_version_seen(reach, change.after)) order by change.changed_at desc, change.id)
       from public.important_date_changes change
       left join public.user_profiles actor on actor.user_id = change.actor_user_id
       where change.important_date_id = item.id and change.workspace_id = target_workspace_id), '[]'::jsonb)
@@ -1261,11 +1322,11 @@ end;
 $$;
 
 revoke all on function public.set_announcement_state_service(uuid, uuid, uuid, integer, text) from public, anon, authenticated;
-revoke all on function public.save_important_date_service(uuid, uuid, uuid, text, text, date, date, text, text, boolean, uuid[]) from public, anon, authenticated;
+revoke all on function public.save_important_date_service(uuid, uuid, uuid, text, text, date, date, text, text, boolean, uuid[], integer) from public, anon, authenticated;
 revoke all on function public.set_important_date_state_service(uuid, uuid, uuid, text) from public, anon, authenticated;
 revoke all on function public.read_important_date_history_service(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.set_announcement_state_service(uuid, uuid, uuid, integer, text) to service_role;
-grant execute on function public.save_important_date_service(uuid, uuid, uuid, text, text, date, date, text, text, boolean, uuid[]) to service_role;
+grant execute on function public.save_important_date_service(uuid, uuid, uuid, text, text, date, date, text, text, boolean, uuid[], integer) to service_role;
 grant execute on function public.set_important_date_state_service(uuid, uuid, uuid, text) to service_role;
 grant execute on function public.read_important_date_history_service(uuid, uuid, uuid) to service_role;
 
