@@ -899,3 +899,15 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — dalda.
 - **Durum:** dalda uygulandı (`task/fb-6.7-ui` @`a9f1bd39`, tek modül `apps/web/src/schedule/lib/closedDayConfirmation.ts`; besleme #114); main'e ekran işiyle girer. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın kararı, besleme #113).
 - **Mert:** bilgi (sabah listesinde).
+
+### KK-111 (2026-10-02) Sıradaki iş FB-6.6 Belgeler / onboarding
+- **Karar (ne):** FB-6.7 ekranı Mert'in varyant seçimine park edilirken ILERLEME §4 sırasından bir sonraki iş olarak FB-6.6 (Belgeler / onboarding çekirdeğe) başlatılır.
+- **Nerede:** FB-6.6 görev dosyası + tazelik ölçümü; işçi `local_863130bd…`, dal `task/fb-6.6-plan` (kayıt oturumu ölçtü: dal var, `origin/main` üstünde henüz commit yok; worktree `newfork-wt/fb-6.6-plan`).
+- **Nasıl:** hazır iki satır karşılaştırıldı — FB-6.4 Takas / Shift Hub (11 puan) ile FB-6.6 (8 puan); bağımlılık zinciri eşit, ikisi de birer satır açıyor → §4 kuralının (iii) adımı: küçük puanlı önce.
+- **Ne zaman:** 2026-10-02 ~13:30Z (devreden koordinatör `local_d8686bdf…` verdi; devirle kayda girdi).
+- **Ne için:** Mert'in 2026-10-02 ~13:00Z talimatı: "Otomasyon olarak bir sonraki taski seçip, sessionlara delege et ve ilerlemeye devam et… Bu bir engel ise, bu taski atla." (HANDOFF `e30f3de3` §0). FB-6.7 ekranı varyant seçimini beklerken boşta kalınmaz.
+- **Uygulamada etkisi:** henüz yok — görev dosyası ve tazelik ölçümü çıkıyor; ekranda değişiklik ancak A (veri + yetki) ve B (ekran) bitince.
+- **Dayanak:** Mert'in 2026-10-02 ~13:00Z talimatı; CLAUDE.md §8 "Sürekli yetki" (yeni iş seçmek); ILERLEME §4 sıralama kuralı; ILKELER P17 (tek hat: FB-6.7 park, yeni iş ancak o beklerken).
+- **Geri alma:** kolay — görev dosyası aşamasında.
+- **Durum:** yürürlükte (görev dosyası ve tazelik işçide). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_91ac4f8d…`'ın devir beslemesi, #115).
+- **Mert:** bilgi (dönüş listesinde).
