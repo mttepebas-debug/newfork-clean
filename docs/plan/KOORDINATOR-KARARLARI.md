@@ -1053,5 +1053,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KARARLAR "Ürün kuralları" — resmî ad düzeltmesini yalnız owner / admin onaylar (Mert, 2026-10-02, S1); CLAUDE.md §9 (web'de izin anahtarı kontrolü yok, karar çekirdekte).
 - **Reddedilen:** (b) DB'ye yeni bayrak (iki rol yazar), (c) bırak, müdür 403 görsün.
 - **Geri alma:** kolay — tek kapı satırı.
-- **Durum:** kabul; dalda henüz uygulanmadı (ölçüldü, #125). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #125).
+- **Durum:** yürürlükte; dalda uygulandı `85267a22` (ölçüldü, #126; #125'te henüz uygulanmamıştı). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #125).
 - **Mert:** bilgi.
