@@ -811,3 +811,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — liste değişmedi.
 - **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör beslemesi #104).
 - **Mert:** bilgi.
+
+### KK-103 (2026-10-02) FB-6.7 puan bölüşü: A 7, B 3, C 6
+- **Karar:** FB-6.7 = 16 puan; A (veri + yetki + kural) 7, B (ekran) 3, C (kapalı gün, geçmiş kilidi, süre dolumu) 6. Besleme #104'teki "A 10" düzeltilir: ilerleme A'dan 7 puan alır.
+- **Neden:** KK-88'in 10 puanı A + B içindi; B (varyantlar, seçilen varyantın sözleşmeye bağlanması, görsel QA) bitmedi. KK-94'te A + B 1–1,5 kişi-hafta; ekran işinin üç adımı için B'ye ~%30 → 3. C'nin 6'sı KK-94'teki gibi.
+- **Nerede:** ILERLEME §0a, §1 (iki yüzde satırı), §3 FB-6.7 satırı; FOUNDATION-B dilim tablosunun FB-6.7 satırı. DONE değişmez.
+- **Ne zaman:** B ana dala girince 3, C girince 6 eklenir.
+- **Uygulamada etkisi:** görünürde bir şey değişmez; Mert'in sabah gördüğü ilerleme yüzdesi düşer: Aşama 6–7 %70,1 → %68,9 (166 / 241), program %77,4 → %76,5 (244 / 319). Bitmeyen ekran işi bitmiş sayılmaz.
+- **Dayanak:** KK-88, KK-94; ILKELER P11 (doğru veri).
+- **Geri alma:** kolay — puanlar ILERLEME §3'te.
+- **Durum:** yürürlükte. Kayıt oturumu `local_91ac4f8d-406e-45b0-8ca3-9561cfa10618` yazdı (koordinatör `local_d8686bdf…`'ın kararı).
+- **Mert:** bilgi.
