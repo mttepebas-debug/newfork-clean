@@ -38,3 +38,4 @@
 - [NULL görünürlük + kayan pencere](checklist-null-visibility-and-rolling-window.md) — visible() üye olmayana NULL, 'not f()' raise'ı atlar; 'bu haftadan' süzgeci geçmiş haftayı hafta dönünce değiştirir
 - [Geçmiş sınırı taslakta da](checklist-past-line-on-drafts.md) — yeniden hesaplayan yazımda (republish) taslak listesi de geçmiş sınırına bağlı mı; yalnız yayınlanmışı süzmek yetmez
 - [Başkasının worktree'sinde checkout yok](feedback-no-checkout-in-others-worktree.md) — incelenen sha'yı git show / git archive / kendi geçici worktree ile oku (FB-6.7 C tur 2 hatası)
+- [İncelemeyi atlatan işaretler](checklist-review-skip-flags.md) — owner_excused gibi "incelemesiz kabul" işaretini owner olmayanda bırakan yol, sıfırlayan yol, API aynı alana mı bakıyor (FB-6.6)
