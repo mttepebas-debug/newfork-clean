@@ -32,6 +32,10 @@
 -- 1. What a record now holds ---------------------------------------------------------------
 
 alter table public.announcements add column release_error text;
+-- Who acknowledged an earlier content of it: their acknowledgement was reset
+-- by a content change (K4), so the list can say "changed since you
+-- acknowledged".
+alter table public.announcements add column acknowledged_before uuid[] not null default '{}';
 
 -- Which published shifts a closed day opened (K13), so taking it away can say
 -- how many stay open (K15).
@@ -212,7 +216,21 @@ as $$
     'fingerprint', md5(coalesce((select string_agg(concat_ws('|', x ->> 'id', x ->> 'employee_id', x ->> 'starts_at', x ->> 'ends_at'),
       ',' order by x ->> 'id') from shifts), '')),
     'shifts', coalesce((select jsonb_agg(x order by x ->> 'starts_at', x ->> 'location_name', x ->> 'id') from shifts), '[]'::jsonb),
-    'days', coalesce((select jsonb_agg(jsonb_build_object('location_id', location_id, 'closed_date', closed_date)) from newly), '[]'::jsonb))
+    'days', coalesce((select jsonb_agg(jsonb_build_object('location_id', location_id, 'closed_date', closed_date)) from newly), '[]'::jsonb),
+    -- K16: a saved draft's own shifts on those days (a copy of a published
+    -- shift follows that shift instead).
+    'draft_shift_ids', coalesce((
+      select jsonb_agg(draft_shift.id)
+      from newly
+      join public.schedule_draft_shifts draft_shift
+        on draft_shift.workspace_id = w and draft_shift.location_id = newly.location_id
+       and draft_shift.scheduled_date = newly.closed_date and draft_shift.employee_id is not null
+      join public.schedule_drafts draft on draft.id = draft_shift.draft_id and draft.archived_at is null
+      where not exists (
+        select 1 from public.schedule_published_shifts published
+        join public.schedule_location_publications publication
+          on publication.id = published.publication_id and publication.status = 'current'
+        where published.workspace_id = w and coalesce(published.source_shift_id, published.id) = draft_shift.id)), '[]'::jsonb))
 $$;
 
 -- K13 and K16: opens the listed shifts but the kept ones, and quietly opens a
@@ -229,17 +247,7 @@ declare
   s jsonb;
   opened jsonb := coalesce((select jsonb_agg(x) from jsonb_array_elements(impact -> 'shifts') x
                             where not (x ->> 'id')::uuid = any (coalesce(keep, '{}'))), '[]'::jsonb);
-  drafts uuid[] := array(
-    select draft_shift.id
-    from jsonb_to_recordset(impact -> 'days') day(location_id uuid, closed_date date)
-    join public.schedule_draft_shifts draft_shift
-      on draft_shift.workspace_id = item.workspace_id and draft_shift.location_id = day.location_id
-     and draft_shift.scheduled_date = day.closed_date and draft_shift.employee_id is not null
-    join public.schedule_drafts draft on draft.id = draft_shift.draft_id and draft.archived_at is null
-    where not exists (
-      select 1 from public.schedule_published_shifts published
-      join public.schedule_location_publications publication on publication.id = published.publication_id and publication.status = 'current'
-      where published.workspace_id = item.workspace_id and coalesce(published.source_shift_id, published.id) = draft_shift.id));
+  drafts uuid[] := array(select value::uuid from jsonb_array_elements_text(impact -> 'draft_shift_ids'));
   places uuid[];
   other record;
 begin
@@ -405,8 +413,10 @@ begin
      or target_starts_on is null or target_ends_on is null or target_ends_on < target_starts_on then
     raise exception 'valid important date required' using errcode = '22023';
   end if;
-  return app_private.important_date_closure_impact(target_workspace_id, stored, target_type, target_starts_on,
-    target_ends_on, target_recurrence, target_location_ids) - 'days';
+  return (select impact - 'days' - 'draft_shift_ids'
+                 || jsonb_build_object('draft_shift_count', jsonb_array_length(impact -> 'draft_shift_ids'))
+          from app_private.important_date_closure_impact(target_workspace_id, stored, target_type, target_starts_on,
+            target_ends_on, target_recurrence, target_location_ids) impact);
 end;
 $$;
 revoke all on function public.preview_important_date_closure_service(uuid, uuid, uuid, text, date, date, text, uuid[]) from public, anon, authenticated;
@@ -588,6 +598,7 @@ begin
   return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
     'recipient_count', cardinality(item.delivered_to),
     'shifts_opened', jsonb_array_length(opened),
+    'draft_shifts_opened', coalesce(jsonb_array_length(impact -> 'draft_shift_ids'), 0),
     'shifts_stay_open', case when before.id is null then 0 else app_private.important_date_stay_open(item) end);
 end;
 $$;
@@ -692,6 +703,7 @@ begin
   return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
     'archived_at', item.archived_at,
     'shifts_opened', jsonb_array_length(opened),
+    'draft_shifts_opened', coalesce(jsonb_array_length(impact -> 'draft_shift_ids'), 0),
     'shifts_stay_open', app_private.important_date_stay_open(item));
 end;
 $$;
@@ -930,6 +942,10 @@ begin
   select target_workspace_id, item.id, id from unnest(target_location_ids) id;
 
   if content_changed then
+    update public.announcements
+    set acknowledged_before = array(select distinct who from unnest(acknowledged_before || array(
+      select a.user_id from public.announcement_acknowledgements a where a.announcement_id = item.id)) who)
+    where id = item.id returning * into item;
     delete from public.announcement_acknowledgements where announcement_id = item.id;
   end if;
   if item.status = 'published' then
@@ -1025,6 +1041,13 @@ begin
         'read_at', null,
         'acknowledged_at', acknowledgement.acknowledged_at,
         'acknowledged_count', (select count(*) from public.announcement_acknowledgements a where a.announcement_id = item.id),
+        -- Everybody it is out to now ("18 of 24 acknowledged"); none once it is not out.
+        'recipient_count', case when item.status = 'published' and item.archived_at is null
+          and (item.expires_at is null or item.expires_at > now()) then cardinality(item.delivered_to) end,
+        'publish_failed_at', item.release_failed_at,
+        -- The reader acknowledged an earlier content and not this one (K4).
+        'content_changed_since_acknowledged', acknowledgement.acknowledged_at is null
+          and actor_user_id = any (item.acknowledged_before),
         'can_edit', control.allowed and item.archived_at is null,
         'can_publish', control.allowed and item.archived_at is null and item.status in ('draft', 'scheduled', 'unpublished'),
         'can_unpublish', control.allowed and item.archived_at is null and item.status in ('scheduled', 'published'),

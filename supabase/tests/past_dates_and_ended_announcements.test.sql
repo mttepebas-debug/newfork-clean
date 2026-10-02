@@ -178,6 +178,8 @@ select tests.remember('p:ann:tasting', (public.save_announcement_audience_servic
 select pg_temp.publish_ann('ayse', tests.id('p:ann:tasting'));
 select pg_temp.deliver();
 select ok(pg_temp.has_notice('emre', tests.id('p:ann:tasting')), 'K12: while it runs, Emre has the notice');
+select is((pg_temp.listed_ann('ayse', tests.id('p:ann:tasting')) ->> 'recipient_count')::integer, 2,
+  'B1: Ayse sees how many it is out to: Emre and the owner (K5), not herself (KK-89)');
 -- ponytail: its end comes by hand; the rule under test is the release's.
 update public.announcements set publish_at = now() - interval '1 hour', published_at = now() - interval '1 hour',
   expires_at = now() - interval '1 minute' where id = tests.id('p:ann:tasting');
@@ -222,6 +224,7 @@ select is((select a.status::text from public.announcements a where a.id = tests.
   'KK-98: it did not go out');
 select ok((select a.release_error from public.announcements a where a.id = tests.id('p:ann:due')) like '%past_dates_refuses%',
   'KK-98: the error is kept with it');
+select ok(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'publish_failed_at' is not null, 'KK-98: and when it failed');
 select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'display_status', 'publish_failed',
   'KK-98: Ayse, who wrote it, sees that it could not be published');
 select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'publish_error_code', 'failed',
@@ -236,6 +239,23 @@ select is((select a.release_error from public.announcements a where a.id = tests
   'KK-98: saving it again clears the error');
 select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'display_status', 'published',
   'KK-98: and it goes out at the next try');
+
+-- 6. B2: the content changed since Emre acknowledged it (K4) -------------------------------
+
+select tests.remember('p:ann:rules', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
+  'House rules', 'Version one', 'general', array['employee'], array[tests.id('p:K')], null, null, null, '{}', '{}') ->> 'announcement_id')::uuid);
+select pg_temp.publish_ann('ayse', tests.id('p:ann:rules'));
+select public.acknowledge_announcement_service(pg_temp.u('emre'), tests.id('p'), tests.id('p:ann:rules'));
+select is(pg_temp.listed_ann('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'false',
+  'B2: Emre has acknowledged the current text');
+select public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), tests.id('p:ann:rules'),
+  (select a.revision from public.announcements a where a.id = tests.id('p:ann:rules')),
+  'House rules', 'Version two', 'general', array['employee'], array[tests.id('p:K')], null, null, null, '{}', '{}');
+select is(pg_temp.listed_ann('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'true',
+  'B2: after the text changes, Emre is told it changed since he acknowledged');
+select public.acknowledge_announcement_service(pg_temp.u('emre'), tests.id('p'), tests.id('p:ann:rules'));
+select is(pg_temp.listed_ann('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'false',
+  'B2: once he acknowledges the new text, it no longer says so');
 
 select * from finish();
 rollback;

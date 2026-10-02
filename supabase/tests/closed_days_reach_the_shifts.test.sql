@@ -181,7 +181,11 @@ select tests.remember('c:draft', pg_temp.draft_week(1, $$[
 select tests.settle();
 select is(pg_temp.listed_ids(pg_temp.preview('ayse', array['K'], tests.week(1))), '{}'::text[],
   'K16: a closed day on a draft week lists nothing to ask about');
-select tests.remember('c:date:draft', (pg_temp.close_day('ayse', array['K'], 'Plumbing', tests.week(1)) ->> 'important_date_id')::uuid);
+select is((pg_temp.preview('ayse', array['K'], tests.week(1)) ->> 'draft_shift_count')::integer, 1,
+  'K16: it counts the draft shift that will drop, for the screen to say so');
+create temporary table draft_saved as select pg_temp.close_day('ayse', array['K'], 'Plumbing', tests.week(1)) result;
+select tests.remember('c:date:draft', (select (result ->> 'important_date_id')::uuid from draft_saved));
+select is((select (result ->> 'draft_shifts_opened')::integer from draft_saved), 1, 'K16: the save says one draft shift dropped');
 select is((select count(*)::integer from public.schedule_draft_shifts d where d.draft_id = tests.id('c:draft')
            and d.scheduled_date = tests.week(1) and d.employee_id is null), 1, 'K16: the draft''s Monday shift dropped to open');
 select is((select count(*)::integer from public.schedule_draft_shifts d where d.draft_id = tests.id('c:draft')

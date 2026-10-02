@@ -89,6 +89,12 @@ export const announcementRecordSchema = z.object({
   /** Goes up when the title, text, category or link changes; acknowledgements reset then (K4). */
   content_revision: z.coerce.number().int().positive().optional(),
   acknowledged_count: z.coerce.number().int().nonnegative().optional(),
+  /** Everybody it is out to now ("18 of 24 acknowledged"); null when it is not out. */
+  recipient_count: z.coerce.number().int().nonnegative().nullable().optional(),
+  /** When the scheduled release failed (KK-98). */
+  publish_failed_at: z.string().datetime({ offset: true }).nullable().optional(),
+  /** The reader acknowledged an earlier content and the content changed since (K4). */
+  content_changed_since_acknowledged: z.boolean().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   read_at: z.string().datetime({ offset: true }).nullable(),

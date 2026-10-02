@@ -1190,6 +1190,8 @@ export type ImportantDateClosureShift = z.infer<typeof importantDateClosureShift
 export const importantDateClosurePreviewSchema = z.object({
   fingerprint: z.string(),
   shifts: z.array(importantDateClosureShiftSchema),
+  /** A saved draft's own shifts on the newly closed days: they drop to open without asking (K16). */
+  draft_shift_count: z.coerce.number().int().nonnegative(),
 });
 export type ImportantDateClosurePreview = z.infer<typeof importantDateClosurePreviewSchema>;
 
@@ -1225,6 +1227,8 @@ export const importantDateSavedSchema = z.object({
   recipient_count: z.coerce.number().int().nonnegative().optional(),
   /** Shifts this change opened (K13). */
   shifts_opened: z.coerce.number().int().nonnegative().optional(),
+  /** Draft shifts this change dropped to open (K16). */
+  draft_shifts_opened: z.coerce.number().int().nonnegative().optional(),
   /** Shifts the date opened that stay open now that it no longer closes their day (K15: "3 shifts stay open"). */
   shifts_stay_open: z.coerce.number().int().nonnegative().optional(),
 });
