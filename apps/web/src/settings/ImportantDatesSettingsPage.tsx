@@ -3,6 +3,7 @@ import {
   importantDateInputSchema,
   type ImportantDate,
   type ImportantDateInput,
+  type ImportantDateStateAction,
   type ImportantDateType,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
@@ -17,7 +18,7 @@ import { errorText } from "./GeneralSettingsPage";
 import {
   listImportantDates,
   saveImportantDate,
-  setImportantDateArchived,
+  setImportantDateState,
 } from "./organization-data";
 import "./jobs-settings.css";
 
@@ -77,20 +78,6 @@ export default function ImportantDatesSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const canManage =
-    context?.permissions.includes("important_dates.manage") ?? false;
-  const allLocations =
-    context?.membership.role === "owner" ||
-    context?.membership.role === "admin";
-  const mayManageLocations = (ids: readonly string[]) =>
-    canManage &&
-    (allLocations ||
-      (ids.length > 0 &&
-        ids.every((id) => context?.locationScope.locationIds.includes(id))));
-  const mayManageDate = (item: ImportantDate) =>
-    mayManageLocations(
-      item.location_ids ?? (item.location_id ? [item.location_id] : []),
-    );
   const datesQueryKey = ["important-dates", workspaceId];
   const query = useQuery({
     queryKey: datesQueryKey,
@@ -99,6 +86,16 @@ export default function ImportantDatesSettingsPage() {
   });
   // The picker offers the locations this person may place a date at, from the same read.
   const pickerLocations = query.data?.locations ?? [];
+  // What this person may do comes from the server (FB-6.7, K1-K3): a date at
+  // one of their locations, or, for admins and the owner, several or the whole
+  // workspace.
+  const canManage = query.data?.can_manage ?? false;
+  const allLocations = query.data?.can_target_workspace ?? false;
+  const mayManageLocations = (ids: readonly string[]) =>
+    canManage &&
+    (allLocations ||
+      (ids.length === 1 && pickerLocations.some((location) => location.id === ids[0])));
+  const mayManageDate = (item: ImportantDate) => item.can_edit === true;
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState<ImportantDateType | "all">("all");
   const [search, setSearch] = useState("");
@@ -129,8 +126,8 @@ export default function ImportantDatesSettingsPage() {
     onError: (error) => setFormError(errorText(error)),
   });
   const archiveMutation = useMutation({
-    mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
-      setImportantDateArchived(workspaceId, id, archived),
+    mutationFn: ({ id, action }: { id: string; action: ImportantDateStateAction }) =>
+      setImportantDateState(workspaceId, id, action),
     onSuccess: refresh,
     onError: (error) => setFormError(errorText(error)),
   });
@@ -173,9 +170,10 @@ export default function ImportantDatesSettingsPage() {
         ? draftFrom(item)
         : {
             ...newDraft(),
+            // A manager writes for one location (K1): theirs, if they have one.
             location_ids:
-              context?.membership.role === "manager"
-                ? [...context.locationScope.locationIds]
+              !allLocations && pickerLocations.length === 1
+                ? [pickerLocations[0]!.id]
                 : [],
           },
     );
@@ -430,14 +428,8 @@ export default function ImportantDatesSettingsPage() {
                       {pickerLocations
                         .filter(
                           (location) =>
-                            (!location.archived_at ||
-                              selectedLocationIds.includes(location.id)) &&
-                            (allLocations ||
-                              Boolean(
-                                context?.locationScope.locationIds.includes(
-                                  location.id,
-                                ),
-                              )),
+                            !location.archived_at ||
+                            selectedLocationIds.includes(location.id),
                         )
                         .map((location) => (
                           <label key={location.id}>
@@ -563,7 +555,7 @@ export default function ImportantDatesSettingsPage() {
                   setConfirming={setConfirmDelete}
                   deleteDate={() =>
                     archiveMutation.mutate(
-                      { id: editing.id, archived: true },
+                      { id: editing.id, action: "archive" },
                       { onSuccess: closeEditor },
                     )
                   }
@@ -670,6 +662,8 @@ export default function ImportantDatesSettingsPage() {
                   </span>
                   {item.archived_at ? (
                     <span className="job-archived-label">Archived</span>
+                  ) : item.status === "unpublished" ? (
+                    <span className="job-archived-label">Unpublished</span>
                   ) : null}
                 </button>
                 <span className="important-date-date-cell">
@@ -693,11 +687,27 @@ export default function ImportantDatesSettingsPage() {
                     <span>None</span>
                   ) : null}
                 </span>
-                {mayManageDate(item) ? (
+                {item.can_edit || item.can_restore ? (
                   <CatalogRowMenu name={item.title}>
-                    <button type="button" onClick={() => openEditor(item)}>
-                      Edit date
-                    </button>
+                    {item.can_edit ? (
+                      <button type="button" onClick={() => openEditor(item)}>
+                        Edit date
+                      </button>
+                    ) : null}
+                    {item.can_unpublish || item.can_republish ? (
+                      <button
+                        type="button"
+                        disabled={archiveMutation.isPending}
+                        onClick={() =>
+                          archiveMutation.mutate({
+                            id: item.id,
+                            action: item.can_unpublish ? "unpublish" : "republish",
+                          })
+                        }
+                      >
+                        {item.can_unpublish ? "Unpublish" : "Republish"}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className={
@@ -707,7 +717,7 @@ export default function ImportantDatesSettingsPage() {
                       onClick={() =>
                         archiveMutation.mutate({
                           id: item.id,
-                          archived: !item.archived_at,
+                          action: item.archived_at ? "restore" : "archive",
                         })
                       }
                     >

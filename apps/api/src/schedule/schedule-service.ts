@@ -487,6 +487,8 @@ export function createScheduleReadService(options: {
           )
           .eq("workspace_id", workspaceId)
           .is("archived_at", null)
+          // An unpublished date is hidden from the Schedule (FB-6.7).
+          .eq("status", "published")
           .eq("affects_scheduling", true)
           .order("starts_on")
           .order("title"),

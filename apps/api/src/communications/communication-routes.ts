@@ -80,15 +80,12 @@ export function registerCommunicationRoutes(
       const params = workspaceParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid workspace required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (announcement.read, K6).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "announcements.read",
         options.contextResolver,
-        reply,
-        "Announcement access required",
       );
-      if (!context) return;
       if (!options.service) return unavailable(reply);
       return reply.send(
         await options.service.getAnnouncements(actor(context)),
@@ -103,15 +100,12 @@ export function registerCommunicationRoutes(
       const body = announcementSaveBody.safeParse(request.body);
       if (!params.success || !body.success)
         return reply.status(400).send({ error: "Valid announcement required" });
-      const context = await authorize(
+      // No gate here: the service asks the core (announcement.write, K1-K3).
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "announcements.manage",
         options.contextResolver,
-        reply,
-        "Announcement management required",
       );
-      if (!context) return;
       if (!options.service) return unavailable(reply);
       return reply.status(body.data.announcement_id ? 200 : 201).send(
         await options.service.saveAnnouncement({
@@ -124,7 +118,9 @@ export function registerCommunicationRoutes(
     },
   );
 
-  for (const action of ["publish", "cancel"] as const) {
+  // Publish also republishes an unpublished one (K4); the other three are
+  // its states (Mert, 2026-10-02).
+  for (const action of ["publish", "unpublish", "archive", "restore"] as const) {
     app.post(
       `/v1/workspaces/:workspaceId/communications/announcements/:announcementId/${action}`,
       async (request, reply) => {
@@ -134,15 +130,11 @@ export function registerCommunicationRoutes(
           return reply
             .status(400)
             .send({ error: "Valid announcement revision required" });
-        const context = await authorize(
+        const context = await resolveActor(
           request.headers.authorization,
           params.data.workspaceId,
-          "announcements.manage",
           options.contextResolver,
-          reply,
-          "Announcement management required",
         );
-        if (!context) return;
         if (!options.service) return unavailable(reply);
         const input = {
           ...actor(context),
@@ -152,7 +144,7 @@ export function registerCommunicationRoutes(
         return reply.send(
           action === "publish"
             ? await options.service.publishAnnouncement(input)
-            : await options.service.cancelAnnouncement(input),
+            : await options.service.setAnnouncementState({ ...input, action }),
         );
       },
     );
@@ -164,15 +156,11 @@ export function registerCommunicationRoutes(
       const params = announcementParams.safeParse(request.params);
       if (!params.success)
         return reply.status(400).send({ error: "Valid announcement required" });
-      const context = await authorize(
+      const context = await resolveActor(
         request.headers.authorization,
         params.data.workspaceId,
-        "announcements.read",
         options.contextResolver,
-        reply,
-        "Announcement access required",
       );
-      if (!context) return;
       if (!options.service) return unavailable(reply);
       return reply.send(
         await options.service.acknowledgeAnnouncement({

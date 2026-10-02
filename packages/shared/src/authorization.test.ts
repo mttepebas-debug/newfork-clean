@@ -183,11 +183,18 @@ describe("expected() outside the matrix", () => {
 
   it("gives the whole organization to admin and owner only", () => {
     const org = { locations: "organization" } as const;
-    expect(expected(owner, "announcement.write", org)).toBe(true);
-    expect(expected(admin, "important_date.write", org)).toBe(true);
+    expect(expected(owner, "announcement.write_wide")).toBe(true);
+    expect(expected(admin, "important_date.write_wide")).toBe(true);
     expect(expected(admin, "employee.create", org)).toBe(true);
-    expect(expected(boss, "announcement.write", org)).toBe(false);
+    expect(expected(boss, "announcement.write_wide")).toBe(false);
     expect(expected(boss, "employee.create", org)).toBe(false);
-    expect(expected(boss, "important_date.write", org)).toBe(false);
+    expect(expected(boss, "important_date.write_wide")).toBe(false);
+  });
+
+  it("keeps a one-location announcement or date at exactly one location (K1)", () => {
+    const org = { locations: "organization" } as const;
+    expect(expected(owner, "announcement.write", org)).toBe(false);
+    expect(expected(owner, "important_date.write", { locations: ["K", "B"] })).toBe(false);
+    expect(expected(owner, "announcement.write", { locations: ["K"] })).toBe(true);
   });
 });

@@ -11,6 +11,7 @@ export const authzActionKeys = [
   "announcement.acknowledge",
   "announcement.read",
   "announcement.write",
+  "announcement.write_wide",
   "audit.read",
   "availability.note_read",
   "availability.own",
@@ -41,6 +42,7 @@ export const authzActionKeys = [
   "exchange.offer_own",
   "exchange.read",
   "important_date.write",
+  "important_date.write_wide",
   "membership.read",
   "notifications.read_own",
   "onboarding.review",
@@ -107,6 +109,7 @@ interface TargetedRule {
  */
 export const targetedAuthzActions = {
   "announcement.write": { permission: "announcements.manage" },
+  "announcement.write_wide": { permission: "announcements.manage" },
   "audit.read": { permission: "workspace.manage" },
   "availability.note_read": { person: true, permission: "availability.read" },
   "availability.team_read": { person: true, permission: "availability.read" },
@@ -127,6 +130,7 @@ export const targetedAuthzActions = {
   "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
   "exchange.offer_own": { person: true, permission: null, own: true },
   "important_date.write": { permission: "important_dates.manage" },
+  "important_date.write_wide": { permission: "important_dates.manage" },
   "membership.read": { person: true, permission: null },
   "notifications.read_own": { permission: null, own: true, restrictedOk: true },
   "requests.read": { person: true, permission: "schedule.time_off_requests.read" },
@@ -312,9 +316,17 @@ export function expected<A extends TargetedAuthzAction>(
     case "employee.create":
     case "schedule.read":
     case "schedule.publish":
+      return atPlace();
+
     case "announcement.write":
     case "important_date.write":
-      return atPlace();
+      // A record at exactly one location (KARARLAR "Duyurular ve önemli
+      // tarihler" K1); several, or the whole workspace, is *.write_wide.
+      return listed !== null && listed.length === 1 && (high || covers);
+
+    case "announcement.write_wide":
+    case "important_date.write_wide":
+      return high;
 
     case "schedule.edit":
     case "schedule.export":

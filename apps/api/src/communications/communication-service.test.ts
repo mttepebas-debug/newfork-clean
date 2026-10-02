@@ -33,7 +33,7 @@ describe("communication service notification bridge", () => {
             read_at: null,
             can_edit: false,
             can_publish: false,
-            can_cancel: false,
+            can_archive: false,
           },
         ],
       },

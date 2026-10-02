@@ -57,7 +57,7 @@ function communicationServiceMock(): CommunicationService {
     getAnnouncements: vi.fn(),
     saveAnnouncement: vi.fn(),
     publishAnnouncement: vi.fn(),
-    cancelAnnouncement: vi.fn(),
+    setAnnouncementState: vi.fn(),
     acknowledgeAnnouncement: vi.fn(),
     getNotifications: vi.fn(),
     actOnNotification: vi.fn(),
@@ -119,9 +119,9 @@ describe("communication routes", () => {
       },
       {
         method: "POST",
-        url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/cancel`,
+        url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/archive`,
         payload: { expected_revision: 1 },
-        serviceMethod: "cancelAnnouncement",
+        serviceMethod: "setAnnouncementState",
       },
       {
         method: "GET",
@@ -383,6 +383,66 @@ describe("communication routes", () => {
       expect(response.statusCode).toBe(404);
       expect(response.json()).toMatchObject({ reason: "authz.not_member" });
       expect(service[method]).not.toHaveBeenCalled();
+      await app.close();
+    });
+  });
+  // FB-6.7: announcements are the core's (announcement.read / .write /
+  // .write_wide / .acknowledge); the routes keep no permission gate.
+  describe("Announcements ask the core", () => {
+    const announcementId = "a8200000-0000-4000-8000-000000000001";
+    const announcement = {
+      title: "Service briefing", body: "Doors open at four.", category: "operations", audience_roles: ["employee"],
+      location_ids: [], publish_at: null, expires_at: null, action_url: null,
+    };
+    const routes = [
+      ["list", "getAnnouncements", "GET", `/v1/workspaces/${workspaceId}/communications/announcements`, undefined],
+      ["save", "saveAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements`, { announcement_id: null, expected_revision: null, announcement }],
+      ["publish", "publishAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/publish`, { expected_revision: 1 }],
+      ["unpublish", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unpublish`, { expected_revision: 1 }],
+      ["archive", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/archive`, { expected_revision: 1 }],
+      ["restore", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/restore`, { expected_revision: 1 }],
+      ["acknowledgement", "acknowledgeAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/acknowledge`, undefined],
+    ] as const;
+    const manager = {
+      ...activeContext,
+      membership: { ...activeContext.membership, role: "manager" as const, allLocations: false },
+      permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"],
+    } satisfies ActiveWorkspaceContext;
+
+    it.each(routes)("hands the %s to the database, whose refusal answers 403 with its reason", async (_name, method, verb, url, payload) => {
+      const service = communicationServiceMock();
+      vi.mocked(service[method]).mockRejectedValue(
+        new HttpError("Not allowed", 403, { reason: "authz.out_of_scope", detail: "announcement.write" }),
+      );
+      const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer manager-token" }, payload });
+      expect(service[method]).toHaveBeenCalledWith(expect.objectContaining({ actorUserId: userId, workspaceId }));
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.out_of_scope" });
+      await app.close();
+    });
+
+    it.each(routes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, method, verb, url, payload) => {
+      const service = communicationServiceMock();
+      const app = buildApp({ contextResolver: { resolve: async () => null }, communicationService: service });
+      const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer stranger-token" }, payload });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      expect(service[method]).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    it("passes the state action through and refuses an unknown one", async () => {
+      const service = communicationServiceMock();
+      vi.mocked(service.setAnnouncementState).mockResolvedValue({
+        announcement_id: announcementId, status: "unpublished", revision: 3, recipient_count: 0, archived_at: null,
+      });
+      const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+      const ok = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unpublish`, headers: { authorization: "Bearer manager-token" }, payload: { expected_revision: 2 } });
+      expect(ok.statusCode).toBe(200);
+      expect(service.setAnnouncementState).toHaveBeenCalledWith(expect.objectContaining({ action: "unpublish", expectedRevision: 2 }));
+      const unknown = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/cancel`, headers: { authorization: "Bearer manager-token" }, payload: { expected_revision: 2 } });
+      expect(unknown.statusCode).toBe(404);
       await app.close();
     });
   });

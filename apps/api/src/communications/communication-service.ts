@@ -8,6 +8,7 @@ import {
   workspaceTodoSchema,
   type AnnouncementInput,
   type AnnouncementList,
+  type AnnouncementStateAction,
   type NotificationAction,
   type NotificationInbox,
   type OwnerSetupChecklistItemId,
@@ -54,8 +55,9 @@ export interface CommunicationService {
   publishAnnouncement(
     input: ActorInput & { announcementId: string; expectedRevision: number },
   ): Promise<z.infer<typeof announcementMutationSchema>>;
-  cancelAnnouncement(
-    input: ActorInput & { announcementId: string; expectedRevision: number },
+  /** Unpublish, archive or restore; republish is publishAnnouncement. */
+  setAnnouncementState(
+    input: ActorInput & { announcementId: string; expectedRevision: number; action: AnnouncementStateAction },
   ): Promise<z.infer<typeof announcementMutationSchema>>;
   acknowledgeAnnouncement(
     input: ActorInput & { announcementId: string },
@@ -162,12 +164,13 @@ export function createCommunicationServiceWithClient(
         }),
       );
     },
-    async cancelAnnouncement(input) {
+    async setAnnouncementState(input) {
       return announcementMutationSchema.parse(
-        await rpc("cancel_announcement_service", {
+        await rpc("set_announcement_state_service", {
           ...actorArgs(input),
           target_announcement_id: input.announcementId,
           target_expected_revision: input.expectedRevision,
+          target_action: input.action,
         }),
       );
     },

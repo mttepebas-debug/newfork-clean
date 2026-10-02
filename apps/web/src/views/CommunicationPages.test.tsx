@@ -188,7 +188,7 @@ describe("Phase 8 communication pages", () => {
   });
 
   it("shows employees a read-only list they can acknowledge", async () => {
-    const readOnly = { can_edit: false, can_publish: false, can_cancel: false };
+    const readOnly = { can_edit: false, can_publish: false, can_archive: false };
     vi.mocked(getAnnouncements).mockResolvedValue({
       workspace_id: workspaceId,
       can_manage: false,
@@ -397,7 +397,7 @@ describe("Phase 8 communication pages", () => {
       expect(transitionAnnouncement).toHaveBeenCalledWith(
         workspaceId,
         draft.id,
-        "cancel",
+        "archive",
         draft.revision,
       ),
     );
@@ -475,7 +475,7 @@ function announcement(
     read_at: null,
     can_edit: true,
     can_publish: true,
-    can_cancel: true,
+    can_archive: true,
     ...rest,
   };
 }

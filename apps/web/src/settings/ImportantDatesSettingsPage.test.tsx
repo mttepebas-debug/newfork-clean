@@ -16,7 +16,7 @@ import ImportantDatesSettingsPage from "./ImportantDatesSettingsPage";
 import {
   listImportantDates,
   saveImportantDate,
-  setImportantDateArchived,
+  setImportantDateState,
 } from "./organization-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -82,6 +82,10 @@ const dates = [
     note: "Restaurant-wide holiday.",
     affects_scheduling: true,
     archived_at: null,
+    status: "published",
+    can_edit: true,
+    can_unpublish: true,
+    can_archive: true,
   },
   {
     id: "90000000-0000-4000-8000-000000000002",
@@ -96,6 +100,10 @@ const dates = [
     note: "",
     affects_scheduling: true,
     archived_at: null,
+    status: "published",
+    can_edit: true,
+    can_unpublish: true,
+    can_archive: true,
   },
 ] satisfies ImportantDate[];
 
@@ -103,13 +111,14 @@ vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("./organization-data", () => ({
   listImportantDates: vi.fn(),
   saveImportantDate: vi.fn(),
-  setImportantDateArchived: vi.fn(),
+  setImportantDateState: vi.fn(),
 }));
 
 function renderPage() {
-  vi.mocked(listImportantDates).mockResolvedValue({ dates, locations: [location] });
+  // What may be done comes from the server (FB-6.7): the owner, anywhere.
+  vi.mocked(listImportantDates).mockResolvedValue({ dates, locations: [location], can_manage: true, can_target_workspace: true });
   vi.mocked(saveImportantDate).mockResolvedValue(undefined);
-  vi.mocked(setImportantDateArchived).mockResolvedValue(undefined);
+  vi.mocked(setImportantDateState).mockResolvedValue(undefined);
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });

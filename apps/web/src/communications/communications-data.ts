@@ -155,7 +155,8 @@ export async function acknowledgeAnnouncement(
 export async function transitionAnnouncement(
   workspaceId: string,
   announcementId: string,
-  action: "publish" | "cancel",
+  // Publish also republishes an unpublished one (FB-6.7).
+  action: "publish" | "unpublish" | "archive" | "restore",
   expectedRevision: number,
 ) {
   return announcementMutationSchema.parse(

@@ -1,10 +1,11 @@
 {
- "sourceSha256": "23849114ef220addd918293cff239e37a8bc718b00c836acd6c77d287c0b3a65",
+ "sourceSha256": "4b4d2572bac5f6cf677002a0fe601990208b28d46d0b797359a629d51b6eb139",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
   "announcement.read",
   "announcement.write",
+  "announcement.write_wide",
   "audit.read",
   "availability.note_read",
   "availability.own",
@@ -35,6 +36,7 @@
   "exchange.offer_own",
   "exchange.read",
   "important_date.write",
+  "important_date.write_wide",
   "membership.read",
   "notifications.read_own",
   "onboarding.review",
@@ -813,7 +815,14 @@
    "targetKind": "location",
    "permission": "announcements.manage",
    "coreKey": "announcement.write",
-   "blank": "org"
+   "blank": "null"
+  },
+  {
+   "key": "announcement.write_wide",
+   "targetKind": "workspace",
+   "permission": "announcements.manage",
+   "coreKey": "announcement.write_wide",
+   "blank": "null"
   },
   {
    "key": "availability.note_read",
@@ -960,13 +969,13 @@
    "targetKind": "location",
    "permission": "important_dates.manage",
    "coreKey": "important_date.write",
-   "blank": "org"
+   "blank": "null"
   },
   {
-   "key": "legacy.communication_capability",
-   "targetKind": "location",
-   "permission": "announcements.manage",
-   "coreKey": "announcement.write",
+   "key": "important_date.write_wide",
+   "targetKind": "workspace",
+   "permission": "important_dates.manage",
+   "coreKey": "important_date.write_wide",
    "blank": "null"
   },
   {
@@ -1390,7 +1399,7 @@
    "announcement.write",
    "kaan",
    "none",
-   "allow"
+   "deny"
   ],
   [
    "announcement.write",
@@ -1486,7 +1495,7 @@
    "announcement.write",
    "olcay",
    "none",
-   "allow"
+   "deny"
   ],
   [
    "announcement.write",
@@ -1630,13 +1639,115 @@
    "announcement.write",
    "zeynep",
    "none",
-   "allow"
+   "deny"
   ],
   [
    "announcement.write",
    "zeynep",
    "x:K",
    "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "derya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "announcement.write_wide",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "announcement.write_wide",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "announcement.write_wide",
+   "zeynep",
+   "workspace",
+   "allow"
   ],
   [
    "availability.note_read",
@@ -18220,7 +18331,7 @@
    "important_date.write",
    "kaan",
    "none",
-   "allow"
+   "deny"
   ],
   [
    "important_date.write",
@@ -18316,7 +18427,7 @@
    "important_date.write",
    "olcay",
    "none",
-   "allow"
+   "deny"
   ],
   [
    "important_date.write",
@@ -18460,7 +18571,7 @@
    "important_date.write",
    "zeynep",
    "none",
-   "allow"
+   "deny"
   ],
   [
    "important_date.write",
@@ -18469,412 +18580,106 @@
    "deny"
   ],
   [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "ali",
-   "B",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "ali",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "ali",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "ali",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "aydan",
-   "B",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "aydan",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "aydan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "aydan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "ayse",
-   "B",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "ayse",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "ayse",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "ayse",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "can",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "can",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "can",
-   "none",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "can",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "derya",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "derya",
-   "K",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "derya",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "derya",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "emre",
-   "B",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "emre",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "emre",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "emre",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "kaan",
-   "B",
+   "workspace",
    "allow"
   ],
   [
-   "legacy.communication_capability",
-   "kaan",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "kaan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "kaan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "mehmet",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "mehmet",
-   "K",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "mehmet",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "mehmet",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "nil",
-   "B",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "nil",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "nil",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "nil",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "nur",
-   "B",
+   "workspace",
    "deny"
   ],
   [
-   "legacy.communication_capability",
-   "nur",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "nur",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "nur",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
+   "important_date.write_wide",
    "olcay",
-   "B",
+   "workspace",
    "allow"
   ],
   [
-   "legacy.communication_capability",
-   "olcay",
-   "K",
+   "important_date.write_wide",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "important_date.write_wide",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "important_date.write_wide",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "important_date.write_wide",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "important_date.write_wide",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "important_date.write_wide",
+   "zeynep",
+   "workspace",
    "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "olcay",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "olcay",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "pelin",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "pelin",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "pelin",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "pelin",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "remzi",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "remzi",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "remzi",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "remzi",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "sami",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "sami",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "sami",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "sami",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "veli",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "veli",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "veli",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "veli",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "xavier",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "xavier",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "xavier",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "xavier",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "zeynep",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "zeynep",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.communication_capability",
-   "zeynep",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.communication_capability",
-   "zeynep",
-   "x:K",
-   "deny"
   ],
   [
    "legacy.schedule_can_manage",

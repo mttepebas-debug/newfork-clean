@@ -1127,8 +1127,42 @@ export const importantDateSchema = z.object({
   note: z.string().max(500),
   affects_scheduling: z.boolean(),
   archived_at: z.string().datetime({ offset: true }).nullable(),
+  /** Unpublished: hidden from its people and the Schedule, still editable (Mert, 2026-10-02). */
+  status: z.enum(["published", "unpublished"]).optional(),
+  created_by: z.string().uuid().nullable().optional(),
+  author_name: z.string().optional(),
+  updated_at: z.string().datetime({ offset: true }).optional(),
+  // What this person may do to it (K1-K3, from the server).
+  can_edit: z.boolean().optional(),
+  can_unpublish: z.boolean().optional(),
+  can_republish: z.boolean().optional(),
+  can_archive: z.boolean().optional(),
+  can_restore: z.boolean().optional(),
 });
 export type ImportantDate = z.infer<typeof importantDateSchema>;
+
+/** Unpublish, republish, archive, restore an important date. */
+export const importantDateStateActionSchema = z.enum(["unpublish", "republish", "archive", "restore"]);
+export type ImportantDateStateAction = z.infer<typeof importantDateStateActionSchema>;
+
+/** Who changed an important date, when, from what to what (FB-6.7). */
+export const importantDateHistorySchema = z.object({
+  important_date_id: z.string().uuid(),
+  author_user_id: z.string().uuid().nullable(),
+  author_name: z.string(),
+  changes: z.array(
+    z.object({
+      id: z.string().uuid(),
+      action: z.enum(["created", "updated", "unpublished", "republished", "archived", "restored"]),
+      changed_at: z.string().datetime({ offset: true }),
+      actor_user_id: z.string().uuid().nullable(),
+      actor_name: z.string(),
+      before: z.record(z.string(), z.unknown()).nullable(),
+      after: z.record(z.string(), z.unknown()).nullable(),
+    }),
+  ),
+});
+export type ImportantDateHistory = z.infer<typeof importantDateHistorySchema>;
 
 export const importantDateInputSchema = importantDateSchema
   .pick({
@@ -3105,7 +3139,13 @@ export const settingsReadSchemas = {
   "shift-types": z.array(shiftTypeSchema),
   "shift-labels": z.array(shiftLabelSchema),
   // `locations`: where this person may place an important date.
-  "important-dates": z.object({ dates: z.array(importantDateSchema), locations: z.array(locationSchema) }),
+  "important-dates": z.object({
+    dates: z.array(importantDateSchema),
+    locations: z.array(locationSchema),
+    // May add a date at one location / several or the whole workspace (K1).
+    can_manage: z.boolean().optional(),
+    can_target_workspace: z.boolean().optional(),
+  }),
   roles: z.object({ permissions: z.array(permissionDefinitionSchema), roles: z.array(workspaceRoleRecordSchema) }),
   "document-types": z.array(documentTypeSchema),
   acknowledgements: z.object({

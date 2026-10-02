@@ -1,10 +1,12 @@
 import { z } from "zod";
 
+// Archive is archived_at, from any status (Mert, 2026-10-02: unpublish and
+// archive are two things, and both come back).
 export const announcementStatusSchema = z.enum([
   "draft",
   "scheduled",
   "published",
-  "cancelled",
+  "unpublished",
 ]);
 export const announcementCategorySchema = z.enum([
   "general",
@@ -75,20 +77,30 @@ export const announcementRecordSchema = z.object({
   expires_at: z.string().datetime({ offset: true }).nullable(),
   action_url: appActionUrlSchema.nullable(),
   author_name: z.string(),
+  author_user_id: z.string().uuid().nullable().optional(),
   revision: z.coerce.number().int().positive(),
+  /** Goes up when the title, text, category or link changes; acknowledgements reset then (K4). */
+  content_revision: z.coerce.number().int().positive().optional(),
+  acknowledged_count: z.coerce.number().int().nonnegative().optional(),
   created_at: z.string().datetime({ offset: true }),
   updated_at: z.string().datetime({ offset: true }),
   read_at: z.string().datetime({ offset: true }).nullable(),
   acknowledged_at: z.string().datetime({ offset: true }).nullable().optional(),
   can_edit: z.boolean(),
+  /** Publish a draft, or republish an unpublished one. */
   can_publish: z.boolean(),
-  can_cancel: z.boolean(),
+  can_unpublish: z.boolean().optional(),
+  can_archive: z.boolean().optional(),
+  can_restore: z.boolean().optional(),
 });
 export type AnnouncementRecord = z.infer<typeof announcementRecordSchema>;
 
 export const announcementListSchema = z.object({
   workspace_id: z.string().uuid(),
   can_manage: z.boolean(),
+  /** May write for several locations or the whole workspace (K1: admin and owner). */
+  can_target_workspace: z.boolean().optional(),
+  /** Where this person may write a one-location announcement. */
   locations: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
   departments: z
     .array(z.object({ id: z.string().uuid(), name: z.string() }))
@@ -111,7 +123,12 @@ export const announcementMutationSchema = z.object({
   announcement_id: z.string().uuid(),
   revision: z.coerce.number().int().positive(),
   recipient_count: z.coerce.number().int().nonnegative().default(0),
+  archived_at: z.string().datetime({ offset: true }).nullable().optional(),
 });
+
+/** Unpublish, archive, restore (Mert, 2026-10-02). Republish is publish. */
+export const announcementStateActionSchema = z.enum(["unpublish", "archive", "restore"]);
+export type AnnouncementStateAction = z.infer<typeof announcementStateActionSchema>;
 
 export const notificationCategorySchema = z.enum([
   "announcement",

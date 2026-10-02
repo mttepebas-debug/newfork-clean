@@ -8,7 +8,10 @@ import {
   managementAndOwnerSentence,
   organizationLogoMaxBytes,
   organizationLogoMimeTypes,
+  importantDateHistorySchema,
   importantDateInputSchema,
+  type ImportantDateHistory,
+  type ImportantDateStateAction,
   schedulingSettingsInputSchema,
   schedulingSettingsSchema,
   shiftLabelInputSchema,
@@ -409,44 +412,41 @@ export async function saveImportantDate(
   input: ImportantDateInput,
   id?: string,
 ): Promise<void> {
+  // Through the server (FB-6.7): the database decides who may (K1-K3), tells
+  // the people it reaches and keeps the history; the browser writes nothing.
   const values = importantDateInputSchema.parse(input);
   const locationIds = [
     ...new Set(
       values.location_ids ?? (values.location_id ? [values.location_id] : []),
     ),
   ].sort();
-  const payload = {
-    ...values,
-    location_ids: locationIds,
-    location_id: locationIds.length === 1 ? locationIds[0] : null,
-  };
-  const query = id
-    ? client()
-        .from("important_dates")
-        .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq("id", id)
-        .eq("workspace_id", workspaceId)
-    : client()
-        .from("important_dates")
-        .insert({ ...payload, workspace_id: workspaceId });
-  const { error } = await query;
-  message(error);
+  await request(workspaceId, id ? `/settings/important-dates/${id}` : "/settings/important-dates", {
+    method: id ? "PUT" : "POST",
+    body: JSON.stringify({
+      ...values,
+      location_ids: locationIds,
+      location_id: locationIds.length === 1 ? locationIds[0] : null,
+    }),
+  });
 }
 
-export async function setImportantDateArchived(
+/** Unpublish, republish, archive or restore an important date (Mert, 2026-10-02). */
+export async function setImportantDateState(
   workspaceId: string,
   id: string,
-  archived: boolean,
+  action: ImportantDateStateAction,
 ): Promise<void> {
-  const { error } = await client()
-    .from("important_dates")
-    .update({
-      archived_at: archived ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .eq("workspace_id", workspaceId);
-  message(error);
+  await request(workspaceId, `/settings/important-dates/${id}/${action}`, { method: "POST" });
+}
+
+/** Who changed an important date, when, from what to what. */
+export async function getImportantDateHistory(
+  workspaceId: string,
+  id: string,
+): Promise<ImportantDateHistory> {
+  return importantDateHistorySchema.parse(
+    await request(workspaceId, `/settings/important-dates/${id}/history`),
+  );
 }
 
 export async function listShiftTypes(

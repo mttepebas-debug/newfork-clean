@@ -421,7 +421,7 @@ export function AnnouncementsPage() {
                           ? "Edit announcement"
                           : "View announcement"}
                       </button>
-                      {item.can_cancel && !isArchived(item) && (
+                      {item.can_archive && !isArchived(item) && (
                         <button
                           type="button"
                           className="job-danger-text"
@@ -553,7 +553,7 @@ function AnnouncementEditor({
     },
   });
   const transition = useMutation({
-    mutationFn: (action: "publish" | "cancel") =>
+    mutationFn: (action: "publish" | "archive") =>
       transitionAnnouncement(
         workspaceId,
         item!.id,
@@ -563,8 +563,8 @@ function AnnouncementEditor({
     onSuccess: async (result, action) => {
       await refresh();
       onDone(
-        action === "cancel"
-          ? "Announcement deleted and archived."
+        action === "archive"
+          ? "Announcement archived."
           : `${capitalize(result.status)} for ${result.recipient_count} recipients.`,
       );
       onClose();
@@ -573,12 +573,12 @@ function AnnouncementEditor({
   const busy = save.isPending || transition.isPending;
   // The row menu's Delete opens this editor with its delete already armed.
   const deleteConfirm = useConfirmClick(
-    () => transition.mutate("cancel"),
+    () => transition.mutate("archive"),
     new URLSearchParams(window.location.search).has("delete"),
   );
   const confirmDelete = deleteConfirm.armed;
   const canSave = editable && parsed.success && (!item || changed) && !busy;
-  const canDelete = item && item.can_cancel && !isArchived(item);
+  const canDelete = item && item.can_archive && !isArchived(item);
   const actionUrl = safeAppActionUrl(item?.action_url ?? null);
   const update = <K extends keyof AnnouncementInput>(
     key: K,
@@ -1029,7 +1029,7 @@ function audienceLabel(item: AnnouncementRecord) {
   return labels.join(" · ");
 }
 function isArchived(item: AnnouncementRecord) {
-  return Boolean(item.archived_at) || item.status === "cancelled";
+  return Boolean(item.archived_at);
 }
 function statusLabel(item: AnnouncementRecord) {
   return isArchived(item) ? "Archived" : capitalize(item.status);
