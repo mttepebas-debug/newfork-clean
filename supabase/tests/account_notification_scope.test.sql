@@ -24,7 +24,7 @@ select is(pg_temp.inbox()->'notifications'->0->>'workspace_id',null,'account row
 select is(jsonb_array_length(pg_temp.inbox('b5510000-0000-4000-8000-000000000001')->'notifications'),2,'workspace A includes global plus A only');
 select is(jsonb_array_length(pg_temp.inbox('b5510000-0000-4000-8000-000000000002')->'notifications'),2,'workspace B includes same global plus B only');
 select is(jsonb_array_length(pg_temp.inbox(null,'b5500000-0000-4000-8000-000000000003')->'notifications'),0,'other account cannot see either user event');
-select throws_ok($$select pg_temp.inbox('b5510000-0000-4000-8000-000000000001','b5500000-0000-4000-8000-000000000002')$$,'42501','notification inbox access required','non-member cannot read tenant even with own global event');
+select throws_ok($$select pg_temp.inbox('b5510000-0000-4000-8000-000000000001','b5500000-0000-4000-8000-000000000002')$$,'42501','Not allowed','non-member cannot read tenant even with own global event');
 select is(pg_temp.inbox('b5510000-0000-4000-8000-000000000001')->>'unread_count','2','combined unread badge counts both scopes');
 create temp table first_page as select public.get_notification_inbox_v2_service('b5500000-0000-4000-8000-000000000001','b5510000-0000-4000-8000-000000000001',null,null,null,null,null,1) j;
 select ok((select j->'next_cursor' <> 'null'::jsonb from first_page),'mixed inbox has a next cursor');

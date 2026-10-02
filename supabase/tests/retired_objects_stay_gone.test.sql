@@ -318,6 +318,17 @@ select 'function', name, '6.7' from unnest(array[
   'announcement_member_matches_locations_service', 'synchronize_announcement_notification_lifecycle_service',
   'can_manage_important_date', 'audit_important_date_change', 'normalize_important_date_locations'
 ]) name;
+-- FB-6.6: documents, signature templates and onboarding ask the core. The
+-- browser-era functions behind the eleven Settings bridges, the old person
+-- helper and the onboarding activation entry point go (activation is internal).
+insert into retired (kind, name, step)
+select 'function', name, '6.6' from unnest(array[
+  'approve_signature_retention_policy', 'publish_signature_template', 'reorder_document_types',
+  'save_document_type', 'save_signature_retention_policy', 'save_signature_template_draft',
+  'set_document_type_archived', 'set_signature_retention_policy_archived', 'set_signature_template_archived',
+  'unapprove_signature_retention_policy', 'unpublish_signature_template',
+  'service_actor_can_access_employee', 'document_publication_can_access', 'activate_employee_onboarding_case_service'
+]) name;
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

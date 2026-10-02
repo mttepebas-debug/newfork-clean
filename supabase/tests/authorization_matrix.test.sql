@@ -851,8 +851,6 @@ create temporary table known_gap (
   reason text not null
 );
 insert into known_gap values
-  ('restricted-no-notifications', '{aydan}', '{notifications.read_own}', null,
-   'somebody who has not finished onboarding cannot open their own notifications (stage 6, onboarding)'),
   ('legacy-blank-location', null,
    '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish}', '{none}',
    'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)');

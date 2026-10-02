@@ -247,7 +247,7 @@ select throws_ok(
     'e1410000-0000-4000-8000-000000000001'
   )$$,
   '42501',
-  'notification inbox access required',
+  'Not allowed',
   'outsiders cannot read a workspace inbox'
 );
 select throws_ok(

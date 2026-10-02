@@ -142,7 +142,7 @@ select throws_ok(
     '24000000-0000-4000-8000-000000000001', null, 'Unauthorized', '',
     false, false, array['pdf']::text[], false, 30
   )$$,
-  '42501', 'document management access required', 'manager cannot create a document type'
+  '42501', 'Not allowed', 'manager cannot create a document type'
 );
 
 set local role authenticated;
@@ -184,13 +184,15 @@ select is(
     '14000000-0000-4000-8000-000000000003', '24000000-0000-4000-8000-000000000001')),
   2, 'custom document role can read the catalog'
 );
-select lives_ok(
+-- Writing Settings is an owner's or an admin's: a manager-type role reaches no
+-- workspace-wide write under M2, whatever permission it holds (org/write).
+select throws_ok(
   $$select public.save_document_type_service(
     '14000000-0000-4000-8000-000000000003',
     '24000000-0000-4000-8000-000000000001', null, 'Profile photo', '',
     false, true, array['jpeg', 'png', 'webp']::text[], false, 30
   )$$,
-  'custom document manager can create a type'
+  '42501', 'Not allowed', 'a manager-type role with documents.manage still cannot create a type'
 );
 
 set local role service_role;
@@ -214,7 +216,7 @@ select throws_ok(
     '24000000-0000-4000-8000-000000000001', null, 'Cross tenant', '',
     false, false, array['pdf']::text[], false, 30
   )$$,
-  '42501', 'document management access required', 'other tenant cannot create document types'
+  '42501', 'Not allowed', 'other tenant cannot create document types'
 );
 
 select * from finish();

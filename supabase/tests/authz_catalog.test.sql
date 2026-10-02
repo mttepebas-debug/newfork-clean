@@ -16,10 +16,11 @@ where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace);
 -- Reads the signed-in user from the JWT; at the end only app_private.rls_can()
 -- (stage 4a), which this count leaves out. FB-6.2.6 dropped can_access_employee (27 -> 25)
 -- and can_manage_employee_record (25 -> 24), FB-6.7 can_manage_important_date and the
--- important date audit trigger (24 -> 22).
+-- important date audit trigger (24 -> 22), FB-6.6 the eleven document and signature functions behind
+-- the bridges (22 -> 11).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'auth\.uid\(\)' and name <> 'rls_can'),
-  '<=', 22, 'functions that call auth.uid() only go down'
+  '<=', 11, 'functions that call auth.uid() only go down'
 );
 
 -- Pretends to be the caller by writing the JWT subject: the bridges that let a
@@ -27,10 +28,11 @@ select cmp_ok(
 -- Employees' two read bridges (43 -> 41), FB-6.2.4 the four write bridges and
 -- the onboarding activation's (41 -> 36), FB-6.2.5 the four invitation services' (36 -> 32),
 -- FB-6.2.6 Settings > Jobs' six and catalog deletion's (32 -> 26), the onboarding review's (26 -> 25),
--- BL-475 the department and job reorder command, gone (25 -> 24).
+-- BL-475 the department and job reorder command, gone (25 -> 24), FB-6.6 the eleven Settings >
+-- Documents and Signature templates bridges (24 -> 13).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'set_config\(\s*''request\.jwt\.claim'),
-  '<=', 24, 'functions that write request.jwt.claim only go down'
+  '<=', 13, 'functions that write request.jwt.claim only go down'
 );
 
 -- Decides scope or rank on its own instead of asking the core. Target 0
@@ -40,11 +42,11 @@ select cmp_ok(
 -- can_access_employee's two copies (45 -> 43), can_manage_employee_record (43 -> 42),
 -- the to-do list's own role reading (42 -> 41), FB-6.3.3 the time-off notice
 -- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
--- and the announcement matchers (40 -> 32).
+-- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 32, 'functions with their own scope or rank logic only go down'
+  '<=', 26, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
@@ -93,11 +95,11 @@ select is(
 -- 176 after the onboarding review, 175 after the Workspace layout (KK-36),
 -- 173 after the reorder command went (BL-475), 171 after the old time-off
 -- decision paths went (FB-6.3.7), 161 after announcements and important dates moved to the
--- core (FB-6.7). Target 0.
+-- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 161, 'refusals without an authz hint only go down'
+  '<=', 111, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
@@ -129,28 +131,22 @@ select is(
   'the core answers for exactly these actions'
 );
 
--- The last old person helper answers only for documents and onboarding,
--- which move to the core with FB-6.6 and take it with them (P3). The list
--- only shrinks: nothing else starts asking it.
+-- The old permission helper: FB-6.6 took documents, signature templates and
+-- onboarding off it (30 -> 11). What still asks it only goes down, and nothing
+-- in those areas starts again.
 select is(
   array(
     select p.proname::text from pg_proc p
     where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
-      and p.prosrc ~ '(^|[^_a-z])service_actor_can_access_employee\s*\('
-      and p.proname <> 'service_actor_can_access_employee'
-      and p.proname not in (
-        'apply_lifecycle_definition', 'document_actor_can_read', 'document_definition_target_options_service',
-        'document_notification_policy', 'document_publication_can_access', 'document_timezone_admin',
-        'enqueue_document_notification', 'extend_employee_document_deadline_service',
-        'get_employee_onboarding_review_service', 'preview_employee_document_assignments_service',
-        'preview_lifecycle_definition', 'review_employee_document_lifecycle_service',
-        'review_employee_onboarding_before_availability_service', 'set_employee_document_exemption_service',
-        'sync_expiring_document_todos_service'
-      )
+      and p.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\('
+      and (p.proname ~ '(document|onboarding|signature|lifecycle)'
+           or (select count(*) from pg_proc q
+               where q.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+                 and q.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\(') > 11)
     order by 1
   ),
   '{}'::text[],
-  'only documents and onboarding still ask service_actor_can_access_employee'
+  'the old permission helper is asked by at most 11 functions, none about documents or onboarding'
 );
 
 select * from finish();

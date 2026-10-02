@@ -67,7 +67,7 @@ select is((select app_private.document_obligation_blocked(r,now()) from public.e
 update public.employee_onboarding_requirements set lifecycle_settings=jsonb_set(lifecycle_settings,'{mode}','"optional"') where id='65200000-0000-4000-8000-000000000001';
 select is((select app_private.document_obligation_blocked(r,now()) from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),false,'optional never restricts access');
 
-select throws_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'P0002','document unavailable','unlinked account cannot read private history');
+select throws_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'42501','Not allowed','unlinked account cannot read private history');
 select ok(not has_table_privilege('authenticated','public.employee_document_submissions','SELECT'),'authenticated cannot directly bypass document RPC scope');
 select ok(not has_function_privilege('authenticated','public.review_employee_document_lifecycle_service(uuid,uuid,uuid,integer,uuid,text,text,text,jsonb)','EXECUTE'),'authenticated cannot forge a service actor');
 select ok((select relrowsecurity from pg_class where oid='public.employee_document_submission_files'::regclass),'file membership has RLS');
@@ -78,7 +78,7 @@ select throws_ok($$select * from public.employee_document_submissions$$,'42501',
 select throws_ok($$select public.review_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',8,null,'approve','','full','[]')$$,'42501',null,'authenticated caller cannot invoke privileged review RPC');
 set local role service_role;
 select lives_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'service RPC permits own retained document history');
-select throws_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'P0002','document unavailable','service RPC denies wrong actor without relying on RLS bypass');
+select throws_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'42501','Not allowed','service RPC denies wrong actor without relying on RLS bypass');
 select throws_ok($$insert into public.employee_document_submission_files(submission_id,file_id,requirement_id,workspace_id,employee_id)
  select s.id,f.file_id,s.requirement_id,'25200000-0000-4000-8000-000000000099',s.employee_id
  from public.employee_document_submissions s cross join public.employee_document_submission_files f where s.id<>f.submission_id limit 1$$,'23503',null,'composite submission/file references reject forged tenant');

@@ -212,7 +212,7 @@ select throws_ok(
     '25000000-0000-4000-8000-000000000001', null, 'Unauthorized',
     'signed_at', 30, 'None', 'None'
   )$$,
-  '42501', 'acknowledgement template management access required', 'manager cannot create retention policy'
+  '42501', 'Not allowed', 'manager cannot create retention policy'
 );
 
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000002', true);
@@ -252,13 +252,15 @@ select is(
     '15000000-0000-4000-8000-000000000003', '25000000-0000-4000-8000-000000000001') -> 'templates'),
   1, 'custom role can read acknowledgement templates'
 );
-select lives_ok(
+-- Writing Settings is an owner's or an admin's: a manager-type role reaches no
+-- workspace-wide write under M2, whatever permission it holds (org/write).
+select throws_ok(
   $$select public.save_signature_retention_policy_service(
     '15000000-0000-4000-8000-000000000003',
     '25000000-0000-4000-8000-000000000001', null, 'Short notices',
     'signed_at', 365, 'Workspace notices', 'Internal schedule'
   )$$,
-  'custom template manager can create retention policy'
+  '42501', 'Not allowed', 'a manager-type role with signature_templates.manage still cannot create a retention policy'
 );
 
 set local role postgres;
@@ -285,7 +287,7 @@ select throws_ok(
     'I acknowledge receipt.', 'en-US', '2026-08-17', true, true,
     '25000000-0000-4000-8000-000000000001'
   )$$,
-  '42501', 'acknowledgement template management access required', 'other tenant cannot save acknowledgement drafts'
+  '42501', 'Not allowed', 'other tenant cannot save acknowledgement drafts'
 );
 
 select * from finish();

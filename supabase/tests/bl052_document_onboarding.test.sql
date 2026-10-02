@@ -40,7 +40,7 @@ create function pg_temp.submit_file() returns integer language sql as $$select p
 create function pg_temp.review(decision text) returns integer language sql as $$select public.review_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000001',(pg_temp.req()).workspace_id,(pg_temp.req()).id,(pg_temp.req()).lifecycle_revision,(pg_temp.req()).submitted_document_id,decision,'Review reason','full',(select jsonb_agg(jsonb_build_object('id',file_id,'decision','keep')) from public.employee_document_submission_files where submission_id=(pg_temp.req()).submitted_document_id))$$;
 select ok(app_private.document_initial_action_missing(pg_temp.req()),'conditional onboarding needs an initial action');
 select throws_ok($$select pg_temp.submit_case()$$,'23514',null,'onboarding submit cannot skip conditional action');
-select throws_ok($$select public.activate_employee_onboarding_case_service('55200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000001','employee.activated')$$,'23514',null,'manual activation cannot skip conditional action');
+select throws_ok($$select app_private.activate_employee_onboarding_case('55200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000001','employee.activated')$$,'23514',null,'manual activation cannot skip conditional action');
 select is(public.get_employee_onboarding_service('15200000-0000-4000-8000-000000000002')->>'first_actionable_path','/welcome/documents/65200000-0000-4000-8000-000000000001','conditional missing document is actionable in onboarding');
 select lives_ok($$select pg_temp.defer()$$,'initial reason is accepted');
 select ok((pg_temp.req()).deadline_at is null,'initial reason does not start grace before activation');
@@ -81,5 +81,5 @@ select lives_ok($$select pg_temp.upload(4);select pg_temp.submit_file();select p
 update public.employee_onboarding_cases set final_approval_required=true where id='55200000-0000-4000-8000-000000000001';
 select lives_ok($$select pg_temp.review('approve')$$,'Conditional replacement review succeeds');
 select is((select status::text from public.workspace_memberships where id='35200000-0000-4000-8000-000000000002'),'pending_activation','case final-approval snapshot still blocks automatic activation');
-select lives_ok($$select public.activate_employee_onboarding_case_service('55200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000001','employee.activated')$$,'explicit final approval activates the completed case');
+select lives_ok($$select app_private.activate_employee_onboarding_case('55200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000001','employee.activated')$$,'explicit final approval activates the completed case');
 select * from finish();rollback;

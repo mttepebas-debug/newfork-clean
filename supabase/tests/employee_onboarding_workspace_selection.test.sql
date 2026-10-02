@@ -34,7 +34,7 @@ select is((public.get_employee_onboarding_service('a6600000-0000-4000-8000-00000
 select is((public.get_employee_onboarding_service('a6600000-0000-4000-8000-000000000002')->>'case_id')::uuid,
   'a6600000-0000-4000-8000-000000000402'::uuid, 'default selection prefers the open case over the older approved one');
 select throws_ok($q$select public.get_employee_onboarding_service('a6600000-0000-4000-8000-000000000002', 'a6600000-0000-4000-8000-000000000103')$q$,
-  'P0002', 'employee onboarding is unavailable', 'unrelated workspace is unavailable');
+  '42501', 'Not allowed', 'unrelated workspace is unavailable');
 select is((select count(*)::int from pg_proc where oid::regprocedure::text like 'get_employee_onboarding_service(%'), 1, 'getter has a single signature');
 select is((select count(*)::int from pg_proc where proname in ('save_employee_onboarding_profile_service', 'submit_employee_onboarding_service', 'leave_employee_onboarding_service')), 3, 'mutations have a single signature each');
 

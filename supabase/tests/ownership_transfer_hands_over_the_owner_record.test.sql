@@ -215,15 +215,15 @@ select is(
     (select r.lifecycle_revision from public.employee_onboarding_requirements r
      where r.source_id = (select id from required_document) and r.lifecycle_user_id = tests.user('ot:deniz')),
     'Back to work')),
-  '42501',
-  'the excuse cannot be taken back, as for any owner'
+  '42501 authz.rank',
+  'the excuse cannot be taken back, as for any owner: nobody decides on their own document'
 );
 select is(
   pg_temp.refusal(format('select public.set_employee_document_exemption_service(%L, %L, %L, %s, false, %L)',
     tests.user('ot:deniz'), tests.id('ot'), (pg_temp.req('ot:deniz', pg_temp.card())).id,
     (pg_temp.req('ot:deniz', pg_temp.card())).lifecycle_revision - 1, 'Back to work')),
-  '42501',
-  'not even with a stale copy: the owner rule answers before the revision check'
+  '42501 authz.rank',
+  'not even with a stale copy: the core answers before the revision check'
 );
 select is((select count(*)::integer from public.workspace_ownership_transfers
   where workspace_id = tests.id('ot') and status = 'accepted'), 1, 'one transfer was accepted');
