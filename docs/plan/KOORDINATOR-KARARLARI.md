@@ -730,3 +730,12 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** dal main'e girmeden önce kolay.
 - **Durum:** işçinin düzeltme listesinde (madde 15–17, `task/fb-6.7`). Kayıt oturumu `local_43ff0725…` yazdı (besleme #98; koordinatörün isteği).
 - **Mert:** bilgi.
+
+### KK-94 (2026-10-02) FB-6.7 puanı C parçasıyla 10 → 16
+- **Karar:** FB-6.7'nin C parçası (K11–K18: geçmiş önemli tarih kilidi, süresi dolan duyuru, kapalı günün vardiyalara etkisi, üç dereceli "Closed location" ayarı, ekran varyantları) ≈ 0,75 kişi-hafta; aynı ölçekle (kişi-hafta orta noktası × 8) +6, FB-6.7 = 16. Aşama 6–7 toplamı 235 → 241, program 313 → 319.
+- **Neden:** C kapsamı Mert 2026-10-02 kararlarıyla geldi; doğru veri eski sayıdan önce gelir.
+- **Uygulamada etkisi:** görünür değişiklik yok. İlerleme yüzdesi düştü: Aşama 6–7 %67,7 (159 / 235) → %66,0 (159 / 241); program %75,7 → %74,3. Biten iş azalmadı, kalan iş büyüdü.
+- **Dayanak:** ILKELER P11; ILERLEME "Büyüklük ölçütü (puan)"; KK-88.
+- **Geri alma:** kolay — puan ILERLEME §3'te.
+- **Durum:** yürürlükte. Kayıt oturumu `local_43ff0725-b572-4ac9-9d12-8505df3e7816` yazdı (koordinatör `local_abc4d126…`'ın isteği, #98 sonrası).
+- **Mert:** bilgi.
