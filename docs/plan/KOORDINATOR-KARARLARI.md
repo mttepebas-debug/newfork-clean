@@ -855,3 +855,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay — Mert sonradan ultrareview başlatabilir; bulgu çıkarsa yeni dalda düzeltilir.
 - **Durum:** yürürlükte. Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #110).
 - **Mert:** bilgi (sabah listesinde); ultrareview isterse hâlâ açabilir.
+
+### KK-107 (2026-10-02) FB-6.7 C'nin ekleyen migration'ı canlıya, silen yarısı Settings ekranını bekler
+- **Karar (ne):** `20261005000000_closed_days_reach_the_shifts` canlıya gönderildi (Supabase MCP `apply_migration`, yedekli, `nf-db` alt ajanı); "warn"ı kaldıran `20261005010000` gönderilmedi.
+- **Nerede:** canlı Supabase `hvyvyisrqyathtliyyyv`; yedek `newfork-wt/fb-6.7c/artifacts/nf-db/fb-6.7c/hosted-push/`.
+- **Ne zaman:** 2026-10-02 ~11:40Z, main'den (`de010002`) hemen önce; `20261005010000` yeni Settings ekranı Vercel'de yayına girip main CI yeşil olunca.
+- **Ne için:** Vercel main'i hemen yayına alır; yeni API kapalı gün önizlemesini ve yeni okuma şeklini çağırdığından veritabanı önce gelmeli (OPS-03). Silen yarı eski ekranın "warn" seçeneğini kırar, bu yüzden yeni ekrandan sonra.
+- **Uygulamada etkisi:** canlıda bir günü kapalı ilan etmek o günün yayınlanmış vardiyalarını listeleyip açığa düşürmeye hazır (ekran bağlanınca görünür); Settings → Conflict handling'deki "Closed location" ayarı şimdilik eskisi gibi; "warn" seçili workspace yoktu (0).
+- **Dayanak:** CLAUDE.md §8 "Sürekli yetki" (`636b76ee`: canlıya migration koordinatör sormadan); KARARLAR OPS-03; `nf-guvenlik` ONAY @`22d58021` (KK-106).
+- **Geri alma:** orta — yeni nesneleri düşür, yedek tanımları sırayla çalıştır, `schema_migrations`'tan `20261005000000`'ı sil; veri silinmedi.
+- **Durum:** canlıda (kayıt oturumu ölçtü: son sürüm `20261005000000`, beslemesi #111). Kayıt oturumu `local_10a5177a-66d2-4c9c-8292-95c7613d4c4d` yazdı (koordinatör `local_d8686bdf…`'ın beslemesi #111).
+- **Mert:** bilgi (sabah listesinde).
