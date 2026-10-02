@@ -258,6 +258,24 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 - Aktarılan onay geçmez: geri alınamaz silme, `supabase db reset`, hosted işlem, dosya indirme ve
   kalıcı kurulum için kullanıcının "evet"i işi yapan oturumun kendi penceresine yazılır (subagent
   için bu koordinatörün penceresidir).
+- **Sürekli yetki (kullanıcı kararı 2026-10-02):** koordinatör, Mert'e sormadan ve onu beklemeden şunları
+  yapar; her birini KOORDINATOR-KARARLARI'na bir satırla yazar (ne, nerede, nasıl, ne zaman, ne için):
+  - Canlıya migration (yalnız Supabase MCP `apply_migration`; CLI `db push` yasak kalır). Koşullar:
+    risk sınıfının incelemesi ONAY (R3'te `nf-guvenlik`), OPS-03 sırası, önce yedek
+    (`pg_get_functiondef` + silinen nesnelerin tanımı), sonra md5/sürüm doğrulaması + `get_advisors`
+    + bağımsız SELECT. Silen migration main CI yeşil olunca gider. Canlıda gerçek veri satırı
+    siliniyorsa (tablo boş değilse) yetki yoktur, Mert'e sorulur.
+  - Oturum yönetimi: yeni oturum açmak, havuz oturumuna iş vermek, model/effort ayarlamak, Remote
+    Control açıp kapamak, sabitlemek; işi bitmiş oturumu arşivlemek ya da `/clear` ile temizleyip
+    devir raporuyla yeniden kullanmak. Koşul: commit'leri main'de, worktree temiz ya da içeriği
+    main'de doğrulanmış, arkada iş yok, bildiği her şey kayıtta. Kullanıcının kendi açtığı
+    oturumlara dokunulmaz.
+  - Birleşmesi doğrulanmış dal ve temiz worktree silmek (guard yedeği alır; `--force` yasak kalır).
+  - Yeni iş seçmek ve başlatmak: aktif plandan ve backlog'dan, tazelik ölçümüyle; ürün kararlarını
+    ILKELER/KARARLAR'a dayanarak vermek (görsel seçim hariç: varyant hazırlanır, Mert seçer).
+  Yetki dışında kalanlar (yine sorulur): `supabase db reset`, canlıda gerçek veri silme, ücretli
+  servis/hesap, gizli anahtar, yeni bağımlılık, force push, `.claude/settings.json` deny listesini
+  gevşetmek. Mert yokken bunlar park edilir; tıklamalı soru gönderilmez, dönüşte tek turda sorulur.
 
 ## 9. Kalite çıtası
 - Tenant güvenliği: yeni her tablo, fonksiyon ve uç RLS + yetki çekirdeği
