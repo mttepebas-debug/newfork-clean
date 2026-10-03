@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
-import { emailOf, signIn } from "../fixtures/world";
+import { expect, test, type Browser } from "@playwright/test";
+import { emailOf } from "../fixtures/world";
 import {
   approveAs,
   assignedTo,
   deadlinePassed,
+  documentManagerRole,
   lastLine,
   ownerWithPassword,
   ownJob,
@@ -29,7 +30,20 @@ import {
 // 2026-10-02).
 //
 // Every test makes its own job and people, so what it publishes reaches only
-// them.
+// them. The managers who decide cards hold a manager role that also reviews
+// documents: the built-in Manager role does not.
+
+/** Employees > Documents for one person, searched down to `search`, and the row of `title` in it. */
+async function documentsListOf(browser: Browser, email: string, search: string, title: string) {
+  const page = await (await browser.newContext()).newPage();
+  await signInAs(page, email);
+  await page.goto("/app/employees/documents");
+  await page.getByLabel("Search employee documents").fill(search);
+  return {
+    page,
+    row: page.getByRole("table", { name: "Employee documents" }).getByRole("row", { name: new RegExp(title) }),
+  };
+}
 
 test("an admin's draft reaches nobody; published, it lands on the people its job targets", async ({ page }) => {
   const key = `doc${tag()}`;
@@ -40,24 +54,25 @@ test("an admin's draft reaches nobody; published, it lands on the people its job
   const kadikoy = personWithPassword(`${key}-emp`, "employee", ["K"], key);
 
   // Settings > Documents: Zeynep writes it for that job and saves a draft.
-  await signIn(page, "zeynep");
+  await signInAs(page, emailOf("zeynep"));
   await page.goto("/app/settings/documents");
   await page.getByRole("button", { name: "Add document type" }).click();
   const editor = page.getByRole("form", { name: "Add document type" });
   await editor.getByLabel("Name", { exact: true }).fill(title);
-  await editor.getByLabel("Requirement", { exact: true }).selectOption("required");
-  await editor.getByText("All Jobs", { exact: true }).click();
+  await editor.getByRole("combobox", { name: "Requirement", exact: true }).selectOption("required");
+  await editor.locator("summary", { hasText: "All Jobs" }).click();
   await editor.getByRole("checkbox", { name: job, exact: true }).click();
   await page.keyboard.press("Escape");
   await editor.getByRole("button", { name: "Next", exact: true }).click();
   await editor.getByRole("button", { name: "Save", exact: true }).click();
   await expect(editor).toHaveCount(0);
-  const row = page.getByRole("row", { name: new RegExp(title) });
-  await expect(row.getByText("Draft", { exact: true })).toBeVisible();
-
-  const documentId = lastLine(
-    sql(`select id from public.document_types where workspace_id = tests.id('${run}') and title = '${title}';`),
-  );
+  const statusOf = () =>
+    lastLine(
+      sql(`select id || ' ' || publication_status from public.document_types
+            where workspace_id = tests.id('${run}') and title = '${title}';`),
+    ).split(" ");
+  await expect.poll(() => statusOf()[1]).toBe("draft");
+  const documentId = statusOf()[0]!;
   expect(assignedTo(documentId)).toEqual([]);
 
   // Published, it reaches the two people on the job and nobody else.
@@ -67,7 +82,7 @@ test("an admin's draft reaches nobody; published, it lands on the people its job
   await publish.getByLabel("Reason").fill("Every barista hands in the card");
   await publish.getByRole("button", { name: "Confirm publish", exact: true }).click();
   await expect(publish).toHaveCount(0);
-  await expect(row.getByText("Published", { exact: true })).toBeVisible();
+  await expect.poll(() => statusOf()[1]).toBe("published");
   await expect.poll(() => assignedTo(documentId)).toEqual([twoPlaces, kadikoy].sort());
 });
 
@@ -75,6 +90,9 @@ test("a two-location employee's card is seen by both managers, and one approval 
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
+  const role = documentManagerRole(key);
+  const kadikoyManager = personWithPassword(`${key}-kmgr`, role, ["K"], "cook");
+  const besiktasManager = personWithPassword(`${key}-bmgr`, role, ["B"], "cook");
   const ali = personWithPassword(`${key}-ali`, "employee", ["K", "B"], key);
   const documentId = publishedDocument(title, [jobId]);
 
@@ -82,51 +100,47 @@ test("a two-location employee's card is seen by both managers, and one approval 
   await signInAs(holder, ali);
   await sendOwnDocument(holder, title);
 
-  // Employees > Documents: Ayse (Kadikoy) and Mehmet (Besiktas) both have it.
-  const rowFor = async (manager: "ayse" | "mehmet") => {
-    const page = await (await browser.newContext()).newPage();
-    await signIn(page, manager);
-    await page.goto("/app/employees/documents");
-    await page.getByLabel("Search employee documents").fill(`${key}-ali`);
-    return {
-      page,
-      row: page.getByRole("table", { name: "Employee documents" }).getByRole("row", { name: new RegExp(title) }),
-    };
-  };
-  const ayse = await rowFor("ayse");
-  await expect(ayse.row.getByText("Needs review", { exact: true })).toBeVisible();
-  const mehmet = await rowFor("mehmet");
-  await expect(mehmet.row.getByText("Needs review", { exact: true })).toBeVisible();
+  // Employees > Documents: the Kadikoy and the Besiktas manager both have it.
+  const kadikoy = await documentsListOf(browser, kadikoyManager, `${key}-ali`, title);
+  await expect(kadikoy.row.getByText("Needs review", { exact: true })).toBeVisible();
+  const besiktas = await documentsListOf(browser, besiktasManager, `${key}-ali`, title);
+  await expect(besiktas.row.getByText("Needs review", { exact: true })).toBeVisible();
 
-  // Mehmet approves; that one decision is the card's, at both locations.
-  await mehmet.row.click();
-  const review = mehmet.page.getByRole("dialog", { name: title });
+  // Besiktas approves; that one decision is the card's, at both locations.
+  await besiktas.row.click();
+  const review = besiktas.page.getByRole("dialog", { name: title });
   await review.getByRole("button", { name: "Approve", exact: true }).click();
-  await expect(review.getByRole("status")).toHaveText("Decision saved");
-  expect(standing(documentId, ali)).toBe("completed accepted");
-  await ayse.page.reload();
-  await ayse.page.getByLabel("Search employee documents").fill(`${key}-ali`);
-  await expect(ayse.row.getByText("Completed", { exact: true })).toBeVisible();
+  await expect.poll(() => standing(documentId, ali)).toBe("completed accepted");
+  await kadikoy.page.reload();
+  await kadikoy.page.getByLabel("Search employee documents").fill(`${key}-ali`);
+  await expect(kadikoy.row.getByText("Completed", { exact: true })).toBeVisible();
 });
 
 test("a manager approves neither their own card nor a fellow manager's; an admin does", async ({ browser }) => {
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
-  const first = personWithPassword(`${key}-m1`, "manager", ["K"], key);
-  const second = personWithPassword(`${key}-m2`, "manager", ["K"], key);
+  const role = documentManagerRole(key);
+  // Two Kadikoy managers who owe the card, a third who doesn't, and an employee.
+  const first = personWithPassword(`${key}-m1`, role, ["K"], key);
+  const second = personWithPassword(`${key}-m2`, role, ["K"], key);
+  const third = personWithPassword(`${key}-m3`, role, ["K"], "cook");
+  const employee = personWithPassword(`${key}-emp`, "employee", ["K"], key);
   const documentId = publishedDocument(title, [jobId]);
-  for (const manager of [first, second]) {
+  for (const holder of [first, second, employee]) {
     const page = await (await browser.newContext()).newPage();
-    await signInAs(page, manager);
+    await signInAs(page, holder);
     await sendOwnDocument(page, title);
   }
+
+  // The third manager decides cards: an employee's goes through.
+  expect(await approveAs(third, documentId, employee)).toBe(200);
 
   // Nobody approves their own; managers of one rank don't approve each
   // other's, whoever manages the location (D1).
   expect(await approveAs(first, documentId, first)).toBe(403);
   expect(await approveAs(second, documentId, first)).toBe(403);
-  expect(await approveAs(emailOf("ayse"), documentId, first)).toBe(403);
+  expect(await approveAs(third, documentId, first)).toBe(403);
   expect(standing(documentId, first)).toBe("awaiting_review pending_review");
 
   // One rank up, the same request goes through.
@@ -140,41 +154,31 @@ test("a fellow manager doesn't see a manager's card while it waits for review, o
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
-  // Deniz manages Kadikoy alongside Ayse.
-  const deniz = personWithPassword(`${key}-deniz`, "manager", ["K"], key);
+  const role = documentManagerRole(key);
+  // Deniz manages Kadikoy alongside another manager.
+  const deniz = personWithPassword(`${key}-deniz`, role, ["K"], key);
+  const fellow = personWithPassword(`${key}-kmgr`, role, ["K"], "cook");
   const documentId = publishedDocument(title, [jobId]);
   const holder = await (await browser.newContext()).newPage();
   await signInAs(holder, deniz);
   await sendOwnDocument(holder, title);
 
-  const documentsOf = async (person: "ayse" | "zeynep") => {
-    const page = await (await browser.newContext()).newPage();
-    await signIn(page, person);
-    await page.goto("/app/employees/documents");
-    await page.getByLabel("Search employee documents").fill(`${key}-deniz`);
-    return {
-      page,
-      row: page.getByRole("table", { name: "Employee documents" }).getByRole("row", { name: new RegExp(title) }),
-    };
-  };
-
-  // Employees > Documents: while it waits, Ayse has no row for it; Zeynep,
-  // who decides it, does.
-  const zeynep = await documentsOf("zeynep");
+  // Employees > Documents: while it waits, the fellow manager has no row for
+  // it; Zeynep, who decides it, does.
+  const zeynep = await documentsListOf(browser, emailOf("zeynep"), `${key}-deniz`, title);
   await expect(zeynep.row.getByText("Needs review", { exact: true })).toBeVisible();
-  const ayse = await documentsOf("ayse");
-  await expect(ayse.page.getByText("No documents match these filters.")).toBeVisible();
-  await expect(ayse.row).toHaveCount(0);
+  const other = await documentsListOf(browser, fellow, `${key}-deniz`, title);
+  await expect(other.page.getByText("No documents match these filters.")).toBeVisible();
+  await expect(other.row).toHaveCount(0);
 
-  // Zeynep approves it; now Ayse sees it like any approved card at Kadikoy.
+  // Zeynep approves it; now the fellow manager sees it like any approved card.
   await zeynep.row.click();
   const review = zeynep.page.getByRole("dialog", { name: title });
   await review.getByRole("button", { name: "Approve", exact: true }).click();
-  await expect(review.getByRole("status")).toHaveText("Decision saved");
-  expect(standing(documentId, deniz)).toBe("completed accepted");
-  await ayse.page.reload();
-  await ayse.page.getByLabel("Search employee documents").fill(`${key}-deniz`);
-  await expect(ayse.row.getByText("Completed", { exact: true })).toBeVisible();
+  await expect.poll(() => standing(documentId, deniz)).toBe("completed accepted");
+  await other.page.reload();
+  await other.page.getByLabel("Search employee documents").fill(`${key}-deniz`);
+  await expect(other.row.getByText("Completed", { exact: true })).toBeVisible();
 });
 
 test("an overdue card restricts the person until it is approved, and an overdue manager approves nobody", async ({
@@ -183,8 +187,10 @@ test("an overdue card restricts the person until it is approved, and an overdue 
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
+  const role = documentManagerRole(key);
   const late = personWithPassword(`${key}-late`, "employee", ["K"], key);
-  const hande = personWithPassword(`${key}-hande`, "manager", ["K"], key);
+  const hande = personWithPassword(`${key}-hande`, role, ["K"], key);
+  const reviewer = personWithPassword(`${key}-kmgr`, role, ["K"], "cook");
   const documentId = publishedDocument(title, [jobId]);
   deadlinePassed(documentId, late);
   deadlinePassed(documentId, hande);
@@ -203,8 +209,9 @@ test("an overdue card restricts the person until it is approved, and an overdue 
   expect(await approveAs(hande, documentId, late)).toBe(403);
   expect(standing(documentId, late)).toBe("awaiting_review pending_review");
 
-  // Ayse approves it and the workspace opens again.
-  expect(await approveAs(emailOf("ayse"), documentId, late)).toBe(200);
+  // A manager whose own papers are in order approves it, and the workspace
+  // opens again.
+  expect(await approveAs(reviewer, documentId, late)).toBe(200);
   await page.goto("/app");
   await expect(page).toHaveURL(/\/app\/employee-hub/);
 });

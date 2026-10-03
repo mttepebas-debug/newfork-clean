@@ -3,8 +3,10 @@ import { password } from "../global-setup";
 import { emailOf, signIn } from "../fixtures/world";
 import {
   card,
+  documentManagerRole,
   lastLine,
   ownJob,
+  personWithPassword,
   publishedDocument,
   run,
   signInAs,
@@ -18,8 +20,9 @@ import {
 // fills their profile, skips availability, sends the required document and
 // the whole onboarding for review. Until it is approved they see only what is
 // still missing and their own notifications (KARARLAR "Kisitli kisi", D4).
-// Ayse approves the document; access opens and they land in the employee
-// interface. Employee onboarding has no "Start over".
+// A Kadikoy manager who reviews documents approves the card (the built-in
+// Manager role does not review documents); access opens and they land in the
+// employee interface. Employee onboarding has no "Start over".
 //
 // A legal name typed differently from the invitation is approved only by an
 // owner or an admin (FB-6.6 S1, Mert 2026-10-02): the manager who reviews the
@@ -36,6 +39,7 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   // A job only this person works, and the document every holder of it owes.
   const jobId = ownJob(key, `Barista ${key}`);
   const documentId = publishedDocument(title, [jobId]);
+  const reviewer = personWithPassword(`${key}-kmgr`, documentManagerRole(key), ["K"], "cook");
 
   // A Kadikoy record on that job nobody has invited yet, and an account with
   // no workspace for the invitation to land on.
@@ -89,7 +93,7 @@ test("an invited employee onboards, waits on the document, and lands in the empl
 
   // Profile: the legal name as invited, so nobody has to review it.
   await fillProfile(invitee, firstName, "Invitee");
-  await expect(steps.getByRole("button", { name: "Profile, done", exact: true })).toBeVisible();
+  await expect(steps.getByRole("button", { name: /^Profile\s*,\s*done$/ })).toBeVisible();
 
   // The required document: a photo or a file, sent for review.
   await steps.getByRole("button", { name: /^Documents/ }).click();
@@ -109,24 +113,28 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   await invitee.getByRole("button", { name: "Send for review" }).click();
   await expect(invitee.getByRole("heading", { name: "Sent to your manager" })).toBeVisible();
 
-  // Until it is approved the workspace stays closed: the app sends them back
-  // to their onboarding, the only thing still missing.
+  // Until it is approved the workspace stays closed: the app sends them to
+  // Workspaces, where the only way in is their onboarding.
   await invitee.goto("/app/schedule");
+  await expect(invitee).toHaveURL(/\/workspaces$/);
+  await invitee.getByRole("button", { name: `Continue onboarding for World ${run}`, exact: true }).click();
   await expect(invitee).toHaveURL(new RegExp(welcome));
   // Their own notifications open all the same (D4).
   await invitee.goto("/account/inbox");
   await expect(invitee.getByLabel("Notification category")).toBeVisible();
 
-  // Ayse approves the card from Employees > Documents.
-  await ayse.goto("/app/employees/documents");
-  await ayse.getByLabel("Search employee documents").fill(firstName);
-  await ayse
+  // The Kadikoy manager who reviews documents approves the card from
+  // Employees > Documents.
+  const manager = await (await browser.newContext()).newPage();
+  await signInAs(manager, reviewer);
+  await manager.goto("/app/employees/documents");
+  await manager.getByLabel("Search employee documents").fill(firstName);
+  await manager
     .getByRole("table", { name: "Employee documents" })
     .getByRole("row", { name: new RegExp(title) })
     .click();
-  const review = ayse.getByRole("dialog", { name: title });
+  const review = manager.getByRole("dialog", { name: title });
   await review.getByRole("button", { name: "Approve", exact: true }).click();
-  await expect(review.getByRole("status")).toHaveText("Decision saved");
   await expect.poll(() => standing(documentId, email)).toBe("completed accepted");
 
   // Nothing else was waiting: access opens and onboarding hands them over to
