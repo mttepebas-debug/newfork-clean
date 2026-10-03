@@ -1077,3 +1077,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** orta — migration.
 - **Durum:** yürürlükte; dalda uygulandı `3c891ee7` (`app_private.document_view`, migration `20261006020000` — ölçüldü, #128). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #127).
 - **Mert:** bilgi.
+
+### KK-127 (2026-10-03) Schedule'ın belge uyarısı karar veremeyen müdüre yalnız "missing" der
+- **Karar (ne):** `nf-guvenlik` tur 3 düşük 1 FB-6.6 içinde kapanır: `app_private.document_shift_reasons` geçerli onayı olmayan kişi için karar veremeyen okuyucuya "rejected" / "pending review" yerine "missing" verir; karar verene bugünkü gibi. `nf-db` `local_abc4d126…`, dal `task/fb-6.6-schedule`.
+- **Nerede:** `app_private.document_shift_reasons` (Schedule → vardiya çakışma uyarısı); rapor `newfork-clean/artifacts/nf-guvenlik/fb-6.6/review-3.md` (git dışı).
+- **Ne zaman:** 2026-10-03 ~02:46Z.
+- **Ne için:** reddedilen ve bekleyen belge yalnız karar veren + sahibine açık; Schedule'daki kelime aynı bilgiyi sızdırıyordu (dosya, gerekçe ve indirme sızmıyordu).
+- **Uygulamada etkisi:** Veli'nin reddedilen Food Handler'ı yüzünden çakışma uyarısında Lale "missing" görür, Zeynep "rejected".
+- **Dayanak:** KARARLAR "Ürün kuralları" — S2 (Mert, 2026-10-02): "Schedule'daki 'belge eksik' uyarı / engeli değişmez (dosyayı değil bilgiyi gösterir)" ve reddedilen belge eki (Mert, 2026-10-03). Kural birebir kapsıyor; incelemenin önerdiği soru sorulmadı.
+- **Geri alma:** orta — migration.
+- **Durum:** yürürlükte, uygulanıyor. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #134).
+- **Mert:** bilgi.
