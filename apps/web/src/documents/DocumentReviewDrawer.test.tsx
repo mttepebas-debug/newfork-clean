@@ -12,6 +12,7 @@ import {
   type DocumentDetail,
 } from "@newfork/shared";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
+import { RequestError } from "../lib/request-error";
 import {
   acknowledgeDocument,
   deferInitialDocument,
@@ -749,6 +750,95 @@ describe("employee surface", () => {
       ).toBeTruthy();
     },
   );
+
+  // BL-118 / D5: the owner is never asked, but may keep a copy on file.
+  function excused(doc: DocumentDetail) {
+    doc.obligation.status = "exempt";
+    doc.obligation.exemption_locked = true;
+    doc.obligation.mode = "optional";
+    return doc;
+  }
+  it("lets the owner upload to their excused document and says it needs no review", async () => {
+    vi.mocked(getDocument).mockResolvedValue(excused(missing()));
+    page(true);
+    const picker = await screen.findByLabelText("Upload document");
+    expect(
+      screen.getByText("Optional for you; what you submit goes on file without review."),
+    ).toBeTruthy();
+    const file = new File(["pdf"], "food-handler.pdf", {
+      type: "application/pdf",
+    });
+    fireEvent.change(picker, { target: { files: [file] } });
+    await waitFor(() =>
+      expect(uploadDocument).toHaveBeenCalledWith(
+        employee,
+        "requirement",
+        1,
+        file,
+      ),
+    );
+  });
+  it("lets the owner submit the draft of their excused document", async () => {
+    vi.mocked(getDocument).mockResolvedValue(excused(withDraft()));
+    page(true);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Submit document" }),
+    );
+    await waitFor(() => expect(submitDocument).toHaveBeenCalledOnce());
+  });
+  it("reads on file once the owner's copy is accepted, and still takes a newer one", async () => {
+    const doc = excused(detail());
+    doc.obligation.submitted_id = "submission";
+    doc.obligation.approved_id = "submission";
+    doc.submissions[0]!.state = "accepted";
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page(true);
+    expect(await screen.findByText("On file")).toBeTruthy();
+    expect(screen.queryByText("exempt")).toBeNull();
+    expect(screen.getByLabelText("Upload document")).toBeTruthy();
+  });
+});
+
+// S2: a reviewer who cannot decide gets the row as its approved copy, or as
+// missing, with the unreviewed upload, its reason and its file left out.
+describe("a row whose unreviewed upload is hidden", () => {
+  it("shows the approved copy and nothing to decide", async () => {
+    const doc = detail();
+    doc.obligation.status = "completed";
+    doc.obligation.submitted_id = null;
+    doc.obligation.approved_id = "submission";
+    doc.obligation.remaining_seconds = null;
+    doc.submissions[0]!.state = "accepted";
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    expect(
+      await screen.findByRole("heading", { name: "Version 1 · accepted" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
+    expect(document.body.textContent).not.toMatch(/null|undefined/);
+  });
+  it("shows a never-approved row as missing, with no reason and no version", async () => {
+    const doc = missing();
+    doc.obligation.remaining_seconds = null;
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    page();
+    expect(await screen.findByText("missing")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /^Version/ })).toBeNull();
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/null|undefined/);
+  });
+});
+
+it("says in one sentence when the document is not theirs to open", async () => {
+  vi.mocked(getDocument).mockRejectedValue(
+    new RequestError("Not allowed", "authz.out_of_scope", undefined, 404),
+  );
+  page();
+  expect(
+    await screen.findByText("You don't have access to this document."),
+  ).toBeTruthy();
+  expect(screen.queryByText("Not allowed")).toBeNull();
 });
 
 // U59: the expiry date and the extra fields are stored nowhere until Submit,

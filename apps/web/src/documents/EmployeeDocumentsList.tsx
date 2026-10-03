@@ -19,6 +19,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
+import { isOnFile } from "./document-rules";
 import "./documents.css";
 
 const statusLabels = {
@@ -275,7 +276,7 @@ export function EmployeeDocumentsList(props: {
                     <td>{r.title}</td>
                   </>
                 )}
-                <td>{labels[r.status]}</td>
+                <td>{isOnFile(r) ? "On file" : labels[r.status]}</td>
               </tr>
             ))}
           </tbody>

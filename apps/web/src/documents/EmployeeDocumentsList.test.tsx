@@ -82,6 +82,17 @@ describe("personal list (Account › Documents)", () => {
     expect(screen.queryByLabelText("Document type")).toBeNull();
   });
 
+  it("shows the owner's excused document as on file once a copy is accepted (BL-118)", async () => {
+    const excused = { ...obligation, status: "exempt", exemption_locked: true };
+    vi.mocked(listDocuments).mockResolvedValue([
+      { ...excused, approved_id: "copy" },
+      { ...excused, id: "0f1e2d3c-4b5a-4968-8776-655443322110", title: "ServSafe", approved_id: null },
+    ] as never);
+    renderList(true);
+    expect(await screen.findByRole("cell", { name: "On file" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "Exempt" })).toBeTruthy();
+  });
+
   it("keeps the full table everywhere else", async () => {
     vi.mocked(listDocuments).mockResolvedValue([obligation] as never);
     renderList(false);

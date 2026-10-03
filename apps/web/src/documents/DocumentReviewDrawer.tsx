@@ -26,9 +26,12 @@ import {
   uploadDocument,
   type DocumentAudience,
 } from "./document-data";
+import { isNoAccess } from "../lib/no-access";
 import {
   acceptAttribute,
+  acceptsUpload,
   isObligationClosed,
+  isOnFile,
   sameSignerName,
 } from "./document-rules";
 
@@ -105,7 +108,11 @@ function DocumentDrawer(props: DrawerProps) {
         </div>
         <div className="catalog-drawer-body">
           <p role={query.error ? "alert" : undefined}>
-            {query.error ? errorText(query.error) : "Loading document…"}
+            {!query.error
+              ? "Loading document…"
+              : isNoAccess(query.error)
+                ? "You don't have access to this document."
+                : errorText(query.error)}
           </p>
         </div>
       </div>
@@ -402,7 +409,11 @@ function DocumentDetailContent({
           </button>
         </div>
         <div className="catalog-drawer-body document-detail-body">
-          <p>{obligation.status.replaceAll("_", " ")}</p>
+          <p>
+            {isOnFile(obligation)
+              ? "On file"
+              : obligation.status.replaceAll("_", " ")}
+          </p>
           {obligation.tracks_expiry && !obligation.timezone && (
             <p role="note">
               An administrator needs to set this employee's document time zone
@@ -675,9 +686,15 @@ function DocumentDetailContent({
           )}
           {props.audience.selfOnly &&
             obligation.kind === "document" &&
-            !isObligationClosed(obligation.status) && (
+            acceptsUpload(obligation) && (
               <section>
                 <h3>Upload a new version</h3>
+                {obligation.exemption_locked && (
+                  <p>
+                    Optional for you; what you submit goes on file without
+                    review.
+                  </p>
+                )}
                 <p>
                   {obligation.accepted_formats
                     .map((format) => format.toUpperCase())

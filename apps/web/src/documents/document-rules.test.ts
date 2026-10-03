@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptAttribute,
+  acceptsUpload,
   isObligationClosed,
+  isOnFile,
   sameSignerName,
 } from "./document-rules";
 
@@ -22,6 +24,24 @@ describe("isObligationClosed", () => {
       "timezone_required",
     ] as const)
       expect(isObligationClosed(status)).toBe(false);
+  });
+});
+
+describe("the owner's excused document (BL-118)", () => {
+  const owner = { status: "exempt", exemption_locked: true, approved_id: null } as const;
+  it("takes an upload although it is exempt", () => {
+    expect(acceptsUpload(owner)).toBe(true);
+  });
+  it("keeps any other exemption closed to uploads", () => {
+    expect(acceptsUpload({ ...owner, exemption_locked: false })).toBe(false);
+    expect(acceptsUpload({ ...owner, exemption_locked: undefined })).toBe(false);
+    expect(acceptsUpload({ ...owner, status: "removed" })).toBe(false);
+    expect(acceptsUpload({ ...owner, status: "missing", exemption_locked: false })).toBe(true);
+  });
+  it("is on file once a copy was accepted, and only then", () => {
+    expect(isOnFile(owner)).toBe(false);
+    expect(isOnFile({ ...owner, approved_id: "copy" })).toBe(true);
+    expect(isOnFile({ ...owner, approved_id: "copy", exemption_locked: false })).toBe(false);
   });
 });
 
