@@ -173,6 +173,35 @@ select ok(pg_temp.has_version('deniz', true), 'and Deniz sees her own');
 select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_path_service(%L, %L, %L, %L, %L, false)',
   pg_temp.usr('zeynep'), tests.id('m'), (pg_temp.req('deniz')).id, (select submission_id from deniz_first_renewal), (select file_id from deniz_first_renewal))),
   'ok', 'and Zeynep downloads it');
+-- Zeynep rejects Deniz's renewal: the rejected upload and its reason are her
+-- deciders' and hers too (Mert, 2026-10-03); Ayse still sees the valid approval.
+create function pg_temp.reject(actor text, person text, reason text) returns text language sql as $$
+  select pg_temp.attempt(format(
+    'select public.review_employee_document_lifecycle_service(%L, %L, %L, %s, %L, ''reject'', %L, ''full'', %L)',
+    pg_temp.usr(actor), tests.id('m'), (pg_temp.req(person)).id, (pg_temp.req(person)).lifecycle_revision,
+    (pg_temp.req(person)).submitted_document_id, reason,
+    (select jsonb_agg(jsonb_build_object('id', f.file_id, 'decision', 'keep'))
+     from public.employee_document_submission_files f where f.submission_id = (pg_temp.req(person)).submitted_document_id)))$$;
+create temp table deniz_rejected as
+select s.id as submission_id, f.file_id from public.employee_document_submissions s
+join public.employee_document_submission_files f on f.submission_id = s.id
+where s.id = (pg_temp.req('deniz')).submitted_document_id;
+select is(pg_temp.reject('zeynep', 'deniz', 'Blurry photo'), 'ok', 'Zeynep rejects the renewal');
+select is(pg_temp.row_of('ayse', 'deniz') ->> 'status', 'completed', 'Ayse sees Deniz''s Food Handler still valid');
+select ok(pg_temp.row_of('ayse', 'deniz') ->> 'rejection_reason' is null and pg_temp.row_of('ayse', 'deniz') ->> 'submitted_id' is null,
+  'not the rejection nor its reason');
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.detail('ayse', 'deniz') -> 'submissions') x
+    where (x ->> 'id')::uuid = (select submission_id from deniz_rejected)), 'nor the rejected upload among the versions');
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.detail('ayse', 'deniz') -> 'history') h
+    where h -> 'metadata' ->> 'submission_id' = (select submission_id from deniz_rejected)::text), 'nor in the history');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_path_service(%L, %L, %L, %L, %L, false)',
+  pg_temp.usr('ayse'), tests.id('m'), (pg_temp.req('deniz')).id, (select submission_id from deniz_rejected), (select file_id from deniz_rejected))),
+  'P0002', 'nor downloads it');
+select is(pg_temp.row_of('zeynep', 'deniz') ->> 'rejection_reason', 'Blurry photo', 'Zeynep sees the rejection and its reason');
+select ok(exists (select 1 from jsonb_array_elements(pg_temp.detail('zeynep', 'deniz') -> 'submissions') x
+    where (x ->> 'id')::uuid = (select submission_id from deniz_rejected) and x ->> 'rejection_reason' = 'Blurry photo'), 'and the rejected upload');
+select is((public.get_employee_document_lifecycle_service(pg_temp.usr('deniz'), tests.id('m'), (pg_temp.req('deniz')).id, true)
+  -> 'obligation' ->> 'rejection_reason'), 'Blurry photo', 'and Deniz sees why');
 select is(pg_temp.approve('ayse', 'emre'), 'ok', 'Ayse approves Emre''s, an employee where she works');
 select is(pg_temp.approve('mehmet', 'veli'), '42501 authz.out_of_scope', 'Mehmet does not decide at Kadikoy');
 
@@ -289,6 +318,15 @@ select is(pg_temp.drawer('ayse', 'emre'), pg_temp.command('ayse', 'emre'), 'Ayse
 select ok(pg_temp.drawer('ayse', 'emre'), 'and it is yes');
 select is(pg_temp.drawer('ayse', 'deniz'), pg_temp.command('ayse', 'deniz'), 'Ayse may not review Deniz''s: the drawer says so too');
 select ok(not pg_temp.drawer('ayse', 'deniz'), 'and it is no');
+
+-- Nothing approved yet: Ayse rejects Veli's Food Handler. Lale, who reads
+-- documents but decides on none, sees it as still missing, not the reason.
+select is(pg_temp.reject('ayse', 'veli', 'Wrong document'), 'ok', 'Ayse rejects Veli''s Food Handler');
+select ok(pg_temp.row_of('lale', 'veli') ->> 'status' in ('missing', 'grace') and pg_temp.row_of('lale', 'veli') ->> 'rejection_reason' is null,
+  'Lale sees it as still missing, without the reason');
+select is((select q ->> 'rejection_reason' from jsonb_array_elements(pg_temp.review_read('lale', 'veli') -> 'requirements') q
+    where (q ->> 'id')::uuid = (pg_temp.req('veli')).id), null, 'in his onboarding too');
+select is(pg_temp.row_of('ayse', 'veli') ->> 'rejection_reason', 'Wrong document', 'Ayse, who decided, sees the reason');
 
 select * from finish();
 rollback;

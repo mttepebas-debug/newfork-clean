@@ -5,19 +5,24 @@
 -- still listed, downloadable and in the history for a reader who may not
 -- decide on it. One rule for the version list, the history and the download.
 -- A separate migration so the review sees only this change.
+-- Mert, 2026-10-03 (coordinator's window): a rejected upload is its
+-- deciders' and its owner's too ("a manager's certificates: admins, owners
+-- and their owner"); only an accepted one is seen under M2. The reason of a
+-- rejection follows the upload: the version list, the history, the row's
+-- summary and the onboarding review drop it for anybody else.
 
 -- Whether this reader sees this submission of somebody else's document:
--- reviewed (accepted, rejected) under M2; never reviewed (pending_review,
--- superseded) only if they may decide on it or own it; a draft never. A state
--- added later is hidden until it is named here.
+-- accepted under M2; waiting, replaced unreviewed or rejected (pending_review,
+-- superseded, rejected) only if they may decide on it or own it; a draft
+-- never. A state added later is hidden until it is named here.
 create function app_private.document_submission_visible(actor uuid, r public.employee_onboarding_requirements, submission_state text)
 returns boolean
 language sql
 stable security definer
 set search_path = ''
 as $$
-  select submission_state in ('accepted', 'rejected')
-    or (submission_state in ('pending_review', 'superseded') and app_private.document_sees_pending(actor, r));
+  select submission_state = 'accepted'
+    or (submission_state in ('pending_review', 'superseded', 'rejected') and app_private.document_sees_pending(actor, r));
 $$;
 revoke all on function app_private.document_submission_visible(uuid, public.employee_onboarding_requirements, text) from public, anon, authenticated;
 
@@ -69,5 +74,70 @@ begin
   (select q from public.employee_onboarding_requirements q where q.id=target_requirement_id),s.state));
  if path is null then raise exception 'document file unavailable' using errcode='P0002'; end if;
  return path;
+end;
+$function$;
+
+-- The row as this actor sees it: without the upload waiting for review or
+-- rejected, and its reason, when they may not see it. What they see instead
+-- is the state of the approved version, or what is still missing.
+create or replace function app_private.document_view(actor uuid, r public.employee_onboarding_requirements)
+returns public.employee_onboarding_requirements
+language plpgsql
+stable security definer
+set search_path = ''
+as $$
+begin
+  if r.kind <> 'document' or r.submitted_document_id is null
+    or not exists (select 1 from public.employee_document_submissions s
+                   where s.id = r.submitted_document_id and s.state in ('pending_review', 'rejected'))
+    or app_private.document_sees_pending(actor, r) then
+    return r;
+  end if;
+  r.submitted_document_id := null;
+  r.paused_remaining_seconds := null;
+  r.rejection_reason := null;
+  r.status := case when app_private.document_obligation_state(r, now()) = 'completed'
+    then 'completed' else 'in_progress' end::public.employee_onboarding_requirement_status;
+  return r;
+end;
+$$;
+
+create or replace function public.get_employee_onboarding_review_service(actor_user_id uuid, target_workspace_id uuid, target_employee_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare target_case public.employee_onboarding_cases%rowtype; requirement_rows jsonb; total_count integer; completed_count integer;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'onboarding.review', target_person => target_employee_id);
+  select * into target_case from public.employee_onboarding_cases
+  where workspace_id = target_workspace_id and employee_id = target_employee_id;
+  if target_case.id is null then raise exception 'onboarding case unavailable' using errcode = 'P0002'; end if;
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', requirement.id, 'kind', requirement.kind, 'title', requirement.title,
+    'description', requirement.description, 'status', (app_private.document_view(actor_user_id, requirement)).status,
+    'required', requirement.required, 'blocks_activation', requirement.blocks_activation,
+    'requires_review', requirement.requires_review, 'sort_order', requirement.sort_order,
+    'source_id', requirement.source_id,
+    'accepted_formats', coalesce(requirement.source_snapshot->'accepted_formats', '[]'::jsonb),
+    'content_text', null, 'content_digest', requirement.source_snapshot->>'content_digest',
+    'intent_statement', null, 'rejection_reason', (app_private.document_view(actor_user_id, requirement)).rejection_reason
+  ) order by requirement.sort_order), '[]'::jsonb),
+  count(*) filter (where requirement.required),
+  count(*) filter (where requirement.required and (app_private.document_view(actor_user_id, requirement)).status = 'completed')
+  into requirement_rows, total_count, completed_count
+  from public.employee_onboarding_requirements requirement
+  where requirement.case_id = target_case.id and requirement.status <> 'superseded' and requirement.lifecycle_retired_at is null
+    -- a row the reader may not see is not counted either (S2)
+    and (requirement.kind <> 'document' or app_private.document_row_readable(actor_user_id, requirement));
+  return jsonb_build_object(
+    'case_id', target_case.id, 'employee_id', target_case.employee_id,
+    'case_status', target_case.status, 'revision', target_case.revision,
+    'submitted_at', target_case.submitted_at,
+    'progress_completed', completed_count, 'progress_total', total_count,
+    'ssn_present', false,
+    'requirements', requirement_rows
+  );
 end;
 $function$;
