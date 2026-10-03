@@ -1,5 +1,24 @@
 # Belge mimarisi — uzlaşma kaydı (Mert + koordinatör, 2026-10-03)
 
+> **RAFTA — 2026-10-03 ~19:30Z, Mert'in kararı** (koordinatör `local_10a5177a…`'ın penceresinde):
+> "bu belgelerle ilgili planı olduğu gibi rafa kaldırıp daha sonra kaldığımız yerden devam etmek
+> istiyorum. çünkü bu konuda bazı radikal kararlar alıp yön değişikliği yapabilme ihtimalim var."
+> Seçenek: "Sohbet rafa, testler koşsun (Önerilen)".
+>
+> - **Rafta olan:** bu dosyadaki sohbetin tamamı (U1–U12, T1–T9, "Açık" listesi) ve ondan doğacak
+>   her kod işi (Schedule'ı besleyen 16 okuyucunun taşınması, U2/U3/U9 kuralları, U6 görünürlük,
+>   BL-557, BL-559). Kararlar silinmedi ama **yürürlükte sayılmaz**: KARARLAR'a ve ILKELER'e
+>   işlenmez, hiçbir oturum bunlara dayanarak karar vermez ya da kod yazmaz. Mert yön
+>   değiştirebilir; dönüşte her U satırı Mert'e yeniden teyit ettirilir.
+> - **Rafta olmayan:** canlıdaki FB-6.6 (A1+A2+B, main `84ada590` / `f4dce985`) olduğu gibi kalır.
+>   A3'ün 8 e2e senaryosu (`task/fb-6.6-a3` @`2ba927b3`) koşturulup main'e alınır, FB-6.6
+>   "bugünkü hâliyle" kapanır. Yön değişirse testler yeni kurala göre yeniden yazılır.
+> - **Dönüş noktası (kaldığımız yer):** "Açık" listesinin ilk maddesi: onboarding'in ince noktaları
+>   (zorunlu belge onay mı yükleme mi bekler), sonra bildirim içerikleri, sonra uygulama sırası /
+>   parçalama. `nf-db`'nin 16 okuyucu ölçümü `local_abc4d126…` oturumunun konuşmasında (havuza
+>   dönerse kaybolur; dönüşte yeniden ölçülür — tazelik kuralı). Dönüşte önce bu dosya ve
+>   `docs/plan/tasks/FB-6.6.md` bugünkü main'de yeniden ölçülür (CLAUDE.md §5 adım 0).
+
 Bu bir uygulama planı değil: belge mimarisinin sohbette parça parça uzlaşıldığı kayıt. Kod yok; Mert ayrıca izin verecek.
 Adlandırma (Mert'in kuralı): Lokasyon+Pozisyon+N (KadıköyMüdür1, KadıköyGarson1, KadıköyBeşiktaşGarson2, Admin1, Owner1).
 
@@ -47,5 +66,5 @@ Adlandırma (Mert'in kuralı): Lokasyon+Pozisyon+N (KadıköyMüdür1, Kadıköy
 - Acknowledgements ayrı mı.
 
 ## Plan modu dışına çıkınca yapılacaklar (bekleyen)
-- FB-6.6 B'yi main'e al (`task/fb-6.6-b` @`f4dce985`; kararsız App.test bir kez boşta yeniden koşulur).
+- ~~FB-6.6 B'yi main'e al~~ — yapıldı (main `f4dce985`, CI 37115516542 yeşil).
 - Kayıt oturumuna besleme: U1–U5 + iki ters seçim (ILKELER kanıtı), posta kutusu ack'leri.
