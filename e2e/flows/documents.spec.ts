@@ -215,11 +215,25 @@ test("the owner sends their own card when they choose; it goes on file, never to
   const owner = ownerWithPassword();
   // For the Owner job under Management: the owner is the only one holding it.
   const ownerJob = lastLine(sql(`select tests.id('${run}:job:owner');`));
-  const documentId = publishedDocument(title, [ownerJob]);
-  expect(assignedTo(documentId)).toEqual([owner]);
+  // A card with a deadline takes its time zone from the holder's primary
+  // location. The world's owner works at both locations with neither primary,
+  // and nothing in the product makes one primary for an owner (BL-559): set
+  // Kadikoy by hand, and hand the world back as built afterwards.
+  const kadikoyAsPrimary = (primary: boolean) =>
+    sql(`
+    update public.employee_location_assignments
+    set is_primary = ${primary}
+    where employee_id = tests.id('${run}:owner') and location_id = tests.id('${run}:K') and ended_at is null;`);
+  kadikoyAsPrimary(true);
+  try {
+    const documentId = publishedDocument(title, [ownerJob]);
+    expect(assignedTo(documentId)).toEqual([owner]);
 
-  // Account > Documents: the owner is never asked, but may send it (D5).
-  await signInAs(page, owner);
-  await sendOwnDocument(page, title);
-  expect(standing(documentId, owner)).toBe("completed accepted");
+    // Account > Documents: the owner is never asked, but may send it (D5).
+    await signInAs(page, owner);
+    await sendOwnDocument(page, title);
+    expect(standing(documentId, owner)).toBe("completed accepted");
+  } finally {
+    kadikoyAsPrimary(false);
+  }
 });
