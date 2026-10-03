@@ -148,6 +148,31 @@ select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_
 select is(pg_temp.row_of('zeynep', 'deniz') ->> 'status', 'pending_review', 'Zeynep, who decides on it, sees the renewal waiting');
 select ok(exists (select 1 from jsonb_array_elements(pg_temp.detail('zeynep', 'deniz') -> 'submissions') x where x ->> 'state' = 'pending_review'),
   'and its upload');
+-- Deniz replaces the renewal before anybody reviewed it: the first renewal is
+-- 'superseded', still never reviewed, so still her deciders' and hers.
+create temp table deniz_first_renewal as
+select s.id as submission_id, f.file_id from public.employee_document_submissions s
+join public.employee_document_submission_files f on f.submission_id = s.id
+where s.id = (pg_temp.req('deniz')).submitted_document_id;
+select pg_temp.upload('deniz');
+select is((select s.state from public.employee_document_submissions s where s.id = (select submission_id from deniz_first_renewal)),
+  'superseded', 'the first renewal was replaced unreviewed');
+create function pg_temp.has_version(actor text, self_only boolean) returns boolean language sql as $$
+  select exists (select 1 from jsonb_array_elements(public.get_employee_document_lifecycle_service(pg_temp.usr(actor), tests.id('m'),
+    (pg_temp.req('deniz')).id, self_only) -> 'submissions') x where (x ->> 'id')::uuid = (select submission_id from deniz_first_renewal))$$;
+create function pg_temp.has_history(actor text, self_only boolean) returns boolean language sql as $$
+  select exists (select 1 from jsonb_array_elements(public.get_employee_document_lifecycle_service(pg_temp.usr(actor), tests.id('m'),
+    (pg_temp.req('deniz')).id, self_only) -> 'history') h where h -> 'metadata' ->> 'submission_id' = (select submission_id from deniz_first_renewal)::text)$$;
+select ok(not pg_temp.has_version('ayse', false), 'Ayse does not see the replaced renewal among the versions');
+select ok(not pg_temp.has_history('ayse', false), 'nor in the history');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_path_service(%L, %L, %L, %L, %L, false)',
+  pg_temp.usr('ayse'), tests.id('m'), (pg_temp.req('deniz')).id, (select submission_id from deniz_first_renewal), (select file_id from deniz_first_renewal))),
+  'P0002', 'nor downloads it: the same answer as for any file she does not see');
+select ok(pg_temp.has_version('zeynep', false) and pg_temp.has_history('zeynep', false), 'Zeynep, who decides on it, sees it and its history');
+select ok(pg_temp.has_version('deniz', true), 'and Deniz sees her own');
+select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_path_service(%L, %L, %L, %L, %L, false)',
+  pg_temp.usr('zeynep'), tests.id('m'), (pg_temp.req('deniz')).id, (select submission_id from deniz_first_renewal), (select file_id from deniz_first_renewal))),
+  'ok', 'and Zeynep downloads it');
 select is(pg_temp.approve('ayse', 'emre'), 'ok', 'Ayse approves Emre''s, an employee where she works');
 select is(pg_temp.approve('mehmet', 'veli'), '42501 authz.out_of_scope', 'Mehmet does not decide at Kadikoy');
 
