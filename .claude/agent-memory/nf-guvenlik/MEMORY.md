@@ -39,3 +39,4 @@
 - [Geçmiş sınırı taslakta da](checklist-past-line-on-drafts.md) — yeniden hesaplayan yazımda (republish) taslak listesi de geçmiş sınırına bağlı mı; yalnız yayınlanmışı süzmek yetmez
 - [Başkasının worktree'sinde checkout yok](feedback-no-checkout-in-others-worktree.md) — incelenen sha'yı git show / git archive / kendi geçici worktree ile oku (FB-6.7 C tur 2 hatası)
 - [İncelemeyi atlatan işaretler](checklist-review-skip-flags.md) — owner_excused gibi "incelemesiz kabul" işaretini owner olmayanda bırakan yol, sıfırlayan yol, API aynı alana mı bakıyor (FB-6.6)
+- [Gizlenen durumun kardeşleri](checklist-hidden-state-siblings.md) — pending saklanıyorsa hiç incelenmemiş superseded da saklanmalı; "bir adım daha" hücresi ekle (FB-6.6 tur 2)
