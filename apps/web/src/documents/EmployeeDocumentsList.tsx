@@ -19,7 +19,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
-import { isOnFile } from "./document-rules";
+import { statusLabel } from "./document-rules";
 import "./documents.css";
 
 const statusLabels = {
@@ -28,18 +28,6 @@ const statusLabels = {
   missing: "Missing",
   expired: "Expired",
   completed: "Completed",
-};
-const labels: Record<DocumentObligation["status"], string> = {
-  pending_review: "Needs review",
-  missing: "Missing",
-  expired: "Expired",
-  completed: "Completed",
-  grace: "Grace period",
-  rejected: "Rejected",
-  removed: "Removed",
-  exempt: "Exempt",
-  timezone_required: "Time zone needed",
-  paused: "Paused",
 };
 export function EmployeeDocumentsList(props: {
   audience: DocumentAudience;
@@ -276,7 +264,7 @@ export function EmployeeDocumentsList(props: {
                     <td>{r.title}</td>
                   </>
                 )}
-                <td>{isOnFile(r) ? "On file" : labels[r.status]}</td>
+                <td>{statusLabel(r)}</td>
               </tr>
             ))}
           </tbody>

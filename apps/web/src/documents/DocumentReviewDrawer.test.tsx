@@ -271,6 +271,12 @@ describe("shared document review", () => {
     ).toBeNull();
   });
 
+  it("names the status the way the list does", async () => {
+    page();
+    expect(await screen.findByText("Needs review")).toBeTruthy();
+    expect(screen.queryByText("pending review")).toBeNull();
+  });
+
   it("never offers manager review or exemption on the employee's own surface", async () => {
     page(true);
     await screen.findByRole("heading", { name: "Safety certificate" });
@@ -794,7 +800,7 @@ describe("employee surface", () => {
     vi.mocked(getDocument).mockResolvedValue(doc);
     page(true);
     expect(await screen.findByText("On file")).toBeTruthy();
-    expect(screen.queryByText("exempt")).toBeNull();
+    expect(screen.queryByText("Exempt")).toBeNull();
     expect(screen.getByLabelText("Upload document")).toBeTruthy();
   });
 });
@@ -823,7 +829,7 @@ describe("a row whose unreviewed upload is hidden", () => {
     doc.obligation.remaining_seconds = null;
     vi.mocked(getDocument).mockResolvedValue(doc);
     page();
-    expect(await screen.findByText("missing")).toBeTruthy();
+    expect(await screen.findByText("Missing")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: /^Version/ })).toBeNull();
     expect(screen.queryByRole("note")).toBeNull();
     expect(document.body.textContent).not.toMatch(/null|undefined/);

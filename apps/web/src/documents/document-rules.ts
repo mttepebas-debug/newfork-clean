@@ -27,6 +27,26 @@ export function isOnFile(
   return isOwnerExcused(obligation) && obligation.approved_id !== null;
 }
 
+const statusLabels: Record<DocumentObligationStatus, string> = {
+  pending_review: "Needs review",
+  missing: "Missing",
+  expired: "Expired",
+  completed: "Completed",
+  grace: "Grace period",
+  rejected: "Rejected",
+  removed: "Removed",
+  exempt: "Exempt",
+  timezone_required: "Time zone needed",
+  paused: "Paused",
+};
+
+/** The status as a person reads it, in the list and the drawer alike. */
+export function statusLabel(
+  obligation: Excusable & Pick<DocumentObligation, "approved_id">,
+): string {
+  return isOnFile(obligation) ? "On file" : statusLabels[obligation.status];
+}
+
 /** Typed-name match for a policy acknowledgement: trimmed, inner whitespace collapsed, case folded. */
 export function sameSignerName(typed: string, expected: string): boolean {
   const fold = (name: string) =>

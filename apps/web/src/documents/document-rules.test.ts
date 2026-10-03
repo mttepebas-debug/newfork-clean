@@ -5,6 +5,7 @@ import {
   isObligationClosed,
   isOnFile,
   sameSignerName,
+  statusLabel,
 } from "./document-rules";
 
 describe("isObligationClosed", () => {
@@ -42,6 +43,18 @@ describe("the owner's excused document (BL-118)", () => {
     expect(isOnFile(owner)).toBe(false);
     expect(isOnFile({ ...owner, approved_id: "copy" })).toBe(true);
     expect(isOnFile({ ...owner, approved_id: "copy", exemption_locked: false })).toBe(false);
+  });
+});
+
+describe("statusLabel", () => {
+  it("names each status for a person, and the owner's accepted copy On file", () => {
+    const row = { status: "pending_review", exemption_locked: false, approved_id: null } as const;
+    expect(statusLabel(row)).toBe("Needs review");
+    expect(statusLabel({ ...row, status: "timezone_required" })).toBe("Time zone needed");
+    expect(statusLabel({ ...row, status: "exempt", exemption_locked: true })).toBe("Exempt");
+    expect(
+      statusLabel({ ...row, status: "exempt", exemption_locked: true, approved_id: "copy" }),
+    ).toBe("On file");
   });
 });
 

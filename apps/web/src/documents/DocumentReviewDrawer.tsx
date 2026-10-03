@@ -31,8 +31,8 @@ import {
   acceptAttribute,
   acceptsUpload,
   isObligationClosed,
-  isOnFile,
   sameSignerName,
+  statusLabel,
 } from "./document-rules";
 
 // What a person typed into the drawer. Nothing stores it before its own
@@ -409,11 +409,7 @@ function DocumentDetailContent({
           </button>
         </div>
         <div className="catalog-drawer-body document-detail-body">
-          <p>
-            {isOnFile(obligation)
-              ? "On file"
-              : obligation.status.replaceAll("_", " ")}
-          </p>
+          <p>{statusLabel(obligation)}</p>
           {obligation.tracks_expiry && !obligation.timezone && (
             <p role="note">
               An administrator needs to set this employee's document time zone
