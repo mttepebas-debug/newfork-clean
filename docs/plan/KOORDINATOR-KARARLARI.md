@@ -1086,5 +1086,27 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Uygulamada etkisi:** Veli'nin reddedilen Food Handler'ı yüzünden çakışma uyarısında Lale "missing" görür, Zeynep "rejected".
 - **Dayanak:** KARARLAR "Ürün kuralları" — S2 (Mert, 2026-10-02): "Schedule'daki 'belge eksik' uyarı / engeli değişmez (dosyayı değil bilgiyi gösterir)" ve reddedilen belge eki (Mert, 2026-10-03). Kural birebir kapsıyor; incelemenin önerdiği soru sorulmadı.
 - **Geri alma:** orta — migration.
-- **Durum:** yürürlükte, uygulanıyor. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #134).
+- **Durum:** **yerine geçti 2026-10-03 (besleme #135)** — uygulanmadı; Mert kuralı genişletti (bakana göre görünürlük, KARARLAR'da taslak), plan sohbette (§0c 68). Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #134).
+- **Mert:** bilgi.
+
+### KK-128 (2026-10-03) FB-6.6'nın dört migration'ı canlıya gönderildi
+- **Karar (ne):** `20261006000000`, `…010000`, `…020000`, `…030000` canlıya (proje `hvyvyisrqyathtliyyyv`) Supabase MCP `apply_migration` ile; önce main (OPS-03, nesne silen iş), main CI 37090845658 yeşilinden sonra. 12 `signature_templates` rol izin satırı, bağımlılığı ve iki izin tanımı silindi.
+- **Nerede:** koordinatörün `nf-db` alt ajanı; yedek ve rapor `newfork-wt/coord/artifacts/coord/fb-6.6/hosted-push/`.
+- **Ne zaman:** 2026-10-03 ~04:37Z (posta kutusu damgası 04:37:29Z).
+- **Ne için:** FB-6.6'nın veri ve yetki parçası canlıda olmadan yayındaki yeni kod (Vercel main'den yayınlar) belge ve onboarding işlemlerinde çekirdeğin yeni eylemlerini bulamazdı.
+- **Uygulamada etkisi:** canlıda resmî ad onayı yalnız owner / admin; incelenmemiş ve reddedilen belge yalnız karar veren + sahibi; Settings → Roles'ta "Signature templates" kutuları yok, kimse erişim kaybetmedi.
+- **Dayanak:** CLAUDE.md §8 sürekli yetki (canlıya migration gönderimi) + Mert'in silme onayı (2026-10-02 ~22:55Z, besleme #124; aktarılan onay koordinatörün penceresinde); KARARLAR OPS-03.
+- **Geri alma:** yedekten (79 dosya, `INDEX.tsv`); silinen satırlar yedekte.
+- **Durum:** tamam — kayıt oturumu ölçtü (07:19Z, Supabase MCP): dört sürüm, md5'ler repo dosyalarıyla eşit, `signature_templates` rol satırı 0. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kaydı, besleme #135).
+- **Mert:** bilgi.
+
+### KK-129 (2026-10-03) FB-6.6 B'ye iki küçük düzeltme eklendi
+- **Karar (ne):** `nf-arayuz`'un B turunda bulduğu Y2 (Employees → kişi → çekmecedeki belge durum etiketleri listedekiyle aynı) ve Y3 ("Extend delivery deadline" ve inceleme düğmeleri satır başına `can(documents.review, kişi)` ile) aynı dalda (`task/fb-6.6-b`) yapılır. B'nin metin kararları kabul: "Optional for you; what you submit goes on file without review." / "On file" / "You don't have access to this document."
+- **Nerede:** `task/fb-6.6-b` @`3444f5f7`.
+- **Ne zaman:** 2026-10-03 ~07:15Z.
+- **Ne için:** aynı ekran ve aynı işle doğrudan ilgili küçük bulgular; düğme çekirdeğin cevabını göstermeli.
+- **Uygulamada etkisi:** çekmece ve liste aynı durumu aynı kelimeyle söyler; belgeye karar veremeyen müdür "Extend delivery deadline" ve inceleme düğmelerini görmez.
+- **Dayanak:** ILKELER P17 (aynı işle doğrudan ilgili küçük ve görsel hatalar mevcut işe eklenir), P21; CLAUDE.md §9.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte, işçi aynı dalda yapıyor. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #135).
 - **Mert:** bilgi.
