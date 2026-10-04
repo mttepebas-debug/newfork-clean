@@ -37,14 +37,15 @@ Devralan: Mert'in havuzdan seçtiği oturum — **güncel koordinatör kimliği,
 ## 3. Oturumlar
 | Oturum | Kimlik | Durum |
 |---|---|---|
-| Kayıt-19 | `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` | aktif (besleme #158'e kadar işlendi) |
+| Kayıt-20 | `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` | devraldı 19:55Z (ilk işi "kayıt-20 hazır") |
+| Kayıt-19 (eski) | `local_d8686bdf…` | devretti, OPS-07 ile havuza |
 | AVAIL-002 C1 düzeltmesi (`nf-arayuz`) | `local_91ac4f8d…` | çalışıyor; dal `task/avail-002-c1`, port 5630 / 5631 |
 | FB-6.7 davranış (işçi 2) | `local_1628762e…` | Mert'le konuşuyor |
 | FB-6.7 uygulama (işçi 1) | `local_9f1bbd26…` | durdu, C3 + lab silme bekliyor |
 | FB-6.7 akış artifact'i (işçi 3) | `local_575ba63c…` | beklemede |
 | AVAIL-002 Discard → ConfirmDialog (`nf-arayuz`) | `local_863130bd…` | çalışıyor; dal `task/avail-002-discard` (C2 dalından) |
 | FB-6.4 tazelik | `local_01cffb57…` | bitti, temizlenecek |
-| Havuz "(havuz) boş" | `local_e4bbe6fe…` (eski C2; worktree `newfork-wt/avail-002-c2` main penceresine kadar kalır), `local_d96f34f3…` (eski C1) | boş (OPS-07) |
+| Havuz "(havuz) boş" | `local_e4bbe6fe…` (eski C2; worktree `newfork-wt/avail-002-c2` main penceresine kadar kalır) | boş (OPS-07) |
 | AVAIL-002 not kartı yazan + tarih verisi (`nf-db` + `nf-backend`, R2) | `local_10a5177a…` | çalışıyor; dal `task/avail-002-note-meta`; OPS-03: alan ekleyen → önce canlı |
 | Koordinatör | `local_abc4d126…` | aktif |
 | Rol: nf-guvenlik | `local_7dfbe7d3…` | boşta |
