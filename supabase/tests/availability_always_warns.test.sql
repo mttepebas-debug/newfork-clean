@@ -28,11 +28,10 @@ create function pg_temp.evenings(days integer[]) returns jsonb language sql as $
   from (select public.empty_weekly_preference('time_range') p) x
 $$;
 -- Ali marked every evening 18:00-22:00 and Ayşe noted the same evenings as a
--- private reminder; Can, a manager who also works shifts, marked Saturday.
+-- private reminder; Can, a manager who also works shifts, keeps no week (M13).
 -- Veli marked nothing; Ayşe's note says he is busy every evening.
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
-values (tests.id('ap'), tests.id('ap:ali'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), 1, tests.user('ap:ali')),
-       (tests.id('ap'), tests.id('ap:can'), pg_temp.evenings(array[6]), 1, tests.user('ap:can'));
+values (tests.id('ap'), tests.id('ap:ali'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), 1, tests.user('ap:ali'));
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
 values (tests.id('ap'), tests.id('ap:ali'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), true, 1, tests.user('ap:ayse')),
        (tests.id('ap'), tests.id('ap:veli'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), true, 1, tests.user('ap:ayse'));
@@ -191,7 +190,7 @@ select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'findings
   and (f ? 'availability_state' or f ? 'warning_policy' or f ? 'acknowledged_by_name' or f ? 'acknowledged_at')), 0,
   'with no acceptance state and nobody''s acknowledgment');
 select is((select jsonb_array_length(pg_temp.findings(v, 'ali')) from ap where k = 'preview'), 5, 'each of Ali''s five evenings is listed');
-select is((select jsonb_array_length(pg_temp.findings(v, 'can')) from ap where k = 'preview'), 1, 'Can''s Saturday too, a manager''s own mark');
+select is((select jsonb_array_length(pg_temp.findings(v, 'can')) from ap where k = 'preview'), 0, 'nothing of Can''s, a manager with no week');
 select is((select jsonb_array_length(pg_temp.findings(v, 'veli')) from ap where k = 'preview'), 0, 'the note never reaches Publish');
 select is((select pg_temp.findings(v, 'ali') -> 0 ->> 'message' from ap where k = 'preview'), 'Ali Person shows as unavailable for this shift.',
   'the line says where Ali stands, not what changed');
@@ -341,6 +340,42 @@ select is((select count(*)::integer from pg_proc where proname = 'weekly_publica
   0, 'the publish decision never asks for or records an availability acknowledgment');
 select is((select count(*)::integer from pg_proc where proname = 'weekly_schedule_publication_preflight'
   and pronamespace = 'public'::regnamespace and strpos(prosrc, 'acknowledged_by') > 0), 0, 'Publish names nobody as having acknowledged a mark');
+select is((select count(*)::integer from pg_proc where pronamespace = 'public'::regnamespace
+  and (strpos(prosrc, 'Resolve availability') > 0 or strpos(prosrc, 'availability acceptance') > 0)), 0,
+  'no refusal tells the manager to resolve or accept availability');
+
+-- 14. A rest conflict on a shift that also falls on Ayşe's note: Publish names
+-- the rest conflict and never the note (M12).
+select pg_temp.session(8);
+select pg_temp.write(8, pg_temp.shift('veli', 8, 0));
+select pg_temp.write(8, pg_temp.shift('veli', 8, 1, '{"start_time": "06:00", "end_time": "08:00"}'));
+select pg_temp.save(8);
+update public.workspace_scheduling_settings set minimum_rest_minutes = 600 where workspace_id = tests.id('ap');
+insert into ap select 'rest', pg_temp.preview('ayse', tests.id('ap:draft:8'));
+select ok((select count(*) > 0 from ap, jsonb_array_elements(v -> 'findings') f where k = 'rest' and f ->> 'code' = 'schedule_conflict'
+  and f ->> 'employee_id' = tests.id('ap:veli')::text), 'Publish lists Veli''s short rest');
+select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'findings') f where k = 'rest'
+  and f ->> 'message' like '%manager noted%'), 0, 'and its line says nothing of the note');
+update public.workspace_scheduling_settings set minimum_rest_minutes = 0 where workspace_id = tests.id('ap');
+
+-- 15. The default hours review shows the note only to whoever may read it.
+select tests.remember('ap:session:9', (public.acquire_schedule_edit_session_service(
+  tests.user('ap:nil'), tests.id('ap'), tests.week(9), 'blank', null) -> 'session' ->> 'id')::uuid);
+insert into public.shift_types (id, workspace_id, name, default_start_time, default_end_time)
+values (tests.remember('ap:type:dusk', gen_random_uuid()), tests.id('ap'), 'Dusk', '10:00', '14:00');
+select tests.remember('ap:dusk', (x ->> 'id')::uuid) from jsonb_array_elements(public.mutate_schedule_edit_shift_service(tests.user('ap:nil'), tests.id('ap'),
+  tests.id('ap:session:9'), pg_temp.rev(tests.id('ap:session:9')), 'create', gen_random_uuid(), null,
+  (pg_temp.shift('veli', 9, 2) - 'start_time' - 'end_time') || jsonb_build_object('time_basis', 'type_default', 'shift_type_id', tests.id('ap:type:dusk')),
+  gen_random_uuid()) -> 'shifts') x
+where x ->> 'employee_id' = tests.id('ap:veli')::text;
+update public.shift_types set default_start_time = '18:00', default_end_time = '22:00' where id = tests.id('ap:type:dusk');
+insert into ap select 'dusk', public.preview_schedule_default_hours_service(tests.user('ap:nil'), tests.id('ap'), tests.id('ap:session:9'),
+  jsonb_build_object('expected_session_revision', pg_temp.rev(tests.id('ap:session:9')), 'starts_on', tests.week(9), 'ends_on', tests.week(9) + 6,
+  'shift_ids', jsonb_build_array(tests.id('ap:dusk')), 'overrides', '[]'::jsonb));
+select is((select (s ->> 'will_change')::boolean from ap, jsonb_array_elements(v -> 'shifts') s where k = 'dusk'), true,
+  'the review moves Veli into the noted evening');
+select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'shifts') s, jsonb_array_elements(s -> 'after_assessment' -> 'reasons') r
+  where k = 'dusk' and r ->> 'code' = 'note'), 0, 'a shift lead who cannot read the note does not get it there either');
 
 select * from finish();
 rollback;

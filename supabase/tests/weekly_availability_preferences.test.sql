@@ -53,7 +53,7 @@ select is(public.weekly_preferences_read_service(actor,w)->'employee'->>'submitt
 select is(public.weekly_preferences_read_service(actor,w)->'manager','null'::jsonb,'employee cannot read private reminders') from wp_fixture;
 select is(public.weekly_preferences_read_service(manager,w,emp)->>'can_manage','true','one managed location is enough even for a multi-location employee') from wp_fixture;
 select throws_ok($$select public.weekly_preferences_read_service(gen_random_uuid(),w,emp) from wp_fixture$$,'42501',null,'unrelated actor cannot read');
-select is(public.weekly_preference_capacity(w,emp,'[2035-01-15 09:00Z,2035-01-15 17:00Z)','UTC')->'unavailable_intervals','[]'::jsonb,'no record is available') from wp_fixture;
+select is(public.weekly_preference_capacity(w,emp,'[2035-01-15 09:00Z,2035-01-15 17:00Z)','UTC')->'employee_intervals','[]'::jsonb,'no record is available') from wp_fixture;
 
 update wp_fixture set p=jsonb_set(p,'{days,1,ranges}','[{"start":"09:00","end":"17:00"}]');
 select is(public.weekly_preference_intersections(w,p,'[2035-01-15 17:00Z,2035-01-15 18:00Z)','UTC'),'{}'::tstzmultirange,'touching endpoints do not conflict') from wp_fixture;
@@ -64,8 +64,10 @@ select throws_ok($$select public.weekly_preference_intersections(w,p,'[2035-01-1
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by) select w,emp,p,1,actor from wp_fixture;
 insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,revision,updated_by,notes)
  select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"16:00","end":"20:00"}]'),1,manager,array['','Private manager note','','','','',''] from wp_fixture;
-select is(public.weekly_preference_capacity(w,emp,'[2035-01-15 09:00Z,2035-01-15 21:00Z)','UTC')->'unavailable_intervals',
- public.availability_ranges_json('{[2035-01-15 09:00Z,2035-01-15 20:00Z)}'::tstzmultirange),'employee and manager intervals union without double counting') from wp_fixture;
+select is(public.weekly_preference_capacity(w,emp,'[2035-01-15 09:00Z,2035-01-15 21:00Z)','UTC'),
+ jsonb_build_object('employee_intervals',public.availability_ranges_json('{[2035-01-15 09:00Z,2035-01-15 17:00Z)}'::tstzmultirange),
+  'manager_intervals',public.availability_ranges_json('{[2035-01-15 16:00Z,2035-01-15 20:00Z)}'::tstzmultirange)),
+ 'the mark and the note come back apart and are never joined (M12)') from wp_fixture;
 select is(public.weekly_preferences_read_service(actor,w)->'manager','null'::jsonb,'employee response still excludes saved reminders and notes') from wp_fixture;
 select is(public.weekly_preferences_read_service(manager,w,emp)->'manager'->'notes'->>1,'Private manager note','scoped manager can read shared notes') from wp_fixture;
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from wp_fixture);

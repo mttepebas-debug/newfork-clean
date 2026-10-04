@@ -12,6 +12,8 @@
 --   'first' from the shift's earliest publication with the same person;
 --   approved time off never counts.
 -- * BL-206: the draft availability conflict list is gone.
+-- * Capacity returns the mark and the note apart and never joins them; the
+--   default hours review keeps the note to whoever may read it.
 
 -- ==== assess_weekly_shift_availability
 CREATE OR REPLACE FUNCTION public.assess_weekly_shift_availability(w uuid, emp uuid, shift jsonb)
@@ -393,10 +395,10 @@ begin
    and app_private.authz_reason(o.actor_user_id,new.workspace_id,'schedule.publish',array[new.location_id]) is null limit 1;
  end if;
  if a->>'operation'='blocked' or (tg_table_name='schedule_published_shifts' and a->>'operation'='verification_required') then
-  raise exception 'Resolve availability, shift hours or approved time off before this assignment' using errcode='23514',detail=a::text;
+  raise exception 'Resolve shift hours or approved time off before this assignment' using errcode='23514',detail=a::text;
  end if;
  if a->>'operation'='warning_requires_override' and evidence is null then
-  raise exception 'A current availability acceptance is required' using errcode='23514',detail=a::text;
+  raise exception 'A current conflict acceptance is required' using errcode='23514',detail=a::text;
  end if;
  if tg_table_name='schedule_published_shifts' then
   -- What the shift's first publish with this person saw of their own marks
@@ -872,7 +874,7 @@ begin
    'availability_fingerprint',a->>'availability_fingerprint','override_id',evidence->>'id','retained_publication_id',prior->>'publication_id'));
   if a->>'operation'<>'allowed' then
    warning:=state is not null;
-   select string_agg(r->>'message',' ' order by ord) into message from jsonb_array_elements(a->'reasons') with ordinality r(r,ord) where r->>'code'<>'availability';
+   select string_agg(r->>'message',' ' order by ord) into message from jsonb_array_elements(a->'reasons') with ordinality r(r,ord) where r->>'code' not in ('availability','note');
    tier:=case when not warning then 'blocker' when state='new' and a->>'warning_policy'='confirm' then 'risk' else 'note' end;
    findings:=findings||jsonb_build_array(jsonb_build_object('id',a->>'fingerprint','code','schedule_conflict',
     'conflict_severity',coalesce(a->>'conflict_severity',case when a->>'warning_policy'='confirm' then 'confirm' else 'warn' end),
@@ -1038,3 +1040,40 @@ begin
     'available_start',case when free is not null and not isempty(free) then (select lower(r)::text from unnest(free) r order by lower(r) limit 1) end,
     'available_end',case when free is not null and not isempty(free) then (select upper(r)::text from unnest(free) r order by lower(r) limit 1) end);
 end; $function$;
+
+-- ==== weekly_preference_capacity
+-- The mark and the note stay apart (M12): no joined hours to misread as orange.
+CREATE OR REPLACE FUNCTION public.weekly_preference_capacity(w uuid, emp uuid, target_span tstzrange, zone_name text, proposed jsonb DEFAULT NULL::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare employee_week jsonb; manager_week jsonb; employee_ranges tstzmultirange:='{}'; manager_ranges tstzmultirange:='{}';
+begin
+ if not exists(select 1 from public.employee_profiles where workspace_id=w and id=emp) then raise exception 'Employee not found' using errcode='42501'; end if;
+ if target_span is null or isempty(target_span) then raise exception 'A valid assignment span is required' using errcode='22023'; end if;
+ select preference into employee_week from public.employee_weekly_preferences where workspace_id=w and employee_id=emp;
+ employee_week:=coalesce(proposed,employee_week,public.empty_weekly_preference('time_range'));
+ employee_ranges:=public.weekly_preference_intersections(w,employee_week,target_span,zone_name);
+ select preference into manager_week from public.manager_weekly_reminders where workspace_id=w and employee_id=emp and enabled;
+ if manager_week is not null then manager_ranges:=public.weekly_preference_intersections(w,manager_week,target_span,zone_name); end if;
+ return jsonb_build_object('employee_intervals',public.availability_ranges_json(employee_ranges),
+  'manager_intervals',public.availability_ranges_json(manager_ranges));
+end; $function$;
+
+-- ==== preview_schedule_default_hours_service
+-- The note's reason and hours reach only whoever may read it, as at write time.
+do $migration$
+declare body text:=pg_get_functiondef('public.preview_schedule_default_hours_service(uuid,uuid,uuid,jsonb)'::regprocedure);
+ old_line constant text:='if after_a->>''operation'' in(''blocked'',''verification_required'') then reason:=''Resolve availability or approved leave before applying these hours'';';
+begin
+ if strpos(body,old_line)=0 then raise exception 'preview_schedule_default_hours_service changed; update this migration'; end if;
+ execute replace(body,old_line,
+  'if shift.employee_id is not null and app_private.authz_reason(actor,w,''availability.note_read'',target_person=>shift.employee_id) is not null then
+    before_a:=jsonb_set(before_a,''{reasons}'',(select coalesce(jsonb_agg(r),''[]'') from jsonb_array_elements(before_a->''reasons'') r where r->>''code''<>''note''));
+    after_a:=jsonb_set(after_a,''{reasons}'',(select coalesce(jsonb_agg(r),''[]'') from jsonb_array_elements(after_a->''reasons'') r where r->>''code''<>''note''));
+   end if;
+   if after_a->>''operation'' in(''blocked'',''verification_required'') then reason:=''Resolve shift hours or approved time off before applying these hours'';');
+end;
+$migration$;
