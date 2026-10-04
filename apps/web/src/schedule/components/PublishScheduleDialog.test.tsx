@@ -315,7 +315,7 @@ describe("PublishScheduleDialog", () => {
     const finding = publishFinding({ availability_state: "new", warning_policy: "confirm", tier: "risk" });
     const next = { ...preview, status: "override_required" as const, findings: [finding] };
     const choices: SchedulePublicationChoices = {
-      draftId: draft.id, locationIds: [location.id], departmentKeys: [department.id], notifyEmployeeIds: [], reasons: {},
+      draftId: draft.id, locationIds: [location.id], departmentKeys: [department.id], notifyEmployeeIds: [],
     };
     const onReview = vi.fn().mockResolvedValue(undefined);
     const onPreview = vi.fn().mockResolvedValue(next);
@@ -362,38 +362,21 @@ describe("PublishScheduleDialog", () => {
     expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id }]);
   });
 
-  it("acknowledges a new availability warning by its id only; the database records who and when (BL-186)", async () => {
-    const finding = publishFinding({ id: "d".repeat(64), code: "availability", availability_state: "new", warning_policy: "confirm", tier: "risk",
+  // M9: the employee's availability is listed for a last look; nothing is asked or recorded.
+  it("lists availability as a note and publishes without a decision for it", async () => {
+    const finding = publishFinding({ id: "d".repeat(64), code: "availability", overrideable: false, conflict_severity: "warn", tier: "note",
       message: "Alex Rivera shows as unavailable for this shift." });
-    const accepted = publishFinding({ id: "e".repeat(64), code: "availability", availability_state: "accepted", warning_policy: "confirm", tier: "note",
-      message: "Alex Rivera shows as unavailable for this shift.", acknowledged_by_name: "Ayse Manager", acknowledged_at: "2026-09-20T18:00:00+00:00" });
-    const next = { ...preview, status: "override_required" as const, findings: [finding, accepted] };
+    const next = { ...preview, status: "publish_ready" as const, findings: [finding] };
     const onPublish = vi.fn().mockResolvedValue({});
     render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
     await clickReadyNext();
-    expect((await screen.findAllByText("Alex Rivera shows as unavailable for this shift.")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Acknowledged by Ayse Manager · Sep 20")).toBeTruthy();
-    // Nothing moves on until the publisher says they've seen the new warning.
-    expect(screen.getByRole("button", { name: "Next" })).toHaveProperty("disabled", true);
-    fireEvent.click(screen.getByRole("checkbox", { name: "I've seen this warning and want to publish anyway" }));
+    expect((await screen.findAllByText(/Alex Rivera shows as unavailable for this shift\./)).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("checkbox", { name: "I've seen this warning and want to publish anyway" })).toBeNull();
+    expect(screen.queryByText(/Acknowledged by/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
-    expect(onPublish.mock.calls[0]![1]).toEqual([{ finding_id: finding.id }]);
-    expect(onPublish.mock.calls[0]![3]).toEqual({ fingerprint: next.fingerprint, decisions: [{ finding_id: finding.id }] });
-  });
-
-  it("shows the server's refusal when an availability warning was not acknowledged", async () => {
-    const finding = publishFinding({ id: "d".repeat(64), code: "availability", availability_state: "new", warning_policy: "confirm", tier: "risk",
-      message: "Alex Rivera shows as unavailable for this shift." });
-    const next = { ...preview, status: "override_required" as const, findings: [finding] };
-    const onPublish = vi.fn().mockRejectedValue(new Error("Acknowledge the availability warnings before publishing"));
-    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
-    await clickReadyNext();
-    fireEvent.click(await screen.findByRole("checkbox", { name: "I've seen this warning and want to publish anyway" }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("Acknowledge the availability warnings before publishing");
+    expect(onPublish.mock.calls[0]![1]).toEqual([]);
   });
 
   it("does not reconfirm or resubmit previously accepted weekly findings", async () => {

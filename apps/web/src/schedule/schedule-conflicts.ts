@@ -3,8 +3,8 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { closedLocationSeverity, getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
-import { weeklyTargetAvailability, weeklyTargetInterval } from "./lib/scheduleWeeklyAvailability";
+import { closedLocationSeverity, getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
+import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
 
 export type ScheduleConflictReason =
@@ -13,8 +13,8 @@ export type ScheduleConflictReason =
 export function scheduleConflictSeverity(reason: ScheduleConflictReason): ScheduleConflictSeverity {
   if (typeof reason === "string") return "block";
   if (["allow", "warn", "confirm", "block"].includes(String(reason.severity))) return reason.severity as ScheduleConflictSeverity;
-  // Availability is a preference: it only ever warns (BL-186).
-  if (reason.type === "availability") return "warn";
+  // Availability and a manager's note only ever warn (M8, M12).
+  if (reason.type === "availability" || reason.type === "note") return "warn";
   return ["closed_day", "assessment_unknown"].includes(String(reason.type)) ? "confirm" : "block";
 }
 
@@ -215,6 +215,12 @@ export function formatScheduleConflictMessage(
       `${employeeSubject(reason)} is unavailable for this shift${dateEvidence(reason)}.${targetEvidence(reason)}`.trim();
   }
 
+  if (reason.type === "note") {
+    const note = safeCustomerText(reason.note);
+    return note ? withPeriod(`A manager's note for this day: ${note}`)
+      : looseMessage ?? "The assignment overlaps hours a manager noted for this person.";
+  }
+
   if (reason.type === "time_off") {
     const date = safeCustomerText(reason.date) || "this shift";
     if (reason.full_day) {
@@ -255,6 +261,19 @@ export function formatScheduleConflictMessages(
   return reasons
     .map((reason) => formatScheduleConflictMessage(reason).trim())
     .filter((message) => message.length > 0);
+}
+
+/**
+ * The employee's own mark and a manager's note from the server's assessment.
+ * Neither is in its operation (M8, M12), so they are read from the reasons:
+ * every write warns for them, none is a conflict.
+ */
+export function assessmentAvailabilityWarnings(
+  assessment: Pick<ShiftAvailabilityAssessment, "reasons"> & Partial<Pick<ShiftAvailabilityAssessment, "operation">> | null,
+): ScheduleConflictReason[] {
+  return (assessment?.reasons ?? [])
+    .filter(reason => reason.code === "availability" || reason.code === "note")
+    .map(reason => ({ type: reason.code, severity: "warn", message: reason.message, intervals: reason.intervals ?? [] }));
 }
 
 export function evaluateScheduleShiftConflicts(
@@ -356,10 +375,13 @@ export function evaluateScheduleShiftConflicts(
   const weeklyStatus = weeklyTargetAvailability(employee, input);
   if (weeklyStatus === "time_off") {
     reasons.push({ ...context, type: "time_off", message: "Approved time off overlaps this assignment." });
-  } else if (weeklyStatus === "reminder" || weeklyStatus === "unavailable") {
+  } else if (weeklyStatus === "unavailable") {
     reasons.push({ ...context, type: "availability", rule_kind: "weekly", severity: "warn",
-      message: weeklyStatus === "reminder" ? "The assignment overlaps hours a manager noted as unavailable." : "The assignment overlaps unavailable hours." });
+      message: "The assignment overlaps unavailable hours." });
   }
+  // M12: a manager's note is only a reminder, a reason of its own.
+  const note = weeklyStatus === "time_off" ? null : weeklyTargetNote(employee, input);
+  if (note) reasons.push({ ...context, type: "note", rule_kind: "weekly", severity: "warn", note: note.text });
 
   const targetInterval = weeklyTargetInterval(employee, input);
   const intervalsOverlap = (shift: ScheduleShift) => {

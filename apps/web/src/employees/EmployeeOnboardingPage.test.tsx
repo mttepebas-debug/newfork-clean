@@ -18,7 +18,6 @@ import {
 } from "@newfork/shared";
 import {
   loadWeeklyPreferences,
-  previewWeeklyPreferences,
   saveWeeklyPreferences,
 } from "../availability/availability-data";
 // Whole-repo runs share the cores with three other packages; Testing
@@ -27,7 +26,6 @@ configure({ asyncUtilTimeout: 5000 });
 
 vi.mock("../availability/availability-data", () => ({
   loadWeeklyPreferences: vi.fn(),
-  previewWeeklyPreferences: vi.fn(),
   saveWeeklyPreferences: vi.fn(),
 }));
 import {
@@ -144,7 +142,6 @@ describe("EmployeeOnboardingPage", () => {
     authMock.phone = "3105559999";
     vi.mocked(getMyOnboarding).mockResolvedValue(onboarding);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
-    vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
     vi.mocked(saveWeeklyPreferences).mockImplementation(
       async (_workspace, command) => {
         const model = weeklyModel();
@@ -156,10 +153,6 @@ describe("EmployeeOnboardingPage", () => {
         };
         return {
           model,
-          finalized: [],
-          kept_count: 0,
-          cancelled_count: 0,
-          resolved_count: 0,
         };
       },
     );

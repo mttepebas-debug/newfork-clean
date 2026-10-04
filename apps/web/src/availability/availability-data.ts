@@ -4,7 +4,6 @@ import {
   type ScheduleShiftMutationInput,
   weeklyPreferenceReadSchema,
   weeklyTeamReadSchema,
-  weeklyCommitmentPreviewSchema,
   weeklyPreferenceMutationSchema,
   type WeeklyPreferenceSave,
   weeklyPreferenceSettingsReadSchema,
@@ -74,9 +73,6 @@ export async function loadWeeklyPreferences(workspace: string, employee?: string
 }
 export async function loadWeeklyTeam(workspace: string) {
   return weeklyTeamReadSchema.parse(await request(workspace, "/weekly/team"));
-}
-export async function previewWeeklyPreferences(workspace: string, command: WeeklyPreferenceSave, onboarding = false) {
-  return weeklyCommitmentPreviewSchema.parse(await request(workspace, "/weekly/preview", { method: "POST", body: JSON.stringify(command) }, onboarding));
 }
 export async function saveWeeklyPreferences(workspace: string, command: WeeklyPreferenceSave, key: string, onboarding = false) {
   return weeklyPreferenceMutationSchema.parse(await request(workspace, "/weekly", { method: "POST", headers: { "Idempotency-Key": key }, body: JSON.stringify(command) }, onboarding));

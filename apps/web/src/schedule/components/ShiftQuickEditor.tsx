@@ -401,12 +401,13 @@ export function ShiftQuickEditor({
   ).filter(
     (reason) =>
       typeof reason === "string" ||
-      !["availability", "time_off"].includes(String(reason.type)),
+      // The note (M12) stays out like availability until C1 opens the box for both.
+      !["availability", "note", "time_off"].includes(String(reason.type)),
   );
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
     if (!result || result.operation === "allowed" || result.override_recorded || result.responsibility_retained) return [];
     // Availability is a preference: the cell shows it, it never asks (BL-186).
-    return result.reasons.filter(reason => reason.code !== "availability")
+    return result.reasons.filter(reason => reason.code !== "availability" && reason.code !== "note")
       .map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
   };
   const rawConflictReasons = [

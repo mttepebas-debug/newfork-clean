@@ -1,9 +1,8 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WeeklyPreferenceSave } from "@newfork/shared";
 import {
   loadWeeklyPreferences,
-  previewWeeklyPreferences,
   saveWeeklyPreferences,
 } from "./availability-data";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
@@ -50,17 +49,10 @@ function ConnectedPreferences({
     command: WeeklyPreferenceSave;
     key: string;
   } | null>(null);
-  const [finalizedCount, setFinalizedCount] = useState(0);
-  const baseOf = (command: WeeklyPreferenceSave) =>
-    JSON.stringify({ ...command, decisions: undefined });
+  // An uncertain save may already have committed: the same command replays
+  // with the same key.
+  const baseOf = (command: WeeklyPreferenceSave) => JSON.stringify(command);
 
-  async function preview(command: WeeklyPreferenceSave) {
-    // An uncertain save may already have committed. Replay its exact command/key
-    // before asking for a newer revision or repeating any request decisions.
-    if (attempt.current?.base === baseOf(command)) return { items: [] };
-    attempt.current = null;
-    return previewWeeklyPreferences(workspaceId, command, onboarding);
-  }
   async function save(command: WeeklyPreferenceSave) {
     const base = baseOf(command);
     if (attempt.current?.base !== base)
@@ -74,7 +66,6 @@ function ConnectedPreferences({
         onboarding,
       );
       attempt.current = null;
-      setFinalizedCount(result.finalized.length);
       client.setQueryData(queryKey, result.model);
       void client.invalidateQueries({
         queryKey: ["weekly-preferences", workspaceId],
@@ -119,17 +110,9 @@ function ConnectedPreferences({
   return (
     <>
       {readError}
-      {finalizedCount > 0 && (
-        <p className="weekly-preferences-notice" role="status">
-          {finalizedCount} request{finalizedCount === 1 ? " was" : "s were"}{" "}
-          approved before your save. Those assigned shifts remain your
-          responsibility.
-        </p>
-      )}
       <WeeklyPreferencesForm
         model={query.data}
         audience={audience}
-        onPreview={preview}
         onSave={save}
         wizard={onboarding}
       />

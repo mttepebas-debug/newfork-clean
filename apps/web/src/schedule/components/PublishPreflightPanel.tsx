@@ -62,10 +62,6 @@ export function publishNewAvailabilityWarnings(preview: SchedulePublicationPrevi
   return publishNewAvailabilityFindings(preview).filter((finding) => finding.code === "availability");
 }
 
-export function formatAcknowledgedAt(value: string): string {
-  return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
 export function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
@@ -311,11 +307,6 @@ function WeeklyAvailabilityGroup({ findings, locations, employees, title, onRevi
       <div><strong>{finding.code === "availability" ? <AvailabilityDot /> : null}{finding.employee_name ?? (finding.employee_id ? "Employee" : "Unassigned")}</strong>
         <small>{finding.scheduled_date} · {finding.location_name ?? locations.find((location) => location.id === finding.location_id)?.name ?? finding.location_id}</small>
         <span>{hours ? `${finding.message} (${hours})` : finding.message}</span>
-        {finding.acknowledged_by_name && finding.acknowledged_at ? (
-          <small className="schedule-publish-acknowledged">
-            Acknowledged by {finding.acknowledged_by_name} · {formatAcknowledgedAt(finding.acknowledged_at)}
-          </small>
-        ) : null}
       </div>
       {onReviewShift && finding.shift_ids.length ? <button type="button" disabled={reviewDisabled} aria-label={`Show ${finding.employee_name ?? "employee"}'s shift on ${finding.scheduled_date}`} title="Show shift" onClick={() => onReviewShift(finding)}><ArrowUpRight size={16} aria-hidden /></button> : null}
     </div>; })}

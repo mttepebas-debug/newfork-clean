@@ -36,12 +36,10 @@ import { RequestError } from "../lib/request-error";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import {
   loadWeeklyPreferences,
-  previewWeeklyPreferences,
   saveWeeklyPreferences,
 } from "../availability/availability-data";
 vi.mock("../availability/availability-data", () => ({
   loadWeeklyPreferences: vi.fn(),
-  previewWeeklyPreferences: vi.fn(),
   saveWeeklyPreferences: vi.fn(),
 }));
 import {
@@ -564,7 +562,6 @@ describe("EmployeeDrawer", () => {
     vi.clearAllMocks();
     vi.mocked(listDocuments).mockResolvedValue([]);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
-    vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
   });
 
   it("leaves weekly drafts without the obsolete availability navigation prompt", async () => {
@@ -595,10 +592,6 @@ describe("EmployeeDrawer", () => {
     next.manager!.submitted = true;
     vi.mocked(saveWeeklyPreferences).mockResolvedValue({
       model: next,
-      finalized: [],
-      kept_count: 0,
-      cancelled_count: 0,
-      resolved_count: 0,
     });
     const { container } = renderDrawer("availability");
     fireEvent.click(

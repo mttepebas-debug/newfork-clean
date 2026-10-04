@@ -6,7 +6,6 @@ import {
   render,
   screen,
   waitFor,
-  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -90,91 +89,16 @@ function setup(data = model(), audience: "employee" | "manager" = "manager") {
 }
 
 describe("weekly preference form", () => {
-  it("requires a separate keep/cancel choice for every pending request before saving", async () => {
+  // M5: a save decides nothing about pending requests; nothing is asked first.
+  it("saves straight away, with no request decisions", async () => {
     const data = model();
-    const item = {
-      kind: "exchange_application" as const,
-      id: "ab930000-0000-4000-8000-000000000001",
-      fingerprint: "a".repeat(64),
-      request_revision: "1",
-      request_type: "open_pickup" as const,
-      location_name: "Downtown",
-      date: "2035-01-15",
-      start_time: "17:00",
-      end_time: "23:00",
-      timezone: "UTC",
-      intervals: [],
-    };
-    const onPreview = vi
-      .fn()
-      .mockResolvedValue({
-        items: [
-          item,
-          {
-            ...item,
-            id: "ab930000-0000-4000-8000-000000000002",
-            request_type: "cover",
-          },
-        ],
-      });
     const onSave = vi.fn().mockResolvedValue(data);
-    render(
-      <WeeklyPreferencesForm
-        model={data}
-        audience="employee"
-        onPreview={onPreview}
-        onSave={onSave}
-      />,
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    render(<WeeklyPreferencesForm model={data} audience="employee" onSave={onSave} />);
+    fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await screen.findByRole("dialog", { name: "Review pending requests" });
-    expect(onSave).not.toHaveBeenCalled();
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Save availability",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Shift pickup" })).getByRole(
-        "radio",
-        { name: "Keep request" },
-      ),
-    );
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Save availability",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Cover request" })).getByRole(
-        "radio",
-        { name: "Cancel request" },
-      ),
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onPreview).toHaveBeenCalledOnce();
-    expect(onSave.mock.calls[0]![0].decisions).toEqual([
-      {
-        kind: item.kind,
-        id: item.id,
-        fingerprint: item.fingerprint,
-        action: "keep",
-      },
-      {
-        kind: item.kind,
-        id: "ab930000-0000-4000-8000-000000000002",
-        fingerprint: item.fingerprint,
-        action: "cancel",
-      },
-    ]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onSave.mock.calls[0]![0]).not.toHaveProperty("decisions");
   });
   it("removes private draft notes when manager access disappears", () => {
     const data = model();
@@ -508,10 +432,10 @@ describe("weekly preference form", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "End of day" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0].preference.days[1]!.range).toEqual({
+    expect(onSave.mock.calls[0]![0].preference.days[1]!.ranges).toEqual([{
       start: "23:00",
       end: "24:00",
-    });
+    }]);
     expect(onSave.mock.calls[0]![0]).not.toHaveProperty("notes");
   });
 

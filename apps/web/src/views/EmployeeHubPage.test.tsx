@@ -11,8 +11,8 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EmployeeHubPage } from "./EmployeeHubPage";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
-import { loadWeeklyPreferences, previewWeeklyPreferences, saveWeeklyPreferences } from "../availability/availability-data";
-vi.mock("../availability/availability-data", () => ({ loadWeeklyPreferences: vi.fn(), previewWeeklyPreferences: vi.fn(), saveWeeklyPreferences: vi.fn() }));
+import { loadWeeklyPreferences, saveWeeklyPreferences } from "../availability/availability-data";
+vi.mock("../availability/availability-data", () => ({ loadWeeklyPreferences: vi.fn(), saveWeeklyPreferences: vi.fn() }));
 import { changeExchange, getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 vi.mock("../employee-hub/shift-exchanges/exchange-data", () => ({
   getExchanges: vi.fn(), getExchangeCandidates: vi.fn(), getExchangePreview: vi.fn(),
@@ -273,12 +273,11 @@ describe("EmployeeHubPage", () => {
     vi.clearAllMocks();
     submitTimeOff.mockResolvedValue({ status: "pending", request_id: "98300000-0000-4000-8000-000000000001", revision: 1, decide_by: null });
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
-    vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
     vi.mocked(saveWeeklyPreferences).mockImplementation(async (_workspace, command) => {
       const model = weeklyModel();
       model.employee = { ...model.employee, revision: 1, submitted: true, preference: command.preference };
       vi.mocked(loadWeeklyPreferences).mockResolvedValue(model);
-      return { model, finalized: [], kept_count: 0, cancelled_count: 0, resolved_count: 0 };
+      return { model };
     });
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [] });
     context.permissions = ["workspace.read", "schedule.read"];

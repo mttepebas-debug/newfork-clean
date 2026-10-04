@@ -16,12 +16,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WeeklyPreferencesPanel } from "./WeeklyPreferencesPanel";
 import {
   loadWeeklyPreferences,
-  previewWeeklyPreferences,
   saveWeeklyPreferences,
 } from "./availability-data";
 vi.mock("./availability-data", () => ({
   loadWeeklyPreferences: vi.fn(),
-  previewWeeklyPreferences: vi.fn(),
   saveWeeklyPreferences: vi.fn(),
 }));
 afterEach(cleanup);
@@ -51,16 +49,11 @@ function model(): WeeklyPreferenceRead {
 }
 async function setup() {
   vi.mocked(loadWeeklyPreferences).mockResolvedValue(model());
-  vi.mocked(previewWeeklyPreferences).mockResolvedValue({ items: [] });
   const next = model();
   next.employee.revision = 1;
   next.employee.submitted = true;
   const result = {
     model: next,
-    kept_count: 0,
-    cancelled_count: 0,
-    resolved_count: 0,
-    finalized: [],
   };
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
@@ -82,7 +75,7 @@ describe("weekly preferences API panel", () => {
     await screen.findByText("Saved");
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["schedule-read", w] });
   });
-  it("replays exactly the same key and payload after a lost save response, without another preview", async () => {
+  it("replays exactly the same key and payload after a lost save response", async () => {
     const { result } = await setup();
     vi.mocked(saveWeeklyPreferences)
       .mockRejectedValueOnce(new TypeError("Connection lost"))
@@ -94,10 +87,9 @@ describe("weekly preferences API panel", () => {
     expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]).toEqual(
       vi.mocked(saveWeeklyPreferences).mock.calls[0],
     );
-    expect(previewWeeklyPreferences).toHaveBeenCalledOnce();
     await screen.findByText("Saved");
   });
-  it("gets fresh request decisions after a definitive server conflict", async () => {
+  it("uses a fresh save key after a definitive server conflict", async () => {
     const { result } = await setup();
     vi.mocked(saveWeeklyPreferences)
       .mockRejectedValueOnce(
@@ -108,25 +100,9 @@ describe("weekly preferences API panel", () => {
     await screen.findByText("Pending requests changed");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledTimes(2));
-    expect(previewWeeklyPreferences).toHaveBeenCalledTimes(2);
     expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]![2]).not.toBe(
       vi.mocked(saveWeeklyPreferences).mock.calls[0]![2],
     );
-  });
-  it("reports finalized request races without suggesting their assignments were cancelled", async () => {
-    const { result } = await setup();
-    vi.mocked(saveWeeklyPreferences).mockResolvedValue({
-      ...result,
-      finalized: [
-        {
-          kind: "exchange_application",
-          id: "ad410000-0000-4000-8000-000000000019",
-        },
-      ],
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await screen.findByText(/assigned shifts remain your responsibility/);
-    await screen.findByText("Saved");
   });
   it("keeps the draft through a transient refetch but hides it after access is revoked", async () => {
     const { client } = await setup();

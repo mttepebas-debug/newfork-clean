@@ -111,20 +111,6 @@ describe("PublishPreflightPanel", () => {
     expect(screen.getByRole("checkbox", { name: "I've seen these 2 warnings and want to publish anyway" })).toHaveProperty("checked", true);
   });
 
-  it("shows who acknowledged an earlier availability warning and when, without asking again", () => {
-    const accepted = {
-      ...availabilityWarning,
-      availability_state: "accepted" as const,
-      tier: "note" as const,
-      acknowledged_by_name: "Ayşe Demir",
-      acknowledged_at: "2026-09-26T18:00:00+00:00",
-    };
-    render(<PublishPreflightPanel preview={{ ...preview, status: "publish_ready", findings: [accepted] }} locations={[mainDining]} />);
-    expect(screen.getByText("Previously accepted (1)")).toBeTruthy();
-    expect(screen.getByText("Acknowledged by Ayşe Demir · Sep 26")).toBeTruthy();
-    expect(screen.queryByRole("checkbox")).toBeNull();
-  });
-
   it("never treats a hard finding as a weekly acknowledgement", () => {
     const hard = { ...preview.findings[0]!, severity: "hard" as const, availability_state: "accepted" as const, warning_policy: "warn" as const };
     expect(publishHardBlockers({ ...preview, findings: [hard] })).toEqual([hard]);

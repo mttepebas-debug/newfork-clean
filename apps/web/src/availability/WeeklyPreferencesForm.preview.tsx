@@ -4,7 +4,6 @@ import {
   emptyWeeklyPreference,
   type WeeklyPreferenceRead,
   type WeeklyPreferenceSave,
-  type WeeklyCommitmentPreview,
   type WeeklyPreferenceSettingsRead,
 } from "@newfork/shared";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
@@ -22,32 +21,13 @@ const preflight: SchedulePublicationPreview = {
   status: "override_required", workspace_id: "ad420000-0000-4000-8000-000000000091",
   draft_id: "ad420000-0000-4000-8000-000000000092", draft_revision: 1, week_start: "2026-09-14", fingerprint: "a".repeat(64), locations: [],
   findings: ["Ada Lovelace", "Alexandria Montgomery-Richardson", "Taylor Morgan"].map((name, index) => ({
-    id: `${index}`.repeat(64), code: "availability", severity: "soft", overrideable: true,
-    availability_state: index === 2 ? "accepted" : "new", warning_policy: "confirm", tier: index === 2 ? "note" : "risk",
+    id: `${index}`.repeat(64), code: "availability", severity: "soft", overrideable: false,
+    conflict_severity: "warn", tier: "note",
     employee_name: name, employee_id: `ad420000-0000-4000-8000-00000000008${index}`,
     location_id: "ad420000-0000-4000-8000-000000000093", location_name: "Palo Alto extended dining room",
     scheduled_date: "2026-09-18", shift_ids: [`ad420000-0000-4000-8000-00000000007${index}`],
     message: "This shift overlaps unavailable hours.",
   })),
-};
-const review: WeeklyCommitmentPreview = {
-  items: [
-    {
-      kind: "exchange_application",
-      id: "ad420000-0000-4000-8000-000000000071",
-      fingerprint: "a".repeat(64),
-      request_revision: "1",
-      request_type: "cover",
-      location_name: "Downtown",
-      date: "2026-09-18",
-      start_time: "17:00",
-      end_time: "22:00",
-      timezone: "America/Los_Angeles",
-      intervals: [
-        { start_at: "2026-09-19T00:00:00Z", end_at: "2026-09-19T05:00:00Z" },
-      ],
-    },
-  ],
 };
 const employee = emptyWeeklyPreference(mode);
 const reminder = emptyWeeklyPreference(mode);
@@ -70,8 +50,8 @@ if (mode === "shift_type") {
   employee.days[5]!.shift_type_ids = [shiftTypes[1]!.id];
   reminder.days[6]!.shift_type_ids = [shiftTypes[2]!.id];
 } else {
-  employee.days[5]!.range = { start: "17:00", end: "22:00" };
-  reminder.days[6]!.range = { start: "09:00", end: "17:00" };
+  employee.days[5]!.ranges = [{ start: "17:00", end: "22:00" }];
+  reminder.days[6]!.ranges = [{ start: "09:00", end: "17:00" }];
 }
 
 function Preview() {
@@ -169,7 +149,6 @@ function Preview() {
           model={model}
           audience={audience}
           onSave={save}
-          onPreview={params.has("review") ? async () => review : undefined}
         />
       )}
     </main>

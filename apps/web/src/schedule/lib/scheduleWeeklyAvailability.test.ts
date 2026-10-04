@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEmployee, ScheduleReadModel, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { scheduleEmployeeSchema } from "@newfork/shared";
-import { weeklyEmployeeSummary, weeklyTargetAvailability } from "./scheduleWeeklyAvailability";
+import { weeklyEmployeeSummary, weeklyTargetAvailability, weeklyTargetNote } from "./scheduleWeeklyAvailability";
 import { evaluateScheduleShiftConflicts } from "../schedule-conflicts";
 
 const loc = "ad425000-0000-4000-8000-000000000006";
@@ -41,15 +41,30 @@ describe("weekly Schedule advisory projection", () => {
     expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "time_off" })]);
     expect(evaluateScheduleShiftConflicts({ ...model, employees: [employee] }, [], input)).toEqual([expect.objectContaining({ type: "availability", rule_kind: "weekly" })]);
   });
-  it("only warns, for the employee's own mark and a manager's reminder alike (BL-186)", () => {
-    const reminderOnly = { ...employee, weekly_availability: [{ ...projection, employee_intervals: [] }] };
-    const ownMark = { ...employee, weekly_availability: [{ ...projection, employee_intervals: projection.unavailable_intervals }] };
-    expect(weeklyTargetAvailability(reminderOnly, input)).toBe("reminder");
+  // M8: the employee's own mark always warns; M12: a note is a separate reminder, never unavailable.
+  it("warns for the employee's own mark and reminds of a note apart from it", () => {
+    const noteOnly = { ...employee, weekly_availability: [{ ...projection, unavailable_intervals: [], employee_intervals: [],
+      days: projection.days.map((day) => ({ ...day, has_unavailable: false })),
+      note_intervals: projection.unavailable_intervals, manager_notes: ["", "School mornings", "", "", "", "", ""] }] };
+    const ownMark = { ...employee, weekly_availability: [{ ...projection, employee_intervals: projection.unavailable_intervals, note_intervals: [] }] };
+    expect(weeklyTargetAvailability(noteOnly, input)).toBe("available");
+    expect(weeklyTargetNote(noteOnly, input)).toEqual({ text: "School mornings" });
     expect(weeklyTargetAvailability(ownMark, input)).toBe("unavailable");
+    expect(weeklyTargetNote(ownMark, input)).toBeNull();
     const model = { settings: { time_format: "12h", conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" } },
-      employees: [reminderOnly], locations: [{ id: loc, name: "West" }], jobs: [{ id: job, name: "Server" }], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
-    expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "availability", severity: "warn" })]);
+      employees: [noteOnly], locations: [{ id: loc, name: "West" }], jobs: [{ id: job, name: "Server" }], shift_types: [], closures: [] } as unknown as ScheduleReadModel;
+    expect(evaluateScheduleShiftConflicts(model, [], input)).toEqual([expect.objectContaining({ type: "note", severity: "warn", note: "School mornings" })]);
     expect(evaluateScheduleShiftConflicts({ ...model, employees: [ownMark] }, [], input)).toEqual([expect.objectContaining({ type: "availability", severity: "warn" })]);
+    const both = { ...employee, weekly_availability: [{ ...ownMark.weekly_availability[0]!, note_intervals: projection.unavailable_intervals, manager_notes: null }] };
+    expect(evaluateScheduleShiftConflicts({ ...model, employees: [both] }, [], input).map((reason) => typeof reason === "string" ? reason : reason.type))
+      .toEqual(["availability", "note"]);
+    expect(weeklyTargetNote(both, input)).toEqual({ text: "" });
+  });
+  it("has no note for a reader the note is not for, or outside its hours", () => {
+    const hidden = { ...employee, weekly_availability: [{ ...projection, unavailable_intervals: [], note_intervals: [], manager_notes: null }] };
+    expect(weeklyTargetNote(hidden, input)).toBeNull();
+    const elsewhere = { ...employee, weekly_availability: [{ ...projection, note_intervals: projection.unavailable_intervals }] };
+    expect(weeklyTargetNote(elsewhere, { ...input, start_time: "10:00", end_time: "12:00" })).toBeNull();
   });
   it("adds nothing for availability it cannot place; the server's answer is the one that counts (BL-186)", () => {
     const model = { settings: { time_format: "12h" }, employees: [{ ...employee, weekly_availability: [] }],

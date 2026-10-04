@@ -113,7 +113,7 @@ export function useScheduleDropReview(workspaceId: string | undefined, sessionId
             dedupeKey: "schedule-drop-availability-warning",
             description:
               // Availability only shows on the cell (BL-186).
-              [...new Set(assessments.flatMap(value => value?.reasons.filter(reason => reason.code !== "availability").map(reason => reason.message) ?? []))].join(" "),
+              [...new Set(assessments.flatMap(value => value?.reasons.filter(reason => reason.code !== "availability" && reason.code !== "note").map(reason => reason.message) ?? []))].join(" "),
           },
         );
       }

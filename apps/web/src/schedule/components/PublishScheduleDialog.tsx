@@ -49,7 +49,6 @@ export interface SchedulePublicationChoices {
   readonly locationIds: readonly string[];
   readonly departmentKeys: readonly string[];
   readonly notifyEmployeeIds: readonly string[];
-  readonly reasons: Readonly<Record<string, string>>;
 }
 
 const EMPTY_DEPARTMENTS: ScheduleReadModel["departments"] = [];
@@ -167,7 +166,6 @@ export function PublishScheduleDialog({
   const [preview, setPreview] = useState<SchedulePublicationPreview | null>(
     null,
   );
-  const [reasons, setReasons] = useState<Record<string, string>>({ ...restoredChoices?.reasons });
   // The publisher ticks "I've seen this warning" for the preview they read;
   // a refreshed preview asks again (BL-186).
   const [availabilityAckFingerprint, setAvailabilityAckFingerprint] = useState<string | null>(null);
@@ -311,7 +309,6 @@ export function PublishScheduleDialog({
     setSelectedDepartmentKeys(restoredChoices ? allDepartmentKeys.filter((key) => restoredChoices.departmentKeys.includes(key)) : allDepartmentKeys);
     setPreview(null);
     setStep(1);
-    setReasons({ ...restoredChoices?.reasons });
     setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
     setStaleNotice(null);
@@ -329,7 +326,6 @@ export function PublishScheduleDialog({
   useEffect(() => {
     setPreview(null);
     setStep(1);
-    setReasons({});
     setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
     setStaleNotice(null);
@@ -365,10 +361,6 @@ export function PublishScheduleDialog({
   const applyPreview = (nextPreview: SchedulePublicationPreview) => {
     setPreview(nextPreview);
     setEmployeeSearch("");
-    setReasons((current) => Object.fromEntries(nextPreview.findings.flatMap((finding) => {
-      const reason = current[finding.id] ?? restoredChoices?.reasons[finding.id];
-      return reason !== undefined ? [[finding.id, reason]] : [];
-    })));
     setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
   };
@@ -801,7 +793,7 @@ export function PublishScheduleDialog({
                 setReviewingShift(true);
                 setError(null);
                 void onReviewShift(finding, {
-                  draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds, reasons,
+                  draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds,
                 }).catch((caught: unknown) => {
                   setError(caught instanceof Error ? caught.message : "The shift could not be opened. Try again.");
                 }).finally(() => setReviewingShift(false));

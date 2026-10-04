@@ -44,6 +44,17 @@ export function WeeklyUnavailableEditor({
   const [openNote, setOpenNote] = useState<number | null>(null);
   const [showHours, setShowHours] = useState(false);
   const manager = notes !== undefined;
+  // A day holds several hours in time-range mode (M4); one is edited in place.
+  const setRange = (
+    row: WeeklyPreferenceDay,
+    index: number,
+    range: WeeklyPreferenceDay["ranges"][number] | null,
+  ) =>
+    update(row.day, {
+      ranges: range
+        ? row.ranges.map((item, at) => (at === index ? range : item))
+        : row.ranges.filter((_, at) => at !== index),
+    });
   const update = (day: number, patch: Partial<WeeklyPreferenceDay>) =>
     onChange?.({
       ...value,
@@ -104,7 +115,7 @@ export function WeeklyUnavailableEditor({
         {displayDays.map((day) => {
           const row = value.days.find((item) => item.day === day)!;
           const unavailable =
-            row.all_day || row.shift_type_ids.length > 0 || row.range !== null;
+            row.all_day || row.shift_type_ids.length > 0 || row.ranges.length > 0;
           const locked = disabled || readOnly;
           return (
             <div
@@ -138,11 +149,13 @@ export function WeeklyUnavailableEditor({
                     ) : (
                       <span className="weekly-empty">&mdash;</span>
                     )
-                  ) : row.range ? (
-                    <span className="weekly-preference-tag">
-                      {formatAvailabilityClock(row.range.start, timeFormat)} -{" "}
-                      {formatAvailabilityClock(row.range.end, timeFormat)}
-                    </span>
+                  ) : row.ranges.length ? (
+                    row.ranges.map((range) => (
+                      <span key={range.start} className="weekly-preference-tag">
+                        {formatAvailabilityClock(range.start, timeFormat)} -{" "}
+                        {formatAvailabilityClock(range.end, timeFormat)}
+                      </span>
+                    ))
                   ) : (
                     <span className="weekly-empty">&mdash;</span>
                   )
@@ -186,62 +199,60 @@ export function WeeklyUnavailableEditor({
                   )
                 ) : row.all_day ? (
                   <span className="weekly-empty">All day unavailable</span>
-                ) : row.range ? (
-                  <div className="weekly-time-range">
-                    <AvailabilityClockInput
-                      label={`${weekdays[day]} unavailable start`}
-                      value={row.range.start}
-                      timeFormat={timeFormat}
-                      disabled={locked}
-                      onChange={(start) =>
-                        update(day, { range: { start, end: row.range!.end } })
-                      }
-                    />
-                    <span>to</span>
-                    <AvailabilityClockInput
-                      label={`${weekdays[day]} unavailable end`}
-                      value={
-                        row.range.end === "24:00" ? "00:00" : row.range.end
-                      }
-                      timeFormat={timeFormat}
-                      disabled={locked || row.range.end === "24:00"}
-                      onChange={(end) =>
-                        update(day, { range: { start: row.range!.start, end } })
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="weekly-icon"
-                      aria-label={`Remove ${weekdays[day]} hours`}
-                      disabled={locked}
-                      onClick={() => update(day, { range: null })}
-                    >
-                      <X size={15} />
-                    </button>
-                    <label className="weekly-end-day">
-                      <input
-                        type="checkbox"
-                        checked={row.range.end === "24:00"}
-                        disabled={locked}
-                        onChange={(event) =>
-                          update(day, {
-                            range: {
-                              start: row.range!.start,
-                              end: event.target.checked ? "24:00" : "17:00",
-                            },
-                          })
-                        }
-                      />
-                      End of day
-                    </label>
-                  </div>
+                ) : row.ranges.length ? (
+                  row.ranges.map((range, index) => {
+                    // ponytail: later ranges get a numbered label; C2 designs adding one.
+                    const label = `${weekdays[day]} unavailable${index ? ` ${index + 1}` : ""}`;
+                    return (
+                      <div key={index} className="weekly-time-range">
+                        <AvailabilityClockInput
+                          label={`${label} start`}
+                          value={range.start}
+                          timeFormat={timeFormat}
+                          disabled={locked}
+                          onChange={(start) => setRange(row, index, { start, end: range.end })}
+                        />
+                        <span>to</span>
+                        <AvailabilityClockInput
+                          label={`${label} end`}
+                          value={range.end === "24:00" ? "00:00" : range.end}
+                          timeFormat={timeFormat}
+                          disabled={locked || range.end === "24:00"}
+                          onChange={(end) => setRange(row, index, { start: range.start, end })}
+                        />
+                        <button
+                          type="button"
+                          className="weekly-icon"
+                          aria-label={`Remove ${weekdays[day]} hours${index ? ` ${index + 1}` : ""}`}
+                          disabled={locked}
+                          onClick={() => setRange(row, index, null)}
+                        >
+                          <X size={15} />
+                        </button>
+                        <label className="weekly-end-day">
+                          <input
+                            type="checkbox"
+                            checked={range.end === "24:00"}
+                            disabled={locked}
+                            onChange={(event) =>
+                              setRange(row, index, {
+                                start: range.start,
+                                end: event.target.checked ? "24:00" : "17:00",
+                              })
+                            }
+                          />
+                          End of day
+                        </label>
+                      </div>
+                    );
+                  })
                 ) : (
                   <button
                     type="button"
                     className="weekly-add-hours"
                     disabled={locked}
                     onClick={() =>
-                      update(day, { range: { start: "09:00", end: "17:00" } })
+                      update(day, { ranges: [{ start: "09:00", end: "17:00" }] })
                     }
                   >
                     <Plus size={14} />
@@ -261,7 +272,7 @@ export function WeeklyUnavailableEditor({
                       update(day, {
                         all_day: event.target.checked,
                         shift_type_ids: [],
-                        range: null,
+                        ranges: [],
                       })
                     }
                   />

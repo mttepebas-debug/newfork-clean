@@ -3,9 +3,9 @@ import { getShiftTimeBasis } from "@newfork/shared";
 
 type Projection = NonNullable<ScheduleEmployee["weekly_availability"]>[number];
 type Interval = Projection["unavailable_intervals"][number];
-// "reminder": only a manager's private reminder overlaps. Like the employee's
-// own mark it is a warning, never a block (BL-186).
-export type WeeklyTargetStatus = "available" | "unavailable" | "reminder" | "time_off" | "unknown";
+// "unavailable": the employee's own mark overlaps, always a warning (M8). A
+// manager's note is no status: it is a separate reminder (weeklyTargetNote, M12).
+export type WeeklyTargetStatus = "available" | "unavailable" | "time_off" | "unknown";
 
 // Server-provided offset segments avoid a second timezone engine in the browser.
 // The latest matching instant agrees with PostgreSQL's repeated-clock choice.
@@ -25,9 +25,19 @@ export function weeklyTargetAvailability(employee: ScheduleEmployee, input: Sche
   if (!interval) return "unknown";
   const projection = employee.weekly_availability.find(item => item.location_id === input.location_id)!;
   if (overlaps(projection.leave_intervals, interval.start, interval.end)) return "time_off";
-  if (!overlaps(projection.unavailable_intervals, interval.start, interval.end)) return "available";
-  return projection.employee_intervals === undefined || overlaps(projection.employee_intervals, interval.start, interval.end)
-    ? "unavailable" : "reminder";
+  return overlaps(projection.unavailable_intervals, interval.start, interval.end) ? "unavailable" : "available";
+}
+
+/**
+ * The manager note a write runs into (M12): its words for the day ("" when the
+ * note has hours but no words), or null. Only a reader the note is for gets
+ * note_intervals, so nobody else ever sees one.
+ */
+export function weeklyTargetNote(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): { text: string } | null {
+  const interval = weeklyTargetInterval(employee, input);
+  const projection = employee.weekly_availability?.find(item => item.location_id === input.location_id);
+  if (!interval || !projection?.note_intervals || !overlaps(projection.note_intervals, interval.start, interval.end)) return null;
+  return { text: projection.manager_notes?.[new Date(`${input.scheduled_date}T00:00:00Z`).getUTCDay()]?.trim() ?? "" };
 }
 
 export function weeklyTargetInterval(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): { start: number; end: number } | null {

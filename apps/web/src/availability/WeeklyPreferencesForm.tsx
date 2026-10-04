@@ -6,18 +6,14 @@ import {
   weeklyPreferenceSaveSchema,
   type WeeklyPreferenceRead,
   type WeeklyPreferenceSave,
-  type WeeklyCommitmentPreview,
 } from "@newfork/shared";
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
-import { WeeklyCommitmentReview } from "./WeeklyCommitmentReview";
 
 type Props = {
   model: WeeklyPreferenceRead;
   audience: "employee" | "manager";
+  // M5: a save decides nothing about pending requests; nothing to review first.
   onSave: (command: WeeklyPreferenceSave) => Promise<WeeklyPreferenceRead>;
-  onPreview?: (
-    command: WeeklyPreferenceSave,
-  ) => Promise<WeeklyCommitmentPreview>;
   /** In onboarding: there are no assigned shifts yet and no time off to request. */
   wizard?: boolean;
 };
@@ -38,7 +34,6 @@ function PreferenceForm({
   model,
   audience,
   onSave,
-  onPreview,
   wizard = false,
 }: Props) {
   const manager = audience === "manager";
@@ -63,9 +58,6 @@ function PreferenceForm({
   );
   const [dirty, setDirty] = useState(false);
   const [copyRevision, setCopyRevision] = useState<number>();
-  const [review, setReview] = useState<WeeklyCommitmentPreview["items"] | null>(
-    null,
-  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -78,7 +70,7 @@ function PreferenceForm({
       ? baseline
       : model;
   const editing = !manager || tab === "manager";
-  const locked = saving || review !== null || !canEdit || (manager && !enabled);
+  const locked = saving || !canEdit || (manager && !enabled);
 
   function reset(next: WeeklyPreferenceRead) {
     const record = manager ? next.manager : next.employee;
@@ -90,7 +82,6 @@ function PreferenceForm({
     setEnabled(next.manager?.enabled ?? true);
     setDirty(false);
     setCopyRevision(undefined);
-    setReview(null);
     setError("");
   }
 
@@ -107,7 +98,7 @@ function PreferenceForm({
     setError("");
   }
 
-  async function save(decisions?: WeeklyPreferenceSave["decisions"]) {
+  async function save() {
     if (inFlight.current || !hasChanges || !canEdit) return;
     const parsed = weeklyPreferenceSaveSchema.safeParse({
       employee_id: model.employee_id,
@@ -119,7 +110,6 @@ function PreferenceForm({
       ...(copyRevision !== undefined
         ? { copy_employee_revision: copyRevision }
         : {}),
-      ...(decisions ? { decisions } : {}),
     });
     if (!parsed.success) {
       setError(
@@ -131,14 +121,6 @@ function PreferenceForm({
     setSaving(true);
     setError("");
     try {
-      if (onPreview && !decisions) {
-        const preview = await onPreview(parsed.data);
-        if (preview.items.length) {
-          setReview(preview.items);
-          return;
-        }
-      }
-      setReview(null);
       const next = await onSave(parsed.data);
       reset(next);
       setSaved(true);
@@ -390,14 +372,6 @@ function PreferenceForm({
             </button>
           </div>
         </footer>
-      )}
-      {review && (
-        <WeeklyCommitmentReview
-          items={review}
-          timeFormat={model.time_format}
-          onCancel={() => setReview(null)}
-          onContinue={(decisions) => void save(decisions)}
-        />
       )}
     </section>
   );

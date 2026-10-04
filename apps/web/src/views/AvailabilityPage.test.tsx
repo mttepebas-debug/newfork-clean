@@ -47,7 +47,7 @@ vi.mock("../employees/EmployeeDrawer", () => ({
 }));
 function fixture(): WeeklyTeamRead {
   const preference = emptyWeeklyPreference("time_range");
-  preference.days[1]!.range = { start: "09:00", end: "17:00" };
+  preference.days[1]!.ranges = [{ start: "09:00", end: "17:00" }];
   preference.days[2]!.all_day = true;
   return {
     locations: [
@@ -175,7 +175,7 @@ describe("weekly team availability", () => {
     await screen.findByText("Alex Kim");
     const next = fixture();
     next.employees[0]!.preference.days[1]!.all_day = true;
-    next.employees[0]!.preference.days[1]!.range = null;
+    next.employees[0]!.preference.days[1]!.ranges = [];
     vi.mocked(loadWeeklyTeam).mockResolvedValue(next);
     await client.invalidateQueries({
       queryKey: ["weekly-preferences", workspace],
