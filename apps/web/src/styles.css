@@ -11080,6 +11080,20 @@ button.workspace-switcher-item:hover:not(:disabled) {
     flex-wrap: wrap;
     margin-left: 0;
   }
+  /* Inter runs a little wider than the old Segoe UI stack; tighter buttons
+     keep the action row at Segoe's height on 360-375px phones. */
+  .schedule-command-group,
+  .schedule-action-group {
+    gap: 5px;
+  }
+  .schedule-action-group .schedule-action-button,
+  .schedule-topbar-filter summary,
+  .schedule-command-menu-trigger,
+  .schedule-hide-unscheduled,
+  .schedule-view-mode:not(.schedule-date-calendar-trigger) {
+    gap: 4px;
+    padding-inline: 8px;
+  }
   .schedule-export-panel {
     top: 0;
     right: 0;
@@ -11998,6 +12012,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+.setup-checklist-settings-control > .nf-button {
+  flex: none;
+  white-space: nowrap;
 }
 .setup-checklist-settings-control > span {
   color: #59645f;
