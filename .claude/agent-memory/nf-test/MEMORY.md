@@ -13,3 +13,4 @@
 - [Negative cell + mutation proof](negative-cell-and-mutation-proof.md) — an "X absent" cell first proves success + presence; break the service in a rolled-back transaction to prove the cell catches
 - [Tool limits](tool-limits.md) — ci.yml edit refused as Modify Shared Resources unless the user allows it in that window; MSYS_NO_PATHCONV=1 for git show origin/main:<path>
 - [Web test load traps](web-test-load-traps.md) — yükte düşen web/api testi: RTL 1 sn findBy, tembel rota ilk yükü, effect'le dolan form, api config; Git Bash TZ'yi node'a geçirmiyor
+- [Onboarding and documents e2e traps](e2e-onboarding-documents-traps.md) — signIn doesn't wait; built-in Manager has no document permission (BL-560); wizard redirects itself after each save; select label → combobox; owner has no primary; `pnpm e2e -- files` runs everything
