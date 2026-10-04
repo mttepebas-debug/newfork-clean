@@ -30,14 +30,20 @@ export function weeklyTargetAvailability(employee: ScheduleEmployee, input: Sche
 
 /**
  * The manager note a write runs into (M12): its words for the day ("" when the
- * note has hours but no words), or null. Only a reader the note is for gets
- * note_intervals, so nobody else ever sees one.
+ * note has hours but no words), who last wrote it and when (AVAIL-002), or
+ * null. Only a reader the note is for gets note_intervals, so nobody else ever
+ * sees one.
  */
-export function weeklyTargetNote(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): { text: string } | null {
+export function weeklyTargetNote(employee: ScheduleEmployee, input: ScheduleShiftMutationInput):
+  { text: string; author: string | null; edited_at: string | null } | null {
   const interval = weeklyTargetInterval(employee, input);
   const projection = employee.weekly_availability?.find(item => item.location_id === input.location_id);
   if (!interval || !projection?.note_intervals || !overlaps(projection.note_intervals, interval.start, interval.end)) return null;
-  return { text: projection.manager_notes?.[new Date(`${input.scheduled_date}T00:00:00Z`).getUTCDay()]?.trim() ?? "" };
+  return {
+    text: projection.manager_notes?.[new Date(`${input.scheduled_date}T00:00:00Z`).getUTCDay()]?.trim() ?? "",
+    author: projection.note_author ?? null,
+    edited_at: projection.note_edited_at ?? null,
+  };
 }
 
 export function weeklyTargetInterval(employee: ScheduleEmployee, input: ScheduleShiftMutationInput): { start: number; end: number } | null {

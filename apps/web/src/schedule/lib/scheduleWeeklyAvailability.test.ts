@@ -45,10 +45,13 @@ describe("weekly Schedule advisory projection", () => {
   it("warns for the employee's own mark and reminds of a note apart from it", () => {
     const noteOnly = { ...employee, weekly_availability: [{ ...projection, unavailable_intervals: [], employee_intervals: [],
       days: projection.days.map((day) => ({ ...day, has_unavailable: false })),
-      note_intervals: projection.unavailable_intervals, manager_notes: ["", "School mornings", "", "", "", "", ""] }] };
+      note_intervals: projection.unavailable_intervals, manager_notes: ["", "School mornings", "", "", "", "", ""],
+      note_author: "Ayse Kaya", note_edited_at: "2035-01-10T15:00:00.123456+00:00" }] };
     const ownMark = { ...employee, weekly_availability: [{ ...projection, employee_intervals: projection.unavailable_intervals, note_intervals: [] }] };
     expect(weeklyTargetAvailability(noteOnly, input)).toBe("available");
-    expect(weeklyTargetNote(noteOnly, input)).toEqual({ text: "School mornings" });
+    // AVAIL-002: the card names who last wrote the note and when.
+    expect(weeklyTargetNote(noteOnly, input)).toEqual({ text: "School mornings", author: "Ayse Kaya", edited_at: "2035-01-10T15:00:00.123456+00:00" });
+    expect(scheduleEmployeeSchema.parse(noteOnly).weekly_availability?.[0]).toMatchObject({ note_author: "Ayse Kaya", note_edited_at: "2035-01-10T15:00:00.123456+00:00" });
     expect(weeklyTargetAvailability(ownMark, input)).toBe("unavailable");
     expect(weeklyTargetNote(ownMark, input)).toBeNull();
     const model = { settings: { time_format: "12h", conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" } },
@@ -58,7 +61,7 @@ describe("weekly Schedule advisory projection", () => {
     const both = { ...employee, weekly_availability: [{ ...ownMark.weekly_availability[0]!, note_intervals: projection.unavailable_intervals, manager_notes: null }] };
     expect(evaluateScheduleShiftConflicts({ ...model, employees: [both] }, [], input).map((reason) => typeof reason === "string" ? reason : reason.type))
       .toEqual(["availability", "note"]);
-    expect(weeklyTargetNote(both, input)).toEqual({ text: "" });
+    expect(weeklyTargetNote(both, input)).toEqual({ text: "", author: null, edited_at: null });
   });
   it("has no note for a reader the note is not for, or outside its hours", () => {
     const hidden = { ...employee, weekly_availability: [{ ...projection, unavailable_intervals: [], note_intervals: [], manager_notes: null }] };

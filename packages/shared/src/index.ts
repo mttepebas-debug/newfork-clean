@@ -1395,6 +1395,10 @@ export const scheduleWeeklyLocationSchema = z
     // The manager note's words by weekday from Sunday ("" for none); null for a
     // reader the note is not for. Absent on the team board an employee reads.
     manager_notes: z.array(z.string()).length(7).nullable().optional(),
+    // Who last wrote the note (named as the grid names a person) and when;
+    // null for a reader the note is not for, or a writer with no profile.
+    note_author: z.string().nullable().optional(),
+    note_edited_at: z.string().datetime({ offset: true }).nullable().optional(),
     leave_intervals: z.array(scheduleWeeklyIntervalSchema),
     clock_segments: z.array(
       scheduleWeeklyIntervalSchema.extend({ offset_seconds: z.number().int() }),
