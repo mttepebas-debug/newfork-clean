@@ -1122,3 +1122,36 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** —
 - **Durum:** düzeltildi. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_10a5177a…`'ın kaydı, besleme #144).
 - **Mert:** düzeltti.
+
+### KK-131 (2026-10-04) AVAIL-002'de saat modu günde çok aralık (`ranges`); A ile B aynı pencerede main'e
+- **Karar (ne):** S-A: saat modundaki müsaitlik kaydı `range`'den `ranges`'e geçer (günde birden çok aralık; KARARLAR M4, AVAIL-002 S2 (a)). Veri şekli değiştiği için A (A1+A2, `nf-db`) main'e B'siz (`nf-backend`) girmez; B A'nın dalından açılır, ikisi aynı pencerede main'e alınır.
+- **Nerede:** AVAIL-002; işçi `local_91ac4f8d…` ("AVAIL-002 A1+A2 müsaitlik DB (nf-db)"), dal `task/avail-002-a`, worktree `newfork-wt/avail-002-a` — ölçüldü.
+- **Ne zaman:** 2026-10-04 ~14:30Z (AVAIL-002 A1+A2 başlarken).
+- **Ne için:** veri şekli ile shared / API / web okuyucusu aynı anda değişmezse main'de yarım bir sözleşme kalır; ikiz biçim tutulmaz.
+- **Uygulamada etkisi:** çalışan My availability'de bir güne iki saat aralığı girebilir (ör. 09–14 ve 17–24); main'de ara bir hâl (yeni DB, eski web) görünmez.
+- **Dayanak:** CLAUDE.md §9 (ikiz sistem yok, eski veri korunmaz), ILKELER P01.
+- **Geri alma:** dal düzeyinde kolay; main'e girdikten sonra yeni migration'la.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #149).
+- **Mert:** bilgi.
+
+### KK-132 (2026-10-04) AVAIL-002 yayın kararında yalnız müsaitlik onay dalları silinir
+- **Karar (ne):** S-B: `weekly_publication_decisions` / preflight'ta yalnız müsaitliğe ait "accepted" / onay dalları silinir; önceki yayında kabul edilmiş çakışmanın "retained" kaydı kalır (BL-174 kapsam dışı). AVAIL-002 Done when 3'teki `prosrc` sayımı yalnız müsaitlik metinlerine uygulanır.
+- **Nerede:** AVAIL-002 A1.5 ve Done when 3; işçi `local_91ac4f8d…`.
+- **Ne zaman:** 2026-10-04 ~14:30Z (AVAIL-002 A1+A2 başlarken).
+- **Ne için:** M9 müsaitlik için onay istemez; öteki çakışmaların kabul kaydı (izin, kural) bu işin konusu değil.
+- **Uygulamada etkisi:** Publish → Pre-flight müsaitlik için onay kutusu ve "Acknowledged by" göstermez; başka bir kuralın önceki yayında kabul edilmiş çakışması yine "retained" olarak kalır.
+- **Dayanak:** KARARLAR M9 + besleme #147 koordinatör kararı; BL-174 kendi işinde; ILKELER P17 (kapsam).
+- **Geri alma:** kolay (dal düzeyinde).
+- **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #149).
+- **Mert:** bilgi.
+
+### KK-133 (2026-10-04) `availability.own` yalnız employee rolüne
+- **Karar (ne):** K-1: çekirdekteki `availability.own` (kendi müsaitlik kaydını okuma / yazma) yalnız employee rolüne verilir, aktivasyon bekleyen employee dahil; kısıtlı müdür ve admin kendi kaydına "hayır" alır (42501 + `authz.*`).
+- **Nerede:** AVAIL-002 A2.4 ve Done when 7; işçi `local_91ac4f8d…`.
+- **Ne zaman:** 2026-10-04 ~14:30Z (AVAIL-002 A1+A2 başlarken).
+- **Ne için:** müsaitliği yalnız employee girer (M13); kişi ortak kaydı M2'ye göre tek kayıt.
+- **Uygulamada etkisi:** Employee Hub → My availability yalnız employee rolündeki kişide çalışır; daveti kabul etmiş ama aktivasyonu süren çalışan da kendi haftasını girebilir; müdür / admin kendi kaydını yazamaz.
+- **Dayanak:** KARARLAR M2, M13; ILKELER P19.
+- **Geri alma:** kolay (matris hücresi).
+- **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #149).
+- **Mert:** bilgi.
