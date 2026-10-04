@@ -1,6 +1,6 @@
 import type { ScheduleEditableShift, ScheduleReadModel } from "@newfork/shared/schedule";
 import { readFileSync } from "node:fs";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
@@ -226,6 +226,41 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(place);
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["note card", [noteReason], /^Manager note for /],
+    ["rule box", [availabilityReason], "Shift conflict"],
+  ] as const)("spends Escape on the %s like Cancel, keeping the editor open", async (_label, reasons, dialog) => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [...reasons] });
+    const onDismiss = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <ShiftQuickEditor
+        model={model}
+        state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }}
+        timeFormat="12h" formatTime={(v) => v} addDays={(v) => v} scheduleClosureCoversDate={() => false}
+        onClose={onClose} onDismiss={onDismiss} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await screen.findByRole("dialog", { name: dialog });
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: dialog })).toBeNull());
+    expect(onDismiss).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Add shift" })).toBeTruthy();
+  });
+
+  it.each([
+    ["note card", [noteReason], /^Manager note for /],
+    ["rule box", [availabilityReason], "Shift conflict"],
+  ] as const)("moves focus to Cancel when the %s opens, so a second Enter never places unread", async (_label, reasons, dialog) => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [...reasons] });
+    renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const box = await screen.findByRole("dialog", { name: dialog });
+    await waitFor(() => expect(document.activeElement).toBe(within(box).getByRole("button", { name: "Cancel" })));
   });
 
   it("shows the mark and the note on one shift as one box with two lines", async () => {

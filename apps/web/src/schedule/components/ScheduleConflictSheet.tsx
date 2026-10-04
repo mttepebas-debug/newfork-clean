@@ -1,5 +1,5 @@
 import { AlertTriangle, X } from "lucide-react";
-import { useEffect, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useRef, type MouseEvent, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   formatScheduleConflictMessages,
@@ -32,6 +32,24 @@ export function ScheduleConflictSheet({
   readonly onDismiss: () => void;
 }) {
   const isDecision = Boolean(submitLabel || onSubmit);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // A question asked from the keyboard too: focus lands on Cancel (as in
+  // ConfirmDialog), so a second Enter never places unread; Escape is Cancel.
+  useEffect(() => {
+    if (!open || !isDecision) return undefined;
+    cancelRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      // Caught on window's capture pass and spent here, like an open shift
+      // note: the Schedule's own Escape never closes the editor behind it.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onDismiss();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [isDecision, onDismiss, open]);
 
   useEffect(() => {
     if (!open || isDecision) return undefined;
@@ -70,7 +88,7 @@ export function ScheduleConflictSheet({
           ) : null}
           {isDecision ? (
             <footer>
-              <button type="button" onClick={onDismiss}>
+              <button ref={cancelRef} type="button" onClick={onDismiss}>
                 {dismissLabel ?? "Cancel"}
               </button>
               <button type="submit" className="primary" disabled={submitDisabled}>

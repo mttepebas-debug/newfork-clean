@@ -37,13 +37,18 @@ describe("Manager note card while placing a shift (S2 B, M12)", () => {
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it("cancels on Cancel and on Escape", () => {
+  it("cancels on Cancel and on Escape, with focus on Cancel and nothing behind hearing Escape", () => {
     placeCell();
     const onCancel = vi.fn();
     render(<ScheduleNoteConfirm cell={cell} employeeName="Ayşe Kaya" text="School mornings" onPlace={vi.fn()} onCancel={onCancel} />);
+    const behind = vi.fn();
+    window.addEventListener("keydown", behind);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     fireEvent.keyDown(document, { key: "Escape" });
+    window.removeEventListener("keydown", behind);
     expect(onCancel).toHaveBeenCalledTimes(2);
+    expect(behind).not.toHaveBeenCalled();
   });
 
   it("says a note covers the hours when it has no words", () => {

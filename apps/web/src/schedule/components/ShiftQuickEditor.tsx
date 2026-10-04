@@ -1201,8 +1201,9 @@ function useDismissFloatingMenu(
       event.stopImmediatePropagation();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      // An open shift note is the top layer: its Escape closes only it.
+      // An open shift note, rule box or note card is the top layer: its Escape closes only it.
       if (event.key !== "Escape" || isShiftNoteOpen()) return;
+      if (document.querySelector("form[data-schedule-conflict-toast-content]")) return;
       event.stopPropagation();
       onDismiss();
     };

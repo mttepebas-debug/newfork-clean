@@ -79,4 +79,16 @@ describe("ScheduleConflictSheet", () => {
     fireEvent.submit(screen.getByRole("dialog", { name: "Shift conflict" }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
+
+  it("spends Escape on a question as Cancel; the Schedule behind never hears it", () => {
+    const onDismiss = vi.fn();
+    const behind = vi.fn();
+    window.addEventListener("keydown", behind);
+    render(<ScheduleConflictSheet open messages={["Overlaps unavailable hours."]} submitLabel="Place shift" onSubmit={vi.fn()} onDismiss={onDismiss} />);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    window.removeEventListener("keydown", behind);
+    expect(onDismiss).toHaveBeenCalledOnce();
+    expect(behind).not.toHaveBeenCalled();
+  });
 });

@@ -21,15 +21,20 @@ export function ScheduleNoteConfirm({ cell, employeeName, text, disabled = false
   readonly onPlace: () => void;
   readonly onCancel: () => void;
 }) {
-  const placeRef = useRef<HTMLButtonElement>(null);
-  // One question, answered from the keyboard too: Enter places, Escape cancels.
-  useEffect(() => placeRef.current?.focus(), []);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  // Same keyboard as the rule box: focus on Cancel, Escape cancels.
+  useEffect(() => cancelRef.current?.focus(), []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key !== "Escape") return;
+      // Caught on window's capture pass and spent here, like an open shift
+      // note: the Schedule's own Escape never closes the editor behind it.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onCancel();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [onCancel]);
   // The cell's own box, never the pointer: the card sits under the cell it is about.
   const rect = document
@@ -59,8 +64,8 @@ export function ScheduleNoteConfirm({ cell, employeeName, text, disabled = false
       </span>
       <p>{text || `A manager noted these hours for ${employeeName.trim().split(/\s+/)[0]}.`}</p>
       <footer>
-        <button type="button" onClick={onCancel}>Cancel</button>
-        <button ref={placeRef} type="submit" className="primary" disabled={disabled}>Place shift</button>
+        <button ref={cancelRef} type="button" onClick={onCancel}>Cancel</button>
+        <button type="submit" className="primary" disabled={disabled}>Place shift</button>
       </footer>
     </form>,
     document.body,
