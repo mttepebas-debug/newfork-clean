@@ -1,0 +1,531 @@
+/* DEV-only availability design lab (AVAIL-TASARIM). Loaded only by the lab bundle. */
+
+.avail-banner {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  border: 1px dashed var(--theme-warning-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--theme-warning-surface);
+  color: var(--theme-warning-text);
+  font-size: 12.5px;
+}
+.avail-banner p {
+  margin: 0;
+}
+.avail-banner-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.avail-variant-tabs,
+.avail-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.avail-variant-tabs a,
+.avail-scenarios button {
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.avail-variant-tabs a[aria-current="page"],
+.avail-scenarios button[aria-pressed="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+  font-weight: 700;
+}
+.avail-variant-tabs a:focus-visible,
+.avail-scenarios button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.avail-muted {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+
+/* S1: the switch hides the orange marks only (M10); red time off stays. */
+.avail-stage[data-avail-hidden] .schedule-cell[data-availability-kind="unavailable"] {
+  background-color: var(--theme-surface);
+  background-image: none;
+  box-shadow: none;
+}
+.avail-stage[data-avail-hidden] .schedule-cell[data-availability-kind="unavailable"][data-location-boundary="start"] {
+  box-shadow: inset var(--schedule-location-boundary-width) 0 #8fa098;
+}
+.avail-stage .schedule-edit-banner button[aria-pressed="true"] {
+  border-color: #6c9b8c;
+  background: var(--theme-accent-soft);
+}
+.avail-topbar-slot {
+  display: contents;
+}
+
+/* S2: the manager note keeps the app's note ink (--theme-note, BL-199), never the warning amber. */
+.avail-note-sheet .schedule-conflict-sheet-accent {
+  background: var(--theme-note);
+}
+.avail-note-sheet .schedule-conflict-sheet-icon {
+  background: color-mix(in srgb, var(--theme-note) 8%, white);
+  color: var(--theme-note);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-note) 30%, white);
+}
+.avail-note-sheet .schedule-conflict-sheet-copy p {
+  font-weight: 600;
+}
+.avail-note-card {
+  display: grid;
+  gap: 4px;
+  width: 300px;
+  max-width: 300px;
+  animation: none;
+}
+.avail-note-card-by {
+  color: var(--theme-muted);
+  font-size: 11px;
+}
+.avail-note-card-footer,
+.avail-consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding-top: 8px;
+}
+.avail-note-card-footer button {
+  min-height: 30px;
+  border: 1px solid #bac7c1;
+  border-radius: 5px;
+  padding: 0 11px;
+  background: var(--theme-surface);
+  color: #26312d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.avail-note-card-footer button.primary {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.avail-note-dialog {
+  width: min(calc(100vw - 32px), 420px);
+}
+.avail-note-quote {
+  margin: 0 18px 4px;
+  border-left: 3px solid var(--theme-note);
+  padding: 6px 12px;
+  color: var(--theme-text-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* S3: pre-flight availability without a checkbox (M9). */
+.avail-pf-fold {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+.avail-pf-fold summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.avail-pf-fold summary::-webkit-details-marker {
+  display: none;
+}
+.avail-pf-fold .avail-pf-fold-text {
+  display: grid;
+  flex: 1;
+}
+.avail-pf-fold summary strong {
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.avail-pf-fold summary small {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.avail-pf-fold[open] .avail-pf-chevron {
+  transform: rotate(180deg);
+}
+.avail-pf-fold ul {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 4px 12px 8px 37px;
+  list-style: none;
+}
+.avail-pf-fold li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 8px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  padding: 6px 0;
+  font-size: 12.5px;
+}
+.avail-pf-fold li:last-child {
+  border-bottom: 0;
+}
+.avail-pf-fold li small {
+  grid-row: 2;
+  color: var(--theme-warning-text);
+}
+.avail-pf-fold li button,
+.avail-pf-chips button {
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  cursor: pointer;
+}
+.avail-pf-fold li button {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+}
+.avail-pf-people {
+  display: grid;
+}
+.avail-pf-person {
+  display: grid;
+  grid-template-columns: minmax(130px, 170px) 1fr;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 8px 0;
+  font-size: 13px;
+}
+.avail-pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.avail-pf-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-color: color-mix(in srgb, var(--theme-availability) 45%, white);
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: var(--theme-availability-soft);
+  color: var(--theme-warning-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+.avail-pf-fold li button:focus-visible,
+.avail-pf-chips button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* S4: the employee is asked once (M6). */
+.avail-consent-strip {
+  display: grid;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--theme-availability) 45%, white);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--theme-availability-soft);
+}
+.sx-root .avail-consent-strip p {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--theme-warning-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.avail-consent-strip .sx-actions {
+  margin: 0;
+}
+.avail-consent-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--sx-border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.avail-consent-check input {
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--theme-accent);
+}
+.sx-root button.sx-primary.avail-armed {
+  border-color: var(--theme-availability);
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+}
+.sx-root .avail-consent-line {
+  font-weight: 600;
+}
+.avail-consent-dialog-actions {
+  margin-top: 16px;
+}
+.avail-day {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.avail-day figcaption {
+  display: grid;
+}
+.avail-day figcaption span,
+.avail-day-legend {
+  color: var(--sx-muted, var(--theme-muted));
+  font-size: 0.8125rem;
+}
+.avail-day-track {
+  position: relative;
+  height: 34px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface-muted);
+  overflow: hidden;
+}
+.avail-day-unavailable {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--theme-availability);
+  background-color: var(--theme-availability-soft);
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--theme-availability) 26%, transparent) 6px 9px);
+}
+.avail-day-shift {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #2563eb;
+  border-radius: 5px;
+  background: color-mix(in srgb, #2563eb 14%, white);
+  color: #1e3a8a;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.avail-day-scale {
+  position: relative;
+  height: 16px;
+  color: var(--theme-muted);
+  font-size: 10.5px;
+}
+.avail-day-scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.avail-day-scale span:first-child {
+  transform: none;
+}
+.avail-day-scale span:last-child {
+  transform: translateX(-100%);
+}
+.sx-root .avail-day-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0;
+}
+.avail-day-key {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+}
+.avail-day-key[data-kind="unavailable"] {
+  border: 1px solid var(--theme-availability);
+  background: var(--theme-availability-soft);
+}
+.avail-day-key[data-kind="shift"] {
+  margin-left: 6px;
+  border: 1px solid #2563eb;
+  background: color-mix(in srgb, #2563eb 14%, white);
+}
+.avail-day-compact {
+  margin: 4px 0;
+}
+.avail-day-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+}
+.avail-day-compact .avail-day-track {
+  height: 26px;
+}
+.avail-day-compact .avail-day-shift {
+  top: 3px;
+  bottom: 3px;
+}
+
+/* S5: the manager reads the consent (M6). */
+.avail-candidate-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.avail-pill-consent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.avail-tip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.requests-catalog-page .sx-candidate .avail-tip-anchor button.avail-flag {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+.avail-c3 {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: -12px;
+  z-index: 5;
+  display: grid;
+  width: max-content;
+  max-width: 240px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  box-shadow: 0 8px 24px rgb(23 34 30 / 14%);
+  color: var(--theme-text-body);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.avail-c3-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-availability) 25%, transparent);
+  background: var(--theme-availability-soft);
+}
+.avail-c3-dot {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+.avail-c3-who {
+  display: grid;
+}
+.avail-c3-who strong {
+  color: var(--theme-text);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.avail-c3-who span {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+}
+.avail-c3-body {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 9px 12px 11px;
+}
+.avail-c3-status {
+  font-weight: 600;
+}
+.avail-c3-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+}
+.avail-statement {
+  margin: 8px 0;
+  border-left: 3px solid var(--theme-availability);
+  border-radius: 0 8px 8px 0;
+  padding: 8px 12px;
+  background: var(--theme-availability-soft);
+}
+.sx-root .avail-statement p {
+  margin: 0;
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.avail-statement footer {
+  margin-top: 4px;
+  color: var(--theme-warning-text);
+  font-size: 0.8125rem;
+}
+
+/* Index */
+.avail-index ul {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.avail-index li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--theme-surface);
+}
+.avail-index-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}

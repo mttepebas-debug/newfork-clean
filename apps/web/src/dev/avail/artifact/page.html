@@ -1,0 +1,171 @@
+<meta charset="utf-8">
+<title>Müsaitlik tasarımları</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* A slim control bar (set, variant, device), one note block, then a frame that runs the real app. Light only, like the app. */
+:root {
+  --bg: #e9ece9;
+  --bar: #ffffff;
+  --ink: #17221e;
+  --muted: #5f6b66;
+  --line: #d3dad6;
+  --accent: #176954;
+  --accent-soft: #dbece5;
+  --note: #fbf6ec;
+  --note-ink: #5f491f;
+  --ui: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); font-size: 13px; display: flex; flex-direction: column; }
+.bar { background: var(--bar); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.bar h1 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.group > span { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.chip { border: 1px solid var(--line); background: var(--bar); color: var(--ink); border-radius: 999px; padding: 3px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.chip:disabled { opacity: .35; cursor: default; }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.push { margin-left: auto; }
+.note { background: var(--note); color: var(--note-ink); border-bottom: 1px solid var(--line); padding: 8px 16px; display: grid; gap: 3px; line-height: 1.45; }
+.note b { color: var(--ink); }
+.note .reco b { color: var(--accent); }
+details.ask { background: var(--bar); border-bottom: 1px solid var(--line); padding: 6px 16px; }
+details.ask summary { cursor: pointer; font-weight: 700; }
+details.ask ol { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 4px; max-width: 120ch; line-height: 1.45; }
+.stage { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; padding: 0; }
+.stage[data-device="phone"] { padding: 16px; }
+iframe { border: 0; width: 100%; height: 100%; background: #f4f5f3; display: block; }
+.stage[data-device="phone"] iframe { width: 375px; max-width: 100%; height: min(812px, 100%); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 12px 32px rgb(23 34 30 / 14%); }
+@media (max-width: 700px) {
+  .push { margin-left: 0; }
+  .stage[data-device="phone"] { padding: 0; }
+  .stage[data-device="phone"] iframe { width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+}
+</style>
+
+<header class="bar">
+  <h1>Müsaitlik tasarımları</h1>
+  <div class="group" role="group" aria-label="Set"><span>Set</span><div class="group" id="sets"></div></div>
+  <div class="group" role="group" aria-label="Varyant"><span>Varyant</span><div class="group" id="variants"></div></div>
+  <div class="group push" role="group" aria-label="Görünüm"><span>Görünüm</span>
+    <button class="chip" type="button" data-device="desktop" aria-pressed="true">Masaüstü</button>
+    <button class="chip" type="button" data-device="phone" aria-pressed="false">Telefon 375</button>
+  </div>
+</header>
+<div class="note" id="note">
+  <span id="where"></span>
+  <span id="example"></span>
+  <span class="reco" id="reco"></span>
+</div>
+<details class="ask">
+  <summary>Sohbette konuşacaklarımız (9)</summary>
+  <ol>
+    <li><b>S1:</b> Müsaitlik kapalıyken vardiya kartındaki turuncu "!" kalsın mı? Tasarımda kalıyor; M10 yalnız taramayı gizler diyor, "!" yazılmış bir vardiyanın uyarısı.</li>
+    <li><b>S1:</b> Anahtar yalnız düzenleme modunda mı olsun? M10 öyle diyor. C (Settings menüsü) düzenleme dışında da görünür; A (düzenleme şeridi) yalnız düzenlerken var.</li>
+    <li><b>S2:</b> Aynı vardiya hem yönetici notuna hem unavailable saatine düşerse: iki kutu art arda mı (önce Warn, sonra not), tek kutuda iki bölüm mü?</li>
+    <li><b>S2:</b> Not kutusunda "Place shift"e basmak bir iz bıraksın mı ("KadıköyMüdür1 notu gördü, yine yazdı")? M12 "asla engel değil" diyor; iz ayrı karar.</li>
+    <li><b>S3:</b> Onay kutusu kalkınca "Previously accepted" bölümü ve "Acknowledged by …" satırı da kalkıyor (artık onaylanan bir şey yok). Doğru mu?</li>
+    <li><b>S4:</b> Karttaki etiket bugünkü "Availability conflict" yerine "You're unavailable" oldu (M6'nın dili). Kalsın mı?</li>
+    <li><b>S4/S5:</b> Doğrudan takas davetini kabul ederken (bugünkü "Accept anyway") de aynı soru ve aynı yönetici satırı mı? Tasarımlar cover ve open shift için; öneri: takas da aynı bileşeni kullanır.</li>
+    <li><b>S5-E:</b> "Their words" yalnız S4-C seçilirse dürüst: çalışanın gerçekten işaretlediği cümle o. S4'te başka varyant seçilirse E'nin alıntısı uydurma olur.</li>
+    <li><b>S5:</b> Rıza satırı son "Confirm your decision" penceresinde de tekrar etsin mi? A, B ve E'de ediyor; C ve D'de etmiyor.</li>
+  </ol>
+</details>
+<main class="stage" id="stage" data-device="desktop">
+  <iframe id="app" title="Newfork preview" src="app.html"></iframe>
+</main>
+
+<script>
+const sets = {
+  s1: {
+    variants: ["a", "b", "c"],
+    where: "Schedule → bir haftayı düzenle (yeşil düzenleme şeridi açık) → anahtar. Kapalıyken turuncu tarama kalkar, kırmızı onaylı izin kalır; Warn kutusu ve preflight sürer (M10). Anahtar kişiye özel ve hatırlanır.",
+    example: "KadıköyMüdür1 Kadıköy'ün 19–25 Ekim haftasını düzenliyor. Turuncu: KadıköyGarson2 Salı 17:00 sonrası ve Cumartesi, KadıköyGarson1 Pazartesi 14:00'e kadar, KadıköyBarmen1 Cuma 18:00 sonrası. Kırmızı: KadıköyGarson1'in Perşembe onaylı izni.",
+    reco: ["A", "Anahtar yalnız düzenlerken var, kuralın kendisi gibi; düzenleme şeridindeki \"Paste mode on/off\" ile aynı biçim, üst çubuk kalabalıklaşmaz.", "M10 (düzenleme modunda); ILKELER P20 (global bileşen dili); CLAUDE.md §9 görsel tutarlılık"],
+  },
+  s2: {
+    variants: ["a", "b", "c"],
+    where: "Schedule → düzenle → notun gün ve saatine vardiya yaz. Not takvimde görünmez; yalnız yazarken küçük kutu çıkar, asla engel değildir (M12).",
+    example: "KadıköyMüdür1'in KadıköyGarson1 için notu: \"Picks up her daughter from school on Wednesdays\", Çarşamba 18:00 sonrası. Çarşamba 21'e akşam vardiyası yazılınca kutu notu gösterir; karşılaştırma için Cumartesi 24'te KadıköyGarson2'ye yazınca bugünkü Warn kutusu açılır.",
+    reco: ["A", "Warn kutusuyla aynı yer ve biçim, ama uygulamanın yönetici notu için kullandığı mavi mürekkeple: \"bu bir kural değil, not\" rengiyle ayrılır. Müdür tek bir kutu dili öğrenir.", "M12 (küçük onay kutusu, engel değil); ILKELER P20; not mürekkebi --theme-note (BL-199)"],
+  },
+  s3: {
+    variants: ["a", "b", "c"],
+    where: "Schedule → Publish → 2. adım \"Pre-flight\". Unavailable olup vardiya yazılmış herkes listelenir; onay kutusu yok, Next hemen çalışır (M9).",
+    example: "\"Week 43\" taslağında üç vardiya unavailable saate düşüyor: KadıköyGarson2 Salı 20 (17:00 sonrası) ve Cumartesi 24 (tüm gün), KadıköyBarmen1 Cuma 23 (18:00 sonrası).",
+    reco: ["A", "Bugünkü liste yerinde kalır, yalnız onay kutusu gider; herkes satır satır görünür, hiçbiri katlanıp gözden kaçmaz.", "M9 (herkes listelenir, son gözden geçirme); ILKELER P09 (veri sessizce düşmez), P20"],
+  },
+  s4: {
+    variants: ["a", "b", "c", "d", "e"],
+    where: "Çalışan → Shift Hub → Available → unavailable işaretli saatine düşen cover ya da open shift'i iste. Lokasyon + iş uyuyor, onaylı izin yok, o yüzden listede çıkıyor; isterken bir kez sorulur (M6). Telefon 375'te bakın.",
+    example: "KadıköyGarson2 Salı 17:00 sonrası ve Cumartesi tüm gün unavailable. KadıköyGarson1'in Salı 16:00–23:00 cover'ı ve Cumartesi 16:00–23:00 open shift önünde; Perşembe öğle vardiyası normal istek, karşılaştırma için.",
+    reco: ["B", "Pencere açılmadan, kartın kendi içinde bir amber satır sorar; bağlam (vardiya) gözün önünde kalır, telefonda başparmağın altında, tek dokunuş fazlası.", "M6; ILKELER A (çalışan ekranı telefona göre; anti-hedef \"kurumsal hantallık\"), P21 (tek mesaj)"],
+  },
+  s5: {
+    variants: ["a", "b", "c", "d", "e"],
+    where: "Schedule → Requests → Shift changes → cover isteğini aç → adayda Review → Approve. Bugünkü \"Eligible / Recheck needed\" yerinde \"unavailable ama kendi rızasıyla istedi\" yazar; yönetici onaylar ya da reddeder (M6).",
+    example: "KadıköyMüdür1, KadıköyGarson1'in Salı 20 Ekim 16:00–23:00 cover isteğine bakıyor. KadıköyGarson2 Salı 17:00 sonrasını unavailable işaretlemiş ama yine istemiş; KadıköyGarson3 müsait.",
+    reco: ["B", "Bugün onaylı iznini veren çalışanın rızası tam bu yerde, aynı amber satırla yazıyor (\"agreed to work during approved time off\"); müsaitlik rızası onun yanına oturur, aday listesi sade kalır.", "M6; ILKELER P20 (global bileşen dili), P07 (karar veren görür)"],
+  },
+};
+const frame = document.getElementById("app");
+const stage = document.getElementById("stage");
+let current = { set: null, variant: "a" };
+
+const go = (set, variant) => {
+  const path = set ? `/app/dev/avail/${set}?variant=${variant ?? "a"}` : "/app/dev/avail";
+  frame.contentWindow?.postMessage({ availgo: path }, "*");
+};
+
+function render() {
+  const setBox = document.getElementById("sets");
+  setBox.innerHTML = [["", "Liste"], ...Object.keys(sets).map((key) => [key, key.toUpperCase()])]
+    .map(([key, label]) => `<button class="chip" type="button" data-set="${key}" aria-pressed="${(current.set ?? "") === key}">${label}</button>`)
+    .join("");
+  const info = current.set ? sets[current.set] : null;
+  document.getElementById("variants").innerHTML = ["a", "b", "c", "d", "e"]
+    .map((key) => `<button class="chip" type="button" data-variant="${key}" aria-pressed="${!!info && current.variant === key}" ${info && info.variants.includes(key) ? "" : "disabled"}>${key.toUpperCase()}</button>`)
+    .join("");
+  if (info) {
+    document.getElementById("where").innerHTML = `<b>Yol:</b> ${info.where}`;
+    document.getElementById("example").innerHTML = `<b>Örnek:</b> ${info.example}`;
+    document.getElementById("reco").innerHTML = `<b>Önerim: ${info.reco[0]}.</b> ${info.reco[1]} <span>Dayanak: ${info.reco[2]}.</span>`;
+  } else {
+    document.getElementById("where").innerHTML = "<b>Başlangıç:</b> üstten bir set seç ya da listeden aç. Her şey tıklanabilir; veri sahte, hiçbir şey kaydedilmez. Kurallar: M1–M13 (2026-10-04).";
+    document.getElementById("example").innerHTML = "<b>Değişmeyenler:</b> hücre turuncu t0 + 1px çerçeve, onaylı izin kırmızı (G14); \"!\" balonu C3 \"Tinted header\"; Warn kutusu (Cancel / Place shift).";
+    document.getElementById("reco").innerHTML = "";
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  if (button.dataset.set !== undefined) go(button.dataset.set || null, "a");
+  else if (button.dataset.variant) go(current.set, button.dataset.variant);
+  else if (button.dataset.device) setDevice(button.dataset.device);
+});
+
+function setDevice(device) {
+  stage.dataset.device = device;
+  document.querySelectorAll("[data-device]").forEach((el) => {
+    if (el.tagName === "BUTTON") el.setAttribute("aria-pressed", String(el.dataset.device === device));
+  });
+}
+
+window.addEventListener("message", (event) => {
+  if (event.source !== frame.contentWindow) return;
+  const where = event.data?.avail;
+  if (!where || typeof where.path !== "string") return;
+  const match = /^\/app\/dev\/avail\/([a-z0-9]+)/.exec(where.path);
+  current = {
+    set: match && sets[match[1]] ? match[1] : null,
+    variant: new URLSearchParams(where.search ?? "").get("variant") ?? "a",
+  };
+  render();
+});
+
+if (window.innerWidth < 700) setDevice("phone");
+render();
+</script>
