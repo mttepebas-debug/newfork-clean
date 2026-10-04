@@ -101,6 +101,10 @@
   setinden üçünde Mert önerilenin dışını seçti (S2 not kartı, S3 tek katlanır satır, S4 günün
   çizelgesi) ve "anahtar kapalıyken '!' de gizlensin" dedi. Görsel seçimde Claude'un önerisi zayıf
   dayanak; varyant gösterilmeden karar verilmez (KARARLAR "Müsaitlik" → Tasarım seçimleri).
+- Kanıt (2026-10-04, ters seçim, marka adım 3): Schedule sağ üst butonları için UI-09 ve stil B'ye
+  dayanarak "tek yeşil Publish" önerildi; Mert gerçek ekranda üç varyanttan "bugünkü gibi siyah"ı
+  seçti. Genel kural (UI-09) bir ekranın kendi görsel kimliğini ezmez; ekranın bugünkü görünümü de
+  bir varyanttır (KARARLAR "Schedule" → üst çubuk butonları).
 
 **P05. Soru sonuç diliyle sorulur.**
 - Kural: soru şu sırayla kurulur:

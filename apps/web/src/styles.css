@@ -2769,13 +2769,13 @@ p {
   border: 0;
   border-radius: 6px;
   padding: 10px 16px;
-  background: #196f5b;
+  background: var(--theme-accent);
   color: #fff;
   cursor: pointer;
   font-weight: 750;
 }
 .nf-button:hover {
-  background: #125b4b;
+  background: var(--theme-accent-strong);
 }
 .nf-button:disabled {
   cursor: not-allowed;
@@ -4419,7 +4419,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-filter-menu input {
   width: 14px;
   height: 14px;
-  accent-color: #196f5b;
+  accent-color: var(--theme-accent);
 }
 .schedule-clear-filters {
   border: 0;
@@ -11657,7 +11657,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border: 1px solid #d2dad6;
   border-radius: 7px;
   background: var(--theme-surface);
-  color: #196f5b;
+  color: var(--theme-accent);
 }
 .account-page-header h1,
 .account-page h1 {
@@ -11846,8 +11846,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   --settings-header-action-radius: 6px;
   --settings-header-action-font-size: 14px;
   --settings-header-action-font-weight: 750;
-  --settings-header-action-background: #196f5b;
-  --settings-header-action-background-hover: #125b4b;
+  --settings-header-action-background: var(--theme-accent);
+  --settings-header-action-background-hover: var(--theme-accent-strong);
   --settings-header-action-foreground: #fff;
   --settings-header-action-disabled-opacity: 0.55;
   --settings-header-title-color: #1d2525;
@@ -12079,7 +12079,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   width: 16px;
   height: 16px;
   margin-top: 2px;
-  accent-color: #196f5b;
+  accent-color: var(--theme-accent);
 }
 .document-options strong,
 .document-options small {
@@ -13570,10 +13570,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   place-items: center;
   border: 1px solid #c8d1cc;
   border-radius: 999px;
-  color: #196f5b;
+  color: var(--theme-accent);
 }
 .owner-setup-checklist-status[data-done="true"] {
-  border-color: #196f5b;
+  border-color: var(--theme-accent);
   background: #e8f2ee;
 }
 .workspace-grid {
