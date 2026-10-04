@@ -40,7 +40,7 @@ create function pg_temp.settings_save(changes jsonb default '{}', key_suffix int
 $$;
 select is(public.weekly_preference_settings_read_service(owner_id,w)->>'can_edit','true','owner can edit settings') from wp_fixture;
 select is(public.weekly_preference_settings_read_service(manager,w)->>'can_edit','false','ordinary manager cannot edit organization availability settings') from wp_fixture;
-select is(public.weekly_preference_settings_read_service(actor,w)->>'can_edit','false','employee has read-only public settings') from wp_fixture;
+select throws_like($x$select public.weekly_preference_settings_read_service(actor,w) from wp_fixture$x$,'Not allowed','an employee does not read the organization''s availability settings (the core: settings.availability.read)');
 select throws_ok($$select public.weekly_preference_settings_read_service(gen_random_uuid(),w) from wp_fixture$$,'42501',null,'nonmember cannot read another organization');
 select throws_ok($$select pg_temp.settings_save('{}',1,(select manager from wp_fixture))$$,'42501',null,'manager save rejected in database');
 select throws_ok($$select pg_temp.settings_save('{"onboarding_required":null}')$$,'22023',null,'null required flag rejected');
@@ -64,7 +64,7 @@ select is((select preference->>'input_mode' from public.employee_weekly_preferen
 select is((select preference->'days'->2->>'all_day' from public.manager_weekly_reminders where workspace_id=(select w from wp_fixture)),'true','manager rules survive mode change');
 select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),1::bigint,'mode change and retry create one outbox event');
 select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),
- jsonb_build_array((select actor from wp_fixture)),'only employees whose saved week was converted are notified');
+ jsonb_build_array((select actor from wp_fixture)),'every employee is told, never the manager (M4, D4)');
 select ok((select bool_and(position('Private manager note' in payload::text)=0) from public.notification_outbox where workspace_id=(select w from wp_fixture)),'mode notice contains no private reminders');
 select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}')$$,'22023',null,'key cannot be reused for another payload');
 select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}',2)$$,'40001',null,'stale revision cannot overwrite settings');

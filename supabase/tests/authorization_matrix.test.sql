@@ -533,6 +533,10 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('time_off.request_own', 'workspace', null, false, false,
    $$select public.submit_time_off_service($1, $2, jsonb_build_array(jsonb_build_object('segment_date', tests.week(1) + 3)),
        'probe', 'Europe/Istanbul', gen_random_uuid()) is not null$$, true, false),
+  -- one's own week of availability: an employee's only (M13), also while
+  -- finishing onboarding, whose step writes the same week (M2, AVAIL-002)
+  ('availability.own', 'person', null, false, true,
+   $$select (public.weekly_preferences_read_service($1, $2, $3) ->> 'can_edit_employee')::boolean$$, true, true),
   -- one's own emergency contact, on one's own record only (BL-443, BL-444)
   ('employee.save_own_contact', 'person', null, false, false,
    $$select true from (select public.save_own_employment_contact_service($1, $2, $3,
@@ -615,7 +619,8 @@ insert into core_action (key, core_key, blank) values
   ('time_off.request_own', 'time_off.request_own', 'null'),
   ('settings.people', 'settings.people', 'null'),
   ('settings.people.read', 'settings.people.read', 'null'),
-  ('employee.save_own_contact', 'employee.save_own_contact', 'null');
+  ('employee.save_own_contact', 'employee.save_own_contact', 'null'),
+  ('availability.own', 'availability.own', 'null');
 update core_action set by_account = true where key = 'read.membership';
 
 select is(
@@ -667,6 +672,8 @@ begin
   end if;
   -- One's own action is never done on somebody else's, in whatever state.
   if a.member and t.holder is not null and not is_self then return 'deny'; end if;
+  -- Availability is entered by employees only (KARARLAR M13).
+  if action_key = 'availability.own' and p.class <> 'employee' then return 'deny'; end if;
   if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
   if p.status <> 'active' then return 'deny'; end if;
   if a.member then return 'allow'; end if;

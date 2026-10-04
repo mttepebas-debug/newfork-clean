@@ -66,7 +66,8 @@ select throws_ok($$select public.weekly_preferences_save_service(manager,w,comma
 select ok(pg_get_functiondef('public.validate_weekly_preference_command(uuid,uuid,jsonb)'::regprocedure) not like '%confirm_clear%','no clear confirmation for a mode change');
 select ok(pg_get_functiondef('public.validate_weekly_preference_command(uuid,uuid,jsonb)'::regprocedure) not like '%and not copied and not%','a copy follows the current entry mode like any save');
 
--- Complete pending-request scenarios use isolated upcoming request snapshots.
+-- M5 (Mert 2026-10-04): saving a week never asks about pending requests and
+-- never changes one; the employee withdraws one in Shift Hub if they want to.
 update public.locations set timezone='UTC' where workspace_id=(select w from wp_fixture);
 create temp table wp_requests as select i,gen_random_uuid() cid,gen_random_uuid() aid,gen_random_uuid() source_id from generate_series(1,5) i;
 insert into public.shift_exchange_cases(id,workspace_id,kind,owner_id,offered_source_id,requested_source_id,offered_snapshot,requested_snapshot,consent_fingerprint,expires_at,created_by)
@@ -79,31 +80,39 @@ insert into public.shift_exchange_applications(id,workspace_id,case_id,employee_
  select r.aid,f.w,r.cid,f.emp,'pending_manager','test-consent' from wp_requests r,wp_fixture f where r.i in(1,2,3);
 update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,1,range}','{"start":"10:00","end":"12:00"}'),'{days,2,range}','{"start":"10:00","end":"12:00"}');
 update wp_command set command=jsonb_build_object('employee_id',emp,'source','employee','expected_revision',1,'settings_revision',0,'preference',p),request_key=gen_random_uuid() from wp_fixture;
-select is(jsonb_array_length(public.weekly_preferences_preview_service(actor,w,command)->'items'),4,'three incoming applications and the swap receiver need decisions; outgoing cover excluded') from wp_fixture,wp_command;
-select throws_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'PT409',null,'missing decisions abort save');
-select is(public.weekly_preferences_read_service(actor,w)->'employee'->>'revision','1','failed save did not alter preferences') from wp_fixture;
-create temp table wp_choices as select jsonb_agg(item||jsonb_build_object('action',case when item->>'id'=(select aid::text from wp_requests where i=2) then 'cancel' else 'keep' end) order by item->>'id') decisions
- from wp_fixture,wp_command cross join lateral jsonb_array_elements(public.weekly_preferences_preview_service(actor,w,command)->'items') item;
-update wp_command set command=command||jsonb_build_object('decisions',decisions) from wp_choices;
-select throws_ok($$select public.weekly_preferences_save_service(actor,w,jsonb_set(command,'{preference,days,1,range,end}','"13:00"'),gen_random_uuid()) from wp_fixture,wp_command$$,'PT409',null,'changed conflict requires fresh decisions');
-select throws_ok($$select public.weekly_preferences_save_service(actor,w,jsonb_set(command,'{decisions}',command->'decisions'||jsonb_build_array(jsonb_build_object('kind','exchange_application','id',gen_random_uuid(),'action','cancel','fingerprint',repeat('0',64)))),gen_random_uuid()) from wp_fixture,wp_command$$,'42501',null,'foreign request choice aborts the whole transaction');
-select is((select status from public.shift_exchange_applications where id=(select aid from wp_requests where i=2)),'pending_manager','earlier cancellation rolled back on later error');
--- A manager won approval after preview. Saving must not revoke their assignment.
-update public.shift_exchange_applications set status='approved' where id=(select aid from wp_requests where i=3);
-update public.shift_exchange_cases set status='completed' where id=(select cid from wp_requests where i=3);
-select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'mixed keep/cancel and finalized race save atomically');
-select is(result->>'kept_count','2','incoming pickup and swap kept') from wp_command;
-select is(result->>'cancelled_count','1','incoming application withdrawn') from wp_command;
-select is(jsonb_array_length(result->'finalized'),1,'finalized race separately reported') from wp_command;
-select is((select status from public.shift_exchange_applications where id=(select aid from wp_requests where i=3)),'approved','finalized assignment consent preserved');
-select is((select status from public.shift_exchange_applications where id=(select aid from wp_requests where i=2)),'withdrawn','requested application withdrawn');
-select is((select status from public.shift_exchange_cases where id=(select cid from wp_requests where i=5)),'open','giving away own shift remains untouched');
-select is(result->'model'->'employee'->>'revision','2','employee changes apply immediately despite finalized race') from wp_command;
-select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture,wp_command$$,'atomic mutation retry succeeds');
-select is((select count(*) from public.weekly_preference_events where workspace_id=(select w from wp_fixture)),4::bigint,'only successful unique commands audited');
-update wp_command set command=(command-'decisions')||'{"expected_revision":2}';
-update wp_command set command=jsonb_set(command,'{preference,days,3,all_day}','true');
-select is(jsonb_array_length(public.weekly_preferences_preview_service(actor,w,command)->'items'),0,'unrelated weekly edit does not re-prompt retained requests') from wp_fixture,wp_command;
+select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'the week saves with requests pending; nothing is asked');
+select is((select count(*) from public.shift_exchange_applications where workspace_id=(select w from wp_fixture) and status='pending_manager'),3::bigint,'every pending application stays as it was');
+select is((select count(*) from public.shift_exchange_cases where workspace_id=(select w from wp_fixture) and status='open'),5::bigint,'every case stays open');
+select is(result->'model'->'employee'->>'revision','2','the new week applies at once') from wp_command;
+select is(result-'model','{}'::jsonb,'the answer reports no kept or cancelled requests') from wp_command;
+select is((select count(*) from public.weekly_preference_events where workspace_id=(select w from wp_fixture)),4::bigint,'one history row per saved week');
+
+-- M3: in shift type mode, a day with every selectable type marked is all day.
+select public.weekly_preference_settings_save_service(owner_id,w,jsonb_build_object('input_mode','shift_type','onboarding_required',false,
+ 'expected_revision',(public.weekly_preference_settings_read_service(owner_id,w)->'settings'->>'revision')::integer),gen_random_uuid()) from wp_fixture;
+update wp_command set command=jsonb_build_object('employee_id',f.emp,'source','employee',
+ 'expected_revision',(m.model->'employee'->>'revision')::integer,'settings_revision',(m.model->'settings'->>'revision')::integer,
+ 'preference',jsonb_set(jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(f.dinner,f.hidden_type)),
+  '{days,2,shift_type_ids}',jsonb_build_array(f.dinner))),request_key=gen_random_uuid()
+ from wp_fixture f cross join lateral (select public.weekly_preferences_read_service(f.actor,f.w) model) m;
+select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'Monday with both types marked saves');
+select is((select preference->'days'->1 from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),
+ '{"day": 1, "range": null, "all_day": true, "shift_type_ids": []}'::jsonb,'every selectable type marked is saved as all day');
+select is((select preference->'days'->2->'shift_type_ids' from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),
+ (select jsonb_build_array(dinner) from wp_fixture),'one type of two stays as it was');
+-- The no comes from the core: 42501 with its authz.* hint (CLAUDE.md §9).
+create function pg_temp.refusal(q text) returns text language plpgsql as $$
+declare h text; begin execute q; return 'no refusal'; exception when others then get stacked diagnostics h = pg_exception_hint; return sqlstate||' '||coalesce(h,''); end $$;
+select is(pg_temp.refusal(format('select public.weekly_preferences_read_service(%L,%L,%L)',gen_random_uuid(),w,emp)),'42501 authz.not_member','somebody outside the workspace hears not a member') from wp_fixture;
+select is(pg_temp.refusal(format('select public.weekly_preferences_read_service(%L,%L,%L)',owner_id,w,gen_random_uuid())),'42501 authz.out_of_scope','an unknown person is out of scope') from wp_fixture;
+select is(pg_temp.refusal(format('select public.weekly_preferences_save_service(%L,%L,%L,%L)',manager,w,c.command,gen_random_uuid())),'42501 authz.rank','a manager never writes an employee''s own week') from wp_fixture,wp_command c;
+select is(pg_temp.refusal(format('select public.weekly_preference_settings_save_service(%L,%L,%L,%L)',actor,w,'{}',gen_random_uuid())),'42501 authz.missing_permission','an employee does not change the entry mode') from wp_fixture;
+select is(pg_temp.refusal(format('select public.weekly_preference_settings_read_service(%L,%L)',gen_random_uuid(),w)),'42501 authz.not_member','nor reads it from outside') from wp_fixture;
+-- Still finishing onboarding, the employee writes their own week: the onboarding
+-- step writes the same record (M2, M13).
+update public.workspace_memberships set status='pending_activation' where user_id=(select actor from wp_fixture);
+select is(public.weekly_preferences_read_service(actor,w)->>'can_edit_employee','true','an employee still onboarding may write their own week') from wp_fixture;
+update public.workspace_memberships set status='active' where user_id=(select actor from wp_fixture);
 select ok(not has_function_privilege('authenticated','public.weekly_preferences_save_service(uuid,uuid,jsonb,uuid)','execute'),'client cannot impersonate save actor');
 select ok(not has_table_privilege('authenticated','public.weekly_preference_events','select'),'private before/after audit unavailable to direct employee reads');
 select * from finish();

@@ -269,7 +269,6 @@ insert into service_class values
   ('update_scheduling_settings_service', 'settings.scheduling.write'),
   ('weekly_preference_settings_read_service', 'settings.availability.read'),
   ('weekly_preference_settings_save_service', 'settings.availability.write'),
-  ('weekly_preferences_preview_service', 'availability.own'),
   ('weekly_preferences_read_service', 'availability.own'),
   ('weekly_preferences_save_service', 'availability.own'),
   ('verify_account_password_service', 'account.self'),

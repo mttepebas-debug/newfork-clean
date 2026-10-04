@@ -416,7 +416,7 @@ begin
   perform public.weekly_preferences_save_service(
     actor, workspace,
     -- The save refuses a stale screen: send the revisions the page was read at.
-    jsonb_build_object('source', 'employee', 'employee_id', employee, 'preference', preference, 'decisions', '[]'::jsonb,
+    jsonb_build_object('source', 'employee', 'employee_id', employee, 'preference', preference,
       'expected_revision', model -> 'employee' -> 'revision', 'settings_revision', model -> 'settings' -> 'revision'),
     gen_random_uuid()
   );

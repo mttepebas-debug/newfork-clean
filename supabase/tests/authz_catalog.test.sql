@@ -132,7 +132,8 @@ select is(
 );
 
 -- The old permission helper: FB-6.6 took documents, signature templates and
--- onboarding off it (30 -> 11). What still asks it only goes down, and nothing
+-- onboarding off it (30 -> 11), AVAIL-002 the availability settings (11 -> 10).
+-- What still asks it only goes down, and nothing
 -- in those areas starts again.
 select is(
   array(
@@ -142,11 +143,11 @@ select is(
       and (p.proname ~ '(document|onboarding|signature|lifecycle)'
            or (select count(*) from pg_proc q
                where q.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
-                 and q.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\(') > 11)
+                 and q.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\(') > 10)
     order by 1
   ),
   '{}'::text[],
-  'the old permission helper is asked by at most 11 functions, none about documents or onboarding'
+  'the old permission helper is asked by at most 10 functions, none about documents or onboarding'
 );
 
 -- Every document, signature template and employee onboarding entry point asks

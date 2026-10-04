@@ -95,7 +95,8 @@ select is((select count(*) from public.weekly_preference_events where employee_i
  1::bigint,'the reminder week has its own history entry');
 select is((select count(*) from public.employee_weekly_preferences where employee_id=(select c from cv)),0::bigint,'a mode change does not invent a week for somebody who never saved one');
 select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings'),
- jsonb_build_array((select a_user from cv)),'the notice goes to the people whose week was converted, and only to them');
+ (select jsonb_agg(u order by u) from (select a_user u from cv union all select b_user from cv union all select c_user from cv union all select d_user from cv) x),
+ 'the notice goes to every employee, a saved week or not (M4, D4); the owner who changed it gets none');
 select is((select payload->>'title'||' / '||(payload->>'body') from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings'),
  'Check your availability / Your organization changed how availability is entered. Your saved week was converted; check that it is still right.',
  'the notice says the week was converted');
@@ -127,7 +128,7 @@ select is(pg_temp.day(b,6),pg_temp.hours(6,'11:30','24:00'),'type to time: the o
 select is(pg_temp.day(a,5),pg_temp.hours(5,'11:30','23:30'),'a round trip widens hours by the rules: Friday 15:00-17:00 comes back as 11:30-23:30') from cv;
 select is(pg_temp.day(a,2),pg_temp.free(2),'a round trip does not bring back hours the first conversion cleared') from cv;
 select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings' and payload->>'input_mode'='time_range'),
- (select jsonb_agg(u order by u) from (select a_user u from cv union all select b_user from cv) x),'switching back notifies everybody whose week converted again');
+ (select jsonb_agg(u order by u) from (select a_user u from cv union all select b_user from cv union all select c_user from cv union all select d_user from cv) x),'switching back tells every employee again');
 select ok((select bool_and(public.weekly_preference_valid(preference)) from public.employee_weekly_preferences where workspace_id=(select w from cv)),'every converted week is a valid week');
 select * from finish();
 rollback;

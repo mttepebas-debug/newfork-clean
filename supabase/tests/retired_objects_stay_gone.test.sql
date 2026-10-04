@@ -335,6 +335,13 @@ insert into retired (kind, name, step) values ('permission', 'signature_template
 -- conflict list had no reader (BL-206).
 insert into retired (kind, name, step) values
   ('function', 'list_schedule_draft_availability_conflicts_service', 'AVAIL-002');
+-- AVAIL-002 A2 (M5): no keep / cancel when availability is saved.
+insert into retired (kind, name, step) values
+  ('function', 'weekly_preferences_preview_service', 'AVAIL-002'),
+  ('function', 'weekly_preference_commitment_conflicts', 'AVAIL-002'),
+  ('function', 'weekly_preference_commitments', 'AVAIL-002'),
+  ('table', 'weekly_preference_commitment_decisions', 'AVAIL-002'),
+  ('column', 'weekly_preference_events.decisions', 'AVAIL-002');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
