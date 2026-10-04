@@ -11047,8 +11047,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .schedule-action-group {
     width: 100%;
   }
+  /* The row wraps rather than scrolls: a scrolling row clips the Settings and
+     filter menus that open from it. It sits above the action row below it,
+     which would otherwise draw over those menus. */
   .schedule-command-group {
-    overflow-x: auto;
+    z-index: 3;
   }
   /* A scrolling row clips the menus that open from it (New Schedule,
      Publish while editing, Published); wrap the buttons instead. */
