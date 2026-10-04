@@ -1172,6 +1172,8 @@ function useDismissFloatingMenu(
     const handlePointerDown = (event: PointerEvent) => {
       if (menuRef.current?.contains(event.target as Node)) return;
       const target = event.target instanceof Element ? event.target : undefined;
+      // The editor's own rule box and note card sit in a portal; answering them is not leaving.
+      if (target?.closest("[data-schedule-conflict-toast-content]")) return;
       const suppress = !target || shouldSuppressPointerDown(target);
       if (suppress && target) suppressedPointerDownTarget.current = target;
       onDismiss(target);

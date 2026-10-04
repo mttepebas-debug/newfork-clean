@@ -204,6 +204,30 @@ describe("ShiftQuickEditor", () => {
     expect(screen.queryByRole("dialog", { name: /^Manager note for / })).toBeNull();
   });
 
+  it.each([
+    ["note card", [noteReason], /^Manager note for /],
+    ["rule box", [availabilityReason], "Shift conflict"],
+  ] as const)("keeps the editor open when the %s is pressed, so Place shift saves", async (_label, reasons, dialog) => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [...reasons] });
+    const onSubmit = vi.fn().mockResolvedValue("saved");
+    const onDismiss = vi.fn();
+    render(
+      <ShiftQuickEditor
+        model={model}
+        state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }}
+        timeFormat="12h" formatTime={(v) => v} addDays={(v) => v} scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()} onDismiss={onDismiss} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={onSubmit}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await screen.findByRole("dialog", { name: dialog });
+    const place = screen.getByRole("button", { name: "Place shift" });
+    dispatchPointerEvent(place, "pointerdown", { pointerId: 1, clientX: 0, clientY: 0 });
+    fireEvent.click(place);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
   it("shows the mark and the note on one shift as one box with two lines", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [availabilityReason, noteReason] });
     renderAssigned();
