@@ -361,6 +361,14 @@ export function ShiftQuickEditor({
   const [stale, setStale] = useState(false);
   const [conflictSheetOpen, setConflictSheetOpen] = useState(false);
   const [noteCardOpen, setNoteCardOpen] = useState(false);
+  // Answering the rule box or note card hands focus back to the editor's own
+  // save button (it was disabled, so unfocused, while the server checked).
+  const submitRef = useRef<HTMLButtonElement>(null);
+  const closeQuestion = () => {
+    setConflictSheetOpen(false);
+    setNoteCardOpen(false);
+    submitRef.current?.focus();
+  };
   const [conflictValidationArmed, setConflictValidationArmed] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const checkingRef = useRef(false);
@@ -1029,6 +1037,7 @@ export function ShiftQuickEditor({
               Cancel
             </button>
             <button
+              ref={submitRef}
               type="submit"
               className="primary"
               disabled={
@@ -1066,7 +1075,7 @@ export function ShiftQuickEditor({
               }
             : undefined
         }
-        onDismiss={() => setConflictSheetOpen(false)}
+        onDismiss={closeQuestion}
       />
       {noteCardOpen && selectedEmployee ? (
         <ScheduleNoteConfirm
@@ -1080,7 +1089,7 @@ export function ShiftQuickEditor({
           text={noteText}
           disabled={checkingAvailability}
           onPlace={() => void attemptSubmit(true)}
-          onCancel={() => setNoteCardOpen(false)}
+          onCancel={closeQuestion}
         />
       ) : null}
     </>

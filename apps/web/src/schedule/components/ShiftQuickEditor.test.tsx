@@ -243,9 +243,8 @@ describe("ShiftQuickEditor", () => {
         onClose={onClose} onDismiss={onDismiss} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={vi.fn()}
       />,
     );
-    const add = screen.getByRole("button", { name: "Add shift" });
-    add.focus();
-    fireEvent.click(add);
+    // A real browser drops focus from the button while it is disabled for the check.
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     await screen.findByRole("dialog", { name: dialog });
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: dialog })).toBeNull());
