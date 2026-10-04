@@ -1110,3 +1110,15 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte, işçi aynı dalda yapıyor. Kayıt oturumu `local_e4bbe6fe-261c-4651-85ac-1553a61e776b` yazdı (koordinatör `local_91ac4f8d…`'ın kararı, besleme #135).
 - **Mert:** bilgi.
+
+### KK-130 (2026-10-04) Tek seferlik oturum toparlama talimatı kural sanıldı (yanlış okuma, düzeltildi)
+- **Karar (ne):** Mert'in "sessionları toparla boşta olanları kaldır temizle" talimatı ve netleştirmede seçtiği "Fazlayı arşivle, havuzu küçült (Önerilen)" kalıcı kural sanıldı; KARARLAR OPS-07'ye "ters çevrildi (kısmen)" ve ILKELER P15'e kanıt olarak yazıldı (besleme #143, main `110d9c7b`). Mert: 'tek seferlik bir task vermiştim, kural değil'. İkisi geri alındı; OPS-07 olduğu gibi geçerli (oturum arşivlenmez, temizlenip havuza döner), altına tek seferlik iş notu düşüldü.
+- **Nerede:** koordinatör `local_10a5177a…`'ın penceresi; kayıt `docs/plan/KARARLAR.md` OPS-07, `docs/plan/ILKELER.md` P15.
+- **Ne zaman:** talimat ve arşiv 2026-10-04 ~09:30Z; düzeltme koordinatör beslemesi #144.
+- **Ne için:** tek seferlik bir toparlama işinin kalıcı bir oturum kuralına dönüşmesini önlemek.
+- **Uygulamada etkisi:** 26 boş havuz oturumu ve 2026-10-01'in eski koordinatörü arşivde kalır (geri alınabilir); bundan sonra işi biten oturum yine temizlenip havuza döner, havuz sayısına sınır yok. CLAUDE.md §8 ve `.claude/agents/nf-db.md` değişmiyor (Mert: "ikisi de şimdilik kalsın").
+- **Dayanak:** Mert'in düzeltmesi (2026-10-04, koordinatörün penceresinde); ILKELER P22 (en güncel açık karar).
+- **Ders:** tek seferlik bir işin netleştirme sorusundaki seçenek, kural değişikliği diye okunmaz; kural mı iş mi belirsizse sorulur.
+- **Geri alma:** —
+- **Durum:** düzeltildi. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_10a5177a…`'ın kaydı, besleme #144).
+- **Mert:** düzeltti.
