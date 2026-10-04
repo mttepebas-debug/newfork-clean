@@ -161,6 +161,10 @@
   Ayrıntılı kurallar KARARLAR "Katılım ve giriş akışı"nda (onay 2026-10-01).
 - Kanıt: 09-17 "tek organizasyonu varsa direk ona giriş yapsın, rolüne göre land olsun"; 09-18
   "zorlamayalım belki employer olacak belki", "yeni invitelar her zaman… ilk olarak gösterilsin".
+- Kanıt (2026-10-03, seçenek dışı): müsaitlik değişince bekleyen istek için "istek açık kalsın, yalnız işaret" önerildi;
+  Mert: "…availability kaydedilirken onay ekranında bekleyen istekle çakışma yaratacağını ve bu isteği keep/cancel
+  edeceğini employeeye sorsun" (FB-6.4 S2; KARARLAR "Takas… uygunluk"). Niyet kayıt anında kişiye sorulur; sessiz işaret
+  yetmez.
 
 **P11. Doğru veri tahminden önce gelir.**
 - Kural: zorunlu alan tahminle ya da kopyayla doldurulmaz; legal name zorunludur. Yapısal veri
@@ -293,6 +297,9 @@
   net yazılsın".
 - Kanıt (2026-10-01, ters seçim): vardiyasız yayın için "yayında sayılsın, geri alınabilsin"
   önerildi; Mert "bugünkü gibi kalsın" seçti (BL-370). Geri alınabilirlik her uç durumda iş açmaz.
+- Kanıt (2026-10-03, ters seçim): duyurudaki Archive Restore ile geri alınabildiği için "beyaz tek tık" önerildi; Mert
+  "kırmızı, iki tık, adı Archive" seçti (FB-6.7 B1, BL-543). Kayıt alıcılardan kalkıyorsa geri alınabilir eylem de
+  yıkıcı dille (iki tık kırmızı) kalır.
 
 **P26. Pencere kapanırken yalnız kayıp büyükse sorulur.** (Mert, 2026-10-01)
 - Kural: uzun yazılmış ya da geri getirilemeyecek iş varken "Discard unsaved changes?" sorulur;
