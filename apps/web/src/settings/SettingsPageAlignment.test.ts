@@ -25,7 +25,7 @@ describe("settings page alignment styles", () => {
     expect(pageFrame).toContain("width: min(100% - 64px, 1320px)");
     expect(pageFrame).toContain("--settings-header-action-gap: 18px");
     expect(pageFrame).toContain("--settings-header-action-min-height: 42px");
-    expect(pageFrame).toContain("--settings-header-action-background: #196f5b");
+    expect(pageFrame).toContain("--settings-header-action-background: var(--theme-accent)");
     expect(pageFrame).toContain("--settings-header-title-font-size: 28px");
     expect(pageFrame).toContain(
       "--settings-header-description-font-size: 13px",

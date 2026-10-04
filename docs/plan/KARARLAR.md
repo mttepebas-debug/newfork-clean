@@ -385,6 +385,13 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001).
   penceresi bu stilden kurulur. Export, Unpublish, Save draft penceresi ve
   onay pencereleri (UI-13) hâlâ eski ağır stilde; tutarlılık ayrı iş
   (BL-318).
+- **Üst çubuk butonları siyah kalır (Mert, 2026-10-04, marka programı adım 3; gerçek Schedule'da
+  üç varyant, önerilenin tersi).** Export, Templates, New Schedule ▾ ve henüz hiçbir şey yayında
+  değilken Publish `--theme-action` (#111827) siyahıdır; yayın durumu renkleri (kısmi turuncu,
+  tam yeşil) bunun üstüne gelir. UI-09'un "aksiyon yeşil" kuralı bu çubuğa uygulanmaz; bu çubuğu
+  yeşile ya da beyaza "düzeltmek" kararı ters çevirmektir. Neden: Mert bugünkü görünümü seçti.
+  Reddedilen: "hepsi yeşil", "yalnız Publish yeşil, ötekiler beyaz" (UI-09 + stil B'ye dayanan öneri).
+  Kanıt `artifacts/nf-arayuz/brand-001/topbar-compare.png`.
 - **Kısmen ters çevrildi 2026-10-04 (M8, M9; Ürün kuralları → Müsaitlik 2026-10-04).** Müsaitlik bir tercih, engel değil (2026-09-26, BL-186; "Ürün kuralları →
   Müsaitlik"): hücrede taralı alan ve uyarı, onay yayınlayandan, ayar yok.
   Yayınlanmış vardiyanın uyarısı yayın anındaki kayıttan gelir; ~~sonradan
