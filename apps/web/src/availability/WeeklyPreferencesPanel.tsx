@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { WeeklyPreferenceSave } from "@newfork/shared";
 import {
@@ -13,6 +13,8 @@ type Props = {
   audience: "employee" | "manager";
   onboarding?: boolean;
   onSaved?: () => void;
+  /** Onboarding's way on ("Skip for now"), kept in the one action bar beside Save. */
+  extraAction?: ReactNode;
 };
 
 export function WeeklyPreferencesPanel(props: Props) {
@@ -30,6 +32,7 @@ function ConnectedPreferences({
   audience,
   onboarding = false,
   onSaved,
+  extraAction,
 }: Props) {
   const client = useQueryClient();
   const queryKey = [
@@ -115,6 +118,7 @@ function ConnectedPreferences({
         audience={audience}
         onSave={save}
         wizard={onboarding}
+        extraAction={extraAction}
       />
     </>
   );

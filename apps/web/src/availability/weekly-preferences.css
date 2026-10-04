@@ -453,6 +453,20 @@
   .weekly-note {
     font-size: 16px;
   }
+  /* One layout on every phone screen: start, "to", end and the remove button
+     on one line, "End of day" under them (My availability and onboarding alike). */
+  .weekly-time-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+    width: 100%;
+  }
+  .weekly-time-range > input {
+    width: 100%;
+    max-width: none;
+  }
+  .weekly-time-range > .weekly-end-day {
+    grid-column: 1 / -1;
+  }
   .weekly-unavailable-day:has(.weekly-time-range)
     :is(.weekly-note, .weekly-note-summary) {
     grid-row: 3;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Copy, RotateCcw, Save, ShieldCheck, Trash2 } from "lucide-react";
 import {
   emptyWeeklyPreference,
@@ -17,6 +17,8 @@ type Props = {
   onSave: (command: WeeklyPreferenceSave) => Promise<WeeklyPreferenceRead>;
   /** In onboarding: there are no assigned shifts yet and no time off to request. */
   wizard?: boolean;
+  /** A step's way on, shown after Save in the same bar (one sticky bar). */
+  extraAction?: ReactNode;
 };
 
 // Remount on actor changes; an employee's unsaved rules must never follow a
@@ -36,6 +38,7 @@ function PreferenceForm({
   audience,
   onSave,
   wizard = false,
+  extraAction,
 }: Props) {
   const manager = audience === "manager";
   // No reminder data (the person is a manager+, or the reader may not see
@@ -380,6 +383,7 @@ function PreferenceForm({
               <Save size={14} />
               Save
             </button>
+            {extraAction}
           </div>
         </footer>
       )}

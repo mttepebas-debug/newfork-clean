@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Info, MessageSquare, Plus, X } from "lucide-react";
 import {
   type PreferenceShiftType,
@@ -47,6 +47,21 @@ export function WeeklyUnavailableEditor({
 }) {
   const [openNote, setOpenNote] = useState<number | null>(null);
   const [showHours, setShowHours] = useState(false);
+  // WCAG 2.4.3: after a range comes or goes, focus lands on the control
+  // named here once it has rendered, never on the page.
+  const root = useRef<HTMLDivElement>(null);
+  const focusNext = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focusNext.current) return;
+    root.current
+      ?.querySelector<HTMLElement>(`[aria-label="${focusNext.current}"]`)
+      ?.focus();
+    focusNext.current = null;
+  });
+  const rangeLabel = (day: number, index: number) =>
+    `${weekdays[day]} unavailable${index ? ` ${index + 1}` : ""}`;
+  const removeLabel = (day: number, index: number) =>
+    `Remove ${weekdays[day]} hours${index ? ` ${index + 1}` : ""}`;
   const manager = notes !== undefined;
   // A day holds several hours in time-range mode (M4); one is edited in place.
   const setRange = (
@@ -98,6 +113,7 @@ export function WeeklyUnavailableEditor({
   );
   return (
     <div
+      ref={root}
       className={`weekly-unavailable ${manager ? "has-notes" : ""} ${readOnly ? "read-only" : ""}`}
     >
       <div className="weekly-unavailable-legend">
@@ -221,7 +237,7 @@ export function WeeklyUnavailableEditor({
                   <>
                   {row.ranges.map((range, index) => {
                     // Later ranges get a numbered label: "Monday unavailable 2 start".
-                    const label = `${weekdays[day]} unavailable${index ? ` ${index + 1}` : ""}`;
+                    const label = rangeLabel(day, index);
                     return (
                       <div key={index} className="weekly-time-range">
                         <AvailabilityClockInput
@@ -242,9 +258,15 @@ export function WeeklyUnavailableEditor({
                         <button
                           type="button"
                           className="weekly-icon"
-                          aria-label={`Remove ${weekdays[day]} hours${index ? ` ${index + 1}` : ""}`}
+                          aria-label={removeLabel(day, index)}
                           disabled={locked}
-                          onClick={() => setRange(row, index, null)}
+                          onClick={() => {
+                            const left = row.ranges.length - 1;
+                            focusNext.current = left
+                              ? removeLabel(day, Math.min(index, left - 1))
+                              : `Add hours on ${weekdays[day]}`;
+                            setRange(row, index, null);
+                          }}
                         >
                           <X size={15} />
                         </button>
@@ -271,9 +293,10 @@ export function WeeklyUnavailableEditor({
                       className="weekly-add-hours"
                       aria-label={`Add hours on ${weekdays[day]}`}
                       disabled={locked}
-                      onClick={() =>
-                        update(day, { ranges: [...row.ranges, nextRange(row)!] })
-                      }
+                      onClick={() => {
+                        focusNext.current = `${rangeLabel(day, row.ranges.length)} start`;
+                        update(day, { ranges: [...row.ranges, nextRange(row)!] });
+                      }}
                     >
                       <Plus size={14} />
                       Add hours

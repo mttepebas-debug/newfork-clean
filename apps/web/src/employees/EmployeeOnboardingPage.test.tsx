@@ -275,6 +275,22 @@ describe("EmployeeOnboardingPage", () => {
     expect(loadWeeklyPreferences).not.toHaveBeenCalled();
   });
 
+  // One action bar: Skip for now sits with Save, nothing covers Save.
+  it("keeps Skip for now and Save in the same action bar", async () => {
+    vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const save = await screen.findByRole("button", { name: "Save" });
+    const skip = screen.getByRole("button", { name: /Skip for now/ });
+    expect(skip.closest("footer")).toBe(save.closest("footer"));
+    expect(document.querySelectorAll("footer.pb-bar")).toHaveLength(0);
+  });
+
   // C2.3, P26: the onboarding step asks before unsaved hours are lost.
   it("asks before leaving an unsaved weekly draft", async () => {
     vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { emptyWeeklyPreference } from "@newfork/shared";
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
@@ -83,5 +84,29 @@ describe("all day by itself", () => {
     render(<WeeklyUnavailableEditor value={emptyWeeklyPreference("shift_type")} shiftTypes={types} onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Monday Lunch unavailable" }));
     expect(onChange.mock.calls[0]![0].days[1]).toMatchObject({ all_day: false, shift_type_ids: [types[0]!.id] });
+  });
+});
+
+// WCAG 2.4.3: focus never falls to the page when a range comes or goes.
+describe("focus while editing hours", () => {
+  function Editor() {
+    const [value, setValue] = useState(() => {
+      const week = emptyWeeklyPreference("time_range");
+      week.days[1]!.ranges = [{ start: "09:00", end: "14:00" }, { start: "17:00", end: "20:00" }];
+      return week;
+    });
+    return <WeeklyUnavailableEditor value={value} shiftTypes={[]} onChange={setValue} />;
+  }
+  it("moves to the neighbouring remove button, then to Add hours", () => {
+    render(<Editor />);
+    fireEvent.click(screen.getByRole("button", { name: "Remove Monday hours 2" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Remove Monday hours" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Monday hours" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add hours on Monday" }));
+  });
+  it("moves to the new range's start after Add hours", () => {
+    render(<Editor />);
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Monday unavailable 3 start" }));
   });
 });

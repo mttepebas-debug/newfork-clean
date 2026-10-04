@@ -859,20 +859,18 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
         audience="employee"
         onboarding
         onSaved={() => void onSaved()}
-      />
-      {completed || requirement?.required === false ? (
-        <WizardBar>
-          {/* Saving is the green action above; this only leaves the step. */}
+        // One action bar: the way on sits beside Save, so nothing covers Save.
+        extraAction={completed || requirement?.required === false ? (
           <button
             type="button"
-            className={`pb-btn ${completed ? "pb-btn-primary" : "pb-btn-secondary"}`}
+            className={completed ? "weekly-primary" : undefined}
             onClick={() => requestAvailabilityNavigation(() => void onSaved())}
           >
-            {completed ? "Continue" : "Skip for now"}{" "}
-            <ArrowRight size={17} aria-hidden />
+            {completed ? "Continue" : "Skip for now"}
+            <ArrowRight size={14} aria-hidden />
           </button>
-        </WizardBar>
-      ) : null}
+        ) : null}
+      />
     </section>
   );
 }
