@@ -1418,35 +1418,6 @@ export function registerScheduleRoutes(
     }
   });
 
-  app.get(
-    "/schedule/drafts/:draftId/availability-conflicts",
-    async (request, reply) => {
-      const context = authorize(await activeActor(request, options), "schedule.edit");
-      const params = activeDraftParamsSchema.safeParse(request.params);
-      const query = weekQuerySchema.safeParse(request.query);
-      if (!params.success || !query.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid draft week required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule service is not configured" });
-      try {
-        return reply.send(
-          await options.service.listDraftAvailabilityConflicts(
-            context.userId,
-            context.workspace.id,
-            params.data.draftId,
-            query.data.week_start,
-          ),
-        );
-      } catch (error) {
-        return scheduleError(reply, error);
-      }
-    },
-  );
-
   app.post(
     "/schedule/drafts/:draftId/auto-fill/preview",
     async (request, reply) => {

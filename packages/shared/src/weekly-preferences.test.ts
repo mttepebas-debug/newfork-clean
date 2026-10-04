@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emptyWeeklyPreference,
   preferenceIsEmpty,
+  weeklyPreferenceMutationSchema,
   weeklyPreferenceReadSchema,
   weeklyPreferenceSaveSchema,
   weeklyPreferenceSchema,
@@ -31,8 +32,41 @@ describe("weekly unavailable preference contract", () => {
     ["", "17:00", false],
   ])("validates the same-day range %s to %s", (start, end, valid) => {
     const preference = emptyWeeklyPreference("time_range");
-    preference.days[1]!.range = { start, end };
+    preference.days[1]!.ranges = [{ start, end }];
     expect(weeklyPreferenceSchema.safeParse(preference).success).toBe(valid);
+  });
+
+  // M4, S2 (a): a day holds several hours, in order and apart, at most 12.
+  it.each([
+    [[["09:00", "12:00"], ["17:00", "24:00"]], true],
+    [[["17:00", "24:00"], ["09:00", "12:00"]], false],
+    [[["09:00", "12:00"], ["12:00", "15:00"]], false],
+    [[["09:00", "13:00"], ["12:00", "15:00"]], false],
+  ])("keeps several ranges a day only in order and apart: %j", (pieces, valid) => {
+    const preference = emptyWeeklyPreference("time_range");
+    preference.days[2]!.ranges = pieces.map(([start, end]) => ({ start: start!, end: end! }));
+    expect(weeklyPreferenceSchema.safeParse(preference).success).toBe(valid);
+  });
+
+  it("takes at most 12 ranges a day and none beside all day or shift types", () => {
+    const preference = emptyWeeklyPreference("time_range");
+    const hours = (count: number) => Array.from({ length: count }, (_, index) => ({
+      start: `${String(index).padStart(2, "0")}:00`, end: `${String(index).padStart(2, "0")}:30` }));
+    preference.days[0]!.ranges = hours(12);
+    expect(weeklyPreferenceSchema.safeParse(preference).success).toBe(true);
+    preference.days[0]!.ranges = hours(13);
+    expect(weeklyPreferenceSchema.safeParse(preference).success).toBe(false);
+    preference.days[0]!.ranges = hours(1);
+    preference.days[0]!.all_day = true;
+    expect(weeklyPreferenceSchema.safeParse(preference).success).toBe(false);
+    const types = emptyWeeklyPreference("shift_type");
+    types.days[0]!.ranges = hours(1);
+    expect(weeklyPreferenceSchema.safeParse(types).success).toBe(false);
+  });
+
+  it("has no single range any more", () => {
+    const preference = { ...emptyWeeklyPreference("time_range") };
+    expect(preference.days.every((day) => !("range" in day) && day.ranges.length === 0)).toBe(true);
   });
 
   it("rejects duplicate days and selections, mixed modes and all-day detail", () => {
@@ -110,42 +144,18 @@ describe("weekly unavailable preference contract", () => {
       }).success,
     ).toBe(false);
   });
-  it("requires unique employee-owned decisions with a real preview fingerprint", () => {
-    const choice = {
-      kind: "exchange_application",
-      id: type,
-      fingerprint: "a".repeat(64),
-      action: "keep",
-    };
+  // M5: saving a week decides nothing about pending requests.
+  it("sends no decisions with a save", () => {
     const command = {
       employee_id: employee,
       source: "employee",
       expected_revision: 0,
       settings_revision: 1,
       preference: emptyWeeklyPreference("time_range"),
-      decisions: [choice],
+      decisions: [{ kind: "exchange_application", id: type, fingerprint: "a".repeat(64), action: "keep" }],
     };
-    expect(weeklyPreferenceSaveSchema.safeParse(command).success).toBe(true);
-    expect(
-      weeklyPreferenceSaveSchema.safeParse({
-        ...command,
-        decisions: [choice, choice],
-      }).success,
-    ).toBe(false);
-    expect(
-      weeklyPreferenceSaveSchema.safeParse({
-        ...command,
-        decisions: [{ ...choice, fingerprint: "stale" }],
-      }).success,
-    ).toBe(false);
-    expect(
-      weeklyPreferenceSaveSchema.safeParse({
-        ...command,
-        source: "manager",
-        enabled: true,
-        notes: Array(7).fill(""),
-      }).success,
-    ).toBe(false);
+    const parsed = weeklyPreferenceSaveSchema.parse(command);
+    expect("decisions" in parsed).toBe(false);
   });
 });
 
@@ -163,5 +173,18 @@ describe("weekly preference read: the manager note in three shapes (BL-139)", ()
     const omitted = weeklyPreferenceReadSchema.safeParse(read);
     expect(omitted.success).toBe(true);
     expect(omitted.success && "manager" in omitted.data).toBe(false);
+  });
+});
+
+describe("weekly preference save answer (M5)", () => {
+  it("is the model alone", () => {
+    const model = {
+      employee_id: employee, employee_name: "Ada Lovelace", can_edit_employee: true, can_manage: false,
+      settings: { input_mode: "time_range", onboarding_required: false, revision: 1 },
+      employee: { revision: 2, submitted: true, updated_at: null, preference: emptyWeeklyPreference("time_range") },
+      shift_types: [], time_format: "12h",
+    };
+    const parsed = weeklyPreferenceMutationSchema.parse({ model, kept_count: 0 });
+    expect(Object.keys(parsed)).toEqual(["model"]);
   });
 });

@@ -1387,8 +1387,11 @@ export const scheduleWeeklyLocationSchema = z
     week_start: z.string().date(),
     status: z.enum(["ready", "unknown"]),
     unavailable_intervals: z.array(scheduleWeeklyIntervalSchema),
-    // The employee's own marks; the rest of unavailable_intervals is a manager's reminder.
+    // The employee's own marks: the same hours as unavailable_intervals (M12).
     employee_intervals: z.array(scheduleWeeklyIntervalSchema).optional(),
+    // A manager note's hours, only for whoever may read the note; [] for
+    // anybody else. A reminder shown while writing, never unavailable (M12).
+    note_intervals: z.array(scheduleWeeklyIntervalSchema).optional(),
     // The manager note's words by weekday from Sunday ("" for none); null for a
     // reader the note is not for. Absent on the team board an employee reads.
     manager_notes: z.array(z.string()).length(7).nullable().optional(),
@@ -1476,7 +1479,10 @@ export const scheduleShiftSchema = z.object({
   warning_codes: z.array(
     z.enum(["availability", "closed_location", "overlap"]),
   ),
-  /** K18: the unavailable mark behind the "availability" warning came after publishing. */
+  /**
+   * K18, M11: the employee marked these hours after the shift was first
+   * published; approved time off and a manager note never count.
+   */
   availability_changed_after_publish: z.boolean().optional(),
 });
 export type ScheduleShift = z.infer<typeof scheduleShiftSchema>;
@@ -1785,39 +1791,6 @@ export const scheduleDraftDeleteResultSchema = z.object({
 export type ScheduleDraftDeleteResult = z.infer<
   typeof scheduleDraftDeleteResultSchema
 >;
-export const scheduleAvailabilityConflictSchema = z.object({
-  employee_id: z.string().uuid(),
-  employee_name: z.string().trim().min(1).max(161),
-  shift_id: z.string().uuid(),
-  location_id: z.string().uuid(),
-  location_name: z.string().trim().min(1).max(120),
-  date: z.string().date(),
-  start_time: z.preprocess(
-    (value) => value ?? "",
-    z.union([timeOfDaySchema, z.literal("")]),
-  ),
-  end_time: z.preprocess(
-    (value) => value ?? "",
-    z.union([timeOfDaySchema, z.literal("")]),
-  ),
-  shift_type_label: z.string().trim().min(1).max(80).nullable(),
-  job_name: z.string().trim().min(1).max(120).nullable(),
-  warning_text: z.string().trim().min(1).max(500),
-  conflict_fingerprint: z.string().min(1).max(64),
-  assessment: shiftAvailabilityAssessmentSchema.optional(),
-});
-export type ScheduleAvailabilityConflict = z.infer<
-  typeof scheduleAvailabilityConflictSchema
->;
-export const scheduleAvailabilityConflictResultSchema = z.object({
-  status: z.literal("ok"),
-  conflicts: z.array(scheduleAvailabilityConflictSchema),
-  fingerprint: z.string().min(1).max(64),
-});
-export type ScheduleAvailabilityConflictResult = z.infer<
-  typeof scheduleAvailabilityConflictResultSchema
->;
-
 export const schedulePublishFindingCodeSchema = z.enum([
   "schedule_conflict",
   "availability_unknown",
@@ -1856,10 +1829,6 @@ export const schedulePublishFindingSchema = z.object({
   scheduled_date: z.string().date(),
   date: z.string().date().nullable().optional(),
   shift_ids: z.array(z.string().uuid()),
-  // An availability warning acknowledged at an earlier publish (BL-186).
-  acknowledged_by_user_id: z.string().uuid().optional(),
-  acknowledged_by_name: z.string().trim().min(1).max(161).optional(),
-  acknowledged_at: z.string().datetime({ offset: true }).optional(),
   // shift_exchange_undone only: the approved change and what the draft has instead.
   // from_* is null for an open pickup; draft_* is null when the draft left the shift out.
   start_time: timeOfDaySchema.optional(),
@@ -2007,7 +1976,6 @@ export const schedulePublicationPreflightBlockReasonSchema = z.enum([
   "unacknowledged",
   "stale_fingerprint",
   "not_overrideable",
-  "missing_reason",
 ]);
 export type SchedulePublicationPreflightBlockReason = z.infer<
   typeof schedulePublicationPreflightBlockReasonSchema

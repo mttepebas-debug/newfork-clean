@@ -36,62 +36,44 @@ beforeEach(() => {
     error: null,
   }));
 });
+const savedModel = {
+  employee_id: employee, employee_name: "Alex Kim", can_edit_employee: true, can_manage: false,
+  settings: { input_mode: "time_range", onboarding_required: true, revision: 0 },
+  employee: { revision: 1, submitted: true, updated_at: null, preference: emptyWeeklyPreference("time_range") },
+  shift_types: [], time_format: "24h",
+};
 describe("weekly preferences onboarding identity", () => {
-  it.each(["preview", "save"] as const)(
-    "rejects another employee before %s",
-    async (operation) => {
-      const input = { ...command(), employee_id: actor };
-      const result =
-        operation === "preview"
-          ? service.onboardingPreviewWeekly("validated-token", input)
-          : service.onboardingSaveWeekly("validated-token", input, workspace);
-      await expect(result).rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
-      expect(rpc).toHaveBeenCalledTimes(1);
-    },
-  );
-  it.each(["preview", "save"] as const)(
-    "rejects manager source before %s",
-    async (operation) => {
-      const input = {
-        ...command(),
-        source: "manager" as const,
-        enabled: true,
-        notes: Array(7).fill(""),
-      };
-      const result =
-        operation === "preview"
-          ? service.onboardingPreviewWeekly("validated-token", input)
-          : service.onboardingSaveWeekly("validated-token", input, workspace);
-      await expect(result).rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
-      expect(rpc).toHaveBeenCalledTimes(1);
-    },
-  );
-  it("uses the server-validated identity and workspace for preview", async () => {
-    await expect(
-      service.onboardingPreviewWeekly("validated-token", command()),
-    ).resolves.toEqual({ items: [] });
+  it("rejects another employee before save", async () => {
+    const input = { ...command(), employee_id: actor };
+    await expect(service.onboardingSaveWeekly("validated-token", input, workspace))
+      .rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+  it("rejects manager source before save", async () => {
+    const input = { ...command(), source: "manager" as const, enabled: true, notes: Array(7).fill("") };
+    await expect(service.onboardingSaveWeekly("validated-token", input, workspace))
+      .rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+  // M5: the answer is the model; there are no request decisions to count.
+  it("saves with the server-validated identity and answers with the model", async () => {
+    rpc.mockImplementation(async (name: string) => ({
+      data: name === "get_employee_onboarding_service"
+        ? { workspace_id: workspace, employee_id: employee, revision: 2 }
+        : { model: savedModel, kept_count: 0 },
+      error: null,
+    }));
+    await expect(service.onboardingSaveWeekly("validated-token", command(), "ad418000-0000-4000-8000-000000000009", workspace))
+      .resolves.toEqual({ model: savedModel });
     expect(getUser).toHaveBeenCalledWith("validated-token");
-    expect(rpc).toHaveBeenLastCalledWith("weekly_preferences_preview_service", {
-      actor,
-      w: workspace,
-      command: command(),
+    expect(rpc).toHaveBeenNthCalledWith(1, "get_employee_onboarding_service", { target_user_id: actor, target_workspace_id: workspace });
+    expect(rpc).toHaveBeenLastCalledWith("weekly_preferences_save_service", {
+      actor, w: workspace, command: command(), request_key: "ad418000-0000-4000-8000-000000000009",
     });
   });
-  it("resolves onboarding identity in the requested workspace", async () => {
-    await service.onboardingPreviewWeekly(
-      "validated-token",
-      command(),
-      workspace,
-    );
-    expect(rpc).toHaveBeenNthCalledWith(1, "get_employee_onboarding_service", {
-      target_user_id: actor,
-      target_workspace_id: workspace,
-    });
-    rpc.mockClear();
-    await service.onboardingPreviewWeekly("validated-token", command());
-    expect(rpc).toHaveBeenNthCalledWith(1, "get_employee_onboarding_service", {
-      target_user_id: actor,
-    });
+  it("has no preview", () => {
+    expect("onboardingPreviewWeekly" in service).toBe(false);
+    expect("previewWeekly" in service).toBe(false);
   });
   it("rejects an expired token without calling a service RPC", async () => {
     getUser.mockResolvedValue({

@@ -2,7 +2,7 @@ import {
   weeklyPreferenceSaveSchema,
   weeklyPreferenceSettingsSaveSchema,
 } from "@newfork/shared";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
   bearerToken,
@@ -16,14 +16,17 @@ type WeeklyService = Pick<
   AvailabilityService,
   | "readWeekly"
   | "readWeeklyTeam"
-  | "previewWeekly"
   | "saveWeekly"
   | "onboardingReadWeekly"
-  | "onboardingPreviewWeekly"
   | "onboardingSaveWeekly"
   | "readWeeklySettings"
   | "saveWeeklySettings"
 >;
+
+// The "no" contract: to somebody who is not in it the workspace is not there.
+function workspaceNotFound(reply: FastifyReply) {
+  return reply.status(404).send({ error: "Workspace not found." });
+}
 
 export function registerWeeklyPreferenceRoutes(
   app: FastifyInstance,
@@ -49,8 +52,7 @@ export function registerWeeklyPreferenceRoutes(
         workspaceId: params.data.workspaceId,
         resolver: options.contextResolver,
       });
-      if (!auth.context)
-        return reply.status(403).send({ error: "Workspace access required." });
+      if (!auth.context) return workspaceNotFound(reply);
       if (!auth.context.permissions.includes("availability.read"))
         return reply
           .status(403)
@@ -104,17 +106,9 @@ export function registerWeeklyPreferenceRoutes(
           workspaceId: params.data.workspaceId,
           resolver: options.contextResolver,
         });
-        if (!auth.context)
-          return reply
-            .status(403)
-            .send({ error: "Workspace access required." });
-        if (
-          method === "POST" &&
-          !auth.context.permissions.includes("settings.schedule_rules.manage")
-        )
-          return reply
-            .status(403)
-            .send({ error: "Schedule rules edit access required." });
+        // The core decides who reads and saves the settings
+        // (settings.availability.read/write).
+        if (!auth.context) return workspaceNotFound(reply);
         if (!options.service)
           return reply
             .status(503)
@@ -143,10 +137,11 @@ export function registerWeeklyPreferenceRoutes(
     const base = onboarding
       ? "/v1/me/onboarding/availability/weekly"
       : "/v1/workspaces/:workspaceId/availability/weekly";
-    for (const operation of ["read", "preview", "save"] as const) {
+    // M5: a save decides nothing about pending requests, so nothing is previewed.
+    for (const operation of ["read", "save"] as const) {
       app.route({
         method: operation === "read" ? "GET" : "POST",
-        url: operation === "preview" ? `${base}/preview` : base,
+        url: base,
         handler: async (request, reply) => {
           const params = z
             .object({ workspaceId: z.string().uuid().optional() })
@@ -188,10 +183,7 @@ export function registerWeeklyPreferenceRoutes(
                 workspaceId: params.data.workspaceId!,
                 resolver: options.contextResolver,
               });
-          if (!onboarding && !auth?.context)
-            return reply
-              .status(403)
-              .send({ error: "Workspace access required." });
+          if (!onboarding && !auth?.context) return workspaceNotFound(reply);
           if (!options.service)
             return reply
               .status(503)
@@ -212,18 +204,6 @@ export function registerWeeklyPreferenceRoutes(
               return reply
                 .status(400)
                 .send({ error: "Invalid weekly preferences." });
-            if (operation === "preview")
-              return onboarding
-                ? await options.service.onboardingPreviewWeekly(
-                    token,
-                    command.data,
-                    query.data.workspaceId,
-                  )
-                : await options.service.previewWeekly(
-                    auth!.context!.userId,
-                    params.data.workspaceId!,
-                    command.data,
-                  );
             if (!key?.success)
               return reply
                 .status(400)

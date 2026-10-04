@@ -3,8 +3,8 @@ import { shiftTimeBasisSchema } from "./availability";
 
 export const scheduleConflictSeveritySchema = z.enum(["allow", "warn", "confirm", "block"]);
 export type ScheduleConflictSeverity = z.infer<typeof scheduleConflictSeveritySchema>;
-// Availability is a preference, never a conflict rule (BL-186): an
-// availability key is refused rather than dropped.
+// Availability is no rule: it is always a warning and never a conflict (M8).
+// The database refuses an unknown key, so this schema does too.
 export const scheduleConflictRulesSchema = z.strictObject({
   // Approved time off always blocks a manager's assignment (FB-6.1 T5); the
   // key stays required because the database constraint expects it.
@@ -89,11 +89,13 @@ export const shiftAvailabilityAssessmentSchema = z.object({
   assessment_minutes: z.number().nullable(),
   can_override: z.boolean(),
   warning_policy: z.enum(["warn", "confirm"]).optional(),
-  // Availability only warns (BL-186): these name the warning, never gate.
+  // Availability only warns (M8): these name the warning, never gate. A
+  // manager note is a separate "note" reason, never in has_availability_conflict (M12).
   has_availability_conflict: z.boolean().optional(),
   availability_fingerprint: z.string().regex(/^[a-f0-9]{64}$/).nullable().optional(),
   preference_timezone: z.string().optional(),
   employee_intervals: z.array(interval).optional(),
+  // The note's hours; [] for whoever may not read the note (M12).
   manager_intervals: z.array(interval).optional(),
   responsibility_retained: z.boolean().optional(),
   override_recorded: z.boolean().optional(),

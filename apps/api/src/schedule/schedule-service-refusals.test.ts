@@ -33,7 +33,7 @@ const refusal = {
 const routeMethods = [
   "getReadModel", "listDrafts", "listWeeklyShifts", "acquireSession", "heartbeat", "mutateShift",
   "createShiftsBatch", "bulkDeleteShifts", "previewDefaultHours", "applyDefaultHours", "saveSession",
-  "discardSession", "deleteDraft", "listDraftAvailabilityConflicts", "listPendingOps", "addPendingOp",
+  "discardSession", "deleteDraft", "listPendingOps", "addPendingOp",
   "updatePendingOp", "removePendingOp", "getPublicationStatus", "previewPublication", "publish",
   "previewUnpublish", "unpublish", "getPublicationHistory", "listTemplates", "getTemplate",
   "createTemplate", "renameTemplate", "deleteTemplate", "applyTemplate", "previewAutoFill",

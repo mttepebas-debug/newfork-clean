@@ -100,6 +100,8 @@ interface TargetedRule {
   readonly restrictedOk?: boolean;
   /** Asked of one person's record, request or shift: without the person, no. */
   readonly person?: boolean;
+  /** Only somebody in the employee role, for their own record (M13). */
+  readonly employeeTarget?: boolean;
 }
 
 /**
@@ -113,6 +115,7 @@ export const targetedAuthzActions = {
   "announcement.write_wide": { permission: "announcements.manage" },
   "audit.read": { permission: "workspace.manage" },
   "availability.note_read": { person: true, permission: "availability.read" },
+  "availability.own": { person: true, permission: null, own: true, restrictedOk: true, employeeTarget: true },
   "availability.team_read": { person: true, permission: "availability.read" },
   "availability.team_write": { person: true, permission: "availability.manage" },
   "documents.read": { person: true, permission: "employee_documents.read" },
@@ -240,6 +243,8 @@ export function expected<A extends TargetedAuthzAction>(
   if (action === "membership.read" && isSelf) return actor.status !== "invited";
   // One's own action is never done on somebody else's, in whatever state.
   if (rule.own && person !== undefined && !isSelf) return false;
+  // M13: a manager, admin or owner has no availability week of their own.
+  if (rule.employeeTarget && actor.role !== "employee") return false;
   if (actor.status === "restricted" && rule.restrictedOk) return true;
   if (actor.status !== "active") return false;
   if (rule.own) return person === undefined || isSelf;
@@ -414,6 +419,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "employee.save_own_contact":
     case "documents.self":
     case "onboarding.self":
+    case "availability.own":
     case "exchange.offer_own":
     case "notifications.read_own":
     case "time_off.request_own":

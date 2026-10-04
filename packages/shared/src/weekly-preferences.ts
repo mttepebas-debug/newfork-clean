@@ -14,7 +14,9 @@ export const weeklyPreferenceDaySchema = z
     day: z.number().int().min(0).max(6),
     all_day: z.boolean(),
     shift_type_ids: z.array(z.string().uuid()).max(64),
-    range: unavailableRangeSchema.nullable(),
+    // M4, S2 (a): several hours a day, in order and apart (touching hours are
+    // one range), each within the day.
+    ranges: z.array(unavailableRangeSchema).max(12),
   })
   .superRefine((value, ctx) => {
     if (new Set(value.shift_type_ids).size !== value.shift_type_ids.length)
@@ -23,7 +25,15 @@ export const weeklyPreferenceDaySchema = z
         path: ["shift_type_ids"],
         message: "Choose each shift type once.",
       });
-    if (value.all_day && (value.shift_type_ids.length || value.range))
+    value.ranges.forEach((range, index) => {
+      if (index > 0 && range.start <= value.ranges[index - 1]!.end)
+        ctx.addIssue({
+          code: "custom",
+          path: ["ranges", index],
+          message: "Hours must be in order and apart.",
+        });
+    });
+    if (value.all_day && (value.shift_type_ids.length || value.ranges.length))
       ctx.addIssue({
         code: "custom",
         message: "All day replaces individual selections.",
@@ -44,7 +54,7 @@ export const weeklyPreferenceSchema = z
     value.days.forEach((day, index) => {
       if (
         value.input_mode === "shift_type"
-          ? day.range !== null
+          ? day.ranges.length > 0
           : day.shift_type_ids.length > 0
       )
         ctx.addIssue({
@@ -107,11 +117,6 @@ export const weeklyPreferenceReadSchema = z.object({
   shift_types: z.array(preferenceShiftTypeSchema),
   time_format: z.enum(["12h", "24h"]),
 });
-export const weeklyCommitmentKindSchema = z.enum([
-  "exchange_application",
-  "exchange_swap",
-  "legacy_request",
-]);
 export const weeklyTeamReadSchema = z.object({
   locations: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
   time_format: z.enum(["12h", "24h"]),
@@ -129,34 +134,6 @@ export const weeklyTeamReadSchema = z.object({
   ),
 });
 export type WeeklyTeamRead = z.infer<typeof weeklyTeamReadSchema>;
-export const weeklyCommitmentDecisionSchema = z.object({
-  kind: weeklyCommitmentKindSchema,
-  id: z.string().uuid(),
-  fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-  action: z.enum(["keep", "cancel"]),
-});
-export const weeklyCommitmentPreviewSchema = z.object({
-  items: z.array(
-    z.object({
-      kind: weeklyCommitmentKindSchema,
-      id: z.string().uuid(),
-      fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-      request_revision: z.string(),
-      request_type: z.enum(["cover", "open_pickup", "swap"]),
-      location_name: z.string(),
-      date: z.string().date(),
-      start_time: z.string(),
-      end_time: z.string(),
-      timezone: z.string(),
-      intervals: z.array(
-        z.object({
-          start_at: z.string().datetime({ offset: true }),
-          end_at: z.string().datetime({ offset: true }),
-        }),
-      ),
-    }),
-  ),
-});
 export const weeklyPreferenceSaveSchema = z
   .object({
     employee_id: z.string().uuid(),
@@ -167,7 +144,6 @@ export const weeklyPreferenceSaveSchema = z
     enabled: z.boolean().optional(),
     notes: z.array(z.string().trim().max(1000)).length(7).optional(),
     copy_employee_revision: z.number().int().positive().optional(),
-    decisions: z.array(weeklyCommitmentDecisionSchema).optional(),
   })
   .superRefine((value, ctx) => {
     if (
@@ -188,39 +164,16 @@ export const weeklyPreferenceSaveSchema = z
         code: "custom",
         message: "Include reminder state and notes.",
       });
-    const decisions = value.decisions ?? [];
-    if (value.source === "manager" && decisions.length)
-      ctx.addIssue({
-        code: "custom",
-        message: "Only the employee can decide their pending requests.",
-      });
-    if (
-      new Set(decisions.map((item) => `${item.kind}:${item.id}`)).size !==
-      decisions.length
-    )
-      ctx.addIssue({
-        code: "custom",
-        path: ["decisions"],
-        message: "Choose each request once.",
-      });
   });
+// M5: saving a week decides nothing about pending requests.
 export const weeklyPreferenceMutationSchema = z.object({
   model: weeklyPreferenceReadSchema,
-  kept_count: z.number().int().nonnegative(),
-  cancelled_count: z.number().int().nonnegative(),
-  resolved_count: z.number().int().nonnegative(),
-  finalized: z.array(
-    z.object({ kind: weeklyCommitmentKindSchema, id: z.string().uuid() }),
-  ),
 });
 export type WeeklyPreference = z.infer<typeof weeklyPreferenceSchema>;
 export type WeeklyPreferenceDay = z.infer<typeof weeklyPreferenceDaySchema>;
 export type PreferenceShiftType = z.infer<typeof preferenceShiftTypeSchema>;
 export type WeeklyPreferenceRead = z.infer<typeof weeklyPreferenceReadSchema>;
 export type WeeklyPreferenceSave = z.infer<typeof weeklyPreferenceSaveSchema>;
-export type WeeklyCommitmentPreview = z.infer<
-  typeof weeklyCommitmentPreviewSchema
->;
 export type WeeklyPreferenceMutation = z.infer<
   typeof weeklyPreferenceMutationSchema
 >;
@@ -234,12 +187,12 @@ export function emptyWeeklyPreference(
       day,
       all_day: false,
       shift_type_ids: [],
-      range: null,
+      ranges: [],
     })),
   };
 }
 export function preferenceIsEmpty(preference: WeeklyPreference): boolean {
   return preference.days.every(
-    (day) => !day.all_day && !day.range && !day.shift_type_ids.length,
+    (day) => !day.all_day && !day.ranges.length && !day.shift_type_ids.length,
   );
 }

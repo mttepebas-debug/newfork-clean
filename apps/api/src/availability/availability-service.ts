@@ -5,7 +5,6 @@ import {
   type ScheduleShiftMutationInput,
   weeklyPreferenceReadSchema,
   weeklyTeamReadSchema,
-  weeklyCommitmentPreviewSchema,
   weeklyPreferenceMutationSchema,
   type WeeklyPreferenceSave,
   weeklyPreferenceSettingsReadSchema,
@@ -64,19 +63,12 @@ export function createAvailabilityService(options: {
     async readWeekly(actor: string, workspace: string, employee?: string) {
       return weeklyPreferenceReadSchema.parse(await rpc("weekly_preferences_read_service", { actor, w: workspace, emp: employee ?? null }));
     },
-    async previewWeekly(actor: string, workspace: string, command: WeeklyPreferenceSave) {
-      return weeklyCommitmentPreviewSchema.parse(await rpc("weekly_preferences_preview_service", { actor, w: workspace, command }));
-    },
     async saveWeekly(actor: string, workspace: string, command: WeeklyPreferenceSave, key: string) {
       return weeklyPreferenceMutationSchema.parse(await rpc("weekly_preferences_save_service", { actor, w: workspace, command, request_key: key }));
     },
     async onboardingReadWeekly(token: string, workspaceId?: string) {
       const identity = await weeklyOnboardingIdentity(token, undefined, workspaceId);
       return weeklyPreferenceReadSchema.parse(await rpc("weekly_preferences_read_service", { actor: identity.actor, w: identity.workspace_id, emp: identity.employee_id }));
-    },
-    async onboardingPreviewWeekly(token: string, command: WeeklyPreferenceSave, workspaceId?: string) {
-      const identity = await weeklyOnboardingIdentity(token, command, workspaceId);
-      return weeklyCommitmentPreviewSchema.parse(await rpc("weekly_preferences_preview_service", { actor: identity.actor, w: identity.workspace_id, command }));
     },
     async onboardingSaveWeekly(token: string, command: WeeklyPreferenceSave, key: string, workspaceId?: string) {
       const identity = await weeklyOnboardingIdentity(token, command, workspaceId);

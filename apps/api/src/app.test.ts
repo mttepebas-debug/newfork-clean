@@ -2224,11 +2224,12 @@ describe("api app", () => {
     ]);
   });
 
-  it("says an unacknowledged availability warning stops the publish (BL-186)", async () => {
+  // Availability asks nothing at publish (M9); a conflict still waiting for a decision does.
+  it("says an unreviewed schedule conflict stops the publish", async () => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
-        publish: async () => { throw rpcFailure({ message: "Acknowledge the availability warnings before publishing", code: "22023" }); },
+        publish: async () => { throw rpcFailure({ message: "Review the current schedule conflicts before publishing", code: "22023" }); },
       }),
     });
     const response = await app.inject({
@@ -2244,7 +2245,7 @@ describe("api app", () => {
       },
     });
     expect(response.statusCode).toBe(400);
-    expect(response.json().error).toBe("Acknowledge the availability warnings before publishing");
+    expect(response.json().error).toBe("Review the current schedule conflicts before publishing");
   });
 
   it("returns a successful publish response with a notification warning", async () => {
@@ -2633,21 +2634,6 @@ describe("api app", () => {
             published_shift_count: 1,
             published_at: "2026-08-17T12:00:00.000Z",
           };
-        },
-        listDraftAvailabilityConflicts: async (
-          actorUserId,
-          workspaceId,
-          draftId,
-          weekStart,
-        ) => {
-          calls.push({
-            kind: "availability-conflicts",
-            actorUserId,
-            workspaceId,
-            draftId,
-            weekStart,
-          });
-          return { status: "ok", conflicts: [], fingerprint: "none" };
         },
         getPublicationStatus: async (actorUserId, workspaceId, weekStart) => {
           calls.push({
@@ -3074,7 +3060,8 @@ describe("api app", () => {
     expect(deleteDraft.statusCode).toBe(200);
     expect(weeklyShifts.statusCode).toBe(200);
     expect(legacyShifts.statusCode).toBe(200);
-    expect(availabilityConflicts.statusCode).toBe(200);
+    // BL-206: the draft availability conflict list is gone.
+    expect(availabilityConflicts.statusCode).toBe(404);
     expect(publicationStatus.statusCode).toBe(200);
     expect(pendingOps.statusCode).toBe(200);
     expect(addPendingOp.statusCode).toBe(201);
@@ -3151,13 +3138,6 @@ describe("api app", () => {
           draftId: null,
           includeLive: false,
         },
-      },
-      {
-        kind: "availability-conflicts",
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        draftId: "85000000-0000-4000-8000-000000000001",
-        weekStart: "2026-08-17",
       },
       {
         kind: "publication-status",
@@ -3484,11 +3464,6 @@ function scheduleServiceMock(
     deleteDraft: async (_actorUserId, _workspaceId, draftId) => ({
       status: "deleted",
       draft_id: draftId,
-    }),
-    listDraftAvailabilityConflicts: async () => ({
-      status: "ok",
-      conflicts: [],
-      fingerprint: "none",
     }),
     listPendingOps: async () => ({
       pending_ops: [schedulePendingOpMockModel()],

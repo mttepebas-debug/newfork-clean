@@ -60,7 +60,6 @@ const routes: readonly Row[] = [
   ["POST", "/schedule/pending-ops", "schedule.edit"],
   ["PATCH", "/schedule/pending-ops/:id", "schedule.edit"],
   ["DELETE", "/schedule/pending-ops/:id", "schedule.edit"],
-  ["GET", "/schedule/drafts/:id/availability-conflicts", "schedule.edit"],
   ["POST", "/schedule/drafts/:id/auto-fill/preview", "schedule.edit"],
   ["POST", "/schedule/drafts/:id/auto-fill/apply", "schedule.edit"],
   ["POST", "/schedule/edit-lock/acquire", "schedule.edit"],

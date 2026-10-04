@@ -18,7 +18,7 @@ const command = {
   settings_revision: 0,
   preference: emptyWeeklyPreference("time_range"),
 };
-function setup() {
+function setup(permissions = ["availability.read", "settings.schedule_rules.manage"]) {
   const app = Fastify();
   app.setErrorHandler(replyWithError);
   const service = {
@@ -26,10 +26,8 @@ function setup() {
     saveWeeklySettings: vi.fn(),
     readWeekly: vi.fn(),
     readWeeklyTeam: vi.fn(),
-    previewWeekly: vi.fn(),
     saveWeekly: vi.fn(),
     onboardingReadWeekly: vi.fn(),
-    onboardingPreviewWeekly: vi.fn(),
     onboardingSaveWeekly: vi.fn(),
   };
   registerWeeklyPreferenceRoutes(app, {
@@ -38,7 +36,7 @@ function setup() {
       resolve: async () =>
         ({
           userId: actor,
-          permissions: ["availability.read", "settings.schedule_rules.manage"],
+          permissions,
           workspace: { id: workspace },
           membership: { status: "active" },
           onboarding: { status: "complete" },
@@ -182,12 +180,11 @@ describe("weekly preference routes", () => {
       await app.close();
     }
   });
-  it("uses the authenticated actor for reads, previews and keyed saves", async () => {
+  it("uses the authenticated actor for reads and keyed saves", async () => {
     const { app, service } = setup();
     const headers = { authorization: "Bearer test", "idempotency-key": key };
     try {
       service.readWeekly.mockResolvedValue({});
-      service.previewWeekly.mockResolvedValue({ items: [] });
       service.saveWeekly.mockResolvedValue({});
       expect(
         (
@@ -203,21 +200,17 @@ describe("weekly preference routes", () => {
         workspace,
         employee,
       );
+      // M5: there is nothing to preview before a save.
       expect(
         (
           await app.inject({
             method: "POST",
             url: `/v1/workspaces/${workspace}/availability/weekly/preview`,
             headers,
-            payload: { ...command, actor: "spoof" },
+            payload: command,
           })
         ).statusCode,
-      ).toBe(200);
-      expect(service.previewWeekly).toHaveBeenCalledWith(
-        actor,
-        workspace,
-        command,
-      );
+      ).toBe(404);
       expect(
         (
           await app.inject({
@@ -269,7 +262,7 @@ describe("weekly preference routes", () => {
             headers: { authorization: "Bearer test" },
           })
         ).statusCode,
-      ).toBe(403);
+      ).toBe(404);
       expect(service.saveWeekly).not.toHaveBeenCalled();
     } finally {
       await app.close();
@@ -326,7 +319,7 @@ describe("weekly preference routes", () => {
             payload: command,
           })
         ).statusCode,
-      ).toBe(200);
+      ).toBe(404);
       expect(
         (
           await app.inject({
@@ -340,11 +333,6 @@ describe("weekly preference routes", () => {
       // No query: the default onboarding case is used.
       expect(service.onboardingReadWeekly).toHaveBeenCalledWith(
         "employee-token",
-        undefined,
-      );
-      expect(service.onboardingPreviewWeekly).toHaveBeenCalledWith(
-        "employee-token",
-        command,
         undefined,
       );
       expect(service.onboardingSaveWeekly).toHaveBeenCalledWith(
@@ -386,6 +374,67 @@ describe("weekly preference routes", () => {
         ).statusCode,
       ).toBe(400);
       expect(service.onboardingReadWeekly).toHaveBeenCalledTimes(1);
+    } finally {
+      await app.close();
+    }
+  });
+  // The "no" contract: not a member is 404, any other authz.* is 403.
+  it.each([
+    ["authz.not_member", 404],
+    ["authz.rank", 403],
+    ["authz.out_of_scope", 403],
+    ["authz.missing_permission", 403],
+  ] as const)("answers a core %s with %s", async (reason, status) => {
+    const { app, service } = setup();
+    service.saveWeekly.mockRejectedValue(rpcFailure({ message: "Not allowed", code: "42501", hint: reason }));
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspace}/availability/weekly`,
+        headers: { authorization: "Bearer test", "idempotency-key": key },
+        payload: command,
+      });
+      expect(response.statusCode).toBe(status);
+      expect(response.json()).toMatchObject({ reason });
+    } finally {
+      await app.close();
+    }
+  });
+  it.each([
+    ["GET", "/weekly"],
+    ["POST", "/weekly"],
+    ["GET", "/weekly/settings"],
+    ["POST", "/weekly/settings"],
+    ["GET", "/weekly/team"],
+  ] as const)("hides a workspace the caller is not in: %s %s is 404", async (method, path) => {
+    const { app, service } = setup();
+    try {
+      const response = await app.inject({
+        method,
+        url: `/v1/workspaces/${key}/availability${path}`,
+        headers: { authorization: "Bearer test", "idempotency-key": key },
+        payload: method === "POST" ? (path === "/weekly" ? command : { input_mode: "time_range", onboarding_required: false, expected_revision: 0 }) : undefined,
+      });
+      expect(response.statusCode).toBe(404);
+      expect(Object.values(service).every((call) => call.mock.calls.length === 0)).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+  // The core decides the settings save (settings.availability.write), not the route.
+  it("lets the core answer a settings save", async () => {
+    const { app, service } = setup(["availability.read"]);
+    service.saveWeeklySettings.mockRejectedValue(rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.missing_permission" }));
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspace}/availability/weekly/settings`,
+        headers: { authorization: "Bearer test", "idempotency-key": key },
+        payload: { input_mode: "time_range", onboarding_required: false, expected_revision: 0 },
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({ reason: "authz.missing_permission" });
+      expect(service.saveWeeklySettings).toHaveBeenCalledTimes(1);
     } finally {
       await app.close();
     }

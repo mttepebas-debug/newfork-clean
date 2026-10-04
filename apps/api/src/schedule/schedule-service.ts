@@ -5,7 +5,6 @@ import {
   type ScheduleDefaultHoursPreview,
   scheduleDraftListSchema,
   scheduleDraftDeleteResultSchema,
-  scheduleAvailabilityConflictResultSchema,
   scheduleBulkDeleteResultSchema,
   scheduleDraftSummarySchema,
   scheduleEditAcquireResultSchema,
@@ -35,7 +34,6 @@ import {
   scheduleTemplateListSchema,
   type ScheduleDraftList,
   type ScheduleDraftDeleteResult,
-  type ScheduleAvailabilityConflictResult,
   type ScheduleBulkDeleteResult,
   type ScheduleDraftSummary,
   type ScheduleEditAcquireResult,
@@ -214,12 +212,6 @@ export interface ScheduleReadService {
     workspaceId: string,
     draftId: string,
   ): Promise<ScheduleDraftDeleteResult>;
-  listDraftAvailabilityConflicts(
-    actorUserId: string,
-    workspaceId: string,
-    draftId: string,
-    weekStart: string,
-  ): Promise<ScheduleAvailabilityConflictResult>;
   listPendingOps(input: {
     actorUserId: string;
     workspaceId: string;
@@ -749,24 +741,6 @@ export function createScheduleReadService(options: {
         targets: ["drafts", "draft_shifts", "pending_ops"],
       });
       return result;
-    },
-    async listDraftAvailabilityConflicts(
-      actorUserId,
-      workspaceId,
-      draftId,
-      weekStart,
-    ) {
-      const { data, error } = await client.rpc(
-        "list_schedule_draft_availability_conflicts_service",
-        {
-          actor_user_id: actorUserId,
-          target_workspace_id: workspaceId,
-          target_draft_id: draftId,
-          target_week_start: weekStart,
-        },
-      );
-      if (error) throw rpcFailure(error);
-      return scheduleAvailabilityConflictResultSchema.parse(data);
     },
     async listPendingOps(input) {
       const { data, error } = await client.rpc(
