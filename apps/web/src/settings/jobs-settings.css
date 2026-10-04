@@ -1710,6 +1710,9 @@
   }
   /* The heading stays (Employees → Documents keeps it too); Status and
      Published fold into the name's second line. */
+  .document-catalog-settings-page .job-column-headings.document-catalog-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
   .document-catalog-settings-page .document-catalog-optional,
   .document-catalog-settings-page .job-department-cell,
   .acknowledgement-page .job-department-cell,

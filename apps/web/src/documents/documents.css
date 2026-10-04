@@ -50,7 +50,13 @@
 /* Employees → Documents shares the empty-table ground with Settings →
    Documents (.catalog-table-empty); no add button here. */
 .employee-documents-empty:not(.is-compact) {
+  flex: 1 1 auto;
   background: var(--theme-surface-soft);
+}
+/* The frame can be taller than the table; the ground fills it to the edge. */
+.employee-table-wrap:has(> .employee-documents-empty:not(.is-compact)) {
+  display: flex;
+  flex-direction: column;
 }
 /* Account's own list: filters that match nothing get a short box, and a
    workspace that asked for nothing gets one line instead of an empty table. */
