@@ -134,6 +134,32 @@ describe("availability navigation protection", () => {
     fireEvent.click(screen.getByText("Discard and leave"));
     expect(navigate).toHaveBeenCalledOnce();
   });
+  it("asks in the app's confirm box: Stay white, Discard red, Continue green", () => {
+    const view = render(<Host dirty />);
+    fireEvent.click(screen.getByText("Leave"));
+    const box = screen.getByRole("alertdialog");
+    expect(box.classList.contains("app-confirm")).toBe(true);
+    expect(document.querySelector(".availability-navigation-dialog")).toBeNull();
+    const stay = screen.getByRole("button", { name: "Stay here" });
+    const discard = screen.getByRole("button", { name: "Discard and leave" });
+    expect(stay.classList.contains("secondary-button")).toBe(true);
+    expect(discard.classList.contains("danger-button")).toBe(true);
+    expect(document.activeElement).toBe(stay);
+    discard.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(stay);
+    view.rerender(<Host />);
+    expect(
+      screen.getByRole("button", { name: "Continue" }).classList.contains("danger-button"),
+    ).toBe(false);
+  });
+  it("still lets Stay and Escape close the question while a save runs", () => {
+    render(<Host dirty busy />);
+    fireEvent.click(screen.getByText("Leave"));
+    expect(screen.getByRole("button", { name: "Stay here" })).toHaveProperty("disabled", false);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
   it("blocks departure during a save and allows continuing after its result", () => {
     const navigate = vi.fn();
     const view = render(<Host dirty busy navigate={navigate} />);

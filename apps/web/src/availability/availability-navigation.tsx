@@ -10,9 +10,8 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { createPortal } from "react-dom";
 import { registerEmployeeHistoryGuard } from "../employees/employee-history-guard";
-import "./availability-navigation.css";
+import { ConfirmDialog } from "../shell/ConfirmDialog";
 
 type DraftState = { dirty: boolean; busy: boolean; onDiscard?: () => void };
 type GuardLabels = { saving: string; discard: string; saved: string; unsaved: string };
@@ -121,9 +120,6 @@ function useStandaloneAvailabilityGuard({
   const pending = useRef<(() => void) | null>(null);
   const [open, setOpen] = useState(false);
   const [restoringHistory, setRestoringHistory] = useState(false);
-  const titleId = useId();
-  const descriptionId = useId();
-  const dialog = useRef<HTMLDivElement>(null);
   const requestLeave = useCallback((navigate: () => void) => {
     const current = readLatest();
     if (bypass.current || (!current.dirty && !current.busy)) {
@@ -238,94 +234,32 @@ function useStandaloneAvailabilityGuard({
     };
   }, [active, requestLeave, readLatest]);
 
-  useEffect(() => {
-    if (!open) return;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    dialog.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        stay();
-      } else if (event.key === "Tab") {
-        const buttons = Array.from(
-          dialog.current?.querySelectorAll<HTMLButtonElement>(
-            "button:not(:disabled)",
-          ) ?? [],
-        );
-        const first = buttons[0];
-        const last = buttons.at(-1);
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
+  return (
+    <ConfirmDialog
+      open={open}
+      title={busy ? labels.saving : dirty ? labels.discard : labels.saved}
+      description={
+        busy
+          ? "Wait for the result before leaving. Your changes are still being processed."
+          : dirty
+            ? labels.unsaved
+            : "Your changes have been saved. You can continue to the page you selected."
       }
-    };
-    const focus = (event: FocusEvent) => {
-      if (!dialog.current?.contains(event.target as Node)) {
-        dialog.current?.querySelector<HTMLButtonElement>("button")?.focus();
-      }
-    };
-    document.addEventListener("keydown", keydown, true);
-    document.addEventListener("focusin", focus);
-    return () => {
-      document.removeEventListener("keydown", keydown, true);
-      document.removeEventListener("focusin", focus);
-      if (previousFocus?.isConnected) previousFocus.focus();
-    };
-  }, [open, stay]);
-
-  return open
-    ? createPortal(
-        <div className="availability-navigation-backdrop">
-          <div
-            ref={dialog}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            aria-describedby={descriptionId}
-            className="availability-navigation-dialog"
-          >
-            <h2 id={titleId}>
-              {busy
-                ? labels.saving
-                : dirty
-                  ? labels.discard
-                  : labels.saved}
-            </h2>
-            <p id={descriptionId}>
-              {busy
-                ? "Wait for the result before leaving. Your changes are still being processed."
-                : dirty
-                  ? labels.unsaved
-                  : "Your changes have been saved. You can continue to the page you selected."}
-            </p>
-            <div className="availability-actions">
-              <button type="button" onClick={stay}>
-                Stay here
-              </button>
-              <button
-                type="button"
-                disabled={busy || restoringHistory}
-                onClick={() => {
-                  const current = readLatest();
-                  if (current.busy || restoringHistory) return;
-                  const navigate = pending.current;
-                  pending.current = null;
-                  if (current.dirty) current.onDiscard?.();
-                  setOpen(false);
-                  navigate?.();
-                }}
-              >
-                {dirty ? "Discard and leave" : "Continue"}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )
-    : null;
+      cancelLabel="Stay here"
+      confirmLabel={dirty ? "Discard and leave" : "Continue"}
+      destructive={dirty}
+      // Not `busy`: Stay and Escape must still work while a save runs.
+      confirmDisabled={busy || restoringHistory}
+      onCancel={stay}
+      onConfirm={() => {
+        const current = readLatest();
+        if (current.busy || restoringHistory) return;
+        const navigate = pending.current;
+        pending.current = null;
+        if (current.dirty) current.onDiscard?.();
+        setOpen(false);
+        navigate?.();
+      }}
+    />
+  );
 }
