@@ -106,6 +106,20 @@ function hoursWords(range: AvailabilityRange, timeFormat: "12h" | "24h"): string
   return `${clock(range.from)} – ${clock(range.to)}`;
 }
 
+// Who last wrote a manager note and when (AVAIL-002 note data); read as
+// optional so the card shows nothing until the read model carries them.
+type NoteMeta = { readonly note_author?: string | null; readonly note_edited_at?: string | null };
+
+/** "KadıköyMüdür1 · Sep 28" under the note's words (S2 B); the day alone without a writer; null without either. */
+export function formatNoteBy(projection: Projection | undefined): string | null {
+  const meta = projection as (Projection & NoteMeta) | undefined;
+  const on = meta?.note_edited_at
+    ? new Date(meta.note_edited_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: meta.timezone })
+    : null;
+  const parts = [meta?.note_author?.trim() || null, on].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
 /** The note card's head (S2 B): "Wed after 6:00 PM"; the day alone when the note's hours are not there. */
 export function formatNoteWhen(projection: Projection | undefined, day: string, timeFormat: "12h" | "24h"): string {
   const windows = (projection?.note_intervals ?? []).flatMap((interval) => rangeOnDay(interval, day, projection!) ?? []);

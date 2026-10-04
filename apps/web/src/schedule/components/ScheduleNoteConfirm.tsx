@@ -30,10 +30,12 @@ export function noteCardCentreX(cellCentre: number, editor: DOMRect | undefined,
   return x;
 }
 
-export function ScheduleNoteConfirm({ cell, when, employeeName, text, disabled = false, onPlace, onCancel }: {
+export function ScheduleNoteConfirm({ cell, when, by = null, employeeName, text, disabled = false, onPlace, onCancel }: {
   readonly cell: ScheduleNoteCell;
   /** "Wed after 6:00 PM" (formatNoteWhen). */
   readonly when: string;
+  /** "KadıköyMüdür1 · Sep 28" (formatNoteBy); no line without it. */
+  readonly by?: string | null;
   readonly employeeName: string;
   readonly text: string;
   readonly disabled?: boolean;
@@ -90,6 +92,7 @@ export function ScheduleNoteConfirm({ cell, when, employeeName, text, disabled =
         <NotebookPen size={12} aria-hidden /> Manager note · {when}
       </span>
       <p>{text || `A manager noted these hours for ${employeeName.trim().split(/\s+/)[0]}.`}</p>
+      {by ? <small className="schedule-note-confirm-by">{by}</small> : null}
       <footer>
         <button ref={cancelRef} type="button" onClick={onCancel}>Cancel</button>
         <button type="submit" className="primary" disabled={disabled}>Place shift</button>

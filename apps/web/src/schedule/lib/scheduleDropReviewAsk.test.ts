@@ -26,6 +26,7 @@ describe("what a drop or paste asks before it writes (M8, M12, S2 B)", () => {
       kind: "note",
       cell: { locationId: loc, employeeId: emp, date: "2035-01-15" },
       when: "Mon 6:00 PM – 8:00 PM",
+      by: null,
       employeeName: "Ayşe Kaya",
       text: "School mornings",
     });

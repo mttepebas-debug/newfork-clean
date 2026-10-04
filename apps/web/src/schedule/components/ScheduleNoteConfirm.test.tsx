@@ -88,4 +88,13 @@ describe("Manager note card while placing a shift (S2 B, M12)", () => {
     expect(screen.getByRole("dialog").style.left).toBe("215px");
     window.innerWidth = 1024;
   });
+
+  it("names who wrote the note and when under its words, and leaves the line out without them", () => {
+    placeCell();
+    const { unmount } = render(<ScheduleNoteConfirm cell={cell} when="Wed after 6:00 PM" by="KadıköyMüdür1 · Sep 28" employeeName="Ayşe Kaya" text="School mornings" onPlace={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText("KadıköyMüdür1 · Sep 28").tagName).toBe("SMALL");
+    unmount();
+    render(<ScheduleNoteConfirm cell={cell} when="Wed after 6:00 PM" employeeName="Ayşe Kaya" text="School mornings" onPlace={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByRole("dialog").querySelector("small")).toBeNull();
+  });
 });

@@ -4,6 +4,7 @@ import type { ScheduleEmployee } from "@newfork/shared/schedule";
 import {
   formatAvailabilityMarkDay,
   formatAvailabilityRange,
+  formatNoteBy,
   formatNoteWhen,
   mergeAvailabilityMarks,
   scheduleAvailabilityMarks,
@@ -132,5 +133,24 @@ describe("formatNoteWhen", () => {
   it("falls back to the day when the note's hours are not there", () => {
     expect(formatNoteWhen(projection({}), "2026-10-21", "12h")).toBe("Wed, Oct 21");
     expect(formatNoteWhen(undefined, "2026-10-21", "12h")).toBe("Wed, Oct 21");
+  });
+});
+
+// Mert, 2026-10-04 (S2 B as designed): "KadıköyMüdür1 · Sep 28" under the note's words.
+describe("formatNoteBy", () => {
+  const withMeta = (note_author: string | null, note_edited_at: string | null) =>
+    ({ ...projection({}), note_author, note_edited_at }) as Projection;
+
+  it("names who last wrote the note and the day, on the note's own clock", () => {
+    expect(formatNoteBy(withMeta("KadıköyMüdür1", "2026-09-28T15:00:00Z"))).toBe("KadıköyMüdür1 · Sep 28");
+    // 10 PM in New York is already the 29th in UTC.
+    expect(formatNoteBy(withMeta("KadıköyMüdür1", "2026-09-29T02:00:00Z"))).toBe("KadıköyMüdür1 · Sep 28");
+  });
+
+  it("keeps the day alone when the writer has no profile, and says nothing when neither is there", () => {
+    expect(formatNoteBy(withMeta(null, "2026-09-28T15:00:00Z"))).toBe("Sep 28");
+    expect(formatNoteBy(withMeta(null, null))).toBeNull();
+    expect(formatNoteBy(projection({}))).toBeNull();
+    expect(formatNoteBy(undefined)).toBeNull();
   });
 });

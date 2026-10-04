@@ -25,7 +25,7 @@ import {
   formatScheduleConflictMessages,
   isAvailabilityReminder,
 } from "../schedule-conflicts";
-import { formatNoteWhen } from "../lib/scheduleAvailabilityMark";
+import { formatNoteBy, formatNoteWhen } from "../lib/scheduleAvailabilityMark";
 import { weeklyTargetNote } from "../lib/scheduleWeeklyAvailability";
 import {
   clampShiftEditorCount,
@@ -414,6 +414,7 @@ export function ShiftQuickEditor({
     state.mode === "edit" ? state.shift.id : null,
   ).filter((reason) => typeof reason === "string" || reason.type !== "time_off");
   const noteText = selectedEmployee ? weeklyTargetNote(selectedEmployee, value)?.text ?? "" : "";
+  const noteProjection = selectedEmployee?.weekly_availability?.find((item) => item.location_id === value.location_id);
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
     if (!result) return [];
     // The employee's own mark and a manager's note ask on every write, whatever
@@ -1080,11 +1081,8 @@ export function ShiftQuickEditor({
       {noteCardOpen && selectedEmployee ? (
         <ScheduleNoteConfirm
           cell={{ locationId: value.location_id, employeeId: selectedEmployee.id, date: value.scheduled_date }}
-          when={formatNoteWhen(
-            selectedEmployee.weekly_availability?.find((item) => item.location_id === value.location_id),
-            value.scheduled_date,
-            timeFormat,
-          )}
+          when={formatNoteWhen(noteProjection, value.scheduled_date, timeFormat)}
+          by={formatNoteBy(noteProjection)}
           employeeName={selectedEmployee.display_name}
           text={noteText}
           disabled={checkingAvailability}

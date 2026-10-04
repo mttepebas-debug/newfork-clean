@@ -2,12 +2,12 @@ import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 import type { ScheduleReadModel, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import type { ScheduleNoteCell } from "../components/ScheduleNoteConfirm";
 import { formatScheduleConflictMessage, type ScheduleConflictReason } from "../schedule-conflicts";
-import { formatNoteWhen } from "./scheduleAvailabilityMark";
+import { formatNoteBy, formatNoteWhen } from "./scheduleAvailabilityMark";
 import { weeklyTargetNote } from "./scheduleWeeklyAvailability";
 
 export type ScheduleDropReviewAsk =
   | { readonly kind: "sheet"; readonly messages: readonly string[] }
-  | { readonly kind: "note"; readonly cell: ScheduleNoteCell; readonly when: string; readonly employeeName: string; readonly text: string };
+  | { readonly kind: "note"; readonly cell: ScheduleNoteCell; readonly when: string; readonly by: string | null; readonly employeeName: string; readonly text: string };
 
 /**
  * What a drop, copy, preset or paste asks before it writes: a manager's note
@@ -33,6 +33,7 @@ export function scheduleDropReviewAsk(
           kind: "note",
           cell: { locationId: input.location_id, employeeId: employee.id, date: input.scheduled_date },
           when: formatNoteWhen(projection, input.scheduled_date, model.settings.time_format),
+          by: formatNoteBy(projection),
           employeeName: employee.display_name,
           text,
         };

@@ -10878,6 +10878,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   max-width: calc(100vw - 24px);
   animation: none;
 }
+.schedule-note-confirm-by {
+  color: var(--theme-muted);
+  font-size: 11px;
+}
 .schedule-note-confirm footer {
   display: flex;
   justify-content: flex-end;
