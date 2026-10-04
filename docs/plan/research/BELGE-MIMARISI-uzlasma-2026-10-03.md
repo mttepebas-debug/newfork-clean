@@ -15,8 +15,8 @@
 >   "bugünkü hâliyle" kapanır. Yön değişirse testler yeni kurala göre yeniden yazılır.
 > - **Dönüş noktası (kaldığımız yer):** "Açık" listesinin ilk maddesi: onboarding'in ince noktaları
 >   (zorunlu belge onay mı yükleme mi bekler), sonra bildirim içerikleri, sonra uygulama sırası /
->   parçalama. `nf-db`'nin 16 okuyucu ölçümü `local_abc4d126…` oturumunun konuşmasında (havuza
->   dönerse kaybolur; dönüşte yeniden ölçülür — tazelik kuralı). Dönüşte önce bu dosya ve
+>   parçalama. `nf-db`'nin okuyucu ölçümü (16 doğrudan, 28 servislik geçişli zincir, a/b/c yolları)
+>   `BELGE-MIMARISI-okuyucu-olcumu-2026-10-04.md`'de; dönüşte yeniden ölçülür — tazelik kuralı. Dönüşte önce bu dosya ve
 >   `docs/plan/tasks/FB-6.6.md` bugünkü main'de yeniden ölçülür (CLAUDE.md §5 adım 0).
 
 Bu bir uygulama planı değil: belge mimarisinin sohbette parça parça uzlaşıldığı kayıt. Kod yok; Mert ayrıca izin verecek.
