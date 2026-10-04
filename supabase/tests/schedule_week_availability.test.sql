@@ -32,9 +32,9 @@ insert into public.employee_weekly_preferences (workspace_id, employee_id, prefe
 values
   (tests.id('wa'), tests.id('wa:ali'),
    pg_temp.mark(pg_temp.mark(pg_temp.mark(public.empty_weekly_preference('time_range'),
-     1, '{"range": {"start": "18:00", "end": "22:00"}}'),
+     1, '{"ranges": [{"start": "18:00", "end": "22:00"}]}'),
      3, '{"all_day": true}'),
-     0, '{"range": {"start": "01:30", "end": "03:30"}}'),
+     0, '{"ranges": [{"start": "01:30", "end": "03:30"}]}'),
    1, tests.user('wa:ali')),
   (tests.id('wa'), tests.id('wa:emre'),
    pg_temp.mark(public.empty_weekly_preference('shift_type'), 2, jsonb_build_object('shift_type_ids', pg_temp.type_id('Lunch'))),
@@ -44,7 +44,7 @@ values
    1, tests.user('wa:veli'));
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
 values (tests.id('wa'), tests.id('wa:ali'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"range": {"start": "09:00", "end": "12:00"}}'),
+  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, 1, tests.user('wa:ayse'));
 update public.shift_types set archived_at = now() where workspace_id = tests.id('wa') and name = 'Floating';
 delete from public.weekly_preference_type_defaults where shift_type_id = (select id from public.shift_types where workspace_id = tests.id('wa') and name = 'Floating');

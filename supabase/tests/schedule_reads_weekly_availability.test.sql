@@ -27,11 +27,11 @@ $$;
 -- Ali cannot work Monday evenings; his manager notes Friday mornings.
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ali'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 1, '{"range": {"start": "18:00", "end": "22:00"}}'),
+  pg_temp.mark(public.empty_weekly_preference('time_range'), 1, '{"ranges": [{"start": "18:00", "end": "22:00"}]}'),
   1, tests.user('wr:ali'));
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, notes, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ali'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"range": {"start": "09:00", "end": "12:00"}}'),
+  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, array['', '', '', '', '', 'School mornings', ''], 1, tests.user('wr:ayse'));
 
 select tests.publish_week('wr', 1, '[{"label": "thu", "person": "ali", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}]');
@@ -74,7 +74,7 @@ select ok(not (public.get_schedule_read_model_service(tests.user('wr:filiz'), te
 -- here directly) still gives nobody its words.
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, notes, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ayse'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"range": {"start": "09:00", "end": "12:00"}}'),
+  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, array['', '', '', '', '', 'About Ayse', ''], 1, tests.user('wr:owner'));
 select is((select e -> 'weekly_availability' -> 0 -> 'manager_notes' from jsonb_array_elements(pg_temp.grid() -> 'employees') e
   where e ->> 'id' = tests.id('wr:ayse')::text), 'null'::jsonb, 'no words about a manager, Ayse herself included');
@@ -87,7 +87,7 @@ update public.manager_weekly_reminders set enabled = true where employee_id = te
 
 -- Ali marks Thursday morning after the week went out (BL-184): the published
 -- shift shows it.
-update public.employee_weekly_preferences set preference = pg_temp.mark(preference, 4, '{"range": {"start": "10:00", "end": "11:00"}}')
+update public.employee_weekly_preferences set preference = pg_temp.mark(preference, 4, '{"ranges": [{"start": "10:00", "end": "11:00"}]}')
 where employee_id = tests.id('wr:ali');
 select ok(pg_temp.codes(pg_temp.grid(), tests.id('wr:shift:thu')) ? 'availability',
   'a mark made after publishing shows on the published shift');

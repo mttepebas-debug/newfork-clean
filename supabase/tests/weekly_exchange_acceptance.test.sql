@@ -39,7 +39,7 @@ insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,loc
  select pg_temp.shift_id(n),pg_temp.shift_id(10+n),w,loc,'ad427000-0000-4000-8000-000000000010',
   case n when 2 then null when 3 then second_emp else first_emp end,job,start_day+n-1,'18:00','22:00','explicit','UTC' from ws cross join generate_series(1,4) n;
 create function pg_temp.unavailable() returns jsonb language sql as $$
- select jsonb_build_object('input_mode','time_range','days',jsonb_agg(jsonb_build_object('day',d,'all_day',true,'range',null,'shift_type_ids','[]'::jsonb) order by d)) from generate_series(0,6) d;
+ select jsonb_build_object('input_mode','time_range','days',jsonb_agg(jsonb_build_object('day',d,'all_day',true,'ranges','[]'::jsonb,'shift_type_ids','[]'::jsonb) order by d)) from generate_series(0,6) d;
 $$;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,second_emp,pg_temp.unavailable(),1,second_user from ws;
@@ -63,7 +63,7 @@ select ok((pg_temp.read_model(second_user)->'opportunities'->0->'eligibility'->'
 select throws_ok($$select pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(1),'case_id',cid,'availability_accepted',true)) from ws,state$$,'PT409',null,'client boolean cannot invent acceptance');
 select is((select count(*) from public.shift_exchange_applications where workspace_id=(select w from ws)),0::bigint,'missing acknowledgment rolls back without an application');
 update state set token=(select pg_temp.warning(second_emp,1)->>'fingerprint' from ws);
-update public.employee_weekly_preferences set preference=jsonb_set(jsonb_set(preference,'{days,1,all_day}','false'),'{days,1,range}','{"start":"19:00","end":"20:00"}') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(jsonb_set(preference,'{days,1,all_day}','false'),'{days,1,ranges}','[{"start":"19:00","end":"20:00"}]') where workspace_id=(select w from ws);
 select throws_ok($$select pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(1),'case_id',cid,'availability_fingerprint',token)) from ws,state$$,'PT409',null,'changed own conflict rejects the previously displayed token');
 update public.employee_weekly_preferences set preference=pg_temp.unavailable() where workspace_id=(select w from ws);
 insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,notes,revision,updated_by)

@@ -26,12 +26,12 @@ $$;
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 select tests.id('wb'), tests.id('wb:p' || n),
   pg_temp.mark(pg_temp.mark(pg_temp.mark(public.empty_weekly_preference('time_range'),
-    1, '{"range": {"start": "18:00", "end": "22:00"}}'), 3, '{"all_day": true}'), 0, '{"range": {"start": "06:00", "end": "08:00"}}'),
+    1, '{"ranges": [{"start": "18:00", "end": "22:00"}]}'), 3, '{"all_day": true}'), 0, '{"ranges": [{"start": "06:00", "end": "08:00"}]}'),
   1, tests.user('wb:p' || n)
 from generate_series(1, 30) n where n % 5 <> 0;
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
 select tests.id('wb'), tests.id('wb:p' || n),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"range": {"start": "09:00", "end": "12:00"}}'),
+  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, 1, tests.user('wb:owner')
 from generate_series(1, 30) n where n % 2 = 0;
 

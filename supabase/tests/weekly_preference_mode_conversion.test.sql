@@ -41,13 +41,19 @@ insert into public.shift_types(id,workspace_id,name,color,default_start_time,def
 update public.shift_types set archived_at=now() where id=(select brunch from cv);
 
 create function pg_temp.free(weekday integer) returns jsonb language sql as $$
- select jsonb_build_object('day',weekday,'all_day',false,'range',null,'shift_type_ids','[]'::jsonb) $$;
+ select jsonb_build_object('day',weekday,'all_day',false,'ranges','[]'::jsonb,'shift_type_ids','[]'::jsonb) $$;
 create function pg_temp.whole(weekday integer) returns jsonb language sql as $$
- select jsonb_build_object('day',weekday,'all_day',true,'range',null,'shift_type_ids','[]'::jsonb) $$;
+ select jsonb_build_object('day',weekday,'all_day',true,'ranges','[]'::jsonb,'shift_type_ids','[]'::jsonb) $$;
 create function pg_temp.hours(weekday integer,start_clock text,end_clock text) returns jsonb language sql as $$
- select jsonb_build_object('day',weekday,'all_day',false,'range',jsonb_build_object('start',start_clock,'end',end_clock),'shift_type_ids','[]'::jsonb) $$;
+ select jsonb_build_object('day',weekday,'all_day',false,'ranges',jsonb_build_array(jsonb_build_object('start',start_clock,'end',end_clock)),'shift_type_ids','[]'::jsonb) $$;
+create function pg_temp.spans(weekday integer,variadic clocks text[]) returns jsonb language sql as $$
+ select jsonb_build_object('day',weekday,'all_day',false,'ranges',(select jsonb_agg(jsonb_build_object('start',clocks[i],'end',clocks[i+1]) order by i)
+  from generate_series(1,array_length(clocks,1),2) i),'shift_type_ids','[]'::jsonb) $$;
+-- What a week marks unavailable, minute by minute, over one UTC week from Sunday.
+create function pg_temp.minutes(preference jsonb) returns tstzmultirange language sql as $$
+ select public.weekly_preference_intersections((select w from cv),preference,'[2035-01-07 00:00Z,2035-01-14 00:00Z)','UTC') $$;
 create function pg_temp.types(weekday integer,variadic ids uuid[]) returns jsonb language sql as $$
- select jsonb_build_object('day',weekday,'all_day',false,'range',null,'shift_type_ids',to_jsonb(ids)) $$;
+ select jsonb_build_object('day',weekday,'all_day',false,'ranges','[]'::jsonb,'shift_type_ids',to_jsonb(ids)) $$;
 create function pg_temp.week(mode text,variadic days jsonb[]) returns jsonb language sql as $$
  select jsonb_build_object('input_mode',mode,'days',to_jsonb(days)) $$;
 create function pg_temp.day(emp uuid,weekday integer,source text default 'employee') returns jsonb language sql as $$
@@ -73,13 +79,20 @@ insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,
 
 select is(pg_temp.switch_mode('shift_type',0,1)->'settings'->>'input_mode','shift_type','owner switches the workspace to shift types');
 select is((select preference->>'input_mode' from public.employee_weekly_preferences where employee_id=(select a from cv)),'shift_type','the saved week follows the new entry mode');
-select is(pg_temp.day(a,0),pg_temp.free(0),'time to type: an empty day stays empty') from cv;
+select is(pg_temp.day(a,0),pg_temp.types(0,late),'time to type: Sunday''s Late runs into Monday, marked all day, so it is marked (S3 a)') from cv;
 select is(pg_temp.day(a,1),pg_temp.whole(1),'time to type: an all-day day stays all day') from cv;
 select is(pg_temp.day(a,2),pg_temp.free(2),'time to type: hours touching no shift type clear the day, which becomes fully available') from cv;
 select is(pg_temp.day(a,3),pg_temp.types(3,lunch),'time to type: one minute of overlap (15:29-16:00 against Lunch) marks the type') from cv;
 select is(pg_temp.day(a,4),pg_temp.types(4,dinner),'time to type: touching a boundary is not overlap (15:30-17:00 leaves Lunch, which ends 15:30)') from cv;
 select is(pg_temp.day(a,5),pg_temp.types(5,lunch,dinner),'time to type: hours reaching two types mark both') from cv;
 select is(pg_temp.day(a,6),pg_temp.types(6,dinner,late),'time to type: a type crossing midnight counts by its evening part on that day') from cv;
+-- Sağlama (S3 a): no minute marked in hours is lost in types.
+-- Hours no type reaches cannot be kept in types (Tuesday above); every minute a
+-- type reaches is.
+select ok(pg_temp.minutes((select preference from public.employee_weekly_preferences where employee_id=(select a from cv)))
+ @> pg_temp.minutes((select p from a_week)) * pg_temp.minutes(pg_temp.week('shift_type',pg_temp.types(0,lunch,dinner,late),pg_temp.types(1,lunch,dinner,late),
+  pg_temp.types(2,lunch,dinner,late),pg_temp.types(3,lunch,dinner,late),pg_temp.types(4,lunch,dinner,late),pg_temp.types(5,lunch,dinner,late),
+  pg_temp.types(6,lunch,dinner,late))),'time to type: every unavailable minute a shift type reaches is still unavailable') from cv;
 select is((select row(revision,updated_by)::text from public.employee_weekly_preferences where employee_id=(select a from cv)),
  row(2,(select owner_id from cv))::text,'the converted week is a new revision written by the person who changed the mode');
 select is((select preference from public.manager_weekly_reminders where employee_id=(select a from cv)),
@@ -118,14 +131,18 @@ select is((select preference->'days'->3 from public.employee_weekly_preferences 
 delete from public.employee_weekly_preferences where employee_id=(select d from cv);
 
 select is(pg_temp.switch_mode('time_range',1,3)->'settings'->>'input_mode','time_range','owner switches back to time ranges');
-select is(pg_temp.day(b,0),pg_temp.free(0),'type to time: an empty day stays empty') from cv;
+select is(pg_temp.day(b,0),pg_temp.spans(0,'00:00','02:00'),'type to time: Saturday''s Late goes on past midnight into Sunday (S2 a)') from cv;
 select is(pg_temp.day(b,1),pg_temp.whole(1),'type to time: an all-day day stays all day') from cv;
 select is(pg_temp.day(b,2),pg_temp.hours(2,'11:30','15:30'),'type to time: one type becomes its own hours') from cv;
-select is(pg_temp.day(b,3),pg_temp.hours(3,'11:30','23:30'),'type to time: Lunch and Dinner become one range, earliest start to latest end') from cv;
-select is(pg_temp.day(b,4),pg_temp.hours(4,'22:00','24:00'),'type to time: a type crossing midnight runs to the end of the day') from cv;
-select is(pg_temp.day(b,5),pg_temp.hours(5,'09:00','11:00'),'type to time: an archived type keeps its last saved hours') from cv;
-select is(pg_temp.day(b,6),pg_temp.hours(6,'11:30','24:00'),'type to time: the order the types were picked in does not matter') from cv;
-select is(pg_temp.day(a,5),pg_temp.hours(5,'11:30','23:30'),'a round trip widens hours by the rules: Friday 15:00-17:00 comes back as 11:30-23:30') from cv;
+select is(pg_temp.day(b,3),pg_temp.spans(3,'11:30','15:30','16:15','23:30'),'type to time: Lunch and Dinner stay two ranges; the gap between them stays available') from cv;
+select is(pg_temp.day(b,4),pg_temp.hours(4,'22:00','24:00'),'type to time: a type crossing midnight fills its evening') from cv;
+select is(pg_temp.day(b,5),pg_temp.spans(5,'00:00','02:00','09:00','11:00'),'type to time: the night before goes on into Friday; an archived type keeps its last saved hours') from cv;
+select is(pg_temp.day(b,6),pg_temp.spans(6,'11:30','15:30','22:00','24:00'),'type to time: the order the types were picked in does not matter') from cv;
+-- Sağlama (S2 a): the week in hours marks exactly the minutes the types did.
+select is(pg_temp.minutes((select preference from public.employee_weekly_preferences where employee_id=(select b from cv))),
+ pg_temp.minutes((select e.before_record->'preference' from public.weekly_preference_events e where e.employee_id=(select b from cv) and e.source='employee' order by e.created_at desc limit 1)),
+ 'type to time: not one unavailable minute gained or lost');
+select is(pg_temp.day(a,5),pg_temp.spans(5,'11:30','15:30','16:15','23:30'),'a round trip widens hours by the rules: Friday 15:00-17:00 comes back as Lunch and Dinner') from cv;
 select is(pg_temp.day(a,2),pg_temp.free(2),'a round trip does not bring back hours the first conversion cleared') from cv;
 select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings' and payload->>'input_mode'='time_range'),
  (select jsonb_agg(u order by u) from (select a_user u from cv union all select b_user from cv union all select c_user from cv union all select d_user from cv) x),'switching back tells every employee again');

@@ -48,7 +48,7 @@ insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,loc
  select 'ad426000-0000-4000-8000-000000000011','ad426000-0000-4000-8000-000000000012',w,loc,
   'ad426000-0000-4000-8000-000000000010',emp,job,'2035-01-15','09:00','12:00','explicit','America/Los_Angeles' from ws;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,employee_user from ws;
+ select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,employee_user from ws;
 select is(pg_temp.candidate()->>'status','eligible','partial preference conflict does not make a candidate ineligible');
 select is(pg_temp.candidate()->'availability'->>'coverage','partial','partial warning remains separate');
 select is((pg_temp.candidate()->>'available_start')::timestamptz,'2035-01-16 02:00Z'::timestamptz,'partial conflict keeps original start');

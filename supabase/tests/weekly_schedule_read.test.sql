@@ -52,7 +52,7 @@ select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model())->'weekly
 select throws_ok($$select pg_temp.read_model(employee_user) from ws$$,'42501',null,'employee cannot read shared manager preference projections');
 select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model(owner_id))->'weekly_availability'),2,'owner sees both authorized locations') from ws;
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,notes,revision,updated_by)
- select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),
+ select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),
   array['private-note','','','','','',''],1,manager from ws;
 select ok(not (pg_temp.project()->'days'->0->>'has_unavailable')::boolean and jsonb_array_length(pg_temp.project()->'note_intervals')>0,'an enabled note marks no day; its hours travel apart (M12)');
 -- G14 (user decision 2026-10-01): the manager the note is for reads its words

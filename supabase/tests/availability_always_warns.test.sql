@@ -23,7 +23,7 @@ select tests.person('ap', 'veli', 'employee', array['K'], array['cook']);
 -- days are weekdays as dow (0 = Sunday); shifts count days from Monday.
 create function pg_temp.evenings(days integer[]) returns jsonb language sql as $$
   select jsonb_set(p, '{days}', (select jsonb_agg(case when (d ->> 'day')::integer = any(days)
-      then d || '{"range": {"start": "18:00", "end": "22:00"}}' else d end order by (d ->> 'day')::integer)
+      then d || '{"ranges": [{"start": "18:00", "end": "22:00"}]}' else d end order by (d ->> 'day')::integer)
     from jsonb_array_elements(p -> 'days') d))
   from (select public.empty_weekly_preference('time_range') p) x
 $$;

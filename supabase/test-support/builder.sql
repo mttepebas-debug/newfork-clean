@@ -407,8 +407,8 @@ begin
   select jsonb_build_object('input_mode', 'time_range', 'days', jsonb_agg(
     case when day = weekday then jsonb_build_object(
       'day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb,
-      'range', jsonb_build_object('start', start_time, 'end', end_time))
-    else jsonb_build_object('day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb, 'range', null) end
+      'ranges', jsonb_build_array(jsonb_build_object('start', start_time, 'end', end_time)))
+    else jsonb_build_object('day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb, 'ranges', '[]'::jsonb) end
     order by day
   )) into preference
   from generate_series(0, 6) day;

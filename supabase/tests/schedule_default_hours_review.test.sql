@@ -16,7 +16,7 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,actor from dhr;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by) select w,emp,job,actor from dhr;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
-select w,emp,(select jsonb_set(p,'{days}',(select jsonb_agg(d||'{"range":{"start":"00:00","end":"10:00"}}') from jsonb_array_elements(p->'days') d))
+select w,emp,(select jsonb_set(p,'{days}',(select jsonb_agg(d||'{"ranges":[{"start":"00:00","end":"10:00"}]}') from jsonb_array_elements(p->'days') d))
  from (select public.empty_weekly_preference('time_range') p) x),1,employee_actor from dhr;
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select typ,w,'Default hours review','12:00','16:00' from dhr;
 update dhr set session=(public.acquire_schedule_edit_session_service(actor,w,week,'blank',null)->'session'->>'id')::uuid;

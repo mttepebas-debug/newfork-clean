@@ -36,12 +36,18 @@ insert into public.shift_types(id,workspace_id,name,color,default_start_time,def
 select ok(public.weekly_preference_valid(p),'empty seven-day week is valid') from wp_fixture;
 select ok(not public.weekly_preference_valid(null),'null is not a week');
 select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,day}','0')),'duplicate weekdays rejected') from wp_fixture;
-select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":"17:00","end":"09:00"}')),'manual overnight range rejected') from wp_fixture;
-select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":"09:00","end":"09:00"}')),'empty range rejected') from wp_fixture;
-select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":"24:00","end":"24:00"}')),'24:00 cannot start a range') from wp_fixture;
-select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":null,"end":"17:00"}')),'malformed time is not available') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"17:00","end":"09:00"}]')),'manual overnight range rejected') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"09:00","end":"09:00"}]')),'empty range rejected') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"24:00","end":"24:00"}]')),'24:00 cannot start a range') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":null,"end":"17:00"}]')),'malformed time is not available') from wp_fixture;
 select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,shift_type_ids}',jsonb_build_array(dinner))),'mode mixing rejected') from wp_fixture;
-select ok(public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":"00:00","end":"24:00"}')),'whole calendar range accepted') from wp_fixture;
+select ok(public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"00:00","end":"24:00"}]')),'whole calendar range accepted') from wp_fixture;
+-- Several hours a day (M4, S2 a): in order, apart, never the old single range.
+select ok(public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"09:00","end":"14:00"},{"start":"17:00","end":"24:00"}]')),'two ranges in a day accepted') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"09:00","end":"14:00"},{"start":"13:00","end":"15:00"}]')),'overlapping ranges rejected') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"17:00","end":"18:00"},{"start":"09:00","end":"10:00"}]')),'ranges out of order rejected') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,ranges}','[{"start":"09:00","end":"10:00"},{"start":"10:00","end":"11:00"}]')),'touching ranges are one range, not two') from wp_fixture;
+select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":"09:00","end":"10:00"}')),'the old single range is gone') from wp_fixture;
 
 select is(public.weekly_preferences_read_service(actor,w)->'employee'->>'submitted','false','never submitted remains distinct') from wp_fixture;
 select is(public.weekly_preferences_read_service(actor,w)->'manager','null'::jsonb,'employee cannot read private reminders') from wp_fixture;
@@ -49,7 +55,7 @@ select is(public.weekly_preferences_read_service(manager,w,emp)->>'can_manage','
 select throws_ok($$select public.weekly_preferences_read_service(gen_random_uuid(),w,emp) from wp_fixture$$,'42501',null,'unrelated actor cannot read');
 select is(public.weekly_preference_capacity(w,emp,'[2035-01-15 09:00Z,2035-01-15 17:00Z)','UTC')->'unavailable_intervals','[]'::jsonb,'no record is available') from wp_fixture;
 
-update wp_fixture set p=jsonb_set(p,'{days,1,range}','{"start":"09:00","end":"17:00"}');
+update wp_fixture set p=jsonb_set(p,'{days,1,ranges}','[{"start":"09:00","end":"17:00"}]');
 select is(public.weekly_preference_intersections(w,p,'[2035-01-15 17:00Z,2035-01-15 18:00Z)','UTC'),'{}'::tstzmultirange,'touching endpoints do not conflict') from wp_fixture;
 select is(public.weekly_preference_intersections(w,p,'[2035-01-15 16:59Z,2035-01-15 18:00Z)','UTC'),'{[2035-01-15 16:59Z,2035-01-15 17:00Z)}'::tstzmultirange,'any positive overlap conflicts') from wp_fixture;
 select is(public.weekly_preference_intersections(w,p,'[2035-01-15 17:00Z,2035-01-15 18:00Z)','America/Los_Angeles'),'{[2035-01-15 17:00Z,2035-01-15 18:00Z)}'::tstzmultirange,'uses the target location wall clock') from wp_fixture;
@@ -57,7 +63,7 @@ select throws_ok($$select public.weekly_preference_intersections(w,p,'[2035-01-1
 
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by) select w,emp,p,1,actor from wp_fixture;
 insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,revision,updated_by,notes)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"16:00","end":"20:00"}'),1,manager,array['','Private manager note','','','','',''] from wp_fixture;
+ select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"16:00","end":"20:00"}]'),1,manager,array['','Private manager note','','','','',''] from wp_fixture;
 select is(public.weekly_preference_capacity(w,emp,'[2035-01-15 09:00Z,2035-01-15 21:00Z)','UTC')->'unavailable_intervals',
  public.availability_ranges_json('{[2035-01-15 09:00Z,2035-01-15 20:00Z)}'::tstzmultirange),'employee and manager intervals union without double counting') from wp_fixture;
 select is(public.weekly_preferences_read_service(actor,w)->'manager','null'::jsonb,'employee response still excludes saved reminders and notes') from wp_fixture;
@@ -89,12 +95,12 @@ update public.manager_weekly_reminders set preference=jsonb_set(public.empty_wee
 select is((select count(*) from wp_fixture f cross join lateral jsonb_array_elements(public.weekly_preferences_read_service(actor,w)->'shift_types') t where t->>'id'=hidden_type::text),0::bigint,'employee catalog does not leak reminder-only archived selections');
 select is((select count(*) from wp_fixture f cross join lateral jsonb_array_elements(public.weekly_preferences_read_service(manager,w,emp)->'shift_types') t where t->>'id'=hidden_type::text),1::bigint,'manager catalog retains its own archived selections');
 
-update wp_fixture set p=jsonb_set(public.empty_weekly_preference('time_range'),'{days,0,range}','{"start":"01:15","end":"01:45"}');
+update wp_fixture set p=jsonb_set(public.empty_weekly_preference('time_range'),'{days,0,ranges}','[{"start":"01:15","end":"01:45"}]');
 select is(public.weekly_preference_intersections(w,p,'[2026-11-01 08:00Z,2026-11-01 10:00Z)','America/Los_Angeles'),
  '{[2026-11-01 08:15Z,2026-11-01 08:45Z),[2026-11-01 09:15Z,2026-11-01 09:45Z)}'::tstzmultirange,'autumn repeated hour covers both occurrences') from wp_fixture;
-update wp_fixture set p=jsonb_set(p,'{days,0,range}','{"start":"02:15","end":"02:45"}');
+update wp_fixture set p=jsonb_set(p,'{days,0,ranges}','[{"start":"02:15","end":"02:45"}]');
 select is(public.weekly_preference_intersections(w,p,'[2026-03-08 09:00Z,2026-03-08 12:00Z)','America/Los_Angeles'),'{}'::tstzmultirange,'nonexistent spring wall hours do not shift forward') from wp_fixture;
-update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,0,range}','null'),'{days,0,all_day}','true');
+update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,0,ranges}','[]'),'{days,0,all_day}','true');
 select is(public.weekly_preference_intersections(w,p,'[2026-03-08 08:00Z,2026-03-09 08:00Z)','America/Los_Angeles'),
  '{[2026-03-08 08:00Z,2026-03-09 07:00Z)}'::tstzmultirange,'All day is a 23-hour calendar day at spring transition') from wp_fixture;
 

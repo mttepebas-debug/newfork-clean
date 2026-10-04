@@ -247,8 +247,9 @@ begin
   return heard @> jsonb_build_array(tests.user('sc:' || person));
 end;
 $$;
-select is(pg_temp.hears('ayse', 'can'), true, 'Ayşe hears when Can, a manager at Kadıköy, updates his availability');
-select is(pg_temp.hears('zeynep', 'can'), true, 'the admin hears when Can updates his availability');
+-- Only an employee enters availability (M13, AVAIL-002): Can, a manager, has no own week to save.
+select throws_ok($$select pg_temp.hears('ayse', 'can')$$, '42501', null, 'Can, a manager at Kadıköy, does not save a week of his own');
+select is(pg_temp.hears('zeynep', 'emre'), true, 'the admin hears when Emre updates his availability');
 select is(pg_temp.hears('ayse', 'emre'), true, 'Ayşe hears when Emre, who works at Kadıköy, updates his availability');
 select is(pg_temp.hears('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not hear about Emre (Kadıköy)');
 
@@ -322,6 +323,8 @@ begin
     select e.id, e.user_id from public.employee_profiles e
     join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id and m.status = 'active'
     where e.workspace_id = tests.id('sc') and e.archived_at is null
+      -- only an employee saves a week of their own (M13, AVAIL-002)
+      and app_private.ranks_as_employee(e.workspace_id, e.user_id)
   loop
     perform public.weekly_preferences_save_service(whose.user_id, tests.id('sc'), jsonb_build_object(
       'employee_id', whose.id, 'source', 'employee',

@@ -78,7 +78,7 @@ select r.cid,f.w,case when r.i=4 then 'swap' when r.i=5 then 'cover' else 'open_
  'test-consent','2035-01-15 09:00Z',f.actor from wp_requests r,wp_fixture f;
 insert into public.shift_exchange_applications(id,workspace_id,case_id,employee_id,status,consent_fingerprint)
  select r.aid,f.w,r.cid,f.emp,'pending_manager','test-consent' from wp_requests r,wp_fixture f where r.i in(1,2,3);
-update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,1,range}','{"start":"10:00","end":"12:00"}'),'{days,2,range}','{"start":"10:00","end":"12:00"}');
+update wp_fixture set p=jsonb_set(jsonb_set(p,'{days,1,ranges}','[{"start":"10:00","end":"12:00"}]'),'{days,2,ranges}','[{"start":"10:00","end":"12:00"}]');
 update wp_command set command=jsonb_build_object('employee_id',emp,'source','employee','expected_revision',1,'settings_revision',0,'preference',p),request_key=gen_random_uuid() from wp_fixture;
 select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'the week saves with requests pending; nothing is asked');
 select is((select count(*) from public.shift_exchange_applications where workspace_id=(select w from wp_fixture) and status='pending_manager'),3::bigint,'every pending application stays as it was');
@@ -97,7 +97,7 @@ update wp_command set command=jsonb_build_object('employee_id',f.emp,'source','e
  from wp_fixture f cross join lateral (select public.weekly_preferences_read_service(f.actor,f.w) model) m;
 select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'Monday with both types marked saves');
 select is((select preference->'days'->1 from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),
- '{"day": 1, "range": null, "all_day": true, "shift_type_ids": []}'::jsonb,'every selectable type marked is saved as all day');
+ '{"day": 1, "ranges": [], "all_day": true, "shift_type_ids": []}'::jsonb,'every selectable type marked is saved as all day');
 select is((select preference->'days'->2->'shift_type_ids' from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),
  (select jsonb_build_array(dinner) from wp_fixture),'one type of two stays as it was');
 -- The no comes from the core: 42501 with its authz.* hint (CLAUDE.md §9).

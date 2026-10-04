@@ -46,13 +46,13 @@ $$;
 select is(pg_temp.assess()->>'operation','allowed','canonical Schedule defaults to fully available without an old baseline');
 -- AVAIL-002 (M12): a manager's note is only a reminder shown while writing.
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,revision,updated_by)
- select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,manager from ws;
+ select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,manager from ws;
 select is(pg_temp.assess()->>'has_availability_conflict','false','the manager''s note is no availability warning');
 select is((select jsonb_agg(r->>'code') from jsonb_array_elements(pg_temp.assess()->'reasons') r),'["note"]'::jsonb,'it comes back as the note');
 delete from public.manager_weekly_reminders where workspace_id=(select w from ws);
 -- BL-186, M8: the employee's own mark is a warning that never gates.
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,employee_user from ws;
+ select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,employee_user from ws;
 select is(pg_temp.assess()->>'operation','allowed','the employee''s mark does not gate the shift');
 select is(pg_temp.assess()->>'has_availability_conflict','true','canonical assessment reads the employee''s mark as a warning');
 select is(pg_temp.assess()->>'can_override','true','the manager can place anyway');
@@ -97,7 +97,7 @@ end; $$;
 update ws set preview=pg_temp.preflight();
 select is(preview->'findings'->0->>'tier','note','Publish lists the mark for a last look (M9)') from ws;
 select is(preview->>'status','publish_ready','and asks the publisher for nothing') from ws;
-update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,1,range}','{"start":"19:30","end":"20:00"}') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,1,ranges}','[{"start":"19:30","end":"20:00"}]') where workspace_id=(select w from ws);
 select throws_ok($$select pg_temp.publish() from ws$$,'PT409',null,'final publish rejects a preview made before the marks changed');
 select is((select count(*) from public.schedule_location_publications where workspace_id=(select w from ws)),0::bigint,'failed publish leaves no publication');
 update ws set preview=pg_temp.preflight();
@@ -122,7 +122,7 @@ select is((select availability_snapshot from public.schedule_published_shifts p 
 -- A new assignment over a marked evening is listed too, and still asks nothing.
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select 'ad423000-0000-4000-8000-000000000012',w,draft,loc,emp,job,'2035-01-16','18:00','20:00','explicit','America/Los_Angeles' from ws;
-update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,range}','{"start":"18:00","end":"20:00"}') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,ranges}','[{"start":"18:00","end":"20:00"}]') where workspace_id=(select w from ws);
 update ws set preview=pg_temp.preflight();
 select is((select f->>'tier' from ws,jsonb_array_elements(preview->'findings') f where f->'shift_ids'->>0='ad423000-0000-4000-8000-000000000012'),'note','a different shift is listed on its own');
 select lives_ok($$select pg_temp.publish()$$,'and the week publishes without acknowledging it');
@@ -137,7 +137,7 @@ create temp table wd as select
 select public.mutate_schedule_edit_shift_service(s.manager,s.w,d.session,e.revision,'create','ad423000-0000-4000-8000-000000000016',null,
  jsonb_build_object('location_id',s.loc,'employee_id',s.emp,'job_id',s.job,'scheduled_date','2035-02-01','shift_type_id','ad423000-0000-4000-8000-000000000015','time_basis','type_default'),gen_random_uuid())->>'revision'
  from ws s,wd d,public.schedule_edit_sessions e where e.id=d.session;
-update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,4,range}','{"start":"16:00","end":"18:00"}') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,4,ranges}','[{"start":"16:00","end":"18:00"}]') where workspace_id=(select w from ws);
 update public.shift_types set default_end_time='18:00' where id='ad423000-0000-4000-8000-000000000015';
 update wd d set command=jsonb_build_object('expected_session_revision',e.revision,'starts_on','2035-01-29','ends_on','2035-02-04',
  'shift_ids',jsonb_build_array('ad423000-0000-4000-8000-000000000016'),'overrides','[]'::jsonb) from public.schedule_edit_sessions e where e.id=d.session;
