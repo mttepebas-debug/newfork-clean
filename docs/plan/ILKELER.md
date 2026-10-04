@@ -231,6 +231,10 @@
   modeller (yetki kapsamı, saat dilimi modeli, izin iptali) önce sohbette başlık başlık konuşulur.
 - Kanıt: 09-28 "çoktan seçmeli olarak yolla hepsini tek tek ben seçeceğim"; 09-27 "chat
   içerisinde başlık başlık ve derinlemesine açıklama ile anlat"; 09-23 "Önce konuşalım".
+- Kanıt (2026-10-04): FB-6.7'nin görsel varyantları seçildikten sonra Mert uygulamadan önce davranışı senaryo senaryo
+  konuşmak istedi: "design kararlarını vermiş olsak da kodun çalışma prensibini ve senaryolarda uygulamanın davranışını
+  tekrar bir konuşarak tam anlamıyla oturtmak istiyorum". Görünüm kararı davranış kararının yerine geçmez; davranış
+  kuralları da önce sohbette konuşulur.
 
 **P19. Saf teknik iç kararı Claude verir.**
 - Kural: şemanın iç ayrıntısını, merge sırasını, test dosyası hizasını ve kontrastı Claude seçer.
