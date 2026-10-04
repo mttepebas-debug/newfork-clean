@@ -342,6 +342,10 @@ insert into retired (kind, name, step) values
   ('function', 'weekly_preference_commitments', 'AVAIL-002'),
   ('table', 'weekly_preference_commitment_decisions', 'AVAIL-002'),
   ('column', 'weekly_preference_events.decisions', 'AVAIL-002');
+-- AVAIL-002: one role-change trigger follows availability (availability_follows_role).
+insert into retired (kind, name, step) values
+  ('function', 'manager_note_follows_role', 'AVAIL-002'),
+  ('trigger', 'workspace_memberships.manager_note_follows_role', 'AVAIL-002');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

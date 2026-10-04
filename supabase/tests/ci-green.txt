@@ -10,6 +10,7 @@ supabase/tests/authorization_coverage.test.sql
 supabase/tests/authorization_matrix.test.sql
 supabase/tests/authz_catalog.test.sql
 supabase/tests/availability_always_warns.test.sql
+supabase/tests/availability_follows_role.test.sql
 supabase/tests/bl052_document_account_inbox.test.sql
 supabase/tests/bl052_document_conflicts.test.sql
 supabase/tests/bl052_document_correction_drafts.test.sql

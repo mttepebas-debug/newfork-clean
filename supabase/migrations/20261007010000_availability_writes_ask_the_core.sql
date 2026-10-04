@@ -12,6 +12,11 @@
 --   as all day.
 -- * M4: "Check your availability" goes to every employee (active or still
 --   onboarding), whether or not they had saved a week; never to a manager.
+-- * Only an employee's onboarding has the Availability step: it is never
+--   created for anybody else, and an open onboarding gains or loses it with
+--   the person's role.
+-- * A promotion above employee deletes the person's own week and its history
+--   with the Manager note (Mert 2026-10-04).
 
 update app_private.authz_actions set restricted_ok = true, employee_target = true where key = 'availability.own';
 
@@ -95,7 +100,7 @@ begin
   if rule_row.scope_class = 'own' then
     -- One's own availability is an employee's (M13): a manager, an admin or
     -- the owner has no own record of that kind.
-    if rule_row.employee_target and not app_private.ranks_as_employee(state.workspace_id, state.user_id) then
+    if rule_row.employee_target and state.class <> 'employee' then
       return 'rank';
     end if;
     if (person is null and whose is null) or target_is_self then
@@ -525,3 +530,112 @@ drop function public.weekly_preference_commitment_conflicts(uuid, uuid, jsonb);
 drop function public.weekly_preference_commitments(uuid, uuid, text, uuid);
 drop table public.weekly_preference_commitment_decisions;
 alter table public.weekly_preference_events drop column decisions;
+
+-- ==== guard_weekly_onboarding_requirement
+-- Only an employee keeps a week (M13), so only an employee's onboarding has
+-- the Availability step: for anybody else it is never created.
+CREATE OR REPLACE FUNCTION public.guard_weekly_onboarding_requirement()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare declared_at timestamptz;
+begin
+ if tg_op='INSERT' and new.kind='availability' and not app_private.ranks_as_employee(new.workspace_id,
+  (select e.user_id from public.employee_profiles e where e.workspace_id=new.workspace_id and e.id=new.employee_id)) then
+  return null;
+ end if;
+ if new.lifecycle_retired_at is not null or new.kind <> 'availability' or exists (
+  select 1 from public.employee_onboarding_cases c where c.id=new.case_id and c.status in ('approved','cancelled')
+ ) then return new; end if;
+ select s.availability_onboarding_required into new.required
+ from public.workspace_scheduling_settings s where s.workspace_id=new.workspace_id;
+ if new.required is null then raise exception 'Scheduling settings unavailable' using errcode='P0002'; end if;
+ new.blocks_activation:=new.required;
+ new.requires_review:=false;
+ select p.updated_at into declared_at from public.employee_weekly_preferences p
+ where p.workspace_id=new.workspace_id and p.employee_id=new.employee_id;
+ new.status:=case when declared_at is null then 'not_started' else 'completed' end;
+ new.completed_at:=declared_at;
+ new.rejection_reason:=null;
+ new.reviewed_at:=null;
+ new.reviewed_by:=null;
+ return new;
+end; $function$;
+
+-- A role change follows availability: above employee, the Manager note about
+-- the person and their own week (with its history) go for good, without a
+-- word (Mert 2026-10-04: "Terfide silinsin"); back to employee, they start
+-- empty. An open onboarding gains or loses the Availability step with the
+-- role. Replaces manager_note_follows_role.
+drop trigger manager_note_follows_role on public.workspace_memberships;
+drop function app_private.manager_note_follows_role();
+
+create function app_private.availability_follows_role() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare employee uuid; is_employee boolean := app_private.ranks_as_employee(new.workspace_id, new.user_id);
+begin
+  select e.id into employee from public.employee_profiles e where e.workspace_id = new.workspace_id and e.user_id = new.user_id;
+  if employee is null then return null; end if;
+  if not is_employee then
+    delete from public.manager_weekly_reminders where workspace_id = new.workspace_id and employee_id = employee;
+    delete from public.employee_weekly_preferences where workspace_id = new.workspace_id and employee_id = employee;
+    delete from public.weekly_preference_events
+    where workspace_id = new.workspace_id and employee_id = employee and source = 'employee';
+    delete from public.weekly_preference_commands
+    where workspace_id = new.workspace_id and command ->> 'employee_id' = employee::text and command ->> 'source' = 'employee';
+  end if;
+
+  -- An open onboarding gains or loses the Availability step with the role.
+  with open_cases as (
+    select c.id from public.employee_onboarding_cases c
+    where c.workspace_id = new.workspace_id and c.employee_id = employee
+      and c.status in ('in_progress', 'submitted', 'changes_requested')
+    order by c.id for update),
+  dropped as (
+    delete from public.employee_onboarding_requirements r using open_cases c
+    where not is_employee and r.case_id = c.id and r.kind = 'availability' and r.lifecycle_retired_at is null
+    returning r.case_id),
+  added as (
+    insert into public.employee_onboarding_requirements (workspace_id, case_id, employee_id, kind, title, description,
+      required, blocks_activation, requires_review, sort_order, source_snapshot)
+    select new.workspace_id, c.id, employee, 'availability', 'Availability', 'Confirmed recurring weekly availability.',
+      false, false, false, 500, '{}'::jsonb
+    from open_cases c
+    where is_employee and not exists (select 1 from public.employee_onboarding_requirements r
+      where r.case_id = c.id and r.kind = 'availability' and r.lifecycle_retired_at is null)
+    returning case_id)
+  update public.employee_onboarding_cases set revision = revision + 1, updated_at = now()
+  where id in (select case_id from dropped union select case_id from added);
+  return null;
+end;
+$$;
+revoke all on function app_private.availability_follows_role() from public, anon, authenticated;
+
+create trigger availability_follows_role
+after insert or update of role, role_id on public.workspace_memberships
+for each row execute function app_private.availability_follows_role();
+
+-- No old data is kept (CLAUDE.md §9): nobody above employee keeps a week
+-- or has the Availability step in an open onboarding.
+delete from public.employee_onboarding_requirements r
+using public.employee_onboarding_cases c, public.employee_profiles employee
+where c.id = r.case_id and employee.id = c.employee_id and employee.workspace_id = c.workspace_id
+  and c.status in ('in_progress', 'submitted', 'changes_requested') and r.kind = 'availability'
+  and not app_private.ranks_as_employee(employee.workspace_id, employee.user_id);
+delete from public.weekly_preference_commands command
+using public.employee_profiles employee
+where employee.workspace_id = command.workspace_id and command.command ->> 'employee_id' = employee.id::text
+  and command.command ->> 'source' = 'employee' and not app_private.ranks_as_employee(employee.workspace_id, employee.user_id);
+delete from public.weekly_preference_events event
+using public.employee_profiles employee
+where employee.workspace_id = event.workspace_id and employee.id = event.employee_id and event.source = 'employee'
+  and not app_private.ranks_as_employee(employee.workspace_id, employee.user_id);
+delete from public.employee_weekly_preferences week
+using public.employee_profiles employee
+where employee.workspace_id = week.workspace_id and employee.id = week.employee_id
+  and not app_private.ranks_as_employee(employee.workspace_id, employee.user_id);
