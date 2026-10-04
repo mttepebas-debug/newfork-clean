@@ -97,6 +97,10 @@
 - Koşul: renk, token, kontrast ve kenar gibi tutarlılık ayarları yazıyla sorulabilir.
 - Kanıt: 07-15 "ilk 2sini de mock up olarak görsel olarak gösterebilir misin"; 09-18 "Mockup'ta
   ikisini de gör"; 09-23 "Önce mockup göster".
+- Kanıt (2026-10-04, üç ters seçim): müsaitlik tasarım turunda gerçek ekranlardaki beş varyant
+  setinden üçünde Mert önerilenin dışını seçti (S2 not kartı, S3 tek katlanır satır, S4 günün
+  çizelgesi) ve "anahtar kapalıyken '!' de gizlensin" dedi. Görsel seçimde Claude'un önerisi zayıf
+  dayanak; varyant gösterilmeden karar verilmez (KARARLAR "Müsaitlik" → Tasarım seçimleri).
 
 **P05. Soru sonuç diliyle sorulur.**
 - Kural: soru şu sırayla kurulur:
