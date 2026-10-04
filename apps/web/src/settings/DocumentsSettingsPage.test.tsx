@@ -184,6 +184,58 @@ it("shows the load error and disables creation when document types cannot be rea
   expect(screen.queryByText("No document types")).toBeNull();
   expect(saveDocumentType).not.toHaveBeenCalled();
 });
+it("keeps the heading row over an empty catalog and adds from the table", async () => {
+  vi.mocked(listDocumentTypes).mockResolvedValue([]);
+  mount();
+  expect(await screen.findByText("No document types")).toBeTruthy();
+  const catalog = screen.getByLabelText("Document types");
+  expect(
+    within(catalog)
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent),
+  ).toEqual(["Document name", "Description", "Status", "Published"]);
+  expect(
+    within(catalog).getByText(
+      "Add the first document requirement to get started.",
+    ),
+  ).toBeTruthy();
+  fireEvent.click(
+    within(catalog).getByRole("button", { name: "Add document type" }),
+  );
+  expect(screen.getByRole("dialog")).toBeTruthy();
+});
+it("offers no add button in an empty catalog the person cannot write", async () => {
+  auth.actions = ["settings.documents.read"];
+  vi.mocked(listDocumentTypes).mockResolvedValue([]);
+  mount();
+  const catalog = await screen.findByLabelText("Document types");
+  expect(within(catalog).getByText("No document types")).toBeTruthy();
+  expect(within(catalog).queryByRole("button", { name: "Add document type" })).toBeNull();
+});
+it("sorts rows from the heading and clears back to the saved order", async () => {
+  vi.mocked(listDocumentTypes).mockResolvedValue([
+    { ...record, id: "00000000-0000-4000-8000-000000000005", title: "Beta", sort_order: 0 },
+    { ...record, id: "00000000-0000-4000-8000-000000000006", title: "Alpha", sort_order: 1 },
+  ]);
+  mount();
+  await screen.findByTitle("Beta");
+  const names = () =>
+    Array.from(document.querySelectorAll(".job-catalog-row .job-row-name")).map(
+      (name) => name.textContent,
+    );
+  expect(names()).toEqual(["Beta", "Alpha"]);
+  const header = screen
+    .getByRole("button", { name: "Document name" })
+    .closest("[role='columnheader']") as HTMLElement;
+  fireEvent.click(screen.getByRole("button", { name: "Document name" }));
+  expect(names()).toEqual(["Alpha", "Beta"]);
+  expect(header.getAttribute("aria-sort")).toBe("ascending");
+  fireEvent.click(screen.getByRole("button", { name: "Document name" }));
+  expect(names()).toEqual(["Beta", "Alpha"]);
+  expect(header.getAttribute("aria-sort")).toBe("descending");
+  fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+  expect(header.getAttribute("aria-sort")).toBe("none");
+});
 it("does not read definitions the core does not open", () => {
   auth.actions = [];
   mount();

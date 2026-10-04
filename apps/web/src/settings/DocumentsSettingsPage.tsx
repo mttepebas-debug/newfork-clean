@@ -8,18 +8,11 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  FileText,
-  Plus,
-  Search,
-  X,
-} from "lucide-react";
+import { FileText, Plus, Search, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
+import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
@@ -200,27 +193,25 @@ export default function DocumentsSettingsPage() {
     [ids[index], ids[next]] = [ids[next]!, ids[index]!];
     reorderMutation.mutate(ids);
   };
-  const sortColumn = (key: SortKey, label: string) => {
+  // Same sortable heading as Employees → Documents (CatalogSortButton).
+  const sortColumn = (key: SortKey, label: string, className?: string) => {
     const selected = sort?.key === key;
-    const Icon = selected
-      ? sort.descending
-        ? ArrowDown
-        : ArrowUp
-      : ArrowUpDown;
     return (
-      <button
-        type="button"
-        className="job-sort-button"
-        data-column={key}
-        aria-label={`Sort by ${label}`}
-        aria-pressed={selected}
-        onClick={() =>
-          setSort({ key, descending: selected ? !sort.descending : false })
+      <span
+        className={className}
+        role="columnheader"
+        aria-sort={
+          selected ? (sort.descending ? "descending" : "ascending") : "none"
         }
       >
-        {label}
-        <Icon size={13} />
-      </button>
+        <CatalogSortButton
+          active={selected}
+          label={label}
+          onClick={() =>
+            setSort({ key, descending: selected ? !sort.descending : false })
+          }
+        />
+      </span>
     );
   };
 
@@ -362,27 +353,25 @@ export default function DocumentsSettingsPage() {
               {errorText(query.error)}
             </p>
           ) : null}
-          {!query.isLoading && !query.error && visible.length === 0 ? (
-            <div className="job-empty-state">
-              <h2>
-                {search || requirementFilter
-                  ? "No matches found"
-                  : "No document types"}
-              </h2>
-              <p>
-                {search || requirementFilter
-                  ? "Try another requirement or clear your search."
-                  : "Add the first document requirement to get started."}
-              </p>
-            </div>
-          ) : null}
-          {visible.length > 0 ? (
+          {!query.isLoading && !query.error ? (
             <div className="job-catalog" aria-label="Document types">
-              <div className="job-column-headings document-catalog-row">
+              <div className="job-column-headings catalog-column-headings document-catalog-row">
                 {sortColumn("title", "Document name")}
-                {sortColumn("description", "Description")}
-                {sortColumn("publication_status", "Status")}
-                {sortColumn("published_at", "Published")}
+                {sortColumn(
+                  "description",
+                  "Description",
+                  "document-catalog-optional document-description-cell",
+                )}
+                {sortColumn(
+                  "publication_status",
+                  "Status",
+                  "document-catalog-optional",
+                )}
+                {sortColumn(
+                  "published_at",
+                  "Published",
+                  "document-catalog-optional",
+                )}
                 {sort ? (
                   <button
                     type="button"
@@ -396,6 +385,34 @@ export default function DocumentsSettingsPage() {
                   <span />
                 )}
               </div>
+              {visible.length === 0 ? (
+                <div className="catalog-table-empty">
+                  <span className="catalog-table-empty-icon" aria-hidden>
+                    <FileText size={22} />
+                  </span>
+                  <h2>
+                    {search || requirementFilter
+                      ? "No matches found"
+                      : "No document types"}
+                  </h2>
+                  <p>
+                    {search || requirementFilter
+                      ? "Try another requirement or clear your search."
+                      : "Add the first document requirement to get started."}
+                  </p>
+                  {!search && !requirementFilter && canManage && canReadSettings ? (
+                    <button
+                      type="button"
+                      className="job-secondary-button"
+                      disabled={saveMutation.isPending || applyBusy}
+                      onClick={() => openEditor()}
+                    >
+                      <Plus size={16} aria-hidden />
+                      Add document type
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               {visible.map((item) => (
                 <div
                   className="job-catalog-row document-catalog-row"

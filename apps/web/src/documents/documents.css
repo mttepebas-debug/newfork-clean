@@ -47,6 +47,11 @@
   color: var(--theme-muted);
   text-align: center;
 }
+/* Employees → Documents shares the empty-table ground with Settings →
+   Documents (.catalog-table-empty); no add button here. */
+.employee-documents-empty:not(.is-compact) {
+  background: var(--theme-surface-soft);
+}
 /* Account's own list: filters that match nothing get a short box, and a
    workspace that asked for nothing gets one line instead of an empty table. */
 .employee-documents-empty.is-compact {
