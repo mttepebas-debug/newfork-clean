@@ -91,24 +91,32 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   await expect(invitee.getByRole("button", { name: /start over/i })).toHaveCount(0);
   await invitee.getByRole("button", { name: "Begin" }).click();
 
-  // Profile: the legal name as invited, so nobody has to review it.
+  // Every save moves the wizard on by itself, a moment after the save lands.
+  // Each step below waits for that move before acting: a click made while it
+  // is still on its way gets pulled to another page (main CI 37152119602).
+
+  // Profile: the legal name as invited, so nobody has to review it. Saving it
+  // takes them straight to the card, the one thing still missing.
   await fillProfile(invitee, firstName, "Invitee");
   await expect(steps.getByRole("button", { name: /^Profile\s*,\s*done$/ })).toBeVisible();
+  await expect(invitee).toHaveURL(new RegExp(`${welcome}/documents/[0-9a-f-]{36}$`));
+  await expect(invitee.getByRole("heading", { name: title })).toBeVisible();
 
-  // The required document: a photo or a file, sent for review.
-  await steps.getByRole("button", { name: /^Documents/ }).click();
-  await invitee.getByRole("button", { name: `Open ${title}`, exact: true }).click();
+  // The required document: a photo or a file, sent for review. Nothing
+  // required is left, so the wizard moves on to Review.
   await invitee.getByLabel(/Choose a file/).setInputFiles(card);
   await expect(invitee.getByRole("button", { name: card.name, exact: true })).toBeVisible();
   await invitee.getByRole("button", { name: "Submit and continue" }).click();
-  await expect.poll(() => standing(documentId, email)).toBe("awaiting_review pending_review");
+  await expect(invitee).toHaveURL(new RegExp(`${welcome}/review$`));
+  expect(standing(documentId, email)).toBe("awaiting_review pending_review");
 
-  // Availability can wait: the step is optional and skipped.
+  // Availability can wait: opened from the steps and skipped, back to Review.
   await steps.getByRole("button", { name: "Availability (optional)", exact: true }).click();
+  await expect(invitee).toHaveURL(new RegExp(`${welcome}/availability$`));
   await invitee.getByRole("button", { name: "Skip for now" }).click();
+  await expect(invitee).toHaveURL(new RegExp(`${welcome}/review$`));
 
   // Review: everything required is in; the whole onboarding goes to the manager.
-  await steps.getByRole("button", { name: /^Review/ }).click();
   await expect(invitee.getByRole("button", { name: /start over/i })).toHaveCount(0);
   await invitee.getByRole("button", { name: "Send for review" }).click();
   await expect(invitee.getByRole("heading", { name: "Sent to your manager" })).toBeVisible();
