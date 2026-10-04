@@ -232,6 +232,7 @@
   seçenek olarak sunar; kendisi açmaz.
 - Kanıt: 09-28 "Tek hat. Bir taske başlayınca o task bitene kadar ilerleyelim", "1 taski küçük
   parçalara bölüp aynı anda birden fazla sessionda ilerletme".
+- Kanıt (2026-10-04, ters seçim): Settings → Documents tablosu (tek ekran, yalnız görünüm, R1) için "AVAIL-002 bitince" önerildi; Mert "Hemen, paralel" seçti. Mert'in kendi istediği küçük ve dosyaları çakışmayan ekran işi, tek hat sürerken de paralel açılabiliyor; ikinci işi Mert açar kuralı geçerli (KARARLAR Ekran kararları → Settings → Documents).
 
 **P18. Ürün kararları tek tek sorulur; temel modeller önce sohbette konuşulur.**
 - Kural: "hepsi önerilen gibi" paketi ya da açıklamasız evet/hayır listesi sunulmaz. Temel
