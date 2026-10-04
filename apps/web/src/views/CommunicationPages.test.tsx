@@ -123,6 +123,62 @@ describe("Phase 8 communication pages", () => {
     ).toBe("/account/security");
   });
 
+  it("draws notifications as one table with Today and Yesterday sub-heading rows", async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const base = {
+      workspace_id: workspaceId,
+      category: "announcement",
+      type_key: "communications.announcement.available",
+      severity: "info",
+      action_url: null,
+      source_type: "announcement",
+      source_id: null,
+      read_at: null,
+      visibility_state: "visible",
+    } as const;
+    vi.mocked(getNotifications).mockResolvedValue({
+      workspace_id: workspaceId,
+      unread_count: 2,
+      next_cursor: null,
+      notifications: [
+        { ...base, id: "a8300000-0000-4000-8000-000000000011", title: "Menu tasting", body: "Oct 15", safe_preview: "Oct 15", created_at: new Date().toISOString() },
+        { ...base, id: "a8300000-0000-4000-8000-000000000012", title: "Schedule live", body: "Week of Oct 6", safe_preview: "Week of Oct 6", created_at: yesterday.toISOString() },
+      ],
+    });
+    renderRoute("/app/notifications", <NotificationsPage />);
+    const table = await screen.findByRole("table", { name: "Notifications" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Unread", "Notification", "Category", "Received", "Actions", "Today", "Yesterday"]);
+    const rows = within(table).getAllByRole("row").map((row) => row.textContent ?? "");
+    expect(rows.findIndex((row) => row === "Today")).toBeLessThan(
+      rows.findIndex((row) => row.includes("Menu tasting")),
+    );
+    expect(rows.findIndex((row) => row === "Yesterday")).toBeLessThan(
+      rows.findIndex((row) => row.includes("Schedule live")),
+    );
+    expect(rows.findIndex((row) => row.includes("Menu tasting"))).toBeLessThan(
+      rows.findIndex((row) => row === "Yesterday"),
+    );
+  });
+
+  it("keeps the heading row over an empty notification table", async () => {
+    vi.mocked(getNotifications).mockResolvedValue({
+      workspace_id: workspaceId,
+      unread_count: 0,
+      next_cursor: null,
+      notifications: [],
+    });
+    renderRoute("/app/notifications", <NotificationsPage />);
+    const table = await screen.findByRole("table", { name: "Notifications" });
+    expect(within(table).getByRole("columnheader", { name: "Notification" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "No notifications" })).toBeTruthy();
+    expect(screen.getByText("Updates matching these filters will appear here.")).toBeTruthy();
+  });
+
   it("uses Archived as an exclusive announcement status filter", async () => {
     const activeDraft = announcement({
       id: "a8200000-0000-4000-8000-000000000002",
