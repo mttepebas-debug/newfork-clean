@@ -4,12 +4,11 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 import { psql } from "../global-setup";
 import { draftName, roundWeek, signIn, type Person } from "../fixtures/world";
 
-// BL-186: availability is a preference, never a block. A manager can still
-// write a shift onto hours an employee marked "unavailable" -- the cell just
-// carries a warning -- and Publish makes the publisher confirm each new one
-// once, by name. Confirmed and unchanged, the next publish of the same week
-// doesn't ask again (BL-184's old gap), and Settings > Conflict handling no
-// longer offers a rule for it (BL-185).
+// AVAIL-002 (M8, M9): availability is always a warning, never a block or a
+// conflict. A manager can still write a shift onto hours an employee marked
+// "unavailable" -- the cell carries a warning -- and Publish lists it as a
+// note for a last look, asking nothing, every time. Settings > Conflict
+// handling has no rule for it (BL-185).
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
 
@@ -27,7 +26,7 @@ async function openPage(browser: Browser, person: Person, path: string): Promise
   return page;
 }
 
-test("a manager writes to Ali's marked-unavailable hours, confirms the warning once at Publish, and republishing the same week doesn't ask again", async ({
+test("a manager writes to Ali's marked-unavailable hours and Publish lists it as a note without asking, then and on republish", async ({
   browser,
 }) => {
   // Ali's own weekly mark, made from Employee Hub > My availability: Tuesday
@@ -81,22 +80,20 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   await publishDialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
 
-  // Pre-flight lists the warning by name and won't move to the next step
-  // until it's acknowledged.
+  // Pre-flight lists the mark by name among the notes and asks nothing (M9):
+  // no acknowledgment box, Next is open straight away.
+  await expect(publishDialog.getByText("Notes and already-live issues", { exact: true })).toBeVisible();
   await expect(publishDialog.getByText("Ali Person shows as unavailable for this shift.")).toBeVisible();
+  await expect(publishDialog.getByRole("checkbox", { name: /I've seen (this warning|these \d+ warnings)/ })).toHaveCount(0);
   const nextButton = publishDialog.getByRole("button", { name: "Next", exact: true });
-  await expect(nextButton).toBeDisabled();
-  await publishDialog
-    .getByRole("checkbox", { name: "I've seen this warning and want to publish anyway", exact: true })
-    .check();
   await expect(nextButton).toBeEnabled();
   await nextButton.click();
   await publishDialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
   await expect(ayse.getByRole("button", { name: "Published", exact: true })).toBeVisible();
 
-  // Republish the same, unchanged week: the warning now shows as already
-  // accepted -- who and roughly when -- and Publish needs no fresh tick.
+  // Republish the same, unchanged week: the mark is listed again as a note,
+  // with nothing "previously accepted" and still nothing to tick.
   const publishAnotherDraft = ayse.getByRole("button", { name: "Publish another draft", exact: true });
   const menuAlreadyOpen = await publishAnotherDraft
     .waitFor({ state: "visible", timeout: 2_000 })
@@ -112,10 +109,9 @@ test("a manager writes to Ali's marked-unavailable hours, confirms the warning o
   await secondDialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
 
-  await expect(secondDialog.getByText("Previously accepted (1)")).toBeVisible();
-  await expect(
-    secondDialog.getByRole("checkbox", { name: "I've seen this warning and want to publish anyway", exact: true }),
-  ).toHaveCount(0);
+  await expect(secondDialog.getByText("Ali Person shows as unavailable for this shift.")).toBeVisible();
+  await expect(secondDialog.getByText(/Previously accepted/)).toHaveCount(0);
+  await expect(secondDialog.getByRole("checkbox", { name: /I've seen (this warning|these \d+ warnings)/ })).toHaveCount(0);
   const secondNext = secondDialog.getByRole("button", { name: "Next", exact: true });
   await expect(secondNext).toBeEnabled();
   await secondNext.click();
