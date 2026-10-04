@@ -374,6 +374,9 @@ describe("PublishScheduleDialog", () => {
     expect(screen.getByText("Ready to publish")).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: "I've seen this warning and want to publish anyway" })).toBeNull();
     expect(screen.queryByText(/Acknowledged by/)).toBeNull();
+    // The footer agrees with the line above it: no blockers, one thing to glance at.
+    expect(screen.queryByText("No blockers or risks")).toBeNull();
+    expect(screen.getByText("No blockers · one thing to glance at")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));

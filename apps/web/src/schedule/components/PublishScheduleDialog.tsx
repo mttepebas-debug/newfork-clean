@@ -33,6 +33,7 @@ import {
   publishGatingRisks,
   publishHardBlockers,
   publishOverrideableBlockers,
+  publishAvailabilityLook,
   publishNewAvailabilityFindings,
   countLabel,
 } from "./PublishPreflightPanel";
@@ -166,8 +167,8 @@ export function PublishScheduleDialog({
   const [preview, setPreview] = useState<SchedulePublicationPreview | null>(
     null,
   );
-  // The publisher ticks "I've seen this warning" for the preview they read;
-  // a refreshed preview asks again (BL-186).
+  // A confirm-level conflict is accepted for the preview the publisher read;
+  // a refreshed preview asks again.
   const [availabilityConfirmedFingerprint, setAvailabilityConfirmedFingerprint] = useState<string | null>(null);
   const [preflightBlockReason, setPreflightBlockReason] =
     useState<PublishPreflightBlockReason | null>(null);
@@ -220,6 +221,7 @@ export function PublishScheduleDialog({
   const hardFindings = preview ? publishHardBlockers(preview) : [];
   const riskFindings = preview ? publishGatingRisks(preview) : [];
   const newAvailability = preview ? publishNewAvailabilityFindings(preview) : [];
+  const availabilityLook = preview ? publishAvailabilityLook(preview) : [];
   const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
   const availabilityConfirmed = !needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint;
   const hasHardBlocker = hardFindings.length > 0;
@@ -484,7 +486,7 @@ export function PublishScheduleDialog({
         setPreview(preflightError.preview);
         setStep(2);
         setPreflightBlockReason(preflightError.blockReason);
-            setAvailabilityConfirmedFingerprint(null);
+        setAvailabilityConfirmedFingerprint(null);
         setError(null);
       } else {
         const recoveryError = parsePublishRecoveryError(caught);
@@ -897,7 +899,8 @@ export function PublishScheduleDialog({
                     newAvailability.length ? countLabel(newAvailability.length, "schedule conflict", "schedule conflicts") : null,
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "No blockers or risks"
+                    .join(" · ") ||
+                  (availabilityLook.length ? "No blockers · one thing to glance at" : "No blockers or risks")
                 : `${notifyEmployeeIds.length} of ${countLabel(affectedEmployeeIds.length, "employee", "employees")} will be notified`}
           </span>
           {wizardStep > 1 ? (
@@ -910,7 +913,7 @@ export function PublishScheduleDialog({
                   return;
                 }
                 setStep(1);
-                            setPreflightBlockReason(null);
+                setPreflightBlockReason(null);
                 setStaleNotice(null);
                 setScheduleConflicts([]);
                 setError(null);

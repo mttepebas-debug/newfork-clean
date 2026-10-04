@@ -48,6 +48,10 @@ function isAvailabilityLook(finding: SchedulePublishFinding): boolean {
   return finding.code === "availability" && !finding.availability_state;
 }
 
+export function publishAvailabilityLook(preview: SchedulePublicationPreview) {
+  return preview.findings.filter(isAvailabilityLook);
+}
+
 export function isWeeklyAvailabilityFinding(finding: SchedulePublishFinding): boolean {
   return finding.severity === "soft" && finding.overrideable &&
     !!finding.availability_state && !!finding.warning_policy;
@@ -140,8 +144,10 @@ export function PublishPreflightPanel({
   const risks = publishGatingRisks(preview);
   const informational = publishInformationalFindings(preview);
   const newConflicts = publishNewAvailabilityFindings(preview);
-  const availabilityLook = preview.findings.filter(isAvailabilityLook);
-  const acceptedAvailability = preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "accepted");
+  const availabilityLook = publishAvailabilityLook(preview);
+  // Another rule's conflict accepted at the last publish stays listed (KK-132);
+  // the employee's availability never lands here (it carries no state).
+  const acceptedConflicts = preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "accepted");
   const needsAvailabilityConfirmation = newConflicts.some((finding) => finding.warning_policy === "confirm");
   const ready =
     preview.status === "publish_ready" &&
@@ -228,10 +234,10 @@ export function PublishPreflightPanel({
       {availabilityLook.length ? (
         <AvailabilityFold findings={availabilityLook} employees={employees} onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
       ) : null}
-      {acceptedAvailability.length ? (
+      {acceptedConflicts.length ? (
         <details className="schedule-publish-accepted-availability">
-          <summary>Previously accepted ({acceptedAvailability.length})</summary>
-          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted warnings" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+          <summary>Previously accepted ({acceptedConflicts.length})</summary>
+          <WeeklyAvailabilityGroup findings={acceptedConflicts} locations={locations} title="Accepted warnings" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
         </details>
       ) : null}
 
@@ -269,7 +275,9 @@ function AvailabilityFold({ findings, employees, onReviewShift, reviewDisabled }
   readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
   readonly reviewDisabled?: boolean;
 }) {
-  const names = [...new Set(findings.map((finding) => finding.employee_name ?? "Employee"))];
+  // Day by day, as the week reads; the server lists them shift by shift.
+  const byDay = [...findings].sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+  const names = [...new Set(byDay.map((finding) => finding.employee_name ?? "Employee"))];
   return (
     <details className="schedule-publish-availability-fold">
       <summary>
@@ -283,7 +291,7 @@ function AvailabilityFold({ findings, employees, onReviewShift, reviewDisabled }
         <ChevronDown size={16} aria-hidden className="schedule-publish-availability-fold-chevron" />
       </summary>
       <ul>
-        {findings.map((finding) => {
+        {byDay.map((finding) => {
           const name = finding.employee_name ?? "Employee";
           const day = formatAvailabilityMarkDay(finding.scheduled_date);
           return (

@@ -101,6 +101,11 @@ describe("PublishPreflightPanel", () => {
     expect(fold.querySelector("summary")!.textContent).toContain("3 shifts · Ali Kaya, Bora Demir");
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(screen.queryByText("Notes and already-live issues")).toBeNull();
+    expect([...fold.querySelectorAll("li > span")].map((line) => line.textContent)).toEqual([
+      "Ali Kaya · Mon, Aug 17",
+      "Bora Demir · Fri, Aug 21",
+      "Ali Kaya · Sat, Aug 22",
+    ]);
     fireEvent.click(screen.getByRole("button", { name: "Show Bora Demir's shift on Fri, Aug 21" }));
     expect(review).toHaveBeenCalledExactlyOnceWith(bora);
   });
