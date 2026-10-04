@@ -612,6 +612,9 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
           lastTypingInteractionRef.current = true;
           setSegmentDisplayOverrides({});
           setDraft(nextDraft);
+          // Now, not after the render: auto-advance below blurs this field
+          // in the same handler, and that blur commits what the refs hold.
+          draftRef.current = nextDraft;
           if (!nextDraft.trim()) {
             setIsInvalid(false);
             setActiveSegment("hour");
@@ -629,6 +632,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
           }
           setIsInvalid(false);
           setPeriod(parsed.period);
+          periodRef.current = parsed.period;
           const nextBuffers = getSegmentBuffersFromDraft(nextDraft, timeFormat, parsed.period);
           setSegmentBuffers(nextBuffers);
           segmentBuffersRef.current = nextBuffers;

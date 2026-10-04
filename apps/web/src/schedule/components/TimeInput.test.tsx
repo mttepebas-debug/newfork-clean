@@ -318,3 +318,30 @@ function getSegment(
     null
   );
 }
+
+// AVAIL-002 e2e: a whole time arriving at once (paste, browser autofill)
+// completes the field and moves on; leaving it must keep the new time, not
+// write the old one back.
+describe("TimeInput: a whole time at once, then auto-advance", () => {
+  it("keeps the time it was given when it moves focus on", () => {
+    const onChange = vi.fn();
+    const next = document.createElement("input");
+    document.body.append(next);
+    render(
+      <TimeInput
+        ariaLabel="Start time"
+        value="09:00"
+        timeFormat="12h"
+        onChange={onChange}
+        onAutoAdvance={() => next.focus()}
+      />,
+    );
+    const start = screen.getByLabelText("Start time") as HTMLInputElement;
+    start.focus();
+    fireEvent.change(start, { target: { value: "6:00 PM" } });
+    expect(document.activeElement).toBe(next);
+    expect(onChange).toHaveBeenLastCalledWith("18:00");
+    expect(onChange).not.toHaveBeenCalledWith("09:00");
+    next.remove();
+  });
+});
