@@ -263,6 +263,11 @@ export function formatScheduleConflictMessages(
     .filter((message) => message.length > 0);
 }
 
+/** The employee's own mark or a manager's note: asks on every write, never a conflict (M8, M12). */
+export function isAvailabilityReminder(reason: ScheduleConflictReason): boolean {
+  return typeof reason !== "string" && (reason.type === "availability" || reason.type === "note");
+}
+
 /**
  * The employee's own mark and a manager's note from the server's assessment.
  * Neither is in its operation (M8, M12), so they are read from the reasons:

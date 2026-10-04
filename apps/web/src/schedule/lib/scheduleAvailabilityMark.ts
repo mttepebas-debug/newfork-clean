@@ -8,12 +8,8 @@ export interface AvailabilityRange {
   readonly from: number;
   readonly to: number;
 }
-export interface AvailabilityWindow extends AvailabilityRange {
-  /** "manager": only a manager's private note covers these hours (BL-186). */
-  readonly source: "employee" | "manager";
-  /** The manager note's words for the day, when this reader may read them. */
-  readonly note?: string;
-}
+/** The employee's own unavailable hours; a manager's note is never drawn (M12). */
+export type AvailabilityWindow = AvailabilityRange;
 /** What a Schedule cell says about its person's day (G14, BL-204). */
 export type ScheduleAvailabilityMark =
   | { readonly kind: "unavailable"; readonly windows: readonly AvailabilityWindow[] }
@@ -43,9 +39,6 @@ function rangeOnDay(interval: Interval, day: string, projection: Projection): Av
   return { from: Math.round((from - dayStart) / MINUTE_MS), to: Math.round((to - dayStart) / MINUTE_MS) };
 }
 
-const touches = (left: Interval, right: Interval) =>
-  Date.parse(left.start_at) < Date.parse(right.end_at) && Date.parse(right.start_at) < Date.parse(left.end_at);
-
 /** The week's marks for one person at one location, by local date. */
 export function scheduleAvailabilityMarks(projection: Projection): Map<string, ScheduleAvailabilityMark> {
   const marks = new Map<string, ScheduleAvailabilityMark>();
@@ -57,14 +50,7 @@ export function scheduleAvailabilityMarks(projection: Projection): Map<string, S
       continue;
     }
     if (!has_unavailable) continue;
-    const own = projection.employee_intervals;
-    const note = projection.manager_notes?.[new Date(`${date}T00:00:00Z`).getUTCDay()]?.trim();
-    const windows = projection.unavailable_intervals.flatMap((interval): AvailabilityWindow[] => {
-      const range = rangeOnDay(interval, date, projection);
-      if (!range) return [];
-      if (own === undefined || own.some((mine) => touches(mine, interval))) return [{ ...range, source: "employee" }];
-      return [{ ...range, source: "manager", ...(note ? { note } : {}) }];
-    });
+    const windows = projection.unavailable_intervals.flatMap((interval) => rangeOnDay(interval, date, projection) ?? []);
     if (windows.length) marks.set(date, { kind: "unavailable", windows });
   }
   return marks;
@@ -87,7 +73,7 @@ export function mergeAvailabilityMarks(
     kind: "unavailable",
     windows: [
       ...left.windows,
-      ...right.windows.filter((window) => !left.windows.some((item) => sameRange(item, window) && item.source === window.source)),
+      ...right.windows.filter((window) => !left.windows.some((item) => sameRange(item, window))),
     ],
   };
 }

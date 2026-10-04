@@ -75,6 +75,8 @@ interface ScheduleTopBarProps {
   readonly onTogglePresetShiftBadges?: () => void;
   readonly useDefaultTimesForScheduling?: boolean;
   readonly onToggleUseDefaultTimesForScheduling?: () => void;
+  readonly showAvailability?: boolean;
+  readonly onToggleAvailability?: () => void;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
   readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
   readonly locations: readonly ScheduleLocation[];
@@ -132,6 +134,8 @@ export function ScheduleTopBar({
   onTogglePresetShiftBadges,
   useDefaultTimesForScheduling,
   onToggleUseDefaultTimesForScheduling,
+  showAvailability,
+  onToggleAvailability,
   employeeSortMode,
   onEmployeeSortModeChange,
   locations,
@@ -305,6 +309,8 @@ export function ScheduleTopBar({
               onToggleUseDefaultTimesForScheduling={
                 onToggleUseDefaultTimesForScheduling
               }
+              showAvailability={showAvailability}
+              onToggleAvailability={onToggleAvailability}
             />
           ) : null}
         </div>
@@ -549,6 +555,8 @@ function SettingsMenuPanel({
   onToggleUnassignedFrozen,
   unassignedRowSettingsDisabled,
   onToggleUseDefaultTimesForScheduling,
+  showAvailability,
+  onToggleAvailability,
 }: {
   readonly employeeSortMode: ScheduleEmployeeSortMode;
   readonly showShiftType: boolean;
@@ -571,6 +579,8 @@ function SettingsMenuPanel({
   readonly onToggleUnassignedFrozen?: () => void;
   readonly unassignedRowSettingsDisabled: boolean;
   readonly onToggleUseDefaultTimesForScheduling?: () => void;
+  readonly showAvailability?: boolean;
+  readonly onToggleAvailability?: () => void;
 }) {
   return (
     <div className="schedule-command-menu-panel schedule-settings-menu-panel">
@@ -671,6 +681,18 @@ function SettingsMenuPanel({
           label="Use default times for scheduling"
           onClick={onToggleUseDefaultTimesForScheduling}
         />
+      ) : null}
+      {onToggleAvailability ? (
+        <>
+          <div className="schedule-menu-separator" />
+          <strong>Availability</strong>
+          <SettingsToggleRow
+            pressed={Boolean(showAvailability)}
+            icon={showAvailability ? <Eye size={15} /> : <EyeOff size={15} />}
+            label={showHideLabel(Boolean(showAvailability), "Availability")}
+            onClick={onToggleAvailability}
+          />
+        </>
       ) : null}
     </div>
   );

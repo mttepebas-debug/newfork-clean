@@ -3,10 +3,11 @@ import type {
   ScheduleLocation,
   SchedulePublicationPreview,
 } from "@newfork/shared/schedule";
-import { AlertTriangle, ArrowUpRight, CheckCircle2, Info, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CheckCircle2, ChevronDown, Info, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
+  formatAvailabilityMarkDay,
   formatAvailabilityRange,
   scheduleAvailabilityMarks,
 } from "../lib/scheduleAvailabilityMark";
@@ -27,24 +28,24 @@ const blockReasonText: Readonly<Record<PublishPreflightBlockReason, string>> = {
 
 type SchedulePublishFinding = SchedulePublicationPreview["findings"][number];
 
-// "(unavailable after 2:00 PM)": the hours behind an availability warning, read
+// "Unavailable after 2:00 PM": the hours behind an availability line, read
 // from the week the Schedule already holds (G14). Null when it is not there.
 function availabilityHours(
   finding: SchedulePublishFinding,
   employees: readonly ScheduleEmployee[],
 ): string | null {
-  if (finding.code !== "availability" || !finding.employee_id) return null;
+  if (!finding.employee_id) return null;
   const projection = employees
     .find((employee) => employee.id === finding.employee_id)
     ?.weekly_availability?.find((item) => item.location_id === finding.location_id);
   const mark = projection ? scheduleAvailabilityMarks(projection).get(finding.scheduled_date) : undefined;
   if (mark?.kind !== "unavailable") return null;
-  return mark.windows
-    .map((window) => {
-      const text = formatAvailabilityRange("unavailable", window, "12h");
-      return text.charAt(0).toLowerCase() + text.slice(1);
-    })
-    .join("; ");
+  return mark.windows.map((window) => formatAvailabilityRange("unavailable", window, "12h")).join("; ");
+}
+
+// The employee's own mark under a shift: a last look, never asked (M9).
+function isAvailabilityLook(finding: SchedulePublishFinding): boolean {
+  return finding.code === "availability" && !finding.availability_state;
 }
 
 export function isWeeklyAvailabilityFinding(finding: SchedulePublishFinding): boolean {
@@ -54,12 +55,6 @@ export function isWeeklyAvailabilityFinding(finding: SchedulePublishFinding): bo
 
 export function publishNewAvailabilityFindings(preview: SchedulePublicationPreview) {
   return preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "new");
-}
-
-// "Ali shows as unavailable for this shift." A preference, never a blocker:
-// the publisher confirms each new one once (BL-186).
-export function publishNewAvailabilityWarnings(preview: SchedulePublicationPreview) {
-  return publishNewAvailabilityFindings(preview).filter((finding) => finding.code === "availability");
 }
 
 export function countLabel(count: number, one: string, many: string): string {
@@ -122,7 +117,7 @@ export function publishGatingRisks(preview: SchedulePublicationPreview) {
 }
 
 export function publishInformationalFindings(preview: SchedulePublicationPreview) {
-  return preview.findings.filter((finding) => !isWeeklyAvailabilityFinding(finding) && !findingGatesPublish(finding));
+  return preview.findings.filter((finding) => !isWeeklyAvailabilityFinding(finding) && !isAvailabilityLook(finding) && !findingGatesPublish(finding));
 }
 
 export function PublishPreflightPanel({
@@ -131,8 +126,6 @@ export function PublishPreflightPanel({
   blockReason = null,
   onReviewShift,
   reviewDisabled = false,
-  availabilityAcknowledged = false,
-  onAvailabilityAcknowledgedChange,
   employees = [],
 }: {
   readonly preview: SchedulePublicationPreview;
@@ -140,19 +133,16 @@ export function PublishPreflightPanel({
   readonly blockReason?: PublishPreflightBlockReason | null;
   readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
   readonly reviewDisabled?: boolean;
-  readonly availabilityAcknowledged?: boolean;
-  readonly onAvailabilityAcknowledgedChange?: (value: boolean) => void;
   readonly employees?: readonly ScheduleEmployee[];
 }) {
   const hard = publishHardBlockers(preview);
   const overrideable = publishOverrideableBlockers(preview);
   const risks = publishGatingRisks(preview);
   const informational = publishInformationalFindings(preview);
-  const newAvailability = publishNewAvailabilityFindings(preview);
-  const availabilityWarnings = newAvailability.filter((finding) => finding.code === "availability");
-  const newConflicts = newAvailability.filter((finding) => finding.code !== "availability");
+  const newConflicts = publishNewAvailabilityFindings(preview);
+  const availabilityLook = preview.findings.filter(isAvailabilityLook);
   const acceptedAvailability = preview.findings.filter((finding) => isWeeklyAvailabilityFinding(finding) && finding.availability_state === "accepted");
-  const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
+  const needsAvailabilityConfirmation = newConflicts.some((finding) => finding.warning_policy === "confirm");
   const ready =
     preview.status === "publish_ready" &&
     !hard.length &&
@@ -176,24 +166,21 @@ export function PublishPreflightPanel({
                   blockerCount ? countLabel(blockerCount, "blocker", "blockers") : null,
                   risks.length ? countLabel(risks.length, "risk", "risks") : null,
                   newConflicts.length ? countLabel(newConflicts.length, "schedule conflict", "schedule conflicts") : null,
-                  availabilityWarnings.length
-                    ? countLabel(availabilityWarnings.length, "availability warning", "availability warnings")
-                    : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
           </strong>
           <span>
             {ready
-              ? "Nothing in this week's changes needs attention before it goes live."
+              ? availabilityLook.length
+                ? "No blockers. One thing to glance at below."
+                : "Nothing in this week's changes needs attention before it goes live."
               : blockReason
                 ? blockReasonText[blockReason]
               : hard.length
                 ? "Fix hard blockers in the schedule before publishing."
                 : newConflicts.length
                   ? "Review the conflicts below, then continue to publish."
-                : availabilityWarnings.length
-                  ? "Some people are scheduled when they said they're unavailable. Confirm below to continue."
                 : risks.length
                   ? "Review these warnings before publishing."
                   : "Every override is recorded with the published audit trail."}
@@ -236,29 +223,15 @@ export function PublishPreflightPanel({
       ) : null}
 
       {newConflicts.length ? (
-        <WeeklyAvailabilityGroup findings={newConflicts} locations={locations} employees={employees} title="Current schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+        <WeeklyAvailabilityGroup findings={newConflicts} locations={locations} title="Current schedule conflicts" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
       ) : null}
-      {availabilityWarnings.length ? (
-        <WeeklyAvailabilityGroup findings={availabilityWarnings} locations={locations} employees={employees} title="Availability" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled}>
-          <label className="schedule-publish-risk-ack">
-            <input
-              type="checkbox"
-              checked={availabilityAcknowledged}
-              disabled={reviewDisabled || !onAvailabilityAcknowledgedChange}
-              onChange={(event) => onAvailabilityAcknowledgedChange?.(event.target.checked)}
-            />
-            <span>
-              {availabilityWarnings.length === 1
-                ? "I've seen this warning and want to publish anyway"
-                : `I've seen these ${availabilityWarnings.length} warnings and want to publish anyway`}
-            </span>
-          </label>
-        </WeeklyAvailabilityGroup>
+      {availabilityLook.length ? (
+        <AvailabilityFold findings={availabilityLook} employees={employees} onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
       ) : null}
       {acceptedAvailability.length ? (
         <details className="schedule-publish-accepted-availability">
           <summary>Previously accepted ({acceptedAvailability.length})</summary>
-          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} employees={employees} title="Accepted warnings" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
+          <WeeklyAvailabilityGroup findings={acceptedAvailability} locations={locations} title="Accepted warnings" onReviewShift={onReviewShift} reviewDisabled={reviewDisabled} />
         </details>
       ) : null}
 
@@ -289,28 +262,66 @@ export function PublishPreflightPanel({
   );
 }
 
-function WeeklyAvailabilityGroup({ findings, locations, employees, title, onReviewShift, reviewDisabled, children }: {
+// S3 B (2026-10-04): one folded line says how many people; it opens to a short list.
+function AvailabilityFold({ findings, employees, onReviewShift, reviewDisabled }: {
   readonly findings: readonly SchedulePublishFinding[];
   readonly employees: readonly ScheduleEmployee[];
+  readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
+  readonly reviewDisabled?: boolean;
+}) {
+  const names = [...new Set(findings.map((finding) => finding.employee_name ?? "Employee"))];
+  return (
+    <details className="schedule-publish-availability-fold">
+      <summary>
+        <AvailabilityDot />
+        <span className="schedule-publish-availability-fold-text">
+          <strong>
+            {names.length === 1 ? "1 person is" : `${names.length} people are`} scheduled while unavailable
+          </strong>
+          <small>{countLabel(findings.length, "shift", "shifts")} · {names.join(", ")}</small>
+        </span>
+        <ChevronDown size={16} aria-hidden className="schedule-publish-availability-fold-chevron" />
+      </summary>
+      <ul>
+        {findings.map((finding) => {
+          const name = finding.employee_name ?? "Employee";
+          const day = formatAvailabilityMarkDay(finding.scheduled_date);
+          return (
+            <li key={finding.id}>
+              <span><strong>{name}</strong> · {day}</span>
+              <small>{availabilityHours(finding, employees) ?? "Unavailable"}</small>
+              {onReviewShift && finding.shift_ids.length ? (
+                <button type="button" disabled={reviewDisabled} aria-label={`Show ${name}'s shift on ${day}`} title="Show shift" onClick={() => onReviewShift(finding)}>
+                  <ArrowUpRight size={16} aria-hidden />
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </details>
+  );
+}
+
+function WeeklyAvailabilityGroup({ findings, locations, title, onReviewShift, reviewDisabled }: {
+  readonly findings: readonly SchedulePublishFinding[];
   readonly locations: readonly ScheduleLocation[];
   readonly title: string;
   readonly onReviewShift?: (finding: SchedulePublishFinding) => void;
   readonly reviewDisabled?: boolean;
-  readonly children?: ReactNode;
 }) {
   return <section className="schedule-publish-finding-group risk schedule-publish-weekly-availability">
     <div className="schedule-publish-finding-heading">
-      {findings.every((finding) => finding.code === "availability") ? <AvailabilityDot /> : <AlertTriangle size={16} aria-hidden />}
+      <AlertTriangle size={16} aria-hidden />
       <strong>{title}</strong>
     </div>
-    {findings.map((finding) => { const hours = availabilityHours(finding, employees); return <div key={finding.id} className="schedule-publish-finding-row schedule-publish-availability-row">
-      <div><strong>{finding.code === "availability" ? <AvailabilityDot /> : null}{finding.employee_name ?? (finding.employee_id ? "Employee" : "Unassigned")}</strong>
+    {findings.map((finding) => <div key={finding.id} className="schedule-publish-finding-row schedule-publish-availability-row">
+      <div><strong>{finding.employee_name ?? (finding.employee_id ? "Employee" : "Unassigned")}</strong>
         <small>{finding.scheduled_date} · {finding.location_name ?? locations.find((location) => location.id === finding.location_id)?.name ?? finding.location_id}</small>
-        <span>{hours ? `${finding.message} (${hours})` : finding.message}</span>
+        <span>{finding.message}</span>
       </div>
       {onReviewShift && finding.shift_ids.length ? <button type="button" disabled={reviewDisabled} aria-label={`Show ${finding.employee_name ?? "employee"}'s shift on ${finding.scheduled_date}`} title="Show shift" onClick={() => onReviewShift(finding)}><ArrowUpRight size={16} aria-hidden /></button> : null}
-    </div>; })}
-    {children}
+    </div>)}
   </section>;
 }
 

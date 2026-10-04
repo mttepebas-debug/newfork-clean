@@ -129,10 +129,9 @@ export function ShiftCard({
       <ScheduleAvailabilityCardTip
         employeeName={employeeName}
         day={shift.scheduled_date}
-        startTime={shift.start_time}
-        endTime={shift.end_time}
         windows={windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)}
         timeFormat={timeFormat}
+        changedAfterPublish={shift.availability_changed_after_publish}
       />
     ) : availabilityWarning;
   const availabilityTip = useTooltip(availabilityTipContent, true);
@@ -333,10 +332,9 @@ export function ShiftCard({
             <ScheduleAvailabilityCardTip
               employeeName={employeeName}
               day={shift.scheduled_date}
-              startTime={shift.start_time}
-              endTime={shift.end_time}
               windows={windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)}
               timeFormat={timeFormat}
+              changedAfterPublish={shift.availability_changed_after_publish}
               plain
             />
           ) : availabilityWarning}

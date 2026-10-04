@@ -39,40 +39,18 @@ describe("scheduleAvailabilityMarks", () => {
       employee_intervals: [after2],
       days: marked(["2026-10-20"]),
     }));
-    expect(marks.get("2026-10-20")).toEqual({ kind: "unavailable", windows: [{ from: 840, to: 1440, source: "employee" }] });
+    expect(marks.get("2026-10-20")).toEqual({ kind: "unavailable", windows: [{ from: 840, to: 1440 }] });
     expect(marks.has("2026-10-21")).toBe(false);
   });
 
-  it("names hours no own mark touches a manager note", () => {
+  it("draws only the employee's own hours; a manager's note never reaches the grid (M12)", () => {
     const marks = scheduleAvailabilityMarks(projection({
-      unavailable_intervals: [{ start_at: "2026-10-19T04:00:00Z", end_at: "2026-10-19T20:00:00Z" }],
-      employee_intervals: [],
+      unavailable_intervals: [{ start_at: "2026-10-19T20:00:00Z", end_at: "2026-10-19T22:00:00Z" }],
+      note_intervals: [{ start_at: "2026-10-19T04:00:00Z", end_at: "2026-10-19T16:00:00Z" }],
+      manager_notes: ["", "School mornings", "", "", "", "", ""],
       days: marked(["2026-10-19"]),
     }));
-    expect(marks.get("2026-10-19")).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 960, source: "manager" }] });
-  });
-
-  it("puts the note's words for that weekday on the manager's hours only (G14)", () => {
-    const mine = { start_at: "2026-10-19T20:00:00Z", end_at: "2026-10-19T22:00:00Z" };
-    const notes = ["", "School mornings", "", "", "", "", ""];
-    const marks = scheduleAvailabilityMarks(projection({
-      unavailable_intervals: [{ start_at: "2026-10-19T04:00:00Z", end_at: "2026-10-19T16:00:00Z" }, mine],
-      employee_intervals: [mine],
-      manager_notes: notes,
-      days: marked(["2026-10-19"]),
-    }));
-    expect(marks.get("2026-10-19")).toEqual({ kind: "unavailable", windows: [
-      { from: 0, to: 720, source: "manager", note: "School mornings" },
-      { from: 960, to: 1080, source: "employee" },
-    ] });
-  });
-
-  it("leaves the words out when there are none to read", () => {
-    const night = { start_at: "2026-10-20T04:00:00Z", end_at: "2026-10-20T10:00:00Z" };
-    for (const manager_notes of [null, undefined, ["", "Mornings", " ", "", "", "", ""]]) {
-      const marks = scheduleAvailabilityMarks(projection({ unavailable_intervals: [night], manager_notes, days: marked(["2026-10-20"]) }));
-      expect(marks.get("2026-10-20")).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 360, source: "manager" }] });
-    }
+    expect(marks.get("2026-10-19")).toEqual({ kind: "unavailable", windows: [{ from: 960, to: 1080 }] });
   });
 
   it("marks approved time off red even on a day with no unavailable flag", () => {
@@ -101,12 +79,12 @@ describe("scheduleAvailabilityMarks", () => {
 
 describe("mergeAvailabilityMarks", () => {
   it("keeps one copy of the same window from two locations in one zone", () => {
-    const mark = { kind: "unavailable" as const, windows: [{ from: 840, to: 1440, source: "employee" as const }] };
+    const mark = { kind: "unavailable" as const, windows: [{ from: 840, to: 1440 }] };
     expect(mergeAvailabilityMarks(mark, mark)).toEqual(mark);
   });
   it("lets time off win", () => {
     const off = { kind: "time_off" as const, ranges: [{ from: 0, to: 1440 }] };
-    expect(mergeAvailabilityMarks({ kind: "unavailable", windows: [{ from: 0, to: 60, source: "employee" }] }, off)).toEqual(off);
+    expect(mergeAvailabilityMarks({ kind: "unavailable", windows: [{ from: 0, to: 60 }] }, off)).toEqual(off);
   });
 });
 
@@ -125,8 +103,8 @@ describe("formatting", () => {
 
 describe("windowsDuringShift", () => {
   const windows = [
-    { from: 0, to: 600, source: "manager" as const },
-    { from: 840, to: 1440, source: "employee" as const },
+    { from: 0, to: 600 },
+    { from: 840, to: 1440 },
   ];
   it("keeps the windows the shift touches", () => {
     expect(windowsDuringShift(windows, "16:00:00", "22:00:00")).toEqual([windows[1]]);

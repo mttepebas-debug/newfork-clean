@@ -1,6 +1,6 @@
+import { Clock } from "lucide-react";
 import { Tooltip } from "../../shell/Tooltip";
 import {
-  formatAvailabilityClock,
   formatAvailabilityMarkDay,
   formatAvailabilityRange,
   type AvailabilityWindow,
@@ -13,22 +13,15 @@ function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
 }
 
-function sourceLine(window: AvailabilityWindow, name: string): string {
-  if (window.source === "employee") return `${firstName(name)}'s own availability`;
-  return window.note ? `Manager note: ${window.note}` : "Manager note (only managers see this)";
-}
-
 function WindowLines({ windows, name, timeFormat }: {
   readonly windows: readonly AvailabilityWindow[];
   readonly name: string;
   readonly timeFormat: TimeFormat;
 }) {
   return windows.map((window) => (
-    <span key={`${window.from}-${window.to}-${window.source}`} className="schedule-availability-tip-window">
+    <span key={`${window.from}-${window.to}`} className="schedule-availability-tip-window">
       <strong>{formatAvailabilityRange("unavailable", window, timeFormat)}</strong>
-      <span className="schedule-availability-tip-source" data-note={window.note ? "" : undefined}>
-        {sourceLine(window, name)}
-      </span>
+      <span className="schedule-availability-tip-source">{`${firstName(name)}'s own availability`}</span>
     </span>
   ));
 }
@@ -97,26 +90,39 @@ export function ScheduleAvailabilityCellTip({ mark, employeeName, day, timeForma
   );
 }
 
-/** The bubble on a shift card's "!" (the approved prototype's card tip). */
-export function ScheduleAvailabilityCardTip({ employeeName, day, startTime, endTime, windows, timeFormat, plain = false }: {
+/**
+ * The bubble on a shift card's "!": C3 "Tinted header" (KARARLAR, 2026-10-03)
+ * — name and date in an orange band, the hours below, and a grey pill when the
+ * mark came after the shift's first publish (M11). Nothing to confirm (M9).
+ */
+export function ScheduleAvailabilityCardTip({ employeeName, day, windows, timeFormat, changedAfterPublish = false, plain = false }: {
   readonly employeeName: string;
   readonly day: string;
-  readonly startTime: string;
-  readonly endTime: string;
   readonly windows: readonly AvailabilityWindow[];
   readonly timeFormat: TimeFormat;
+  readonly changedAfterPublish?: boolean;
   readonly plain?: boolean;
 }) {
-  const clock = (value: string) => {
-    const [hour = "0", minute = "0"] = value.split(":");
-    return formatAvailabilityClock(Number(hour) * 60 + Number(minute), timeFormat);
-  };
   return (
     <>
-      <Head kind="unavailable" plain={plain}>{`${employeeName} shows as unavailable for this shift`}</Head>
-      <span>{`${formatAvailabilityMarkDay(day)} · ${clock(startTime)} – ${clock(endTime)}`}</span>
-      <WindowLines windows={windows} name={employeeName} timeFormat={timeFormat} />
-      <span className="schedule-availability-tip-foot">Publish asks you to confirm it.</span>
+      <span className="schedule-availability-tip-band">
+        {plain ? null : <span className="schedule-availability-tip-dot" aria-hidden="true">!</span>}
+        <span className="schedule-availability-tip-who">
+          <strong>{employeeName}</strong>
+          <span>{formatAvailabilityMarkDay(day)}</span>
+        </span>
+      </span>
+      <span className="schedule-availability-tip-body">
+        {windows.map((window) => (
+          <strong key={`${window.from}-${window.to}`}>{formatAvailabilityRange("unavailable", window, timeFormat)}</strong>
+        ))}
+        {changedAfterPublish ? (
+          <span className="schedule-availability-tip-pill">
+            {plain ? null : <Clock size={12} aria-hidden />}
+            Changed after publishing
+          </span>
+        ) : null}
+      </span>
     </>
   );
 }

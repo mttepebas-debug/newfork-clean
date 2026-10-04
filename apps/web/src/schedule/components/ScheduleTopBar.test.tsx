@@ -322,6 +322,23 @@ describe("ScheduleTopBar", () => {
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("alphabetical");
   });
 
+  it("hides and shows the availability marks from the Settings menu, edit mode or not (S1 C)", () => {
+    const onToggleAvailability = vi.fn();
+    const { rerender } = renderTopBar({ showAvailability: true, onToggleAvailability, unassignedRowSettingsDisabled: true });
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const row = screen.getByRole("button", { name: "Hide Availability" });
+    expect(row.getAttribute("aria-pressed")).toBe("true");
+    expect(row).toHaveProperty("disabled", false);
+    fireEvent.click(row);
+    expect(onToggleAvailability).toHaveBeenCalledOnce();
+    rerender(
+      <MemoryRouter>
+        <ScheduleTopBar {...buildTopBarProps({ showAvailability: false, onToggleAvailability })} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("button", { name: "Show Availability" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("keeps the Unassigned Shifts Row settings passive outside edit mode", () => {
     const onToggleUnassignedShifts = vi.fn();
     const onToggleUnassignedFrozen = vi.fn();

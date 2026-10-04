@@ -64,6 +64,7 @@ export function ScheduleGrid({
   showRoleSeparators,
   showPresetShiftBadges,
   useDefaultTimesForScheduling,
+  showAvailability = true,
   employeeSortMode,
   session,
   dragDisabled = false,
@@ -108,6 +109,8 @@ export function ScheduleGrid({
   readonly showRoleSeparators: boolean;
   readonly showPresetShiftBadges: boolean;
   readonly useDefaultTimesForScheduling: boolean;
+  /** Off hides the orange availability marks only (M10); time off stays. */
+  readonly showAvailability?: boolean;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
   readonly session: ScheduleEditSession | null;
   readonly dragDisabled?: boolean;
@@ -169,10 +172,16 @@ export function ScheduleGrid({
   readonly onManageLogo?: () => void;
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const filtered = useMemo(
-    () => filterScheduleModel(model, search),
-    [model, search],
-  );
+  const filtered = useMemo(() => {
+    const next = filterScheduleModel(model, search);
+    // The switch hides the cards' orange "!" too; the rule box still reads the full model.
+    return showAvailability ? next : {
+      ...next,
+      shifts: next.shifts.map((shift) => shift.warning_codes.includes("availability")
+        ? { ...shift, warning_codes: shift.warning_codes.filter((code) => code !== "availability") }
+        : shift),
+    };
+  }, [model, search, showAvailability]);
   const days = createScheduleGridDays({
     selectedDate,
     view,
@@ -204,7 +213,7 @@ export function ScheduleGrid({
     hasEditSession: Boolean(session),
     addDays,
   });
-  const sourceCellStateByKey = useScheduleCellState(model);
+  const sourceCellStateByKey = useScheduleCellState(model, !showAvailability);
   const cellStateByKey = useMemo(
     () =>
       buildDisplayScheduleCellState({

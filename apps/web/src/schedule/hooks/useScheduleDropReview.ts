@@ -4,7 +4,7 @@ import type { SchedulePendingOp, ScheduleShiftMutationInput } from "@newfork/sha
 import { useToast } from "@newfork/ui";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import { ScheduleRequestError } from "../schedule-data";
-import { formatScheduleConflictMessage } from "../schedule-conflicts";
+import { assessmentAvailabilityWarnings, formatScheduleConflictMessage } from "../schedule-conflicts";
 
 interface Drop {
   readonly input: ScheduleShiftMutationInput;
@@ -100,6 +100,12 @@ export function useScheduleDropReview(workspaceId: string | undefined, sessionId
         if (blocked) setOptimisticOps([]);
         return;
       }
+      // The employee's own mark and a manager's note ask on every write (M8, M12).
+      const reminded = assessments.find(value => assessmentAvailabilityWarnings(value).length);
+      if (reminded && !confirmation) {
+        setReview({ drop, assessment: reminded, assessments, blocked: false, warningCount });
+        return;
+      }
       const saved = await drop.save(drop.items.map((item, index) => ({ ...item.input,
         ...(states[index]!.warning ? { availability_assessment_fingerprint: assessments[index]!.fingerprint } : {}),
       })));
@@ -112,7 +118,7 @@ export function useScheduleDropReview(workspaceId: string | undefined, sessionId
           {
             dedupeKey: "schedule-drop-availability-warning",
             description:
-              // Availability only shows on the cell (BL-186).
+              // The mark and the note were answered in the rule box; the toast names the rest.
               [...new Set(assessments.flatMap(value => value?.reasons.filter(reason => reason.code !== "availability" && reason.code !== "note").map(reason => reason.message) ?? []))].join(" "),
           },
         );

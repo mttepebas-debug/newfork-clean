@@ -370,7 +370,8 @@ describe("PublishScheduleDialog", () => {
     const onPublish = vi.fn().mockResolvedValue({});
     render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={onPublish} />);
     await clickReadyNext();
-    expect((await screen.findAllByText(/Alex Rivera shows as unavailable for this shift\./)).length).toBeGreaterThan(0);
+    expect(await screen.findByText("1 person is scheduled while unavailable")).toBeTruthy();
+    expect(screen.getByText("Ready to publish")).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: "I've seen this warning and want to publish anyway" })).toBeNull();
     expect(screen.queryByText(/Acknowledged by/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Next" }));

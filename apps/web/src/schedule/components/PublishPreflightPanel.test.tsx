@@ -6,7 +6,6 @@ import {
   publishGatingRisks,
   publishInformationalFindings,
   publishHardBlockers,
-  publishNewAvailabilityWarnings,
   publishOverrideableBlockers,
 } from "./PublishPreflightPanel";
 
@@ -30,7 +29,7 @@ const preview: SchedulePublicationPreview = {
   findings: [
     {
       id: "soft-finding-1",
-      code: "availability",
+      code: "clopening",
       severity: "soft",
       overrideable: true,
       message: "Alex is outside availability.",
@@ -42,14 +41,15 @@ const preview: SchedulePublicationPreview = {
   ],
 };
 
-// What the database sends for "Ali shows as unavailable" (BL-186).
+// What the database sends for "Ali shows as unavailable": a last look, never asked (M9).
 const availabilityWarning = {
   ...preview.findings[0]!,
   id: "availability-00001",
   code: "availability" as const,
-  availability_state: "new" as const,
-  warning_policy: "confirm" as const,
-  tier: "risk" as const,
+  overrideable: false,
+  conflict_severity: "warn" as const,
+  tier: "note" as const,
+  employee_id: "66666666-6666-4666-8666-666666666666",
   employee_name: "Ali Kaya",
   message: "Ali Kaya shows as unavailable for this shift.",
 };
@@ -88,27 +88,21 @@ describe("PublishPreflightPanel", () => {
     expect(review).toHaveBeenCalledExactlyOnceWith(fresh);
   });
 
-  it("lists a new availability warning with an explicit confirmation (BL-186)", () => {
-    const next = { ...preview, findings: [availabilityWarning] };
-    expect(publishNewAvailabilityWarnings(next)).toEqual([availabilityWarning]);
-    const onAcknowledge = vi.fn();
-    const view = render(
-      <PublishPreflightPanel preview={next} locations={[mainDining]}
-        availabilityAcknowledged={false} onAvailabilityAcknowledgedChange={onAcknowledge} />,
-    );
-    expect(screen.getByText("1 availability warning")).toBeTruthy();
-    expect(screen.getByText("Availability")).toBeTruthy();
-    expect(screen.getByText("Ali Kaya shows as unavailable for this shift.")).toBeTruthy();
-    expect(screen.queryByText(/schedule conflict/)).toBeNull();
-    const confirm = screen.getByRole("checkbox", { name: "I've seen this warning and want to publish anyway" });
-    expect(confirm).toHaveProperty("checked", false);
-    fireEvent.click(confirm);
-    expect(onAcknowledge).toHaveBeenCalledExactlyOnceWith(true);
-    view.rerender(
-      <PublishPreflightPanel preview={{ ...next, findings: [availabilityWarning, { ...availabilityWarning, id: "availability-00002" }] }}
-        locations={[mainDining]} availabilityAcknowledged onAvailabilityAcknowledgedChange={onAcknowledge} />,
-    );
-    expect(screen.getByRole("checkbox", { name: "I've seen these 2 warnings and want to publish anyway" })).toHaveProperty("checked", true);
+  it("folds availability into one line under Ready to publish, with nothing to confirm (S3 B, M9)", () => {
+    const bora = { ...availabilityWarning, id: "availability-00003", employee_id: "77777777-7777-4777-8777-777777777777", employee_name: "Bora Demir", scheduled_date: "2026-08-21" };
+    const next = { ...preview, status: "publish_ready" as const, findings: [availabilityWarning, { ...availabilityWarning, id: "availability-00002", scheduled_date: "2026-08-22" }, bora] };
+    expect(publishInformationalFindings(next)).toEqual([]);
+    const review = vi.fn();
+    render(<PublishPreflightPanel preview={next} locations={[mainDining]} onReviewShift={review} />);
+    expect(screen.getByText("Ready to publish")).toBeTruthy();
+    expect(screen.getByText("No blockers. One thing to glance at below.")).toBeTruthy();
+    const fold = screen.getByText("2 people are scheduled while unavailable").closest("details")!;
+    expect(fold).toHaveProperty("open", false);
+    expect(fold.querySelector("summary")!.textContent).toContain("3 shifts · Ali Kaya, Bora Demir");
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByText("Notes and already-live issues")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show Bora Demir's shift on Fri, Aug 21" }));
+    expect(review).toHaveBeenCalledExactlyOnceWith(bora);
   });
 
   it("never treats a hard finding as a weekly acknowledgement", () => {
@@ -200,8 +194,8 @@ describe("PublishPreflightPanel", () => {
 });
 
 describe("PublishPreflightPanel availability hours (G14)", () => {
-  it("adds the hours the Schedule already holds to the warning line, with the orange mark", () => {
-    const aliId = "66666666-6666-4666-8666-666666666666";
+  it("adds the hours the Schedule already holds to the folded line, with the orange mark", () => {
+    const aliId = availabilityWarning.employee_id;
     const after2 = { start_at: "2026-08-17T21:00:00Z", end_at: "2026-08-18T07:00:00Z" };
     const ali = {
       id: aliId,
@@ -220,7 +214,8 @@ describe("PublishPreflightPanel availability hours (G14)", () => {
         employees={[ali]}
       />,
     );
-    expect(screen.getByText("Ali Kaya shows as unavailable for this shift. (unavailable after 2:00 PM)")).toBeTruthy();
-    expect(document.querySelectorAll(".schedule-publish-weekly-availability .schedule-availability-tip-dot")).toHaveLength(2);
+    expect(screen.getByText("1 person is scheduled while unavailable")).toBeTruthy();
+    expect(screen.getByText("Unavailable after 2:00 PM")).toBeTruthy();
+    expect(document.querySelectorAll(".schedule-publish-availability-fold .schedule-availability-tip-dot")).toHaveLength(1);
   });
 });

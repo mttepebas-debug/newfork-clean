@@ -89,7 +89,7 @@ describe("buildScheduleCellState", () => {
       }],
     }] };
     const cells = buildScheduleCellState(changed);
-    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.availabilityMark).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 1440, source: "employee" }] });
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.availabilityMark).toEqual({ kind: "unavailable", windows: [{ from: 0, to: 1440 }] });
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.availabilityMark).toBeUndefined();
   });

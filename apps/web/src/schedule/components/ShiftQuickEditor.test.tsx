@@ -166,23 +166,54 @@ describe("ShiftQuickEditor", () => {
   }
   const weeklyWarning = weekly("warn");
 
-  it("saves over the employee's unavailable hours without asking (BL-186)", async () => {
+  const noteReason = { code: "note", message: "The assignment overlaps hours a manager noted for this person.", definite: true, severity: "warn" as const };
+
+  it("asks with the rule box on every save over the employee's unavailable hours (M8)", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, has_availability_conflict: true,
       availability_fingerprint: "c".repeat(64), reasons: [availabilityReason] });
     const onSubmit = renderAssigned();
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
+    expect(sheet.textContent).toContain("unavailable hours");
+    expect(sheet.textContent).toContain("Do you want to assign this shift anyway?");
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("availability_assessment_fingerprint");
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it("leaves availability out of another rule's confirmation (BL-186)", async () => {
+  it("puts the employee's mark into another rule's confirmation, one box", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValue({ ...weekly("confirm"), reasons: [...weekly("confirm").reasons, availabilityReason] });
     renderAssigned();
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
     expect(sheet.textContent).toContain("not enough rest time");
-    expect(sheet.textContent).not.toContain("unavailable hours");
+    expect(sheet.textContent).toContain("unavailable hours");
+  });
+
+  it("asks with the note card under the cell when only a manager's note applies (S2 B)", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [noteReason] });
+    const onSubmit = renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await screen.findByRole("dialog", { name: /^Manager note for / });
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog", { name: /^Manager note for / })).toBeNull();
+  });
+
+  it("shows the mark and the note on one shift as one box with two lines", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [availabilityReason, noteReason] });
+    renderAssigned();
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
+    expect([...sheet.querySelectorAll("[role=alert] p")].map((line) => line.textContent)).toEqual([
+      "The assignment overlaps unavailable hours.",
+      "The assignment overlaps hours a manager noted for this person.",
+    ]);
+    expect(screen.queryByRole("dialog", { name: /^Manager note for / })).toBeNull();
   });
 
   it("saves a weekly warn conflict with one toast and no written reason", async () => {

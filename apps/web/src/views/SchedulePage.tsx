@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   Check,
   ClipboardPaste,
+  Eye,
+  EyeOff,
   FileDown,
   LayoutTemplate,
   Save,
@@ -87,6 +89,8 @@ import { DefaultHoursReviewDialog } from "../schedule/components/DefaultHoursRev
 import { DraftDropdownMenu } from "../schedule/components/DraftDropdownMenu";
 import { EnterEditModeDialog } from "../schedule/components/EnterEditModeDialog";
 import { ScheduleConflictSheet } from "../schedule/components/ScheduleConflictSheet";
+import { ScheduleNoteConfirm } from "../schedule/components/ScheduleNoteConfirm";
+import { scheduleDropReviewAsk } from "../schedule/lib/scheduleDropReviewAsk";
 import { ScheduleEditLockedDialog as ScheduleEditLockedDialogComponent } from "../schedule/components/ScheduleEditLockedDialog";
 import { ScheduleEditTimeoutDialog as ScheduleEditTimeoutDialogComponent } from "../schedule/components/ScheduleEditTimeoutDialog";
 import { ExportController } from "../schedule/export-v2/ExportController";
@@ -122,6 +126,7 @@ import { saveScheduleLogo } from "../settings/organization-data";
 import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessage,
+  isAvailabilityReminder,
   scheduleConflictSeverity,
   type ScheduleConflictReason,
 } from "../schedule/schedule-conflicts";
@@ -542,6 +547,9 @@ export function SchedulePage({
     usePersistentScheduleUiBoolean("showPresetShiftBadges", true);
   const [useDefaultTimesForScheduling, setUseDefaultTimesForScheduling] =
     usePersistentScheduleUiBoolean("useDefaultTimesForScheduling", false);
+  // Hides the orange marks only; approved time off, the rule box and Pre-flight stay (M10, S1).
+  const [showAvailability, setShowAvailability] =
+    usePersistentScheduleUiBoolean("showAvailability", true);
   const [showUnassignedShifts, setShowUnassignedShifts] = useState(true);
   const [employeeCardId, setEmployeeCardId] = useState<string | null>(null);
   const [employeeCardSection, setEmployeeCardSection] = useState<
@@ -1884,6 +1892,13 @@ export function SchedulePage({
     );
 
   const model = { ...query.data, shifts: effectiveShifts };
+  const dropReviewAsk = dropReview.review
+    ? scheduleDropReviewAsk(model, dropReview.review.drop.items.map((item) => item.input), dropReview.review.assessments)
+    : null;
+  // A drop the week on screen already flags waits for the server's check, so
+  // its rule box opens before anything is written (M8, M12).
+  const asksBeforeWrite = (input: ScheduleShiftMutationInput, shiftId: string | null) =>
+    evaluateScheduleShiftConflicts(model, model.shifts, input, shiftId).some(isAvailabilityReminder);
   const sortedModel = createSortedScheduleModel(model, employeeSortMode);
   const publishDrafts = publishDraftOverride
     ? [
@@ -2545,6 +2560,8 @@ export function SchedulePage({
         onToggleUseDefaultTimesForScheduling={() =>
           setUseDefaultTimesForScheduling((current) => !current)
         }
+        showAvailability={showAvailability}
+        onToggleAvailability={() => setShowAvailability((current) => !current)}
         employeeSortMode={employeeSortMode}
         onEmployeeSortModeChange={handleEmployeeSortModeChange}
         locations={model.locations}
@@ -2627,6 +2644,16 @@ export function SchedulePage({
             </button>
           ) : null}
           {gridEditSession ? (
+            <button
+              type="button"
+              aria-pressed={showAvailability}
+              onClick={() => setShowAvailability((current) => !current)}
+            >
+              {showAvailability ? <Eye size={15} /> : <EyeOff size={15} />}{" "}
+              {showAvailability ? "Availability on" : "Availability off"}
+            </button>
+          ) : null}
+          {gridEditSession ? (
             <button type="button" onClick={() => void openAutoFill()}>
               <WandSparkles size={15} /> Auto-fill
             </button>
@@ -2662,6 +2689,7 @@ export function SchedulePage({
         showRoleSeparators={showRoleSeparators}
         showPresetShiftBadges={showPresetShiftBadges}
         useDefaultTimesForScheduling={useDefaultTimesForScheduling}
+        showAvailability={showAvailability}
         employeeSortMode={employeeSortMode}
         session={gridEditSession}
         dragDisabled={dropReview.pending || Boolean(dropReview.review)}
@@ -2772,7 +2800,7 @@ export function SchedulePage({
           dropReview.start({
             shiftId: shift.id,
             input,
-            optimisticOp: createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "update", targetShiftId: shift.id,
+            optimisticOp: asksBeforeWrite(input, shift.id) ? undefined : createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "update", targetShiftId: shift.id,
               draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
             save: async input => Boolean(await mutate(() => updateScheduleShift(context.workspace.id, gridEditSession, shift.id, shift.revision, input), undefined, true)),
           });
@@ -2782,7 +2810,7 @@ export function SchedulePage({
           const input = toScheduleShiftMutation(shift, { location_id: locationId, employee_id: employeeId, scheduled_date: date });
           dropReview.start({
             input,
-            optimisticOp: createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "create", targetShiftId: null,
+            optimisticOp: asksBeforeWrite(input, null) ? undefined : createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "create", targetShiftId: null,
               draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
             save: async input => Boolean(await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input), undefined, true)),
           });
@@ -3031,9 +3059,18 @@ export function SchedulePage({
           setPasteConflictContext(null);
         }}
       />
-      {dropReview.review ? <ScheduleConflictSheet
+      {dropReviewAsk?.kind === "note" ? (
+        <ScheduleNoteConfirm
+          cell={dropReviewAsk.cell}
+          employeeName={dropReviewAsk.employeeName}
+          text={dropReviewAsk.text}
+          disabled={dropReview.pending}
+          onPlace={dropReview.confirm}
+          onCancel={dropReview.dismiss}
+        />
+      ) : dropReview.review ? <ScheduleConflictSheet
         open
-        messages={[...new Set(dropReview.review.assessments.flatMap(assessment => assessment?.reasons.map(reason => reason.message) ?? []))]}
+        messages={dropReviewAsk?.messages ?? []}
         description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : "Review these scheduling conflicts before placing the shift."}
         tone={dropReview.review.blocked ? "blocker" : "warning"}
         submitLabel={dropReview.review.blocked ? undefined : "Place shift"}

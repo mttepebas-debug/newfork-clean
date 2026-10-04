@@ -51,11 +51,12 @@ export function orderScheduleCellShifts(
     .map((item) => item.shift);
 }
 
-export function buildScheduleCellState(model: ScheduleReadModel): ScheduleCellStateMap {
+export function buildScheduleCellState(model: ScheduleReadModel, hideAvailability = false): ScheduleCellStateMap {
   const cells = new Map<string, MutableScheduleCellState>();
   for (const employee of model.employees) {
     for (const location of employee.weekly_availability ?? []) {
       for (const [date, mark] of scheduleAvailabilityMarks(location)) {
+        if (hideAvailability && mark.kind === "unavailable") continue;
         ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id)).availabilityMark = mark;
       }
     }
@@ -166,7 +167,7 @@ export function buildDisplayScheduleCellState({
   return displayState;
 }
 
-export function useScheduleCellState(model: ScheduleReadModel): ScheduleCellStateMap {
+export function useScheduleCellState(model: ScheduleReadModel, hideAvailability = false): ScheduleCellStateMap {
   const version = `${model.locations.map((location) => location.id).join(",")}|${model.closures
     .map(
       (closure) =>
@@ -180,7 +181,7 @@ export function useScheduleCellState(model: ScheduleReadModel): ScheduleCellStat
     .join("|")}|${model.employees
     .map((employee) => `${employee.id}:${employee.location_ids.join(",")}`)
     .join("|")}`;
-  return useMemo(() => buildScheduleCellState(model), [model, version]);
+  return useMemo(() => buildScheduleCellState(model, hideAvailability), [model, version, hideAvailability]);
 }
 
 interface MutableScheduleCellState {

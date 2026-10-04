@@ -168,6 +168,23 @@ function renderGrid(
 }
 
 describe("ScheduleGrid", () => {
+  it.each([true, false])("with availability shown = %s, the orange marks follow the switch and red time off stays (S1, M10)", (showAvailability) => {
+    const base = scheduleModel();
+    const model = scheduleModel({
+      employees: [{ ...base.employees[0]!, weekly_availability: [{ location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles",
+        week_start: base.week_start, status: "ready",
+        unavailable_intervals: [{ start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-18T07:00:00Z" }],
+        leave_intervals: [{ start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-19T07:00:00Z" }],
+        clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+        days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: index === 0, all_day: index === 0 })) }] }],
+      shifts: base.shifts.map((shift) => ({ ...shift, warning_codes: ["availability" as const] })),
+    });
+    const { container } = renderGrid({ model, session: editSession(model), showAvailability });
+    expect(container.querySelectorAll('[data-availability-kind="unavailable"]').length > 0).toBe(showAvailability);
+    expect(container.querySelector(".schedule-shift-availability-flag") !== null).toBe(showAvailability);
+    expect(container.querySelector('[data-availability-kind="time_off"]')).not.toBeNull();
+  });
+
   it.each(["separate", "unified"] as const)(
     "fits one visible location into seven columns in %s mode",
     (layout) => {

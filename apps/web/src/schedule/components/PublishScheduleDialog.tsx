@@ -168,7 +168,6 @@ export function PublishScheduleDialog({
   );
   // The publisher ticks "I've seen this warning" for the preview they read;
   // a refreshed preview asks again (BL-186).
-  const [availabilityAckFingerprint, setAvailabilityAckFingerprint] = useState<string | null>(null);
   const [availabilityConfirmedFingerprint, setAvailabilityConfirmedFingerprint] = useState<string | null>(null);
   const [preflightBlockReason, setPreflightBlockReason] =
     useState<PublishPreflightBlockReason | null>(null);
@@ -222,11 +221,7 @@ export function PublishScheduleDialog({
   const riskFindings = preview ? publishGatingRisks(preview) : [];
   const newAvailability = preview ? publishNewAvailabilityFindings(preview) : [];
   const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
-  const availabilityWarnings = newAvailability.filter((finding) => finding.code === "availability");
-  const newConflicts = newAvailability.filter((finding) => finding.code !== "availability");
-  const availabilityAcknowledged = !availabilityWarnings.length || availabilityAckFingerprint === preview?.fingerprint;
-  const availabilityConfirmed = availabilityAcknowledged &&
-    (!needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint);
+  const availabilityConfirmed = !needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint;
   const hasHardBlocker = hardFindings.length > 0;
   const publishBlocked =
     hasHardBlocker ||
@@ -309,7 +304,6 @@ export function PublishScheduleDialog({
     setSelectedDepartmentKeys(restoredChoices ? allDepartmentKeys.filter((key) => restoredChoices.departmentKeys.includes(key)) : allDepartmentKeys);
     setPreview(null);
     setStep(1);
-    setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
     setStaleNotice(null);
     setScheduleConflicts([]);
@@ -326,7 +320,6 @@ export function PublishScheduleDialog({
   useEffect(() => {
     setPreview(null);
     setStep(1);
-    setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
     setStaleNotice(null);
     setScheduleConflicts([]);
@@ -346,7 +339,6 @@ export function PublishScheduleDialog({
   const forgetCheck = () => {
     setPreview(null);
     setStep(1);
-    setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
     setStaleNotice(null);
     setScheduleConflicts([]);
@@ -361,7 +353,6 @@ export function PublishScheduleDialog({
   const applyPreview = (nextPreview: SchedulePublicationPreview) => {
     setPreview(nextPreview);
     setEmployeeSearch("");
-    setAvailabilityAckFingerprint(null);
     setPreflightBlockReason(null);
   };
 
@@ -493,8 +484,7 @@ export function PublishScheduleDialog({
         setPreview(preflightError.preview);
         setStep(2);
         setPreflightBlockReason(preflightError.blockReason);
-        setAvailabilityAckFingerprint(null);
-        setAvailabilityConfirmedFingerprint(null);
+            setAvailabilityConfirmedFingerprint(null);
         setError(null);
       } else {
         const recoveryError = parsePublishRecoveryError(caught);
@@ -527,8 +517,7 @@ export function PublishScheduleDialog({
           setStep(1);
           setError(null);
         } else {
-          // Say why publishing stopped (e.g. "Acknowledge the availability
-          // warnings before publishing"), not that the preview failed.
+          // Say why publishing stopped, not that the preview failed.
           setStaleNotice((caught as Error).message);
           setError(null);
           setPreview(null);
@@ -782,10 +771,6 @@ export function PublishScheduleDialog({
               preview={preview}
               locations={locations}
               employees={employees}
-              availabilityAcknowledged={availabilityAcknowledged}
-              onAvailabilityAcknowledgedChange={(value) =>
-                setAvailabilityAckFingerprint(value ? preview.fingerprint : null)
-              }
               blockReason={preflightBlockReason}
               reviewDisabled={pending || reviewingShift || isPublishing}
               onReviewShift={onReviewShift ? (finding) => {
@@ -909,8 +894,7 @@ export function PublishScheduleDialog({
                       ? countLabel(hardFindings.length + softFindings.length, "blocker", "blockers")
                       : null,
                     riskFindings.length ? countLabel(riskFindings.length, "risk", "risks") : null,
-                    newConflicts.length ? countLabel(newConflicts.length, "schedule conflict", "schedule conflicts") : null,
-                    availabilityWarnings.length ? countLabel(availabilityWarnings.length, "availability warning", "availability warnings") : null,
+                    newAvailability.length ? countLabel(newAvailability.length, "schedule conflict", "schedule conflicts") : null,
                   ]
                     .filter(Boolean)
                     .join(" · ") || "No blockers or risks"
@@ -926,8 +910,7 @@ export function PublishScheduleDialog({
                   return;
                 }
                 setStep(1);
-                setAvailabilityAckFingerprint(null);
-                setPreflightBlockReason(null);
+                            setPreflightBlockReason(null);
                 setStaleNotice(null);
                 setScheduleConflicts([]);
                 setError(null);
@@ -943,7 +926,7 @@ export function PublishScheduleDialog({
             <button
               type="button"
               className="primary"
-              disabled={pending || reviewingShift || isPublishing || publishBlocked || !availabilityAcknowledged}
+              disabled={pending || reviewingShift || isPublishing || publishBlocked}
               onClick={() => {
                 setAvailabilityConfirmedFingerprint(preview?.fingerprint ?? null);
                 setStep(3);

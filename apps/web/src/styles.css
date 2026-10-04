@@ -5955,15 +5955,53 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-availability-tip-source {
   color: var(--theme-muted);
 }
-/* A note can be long (1000 characters) and unbroken; the bubble shows four
-   lines and Employees > Availability the rest. Screen readers get all of it. */
-.schedule-availability-tip-source[data-note] {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  overflow: hidden;
-  overflow-wrap: anywhere;
+/* The card's "!" bubble: C3 "Tinted header" (KARARLAR, 2026-10-03). The band
+   reaches the bubble's edges over the rich tooltip's 10px 12px padding. */
+.schedule-availability-tip-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -10px -12px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--theme-availability) 25%, transparent);
+  border-radius: 7px 7px 0 0;
+  padding: 9px 12px;
+  background: var(--theme-availability-soft);
+}
+.schedule-availability-tip-band .schedule-availability-tip-dot {
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+}
+.schedule-availability-tip-who {
+  display: grid;
+}
+.schedule-availability-tip-who strong {
+  color: var(--theme-text);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.schedule-availability-tip-who span {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+}
+.schedule-availability-tip-body {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding-top: 9px;
+}
+.schedule-availability-tip-body strong {
+  font-weight: 600;
+}
+.schedule-availability-tip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
 }
 .schedule-availability-tip-foot {
   margin-top: 4px;
@@ -9043,38 +9081,81 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 11px;
   line-height: 1.45;
 }
-.schedule-publish-risk-ack {
+/* Pre-flight availability (S3 B, M9): one folded line, nothing to confirm. */
+.schedule-publish-availability-fold {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+.schedule-publish-availability-fold summary {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
-  margin-top: 4px;
-  border: 1px solid var(--theme-muted);
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font-size: 13px;
-  font-weight: 500;
+  padding: 10px 12px;
   cursor: pointer;
+  list-style: none;
 }
-.schedule-publish-risk-ack input {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--theme-accent);
+.schedule-publish-availability-fold summary::-webkit-details-marker {
+  display: none;
 }
-.schedule-publish-risk-ack:has(input:focus-visible) {
-  outline: 2px solid var(--theme-accent);
+.schedule-publish-availability-fold summary:focus-visible {
+  outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }
-.schedule-publish-availability-row .schedule-publish-acknowledged {
-  color: var(--theme-muted-strong);
-  opacity: 1;
+.schedule-publish-availability-fold-text {
+  display: grid;
+  flex: 1;
 }
-.schedule-publish-risk-ack span {
-  color: inherit;
+.schedule-publish-availability-fold summary strong {
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.schedule-publish-availability-fold summary small {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.schedule-publish-availability-fold[open] .schedule-publish-availability-fold-chevron {
+  transform: rotate(180deg);
+}
+.schedule-publish-availability-fold ul {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 4px 12px 8px 37px;
+  list-style: none;
+}
+.schedule-publish-availability-fold li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 8px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  padding: 6px 0;
+  font-size: 12.5px;
+}
+.schedule-publish-availability-fold li:last-child {
+  border-bottom: 0;
+}
+.schedule-publish-availability-fold li small {
+  grid-row: 2;
+  color: var(--theme-warning-text);
+}
+.schedule-publish-availability-fold li button {
+  display: inline-grid;
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  cursor: pointer;
+}
+.schedule-publish-availability-fold li button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
 }
 .schedule-publish-notify {
   display: grid;
@@ -10770,6 +10851,48 @@ button.workspace-switcher-item:hover:not(:disabled) {
   line-height: 1.4;
   overflow-wrap: anywhere;
   white-space: pre-line;
+}
+/* A manager's note met while placing a shift (S2 B): the note card under the
+   cell, asking once with the rule box's buttons. */
+.schedule-note-confirm {
+  display: grid;
+  gap: 4px;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  animation: none;
+}
+.schedule-note-confirm footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding-top: 8px;
+}
+.schedule-note-confirm footer button {
+  min-height: 31px;
+  border: 1px solid #bac7c1;
+  border-radius: 5px;
+  padding: 0 11px;
+  background: var(--theme-surface);
+  color: #26312d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+}
+.schedule-note-confirm footer button.primary {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.schedule-note-confirm footer button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.schedule-note-confirm footer button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
 }
 @keyframes schedule-shift-note-card-in {
   from {

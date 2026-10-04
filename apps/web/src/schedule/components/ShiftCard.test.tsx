@@ -78,7 +78,7 @@ describe("ShiftCard", () => {
     renderShiftCard({
       shift: { ...shift, scheduled_date: "2026-10-20", start_time: "16:00", end_time: "22:00", warning_codes: ["availability"] },
       employeeName: "Ali Kaya",
-      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440, source: "employee" }] },
+      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440 }] },
     });
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
     expect(badge.getAttribute("aria-label")).toContain("Ali Kaya shows as unavailable for this shift");
@@ -98,12 +98,28 @@ describe("ShiftCard", () => {
     Object.defineProperties(over, { pointerType: { value: "mouse" }, buttons: { value: 0 } });
     fireEvent(flag, over);
     const bubble = screen.getByRole("tooltip");
-    expect(bubble.textContent).toBe(
-      "!Ali Kaya shows as unavailable for this shift" +
-        "Tue, Oct 20 · 4:00 PM – 10:00 PM" +
-        "Unavailable after 2:00 PMAli's own availability" +
-        "Publish asks you to confirm it.",
-    );
+    // C3 "Tinted header": name, date, the hours; nothing to confirm (M9).
+    expect(bubble.textContent).toBe("!Ali KayaTue, Oct 20Unavailable after 2:00 PM");
+    expect(bubble.querySelector(".schedule-availability-tip-band")).not.toBeNull();
+    expect(bubble.querySelector(".schedule-availability-tip-pill")).toBeNull();
+  });
+  it("says \"Changed after publishing\" on a mark that came after the first publish (M11, C3)", () => {
+    renderShiftCard({
+      shift: { ...shift, scheduled_date: "2026-10-22", start_time: "11:00", end_time: "19:00", warning_codes: ["availability"], availability_changed_after_publish: true },
+      employeeName: "Ali Kaya",
+      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440 }] },
+    });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    const description = badge.getAttribute("aria-describedby")!
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(" ");
+    expect(description).toContain("Changed after publishing");
+    const flag = badge.querySelector(".schedule-shift-availability-flag")!;
+    const over = new Event("pointerover", { bubbles: true });
+    Object.defineProperties(over, { pointerType: { value: "mouse" }, buttons: { value: 0 } });
+    fireEvent(flag, over);
+    expect(screen.getByRole("tooltip").textContent).toBe("!Ali KayaThu, Oct 22Unavailable after 2:00 PMChanged after publishing");
   });
   it("opens the \"!\" bubble on a tap without the tap reaching the card, and closes it on a tap elsewhere (G14)", () => {
     const onSelect = vi.fn();
@@ -112,7 +128,7 @@ describe("ShiftCard", () => {
     renderShiftCard({
       shift: { ...shift, scheduled_date: "2026-10-20", start_time: "16:00", end_time: "22:00", warning_codes: ["availability"] },
       employeeName: "Ali Kaya",
-      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440, source: "employee" }] },
+      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440 }] },
       onSelect,
       onFocus,
       onEdit,
