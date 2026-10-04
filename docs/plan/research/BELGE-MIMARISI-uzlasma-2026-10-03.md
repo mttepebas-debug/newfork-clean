@@ -13,6 +13,8 @@
 > - **Rafta olmayan:** canlıdaki FB-6.6 (A1+A2+B, main `84ada590` / `f4dce985`) olduğu gibi kalır.
 >   A3'ün 8 e2e senaryosu (`task/fb-6.6-a3` @`2ba927b3`) koşturulup main'e alınır, FB-6.6
 >   "bugünkü hâliyle" kapanır. Yön değişirse testler yeni kurala göre yeniden yazılır.
+> - **Raftan iniyor (kullanıcı kararı 2026-10-04, Mert, işçi oturumu 2 `local_1628762e…`'ın penceresinde; işçi raporu `.newfork-inbox/done/20261004T211002-isci-2-nf-arayuz-belge-karma.md`; koordinatör beslemesi #170):** onboarding belgeleri için karma akış seçildi (KARARLAR Ürün kuralları → "Onboarding belgeleri — karma akış"; taslak https://claude.ai/artifact/PSSd8Nxgbe8BjY78oCkJim v1, Mert onayladı). Önce iki ön koşul: BL-560 (yerleşik Manager rolünde belge izni yok) ve bu dosyanın uzlaştırılması (karma kararları bazı U satırlarının yerine geçebilir; dönüşte her U satırı Mert'e yeniden teyit ettirilir). Sıra Mert'le henüz belirlenmedi; tek hat: AVAIL-002 kapanınca sıraya girer.
+>   **"Açık" listesinin onboarding maddesi cevaplandı (madde 8):** zorunlu belge "settingsteki ayarlara ve belge türlerine göre" bekler (Mert'in kendi sözü; önerilen "yüklemeyi bekler" reddedildi): "Manager review required" olan Required belgede kişi onayı bekler, olmayanda yüklemeyi bekler; workspace ayarı "manager approval" ise müdür ayrıca onboarding'in tamamını onaylar. Sıradaki dönüş noktası: "sonradan yayınlanan zorunlu belge" ve listenin kalanı.
 > - **Dönüş noktası (kaldığımız yer):** "Açık" listesinin ilk maddesi: onboarding'in ince noktaları
 >   (zorunlu belge onay mı yükleme mi bekler), sonra bildirim içerikleri, sonra uygulama sırası /
 >   parçalama. `nf-db`'nin okuyucu ölçümü (16 doğrudan, 28 servislik geçişli zincir, a/b/c yolları)
