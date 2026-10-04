@@ -111,6 +111,24 @@ const onboarding = {
   ],
 };
 
+// Only an employee has the availability step (M13); their onboarding lists it.
+const employeeOnboarding = {
+  ...onboarding,
+  requirements: [
+    ...onboarding.requirements,
+    {
+      ...onboarding.requirements[0]!,
+      id: "ab930000-0000-4000-8000-000000000003",
+      kind: "availability" as const,
+      title: "Availability",
+      required: false,
+      blocks_activation: false,
+    },
+  ],
+};
+function RouteMarker() {
+  return <output aria-label="Current test route">{useLocation().pathname}</output>;
+}
 function weeklyModel(): WeeklyPreferenceRead {
   return {
     employee_id: onboarding.employee_id,
@@ -160,7 +178,7 @@ describe("EmployeeOnboardingPage", () => {
 
   it("does not navigate using cached onboarding data when the post-save refresh fails", async () => {
     vi.mocked(getMyOnboarding)
-      .mockResolvedValueOnce(onboarding)
+      .mockResolvedValueOnce(employeeOnboarding)
       .mockRejectedValue(new Error("Onboarding refresh offline"));
     function RouteMarker() {
       return (
@@ -235,7 +253,30 @@ describe("EmployeeOnboardingPage", () => {
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
   });
 
+  // M13: a manager or admin has no availability step; its address leads to the first step.
+  it("sends a person without an availability step from its address to the first step", async () => {
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
+          <RouteMarker />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current test route").textContent).toBe(
+        "/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile",
+      ),
+    );
+    expect(loadWeeklyPreferences).not.toHaveBeenCalled();
+  });
+
   it("leaves an unsaved weekly draft without an availability prompt", async () => {
+    vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
     render(
       <QueryClientProvider
         client={
@@ -260,8 +301,10 @@ describe("EmployeeOnboardingPage", () => {
 
   it("confirms an empty required week through the onboarding endpoint before continuing", async () => {
     vi.mocked(getMyOnboarding).mockResolvedValue({
-      ...onboarding,
+      ...employeeOnboarding,
       first_actionable_path: "/welcome/review",
+      requirements: employeeOnboarding.requirements.map((item) =>
+        item.kind === "availability" ? { ...item, required: true, blocks_activation: true } : item),
     });
     render(
       <QueryClientProvider
@@ -332,6 +375,7 @@ describe("EmployeeOnboardingPage", () => {
   });
 
   it("keeps the weekly draft and route after a rejected save", async () => {
+    vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
     vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
       new Error("Settings changed; refresh required"),
     );

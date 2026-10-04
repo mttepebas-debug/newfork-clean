@@ -144,7 +144,9 @@ export default function EmployeeOnboardingPage() {
         page={pathname === profilePagePath.emergency ? "emergency" : "personal"}
         onPage={(next) => navigateRequirement(profilePagePath[next])}
       />
-    ) : pathname === "/welcome/availability" ? (
+    ) : pathname === "/welcome/availability" &&
+      // M13: only an employee has the step; anybody else goes to the first one.
+      model.requirements.some((item) => item.kind === "availability") ? (
       <AvailabilityStep
         key={`${model.workspace_id}:${model.employee_id}`}
         model={model}
