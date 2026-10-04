@@ -59,6 +59,11 @@ async function openAddShift(page: Page, name: string, date: string, start: strin
   const editor = page.getByRole("dialog", { name: "Add shift", exact: true });
   await editor.getByLabel("Start time").fill(start);
   await editor.getByLabel("End time").fill(end);
+  // The hours typed are the hours written: a time that slips back to the
+  // default would still overlap and hide behind a passing box.
+  const shown = (clock: string) => clock.replace(/^(\d):/, "0$1:");
+  await expect(editor.getByLabel("Start time")).toHaveValue(shown(start));
+  await expect(editor.getByLabel("End time")).toHaveValue(shown(end));
   await editor.getByRole("button", { name: "Add shift", exact: true }).click();
   return editor;
 }
@@ -361,7 +366,9 @@ test("M4, M5, D4: the owner changes the entry mode; an employee with no saved we
   try {
     // Settings > Scheduling > Availability: Time range -> Shift type.
     const settings = owner.getByRole("region", { name: "Availability settings", exact: true });
-    await settings.getByRole("radio", { name: "Shift type", exact: true }).check();
+    // The radio itself is visually hidden; the owner presses its label.
+    await settings.locator("label", { hasText: "Shift type" }).click();
+    await expect(settings.getByRole("radio", { name: "Shift type", exact: true })).toBeChecked();
     await expect(settings).toContainText("Employees will be notified to check theirs.");
     await settings.getByRole("button", { name: "Save", exact: true }).click();
     await expect(settings.getByRole("status")).toHaveText("Saved");
