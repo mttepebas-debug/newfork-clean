@@ -552,10 +552,25 @@ describe("EmployeeHubPage", () => {
     expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
-  it("discards an unsaved weekly draft without a prompt but protects a time-off draft on tab changes", async () => {
+  // C2.4: the dashboard's "My availability" opens the Availability tab itself.
+  it("opens the Availability tab from the dashboard, without a dead anchor", async () => {
+    renderPage();
+    const link = await screen.findByRole("link", { name: /My availability/ });
+    expect(link.getAttribute("href")).toMatch(/\/my-availability\?section=availability$/);
+    fireEvent.click(link);
+    expect(await screen.findByRole("tab", { name: "Availability" })).toHaveProperty("ariaSelected", "true");
+  });
+
+  // C2.3, P26: both drafts ask before a tab change loses them.
+  it("protects an unsaved weekly draft and a time-off draft on tab changes", async () => {
     renderPage("/app/employee-hub/my-availability");
     fireEvent.click(await screen.findByRole("switch", { name: "Monday all day unavailable" }));
     fireEvent.click(screen.getByRole("tab", { name: "Time Off Requests" }));
+    expect(screen.getByRole("alertdialog").textContent).toContain("Discard availability changes?");
+    fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
+    expect(screen.getByRole("switch", { name: "Monday all day unavailable" })).toHaveProperty("checked", true);
+    fireEvent.click(screen.getByRole("tab", { name: "Time Off Requests" }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
     expect(screen.queryByRole("alertdialog")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Availability" }));

@@ -8,6 +8,7 @@ import {
   type WeeklyPreferenceSave,
 } from "@newfork/shared";
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
+import { useAvailabilityNavigationGuard } from "./availability-navigation";
 
 type Props = {
   model: WeeklyPreferenceRead;
@@ -156,6 +157,14 @@ function PreferenceForm({
     />
   );
 
+  // P26, C2.3: the employee's own week (My availability, onboarding) asks
+  // before unsaved hours are lost; the Employees drawer never asks (K7).
+  const leaveDialog = useAvailabilityNavigationGuard({
+    dirty: !manager && dirty,
+    busy: !manager && saving,
+    onDiscard: () => reset(baseline),
+  });
+
   return (
     <section
       className="weekly-preferences-panel"
@@ -167,6 +176,7 @@ function PreferenceForm({
             : "Weekly availability"
       }
     >
+      {leaveDialog}
       {reminders && (
         <div
           role="tablist"

@@ -231,7 +231,7 @@ export function EmployeeDashboard({
               </p>
               <Link
                 className="eh-hero-button"
-                to={`${base}/my-availability?section=availability#availability`}
+                to={`${base}/my-availability?section=availability`}
               >
                 Update availability
                 <ArrowUpRight size={18} />
@@ -316,7 +316,7 @@ export function EmployeeDashboard({
               label: "My availability",
               detail: "Let your team know",
               icon: Clock3,
-              to: "my-availability?section=availability#availability",
+              to: "my-availability?section=availability",
             },
             {
               label: "Open shifts",

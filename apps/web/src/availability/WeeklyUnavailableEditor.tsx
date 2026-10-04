@@ -21,6 +21,10 @@ const weekdays = [
   "Saturday",
 ];
 const displayDays = [1, 2, 3, 4, 5, 6, 0];
+const clockMinutes = (value: string) =>
+  Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
+const clock = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 
 export function WeeklyUnavailableEditor({
   value,
@@ -66,6 +70,28 @@ export function WeeklyUnavailableEditor({
     type.start_time && type.end_time
       ? `${formatAvailabilityClock(type.start_time, timeFormat)} - ${formatAvailabilityClock(type.end_time, timeFormat)}${type.archived ? " (archived)" : ""}`
       : "Default hours need updating";
+  // M3, D6: the types a day can take now; marking all of them is all day.
+  const selectableTypes = shiftTypes.filter((type) => type.selectable);
+  const toggleType = (row: WeeklyPreferenceDay, id: string) => {
+    const next = row.shift_type_ids.includes(id)
+      ? row.shift_type_ids.filter((item) => item !== id)
+      : [...row.shift_type_ids, id];
+    update(
+      row.day,
+      selectableTypes.length > 0 &&
+        selectableTypes.every((type) => next.includes(type.id))
+        ? { all_day: true, shift_type_ids: [], ranges: [] }
+        : { shift_type_ids: next },
+    );
+  };
+  // C2.7: another range starts an hour after the last one; at most 12 a day.
+  const nextRange = (row: WeeklyPreferenceDay) => {
+    const last = row.ranges.at(-1);
+    if (!last) return { start: "09:00", end: "17:00" };
+    const start = clockMinutes(last.end) + 60;
+    if (row.ranges.length >= 12 || start >= 1440) return null;
+    return { start: clock(start), end: clock(Math.min(start + 60, 1440)) };
+  };
   const savedTypes = new Set(value.days.flatMap((day) => day.shift_type_ids));
   const options = shiftTypes.filter(
     (type) => type.selectable || savedTypes.has(type.id),
@@ -176,15 +202,7 @@ export function WeeklyUnavailableEditor({
                             row.all_day ||
                             (!type.selectable && !selected)
                           }
-                          onClick={() =>
-                            update(day, {
-                              shift_type_ids: selected
-                                ? row.shift_type_ids.filter(
-                                    (id) => id !== type.id,
-                                  )
-                                : [...row.shift_type_ids, type.id],
-                            })
-                          }
+                          onClick={() => toggleType(row, type.id)}
                         >
                           {selected ? <Check size={13} /> : <Plus size={13} />}
                           <span>{type.name}</span>
@@ -199,9 +217,10 @@ export function WeeklyUnavailableEditor({
                   )
                 ) : row.all_day ? (
                   <span className="weekly-empty">All day unavailable</span>
-                ) : row.ranges.length ? (
-                  row.ranges.map((range, index) => {
-                    // ponytail: later ranges get a numbered label; C2 designs adding one.
+                ) : (
+                  <>
+                  {row.ranges.map((range, index) => {
+                    // Later ranges get a numbered label: "Monday unavailable 2 start".
                     const label = `${weekdays[day]} unavailable${index ? ` ${index + 1}` : ""}`;
                     return (
                       <div key={index} className="weekly-time-range">
@@ -245,19 +264,22 @@ export function WeeklyUnavailableEditor({
                         </label>
                       </div>
                     );
-                  })
-                ) : (
-                  <button
-                    type="button"
-                    className="weekly-add-hours"
-                    disabled={locked}
-                    onClick={() =>
-                      update(day, { ranges: [{ start: "09:00", end: "17:00" }] })
-                    }
-                  >
-                    <Plus size={14} />
-                    Add hours
-                  </button>
+                  })}
+                  {nextRange(row) && (
+                    <button
+                      type="button"
+                      className="weekly-add-hours"
+                      aria-label={`Add hours on ${weekdays[day]}`}
+                      disabled={locked}
+                      onClick={() =>
+                        update(day, { ranges: [...row.ranges, nextRange(row)!] })
+                      }
+                    >
+                      <Plus size={14} />
+                      Add hours
+                    </button>
+                  )}
+                  </>
                 )}
               </div>
               {!readOnly && (

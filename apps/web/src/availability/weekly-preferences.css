@@ -225,91 +225,6 @@
   display: none;
   text-decoration: none;
 }
-.weekly-commitment-dialog:not([open]) {
-  display: none;
-}
-.weekly-commitment-dialog {
-  width: min(600px, calc(100vw - 24px));
-  max-height: calc(100dvh - 32px);
-  padding: 0;
-  border: 1px solid var(--wp-border);
-  border-radius: 8px;
-  box-shadow: 0 16px 60px #0003;
-}
-.weekly-commitment-dialog::backdrop {
-  background: #18251f66;
-}
-.weekly-commitment-dialog > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--wp-border);
-}
-.weekly-commitment-dialog h2 {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.4;
-}
-.weekly-commitment-dialog > p {
-  margin: 0;
-  padding: 12px 18px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--wp-muted);
-}
-.weekly-commitment-list {
-  overflow-y: auto;
-  min-height: 0;
-  padding: 0 18px;
-}
-.weekly-commitment-list fieldset {
-  min-width: 0;
-  border: 0;
-  border-top: 1px solid var(--wp-border);
-  margin: 10px 0;
-  padding: 10px 0;
-}
-.weekly-commitment-list legend {
-  font-size: 13px;
-  font-weight: 600;
-  padding-right: 8px;
-}
-.weekly-commitment-list p {
-  margin: 4px 0;
-  font-size: 12px;
-  color: var(--wp-muted);
-}
-.weekly-commitment-choices {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-top: 6px;
-}
-.weekly-commitment-choices label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.weekly-commitment-choices input {
-  accent-color: var(--wp-accent);
-}
-.weekly-commitment-dialog > footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 18px;
-  border-top: 1px solid var(--wp-border);
-}
-@media (max-width: 720px) {
-  .weekly-commitment-choices label {
-    min-height: 44px;
-  }
-}
 @media (max-width: 720px) {
   .weekly-day-full {
     display: none;
@@ -326,6 +241,11 @@
   overflow-x: auto;
   scrollbar-width: thin;
   padding: 2px 0;
+}
+/* Several hours a day (M4): one range per line, "Add hours" under them. */
+.weekly-unavailable-options:has(> .weekly-time-range) {
+  flex-direction: column;
+  align-items: flex-start;
 }
 .weekly-unavailable .weekly-shift-option {
   flex: 1 0 82px;

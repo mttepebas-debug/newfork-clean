@@ -275,7 +275,8 @@ describe("EmployeeOnboardingPage", () => {
     expect(loadWeeklyPreferences).not.toHaveBeenCalled();
   });
 
-  it("leaves an unsaved weekly draft without an availability prompt", async () => {
+  // C2.3, P26: the onboarding step asks before unsaved hours are lost.
+  it("asks before leaving an unsaved weekly draft", async () => {
     vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
     render(
       <QueryClientProvider
@@ -292,10 +293,12 @@ describe("EmployeeOnboardingPage", () => {
       await screen.findByRole("switch", { name: "Monday all day unavailable" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Profile" }));
-    expect(
-      await screen.findByText("Your details"),
-    ).toBeTruthy();
-    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.getByRole("alertdialog").textContent).toContain("Discard availability changes?");
+    fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
+    expect(screen.getByRole("switch", { name: "Monday all day unavailable" })).toHaveProperty("checked", true);
+    fireEvent.click(screen.getByRole("button", { name: "Profile" }));
+    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+    expect(await screen.findByText("Your details")).toBeTruthy();
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
   });
 

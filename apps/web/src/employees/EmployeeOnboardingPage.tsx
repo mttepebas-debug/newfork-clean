@@ -19,6 +19,7 @@ import {
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
+import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
@@ -47,7 +48,9 @@ export default function EmployeeOnboardingPage() {
   const at = (path: string) => workspacePath(workspaceId, path);
   // Route-relative path in the database's "/welcome/..." form.
   const pathname = `/welcome${location.pathname.slice(`/welcome/${workspaceId}`.length)}`;
-  const navigateRequirement = (path: string) => navigate(at(path));
+  // Moving between steps asks first while the availability step holds unsaved hours (P26).
+  const navigateRequirement = (path: string) =>
+    requestAvailabilityNavigation(() => navigate(at(path)));
   const queryClient = useQueryClient();
   const { refresh } = useAuth();
   const onboarding = useQuery({
@@ -186,7 +189,7 @@ export default function EmployeeOnboardingPage() {
       steps={steps}
       pathname={pathname}
       onOpen={navigateRequirement}
-      onExit={() => navigate(hubPath)}
+      onExit={() => requestAvailabilityNavigation(() => navigate(hubPath))}
     >
       {stage}
     </OnboardingShell>
@@ -863,7 +866,7 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
           <button
             type="button"
             className={`pb-btn ${completed ? "pb-btn-primary" : "pb-btn-secondary"}`}
-            onClick={() => void onSaved()}
+            onClick={() => requestAvailabilityNavigation(() => void onSaved())}
           >
             {completed ? "Continue" : "Skip for now"}{" "}
             <ArrowRight size={17} aria-hidden />

@@ -18,7 +18,7 @@ type DraftState = { dirty: boolean; busy: boolean; onDiscard?: () => void };
 type GuardLabels = { saving: string; discard: string; saved: string; unsaved: string };
 const availabilityLabels: GuardLabels = {
   saving: "Saving availability", discard: "Discard availability changes?", saved: "Availability saved",
-  unsaved: "Your unsaved hours and review details will be lost. Your saved availability stays in place.",
+  unsaved: "Your unsaved hours will be lost. Your saved availability stays in place.",
 };
 export const timeOffNavigationLabels: GuardLabels = {
   saving: "Saving time off", discard: "Discard time off changes?", saved: "Time off saved",

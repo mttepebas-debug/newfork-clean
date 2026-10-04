@@ -15,6 +15,7 @@ import {
   type WeeklyPreferenceSave,
 } from "@newfork/shared";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
+import { requestAvailabilityNavigation } from "./availability-navigation";
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -60,6 +61,15 @@ function model(
         name: "Dinner",
         start_time: "17:00",
         end_time: "23:00",
+        archived: false,
+        selectable: true,
+      },
+      // A second type keeps one mark short of all day (M3).
+      {
+        id: "ab920000-0000-4000-8000-000000000002",
+        name: "Lunch",
+        start_time: "11:00",
+        end_time: "15:00",
         archived: false,
         selectable: true,
       },
@@ -417,7 +427,7 @@ describe("weekly preference form", () => {
 
   it("rejects unfinished time input and saves 24:00 as a valid end", async () => {
     const { onSave } = setup(model("time_range"), "employee");
-    fireEvent.click(screen.getAllByRole("button", { name: "Add hours" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.change(
       screen.getByRole("textbox", { name: "Monday unavailable start" }),
       { target: { value: "broken" } },
@@ -453,5 +463,36 @@ describe("weekly preference form", () => {
     expect(
       screen.queryByRole("button", { name: "Monday Dinner unavailable" }),
     ).toBeNull();
+  });
+});
+
+// C2.3, P26: the employee's own week asks before unsaved hours are lost; the
+// Employees drawer (a manager's view) leaves at once (K7).
+describe("unsaved changes", () => {
+  it("asks before an employee leaves an unsaved week, and discards on request", async () => {
+    render(<WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
+    const navigate = vi.fn();
+    act(() => requestAvailabilityNavigation(navigate));
+    const dialog = await screen.findByRole("alertdialog", { name: "Discard availability changes?" });
+    expect(dialog.textContent).toContain("Your unsaved hours will be lost.");
+    expect(navigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+    expect(navigate).toHaveBeenCalledOnce();
+  });
+  it("lets an employee leave a saved week without asking", () => {
+    render(<WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />);
+    const navigate = vi.fn();
+    act(() => requestAvailabilityNavigation(navigate));
+    expect(navigate).toHaveBeenCalledOnce();
+  });
+  it("never asks in the manager's drawer", () => {
+    render(<WeeklyPreferencesForm model={model()} audience="manager" onSave={vi.fn()} />);
+    fireEvent.click(screen.getByRole("tab", { name: /reminder|note/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
+    const navigate = vi.fn();
+    act(() => requestAvailabilityNavigation(navigate));
+    expect(navigate).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 });
