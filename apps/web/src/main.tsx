@@ -7,8 +7,6 @@ import { installEscapeFocus } from "./lib/escape-focus";
 const disposeEscapeFocus = installEscapeFocus(window, document);
 import.meta.hot?.dispose(disposeEscapeFocus);
 
-if (import.meta.env.DEV) void import("./dev/font-variants");
-
 const rootElement = document.getElementById("root");
 
 if (!rootElement) {
