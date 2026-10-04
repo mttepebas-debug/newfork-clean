@@ -1022,6 +1022,8 @@ Kaynak: `nf-test` FB-6.6 A3 koşu raporu `.newfork-inbox/done/20261003T203445-nf
   - **Program 2026-10-04 (kayıt oturumu, besleme #162): G15** (Görsel tutarlılık).
 - **BL-574 (leave: low / do: safe) Availability kapalıyken Schedule sütunu daralıyor, saat iki satıra bölünüyor.** Anahtar kapanınca gün sütunu 159 px'ten 111 px'e iniyor (`nf-gorsel-qa` ölçümü). Örnek: Ayşe müsaitliği gizleyince vardiya saati iki satıra kayar, ızgara zıplar. Neden önemli: aç / kapa yalnız izi gizlemeli, düzeni değiştirmemeli. Neden bekliyor: AVAIL-002 C1 düzeltme listesinde değil (`nf-gorsel-qa` C1 turu, rapor `.newfork-inbox/done/20261004T185956-nf-gorsel-qa-avail-002-c1-avail-002-c1-qa.md`; koordinatör beslemesi #162).
   - **Program 2026-10-04 (kayıt oturumu, besleme #162): G15** (Görsel tutarlılık).
+- **BL-575 (leave: low / do: safe) Telefonda onboarding müsaitlik adımında "Skip for now" iki satıra sarıyor.** C2 düzeltmesiyle Discard · Save · Skip for now tek alt çubukta; 390 px'te "Skip for now" iki satıra bölünüyor (okunur, taşma yok). Örnek: Ali telefonda davetini kabul edip müsaitlik adımına gelince sağdaki düğme iki satırlık görünür, öteki ikisi tek satır. Neden önemli: aynı çubuktaki düğmeler aynı yükseklikte olmalı (görsel tutarlılık, CLAUDE.md §9). Neden bekliyor: metin kararı ("Skip" gibi kısaltma), AVAIL-002 C2 kapsamı dışında, işçi dokunmadı (rapor `.newfork-inbox/done/20261004T182736-nf-arayuz-avail-002-c2-avail-002-c2-fix.md`; koordinatör beslemesi #163).
+  - **Program 2026-10-04 (kayıt oturumu, besleme #163): G15** (Görsel tutarlılık).
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
