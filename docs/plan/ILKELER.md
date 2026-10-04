@@ -161,7 +161,7 @@
   Ayrıntılı kurallar KARARLAR "Katılım ve giriş akışı"nda (onay 2026-10-01).
 - Kanıt: 09-17 "tek organizasyonu varsa direk ona giriş yapsın, rolüne göre land olsun"; 09-18
   "zorlamayalım belki employer olacak belki", "yeni invitelar her zaman… ilk olarak gösterilsin".
-- Kanıt (2026-10-03, seçenek dışı): müsaitlik değişince bekleyen istek için "istek açık kalsın, yalnız işaret" önerildi;
+- Kanıt (2026-10-03, seçenek dışı; S2 açık, ölçümde — besleme #140): müsaitlik değişince bekleyen istek için "istek açık kalsın, yalnız işaret" önerildi;
   Mert: "…availability kaydedilirken onay ekranında bekleyen istekle çakışma yaratacağını ve bu isteği keep/cancel
   edeceğini employeeye sorsun" (FB-6.4 S2; KARARLAR "Takas… uygunluk"). Niyet kayıt anında kişiye sorulur; sessiz işaret
   yetmez.
