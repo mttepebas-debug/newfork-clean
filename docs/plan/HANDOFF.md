@@ -37,14 +37,16 @@ Devralan: Mert'in havuzdan seçtiği oturum — **güncel koordinatör kimliği,
 ## 3. Oturumlar
 | Oturum | Kimlik | Durum |
 |---|---|---|
-| Kayıt-19 | `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` | aktif; bekleyen dosya beslemesi var |
+| Kayıt-19 | `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` | aktif (besleme #158'e kadar işlendi) |
 | Kayıt-18 (eski) | `local_d96f34f3…` | temizlenecek |
 | FB-6.7 davranış (işçi 2) | `local_1628762e…` | Mert'le konuşuyor |
 | FB-6.7 uygulama (işçi 1) | `local_9f1bbd26…` | durdu, C3 + lab silme bekliyor |
 | FB-6.7 akış artifact'i (işçi 3) | `local_575ba63c…` | beklemede |
-| AVAIL tasarım | `local_863130bd…` | bitti, beklemede |
+| AVAIL-002 C1 Schedule (`nf-arayuz`; eski AVAIL tasarım) | `local_863130bd…` | çalışıyor; dal `task/avail-002-c1`, port 5630 / 5631 |
 | FB-6.4 tazelik | `local_01cffb57…` | bitti, temizlenecek |
-| Havuz "(havuz) boş" | `local_91ac4f8d…`, `local_e4bbe6fe…`, `local_abc4d126…` | boş |
+| AVAIL-002 C2 müsaitlik girişi (`nf-arayuz`) | `local_e4bbe6fe…` | çalışıyor; dal `task/avail-002-c2`, port 5632 / 5633 |
+| Havuz "(havuz) boş" | `local_91ac4f8d…` (AVAIL-002 A işçisi, OPS-07 ile döndü) | boş |
+| Koordinatör | `local_abc4d126…` | aktif |
 | Rol: nf-guvenlik | `local_7dfbe7d3…` | boşta |
 | Mert'in oturumları | "Opus 5.5 karar verme…", "Slash komutları…", "Dev sunucusu başlat", "Bana Newfork-Clean E Bagli 30 Tane Boş Session Aç" | dokunma |
 
