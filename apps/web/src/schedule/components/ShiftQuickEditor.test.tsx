@@ -243,13 +243,16 @@ describe("ShiftQuickEditor", () => {
         onClose={onClose} onDismiss={onDismiss} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    const add = screen.getByRole("button", { name: "Add shift" });
+    add.focus();
+    fireEvent.click(add);
     await screen.findByRole("dialog", { name: dialog });
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: dialog })).toBeNull());
     expect(onDismiss).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Add shift" })).toBeTruthy();
+    // Focus goes back where the question came from, not to the top of the page.
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add shift" }));
   });
 
   it.each([

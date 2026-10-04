@@ -41,8 +41,15 @@ export function ScheduleNoteConfirm({ cell, when, employeeName, text, disabled =
   readonly onCancel: () => void;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
-  // Same keyboard as the rule box: focus on Cancel, Escape cancels.
-  useEffect(() => cancelRef.current?.focus(), []);
+  // Same keyboard as the rule box: focus on Cancel and back when the card
+  // closes, Escape cancels.
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    cancelRef.current?.focus();
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;

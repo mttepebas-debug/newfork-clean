@@ -91,4 +91,12 @@ describe("ScheduleConflictSheet", () => {
     expect(onDismiss).toHaveBeenCalledOnce();
     expect(behind).not.toHaveBeenCalled();
   });
+
+  it("leaves focus where the user moved it when the page draws again", () => {
+    const props = { open: true, messages: ["Overlaps unavailable hours."], submitLabel: "Place shift", onSubmit: vi.fn() };
+    const { rerender } = render(<ScheduleConflictSheet {...props} onDismiss={vi.fn()} />);
+    screen.getByRole("button", { name: "Place shift" }).focus();
+    rerender(<ScheduleConflictSheet {...props} onDismiss={vi.fn()} />);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Place shift" }));
+  });
 });

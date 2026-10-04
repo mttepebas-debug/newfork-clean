@@ -35,10 +35,20 @@ export function ScheduleConflictSheet({
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   // A question asked from the keyboard too: focus lands on Cancel (as in
-  // ConfirmDialog), so a second Enter never places unread; Escape is Cancel.
+  // ConfirmDialog), so a second Enter never places unread, and goes back
+  // where it came from when the box closes.
   useEffect(() => {
     if (!open || !isDecision) return undefined;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     cancelRef.current?.focus();
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [isDecision, open]);
+
+  // Escape is Cancel.
+  useEffect(() => {
+    if (!open || !isDecision) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // Caught on window's capture pass and spent here, like an open shift
