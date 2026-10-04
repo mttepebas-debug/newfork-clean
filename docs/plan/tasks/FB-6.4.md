@@ -1,5 +1,5 @@
 # FB-6.4 Takas / Shift Hub — uygunluk motoru, takas yetkisi çekirdeğe, akış 9
-Status: draft — 2026-10-03 (`nf-planlama/fb-6.4`, koordinatör `local_10a5177a…`'ın görevi "FB-6.4-tazelik"). Mert'in onayı ve S2 bekleniyor (S1 cevaplandı: (a), D7).
+Status: draft — 2026-10-03 (`nf-planlama/fb-6.4`, koordinatör `local_10a5177a…`'ın görevi "FB-6.4-tazelik"). Mert'in onayı bekleniyor. S1 cevaplandı ((a), D7); S2 Mert'in 2026-10-04 müsaitlik prensibiyle (M5) kapandı; dosya M1–M13'e göre güncellendi (`docs/plan/research/MUSAITLIK-calisma-prensibi-2026-10-04.md` (main `3425a24a`)).
 Session: -   Branch: task/fb-6.4-<parça>   Worktree: newfork-wt/fb-6.4-<parça>   DB: A1, A2 `db.lock` ile
 Reviewer: `nf-guvenlik` zorunlu (R3: yetki çekirdeği, eski yardımcıların silinmesi, katalog sayaçları) — A1+A2 bir ONAY, A3 ayrı ONAY; `nf-gorsel-qa` (B, onay ekranı ve aday listesi değişiyor); kullanıcıya ultrareview önerisi (yetki çekirdeği + nesne silme + büyük diff; CLAUDE.md §5, KARAR-001: ücretsiz hak bittiyse dolar tutarıyla).
 
@@ -26,7 +26,7 @@ Reviewer: `nf-guvenlik` zorunlu (R3: yetki çekirdeği, eski yardımcıların si
 Backlog maddelerinin hükmü (CLAUDE.md §5 adım 0; BACKLOG.md'ye işlenmesi kayıt oturumunun):
 | Madde | Hüküm | Kanıt | Bu dilimde |
 |---|---|---|---|
-| BL-088 mod dönüşümü bekleyen isteği işaretlemiyor | geçerli | `weekly_preference_settings_save_service` (`20260924204854_old_availability_is_gone.sql:1165`) takas tablosuna bakmıyor (`prosrc`) | evet, S2'ye bağlı |
+| BL-088 mod dönüşümü bekleyen isteği işaretlemiyor | geçerli | `weekly_preference_settings_save_service` (`20260924204854_old_availability_is_gone.sql:1165`) takas tablosuna bakmıyor (`prosrc`) | hayır — kural değişti (M5, 2026-10-04): mod değişikliği bekleyen isteği işaretlemez, istek açık kalır, çalışan isterse Shift Hub'dan geri çeker; BL-088 "kural böyle" diye kapanır (KK-10 (a) ters çevrildi) |
 | BL-189 takas kurtarma eski yardımcıda | geçerli | `20260926200000_shift_labels_come_from_the_catalog.sql:388,409` | evet (A2) |
 | BL-227 `weekly_exchange_changed_terms` kırmızı | geçerli | `ci-not-green.txt:4`; muhtemel kök `:112` | evet (A1) |
 | BL-276 kalem 1: komut onayı `authorize` çağırmıyor, rütbe yok | geçerli | tazelik 10 | evet (A2) |
@@ -51,7 +51,7 @@ In scope:
   3. Kurallar (KARARLAR "Takas… uygunluk", D1–D6): lokasyon + iş ataması engel; aynı anda iki vardiya engel (takasta bırakılan vardiya hariç); kendi müsaitliği ve kendi onaylı izni `acknowledgements` (rıza), izin o saatler için kısalır (bugünkü BL-182 mekanizması korunur); cover aday listesinde onaylı izinli yok, müsait olmayan "unavailable" gerekçesiyle var; kapalı lokasyon ve pasif çalışan engel; yol ve dinlenme ihlali `approval_flags` — Settings → Scheduling → Conflict handling'deki mevcut "Minimum travel" ve "Minimum rest" dakikalarıyla ölçülür, takasta şiddetten bağımsız her zaman onaylayan yöneticiye işaret, engel değil (S1 (a)); yöneticinin gizli notu uygunluğu etkilemez, yalnız onay ekranında.
   4. Belge uygunluğu **bugünkü gibi** taşınır: yalnız onaylanmış ve süresi dolmuş, etkisi `block` olan belge engel (tazelik 12). Davranış değişmez; `eligibility_matrix`'te bugünkü davranışı kilitleyen tek hücre.
   5. Şart değişince: yeni saatler kabul edenin başka vardiyasıyla kesişiyorsa kabul düşer, değilse bildirim + kabul korunur (D6; bugün `refresh_weekly_exchange_terms` — davranış korunur).
-  6. BL-088: müsaitlik modu dönüşümü bekleyen pickup/swap isteklerini işaretler (KK-10 (a), KK-81); kime / nerede S2'ye bağlı.
+  6. Müsaitlik (Mert 2026-10-04, M6 + M8; `docs/plan/research/MUSAITLIK-calisma-prensibi-2026-10-04.md` (main `3425a24a`)): unavailable kişi lokasyon + iş uyuyor ve onaylı izni yoksa cover / pickup / takas listesinde çıkar; kabulde `acknowledgements` ("unavailable görünüyorsun, emin misin?"), onayda `approval_flags` ("unavailable ama kendi rızasıyla istedi"); yönetici onaylar ya da reddeder. Conflict handling'e geri gelen müsaitlik ayarı (Warn / Hard block, M8) takasta uygulanmaz: Hard block'ta da çalışanın rızası geçerli. Yöneticinin notu (M12) uygunluğu etkilemez. BL-088 bu dilimde iş değil (M5, yukarıdaki tablo).
   7. `weekly_exchange_changed_terms` yeşile (BL-227; silinmiş kolon yazımı kalkar, `current_date` bağımlılığı sabit tarihe). `shift_exchanges_v1` `tests.world()`'e (BL-217'nin kalan yarısı). BL-198 kuralına cover ve open pickup hücresi (BL-229).
   8. Yeni `supabase/tests/eligibility_matrix.test.sql`: her kural için en az bir olumlu ve bir olumsuz hücre, `decide:` 0; `ci-green.txt`'e eklenir.
 - **A2 — yetki çekirdeğe** (`nf-db`; R3; A1 ile aynı dal olabilir, ayrı commit):
@@ -67,10 +67,10 @@ In scope:
   5. Requests: `/schedule/requests` kapısı çekirdeğe (`can()` / `authorize`), `schedule.shift_change_requests.read` izin rotasından çıkar, header'lı ikinci kopya (`schedule-requests-routes.ts:66`) silinir; web `PermissionRoute` → `ActionRoute` / `can()` (tazelik 16).
   6. Ölü parçalar: `open_shifts` alanı (DB tarafı `nf-db` ile sırayla), `ShiftExchangeHub.tsx:45` yeniden dışa aktarma.
 - **B — ekran** (`nf-arayuz`; A3 main'e girdikten sonra yeni `origin/main`'den):
-  1. Onay ekranında `approval_flags` (yol / dinlenme ihlali, yöneticinin gizli notu) — yeni görsel öğe, ILKELER P04: DEV'de query param ile 2–3 varyant, Mert seçer.
+  1. Onay ekranında `approval_flags` (yol / dinlenme ihlali, "kendi rızasıyla" müsaitlik notu (M6), yöneticinin hatırlatma notu (M12: yalnız gösterilir, engel değil)) — yeni görsel öğe, ILKELER P04: DEV'de query param ile 2–3 varyant, Mert seçer.
   2. Cover / takas aday listesinde "Unavailable" etiketi; onaylı izinli yok.
   3. BL-397 (rıza metni tek görünüm), BL-400 (telefonda boşluk), BL-110 hub metni, `EmployeeDashboard.tsx:325` ölü çapa.
-  4. BL-088 işaretinin görünümü (S2'ye göre).
+  4. Çalışanın kabul ekranındaki "emin misin?" sorusu ve yöneticinin onay ekranındaki "kendi rızasıyla" notu: Mert'in AVAIL tasarım artifact'ında seçeceği varyant (M6; prensip dosyası "Tasarlanacaklar" 4–5) uygulanır; FB-6.4'te ayrıca varyant hazırlanmaz. B.1'in öteki işaretleri (yol / dinlenme) için varyant P04'e göre burada.
 - **C — akış 9 e2e** (`nf-test`; B ile aynı pencere, DB kilidiyle): `e2e/flows/` altında (a) iki lokasyonlu takas — çalışan tarafı da arayüzden, (b) müsaitliği ve onaylı izni rızayla ezerek pickup, (c) cover listesinde onaylı izinli yok / müsait olmayan etiketli, (d) yol/dinlenme ihlali onay ekranında işaretli, kişi listede (S1 (a)), (e) eş rütbe müdür onaylayamaz.
 
 Out of scope:
@@ -79,15 +79,16 @@ Out of scope:
 3. İzin işleri (G9: BL-362, BL-364, BL-396, BL-508, BL-517, BL-518, BL-523); BL-228 (yayın zaman damgası); bildirim platformu (ILKELER P13).
 4. Drop/release'in ayrı bir akış olarak eklenmesi: bugün vaka türleri `cover | open_pickup | swap`; KARARLAR "release"i bu üçüyle karşılıyor. Yeni tür yok.
 5. Line Up (ILKELER P13).
+6. **AVAIL-002 müsaitlik kapanışı** (prensip dosyası "Sonra"): mod değişikliğinin çevirisi ve bildirimi (M3, M4), keep/cancel penceresinin her yerden kalkması (M5), Schedule'daki Warn / Hard block, preflight, aç/kapa anahtarı, "Changed after publishing" ve not kutusu (M8–M12), müsaitlik yazma yollarının çekirdeğe taşınması. **Sınır:** M6 ve M8'in takas kısmı (aday listesi, rıza, onay notu) motorda ve FB-6.4'te; Schedule tarafı AVAIL-002'de. Sınır koordinatörün teyidine sunuldu.
 
 Done when:
 1. `app_private.eligibility` var; `weekly_assignment_candidate_base`, `weekly_assignment_candidate_check`, `weekly_exchange_candidate_check` veritabanında yok ve `retired_objects_stay_gone`'da; `shift_exchange_preview`, `record_weekly_exchange_acceptance` ve aday ucu uygunluğu yalnız motordan alıyor (`prosrc` sayımı).
-2. `supabase/tests/eligibility_matrix.test.sql` `ci-green.txt`'te; `decide:` 0; D1–D6 ve S1/S2 cevaplarının her biri en az bir olumlu ve bir olumsuz hücre.
+2. `supabase/tests/eligibility_matrix.test.sql` `ci-green.txt`'te; `decide:` 0; D1–D7 ve M6 / M8'in takas kısmının her biri en az bir olumlu ve bir olumsuz hücre.
 3. `weekly_exchange_changed_terms` `ci-green.txt`'te, `ci-not-green.txt`'te değil (`ci-not-green.txt` 2 → 1); main CI `db` yeşil.
 4. Üç `schedule_actor_*` yardımcısı yok ve `retired_objects_stay_gone`'da; `known_gap` tablosunda satır yok (`legacy-blank-location` silindi); `authorization_coverage` `exempt:predicate` tavanı 8; `authz_catalog` sayaçları yalnız azaldı (kapsam/rütbe 26 → 23, hint'siz 42501 111 → ≤ 94, `_base` 12 → ≤ 11).
 5. "Hayır" sözleşmesi: takas uçlarında üye olmayan 404, kapsam dışı ve yetkisiz 403 + `authz.*` (API vitest + pgTAP); Shift Hub erişim-yok kartı ortak `NoAccessState` (web vitest).
 6. D3: aynı lokasyondaki eş rütbe müdür takası onaylayamaz, admin / owner onaylar (pgTAP + e2e (e)). D4: kısıtlı kişi takas açamaz / başvuramaz (pgTAP; eksik zorunlu belgeli employee hücresi dahil).
-7. BL-088: S2'nin cevabındaki işaret pgTAP ile kilitli.
+7. M6 / M8: unavailable kişi (lokasyon + iş uygun, onaylı izni yok) aday listesinde; Hard block ayarında da çalışanın rızasıyla alınabiliyor; onayda "kendi rızasıyla" işareti var (pgTAP). BL-088 "kural böyle" kapandı (M5) — kayıt oturumunun işi.
 8. BL-200: takas komutunun cevabı bildirim dağıtımını beklemiyor (API vitest).
 9. `grep -c "permissions.includes" apps/web/src` 21 → ≤ 20 (`PermissionRoute` Requests'ten çıktı); `schedule-requests-routes.ts`'te `permissions.includes` 0.
 10. Akış 9 e2e (a)–(e) `e2e/flows/` altında main CI e2e'de yeşil.
@@ -116,8 +117,8 @@ Risk:
 Büyüklük (ILERLEME "Büyüklük ölçütü"): A1 5 (çoklu migration + sözleşme şekli) · A2 3 (DB + pgTAP) · A3 3 (API + web veri) · B 3 (ekran + varyant) · C 3 (e2e) = **17 puan**; ILERLEME'deki tahmin 11 (`ILERLEME-PLANI.md:310`). Fark: altıncı fonksiyon (izin), yol/dinlenme işareti, akış 9'un eksik üç senaryosu ve Requests kapısı tahminde yoktu. Takvim: 1,5–2 kişi-hafta (dilim satırı 1–1,75).
 
 ## Kararlar (dayanakla; CLAUDE.md §13 — Claude verdi)
-- **D1** Cover / takas aday listesinde onaylı izinli kişi görünmez; müsait olmayan "Unavailable" etiketiyle görünür. Örnek: KadıköyGarson1 cover arar; Salı izinli KadıköyGarson3 listede yok, "müsait değilim" işaretli KadıköyBeşiktaşGarson2 "Unavailable" etiketiyle var. Dayanak: KARARLAR "Takas… uygunluk" ("Cover talebinin aday listesi").
-- **D2** Çalışan kendi müsaitliğini ve onaylı iznini rızayla ezer; izin o saatler için kısalır, izni onaylayana bildirim gider. Bugünkü davranış (BL-182 kapandı), motora taşınır. Dayanak: KARARLAR "Takas… uygunluk" + ILKELER P24.
+- **D1** Cover / takas aday listesinde onaylı izinli kişi görünmez; müsait olmayan "Unavailable" etiketiyle görünür. Örnek: KadıköyGarson1 cover arar; Salı izinli KadıköyGarson3 listede yok, "müsait değilim" işaretli KadıköyBeşiktaşGarson2 "Unavailable" etiketiyle var. Dayanak: KARARLAR "Takas… uygunluk" ("Cover talebinin aday listesi"); Mert 2026-10-04 M6 ile teyit (lokasyon + iş uyuyor ve onaylı izni yoksa listede).
+- **D2** Çalışan kendi müsaitliğini ve onaylı iznini rızayla ezer; izin o saatler için kısalır, izni onaylayana bildirim gider. Bugünkü davranış (BL-182 kapandı), motora taşınır. Dayanak: KARARLAR "Takas… uygunluk" + ILKELER P24; müsaitlik kısmı Mert 2026-10-04 M6 / M8 (Hard block'ta da rıza geçerli).
 - **D3** Takas / pickup / cover'ı kişinin eş rütbesi onaylamaz: müdürün kendi vakası admin ya da owner'a gider; kimse kendi vakasını onaylamaz. Örnek: KadıköyMüdür1'in Cuma vardiyasını KadıköyGarson1 alır; KadıköyMüdür2 onaylayamaz, Admin1 onaylar. Dayanak: ILKELER P07 ("eş rütbe birbirini, kimse kendini onaylamaz") + KARARLAR M2 ("devir onayı yalnız vardiyanın lokasyonunda").
 - **D4** Kısıtlı kişi (eksik zorunlu belge ya da tamamlanmamış onboarding) takas açamaz, başvuramaz, kabul edemez; owner muaf. Dayanak: KARARLAR "Kısıtlı kişi" ("program, talep ve yönetim işleri kapalı") + "Owner belge kısıtına girmez"; çekirdek eylem `restricted_ok=false`. Not: "kısıtlı" tanımı belgeye bağlı; tanım değişmiyor, yalnız mevcut çekirdek kuralı takasta da uygulanıyor — rafla ilişkisi koordinatörün teyidine sunuldu. **Teyit (koordinatör `local_10a5177a…`, 2026-10-03):** takas yalnız çekirdeğin cevabını (`restricted_ok=false`) kullanır; "kısıtlı"nın tanımı belgede (rafta) kalır ve tanım değişirse takas kendiliğinden onu izler.
 - **D5** Pickup / cover'ı yalnız vardiyanın lokasyonu onaylar; iki lokasyonun vardiyaları birlikte el değişirse ikisi de onaylar (`approvals_required`). Bugünkü davranış. Dayanak: KARARLAR "Takas… uygunluk" ("Onay").
@@ -137,9 +138,9 @@ Büyüklük (ILERLEME "Büyüklük ölçütü"): A1 5 (çoklu migration + sözle
    - (c) Mevcut iki satır şiddetiyle birlikte geçerli: Block seçiliyse takasta da kişi listede çıkmaz (bugünkü yol davranışı), Warn / Confirm ise işaret.
    - Kaçış: "Claude karar versin", "Önce sohbette konuşalım".
 
-**S2 — Müsaitlik modu değişince bekleyen pickup / takas isteği (BL-088)** — **AÇIK: Mert seçenek dışı cevap verdi (2026-10-03, koordinatörün penceresi):** "Bekleyen istek varken conflict oluşturacak bir availability değişikliği yapılacağında availability kaydedilirken onay ekranında bekleyen istekle çakışma yaratacağını ve bu isteği keep/cancel edeceğini employeeye sorsun. Bunun için artifactda güzel 5 tane farklı tasarım planlansın ve sunulsun." Ayrıca sordu: "Shift typetan time range e geçince neden çakışma olsun ki?"
+**S2 — Müsaitlik modu değişince bekleyen pickup / takas isteği (BL-088)** — **KAPANDI 2026-10-04: Mert'in müsaitlik prensibi M5** (`docs/plan/research/MUSAITLIK-calisma-prensibi-2026-10-04.md` (main `3425a24a`)): keep/cancel penceresi her yerden kalkar (mod değişikliği + çalışanın kendi kaydı); bekleyen istek açık kalır, çalışan isterse Shift Hub'dan geri çeker. 2026-10-03'teki seçenek dışı cevabı ters çevirdi. Önceki cevap (2026-10-03, koordinatörün penceresi): "Bekleyen istek varken conflict oluşturacak bir availability değişikliği yapılacağında availability kaydedilirken onay ekranında bekleyen istekle çakışma yaratacağını ve bu isteği keep/cancel edeceğini employeeye sorsun. Bunun için artifactda güzel 5 tane farklı tasarım planlansın ve sunulsun." Ayrıca sordu: "Shift typetan time range e geçince neden çakışma olsun ki?"
 - **Ölçüm (2026-10-03, `af488295`, yerel DB, yalnız salt okunur fonksiyon çağrısı; Meyhouse'un gerçek vardiya tipleri Open 09:00–17:00, Dinner 15:00–23:00, Close 18:00–02:00):** mod değişince `weekly_preference_settings_save_service` (`supabase/migrations/20260922180000_changing_the_entry_mode_converts_every_saved_week.sql`) her çalışanın kayıtlı haftasını ve yöneticinin notunu `weekly_preference_convert` (aynı dosya) ile çevirir; bekleyen isteklere bakmaz, çalışana yalnız "Check your availability" bildirimi gider. Çevirme "müsait değil" saatlerini büyütebiliyor (çakışma doğabilir): (A) saat → tip: Pazartesi 14:00–16:00 müsait değil → Open + Dinner işaretlenir → okunan saat 09:00–23:00 (fonksiyon kısmi örtüşmede bütün tipi işaretliyor; geri çevrilince de 09:00–23:00 kalıyor). (B) tip → saat: Perşembe Open + Close → tek aralık 09:00–24:00; aradaki 17:00–18:00 boşluğu "müsait değil" olur, gece yarısını geçen 00:00–02:00 ise düşer ("müsait"e döner). (C) yalnız Close → 18:00–24:00 (yalnız daralır). Tipin saati tanımlı değilse kaydetme bütünüyle reddedilir (22023), sessiz düşme yok. Hüküm: S2'nin "mod değişikliği" kısmı **geçerli**, bayat değil.
-- Durum: koordinatör Mert'le netleştiriyor (çalışanın kendi değişikliğindeki keep/cancel ekranı + owner'ın mod değişikliği); 5 tasarım planı artifact'ta istenecek (ILKELER P04).
+- Durum: kapandı (M5). Çevirinin kayıpları (tazelikteki B: 17–18 boşluğu, gece yarısı sonrası) M4 ile AVAIL-002'de düzeltilir. Aşağıdaki seçenekler tarihçe olarak kalır.
 1. Bugün: owner Settings → Scheduling → Availability'de müsaitlik modunu değiştirince ("shift type" → "time range") çalışanların kayıtlı haftaları sessizce çevrilir; bekleyen istekler kontrol edilmez. Çalışan haftasını kendisi değiştirirken ise bekleyen her istek için "keep / cancel" sorulur.
 2. Örnek: KadıköyGarson1'in Perşembe akşamı pickup isteği onay bekliyor; mod değişince Perşembe'si "müsait değil" olur. Bugün kimse bunu görmez.
 3. Seçenekler:
@@ -150,4 +151,5 @@ Büyüklük (ILERLEME "Büyüklük ölçütü"): A1 5 (çoklu migration + sözle
    - Kaçış: "Claude karar versin", "Backlog'a yaz".
 
 ## Notes / Result
+- 2026-10-04: M1–M13 müsaitlik prensibine göre güncellendi (koordinatörün ulaşmayan mesajı `local_10a5177a…` geçmişinden ve main `3425a24a`'dan okundu): S2 kapandı (M5), A1.6 M6 / M8, B.4 AVAIL artifact varyantı, Done when 2 / 7, Out of scope 6 (AVAIL-002 sınırı), D1 / D2 dayanağı.
 - 2026-10-03: görev dosyası taslağı (`nf-planlama/fb-6.4`, dal `task/fb-6.4-plan`). Ölçüm: iki salt okur keşif ajanı (`origin/main` `af488295`, yerel DB yalnız SELECT); her kritik iddia elle doğrulandı (`shift-exchanges-routes.ts:54`, `20260929190000…:343,698-701`, `ci-green.txt:89`, `ci-not-green.txt:4`, `authorization_matrix.test.sql:882-886,927-929`, `authorization_coverage.test.sql:223-225,320`, `schedule_asks_the_core.test.sql:97-108,128`, `weekly_exchange_changed_terms.test.sql:112`, yardımcı çağıranları `prosrc`).
