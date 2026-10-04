@@ -1,4 +1,4 @@
-# AVAIL-002 Müsaitlik kapanışı — Warn / Hard block, not hatırlatması, preflight, mod çevirisi, yazma yolları çekirdeğe
+# AVAIL-002 Müsaitlik kapanışı — her zaman uyarı, not hatırlatması, preflight, mod çevirisi, yazma yolları çekirdeğe
 Status: draft — 2026-10-04 (`nf-planlama`, koordinatör `local_10a5177a…`'ın görevi). Mert'in onayı ve açık soruların (S1–S5) cevabı bekleniyor.
 Session: -   Branch: task/avail-002-<dilim>   Worktree: newfork-wt/avail-002-<dilim>   DB: A1, A2 `db.lock` ile
 Reviewer: `nf-guvenlik` zorunlu (R3: yetki çekirdeği, tek yazma kapısı `guard_schedule_assignment_availability`, tablo/kolon silme) — A1+A2 bir ONAY, B ayrı ONAY; `nf-gorsel-qa` (C1, C2: Schedule, Settings, My availability değişiyor); ultrareview önerisi yalnız A2 için tek satır (yetki + tablo silme; ücretsiz hak bittiyse açılış penceresindeki dolar tutarıyla; ILKELER P06: Mert iki kez "iki inceleme yeter" dedi).
@@ -25,52 +25,53 @@ Kaynaklar: KARARLAR "Müsaitlik (kullanıcı kararları 2026-10-04)" M1–M13 (`
 | T14 | M3 "All day" kendiliğinden — yok | geçerli | `apps/web/src/availability/WeeklyUnavailableEditor.tsx:150-175` tip düğmesi yalnız listeye ekliyor |
 | T15 | Not Takvim'de sürekli görünüyor (M12'ye aykırı) | geçerli | `apps/web/src/schedule/lib/scheduleAvailabilityMark.ts:61-65` notu turuncu pencere olarak çiziyor |
 | T16 | Warn her yazmada kutu açmıyor (M8'e aykırı) | geçerli | `ShiftQuickEditor.tsx:408` "it never asks", `schedule-conflicts.ts:16` |
-| T17 | Çalışan metni Hard block'ta yanlış olur | yeni | `WeeklyPreferencesForm.tsx:280` "a manager can still schedule you…" (S5) |
+| T17 | Çalışan metni Hard block'ta yanlış olur | **bayat** (2026-10-04, besleme #148: Hard block kalktı; S5 Mert "Bugünkü kalsın") | `WeeklyPreferencesForm.tsx:280` "a manager can still schedule you…" — cümle doğru kalır |
 
 Backlog'a dokunan hükümler (BACKLOG.md'ye işlenmesi kayıt oturumunun):
 | Madde | Hüküm | Bu işte |
 |---|---|---|
 | BL-206 BL-186 sonrası ölü kod | geçerli — `apps/api/src/schedule/schedule-routes.ts:1422`, yerel DB'de `list_schedule_draft_availability_conflicts_service` var, shared `missing_reason` `packages/shared/src/index.ts:2010` | evet (A1 + B; preflight aynı yerde değişiyor) |
-| BL-174 yayın tetikleyicisi kabulü korurken her nedeni atlıyor | geçerli (ölçülmedi, tetikleyici yerel DB'de var) | kısmen: Hard block aynı tetikleyiciden geçer; A1 tetikleyicinin müsaitlik yolunu ölçer ve testler, izin yolu BL-174'te kalır |
+| BL-174 yayın tetikleyicisi kabulü korurken her nedeni atlıyor | geçerli (ölçülmedi, tetikleyici yerel DB'de var) | kısmen: A1 tetikleyicinin müsaitlik yolunu ölçer ve testler (müsaitlik hiçbir yazmayı reddetmez; Hard block 2026-10-04'te kalktı), izin yolu BL-174'te kalır |
 | BL-135 "Manager note" Takvim'de not işareti | **değişmiş** — M12 (2026-10-04) notu Takvim'den kaldırıyor; Takvim yarısı bayat, "Last edited by" yarısı geçerli | hayır (kayıt oturumu maddeyi daraltır) |
 
-Goal: Müsaitlik 2026-10-04 prensibine (M3, M4, M5, M7–M12) ve Mert'in tasarım seçimlerine göre çalışır; iki yazma yolu yetki çekirdeğine taşınır. Örnek: KadıköyGarson1 Salı 18:00 sonrasını "unavailable" işaretlemiş. Owner Settings → Scheduling → Conflict handling'de müsaitlik satırını **Hard block** yapar; KadıköyMüdür1 Schedule'da Salı 19:00 vardiyasını KadıköyGarson1'e yazamaz, kırmızı "Scheduling rule" kutusu nedenini söyler, Auto-fill onu seçmez. Ayar **Warn** iken her yazmada kutu açılır (Cancel / Place shift). KadıköyMüdür1'in KadıköyGarson1 için "School mornings" notu Takvim'de görünmez; Çarşamba 09:00 vardiyası yazılınca hücrenin altında not kartı çıkar ve onay ister. Publish → Pre-flight müsaitlik bölümünü tek katlanır satırda listeler, onay istemez. KadıköyGarson1 Perşembe vardiyası yayınlandıktan sonra Perşembeyi işaretlerse kartın "!" balonunda "Changed after publishing" yazar; onaylı izni bunu yazdırmaz.
+Goal: Müsaitlik 2026-10-04 prensibine (M3, M4, M5, M7–M12) ve Mert'in tasarım seçimlerine göre çalışır; iki yazma yolu yetki çekirdeğine taşınır. Örnek: KadıköyGarson1 Salı 18:00 sonrasını "unavailable" işaretlemiş. Settings'te müsaitlik ayarı yoktur; KadıköyMüdür1 Schedule'da Salı 19:00 vardiyasını KadıköyGarson1'e yazarken her seferinde "Scheduling rule" kutusu açılır (Cancel / Place shift); Place shift ile yazılır, müsaitlik hiçbir zaman çakışma (conflict) üretmez ve engellemez; Auto-fill onu seçmez. KadıköyMüdür1'in KadıköyGarson1 için "School mornings" notu Takvim'de görünmez; Çarşamba 09:00 vardiyası yazılınca hücrenin altında not kartı çıkar ve onay ister. Publish → Pre-flight müsaitlik bölümünü tek katlanır satırda listeler, onay istemez. KadıköyGarson1 Perşembe vardiyası yayınlandıktan sonra Perşembeyi işaretlerse kartın "!" balonunda "Changed after publishing" yazar; onaylı izni bunu yazdırmaz.
 
 ## In scope
 - **A1 — değerlendirme, yazma kapısı, yayın** (`nf-db`; R3):
-  1. `workspace_scheduling_settings.conflict_rules`'a `availability` anahtarı: `warn` (varsayılan) | `block`; kısıt, varsayılan ve var olan satırlar (395 satır yerelde; tek seferlik güncelleme, eski veri korunmaz — CLAUDE.md §9) aynı migration'da. Yazma yetkisi bugünkü `settings.conflict_rules.write` (`authorization_coverage.test.sql:269` notu).
-  2. `assess_weekly_shift_availability` (`20261005000000…:1123`): çalışanın işareti ayardaki şiddetle sayılır (`warn` → her yazmada onay, `block` → `blocked`); not (`reminder`) şiddete, `has_availability_conflict`'e ve parmak izine **girmez**, ayrı `note` gerekçesi olarak döner (M12). 16 okuyucu yerinde kalır (FB-6.4 Out of scope 1: taşıma rafta; burada yalnız fonksiyonun içi değişir).
-  3. Tek yazma kapısı `guard_schedule_assignment_availability`: `block` yalnız yöneticinin yeni ya da değişen atamasında 23514 + `authz` dışı açık mesaj; yayın kopyası (D1) ve onaylı takasın yazması (D2) muaf; S1'in cevabına göre mevcut vardiyanın düzenlenmesi.
+  1. ~~`conflict_rules`'a `availability` anahtarı~~ — **düştü** (2026-10-04, Mert: "availibility hiçbir zaman hard block olmasın. settingsten kaldıralım. her zaman için warn olsun. hiç bir zaman da conflict oluşturmasın"; besleme #148): ayar yok, migration yok; T7'deki bugünkü hâl (anahtar yok) doğru.
+  2. `assess_weekly_shift_availability` (`20261005000000…:1123`): çalışanın işareti her yazmada onay (Warn kutusu) üretir; hiçbir zaman `blocked` ya da Schedule çakışması (conflict) üretmez (M8); not (`reminder`) şiddete, `has_availability_conflict`'e ve parmak izine **girmez**, ayrı `note` gerekçesi olarak döner (M12). 16 okuyucu yerinde kalır (FB-6.4 Out of scope 1: taşıma rafta; burada yalnız fonksiyonun içi değişir).
+  3. Tek yazma kapısı `guard_schedule_assignment_availability`: müsaitlik yüzünden hiçbir yazmayı (taslak, yayın kopyası, onaylı takas) reddetmez; bugün bir müsaitlik reddi yolu varsa kalkar (`nf-db` ölçer). Hard block ve S1 düştü (besleme #148).
   4. Auto-fill (`preview_schedule_auto_fill_service`, `20260926220000…:763`): çalışanın işareti her iki ayarda dışarıda (D3), not hesaba katılmaz.
   5. Preflight (`weekly_schedule_publication_preflight`, `weekly_publication_decisions`, `20261003034000…:69-144`): müsaitlik bulgusu `tier 'note'` (onay yok), `acknowledged_by_*` ve "Previously accepted" dalları silinir (koordinatör kararı, besleme); "Acknowledge the availability warnings" hatası kalkar; not preflight'a girmez (M12). BL-206'nın DB yarısı (`list_schedule_draft_availability_conflicts_service`) silinir → `retired_objects_stay_gone`.
   6. "Changed after publishing" (M11): ölçü vardiyanın **ilk** yayınındaki değerlendirme (D8); onaylı izin sayılmaz (`:1555`'ten `week.leave` çıkar); unpublish → republish değiştirmez.
   7. Okuma projeksiyonu: not aralıkları ızgaranın turuncu işaretinden ayrılır (yalnız yazarken görünen not kartı için ayrı alan, `availability.note_read` ile).
 - **A2 — yazma yolları ve mod çevirisi** (`nf-db`; R3; A1 ile aynı dal olabilir, ayrı commit):
   1. M5: keep/cancel kalkar — `weekly_preferences_save_service`'ten karar döngüsü (`20260926130000…:333-`), `weekly_preferences_preview_service`, `weekly_preference_commitment_conflicts`, `weekly_preference_commitments`, `weekly_preference_commitment_decisions` tablosu ve `weekly_preference_events.decisions` kolonu silinir (D7) → `retired_objects_stay_gone`; `authorization_coverage.test.sql:273` satırı silinir. Bekleyen takas isteği hiçbir kayıtta değişmez.
-  2. M4: çeviri S2/S3'ün cevabına göre düzeltilir; sağlama pgTAP'te her gün için "önce unavailable dakikalar → sonra" karşılaştırmasıyla (gece yarısını geçen tip, iki tip arası boşluk, arşivlenmiş tip, all_day, boş gün hücreleri); bildirim D4'teki alıcılara.
+  2. M4: çeviri düzeltilir — tipten saate kayıpsız, günde birden çok aralık, gece yarısını geçen kısım ertesi güne (S2 a); saatten tipe kısmen değen tip işaretlenir (S3 a, bugünkü gibi; çalışan bildirimle düzeltir); sağlama pgTAP'te her gün için "önce unavailable dakikalar → sonra" karşılaştırmasıyla (gece yarısını geçen tip, iki tip arası boşluk, arşivlenmiş tip, all_day, boş gün hücreleri); bildirim D4'teki alıcılara.
   3. M3 sunucu tarafı: shift type modunda o günün bütün seçilebilir tipleri işaretliyse kayıt `all_day=true`, tip listesi boş olarak normalize edilir (D6).
   4. Yetki çekirdeği (CLAUDE.md §9): `weekly_preferences_read/save_service`'in kendi-kayıt dalı `app_private.authorize(…'availability.own'…)`; `weekly_preference_settings_read/save_service` `settings.availability.read/write` ile; ham üyelik ve `service_actor_has_permission` çağrısı kalkar (eski yardımcının çağıranı 11 → 10). "Hayır" 42501 + `authz.*` hint. M13: kendi kaydını yalnız employee rolü yazar (bugünkü kural, çekirdekte matris hücresi).
 - **B — API, shared, web veri katmanı** (`nf-backend`; A1+A2 main'e girdikten sonra):
-  1. Shared: `scheduleConflictRulesSchema` `availability: warn|block` (zorunlu); `availability-assessment.ts:6-8` "refused" yorumu ve reddi kalkar; preflight bulgusunda onay alanları kalkar; okuma modelinde not alanı ve `availability_changed_after_publish` yeni anlamıyla; `weeklyCommitment*` şemaları ve `decisions` silinir.
-  2. API: önizleme ucu (`availability-service.ts:67-68,79`, `weekly-preferences-routes.ts:19`) silinir; Conflict handling kaydı yeni anahtarı taşır; BL-206'nın API ucu (`schedule-routes.ts:1422`) silinir; hayır sözleşmesi (üye olmayan 404, diğer `authz.*` 403).
-  3. Web veri: Warn/Block için `schedule-conflicts.ts` müsaitliği kural olarak okur (yazmada kutu açılır); not kartı verisi; anahtar durumu `schedule/store/scheduleUiStore.ts`'in mevcut kişiye özel deposunda (D5); `PublishScheduleDialog` `reasons`/`missing_reason` ölü kodu (BL-206 web yarısı).
+  1. Shared: `scheduleConflictRulesSchema`'ya müsaitlik anahtarı eklenmez (ayar yok); `availability-assessment.ts:6-8` "refused" yorumu ve reddi kalkar; preflight bulgusunda onay alanları kalkar; okuma modelinde not alanı ve `availability_changed_after_publish` yeni anlamıyla; `weeklyCommitment*` şemaları ve `decisions` silinir.
+  2. API: önizleme ucu (`availability-service.ts:67-68,79`, `weekly-preferences-routes.ts:19`) silinir; BL-206'nın API ucu (`schedule-routes.ts:1422`) silinir; hayır sözleşmesi (üye olmayan 404, diğer `authz.*` 403).
+  3. Web veri: `schedule-conflicts.ts` müsaitliği her yazmada uyarı kuralı olarak okur (kutu açılır, çakışma sayılmaz); not kartı verisi; anahtar durumu `schedule/store/scheduleUiStore.ts`'in mevcut kişiye özel deposunda (D5); `PublishScheduleDialog` `reasons`/`missing_reason` ölü kodu (BL-206 web yarısı).
 - **C1 — Schedule ekranı** (`nf-arayuz`; B main'e girdikten sonra, yeni `origin/main`'den; tasarımlar `task/avail-design` @`8066c66a` `apps/web/src/dev/avail/`):
   1. S1 A+C: düzenleme şeridinde "Availability" aç/kapa ("Paste mode" biçimi) + Settings menüsünde aynı ayarın satırı (her zaman çalışır); kapalıyken turuncu tarama **ve kartlardaki turuncu "!"** gizlenir (Mert'in cevabı; M10'u genişletir), onaylı izin kırmızısı kalır; Warn kutusu ve preflight sürer.
-  2. Warn kutusu (`ScheduleConflictSheet`): müsaitlik + not aynı vardiyaya düşerse tek kutu iki satır; Hard block'ta engel kazanır, not satırı yine görünür.
+  2. Warn kutusu (`ScheduleConflictSheet`): müsaitlik + not aynı vardiyaya düşerse tek kutu iki satır; not satırı her zaman görünür.
   3. S2 B: yalnız not varsa hücrenin altında not kartı, onay ister; geçilince iz kalmaz.
   4. S3 B: Pre-flight'ta müsaitlik bölümü tek katlanır satır, üstte "Ready to publish"; onay kutusu, "Previously accepted", "Acknowledged by" yok.
   5. "!" balonunda "Changed after publishing" C3 üçüncü tur A "Tinted header" ile (KARARLAR `:455`).
 - **C2 — Settings ve müsaitlik girişi** (`nf-arayuz`; C1 ile aynı dal olabilir):
-  1. Settings → Scheduling → Conflict handling: müsaitlik satırı C2-A açılır liste kalıbında (Warn / Hard block); `:163`'teki "Availability is a preference…" cümlesi kalkar.
+  1. ~~Settings → Conflict handling müsaitlik satırı~~ — **düştü** (Hard block yok, satır eklenmez; besleme #148); `:163`'teki "Availability is a preference…" cümlesi kalır (2026-09-26 kuralı geri geldi).
   2. M3 istemci: bütün seçilebilir tipler işaretlenince "All day" kendiliğinden açılır (onboarding adımı, My availability, Employees çekmecesi — M2 aynı bileşen).
-  3. Kaydedilmemiş değişiklik sorusu S4'ün cevabına göre (`useAvailabilityNavigationGuard`).
+  3. Kaydedilmemiş değişikliği My availability ve onboarding adımı sorar ("Discard unsaved changes?"), Employees çekmecesi sormaz (S4, koordinatör kararı; ILKELER P26 + K7) (`useAvailabilityNavigationGuard`).
   4. Dashboard bağlantısı (`EmployeeDashboard.tsx:234,319`) gerçek sekmeye (`?section=availability`, ölü `#availability` kalkar).
-  5. `WeeklyPreferencesForm.tsx:280` cümlesi S5'in cevabına göre.
+  5. ~~`WeeklyPreferencesForm.tsx:280` cümlesi~~ — **düştü**: S5 Mert "Bugünkü kalsın"; cümle doğru (Hard block yok).
   6. `WeeklyCommitmentReview.tsx` ve formdaki çağrısı silinir.
-- **D — e2e** (`nf-test`; C ile aynı pencere, `db.lock`): `e2e/flows/schedule-availability-warning.spec.ts` yeni kurala göre yeniden yazılır: (a) Warn: yazmada kutu, Place shift ile yazılır; (b) Hard block: yazılamaz, Auto-fill seçmez; (c) not kartı onayla yazılır, Takvim'de not izi yok; (d) Pre-flight onaysız yayınlar; (e) yayından sonra işaret → "Changed after publishing", izin → yazmaz; (f) owner modu değiştirir, kaydı olmayan çalışan da "Check your availability" alır, takas isteği açık kalır.
+  7. S2 (a): saat modunda günde birden çok aralık — My availability, onboarding adımı ve Employees çekmecesindeki saat düzenleyicisi "Add hours" ile birden çok aralık alır (M2 aynı bileşen; M4).
+- **D — e2e** (`nf-test`; C ile aynı pencere, `db.lock`): `e2e/flows/schedule-availability-warning.spec.ts` yeni kurala göre yeniden yazılır: (a) Warn: yazmada kutu, Place shift ile yazılır; (b) Auto-fill işaretli çalışanı seçmez, hiçbir yazma müsaitlik yüzünden reddedilmez; (c) not kartı onayla yazılır, Takvim'de not izi yok; (d) Pre-flight onaysız yayınlar; (e) yayından sonra işaret → "Changed after publishing", izin → yazmaz; (f) owner modu değiştirir, kaydı olmayan çalışan da "Check your availability" alır, takas isteği açık kalır.
 
 ## Out of scope
-1. **Takas tarafı (M6, M8'in takası):** aday listesi, kabulde S4-E "emin misin?" (günün çizelgesi), onayda S5-B "IF APPROVED" rıza satırı, Hard block'ta çalışanın rızası — FB-6.4 (A1.6, B.4). Takas KABULÜ de S4-E'yi kullanır (koordinatör kararı) — FB-6.4'te. AVAIL-002 yalnız tetikleyicinin takası muaf tutmasını sağlar (D2).
+1. **Takas tarafı (M6):** aday listesi, kabulde S4-E "emin misin?" (günün çizelgesi), onayda S5-B "IF APPROVED" rıza satırı — FB-6.4 (A1.6, B.4). Takas KABULÜ de S4-E'yi kullanır (koordinatör kararı) — FB-6.4'te. D2 düştü (Hard block yok; tetikleyici takası da engellemez).
 2. M1, M2, M7, M13: bugünkü gibi; yeni iş yok (M13 yalnız çekirdekte hücre).
 3. `assess_weekly_shift_availability`'nin 16 okuyucusunun motora taşınması (FB-6.4 Out of scope 1, rafta).
 4. BL-174'ün izin yolu; BL-135'in "Last edited by" yarısı; bildirim platformu (ILKELER P13).
@@ -78,9 +79,9 @@ Goal: Müsaitlik 2026-10-04 prensibine (M3, M4, M5, M7–M12) ve Mert'in tasarı
 6. Geçmiş kaydındaki "yanlış aktör" (T4 bayat).
 
 ## Kararlar (dayanaklı; Mert'e gösterilir — CLAUDE.md §13)
-- **D1** Hard block yayını engellemez; işaretli saatteki vardiya kalır, Pre-flight listeler. Dayanak: KARARLAR M7 + M9.
-- **D2** Onaylı takasın atama yazması Hard block'tan muaftır. Dayanak: KARARLAR M8 ("takasta çalışanın rızası geçerli") + M6.
-- **D3** Auto-fill çalışanın işaretini Warn'da da Hard block'ta da seçmez; notu hesaba katmaz. Dayanak: KARARLAR `:149` (BL-186 S3) + M8 + M12.
+- **D1** ~~Hard block yayını engellemez~~ — düştü (Hard block yok, besleme #148); müsaitlik yayını engellemez, işaretli saatteki vardiya kalır, Pre-flight listeler (M7 + M9).
+- **D2** ~~Onaylı takasın atama yazması Hard block'tan muaftır~~ — düştü (besleme #148).
+- **D3** Auto-fill çalışanın işaretini seçmez; notu hesaba katmaz. Dayanak: KARARLAR `:149` (BL-186 S3) + M12.
 - **D4** "Check your availability" bildirimi workspace'teki employee rolündeki her aktif ve aktivasyon bekleyen kişiye gider (haftası olsun olmasın); not haftası çevrilen yöneticiye gitmez. Dayanak: KARARLAR M4 + M13 + ILKELER A anti-hedef "bildirim gürültüsü".
 - **D5** Aç/kapa anahtarı kişiye ve cihaza özel, mevcut `scheduleUiStore` deposunda; varsayılan açık. Dayanak: M10 "kişiye özel ve hatırlanır" (koordinatör kararı) + P19 (en az bakım: mevcut depo).
 - **D6** M3'te "bütün tipler" = o gün seçilebilir aktif tipler ("Previous" etiketli arşiv tipleri hariç); kayıt `all_day=true` biçiminde. Dayanak: M3 + P19.
@@ -88,8 +89,9 @@ Goal: Müsaitlik 2026-10-04 prensibine (M3, M4, M5, M7–M12) ve Mert'in tasarı
 - **D8** "Changed after publishing" ölçüsü vardiyanın ilk yayınındaki değerlendirmedir; saklama biçimi `nf-db`'nin teknik kararı. Dayanak: M11 + P19.
 - **D9** Warn kutusu toplu işlemde (yapıştırma, kopyalama, şablon) bugünkü onaylı kuralların kutusuyla aynı davranır. Dayanak: M8 ("mevcut Scheduling rule kutusu").
 
-## Açık sorular (KARARLAR / ILKELER kapsamıyor; §13 şablonu)
+## Sorular (§13 şablonu; cevaplandı 2026-10-04 ~13:45Z, koordinatörün penceresinde — besleme #148)
 **S1 — Hard block'ta, işaretli saatte zaten duran vardiya düzenlenebilir mi?**
+**Cevap: düştü.** Mert seçenek dışı yazdı: "availibility hiçbir zaman hard block olmasın. settingsten kaldıralım. her zaman için warn olsun. hiç bir zaman da conflict oluşturmasın" — KARARLAR M8 yeniden yazıldı.
 Bugün: Schedule → hücre → vardiya kartı → saatini değiştir. Örnek: KadıköyMüdür1, KadıköyGarson1'in Salı 18:00–23:00 taslak vardiyasını, ayar Warn iken yazdı; owner ayarı Hard block yaptı; KadıköyMüdür1 bitişi 22:00'ye çekmek istiyor (vardiya hâlâ işaretli saatte).
 - (a) **(Önerilen)** Saat ya da kişi değişince yeni yazma sayılır ve engellenir; dokunulmayan vardiya kalır ve yayınlanır. Kime görünür: KadıköyMüdür1 kırmızı kutuyu görür; vardiyayı silebilir ya da başkasına verebilir. Dayanak: KARARLAR M8 ("o hücreye yazamaz") + M7.
 - (b) Mevcut vardiyanın düzenlenmesi serbest, yalnız yeni atama engellenir. Sonuç: işaretli saate düşen vardiya küçük adımlarla taşınabilir.
@@ -97,6 +99,7 @@ Bugün: Schedule → hücre → vardiya kartı → saatini değiştir. Örnek: K
 - Kaçış: Claude karar versin / Backlog'a yaz / Önce sohbette konuşalım.
 
 **S2 — Tipten saate çevirirken iki tip arası boşluk ve gece yarısını geçen tip.**
+**Cevap: (a)** kayıpsız, çok aralık (Mert, önerilen) — KARARLAR M4.
 Bugün: Settings → Scheduling → Availability → Entry mode "Shift type" → "Time range". Örnek: KadıköyGarson1 Pazartesi Open (09–14) ve Dinner (17–02) tiplerini işaretlemiş. Bugün kayıt 09:00–24:00 olur: 14–17 arası müsait saati "unavailable"a düşer, Salı 00–02 kaybolur.
 - (a) **(Önerilen)** Saat modunda gün başına birden çok aralık; gece yarısını geçen kısım ertesi güne yazılır. Sonuç kayıpsız; My availability, onboarding ve çekmecedeki saat düzenleyicisi birden çok aralık alır (C2'ye ~2 puan). Dayanak: KARARLAR M4 (kaybın kendisi değişikliğin nedeni) + ILKELER P11.
 - (b) Tek aralık kalır; boşluk "unavailable" sayılır, gece yarısı sonrası ertesi günün başına eklenir. Sonuç: boşluk kaybı sürer, gece kaybı kalkar.
@@ -104,6 +107,7 @@ Bugün: Settings → Scheduling → Availability → Entry mode "Shift type" →
 - Kaçış: Claude karar versin / Önce sohbette konuşalım.
 
 **S3 — Saatten tipe çevirirken bir tipe kısmen değen işaret.**
+**Cevap: (a)** değen tip işaretlenir (Mert, önerilen) — KARARLAR M4.
 Bugün: aynı ekran, "Time range" → "Shift type". Örnek: KadıköyGarson1 Pazartesi 14:00–16:00 unavailable; Open 09–15, Dinner 15–23. Bugün ikisi de işaretlenir: Pazartesi 09–23 unavailable olur.
 - (a) **(Önerilen)** Değen tip işaretlenir (bugünkü gibi), çalışan "Check your availability" bildirimiyle düzeltir. Sonuç: kimse işaretlediği saatte yazılmaz; fazla işaret çalışanın elinde. Dayanak: KARARLAR M4 (bildirim bu düzeltme için) + ILKELER P24 (çalışan kendi kısıtının sahibi).
 - (b) Yalnız tamamen kapsanan tip işaretlenir. Sonuç: 14–16 hiç işaretlenmez, KadıköyGarson1 o saatte yazılabilir.
@@ -111,6 +115,7 @@ Bugün: aynı ekran, "Time range" → "Shift type". Örnek: KadıköyGarson1 Paz
 - Kaçış: Claude karar versin / Önce sohbette konuşalım.
 
 **S4 — Müsaitlik haftasında kaydedilmemiş değişiklik: hangi ekran sorar?**
+**Cevap: (a)** — koordinatör kararı (dayanak ILKELER P26 + KARARLAR K7); KARARLAR Ekran kararları → Employee Hub.
 Bugün: hiçbiri sormaz. Örnek: KadıköyGarson1 telefonda My availability'de beş günü işaretler, kaydetmeden Shift Hub'a geçer; işaretler kaybolur.
 - (a) **(Önerilen)** My availability ve onboarding adımı sorar ("Discard unsaved changes?"), Employees çekmecesi sormaz. Dayanak: ILKELER P26 (kayıp büyükse sorulur) + K7 (Employees çekmecesi sormaz).
 - (b) Üçü de sorar.
@@ -118,6 +123,7 @@ Bugün: hiçbiri sormaz. Örnek: KadıköyGarson1 telefonda My availability'de b
 - Kaçış: Claude karar versin / Backlog'a yaz.
 
 **S5 — Hard block'ta çalışanın My availability'deki açıklama cümlesi.**
+**Cevap: (c) bugünkü kalsın** (Mert; önerilen (a) — ters seçim; Hard block kalktığı için cümle zaten doğru).
 Bugün: Employee Hub → My availability → Availability'de "Availability is a preference, not a guarantee: a manager can still schedule you…" yazar; Hard block'ta bu yanlış olur.
 - (a) **(Önerilen)** Cümle ayara göre: Warn'da bugünkü, Hard block'ta "Managers can't schedule you during hours you mark unavailable." Kime görünür: yalnız çalışan. Dayanak: ILKELER P11 (doğru veri) + P21 (tek cümle).
 - (b) Cümle her iki ayarda kalkar.
@@ -127,25 +133,25 @@ Bugün: Employee Hub → My availability → Availability'de "Availability is a 
 ## Dilimler, sıra ve puan
 | Dilim | Rol | İçerik | Puan |
 |---|---|---|---|
-| A1 | `nf-db` | ayar, değerlendirme, tetikleyici, Auto-fill, preflight, ilk yayın, not ayrımı | 5 |
+| A1 | `nf-db` | değerlendirme (her zaman uyarı), tetikleyici ölçümü, Auto-fill, preflight, ilk yayın, not ayrımı (ayar düştü) | 4 |
 | A2 | `nf-db` | keep/cancel silme, çeviri + sağlama + bildirim, M3 normalize, yetki çekirdeği | 5 |
-| B | `nf-backend` | shared + API + web veri | 5 |
+| B | `nf-backend` | shared + API + web veri (ayar şeması düştü) | 4 |
 | C1 | `nf-arayuz` | Schedule (anahtar, kutu, not kartı, preflight, C3 yazısı) | 5 |
-| C2 | `nf-arayuz` | Settings satırı, All day, kaydedilmemiş soru, bağlantı, metin, silme | 3 (S2 (a) seçilirse 5) |
+| C2 | `nf-arayuz` | All day, kaydedilmemiş soru, bağlantı, silme, çok aralıklı saat düzenleyicisi (S2 a); Settings satırı ve metin düştü | 4 |
 | D | `nf-test` | e2e (a)–(f) | 3 |
-Sıra: S1–S5 cevabı → A1 → A2 (aynı dal olabilir) → main (+ canlıya migration, CLAUDE.md §8) → B → main → C1 + C2 → D → main. **FB-6.4 ile:** iki iş de `nf-db` test dosyalarına dokunuyor (`authorization_matrix`, `authorization_coverage`, `authz_catalog`, `retired_objects_stay_gone`, `ci-green.txt`); aynı anda değil, sırayla (CLAUDE.md §4). FB-6.4'ün "Hard block'ta rıza geçer" hücresi A1'in ayar anahtarına bağlı: FB-6.4 A1 önce giderse o hücre bu işte eklenir.
+Toplam 25 puan (önce 26; besleme #148: A1 5 → 4, B 5 → 4, C2 3 → 4). Sıra: (sorular cevaplandı) A1 → A2 (aynı dal olabilir) → main (+ canlıya migration, CLAUDE.md §8) → B → main → C1 + C2 → D → main. **FB-6.4 ile:** iki iş de `nf-db` test dosyalarına dokunuyor (`authorization_matrix`, `authorization_coverage`, `authz_catalog`, `retired_objects_stay_gone`, `ci-green.txt`); aynı anda değil, sırayla (CLAUDE.md §4). FB-6.4'ün "Hard block'ta rıza geçer" hücresi düştü (besleme #148).
 
 ## Done when
-1. Yerel DB: `conflict_rules ? 'availability'` 395/395 satırda (değer `warn`); Settings → Conflict handling'de satır görünür, `block` kaydedilir (web vitest + pgTAP).
-2. pgTAP (yeni `supabase/tests/availability_warn_or_block.test.sql`, `ci-green.txt`'te): Warn'da yönetici yazması onayla geçer; Block'ta 23514; yayın kopyası ve onaylı takas Block'ta geçer (D1, D2); S1 cevabının hücresi; not ne Warn ne Block üretir, Auto-fill notu olanı seçer, işareti olanı seçmez (D3).
+1. Yerel DB: `conflict_rules`'ta `availability` anahtarı yok ve Settings → Conflict handling'de müsaitlik satırı yok (bugünkü hâl; Hard block kalktı, besleme #148).
+2. pgTAP (yeni `supabase/tests/availability_always_warns.test.sql`, `ci-green.txt`'te): yönetici yazması onayla geçer; taslak, yayın kopyası ve onaylı takas yazmasında müsaitlik yüzünden hiçbir ret (23514) ve çakışma yok; not uyarı üretmez; Auto-fill notu olanı seçer, işareti olanı seçmez (D3).
 3. Preflight: müsaitlik bulgusu onay istemiyor; `weekly_publication_decisions`'ta "Acknowledge the availability warnings" ve "Previously accepted" dalı yok (`prosrc` sayımı 0); `list_schedule_draft_availability_conflicts_service` yok ve `retired_objects_stay_gone`'da.
 4. `availability_changed_after_publish`: ilk yayından sonra gelen işarette `true`; taslakta girilen işarette, onaylı izinde ve unpublish→republish sonrasında beklenen değer (pgTAP, üç hücre).
 5. Keep/cancel: `weekly_preferences_preview_service`, `weekly_preference_commitment_conflicts`, `weekly_preference_commitments`, `weekly_preference_commitment_decisions` yok ve `retired_objects_stay_gone`'da; bekleyen takas isteği müsaitlik kaydından sonra aynı durumda (pgTAP); `grep -rn "WeeklyCommitmentReview\|weeklyCommitment" apps packages` 0.
-6. Mod çevirisi: S2/S3 cevabının sağlama hücreleri `weekly_preference_mode_conversion.test.sql`'de yeşil (gece yarısını geçen tip, boşluk, all_day, boş gün, arşiv tipi); bildirim kaydı olmayan employee'ye de gidiyor, yöneticiye gitmiyor (D4).
+6. Mod çevirisi: S2 (a) / S3 (a) sağlama hücreleri `weekly_preference_mode_conversion.test.sql`'de yeşil (gece yarısını geçen tip, boşluk, all_day, boş gün, arşiv tipi); bildirim kaydı olmayan employee'ye de gidiyor, yöneticiye gitmiyor (D4).
 7. Yetki: dört servis `app_private.authorize` soruyor; ham `workspace_memberships` dalı ve `service_actor_has_permission` çağrısı yok; eski yardımcının çağıranı 11 → 10 (`authz_catalog` tavanı buna iner); manager/admin/owner kendi kaydını yazamaz (M13), kısıtlı kişi ve üye olmayan "hayır" + `authz.*` hint (pgTAP); API 404/403 (vitest).
 8. M3: bütün seçilebilir tipler işaretlenince "All day" açılıyor (web vitest) ve sunucu kaydı `all_day=true` (pgTAP).
 9. Ekran (C1, C2): S1 A+C, S2 B, S3 B ve dört cevap Mert'in seçtiği hâliyle; anahtar kapalıyken turuncu tarama ve "!" yok, kırmızı izin var; `nf-gorsel-qa` ONAY; masaüstü + telefon ekran görüntüsü `artifacts/nf-arayuz/avail-002/`.
-10. Dashboard "Update availability" ve "My availability" bağlantıları sekmeyi açıyor (web vitest); S4 cevabının sorusu vitest'te.
+10. Dashboard "Update availability" ve "My availability" bağlantıları sekmeyi açıyor (web vitest); S4: My availability ve onboarding soruyor, Employees çekmecesi sormuyor (vitest).
 11. e2e (a)–(f) main CI e2e'de yeşil.
 12. Schedule ızgara okuması ≤ 50 ms (`schedule_grid_read_budget`, CI `db`).
 13. Tam kapı (lint, typecheck, test, build) + `test:db` yeşil; main CI yeşil.
@@ -164,11 +170,13 @@ Sıra: S1–S5 cevabı → A1 → A2 (aynı dal olabilir) → main (+ canlıya m
 - D: `pnpm.cmd e2e` (`db.lock`), sonra main CI.
 
 ## Risk
-- **Tek yazma kapısı:** `guard_schedule_assignment_availability` taslak, yayın ve takasın her yazmasını görüyor (BL-186 notu). Block'u yanlış yere koymak yayını ya da onaylı takası durdurur → D1/D2 hücreleri pgTAP'te kırmızıdan başlar; onaylı izin engeli aynı fonksiyondan geçtiği için izin hücreleri de yeniden koşar.
+- **Tek yazma kapısı:** `guard_schedule_assignment_availability` taslak, yayın ve takasın her yazmasını görüyor (BL-186 notu). Hard block kalktı (besleme #148); risk, tetikleyicide müsaitlik yüzünden bir ret yolunun kalması → Done when 2 hücreleri her yazma yolunu dener.
 - **Silinen tablo:** `weekly_preference_commitment_decisions` ve `decisions` kolonu canlıda satır taşıyorsa canlıya gönderim Mert'e sorulur (CLAUDE.md §8: canlıda gerçek veri silme yetki dışı). Önce canlıda `count(*)` SELECT.
 - **`assess` 16 okuyucuya yayılıyor:** not ayrımı parmak izini değiştirir; eski yayınların anlık görüntüsü yeni parmak iziyle eşleşmez → "Changed after publishing" yanlış `true` verebilir. Eski veri korunmaz (CLAUDE.md §9) ama yerel fixture'da bir kez ölçülür.
 - **FB-6.4 ile çakışma:** aynı test dosyaları; sıra yukarıda.
-- Pre-mortem (3 ay sonra neden başarısız olur): (1) Hard block'a geçen workspace'te yayın kırmızı kutuya takılır — D1 testi; (2) çalışan çeviri sonrası haftasını tanımaz — S2/S3 + D4 bildirimi; (3) anahtar kapalı unutulur, müdür turuncuyu hiç görmez — Warn kutusu ve preflight sürdüğü için kabul edilen risk (M10).
-- Geri alınabilirlik: ayar `warn`'a dönünce davranış bugüne yakın; silinen keep/cancel geri gelmez (M5 bilerek).
+- Pre-mortem (3 ay sonra neden başarısız olur): (1) müsaitlik bir yolda yine engel ya da çakışma üretir (eski ret kalıntısı) — Done when 2 testi; (2) çalışan çeviri sonrası haftasını tanımaz — S2 (a) / S3 (a) + D4 bildirimi; (3) anahtar kapalı unutulur, müdür turuncuyu hiç görmez — Warn kutusu ve preflight sürdüğü için kabul edilen risk (M10).
+- Geri alınabilirlik: ayar yok, davranış tek (her zaman uyarı); silinen keep/cancel geri gelmez (M5 bilerek).
 
 ## Notes / Result
+
+- 2026-10-04 14:28Z (besleme #148, kayıt-19): sorular cevaplandı (S1 düştü — Hard block kalktı, KARARLAR M8 yeniden; S2 (a), S3 (a), S4 (a) koordinatör, S5 (c) bugünkü kalsın); dilimler ve Done when buna göre yeniden yazıldı; puan 26 → 25 (A1 5 → 4, B 5 → 4, C2 3 → 4). AVAIL-002 FOUNDATION-B puanına dahil değil (`FOUNDATION-B.md`'de AVAIL yok — ölçüldü).

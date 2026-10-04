@@ -274,6 +274,9 @@
   (UI Lab) seçeneklere konmaz. Eski kilitli bir karar bugünkü konuşmayla çelişirse sorulur.
 - Kanıt: 09-19 "UI Lab şu an için ertelendi. Onu hiçbir şekilde kullanmıyoruz."; 09-20
   "Workspaces'a dönülsün".
+- Kanıt (2026-10-04, aynı gün): müsaitlik M8 sabah "Warn (varsayılan) / Hard block" diye
+  kilitlendi; öğleden sonra Mert seçenek dışı "availibility hiçbir zaman hard block olmasın… her
+  zaman için warn olsun" dedi. Kilitli kural aynı işte yeniden yazıldı (KARARLAR M8).
 
 **P23. Gerçekten oluşabilecek uç durumlar baştan kapsanır.**
 - Kural: bir kural önerilirken yayınlanmamış hafta, vardiyasız gün, lokasyonsuz kişi ve çok
