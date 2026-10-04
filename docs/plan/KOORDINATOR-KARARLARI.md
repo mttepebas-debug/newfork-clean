@@ -1155,3 +1155,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay (matris hücresi).
 - **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #149).
 - **Mert:** bilgi.
+
+### KK-134 (2026-10-04) AVAIL-002 B yalnız veri ve yardımcılar; Warn kutusunun bağlanması C1'de
+- **Karar (ne):** AVAIL-002-B soru 1 → (a). B (`nf-backend`) yalnız veri ve yardımcıları yapar: `schedule-conflicts.ts`'te müsaitlik ve not gerekçeleri, sunucu değerlendirmesinden gerekçe çıkaran yardımcı, not kartı verisi. Warn kutusunun bütün yazma yollarına (editör, sürükle-bırak, yapıştır, kopyala, şablon) bağlanması ve iki satırlı görünüm C1'de (`nf-arayuz`).
+- **Nerede:** AVAIL-002 B (işçi `local_e4bbe6fe…`, dal `task/avail-002-b`) ve C1.
+- **Ne zaman:** 2026-10-04 ~15:30Z.
+- **Ne için:** dosya sahipliği: kutunun yazma yollarına bağlanması sunum katmanı; aynı dosyada iki rol çalışmaz.
+- **Uygulamada etkisi:** A + B main'e girince Schedule bugünkü gibi davranır — müsaitlik için kutu açılmaz, ret yok; kutu C1 ile açılır. Ara hâl kullanıcıya bir şey kaybettirmez (müsaitlik zaten engellemiyor).
+- **Dayanak:** koordinatörün görev mesajı + AVAIL-002 Touches + CLAUDE.md §4.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #151).
+- **Mert:** bilgi.
