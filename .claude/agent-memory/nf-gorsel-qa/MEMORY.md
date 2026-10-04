@@ -7,3 +7,6 @@
 - [Schedule quiet-dialog pattern](schedule-quiet-dialog-pattern.md) — shared attr for Publish/Templates; safe QA open paths
 - [Time-off QA login and dialogs](time-off-qa-login-and-dialogs.md) — owner-capable world e2e1790693406000, no pending time off (page.route), `.app-confirm-layer` for the confirm dialog
 - [Schedule tip QA data + traps](schedule-tip-qa-data-and-traps.md) — week 2026-09-21 data, manager_notes/card injection, focus-scroll closes bubble, no max-height
+- [Availability QA logins + traps](availability-qa-logins-and-traps.md) — AVAIL-002 accounts, type-mode Meyhouse, onboarding user, phone Save swallowed, shared Discard dialog gray buttons
+- [Schedule edit-mode QA traps](schedule-edit-mode-qa-traps.md) — reach edit mode via New Schedule -> pencil; stale active session reopens the OLD draft; Discard in finally; phone tap traps
+- [Availability design artifact, local render](avail-design-artifact-local-render.md) — save artifact files + static server + postMessage availgo; lab-only styles and old-look bubbles; Settings menu clipped at 375
