@@ -396,3 +396,14 @@ test("M4, M5, D4: the owner changes the entry mode; an employee with no saved we
       where s.workspace_id = tests.id('${run}') and s.availability_input_mode <> 'time_range';`);
   }
 });
+
+// M8: availability is always a warning, so Settings > Conflict handling has no
+// rule for it, only the one sentence saying so (BL-185).
+test("Settings > Conflict handling offers no Employee availability rule", async ({ browser }) => {
+  const zeynep = await openPage(browser, "zeynep", "/app/settings/scheduling/conflicts");
+  await expect(zeynep.getByRole("heading", { name: "Conflict handling", exact: true })).toBeVisible();
+  await expect(zeynep.getByText("Employee availability")).toHaveCount(0);
+  await expect(
+    zeynep.getByText("Availability is a preference: you'll see a warning, never a block."),
+  ).toBeVisible();
+});
