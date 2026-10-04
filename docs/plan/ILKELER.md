@@ -289,6 +289,10 @@
   olan kişi cover listesinde hiç çıkmaz.
 - Kanıt: 09-23 "Onaylı bir time off requestsi varsa, cover request için listede ismi hiç
   çıkmaz", "kesişme olmuyorsa… kabul korunur".
+- Kanıt (2026-10-04, müsaitlik prensibi M6 / M8): Settings'te müsaitlik Hard block seçilse de takasta çalışanın rızası geçer;
+  kabulde "emin misin?" sorulur, onaylayan "kendi rızasıyla" görür. Reddedilen: "block takasta da geçerli".
+- Kanıt (2026-10-04, ters seçim, M12): yönetici notu için "tek kural: işaret gibi sayılır" önerildi; Mert reddetti — not kısıt
+  değil yalnız hatırlatma: Warn / Block / otomatik doldurma / preflight'a girmez, yazarken küçük onay kutusunda görünür.
 
 **P25. Karar geri alınabilir; geri dönüşsüz eylemin sonucu açıkça yazılır.**
 - Kural:
