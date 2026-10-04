@@ -54,13 +54,13 @@ select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model(owner_id))-
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,notes,revision,updated_by)
  select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),
   array['private-note','','','','','',''],1,manager from ws;
-select ok((pg_temp.project()->'days'->0->>'has_unavailable')::boolean,'enabled manager interval marks the matching day');
+select ok(not (pg_temp.project()->'days'->0->>'has_unavailable')::boolean and jsonb_array_length(pg_temp.project()->'note_intervals')>0,'an enabled note marks no day; its hours travel apart (M12)');
 -- G14 (user decision 2026-10-01): the manager the note is for reads its words
 -- in the Schedule; who may not is in schedule_reads_weekly_availability.
 select is(pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'->0->'manager_notes'->>0,'private-note','the manager reads the note''s words in the Schedule');
 select ok(not ((pg_temp.the_employee(pg_temp.read_model())->'weekly_availability'->0) ? 'manager_intervals'),'Schedule projection does not disclose source identity');
-select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 02:00Z'::timestamptz,'West rules use West timezone');
-select is((pg_temp.project('2035-01-15',other_loc)->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-15 23:00Z'::timestamptz,'same recurring rule uses target East timezone') from ws;
+select is((pg_temp.project()->'note_intervals'->0->>'start_at')::timestamptz,'2035-01-16 02:00Z'::timestamptz,'West rules use West timezone');
+select is((pg_temp.project('2035-01-15',other_loc)->'note_intervals'->0->>'start_at')::timestamptz,'2035-01-15 23:00Z'::timestamptz,'same recurring rule uses target East timezone') from ws;
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from ws);
 select is(pg_temp.project()->'unavailable_intervals','[]'::jsonb,'disabled reminders disappear without deleting them');
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select shift_type,w,'Night','22:00','02:00' from ws;
@@ -75,8 +75,7 @@ select tests.approved_leave(w,emp,employee_user,loc,'2035-01-15','12:00','14:00'
 select is(jsonb_array_length(pg_temp.project()->'leave_intervals'),1,'approved leave has separate blocking intervals');
 select is(jsonb_array_length(pg_temp.project()->'unavailable_intervals'),2,'leave does not become a preference interval in the eight-day projection');
 select is((select count(distinct x->>'offset_seconds') from jsonb_array_elements(pg_temp.project('2035-11-04')->'clock_segments') x),2::bigint,'fall-back week contains both clock offsets');
-update public.employee_weekly_preferences set preference=public.empty_weekly_preference('time_range') where workspace_id=(select w from ws);
-update public.manager_weekly_reminders set enabled=true,preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
 select ok((pg_temp.project()->'days'->0->>'all_day')::boolean,'all-day projection is explicit');
 select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
 -- With no location left the manager reads no week at all (FB-6.1 .4: the core

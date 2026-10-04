@@ -22,7 +22,6 @@ select is(
    where n.nspname in ('public', 'app_private')
      and p.proname in (
        'list_schedule_draft_document_conflicts_service',
-       'list_schedule_draft_availability_conflicts_service',
        'preview_schedule_default_hours_service',
        'weekly_schedule_publication_preflight'
      )

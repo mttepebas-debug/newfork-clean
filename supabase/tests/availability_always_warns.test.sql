@@ -1,19 +1,24 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(51);
+select * from no_plan();
 
--- BL-186 (user decision 2026-09-26): an availability mark is a preference,
--- never a block. The employee's own mark and a manager's private reminder
--- behave the same: a warning on the shift, never a refusal, on every path
--- that writes a shift. Publish lists the warnings and the publisher
--- acknowledges the new or changed ones; that acknowledgment is recorded in
--- the publisher's name. Approved time off still blocks everywhere.
+-- AVAIL-002 (KARARLAR "Müsaitlik", M7-M12, Mert 2026-10-04): availability is
+-- always a warning and never a conflict. The employee's own mark asks at every
+-- write (the web's "Scheduling rule" box) and never refuses a write on any
+-- path: one shift, a batch, default hours, the edit session, the draft, a
+-- template, the published week, a cover. Publish lists the marks for a last
+-- look and asks no acknowledgment (M9). A manager's private note is only a
+-- reminder (M12): a separate "note" reason, never an availability warning,
+-- never in Auto-fill or Publish. "Changed after publishing" counts a mark that
+-- came after the shift was first published, never approved time off (M11).
+-- Approved time off still blocks everywhere.
 
 select tests.world('ap');
 select tests.person('ap', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('ap', 'can', 'manager', array['K'], array['cook']);
 select tests.person('ap', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('ap', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('ap', 'veli', 'employee', array['K'], array['cook']);
 
 -- days are weekdays as dow (0 = Sunday); shifts count days from Monday.
 create function pg_temp.evenings(days integer[]) returns jsonb language sql as $$
@@ -24,11 +29,13 @@ create function pg_temp.evenings(days integer[]) returns jsonb language sql as $
 $$;
 -- Ali marked every evening 18:00-22:00 and Ayşe noted the same evenings as a
 -- private reminder; Can, a manager who also works shifts, marked Saturday.
+-- Veli marked nothing; Ayşe's note says he is busy every evening.
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 values (tests.id('ap'), tests.id('ap:ali'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), 1, tests.user('ap:ali')),
        (tests.id('ap'), tests.id('ap:can'), pg_temp.evenings(array[6]), 1, tests.user('ap:can'));
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
-values (tests.id('ap'), tests.id('ap:ali'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), true, 1, tests.user('ap:ayse'));
+values (tests.id('ap'), tests.id('ap:ali'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), true, 1, tests.user('ap:ayse')),
+       (tests.id('ap'), tests.id('ap:veli'), pg_temp.evenings(array[0, 1, 2, 3, 4, 5, 6]), true, 1, tests.user('ap:ayse'));
 
 create function pg_temp.shift(person text, n integer, day integer, extra jsonb default '{}') returns jsonb language sql as $$
   select jsonb_build_object('location_id', tests.id('ap:K'), 'employee_id', tests.id('ap:' || person),
@@ -83,13 +90,18 @@ create function pg_temp.publish(actor text, draft uuid, preview jsonb, decisions
   select public.publish_schedule_draft_service(tests.user('ap:' || actor), tests.id('ap'), draft, array[tests.id('ap:K')], null, true,
     (select d.revision from public.schedule_drafts d where d.id = draft), preview ->> 'fingerprint', decisions)
 $$;
-create function pg_temp.acknowledge(preview jsonb) returns jsonb language sql as $$
-  select coalesce(jsonb_agg(jsonb_build_object('finding_id', f ->> 'id')), '[]')
-  from jsonb_array_elements(preview -> 'findings') f where f ->> 'code' = 'availability'
-$$;
 create function pg_temp.findings(preview jsonb, person text) returns jsonb language sql as $$
   select coalesce(jsonb_agg(f order by f ->> 'scheduled_date'), '[]') from jsonb_array_elements(preview -> 'findings') f
   where f ->> 'code' = 'availability' and f ->> 'employee_id' = tests.id('ap:' || person)::text
+$$;
+-- The Schedule grid's card for a published shift of week n.
+create function pg_temp.card(n integer, shift uuid) returns jsonb language sql as $$
+  select x from jsonb_array_elements(public.get_schedule_read_model_service(tests.user('ap:owner'), tests.id('ap'), tests.week(n)) -> 'shifts') x
+  where x ->> 'id' = shift::text
+$$;
+create function pg_temp.current_draft(n integer) returns uuid language sql as $$
+  select source_draft_id from public.schedule_location_publications
+  where workspace_id = tests.id('ap') and week_start = tests.week(n) and status = 'current'
 $$;
 create temp table ap (k text primary key, v jsonb);
 
@@ -103,11 +115,32 @@ select ok((select x -> 'warning_codes' ? 'availability' from ap, jsonb_array_ele
 insert into ap select 'assess', public.assess_schedule_shift_service(tests.user('ap:owner'), tests.id('ap'),
   pg_temp.shift('ali', 1, 1), null, tests.id('ap:session:1'));
 select is((select v ->> 'operation' from ap where k = 'assess'), 'allowed', 'the check before writing allows it');
+select is((select v ->> 'conflict_severity' from ap where k = 'assess'), 'allow', 'his mark is no conflict');
 select ok((select (v ->> 'has_availability_conflict')::boolean and v ->> 'availability_fingerprint' ~ '^[a-f0-9]{64}$' from ap where k = 'assess'),
   'and names the availability warning with its own fingerprint');
-select is((select jsonb_agg(r ->> 'severity' order by r ->> 'source' nulls first) from ap, jsonb_array_elements(v -> 'reasons') r
-  where k = 'assess' and r ->> 'code' = 'availability'), '["warn", "warn"]'::jsonb,
-  'his own mark and the manager''s reminder are both only warnings');
+select is((select jsonb_agg((r ->> 'code') || ':' || (r ->> 'severity') order by r ->> 'code') from ap, jsonb_array_elements(v -> 'reasons') r
+  where k = 'assess' and r ->> 'code' in ('availability', 'note')), '["availability:warn", "note:warn"]'::jsonb,
+  'his own mark is a warning; the manager''s reminder comes back as a separate note');
+select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'reasons') r
+  where k = 'assess' and r ->> 'code' = 'availability' and r ? 'source'), 0, 'no availability reason comes from the note');
+
+-- The note alone: Veli marked nothing, Ayşe's note covers his evening.
+insert into ap select 'note', public.assess_schedule_shift_service(tests.user('ap:owner'), tests.id('ap'),
+  pg_temp.shift('veli', 1, 1), null, tests.id('ap:session:1'));
+select is((select jsonb_build_object('operation', v ->> 'operation', 'severity', v ->> 'conflict_severity',
+    'warns', v -> 'has_availability_conflict', 'fingerprint', v -> 'availability_fingerprint') from ap where k = 'note'),
+  '{"operation": "allowed", "severity": "allow", "warns": false, "fingerprint": null}'::jsonb,
+  'a note alone is no availability warning and no conflict');
+select is((select jsonb_agg(r ->> 'code' order by r ->> 'code') from ap, jsonb_array_elements(v -> 'reasons') r where k = 'note'),
+  '["note"]'::jsonb, 'it comes back as the note, to be shown while writing');
+select is((select v -> 'unavailable_intervals' from ap where k = 'note'), '[]'::jsonb, 'and the note marks no hour unavailable');
+-- A shift lead whose role cannot read the note does not get it.
+select tests.role('ap', 'shift lead', 'manager', array(
+  select rp.permission_key from public.workspace_role_permissions rp join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('ap') and r.system_key = 'manager' and rp.permission_key not like 'availability.%'));
+select tests.person('ap', 'nil', 'shift lead', array['K'], array['cook']);
+select is((select count(*)::integer from jsonb_array_elements(public.assess_schedule_shift_service(tests.user('ap:nil'), tests.id('ap'),
+  pg_temp.shift('veli', 1, 1)) -> 'reasons') r where r ->> 'code' = 'note'), 0, 'a reader without the note does not see it');
 
 -- 2. Paste / drag-and-drop go through the batch command.
 select lives_ok($$select pg_temp.batch(1, jsonb_build_array(pg_temp.shift('ali', 1, 1)))$$, 'a batch writes Ali on Tuesday evening');
@@ -146,64 +179,94 @@ select is((select count(*)::integer from public.schedule_edit_session_shifts whe
   4, 'all four of his evenings are there');
 select lives_ok($$select pg_temp.insert_draft(tests.id('ap:draft:1'), pg_temp.shift('ali', 1, 4))$$, 'a direct draft write of Friday evening');
 select pg_temp.insert_draft(tests.id('ap:draft:1'), pg_temp.shift('can', 1, 5));
+select pg_temp.insert_draft(tests.id('ap:draft:1'), pg_temp.shift('veli', 1, 5));
 
--- 6. Publish: the warnings are listed, the publisher acknowledges them.
+-- 6. Publish lists the marks and asks nothing (M9).
 insert into ap select 'preview', pg_temp.preview('ayse', tests.id('ap:draft:1'));
-select is((select v ->> 'status' from ap where k = 'preview'), 'override_required', 'Publish asks for an acknowledgment, it does not block');
-select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'findings') f where k = 'preview' and f ->> 'severity' = 'hard'), 0,
-  'no availability finding is hard');
-select is((select jsonb_agg(f ->> 'availability_state') from ap, jsonb_array_elements(pg_temp.findings(v, 'ali')) f where k = 'preview'),
-  '["new", "new", "new", "new", "new"]'::jsonb, 'each of Ali''s five evenings is a new availability warning');
+select is((select v ->> 'status' from ap where k = 'preview'), 'publish_ready', 'Publish asks for no acknowledgment');
+select is((select jsonb_agg(distinct jsonb_build_object('tier', f -> 'tier', 'severity', f -> 'severity', 'overrideable', f -> 'overrideable'))
+  from ap, jsonb_array_elements(v -> 'findings') f where k = 'preview' and f ->> 'code' = 'availability'),
+  '[{"tier": "note", "severity": "soft", "overrideable": false}]'::jsonb, 'every availability finding is a note for a last look');
+select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'findings') f where k = 'preview' and f ->> 'code' = 'availability'
+  and (f ? 'availability_state' or f ? 'warning_policy' or f ? 'acknowledged_by_name' or f ? 'acknowledged_at')), 0,
+  'with no acceptance state and nobody''s acknowledgment');
+select is((select jsonb_array_length(pg_temp.findings(v, 'ali')) from ap where k = 'preview'), 5, 'each of Ali''s five evenings is listed');
+select is((select jsonb_array_length(pg_temp.findings(v, 'can')) from ap where k = 'preview'), 1, 'Can''s Saturday too, a manager''s own mark');
+select is((select jsonb_array_length(pg_temp.findings(v, 'veli')) from ap where k = 'preview'), 0, 'the note never reaches Publish');
 select is((select pg_temp.findings(v, 'ali') -> 0 ->> 'message' from ap where k = 'preview'), 'Ali Person shows as unavailable for this shift.',
-  'the warning says where Ali stands, not what changed');
-select throws_ok($$select pg_temp.publish('ayse', tests.id('ap:draft:1'), v, '[]') from ap where k = 'preview'$$, '22023', null,
-  'unacknowledged warnings stop the publish');
-select lives_ok($$select pg_temp.publish('ayse', tests.id('ap:draft:1'), v, pg_temp.acknowledge(v)) from ap where k = 'preview'$$,
-  'Ayşe acknowledges them and the week goes out');
-select is((select array_agg(distinct o.actor_user_id) from public.schedule_publication_overrides o
-  where o.workspace_id = tests.id('ap') and o.finding_code = 'availability'), array[tests.user('ap:ayse')],
-  'every acknowledgment is recorded in Ayşe''s name');
-select ok(exists(select 1 from public.schedule_publication_overrides o where o.workspace_id = tests.id('ap')
-  and o.finding_code = 'availability' and o.employee_id = tests.id('ap:can') and o.created_at is not null),
-  'Can''s warning too: Ayşe acknowledges a fellow manager''s mark, with the time');
+  'the line says where Ali stands, not what changed');
+select lives_ok($$select pg_temp.publish('ayse', tests.id('ap:draft:1'), v, '[]') from ap where k = 'preview'$$,
+  'Ayşe publishes without acknowledging anything');
+select is((select count(*)::integer from public.schedule_publication_overrides o
+  where o.workspace_id = tests.id('ap') and o.finding_code = 'availability'), 0, 'nothing is recorded as an acknowledgment');
 select is((select count(*)::integer from public.schedule_published_shifts p join public.schedule_location_publications l on l.id = p.publication_id
   where l.status = 'current' and p.employee_id = tests.id('ap:ali') and p.scheduled_date between tests.week(1) and tests.week(1) + 6), 5,
   'Ali''s five evenings are published');
+select is((select count(*)::integer from public.schedule_published_shifts p join public.schedule_location_publications l on l.id = p.publication_id
+  where l.status = 'current' and p.employee_id = tests.id('ap:ali') and p.scheduled_date between tests.week(1) and tests.week(1) + 6
+    and (pg_temp.card(1, p.id) ->> 'availability_changed_after_publish')::boolean), 0,
+  'a mark made before publishing is not "changed after publishing"');
 select lives_ok($$select pg_temp.insert_published((select id from public.schedule_location_publications
   where workspace_id = tests.id('ap') and week_start = tests.week(1) and status = 'current'), pg_temp.shift('ali', 1, 6))$$,
   'a direct write into the published week of Sunday evening');
 
--- 7. Nothing changed: the earlier acknowledgment stands. A changed shift asks again.
+-- 7. Nothing changed, or a shift changed: still nothing to acknowledge.
 update ap set v = pg_temp.preview('ayse', tests.id('ap:draft:1')) where k = 'preview';
-select is((select v ->> 'status' from ap where k = 'preview'), 'publish_ready', 'an unchanged week asks nothing again');
-select is((select jsonb_agg(distinct jsonb_build_object('state', f ->> 'availability_state', 'by', f ->> 'acknowledged_by_name'))
-  from ap, jsonb_array_elements(v -> 'findings') f where k = 'preview' and f ->> 'code' = 'availability' and f ? 'acknowledged_at'),
-  '[{"by": "Ayse Person", "state": "accepted"}]'::jsonb, 'each warning shows who acknowledged it');
+select is((select v ->> 'status' from ap where k = 'preview'), 'publish_ready', 'an unchanged week asks nothing');
 update public.schedule_draft_shifts set end_time = '21:00'
 where draft_id = tests.id('ap:draft:1') and employee_id = tests.id('ap:ali') and scheduled_date = tests.week(1);
 update ap set v = pg_temp.preview('ayse', tests.id('ap:draft:1')) where k = 'preview';
-select is((select jsonb_agg(f ->> 'availability_state') from ap, jsonb_array_elements(pg_temp.findings(v, 'ali')) f where k = 'preview'),
-  '["new", "accepted", "accepted", "accepted", "accepted"]'::jsonb, 'a shift whose hours changed asks again, the rest do not');
+select is((select v ->> 'status' from ap where k = 'preview'), 'publish_ready', 'a shift whose hours changed asks nothing either');
 
--- 8. A mark made after publishing (BL-184) is a new warning at the next publish.
-select tests.publish_week('ap', 3, '[{"label": "emre_tue", "loc": "K", "person": "emre", "job": "cook", "day": 1, "start": "18:00", "end": "22:00"}]');
+-- 8. A mark made after publishing: listed, never asked, "changed after publishing" (M11).
+select tests.publish_week('ap', 3, '[{"label": "emre_tue", "loc": "K", "person": "emre", "job": "cook", "day": 1, "start": "18:00", "end": "22:00"},
+  {"label": "emre_thu", "loc": "K", "person": "emre", "job": "cook", "day": 3, "start": "09:00", "end": "13:00"}]');
+select is((pg_temp.card(3, tests.id('ap:shift:emre_tue')) ->> 'availability_changed_after_publish')::boolean, false, 'nothing changed yet');
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 values (tests.id('ap'), tests.id('ap:emre'), pg_temp.evenings(array[2]), 1, tests.user('ap:emre'));
-insert into ap select 'late', pg_temp.preview('owner', (select source_draft_id from public.schedule_location_publications
-  where workspace_id = tests.id('ap') and week_start = tests.week(3) and status = 'current'));
-select is((select v ->> 'status' from ap where k = 'late'), 'override_required', 'the published week asks again once Emre marked his evening');
-select is((select pg_temp.findings(v, 'emre') -> 0 ->> 'availability_state' from ap where k = 'late'), 'new', 'as a new warning');
-select ok((select x -> 'warning_codes' ? 'availability' from jsonb_array_elements(public.get_schedule_read_model_service(
-  tests.user('ap:owner'), tests.id('ap'), tests.week(3)) -> 'shifts') x where x ->> 'id' = tests.id('ap:shift:emre_tue')::text),
-  'and the Schedule grid shows it on his published shift');
+insert into ap select 'late', pg_temp.preview('owner', pg_temp.current_draft(3));
+select is((select v ->> 'status' from ap where k = 'late'), 'publish_ready', 'the published week asks nothing once Emre marked his evening');
+select is((select pg_temp.findings(v, 'emre') -> 0 ->> 'tier' from ap where k = 'late'), 'note', 'it lists his evening');
+select ok(pg_temp.card(3, tests.id('ap:shift:emre_tue')) -> 'warning_codes' ? 'availability', 'the Schedule grid shows it on his published shift');
+select is((pg_temp.card(3, tests.id('ap:shift:emre_tue')) ->> 'availability_changed_after_publish')::boolean, true,
+  'and says it changed after publishing');
+-- Approved time off is not a change of availability.
+select tests.approved_leave(tests.id('ap'), tests.id('ap:emre'), tests.user('ap:emre'), tests.id('ap:K'), tests.week(3) + 3, '08:00', '14:00');
+select is((pg_temp.card(3, tests.id('ap:shift:emre_thu')) ->> 'availability_changed_after_publish')::boolean, false,
+  'approved time off over a published shift does not say "changed after publishing"');
+-- Unpublishing and publishing again keeps what the first publish saw.
+select public.unpublish_schedule_service(tests.user('ap:owner'), tests.id('ap'), tests.week(3), array[tests.id('ap:K')],
+  public.preview_schedule_unpublication_service(tests.user('ap:owner'), tests.id('ap'), tests.week(3), array[tests.id('ap:K')]) ->> 'fingerprint');
+insert into ap select 'draft3', to_jsonb((select source_draft_id from public.schedule_location_publications
+  where workspace_id = tests.id('ap') and week_start = tests.week(3) order by version_number desc limit 1));
+delete from public.schedule_draft_shifts where draft_id = (select (v #>> '{}')::uuid from ap where k = 'draft3')
+  and employee_id = tests.id('ap:emre') and scheduled_date = tests.week(3) + 3;
+insert into ap select 'repub', pg_temp.preview('owner', (v #>> '{}')::uuid) from ap where k = 'draft3';
+select lives_ok($$select pg_temp.publish('owner', (d.v #>> '{}')::uuid, p.v, '[]') from ap d, ap p where d.k = 'draft3' and p.k = 'repub'$$,
+  'the week is unpublished and published again');
+select is((select (pg_temp.card(3, p.id) ->> 'availability_changed_after_publish')::boolean
+  from public.schedule_published_shifts p join public.schedule_location_publications l on l.id = p.publication_id
+  where l.status = 'current' and p.employee_id = tests.id('ap:emre') and p.scheduled_date = tests.week(3) + 1), true,
+  'it still says changed after publishing');
+-- Moved within the marked evening after the first publish: still the first publish that counts.
+update public.schedule_draft_shifts set start_time = '19:00' where draft_id = (select (v #>> '{}')::uuid from ap where k = 'draft3')
+  and employee_id = tests.id('ap:emre') and scheduled_date = tests.week(3) + 1;
+update ap set v = pg_temp.preview('owner', (select (v #>> '{}')::uuid from ap where k = 'draft3')) where k = 'repub';
+select lives_ok($$select pg_temp.publish('owner', (d.v #>> '{}')::uuid, p.v, '[]') from ap d, ap p where d.k = 'draft3' and p.k = 'repub'$$,
+  'the shift moves to 19:00 and goes out again');
+select is((select (pg_temp.card(3, p.id) ->> 'availability_changed_after_publish')::boolean
+  from public.schedule_published_shifts p join public.schedule_location_publications l on l.id = p.publication_id
+  where l.status = 'current' and p.employee_id = tests.id('ap:emre') and p.scheduled_date = tests.week(3) + 1), true,
+  'still changed after publishing: the first publish did not see the mark');
 
 -- 9. Cover: Ali takes Emre's shift in his own marked evening.
+select tests.publish_week('ap', 5, '[{"label": "emre_tue5", "loc": "K", "person": "emre", "job": "cook", "day": 1, "start": "18:00", "end": "22:00"}]');
 insert into ap select 'cover', public.shift_exchanges_command_service(tests.user('ap:emre'), tests.id('ap'),
-  jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('ap:shift:emre_tue')), gen_random_uuid());
+  jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('ap:shift:emre_tue5')), gen_random_uuid());
 insert into ap select 'apply', public.shift_exchanges_command_service(tests.user('ap:ali'), tests.id('ap'),
-  jsonb_build_object('action', 'apply', 'shift_id', tests.id('ap:shift:emre_tue'), 'case_id', v ->> 'case_id',
+  jsonb_build_object('action', 'apply', 'shift_id', tests.id('ap:shift:emre_tue5'), 'case_id', v ->> 'case_id',
     'availability_fingerprint', public.weekly_exchange_employee_warning(tests.id('ap'), tests.id('ap:ali'),
-      public.shift_exchange_shift(tests.id('ap'), tests.id('ap:shift:emre_tue'))) ->> 'fingerprint'), gen_random_uuid())
+      public.shift_exchange_shift(tests.id('ap'), tests.id('ap:shift:emre_tue5'))) ->> 'fingerprint'), gen_random_uuid())
 from ap where k = 'cover';
 insert into ap select 'exchange', public.shift_exchange_preview(tests.user('ap:owner'), tests.id('ap'), (c.v ->> 'case_id')::uuid,
   (select id from public.shift_exchange_applications where case_id = (c.v ->> 'case_id')::uuid))
@@ -213,71 +276,57 @@ select lives_ok($$select public.shift_exchanges_command_service(tests.user('ap:o
   'case_id', c.v ->> 'case_id', 'application_id', (select id from public.shift_exchange_applications where case_id = (c.v ->> 'case_id')::uuid),
   'expected_revision', a.v ->> 'revision', 'fingerprint', e.v ->> 'fingerprint'), gen_random_uuid())
   from ap c, ap a, ap e where c.k = 'cover' and a.k = 'apply' and e.k = 'exchange'$$, 'and approving the cover goes through');
-select is((select employee_id from public.schedule_published_shifts where id = tests.id('ap:shift:emre_tue')), tests.id('ap:ali'),
+select is((select employee_id from public.schedule_published_shifts where id = tests.id('ap:shift:emre_tue5')), tests.id('ap:ali'),
   'Ali now holds the shift');
 select is((select count(*)::integer from public.schedule_availability_overrides where workspace_id = tests.id('ap')), 0,
   'nothing on any path asked for an availability acceptance');
 
--- 10. Auto-fill does not pick someone who shows as unavailable (S3 A).
+-- 10. Auto-fill does not pick someone who marked the hours; the note does not count (D3, M12).
 select pg_temp.session(4);
 select pg_temp.write(4, pg_temp.shift('ali', 4, 1, '{"employee_id": null}'));
 insert into ap select 'fill', public.preview_schedule_auto_fill_service(tests.user('ap:owner'), tests.id('ap'), tests.id('ap:session:4'));
 select ok((select not (p -> 'candidates' @> jsonb_build_array(jsonb_build_object('employee_id', tests.id('ap:ali'))))
   and not (p -> 'candidates' @> jsonb_build_array(jsonb_build_object('employee_id', tests.id('ap:emre'))))
   from ap, jsonb_array_elements(v -> 'proposals') p where k = 'fill'), 'auto-fill leaves out Ali and Emre on Tuesday evening');
-select ok((select p -> 'candidates' @> jsonb_build_array(jsonb_build_object('employee_id', tests.id('ap:ayse')))
-  from ap, jsonb_array_elements(v -> 'proposals') p where k = 'fill'), 'and proposes someone who is free');
+select ok((select p -> 'candidates' @> jsonb_build_array(jsonb_build_object('employee_id', tests.id('ap:veli')))
+  from ap, jsonb_array_elements(v -> 'proposals') p where k = 'fill'), 'and proposes Veli, whose note is only a reminder');
 
 -- 11. Approved time off still blocks every path (FB-6.1.6).
 create function pg_temp.leave(n integer, day integer, from_time time, to_time time) returns void language sql as $$
   select tests.approved_leave(tests.id('ap'), tests.id('ap:ali'), tests.user('ap:ali'), tests.id('ap:K'), tests.week(n) + day, from_time, to_time)
 $$;
-select pg_temp.session(5);
-select pg_temp.write(5, pg_temp.shift('emre', 5, 0));
-select pg_temp.leave(5, 2, '17:00', '23:00');
-select throws_ok($$select pg_temp.write(5, pg_temp.shift('ali', 5, 2))$$, '23514', null, 'leave: one shift at a time is refused');
-select throws_ok($$select pg_temp.batch(5, jsonb_build_array(pg_temp.shift('ali', 5, 2)))$$, '23514', null, 'leave: a batch is refused');
-select throws_ok($$select pg_temp.insert_edit(5, pg_temp.shift('ali', 5, 2))$$, '23514', null, 'leave: a direct edit-session write is refused');
-select pg_temp.save(5);
-select throws_ok($$select pg_temp.insert_draft(tests.id('ap:draft:5'), pg_temp.shift('ali', 5, 2))$$, '23514', null, 'leave: a direct draft write is refused');
-select pg_temp.insert_draft(tests.id('ap:draft:5'), pg_temp.shift('ali', 5, 3));
-select pg_temp.leave(5, 3, '17:00', '23:00');
-insert into ap select 'leave_preview', pg_temp.preview('owner', tests.id('ap:draft:5'));
+select pg_temp.session(6);
+select pg_temp.write(6, pg_temp.shift('emre', 6, 0));
+select pg_temp.leave(6, 2, '17:00', '23:00');
+select throws_ok($$select pg_temp.write(6, pg_temp.shift('ali', 6, 2))$$, '23514', null, 'leave: one shift at a time is refused');
+select throws_ok($$select pg_temp.batch(6, jsonb_build_array(pg_temp.shift('ali', 6, 2)))$$, '23514', null, 'leave: a batch is refused');
+select throws_ok($$select pg_temp.insert_edit(6, pg_temp.shift('ali', 6, 2))$$, '23514', null, 'leave: a direct edit-session write is refused');
+select pg_temp.save(6);
+select throws_ok($$select pg_temp.insert_draft(tests.id('ap:draft:6'), pg_temp.shift('ali', 6, 2))$$, '23514', null, 'leave: a direct draft write is refused');
+select pg_temp.insert_draft(tests.id('ap:draft:6'), pg_temp.shift('ali', 6, 3));
+select pg_temp.leave(6, 3, '17:00', '23:00');
+insert into ap select 'leave_preview', pg_temp.preview('owner', tests.id('ap:draft:6'));
 select is((select v ->> 'status' from ap where k = 'leave_preview'), 'hard_blocked', 'leave: Publish is blocked');
-select throws_ok($$select pg_temp.publish('owner', tests.id('ap:draft:5'), v, pg_temp.acknowledge(v)) from ap where k = 'leave_preview'$$,
-  '23514', null, 'leave: and acknowledging does not publish it');
-select tests.publish_week('ap', 6, '[{"label": "emre_wed", "loc": "K", "person": "emre", "job": "cook", "day": 2, "start": "18:00", "end": "22:00"}]');
-select pg_temp.leave(6, 3, '08:00', '13:00');
+select throws_ok($$select pg_temp.publish('owner', tests.id('ap:draft:6'), v, '[]') from ap where k = 'leave_preview'$$,
+  '23514', null, 'leave: and it does not publish');
+select tests.publish_week('ap', 7, '[{"label": "emre_wed", "loc": "K", "person": "emre", "job": "cook", "day": 2, "start": "18:00", "end": "22:00"}]');
+select pg_temp.leave(7, 3, '08:00', '13:00');
 select throws_ok($$select pg_temp.insert_published((select id from public.schedule_location_publications
-  where workspace_id = tests.id('ap') and week_start = tests.week(6) and status = 'current'), pg_temp.shift('ali', 6, 3) || '{"start_time": "09:00", "end_time": "12:00"}')$$,
+  where workspace_id = tests.id('ap') and week_start = tests.week(7) and status = 'current'), pg_temp.shift('ali', 7, 3) || '{"start_time": "09:00", "end_time": "12:00"}')$$,
   '23514', null, 'leave: a direct write into the published week is refused');
-insert into ap select 'cover6', public.shift_exchanges_command_service(tests.user('ap:emre'), tests.id('ap'),
+insert into ap select 'cover7', public.shift_exchanges_command_service(tests.user('ap:emre'), tests.id('ap'),
   jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('ap:shift:emre_wed')), gen_random_uuid());
 select public.shift_exchanges_command_service(tests.user('ap:ali'), tests.id('ap'),
   jsonb_build_object('action', 'apply', 'shift_id', tests.id('ap:shift:emre_wed'), 'case_id', v ->> 'case_id',
     'availability_fingerprint', public.weekly_exchange_employee_warning(tests.id('ap'), tests.id('ap:ali'),
       public.shift_exchange_shift(tests.id('ap'), tests.id('ap:shift:emre_wed'))) ->> 'fingerprint'), gen_random_uuid())
-from ap where k = 'cover6';
-select pg_temp.leave(6, 2, '17:00', '23:00');
+from ap where k = 'cover7';
+select pg_temp.leave(7, 2, '17:00', '23:00');
 select throws_ok($$select public.record_weekly_exchange_acceptance(tests.id('ap'), (v ->> 'case_id')::uuid,
-  (select id from public.shift_exchange_applications where case_id = (v ->> 'case_id')::uuid)) from ap where k = 'cover6'$$,
+  (select id from public.shift_exchange_applications where case_id = (v ->> 'case_id')::uuid)) from ap where k = 'cover7'$$,
   '23514', null, 'leave: taking a cover over one''s approved leave is refused');
-select pg_temp.session(7);
-select tests.remember('ap:wed7', (x ->> 'id')::uuid) from jsonb_array_elements(pg_temp.write(7,
-  (pg_temp.shift('ali', 7, 2) - 'start_time' - 'end_time') || jsonb_build_object('time_basis', 'type_default', 'shift_type_id', tests.id('ap:type:late'))) -> 'shifts') x
-where x ->> 'employee_id' = tests.id('ap:ali')::text;
-select pg_temp.leave(7, 2, '09:00', '12:00');
-update public.shift_types set default_start_time = '09:00', default_end_time = '13:00' where id = tests.id('ap:type:late');
-insert into ap select 'hours7', jsonb_build_object('expected_session_revision', pg_temp.rev(tests.id('ap:session:7')),
-  'starts_on', tests.week(7), 'ends_on', tests.week(7) + 6, 'shift_ids', jsonb_build_array(tests.id('ap:wed7')), 'overrides', '[]'::jsonb);
-update ap set v = v || jsonb_build_object('review', public.preview_schedule_default_hours_service(tests.user('ap:owner'), tests.id('ap'),
-  tests.id('ap:session:7'), v)) where k = 'hours7';
-select is((select (v -> 'review' ->> 'blocked_count')::integer from ap where k = 'hours7'), 1, 'leave: the default hours review blocks it');
-select throws_ok($$select public.apply_schedule_default_hours_service(tests.user('ap:owner'), tests.id('ap'), tests.id('ap:session:7'),
-  (v - 'review') || jsonb_build_object('fingerprint', v -> 'review' ->> 'fingerprint', 'idempotency_key', gen_random_uuid())) from ap where k = 'hours7'$$,
-  '23514', null, 'leave: and applying it is refused');
 
--- 12. Settings has no availability rule any more.
+-- 12. Settings has no availability rule (M8).
 select is((select count(*)::integer from public.workspace_scheduling_settings where conflict_rules ? 'availability'), 0,
   'no workspace keeps an availability conflict rule');
 select throws_ok($$update public.workspace_scheduling_settings set conflict_rules = conflict_rules || '{"availability": "block"}'
@@ -285,9 +334,13 @@ select throws_ok($$update public.workspace_scheduling_settings set conflict_rule
 select throws_ok($$select public.update_scheduling_settings_service(tests.user('ap:owner'), tests.id('ap'), jsonb_build_object(
   'conflict_rules', s.conflict_rules || '{"availability": "warn"}', 'conflict_rules_revision', s.conflict_rules_revision))
   from public.workspace_scheduling_settings s where s.workspace_id = tests.id('ap')$$, '22023', null, 'saving Conflict handling with one is refused');
-select lives_ok($$select public.update_scheduling_settings_service(tests.user('ap:owner'), tests.id('ap'), jsonb_build_object(
-  'conflict_rules', s.conflict_rules || '{"minimum_rest": "block"}', 'conflict_rules_revision', s.conflict_rules_revision))
-  from public.workspace_scheduling_settings s where s.workspace_id = tests.id('ap')$$, 'the other rules still save');
+
+-- 13. The publish decision has no availability acknowledgment left (M9).
+select is((select count(*)::integer from pg_proc where proname = 'weekly_publication_decisions'
+  and pronamespace = 'public'::regnamespace and (strpos(prosrc, 'Acknowledge the availability') > 0 or strpos(prosrc, 'Availability warning acknowledged') > 0)),
+  0, 'the publish decision never asks for or records an availability acknowledgment');
+select is((select count(*)::integer from pg_proc where proname = 'weekly_schedule_publication_preflight'
+  and pronamespace = 'public'::regnamespace and strpos(prosrc, 'acknowledged_by') > 0), 0, 'Publish names nobody as having acknowledged a mark');
 
 select * from finish();
 rollback;

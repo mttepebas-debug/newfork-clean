@@ -77,7 +77,7 @@ update public.employee_weekly_preferences set preference=jsonb_set(preference,'{
 select is(pg_temp.weekly_assess('{"scheduled_date":"2035-01-16","start_time":"01:00","end_time":"03:00"}')->>'coverage','partial',
  'overnight type spills to next day without shortening the assignment');
 update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,1,range}','{"start":"18:00","end":"19:00"}') where workspace_id=(select w from wp_fixture);
-select is(pg_temp.weekly_assess()->>'coverage','partial','independent manager reminder contributes a conflict');
+select is(pg_temp.weekly_assess()->>'coverage','full','a manager note never takes hours away (M12)');
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from wp_fixture);
 select is(pg_temp.weekly_assess()->>'has_availability_conflict','false','off suppresses manager reminder without clearing its week');
 update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"19:00"}')

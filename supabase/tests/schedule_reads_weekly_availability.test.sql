@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(18);
 
 -- FOUNDATION-B 5.3a: the Schedule grid, Edit mode and Employee Hub -> Schedule
 -- draw availability from the weekly marks. Every shift, published or being
@@ -51,8 +51,12 @@ $$;
 select ok(not (pg_temp.ali(pg_temp.grid()) ?| array['availability', 'availability_versions']), 'the old availability fields are gone');
 select is((select jsonb_agg(p ->> 'location_id') from jsonb_array_elements(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability') p),
   jsonb_build_array(tests.id('wr:K')::text), 'a Kadikoy manager sees Ali''s Kadikoy week only');
-select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable', 'true',
-  'the manager sees the private reminder in the grid');
+-- AVAIL-002 (M12): the note is only a reminder: never the grid's orange; its
+-- hours travel apart, for the card shown while writing.
+select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable', 'false',
+  'the private note is not drawn as unavailable in the grid');
+select ok(jsonb_array_length(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'note_intervals') > 0,
+  'the manager gets the note''s hours apart from the marks');
 select ok(not coalesce(pg_temp.codes(pg_temp.grid(), tests.id('wr:shift:thu')) ? 'availability', false),
   'a published shift in free hours shows no warning');
 
@@ -62,8 +66,8 @@ select is(pg_temp.ali(pg_temp.grid()) -> 'weekly_availability' -> 0 -> 'manager_
   '["", "", "", "", "", "School mornings", ""]'::jsonb, 'Ayse reads the words of the Friday note in the grid');
 select is(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))) -> 'weekly_availability' -> 0 -> 'manager_notes',
   'null'::jsonb, 'a manager who may not read availability gets no words');
-select ok(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))) -> 'weekly_availability' -> 0 -> 'days' -> 4 ->> 'has_unavailable' = 'true',
-  'she still sees the marked hours');
+select is(pg_temp.ali(public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))) -> 'weekly_availability' -> 0 -> 'note_intervals',
+  '[]'::jsonb, 'nor the note''s hours');
 select ok(not (public.get_schedule_read_model_service(tests.user('wr:filiz'), tests.id('wr'), tests.week(1))::text like '%School mornings%'),
   'the words appear nowhere in her read');
 -- A note row about a manager (the role trigger removes such notes; written

@@ -78,9 +78,9 @@ create function pg_temp.publication(changes jsonb default '{}',departments uuid[
   'findings','[]'::jsonb,'locations',jsonb_build_array(jsonb_build_object('location_id',loc)))||changes,manager,departments,include_no_department) from wp_fixture;
 $$;
 select is(pg_temp.publication()->'findings'->0->>'code','availability','Publish lists the mark as an availability warning');
-select is(pg_temp.publication()->'findings'->0->>'tier','risk','a new warning asks for an acknowledgment, it is not a blocker');
+select is(pg_temp.publication()->'findings'->0->>'tier','note','the mark is listed for a last look and asks nothing (M9)');
 select is(pg_temp.publication()->'findings'->0->>'employee_name','Weekly Tester','preflight identifies the employee');
-select is(pg_temp.publication()->>'status','override_required','a new warning needs an acknowledgment');
+select is(pg_temp.publication()->>'status','publish_ready','so the week is ready to publish');
 select is(jsonb_array_length(pg_temp.publication('{}','{}',false)->'findings'),0,'preflight respects department scope');
 select is(pg_temp.publication()->'findings'->0->>'message','Weekly Tester shows as unavailable for this shift.','the warning says where the person stands');
 select is(jsonb_array_length(pg_temp.publication('{"findings":[{"code":"availability_review_pending"},{"code":"availability_unknown"}]}')->'findings'),1,'obsolete review and unknown-baseline findings are replaced');

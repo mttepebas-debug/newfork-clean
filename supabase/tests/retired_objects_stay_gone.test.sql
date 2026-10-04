@@ -331,6 +331,10 @@ select 'function', name, '6.6' from unnest(array[
 ]) name;
 -- FB-6.6 A1b: acknowledgements open with the documents permissions.
 insert into retired (kind, name, step) values ('permission', 'signature_templates.%', '6.6');
+-- AVAIL-002 A1: availability is never a conflict; the draft availability
+-- conflict list had no reader (BL-206).
+insert into retired (kind, name, step) values
+  ('function', 'list_schedule_draft_availability_conflicts_service', 'AVAIL-002');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

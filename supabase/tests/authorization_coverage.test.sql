@@ -114,7 +114,6 @@ insert into service_class values
   ('list_owner_onboarding_invitation_intents_service', 'workspace.setup'),
   ('list_pending_employee_invitations_for_account_service', 'account.self'),
   ('list_pending_preferred_names_service', 'employee.decide_preferred_name'),
-  ('list_schedule_draft_availability_conflicts_service', 'schedule.edit'),
   ('list_schedule_draft_document_conflicts_service', 'schedule.publish'),
   ('list_schedule_drafts_service', 'schedule.edit'),
   ('list_schedule_export_cron_candidates_service', 'exempt:worker'),

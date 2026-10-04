@@ -44,11 +44,17 @@ create function pg_temp.mutate(p jsonb,op text default 'create') returns jsonb l
  from ws s join public.schedule_edit_sessions e on e.id=s.session;
 $$;
 select is(pg_temp.assess()->>'operation','allowed','canonical Schedule defaults to fully available without an old baseline');
+-- AVAIL-002 (M12): a manager's note is only a reminder shown while writing.
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,revision,updated_by)
  select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,manager from ws;
--- BL-186: a mark or a reminder is a preference, a warning that never gates.
-select is(pg_temp.assess()->>'operation','allowed','the manager''s reminder does not gate the shift');
-select is(pg_temp.assess()->>'has_availability_conflict','true','canonical assessment reads the manager''s reminders as a warning');
+select is(pg_temp.assess()->>'has_availability_conflict','false','the manager''s note is no availability warning');
+select is((select jsonb_agg(r->>'code') from jsonb_array_elements(pg_temp.assess()->'reasons') r),'["note"]'::jsonb,'it comes back as the note');
+delete from public.manager_weekly_reminders where workspace_id=(select w from ws);
+-- BL-186, M8: the employee's own mark is a warning that never gates.
+insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
+ select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,range}','{"start":"18:00","end":"20:00"}'),1,employee_user from ws;
+select is(pg_temp.assess()->>'operation','allowed','the employee''s mark does not gate the shift');
+select is(pg_temp.assess()->>'has_availability_conflict','true','canonical assessment reads the employee''s mark as a warning');
 select is(pg_temp.assess()->>'can_override','true','the manager can place anyway');
 select throws_ok($$select public.assess_schedule_shift_service(employee_user,w,payload) from ws$$,'42501',null,'employee cannot inspect manager assessment');
 select throws_ok($$select public.assess_schedule_shift_service(manager,w,payload||jsonb_build_object('location_id',other_loc)) from ws$$,'42501',null,'location scope remains enforced');
@@ -70,10 +76,10 @@ select throws_ok($$select pg_temp.mutate(payload||'{"start_time":"12:00","end_ti
 -- Auto-fill has a separate automatic policy: it may not manufacture acceptance.
 insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select 'ad423000-0000-4000-8000-000000000010',w,session,loc,job,'2035-01-16','18:00','20:00','explicit','America/Los_Angeles' from ws;
-update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,2,all_day}','true') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,all_day}','true') where workspace_id=(select w from ws);
 select ok(not exists(select 1 from ws,jsonb_array_elements(public.preview_schedule_auto_fill_service(manager,w,session)->'proposals') p,
  jsonb_array_elements(p->'candidates') c where c->>'employee_id'=emp::text),'canonical auto-fill excludes new weekly unavailable hours');
-update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,2,all_day}','false') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,all_day}','false') where workspace_id=(select w from ws);
 select ok(exists(select 1 from ws,jsonb_array_elements(public.preview_schedule_auto_fill_service(manager,w,session)->'proposals') p,
  jsonb_array_elements(p->'candidates') c where c->>'employee_id'=emp::text),'canonical auto-fill includes unmarked available hours');
 delete from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000010';
@@ -89,38 +95,39 @@ begin
  return public.publish_schedule_draft_service(s.manager,s.w,s.draft,array[s.loc],null,true,rev,s.preview->>'fingerprint',decisions);
 end; $$;
 update ws set preview=pg_temp.preflight();
-select is(preview->'findings'->0->>'availability_state','new','Publish lists the reminder as a new availability warning') from ws;
-select is(preview->>'status','override_required','and asks the publisher to acknowledge it') from ws;
-update public.manager_weekly_reminders set preference=jsonb_set(preference,'{days,1,range}','{"start":"19:30","end":"20:00"}') where workspace_id=(select w from ws);
-select throws_ok($$select pg_temp.publish(jsonb_build_array(jsonb_build_object('finding_id',preview->'findings'->0->>'id'))) from ws$$,'PT409',null,'final publish rejects a warning that changed since preview');
-update ws set preview=pg_temp.preflight();
-select throws_ok($$select pg_temp.publish()$$,'22023',null,'final publish cannot skip the acknowledgment');
+select is(preview->'findings'->0->>'tier','note','Publish lists the mark for a last look (M9)') from ws;
+select is(preview->>'status','publish_ready','and asks the publisher for nothing') from ws;
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,1,range}','{"start":"19:30","end":"20:00"}') where workspace_id=(select w from ws);
+select throws_ok($$select pg_temp.publish() from ws$$,'PT409',null,'final publish rejects a preview made before the marks changed');
 select is((select count(*) from public.schedule_location_publications where workspace_id=(select w from ws)),0::bigint,'failed publish leaves no publication');
-select lives_ok($$select pg_temp.publish(jsonb_build_array(jsonb_build_object('finding_id',preview->'findings'->0->>'id'))) from ws$$,'final publish accepts the finding ID, no written reason');
+update ws set preview=pg_temp.preflight();
+select lives_ok($$select pg_temp.publish()$$,'a fresh preview publishes with no acknowledgment');
 update ws s set snapshot=(select availability_snapshot from public.schedule_published_shifts where workspace_id=s.w and source_shift_id=s.shift limit 1);
 select is(snapshot->'assessment'->>'has_availability_conflict','true','the published shift captures the warning') from ws;
-select is((select jsonb_build_object('by',o.actor_user_id,'reason',o.reason) from public.schedule_publication_overrides o where o.workspace_id=(select w from ws) and o.finding_code='availability'),
- (select jsonb_build_object('by',manager,'reason','Availability warning acknowledged.') from ws),'the acknowledgment is recorded in the publisher''s name (BL-190: one sentence, one path)');
-select is(public.schedule_availability_read_projection(manager,w,(select to_jsonb(p) from public.schedule_published_shifts p where p.workspace_id=w limit 1))->'availability_assessment'->>'has_availability_conflict','true','published manager warning is visible') from ws;
-update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from ws);
-select is(pg_temp.preflight()->'findings','[]'::jsonb,'a disabled reminder no longer warns');
+select is(snapshot->'first'->>'has_own_mark','true','and that its first publish already saw the mark') from ws;
+select is((select count(*) from public.schedule_publication_overrides o where o.workspace_id=(select w from ws) and o.finding_code='availability'),0::bigint,
+ 'nothing is recorded as an acknowledgment');
+select is(public.schedule_availability_read_projection(manager,w,(select to_jsonb(p) from public.schedule_published_shifts p where p.workspace_id=w limit 1))->'availability_assessment'->>'has_availability_conflict','true','the published warning is visible') from ws;
+update ws s set payload=(select preference from public.employee_weekly_preferences where workspace_id=s.w);
+delete from public.employee_weekly_preferences where workspace_id=(select w from ws);
+select is(pg_temp.preflight()->'findings','[]'::jsonb,'a cleared mark no longer warns');
 select is(public.schedule_availability_read_projection(manager,w,(select to_jsonb(p) from public.schedule_published_shifts p where p.workspace_id=w limit 1))->'availability_assessment'->>'has_availability_conflict','false','nor on the published shift') from ws;
-update public.manager_weekly_reminders set enabled=true where workspace_id=(select w from ws);
-select is(pg_temp.preflight()->'findings'->0->>'availability_state','accepted','re-enabled, the same warning shows as already acknowledged');
+insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by) select w,emp,payload,1,employee_user from ws;
+update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'job_id',job,'scheduled_date','2035-01-15',
+ 'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles','note','');
+select is(pg_temp.preflight()->'findings'->0->>'tier','note','marked again, it is listed again and still asks nothing');
 update ws set preview=public.preview_schedule_publication_service(manager,w,draft,array[loc]);
-select lives_ok($$select pg_temp.publish('[]')$$,'republishing an acknowledged warning asks nothing');
+select lives_ok($$select pg_temp.publish('[]')$$,'republishing asks nothing');
 select is((select availability_snapshot from public.schedule_published_shifts p join public.schedule_location_publications l on l.id=p.publication_id where p.workspace_id=s.w and l.status='current' limit 1),snapshot,'republish keeps immutable original evidence') from ws s;
--- A distinct new assignment must not inherit the previous publication's acknowledgment.
+-- A new assignment over a marked evening is listed too, and still asks nothing.
 insert into public.schedule_draft_shifts(id,workspace_id,draft_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select 'ad423000-0000-4000-8000-000000000012',w,draft,loc,emp,job,'2035-01-16','18:00','20:00','explicit','America/Los_Angeles' from ws;
-insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,2,range}','{"start":"18:00","end":"20:00"}'),1,employee_user from ws;
+update public.employee_weekly_preferences set preference=jsonb_set(preference,'{days,2,range}','{"start":"18:00","end":"20:00"}') where workspace_id=(select w from ws);
 update ws set preview=pg_temp.preflight();
-select is((select f->>'availability_state' from ws,jsonb_array_elements(preview->'findings') f where f->'shift_ids'->>0='ad423000-0000-4000-8000-000000000012'),'new','a different shift has its own new warning');
-select throws_ok($$select pg_temp.publish()$$,'22023',null,'which needs its own acknowledgment');
-select lives_ok($$select pg_temp.publish((select jsonb_agg(jsonb_build_object('finding_id',f->>'id')) from ws,jsonb_array_elements(preview->'findings') f where f->>'availability_state'='new'))$$,'acknowledged, the week publishes');
-select is((select count(*) from public.schedule_publication_overrides where workspace_id=(select w from ws) and finding_code='availability'
- and 'ad423000-0000-4000-8000-000000000012'=any(source_shift_ids)),1::bigint,'and the new warning has its own record');
+select is((select f->>'tier' from ws,jsonb_array_elements(preview->'findings') f where f->'shift_ids'->>0='ad423000-0000-4000-8000-000000000012'),'note','a different shift is listed on its own');
+select lives_ok($$select pg_temp.publish()$$,'and the week publishes without acknowledging it');
+select is((select count(*) from public.schedule_publication_overrides where workspace_id=(select w from ws) and finding_code='availability'),0::bigint,
+ 'nothing is recorded for it either');
 -- Default-hour batches share the same policy without borrowing publication consent.
 insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time)
  select 'ad423000-0000-4000-8000-000000000015',w,'Default review','12:00','16:00' from ws;

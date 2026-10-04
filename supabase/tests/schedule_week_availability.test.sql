@@ -68,12 +68,12 @@ select ok(pg_temp.one('2030-03-04', 'ali', 'K') -> 'unavailable_intervals'
 select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 0, '{"date": "2030-03-04", "has_unavailable": true, "all_day": false}',
   'Monday is marked, not all day');
 select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 2 ->> 'all_day', 'true', 'an all-day mark covers the whole local day');
-select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 4 ->> 'has_unavailable', 'true', 'the manager''s reminder counts for managers');
+select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 4 ->> 'has_unavailable', 'false', 'the manager''s note is no unavailable hour (M12)');
 select is(pg_temp.one('2030-03-04', 'ali', 'K', false) -> 'days' -> 4 ->> 'has_unavailable', 'false',
   'the employee''s own view leaves the manager''s reminder out');
-select ok(pg_temp.one('2030-03-04', 'ali', 'K') -> 'unavailable_intervals' @> '[{"start_at": "2030-03-08T06:00:00.000000Z", "end_at": "2030-03-08T09:00:00.000000Z"}]'
-  and not (pg_temp.one('2030-03-04', 'ali', 'K') -> 'employee_intervals' @> '[{"start_at": "2030-03-08T06:00:00.000000Z", "end_at": "2030-03-08T09:00:00.000000Z"}]'),
-  'the employee''s own intervals leave the reminder out, so the browser can tell a soft reminder from a mark');
+select ok(pg_temp.one('2030-03-04', 'ali', 'K') -> 'note_intervals' @> '[{"start_at": "2030-03-08T06:00:00.000000Z", "end_at": "2030-03-08T09:00:00.000000Z"}]'
+  and not (pg_temp.one('2030-03-04', 'ali', 'K') -> 'unavailable_intervals' @> '[{"start_at": "2030-03-08T06:00:00.000000Z", "end_at": "2030-03-08T09:00:00.000000Z"}]'),
+  'the note''s hours travel apart from the unavailable hours');
 select ok(pg_temp.one('2030-03-04', 'ali', 'B') -> 'unavailable_intervals'
   @> '[{"start_at": "2030-03-10T09:30:00.000000Z", "end_at": "2030-03-10T10:30:00.000000Z"}]',
   'Sunday 01:30-03:30 across the spring-forward gap is one real hour');
