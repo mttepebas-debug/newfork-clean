@@ -91,12 +91,27 @@ export function formatAvailabilityRange(
   range: AvailabilityRange,
   timeFormat: "12h" | "24h",
 ): string {
-  const lead = kind === "time_off" ? "Approved time off" : "Unavailable";
+  if (kind === "unavailable") return `Unavailable ${hoursWords(range, timeFormat)}`;
   const clock = (minutes: number) => formatAvailabilityClock(minutes, timeFormat);
-  if (range.from <= 0 && range.to >= 1440) return kind === "time_off" ? `${lead}, all day` : `${lead} all day`;
-  if (kind === "unavailable" && range.from <= 0) return `${lead} until ${clock(range.to)}`;
-  if (kind === "unavailable" && range.to >= 1440) return `${lead} after ${clock(range.from)}`;
-  return `${lead} ${clock(range.from)} – ${clock(range.to)}`;
+  if (range.from <= 0 && range.to >= 1440) return "Approved time off, all day";
+  return `Approved time off ${clock(range.from)} – ${clock(range.to)}`;
+}
+
+/** "after 2:00 PM", "until 9:00 AM", "all day", "9:00 AM – 2:00 PM". */
+function hoursWords(range: AvailabilityRange, timeFormat: "12h" | "24h"): string {
+  const clock = (minutes: number) => formatAvailabilityClock(minutes, timeFormat);
+  if (range.from <= 0 && range.to >= 1440) return "all day";
+  if (range.from <= 0) return `until ${clock(range.to)}`;
+  if (range.to >= 1440) return `after ${clock(range.from)}`;
+  return `${clock(range.from)} – ${clock(range.to)}`;
+}
+
+/** The note card's head (S2 B): "Wed after 6:00 PM"; the day alone when the note's hours are not there. */
+export function formatNoteWhen(projection: Projection | undefined, day: string, timeFormat: "12h" | "24h"): string {
+  const windows = (projection?.note_intervals ?? []).flatMap((interval) => rangeOnDay(interval, day, projection!) ?? []);
+  if (!windows.length) return formatAvailabilityMarkDay(day);
+  const weekday = new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+  return `${weekday} ${windows.map((window) => hoursWords(window, timeFormat)).join(", ")}`;
 }
 
 export function formatAvailabilityMarkDay(day: string): string {

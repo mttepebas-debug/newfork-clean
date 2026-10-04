@@ -4,6 +4,7 @@ import type { ScheduleEmployee } from "@newfork/shared/schedule";
 import {
   formatAvailabilityMarkDay,
   formatAvailabilityRange,
+  formatNoteWhen,
   mergeAvailabilityMarks,
   scheduleAvailabilityMarks,
   windowsDuringShift,
@@ -114,5 +115,22 @@ describe("windowsDuringShift", () => {
   });
   it("shows the whole day when the shift touches none", () => {
     expect(windowsDuringShift(windows, "11:00", "13:00")).toEqual(windows);
+  });
+});
+
+// Mert, 2026-10-04 (S2 B as designed): the note card's head says when the note is about.
+describe("formatNoteWhen", () => {
+  it("names the note's hours on the shift's day", () => {
+    const after6 = { start_at: "2026-10-21T22:00:00Z", end_at: "2026-10-22T04:00:00Z" };
+    expect(formatNoteWhen(projection({ note_intervals: [after6] }), "2026-10-21", "12h")).toBe("Wed after 6:00 PM");
+    const morning = { start_at: "2026-10-21T13:00:00Z", end_at: "2026-10-21T16:00:00Z" };
+    expect(formatNoteWhen(projection({ note_intervals: [morning, after6] }), "2026-10-21", "24h")).toBe("Wed 09:00 – 12:00, after 18:00");
+    const allDay = { start_at: "2026-10-21T04:00:00Z", end_at: "2026-10-22T04:00:00Z" };
+    expect(formatNoteWhen(projection({ note_intervals: [allDay] }), "2026-10-21", "12h")).toBe("Wed all day");
+  });
+
+  it("falls back to the day when the note's hours are not there", () => {
+    expect(formatNoteWhen(projection({}), "2026-10-21", "12h")).toBe("Wed, Oct 21");
+    expect(formatNoteWhen(undefined, "2026-10-21", "12h")).toBe("Wed, Oct 21");
   });
 });

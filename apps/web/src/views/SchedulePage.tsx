@@ -3062,6 +3062,7 @@ export function SchedulePage({
       {dropReviewAsk?.kind === "note" ? (
         <ScheduleNoteConfirm
           cell={dropReviewAsk.cell}
+          when={dropReviewAsk.when}
           employeeName={dropReviewAsk.employeeName}
           text={dropReviewAsk.text}
           disabled={dropReview.pending}

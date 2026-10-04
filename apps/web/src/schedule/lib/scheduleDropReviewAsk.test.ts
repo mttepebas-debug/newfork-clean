@@ -14,7 +14,7 @@ const projection: NonNullable<ScheduleEmployee["weekly_availability"]>[number] =
   days: Array.from({ length: 7 }, (_, i) => ({ date: `2035-01-${15 + i}`, has_unavailable: false, all_day: false })),
 };
 const employee = { id: emp, employee_code: "E-1", display_name: "Ayşe Kaya", location_ids: [loc], job_ids: [job], weekly_availability: [projection] } as ScheduleEmployee;
-const model = { employees: [employee] } as unknown as ScheduleReadModel;
+const model = { employees: [employee], settings: { time_format: "12h" } } as unknown as ScheduleReadModel;
 const input = { employee_id: emp, location_id: loc, job_id: job, shift_type_id: null, scheduled_date: "2035-01-15", start_time: "18:00", end_time: "20:00", time_basis: "explicit" } as ScheduleShiftMutationInput;
 const mark = { code: "availability", message: "The assignment overlaps unavailable hours.", definite: true };
 const note = { code: "note", message: "The assignment overlaps hours a manager noted for this person.", definite: true };
@@ -25,6 +25,7 @@ describe("what a drop or paste asks before it writes (M8, M12, S2 B)", () => {
     expect(scheduleDropReviewAsk(model, [input], [assessed(note)])).toEqual({
       kind: "note",
       cell: { locationId: loc, employeeId: emp, date: "2035-01-15" },
+      when: "Mon 6:00 PM – 8:00 PM",
       employeeName: "Ayşe Kaya",
       text: "School mornings",
     });

@@ -25,6 +25,7 @@ import {
   formatScheduleConflictMessages,
   isAvailabilityReminder,
 } from "../schedule-conflicts";
+import { formatNoteWhen } from "../lib/scheduleAvailabilityMark";
 import { weeklyTargetNote } from "../lib/scheduleWeeklyAvailability";
 import {
   clampShiftEditorCount,
@@ -1070,6 +1071,11 @@ export function ShiftQuickEditor({
       {noteCardOpen && selectedEmployee ? (
         <ScheduleNoteConfirm
           cell={{ locationId: value.location_id, employeeId: selectedEmployee.id, date: value.scheduled_date }}
+          when={formatNoteWhen(
+            selectedEmployee.weekly_availability?.find((item) => item.location_id === value.location_id),
+            value.scheduled_date,
+            timeFormat,
+          )}
           employeeName={selectedEmployee.display_name}
           text={noteText}
           disabled={checkingAvailability}
