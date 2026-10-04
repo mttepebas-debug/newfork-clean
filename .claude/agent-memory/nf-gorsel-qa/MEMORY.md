@@ -10,3 +10,4 @@
 - [Availability QA logins + traps](availability-qa-logins-and-traps.md) — AVAIL-002 accounts, type-mode Meyhouse, onboarding user, phone Save swallowed, shared Discard dialog gray buttons
 - [Schedule edit-mode QA traps](schedule-edit-mode-qa-traps.md) — reach edit mode via New Schedule -> pencil; stale active session reopens the OLD draft; Discard in finally; phone tap traps
 - [Availability design artifact, local render](avail-design-artifact-local-render.md) — save artifact files + static server + postMessage availgo; lab-only styles and old-look bubbles; Settings menu clipped at 375
+- [Font swap before/after trick](font-swap-before-after-trick.md) — Segoe override via addStyleTag; Inter wraps at 375/360 (Schedule bar, Availability tabs), 390 Settings button
