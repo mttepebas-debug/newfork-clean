@@ -1166,3 +1166,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #151).
 - **Mert:** bilgi.
+
+### KK-135 (2026-10-04) AVAIL-002'nin müsaitlik e2e senaryosu A + B ile aynı pencerede main'e
+- **Karar (ne):** `e2e/flows/schedule-availability-warning.spec.ts` Publish'teki "I've seen this warning…" onay kutusunu arıyor (`:90`, `:117`); A'dan sonra kutu çıkmadığı için A + B main'e girince main CI e2e kırmızı olur. B işçisi aynı oturumda `nf-test` rolünü üstlenip spec'i aynı dalda günceller; A + B ile aynı pencerede main'e. D'nin bu parçası öne alındı.
+- **Nerede:** dal `task/avail-002-b` (işçi `local_e4bbe6fe…`); commit `42eb11d6` "Publish lists an availability mark as a note and asks nothing" — ölçüldü.
+- **Ne zaman:** 2026-10-04 ~15:40Z.
+- **Ne için:** main'e kırmızı e2e ile girmemek (CLAUDE.md §2: main kırmızıysa push donar).
+- **Uygulamada etkisi:** ekranda değişiklik yok; main CI e2e A + B gönderiminde yeşil kalır.
+- **Dayanak:** ILKELER P19 (teknik sıra Claude'un), CLAUDE.md §4 (rol sırası; aynı dosyada iki rol aynı anda değil).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #152).
+- **Mert:** bilgi.

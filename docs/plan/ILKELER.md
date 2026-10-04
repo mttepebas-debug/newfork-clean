@@ -155,6 +155,9 @@
   açılan taslağı etkiler. Bulunan sessiz davranış en azından backlog'a yazılır.
 - Kanıt: 09-26 "düşer ama useri uyar"; 09-27 "Published shiftler düşmez… Yeni draft açılır o
   zaman ise gizlenir"; 09-23 "sessiz atlama backlog'a".
+- Kanıt (2026-10-04, ters seçim): terfi eden kişinin eski müsaitliği için "sakla ama sayılmasın"
+  (P09 + P25) önerildi; Mert "Terfide silinsin" seçti, uyarısız. Rol değişince bugünkü kurala
+  uymayan kişinin kendi kaydı uyarısız silinir; P09 burada geçmez (KARARLAR M14).
 
 **P10. Kullanıcının niyeti sorulur; kullanıcı zorlanmaz, ilerlemesi kaybolmaz.**
 - Kural:
