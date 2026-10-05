@@ -1255,4 +1255,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KK-141; Mert'in talimatı (prototip planı koordinatörde); CLAUDE.md §11.10.
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #186).
+- **Ek (besleme #188, Mert kararı 2026-10-05, koordinatörün penceresinde, önerilen):** madde (3) değişti. Q turunun 45 gerçek uygulama bulgusu ve /welcome 404 yan bulgusu için backlog taslağını eşlik oturumu `local_91ac4f8d…` hazırlar. Taslak tazelik ölçümlü, BL numarasız, gruplu ve iki işaretli olur; yeri `artifacts/prototype/backlog-taslak/Q-bulgular.md`. /welcome 404'ün kök neden ölçümü de o oturumda. Kayıt oturumu numara verir ve BACKLOG'a ekler; P bulgularıyla aynı commit'te olabilir. Kayıt oturumunun 06:00Z'de başlattığı taslak alt ajanı durduruldu; dosya yazmamıştı. Dayanak: CLAUDE.md §5 adım 0 + kayıt oturumunun bağlam yükünü azaltma. Reddedilen: "Schedule düzeltme paketine başlasın", "beklesin".
 - **Mert:** bilgi.
