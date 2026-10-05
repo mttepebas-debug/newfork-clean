@@ -28,6 +28,29 @@ FOUNDATION-B ve `ILERLEME-PLANI.md` kayıt olarak durur; kalan işleri ekranlara
 - Yolda çıkan ve ekranın önünde olmayan iş `BACKLOG.md`'ye yazılır: grubuyla ve iki işaretle (`leave` / `do`).
 - Bütün ekranlar bitince genel değerlendirme (recap) yapılır.
 
+### Keşif şablonu (her ekranda aynı dört görev)
+Ortak kurallar, dördü için:
+- **Salt okuma.** Yerel DB'de yalnız SELECT, commit yok. Rapor ajanın son mesajıdır; ekran oturumu onu olduğu gibi `docs/plan/ekranlar/<no>-<ekran>/` altına yazar.
+- **Ekranın sınırı açıkça yazılır:** hangi rotalar içeride, komşu ekranlardan hangileri dışarıda. Sınırda kalan madde "sınırda" diye ayrı listelenir.
+- **Her bulgu** `BACKLOG.md`'deki açık maddelerle eşlenir: varsa BL numarası, yoksa "YENİ".
+- **Rapor dili:** Türkçe, kod okumayan biri için (CLAUDE.md §10).
+- **Her bulgu şunları taşır:** önem, ekranda nerede, isimli örnek, kanıt (dosya:satır / SELECT / ekran görüntüsü), işaret `leave / do`.
+
+Dört görev:
+
+| Dosya | Ajan | Ne arar |
+|---|---|---|
+| `A-backlog-prototip.md` | `nf-planlama` | **Açık backlog maddeleri:** ekrana ait olanların hepsi, her biri için tazelik hükmü (geçerli / değişmiş / bayat / ölçülmedi). **Prototip farkları:** her biri için taşı / bırak / varyant gerekir önerisi ve dayanağı (prototip klasöründe `KANONIK.md`'yi okur; prototipe yazmaz). **KARARLAR'da olup kodda olmayan kurallar.** |
+| `B-guvenlik.md` | `nf-guvenlik` | Yetki kapısının çekirdek üzerinden işlemesi; RLS ve grant'lar; `*_service` sınıflandırması; ikiz ve eski fonksiyonlar; kapsam kuralı M2 (müdür yalnız kendi lokasyonu); sızıntı ve veri kaybı; web'de `can()` kullanımı. En üstte "DENETİM SONUCU". |
+| `C-gorsel.md` | `nf-gorsel-qa` | Gerçek uygulamada owner ve tek lokasyon müdürü, masaüstü 1440 ve telefon 390, bütün durumlar ve pencereler. CLAUDE.md §9'daki tutarlılık ve buton dili, WCAG AA, klavye ve odak, KARARLAR'daki ekran kararları. Ekran görüntüleri `artifacts/nf-gorsel-qa/EKRAN-<ad>/` altına. Ekran oturumunun kendi portu kullanılır (CLAUDE.md §7). |
+| `D-kod-davranis.md` | genel ajan (opus) | Akışları uçtan uca izler (web → API → DB). KARARLAR ve ILKELER'e uymayan davranışı, ikiz ve ölü kodu, ekrana çıkan ham hata metnini, sessizce düşen veriyi, saat dilimi ve yarış durumlarını arar; test boşluklarını listeler. Kanıtlanamayanlar ayrı listede. |
+
+`OZET.md` (ekran oturumu yazar):
+- dört raporun tek listesi, önem sırasıyla;
+- Mert'e sorulacak kararlar (CLAUDE.md §13 şablonu);
+- prototipten taşı / bırak listesi;
+- daha sonra Mert'in seçimleri ve kapanış durumu.
+
 **Bir ekran ne zaman bitmiş sayılır:**
 - keşif bulguları kapandı ya da adıyla ertelendi;
 - Mert'in "taşı" dediği prototip maddeleri gerçek uygulamada;
@@ -41,7 +64,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 | # | Ekran (uygulamadaki adı) | Kim | Prototip karşılaştırması | Durum |
 |---|---|---|---|---|
 | 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | keşif (2026-10-05) |
-| 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | sırada |
+| 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | keşif (2026-10-05, ayrı oturum — Mert'in isteği) |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | sırada |
 | 4 | Availability | owner, müdür | P2 | sırada |
 | 5 | Workspace (ana sayfa) | owner, müdür | P1 | sırada |
@@ -68,3 +91,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 
 ## İlerleme kaydı
 - 2026-10-05 ~19:50Z — Plan kabul edildi. Schedule keşfi başladı: dört alt ajan (backlog/prototip, güvenlik, görsel, kod/davranış). Raporlar gelince `docs/plan/ekranlar/01-schedule/`.
+- 2026-10-05 ~20:00Z — Mert: "2. sayfa için yeni bir sessiona görev ata". Requests ayrı bir ekran oturumunda paralel başladı (ILKELER P17: ikinci işi Mert açar). Kurallar:
+  - **Konuşma:** ekran oturumu keşfi bitirir, raporu koordinatöre yollar; Mert'e sorular koordinatörden gider.
+  - **Sınır:** Schedule ile ortak dosyada iki oturum aynı anda yazmaz.
+  - **Kayıt:** `BACKLOG.md`'yi ve bu dosyayı yalnız koordinatör yazar.
