@@ -118,7 +118,7 @@ describe("Phase 8 communication pages", () => {
     expect(getNotifications).toHaveBeenCalledWith("", expect.anything());
     expect(
       screen
-        .getByRole("link", { name: "Open notification: Password changed" })
+        .getByRole("link", { name: "Password changed" })
         .getAttribute("href"),
     ).toBe("/account/security");
   });
@@ -147,12 +147,13 @@ describe("Phase 8 communication pages", () => {
       ],
     });
     renderRoute("/app/notifications", <NotificationsPage />);
-    const table = await screen.findByRole("table", { name: "Notifications" });
+    await screen.findByText("Menu tasting");
+    const table = screen.getByRole("table", { name: "Notifications" });
     expect(
       within(table)
         .getAllByRole("columnheader")
         .map((header) => header.textContent),
-    ).toEqual(["Unread", "Notification", "Category", "Received", "Actions", "Today", "Yesterday"]);
+    ).toEqual(["", "Notification", "Category", "Received", "Actions", "Today", "Yesterday"]);
     const rows = within(table).getAllByRole("row").map((row) => row.textContent ?? "");
     expect(rows.findIndex((row) => row === "Today")).toBeLessThan(
       rows.findIndex((row) => row.includes("Menu tasting")),
@@ -175,7 +176,7 @@ describe("Phase 8 communication pages", () => {
     renderRoute("/app/notifications", <NotificationsPage />);
     const table = await screen.findByRole("table", { name: "Notifications" });
     expect(within(table).getByRole("columnheader", { name: "Notification" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "No notifications" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "No unread notifications" })).toBeTruthy();
     expect(screen.getByText("Updates matching these filters will appear here.")).toBeTruthy();
   });
 
@@ -273,7 +274,7 @@ describe("Phase 8 communication pages", () => {
     expect(screen.getByText("Seen update")).toBeTruthy();
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Add announcement" }),
+      screen.queryByRole("button", { name: "New announcement" }),
     ).toBeNull();
     expect(
       screen.getAllByRole("columnheader").map((cell) => cell.textContent),
@@ -391,7 +392,7 @@ describe("Phase 8 communication pages", () => {
     });
     renderRoute("/app/announcements", <AnnouncementsPage />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "Add announcement" }),
+      await screen.findByRole("button", { name: "New announcement" }),
     );
     fireEvent.change(screen.getByLabelText("Title"), {
       target: { value: "Service briefing" },
@@ -423,7 +424,7 @@ describe("Phase 8 communication pages", () => {
       announcements: [],
     });
     renderRoute("/app/announcements", <AnnouncementsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: "Add announcement" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New announcement" }));
     expect((screen.getByLabelText("Main Dining") as HTMLInputElement).checked).toBe(true);
   });
 
@@ -503,13 +504,79 @@ describe("Phase 8 communication pages", () => {
     expect(
       screen.queryByText("communications.announcement.available"),
     ).toBeNull();
+    const markRead = screen.getByRole("button", { name: "Mark as read" });
+    expect(markRead).toHaveProperty("disabled", true);
+    expect(screen.getByText("0 selected")).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", { name: "Mark Service briefing read" }),
+      screen.getByRole("checkbox", { name: "Select Service briefing" }),
     );
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", { name: "Select Service briefing" }).closest("tr")
+        ?.getAttribute("data-selected"),
+    ).toBe("true");
+    fireEvent.click(markRead);
     await waitFor(() =>
       expect(actOnNotification).toHaveBeenCalledWith(workspaceId, {
         notification_id: "a8300000-0000-4000-8000-000000000001",
         action: "read",
+      }),
+    );
+  });
+
+  it("splits the inbox into Unread and Read tabs with a category list and no bulk links", async () => {
+    const item = (id: string, title: string, read: boolean) => ({
+      id,
+      workspace_id: workspaceId,
+      category: "announcement" as const,
+      type_key: "communications.announcement.available",
+      severity: "info" as const,
+      safe_preview: `${title} details`,
+      title,
+      body: `${title} details`,
+      action_url: null,
+      source_type: "announcement",
+      source_id: null,
+      created_at: new Date().toISOString(),
+      read_at: read ? new Date().toISOString() : null,
+      visibility_state: "visible" as const,
+    });
+    vi.mocked(getNotifications).mockImplementation(async (_ws, options) => ({
+      workspace_id: workspaceId,
+      unread_count: 2,
+      next_cursor: null,
+      notifications:
+        options?.readState === "read"
+          ? [item("a8300000-0000-4000-8000-000000000021", "Old memo", true)]
+          : [
+              item("a8300000-0000-4000-8000-000000000022", "New memo", false),
+              item("a8300000-0000-4000-8000-000000000023", "Late memo", false),
+            ],
+    }));
+    renderRoute("/app/notifications", <NotificationsPage />);
+    expect(await screen.findByText("New memo")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Unread (2)" }).getAttribute("aria-selected")).toBe("true");
+    await screen.findByRole("tab", { name: "Read (1)" });
+    expect(screen.getByRole("combobox", { name: "Notification category" })).toBeTruthy();
+    for (const gone of ["Mark all read", "Select all", "Deselect all", "Unread only"])
+      expect(screen.queryByText(gone)).toBeNull();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select all shown notifications" }),
+    );
+    expect(screen.getByText("2 selected")).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Select all shown notifications" }),
+    );
+    expect(screen.getByText("0 selected")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Read (1)" }));
+    expect(await screen.findByText("Old memo")).toBeTruthy();
+    expect(screen.queryByText("New memo")).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Old memo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mark as unread" }));
+    await waitFor(() =>
+      expect(actOnNotification).toHaveBeenCalledWith(workspaceId, {
+        notification_id: "a8300000-0000-4000-8000-000000000021",
+        action: "unread",
       }),
     );
   });

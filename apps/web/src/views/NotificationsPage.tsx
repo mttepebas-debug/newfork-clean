@@ -11,15 +11,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  Bell,
-  CheckCheck,
-  ChevronDown,
-  ChevronUp,
-  Circle,
-  ExternalLink,
-  Trash2,
-} from "lucide-react";
+import { Bell, Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -39,9 +31,10 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 type Category = "all" | NotificationCategory;
+type ReadTab = "unread" | "read";
 type NotificationMutationInput = {
   notification_id: string | null;
-  action: "read" | "unread" | "dismiss" | "read_all";
+  action: "read" | "unread" | "dismiss";
 };
 
 export function NotificationsPage() {
@@ -50,28 +43,55 @@ export function NotificationsPage() {
   useAccountNotificationRealtime(accountOnly || !context ? account?.userId ?? context?.userId : undefined);
   const client = useQueryClient();
   const [category, setCategory] = useState<Category>("all");
-  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [tab, setTab] = useState<ReadTab>("unread");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [expandedNotification, setExpandedNotification] = useState<
     string | null
   >(null);
   const workspaceId = accountOnly ? "" : context?.workspace.id ?? "";
-  const query = useInfiniteQuery({
-    queryKey: ["notifications", account?.userId ?? context?.userId, workspaceId, category, unreadOnly],
-    queryFn: ({ pageParam }) =>
+  const userId = account?.userId ?? context?.userId;
+  // One list per tab; both load so each tab label carries its count.
+  const inbox = (readState: ReadTab) => ({
+    queryKey: ["notifications", userId, workspaceId, category, readState],
+    queryFn: ({ pageParam }: { pageParam: string | null }) =>
       getNotifications(workspaceId, {
         category: category === "all" ? undefined : category,
-        unreadOnly,
+        readState,
         cursor: pageParam ?? undefined,
         limit: 30,
       }),
     initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.next_cursor,
-    enabled: Boolean(account?.userId ?? context?.userId),
+    getNextPageParam: (page: { next_cursor: string | null }) =>
+      page.next_cursor,
+    enabled: Boolean(userId),
   });
+  const unreadQuery = useInfiniteQuery(inbox("unread"));
+  const readQuery = useInfiniteQuery(inbox("read"));
+  const query = tab === "unread" ? unreadQuery : readQuery;
   const mutation = useMutation({
     mutationFn: (input: NotificationMutationInput) =>
       actOnNotification(workspaceId, input),
     onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["notifications"] }),
+        client.invalidateQueries({ queryKey: ["announcements"] }),
+        client.invalidateQueries({ queryKey: ["workspace-dashboard"] }),
+      ]);
+    },
+  });
+  // No bulk action in the API: one call per selected row.
+  const bulkMutation = useMutation({
+    mutationFn: (ids: readonly string[]) =>
+      Promise.all(
+        ids.map((id) =>
+          actOnNotification(workspaceId, {
+            notification_id: id,
+            action: tab === "unread" ? "read" : "unread",
+          }),
+        ),
+      ),
+    onSettled: async () => {
+      setSelected(new Set());
       await Promise.all([
         client.invalidateQueries({ queryKey: ["notifications"] }),
         client.invalidateQueries({ queryKey: ["announcements"] }),
@@ -84,7 +104,32 @@ export function NotificationsPage() {
     [query.data?.pages],
   );
   const groups = useMemo(() => groupByDay(notifications), [notifications]);
-  const unreadCount = query.data?.pages[0]?.unread_count ?? 0;
+  const unreadCount =
+    unreadQuery.data?.pages[0]?.unread_count ??
+    readQuery.data?.pages[0]?.unread_count ??
+    0;
+  const readLoaded =
+    readQuery.data?.pages.reduce(
+      (sum, page) => sum + page.notifications.length,
+      0,
+    ) ?? 0;
+  // ponytail: the API sends no read total; past the loaded pages show "N+".
+  const readCountLabel = `${readLoaded}${readQuery.hasNextPage ? "+" : ""}`;
+  const visibleIds = notifications.map((item) => item.id);
+  const selectedVisible = visibleIds.filter((id) => selected.has(id));
+  const allSelected =
+    visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
+  const toggle = (id: string) =>
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const switchTab = (next: ReadTab) => {
+    setTab(next);
+    setSelected(new Set());
+  };
 
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))
@@ -94,14 +139,11 @@ export function NotificationsPage() {
         homeHref={noAccessHomePath(context, "/app/notifications")}
       />
     );
-  if (query.isLoading)
-    return <NotificationState text="Loading notifications..." />;
-  if (query.error)
-    return <NotificationState text={query.error.message} error />;
-
+  const busy = mutation.isPending || bulkMutation.isPending;
+  const errorMessage = mutation.error?.message ?? bulkMutation.error?.message;
   return (
     <section
-      className="notifications-page"
+      className="notifications-page list-page"
       aria-labelledby="notifications-title"
     >
       <CatalogPageHeader
@@ -109,48 +151,66 @@ export function NotificationsPage() {
         title="Notifications"
         titleId="notifications-title"
         description={`Review account security alerts${workspaceId ? " and updates for this workspace" : ""}. ${unreadCount ? `${unreadCount} unread.` : "You're all caught up."}`}
-        action={
-          <button
-            className="nf-button secondary"
-            type="button"
-            disabled={!unreadCount || mutation.isPending}
-            onClick={() =>
-              mutation.mutate({ notification_id: null, action: "read_all" })
-            }
-          >
-            <CheckCheck size={16} aria-hidden /> Mark all read
-          </button>
-        }
       />
-      <div className="notification-toolbar">
-        <div
-          className="communication-filters"
-          role="tablist"
-          aria-label="Notification category"
-        >
-          {notificationCategories.map((value) => (
-            <button
-              key={value}
-              role="tab"
-              aria-selected={category === value}
-              onClick={() => setCategory(value)}
-            >
-              {labelCategory(value)}
-            </button>
-          ))}
+      <div className="catalog-toolbar">
+        <div className="catalog-toolbar-status-row">
+          <div
+            className="catalog-status-tabs"
+            role="tablist"
+            aria-label="Read state"
+          >
+            {(
+              [
+                ["unread", `Unread (${unreadCount})`],
+                ["read", `Read (${readCountLabel})`],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                className={tab === value ? "active" : ""}
+                onClick={() => switchTab(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <label className="notification-unread-toggle">
-          <input
-            type="checkbox"
-            checked={unreadOnly}
-            onChange={(event) => setUnreadOnly(event.target.checked)}
-          />{" "}
-          Unread only
-        </label>
+        <div className="catalog-toolbar-filter-row">
+          <select
+            className="toolbar-filter-select"
+            aria-label="Notification category"
+            value={category}
+            onChange={(event) => {
+              setCategory(event.target.value as Category);
+              setSelected(new Set());
+            }}
+          >
+            {notificationCategories.map((value) => (
+              <option key={value} value={value}>
+                {labelCategory(value)}
+              </option>
+            ))}
+          </select>
+          <span className="notification-selected-count" aria-live="polite">
+            {selectedVisible.length} selected
+          </span>
+          <button
+            type="button"
+            className="list-add-button"
+            disabled={!selectedVisible.length || busy}
+            onClick={() => bulkMutation.mutate(selectedVisible)}
+          >
+            <Check size={14} aria-hidden />
+            {tab === "unread" ? "Mark as read" : "Mark as unread"}
+          </button>
+        </div>
       </div>
-      {mutation.error ? (
+      {errorMessage ? (
         <p className="communication-error" role="alert">
-          {mutation.error.message}
+          {errorMessage}
         </p>
       ) : null}
       <div className="employee-table-wrap notification-table-wrap">
@@ -160,8 +220,16 @@ export function NotificationsPage() {
         >
           <thead>
             <tr>
-              <th className="notification-dot-cell">
-                <span className="sr-only">Unread</span>
+              <th className="notification-select-cell">
+                <input
+                  type="checkbox"
+                  aria-label="Select all shown notifications"
+                  checked={allSelected}
+                  disabled={!visibleIds.length || busy}
+                  onChange={() =>
+                    setSelected(allSelected ? new Set() : new Set(visibleIds))
+                  }
+                />
               </th>
               <th>Notification</th>
               <th className="notification-category-cell">Category</th>
@@ -195,14 +263,42 @@ export function NotificationsPage() {
                 const itemPending =
                   mutation.isPending &&
                   mutation.variables?.notification_id === item.id;
+                const isSelected = selected.has(item.id);
+                const markRead = () => {
+                  if (!item.read_at)
+                    mutation.mutate({
+                      notification_id: item.id,
+                      action: "read",
+                    });
+                };
                 return (
                   <Fragment key={item.id}>
-                    <tr className={item.read_at ? undefined : "unread"}>
-                      <td className="notification-dot-cell">
-                        <span className="notification-dot" aria-hidden />
+                    <tr
+                      className={item.read_at ? undefined : "unread"}
+                      data-selected={isSelected}
+                    >
+                      <td className="notification-select-cell">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${item.title}`}
+                          checked={isSelected}
+                          disabled={busy}
+                          onChange={() => toggle(item.id)}
+                        />
                       </td>
                       <td className="notification-main-cell">
-                        <strong>{item.title}</strong>
+                        {actionUrl ? (
+                          <Link
+                            className="notification-title-link"
+                            to={actionUrl}
+                            title={typeDisplay?.actionLabel ?? "Open notification"}
+                            onClick={markRead}
+                          >
+                            <strong>{item.title}</strong>
+                          </Link>
+                        ) : (
+                          <strong>{item.title}</strong>
+                        )}
                         <p>{item.safe_preview || item.body}</p>
                         {exchangeTarget && (
                           <button
@@ -237,60 +333,20 @@ export function NotificationsPage() {
                         </time>
                       </td>
                       <td className="notification-actions-cell">
-                        <div className="notification-actions">
-                          {actionUrl ? (
-                            <Link
-                              className="icon-button"
-                              aria-label={`${typeDisplay?.actionLabel ?? "Open notification"}: ${item.title}`}
-                              to={actionUrl}
-                              onClick={() => {
-                                if (!item.read_at)
-                                  mutation.mutate({
-                                    notification_id: item.id,
-                                    action: "read",
-                                  });
-                              }}
-                            >
-                              <ExternalLink size={16} aria-hidden />
-                            </Link>
-                          ) : null}
-                          <button
-                            className="icon-button"
-                            type="button"
-                            disabled={itemPending}
-                            aria-label={
-                              item.read_at
-                                ? `Mark ${item.title} unread`
-                                : `Mark ${item.title} read`
-                            }
-                            onClick={() =>
-                              mutation.mutate({
-                                notification_id: item.id,
-                                action: item.read_at ? "unread" : "read",
-                              })
-                            }
-                          >
-                            <Circle
-                              size={16}
-                              fill={item.read_at ? "none" : "currentColor"}
-                              aria-hidden
-                            />
-                          </button>
-                          <button
-                            className="icon-button"
-                            type="button"
-                            disabled={itemPending}
-                            aria-label={`Dismiss ${item.title}`}
-                            onClick={() =>
-                              mutation.mutate({
-                                notification_id: item.id,
-                                action: "dismiss",
-                              })
-                            }
-                          >
-                            <Trash2 size={16} aria-hidden />
-                          </button>
-                        </div>
+                        <button
+                          className="icon-button notification-delete"
+                          type="button"
+                          disabled={itemPending || busy}
+                          aria-label={`Dismiss ${item.title}`}
+                          onClick={() =>
+                            mutation.mutate({
+                              notification_id: item.id,
+                              action: "dismiss",
+                            })
+                          }
+                        >
+                          <Trash2 size={16} aria-hidden />
+                        </button>
                       </td>
                     </tr>
                     {expanded && exchangeTarget && (
@@ -301,13 +357,7 @@ export function NotificationsPage() {
                             workspaceId={workspaceId}
                             item={item}
                             panelId={panelId}
-                            onNavigate={() => {
-                              if (!item.read_at)
-                                mutation.mutate({
-                                  notification_id: item.id,
-                                  action: "read",
-                                });
-                            }}
+                            onNavigate={markRead}
                           />
                         </td>
                       </tr>
@@ -318,12 +368,24 @@ export function NotificationsPage() {
             </tbody>
           ))}
         </table>
-        {groups.length ? null : (
+        {query.isLoading ? (
+          <p className="notification-table-state" role="status">
+            Loading notifications...
+          </p>
+        ) : query.error ? (
+          <p className="notification-table-state" role="alert">
+            {query.error.message}
+          </p>
+        ) : groups.length ? null : (
           <div className="catalog-table-empty">
             <span className="catalog-table-empty-icon" aria-hidden>
               <Bell size={22} />
             </span>
-            <h2>No notifications</h2>
+            <h2>
+              {tab === "unread"
+                ? "No unread notifications"
+                : "No read notifications"}
+            </h2>
             <p>Updates matching these filters will appear here.</p>
           </div>
         )}
@@ -340,7 +402,6 @@ export function NotificationsPage() {
     </section>
   );
 }
-
 function groupByDay(
   items: readonly NotificationRecord[],
 ): [string, NotificationRecord[]][] {
@@ -372,19 +433,6 @@ function formatTime(iso: string) {
     minute: "2-digit",
   }).format(new Date(iso));
 }
-function NotificationState({
-  text,
-  error = false,
-}: {
-  text: string;
-  error?: boolean;
-}) {
-  return (
-    <section className="communication-state" role={error ? "alert" : "status"}>
-      {text}
-    </section>
-  );
-}
 export default NotificationsPage;
 
 const notificationCategories: readonly Category[] = [
@@ -399,6 +447,6 @@ const notificationCategories: readonly Category[] = [
 ];
 
 function labelCategory(value: Category): string {
-  if (value === "all") return "All";
+  if (value === "all") return "All categories";
   return displayForNotificationCategory(value).label;
 }
