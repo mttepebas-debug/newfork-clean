@@ -211,9 +211,41 @@
   color: var(--theme-list-cell-text);
   font-size: 13px;
 }
+/* One cell type for every list (KARARLAR "Hücre"): the grid lists' own cell
+   classes read like Employees → Documents' table cells. */
+.list-page.list-page
+  .job-catalog-row
+  :is(
+    .job-department-cell,
+    .announcement-audience-cell,
+    .announcement-date-cell,
+    .important-date-date-cell
+  ) {
+  color: var(--theme-list-cell-text);
+  font-size: 13px;
+}
+/* First column: 600, ink, and it wraps instead of cutting. */
 .list-page.list-page .job-catalog-row .job-row-name {
+  overflow: visible;
   color: var(--theme-text);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+/* Keyboard focus on the button that opens a row, and on a table row. */
+.list-page.list-page .job-row-identity:focus-visible,
+.list-page.list-page .employee-table tbody tr:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+/* Important Dates → Archived: the tab already says archived; rows keep full
+   ink instead of the disabled-button fade. */
+.important-dates-catalog-page.list-page
+  .job-catalog-row[data-archived="true"]
+  .job-row-identity:disabled {
+  color: var(--theme-text);
+  opacity: 1;
 }
 
 /* Status chip. */
@@ -265,6 +297,15 @@
   .list-page.list-page > .catalog-page-header {
     height: auto;
     min-height: 0;
+    align-items: flex-start;
+  }
+  /* A long one-word title stays inside its box; the dot moves down instead. */
+  .list-page.list-page > .catalog-page-header .catalog-page-heading {
+    max-width: 100%;
+  }
+  .list-page.list-page > .catalog-page-header h1 {
+    flex-wrap: wrap;
+    font-size: 28px;
   }
   .list-page.list-page > .catalog-page-header p {
     white-space: normal;

@@ -165,6 +165,11 @@ it("composes exclusive status, requirement and search filters and keeps publishe
     target: { value: "required" },
   });
   expect(screen.queryByTitle("Safety certificate")).toBeNull();
+  // A filter that empties the list says so, with no add button.
+  expect(screen.getByText("No document types match these filters.")).toBeTruthy();
+  expect(screen.getByText("Try another status or clear your search.")).toBeTruthy();
+  expect(screen.queryByText("No document types")).toBeNull();
+  expect(screen.getAllByRole("button", { name: "New document" })).toHaveLength(1);
 });
 
 it("shows the load error and disables creation when document types cannot be read", async () => {

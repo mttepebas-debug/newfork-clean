@@ -156,7 +156,11 @@ export function AnnouncementsPage() {
         }
       />
       <div className="job-catalog-toolbar catalog-toolbar">
-        {!reader && (
+        {/* A reader has no tabs, but the row keeps its 40 px so the filter
+            and table sit where they do on every list page (KK-136). */}
+        {reader ? (
+          <div className="catalog-toolbar-status-row" aria-hidden />
+        ) : (
           <div className="announcement-toolbar-controls catalog-toolbar-status-row">
             <div
               className="catalog-status-tabs"
@@ -393,9 +397,15 @@ export function AnnouncementsPage() {
                       </span>
                       <span role="cell" className="announcement-status-cell">
                         <span
-                          className="announcement-status"
-                          data-status={
-                            isArchived(item) ? "archived" : item.status
+                          className="list-chip"
+                          data-tone={
+                            isArchived(item)
+                              ? "gray"
+                              : item.status === "published"
+                                ? "green"
+                                : item.status === "scheduled"
+                                  ? "amber"
+                                  : "gray"
                           }
                         >
                           {statusLabel(item)}

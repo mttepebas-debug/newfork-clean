@@ -51,7 +51,6 @@
 }
 .jobs-settings-page
   :is(
-    .job-row-identity,
     .job-count-button,
     .job-group-toggle,
     .job-text-button,
@@ -1401,7 +1400,7 @@
 /* Column shares from KARARLAR Genel → "Liste sayfalarının ortak dili". */
 .document-catalog-settings-page .document-catalog-row {
   grid-template-columns:
-    minmax(0, 26fr) minmax(0, 44fr) minmax(88px, 14fr)
+    minmax(184px, 26fr) minmax(0, 44fr) minmax(88px, 14fr)
     minmax(120px, 16fr) 32px;
 }
 /* Two settings sidebars leave the catalog under ~500px below this width, so
@@ -2090,12 +2089,6 @@
   gap: 5px;
   color: var(--job-muted);
   font-size: 11px;
-}
-.important-date-impact-stack span {
-  border: 1px solid var(--job-border);
-  border-radius: 999px;
-  padding: 2px 7px;
-  background: var(--job-subtle);
 }
 .important-date-check {
   display: inline-flex;

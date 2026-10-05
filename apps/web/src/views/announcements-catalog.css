@@ -65,23 +65,9 @@
   max-width: 100%;
   margin-top: 2px;
 }
-.announcement-status {
-  display: inline-flex;
-  padding: 3px 7px;
-  border-radius: 5px;
-  background: var(--job-subtle);
-  color: var(--job-muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-.announcement-status[data-status="published"],
 .announcement-all-badge {
   background: var(--job-soft);
   color: var(--job-accent);
-}
-.announcement-status[data-status="scheduled"] {
-  background: color-mix(in srgb, #c59539 13%, var(--job-bg));
-  color: var(--job-text);
 }
 .announcement-catalog-message {
   margin: 0 0 12px;

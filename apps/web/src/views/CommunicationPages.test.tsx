@@ -229,6 +229,17 @@ describe("Phase 8 communication pages", () => {
     expect(screen.queryByText("Archived scheduled")).toBeNull();
     expect(screen.getByRole("tab", { name: "Draft (1)" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Scheduled (1)" })).toBeTruthy();
+    // Status reads as the shared chip: published green, scheduled amber, draft grey.
+    expect(
+      Array.from(document.querySelectorAll(".list-chip")).map((chip) => [
+        chip.textContent,
+        chip.getAttribute("data-tone"),
+      ]).sort(),
+    ).toEqual([
+      ["Draft", "gray"],
+      ["Published", "green"],
+      ["Scheduled", "amber"],
+    ]);
 
     fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
     expect(await screen.findByText("Archived draft")).toBeTruthy();
@@ -273,6 +284,8 @@ describe("Phase 8 communication pages", () => {
     expect(await screen.findByText("Unread update")).toBeTruthy();
     expect(screen.getByText("Seen update")).toBeTruthy();
     expect(screen.queryByRole("tablist")).toBeNull();
+    // The tab row keeps its place so the filter row does not move up.
+    expect(document.querySelector(".catalog-toolbar-status-row")).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "New announcement" }),
     ).toBeNull();

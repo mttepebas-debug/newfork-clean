@@ -386,16 +386,16 @@ export default function DocumentsSettingsPage() {
                     <FileText size={22} />
                   </span>
                   <h2>
-                    {search || requirementFilter
-                      ? "No matches found"
+                    {items.length
+                      ? "No document types match these filters."
                       : "No document types"}
                   </h2>
                   <p>
-                    {search || requirementFilter
-                      ? "Try another requirement or clear your search."
+                    {items.length
+                      ? "Try another status or clear your search."
                       : "Add the first document requirement to get started."}
                   </p>
-                  {!search && !requirementFilter && canManage ? (
+                  {!items.length && canManage ? (
                     <ListAddButton
                       label="New document"
                       disabled={saveMutation.isPending || applyBusy}

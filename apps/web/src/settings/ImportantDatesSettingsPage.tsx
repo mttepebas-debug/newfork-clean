@@ -666,9 +666,9 @@ export default function ImportantDatesSettingsPage() {
                     </span>
                   </span>
                   {item.archived_at ? (
-                    <span className="job-archived-label">Archived</span>
+                    <span className="list-chip" data-tone="gray">Archived</span>
                   ) : item.status === "unpublished" ? (
-                    <span className="job-archived-label">Unpublished</span>
+                    <span className="list-chip" data-tone="gray">Unpublished</span>
                   ) : null}
                 </button>
                 <span className="important-date-date-cell">
@@ -685,11 +685,13 @@ export default function ImportantDatesSettingsPage() {
                 </span>
                 <span className="important-date-impact-stack">
                   {item.recurrence === "annual" ? (
-                    <span>Repeats yearly</span>
+                    <span className="list-chip" data-tone="amber">Repeats yearly</span>
                   ) : null}
-                  {item.affects_scheduling ? <span>Schedule flag</span> : null}
+                  {item.affects_scheduling ? (
+                    <span className="list-chip" data-tone="amber">Schedule flag</span>
+                  ) : null}
                   {!item.affects_scheduling && item.recurrence !== "annual" ? (
-                    <span>None</span>
+                    <span className="list-chip" data-tone="gray">None</span>
                   ) : null}
                 </span>
                 {item.can_edit || item.can_restore ? (
