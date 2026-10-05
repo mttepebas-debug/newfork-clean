@@ -128,6 +128,49 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Place shift" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
   });
+  describe("closed day under K17 (BL-606)", () => {
+    const closed = { code: "closed_location", severity: "confirm" as const, definite: true, message: "This location is closed." };
+    const closedDay = (reasons: ShiftAvailabilityAssessment["reasons"] = [closed]) => ({
+      ...confirmedAvailability, conflict_severity: "confirm" as const, operation: "warning_requires_override" as const, warning_policy: "confirm" as const, reasons,
+    });
+    // Each call is one cell: the editor opens, the manager presses Add shift.
+    async function addOnClosedDay(rule: "confirm" | "confirm_once", sessionId: string) {
+      const onSubmit = vi.fn().mockResolvedValue("saved");
+      const view = render(<ShiftQuickEditor model={{ ...model, settings: { ...model.settings, conflict_rules: { approved_time_off: "block", closed_location: rule, minimum_travel: "confirm", minimum_rest: "confirm" } } }}
+        state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }} sessionId={sessionId}
+        timeFormat="12h" formatTime={value => value} addDays={value => value} scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={onSubmit} />);
+      fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+      await waitFor(() => expect(loadShiftAvailability).toHaveBeenCalled());
+      const asked = await screen.findByRole("button", { name: "Place shift" }).then(() => true, () => false);
+      if (asked) fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+      view.unmount();
+      vi.mocked(loadShiftAvailability).mockClear();
+      return { asked, payload: onSubmit.mock.calls[0]![0] };
+    }
+    beforeEach(() => vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay()));
+
+    it("confirm once: asks on the first cell only, and still sends the acceptance", async () => {
+      expect((await addOnClosedDay("confirm_once", "editor-once")).asked).toBe(true);
+      const second = await addOnClosedDay("confirm_once", "editor-once");
+      expect(second.asked).toBe(false);
+      expect(second.payload).toMatchObject({ availability_assessment_fingerprint: "a".repeat(64) });
+    });
+    it("confirm: asks on every cell", async () => {
+      expect((await addOnClosedDay("confirm", "editor-each")).asked).toBe(true);
+      expect((await addOnClosedDay("confirm", "editor-each")).asked).toBe(true);
+    });
+    it("confirm once: a new editing session asks again", async () => {
+      expect((await addOnClosedDay("confirm_once", "editor-first")).asked).toBe(true);
+      expect((await addOnClosedDay("confirm_once", "editor-second")).asked).toBe(true);
+    });
+    it("confirm once: another confirm reason on the cell still asks", async () => {
+      expect((await addOnClosedDay("confirm_once", "editor-rest")).asked).toBe(true);
+      vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay([closed, { code: "minimum_rest", severity: "confirm", definite: true, message: "Not enough rest." }]));
+      expect((await addOnClosedDay("confirm_once", "editor-rest")).asked).toBe(true);
+    });
+  });
   function renderAssigned(onSubmit = vi.fn().mockResolvedValue("saved")) {
     render(
       <ShiftQuickEditor

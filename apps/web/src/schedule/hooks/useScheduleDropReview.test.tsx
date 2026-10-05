@@ -288,3 +288,57 @@ describe("Schedule optimistic fast path", () => {
     expect(h.result.current.optimisticOps).toEqual([]);
   });
 });
+describe("closed day under K17 (BL-606)", () => {
+  const closed = { code: "closed_location", message: "This location is closed.", definite: true, severity: "confirm" as const };
+  const closedDay = (changes: Partial<ShiftAvailabilityAssessment> = {}) =>
+    assessment({ conflict_severity: "confirm", warning_policy: "confirm", reasons: [closed], ...changes });
+  function closedSetup(session: string, rule: "confirm" | "confirm_once") {
+    const save = vi.fn().mockResolvedValue(true);
+    const hook = renderHook(({ id }) => useScheduleDropReview("workspace", id, 1, rule), { initialProps: { id: session } });
+    const move = () => act(() => hook.result.current.start({ input, shiftId: "shift", save }));
+    return { ...hook, save, move };
+  }
+  async function answerFirst(h: ReturnType<typeof closedSetup>) {
+    h.move();
+    await waitFor(() => expect(h.result.current.review).not.toBeNull());
+    await act(async () => h.result.current.confirm());
+    await waitFor(() => expect(h.save).toHaveBeenCalledOnce());
+    await waitFor(() => expect(h.result.current.pending).toBe(false));
+  }
+  beforeEach(() => vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay()));
+
+  it("confirm once: asks on the first closed day, then saves the next one without asking", async () => {
+    const h = closedSetup("session-once", "confirm_once");
+    await answerFirst(h);
+    h.move();
+    await waitFor(() => expect(h.save).toHaveBeenCalledTimes(2));
+    expect(h.result.current.review).toBeNull();
+    // The server still records an acceptance for this shift.
+    expect(h.save.mock.calls[1]![0]).toEqual({ ...input, availability_assessment_fingerprint: "a".repeat(64) });
+  });
+  it("confirm: asks on every closed day", async () => {
+    const h = closedSetup("session-each", "confirm");
+    await answerFirst(h);
+    h.move();
+    await waitFor(() => expect(h.result.current.review).not.toBeNull());
+    expect(h.save).toHaveBeenCalledOnce();
+  });
+  it("confirm once: a new editing session asks again", async () => {
+    const h = closedSetup("session-first", "confirm_once");
+    await answerFirst(h);
+    h.rerender({ id: "session-second" });
+    h.move();
+    await waitFor(() => expect(h.result.current.review).not.toBeNull());
+    expect(h.save).toHaveBeenCalledOnce();
+  });
+  it("confirm once: another confirm reason on the same cell still asks", async () => {
+    const h = closedSetup("session-rest", "confirm_once");
+    await answerFirst(h);
+    vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay({
+      reasons: [closed, { code: "minimum_rest", message: "Not enough rest", definite: true, severity: "confirm" }],
+    }));
+    h.move();
+    await waitFor(() => expect(h.result.current.review).not.toBeNull());
+    expect(h.save).toHaveBeenCalledOnce();
+  });
+});
