@@ -89,6 +89,7 @@
   orada kapsamı dar tutma.
 - Kanıt: 09-29 "Yalnız görünüm, akış aynı", "Hayır, yalnız görünüm"; 09-30 "Şimdi değil,
   backlog'a".
+- Kanıt (2026-10-05, ters seçim): DOC-TABLE görünüm turunda Important Dates için "Show archived kalsın" önerildi (P03); Mert prototipte gördüğü "Upcoming / Past / Archived" sekmelerini seçti — yeni bir "Past" filtresi demek. Görünüm turunda da Mert, gördüğü değerli davranışı kapsama ekleyebiliyor; prototipte görünen davranış farkı ayrıca sorulur (KARARLAR Important Dates).
 
 **P04. Görsel karar gözle verilir.**
 - Kural: yeni bileşen ya da yerleşim yazıyla sorulmaz. Önce Mert'in sorun turu dinlenir, sonra
