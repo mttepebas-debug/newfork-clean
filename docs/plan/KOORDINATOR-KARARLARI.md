@@ -1188,6 +1188,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #175).
 - **Mert:** bilgi.
+- **Not (besleme #176):** DOC-TABLE dalı `worktree-agent-ab68e51d5764faab9`'e taşındı (ilk turun commit'leri yeniden uygulandı); eski dal `worktree-agent-aeafa368ff57306a2` main'e girişten sonra silinecek.
 
 ### KK-137 (2026-10-05) Announcements / Important Dates: düğme ve tablo stili DOC-TABLE'da, boş hâl FB-6.7'de
 - **Karar (ne):** "New announcement" ve "New date" düğmelerinin adı ve yeri (filtre satırının sağ ucu, beyaz 36 px) ile ortak tablo stili DOC-TABLE'da yapılır; boş hâlin zemini ve metni eski zamanlama kararına göre FB-6.7'de kalır.
@@ -1199,6 +1200,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #175).
 - **Mert:** bilgi.
+- **Not (besleme #176):** DOC-TABLE dalı `worktree-agent-ab68e51d5764faab9`'e taşındı (ilk turun commit'leri yeniden uygulandı); eski dal `worktree-agent-aeafa368ff57306a2` main'e girişten sonra silinecek.
 
 ### KK-138 (2026-10-05) Settings "Archive iki tık kırmızı" ayrı küçük iş (BL-595), DOC-TABLE'dan sonra
 - **Karar (ne):** Mert'in 2026-10-05 ~01:05Z kararı (Settings satır menülerinde Archive iki tık kırmızı) DOC-TABLE'ın önünde değil; backlog'a BL-595 (leave: medium / do: safe, G15) olarak yazılır, DOC-TABLE bitince ayrı küçük iş olarak önerilir.
