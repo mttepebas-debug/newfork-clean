@@ -41,3 +41,5 @@
 - [İncelemeyi atlatan işaretler](checklist-review-skip-flags.md) — owner_excused gibi "incelemesiz kabul" işaretini owner olmayanda bırakan yol, sıfırlayan yol, API aynı alana mı bakıyor (FB-6.6)
 - [Gizlenen durumun kardeşleri](checklist-hidden-state-siblings.md) — pending saklanıyorsa hiç incelenmemiş superseded da saklanmalı; "bir adım daha" hücresi ekle (FB-6.6 tur 2)
 - [Rütbe daraltması: onboarding + terfi](checklist-rank-narrowing-onboarding-and-promotion.md) — own eylemi yalnız employee olunca onboarding adımı aktivasyonu kilitler mi, terfi edenin kaydı donar mı (AVAIL-002)
+- [Sayım kanıt değil + id sızıntısı](checklist-grep-count-and-id-leak.md) — gövdede scope_set var diye yazma kapsamlı sayılmaz; realtime yükündeki id "tahmin edilemez" yolları açar
+- [Toplu yol tekil korumayı atlar](checklist-bulk-path-skips-single-guards.md) — şablon overwrite başlamış vardiya onayını ve locked işaretini atlıyor; toplu yolda tekil yan işleri ara

@@ -63,7 +63,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 
 | # | Ekran (uygulamadaki adı) | Kim | Prototip karşılaştırması | Durum |
 |---|---|---|---|---|
-| 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | keşif (2026-10-05) |
+| 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar (keşif bitti 2026-10-05; `ekranlar/01-schedule/OZET.md`) |
 | 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | keşif (2026-10-05, ayrı oturum — Mert'in isteği) |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | sırada |
 | 4 | Availability | owner, müdür | P2 | sırada |
