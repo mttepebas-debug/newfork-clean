@@ -1340,6 +1340,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KK-142 (tek doğru sürüm ilkesi).
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`'ın kararı, besleme #203).
+- **Ek (besleme #206, koordinatörün aktardığı):** Q oturumu 8 denemede durdu; neden K19 Delete arayüzünün kodunda (boyut, simge ya da metin değil). Canlı sürüm 7 değişmedi. Deneme artifact'i https://claude.ai/artifact/MAhawwnFUcLTb7J8nqapyf (özel, 3 sürüm; silinmesi Mert'e). Mola yüzünden yeni deneme verilmedi; devam yolu Mert dönünce (§0c satır 76).
 - **Mert:** bilgi.
 
 ### KK-150 (2026-10-05) Yayındaki duyuru düzenlenirken geçmiş "Publish at" denetlenmez
@@ -1378,3 +1379,15 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** —
 - **Durum:** bilgi. Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #204).
 - **Mert:** bilgi.
+
+### KK-154 (2026-10-05) Yarım iş varken prototip ayrı hazırlık kopyasında derlenip yayınlanır (sürüm 35)
+- **Karar (ne):** Mert'in talimatı (~17:50Z, koordinatörün penceresinde): "biten herşeyi yayınla". Yarım işler aynı kanonik klasöre (`newfork-prototype`) yazdığı için yayın ayrı bir hazırlık kopyasında derlendi: `C:\Users\TheWe\Documents\Codex\newfork-prototype-stage` = 17:25'te dondurulmuş taban + yalnız biten işlerin dosyaları. Yayıncı koordinatör. Sürüm 35 (`1791223295-94d3`, ~17:58Z) içeriği: sürüm 33 + E-9005 / E-9039 sahte adresler + PROTO-X-KARAR-2 (+1, Welcome düğmesi, kurulum satırı) + PROTO-PHONE-KARAR (telefonda kart satırı iki panoda, Terminate / Restore) + PROTO-EXPORT-VAR (Export'ta zamanlanmış e-posta A / B, Mockup çubuğundan geçişli) + PROTO-ESIT-SET (Settings eşitleme E1–E3). Girmeyenler: PROTO-ESIT-P4 ve PROTO-ESIT-ACCOUNT (sürüyor), PROTO-ESIT-P1 (park, KK-152).
+- **Kontroller (hazırlık kopyasında, koordinatörün aktardığı):** `gen_app` ok / js ok / WARN yok; sweep 46 / 46 temiz, ızgara 56 / 56; regress 175 / 0; PhoneManager sweep 23 / 23; PhoneManager2 `karar.json` temiz (`all.json`'daki s5 `.settings-jjobs` zaman aşımı önceden biliniyordu). `finalcheck` tam koşusu (~1 saat) yapılmadı. `canvas.json` gönderilmedi (düzen sürüm 33'le aynı). Önceki canlı `1791222679-ace0` içerikte sürüm 33'ün aynısıydı (karşılaştırıldı).
+- **Nerede:** https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK; hazırlık kopyası `newfork-prototype-stage` (klasör var, son değişiklik ~17:59Z — kayıt oturumu ölçtü; sürüm ve kontroller ölçülmedi).
+- **Ne zaman:** 2026-10-05 ~17:58Z; kayıt 18:02Z (`date -u`).
+- **Ne için:** biten işler yarım işleri beklemeden Mert'e görünsün; yarım dosyalar yayına sızmasın.
+- **Uygulamada etkisi:** gerçek uygulamada yok.
+- **Dayanak:** Mert'in talimatı; KK-142 (tek doğru sürüm), KK-147 (kanonik kaynak).
+- **Geri alma:** kolay (önceki sürüme dönülebilir).
+- **Durum:** uygulandı. Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #206).
+- **Mert:** kendi talimatı.
