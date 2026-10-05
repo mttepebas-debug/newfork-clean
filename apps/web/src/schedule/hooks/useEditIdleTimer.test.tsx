@@ -25,18 +25,44 @@ describe("useEditIdleTimer", () => {
       }),
     );
 
-    expect(result.current).toBeNull();
+    expect(result.current.secondsRemaining).toBeNull();
     act(() => vi.advanceTimersByTime(15 * 60 * 1000));
     expect(onWarning).toHaveBeenCalledTimes(1);
-    expect(result.current).toBe(300);
+    expect(result.current.secondsRemaining).toBe(300);
 
     act(() => vi.advanceTimersByTime(299 * 1000));
-    expect(result.current).toBe(1);
+    expect(result.current.secondsRemaining).toBe(1);
     expect(onTimeout).not.toHaveBeenCalled();
 
     act(() => vi.advanceTimersByTime(1000));
-    expect(result.current).toBe(0);
+    expect(result.current.secondsRemaining).toBe(0);
     expect(onTimeout).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the warning open on page activity until keepAlive is called", () => {
+    const onTimeout = vi.fn();
+    const { result } = renderHook(() =>
+      useEditIdleTimer({
+        enabled: true,
+        warningMs: 100,
+        timeoutMs: 200,
+        onTimeout,
+      }),
+    );
+
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.secondsRemaining).toBe(1);
+
+    // A press on the warning's own buttons must not close it before the click lands (BL-607).
+    act(() => {
+      window.dispatchEvent(new Event("pointerdown"));
+    });
+    expect(result.current.secondsRemaining).toBe(1);
+
+    act(() => result.current.keepAlive());
+    expect(result.current.secondsRemaining).toBeNull();
+    act(() => vi.advanceTimersByTime(150));
+    expect(onTimeout).not.toHaveBeenCalled();
   });
 
   it("resets warning and timeout on user activity", () => {
@@ -60,7 +86,7 @@ describe("useEditIdleTimer", () => {
     });
     act(() => vi.advanceTimersByTime(90));
 
-    expect(result.current).toBeNull();
+    expect(result.current.secondsRemaining).toBeNull();
     expect(onActivity).toHaveBeenCalledTimes(2);
     expect(onWarning).not.toHaveBeenCalled();
     expect(onTimeout).not.toHaveBeenCalled();
@@ -80,8 +106,8 @@ describe("useEditIdleTimer", () => {
     );
 
     act(() => vi.advanceTimersByTime(100));
-    expect(result.current).toBe(1);
+    expect(result.current.secondsRemaining).toBe(1);
     rerender({ enabled: false });
-    expect(result.current).toBeNull();
+    expect(result.current.secondsRemaining).toBeNull();
   });
 });

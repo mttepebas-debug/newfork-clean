@@ -112,7 +112,11 @@ import {
 } from "../schedule/components/ScheduleLogoUploadDialog";
 import { ScheduleTemplatesDialog } from "../schedule/components/ScheduleTemplateDialogs";
 import { RetroactiveEditDialog } from "../schedule/components/RetroactiveEditDialog";
-import { useEditIdleTimer } from "../schedule/hooks/useEditIdleTimer";
+import {
+  EDIT_IDLE_TIMEOUT_MS,
+  EDIT_IDLE_WARNING_MS,
+  useEditIdleTimer,
+} from "../schedule/hooks/useEditIdleTimer";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
@@ -786,7 +790,7 @@ export function SchedulePage({
       },
     );
   }, [clearUndoStack, context, session, setScheduleMode, updateSelectedIds]);
-  const idleSeconds = useEditIdleTimer({
+  const { secondsRemaining: idleSeconds, keepAlive: keepEditing } = useEditIdleTimer({
     enabled: Boolean(session),
     onActivity: handleIdleActivity,
     onTimeout: handleIdleTimeout,
@@ -2943,15 +2947,15 @@ export function SchedulePage({
         <ScheduleEditTimeoutDialogComponent
           open={idleSeconds !== null}
           secondsRemaining={idleSeconds}
+          idleMinutes={EDIT_IDLE_WARNING_MS / 60_000}
+          countdownSeconds={(EDIT_IDLE_TIMEOUT_MS - EDIT_IDLE_WARNING_MS) / 1000}
           isSaving={false}
           error={null}
           onSaveDraft={() => {
+            keepEditing();
             setSaveOpen(true);
           }}
-          onContinue={() => {
-            lastActivityRef.current = Date.now();
-            window.dispatchEvent(new Event("pointerdown"));
-          }}
+          onContinue={keepEditing}
         />
       ) : null}
       {editor && gridEditSession && context ? (

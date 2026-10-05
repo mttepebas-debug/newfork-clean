@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const DEFAULT_WARNING_MS = 15 * 60 * 1000;
-const DEFAULT_TIMEOUT_MS = 20 * 60 * 1000;
+export const EDIT_IDLE_WARNING_MS = 15 * 60 * 1000;
+export const EDIT_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
 
 export interface UseEditIdleTimerArgs {
@@ -13,23 +13,32 @@ export interface UseEditIdleTimerArgs {
   readonly timeoutMs?: number;
 }
 
+export interface EditIdleTimer {
+  readonly secondsRemaining: number | null;
+  /** Re-arms the timer; the only way to close an open warning. */
+  readonly keepAlive: () => void;
+}
+
 export function useEditIdleTimer({
   enabled,
   onActivity,
   onWarning,
   onTimeout,
-  warningMs = DEFAULT_WARNING_MS,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
-}: UseEditIdleTimerArgs): number | null {
+  warningMs = EDIT_IDLE_WARNING_MS,
+  timeoutMs = EDIT_IDLE_TIMEOUT_MS,
+}: UseEditIdleTimerArgs): EditIdleTimer {
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
+  const armRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     if (!enabled) {
+      armRef.current = () => undefined;
       setSecondsRemaining(null);
       return undefined;
     }
 
     let lastActivityAt = Date.now();
+    let warningShown = false;
     let warningTimer: number | null = null;
     let timeoutTimer: number | null = null;
     let countdownTimer: number | null = null;
@@ -50,6 +59,7 @@ export function useEditIdleTimer({
     }
 
     function showWarning(): void {
+      warningShown = true;
       updateCountdown();
       onWarning?.();
       countdownTimer = window.setInterval(updateCountdown, 1000);
@@ -57,6 +67,7 @@ export function useEditIdleTimer({
 
     function arm(): void {
       clearTimers();
+      warningShown = false;
       lastActivityAt = Date.now();
       setSecondsRemaining(null);
       onActivity?.();
@@ -67,18 +78,28 @@ export function useEditIdleTimer({
       }, timeoutMs);
     }
 
+    // While the warning shows, page activity does not re-arm: a press on the
+    // warning's own SAVE would otherwise close it before the click lands (BL-607).
+    function onPageActivity(): void {
+      if (!warningShown) arm();
+    }
+
+    armRef.current = arm;
     arm();
     for (const eventName of ACTIVITY_EVENTS) {
-      window.addEventListener(eventName, arm, { passive: true });
+      window.addEventListener(eventName, onPageActivity, { passive: true });
     }
 
     return () => {
       clearTimers();
+      armRef.current = () => undefined;
       for (const eventName of ACTIVITY_EVENTS) {
-        window.removeEventListener(eventName, arm);
+        window.removeEventListener(eventName, onPageActivity);
       }
     };
   }, [enabled, onActivity, onTimeout, onWarning, timeoutMs, warningMs]);
 
-  return secondsRemaining;
+  const keepAlive = useCallback(() => armRef.current(), []);
+
+  return { secondsRemaining, keepAlive };
 }

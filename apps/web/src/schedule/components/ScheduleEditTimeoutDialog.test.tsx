@@ -10,7 +10,9 @@ describe("ScheduleEditTimeoutDialog", () => {
     render(
       <ScheduleEditTimeoutDialog
         open
-        secondsRemaining={9}
+        secondsRemaining={150}
+        idleMinutes={15}
+        countdownSeconds={300}
         isSaving={false}
         error={null}
         onSaveDraft={onSaveDraft}
@@ -21,12 +23,12 @@ describe("ScheduleEditTimeoutDialog", () => {
     const dialog = screen.getByRole("dialog", { name: "Keep editing?" });
     expect(dialog.className).toContain("schedule-timeout-dialog");
     expect(screen.getByText("Time left")).toBeTruthy();
-    expect(screen.getByText("9")).toBeTruthy();
-    expect(screen.getByText("No activity for 3 minutes.")).toBeTruthy();
+    expect(screen.getByText("150")).toBeTruthy();
+    expect(screen.getByText("No activity for 15 minutes.")).toBeTruthy();
     expect(
       dialog.querySelector<HTMLElement>(".schedule-timeout-progress span")?.style
         .width,
-    ).toBe("60%");
+    ).toBe("50%");
 
     fireEvent.click(screen.getByRole("button", { name: "SAVE" }));
     fireEvent.click(screen.getByRole("button", { name: "CONTINUE" }));
@@ -40,6 +42,8 @@ describe("ScheduleEditTimeoutDialog", () => {
       <ScheduleEditTimeoutDialog
         open={false}
         secondsRemaining={9}
+        idleMinutes={15}
+        countdownSeconds={300}
         isSaving={false}
         error={null}
         onSaveDraft={vi.fn()}
@@ -58,6 +62,8 @@ describe("ScheduleEditTimeoutDialog", () => {
       <ScheduleEditTimeoutDialog
         open
         secondsRemaining={4}
+        idleMinutes={15}
+        countdownSeconds={300}
         isSaving
         error="Save failed"
         onSaveDraft={onSaveDraft}

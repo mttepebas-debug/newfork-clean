@@ -3,6 +3,10 @@ import type { JSX } from "react";
 export interface ScheduleEditTimeoutDialogProps {
   readonly open: boolean;
   readonly secondsRemaining: number;
+  /** Minutes without activity before the warning opens. */
+  readonly idleMinutes: number;
+  /** Length of the countdown the progress bar runs down from. */
+  readonly countdownSeconds: number;
   readonly isSaving: boolean;
   readonly error?: string | null;
   readonly onContinue: () => void;
@@ -12,6 +16,8 @@ export interface ScheduleEditTimeoutDialogProps {
 export function ScheduleEditTimeoutDialog({
   open,
   secondsRemaining,
+  idleMinutes,
+  countdownSeconds,
   isSaving,
   error,
   onContinue,
@@ -19,7 +25,7 @@ export function ScheduleEditTimeoutDialog({
 }: ScheduleEditTimeoutDialogProps): JSX.Element | null {
   const progressPercent = Math.max(
     0,
-    Math.min(100, (secondsRemaining / 15) * 100),
+    Math.min(100, (secondsRemaining / countdownSeconds) * 100),
   );
 
   if (!open) return null;
@@ -39,7 +45,7 @@ export function ScheduleEditTimeoutDialog({
         </aside>
         <section>
           <h2 id="schedule-timeout-title">Keep editing?</h2>
-          <p>No activity for 3 minutes.</p>
+          <p>No activity for {idleMinutes} minutes.</p>
           {error ? (
             <p className="schedule-timeout-error" role="alert">
               {error}
