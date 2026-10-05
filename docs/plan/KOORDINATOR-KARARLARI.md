@@ -1273,3 +1273,16 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #189–#190).
 - **Mert:** bilgi.
+
+### KK-144 (2026-10-05) Prototipte liste ve Settings sayfaları geniş ekranda en çok 1320 px ve ortada; Inter değişken ağırlıkla
+- **Karar (ne):**
+  - **S1:** 1920 genişlikte liste sayfalarının ve Settings sayfalarının içeriği gerçek uygulamadaki gibi en çok 1320 px genişlikte ve ortada durur. Gerçek CSS ölçüldü: `.settings-page`, `.requests-page`, `.availability-page` `width: min(100% - 64px, 1320px)`; Employees ailesinin üç sınıfı `max-width: 1320px; margin: 0 auto` (`apps/web/src/styles.css:1091`, `:1107`, `:1395`, `:11947`, `:12110`, `:13482`). PROTO-P2-FIX gerçek uygulamada Employees'te x=437–1757 ölçtü. Prototipte kural panonun ortak CSS'inde (`gen_app.py`), sayfanın yan boşluğu olarak uygulanır; böylece çekmeceler ve katmanlar etkilenmez. `f_shell.py` kullanılmadı: çalışmadan önce sekiz parçayı eski yedeğinden geri yüklüyor, bu turun işini silerdi.
+  - **S2:** pano Inter'i değişken ağırlıkla yükler (wght 400..800), böylece uygulamadaki 650 ve 750 ağırlıkları doğru görünür.
+- **Nerede:** prototip çalışma klasörü (`gen_app.py`, şablon `NotifA.dc.html`); https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK.
+- **Ne zaman:** 2026-10-05 ~13:16Z.
+- **Ne için:** prototipin birebir kuralı. PROTO-P2-FIX S1/S2, PROTO-X-KARAR #24 ve SCHED-FIX'teki "Pazartesi kenarları" sorunu (olası neden: yazı tipi).
+- **Uygulamada etkisi:** gerçek uygulamada yok. Prototipte geniş ekranda Employees'in içeriği x=320 yerine yaklaşık x=444'ten başlar; Settings'te 544 yerine 556'dan. Yazılar uygulamadaki kalınlıkta görünür.
+- **Dayanak:** Mert'in birebir kuralı (2026-10-04), marka kararı (Inter), KARARLAR "Liste sayfalarının ortak dili" (1440'taki ölçüler değişmez).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte; S2 13:15Z'de, S1 ~13:16Z'de kayıt oturumunca uygulandı. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #196).
+- **Mert:** bilgi.

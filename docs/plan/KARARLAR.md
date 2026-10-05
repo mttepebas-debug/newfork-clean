@@ -261,6 +261,7 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001); 
   - Yazarken (xxx) xxx-xxxx maskesi uygulanır; mevcut şema kullanılır.
   - Reddedilenler: "serbest metin" ve "uluslararası +E.164".
 - **E-posta tekil.** Bir workspace'te e-posta tekildir; aynı e-postayla davetli ya da davetsiz ikinci bir kayıt açılamaz. Çakışma kaydederken değil, çekmeceye yazıldığı anda uyarılır.
+  - **Prototip notu (Mert, 2026-10-05, koordinatör `local_863130bd…`'ın penceresinde, önerilen; besleme #195–#196):** prototipin örnek verisinde aynı e-postayı paylaşan iki kayıttan E-9004 (yinelenen "Mert Tepebas / Server") kuralı bozmayan sahte bir `@example.com` adresi alır; owner E-9100 olduğu gibi kalır. Ortak veri dosyasını PROTO-P2-FIX oturumu değiştirir. Öteki çift (E-9005 / E-9039) için karar sorulmadı; koordinatöre soruldu. Gerçek uygulamada kural uygulanmıyor (BL-503).
 - **Legal name.**
   - Boş kalamaz; tahminle ya da kopyayla doldurulmaz.
   - Davette employer girer; kişi zorunlu alan olarak kendisi yazar.
