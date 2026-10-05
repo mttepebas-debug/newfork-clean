@@ -36,6 +36,8 @@
 - **D-O3.** Şablondaki atanmış vardiya açık vardiyaya düşünce kişiye söylenmiyor.
 - **BL-238.** Pazar akşamı (Pacific) "bu hafta" kilitleniyor; saat UTC'ye göre hesaplanıyor (R3).
 - **D-O1.** Yayındaki haftaya yeni eklenen vardiya "Live - published to employees" yazıyor.
+- **Mert'in isteği (2026-10-05 ~22:05Z): sürüklerken kabul eden hücre yeşil, etmeyen kırmızı.** Üç sürükleme: hücreden hücreye vardiya, rol ayırıcı satırındaki hazır vardiya (preset), Unassigned satırındaki açık vardiya. Hücre, vardiyanın lokasyonu, işi ve tarih / saatine göre kabul ediyorsa yeşil, etmiyorsa kırmızı yanar. Mert: "Prototipte herhalde bu doğru çalışıyordu." Prototipteki davranış ve gerçek uygulamanın bugünkü hâli ölçülecek (görev dosyasında).
+
 
 ### 2. Yetki ve güvenlik temizliği
 - **B-5.** Export yetki kontrolü API rotasında, kendi listesiyle yapılıyor (BL-374 / BL-565 ailesi).

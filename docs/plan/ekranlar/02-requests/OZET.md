@@ -529,4 +529,16 @@ Koordinatör ILKELER ve KARARLAR'la yeniden tarar, kendi dayanağıyla verebilec
 | C'nin süreçleri durdu | `netstat -ano` 5630/5631 | LISTEN yok |
 
 ## 10. Mert'in seçimleri ve kapanış durumu
-(Konuşma adımında koordinatör doldurur.)
+2026-10-05 ~22:00Z, çoktan seçmeli (koordinatör `local_9c7e674a…`). Hepsi KARARLAR → "Schedule → Requests"a yazıldı.
+- **S1 owner takası — seçenek dışı:** o lokasyonun müdürü, owner ya da admin onaylar; kimse kendini onaylamaz.
+- **S3 View:** Time off'ta View seviyesi kalkar (önerilen).
+- **S5 özel not:** yalnız o vakaya karar verebilenler görür (önerilen).
+- **S7 kenar rengi:** Mert iki hâli gerçek ekranda yan yana görüp seçecek (görsel karar).
+- **Koordinatörün verdiği (KK-158, sormadan, dayanaklı):**
+  - S2: belgesi eksik müdür Requests'i görür, oy veremez (Mert'in 2026-10-01 kararı);
+  - S4: bildirim yalnız karar verecek lokasyon müdürüne, yedek admin / owner (P07);
+  - S6: Requests bu turda ortak liste diline geçer (KARARLAR "Liste sayfalarının ortak dili");
+  - §6'daki öneriler (R2-04, R2-02, R2-16, R2-13, R2-23, R2-41/42/45, R2-43, R2-47, BL-508 bayat) kabul; plan düzeltmeleri FB-6.4 görev dosyasına işlenecek.
+- **Görsel kararlar (varyantla):** G1–G4 ve S7.
+
+Kapanış durumu: keşif ve kararlar bitti (2026-10-05). Sırada görev dosyası ve uygulama; FB-6.4 Takas bu ekranın işi.

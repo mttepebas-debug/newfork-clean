@@ -1424,3 +1424,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** plan dosyası; FOUNDATION-B kaydı `ILERLEME-PLANI.md` ve `tasks/FOUNDATION-B.md`'de duruyor.
 - **Durum:** uygulanıyor.
 - **Mert:** kendi talimatı ve seçimleri.
+
+### KK-158 (2026-10-05) Requests keşfinden sormadan verilen kararlar
+- **Karar (ne):** EKRAN-02 özetindeki 7 sorudan üçü KARARLAR / ILKELER'le birebir kapsandığı için sorulmadan verildi: S2 belgesi eksik müdür Requests'i görür, oy veremez (Mert'in 2026-10-01 kararı, P22); S4 vardiya değişikliği bildirimi yalnız karar verecek lokasyon müdürüne, müdürsüz lokasyonda yedek admin / owner (P07); S6 Requests bu turda ortak liste diline geçer (KARARLAR "Liste sayfalarının ortak dili" + EKRAN-PLANI seçim 2). Özetin §6 önerileri de kabul (yıkıcı düğme iki tık, yol/dinlenme işaret, gerçek çakışmada kabul düşer, tek karar tek bildirim, metin düzeltmeleri, geçmiş izinde Revoke gizli, Shorten kapanırken sormaz, BL-508 bayat). Kalan dört soru Mert'e soruldu (S1, S3, S5, S7).
+- **Nerede:** KARARLAR "Schedule → Requests"; `docs/plan/ekranlar/02-requests/OZET.md` §10.
+- **Ne zaman:** 2026-10-05 ~22:00Z.
+- **Ne için:** Mert'e yalnız kuralın cevaplamadığı soruları sormak (CLAUDE.md §13).
+- **Uygulamada etkisi:** henüz yok; Requests turunun görev dosyasına girer.
+- **Dayanak:** yukarıda her biri için.
+- **Geri alma:** KARARLAR satırları; Mert ters çevirirse "ters çevrildi" yazılır.
+- **Durum:** kayda geçti, uygulama bekliyor.
+- **Mert:** görmedi; iş raporunda "Senin yerine verdiğim kararlar" listesinde gösterilir.

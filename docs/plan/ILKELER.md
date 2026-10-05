@@ -146,6 +146,7 @@
 - Kanıt (2026-10-02, ters seçim): onboarding'de resmî ad düzeltmesi için "bir üst kademe (lokasyon müdürü) onaylar" önerildi; Mert "yalnız owner ya da admin" seçti. Resmî ad gibi bordro / kimlik verisinde onay bir üst kademeye değil owner / admin'e gider (KARARLAR "Onboarding'de resmî ad düzeltmesini yalnız owner ya da admin onaylar"; FB-6.6 S1).
 - Kanıt (2026-10-03, önerilenle aynı yönde): reddedilen belgeyi kim görür sorusunda Mert serbest metinle "admin, owner ve sahibi" dedi; eş müdür görmez. Görünürlük reddedilmiş belgede de karar veren + sahiple sınırlı (KARARLAR S2 eki).
 - Kanıt (2026-10-05, seçenek dışı; FB-6.7 akış cevabı 4): duyuru onayında "yalnız çalışanlar sayılsın" önerildi; Mert rütbeye bağladı: "Üst rütbe acknowledge etmesini istiyorsa alt rütbe acknowledge etmek zorundadır"; eş müdür yalnız bildirim alır, sayılmaz. Yükümlülük yukarıdan aşağı akar, eş rütbe birbirini bağlamaz (KARARLAR K22 eki).
+- Kanıt (2026-10-05, seçenek dışı; EKRAN-02 Requests, S1): owner'ın kendi takası / devri için "onaysız kaydolsun, müdürlere bilgi gitsin" önerildi (izindeki rütbe satırına benzeterek); Mert: "Lokasyon müdürü, owner ya da admin" onaylar. Owner'ın kendi vardiya değişikliğinde onay bir üst kademeye değil, o lokasyonun müdürüne de gidebilir; kimse kendini onaylamaz (KARARLAR "Schedule → Requests").
 
 **P08. Ayrıcalık bugünkü rolden gelir.**
 - Kural: kurucuya ya da owner'a "saygı" istisnası yapılmaz. Rol düşünce muafiyet de düşer; owner
