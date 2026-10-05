@@ -1286,3 +1286,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte; S2 13:15Z'de, S1 ~13:16Z'de kayıt oturumunca uygulandı. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #196).
 - **Mert:** bilgi.
+
+### KK-145 (2026-10-05) Bu prototip yayınının kapsamı: yeni eşitleme turları sonraki sürüme
+- **Karar (ne):** Bu yayın şunları içerir: mevcut parçalar, üç düzeltme turu (PROTO-SCHED-FIX, PROTO-P2-FIX, PROTO-EMP-SCHED), dört telefon panosu, KK-144 S1 (1320 ortalama) ve `checks/regress.js`. Workspace, Requests, Settings, Notifications, Announcements, Important Dates ve Account için açılacak gerçek uygulamaya birebir eşitleme turları bu yayına girmez, sonraki sürüme kalır.
+- **Nerede:** prototip çalışma klasörü; https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK.
+- **Ne zaman:** 2026-10-05 ~13:45Z.
+- **Ne için:** yayın her yeni turu bekleyip uzamasın; kayıt oturumunun önerisi.
+- **Uygulamada etkisi:** gerçek uygulamada yok. Prototipte bu yayın şimdiye kadar biten işlerle çıkar.
+- **Dayanak:** KK-142 (tek yayın), kayıt oturumunun önerisi (2026-10-05 ~13:30Z), koordinatörün kabulü.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #197).
+- **Mert:** bilgi.
