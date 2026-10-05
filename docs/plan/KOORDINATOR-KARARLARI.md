@@ -1177,3 +1177,36 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d8686bdf-c6dc-47ac-8e4f-6bb37f3b47bd` yazdı (koordinatör `local_abc4d126…`'ın kararı, besleme #152).
 - **Mert:** bilgi.
+
+### KK-136 (2026-10-05) Sayfa iskeleti piksel eşitliği DOC-TABLE'a dahil
+- **Karar (ne):** Mert'in prototipteki "header ve içerik koordinatları piksel hassasiyetle aynı yerde olsun" ve "sekme gezerken header oynuyor" talimatı DOC-TABLE düzeltme turunda gerçek uygulamaya taşınır: başlık bloğu sabit yükseklik, sekme ve filtre satırları sabit; ölçüler KARARLAR Genel → "Liste sayfalarının ortak dili" → "Sayfa iskeleti". Ortak başlık bileşeninde yapılır; etkilenen başka ekranlar raporda adıyla.
+- **Nerede:** dal `worktree-agent-aeafa368ff57306a2` (`nf-arayuz` düzeltme turu); KARARLAR `cc96650d`.
+- **Ne zaman:** 2026-10-05 ~01:30Z.
+- **Ne için:** aynı ekranlar ve aynı dosyalar; ayrı bir iş aynı dosyaları ikinci kez değiştirirdi.
+- **Uygulamada etkisi:** Settings → Documents, Employees → Documents, Announcements, Important Dates, Notifications, Availability'de başlık, sekmeler ve filtre satırı her sayfada aynı yerde; sekme ya da dolu / boş geçişinde kaymaz. Örnek: Ayşe Employees → Documents'ta All'dan Missing'e geçince başlık yerinde kalır.
+- **Dayanak:** Mert'in sözü (bu ekranlar için); CLAUDE.md §9 görsel tutarlılık; ILKELER P17 (aynı işle doğrudan ilgili görsel hata mevcut işe eklenir).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #175).
+- **Mert:** bilgi.
+
+### KK-137 (2026-10-05) Announcements / Important Dates: düğme ve tablo stili DOC-TABLE'da, boş hâl FB-6.7'de
+- **Karar (ne):** "New announcement" ve "New date" düğmelerinin adı ve yeri (filtre satırının sağ ucu, beyaz 36 px) ile ortak tablo stili DOC-TABLE'da yapılır; boş hâlin zemini ve metni eski zamanlama kararına göre FB-6.7'de kalır.
+- **Nerede:** DOC-TABLE dalı `worktree-agent-aeafa368ff57306a2`; FB-6.7 dalı `task/fb-6.7-ui`.
+- **Ne zaman:** 2026-10-05 ~01:30Z.
+- **Ne için:** Mert'in DOC-TABLE onayı düğmeleri kapsıyor; boş hâl için "aynı dosya iki kez değişmesin" zamanlaması (KARARLAR 2026-10-04 ~22:03Z / ~22:05Z) yürürlükte.
+- **Uygulamada etkisi:** DOC-TABLE main'e girince Announcements ve Important Dates'te ekleme düğmesi filtre satırının sağında; boş tablo FB-6.7'ye kadar bugünkü gibi beyaz.
+- **Dayanak:** KARARLAR Duyurular → Announcements / Important Dates boş hâl maddeleri ve "Son hâl" ekleri; ILKELER P19 (iş sırası Claude'un).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #175).
+- **Mert:** bilgi.
+
+### KK-138 (2026-10-05) Settings "Archive iki tık kırmızı" ayrı küçük iş (BL-595), DOC-TABLE'dan sonra
+- **Karar (ne):** Mert'in 2026-10-05 ~01:05Z kararı (Settings satır menülerinde Archive iki tık kırmızı) DOC-TABLE'ın önünde değil; backlog'a BL-595 (leave: medium / do: safe, G15) olarak yazılır, DOC-TABLE bitince ayrı küçük iş olarak önerilir.
+- **Nerede:** `apps/web/src/settings/` satır menüleri (BL-595'te dosya:satır).
+- **Ne zaman:** 2026-10-05 ~01:30Z.
+- **Ne için:** tek hat (CLAUDE.md §11.4): DOC-TABLE'ı bitirmeden kapsamı büyütmemek; CLAUDE.md §9 buton dili bunu zaten istiyor.
+- **Uygulamada etkisi:** DOC-TABLE sırasında Settings'te Archive tek tık kalır; BL-595 yapılınca ilk tık kırmızı "Archive", ikinci tık "Confirm archive" olur.
+- **Dayanak:** CLAUDE.md §11.4 (tek hat), §9 (buton dili); KARARLAR Settings → "Archive iki tık kırmızı".
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #175).
+- **Mert:** bilgi.
