@@ -1297,3 +1297,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #197).
 - **Mert:** bilgi.
+
+### KK-146 (2026-10-05) FB-6.8'in puanı 9'dan 19'a: ölçülen kapsam tahmini ezer
+- **Karar (ne):** FB-6.8'in (Ayarlar / hesap / workspace yaşam döngüsü) puanı 9 tahminden 19'a çıkar. Kaynak SEC-A1-TASARIM: A1 (BL-232 + BL-178) FB-6.8'in içinde ve dört rol adımıyla yaklaşık 19 puan tutuyor (`nf-db` 7 + `nf-backend` 6 + `nf-db` 4 + `nf-test` 2).
+- **Nerede:** `docs/plan/ILERLEME-PLANI.md` (§0a madde 3, ilerleme tablosu, dilim tablosu); tasarım notu `docs/plan/tasks/FOUNDATION-B.md` Notes.
+- **Ne zaman:** 2026-10-05 ~13:43Z.
+- **Ne için:** ilerleme yüzdesi bilinen işi saysın. Biten iş azalmadı, kalan büyüdü. Aşama 6–7 183 / 262 (%69,8); önceki 183 / 252. Program 261 / 340 (%76,8).
+- **Uygulamada etkisi:** yok; ilerleme kaydı.
+- **Dayanak:** KK-114 ve FB-6.4'ün 11 → 17 emsali (ölçülen kapsam tahmini ezer); SEC-A1-TASARIM.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, devirden önceki son karar; besleme #200).
+- **Mert:** bilgi.
