@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { ShiftAvailabilityAssessment } from "@newfork/shared";
+import type { ScheduleConflictRules, ShiftAvailabilityAssessment } from "@newfork/shared";
 import type { SchedulePendingOp, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import { ScheduleRequestError } from "../schedule-data";
 import { assessmentAvailabilityWarnings, formatScheduleConflictMessage } from "../schedule-conflicts";
+import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../lib/closedDayAnswer";
 
 interface Drop {
   readonly input: ScheduleShiftMutationInput;
@@ -30,15 +31,18 @@ function requiresAvailabilityReview(error: unknown): boolean {
     !!error.body && typeof error.body === "object" && "status" in error.body &&
     error.body.status === "availability_review_required";
 }
-function status(assessment: ShiftAvailabilityAssessment | null) {
+function status(assessment: ShiftAvailabilityAssessment | null, answeredClosedDay: boolean) {
   const warning = assessment?.operation === "warning_requires_override";
-  const accepted = !!assessment?.warning_policy && !!(assessment.override_recorded || assessment.responsibility_retained);
+  const accepted = !!assessment?.warning_policy && !!(assessment.override_recorded || assessment.responsibility_retained || answeredClosedDay);
   const blocked = assessment?.operation === "blocked" || assessment?.operation === "verification_required" || (warning && !assessment.can_override);
   return { warning, accepted, blocked,
     needsConfirmation: warning && !accepted && assessment.warning_policy === "confirm" };
 }
 
-export function useScheduleDropReview(workspaceId: string | undefined, sessionId: string | undefined, revision: number | undefined) {
+export function useScheduleDropReview(
+  workspaceId: string | undefined, sessionId: string | undefined, revision: number | undefined,
+  closedDayRule?: ScheduleConflictRules["closed_location"],
+) {
   const toast = useToast();
   const [review, setReview] = useState<Review | null>(null);
   const [pending, setPending] = useState(false);
@@ -87,7 +91,7 @@ export function useScheduleDropReview(workspaceId: string | undefined, sessionId
         assessments.push(await loadShiftAvailability(workspaceId, item.input, item.shiftId, sessionId));
         if (!isCurrent()) return;
       }
-      const states = assessments.map(status);
+      const states = assessments.map(value => status(value, closedDayAlreadyAnswered(value, closedDayRule, sessionId)));
       const blocked = states.some(state => state.blocked);
       const warningCount = states.filter(state => state.warning && !state.accepted).length;
       const unconfirmed = states.some((state, index) => state.needsConfirmation && (
@@ -106,6 +110,8 @@ export function useScheduleDropReview(workspaceId: string | undefined, sessionId
         setReview({ drop, assessment: reminded, assessments, blocked: false, warningCount });
         return;
       }
+      // K17: an answered closed day holds for the rest of this editing session.
+      if (confirmation) assessments.forEach((value, index) => { if (states[index]!.needsConfirmation) rememberClosedDayAnswer(value, closedDayRule, sessionId); });
       const saved = await drop.save(drop.items.map((item, index) => ({ ...item.input,
         ...(states[index]!.warning ? { availability_assessment_fingerprint: assessments[index]!.fingerprint } : {}),
       })));

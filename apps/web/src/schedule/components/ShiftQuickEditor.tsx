@@ -6,6 +6,7 @@ import { scheduleShiftSchema } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 import { loadShiftAvailability } from "../../availability/availability-data";
+import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../lib/closedDayAnswer";
 import { ChevronDown, Minus, Plus, Trash2, X } from "lucide-react";
 import {
   useEffect,
@@ -415,13 +416,16 @@ export function ShiftQuickEditor({
   ).filter((reason) => typeof reason === "string" || reason.type !== "time_off");
   const noteText = selectedEmployee ? weeklyTargetNote(selectedEmployee, value)?.text ?? "" : "";
   const noteProjection = selectedEmployee?.weekly_availability?.find((item) => item.location_id === value.location_id);
+  // K17: a closed day accepted once holds for the rest of this editing session.
+  const closedDayRule = model.settings.conflict_rules?.closed_location;
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
     if (!result) return [];
     // The employee's own mark and a manager's note ask on every write, whatever
     // the operation (M8, M12); the note's words come from the week on screen.
     const reminders = assessmentAvailabilityWarnings(result)
       .map(reason => typeof reason !== "string" && reason.type === "note" ? { ...reason, note: noteText } : reason);
-    if (result.operation === "allowed" || result.override_recorded || result.responsibility_retained) return reminders;
+    if (result.operation === "allowed" || result.override_recorded || result.responsibility_retained
+      || closedDayAlreadyAnswered(result, closedDayRule, sessionId)) return reminders;
     return [...result.reasons.filter(reason => reason.code !== "availability" && reason.code !== "note")
       .map(reason => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message })), ...reminders];
   };
@@ -514,7 +518,7 @@ export function ShiftQuickEditor({
     const reasons = [...effectiveLocalReasons, ...assessmentReasons(checked)];
     const messages = formatScheduleConflictMessages(reasons);
     const weeklyWarning = !!checked?.warning_policy && checked.operation === "warning_requires_override" &&
-      !checked.override_recorded && !checked.responsibility_retained;
+      !checked.override_recorded && !checked.responsibility_retained && !closedDayAlreadyAnswered(checked, closedDayRule, sessionId);
     const canConfirm =
       confirmed &&
       !reasons.some(isHardScheduleConflictReason) &&
@@ -540,6 +544,7 @@ export function ShiftQuickEditor({
     }
     setConflictSheetOpen(false);
     setNoteCardOpen(false);
+    if (weeklyWarning && checked?.warning_policy === "confirm") rememberClosedDayAnswer(checked, closedDayRule, sessionId);
     if (warnOnly) {
       toast.warning("Shift saved with a warning", {
         dedupeKey: "schedule-quick-editor-availability-warning",
