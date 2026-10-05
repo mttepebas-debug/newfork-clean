@@ -122,7 +122,15 @@
 S1–S6 ve CLAUDE.md'deki aktif program satırı 2026-10-05'te soruldu. Cevaplar aşağıya yazılır.
 
 ## Mert'in seçimleri
-(cevap bekleniyor)
+2026-10-05 ~21:30–21:50Z, çoktan seçmeli. Hepsi KARARLAR → Schedule'a yazıldı.
+- **S1 hareketsizlik (D-Y2, C-D6) — seçenek dışı:** 15 dakika hareketsizlikte pencere 15 saniye geri sayar; hareket olursa düzenleme sürer, olmazsa iş tarih + saat + kullanıcı adıyla "auto-save" kurtarma taslağına kendiliğinden kaydedilir.
+- **S2 Undo (D-Y1):** sunucuda da geri alır (önerilen).
+- **S3 Overwrite (D-O4, B-4):** yalnız şablonun lokasyonları (önerilen); başlamış vardiyaya dokunmaz, iki tık.
+- **S4 menü dışı tık (BL-617):** ilk tık yalnız menüyü kapatır (önerilen).
+- **S5 karartılmış alan (BL-458):** Esc gibi pencereyi kapatır (önerilen; Mert önce ayrıntılı anlatım istedi).
+- **S6 izinli gün (BL-579) — seçenek dışı:** çalışan vardiyayı kendi rızasıyla aldıysa hücrede hiçbir işaret yok (ne kırmızı ne "!"). Mert önce "ihtimal sıfır" dedi; ölçüldü: tek yol takas / devralmadaki rıza kuralı.
+- **CLAUDE.md:** aktif plan satırı ekran planını gösterir (önerilen).
+- **Kendi kararım (P19):** BL-450 kenar kontrastı 3:1'e koyulaştırılır.
 
 ## Kapanış durumu
-Açık: keşif bitti, sırada karar ve görev dosyası (`docs/plan/tasks/EKRAN-01-SCHEDULE.md`).
+Açık: keşif ve kararlar bitti (2026-10-05). Sırada görev dosyası (`docs/plan/tasks/EKRAN-01-SCHEDULE.md`), sonra uygulama. Varyant gerekenler (BL-445, BL-524, BL-525, BL-441, C-D11, C-P2) gerçek ekranda gösterilecek.

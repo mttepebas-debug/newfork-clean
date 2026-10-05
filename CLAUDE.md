@@ -15,8 +15,10 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
   Hedef: self-serve, ücretli ABD lansmanı. Arayüz dili İngilizce (ABD).
 - MVP sonucu: `docs/plan/ROADMAP.md` ilk paragraf. Faz sırası: `docs/plan/MVP-PLAN.md`
   (F0 → FJ → F1 → F2 → F3 → F4 → F5 → F6). Faz sırası kullanıcı kararı olmadan değişmez.
-- Aktif program: FOUNDATION-B (`docs/plan/tasks/FOUNDATION-B.md`). Hedef, bitiş kriterleri,
-  aşamalar ve ilerleme kaydı orada. Planda ve ROADMAP'te geçen "başka oturumlar yetki, RLS, grant,
+- Aktif plan: ekran ekran ilerleme, `docs/plan/EKRAN-PLANI.md` (Mert, 2026-10-05, KK-157): bir ekran
+  seçilir, keşfedilir (bulgular `docs/plan/ekranlar/<no>-<ekran>/`), komple bitirilir, sonraki ekrana
+  geçilir. FOUNDATION-B (`docs/plan/tasks/FOUNDATION-B.md`) kayıt olarak durur; kalan işleri
+  ekranlara dağıldı. FOUNDATION-B'de ve ROADMAP'te geçen "başka oturumlar yetki, RLS, grant,
   `*_service` ya da test fixture'ına dokunmaz" kuralı şu anlama gelir: bunlara yalnız `nf-db`,
   `nf-backend` ve `nf-test` dokunur.
 - Ürün kuralları (roller, kapsam modeli M2, izin oylaması, takas/pickup uygunluğu, kısıtlı kişi):

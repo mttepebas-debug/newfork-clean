@@ -181,6 +181,7 @@
   edeceğini employeeye sorsun" (FB-6.4 S2; KARARLAR "Takas… uygunluk"). Niyet kayıt anında kişiye sorulur; sessiz işaret
   yetmez.
 - Kanıt (2026-10-05, seçenek dışı; FB-6.7 akış cevabı 3): yeniden yayında onayların akıbeti için "saat değişikliği içerik sayılmasın" önerildi; Mert "değişikliğin nerede olduğuna bakılmaksızın … acknowledge silinsin mi tutulsun mu diye usera soralım" dedi. Sistemin içerik sezgisi yerine yayınlayanın niyeti sorulur (KARARLAR K27).
+- Kanıt (2026-10-05, seçenek dışı; EKRAN-01 Schedule, D-Y2): hareketsizlikte "bekletilsin, dönünce sürsün" önerildi (P10); Mert: "15 saniye pencerede saysın… hareket olmazsa 15 sn bitince kurtarma taslağı tarih + kullanıcı adı (auto-save) olarak kaydedilsin". İlerleme kaybolmaz ama kilit uzun tutulmaz; kişi işine taslaktan döner (KARARLAR Schedule "Hareketsizlik").
 
 **P11. Doğru veri tahminden önce gelir.**
 - Kural: zorunlu alan tahminle ya da kopyayla doldurulmaz; legal name zorunludur. Yapısal veri
@@ -313,6 +314,7 @@
   kabulde "emin misin?" sorulur, onaylayan "kendi rızasıyla" görür. Reddedilen: "block takasta da geçerli".
 - Kanıt (2026-10-04, ters seçim, M12): yönetici notu için "tek kural: işaret gibi sayılır" önerildi; Mert reddetti — not kısıt
   değil yalnız hatırlatma: Warn / Block / otomatik doldurma / preflight'a girmez, yazarken küçük onay kutusunda görünür.
+- Kanıt (2026-10-05, seçenek dışı; EKRAN-01 Schedule, BL-579): rızayla izinli güne alınan vardiya için "kırmızı + 'rızayla aldı' yazısı" önerildi; Mert: "Schedule grid hücresinde herhangi bir şey gösterilmez (kendi rızasıyla alıyorsa)". Çalışanın rızayla ezdiği kendi kısıtı ızgarada iz bırakmaz (KARARLAR Schedule).
 
 **P25. Karar geri alınabilir; geri dönüşsüz eylemin sonucu açıkça yazılır.**
 - Kural:
