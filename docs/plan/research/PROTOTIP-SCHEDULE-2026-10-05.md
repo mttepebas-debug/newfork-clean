@@ -27,7 +27,7 @@ Kontrol listeleri oturumun geçici klasöründe duruyor (`sched-audit/S1.md`…`
 Toplu kontrol, hepsi aynı derlemede (2026-10-04 akşamı):
 - `s1_test` 52/52, `s1_test2` 15/15.
 - S3'ün dört etkileşim testi ve kapsam kontrolü geçti.
-- S5'in 28 senaryosu geçti. S4'ün altı testinden H6 (klavye odağında müsaitlik balonu) birleştirmede düştü; S4 düzeltiyor, sonuç buraya eklenecek.
+- S5'in 28 senaryosu geçti. S4'ün altı testinden H6 (klavye odağında müsaitlik balonu) birleştirmede düştü. S4 kök nedeni buldu ve düzeltti: yeniden çizimdeki odak değişimi "odak kaybı" sayılıyordu. `s4_v3` dört koşunun üçünde test zamanlaması yüzünden zaman aşımına uğruyordu; S4 testi düzeltirken gerçek bir hata da buldu (pencere her değişiklikte başa kayıyordu), şimdi 5/5. Bunlar S4'ün raporu; P turunun birleştirmesinde hepsi yeniden koşulacak.
 - Bütün sayfaların taraması hatasız ve taşmasız (46 görünüm); Schedule ızgara genişliği 56/56.
 
 ## Cila listesi
@@ -117,6 +117,23 @@ Bu noktalarda prototip gerçek uygulamadan iyi; hepsi gerçek uygulamaya taşın
 - **BL-617** — Açık menünün dışına yapılan tık alttaki öğeye de geçiyor: menü kapanırken vardiya da seçiliyor. Kodun yazılı niyeti yalnız menüyü kapatmak. Bilerek mi yapıldı? Kararı Mert verecek (S1 #8, S3 D6).
 - **BL-618** — Yukarıdaki cila listesini gerçek uygulamaya taşımak.
 - **BL-619** — "Changed after publishing" onaylı izni de sayıyor; M11 yalnız müsaitliği sayar diyor. S4 bunu bilinen hata diye not etti, ama backlog'da maddesi yoktu.
+
+## Eşlik denetimi (2026-10-05)
+
+Ayrı bir oturum (`local_91ac4f8d…`, "Prototip: eşlik denetimi", salt okuma) prototipi gerçek uygulamayla karşılaştırdı. Gerçek uygulama `9513ee07`'deydi. İki yoldan ölçtü: ekran metinlerini taradı ve 15 ekranı iki tarafta yan yana açtı. Rapor posta kutusunda (`done/20261005T055017-prototip-eslik-prototip-eslik.md`), ekran görüntüleri `artifacts/prototype/eslik/` altında (git dışı).
+
+- **Sonuç:** 10 ekran ailesinin 8'i tam. Uygulama dışı ekranlar da tam: giriş, workspace merkezi, iki kurulum ve yasal sayfalar. Schedule'da 1 orta, 6 düşük eksik var.
+- **S5'in H11 notu eksikti.** Not, "fixture'da oluşmuyor" diyordu. Oysa uyarı motoru prototipte var; eksik olan yalnız yayın ön kontrolündeki çizim.
+
+**S-ESLIK-1 (Schedule düzeltme paketi).** P turundan sonraki prototip adayı. Yeni tur açılmadı; sırayı koordinatör verir.
+1. **Publish ön kontrolü (orta).** Ön kontrol adımına dört grup ve özet cümleleri eklenir: "Warnings to review", "Current schedule conflicts", "Risks", "Notes and already-live issues".
+   - Örnek: Ali'nin Salı vardiyası dinlenme kuralına takıldıysa gerçek uygulama onu "Warnings to review" altında gösteriyor; prototip "Ready to publish" diyor.
+   - Görünmesi için örnek veriye en az bir uyarılı vardiya konur.
+2. **Sunucu reddi (düşük).** Sunucu yayını reddedince çıkan çakışma listesi ve "Review document" düğmesi eklenir; mockup düğmesiyle tetiklenir.
+3. **Varsayılan saat incelemesi (düşük).** "Availability before / after" satırları eklenir.
+4. **Şablon satırı (düşük).** New Schedule menüsündeki şablon satırına "· by <ad>" eklenir.
+5. **Ekran okuyucu etiketleri (düşük, erişilebilirlik).** Total satırının hücrelerine etiket eklenir; üst üste binen kartta "conflicts with another shift" okunur.
+6. **İsteğe bağlı (düşük).** "Unassigned job" grup başlığı ve geçmiş hafta engel penceresi.
 
 ## Prototipte yapılamayanlar
 
