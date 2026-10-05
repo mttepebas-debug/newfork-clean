@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Megaphone,
-  Plus,
   Search,
   Send,
   Trash2,
@@ -30,7 +29,7 @@ import {
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { CatalogRowMenu } from "../settings/CatalogRowMenu";
 import { CatalogSortButton } from "./CatalogSortButton";
-import { CatalogPageHeader } from "./CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
@@ -143,7 +142,7 @@ export function AnnouncementsPage() {
     );
   return (
     <section
-      className="settings-page jobs-settings-page announcements-page announcements-catalog-page"
+      className="settings-page jobs-settings-page announcements-page announcements-catalog-page list-page"
       aria-labelledby="announcements-title"
     >
       <CatalogPageHeader
@@ -154,17 +153,6 @@ export function AnnouncementsPage() {
           query.data?.can_manage
             ? "Create, schedule, and publish updates for the right teams."
             : "Updates your managers have shared with your team."
-        }
-        action={
-          query.data?.can_manage ? (
-            <Button
-              className="job-primary-button"
-              onClick={() => setAdding(true)}
-            >
-              <Plus size={16} aria-hidden />
-              Add announcement
-            </Button>
-          ) : null
         }
       />
       <div className="job-catalog-toolbar catalog-toolbar">
@@ -235,7 +223,7 @@ export function AnnouncementsPage() {
         )}
         <div className="catalog-toolbar-filter-row">
           <select
-            className="toolbar-filter-select"
+            className="toolbar-filter-select list-filter-narrow"
             aria-label="Filter announcements by location"
             value={locationId}
             onChange={(event) => setLocationId(event.target.value)}
@@ -256,6 +244,12 @@ export function AnnouncementsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
+          {query.data?.can_manage ? (
+            <ListAddButton
+              label="New announcement"
+              onClick={() => setAdding(true)}
+            />
+          ) : null}
         </div>
       </div>
       {message && (

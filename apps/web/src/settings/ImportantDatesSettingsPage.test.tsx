@@ -144,7 +144,7 @@ describe("ImportantDatesSettingsPage", () => {
 
   it("creates a location closed day that always affects scheduling", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Add date" }));
+    fireEvent.click(await screen.findByRole("button", { name: "New date" }));
     const form = screen.getByRole("form", { name: "Add important date" });
     fireEvent.change(within(form).getByLabelText("Title"), {
       target: { value: "Kitchen maintenance" },

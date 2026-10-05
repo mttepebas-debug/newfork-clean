@@ -54,7 +54,7 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   // Ayse writes it. Her only location is the one it starts at, and Besiktas is
   // not on offer (K1).
   const ayse = await openAs(browser, "ayse", "/app/announcements");
-  await ayse.getByRole("button", { name: "Add announcement" }).click();
+  await ayse.getByRole("button", { name: "New announcement" }).click();
   const editor = ayse.getByRole("dialog", { name: "Add announcement" });
   await editor.getByLabel("Title").fill(title);
   await editor.getByLabel("Message").fill("Count the walk-in before close.");

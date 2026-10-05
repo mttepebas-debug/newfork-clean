@@ -10,7 +10,7 @@ export default function EmployeeDocumentsPage() {
   const [search] = useSearchParams();
   return (
     <section
-      className="employees-page employee-documents-page jobs-settings-page"
+      className="employees-page employee-documents-page jobs-settings-page list-page"
       aria-labelledby="employee-documents-title"
     >
       <CatalogPageHeader

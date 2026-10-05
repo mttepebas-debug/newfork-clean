@@ -6,15 +6,15 @@ import {
   type DocumentType,
   type DocumentTypeInput,
 } from "@newfork/shared";
-import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Plus, Search, X } from "lucide-react";
+import { FileText, Search, X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogRowMenu } from "./CatalogRowMenu";
-import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { errorText } from "./GeneralSettingsPage";
+import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
 import {
   listDocumentTypes,
   reorderDocumentTypes,
@@ -225,26 +225,14 @@ export default function DocumentsSettingsPage() {
     );
   return (
     <section
-      className="settings-page jobs-settings-page document-catalog-settings-page"
+      className="settings-page jobs-settings-page document-catalog-settings-page list-page"
       aria-labelledby="documents-settings-title"
     >
-      <SettingsHeader
-        icon={<FileText size={21} aria-hidden />}
+      <CatalogPageHeader
+        eyebrow="SETTINGS"
         title="Documents"
+        titleId="documents-settings-title"
         description="Set up the documents employees need to upload, with review and expiry rules."
-        action={
-          canManage && canReadSettings ? (
-            <Button
-              className="job-primary-button"
-              type="button"
-              disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
-              onClick={() => openEditor()}
-            >
-              <Plus size={16} aria-hidden />
-              Add document type
-            </Button>
-          ) : null
-        }
       />
       {publication && (
         <DocumentPublicationDialog
@@ -307,6 +295,13 @@ export default function DocumentsSettingsPage() {
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
+              {canManage ? (
+                <ListAddButton
+                  label="New document"
+                  disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
+                  onClick={() => openEditor()}
+                />
+              ) : null}
             </div>
           </div>
 
@@ -400,16 +395,12 @@ export default function DocumentsSettingsPage() {
                       ? "Try another requirement or clear your search."
                       : "Add the first document requirement to get started."}
                   </p>
-                  {!search && !requirementFilter && canManage && canReadSettings ? (
-                    <button
-                      type="button"
-                      className="job-secondary-button"
+                  {!search && !requirementFilter && canManage ? (
+                    <ListAddButton
+                      label="New document"
                       disabled={saveMutation.isPending || applyBusy}
                       onClick={() => openEditor()}
-                    >
-                      <Plus size={16} aria-hidden />
-                      Add document type
-                    </button>
+                    />
                   ) : null}
                 </div>
               ) : null}
@@ -466,7 +457,10 @@ export default function DocumentsSettingsPage() {
                     {item.description || "No description"}
                   </span>
                   <span className="job-department-cell">
-                    <span className="job-archived-label">
+                    <span
+                      className="list-chip"
+                      data-tone={documentStatusLabel(item) === "Published" ? "green" : "gray"}
+                    >
                       {documentStatusLabel(item)}
                     </span>
                   </span>

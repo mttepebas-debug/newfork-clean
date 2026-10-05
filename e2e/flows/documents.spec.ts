@@ -56,9 +56,9 @@ test("an admin's draft reaches nobody; published, it lands on the people its job
   // Settings > Documents: Zeynep writes it for that job and saves a draft.
   await signInAs(page, emailOf("zeynep"));
   await page.goto("/app/settings/documents");
-  // An empty catalog shows a second "Add document type" in the table; the
-  // header's comes first.
-  await page.getByRole("button", { name: "Add document type" }).first().click();
+  // An empty catalog shows a second "New document" in the table; the filter
+  // row's comes first.
+  await page.getByRole("button", { name: "New document" }).first().click();
   const editor = page.getByRole("form", { name: "Add document type" });
   await editor.getByLabel("Name", { exact: true }).fill(title);
   await editor.getByRole("combobox", { name: "Requirement", exact: true }).selectOption("required");

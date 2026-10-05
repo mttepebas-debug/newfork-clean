@@ -179,7 +179,7 @@ it("shows the load error and disables creation when document types cannot be rea
     "Document types could not be loaded.",
   );
   expect(
-    screen.getByRole("button", { name: "Add document type" }),
+    screen.getByRole("button", { name: "New document" }),
   ).toHaveProperty("disabled", true);
   expect(screen.queryByText("No document types")).toBeNull();
   expect(saveDocumentType).not.toHaveBeenCalled();
@@ -199,8 +199,15 @@ it("keeps the heading row over an empty catalog and adds from the table", async 
       "Add the first document requirement to get started.",
     ),
   ).toBeTruthy();
+  // One add button at the right end of the filter row, none in the heading.
+  expect(screen.getByText("SETTINGS")).toBeTruthy();
+  expect(
+    screen.getAllByRole("button", { name: "New document" }).map((button) =>
+      Boolean(button.closest(".catalog-toolbar-filter-row, .catalog-table-empty")),
+    ),
+  ).toEqual([true, true]);
   fireEvent.click(
-    within(catalog).getByRole("button", { name: "Add document type" }),
+    within(catalog).getByRole("button", { name: "New document" }),
   );
   expect(screen.getByRole("dialog")).toBeTruthy();
 });
@@ -210,7 +217,7 @@ it("offers no add button in an empty catalog the person cannot write", async () 
   mount();
   const catalog = await screen.findByLabelText("Document types");
   expect(within(catalog).getByText("No document types")).toBeTruthy();
-  expect(within(catalog).queryByRole("button", { name: "Add document type" })).toBeNull();
+  expect(within(catalog).queryByRole("button", { name: "New document" })).toBeNull();
 });
 it("sorts rows from the heading and clears back to the saved order", async () => {
   vi.mocked(listDocumentTypes).mockResolvedValue([

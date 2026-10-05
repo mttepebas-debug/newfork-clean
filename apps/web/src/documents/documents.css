@@ -47,16 +47,20 @@
   color: var(--theme-muted);
   text-align: center;
 }
-/* Employees → Documents shares the empty-table ground with Settings →
-   Documents (.catalog-table-empty); no add button here. */
-.employee-documents-empty:not(.is-compact) {
-  flex: 1 1 auto;
-  background: var(--theme-surface-soft);
+/* Employees → Documents: column shares and the empty ground that fills the
+   frame (KARARLAR Genel → "Liste sayfalarının ortak dili"). */
+.employee-documents-page .employee-table th:nth-child(1) {
+  width: 34%;
 }
-/* The frame can be taller than the table; the ground fills it to the edge. */
-.employee-table-wrap:has(> .employee-documents-empty:not(.is-compact)) {
+.employee-documents-page .employee-table th:nth-child(2) {
+  width: 40%;
+}
+.employee-table-wrap:has(> .catalog-table-empty) {
   display: flex;
   flex-direction: column;
+}
+.employee-table-wrap > .catalog-table-empty {
+  flex: 1 1 auto;
 }
 /* Account's own list: filters that match nothing get a short box, and a
    workspace that asked for nothing gets one line instead of an empty table. */

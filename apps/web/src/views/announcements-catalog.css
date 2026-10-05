@@ -1,7 +1,7 @@
 .announcements-catalog-page .announcement-catalog-row {
   grid-template-columns:
-    minmax(180px, 1.7fr) minmax(150px, 1.25fr)
-    100px 125px 36px;
+    minmax(180px, 40fr) minmax(150px, 26fr)
+    minmax(100px, 16fr) minmax(125px, 18fr) 36px;
 }
 .announcements-catalog-page .job-catalog-row {
   cursor: pointer;

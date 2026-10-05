@@ -89,6 +89,17 @@
   /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
      never reads as a status, a warning or a selection. 7.6:1 on white. */
   --theme-note: #2f4fa3;
+  /* List pages (DOC-TABLE, KARARLAR Genel → "Liste sayfalarının ortak dili"):
+     table frame, column-heading row, body cell ink, the line between
+     Availability day headings, and the faint "—" / disabled ink. */
+  --theme-list-frame: #d7dcda;
+  --theme-list-head: #e6ece8;
+  --theme-list-head-border: #d3dbd6;
+  --theme-list-head-text: #4f5d57;
+  --theme-list-cell-text: #46514d;
+  --theme-list-col-line: #dce1de;
+  --theme-text-faint: var(--theme-border-control);
+  --theme-availability-text: #8a4a06;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
   --schedule-grid-line-color: #dce2df;
@@ -13476,7 +13487,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .employees-header,
 .page-header,
-.notification-toolbar,
 .workspace-header-actions,
 .widget-controls {
   display: flex;
@@ -13880,37 +13890,64 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin: 0;
   font-size: 12px;
 }
-.notification-toolbar {
-  justify-content: space-between;
-  gap: 18px;
-  padding: 0 0 14px;
-}
-.notification-unread-toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: #536159;
-  font-size: 12px;
-  font-weight: 700;
-}
 /* Notifications: a framed table like Employees → Documents; day groups are
    in-table sub-heading rows (KARARLAR "Notifications (gelen kutusu)"). On a
    phone the table scrolls sideways inside its frame, the page does not. */
 .notification-table {
   min-width: 720px;
 }
-.notification-table .notification-dot-cell {
-  width: 32px;
-  padding-right: 0;
+/* Column shares (KARARLAR Genel → "Liste sayfalarının ortak dili"):
+   select 44, Notification 58%, Category 16%, Received 14%, delete 56. */
+.notification-table .notification-select-cell {
+  width: 44px;
+  padding: 0 0 0 14px;
 }
 .notification-table .notification-category-cell {
-  width: 20%;
+  width: 16%;
 }
 .notification-table .notification-received-cell {
-  width: 112px;
+  width: 14%;
 }
 .notification-table .notification-actions-cell {
-  width: 136px;
+  width: 56px;
+}
+.notification-select-cell input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--theme-accent);
+  cursor: pointer;
+}
+.notification-table tbody tr[data-selected="true"] {
+  background: var(--theme-selected);
+}
+.notification-selected-count {
+  margin-left: auto;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.notifications-page.list-page .catalog-toolbar-filter-row {
+  gap: 14px;
+}
+.notification-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+.notification-title-link:hover strong {
+  text-decoration: underline;
+}
+.notification-table-state {
+  margin: 0;
+  padding: 24px 14px;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+}
+.notification-delete {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
 }
 .notification-table tbody tr {
   height: auto;
@@ -13920,21 +13957,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 12px 14px;
   vertical-align: top;
 }
-.notification-table tbody td.notification-dot-cell {
-  padding: 17px 0 0 14px;
+.notification-table tbody td.notification-select-cell {
+  padding: 14px 0 0 14px;
 }
 .notification-table tbody td.notification-actions-cell {
-  padding: 4px 8px;
-}
-.notification-dot {
-  display: block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--theme-border-strong);
-}
-.notification-table tr.unread .notification-dot {
-  background: var(--theme-accent);
+  padding: 4px 12px;
 }
 .notification-table .notification-main-cell,
 .notification-table .notification-category-cell {
@@ -13952,15 +13979,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 13px;
   line-height: 1.45;
 }
-.notification-table .notification-day-row th {
+.notifications-page.list-page .notification-table .notification-day-row th {
   position: static;
-  height: 30px;
-  padding: 0 14px;
+  height: auto;
+  padding: 6px 14px;
   border-bottom: 1px solid var(--theme-border-subtle);
   background: var(--theme-surface-soft);
   color: var(--theme-muted-strong);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.05em;
 }
 .notification-table tbody tr.notification-day-row:hover,
@@ -13968,7 +13995,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: transparent;
 }
 .notification-table tbody tr.notification-detail-row td {
-  padding: 0 14px 14px 46px;
+  padding: 0 14px 14px 58px;
   white-space: normal;
 }
 .notification-table-wrap > .catalog-table-empty {
@@ -13984,15 +14011,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
     left: 0;
     max-width: calc(100vw - 58px);
   }
-}
-.notification-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 3px;
-}
-.notification-actions a {
-  display: grid;
-  place-items: center;
 }
 .notification-load-more {
   display: flex;
@@ -14031,10 +14049,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .notifications-page,
   .requests-page {
     padding: 16px 14px 34px;
-  }
-  .notification-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
   }
   .workspace-header-actions {
     width: 100%;

@@ -5,7 +5,7 @@ import {
   type DocumentStatusFilter,
 } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { errorText } from "../settings/GeneralSettingsPage";
@@ -160,7 +160,7 @@ export function EmployeeDocumentsList(props: {
           {personal ? null : <label>
             <span className="sr-only">Location</span>
             <select
-              className="toolbar-filter-select"
+              className="toolbar-filter-select list-filter-narrow"
               aria-label="Location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -176,7 +176,7 @@ export function EmployeeDocumentsList(props: {
           <label>
             <span className="sr-only">Document type</span>
             <select
-              className="toolbar-filter-select"
+              className="toolbar-filter-select list-filter-narrow"
               aria-label="Document type"
               value={type}
               onChange={(e) => setType(e.target.value)}
@@ -264,15 +264,33 @@ export function EmployeeDocumentsList(props: {
                     <td>{r.title}</td>
                   </>
                 )}
-                <td>{statusLabel(r)}</td>
+                <td>
+                  {personal ? (
+                    statusLabel(r)
+                  ) : (
+                    <span className="list-chip" data-tone={statusTone(statusLabel(r))}>
+                      {statusLabel(r)}
+                    </span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {!query.isLoading && !query.error && !visible.length && (
-          <div className={personal ? "employee-documents-empty is-compact" : "employee-documents-empty"}>
-            <strong>No documents match these filters.</strong>
-          </div>
+          personal ? (
+            <div className="employee-documents-empty is-compact">
+              <strong>No documents match these filters.</strong>
+            </div>
+          ) : (
+            <div className="catalog-table-empty">
+              <span className="catalog-table-empty-icon" aria-hidden>
+                <FileText size={22} />
+              </span>
+              <h2>No documents match these filters.</h2>
+              <p>Try another status or clear your search.</p>
+            </div>
+          )
         )}
       </div>
       </>}
@@ -301,4 +319,14 @@ export function EmployeeDocumentsList(props: {
       )}
     </div>
   );
+}
+
+/** Chip colour for a document status (KARARLAR Genel → "Durum çipi"). */
+function statusTone(label: string): "green" | "amber" | "red" | "gray" {
+  if (label === "Completed" || label === "On file") return "green";
+  if (label === "Missing" || label === "Expired" || label === "Rejected")
+    return "red";
+  if (label === "Removed" || label === "Exempt" || label === "Paused")
+    return "gray";
+  return "amber";
 }

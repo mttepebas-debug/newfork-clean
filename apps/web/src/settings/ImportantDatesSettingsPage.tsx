@@ -8,11 +8,11 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronDown, Plus, Search, X } from "lucide-react";
+import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogSortButton } from "../views/CatalogSortButton";
-import { CatalogPageHeader } from "../views/CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
 import { CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import {
@@ -227,7 +227,7 @@ export default function ImportantDatesSettingsPage() {
     );
   return (
     <section
-      className="settings-page jobs-settings-page important-dates-page important-dates-catalog-page"
+      className="settings-page jobs-settings-page important-dates-page important-dates-catalog-page list-page"
       aria-labelledby="important-dates-settings-title"
     >
       <CatalogPageHeader
@@ -235,19 +235,6 @@ export default function ImportantDatesSettingsPage() {
         title="Important Dates"
         titleId="important-dates-settings-title"
         description="Manage holidays, closures, events, and dates that affect scheduling."
-        action={
-          canManage ? (
-            <Button
-              className="job-primary-button"
-              type="button"
-              disabled={saveMutation.isPending || archiveMutation.isPending}
-              onClick={() => openEditor()}
-            >
-              <Plus size={16} aria-hidden />
-              Add date
-            </Button>
-          ) : null
-        }
       />
 
       <div className="job-catalog-toolbar catalog-toolbar">
@@ -291,6 +278,13 @@ export default function ImportantDatesSettingsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
+          {canManage ? (
+            <ListAddButton
+              label="New date"
+              disabled={saveMutation.isPending || archiveMutation.isPending}
+              onClick={() => openEditor()}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -607,7 +601,7 @@ export default function ImportantDatesSettingsPage() {
                 ["date", "Date", undefined],
                 ["type", "Type", "job-department-cell"],
                 ["locations", "Locations", "job-department-cell"],
-                ["impact", "Impact", "important-date-impact-stack"],
+                ["impact", "Impact", "job-department-cell"],
               ] as const
             ).map(([key, label, className]) => (
               <span

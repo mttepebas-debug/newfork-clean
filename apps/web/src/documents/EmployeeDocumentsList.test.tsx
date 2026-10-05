@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -100,5 +100,22 @@ describe("personal list (Account › Documents)", () => {
     expect(screen.getByRole("columnheader", { name: /Employee/ })).toBeTruthy();
     expect(screen.getByLabelText("Location")).toBeTruthy();
     expect(screen.getByLabelText("Search employee documents")).toBeTruthy();
+    // The status reads as a chip coloured by its weight (DOC-TABLE).
+    const chip = document.querySelector(".list-chip");
+    expect([chip?.textContent, chip?.getAttribute("data-tone")]).toEqual(["Missing", "red"]);
+  });
+
+  it("keeps the heading row over an empty filter result with its two lines", async () => {
+    vi.mocked(listDocuments).mockResolvedValue([obligation] as never);
+    renderList(false);
+    await screen.findByText("Casey Rivera");
+    fireEvent.change(screen.getByLabelText("Search employee documents"), {
+      target: { value: "nobody" },
+    });
+    expect(
+      screen.getByRole("heading", { name: "No documents match these filters." }),
+    ).toBeTruthy();
+    expect(screen.getByText("Try another status or clear your search.")).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Employee/ })).toBeTruthy();
   });
 });
