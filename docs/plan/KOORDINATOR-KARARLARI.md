@@ -1356,3 +1356,25 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 ### KK-151 (2026-10-05) Verilen prototip işleri (bilgi)
 - **Karar (ne):** koordinatör şu işleri verdi: PROTO-PHONE-KARAR (`d8686bdf`), PROTO-X-KARAR-2 (`e4bbe6fe`), PROTO-ESIT-ACCOUNT (`59616a96`), PROTO-EXPORT-VAR (`5ffce2bb`), FB-6.7-AKIS-YAYIN (`575ba63c`), PROTO-ESIT-P4 (`10a5177a`), PROTO-ESIT-P1 (`d75967aa`), PROTO-ESIT-SET (havuzdan `863130bd`).
 - **Durum:** bilgi. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`, besleme #203).
+
+### KK-152 (2026-10-05) Mola: işi biten oturuma yeni iş verilmez; yoldaki işler biter
+- **Karar (ne):** Mert'in talimatı (2026-10-05 ~17:35Z, koordinatörün penceresinde): "işi biten sessionlar rapor verince onlara tekrar iş verme. mola alacağız." Mola süresince "rapor gelince boş oturuma sormadan yeni iş ver" kuralı (koordinatör hafızası keep-sessions-busy, 2026-10-05) askıda. Yolda olan işler biter: PROTO-PHONE-KARAR (`d8686bdf`), PROTO-X-KARAR-2 (`e4bbe6fe`), PROTO-ESIT-ACCOUNT (`59616a96`), PROTO-EXPORT-VAR (`5ffce2bb`), FB-6.7-AKIS-YAYIN (`575ba63c`), PROTO-ESIT-P4 (`10a5177a`), PROTO-ESIT-SET (`863130bd`). PROTO-ESIT-P1 (Workspace + Requests; KK-151'de `d75967aa`) başlamadan park edildi — oturumun bağlamı %61 (koordinatörün aktardığı); dönüşte taze oturuma verilir.
+- **Nerede:** koordinatörün oturum yönetimi; KK-151'deki iş listesi.
+- **Ne zaman:** 2026-10-05 ~17:35Z (Mert'in talimatı); kayıt 17:37Z (`date -u`).
+- **Ne için:** Mert mola veriyor; yeni iş açılmaz, yarım iş kalmaz.
+- **Uygulamada etkisi:** yok; süreç kuralı.
+- **Dayanak:** Mert'in talimatı (ILKELER dayanak sırası 1).
+- **Geri alma:** Mert dönünce kalkar.
+- **Durum:** yürürlükte (mola süresince). Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #204).
+- **Mert:** kendi talimatı.
+
+### KK-153 (2026-10-05) Prototip için iki teknik not (bilgi; gerçek uygulama bulgusu değil)
+- **Karar (ne):** (1) Bir sonraki Schedule eşitleme turunun görev metnine: `parts\schedule.css`'teki kapsamsız `.schedule-cell` kuralı başka parçalara sızıyor (EMP-SCHED turu `empview.css`'te sıfırladı); kaynakta Schedule kuralları `.schedule-page` altına alınır, öteki parçalarda sıfırlama yazılmaz. Önceki koordinatör `local_863130bd…`'dan; yalnız sohbette kalmıştı. (2) Prototip derleme kilidi tuzağı (telefon kabuğu işçisinden): `sched_lock.py` "already yours" dediğinde kilidin zamanını yenilemiyor; 15 dakikadan uzun tutulan kilit sessizce bayatlar. Uzun derlemede kilit bırakılıp yeniden alınır.
+- **Nerede:** prototip kaynağı `C:\Users\TheWe\Documents\Codex\newfork-prototype` (KK-147). Prototip kurallarına (`KANONIK.md` / devir notu) eklenmesi gerekiyor; o dosyalar repo ve `docs/plan` dışında olduğu için kayıt oturumu yazmadı — bir sonraki prototip işini veren ekler.
+- **Ne zaman:** 2026-10-05; kayıt 17:37Z (`date -u`).
+- **Ne için:** iki bilgi yalnız sohbette kalıp kaybolmasın.
+- **Uygulamada etkisi:** yok (yalnız prototip).
+- **Dayanak:** CLAUDE.md §11.7 (ikinci kez gerekecek bilgi yazılır).
+- **Geri alma:** —
+- **Durum:** bilgi. Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #204).
+- **Mert:** bilgi.
