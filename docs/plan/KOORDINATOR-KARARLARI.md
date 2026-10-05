@@ -1413,3 +1413,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** oturumlar arşivden açılabilir; prototip dosyaları duruyor.
 - **Durum:** uygulandı. Koordinatör `local_b9b956a0-10ef-4fc4-94c3-5ae26e8b6f6b` yazdı (kayıt oturumu kapandığı için doğrudan).
 - **Mert:** kendi talimatı.
+
+### KK-157 (2026-10-05) Ekran ekran ilerleme planı tek aktif plan; ilk ekran Schedule
+- **Karar (ne):** Mert (~19:40Z, koordinatör `local_9c7e674a…`'nın penceresinde) ekran ekran ilerleme istedi: iskelet çıkarılır, bir ekran seçilip komple bitirilir, yolda çıkan backlog'a gruplu ve işaretli yazılır, hepsi bitince recap. Tıklamalı üç seçim, üçü de önerilen: (1) ilk ekran Schedule (dayanak ILKELER A + P02); (2) ekranın eski açık backlog maddeleri de o turda (dayanak P14 + P02); (3) ekran planı tek aktif plan; Takas (FB-6.4) Requests / Shift Hub'a, yayın öncesi güvenlik paketi ilgili ekranlara girer; ekrana bağlı olmayan CI işi (BL-562) yalnız main'i kırarsa araya girer (dayanak P17). Ek talimat (~19:55Z): keşif ajanlarının bulguları ekran ekran repoda saklanır → `docs/plan/ekranlar/<no>-<ekran>/`. BL-562'nin kök neden ölçümü yarıda bırakılıp maddeye yazıldı (`06a74d5a`).
+- **Nerede:** `docs/plan/EKRAN-PLANI.md` (17 ekran, tur adımları, bitti tanımı, durum tablosu); `docs/plan/ekranlar/`.
+- **Ne zaman:** 2026-10-05 ~19:40–19:55Z.
+- **Ne için:** iş konu gruplarına dağılmak yerine ekran bazında bitsin; Mert her ekranın bittiğini görsün.
+- **Uygulamada etkisi:** henüz yok; Schedule keşfi başladı (4 alt ajan: backlog/prototip `nf-planlama`, güvenlik `nf-guvenlik`, görsel `nf-gorsel-qa`, kod/davranış genel ajan).
+- **Dayanak:** Mert'in talimatı ve seçimleri (P22). CLAUDE.md §1 hâlâ "Aktif program: FOUNDATION-B" diyor; değişikliği Mert onayı ister (CLAUDE.md §8), soruldu olarak açık.
+- **Geri alma:** plan dosyası; FOUNDATION-B kaydı `ILERLEME-PLANI.md` ve `tasks/FOUNDATION-B.md`'de duruyor.
+- **Durum:** uygulanıyor.
+- **Mert:** kendi talimatı ve seçimleri.
