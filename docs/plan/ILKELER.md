@@ -165,6 +165,7 @@
   (P09 + P25) önerildi; Mert "Terfide silinsin" seçti, uyarısız. Rol değişince bugünkü kurala
   uymayan kişinin kendi kaydı uyarısız silinir; P09 burada geçmez (KARARLAR M14).
 - Kanıt (2026-10-05, seçenek dışı; FB-6.7 akış cevabı 1): "bir kere publish olmuş bir announcement artık draft değil çünkü diğerleri gördü. Arşivlenir ya da publish edilir tekrardan. Silinemez." Başkasının gördüğü yayınlanmış kayıt taslağa dönmez, silinmez; arşivden geri gelirken de yayınlanmış kimliğini korur (KARARLAR K8 eki; aynı günün #170 yeniden yazımını P22 ile ters çevirdi).
+- Kanıt (2026-10-05, ters seçim): Schedule görünüm modunda Unassigned / açık vardiya satırının kalması önerildi (dayanak P09 + prototipin birebir kuralı). Mert "görünüm modunda gizlensin, yalnız düzenleme modunda görünsün" seçti; görünüm modu yayınlanmış programın sade hâli. Bir satırı görünümden kaldırmak veri düşürmek sayılmıyor; satır düzenleme modunda duruyor (KARARLAR Schedule; BL-681).
 
 **P10. Kullanıcının niyeti sorulur; kullanıcı zorlanmaz, ilerlemesi kaybolmaz.**
 - Kural:
