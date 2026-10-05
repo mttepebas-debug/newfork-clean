@@ -96,7 +96,7 @@ export default function ImportantDatesSettingsPage() {
     (allLocations ||
       (ids.length === 1 && pickerLocations.some((location) => location.id === ids[0])));
   const mayManageDate = (item: ImportantDate) => item.can_edit === true;
-  const [showArchived, setShowArchived] = useState(false);
+  const [tab, setTab] = useState<DateTab>("upcoming");
   const [filter, setFilter] = useState<ImportantDateType | "all">("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{
@@ -139,7 +139,7 @@ export default function ImportantDatesSettingsPage() {
       items
         .filter(
           (item) =>
-            (showArchived || !item.archived_at) &&
+            dateTab(item, todayIn()) === tab &&
             (filter === "all" || item.type === filter) &&
             (!normalizedSearch ||
               `${item.title} ${item.note} ${locationLabel(item)}`
@@ -153,7 +153,7 @@ export default function ImportantDatesSettingsPage() {
               importantDateSortValue(right, sort.key),
             ) * (sort.descending ? -1 : 1),
         ),
-    [filter, items, normalizedSearch, showArchived, sort],
+    [filter, items, normalizedSearch, tab, sort],
   );
 
   const openEditor = (item?: ImportantDate): void => {
@@ -240,17 +240,28 @@ export default function ImportantDatesSettingsPage() {
       <div className="job-catalog-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div
-            className="catalog-status-tabs job-archive-tabs"
-            role="group"
-            aria-label="Archive visibility"
+            className="catalog-status-tabs"
+            role="tablist"
+            aria-label="Important date status"
           >
-            <button
-              type="button"
-              className={showArchived ? "active" : ""}
-              onClick={() => setShowArchived((current) => !current)}
-            >
-              Show archived
-            </button>
+            {(
+              [
+                ["upcoming", "Upcoming"],
+                ["past", "Past"],
+                ["archived", "Archived"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                className={tab === value ? "active" : ""}
+                onClick={() => setTab(value)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
         <div className="catalog-toolbar-filter-row">
@@ -725,9 +736,13 @@ export default function ImportantDatesSettingsPage() {
             <div className="settings-empty">
               <CalendarDays size={22} aria-hidden />
               <strong>
-                {showArchived
+                {tab === "archived"
                   ? "No archived important dates"
-                  : "No important dates yet"}
+                  : tab === "past"
+                    ? "No past important dates"
+                    : items.some((item) => !item.archived_at)
+                      ? "No upcoming important dates"
+                      : "No important dates yet"}
               </strong>
               <p>
                 Add holidays, closures, and service events used by managers.
@@ -738,6 +753,15 @@ export default function ImportantDatesSettingsPage() {
       ) : null}
     </section>
   );
+}
+
+type DateTab = "upcoming" | "past" | "archived";
+
+/** Which tab a date belongs to: archived first, then by its last day
+ * against today (a one-day date ends on its own day). */
+export function dateTab(item: ImportantDate, today: string): DateTab {
+  if (item.archived_at) return "archived";
+  return item.ends_on < today ? "past" : "upcoming";
 }
 
 function ImportantDateDeleteAction({

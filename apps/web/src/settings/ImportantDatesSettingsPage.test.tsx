@@ -12,7 +12,8 @@ import type {
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import ImportantDatesSettingsPage from "./ImportantDatesSettingsPage";
+import ImportantDatesSettingsPage, { dateTab } from "./ImportantDatesSettingsPage";
+import { todayIn } from "../lib/today";
 import {
   listImportantDates,
   saveImportantDate,
@@ -128,6 +129,96 @@ function renderPage() {
     </QueryClientProvider>,
   );
 }
+
+describe("important date tabs", () => {
+  const day = (offset: number) => {
+    const date = new Date(`${todayIn()}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + offset);
+    return date.toISOString().slice(0, 10);
+  };
+  const row = (id: string, title: string, starts: number, ends: number, archived = false) => ({
+    ...dates[0]!,
+    id,
+    title,
+    starts_on: day(starts),
+    ends_on: day(ends),
+    recurrence: "none" as const,
+    archived_at: archived ? "2026-09-01T00:00:00Z" : null,
+  });
+  const today = row("90000000-0000-4000-8000-000000000011", "Inventory today", 0, 0);
+  const yesterday = row("90000000-0000-4000-8000-000000000012", "Staff party yesterday", -1, -1);
+  const running = row("90000000-0000-4000-8000-000000000013", "Patio repairs", -3, 0);
+  const archived = row("90000000-0000-4000-8000-000000000014", "Old closure", 5, 5, true);
+
+  it("sorts a date by its last day against today, archived first", () => {
+    expect(dateTab(today, todayIn())).toBe("upcoming");
+    expect(dateTab(running, todayIn())).toBe("upcoming");
+    expect(dateTab(yesterday, todayIn())).toBe("past");
+    expect(dateTab(archived, todayIn())).toBe("archived");
+  });
+
+  it("opens on Upcoming and moves each row to its own tab", async () => {
+    vi.mocked(listImportantDates).mockResolvedValue({
+      dates: [today, yesterday, running, archived],
+      locations: [location],
+      can_manage: true,
+      can_target_workspace: true,
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ImportantDatesSettingsPage />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("Inventory today")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Upcoming" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Patio repairs")).toBeTruthy();
+    expect(screen.queryByText("Staff party yesterday")).toBeNull();
+    expect(screen.queryByText("Old closure")).toBeNull();
+    expect(screen.queryByText("Show archived")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Past" }));
+    expect(screen.getByText("Staff party yesterday")).toBeTruthy();
+    expect(screen.queryByText("Inventory today")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    expect(screen.getByText("Old closure")).toBeTruthy();
+    expect(screen.queryByText("Staff party yesterday")).toBeNull();
+  });
+
+  it("names each tab's empty table", async () => {
+    vi.mocked(listImportantDates).mockResolvedValue({
+      dates: [yesterday],
+      locations: [location],
+      can_manage: true,
+      can_target_workspace: true,
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ImportantDatesSettingsPage />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("No upcoming important dates")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    expect(screen.getByText("No archived important dates")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Past" }));
+    expect(screen.getByText("Staff party yesterday")).toBeTruthy();
+  });
+
+  it("keeps the first-run sentence when there is no date at all", async () => {
+    vi.mocked(listImportantDates).mockResolvedValue({
+      dates: [],
+      locations: [location],
+      can_manage: true,
+      can_target_workspace: true,
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <ImportantDatesSettingsPage />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("No important dates yet")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Past" }));
+    expect(screen.getByText("No past important dates")).toBeTruthy();
+  });
+});
 
 describe("ImportantDatesSettingsPage", () => {
   it("lists holidays and closed days with scheduling impact flags", async () => {
