@@ -71,47 +71,44 @@
   border-radius: 6px;
   background: var(--wt-surface);
 }
+/* Grid rules (KARARLAR "Availability"): Employee 13%, seven equal days, every
+   body cell 76 high with a line right and below, content centred. */
 .weekly-team-table {
   width: 100%;
   min-width: 1030px;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  color: var(--wt-text);
+  color: var(--theme-text);
 }
 .weekly-team-table :is(th, td) {
   padding: 0;
-  text-align: left;
-  border-right: 1px solid var(--wt-line);
-  border-bottom: 1px solid var(--wt-line);
-  vertical-align: top;
-}
-.weekly-team-table tr > :last-child {
-  border-right: 0;
+  text-align: center;
+  border-right: 1px solid var(--theme-border-subtle);
+  border-bottom: 1px solid var(--theme-border-subtle);
+  vertical-align: middle;
 }
 .weekly-team-table tbody tr:last-child > * {
   border-bottom: 0;
 }
 .weekly-team-table thead th {
-  height: 40px;
-  padding: 0 14px;
-  vertical-align: middle;
-  background: #f3f5f3;
-  color: #68726e;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
+  border-right-color: var(--theme-list-col-line);
+}
+.weekly-team-table tr > :last-child {
+  border-right: 0;
+}
+.weekly-team-table thead .catalog-sort-button {
+  justify-content: center;
 }
 .weekly-team-table tr > :first-child {
   position: sticky;
   left: 0;
-  width: 190px;
+  width: 13%;
   z-index: 1;
-  background: var(--wt-surface);
+  background: var(--theme-surface);
 }
 .weekly-team-table thead tr > :first-child {
-  background: #f3f5f3;
+  background: var(--theme-list-head);
 }
 .weekly-team-day-heading {
   display: inline-flex;
@@ -122,44 +119,50 @@
 .weekly-team-person,
 .weekly-team-day {
   display: flex;
+  box-sizing: border-box;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  min-height: 86px;
+  height: 76px;
   border: 0;
   border-radius: 0;
-  padding: 12px;
+  padding: 0 10px;
   background: transparent;
   color: inherit;
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
-  gap: 5px;
-  overflow-wrap: anywhere;
 }
 .weekly-team-person strong {
-  font-size: 14px;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 13px;
   font-weight: 600;
-}
-.weekly-team-person span,
-.weekly-team-person small {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--wt-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .weekly-team-day {
-  font-size: 12px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+.weekly-team-day > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .weekly-team-table td[data-unavailable="true"] {
-  background: var(--wt-red-bg);
-  color: var(--wt-red);
-}
-.weekly-team-table td[data-unavailable="true"] .weekly-team-day > span {
-  border-left: 2px solid var(--wt-red);
-  padding-left: 6px;
+  background: var(--theme-availability-soft);
+  color: var(--theme-availability-text);
 }
 .weekly-team-available {
-  color: var(--wt-muted);
+  color: var(--theme-text-faint);
+}
+.weekly-team-scroll > .catalog-table-empty {
+  border-top: 0;
 }
 .weekly-team-person:hover:not(:disabled),
 .weekly-team-day:hover:not(:disabled) {
@@ -224,9 +227,5 @@
   }
   .weekly-team-table {
     min-width: 976px;
-  }
-  .weekly-team-person,
-  .weekly-team-day {
-    padding: 10px;
   }
 }

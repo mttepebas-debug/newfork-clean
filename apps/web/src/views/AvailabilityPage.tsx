@@ -111,7 +111,7 @@ export function AvailabilityPage() {
     );
   return (
     <section
-      className="availability-page weekly-team-page"
+      className="availability-page weekly-team-page list-page"
       aria-labelledby="availability-title"
     >
       <CatalogPageHeader
@@ -155,7 +155,7 @@ export function AvailabilityPage() {
         </div>
         <div className="catalog-toolbar-filter-row">
           <select
-            className="toolbar-filter-select"
+            className="toolbar-filter-select list-filter-narrow"
             aria-label="Location"
             value={locationId}
             onChange={(event) =>
@@ -249,10 +249,6 @@ export function AvailabilityPage() {
                       onClick={() => openEmployee(employee.id)}
                     >
                       <strong>{employee.display_name}</strong>
-                      <span>{employee.employee_code}</span>
-                      <small>
-                        {employee.submitted ? "Submitted" : "Not submitted"}
-                      </small>
                     </button>
                   </th>
                   {weekdays.map(([day, name]) => {
@@ -281,7 +277,7 @@ export function AvailabilityPage() {
                           onClick={() => openEmployee(employee.id)}
                         >
                           {parts.length ? (
-                            parts.map((part, index) => (
+                            visibleParts(parts).map((part, index) => (
                               <span key={index} title={part.detail}>
                                 {part.label}
                               </span>
@@ -299,14 +295,18 @@ export function AvailabilityPage() {
               ))}
             </tbody>
           </table>
+          {employees.length === 0 && (
+            <div className="catalog-table-empty">
+              <span className="catalog-table-empty-icon" aria-hidden>
+                <CalendarCheck size={22} />
+              </span>
+              <h2>No employees match this view</h2>
+              <p>Try another status or location, or clear your search.</p>
+            </div>
+          )}
         </div>
       )}
-      {model && employees.length === 0 && (
-        <div className="settings-empty">
-          <CalendarCheck size={22} aria-hidden />
-          <strong>No employees match this view</strong>
-        </div>
-      )}
+
       {selectedEmployee && (
         <Suspense fallback={<p role="status">Loading employee...</p>}>
           <EmployeeDrawer
@@ -340,10 +340,28 @@ function compareAvailabilityValues(left: string, right: string): number {
   });
 }
 
+/** A day cell holds at most three lines (KARARLAR "Availability"): the
+ * first two and a "+N more" line when there are more. */
+function visibleParts<T extends { label: string; detail: string }>(
+  parts: readonly T[],
+): readonly { label: string; detail: string }[] {
+  if (parts.length <= 3) return parts;
+  return [
+    ...parts.slice(0, 2),
+    {
+      label: `+${parts.length - 2} more`,
+      detail: parts
+        .slice(2)
+        .map((part) => part.label)
+        .join(", "),
+    },
+  ];
+}
+
 function dayLabels(day: WeeklyPreferenceDay, model: WeeklyTeamRead) {
   const range = (start: string, end: string) =>
     formatTime(start, model.time_format) +
-    " - " +
+    " – " +
     formatTime(
       end === "24:00" && model.time_format === "12h" ? "00:00" : end,
       model.time_format,

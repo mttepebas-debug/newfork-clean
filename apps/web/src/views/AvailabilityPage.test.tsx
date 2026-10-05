@@ -120,7 +120,7 @@ describe("weekly team availability", () => {
       screen.getAllByRole("columnheader").map((el) => el.textContent),
     ).toEqual(["Employee", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
     expect(
-      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 - 17:00" }),
+      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 – 17:00" }),
     ).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Alex Kim Tuesday: All day" }),
@@ -135,6 +135,35 @@ describe("weekly team availability", () => {
       screen.queryByText(/Schedule conflicts|Missing availability/),
     ).toBeNull();
     expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
+  it("names a person by full name only and keeps a day cell to three lines", async () => {
+    const model = fixture();
+    model.employees[0]!.preference.days[1]!.ranges = [
+      { start: "07:00", end: "09:00" },
+      { start: "12:00", end: "14:00" },
+      { start: "18:00", end: "21:00" },
+      { start: "22:00", end: "23:00" },
+    ];
+    vi.mocked(loadWeeklyTeam).mockResolvedValue(model);
+    renderPage();
+    const person = await screen.findByRole("button", { name: "Alex Kim" });
+    expect(person.textContent).toBe("Alex Kim");
+    expect(screen.queryByText("E-001")).toBeNull();
+    const monday = screen.getByRole("button", {
+      name: "Alex Kim Monday: 07:00 – 09:00, 12:00 – 14:00, 18:00 – 21:00, 22:00 – 23:00",
+    });
+    expect(
+      Array.from(monday.querySelectorAll("span")).map((line) => line.textContent),
+    ).toEqual(["07:00 – 09:00", "12:00 – 14:00", "+2 more"]);
+  });
+  it("keeps the heading row over an empty view with its two lines", async () => {
+    vi.mocked(loadWeeklyTeam).mockResolvedValue({ ...fixture(), employees: [] });
+    renderPage();
+    expect(await screen.findByText("No employees match this view")).toBeTruthy();
+    expect(
+      screen.getByText("Try another status or location, or clear your search."),
+    ).toBeTruthy();
+    expect(screen.getAllByRole("columnheader")).toHaveLength(8);
   });
   it("combines location, search and declaration filters without treating an empty declaration as missing", async () => {
     renderPage();
@@ -211,7 +240,7 @@ describe("weekly team availability", () => {
     vi.mocked(loadWeeklyTeam).mockResolvedValue(model);
     renderPage();
     expect((await screen.findByText("Dinner")).getAttribute("title")).toBe(
-      "18:00 - 23:00 (archived)",
+      "18:00 – 23:00 (archived)",
     );
     expect(
       screen
@@ -252,7 +281,7 @@ describe("weekly team availability without employee reading", () => {
     renderPage(`/app/availability?employeeId=${alex}&section=availability`);
     await screen.findByText("Alex Kim");
     expect(
-      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 - 17:00" }),
+      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 – 17:00" }),
     ).toHaveProperty("disabled", true);
     expect(screen.queryByRole("dialog", { name: "Employee" })).toBeNull();
   });
