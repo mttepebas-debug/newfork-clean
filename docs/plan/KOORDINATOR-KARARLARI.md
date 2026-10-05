@@ -1255,5 +1255,21 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Dayanak:** KK-141; Mert'in talimatı (prototip planı koordinatörde); CLAUDE.md §11.10.
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #186).
-- **Ek (besleme #188, Mert kararı 2026-10-05, koordinatörün penceresinde, önerilen):** madde (3) değişti. Q turunun 45 gerçek uygulama bulgusu ve /welcome 404 yan bulgusu için backlog taslağını eşlik oturumu `local_91ac4f8d…` hazırlar. Taslak tazelik ölçümlü, BL numarasız, gruplu ve iki işaretli olur; yeri `artifacts/prototype/backlog-taslak/Q-bulgular.md`. /welcome 404'ün kök neden ölçümü de o oturumda. Kayıt oturumu numara verir ve BACKLOG'a ekler; P bulgularıyla aynı commit'te olabilir. Kayıt oturumunun 06:00Z'de başlattığı taslak alt ajanı durduruldu; dosya yazmamıştı. Dayanak: CLAUDE.md §5 adım 0 + kayıt oturumunun bağlam yükünü azaltma. Reddedilen: "Schedule düzeltme paketine başlasın", "beklesin".
+- **Ek (besleme #188, Mert kararı 2026-10-05, koordinatörün penceresinde, önerilen):** madde (3) değişti. Q turunun 45 gerçek uygulama bulgusu ve /welcome 404 yan bulgusu için backlog taslağını eşlik oturumu `local_91ac4f8d…` hazırlar. Taslak tazelik ölçümlü, BL numarasız, gruplu ve iki işaretli olur; yeri `artifacts/prototype/backlog-taslak/` (dosyalar ve seçim kuralı KK-143). /welcome 404'ün kök neden ölçümü de o oturumda. Kayıt oturumu numara verir ve BACKLOG'a ekler; P bulgularıyla aynı commit'te olabilir. Kayıt oturumunun 06:00Z'de başlattığı taslak alt ajanı durduruldu; dosya yazmamıştı. Dayanak: CLAUDE.md §5 adım 0 + kayıt oturumunun bağlam yükünü azaltma. Reddedilen: "Schedule düzeltme paketine başlasın", "beklesin".
+- **Mert:** bilgi.
+
+### KK-143 (2026-10-05) Q bulgularının backlog kaynağı ve iki taslak çakışınca seçim
+- **Karar (ne):** Q turunun bulguları iki taslaktan backlog'a girer; numarayı kayıt oturumu verir.
+  - **Q1, Q2 ve eşlik denetiminin yan bulgusu:** eşlik oturumunun dosyası `Q-bulgular-eslik-tumu.md` esas (ölçüm `e8df531c`). Eşlik oturumu, daraltma mesajı ulaşmadan 46 bulgunun hepsini yazdı.
+  - **Q3–Q5:** bulguları yapan Q oturumunun dosyası `Q3-Q5-bulgular.md` esas (ölçüm `6326f23a`). Eşlik dosyasının Q3–Q5 kısmıyla karşılaştırılır. İşaret ya da birleştirme ayrışırsa daha güncel ve sağlam kanıtlı olan seçilir; seçim maddede yazılır.
+  - **BL-481 / BL-495:** aynı kusursa birleştirilir; kararı kayıt oturumu verir ve kayıtta yazar.
+  - **"Karar gerekir" maddeleri uygulama beklerken Mert'e sorulmaz.** Bunlar: Q1 D1 onay e-postasını yeniden gönderme, Q4 R11 resmî ad onayı beklerken görünüm, Q5 D8 herkese açık sayfaların dili. Maddede "karar gerekir" yazılı kalır.
+  - **/welcome 404'ün kök nedeni ölçüldü; kod değil, örnek veri.** `supabase/seed.sql:143` owner'a "Pending Demo" workspace'inde `pending_activation` üyelik veriyor ama onboarding kaydını kurmuyor. Okuma P0002 veriyor, API 404 dönüyor. Öneri: seed satırı silinsin ya da kaydıyla kurulsun; koda tolerans eklenmez (CLAUDE.md "eski veri korunmaz"). `nf-db` için küçük iş; uygulama beklerken backlog'da durur.
+- **Nerede:** `docs/plan/BACKLOG.md`; taslaklar `artifacts/prototype/backlog-taslak/` (git dışı).
+- **Ne zaman:** 2026-10-05 ~07:15Z.
+- **Ne için:** bulguyu yapan oturumun ölçümü esas olsun; iki taslak çakışınca seçim kanıta göre yapılsın ve görünsün.
+- **Uygulamada etkisi:** yok; kayıt kuralı.
+- **Dayanak:** KK-142 madde (3) ve Ek (#188); CLAUDE.md §5 adım 0, §11.7.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #189–#190).
 - **Mert:** bilgi.
