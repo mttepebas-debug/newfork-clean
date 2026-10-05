@@ -1234,3 +1234,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #180).
 - **Mert:** bilgi.
+
+### KK-141 (2026-10-05) Prototipin P1–P5 turu bitsin; birleştirme ve yayını kayıt oturumu yapar, sonra yeni tur yok
+- **Karar (ne):** Mert'in başlattığı derin tur (P1 Workspace + Requests, P2 Employees + Documents + Availability, P3 Settings, P4 Notifications + Announcements + Important Dates, P5 Employee view + Account) yarıda durdurulmaz, biter. Bu turun birleştirmesini ve yayınını kayıt oturumu yapar (betikler ve son derleme onda); sonra koordinatöre tek rapor: her P'nin kapsamı ve sonucu, yayın sürümü, kırık kalan parça (P4 Announcements, P5 Employee view sol menü dahil), açık sorular. Bu turdan sonra yeni tur açılmaz; prototip devir notu turun sonuna göre yazılır, betikler ve kaynaklar `artifacts/prototype/` altında. Bağlam dolarsa kayıt oturumu önce koordinatöre söyler, turu yarıda bırakmaz.
+- **Nerede:** prototip çalışma klasörü (kayıt oturumunun geçici klasörü) → `artifacts/prototype/` (git dışı); https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK.
+- **Ne zaman:** 2026-10-05 ~05:35Z.
+- **Ne için:** yarıda durdurmak parçaları kırık bırakır; Mert'in talimatıyla prototip planının sahibi koordinatör, kayıt oturumu kayıt rolüne döner.
+- **Uygulamada etkisi:** gerçek uygulamada yok; prototipte tur bitince öteki sayfalar derin hâliyle yayınlanır.
+- **Dayanak:** Mert'in talimatı (prototip planı koordinatörde, raporlar koordinatöre); CLAUDE.md §11.4 (iş sınırında durmak), §11.10 (bağlam dolarken sınırda devir).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #185).
+- **Mert:** bilgi.
