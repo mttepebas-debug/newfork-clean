@@ -1212,3 +1212,25 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #175).
 - **Mert:** bilgi.
+
+### KK-139 (2026-10-05) Settings → Documents süzgeçle boş sekmenin metni
+- **Karar (ne):** Settings → Documents'ta Draft / Published / Archived ya da süzgeç sonucu boşsa "No document types match these filters." / "Try another status or clear your search." yazılır (ekleme düğmesi yok); hiç belge türü yoksa "No document types" metni ve "New document" düğmesi kalır.
+- **Nerede:** DOC-TABLE dalı `worktree-agent-ab68e51d5764faab9` (görsel QA düzeltme turu).
+- **Ne zaman:** 2026-10-05 ~03:00Z.
+- **Ne için:** görsel QA bulgusu: süzgeçli boş sekmede "add the first document" yazması yanıltıcı (BL-591 ile aynı kök).
+- **Uygulamada etkisi:** Örnek: Ayşe Settings → Documents'ta Archived sekmesine geçer, arşivli belge yoksa "No document types match these filters." görür, ekleme düğmesi görmez.
+- **Dayanak:** KARARLAR Employees → Documents boş metni ("No documents match these filters." / "Try another status or clear your search.") — benzeri; ILKELER P21 (kısa, tek mesaj).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #180).
+- **Mert:** bilgi.
+
+### KK-140 (2026-10-05) Availability saat aralığı workspace saat biçimine uyar
+- **Karar (ne):** Availability ızgarasında saat aralığı workspace'in saat biçimi ayarıyla yazılır (bugünkü kısa biçim "6p – 10p" kalır), her aralık tek satır; KARARLAR örneği buna göre düzeltilir.
+- **Nerede:** KARARLAR Availability → "Izgara kuralları"; uygulama dalda (`fb01bb36`).
+- **Ne zaman:** 2026-10-05 ~03:00Z.
+- **Ne için:** görsel QA sorusu: KARARLAR örnekleri uzun biçimdeydi ("7:00 AM – 9:00 AM"), ekran kısa biçim yazıyor; Mert'in istediği satır kırılmaması, biçim değil.
+- **Uygulamada etkisi:** Ekranda değişiklik yok: "6p – 10p" gibi kısa biçim tek satırda kalır; 24 saat seçen workspace'te "18:00 – 22:00".
+- **Dayanak:** Mert'in sözü ("time rangeler 2. satıra sarkmasın" — satır kırılması); Settings → Scheduling saat biçimi ayarı; ILKELER P19.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #180).
+- **Mert:** bilgi.
