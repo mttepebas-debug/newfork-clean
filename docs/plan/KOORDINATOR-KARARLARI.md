@@ -1370,7 +1370,7 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 
 ### KK-153 (2026-10-05) Prototip için iki teknik not (bilgi; gerçek uygulama bulgusu değil)
 - **Karar (ne):** (1) Bir sonraki Schedule eşitleme turunun görev metnine: `parts\schedule.css`'teki kapsamsız `.schedule-cell` kuralı başka parçalara sızıyor (EMP-SCHED turu `empview.css`'te sıfırladı); kaynakta Schedule kuralları `.schedule-page` altına alınır, öteki parçalarda sıfırlama yazılmaz. Önceki koordinatör `local_863130bd…`'dan; yalnız sohbette kalmıştı. (2) Prototip derleme kilidi tuzağı (telefon kabuğu işçisinden): `sched_lock.py` "already yours" dediğinde kilidin zamanını yenilemiyor; 15 dakikadan uzun tutulan kilit sessizce bayatlar. Uzun derlemede kilit bırakılıp yeniden alınır.
-- **Nerede:** prototip kaynağı `C:\Users\TheWe\Documents\Codex\newfork-prototype` (KK-147). Prototip kurallarına (`KANONIK.md` / devir notu) eklenmesi gerekiyor; o dosyalar repo ve `docs/plan` dışında olduğu için kayıt oturumu yazmadı — bir sonraki prototip işini veren ekler.
+- **Nerede:** prototip kaynağı `C:\Users\TheWe\Documents\Codex\newfork-prototype` (KK-147). Prototip kurallarına (`KANONIK.md` / devir notu) eklenmesi gerekiyor; o dosyalar repo ve `docs/plan` dışında olduğu için kayıt oturumu yazmadı; koordinatör `KANONIK.md`'ye ekledi (satır 12–13, ölçüldü 2026-10-05 17:40Z, besleme #205).
 - **Ne zaman:** 2026-10-05; kayıt 17:37Z (`date -u`).
 - **Ne için:** iki bilgi yalnız sohbette kalıp kaybolmasın.
 - **Uygulamada etkisi:** yok (yalnız prototip).
