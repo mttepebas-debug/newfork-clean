@@ -69,6 +69,13 @@ const location = {
   short_name: "MAIN",
 } satisfies Location;
 
+// Dates relative to today, so a fixture never drifts into the Past tab.
+function day(offset: number): string {
+  const date = new Date(`${todayIn()}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + offset);
+  return date.toISOString().slice(0, 10);
+}
+
 const dates = [
   {
     id: "90000000-0000-4000-8000-000000000001",
@@ -77,8 +84,8 @@ const dates = [
     location_name: null,
     title: "New Year's Day",
     type: "holiday",
-    starts_on: "2027-01-01",
-    ends_on: "2027-01-01",
+    starts_on: day(30),
+    ends_on: day(30),
     recurrence: "annual",
     note: "Restaurant-wide holiday.",
     affects_scheduling: true,
@@ -95,8 +102,8 @@ const dates = [
     location_name: "Main Dining",
     title: "Private buyout",
     type: "closed_day",
-    starts_on: "2027-02-14",
-    ends_on: "2027-02-14",
+    starts_on: day(60),
+    ends_on: day(60),
     recurrence: "none",
     note: "",
     affects_scheduling: true,
@@ -131,11 +138,6 @@ function renderPage() {
 }
 
 describe("important date tabs", () => {
-  const day = (offset: number) => {
-    const date = new Date(`${todayIn()}T12:00:00Z`);
-    date.setUTCDate(date.getUTCDate() + offset);
-    return date.toISOString().slice(0, 10);
-  };
   const row = (id: string, title: string, starts: number, ends: number, archived = false) => ({
     ...dates[0]!,
     id,
