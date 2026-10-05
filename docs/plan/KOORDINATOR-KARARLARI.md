@@ -1308,3 +1308,51 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, devirden önceki son karar; besleme #200).
 - **Mert:** bilgi.
+
+### KK-147 (2026-10-05) Kanonik prototip kaynağı repo dışında: newfork-prototype
+- **Karar (ne):** Prototipin kanonik kaynağı `C:\Users\TheWe\Documents\Codex\newfork-prototype` (KANONIK.md). Yol: kayıt oturumunun geçici klasörü → `artifacts\prototype` → `newfork-prototype`, `robocopy /E /XF *state.json`. `/MIR` kullanılmadı: hedefte başka oturumların 1609 dosyasını (121 MB) silerdi; bayat kalan yalnız 11 eski görüntü. Geçici klasör ve `artifacts\prototype` dondu (DONDU.md). Yeni yerde gen_app aynı çıktıyı verdi (md5 `a7b1fc69…`, 40 parça). Geçici klasördeki App.dc.html 14:05Z'de Q oturumunun E-9005 düzeltmesiyle yeniden derlenmişti; md5'i yayın raporundakinden (`636f1d4f…`) farklı ve bu değişiklik sonraki yayına girer. KK-142 madde 4'ün yerine geçer.
+- **Nerede:** `C:\Users\TheWe\Documents\Codex\newfork-prototype`; https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK.
+- **Ne zaman:** 2026-10-05 ~17:35Z.
+- **Ne için:** worktree oturumları ana klasöre (`artifacts\prototype`) Write / Edit ile yazamıyor (ölçüldü); prototip tek bir kalıcı yerde yaşasın.
+- **Uygulamada etkisi:** gerçek uygulamada yok; prototip işleri artık newfork-prototype'tan yürür.
+- **Dayanak:** KK-142 madde 4; CLAUDE.md §6 (kod kaybı olmaz).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`'ın kararı, besleme #203).
+- **Mert:** bilgi.
+
+### KK-148 (2026-10-05) Owner kurulumunda "Invitations go out when you finish setup." satırı kalkar
+- **Karar (ne):** Owner kurulumunun "Add your team" adımındaki "Invitations go out when you finish setup." satırı kaldırılır; onay kutusunu tekrarlıyor.
+- **Nerede:** prototip (owner kurulumu); gerçek uygulamada aynı metin varsa uygulama işiyle birlikte.
+- **Ne zaman:** 2026-10-05 ~17:35Z.
+- **Ne için:** kısa, tek mesajlı metin.
+- **Uygulamada etkisi:** gerçek uygulamada yok (uygulama bekliyor); prototipte satır kalkar.
+- **Dayanak:** ILKELER P20, P21.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`'ın kararı, besleme #203).
+- **Mert:** bilgi.
+
+### KK-149 (2026-10-05) Duyuru akış prototipinin sürüm 8 yayın reddi ayrı bir deneme artifact'inde incelenir
+- **Karar (ne):** Duyuru akış prototipinin sürüm 8 yayını "artifact-pr-review … too large" ile reddedildi. Neden ayrı, özel bir deneme artifact'inde bulunur; Mert'in canlı adresine yalnız doğru derleme gider. İşi Q oturumu yapar.
+- **Nerede:** duyuru akış prototipi (ayrı artifact).
+- **Ne zaman:** 2026-10-05 ~17:35Z.
+- **Ne için:** Mert'in gördüğü adres bozuk derlemeyle denenmesin.
+- **Uygulamada etkisi:** gerçek uygulamada yok.
+- **Dayanak:** KK-142 (tek doğru sürüm ilkesi).
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`'ın kararı, besleme #203).
+- **Mert:** bilgi.
+
+### KK-150 (2026-10-05) Yayındaki duyuru düzenlenirken geçmiş "Publish at" denetlenmez
+- **Karar (ne):** Yayındaki bir duyuru düzenlenirken kişinin değiştirmediği geçmiş "Publish at" tarihi denetlenmez; K20 (geçmiş tarih seçilemez) yalnız yeni seçilen tarihe uygulanır. Akış devir notunun 2/18. adımı geçerli kalır.
+- **Nerede:** duyuru akış prototipi; gerçek uygulama işi FB-6.7.
+- **Ne zaman:** 2026-10-05 ~17:35Z.
+- **Ne için:** dokunulmayan alan yüzünden yayındaki duyuru kaydedilemez olmasın.
+- **Uygulamada etkisi:** gerçek uygulamada henüz yok (FB-6.7 kalanında).
+- **Dayanak:** KARARLAR K20; akış devir notu.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`'ın kararı, besleme #203).
+- **Mert:** bilgi.
+
+### KK-151 (2026-10-05) Verilen prototip işleri (bilgi)
+- **Karar (ne):** koordinatör şu işleri verdi: PROTO-PHONE-KARAR (`d8686bdf`), PROTO-X-KARAR-2 (`e4bbe6fe`), PROTO-ESIT-ACCOUNT (`59616a96`), PROTO-EXPORT-VAR (`5ffce2bb`), FB-6.7-AKIS-YAYIN (`575ba63c`), PROTO-ESIT-P4 (`10a5177a`), PROTO-ESIT-P1 (`d75967aa`), PROTO-ESIT-SET (havuzdan `863130bd`).
+- **Durum:** bilgi. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_b9b956a0…`, besleme #203).
