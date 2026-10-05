@@ -1402,3 +1402,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay (artifact geçmişi).
 - **Durum:** uygulandı. Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #207).
 - **Mert:** kendi talimatı.
+
+### KK-156 (2026-10-05) Prototip olduğu gibi bırakıldı; geliştirme gerçek uygulamada sürüyor; koordinatör dışındaki oturumlar kapatıldı
+- **Karar (ne):** Mert (~18:30Z, koordinatörün penceresinde): "koordinator hariç bütün sessionları kapat. prototipi oldugu gibi bırak gerçek uygulamada geliştirmeye devam etmek istiyorum. çok vakit kaybettik". (1) Prototip (Newfork Desktop sürüm 2, Newfork Phone sürüm 38) ve kaynakları (`C:\Users\TheWe\Documents\Codex\newfork-prototype`, hazırlık kopyası `newfork-prototype-stage`, dondurulmuş `artifacts\prototype`) olduğu gibi kaldı; yeni prototip işi açılmaz. Yayınlanmamış biten iş: PROTO-ESIT-P4 (kanonik klasörde). Yarım kalan: PROTO-ESIT-ACCOUNT (durduruldu), P1 (hiç başlamadı), FB-6.7 akış v8 (yayın reddi). (2) Koordinatör dışında 19 newfork-clean oturumu arşivlendi (OPS-07'nin "arşiv yok" kuralına Mert'in açık talimatıyla tek seferlik istisna; 2026-10-04 toplu arşivi gibi). Öncesinde her worktree ölçüldü: kirli olan yalnız `friendly-blackwell` (nf-guvenlik hafıza notları; içerik main'de, worktree kopyası eski), main dışı commit'i olan yalnız `serene-heisenberg` (2 commit, `git cherry` boş → içerik main'de). `task/fb-6.7-ui` dalı (main dışı 16 commit) arşivden etkilenmedi, duruyor. "Prototip: Settings eşitleme" oturumu uygulamanın "kullanıcı için tutuyor" engeli yüzünden arşivlenemedi; Mert kenar çubuğundan kapatır. (3) Sıradaki iş gerçek uygulamada, devir notundaki sıra: SCHED-FIX (BL-607 ✓ `ba653646`, BL-606 sürüyor) → BL-562 → FB-6.4.
+- **Nerede:** oturum listesi; bu dosya; BACKLOG BL-607.
+- **Ne zaman:** 2026-10-05 ~18:30Z.
+- **Ne için:** prototip turu gerçek uygulamaya göre fazla zaman aldı (Mert: "çok vakit kaybettik").
+- **Uygulamada etkisi:** gerçek uygulamada iş yeniden başladı; ilk sonuç Schedule'daki "Keep editing?" penceresinde SAVE'in çalışması (BL-607).
+- **Dayanak:** Mert'in talimatı (ILKELER P22: en güncel açık karar).
+- **Geri alma:** oturumlar arşivden açılabilir; prototip dosyaları duruyor.
+- **Durum:** uygulandı. Koordinatör `local_b9b956a0-10ef-4fc4-94c3-5ae26e8b6f6b` yazdı (kayıt oturumu kapandığı için doğrudan).
+- **Mert:** kendi talimatı.
