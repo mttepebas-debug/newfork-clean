@@ -1245,3 +1245,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay.
 - **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #185).
 - **Mert:** bilgi.
+
+### KK-142 (2026-10-05) P turunun yayını, raporu, bulguları ve kanonik kopya
+- **Karar (ne):** (1) P1–P5 bitince birleştirme, tam kontrol (`gen_app.py` ok / js ok / WARN yok, sweep, Schedule testleri, Q ve P testleri) ve tek sürüm yayını kayıt oturumunda; tek yayıncı kayıt oturumu; Q1–Q5'in x_* ekranları da bu yayına girer. (2) Yayından sonra koordinatöre tek rapor: sürüm no, her P'nin sonucu, kırık kalan, kontrol sonuçları. (3) Q ve P bulguları P turu bitince birlikte, gruplu backlog'a (45 Q + P2 tekil e-posta + P bulguları); her birinde tazelik kaynağı ajanın kontrol listesi. (4) Yayından sonra kanonik kopyayı koordinatör alır (robocopy /MIR → `artifacts/prototype/`); o andan sonra ajanlar oradan çalışır. (5) Kayıt oturumunun bağlamı yarıyı geçtiyse yayından sonra kayıt rolü için devir önerilir; prototip yayıncılığı yeni planda ayrı ele alınır. Yeni tur açılmaz.
+- **Nerede:** prototip çalışma klasörü; https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK; inbox devir notu `20261005T053120-nf-planlama-kayit-20-prototip-devir.md`.
+- **Ne zaman:** 2026-10-05 ~05:45Z.
+- **Ne için:** tek yayıncı ve tek rapor; bulguların kaybolmaması; prototipin kalıcı yere taşınması.
+- **Uygulamada etkisi:** gerçek uygulamada yok. Bilgi: bağımsız `local_91ac4f8d…` ("Prototip: eşlik denetimi") oturumu Schedule ve Q ekranlarını salt okuma ile gerçek uygulamaya karşı denetliyor; prototipe yazmıyor.
+- **Dayanak:** KK-141; Mert'in talimatı (prototip planı koordinatörde); CLAUDE.md §11.10.
+- **Geri alma:** kolay.
+- **Durum:** yürürlükte. Kayıt oturumu `local_d96f34f3-0d4a-4e84-a44b-6b653641d258` yazdı (koordinatör `local_863130bd…`'ın kararı, besleme #186).
+- **Mert:** bilgi.
