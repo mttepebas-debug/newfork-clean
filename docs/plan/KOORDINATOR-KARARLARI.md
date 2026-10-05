@@ -1391,3 +1391,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** kolay (önceki sürüme dönülebilir).
 - **Durum:** uygulandı. Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #206).
 - **Mert:** kendi talimatı.
+
+### KK-155 (2026-10-05) Prototip iki artifact'e ayrıldı: Newfork Desktop ve Newfork Phone
+- **Karar (ne):** Mert'in talimatı (~18:20Z, koordinatörün penceresinde): "desktop arayüzünü gösteren prototipi ayrı artifact olarak kaydet phonedan ayır". (1) Yeni "Newfork Desktop" https://claude.ai/artifact/VWK5TmCgVvicJ7EKoLcDCx (Design türü, özel): tek pano `App.dc.html` (1920×1080, "Prototip · Masaüstü"), içerik sürüm 35'teki masaüstü, açılış odaklı. (2) Eski adres https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK artık "Newfork Phone" (Mert sayfadan yeniden adlandırdı — `1791223672-d648` kaydı), sürüm 38: `App.dc.html` panosu ve dosyası çıkarıldı; 4 telefon panosu, yerleri ve Mert'in kanvas ayarları aynen kaldı; eski sürümler artifact geçmişinde. (3) Yayın kuralı: masaüstü yalnız Desktop'a, telefon panoları yalnız Phone'a. KK-141, KK-142, KK-145 ve KK-154'teki tek adres (`SmqEkab…`) bundan sonra bu iki adres demektir.
+- **Nerede:** iki artifact; kural `C:\Users\TheWe\Documents\Codex\newfork-prototype\KANONIK.md` satır 18–19 (kayıt oturumu ölçtü, 18:25Z: iki adres ve dosya ayrımı yazılı; `Artifact list`'te "Newfork Desktop" ve "Newfork Phone" görünüyor). Sürüm numaraları ölçülmedi, koordinatörün aktardığı.
+- **Ne zaman:** 2026-10-05 ~18:20Z; kayıt 18:25Z (`date -u`).
+- **Ne için:** Mert masaüstü ve telefon prototiplerini ayrı açıp gezebilsin.
+- **Uygulamada etkisi:** gerçek uygulamada yok.
+- **Dayanak:** Mert'in talimatı.
+- **Geri alma:** kolay (artifact geçmişi).
+- **Durum:** uygulandı. Kayıt oturumu `local_abc4d126-c833-4c60-9b47-8dfe4bf0e1e1` yazdı (koordinatör `local_b9b956a0…`, besleme #207).
+- **Mert:** kendi talimatı.
