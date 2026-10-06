@@ -1,49 +1,63 @@
-# Koordinatör devri — 2026-10-05 akşam (UTC)
+# Koordinatör devri — 2026-10-05 gece (UTC)
 
-Devreden: "Koordinatör" `local_b9b956a0-10ef-4fc4-94c3-5ae26e8b6f6b` (worktree `.claude/worktrees/handoff-koordinatorlugu-20c0b3`); bağlam %62, iş sınırında (BL-606 main'de) devrediyor.
-Devralan: Mert'in açacağı yeni oturum — **güncel koordinatör kimliği, devralan oturumun kendi `local_` kimliğidir** (`get_session self`).
+- **Devreden:** "Koordinatör" `local_9c7e674a-3796-486f-a7f7-613c4ce0c02e`. cwd ana klasör; kayıt işleri `../newfork-wt/coord` worktree'sinde. Bağlam %53, iş sınırında devrediyor.
+- **Devralan:** Mert'in açacağı yeni oturum. Güncel koordinatör kimliği, devralan oturumun kendi `local_` kimliğidir (`get_session self`).
 
-## 0. Mert'in durumu ve yön (en önemlisi)
-- **Prototip DURDU** (Mert, 2026-10-05 ~18:30Z, KK-156): "koordinator hariç bütün sessionları kapat. prototipi oldugu gibi bırak gerçek uygulamada geliştirmeye devam etmek istiyorum. çok vakit kaybettik". Prototip işi açılmaz; "oturumları meşgul tut" kuralı geçersiz (hafıza `keep-sessions-busy-prototype`).
-- **Yan oturum yok.** Koordinatör dışındaki 19 newfork-clean oturumu arşivlendi (worktree'ler önce ölçüldü). Kayıt oturumu da kapandı: **kayıtları (BACKLOG, KOORDINATOR-KARARLARI, DONE) koordinatör yazıyor.** Kısa işler alt ajanla (`isolation: worktree`); yeni kenar çubuğu oturumu açmadan önce Mert'e sor.
-- "Prototip: Settings eşitleme" (`local_863130bd…`) arşivlenemedi (uygulama "kullanıcı için tutuyor"); Mert kenar çubuğundan kapatacak.
-- Mert PC başında; tıklamalı sorular (§13 şablonu). Kısa ve hızlı ilerleme bekliyor.
+## 0. Yön (en önemlisi)
+- **Aktif plan: ekran ekran ilerleme** — `docs/plan/EKRAN-PLANI.md` (Mert, 2026-10-05, KK-157; CLAUDE.md §1 güncellendi).
+  - Bir ekran seçilir, dört alt ajanla keşfedilir (şablon planda), bulgular `docs/plan/ekranlar/<no>-<ekran>/` altına kaydedilir.
+  - Mert kararları verir; ekran komple biter, sonraki ekrana geçilir.
+  - "Komple" bitmeye ekranın eski açık backlog maddeleri de dahil.
+- **Ekran 1 — Schedule: keşif ve kararlar bitti** (durum "karar"). Sıradaki iş görev dosyası `docs/plan/tasks/EKRAN-01-SCHEDULE.md`.
+  - **Kaynak:** `docs/plan/ekranlar/01-schedule/OZET.md` (7 grup, önem sırasıyla). Mert'in kararları özetin "Mert'in seçimleri" bölümünde ve KARARLAR → Schedule'da (6 madde).
+  - **İlk grup veri kaybı ve düzenleme oturumu:**
+    - D-Y2 hareketsizlik: yeni kural, 15 sn geri sayım + otomatik "auto-save" kurtarma taslağı;
+    - D-Y1 Undo sunucuda geri alır;
+    - D-Y3 kilit erken düşüyor, D-Y4 yenilemede boş taslak, D-Y5 iki yöneticinin işi birbirine biniyor;
+    - B-1/2/3 başka lokasyonun taslağı ve canlı kanal (R3: `nf-db` + `nf-guvenlik`);
+    - Overwrite (yalnız şablonun lokasyonları, başlamış vardiyaya dokunmaz, iki tık).
+  - **Mert'in sürükleme isteği (özette):** sürüklerken kabul eden hücre yeşil, etmeyen kırmızı yanar. Gerçek uygulamada altyapı var (`data-drop-status`, `ScheduleRow.tsx:341`, `styles.css:5841`), prototipte `drop-allowed` / `drop-blocked` (`newfork-prototype/parts/schedule.js`). Hangi sürüklemede eksik olduğu ölçülecek.
+  - **Delegasyon önerisi:** iş büyük ve R3 parçalı; rol oturumlarına bölünmeli (ör. `nf-db` B-1/2/3 + Overwrite + D-Y5 sunucu tarafı; `nf-arayuz` / web D-Y1–Y4, erişilebilirlik ve cilalar). Aynı dosyada iki oturum çalışmaz: `SchedulePage.tsx` sıcak nokta.
+- **Ekran 2 — Requests: keşif ve kararlar bitti.** Sıradaki iş görev dosyası.
+  - **Kaynak:** `docs/plan/ekranlar/02-requests/OZET.md` (§1 tek liste, §6 FB-6.4 plan düzeltmeleri, §10 seçimler); KARARLAR "Schedule → Requests"e 7 satır; KK-158.
+  - FB-6.4 Takas bu ekranın işi (R3, `nf-guvenlik` zorunlu).
+  - Ayrı ekran oturumunda yürüdü (Mert'in isteği, P17).
+- **Görsel kararlar (gerçek ekranda varyant, P04):**
+  - Schedule: BL-445 (üst çubuğun dar penceredeki hâli), BL-524 (ad sütunu simgesi), BL-525 (renk körlüğü için şekil farkı), BL-441 (Publish'te hangi özet kalsın), C-D11 (tek lokasyonda Pazar görünmüyor), C-P2 (telefon düzeni).
+  - Requests: G1–G4 ve S7 (arama kutusu kenarı; Mert "ikisini yan yana göster" dedi).
+- **CI işi:** BL-562 (50 ms testi CPU paylaşımından düşüyor; kök neden maddede, `06a74d5a`) yalnız main'i kırarsa araya girer.
 
 ## 1. İlk işler
-1. Worktree: `git fetch origin && git checkout --detach origin/main`; `CLAUDE.md`, `DELEGASYON.md`, `docs/plan/ILKELER.md` oku. Yeni worktree'de `pnpm.cmd install` + `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build`.
-2. `node scripts/inbox.mjs claim` (çıplak komut), arka planda `node scripts/inbox.mjs wait 7000` (timeout 7200000). Yan oturum olmadığı için posta kutusu sessiz kalabilir.
-3. Kendini "Koordinatör" yap, sabitle, RC aç.
-4. Main CI'a bak: devir anında son kod koşusu 37360408243 (`086449dd`, BL-606 + BL-607) yeşildi; bu devir notunun docs gönderimi ondan sonra.
-5. Devreden `local_b9b956a0…`: commit'leri main'de; worktree'sinde yalnız commit'lenmemiş 4 eski `.claude/agent-memory/nf-guvenlik/*` kopyası var (main'deki daha yeni; commit ETME). Arşivini Mert'e bırak.
+1. Worktree: `git -C ../newfork-wt/coord fetch origin` ve `checkout --detach origin/main`. Oku: `CLAUDE.md`, `DELEGASYON.md`, `docs/plan/ILKELER.md`, `docs/plan/EKRAN-PLANI.md`.
+2. Posta kutusu: `node scripts/inbox.mjs claim` çıplak komut olarak (bileşik komutta hook tanımaz), sonra arka planda `node scripts/inbox.mjs wait 7000` (timeout 7200000). Kilit kimliği `rol/oturum` biçiminde (ör. `koordinator/ops`).
+3. Kendini "Koordinatör" yap, sabitle, Remote Control aç.
+4. **Ana klasör kirli:** `nf-guvenlik` alt ajanı hafıza notlarını ana klasöre yazdı (`.claude/agent-memory/nf-guvenlik/MEMORY.md` + iki `checklist-*.md`). İçerik main'de (`b5c2fa31`). Ana klasörde `.claude/` silme/geri alma oturumdan reddediliyor; Mert'e şu komut verildi:
+   `git restore .claude/agent-memory/nf-guvenlik/MEMORY.md && rm .claude/agent-memory/nf-guvenlik/checklist-bulk-path-skips-single-guards.md .claude/agent-memory/nf-guvenlik/checklist-grep-count-and-id-leak.md && git merge --ff-only origin/main`.
+   Ana klasör `e929abc7`'de kaldı; komut koşulmadıysa hatırlat.
+5. **Oturumlar:**
+   - "EKRAN-02 Requests ekranı keşfi" `local_47a5c079-bbdb-4533-a9d3-6fb7062efea7`: boşta, Opus xhigh, RC açık. Uygulamanın açtığı yer eski koordinatör worktree'si (`.claude/worktrees/handoff-koordinatorlugu-20c0b3`, dal `claude/great-villani-dfeb2f`). Raporları main'de. Requests uygulaması için temizlenip yeniden kullanılabilir (OPS-07).
+   - Önceki koordinatör `local_b9b956a0…`: arşivi Mert'e bırakıldı.
+   - "Dev server başlat" `local_6c7d4ec5…`: Mert'in kendi oturumu, dokunma.
+6. **Main CI:** son kod koşusu 37360408243 (`086449dd`) yeşil. Sonrasında yalnız docs ve `.md` gönderimleri oldu (CI tetiklenmez).
 
-## 2. Bugün gerçek uygulamada bitenler (main'de)
-- **BL-607** (`ba653646`): Schedule "Keep editing?" penceresinde SAVE çalışıyor; metin "No activity for 15 minutes.", çubuk 300 sn. `useEditIdleTimer` artık `{ secondsRemaining, keepAlive }` döndürüyor; uyarı açıkken sayfa hareketi zamanlayıcıyı sıfırlamaz.
-- **BL-606** (`021da39d`, alt ajan nf-arayuz, koordinatör ONAY @`42a092d2`, R1): K17 "Confirm once per editing session" — kapalı gün onayı düzenleme oturumunda bir kez; `apps/web/src/schedule/lib/closedDayAnswer.ts`. Yolda: **BL-685** (low/safe, `confirm_scope` alanı web'e ulaşmıyor).
-- Tam kapı iki gönderimde de yeşil (lint, typecheck, test — web 232 dosya —, build). Main CI: 37359265187 (BL-607): check yeşil, e2e yeni gönderimle iptal, **db kırmızı yalnız `schedule_grid_read_budget.test.sql` test 2 "within 50 ms"** (e2e ile aynı anda; tam BL-562; değişiklik yalnız web, `supabase/` dokunulmadı). **37360408243 (`086449dd`, ikisi birlikte): YEŞİL — e2e, check, db üçü de success (2026-10-05 ~19:30Z).** Bütçe testi bu koşuda geçti; önceki düşüş yükten (BL-562).
+## 2. Bu oturumda main'e girenler (hepsi docs)
+- **BL-562 kök neden ölçümü** (`06a74d5a`): boşta okuma 21–24 ms (değişmedi); CI'da yük altında en iyi okuma 50–65 ms.
+- **Ekran planı ve keşif şablonu** (`20fa9282`, `e929abc7`).
+- **Schedule:**
+  - keşif raporları, özet, 5 bayat madde kapanışı, BL-552 → BL-685 birleşmesi (`b5c2fa31`);
+  - kararlar + CLAUDE.md + ILKELER kanıtları (`82108918`).
+- **Requests:** raporlar (`1bcc64cb`, ekran oturumu); kararlar + KK-158 + sürükleme isteği (`d65737b7`).
 
-## 3. Sıradaki (devir notu sırası; her biri tazelik ölçümüyle)
-1. **BL-562** — Schedule ızgara 50 ms bütçe testi CI'da e2e ile aynı anda koşunca düşüyor (`supabase/tests/schedule_grid_read_budget.test.sql` test 2). Kök neden maddede.
-2. **FB-6.4 Takas** (+ A2 rütbe kuralı, 19 puan; görev dosyası `docs/plan/tasks/FB-6.4*.md`). R3: `nf-guvenlik` zorunlu.
-3. **Yayın öncesi güvenlik paketi** (ILERLEME-PLANI §8): A4 hosted e-posta ölçümü → A5 SSN metni → A1 BL-232 + BL-178 (R3, ultrareview önerisi) → A2 → A3 BL-351. Tasarımlar posta kutusu done: `20261005T080542-nf-guvenlik-sec-a1-tasarim.md`, `20261005T131114-nf-guvenlik-sec-a2-a3-tasarim.md`.
-- Backlog: BL-685'e kadar; high 12, critical yok (2026-10-05, kayıt-21 ölçümü + BL-685).
-- Program FOUNDATION-B Aşama 6–7 %69,8 (183/262), program %76,8 (261/340) — KK-146 sonrası (kayıt #200).
+## 3. Mert'e açık sorular
+- **Görsel kararlar:** yukarıdaki liste.
+- **Önceki devirden hâlâ açık:**
+  - `*state.json` (yerel Supabase oturum anahtarları) silinsin mi;
+  - deneme artifact'i (MAhawwnF…) ve `newfork-prototype-stage` silinsin mi;
+  - üç eski worktree klasörü artığı (`agent-aeafa368…`, `agent-ab68e51d…`, `agent-a77cae19…`) silinsin mi.
 
-## 4. Prototip (durdu — yalnız bilgi)
-- Artifact'ler (özel): "Newfork Desktop" https://claude.ai/artifact/VWK5TmCgVvicJ7EKoLcDCx (sürüm 2, masaüstü) ve "Newfork Phone" https://claude.ai/artifact/SmqEkabujEfXHCktUxqbbK (sürüm 38, 4 telefon panosu). Duyuru akışı https://claude.ai/artifact/QQbm6M5GghTPYLHcCHEBP3 (sürüm 7; v8 yayın reddi çözülmedi, deneme artifact'i https://claude.ai/artifact/MAhawwnFUcLTb7J8nqapyf).
-- Kaynak: `C:\Users\TheWe\Documents\Codex\newfork-prototype` (KANONIK.md); dondurulmuş kopyalar `newfork-clean\artifacts\prototype` ve kayıt-20 scratchpad'i; hazırlık kopyası `newfork-prototype-stage`. Yayınlanmamış biten iş: PROTO-ESIT-P4 (kanonik klasörde).
-- Prototipte bulunan gerçek uygulama hataları backlog'da (BL-606–684 arası). Prototip cilalarının gerçek uygulamaya taşınması: BL-618 (park).
-- Prototip konusu açılırsa Mert'e sunulan öneri: prototip yalnız tasarım defteri; %100 eşitleme yok; fark listesi + "taşı/bırak".
-
-## 5. Mert'e açık sorular (prototip durduğu için çoğu bekler)
-- `*state.json` (yerel Supabase oturum anahtarları: SCR 10, `artifacts\prototype` 8, `newfork-prototype` 0) silinsin mi — geri alınamaz, Mert onayı.
-- Deneme artifact'i (MAhawwnF…) ve `newfork-prototype-stage` klasörü silinsin mi.
-- Üç eski worktree klasörü artığı (`.claude/worktrees/agent-aeafa368ff57306a2`, `agent-ab68e51d5764faab9`, `agent-a77cae19a6eca8acb`; git'ten çıkmış, `.git` yok) silinsin mi.
-- Prototip yeniden açılırsa: Export e-posta varyantı A/B, liste çerçevesi boyu (E9), akış v8 yolu, "Couldn't publish" bildirimi, gerçek e-posta (E-9006, E-7001).
-- Uygulama beklerken sorulmayanlar (backlog "karar gerekir"): BL-628, 644, 646, 652, 667, 671, 679, 680; FB-6.4 owner takas vakası.
-
-## 6. Dersler (bu devir)
-- `artifacts/` ana klasörün içinde: worktree oturumları oraya Write/Edit ile yazamıyor (hook). Ortak çalışma klasörü repo dışında olmalı.
-- `robocopy /MIR`'i kuru koşu (`/L`) olmadan çalıştırma: hedefte başka oturumların 1609 dosyasını silecekti.
-- Yarım iş aynı klasördeyken yayın: ayrı hazırlık kopyası (taban + yalnız biten işin dosyaları) — KK-154.
-- Arşiv, worktree'yi siler: önce her worktree'de `status --short` + `git cherry origin/main HEAD`.
-- Komut döngüsünün son satırı (`[ $rc -ne 0 ] && break`) başarıda 1 döndürür; "failed" bildirimi ölçüm hatasıydı — adım adım `exit=` satırlarına bak.
+## 4. Dersler (bu devir)
+- **Alt ajanın transkripti:** `tasks/<id>.output` bu makinede boş. Gerçek transkript `~/.claude/projects/<proje>/<oturum>/subagents/agent-<id>.jsonl`. Son mesajı repoya almak için ufak bir node betiği yeterli: JSONL'de son `assistant` metni.
+- **Takılan komut:** girdisiz `cat > dosya` komutu takılır. Betik dosyası Write aracıyla yazılmalı.
+- **Kilit:** guard `main.lock`'u komut koşmadan önce denetliyor; kilit ayrı bir komutta alınır.
+- **Alt ajanın ana klasöre yazması:** izolasyonsuz alt ajan (ör. `nf-guvenlik`) ana klasöre hafıza yazabiliyor. Görev mesajına "hafıza notunu raporuna yaz, dosyaya yazma" eklenmeli.
+- **Soru kurmak:** Mert seçenek dışı cevaplarda kural koyuyor (bu turda 3 kez). Örnek, ölçüm ve "bugün tam olarak ne oluyor" anlatımı soruyu kolaylaştırıyor; Mert bir soruda ayrıntılı anlatım istedi.
