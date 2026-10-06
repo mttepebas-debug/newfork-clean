@@ -92,14 +92,25 @@ export class ScheduleRequestError extends Error {
   }
 }
 
+function editConflictCode(error: unknown): unknown {
+  return error instanceof ScheduleRequestError && error.status === 409 && typeof error.body === "object" && error.body
+    ? (error.body as { code?: unknown }).code
+    : undefined;
+}
+
 /** The edit lock lapsed (sleep, lost network): the same person may pick the edit back up. */
 export function isEditLeaseExpired(error: unknown): boolean {
-  return (
-    error instanceof ScheduleRequestError &&
-    error.status === 409 &&
-    error.message === "edit lease expired"
-  );
+  return editConflictCode(error) === "edit_lease_expired";
 }
+
+/** The edit moved on under this screen (another save landed first); reload before the next change. */
+export function isEditSessionStale(error: unknown): boolean {
+  return editConflictCode(error) === "edit_session_stale";
+}
+
+// D-O7: what a person reads when the request itself failed, never a parser or browser message.
+const UNREACHABLE = "Newfork could not be reached. Check your connection and try again.";
+const UNREADABLE = "Newfork could not finish that. Try again in a moment.";
 
 export function pendingOpsKey(
   workspaceId: string | null,
@@ -835,15 +846,28 @@ async function activeScheduleRequest(
   }
   const tabWorkspaceId = getTabWorkspaceId();
   if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${path}`,
-    {
-      ...init,
-      headers,
-    },
-  );
+  let response: Response;
+  try {
+    response = await fetch(
+      `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${path}`,
+      {
+        ...init,
+        headers,
+      },
+    );
+  } catch (error) {
+    // An abort is the caller's own doing; it keeps its name.
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ScheduleRequestError(UNREACHABLE, 0, null);
+  }
   if (response.status === 204) return undefined;
-  const body = (await response.json()) as unknown;
+  let body: unknown;
+  try {
+    body = (await response.json()) as unknown;
+  } catch {
+    // A proxy's HTML error page (502, 504) or a cut-off answer.
+    throw new ScheduleRequestError(UNREADABLE, response.status, null);
+  }
   if (!response.ok) {
     const message =
       typeof body === "object" && body && "error" in body

@@ -1941,6 +1941,30 @@ describe("api app", () => {
     });
     expect(response.statusCode).toBe(409);
     expect(response.json().error).toBe("session revision stale");
+    // D-O7: the web knows a stale edit by its code, not by the sentence.
+    expect(response.json().code).toBe("edit_session_stale");
+  });
+
+  it.each([
+    ["edit lease expired", "edit_lease_expired"],
+    ["shift revision stale", "edit_session_stale"],
+    ["draft revision stale", "edit_session_stale"],
+    ["stale publication preview", undefined],
+  ])("names a Schedule edit conflict by code: %s", async (message, code) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({
+        saveSession: async () => { throw rpcFailure({ message, code: "40001" }); },
+      }),
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/schedule/drafts/save",
+      headers: { authorization: "Bearer owner-token" },
+      payload: { session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 2, name: "Plan", draft_id: null, expected_draft_revision: null },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().code).toBe(code);
   });
 
   it("forwards Schedule retroactive save acknowledgements and preserves past-edit findings", async () => {

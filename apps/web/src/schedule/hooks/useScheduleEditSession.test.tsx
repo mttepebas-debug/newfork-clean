@@ -35,7 +35,7 @@ const session: ScheduleEditSession = {
   shifts: [],
 };
 const leaseExpired = () =>
-  new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired" });
+  new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired", code: "edit_lease_expired" });
 
 function renderEditSession() {
   const onError = vi.fn();

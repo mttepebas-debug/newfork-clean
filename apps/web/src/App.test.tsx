@@ -2035,7 +2035,7 @@ describe("App", () => {
     const saveMock = vi.mocked(saveScheduleDraft);
     // The laptop slept past the 4-minute lock.
     saveMock.mockRejectedValueOnce(
-      new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired" }),
+      new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired", code: "edit_lease_expired" }),
     );
     saveMock.mockResolvedValueOnce(savedDraft);
 
@@ -2099,7 +2099,7 @@ describe("App", () => {
 
   it("says the edit could not be reconnected, never the raw lock text, when the lock lapses twice", async () => {
     const saveMock = vi.mocked(saveScheduleDraft);
-    const lapsed = () => new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired" });
+    const lapsed = () => new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired", code: "edit_lease_expired" });
     saveMock.mockRejectedValueOnce(lapsed());
     saveMock.mockRejectedValueOnce(lapsed());
 
