@@ -1,10 +1,7 @@
 import { locationShortNameSchema, scheduleExportV2ScopeSchema } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
-import { z } from "zod";
 import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleReadService } from "./schedule-service";
-
-const paramsSchema = z.object({ workspaceId: z.string().uuid() });
 
 /** Read-only, uncached authorization. Does not call the legacy export engine. */
 export function registerScheduleExportV2Routes(app: FastifyInstance, options: {
@@ -13,12 +10,11 @@ export function registerScheduleExportV2Routes(app: FastifyInstance, options: {
 }) {
   app.post("/v1/workspaces/:workspaceId/schedule/export-v2/authorize", async (request, reply) => {
     reply.header("Cache-Control", "no-store");
-    const params = paramsSchema.safeParse(request.params);
-    const body = scheduleExportV2ScopeSchema.safeParse(request.body);
-    if (!params.success || !body.success) return reply.code(400).send({ error: "Valid export preview scope required" });
-    const workspaceId = params.data.workspaceId;
-    // The core answers who may export; a workspace they are not in is not there (404).
+    // The core answers who may export, before anything is read; a workspace they are not in is not there (404).
+    const { workspaceId } = request.params as { workspaceId: string };
     const context = authorize(await resolveActor(request.headers.authorization, workspaceId, options.contextResolver), "schedule.export");
+    const body = scheduleExportV2ScopeSchema.safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: "Valid export preview scope required" });
     const service = options.service;
     if (!service) return reply.code(503).send({ error: "Schedule export authorization is unavailable" });
     const scope = body.data;

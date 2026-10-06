@@ -2075,29 +2075,6 @@ export type ScheduleUnpublishResult = z.infer<
   typeof scheduleUnpublishResultSchema
 >;
 
-export const schedulePublicationHistorySchema = z.object({
-  workspace_id: z.string().uuid(),
-  week_start: z.string().date(),
-  publications: z.array(
-    z.object({
-      id: z.string().uuid(),
-      location_id: z.string().uuid(),
-      location_name: z.string().trim().min(1).max(120),
-      version: z.coerce.number().int().positive(),
-      status: z.enum(["current", "superseded", "unpublished"]),
-      source_draft_id: z.string().uuid().nullable(),
-      source_draft_revision: z.coerce.number().int().positive().nullable(),
-      shift_count: z.coerce.number().int().nonnegative(),
-      published_at: z.string().datetime({ offset: true }),
-      unpublished_at: z.string().datetime({ offset: true }).nullable(),
-      superseded_by: z.string().uuid().nullable(),
-    }),
-  ),
-});
-export type SchedulePublicationHistory = z.infer<
-  typeof schedulePublicationHistorySchema
->;
-
 export const scheduleTemplateSummarySchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),

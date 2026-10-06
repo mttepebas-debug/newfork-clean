@@ -1749,7 +1749,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions",
+      url: "/schedule/edit-lock/acquire",
       headers: { authorization: "Bearer owner-token" },
       payload: {
         week_start: "2026-08-17",
@@ -1774,9 +1774,9 @@ describe("api app", () => {
       }),
     });
     const url =
-      "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/shifts";
+      "/shifts";
     const payload = {
-      expected_session_revision: 3,
+      session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 3,
       shift: {
         location_id: "11000000-0000-4000-8000-000000000001",
         employee_id: null,
@@ -1820,9 +1820,9 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/shifts",
+      url: "/shifts",
       headers: { authorization: "Bearer owner-token", "idempotency-key": "89000000-0000-4000-8000-000000000001" },
-      payload: { expected_session_revision: 3, shift: {
+      payload: { session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 3, shift: {
         location_id: "11000000-0000-4000-8000-000000000001", employee_id: null,
         job_id: "33000000-0000-4000-8000-000000000001", shift_type_id: null,
         scheduled_date: "2026-08-17", start_time: "09:00", end_time: "17:00", note: "",
@@ -1846,13 +1846,13 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/shifts",
+      url: "/shifts",
       headers: {
         authorization: "Bearer owner-token",
         "idempotency-key": "89000000-0000-4000-8000-000000000001",
       },
       payload: {
-        expected_session_revision: 3,
+        session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 3,
         shift: {
           location_id: "11000000-0000-4000-8000-000000000001",
           employee_id: null,
@@ -1900,11 +1900,11 @@ describe("api app", () => {
       }),
     });
     const response = await app.inject({
-      method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/shifts/66000000-0000-4000-8000-000000000001/restore",
+      method: "PATCH",
+      url: "/shifts/66000000-0000-4000-8000-000000000001/restore",
       headers: { authorization: "Bearer owner-token" },
       payload: {
-        expected_session_revision: 4,
+        session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 4,
         expected_shift_revision: 2,
       },
     });
@@ -1930,10 +1930,10 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/save",
+      url: "/schedule/drafts/save",
       headers: { authorization: "Bearer owner-token" },
       payload: {
-        expected_session_revision: 2,
+        session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 2,
         name: "Opening plan",
         draft_id: null,
         expected_draft_revision: null,
@@ -1975,10 +1975,10 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/save",
+      url: "/schedule/drafts/save",
       headers: { authorization: "Bearer owner-token" },
       payload: {
-        expected_session_revision: 2,
+        session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 2,
         name: "Opening plan",
         draft_id: null,
         expected_draft_revision: null,
@@ -2058,32 +2058,6 @@ describe("api app", () => {
     expect(response.json()).not.toHaveProperty("reason");
   });
 
-  it("forwards canonical Schedule publication preview scope", async () => {
-    const scopes: string[][] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({
-        previewPublication: async (input) => {
-          scopes.push(input.locationIds);
-          return schedulePublicationPreviewMock();
-        },
-      }),
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publication-preview",
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        draft_id: "85000000-0000-4000-8000-000000000001",
-        week_start: "2026-08-17",
-        location_ids: ["11000000-0000-4000-8000-000000000001"],
-      },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(response.json().status).toBe("publish_ready");
-    expect(scopes).toEqual([["11000000-0000-4000-8000-000000000001"]]);
-  });
-
   it("forwards reference-style Schedule publish preview from active workspace context", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
@@ -2116,31 +2090,6 @@ describe("api app", () => {
     ]);
   });
 
-  it("returns publication history through the publish capability boundary", async () => {
-    const weeks: string[] = [];
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({
-        getPublicationHistory: async (_actor, _workspace, weekStart) => {
-          weeks.push(weekStart);
-          return {
-            workspace_id: resolvedContext.workspace.id,
-            week_start: weekStart,
-            publications: [],
-          };
-        },
-      }),
-    });
-    const response = await app.inject({
-      method: "GET",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publication-history?week_start=2026-08-17",
-      headers: { authorization: "Bearer owner-token" },
-    });
-    expect(response.statusCode).toBe(200);
-    expect(response.json().publications).toEqual([]);
-    expect(weeks).toEqual(["2026-08-17"]);
-  });
-
   it("requires the core's independent schedule.publish action", async () => {
     const app = buildApp({
       contextResolver: {
@@ -2155,7 +2104,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publication-preview",
+      url: "/schedule/publish-preview",
       headers: { authorization: "Bearer manager-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
@@ -2190,7 +2139,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
@@ -2234,7 +2183,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
@@ -2273,7 +2222,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
@@ -2313,7 +2262,7 @@ describe("api app", () => {
     });
     const hard = await hardApp.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: basePayload,
     });
@@ -2331,7 +2280,7 @@ describe("api app", () => {
     });
     const hardDocument = await hardDocumentApp.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: basePayload,
     });
@@ -2347,7 +2296,7 @@ describe("api app", () => {
     });
     const stale = await staleApp.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: basePayload,
     });
@@ -2405,7 +2354,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/publications",
+      url: "/schedule/publish",
       headers: { authorization: "Bearer owner-token" },
       payload: {
         draft_id: "85000000-0000-4000-8000-000000000001",
@@ -2450,7 +2399,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "GET",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/templates",
+      url: "/schedule/templates",
       headers: { authorization: "Bearer manager-token" },
     });
     expect(response.statusCode).toBe(403);
@@ -2469,7 +2418,7 @@ describe("api app", () => {
     });
     const response = await app.inject({
       method: "POST",
-      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/schedule/export-preview",
+      url: "/schedule/export/preview",
       headers: { authorization: "Bearer owner-token" },
       payload: {
         week_start: "2026-08-17",
@@ -2809,8 +2758,8 @@ describe("api app", () => {
       },
     });
     const discard = await app.inject({
-      method: "POST",
-      url: "/schedule/edit-session/discard",
+      method: "DELETE",
+      url: "/schedule/edit-lock/release",
       headers: { authorization: "Bearer owner-token" },
       payload: { session_id: "87000000-0000-4000-8000-000000000001" },
     });
@@ -2822,11 +2771,6 @@ describe("api app", () => {
     const weeklyShifts = await app.inject({
       method: "GET",
       url: "/schedule/shifts?week_start=2026-08-17&location_ids=11000000-0000-4000-8000-000000000001&location_ids=11000000-0000-4000-8000-000000000002&draft_id=85000000-0000-4000-8000-000000000001&include_live=true",
-      headers: { authorization: "Bearer owner-token" },
-    });
-    const legacyShifts = await app.inject({
-      method: "GET",
-      url: "/shifts?week_start=2026-08-17&location_ids=11000000-0000-4000-8000-000000000001",
       headers: { authorization: "Bearer owner-token" },
     });
     const availabilityConflicts = await app.inject({
@@ -2924,40 +2868,11 @@ describe("api app", () => {
         assignments: [],
       },
     });
-    const draftAutoFillPreview = await app.inject({
-      method: "POST",
-      url: "/schedule/drafts/85000000-0000-4000-8000-000000000001/auto-fill/preview",
-      headers: { authorization: "Bearer owner-token" },
-      payload: { week_start: "2026-08-17" },
-    });
-    const draftAutoFillApply = await app.inject({
-      method: "POST",
-      url: "/schedule/drafts/85000000-0000-4000-8000-000000000001/auto-fill/apply",
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        week_start: "2026-08-17",
-        assignments: [
-          {
-            shift_id: "81000000-0000-4000-8000-000000000001",
-            employee_id: "15000000-0000-4000-8000-000000000001",
-          },
-        ],
-      },
-    });
     const bulkDelete = await app.inject({
       method: "POST",
       url: "/shifts/bulk-delete",
       headers: { authorization: "Bearer owner-token" },
       payload: { ids: ["81000000-0000-4000-8000-000000000001"] },
-    });
-    const legacyPublish = await app.inject({
-      method: "PATCH",
-      url: "/shifts/publish",
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        week_start: "2026-08-17",
-        location_id: "11000000-0000-4000-8000-000000000001",
-      },
     });
     const html = await app.inject({
       method: "POST",
@@ -3056,10 +2971,9 @@ describe("api app", () => {
     });
 
     expect(save.statusCode).toBe(200);
-    expect(discard.statusCode).toBe(200);
+    expect(discard.statusCode).toBe(204);
     expect(deleteDraft.statusCode).toBe(200);
     expect(weeklyShifts.statusCode).toBe(200);
-    expect(legacyShifts.statusCode).toBe(200);
     // BL-206: the draft availability conflict list is gone.
     expect(availabilityConflicts.statusCode).toBe(404);
     expect(publicationStatus.statusCode).toBe(200);
@@ -3073,11 +2987,7 @@ describe("api app", () => {
     expect(applyTemplate.statusCode).toBe(200);
     expect(autoFillPreview.statusCode).toBe(200);
     expect(autoFillApply.statusCode).toBe(200);
-    expect(draftAutoFillPreview.statusCode).toBe(200);
-    expect(draftAutoFillApply.statusCode).toBe(200);
     expect(bulkDelete.statusCode).toBe(200);
-    expect(legacyPublish.statusCode).toBe(200);
-    expect(legacyPublish.json()).toEqual({ published_count: 1 });
     expect(html.statusCode).toBe(200);
     expect(html.json().html).toContain("<!doctype html>");
     expect(pdfExport.statusCode).toBe(200);
@@ -3126,17 +3036,6 @@ describe("api app", () => {
           ],
           draftId: "85000000-0000-4000-8000-000000000001",
           includeLive: true,
-        },
-      },
-      {
-        kind: "weekly-shifts",
-        input: {
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          weekStart: "2026-08-17",
-          locationIds: ["11000000-0000-4000-8000-000000000001"],
-          draftId: null,
-          includeLive: false,
         },
       },
       {
@@ -3240,99 +3139,12 @@ describe("api app", () => {
         }),
       },
       {
-        kind: "draft-auto-fill-session",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          weekStart: "2026-08-17",
-          sourceKind: "draft",
-          sourceDraftId: "85000000-0000-4000-8000-000000000001",
-        }),
-      },
-      {
-        kind: "auto-fill-preview",
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        sessionId: "87000000-0000-4000-8000-000000000001",
-      },
-      {
-        kind: "discard",
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        sessionId: "87000000-0000-4000-8000-000000000001",
-      },
-      {
-        kind: "draft-auto-fill-session",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          weekStart: "2026-08-17",
-          sourceKind: "draft",
-          sourceDraftId: "85000000-0000-4000-8000-000000000001",
-        }),
-      },
-      {
-        kind: "auto-fill-preview",
-        actorUserId: resolvedContext.userId,
-        workspaceId: resolvedContext.workspace.id,
-        sessionId: "87000000-0000-4000-8000-000000000001",
-      },
-      {
-        kind: "auto-fill-apply",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          sessionId: "87000000-0000-4000-8000-000000000001",
-          expectedSessionRevision: 1,
-          fingerprint: "c".repeat(64),
-          assignments: [
-            {
-              shift_id: "81000000-0000-4000-8000-000000000001",
-              employee_id: "15000000-0000-4000-8000-000000000001",
-            },
-          ],
-        }),
-      },
-      {
-        kind: "save",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          sessionId: "87000000-0000-4000-8000-000000000001",
-          expectedSessionRevision: 1,
-          name: "Manager draft",
-          draftId: "85000000-0000-4000-8000-000000000001",
-          expectedDraftRevision: 1,
-        }),
-      },
-      {
         kind: "bulk-delete",
         input: {
           actorUserId: resolvedContext.userId,
           workspaceId: resolvedContext.workspace.id,
           shiftIds: ["81000000-0000-4000-8000-000000000001"],
         },
-      },
-      {
-        kind: "legacy-publish-preview",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          draftId: "85000000-0000-4000-8000-000000000001",
-          locationIds: ["11000000-0000-4000-8000-000000000001"],
-        }),
-      },
-      {
-        kind: "legacy-publish",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          draftId: "85000000-0000-4000-8000-000000000001",
-          locationIds: ["11000000-0000-4000-8000-000000000001"],
-          expectedDraftRevision: 1,
-          fingerprint: "a".repeat(64),
-          overrides: [],
-        }),
       },
       {
         kind: "preview-html",
@@ -3515,11 +3327,6 @@ function scheduleServiceMock(
       location_ids: ["11000000-0000-4000-8000-000000000001"],
       publication_ids: ["86000000-0000-4000-8000-000000000001"],
       unpublished_at: "2026-08-17T12:00:00.000Z",
-    }),
-    getPublicationHistory: async () => ({
-      workspace_id: resolvedContext.workspace.id,
-      week_start: "2026-08-17",
-      publications: [],
     }),
     listTemplates: async () => ({ templates: [] }),
     getTemplate: async () => scheduleTemplateMockModel(),

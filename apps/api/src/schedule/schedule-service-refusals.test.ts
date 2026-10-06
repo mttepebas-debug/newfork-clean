@@ -35,7 +35,7 @@ const routeMethods = [
   "createShiftsBatch", "bulkDeleteShifts", "previewDefaultHours", "applyDefaultHours", "saveSession",
   "discardSession", "deleteDraft", "listPendingOps", "addPendingOp",
   "updatePendingOp", "removePendingOp", "getPublicationStatus", "previewPublication", "publish",
-  "previewUnpublish", "unpublish", "getPublicationHistory", "listTemplates", "getTemplate",
+  "previewUnpublish", "unpublish", "listTemplates", "getTemplate",
   "createTemplate", "renameTemplate", "deleteTemplate", "applyTemplate", "previewAutoFill",
   "applyAutoFill", "previewExport", "listExportPresets", "createExportPreset", "updateExportPreset",
   "deleteExportPreset", "listExportSchedules", "createExportSchedule", "updateExportSchedule",

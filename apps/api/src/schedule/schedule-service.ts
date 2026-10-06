@@ -10,7 +10,6 @@ import {
   scheduleEditAcquireResultSchema,
   scheduleEditSessionSchema,
   schedulePublicationPreviewSchema,
-  schedulePublicationHistorySchema,
   schedulePublishResultSchema,
   scheduleReadModelSchema,
   scheduleUnpublishPreviewSchema,
@@ -41,7 +40,6 @@ import {
   type ScheduleEditSource,
   type SchedulePublicationOverrideInput,
   type SchedulePublicationPreflightAck,
-  type SchedulePublicationHistory,
   type SchedulePublicationPreview,
   type SchedulePublishResult,
   type ScheduleReadModel,
@@ -275,11 +273,6 @@ export interface ScheduleReadService {
     locationIds: string[];
     fingerprint: string;
   }): Promise<ScheduleUnpublishResult>;
-  getPublicationHistory(
-    actorUserId: string,
-    workspaceId: string,
-    weekStart: string,
-  ): Promise<SchedulePublicationHistory>;
   listTemplates(
     actorUserId: string,
     workspaceId: string,
@@ -924,18 +917,6 @@ export function createScheduleReadService(options: {
         targets: ["published_shifts", "employee_my_schedule"],
       });
       return result;
-    },
-    async getPublicationHistory(actorUserId, workspaceId, weekStart) {
-      const { data, error } = await client.rpc(
-        "get_schedule_publication_history_service",
-        {
-          actor_user_id: actorUserId,
-          target_workspace_id: workspaceId,
-          target_week_start: weekStart,
-        },
-      );
-      if (error) throw rpcFailure(error);
-      return schedulePublicationHistorySchema.parse(data);
     },
     async listTemplates(actorUserId, workspaceId) {
       const { data, error } = await client.rpc(

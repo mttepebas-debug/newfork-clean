@@ -17,41 +17,7 @@ type Row = readonly [method: string, url: string, action: AuthzAction, input?: "
 const routes: readonly Row[] = [
   ["POST", `${v1}/edit-sessions/:id/default-hours-preview`, "schedule.edit"],
   ["POST", `${v1}/edit-sessions/:id/default-hours-apply`, "schedule.edit"],
-  ["GET", `${v1}/drafts`, "schedule.edit"],
-  ["GET", `${v1}/shifts`, "schedule.read"],
-  ["POST", `${v1}/edit-sessions`, "schedule.edit"],
-  ["GET", `${v1}/publication-history`, "schedule.publish"],
-  ["PATCH", `${v1}/edit-sessions/:id/heartbeat`, "schedule.edit"],
-  ["POST", `${v1}/edit-sessions/:id/shifts`, "schedule.edit"],
-  ["PATCH", `${v1}/edit-sessions/:id/shifts/:id`, "schedule.edit"],
-  ["DELETE", `${v1}/edit-sessions/:id/shifts/:id`, "schedule.edit"],
-  ["POST", `${v1}/edit-sessions/:id/shifts/:id/restore`, "schedule.edit"],
-  ["POST", `${v1}/edit-sessions/:id/save`, "schedule.edit"],
-  ["DELETE", `${v1}/edit-sessions/:id`, "schedule.edit"],
-  ["DELETE", `${v1}/drafts/:id`, "schedule.edit"],
-  ["POST", `${v1}/publication-preview`, "schedule.publish"],
-  ["POST", `${v1}/publications`, "schedule.publish"],
-  ["POST", `${v1}/unpublish-preview`, "schedule.publish"],
-  ["POST", `${v1}/unpublications`, "schedule.publish"],
-  ["GET", `${v1}/templates`, "schedule.templates.read", "none"],
-  ["GET", `${v1}/templates/:id`, "schedule.templates.read"],
-  ["POST", `${v1}/templates`, "schedule.templates"],
-  ["PATCH", `${v1}/templates/:id`, "schedule.templates"],
-  ["DELETE", `${v1}/templates/:id`, "schedule.templates"],
-  ["POST", `${v1}/edit-sessions/:id/apply-template`, "schedule.templates"],
-  ["POST", `${v1}/edit-sessions/:id/auto-fill-preview`, "schedule.edit"],
-  ["POST", `${v1}/edit-sessions/:id/auto-fill-apply`, "schedule.edit"],
-  ["POST", `${v1}/export-preview`, "schedule.export"],
-  ["POST", `${v1}/exports`, "schedule.export"],
-  ["GET", `${v1}/export-presets`, "schedule.export", "none"],
-  ["GET", `${v1}/exports/recent`, "schedule.export", "none"],
-  ["POST", `${v1}/export-presets`, "schedule.export"],
-  ["PATCH", `${v1}/export-presets/:id`, "schedule.export"],
-  ["DELETE", `${v1}/export-presets/:id`, "schedule.export"],
-  ["GET", `${v1}/export-schedules`, "schedule.export", "none"],
-  ["POST", `${v1}/export-schedules`, "schedule.export"],
-  ["PATCH", `${v1}/export-schedules/:id`, "schedule.export"],
-  ["DELETE", `${v1}/export-schedules/:id`, "schedule.export"],
+  ["POST", `${v1}/export-v2/authorize`, "schedule.export"],
   ["GET", "/schedule/reference", "schedule.read"],
   ["GET", "/schedule/shifts", "schedule.read"],
   ["GET", "/schedule/drafts", "schedule.edit"],
@@ -60,14 +26,11 @@ const routes: readonly Row[] = [
   ["POST", "/schedule/pending-ops", "schedule.edit"],
   ["PATCH", "/schedule/pending-ops/:id", "schedule.edit"],
   ["DELETE", "/schedule/pending-ops/:id", "schedule.edit"],
-  ["POST", "/schedule/drafts/:id/auto-fill/preview", "schedule.edit"],
-  ["POST", "/schedule/drafts/:id/auto-fill/apply", "schedule.edit"],
   ["POST", "/schedule/edit-lock/acquire", "schedule.edit"],
   ["POST", "/schedule/edit-session/materialize-live-draft", "schedule.edit"],
   ["PATCH", "/schedule/edit-lock/heartbeat", "schedule.edit"],
   ["DELETE", "/schedule/edit-lock/release", "schedule.edit"],
   ["POST", "/schedule/drafts/save", "schedule.edit"],
-  ["POST", "/schedule/edit-session/discard", "schedule.edit"],
   ["DELETE", "/schedule/drafts/:id", "schedule.edit"],
   ["POST", "/schedule/publish-preview", "schedule.publish"],
   ["POST", "/schedule/publish", "schedule.publish"],
@@ -94,13 +57,55 @@ const routes: readonly Row[] = [
   ["PATCH", "/schedule/export-schedules/:id", "schedule.export"],
   ["DELETE", "/schedule/export-schedules/:id", "schedule.export"],
   ["POST", "/shifts", "schedule.edit"],
-  ["GET", "/shifts", "schedule.read"],
   ["POST", "/shifts/batch", "schedule.edit"],
   ["POST", "/shifts/bulk-delete", "schedule.edit"],
-  ["PATCH", "/shifts/publish", "schedule.publish"],
   ["PATCH", "/shifts/:id", "schedule.edit"],
   ["DELETE", "/shifts/:id", "schedule.edit"],
   ["PATCH", "/shifts/:id/restore", "schedule.edit"],
+];
+
+// B-8: dead twins of live routes; the web never called them. They stay gone.
+const retired: readonly (readonly [method: string, url: string])[] = [
+  ["GET", `${v1}/drafts`],
+  ["GET", `${v1}/shifts`],
+  ["POST", `${v1}/edit-sessions`],
+  ["GET", `${v1}/publication-history`],
+  ["PATCH", `${v1}/edit-sessions/:id/heartbeat`],
+  ["POST", `${v1}/edit-sessions/:id/shifts`],
+  ["PATCH", `${v1}/edit-sessions/:id/shifts/:id`],
+  ["DELETE", `${v1}/edit-sessions/:id/shifts/:id`],
+  ["POST", `${v1}/edit-sessions/:id/shifts/:id/restore`],
+  ["POST", `${v1}/edit-sessions/:id/save`],
+  ["DELETE", `${v1}/edit-sessions/:id`],
+  ["DELETE", `${v1}/drafts/:id`],
+  ["POST", `${v1}/publication-preview`],
+  ["POST", `${v1}/publications`],
+  ["POST", `${v1}/unpublish-preview`],
+  ["POST", `${v1}/unpublications`],
+  ["GET", `${v1}/templates`],
+  ["GET", `${v1}/templates/:id`],
+  ["POST", `${v1}/templates`],
+  ["PATCH", `${v1}/templates/:id`],
+  ["DELETE", `${v1}/templates/:id`],
+  ["POST", `${v1}/edit-sessions/:id/apply-template`],
+  ["POST", `${v1}/edit-sessions/:id/auto-fill-preview`],
+  ["POST", `${v1}/edit-sessions/:id/auto-fill-apply`],
+  ["POST", `${v1}/export-preview`],
+  ["POST", `${v1}/exports`],
+  ["GET", `${v1}/export-presets`],
+  ["GET", `${v1}/exports/recent`],
+  ["POST", `${v1}/export-presets`],
+  ["PATCH", `${v1}/export-presets/:id`],
+  ["DELETE", `${v1}/export-presets/:id`],
+  ["GET", `${v1}/export-schedules`],
+  ["POST", `${v1}/export-schedules`],
+  ["PATCH", `${v1}/export-schedules/:id`],
+  ["DELETE", `${v1}/export-schedules/:id`],
+  ["POST", "/schedule/drafts/:id/auto-fill/preview"],
+  ["POST", "/schedule/drafts/:id/auto-fill/apply"],
+  ["POST", "/schedule/edit-session/discard"],
+  ["GET", "/shifts"],
+  ["PATCH", "/shifts/publish"],
 ];
 
 const cases = routes.map(([method, url, action, input]) => ({ method, url, action, input }));
@@ -200,14 +205,29 @@ describe("Schedule route table is complete", () => {
     app.addHook("onRoute", (route) => {
       for (const method of [route.method].flat()) {
         if (method === "HEAD") continue;
-        // ponytail: export-v2 keeps its own gate until its slice moves it.
-        if (route.url.includes("/export-v2/")) continue;
         registered.push(`${method} ${route.url.replace(":workspaceId", W).replace(/:\w+/g, ":id")}`);
       }
     });
     registerScheduleRoutes(app, { service: null, contextResolver: null });
     await app.ready();
     expect(registered.sort()).toEqual(routes.map(([method, url]) => `${method} ${url}`).sort());
+    await app.close();
+  });
+});
+
+describe("Retired Schedule routes", () => {
+  // Asked of the registration, not by URL: PATCH /shifts/publish would land on PATCH /shifts/:id.
+  it("registers none of the retired twins", async () => {
+    const app = Fastify();
+    const registered: string[] = [];
+    app.addHook("onRoute", (route) => {
+      for (const method of [route.method].flat())
+        registered.push(`${method} ${route.url.replace(":workspaceId", W).replace(/:\w+/g, ":id")}`);
+    });
+    registerScheduleRoutes(app, { service: null, contextResolver: null });
+    await app.ready();
+    for (const [method, url] of retired) expect(registered).not.toContain(`${method} ${url}`);
+    expect(retired.length).toBe(40);
     await app.close();
   });
 });
