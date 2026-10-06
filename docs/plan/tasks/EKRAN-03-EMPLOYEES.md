@@ -73,7 +73,7 @@ Bir kişi için: Owner Mert, yanlışlıkla işten çıkardığı garson Ali'yi 
 | E3-34 bayat önbellek | B1 | BL-785 |
 | E3-35 History zayıf | A4 + C2 | BL-786 |
 | E3-36 tercih edilen ad bildirimi (K5) | A3 | BL-776 |
-| E3-37 durum / metin tutarsızlıkları (K9, K10) | C2 | BL-674, BL-408, BL-662, BL-428, BL-430 |
+| E3-37 durum / metin tutarsızlıkları (K9, K10) | C2 | BL-674, BL-408, BL-428, BL-430 (BL-662 Employees yarısı kapandı 2026-10-06; Settings yarısı Settings turunda) |
 | E3-38 ölü ve ikiz kod | B1 + A1 | BL-401 |
 | G3 "Kadikoy +1" | A4 + C1 | BL-428 |
 | Prototip taşı (12): L3, L7, L11, L26, P4, P5, P8, E10, AC4, AC8, T2, T3 | C1 (L3, L7, L11, L26), B2 + C2 (P4, P5, E10, AC4, AC8, T2, T3), A2 + B2 (P8) | OZET §2 |
@@ -145,7 +145,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce, sunum sonra yeni `origi
 - **Reviewer:** `nf-gorsel-qa`.
 
 ### C2 — Çekmece ve pencereler (`nf-arayuz`; R2)
-- **Ne:** K8 / E3-06 / T3 "Confirm termination" kırmızı iki tık; E3-15 telefonda Terminate / Restore (BL-407); E3-16 Terminate penceresi klavye; E3-07 odak (BL-478); E3-22 hata rengi; E3-25 telefonda başlık; E3-26 kutucuk ve Access düğmeleri; E3-35 History görünümü; E3-37 metinler (K9, K10; BL-674, BL-408, BL-662, BL-428, BL-430); Restore penceresinin görünümü.
+- **Ne:** K8 / E3-06 / T3 "Confirm termination" kırmızı iki tık; E3-15 telefonda Terminate / Restore (BL-407); E3-16 Terminate penceresi klavye; E3-07 odak (BL-478); E3-22 hata rengi; E3-25 telefonda başlık; E3-26 kutucuk ve Access düğmeleri; E3-35 History görünümü; E3-37 metinler (K9, K10; BL-674, BL-408, BL-428, BL-430); Restore penceresinin görünümü.
 - **Touches:** `EmployeeDrawer.tsx` (görünüm), `apps/web/src/employees/*.css`, `styles.css` (`.employee-drawer-*`, :2745-2747).
 - **Bağımlılık:** B2 main'de; C1 ile dosya ayrık ama `styles.css` ortak → sırayla gönderilir.
 - **Done when:** ekran görüntüsü 1440 + 390; Tab ile Terminate penceresi baştan sona; telefonda Terminate ve Restore görünür; `nf-gorsel-qa` ONAY.
