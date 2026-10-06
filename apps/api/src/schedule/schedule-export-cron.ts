@@ -54,6 +54,19 @@ const UNREADABLE_EXPORT =
 // The database keeps at most this much of the missed-recipients note.
 const UNDELIVERED_NOTE_LIMIT = 500;
 
+// BE-2b-O1: Resend takes 2 requests a second by default; one send every 600 ms
+// stays under it across every schedule the run sends in parallel.
+// ponytail: a fixed pace; read Resend's own limit headers if the plan changes.
+const SEND_INTERVAL_MS = 600;
+// A passing failure (429, a brief outage) is tried once more after this pause,
+// inside the same run: the serverless function cannot wait minutes.
+const RETRY_DELAY_MS = 5_000;
+
+/** The cron's clock for its pauses; tests replace it. */
+export const scheduleExportTiming = {
+  wait: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+};
+
 export async function runScheduledExportsCron(input: {
   service: ScheduleReadService;
   delivery: ScheduleExportDelivery;
@@ -63,6 +76,15 @@ export async function runScheduledExportsCron(input: {
 }): Promise<ScheduledExportCronResult> {
   const now = input.now ?? new Date();
   const candidates = await input.service.listScheduledExportCronCandidates(now);
+  // One queue for every send in this run: each starts SEND_INTERVAL_MS after the last.
+  let nextSendAt = 0;
+  const paced = async (send: () => Promise<void>) => {
+    const startAt = Math.max(Date.now(), nextSendAt);
+    nextSendAt = startAt + SEND_INTERVAL_MS;
+    const delay = startAt - Date.now();
+    if (delay > 0) await scheduleExportTiming.wait(delay);
+    await send();
+  };
   const result: ScheduledExportCronResult = {
     checked: candidates.schedules.length + candidates.unreadable.length,
     due: 0,
@@ -123,24 +145,37 @@ export async function runScheduledExportsCron(input: {
       const filename = `schedule-${weekStart}.${rendered.extension}`;
       const subject = `${schedule.workspace_name} schedule for ${weekStart}`;
       const html = `<p>${escapeHtml(schedule.name)} is attached.</p>`;
-      const deliveries = await Promise.allSettled(
-        schedule.recipients.map((recipient) =>
-          input.delivery.send({
-            to: recipient,
-            idempotencyKey: `${schedule.id}:${weekStart}:${recipient}`,
-            subject,
-            html,
-            attachment: {
-              filename,
-              content: rendered.content,
-              contentType: rendered.contentType,
-            },
-          }),
-        ),
+      const sendTo = (recipients: readonly string[]) =>
+        Promise.allSettled(
+          recipients.map((recipient) =>
+            paced(() =>
+              input.delivery.send({
+                to: recipient,
+                // The same key on the retry: nobody gets the week twice.
+                idempotencyKey: `${schedule.id}:${weekStart}:${recipient}`,
+                subject,
+                html,
+                attachment: {
+                  filename,
+                  content: rendered.content,
+                  contentType: rendered.contentType,
+                },
+              }),
+            ),
+          ),
+        );
+      const firstTry = await sendTo(schedule.recipients);
+      let missed = schedule.recipients.filter(
+        (_, index) => firstTry[index]?.status === "rejected",
       );
-      const missed = schedule.recipients.filter(
-        (_, index) => deliveries[index]?.status === "rejected",
-      );
+      let deliveries = firstTry;
+      // BE-2b-O1: whoever missed it is tried once more, after a pause.
+      if (missed.length) {
+        await scheduleExportTiming.wait(RETRY_DELAY_MS);
+        const retry = await sendTo(missed);
+        missed = missed.filter((_, index) => retry[index]?.status === "rejected");
+        deliveries = retry;
+      }
       const delivered = schedule.recipients.length - missed.length;
       // Only an email that reached nobody is a failure toward switching the rule off.
       if (delivered === 0) {

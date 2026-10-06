@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   ScheduleExportPreview,
   ScheduleExportSettings,
@@ -6,6 +6,7 @@ import type {
 import {
   isScheduledExportDue,
   runScheduledExportsCron,
+  scheduleExportTiming,
   weekStartForTimezone,
 } from "./schedule-export-cron";
 import type {
@@ -13,6 +14,15 @@ import type {
   ScheduledExportCronCandidate,
 } from "./schedule-service";
 import { HttpError } from "../http-error";
+
+// BE-2b-O1: the cron paces sends and waits before its one retry; tests do not sit through it.
+const waits: number[] = [];
+beforeEach(() => {
+  waits.length = 0;
+  vi.spyOn(scheduleExportTiming, "wait").mockImplementation(async (ms: number) => {
+    waits.push(ms);
+  });
+});
 
 const settings: ScheduleExportSettings = {
   format: "csv",
@@ -96,7 +106,8 @@ describe("scheduled schedule export cron", () => {
     });
 
     expect(result).toEqual({ checked: 1, due: 1, sent: 1, failed: 0, skipped: 0 });
-    expect(sent).toEqual(["one@example.test", "two@example.test"]);
+    // Tried once more after a pause; it still bounced.
+    expect(sent).toEqual(["one@example.test", "two@example.test", "two@example.test"]);
     expect(service.recordScheduledExportFailure).not.toHaveBeenCalled();
     expect(service.recordScheduledExportSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -105,6 +116,60 @@ describe("scheduled schedule export cron", () => {
         params: expect.objectContaining({ recipients: 2, delivered: 1 }),
       }),
     );
+  });
+
+  // BE-2b-O1 (Mert: "Bir kez yeniden dene"): a passing failure (Resend 429) costs
+  // nobody the week; only the missed are tried again, under the same key.
+  it("tries the missed recipients once more after a pause, and a recovered one counts as delivered", async () => {
+    const sent: { to: string; key: string }[] = [];
+    let twoTries = 0;
+    const service = scheduleServiceMock([
+      scheduleCandidate({ recipients: ["one@example.test", "two@example.test"] }),
+    ]);
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: {
+        send: vi.fn(async (message) => {
+          sent.push({ to: message.to, key: message.idempotencyKey });
+          if (message.to === "two@example.test" && twoTries++ === 0) throw new Error("Schedule email delivery failed (429)");
+        }),
+      },
+    });
+
+    expect(result).toEqual({ checked: 1, due: 1, sent: 1, failed: 0, skipped: 0 });
+    expect(sent.map((item) => item.to)).toEqual(["one@example.test", "two@example.test", "two@example.test"]);
+    expect(sent[2]!.key).toBe(sent[1]!.key);
+    expect(waits).toContain(5_000);
+    expect(service.recordScheduledExportSuccess.mock.calls[0]?.[0]).not.toHaveProperty("undelivered");
+    expect(service.recordScheduledExportSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ recipients: 2, delivered: 2 }) }),
+    );
+  });
+
+  it("does not try again when everyone got it", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({ recipients: ["one@example.test", "two@example.test"] }),
+    ]);
+    const send = vi.fn(async () => undefined);
+    await runScheduledExportsCron({ service, now: new Date("2026-08-17T15:00:00.000Z"), delivery: { send } });
+
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(waits).not.toContain(5_000);
+  });
+
+  it("starts each send at least 600 ms after the one before, across schedules", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({ recipients: ["a@example.test", "b@example.test", "c@example.test"] }),
+    ]);
+    await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send: vi.fn(async () => undefined) },
+    });
+
+    // The clock does not move in the test: each send waits its turn behind the last.
+    expect(waits.filter((ms) => ms > 0 && ms < 5_000)).toEqual([600, 1200]);
   });
 
   it("keeps the missed-recipients note within 500 characters", async () => {
