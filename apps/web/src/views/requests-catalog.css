@@ -686,6 +686,8 @@
   box-shadow: 0 12px 28px color-mix(in srgb, var(--theme-text) 14%, transparent);
 }
 .requests-catalog-page .requests-type-filter legend {
+  float: left;
+  width: 100%;
   padding: 2px 4px 6px;
   color: var(--theme-list-head-text);
   font-size: 11px;

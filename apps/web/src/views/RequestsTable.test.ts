@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dateRange, shortDate } from "./RequestsTable";
+import { clockRange, dateRange, shortDate } from "./RequestsTable";
 
 // K-S10: one date form across Requests; the year only when it is not this year.
 describe("Requests dates", () => {
@@ -16,5 +16,11 @@ describe("Requests dates", () => {
     expect(dateRange("2029-04-25", "2029-04-27", now)).toBe("Apr 25 – Apr 27, 2029");
     expect(dateRange("2026-12-30", "2027-01-02", now)).toBe("Dec 30 – Jan 2, 2027");
     expect(dateRange("2026-10-11", "2026-10-11", now)).toBe("Oct 11");
+  });
+  it("writes a shift's hours with AM or PM once when both ends share it", () => {
+    expect(clockRange("15:30:00", "23:00:00", "12h")).toBe("3:30–11:00 PM");
+    expect(clockRange("11:00", "15:00", "12h")).toBe("11:00 AM–3:00 PM");
+    expect(clockRange("00:30", "08:00", "12h")).toBe("12:30–8:00 AM");
+    expect(clockRange("15:30", "23:00", "24h")).toBe("15:30–23:00");
   });
 });
