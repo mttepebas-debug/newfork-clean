@@ -1180,6 +1180,18 @@ export function SchedulePage({
     });
   });
 
+  // KK-164: while editing, another week opens in view mode and the edit stays
+  // open in its own week; coming back picks it up again with the same lock.
+  const editWeekStart = session?.week_start;
+  const editDraftId = session?.source_draft_id ?? null;
+  const shownWeekStart = query.data?.week_start;
+  useEffect(() => {
+    if (!editWeekStart || !shownWeekStart) return;
+    const ownWeek = editWeekStart === shownWeekStart;
+    if (!ownWeek && isEditMode) setScheduleMode("preview", null);
+    else if (ownWeek && !isEditMode) setScheduleMode("edit", editDraftId);
+  }, [editDraftId, editWeekStart, isEditMode, setScheduleMode, shownWeekStart]);
+
   const discardEditSession = () => {
     if (!context || !session || isDiscardingEditSession) return;
     setDiscardConfirmOpen(false);

@@ -2116,6 +2116,30 @@ describe("App", () => {
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
   });
 
+  // KK-164: another week opens in view mode; the edit stays open in its own week.
+  it("opens another week in view mode while editing and picks the edit back up on return (KK-164)", async () => {
+    vi.mocked(discardScheduleEditSession).mockClear();
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspace, date) =>
+      scheduleFixtureForWeek(date >= "2026-08-24" ? "2026-08-24" : "2026-08-17"),
+    );
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("date")).toBe("2026-08-24"));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("mode")).not.toBe("edit"));
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Previous week" }));
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get("mode")).toBe("edit"));
+    expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+  }, 20000);
+
   it("leaves edit mode for good on Discard; the reload resume does not take the lock again", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
     render(<App />);
