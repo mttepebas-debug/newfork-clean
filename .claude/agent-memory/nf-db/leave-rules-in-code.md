@@ -11,3 +11,4 @@ metadata:
 
 **Why:** FB-6.1.6 freshness check, 2026-09-26.
 **How to apply:** before touching leave or exchange rules, re-grep `pg_proc.prosrc like '%approved_time_off%'` on the local DB and check whether the exchange gap has been decided. See [[sql-traps-core-translation]].
+- `app_private.time_off_sweep` loop two takes the earliest deadlines of every workspace (`order by decide_by limit N`); rows with nothing due fill N, so request N+1 never gets its reminder or system approval. Do not shrink N without a fair turn (EKRAN-02 A3 review O1; N is 500, BL-506 open).
