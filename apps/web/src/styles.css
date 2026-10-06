@@ -5494,16 +5494,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #78827e;
   font-size: 10px;
 }
-.schedule-employee-cell .schedule-employee-availability {
-  display: inline-flex;
-  width: 17px;
-  height: 17px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  margin-top: 0;
-  color: #8a5d10;
-}
 .schedule-employee-cell[data-unassigned="true"] {
   background: var(--schedule-unassigned-row-background);
   color: #553100;
@@ -5986,44 +5976,23 @@ button.workspace-switcher-item:hover:not(:disabled) {
     rgba(155, 75, 60, 0.07) 7px 9px
   );
 }
-/* A marked day (G14, BL-204): wash, a 135° hatch that stays under the cards
-   and a 1px frame on all four sides. Orange = unavailable, red = time off. */
-.schedule-cell[data-availability-kind] {
-  --schedule-availability-edge: var(--theme-availability);
-  --schedule-availability-line: color-mix(
-    in srgb,
-    var(--theme-availability) 26%,
-    transparent
-  );
-  background-color: var(--theme-availability-soft);
-  background-image: repeating-linear-gradient(
-    135deg,
-    transparent 0 6px,
-    var(--schedule-availability-line) 6px 9px
-  );
-  box-shadow: inset 0 0 0 1px var(--schedule-availability-edge);
-}
+/* A marked day (KARARLAR Schedule, 2026-10-06): time off is a flat red cell
+   that says "Time off"; an unavailable day draws nothing but its orange "!". */
 .schedule-cell[data-availability-kind="time_off"] {
-  --schedule-availability-edge: var(--theme-time-off);
-  --schedule-availability-line: color-mix(
-    in srgb,
-    var(--theme-time-off) 32%,
-    transparent
-  );
   background-color: var(--theme-time-off-soft);
 }
-.schedule-cell[data-availability-kind][data-location-boundary="start"] {
-  box-shadow:
-    inset var(--schedule-location-boundary-width) 0 #8fa098,
-    inset 0 0 0 1px var(--schedule-availability-edge);
-}
-.schedule-availability-tip-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
-  color: var(--theme-text);
-  font-size: 13px;
+.schedule-cell[data-availability-kind="time_off"]:not(:has(.schedule-shift-badge))::before {
+  content: "Time off";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--theme-danger-text);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 .schedule-availability-tip-dot {
   display: inline-grid;
@@ -6039,66 +6008,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .schedule-availability-tip-dot[data-kind="time_off"] {
   background: var(--theme-time-off);
-}
-.schedule-availability-tip-window {
-  display: grid;
-}
-.schedule-availability-tip-source {
-  color: var(--theme-muted);
-}
-/* The card's "!" bubble: C3 "Tinted header" (KARARLAR, 2026-10-03). The band
-   reaches the bubble's edges over the rich tooltip's 10px 12px padding. */
-.schedule-availability-tip-band {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: -10px -12px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--theme-availability) 25%, transparent);
-  border-radius: 7px 7px 0 0;
-  padding: 9px 12px;
-  background: var(--theme-availability-soft);
-}
-.schedule-availability-tip-band .schedule-availability-tip-dot {
-  width: 18px;
-  height: 18px;
-  font-size: 11px;
-}
-.schedule-availability-tip-who {
-  display: grid;
-}
-.schedule-availability-tip-who strong {
-  color: var(--theme-text);
-  font-size: 13.5px;
-  font-weight: 650;
-}
-.schedule-availability-tip-who span {
-  color: var(--theme-muted-strong);
-  font-size: 12px;
-}
-.schedule-availability-tip-body {
-  display: grid;
-  justify-items: start;
-  gap: 6px;
-  padding-top: 9px;
-}
-.schedule-availability-tip-body strong {
-  font-weight: 600;
-}
-.schedule-availability-tip-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 999px;
-  padding: 2px 8px;
-  background: var(--theme-surface-muted);
-  color: var(--theme-muted-strong);
-  font-size: 12px;
-}
-.schedule-availability-tip-foot {
-  margin-top: 4px;
-  border-top: 1px solid var(--theme-border);
-  padding-top: 6px;
-  color: var(--theme-muted);
 }
 .schedule-cell[data-overlap="true"] {
   box-shadow: inset 2px 0 0 #c45b43;
@@ -11002,20 +10911,75 @@ button.workspace-switcher-item:hover:not(:disabled) {
     animation: none;
   }
 }
-/* "Ali shows as unavailable for this shift" (BL-186, G14): an orange "!",
-   never the red of time off. Its hover opens the card tip. */
-.schedule-shift-badge .schedule-shift-availability-flag {
+/* The availability "!" (KARARLAR Schedule, 2026-10-06): an orange button in an
+   empty cell's corner, on a clashing card and by the name; a press opens a small
+   window with the date and hours. Hover grows it with a ring. */
+.schedule-availability-mark {
   display: inline-grid;
+  flex: 0 0 auto;
   place-items: center;
   width: 18px;
   height: 18px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: var(--theme-availability);
   color: var(--theme-on-accent);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-}.schedule-shift-stack-count {
+  font: 800 11px/1 inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.schedule-availability-mark:hover,
+.schedule-availability-mark[aria-expanded="true"] {
+  transform: scale(1.22);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-availability) 28%, transparent);
+}
+.schedule-availability-mark:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-availability-mark {
+    transition: none;
+  }
+}
+.schedule-availability-mark-corner {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+}
+.schedule-availability-mark-card {
+  position: relative;
+  z-index: 2;
+}
+.schedule-availability-mark-window {
+  position: fixed;
+  z-index: 300;
+  display: grid;
+  gap: 4px;
+  max-width: 392px;
+  padding: 10px 12px;
+  white-space: nowrap;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  box-shadow: 0 10px 28px rgba(23, 33, 29, 0.16);
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.schedule-availability-mark-window p {
+  margin: 0;
+}
+/* A card with a corner mark keeps its words centred: equal room on both sides
+   (the measured column width already counts the mark). */
+.schedule-shift-badge[data-has-markers="true"]:not([data-stack-count])
+  .schedule-shift-badge-content {
+  padding-right: 24px;
+  padding-left: 24px;
+}
+.schedule-shift-stack-count {
   position: absolute;
   right: 5px;
   top: 5px;

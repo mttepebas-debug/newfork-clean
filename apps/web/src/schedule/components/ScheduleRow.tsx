@@ -21,6 +21,11 @@ import {
   useSynchronizedRowBadgeHeight,
 } from "../hooks/useScheduleBadgeMeasurements";
 import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
+import {
+  formatAvailabilityMarkDay,
+  formatAvailabilityMarkLine,
+  nameCellShowsAvailabilityMark,
+} from "../lib/scheduleAvailabilityMark";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
 import { shiftDropTargetKey } from "../lib/scheduleDragTargets";
 import {
@@ -42,7 +47,7 @@ import type { CellContextMenuTarget } from "./ScheduleContextMenu";
 import { ScheduleEmployeeCard } from "./ScheduleEmployeeCard";
 import type { PresetDragState } from "./SchedulePresetRows";
 import { ScheduleTotalValue } from "./ScheduleTotalsRow";
-import { ScheduleAvailabilityCellTip } from "./ScheduleAvailabilityTip";
+import { AvailabilityMarkButton } from "./AvailabilityMarkButton";
 import { GhostShiftCard, ShiftCard } from "./ShiftCard";
 import {
   scheduleJobName,
@@ -211,9 +216,28 @@ export function ScheduleRow({
     "--schedule-row-badge-height": `${badgeHeight}px`,
   } as CSSProperties;
 
+  // The name cell's "!" reads every cell of the row (KARARLAR Schedule, 2026-10-06).
+  const availabilityDays = employee
+    ? locations.flatMap((location) => days.map((day) => {
+        const cell = employeeShifts.filter((shift) => location.sourceIds.includes(shift.location_id) && shift.scheduled_date === day);
+        return {
+          date: day,
+          mark: cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))?.availabilityMark ?? null,
+          shiftCount: cell.length,
+          clashes: cell.some((shift) => shift.warning_codes.includes("availability")),
+        };
+      }))
+    : [];
+  const nameAvailabilityLines = nameCellShowsAvailabilityMark(availabilityDays)
+    ? [...new Set(availabilityDays.flatMap(({ date, mark }) => mark?.kind === "unavailable"
+        ? mark.windows.map((window) => formatAvailabilityMarkLine(date, window, timeFormat))
+        : []))]
+    : [];
+
   return (
     <>
       <ScheduleEmployeeCard
+        availabilityLines={nameAvailabilityLines}
         editing={editing}
         employee={employee}
         openShiftCount={displayedOpenShiftCount}
@@ -394,12 +418,11 @@ export function ScheduleRow({
                 })
               }
             >
-              {availabilityMark && employee ? (
-                <ScheduleAvailabilityCellTip
-                  mark={availabilityMark}
-                  employeeName={employee.display_name}
-                  day={day}
-                  timeFormat={timeFormat}
+              {availabilityMark?.kind === "unavailable" && employee && displayStacks.length === 0 ? (
+                <AvailabilityMarkButton
+                  className="schedule-availability-mark-corner"
+                  label={`${employee.display_name}: unavailable on ${formatAvailabilityMarkDay(day)}`}
+                  lines={availabilityMark.windows.map((window) => formatAvailabilityMarkLine(day, window, timeFormat))}
                 />
               ) : null}
               {displayStacks.map(({ shift, groupedShiftIds, stackCount }) =>

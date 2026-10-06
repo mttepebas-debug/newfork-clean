@@ -8,7 +8,6 @@ import type {
   CSSProperties,
   MouseEvent,
   PointerEvent as ReactPointerEvent,
-  SyntheticEvent,
 } from "react";
 import { useEffect, useId, useRef } from "react";
 
@@ -17,12 +16,13 @@ import {
   formatScheduleBadgeAriaLabel,
   formatScheduleShiftWarningAria,
 } from "../badgeAccessibility";
-import { Tooltip, useTooltip } from "../../shell/Tooltip";
+import { Tooltip } from "../../shell/Tooltip";
 import {
+  formatAvailabilityMarkLine,
   windowsDuringShift,
   type ScheduleAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
-import { ScheduleAvailabilityCardTip } from "./ScheduleAvailabilityTip";
+import { AvailabilityMarkButton } from "./AvailabilityMarkButton";
 import type { TimeFormat } from "../timeInput";
 import type { ScheduleShiftTypeLook } from "../lib/scheduleCatalogNames";
 import type { ShiftPublicationState } from "./ScheduleContextMenu";
@@ -124,41 +124,13 @@ export function ShiftCard({
     : null;
   const showAvailabilityCorner = Boolean(availabilityWarning);
   const availabilityDescriptionId = useId();
-  const availabilityTipContent =
-    availabilityWarning && employeeName && availabilityMark?.kind === "unavailable" ? (
-      <ScheduleAvailabilityCardTip
-        employeeName={employeeName}
-        day={shift.scheduled_date}
-        windows={windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)}
-        timeFormat={timeFormat}
-        changedAfterPublish={shift.availability_changed_after_publish}
-      />
-    ) : availabilityWarning;
-  const availabilityTip = useTooltip(availabilityTipContent, true);
-  const flagTappedAt = useRef(-Infinity);
-  // The browser's mouse events after a tap on the "!" must not reach the card.
-  const keepTapOnFlag = (event: SyntheticEvent) => {
-    if (performance.now() - flagTappedAt.current > 800) return;
-    event.preventDefault();
-    event.stopPropagation();
-  };
-  const closeAvailabilityTip = availabilityTip.close;
-  useEffect(() => {
-    if (!availabilityTip.isOpen) return;
-    // A tap or click anywhere but the "!" and its bubble closes it.
-    const onOutside = (event: Event) => {
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest(".schedule-shift-availability-flag, [role='tooltip']")) return;
-      closeAvailabilityTip();
-    };
-    // A tap on another card may send no pointerdown here, only its click.
-    document.addEventListener("pointerdown", onOutside, true);
-    document.addEventListener("click", onOutside, true);
-    return () => {
-      document.removeEventListener("pointerdown", onOutside, true);
-      document.removeEventListener("click", onOutside, true);
-    };
-  }, [availabilityTip.isOpen, closeAvailabilityTip]);
+  // The card's "!" window says the hours this shift runs into (KARARLAR Schedule, 2026-10-06).
+  const availabilityLines = availabilityWarning && availabilityMark?.kind === "unavailable"
+    ? windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)
+        .map((window) => formatAvailabilityMarkLine(shift.scheduled_date, window, timeFormat))
+        // M11: a mark that came after the first publish says so.
+        .concat(shift.availability_changed_after_publish ? ["Changed after publishing"] : [])
+    : [];
   // The manager's note (BL-199): an ink corner, the note on a mouse hover of
   // that corner, and the text as the card's description for screen readers.
   const note = shift.note.trim();
@@ -328,63 +300,19 @@ export function ShiftCard({
       ) : null}
       {availabilityWarning ? (
         <span id={availabilityDescriptionId} className="sr-only">
-          {availabilityWarning && employeeName && availabilityMark?.kind === "unavailable" ? (
-            <ScheduleAvailabilityCardTip
-              employeeName={employeeName}
-              day={shift.scheduled_date}
-              windows={windowsDuringShift(availabilityMark.windows, shift.start_time, shift.end_time)}
-              timeFormat={timeFormat}
-              changedAfterPublish={shift.availability_changed_after_publish}
-              plain
-            />
-          ) : availabilityWarning}
+          {[availabilityWarning, ...availabilityLines].join(" ")}
         </span>
       ) : null}
       {noteCorner.corner}
       {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
           {showAvailabilityCorner ? (
-            <span
-              className="schedule-shift-availability-flag"
-              aria-hidden="true"
-              onPointerEnter={(event) => {
-                // A pressed button means a drag is passing.
-                if (event.pointerType !== "mouse" || event.buttons !== 0 || dragging) return;
-                const badge = event.currentTarget.closest("[data-shift-badge]") ?? event.currentTarget;
-                availabilityTip.show(badge.getBoundingClientRect());
-              }}
-              onPointerLeave={(event) => {
-                if (event.pointerType === "mouse") availabilityTip.closeSoon();
-              }}
-              // A mouse press is the card's (a click or a drag). A tap on the
-              // "!" is the flag's own: it toggles the bubble and goes no further.
-              // The grid can swallow a touch pointerdown on a card, so the tap
-              // is read from the click it still sends.
-              onPointerDown={(event) => {
-                if (event.pointerType === "touch") {
-                  event.stopPropagation();
-                  flagTappedAt.current = performance.now();
-                } else availabilityTip.close();
-              }}
-              onMouseDown={keepTapOnFlag}
-              onClick={(event) => {
-                const touch =
-                  (event.nativeEvent as PointerEvent).pointerType === "touch" ||
-                  performance.now() - flagTappedAt.current < 800;
-                if (!touch) return;
-                event.preventDefault();
-                event.stopPropagation();
-                flagTappedAt.current = performance.now();
-                if (availabilityTip.isOpen) availabilityTip.close();
-                else {
-                  const badge = event.currentTarget.closest("[data-shift-badge]") ?? event.currentTarget;
-                  availabilityTip.show(badge.getBoundingClientRect());
-                }
-              }}
-              onDoubleClick={keepTapOnFlag}
-            >
-              !
-            </span>
+            <AvailabilityMarkButton
+              insideButton
+              className="schedule-availability-mark-card"
+              label={`${employeeName ?? "This person"}: unavailable during this shift`}
+              lines={availabilityLines.length ? availabilityLines : [availabilityWarning ?? ""]}
+            />
           ) : null}
           {publicationState === "locked" ? (
             <Check size={12} aria-label="Live - published to employees">
@@ -438,7 +366,6 @@ export function ShiftCard({
       </span>
     </button>
     {noteCorner.card}
-    {availabilityTip.bubble}
     </>
   );
 }

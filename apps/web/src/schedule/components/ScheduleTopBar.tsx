@@ -691,6 +691,8 @@ function SettingsMenuPanel({
             icon={showAvailability ? <Eye size={15} /> : <EyeOff size={15} />}
             label={showHideLabel(Boolean(showAvailability), "Availability")}
             onClick={onToggleAvailability}
+            // The orange "!" shows only in edit mode, so the switch does too (KARARLAR Schedule, 2026-10-06).
+            disabled={unassignedRowSettingsDisabled}
           />
         </>
       ) : null}

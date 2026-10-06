@@ -172,16 +172,18 @@ export function ScheduleGrid({
   readonly onManageLogo?: () => void;
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const showAvailabilityMarks = showAvailability && Boolean(session);
   const filtered = useMemo(() => {
     const next = filterScheduleModel(model, search);
-    // The switch hides the cards' orange "!" too; the rule box still reads the full model.
-    return showAvailability ? next : {
+    // The orange "!" shows only while editing with the switch on (KARARLAR Schedule,
+    // 2026-10-06); time off stays. The rule box still reads the full model.
+    return showAvailabilityMarks ? next : {
       ...next,
       shifts: next.shifts.map((shift) => shift.warning_codes.includes("availability")
         ? { ...shift, warning_codes: shift.warning_codes.filter((code) => code !== "availability") }
         : shift),
     };
-  }, [model, search, showAvailability]);
+  }, [model, search, showAvailabilityMarks]);
   const days = createScheduleGridDays({
     selectedDate,
     view,
@@ -213,7 +215,7 @@ export function ScheduleGrid({
     hasEditSession: Boolean(session),
     addDays,
   });
-  const sourceCellStateByKey = useScheduleCellState(model, !showAvailability);
+  const sourceCellStateByKey = useScheduleCellState(model, !showAvailabilityMarks);
   const cellStateByKey = useMemo(
     () =>
       buildDisplayScheduleCellState({

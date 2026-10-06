@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ScheduleEmployee, ScheduleReadModel, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { scheduleEmployeeSchema } from "@newfork/shared";
-import { weeklyEmployeeSummary, weeklyTargetAvailability, weeklyTargetNote } from "./scheduleWeeklyAvailability";
+import { weeklyTargetAvailability, weeklyTargetNote } from "./scheduleWeeklyAvailability";
 import { evaluateScheduleShiftConflicts } from "../schedule-conflicts";
 
 const loc = "ad425000-0000-4000-8000-000000000006";
@@ -115,10 +115,5 @@ describe("weekly Schedule advisory projection", () => {
       ],
     }] };
     expect(weeklyTargetAvailability(spring, { ...input, scheduled_date: "2035-03-11", start_time: "02:15", end_time: "03:15" })).toBe("unknown");
-  });
-  it("builds a source-private weekly row summary and clears it when restrictions disappear", () => {
-    expect(weeklyEmployeeSummary(employee)).toBe("West: 2035-01-15 unavailable hours");
-    expect(weeklyEmployeeSummary({ ...employee, weekly_availability: [{ ...projection, days: [] }] })).toBe("");
-    expect(weeklyEmployeeSummary({ ...employee, weekly_availability: [{ ...projection, status: "unknown" }] })).toContain("needs checking");
   });
 });

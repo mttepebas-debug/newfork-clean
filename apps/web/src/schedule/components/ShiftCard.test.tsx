@@ -85,25 +85,18 @@ describe("ShiftCard", () => {
     expect(badge.getAttribute("title")).toBeNull();
     expect(badge.getAttribute("data-availability-warning")).toBe("true");
     expect(badge.getAttribute("data-has-markers")).toBe("true");
-    const flag = badge.querySelector(".schedule-shift-availability-flag")!;
-    expect(flag.textContent).toBe("!");
+    const mark = screen.getByRole("button", { name: "Ali Kaya: unavailable during this shift" });
+    expect(mark.textContent).toBe("!");
+    // A card is a button, so its "!" is a focusable span, never a nested button.
+    expect(mark.tagName).toBe("SPAN");
+    expect(badge.querySelector("button")).toBeNull();
     const description = badge.getAttribute("aria-describedby")!
       .split(" ")
       .map((id) => document.getElementById(id)?.textContent)
       .join(" ");
-    expect(description).toContain("Unavailable after 2:00 PM");
-    expect(description).not.toContain("!Ali");
-
-    const over = new Event("pointerover", { bubbles: true });
-    Object.defineProperties(over, { pointerType: { value: "mouse" }, buttons: { value: 0 } });
-    fireEvent(flag, over);
-    const bubble = screen.getByRole("tooltip");
-    // C3 "Tinted header": name, date, the hours; nothing to confirm (M9).
-    expect(bubble.textContent).toBe("!Ali KayaTue, Oct 20Unavailable after 2:00 PM");
-    expect(bubble.querySelector(".schedule-availability-tip-band")).not.toBeNull();
-    expect(bubble.querySelector(".schedule-availability-tip-pill")).toBeNull();
+    expect(description).toContain("Marked unavailable Tue, Oct 20 · After 2:00 PM");
   });
-  it("says \"Changed after publishing\" on a mark that came after the first publish (M11, C3)", () => {
+  it("says \"Changed after publishing\" on a mark that came after the first publish (M11)", () => {
     renderShiftCard({
       shift: { ...shift, scheduled_date: "2026-10-22", start_time: "11:00", end_time: "19:00", warning_codes: ["availability"], availability_changed_after_publish: true },
       employeeName: "Ali Kaya",
@@ -115,16 +108,14 @@ describe("ShiftCard", () => {
       .map((id) => document.getElementById(id)?.textContent)
       .join(" ");
     expect(description).toContain("Changed after publishing");
-    const flag = badge.querySelector(".schedule-shift-availability-flag")!;
-    const over = new Event("pointerover", { bubbles: true });
-    Object.defineProperties(over, { pointerType: { value: "mouse" }, buttons: { value: 0 } });
-    fireEvent(flag, over);
-    expect(screen.getByRole("tooltip").textContent).toBe("!Ali KayaThu, Oct 22Unavailable after 2:00 PMChanged after publishing");
+    fireEvent.click(screen.getByRole("button", { name: "Ali Kaya: unavailable during this shift" }));
+    expect(screen.getByRole("dialog").textContent).toBe("Marked unavailable Thu, Oct 22 · After 2:00 PMChanged after publishing");
   });
-  it("opens the \"!\" bubble on a tap without the tap reaching the card, and closes it on a tap elsewhere (G14)", () => {
+  it("opens the \"!\" window without the press reaching the card; Escape or a press outside only closes it (KARARLAR Schedule, 2026-10-06)", () => {
     const onSelect = vi.fn();
     const onFocus = vi.fn();
     const onEdit = vi.fn();
+    const outsideClick = vi.fn();
     renderShiftCard({
       shift: { ...shift, scheduled_date: "2026-10-20", start_time: "16:00", end_time: "22:00", warning_codes: ["availability"] },
       employeeName: "Ali Kaya",
@@ -133,22 +124,30 @@ describe("ShiftCard", () => {
       onFocus,
       onEdit,
     });
-    const flag = document.querySelector(".schedule-shift-availability-flag")!;
-    // On a phone the grid can swallow the pointerdown; only the click arrives.
-    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
-    Object.defineProperty(click, "pointerType", { value: "touch" });
-    fireEvent(flag, click);
-    expect(screen.getByRole("tooltip").textContent).toContain("Unavailable after 2:00 PM");
+    const mark = screen.getByRole("button", { name: "Ali Kaya: unavailable during this shift" });
+    fireEvent.pointerDown(mark);
+    fireEvent.click(mark);
+    expect(screen.getByRole("dialog").textContent).toBe("Marked unavailable Tue, Oct 20 · After 2:00 PM");
+    expect(mark.getAttribute("aria-expanded")).toBe("true");
     expect(onSelect).not.toHaveBeenCalled();
     expect(onFocus).not.toHaveBeenCalled();
     expect(onEdit).not.toHaveBeenCalled();
 
-    const outside = new Event("pointerdown", { bubbles: true });
-    Object.defineProperty(outside, "pointerType", { value: "touch" });
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(mark);
+
+    fireEvent.keyDown(mark, { key: "Enter" });
+    expect(screen.getByRole("dialog")).not.toBeNull();
+    expect(onEdit).not.toHaveBeenCalled();
+    document.body.addEventListener("click", outsideClick);
     act(() => {
-      document.body.dispatchEvent(outside);
+      document.body.dispatchEvent(new Event("pointerdown", { bubbles: true, cancelable: true }));
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     });
-    expect(screen.queryByRole("tooltip")).toBeNull();
+    document.body.removeEventListener("click", outsideClick);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(outsideClick).not.toHaveBeenCalled();
   });
   it("shows no availability mark while the shift has none (the optimistic cell before saving)", () => {
     renderShiftCard({ shift: { ...shift, optimistic: true }, employeeName: "Ali Kaya" });

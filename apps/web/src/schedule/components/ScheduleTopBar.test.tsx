@@ -322,10 +322,19 @@ describe("ScheduleTopBar", () => {
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("alphabetical");
   });
 
-  it("hides and shows the availability marks from the Settings menu, edit mode or not (S1 C)", () => {
+  it("hides and shows the availability marks from the Settings menu in edit mode only (KARARLAR Schedule, 2026-10-06)", () => {
     const onToggleAvailability = vi.fn();
     const { rerender } = renderTopBar({ showAvailability: true, onToggleAvailability, unassignedRowSettingsDisabled: true });
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const passive = screen.getByRole("button", { name: "Hide Availability" });
+    expect(passive).toHaveProperty("disabled", true);
+    fireEvent.click(passive);
+    expect(onToggleAvailability).not.toHaveBeenCalled();
+    rerender(
+      <MemoryRouter>
+        <ScheduleTopBar {...buildTopBarProps({ showAvailability: true, onToggleAvailability, unassignedRowSettingsDisabled: false })} />
+      </MemoryRouter>,
+    );
     const row = screen.getByRole("button", { name: "Hide Availability" });
     expect(row.getAttribute("aria-pressed")).toBe("true");
     expect(row).toHaveProperty("disabled", false);

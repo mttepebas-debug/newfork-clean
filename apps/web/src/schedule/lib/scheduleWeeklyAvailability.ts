@@ -63,10 +63,3 @@ export function weeklyTargetInterval(employee: ScheduleEmployee, input: Schedule
   const start = instant(startWall, projection), end = instant(endWall, projection);
   return start === null || end === null || end <= start ? null : { start, end };
 }
-
-export function weeklyEmployeeSummary(employee: ScheduleEmployee): string | null {
-  if (employee.weekly_availability === undefined) return null;
-  return employee.weekly_availability.flatMap(location => location.status === "unknown"
-    ? [`${location.location_name}: availability needs checking`]
-    : location.days.filter(day => day.has_unavailable).map(day => `${location.location_name}: ${day.date}${day.all_day ? " all day" : " unavailable hours"}`)).join("; ");
-}

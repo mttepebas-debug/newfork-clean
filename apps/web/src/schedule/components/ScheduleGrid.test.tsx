@@ -168,21 +168,47 @@ function renderGrid(
 }
 
 describe("ScheduleGrid", () => {
-  it.each([true, false])("with availability shown = %s, the orange marks follow the switch and red time off stays (S1, M10)", (showAvailability) => {
+  const availabilityModel = (unavailableDays: readonly number[], withShifts: boolean) => {
     const base = scheduleModel();
-    const model = scheduleModel({
+    return scheduleModel({
       employees: [{ ...base.employees[0]!, weekly_availability: [{ location_id: locationId, location_name: "Main Dining", timezone: "America/Los_Angeles",
         week_start: base.week_start, status: "ready",
-        unavailable_intervals: [{ start_at: "2026-08-17T07:00:00Z", end_at: "2026-08-18T07:00:00Z" }],
-        leave_intervals: [{ start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-19T07:00:00Z" }],
+        unavailable_intervals: unavailableDays.map((index) => ({ start_at: `2026-08-${17 + index}T07:00:00Z`, end_at: `2026-08-${18 + index}T07:00:00Z` })),
+        employee_intervals: [],
+        leave_intervals: [{ start_at: "2026-08-23T07:00:00Z", end_at: "2026-08-24T07:00:00Z" }],
         clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
-        days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: index === 0, all_day: index === 0 })) }] }],
-      shifts: base.shifts.map((shift) => ({ ...shift, warning_codes: ["availability" as const] })),
+        days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: unavailableDays.includes(index), all_day: unavailableDays.includes(index) })) }] }],
+      shifts: withShifts ? base.shifts.map((shift) => ({ ...shift, warning_codes: ["availability" as const] })) : [],
     });
-    const { container } = renderGrid({ model, session: editSession(model), showAvailability });
-    expect(container.querySelectorAll('[data-availability-kind="unavailable"]').length > 0).toBe(showAvailability);
-    expect(container.querySelector(".schedule-shift-availability-flag") !== null).toBe(showAvailability);
+  };
+
+  it.each([
+    [true, true],
+    [true, false],
+    [false, true],
+    [false, false],
+  ])("with availability shown = %s and editing = %s, the orange \"!\" shows only while editing with the switch on; red time off stays (KARARLAR Schedule, 2026-10-06)", (showAvailability, editing) => {
+    const model = availabilityModel([0], true);
+    const { container } = renderGrid({ model, session: editing ? editSession(model) : null, showAvailability });
+    expect(container.querySelector(".schedule-availability-mark") !== null).toBe(showAvailability && editing);
     expect(container.querySelector('[data-availability-kind="time_off"]')).not.toBeNull();
+  });
+
+  it("puts the \"!\" in an empty cell's corner, and by the name only once two days are marked (KARARLAR Schedule, 2026-10-06)", () => {
+    const one = availabilityModel([4], false);
+    const first = renderGrid({ model: one, session: editSession(one) });
+    expect(first.container.querySelectorAll(".schedule-availability-mark-corner")).toHaveLength(1);
+    expect(first.container.querySelector(".schedule-availability-mark-name")).toBeNull();
+    first.unmount();
+
+    const two = availabilityModel([1, 4], false);
+    renderGrid({ model: two, session: editSession(two) });
+    const name = screen.getByRole("button", { name: /unavailable days this week/ });
+    fireEvent.click(name);
+    expect([...screen.getByRole("dialog").querySelectorAll("p")].map((line) => line.textContent)).toEqual([
+      "Marked unavailable Tue, Aug 18 · All day",
+      "Marked unavailable Fri, Aug 21 · All day",
+    ]);
   });
 
   it.each(["separate", "unified"] as const)(

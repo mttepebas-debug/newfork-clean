@@ -186,13 +186,23 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
     select tests.approved_leave(tests.id('${run}'), tests.id('${run}:ali'), tests.user('${run}:ali'), tests.id('${run}:K'), tests.week(${week}) + 4);`);
   await ayse.reload();
 
+  // The published week in view mode: no orange "!" anywhere, red time off stays
+  // (KARARLAR Schedule, 2026-10-06).
+  await expect(cell(ayse, aliId, friday)).toHaveAttribute("data-availability-kind", "time_off");
+  await expect(ayse.locator(".schedule-availability-mark")).toHaveCount(0);
+  await ayse.getByRole("button", { name: /^Draft selector:/ }).click();
+  await ayse.getByRole("button", { name: "Edit live schedule", exact: true }).click();
+  await expect(ayse).toHaveURL(/mode=edit/);
+
   await expect(cell(ayse, aliId, thursday)).toHaveAttribute("data-availability-kind", "unavailable");
   const thursdayCard = cell(ayse, aliId, thursday).locator("[data-shift-badge]");
   await expect(thursdayCard).toHaveAttribute("data-availability-warning", "true");
   await expect(thursdayCard).toHaveAccessibleDescription(/Changed after publishing/);
-  // The "!" bubble says it too.
-  await thursdayCard.locator(".schedule-shift-availability-flag").hover();
-  await expect(ayse.getByRole("tooltip").filter({ hasText: "Changed after publishing" })).toBeVisible();
+  // The "!" window says it too, under the day and hours.
+  await thursdayCard.getByRole("button", { name: "Ali Person: unavailable during this shift", exact: true }).click();
+  await expect(ayse.getByRole("dialog", { name: "Ali Person: unavailable during this shift", exact: true }))
+    .toContainText("Changed after publishing");
+  await ayse.keyboard.press("Escape");
 
   await expect(cell(ayse, aliId, friday)).toHaveAttribute("data-availability-kind", "time_off");
   await expect(cell(ayse, aliId, friday).locator("[data-shift-badge]")).not.toHaveAccessibleDescription(

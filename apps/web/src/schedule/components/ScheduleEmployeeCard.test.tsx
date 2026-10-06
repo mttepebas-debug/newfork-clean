@@ -20,17 +20,17 @@ function employee(overrides: Partial<ScheduleEmployee> = {}): ScheduleEmployee {
 }
 
 describe("ScheduleEmployeeCard", () => {
-  it("shows the weekly summary and removes the indicator after restrictions clear", () => {
-    const projected = employee({ weekly_availability: [{
-      location_id: "22222222-2222-4222-8222-222222222222", location_name: "West", timezone: "America/Los_Angeles", week_start: "2035-01-15",
-      status: "ready", unavailable_intervals: [], leave_intervals: [], clock_segments: [], days: [{ date: "2035-01-15", has_unavailable: true, all_day: true }],
-    }] });
-    const props = { editing: true, openShiftCount: 0, unassignedFrozen: false, unassignedLabelMode: "header" as const,
+  it("shows the name's \"!\" only when given the week's lines, and lists them all in its window (KARARLAR Schedule, 2026-10-06)", () => {
+    const props = { editing: true, employee: employee(), openShiftCount: 0, unassignedFrozen: false, unassignedLabelMode: "header" as const,
       rowStyle: {}, anchorRef: createRef<HTMLDivElement>(), onOpenEmployeeCard: vi.fn() };
-    const h = render(<ScheduleEmployeeCard {...props} employee={projected} />);
-    expect(screen.getByLabelText("Weekly availability preferences").getAttribute("title")).toBe("West: 2035-01-15 all day");
-    h.rerender(<ScheduleEmployeeCard {...props} employee={{ ...projected, weekly_availability: [] }} />);
-    expect(screen.queryByLabelText("Weekly availability preferences")).toBeNull();
+    const h = render(<ScheduleEmployeeCard {...props} />);
+    expect(h.container.querySelector(".schedule-availability-mark")).toBeNull();
+    const lines = ["Marked unavailable Tue, Sep 29 · After 6:00 PM", "Marked unavailable Fri, Oct 2 · All day"];
+    h.rerender(<ScheduleEmployeeCard {...props} availabilityLines={lines} />);
+    const mark = screen.getByRole("button", { name: "Ada Lovelace: unavailable days this week" });
+    fireEvent.click(mark);
+    expect([...screen.getByRole("dialog").querySelectorAll("p")].map((line) => line.textContent)).toEqual(lines);
+    expect(props.onOpenEmployeeCard).not.toHaveBeenCalled();
   });
   it("renders employee identity and opens the employee card from the name button", () => {
     const onOpenEmployeeCard = vi.fn();

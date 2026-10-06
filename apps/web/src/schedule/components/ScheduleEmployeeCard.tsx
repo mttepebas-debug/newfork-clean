@@ -1,9 +1,9 @@
 import type { ScheduleEmployee } from "@newfork/shared/schedule";
-import { CalendarOff } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
-import { weeklyEmployeeSummary } from "../lib/scheduleWeeklyAvailability";
+import { AvailabilityMarkButton } from "./AvailabilityMarkButton";
 
 export function ScheduleEmployeeCard({
+  availabilityLines = [],
   editing,
   employee,
   openShiftCount,
@@ -13,6 +13,8 @@ export function ScheduleEmployeeCard({
   anchorRef,
   onOpenEmployeeCard,
 }: {
+  /** The week's unavailable days, when the name's "!" shows (KARARLAR Schedule, 2026-10-06). */
+  readonly availabilityLines?: readonly string[];
   readonly editing: boolean;
   readonly employee: ScheduleEmployee | null;
   readonly openShiftCount: number;
@@ -23,7 +25,6 @@ export function ScheduleEmployeeCard({
   readonly onOpenEmployeeCard: (employeeId: string) => void;
 }) {
   const isUnassignedRow = !employee;
-  const availabilitySummary = employee ? weeklyEmployeeSummary(employee) : null;
 
   return (
     <div
@@ -70,14 +71,12 @@ export function ScheduleEmployeeCard({
           >
             <strong>{employee.display_name}</strong>
           </button>
-          {availabilitySummary ? (
-            <span
-              className="schedule-employee-availability"
-              aria-label="Weekly availability preferences"
-              title={availabilitySummary}
-            >
-              <CalendarOff size={13} aria-hidden />
-            </span>
+          {availabilityLines.length ? (
+            <AvailabilityMarkButton
+              className="schedule-availability-mark-name"
+              label={`${employee.display_name}: unavailable days this week`}
+              lines={availabilityLines}
+            />
           ) : null}
         </div>
       ) : (
