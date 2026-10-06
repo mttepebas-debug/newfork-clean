@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(17);
 
 -- BL-199: a manager's note on a shift ("Bring the catering order list") goes
 -- wherever the shift goes. Saving the week, making a template of it and
@@ -118,19 +118,23 @@ select pg_temp.publish(tests.id('np:draft:w1'));
 select is(pg_temp.published_note('ali', 1, 1), 'Bring the catering order list',
   'publishing the week keeps the note on the published shift');
 
--- 4. Today's contract: a payload without a note empties it ----------------------------
--- (20260926200000_shift_labels_come_from_the_catalog.sql: target_note :=
--- coalesce(row_payload->>'note', '')). Every Schedule screen sends the note
--- it holds (the web cells in apps/web/src/schedule/lib); a new path that
--- leaves it out would erase it without a word. If the contract ever turns to
--- "leave the note alone when it is missing", this cell turns the other way.
+-- 4. BL-292: a payload without a note leaves the note alone ----------------------------
+-- A new path that forgets the note cannot erase it; clearing it takes an empty
+-- string on purpose.
 
 select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'), '{}', array['note']);
 
 select is(
   (select s.note from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  'Bring the catering order list',
+  'BL-292: an edit whose payload leaves the note out keeps it');
+
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'), '{"note": ""}', array[]::text[]);
+
+select is(
+  (select s.note from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
   '',
-  'today''s contract: an edit whose payload leaves the note out empties it');
+  'BL-292: an empty note clears it');
 
 -- 5. S4 (a): a change to the note alone is a change for its owner ---------------------
 

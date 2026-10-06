@@ -155,6 +155,7 @@ insert into service_class values
   ('preview_schedule_default_hours_service', 'schedule.edit'),
   ('preview_schedule_export_service', 'schedule.export'),
   ('preview_schedule_publication_service', 'schedule.publish'),
+  ('preview_schedule_template_apply_service', 'schedule.templates'),
   ('preview_schedule_unpublication_service', 'schedule.publish'),
   ('process_notification_outbox_service', 'exempt:worker'),
   ('project_notification_event_service', 'exempt:worker'),

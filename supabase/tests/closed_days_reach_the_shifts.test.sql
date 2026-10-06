@@ -208,6 +208,33 @@ select is((select count(*)::integer from public.schedule_draft_shifts d where d.
 select is(pg_temp.notices('can', tests.id('c:date:draft')), array['Plumbing'],
   'K16: Can hears that Kadikoy is closed, nothing about a draft shift');
 
+-- BL-545 (K16 for unsaved work): Can's Wednesday is in the owner's open edit of
+-- week 2, not saved yet. Closing Wednesday drops it to open in the edit too and
+-- counts it with the draft shifts; Thursday stays his. Saving the edit later
+-- cannot put Can back on the closed day.
+
+select tests.remember('c:open-edit', (public.acquire_schedule_edit_session_service(pg_temp.u('owner'), tests.id('c'),
+  tests.week(2), 'blank', null) -> 'session' ->> 'id')::uuid);
+select tests.add_shift(pg_temp.u('owner'), 'c', tests.id('c:open-edit'), 2,
+  '{"person": "can", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "17:00"}');
+select tests.add_shift(pg_temp.u('owner'), 'c', tests.id('c:open-edit'), 2,
+  '{"person": "can", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "17:00"}');
+create temporary table open_edit_before as
+  select revision from public.schedule_edit_sessions where id = tests.id('c:open-edit');
+select is((pg_temp.preview('ayse', array['K'], tests.week(2) + 2) ->> 'draft_shift_count')::integer, 1,
+  'BL-545: the unsaved Wednesday shift is counted with the draft shifts that will drop');
+create temporary table open_edit_saved as select pg_temp.close_day('ayse', array['K'], 'Inspection', tests.week(2) + 2) result;
+select is((select (result ->> 'draft_shifts_opened')::integer from open_edit_saved), 1,
+  'BL-545: the save says one draft shift dropped');
+select is((select employee_id from public.schedule_edit_session_shifts s
+           where s.session_id = tests.id('c:open-edit') and s.scheduled_date = tests.week(2) + 2), null::uuid,
+  'BL-545: the open edit''s Wednesday shift dropped to open');
+select is((select employee_id from public.schedule_edit_session_shifts s
+           where s.session_id = tests.id('c:open-edit') and s.scheduled_date = tests.week(2) + 3), tests.id('c:can'),
+  'BL-545: its Thursday did not');
+select cmp_ok((select revision from public.schedule_edit_sessions where id = tests.id('c:open-edit')), '>',
+  (select revision from open_edit_before), 'BL-545: the edit''s revision moves, so the open screen reloads it');
+
 -- O1 (K11): Can's Tuesday shift sits in a draft four years back, and a yearly
 -- closed day that began that day is republished.
 -- ponytail: the old draft and the yearly date are put in place directly; the
