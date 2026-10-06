@@ -19,6 +19,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { AppSidebarPanelContext } from "./AppSidebarPanel";
+import { usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
@@ -196,6 +197,7 @@ export function AppShell() {
     () => new Set(["/app/schedule", "/app/employees"]),
   );
   const location = useLocation();
+  const phone = usePhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const queryClient = useQueryClient();
   const permissions = new Set(context?.permissions ?? []);
@@ -261,6 +263,8 @@ export function AppShell() {
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.roles || item.roles.includes(shellRole)) &&
+      // KARARLAR "Schedule telefonda tamamen kapalı": a phone shows no Schedule entry.
+      !(phone && item.to === "/app/schedule") &&
       (item.to === "/app/notifications" || item.anyOf.some((permission) => permissions.has(permission))),
   );
   const visibleSidebarItems = visibleNavItems.filter(
@@ -339,7 +343,7 @@ export function AppShell() {
                   className={({ isActive }) =>
                     `nav-item${isActive ? " active" : ""}${
                       collapsed ? " rail-peek-item" : ""
-                    }${item.parentTo ? " nav-item-child" : ""}${
+                    }${item.parentTo && visibleNavItems.some((parent) => parent.to === item.parentTo) ? " nav-item-child" : ""}${
                       hasChildren ? " nav-item-has-children" : ""
                     }`
                   }

@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ActionRoute } from "./auth/ActionRoute";
+import { DesktopOnlyRoute } from "./auth/DesktopOnlyRoute";
 import { PermissionRoute } from "./auth/PermissionRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
@@ -310,7 +311,9 @@ export function App() {
                       anyOf={["schedule.read"]}
                       roles={["owner", "admin", "manager"]}
                     >
-                      <SchedulePage />
+                      <DesktopOnlyRoute message="Schedule is available on a computer.">
+                        <SchedulePage />
+                      </DesktopOnlyRoute>
                     </PermissionRoute>
                   }
                 />
@@ -321,7 +324,9 @@ export function App() {
                       anyOf={["schedule.export", "schedule.read"]}
                       roles={["owner", "admin", "manager"]}
                     >
-                      <SchedulePage />
+                      <DesktopOnlyRoute message="Schedule is available on a computer.">
+                        <SchedulePage />
+                      </DesktopOnlyRoute>
                     </PermissionRoute>
                   }
                 />
@@ -332,7 +337,9 @@ export function App() {
                       anyOf={["schedule.templates.read"]}
                       roles={["owner", "admin", "manager"]}
                     >
-                      <ScheduleTemplatesPage />
+                      <DesktopOnlyRoute message="Schedule is available on a computer.">
+                        <ScheduleTemplatesPage />
+                      </DesktopOnlyRoute>
                     </PermissionRoute>
                   }
                 />

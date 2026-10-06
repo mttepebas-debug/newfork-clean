@@ -1057,6 +1057,35 @@ describe("App", () => {
     expect(acquireScheduleEditSession).not.toHaveBeenCalled();
   });
 
+  // TEL-KAPALI (KARARLAR "Schedule telefonda tamamen kapalı"): below 768 px a manager or owner has no Schedule.
+  function emulatePhone() {
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      matches: query.includes("max-width"), addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+  }
+
+  it("keeps Schedule out of the phone menu and says it is for a computer when opened by address", async () => {
+    emulatePhone();
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+
+    expect(await screen.findByText("Schedule is available on a computer.")).toBeTruthy();
+    expect(getScheduleReadModel).not.toHaveBeenCalled();
+    for (const nav of screen.getAllByRole("navigation", { name: "Main navigation" })) {
+      expect(within(nav).queryByRole("link", { name: "Schedule" })).toBeNull();
+    }
+    expect(screen.getAllByRole("link", { name: "Requests" }).length).toBeGreaterThan(0);
+  });
+
+  it("keeps Schedule's export and templates addresses closed on a phone too", async () => {
+    emulatePhone();
+    window.history.pushState({}, "", "/app/schedule/templates");
+    render(<App />);
+    await signInAs("owner");
+    expect(await screen.findByText("Schedule is available on a computer.")).toBeTruthy();
+  });
+
   it("shows the no-access card, not the raw error, when the API refuses the schedule", async () => {
     vi.mocked(getScheduleReadModel).mockRejectedValue(
       new ScheduleRequestError("Forbidden by authz.out_of_scope", 403, {
