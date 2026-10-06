@@ -112,10 +112,6 @@ const acquireBodySchema = z.object({
 const activeSessionBodySchema = z.object({
   session_id: z.string().uuid(),
 });
-const materializeLiveDraftBodySchema = z.object({
-  week_start: z.string().date(),
-  location_ids: z.array(z.string().uuid()).min(1),
-});
 const mutationRevisionSchema = z.object({
   expected_session_revision: z.number().int().positive(),
 });
@@ -462,31 +458,6 @@ export function registerScheduleRoutes(
     }
   });
 
-  app.post(
-    "/schedule/edit-session/materialize-live-draft",
-    async (request, reply) => {
-      const context = authorize(await activeActor(request, options), "schedule.edit");
-      const body = materializeLiveDraftBodySchema.safeParse(request.body);
-      if (!body.success)
-        return reply.status(400).send({ error: "Valid live schedule scope required" });
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Schedule service is not configured" });
-      try {
-        const result = await options.service.acquireSession({
-          actorUserId: context.userId,
-          workspaceId: context.workspace.id,
-          weekStart: body.data.week_start,
-          sourceKind: "published",
-          sourceDraftId: null,
-        });
-        return reply.status(result.status === "conflict" ? 409 : 200).send(result);
-      } catch (error) {
-        return scheduleError(reply, error);
-      }
-    },
-  );
 
   app.patch("/schedule/edit-lock/heartbeat", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");

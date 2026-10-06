@@ -303,25 +303,6 @@ export async function heartbeatScheduleEditSession(
   );
 }
 
-export async function materializeLiveScheduleDraft(
-  workspaceId: string,
-  weekStart: string,
-  locationIds: readonly string[],
-): Promise<ScheduleEditAcquireResult> {
-  return scheduleEditAcquireResultSchema.parse(
-    await activeScheduleRequest(
-      "/schedule/edit-session/materialize-live-draft",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          week_start: weekStart,
-          location_ids: locationIds,
-        }),
-      },
-    ),
-  );
-}
-
 export async function createScheduleShift(
   workspaceId: string,
   session: ScheduleEditSession,

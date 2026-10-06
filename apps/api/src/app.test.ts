@@ -2612,16 +2612,6 @@ describe("api app", () => {
           calls.push({ kind: "remove-pending-op", input });
           return { status: "ok", op_id: input.opId };
         },
-        acquireSession: async (input) => {
-          calls.push({
-            kind:
-              input.sourceKind === "draft"
-                ? "draft-auto-fill-session"
-                : "materialize-live-draft",
-            input,
-          });
-          return { status: "acquired", session: scheduleSessionMockModel() };
-        },
         getTemplate: async (actorUserId, workspaceId, templateId) => {
           calls.push({
             kind: "template",
@@ -2816,15 +2806,6 @@ describe("api app", () => {
       url: "/schedule/pending-ops/81000000-0000-4000-8000-000000000001",
       headers: { authorization: "Bearer owner-token" },
     });
-    const materializeLiveDraft = await app.inject({
-      method: "POST",
-      url: "/schedule/edit-session/materialize-live-draft",
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        week_start: "2026-08-17",
-        location_ids: ["11000000-0000-4000-8000-000000000001"],
-      },
-    });
     const template = await app.inject({
       method: "GET",
       url: "/schedule/templates/88000000-0000-4000-8000-000000000002",
@@ -2981,7 +2962,6 @@ describe("api app", () => {
     expect(addPendingOp.statusCode).toBe(201);
     expect(updatePendingOp.statusCode).toBe(200);
     expect(removePendingOp.statusCode).toBe(200);
-    expect(materializeLiveDraft.statusCode).toBe(200);
     expect(template.statusCode).toBe(200);
     expect(unpublishPreview.statusCode).toBe(200);
     expect(applyTemplate.statusCode).toBe(200);
@@ -3080,16 +3060,6 @@ describe("api app", () => {
           workspaceId: resolvedContext.workspace.id,
           opId: "81000000-0000-4000-8000-000000000001",
         },
-      },
-      {
-        kind: "materialize-live-draft",
-        input: expect.objectContaining({
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          weekStart: "2026-08-17",
-          sourceKind: "published",
-          sourceDraftId: null,
-        }),
       },
       {
         kind: "template",

@@ -27,7 +27,6 @@ const routes: readonly Row[] = [
   ["PATCH", "/schedule/pending-ops/:id", "schedule.edit"],
   ["DELETE", "/schedule/pending-ops/:id", "schedule.edit"],
   ["POST", "/schedule/edit-lock/acquire", "schedule.edit"],
-  ["POST", "/schedule/edit-session/materialize-live-draft", "schedule.edit"],
   ["PATCH", "/schedule/edit-lock/heartbeat", "schedule.edit"],
   ["DELETE", "/schedule/edit-lock/release", "schedule.edit"],
   ["POST", "/schedule/drafts/save", "schedule.edit"],
@@ -66,6 +65,7 @@ const routes: readonly Row[] = [
 
 // B-8: dead twins of live routes; the web never called them. They stay gone.
 const retired: readonly (readonly [method: string, url: string])[] = [
+  ["POST", "/schedule/edit-session/materialize-live-draft"],
   ["GET", `${v1}/drafts`],
   ["GET", `${v1}/shifts`],
   ["POST", `${v1}/edit-sessions`],
@@ -227,7 +227,7 @@ describe("Retired Schedule routes", () => {
     registerScheduleRoutes(app, { service: null, contextResolver: null });
     await app.ready();
     for (const [method, url] of retired) expect(registered).not.toContain(`${method} ${url}`);
-    expect(retired.length).toBe(40);
+    expect(retired.length).toBe(41);
     await app.close();
   });
 });
