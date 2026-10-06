@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(6);
+select plan(7);
 
 -- EKRAN-02 A0 (R2-03): Requests → Time off shows 50 requests a page and
 -- "Older" asks for the next page with the cursor the first page returned.
@@ -33,21 +33,24 @@ select is((select count(*)::integer from pg_pages, jsonb_array_elements(model->'
 select is((select model->'time_off_next_cursor' from pg_pages where label = 'older'), 'null'::jsonb,
   'the last page offers no Older');
 
--- Same instant across the page edge: requests 49, 50 and 51 (newest first)
--- were sent together.
+-- Same instant across the page edge: with 49 a page, requests 49 and 50
+-- (newest first) were sent together and request 51 is older.
 with sent as (
-  select r.id, row_number() over (order by r.created_at desc, r.id) k
+  select r.id, r.created_at, row_number() over (order by r.created_at desc, r.id) k
   from public.schedule_time_off_requests r where r.workspace_id = tests.id('pg')
 )
-update public.schedule_time_off_requests r set created_at = (select min(created_at) from public.schedule_time_off_requests where workspace_id = tests.id('pg'))
-from sent where sent.id = r.id and sent.k between 49 and 51;
+update public.schedule_time_off_requests r set created_at = (select created_at from sent where k = 49)
+from sent where sent.id = r.id and sent.k = 50;
 
 truncate pg_pages;
-insert into pg_pages values ('newest', public.get_schedule_requests_service(tests.user('pg:mgr'), tests.id('pg')));
+insert into pg_pages values ('newest', public.get_schedule_requests_service(tests.user('pg:mgr'), tests.id('pg'),
+  'needs_review', null, '', null, 49));
 insert into pg_pages select 'older', public.get_schedule_requests_service(tests.user('pg:mgr'), tests.id('pg'),
-  'needs_review', null, '', (model->>'time_off_next_cursor')::timestamptz) from pg_pages where label = 'newest'
+  'needs_review', null, '', (model->>'time_off_next_cursor')::timestamptz, 49) from pg_pages where label = 'newest'
   and model->>'time_off_next_cursor' is not null;
 
+select is((select jsonb_array_length(model->'time_off_requests') from pg_pages where label = 'newest'), 50,
+  'a page takes both requests sent at its edge and still offers Older');
 select is((select count(distinct x->>'id')::integer from pg_pages, jsonb_array_elements(model->'time_off_requests') x), 51,
   'requests sent in the same instant are not lost at the page edge');
 select is((select count(*)::integer from pg_pages, jsonb_array_elements(model->'time_off_requests') x), 51,
