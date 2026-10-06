@@ -293,6 +293,16 @@ export function SchedulePage({
         description: draftName,
       });
     },
+    // D-O9 (KK-162): a lapsed edit's unsaved work became its own draft; one line, no notification.
+    onRecovered: (draftName) => {
+      if (context) {
+        void queryClient.invalidateQueries({ queryKey: ["schedule-drafts", context.workspace.id] });
+      }
+      toast.info("Unsaved changes were saved as a separate draft", {
+        dedupeKey: "schedule-recovered",
+        description: draftName,
+      });
+    },
   });
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);

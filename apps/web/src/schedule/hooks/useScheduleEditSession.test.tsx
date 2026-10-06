@@ -43,10 +43,11 @@ function renderEditSession() {
   const onError = vi.fn();
   const onEnded = vi.fn();
   const onAutoSaved = vi.fn();
+  const onRecovered = vi.fn();
   const hook = renderHook(() =>
-    useScheduleEditSession({ userId: session.holder_user_id, workspaceId: WORKSPACE_ID, onError, onEnded, onAutoSaved }),
+    useScheduleEditSession({ userId: session.holder_user_id, workspaceId: WORKSPACE_ID, onError, onEnded, onAutoSaved, onRecovered }),
   );
-  return { ...hook, onError, onEnded, onAutoSaved };
+  return { ...hook, onError, onEnded, onAutoSaved, onRecovered };
 }
 
 async function startEditing(hook: ReturnType<typeof renderEditSession>) {
@@ -102,6 +103,27 @@ describe("useScheduleEditSession", () => {
     expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
     expect(discardScheduleEditSession).not.toHaveBeenCalled();
     expect(hook.onAutoSaved).toHaveBeenCalledWith("Auto-save · Ayse Yilmaz · Aug 17, 12:15 PM");
+  });
+
+  // D-O9 (KK-162): a lapsed edit put aside on opening is named, once.
+  it("names the draft an earlier edit was saved as when opening sets it aside", async () => {
+    const hook = renderEditSession();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      status: "acquired_after_recovery",
+      session,
+      recovered_draft_id: "55555555-5555-4555-8555-555555555555",
+      recovered_draft_name: "Auto-save · Ayse Yilmaz · Oct 5, 9:14 PM",
+    });
+
+    await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+
+    expect(hook.onRecovered).toHaveBeenCalledWith("Auto-save · Ayse Yilmaz · Oct 5, 9:14 PM");
+  });
+
+  it("says nothing when opening sets nothing aside", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    expect(hook.onRecovered).not.toHaveBeenCalled();
   });
 
   it("closes an edit with nothing to keep quietly", async () => {

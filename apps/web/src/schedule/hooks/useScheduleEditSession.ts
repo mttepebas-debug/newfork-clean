@@ -31,6 +31,8 @@ export interface UseScheduleEditSessionArgs {
   readonly onEnded: () => void;
   /** S1: the idle countdown ended and the work was kept as this draft. */
   readonly onAutoSaved?: (draftName: string) => void;
+  /** D-O9: opening put a lapsed edit's unsaved work into this draft. */
+  readonly onRecovered?: (draftName: string) => void;
 }
 
 /** The person's Schedule edit session: the lock, its heartbeat and the idle timeout. */
@@ -40,12 +42,13 @@ export function useScheduleEditSession({
   onError,
   onEnded,
   onAutoSaved,
+  onRecovered,
 }: UseScheduleEditSessionArgs) {
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
   const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   // The page passes fresh callbacks every render; timers read the latest.
-  const callbacks = useRef({ onError, onEnded, onAutoSaved });
-  callbacks.current = { onError, onEnded, onAutoSaved };
+  const callbacks = useRef({ onError, onEnded, onAutoSaved, onRecovered });
+  callbacks.current = { onError, onEnded, onAutoSaved, onRecovered };
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -124,6 +127,9 @@ export function useScheduleEditSession({
         }
         setSession(result.session);
         setConflict(null);
+        if (result.status === "acquired_after_recovery" && result.recovered_draft_name) {
+          callbacks.current.onRecovered?.(result.recovered_draft_name);
+        }
         return result;
       } catch (error) {
         if (acquireRequestRef.current === requestId) {

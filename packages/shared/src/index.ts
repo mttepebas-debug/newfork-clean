@@ -1618,6 +1618,8 @@ export const scheduleEditAcquireResultSchema = z.discriminatedUnion("status", [
     status: z.enum(["acquired", "resumed", "acquired_after_recovery"]),
     session: scheduleEditSessionSchema,
     recovered_draft_id: z.string().uuid().nullable().optional(),
+    // D-O9: the "Auto-save · <name> · <time>" draft a lapsed edit was put into.
+    recovered_draft_name: z.string().nullable().optional(),
   }),
   // Somebody else is editing the draft that was asked for.
   z.object({
