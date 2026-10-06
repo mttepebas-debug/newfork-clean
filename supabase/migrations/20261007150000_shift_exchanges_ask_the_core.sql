@@ -656,7 +656,11 @@ begin
    'status',case when live_status in('expired','invalidated') and a.status in('invited','pending_manager') then live_status else a.status end,'created_at',a.created_at,'reason',case when allowed or a.employee_id=emp.id then a.reason else '' end,
    'eligibility',case when (allowed or a.employee_id=emp.id) and live_status='open' then (app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',case when a.employee_id=emp.id and a.status='invited' then 'true'::jsonb else a.time_off_consent end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))-case when allowed then '{}'::text[] else array['approval_flags'] end) || case when a.employee_id=emp.id and a.status='invited' then jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,s)) else '{}'::jsonb end end) order by a.created_at),'[]'::jsonb)
   into apps from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id where a.case_id=c.id and (allowed or mine or a.employee_id=emp.id);
-  select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'action',e.action,'created_at',e.created_at,'message',e.message,'private_note',case when decides then nullif(e.private_note,'') end) order by e.created_at),'[]'::jsonb)
+  select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'action',e.action,'created_at',e.created_at,'message',e.message,
+   -- K-S5: the note goes to who decides this case for this application too.
+   'private_note',case when decides and exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+    where app_private.exchange_decision_reason(actor,w,c.owner_id,(select a.employee_id from public.shift_exchange_applications a where a.id=e.application_id),x) is null)
+    then nullif(e.private_note,'') end) order by e.created_at),'[]'::jsonb)
   into hist from public.shift_exchange_events e where e.case_id=c.id and (allowed or mine or e.application_id is null or exists(select 1 from public.shift_exchange_applications a where a.id=e.application_id and a.employee_id=emp.id));
   stage:=case when live_status<>'open' then 'closed'
    when exists(select 1 from public.shift_exchange_votes where case_id=c.id) then 'awaiting_other_manager'
@@ -696,6 +700,9 @@ begin
  if s is null or (s->>'employee_id')::uuid is distinct from emp.id then raise exception 'Only the owner can search for a replacement' using errcode='42501',hint='authz.out_of_scope'; end if;
  for e in select id,coalesce(nullif(preferred_name,''),concat_ws(' ',first_name,last_name)) name from public.employee_profiles where workspace_id=w and archived_at is null and id<>emp.id order by first_name loop
   checked:=app_private.eligibility(w,e.id,s,'{"operation":"cover_accept"}')-'approval_flags';
+  -- A teammate's own marks stay theirs: the owner sees what they set aside, not when.
+  checked:=jsonb_set(checked,'{acknowledgements}',coalesce((select jsonb_agg(jsonb_build_object('code',k->>'code'))
+   from jsonb_array_elements(checked->'acknowledgements') k),'[]'::jsonb));
   if checked->>'status'='eligible' then employees:=employees||jsonb_build_array(jsonb_build_object('id',e.id,'name',e.name,'eligibility',checked)); end if;
  end loop;
  for p in select x.id from public.schedule_published_shifts x join public.schedule_location_publications pub on pub.id=x.publication_id and pub.status='current'

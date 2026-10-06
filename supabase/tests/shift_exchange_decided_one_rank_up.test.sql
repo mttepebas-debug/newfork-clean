@@ -17,6 +17,7 @@ select tests.person('ru', 'ali', 'employee', array['K', 'B'], array['cook']);
 select tests.person('ru', 'deniz', 'employee', array['K', 'B'], array['cook']);
 select tests.person('ru', 'veli', 'employee', array['B'], array['cook']);
 select tests.person('ru', 'pelin', 'employee', array['K'], array['cook'], 'onboarding');
+select tests.person('ru', 'sema', 'employee', array['K'], array['server']);
 -- ponytail: the owner cooks too, as Employees -> the owner's record -> Jobs would say.
 insert into public.employee_job_assignments (workspace_id, employee_id, job_id, is_primary, created_by)
 values (tests.id('ru'), tests.id('ru:owner'), tests.id('ru:job:cook'), false, tests.user('ru:owner'));
@@ -28,10 +29,11 @@ select tests.publish_week('ru', 1, '[
   {"label": "olcay-k", "person": "owner", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
   {"label": "veli-b",  "person": "veli",  "loc": "B", "job": "cook", "day": 2, "start": "16:00", "end": "22:00"},
   {"label": "ali-k",   "person": "ali",   "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"},
-  {"label": "deniz-b", "person": "deniz", "loc": "B", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"}
+  {"label": "deniz-b", "person": "deniz", "loc": "B", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"},
+  {"label": "zeynep-k", "person": "zeynep", "loc": "K", "job": "cook", "day": 6, "start": "09:00", "end": "15:00"}
 ]');
 
--- Aydan, the only server, misses a document servers must hand in
+-- Aydan and Sema, the servers, miss a document servers must hand in
 -- (schedule_asks_the_core.test.sql).
 -- ponytail: the deadline is moved into the past by hand.
 create temporary table required_document (id uuid, preview jsonb);
@@ -49,14 +51,18 @@ select public.set_document_publication_service(tests.user('ru:owner'), tests.id(
 from required_document;
 select tests.settle();
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
-where source_id = (select id from required_document) and lifecycle_user_id = tests.user('ru:aydan');
+where source_id = (select id from required_document) and lifecycle_user_id in (tests.user('ru:aydan'), tests.user('ru:sema'));
 select is((app_private.actor(tests.user('ru:aydan'), tests.id('ru'))).document_blocked, true, 'Aydan misses a required document');
+select is((app_private.actor(tests.user('ru:sema'), tests.id('ru'))).document_blocked, true, 'so does Sema');
 
 select tests.cover_case('ru', 'emre-k', 'emre', 'ali');
 select tests.cover_case('ru', 'ayse-k', 'ayse', 'ali');
 select tests.cover_case('ru', 'ayse-k2', 'ayse', 'emre');
 select tests.cover_case('ru', 'olcay-k', 'owner', 'emre');
 select tests.cover_case('ru', 'veli-b', 'veli', 'ali');
+select tests.cover_case('ru', 'zeynep-k', 'zeynep', 'emre');
+-- Deniz cannot work Tuesday mornings.
+select tests.availability('ru', 'deniz', 2, '09:00', '12:00');
 
 create function pg_temp.said(statement text) returns text language plpgsql as $$
 declare code text; reason text;
@@ -93,6 +99,12 @@ select is(pg_temp.reviewers('emre-k'), pg_temp.users('ayse', 'can'), 'Emre''s co
 select is(pg_temp.reviewers('ayse-k'), pg_temp.users('zeynep', 'owner'), 'Ayse''s own cover: her peer does not hear; the admin and the owner do');
 select is(pg_temp.reviewers('veli-b'), pg_temp.users('zeynep', 'owner'), 'Besiktas has no manager: the admin and the owner hear');
 select is(pg_temp.reviewers('olcay-k'), pg_temp.users('ayse', 'can'), 'the owner''s own cover: Kadikoy''s managers hear (K-S1)');
+select is(pg_temp.reviewers('zeynep-k'), pg_temp.users('owner'), 'the admin''s own cover: only the owner hears');
+
+-- Emre looks for cover: Deniz is listed as unavailable, never with her hours.
+select is((select e -> 'eligibility' -> 'acknowledgements' from jsonb_array_elements(public.shift_exchanges_candidates_service(
+  tests.user('ru:emre'), tests.id('ru'), tests.id('ru:shift:emre-k')) -> 'employees') e where e ->> 'id' = tests.id('ru:deniz')::text),
+  '[{"code": "availability"}]'::jsonb, 'Emre sees that Deniz is unavailable, not when');
 
 -- 2. D3, P07: decided one rank up; the reason comes from the core.
 select is(pg_temp.said($$select pg_temp.decide('can', 'ayse-k2', 'approve')$$), '42501 authz.rank', 'Can cannot approve his peer Ayse''s cover');
@@ -106,6 +118,12 @@ select is(public.shift_exchange_preview(tests.user('ru:can'), tests.id('ru'), te
 select is(pg_temp.decide('zeynep', 'ayse-k2', 'approve') ->> 'status', 'completed', 'the admin approves Ayse''s cover');
 select is(pg_temp.decide('can', 'emre-k', 'approve') ->> 'status', 'completed', 'Can approves Emre''s cover');
 
+-- The admin's own cover goes to the owner.
+select is(pg_temp.said($$select pg_temp.decide('ayse', 'zeynep-k', 'approve')$$), '42501 authz.rank', 'Ayse cannot approve the admin''s cover');
+select is(pg_temp.said($$select pg_temp.decide('ayse', 'zeynep-k', 'reject')$$), '42501 authz.rank', 'nor reject it');
+select is(pg_temp.said($$select pg_temp.decide('zeynep', 'zeynep-k', 'approve')$$), '42501 authz.rank', 'nor can Zeynep approve her own');
+select is(pg_temp.decide('owner', 'zeynep-k', 'approve') ->> 'status', 'completed', 'the owner approves it');
+
 -- 3. K-S1: the owner's own cover goes to the location's manager or an admin.
 select is(pg_temp.said($$select pg_temp.decide('owner', 'olcay-k', 'approve')$$), '42501 authz.rank', 'the owner cannot approve their own');
 select is(pg_temp.decide('ayse', 'olcay-k', 'approve') ->> 'status', 'completed', 'Kadikoy''s manager approves the owner''s cover');
@@ -115,6 +133,10 @@ select is(pg_temp.said($$select pg_temp.command('pelin', jsonb_build_object('act
   'case_id', tests.id('ru:case:veli-b')))$$), '42501 authz.not_active', 'Pelin, still onboarding, cannot apply');
 select is(pg_temp.said($$select pg_temp.command('pelin', jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('ru:shift:veli-b')))$$),
   '42501 authz.not_active', 'nor offer a shift');
+select is(pg_temp.said($$select pg_temp.command('sema', jsonb_build_object('action', 'apply', 'shift_id', tests.id('ru:shift:veli-b'),
+  'case_id', tests.id('ru:case:veli-b')))$$), '42501 authz.document_blocked', 'Sema, missing a document, cannot apply');
+select is(pg_temp.said($$select pg_temp.command('sema', jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('ru:shift:veli-b')))$$),
+  '42501 authz.document_blocked', 'nor offer a shift');
 
 -- 5. K-S5: a private note reaches only those who decide the case.
 select pg_temp.decide('zeynep', 'ayse-k', 'reject', 'Ali was late twice');
