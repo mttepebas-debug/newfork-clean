@@ -13,7 +13,7 @@
 - **Sonra:** API kişileri 200'lük sayfalarla (veritabanının tavanı; sıra ad, sonra kimlik — kararlı) boş sayfa gelene kadar okuyor. Offset gelen satır sayısını izliyor; veritabanı tavanı ileride küçülse de kimse düşmez (inceleme önerisi 1).
 - **Kanıt:** `pnpm.cmd --filter @newfork/api exec vitest run src/employees` → önce kırmızı (450 kişide 100 satır), sonra 134/134. Genişletilmiş test (450/200, 400/200, 450/100) ilk düzeltmeye karşı 100'lük tavanda kırmızı, son hâlle yeşil; dönen kişi sırası ve arama argümanı da doğrulanıyor. `typecheck` temiz.
 - **Ekranda:** Employees listesi aynı; 100'ü geçen işletmede eksik kişiler de listelenir.
-- **Tam kapı:** (gönderimden önce yazılır)
+- **Tam kapı** (rebase sonrası, `origin/main` `d543727a` üstünde, ağır iş izniyle): lint ✓, typecheck ✓, test ui 9 · shared 210 · api 1012 · web 2210 (+1 atlanan) ✓, build ✓.
 
 ## İnceleme
 
