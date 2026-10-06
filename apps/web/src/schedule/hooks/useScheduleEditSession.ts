@@ -8,9 +8,10 @@ import {
   acquireScheduleEditSession,
   discardScheduleEditSession,
   heartbeatScheduleEditSession,
+  isEditLeaseExpired,
 } from "../schedule-data";
 import type { ScheduleMutationContext } from "../lib/scheduleMutationContext";
-import { useEditIdleTimer } from "./useEditIdleTimer";
+import { EDIT_IDLE_TIMEOUT_MS, useEditIdleTimer } from "./useEditIdleTimer";
 
 export interface ScheduleLockConflict {
   readonly sessionId?: string;
@@ -25,8 +26,8 @@ export interface UseScheduleEditSessionArgs {
   readonly userId: string | undefined;
   readonly workspaceId: string | undefined;
   readonly onError: (message: string) => void;
-  /** The idle timeout ended the edit; the page leaves edit mode. */
-  readonly onIdleEnded: () => void;
+  /** The edit ended (idle timeout, or its lock went to someone else); the page leaves edit mode. */
+  readonly onEnded: () => void;
 }
 
 /** The person's Schedule edit session: the lock, its heartbeat and the idle timeout. */
@@ -34,13 +35,15 @@ export function useScheduleEditSession({
   userId,
   workspaceId,
   onError,
-  onIdleEnded,
+  onEnded,
 }: UseScheduleEditSessionArgs) {
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
   const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   // The page passes fresh callbacks every render; timers read the latest.
-  const callbacks = useRef({ onError, onIdleEnded });
-  callbacks.current = { onError, onIdleEnded };
+  const callbacks = useRef({ onError, onEnded });
+  callbacks.current = { onError, onEnded };
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
 
   // A context transition must invalidate old saves even if the same session is later resumed.
   const mutationContext = useMemo<ScheduleMutationContext>(() => ({
@@ -55,19 +58,6 @@ export function useScheduleEditSession({
   }, [mutationContext]);
 
   const lastActivityRef = useRef(Date.now());
-  const sessionId = session?.id;
-  useEffect(() => {
-    if (!sessionId) return;
-    const heartbeat = window.setInterval(() => {
-      if (!workspaceId) return;
-      if (Date.now() - lastActivityRef.current >= 15 * 60 * 1000) return;
-      void heartbeatScheduleEditSession(workspaceId, sessionId)
-        .then(setSession)
-        .catch((error: Error) => callbacks.current.onError(error.message));
-    }, 60_000);
-    return () => window.clearInterval(heartbeat);
-  }, [workspaceId, sessionId]);
-
   const handleIdleActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
   }, []);
@@ -75,7 +65,7 @@ export function useScheduleEditSession({
     if (!workspaceId || !session) return;
     void discardScheduleEditSession(workspaceId, session.id).finally(() => {
       setSession(null);
-      callbacks.current.onIdleEnded();
+      callbacks.current.onEnded();
     });
   }, [workspaceId, session]);
   const { secondsRemaining: idleSeconds, keepAlive: keepEditing } = useEditIdleTimer({
@@ -137,6 +127,45 @@ export function useScheduleEditSession({
     [workspaceId],
   );
 
+  /**
+   * D-Y3: a lapsed lock is picked back up by the same person (the server resumes
+   * their own edit). Null when it went to someone else or could not be reached.
+   */
+  const recoverLease = useCallback(async (): Promise<ScheduleEditSession | null> => {
+    const current = sessionRef.current;
+    if (!current) return null;
+    const result = await acquire(
+      current.week_start,
+      current.source_kind,
+      current.source_draft_id,
+      current.location_ids,
+    );
+    if (result?.status === "conflict") {
+      setSession(null);
+      callbacks.current.onEnded();
+      return null;
+    }
+    return result?.session ?? null;
+  }, [acquire]);
+
+  // The lock lives as long as the idle countdown: it may not lapse while
+  // Keep editing? still offers to keep the work.
+  const sessionId = session?.id;
+  useEffect(() => {
+    if (!sessionId) return;
+    const heartbeat = window.setInterval(() => {
+      if (!workspaceId) return;
+      if (Date.now() - lastActivityRef.current >= EDIT_IDLE_TIMEOUT_MS) return;
+      void heartbeatScheduleEditSession(workspaceId, sessionId)
+        .then(setSession)
+        .catch((error: Error) => {
+          if (isEditLeaseExpired(error)) void recoverLease();
+          else callbacks.current.onError(error.message);
+        });
+    }, 60_000);
+    return () => window.clearInterval(heartbeat);
+  }, [workspaceId, sessionId, recoverLease]);
+
   return {
     session,
     setSession,
@@ -145,6 +174,7 @@ export function useScheduleEditSession({
     conflict,
     setConflict,
     acquire,
+    recoverLease,
     idleSeconds,
     keepEditing,
   };

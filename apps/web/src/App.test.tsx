@@ -575,6 +575,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./schedule/schedule-data")>();
   return {
   ScheduleRequestError: actual.ScheduleRequestError,
+  isEditLeaseExpired: actual.isEditLeaseExpired,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
   authorizeScheduleExportV2: vi.fn().mockResolvedValue(undefined),
   listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [] }),
@@ -2017,6 +2018,66 @@ describe("App", () => {
       screen.queryByRole("dialog", { name: "Schedule save failed" }),
     ).toBeNull();
     expect(screen.queryByText("Editing draft")).toBeNull();
+  });
+
+  it("saves after the edit lock lapsed by picking the same edit back up (D-Y3)", async () => {
+    const savedDraft = {
+      id: "99999999-9999-4999-8999-999999999994",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: scheduleFixture.week_start,
+      name: "Saved after sleep",
+      revision: 1,
+      created_by: "88888888-8888-4888-8888-888888888888",
+      updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:09:00Z",
+    };
+    const saveMock = vi.mocked(saveScheduleDraft);
+    // The laptop slept past the 4-minute lock.
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired" }),
+    );
+    saveMock.mockResolvedValueOnce(savedDraft);
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: savedDraft.name },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByText(/edit lease expired/i)).toBeNull();
+    await waitFor(() => expect(screen.queryByText("Editing draft")).toBeNull());
+  });
+
+  it("picks the edit back up after a page reload instead of showing an empty draft (D-Y4)", async () => {
+    const draftId = "99999999-9999-4999-8999-999999999993";
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue({
+      status: "resumed",
+      session: { ...acquired.session, source_kind: "draft", source_draft_id: draftId },
+    });
+
+    window.history.pushState({}, "", `/app/schedule?date=2026-08-26&mode=edit&draft=${draftId}`);
+    render(<App />);
+    await signInAs("owner");
+
+    await waitFor(() =>
+      expect(acquireScheduleEditSession).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id, scheduleFixture.week_start, "draft", draftId, null,
+      ),
+    );
+    expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+    expect(window.location.search).toContain(`draft=${draftId}`);
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
   });
 
   it("confirms backend draft name conflicts before overwriting the owned draft", async () => {

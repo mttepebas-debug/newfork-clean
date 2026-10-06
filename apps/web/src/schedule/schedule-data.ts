@@ -92,6 +92,15 @@ export class ScheduleRequestError extends Error {
   }
 }
 
+/** The edit lock lapsed (sleep, lost network): the same person may pick the edit back up. */
+export function isEditLeaseExpired(error: unknown): boolean {
+  return (
+    error instanceof ScheduleRequestError &&
+    error.status === 409 &&
+    error.message === "edit lease expired"
+  );
+}
+
 export function pendingOpsKey(
   workspaceId: string | null,
   weekStart: string,

@@ -67,6 +67,7 @@ import {
   deleteScheduleDraft,
   discardScheduleEditSession,
   deleteScheduleTemplate,
+  isEditLeaseExpired,
   draftsKey,
   listScheduleDrafts,
   listScheduleTemplates,
@@ -283,13 +284,14 @@ export function SchedulePage({
     conflict,
     setConflict,
     acquire: acquireEditSession,
+    recoverLease,
     idleSeconds,
     keepEditing,
   } = useScheduleEditSession({
     userId: context?.userId,
     workspaceId: context?.workspace.id,
     onError: (message) => setOperationError(message),
-    onIdleEnded: () => {
+    onEnded: () => {
       setScheduleMode("preview", null);
       updateSelectedIds([]);
       clearUndoStack();
@@ -1160,6 +1162,23 @@ export function SchedulePage({
     return result.session;
   };
 
+  // D-Y4: a reload (or a shared link) in edit mode picks the person's edit back up;
+  // the server resumes their own open edit of this week.
+  const resumeAttemptRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isEditMode || session || !context || !query.data) return;
+    const attempt = `${context.workspace.id}:${query.data.week_start}:${activeDraftId ?? ""}`;
+    if (resumeAttemptRef.current === attempt) return;
+    resumeAttemptRef.current = attempt;
+    if (pastWeek || !gates.edit) {
+      setScheduleMode("preview", activeDraftId);
+      return;
+    }
+    void acquire(activeDraftId ? "draft" : "published", activeDraftId, true).then((resumed) => {
+      if (!resumed) setScheduleMode("preview", activeDraftId);
+    });
+  });
+
   const discardEditSession = () => {
     if (!context || !session || isDiscardingEditSession) return;
     setDiscardConfirmOpen(false);
@@ -1278,19 +1297,27 @@ export function SchedulePage({
     name: string,
     target: ScheduleDraftSummary | null,
     acknowledgePastEdits = false,
+    editSession = session,
+    leaseRecovered = false,
   ): Promise<ScheduleDraftSummary | null> {
-    if (!context || !session) return null;
+    if (!context || !editSession) return null;
     const savingContext = currentMutationContext.current;
     try {
       return await saveScheduleDraft(
         context.workspace.id,
-        session,
+        editSession,
         name,
         target,
         acknowledgePastEdits,
       );
     } catch (error) {
       if (currentMutationContext.current !== savingContext) return null;
+      // D-Y3: the lock lapsed (sleep, lost network); pick the same edit back up and save once more.
+      if (isEditLeaseExpired(error) && !leaseRecovered) {
+        const live = await recoverLease();
+        if (!live) throw new Error("Your edit could not be reconnected. Check your connection and try again.");
+        return saveDraftWithRetroactivePrompt(name, target, acknowledgePastEdits, live, true);
+      }
       const retroactiveError = parseRetroactiveEditError(error);
       if (!retroactiveError) throw error;
       const confirmed = await promptRetroactiveEdit(
@@ -1299,7 +1326,7 @@ export function SchedulePage({
         retroactiveError.messages,
       );
       if (!confirmed || retroactiveError.mode === "blocked" || currentMutationContext.current !== savingContext) return null;
-      return saveDraftWithRetroactivePrompt(name, target, true);
+      return saveDraftWithRetroactivePrompt(name, target, true, editSession, leaseRecovered);
     }
   }
 
