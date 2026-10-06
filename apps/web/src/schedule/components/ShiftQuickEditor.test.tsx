@@ -1,12 +1,15 @@
 import type { ScheduleEditableShift, ScheduleReadModel } from "@newfork/shared/schedule";
 import { readFileSync } from "node:fs";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 
 import { ShiftCard } from "./ShiftCard";
 import { ShiftQuickEditor } from "./ShiftQuickEditor";
+// CI runs check beside db and e2e on one PC; a dialog closing after Escape took
+// 1181 ms there against Testing Library's 1 s default for findBy/waitFor (CI-HIZ-2).
+configure({ asyncUtilTimeout: 5000 });
 const toast = vi.hoisted(() => ({ warning: vi.fn(), error: vi.fn() }));
 vi.mock("@newfork/ui", async (importOriginal) => ({
   ...await importOriginal<typeof import("@newfork/ui")>(),
