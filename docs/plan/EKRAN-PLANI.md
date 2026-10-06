@@ -88,7 +88,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 | 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | karar — görev dosyası hazır (`tasks/EKRAN-03-EMPLOYEES.md`, 2026-10-06), 1 açık soru (Q1 Mert'e); G2 telefon konuşmasında |
 | 4 | Availability | owner, müdür | P2 | keşif — A, B, D raporları ve OZET yazıldı (2026-10-06, `ekranlar/04-availability/`); C (görsel QA) makine boşalınca; 3 Mert sorusu, 6 koordinatör önerisi · sayfalama (25 / 50 / 100) bu turda: Availability (Mert 2026-10-06, BL-787) |
-| 5 | Workspace (ana sayfa) | owner, müdür | P1 | keşif — A, B, D raporları ve OZET yazıldı (2026-10-06, `ekranlar/05-workspace/`); C (görsel QA) izinle; 20 bulgu (güvenlik temiz), 4 Mert sorusu, 11 koordinatör önerisi |
+| 5 | Workspace (ana sayfa) | owner, müdür | P1 | karar — keşif ve koordinatör kararları bitti (KK-179), görev dosyası yazıldı (`tasks/EKRAN-05-WORKSPACE.md`, 2026-10-06; hat sırası EKRAN-04'ten sonra), BL-804…818; C (görsel QA) izinle; 6 Mert sorusu (S1–S6) |
 | 6 | Documents | owner, müdür | P2 | sırada · sayfalama (25 / 50 / 100) bu turda: Settings → Documents ve Employees → Documents (Mert 2026-10-06, BL-787) |
 | 7 | Announcements | herkes | P4 | sırada · sayfalama (25 / 50 / 100) bu turda: Announcements (Mert 2026-10-06, BL-787) |
 | 8 | Important Dates | owner, müdür | P4 | sırada · sayfalama (25 / 50 / 100) bu turda: Important Dates (Mert 2026-10-06, BL-787) |

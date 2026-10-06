@@ -11,26 +11,26 @@ Keşif 2026-10-06 (gece, `nf-planlama` oturumu; koordinatörün "izin beklerken"
 
 | # | Bulgu | Nerede / örnek | Kaynak | Backlog | İşaret |
 |---|---|---|---|---|---|
-| E5-01 | **"Scheduled today" / "Open today" UTC gününe göre sayılıyor;** başlıktaki tarih tarayıcıdan geliyor. KARARLAR Schedule → "Bugün hangi saat dilimiyle": "hiçbiri UTC'yi kullanmaz". | Los Angeles'ta müdür Mina Salı 18:10'da açar: başlık "Tuesday", sayılar Çarşamba'nın. Sayfa açık kalınca gece yarısı tarih döner, sayılar eski günde kalır | A, D Y1 | YENİ (BL-238 ailesi) | leave: high / do: moderate |
-| E5-02 | **Hesap satırı (`user_profiles`) olmayan owner / admin ana sayfayı açamıyor:** "Internal server error". "Manager" yedek adı 2026-09-08 yeniden yazımında kaybolmuş; satırı açan zorunlu adım yok. | Mert'in yerel Meyhouse admin hesabı bu durumda; yerelde toplam 74 hesap (73 yarım kurulum owner + 1 admin). Canlı sayı ölçülmedi | B D1, D O1 | YENİ | leave: medium / do: safe |
+| E5-01 | **"Scheduled today" / "Open today" UTC gününe göre sayılıyor;** başlıktaki tarih tarayıcıdan geliyor. KARARLAR Schedule → "Bugün hangi saat dilimiyle": "hiçbiri UTC'yi kullanmaz". | Los Angeles'ta müdür Mina Salı 18:10'da açar: başlık "Tuesday", sayılar Çarşamba'nın. Sayfa açık kalınca gece yarısı tarih döner, sayılar eski günde kalır | A, D Y1 | BL-804 (BL-238 ailesi) | leave: high / do: moderate |
+| E5-02 | **Hesap satırı (`user_profiles`) olmayan owner / admin ana sayfayı açamıyor:** "Internal server error". "Manager" yedek adı 2026-09-08 yeniden yazımında kaybolmuş; satırı açan zorunlu adım yok. | Mert'in yerel Meyhouse admin hesabı bu durumda; yerelde toplam 74 hesap (73 yarım kurulum owner + 1 admin). Canlı sayı ölçülmedi | B D1, D O1 | BL-805 | leave: medium / do: safe |
 | E5-03 | **Announcements kutusu arşivli, süresi dolmuş ve yayımlanamamış duyuruyu gösteriyor** (K28: yalnız yayındakiler). Kitle dışına taşma yok (88 / 0). | Zeynep "Inventory day"i arşivler; Ayşe ana sayfada görmeye devam eder | A, B, D D5 | BL-564 | leave: medium / do: moderate |
-| E5-04 | **Belge süresi işleri ve bildirimleri yalnız biri Workspace'i açınca üretiliyor** (okuma isteği yazıyor); "yaklaşıyor" bildirimi gittiyse "expired" bildirimi hiç gitmiyor (aynı olay anahtarı). | Ali'nin Food Handler kartı Cumartesi doluyor; hafta sonu kimse ana sayfayı açmaz → ne iş ne bildirim | D O3 (B §3 not) | YENİ | leave: medium / do: moderate |
-| E5-05 | **Belge izni olmayan müdür belge süresi işini görüyor;** bildirim ise yalnız belge izni olana gidiyor. Aynı bilgi iki kurala göre dağılıyor. | Ayşe (yerleşik Manager, belge izni yok) "Expired employee document · Ali Brown" görür, tıklayınca belgeyi açamaz | D O4 | YENİ (BL-560 ailesi) | leave: medium / do: moderate |
-| E5-06 | **Setup checklist yetkiyi çekirdeğe sormuyor;** kural üç yerde üç farklı: web rol adına bakıyor, API rota içinde `permissions.includes`, DB eski kapı (ipucusuz 42501); katalog `workspace.setup` (yalnız owner) diyor ama servis onu çağırmıyor. Admin ve kapalı workspace owner'ı geçiyor. | Admin Deniz Settings → General'da "Hide checklist"e basabiliyor; katalog bunu owner'ın işi sayıyor | A, B D2, D O5 | BL-276 (değişmiş: üç fonksiyon adıyla yok) + YENİ | leave: medium / do: moderate |
-| E5-07 | **"Shift changes" sayısı müdürün karar veremeyeceği vakaları da sayıyor** (`awaiting_other_manager`); süzgeç iki yerde (Workspace + Shift Hub); bütün takas listesi tarayıcıda sayılıyor. EKRAN-02 "Out of scope 2" bunu "BL-410" adıyla bu tura bıraktı, ama BL-410'un metni başka. | Kadıköy–Beşiktaş takası Beşiktaş müdürünü bekliyor; Ayşe'nin sayısı yine 1 artar | A, B §2, D D2 | YENİ | leave: medium / do: moderate |
+| E5-04 | **Belge süresi işleri ve bildirimleri yalnız biri Workspace'i açınca üretiliyor** (okuma isteği yazıyor); "yaklaşıyor" bildirimi gittiyse "expired" bildirimi hiç gitmiyor (aynı olay anahtarı). | Ali'nin Food Handler kartı Cumartesi doluyor; hafta sonu kimse ana sayfayı açmaz → ne iş ne bildirim | D O3 (B §3 not) | BL-806 | leave: medium / do: moderate |
+| E5-05 | **Belge izni olmayan müdür belge süresi işini görüyor;** bildirim ise yalnız belge izni olana gidiyor. Aynı bilgi iki kurala göre dağılıyor. | Ayşe (yerleşik Manager, belge izni yok) "Expired employee document · Ali Brown" görür, tıklayınca belgeyi açamaz | D O4 | BL-807 (BL-560 ailesi) | leave: medium / do: moderate |
+| E5-06 | **Setup checklist yetkiyi çekirdeğe sormuyor;** kural üç yerde üç farklı: web rol adına bakıyor, API rota içinde `permissions.includes`, DB eski kapı (ipucusuz 42501); katalog `workspace.setup` (yalnız owner) diyor ama servis onu çağırmıyor. Admin ve kapalı workspace owner'ı geçiyor. | Admin Deniz Settings → General'da "Hide checklist"e basabiliyor; katalog bunu owner'ın işi sayıyor | A, B D2, D O5 | BL-276 (değişmiş: üç fonksiyon adıyla yok) + BL-808 | leave: medium / do: moderate |
+| E5-07 | **"Shift changes" sayısı müdürün karar veremeyeceği vakaları da sayıyor** (`awaiting_other_manager`); süzgeç iki yerde (Workspace + Shift Hub); bütün takas listesi tarayıcıda sayılıyor. EKRAN-02 "Out of scope 2" bunu "BL-410" adıyla bu tura bıraktı, ama BL-410'un metni başka. | Kadıköy–Beşiktaş takası Beşiktaş müdürünü bekliyor; Ayşe'nin sayısı yine 1 artar | A, B §2, D D2 | BL-809 | leave: medium / do: moderate |
 | E5-08 | **Notifications kutusu eski gelen kutusunu okuyor** (ikiz sistem). Sızıntı yok. | Aynı kişi için iki ayrı gelen kutusu | A, B, D D12 | BL-533 | leave: medium / do: moderate |
-| E5-09 | **Kartlarda yanlış satırlar:** ileri tarih "Due 1m ago"; belge işinde kişi ve belge adı kayboluyor; ham kategori "general"; gitmeyen satırda ok; "View all notifications" kelime kelime kırılıyor; "New announcement" yalnız listeye gidiyor. Announcements'ta 5'ten fazlası için "View all" yok. | Burak'ın kartı 25 gün sonra bitiyor; Ayşe yalnız "Due 1m ago" görür | A, D D6 | BL-666 (+ YENİ alt kalem: Announcements "View all") | leave: medium / do: safe |
-| E5-10 | **Checklist adımları gerçeği söylemiyor:** "App tour" zorunlu ama tur yok; "Set scheduling preferences" tıklanınca tamam sayılıyor; "Billing" faturalamasız bir sayfaya gidiyor ve admin'e de görünüyor; bitince checklist kalkmıyor; Settings metni "for this workspace" diyor ama gizleme kişi başına. | Mert hiçbir şey ayarlamadan "2 of 2 required visits complete" görür | A, D D10, B §4 | YENİ | leave: low / do: safe |
-| E5-11 | **Sayılar başka ekrandaki karardan sonra 30 sn'ye kadar bayat;** izin kararı panoyu yenilemiyor. | Ayşe Requests'te Ali'nin iznini onaylar, Workspace'e döner: "Time off 1" | D D1 | YENİ (BL-278 ailesi, kapalı) | leave: low / do: safe |
+| E5-09 | **Kartlarda yanlış satırlar:** ileri tarih "Due 1m ago"; belge işinde kişi ve belge adı kayboluyor; ham kategori "general"; gitmeyen satırda ok; "View all notifications" kelime kelime kırılıyor; "New announcement" yalnız listeye gidiyor. Announcements'ta 5'ten fazlası için "View all" yok. | Burak'ın kartı 25 gün sonra bitiyor; Ayşe yalnız "Due 1m ago" görür | A, D D6 | BL-666 + BL-810 (Announcements "View all") | leave: medium / do: safe |
+| E5-10 | **Checklist adımları gerçeği söylemiyor:** "App tour" zorunlu ama tur yok; "Set scheduling preferences" tıklanınca tamam sayılıyor; "Billing" faturalamasız bir sayfaya gidiyor ve admin'e de görünüyor; bitince checklist kalkmıyor; Settings metni "for this workspace" diyor ama gizleme kişi başına. | Mert hiçbir şey ayarlamadan "2 of 2 required visits complete" görür | A, D D10, B §4 | BL-811 | leave: low / do: safe |
+| E5-11 | **Sayılar başka ekrandaki karardan sonra 30 sn'ye kadar bayat;** izin kararı panoyu yenilemiyor. | Ayşe Requests'te Ali'nin iznini onaylar, Workspace'e döner: "Time off 1" | D D1 | BL-812 (BL-278 ailesi, kapalı) | leave: low / do: safe |
 | E5-12 | **İzni olmayana kart "0" gösteriyor;** Quick actions bağlantıları da izne bakmıyor; lokasyonsuz müdür her yerde 0 görüyor, nedeni yazmıyor. | Yalnız Availability'yi yöneten Can "Time off 0" görür | A, B §2, D D4 | BL-410 | leave: low / do: safe |
-| E5-13 | **Customize:** Cancel (ve Customize, Add) `secondary` sınıfıyla yeşil — CSS'te böyle bir kural yok (UI-09: vazgeç beyaz); iki sekmede son kaydeden kazanır; gizli kart Customize'da çalışıyor; yedi kart gizlenince boş sayfa; Gizle/Göster simgelerinde `aria-hidden` yok. | Mert Customize modunda iki yeşil düğme görür: Save layout ve Cancel | A U41, D D9 | U41 (numarasız) + YENİ | leave: low / do: safe |
-| E5-14 | **Ham hata metni ekranda:** sayfa yükleme ve Save layout hatası; checklist yükleme hatası "could not be saved" diyor. | Bağlantı kopunca "Failed to fetch" | A, D D3 | YENİ (BL-654 / BL-395 ailesi) | leave: low / do: safe |
+| E5-13 | **Customize:** Cancel (ve Customize, Add) `secondary` sınıfıyla yeşil — CSS'te böyle bir kural yok (UI-09: vazgeç beyaz); iki sekmede son kaydeden kazanır; gizli kart Customize'da çalışıyor; yedi kart gizlenince boş sayfa; Gizle/Göster simgelerinde `aria-hidden` yok. | Mert Customize modunda iki yeşil düğme görür: Save layout ve Cancel | A U41, D D9 | U41 (numarasız) + BL-813 | leave: low / do: safe |
+| E5-14 | **Ham hata metni ekranda:** sayfa yükleme ve Save layout hatası; checklist yükleme hatası "could not be saved" diyor. | Bağlantı kopunca "Failed to fetch" | A, D D3 | BL-814 (BL-654 / BL-395 ailesi) | leave: low / do: safe |
 | E5-15 | **Todos 5'te kesiliyor;** 6. iş görünmüyor, işlerin ayrı sayfası yok. | Yedi belgenin süresi dolarken Ayşe beşini görür | A, D D6 | BL-667 | leave: low / do: safe |
-| E5-16 | **Başlık iskeleti liste sayfalarından farklı** (masaüstü ≥118 px + iki satır açıklama; liste 142 px tek satır; telefonda 32 vs 28); üst yazı "TODAY'S WORK. ONE PLACE." ve uzun açıklama. | Ayşe Workspace → Announcements geçerken başlık ve içerik kayar | A, D D11 | YENİ | leave: low / do: safe |
-| E5-17 | **Aynı sayı iki kutuda** ("Open today" = "unassigned shifts today"); "Scheduled today" boş vardiyaları da sayıyor. | 10 vardiyanın 2'si boş: "Scheduled today 10 / Open today 2" | A (gözlem), D D7 | YENİ | leave: low / do: safe |
-| E5-18 | **Ölü yük:** `unread_notification_count` hesaplanıyor, kullanılmıyor; "Shift changes" için Shift Hub modelinin tamamı çekiliyor; ölü CSS (`min-width` kuralları); ölü "Manager" yedeği (E5-02 ile gider). | — | A, D D8 | YENİ | leave: low / do: safe |
-| E5-19 | **Katalog sınıfı panonun sorduğu eylemle eşleşmiyor** (`workspace.read` yazılı, servis `workspace.todos` soruyor); test yalnız anahtarın varlığına baktığı için yeşil. | — | B D3, D D12 | BL-416 (2) + YENİ | leave: low / do: safe |
-| E5-20 | **To-do kapatmada "hayır" sözleşmesi:** bilinmeyen to-do 404, kapsam dışı 403 (aynı cevap olmalı). | Ayşe eski sekmeden Emre'nin to-do'sunu kapatmaya çalışır: "var ama size kapalı" | B D4 | YENİ | leave: low / do: safe |
+| E5-16 | **Başlık iskeleti liste sayfalarından farklı** (masaüstü ≥118 px + iki satır açıklama; liste 142 px tek satır; telefonda 32 vs 28); üst yazı "TODAY'S WORK. ONE PLACE." ve uzun açıklama. | Ayşe Workspace → Announcements geçerken başlık ve içerik kayar | A, D D11 | BL-815 | leave: low / do: safe |
+| E5-17 | **Aynı sayı iki kutuda** ("Open today" = "unassigned shifts today"); "Scheduled today" boş vardiyaları da sayıyor. | 10 vardiyanın 2'si boş: "Scheduled today 10 / Open today 2" | A (gözlem), D D7 | numara yok (gözlem, KK-179 (11)) | leave: low / do: safe |
+| E5-18 | **Ölü yük:** `unread_notification_count` hesaplanıyor, kullanılmıyor; "Shift changes" için Shift Hub modelinin tamamı çekiliyor; ölü CSS (`min-width` kuralları); ölü "Manager" yedeği (E5-02 ile gider). | — | A, D D8 | BL-816 | leave: low / do: safe |
+| E5-19 | **Katalog sınıfı panonun sorduğu eylemle eşleşmiyor** (`workspace.read` yazılı, servis `workspace.todos` soruyor); test yalnız anahtarın varlığına baktığı için yeşil. | — | B D3, D D12 | BL-416 (2) + BL-817 | leave: low / do: safe |
+| E5-20 | **To-do kapatmada "hayır" sözleşmesi:** bilinmeyen to-do 404, kapsam dışı 403 (aynı cevap olmalı). | Ayşe eski sekmeden Emre'nin to-do'sunu kapatmaya çalışır: "var ama size kapalı" | B D4 | BL-818 | leave: low / do: safe |
 
 Not (kararla kabul, bulgu sayılmadı): kişiye bağlı olmayan to-do'yu workspace'teki her yönetici görür ve kapatabilir — KK-34 bilerek seçti (B §3). D bunu O2 diye işaretledi (yazan / kapatan adı tutulmuyor, geri alma yok); Mert yeniden açmak isterse S4.
 
@@ -81,27 +81,40 @@ Not (kararla kabul, bulgu sayılmadı): kişiye bağlı olmayan to-do'yu workspa
 - (c) Kişisel olsun: yalnız yazan görür.
 - (d) Bugünkü gibi kalsın.
 
-## 5. Koordinatörün verebileceği kararlar (kural birebir kapsıyor; öneri)
-1. **E5-01:** her lokasyon kendi saat diliminin bugününü sayar; başlıktaki tarih de aynı güne bağlanır. Çok lokasyonlu müdürde toplam, her lokasyonun kendi gününe göre. Dayanak: KARARLAR Schedule → "Bugün hangi saat dilimiyle". `nf-db`, R2. BL-238 ile aynı kök; birlikte ele almak ucuz.
-2. **E5-02:** satır olmayınca da cevap dönsün (ad alt sorguyla, yedek kişinin hesabındaki ad) **ya da** "her üyenin hesap satırı vardır" kuralı DB'de kurulsun (P01: tolerans yerine kural); seçim teknik (P19); hangisi olursa profilsiz owner için pgTAP hücresi. `nf-db`, R2.
-3. **E5-03 (BL-564):** kutu yalnız canlı duyuruyu gösterir. Dayanak: K28. `nf-db`, R2.
-4. **E5-04:** belge süresi işi ve bildirimi zamanlanmış göreve taşınır; okuma ucu yazmaz; "expired" ayrı olay anahtarı alır. Dayanak: ILKELER P09 + CLAUDE.md §9. `nf-db`, R2 (bildirim tarafı Notifications ekranının sınırında).
-5. **E5-05:** iş satırı da bildirimle aynı izinle (`documents.read`) süzülür. Dayanak: KARARLAR satır 93 (yerleşik Manager'da belge izni yok) + ikiz kural yok. `nf-db`, R3 (yetki).
-6. **E5-06:** checklist servisleri çekirdeğe (`workspace.setup`) sorar, rota içi kapı ve web rol kontrolü kalkar (`can()`); eski kapı listesinden (BL-276) üçü düşer. Admin görür mü sorusu S3'e bağlı. `nf-db` + `nf-backend`, R3.
-7. **E5-07:** sayı EKRAN-02 A2'nin rütbe kuralını izler, süzgeç tek yerde, sunucuda. Dayanak: EKRAN-02 Out of scope 2 + ILKELER P07.
-8. **E5-08 (BL-533):** kutu Notifications sayfasıyla aynı okumayı kullanır; eski fonksiyon silinir, `retired_objects_stay_gone`'a eklenir. Dayanak: CLAUDE.md §9 ikiz yok.
-9. **E5-09, E5-11, E5-13 (Cancel beyaz, `secondary` silinir), E5-14, E5-18, E5-19, E5-20:** salt hata düzeltmesi.
-10. **E5-16:** Workspace de liste sayfalarının başlık iskeletini kullanır (142 px, tek satır, telefonda 28). Kural liste sayfalarını adıyla sayıyor; genişletme tutarlılık kararı (ILKELER P04 koşulu). Üst yazının metni görsel karar: varyantla Mert'e (P04).
-11. **E5-17:** gözlem; Mert gezerken söylerse sorulur.
+**S5 — Workspace'in başlığı nasıl görünsün?** (E5-16, BL-815; görsel — P04, yazıyla değil gerçek ekranda 2–3 varyant)
+- **Bugün:** sol menü → Workspace. Başlık en az 118 px, açıklama iki satır ve selamlamayı içine katıyor ("Track today's operations… Good evening, Mert · Tuesday, October 6, 6:10 PM"); üst yazı "TODAY'S WORK. ONE PLACE.". Ayşe Workspace → Announcements geçerken başlık ve içerik kayar.
+- Varyantlar: (a) liste sayfalarıyla aynı iskelet (142 px, tek satır açıklama, telefonda 28); (b) pano başlığı: yalnız selamlama + tarih, açıklama yok; (c) bugünkü gibi. Üst yazının metni varyantlarla birlikte gösterilir.
+- `Dayanak: yok — yeni karar (koordinatör KK-179 (10): Workspace liste değil pano, yerleşim kararı Mert'in)`
+
+**S6 — Belge süresi işi ve bildirimi zamanında üretilsin mi; "expired" bildirimi gitsin mi?** (E5-04, BL-806; teyit)
+- **Bugün:** Ali'nin Food Handler kartı Cumartesi doluyor. Hafta sonu kimse ana sayfayı açmazsa ne Todos'ta iş açılır ne owner'a bildirim gider; Pazartesi biri Workspace'i açınca ikisi birden üretilir. "Expires soon" bildirimi gittiyse, süre dolunca "expired" bildirimi hiç gitmez.
+- **(a) Her gün belli bir saatte kendiliğinden üretilsin; süre dolunca owner ve admin'e ayrıca "expired" bildirimi gitsin (Önerilen).** Kim görür: bugünkü gibi belge izni olanlar (BL-807 ile müdürün iş satırı da aynı izne bağlanır).
+  `Dayanak: ILKELER P09 (veri sessizce düşmez) + koordinatör KK-179 (4)`
+- (b) Kendiliğinden üretilsin, ama "expired" ayrı bildirim olmasın (tek "expires soon" yeter).
+- (c) Bugünkü gibi kalsın.
+
+## 5. Koordinatör kararları (KK-179, 2026-10-06)
+Öneriler tek tek tartıldı; koordinatörün cevabı:
+1. **E5-01 KABUL** (BL-804): her lokasyon kendi saat diliminin bugününü sayar; başlıktaki tarih aynı güne bağlanır; çok lokasyonlu müdürde toplam her lokasyonun kendi gününe göre. Dayanak: KARARLAR Schedule → "Bugün hangi saat dilimiyle" (birebir). BL-238 ile tek iş. `nf-db`, R2.
+2. **E5-02 KABUL** (BL-805), yol: "her üyenin hesap satırı vardır" kuralı DB'de (P01: tolerans değil kural); mekanizma `nf-db`'nin (P19); profilsiz owner için pgTAP hücresi. **Ek şart:** canlıda profilsiz üye ölçülür; varsa satır **oluşturulur, silinmez** (gerçek veri). `nf-db`, R2.
+3. **E5-03 KABUL** (BL-564): kutu yalnız canlı duyuruyu gösterir. Dayanak: K28. `nf-db`, R2.
+4. **E5-04 KABUL, ekran 5'in turunda; gece yapılmaz** (BL-806): okuma ucunun yazmayı bırakıp zamanlanmış göreve geçmesi çalışma biçimi değişikliği; "expired" bildirimi yeni davranış → Mert'e teyit sorusu (S6).
+5. **E5-05 KABUL** (BL-807): iş satırı da `documents.read` ile süzülür. Dayanak: KARARLAR satır 93. R3.
+6. **E5-06 KISMEN** (BL-808): çekirdeğe taşıma kabul (servisler `workspace.setup`'a sorar, rota içi kapı ve web rol kontrolü kalkar, `can()`); admin'in görüp görmeyeceği S3'ü bekler. R3.
+7. **E5-07 KABUL** (BL-809): sayı EKRAN-02 A2'nin rütbe kuralını izler; süzgeç tek yerde, sunucuda.
+8. **E5-08 KABUL** (BL-533): kutu Notifications sayfasıyla aynı okumayı kullanır; eski fonksiyon silinir, `retired_objects_stay_gone`'a eklenir (ikiz yok).
+9. **Salt hatalar KABUL:** E5-09 (BL-666, BL-810), E5-11 (BL-812), E5-13 (U41: Cancel beyaz, `secondary` silinir; BL-813), E5-14 (BL-814), E5-18 (BL-816), E5-19 (BL-817), E5-20 (BL-818).
+10. **E5-16 RED (koordinatör kararı):** Workspace liste sayfası değil pano; liste başlık iskeletini ona genişletmek yerleşim kararı → P04, Mert'e varyantla (S5; BL-815).
+11. **E5-17 gözlem, dokunulmaz** (numara almadı).
 
 ## 6. BL eşlemesi
 - Var olan: BL-564, BL-666, BL-533, BL-410, BL-667, BL-276, BL-416, U41 (numarasız). Hepsi bugün **geçerli** (tazelik 2026-10-06, `a40f329b`); BL-276 **değişmiş** (checklist'in üç fonksiyonu adıyla yok).
-- YENİ (numara bekliyor; son numara BL-803): E5-01, E5-02, E5-04, E5-05, E5-06 (rota kapısı + katalog), E5-07, E5-09 alt kalem, E5-10, E5-11, E5-13 (Cancel dışı), E5-14, E5-16, E5-17, E5-18, E5-19, E5-20. Numaralar koordinatörün kararlarıyla birlikte ayrı commit'te verilir (EKRAN-04 düzeni).
+- Yeni numaralar (KK-179, 2026-10-06): BL-804 (E5-01), BL-805 (E5-02), BL-806 (E5-04), BL-807 (E5-05), BL-808 (E5-06), BL-809 (E5-07), BL-810 (E5-09 eki), BL-811 (E5-10), BL-812 (E5-11), BL-813 (E5-13, U41 dışı), BL-814 (E5-14), BL-815 (E5-16), BL-816 (E5-18), BL-817 (E5-19), BL-818 (E5-20). E5-17 numara almadı (gözlem). Var olan altı maddeye tazelik satırı eklendi.
 - Sınırda: BL-176, BL-624, BL-625, BL-627, BL-348, BL-553, BL-079, BL-659, BL-238 (A §1 tablo).
 
 ## 7. Durum
 - [x] A, B, D raporları (2026-10-06, `a40f329b`)
 - [ ] C görsel QA (ağır iş, izinle)
-- [ ] Koordinatör kararları + BL numaraları
-- [ ] Mert soruları S1–S4 (sabah)
-- [ ] Görev dosyası `tasks/EKRAN-05-WORKSPACE.md`
+- [x] Koordinatör kararları KK-179 + BL-804…818 (2026-10-06)
+- [ ] Mert soruları S1–S6 (sabah)
+- [x] Görev dosyası `tasks/EKRAN-05-WORKSPACE.md` (draft, 2026-10-06)
