@@ -21,7 +21,10 @@ import {
   PRICING,
   SIGN_IN_PATH,
   SIGN_UP_PATH,
+  contactHref,
+  SITE,
   supportEmail,
+  TESTIMONIALS,
 } from "./landing-content";
 import { useInView } from "./motion";
 
@@ -272,12 +275,7 @@ export function FaqSection() {
           <h2 id="faq-title">Questions owners ask us.</h2>
           <p className="lp-lede">
             Something else on your mind?{" "}
-            {email ? (
-              <a href={`mailto:${email}`}>Email {email}</a>
-            ) : (
-              <Link to="/contact">Contact us</Link>
-            )}
-            .
+            <a href={contactHref(email, "mail")}>Email {email}</a>.
           </p>
         </header>
         <div className="lp-faq-list">
@@ -301,6 +299,46 @@ export function FaqSection() {
   );
 }
 
+export function Testimonials() {
+  return (
+    <section
+      className="lp-section lp-quotes"
+      id="testimonials"
+      aria-labelledby="quotes-title"
+    >
+      <div className="lp-container">
+        <header className="lp-section-head lp-section-head-center">
+          <p className="lp-eyebrow">From the floor</p>
+          <h2 id="quotes-title">What restaurant teams say.</h2>
+        </header>
+        <div className="lp-quote-grid">
+          {TESTIMONIALS.map((item, index) => (
+            <figure key={index}>
+              <blockquote>
+                <p>{item.quote}</p>
+              </blockquote>
+              <figcaption>
+                <span className="lp-quote-avatar" aria-hidden="true">
+                  {item.name
+                    .replace(/[^A-Za-z ]/g, "")
+                    .trim()
+                    .charAt(0) || "•"}
+                </span>
+                <span>
+                  <b>{item.name}</b>
+                  <small>
+                    {item.role} · {item.restaurant}
+                  </small>
+                </span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function ContactBand() {
   const email = supportEmail();
   return (
@@ -317,17 +355,40 @@ export function ContactBand() {
             Questions about fit, a group with many locations, or help moving off
             spreadsheets. We read every message.
           </p>
-          {email ? (
-            <a className="lp-btn lp-btn-secondary" href={`mailto:${email}`}>
-              {email}
-              <ArrowRight size={16} aria-hidden />
-            </a>
-          ) : (
-            <Link className="lp-btn lp-btn-secondary" to="/contact">
-              Contact options
-              <ArrowRight size={16} aria-hidden />
-            </Link>
-          )}
+          <dl className="lp-contact-list">
+            <div>
+              <dt>Support</dt>
+              <dd>
+                <a href={contactHref(email, "mail")}>{email}</a>
+              </dd>
+            </div>
+            <div>
+              <dt>Sales and groups</dt>
+              <dd>
+                <a href={contactHref(SITE.salesEmail, "mail")}>
+                  {SITE.salesEmail}
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>
+                <a href={contactHref(SITE.phone, "tel")}>{SITE.phone}</a>
+              </dd>
+            </div>
+            <div>
+              <dt>Mail</dt>
+              <dd>
+                {SITE.companyLegalName}
+                <br />
+                {SITE.companyAddress}
+              </dd>
+            </div>
+          </dl>
+          <Link className="lp-btn lp-btn-secondary" to="/contact">
+            All contact options
+            <ArrowRight size={16} aria-hidden />
+          </Link>
         </article>
         <article>
           <Lock size={20} aria-hidden />
@@ -443,9 +504,16 @@ export function LandingFooter() {
       </div>
       <div className="lp-container lp-footer-base">
         <span>
-          © {new Date().getFullYear()} Newfork. Made for restaurants in the
-          United States.
+          © {new Date().getFullYear()} {SITE.companyLegalName} ·{" "}
+          {SITE.companyAddress}
         </span>
+        <nav className="lp-social" aria-label="Social">
+          {SITE.social.map((link) => (
+            <a href={contactHref(link.href, "web")} key={link.label}>
+              {link.label}
+            </a>
+          ))}
+        </nav>
         <span>No ad tracking. Essential storage only.</span>
       </div>
     </footer>

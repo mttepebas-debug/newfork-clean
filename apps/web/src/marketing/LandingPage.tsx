@@ -23,6 +23,7 @@ import {
   LogoMark,
   Principles,
   TeamControlFlow,
+  Testimonials,
   TrustBand,
 } from "./LandingSections";
 import { PricingSection } from "./PricingSection";
@@ -83,6 +84,7 @@ export default function LandingPage() {
         <EmployeeShowcase />
         <BeforeAfter />
         <Principles />
+        <Testimonials />
         <TrustBand />
         <PricingSection />
         <FaqSection />

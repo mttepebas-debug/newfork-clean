@@ -3655,6 +3655,73 @@ details[open] .lp-faq-minus {
   line-height: 1.65;
 }
 
+/* ---------- Testimonials ---------- */
+.lp-quotes {
+  background: var(--lp-surface);
+  border-top: 1px solid var(--lp-line);
+}
+.lp-quote-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+.lp-quote-grid figure {
+  margin: 0;
+  padding: 28px;
+  border: 1px solid var(--lp-line);
+  border-radius: var(--lp-radius);
+  background: var(--lp-page);
+  display: grid;
+  gap: 22px;
+  align-content: space-between;
+}
+.lp-quote-grid blockquote {
+  margin: 0;
+}
+.lp-quote-grid blockquote p {
+  color: var(--lp-ink);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.5;
+}
+.lp-quote-grid blockquote p::before {
+  content: "\201C";
+  display: block;
+  height: 30px;
+  color: var(--lp-green);
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1;
+}
+.lp-quote-grid figcaption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lp-quote-grid figcaption > span:last-child {
+  display: grid;
+}
+.lp-quote-grid figcaption b {
+  color: var(--lp-ink);
+  font-size: 15px;
+}
+.lp-quote-grid figcaption small {
+  color: var(--lp-muted);
+  font-size: 13.5px;
+}
+.lp-quote-avatar {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lp-green-soft);
+  color: var(--lp-green);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+}
+
 /* ---------- Contact ---------- */
 .lp-contact {
   padding-top: 0;
@@ -3690,6 +3757,41 @@ details[open] .lp-faq-minus {
 .lp-contact-grid .lp-btn {
   margin-top: 6px;
   justify-self: start;
+}
+.lp-contact-list {
+  display: grid;
+  gap: 10px;
+}
+.lp-contact-list div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 12px;
+}
+.lp-contact-list dt {
+  color: var(--lp-muted);
+  font-size: 14px;
+  font-weight: 650;
+}
+.lp-contact-list dd {
+  color: var(--lp-ink);
+  font-size: 14.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.lp-contact-list a {
+  color: var(--lp-green);
+}
+.lp-social {
+  display: flex;
+  gap: 16px;
+}
+.lp-social a {
+  color: var(--lp-muted);
+  font-weight: 650;
+  text-decoration: none;
+}
+.lp-social a:hover {
+  color: var(--lp-green);
 }
 
 /* ---------- Final CTA ---------- */
@@ -3876,6 +3978,9 @@ details[open] .lp-faq-minus {
   .lp-principle-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .lp-quote-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .lp-trust-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3989,6 +4094,7 @@ details[open] .lp-faq-minus {
   .lp-bento,
   .lp-principle-grid,
   .lp-trust-grid,
+  .lp-quote-grid,
   .lp-contact-grid {
     grid-template-columns: minmax(0, 1fr);
   }

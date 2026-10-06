@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { SITE } from "../marketing/landing-content";
 
 const RELEASE_DATE = "August 17, 2026";
 
@@ -433,6 +434,14 @@ export function CookiesPage() {
           Review your privacy choices
           <ArrowRight size={15} aria-hidden />
         </Link>
+      </DocumentSection>
+
+      <DocumentSection title="Who is responsible">
+        {/* Placeholders live in marketing/landing-content.ts (SITE). */}
+        <p>
+          {SITE.companyLegalName}, {SITE.companyAddress}. Questions about this
+          policy: {SITE.supportEmail}.
+        </p>
       </DocumentSection>
     </TrustPage>
   );

@@ -10,9 +10,11 @@ import { App } from "../App";
 import { COOKIE_NOTICE_KEY } from "./CookieNotice";
 import {
   annualSavingsPercent,
+  contactHref,
   FAQS,
   monthlyTotal,
   PRICING,
+  SITE,
 } from "./landing-content";
 
 afterEach(() => {
@@ -123,6 +125,34 @@ describe("public landing page", () => {
         { timeout: 5000 },
       ),
     ).toBeTruthy();
+  });
+});
+
+describe("landing placeholders", () => {
+  it("never turns a placeholder into a broken mail, phone or web link", () => {
+    expect(contactHref(SITE.salesEmail, "mail")).toBe("/contact");
+    expect(contactHref(SITE.phone, "tel")).toBe("/contact");
+    for (const link of SITE.social)
+      expect(contactHref(link.href, "web")).toBe("/contact");
+    expect(contactHref("sales@example.com", "mail")).toBe(
+      "mailto:sales@example.com",
+    );
+    expect(contactHref("+1 (415) 555-0100", "tel")).toBe("tel:+14155550100");
+  });
+
+  it("shows the placeholders on the page so a missing fact is easy to spot", async () => {
+    await openLanding();
+
+    expect(screen.getAllByText(SITE.salesEmail).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: SITE.salesEmail })).toHaveProperty(
+      "pathname",
+      "/contact",
+    );
+    expect(
+      within(screen.getByRole("navigation", { name: "Social" })).getAllByRole(
+        "link",
+      ),
+    ).toHaveLength(SITE.social.length);
   });
 });
 

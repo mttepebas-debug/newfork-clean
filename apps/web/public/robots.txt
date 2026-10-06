@@ -11,3 +11,6 @@ Disallow: /accept-invite
 Disallow: /invite/
 Disallow: /reset-password
 Disallow: /api/
+
+# Placeholder: replace YOUR-DOMAIN.COM with the production domain.
+Sitemap: https://YOUR-DOMAIN.COM/sitemap.xml

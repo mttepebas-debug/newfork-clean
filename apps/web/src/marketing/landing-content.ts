@@ -129,7 +129,78 @@ export const SECTION_ROUTES: Readonly<Record<string, string>> = {
   "/product": "cockpit",
 };
 
-export function supportEmail(): string | null {
+/**
+ * Facts about the business the site needs and nobody has decided yet. Every
+ * value in [BRACKETS] is a placeholder to replace before launch; the page
+ * shows it as written so a missing one is easy to spot. The domain also
+ * appears in index.html, public/robots.txt and public/sitemap.xml.
+ */
+export const SITE = {
+  companyLegalName: "[COMPANY LEGAL NAME]",
+  companyAddress: "[STREET ADDRESS, CITY, STATE ZIP]",
+  domain: "[YOUR-DOMAIN.COM]",
+  supportEmail: "[SUPPORT EMAIL]",
+  salesEmail: "[SALES EMAIL]",
+  phone: "[PHONE NUMBER]",
+  social: [
+    { label: "LinkedIn", href: "[LINKEDIN URL]" },
+    { label: "Instagram", href: "[INSTAGRAM URL]" },
+    { label: "X", href: "[X URL]" },
+  ],
+} as const;
+
+export type Testimonial = {
+  readonly quote: string;
+  readonly name: string;
+  readonly role: string;
+  readonly restaurant: string;
+};
+
+/** Real customer words only; until there are some, these hold the places. */
+export const TESTIMONIALS: readonly Testimonial[] = [
+  {
+    quote: "[CUSTOMER QUOTE — one or two sentences about the schedule]",
+    name: "[CUSTOMER NAME]",
+    role: "[ROLE, e.g. Owner]",
+    restaurant: "[RESTAURANT NAME, CITY, STATE]",
+  },
+  {
+    quote: "[CUSTOMER QUOTE — one or two sentences about swaps or time off]",
+    name: "[CUSTOMER NAME]",
+    role: "[ROLE, e.g. General manager]",
+    restaurant: "[RESTAURANT NAME, CITY, STATE]",
+  },
+  {
+    quote: "[EMPLOYEE QUOTE — one or two sentences about the phone app]",
+    name: "[EMPLOYEE NAME]",
+    role: "[ROLE, e.g. Line cook]",
+    restaurant: "[RESTAURANT NAME, CITY, STATE]",
+  },
+];
+
+export function isPlaceholder(value: string): boolean {
+  return value.trim().startsWith("[");
+}
+
+/**
+ * A link for a contact value: mail, phone or web. A placeholder has nowhere
+ * to go yet, so it points at the Contact page instead of a broken address.
+ */
+export function contactHref(
+  value: string,
+  kind: "mail" | "tel" | "web",
+): string {
+  if (isPlaceholder(value)) return "/contact";
+  if (kind === "mail") return `mailto:${value}`;
+  if (kind === "tel") return `tel:${value.replace(/[^\d+]/g, "")}`;
+  return value;
+}
+
+/** The deployment's configured address wins; otherwise the placeholder shows. */
+export function supportEmail(): string {
   const configured = import.meta.env.VITE_SUPPORT_EMAIL?.trim();
-  return configured || (import.meta.env.DEV ? "support@newfork.test" : null);
+  return (
+    configured ||
+    (import.meta.env.DEV ? "support@newfork.test" : SITE.supportEmail)
+  );
 }
