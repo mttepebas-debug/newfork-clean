@@ -170,3 +170,4 @@ supabase/tests/employee_onboarding_rls.test.sql
 supabase/tests/documents_on_the_core.test.sql
 supabase/tests/weekly_exchange_changed_terms.test.sql
 supabase/tests/approved_cover_and_pickup_survive_a_stale_draft.test.sql
+supabase/tests/shift_exchange_decided_one_rank_up.test.sql

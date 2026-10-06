@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(90);
+select plan(88);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -90,42 +90,18 @@ $$;
 select is((app_private.actor(tests.user('sc:aydan'), tests.id('sc'))).document_blocked, true, 'Aydan misses a required document');
 select is(app_private.scope_set(tests.user('sc:nur'), tests.id('sc'), 'schedule.edit'), '{}'::uuid[], 'Nur manages no location');
 
--- 1. Who still asks the old helpers ---------------------------------------------------
--- The three Schedule helpers go when their last caller moves (FB-6.1 K-1). This
--- list only shrinks: a function that starts asking them fails here, and a
--- function that moves to the core takes its name off.
-
-create temporary table helper_caller (name text primary key, moves_in text not null);
-insert into helper_caller values
-  -- FB-6.1 .4 moved the last fourteen Schedule callers (one function per job).
-  -- FB-6.3: time off (BL-177 moved the two decision functions)
-  ('time_off_event_released_assignments', 'FB-6.3'),
-  -- FB-6.4: shift exchanges
-  ('shift_exchange_emit_notification_base', 'FB-6.4'),
-  ('shift_exchange_notification_allowed', 'FB-6.4'),
-  ('shift_exchange_preview', 'FB-6.4'),
-  ('shift_exchange_schedule_recovery_service', 'FB-6.4'),
-  ('shift_exchanges_command_service', 'FB-6.4');
-
-create temporary table asks_helpers as
-select distinct p.proname::text as name
-from pg_proc p
-where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
-  and p.prosrc ~ 'schedule_actor_(can_manage|can_publish|has_capability)_service\s*\('
-  and p.proname not in ('schedule_actor_can_manage_service', 'schedule_actor_can_publish_service',
-                        'schedule_actor_has_capability_service');
+-- 1. Nobody asks the old helpers ---------------------------------------------------------
+-- FB-6.4 A2 moved the last six callers (time off and shift exchanges) to the
+-- core and dropped the three Schedule helpers (FB-6.1 K-1); nothing may start
+-- asking them again.
 
 select is(
-  array(select name from asks_helpers where name not in (select name from helper_caller) order by 1),
+  array(select distinct p.proname::text from pg_proc p
+    where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+      and p.prosrc ~ 'schedule_actor_(can_manage|can_publish|has_capability)_service\s*\(' order by 1),
   '{}'::text[],
-  'nobody new asks the old Schedule helpers'
+  'nobody asks the old Schedule helpers (58 before FB-6.1 .2, 24 before .4, 10 before BL-177, 6 before FB-6.4)'
 );
-select is(
-  array(select name from helper_caller where name not in (select name from asks_helpers) order by 1),
-  '{}'::text[],
-  'every name on the list still asks them: a function that moved to the core comes off the list'
-);
-select is((select count(*)::integer from asks_helpers), 6, 'six functions still ask the old helpers, all time off or shift exchanges (58 before FB-6.1 .2, 24 before .4, 10 before BL-177, 8 before FB-6.3.7)');
 
 -- 2. The "somewhere" shape ----------------------------------------------------------------
 -- Every target_locations => app_private.scope_set( call is the whole shape, asks
