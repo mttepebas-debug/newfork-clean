@@ -143,7 +143,7 @@ export const targetedAuthzActions = {
   "onboarding.legal_name": { person: true, permission: "employee_onboarding.review" },
   "onboarding.review": { person: true, permission: "employee_onboarding.review" },
   "onboarding.self": { permission: null, own: true, restrictedOk: true },
-  "requests.read": { person: true, permission: "schedule.time_off_requests.read" },
+  "requests.read": { person: true, permission: "schedule.time_off_requests.manage" },
   "schedule.edit": { permission: "schedule.manage" },
   "schedule.export": { permission: "schedule.export" },
   "schedule.publish": { permission: "schedule.publish" },
@@ -412,9 +412,14 @@ export function expected<A extends TargetedAuthzAction>(
       return actor.role === "admin" && targetRank < rankOf.admin;
 
     case "exchange.approve":
-      // A pickup or cover is approved at the shift's location only.
+      // A pickup or cover is approved at the shift's location only, one rank
+      // up from whoever's case it is (D3); nobody approves their own. The
+      // owner's own case goes to that location's manager or an admin (K-S1).
       if (isSelf) return false;
-      return high || covers;
+      if (person?.role === "owner") return high || covers;
+      if (actor.role === "owner") return true;
+      if (actor.role === "admin") return targetRank < rankOf.admin;
+      return targetRank < rankOf.manager && covers;
 
     case "employee.save_own_contact":
     case "documents.self":

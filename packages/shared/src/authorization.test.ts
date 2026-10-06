@@ -197,4 +197,24 @@ describe("expected() outside the matrix", () => {
     expect(expected(owner, "important_date.write", { locations: ["K", "B"] })).toBe(false);
     expect(expected(owner, "announcement.write", { locations: ["K"] })).toBe(true);
   });
+
+  // EKRAN-02 K-S1: the owner's own swap or cover is approved by that
+  // location's manager or an admin; nobody approves their own (no matrix cell).
+  it("lets the location's manager approve the owner's own shift change, not the owner", () => {
+    const ownersCase = { person: { role: "owner" as const, isSelf: false }, locations: ["K"] };
+    expect(expected(boss, "exchange.approve", ownersCase)).toBe(true);
+    expect(expected(admin, "exchange.approve", ownersCase)).toBe(true);
+    expect(expected(boss, "exchange.approve", { ...ownersCase, locations: ["B"] })).toBe(false);
+    expect(expected(owner, "exchange.approve", { ...ownersCase, person: { role: "owner", isSelf: true } })).toBe(false);
+  });
+
+  // D3: a manager's own case goes one rank up; an admin's to the owner.
+  it("sends a manager's case to admin or owner and an admin's to the owner", () => {
+    const managersCase = { person: { role: "manager" as const, isSelf: false }, locations: ["K"] };
+    expect(expected(boss, "exchange.approve", managersCase)).toBe(false);
+    expect(expected(admin, "exchange.approve", managersCase)).toBe(true);
+    const adminsCase = { person: { role: "admin" as const, isSelf: false }, locations: ["K"] };
+    expect(expected(admin, "exchange.approve", adminsCase)).toBe(false);
+    expect(expected(owner, "exchange.approve", adminsCase)).toBe(true);
+  });
 });
