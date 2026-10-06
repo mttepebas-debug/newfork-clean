@@ -6,6 +6,7 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Eye,
+  MapPin,
   Plus,
   RotateCcw,
   Search,
@@ -23,7 +24,8 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { CatalogPageHeader } from "../views/CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import { devVar } from "../dev/varEkran12";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import { listEmployees } from "./employee-data";
@@ -199,6 +201,8 @@ export default function EmployeesPage() {
       visible: [...defaultVisibleColumns],
     });
 
+  const firstLocationName = [...new Set((employees.data ?? []).flatMap((employee) => employee.primary_location_name ? [employee.primary_location_name] : []))].sort()[0] ?? "";
+  if (firstLocationName) varFirstLocation = firstLocationName;
   const locationOptions = useMemo(() => {
     const options = new Map<string, string>();
     for (const employee of employees.data ?? []) {
@@ -248,7 +252,8 @@ export default function EmployeesPage() {
         titleId="employees-title"
         description="Manage employee profiles, assignments, invitations, and workspace access."
         action={
-          !archived && canCreate ? (
+          // VAR-EKRAN-03 G1 b/c: the add button moves to the filter row.
+          !archived && canCreate && !["b", "c"].includes(devVar("e3g1") ?? "") ? (
             <Button
               onClick={() =>
                 setParams(
@@ -355,10 +360,49 @@ export default function EmployeesPage() {
               placeholder="Search name, location, or job"
             />
           </label>
+          {!archived && canCreate && devVar("e3g1") === "b" ? (
+            <ListAddButton
+              label="Add employee"
+              onClick={() => setParams(nextParams({ mode: "create", employeeId: null, section: "profile" }))}
+            />
+          ) : null}
+          {!archived && canCreate && devVar("e3g1") === "c" ? (
+            <Button
+              className="var-e3g1-green"
+              onClick={() => setParams(nextParams({ mode: "create", employeeId: null, section: "profile" }))}
+            >
+              <Plus size={14} strokeWidth={2} aria-hidden />
+              Add employee
+            </Button>
+          ) : null}
         </div>
       </div>
 
-      <div className="employee-table-wrap">
+      {devVar("e3g2") === "b" ? (
+        <ul className="var-e3g2-cards" aria-label="Employees">
+          {visibleEmployees.map((employee) => (
+            <li key={employee.id}>
+              <button
+                type="button"
+                onClick={() => updateParams({ employeeId: employee.id, mode: null, section: "profile" })}
+              >
+                <span className="employee-table-avatar">{employee.display_name.slice(0, 1).toUpperCase()}</span>
+                <span className="var-e3g2-card-text">
+                  <strong>{employee.display_name}</strong>
+                  <small>
+                    {varLocationText(employee)} · {employee.primary_job_name ?? "No job"}
+                    {employee.role_name && employee.role_name !== "Employee" ? ` · ${employee.role_name}` : ""}
+                  </small>
+                </span>
+                <span className={`employee-state state-${employee.display_status}`}>
+                  {filterLabel(employee.display_status)}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="employee-table-wrap" data-var-e3g2={devVar("e3g2") ?? undefined}>
         <table className="employee-table">
           <colgroup>
             {visibleColumns.map((column) => (
@@ -635,7 +679,14 @@ function renderEmployeeCell(
           });
         }}
       >
-        <EmployeeLocationCell employee={employee} />
+        {employee.role_name === "Owner" && (devVar("e3g3") === "b" || devVar("e3g3") === "c") ? (
+          <span className="employee-cell-with-icon employee-location-cell">
+            <MapPin size={15} aria-hidden />
+            <span className="employee-location-name">{varLocationText(employee)}</span>
+          </span>
+        ) : (
+          <EmployeeLocationCell employee={employee} />
+        )}
       </td>
     );
   }
@@ -756,4 +807,14 @@ function filterLabel(
   return value
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+// VAR-EKRAN-03 G3: the owner's Location cell. b "All locations", c "<first> +N".
+let varFirstLocation = "";
+function varLocationText(employee: EmployeeSummary): string {
+  if (employee.role_name === "Owner" && devVar("e3g3") === "b") return "All locations";
+  if (employee.role_name === "Owner" && devVar("e3g3") === "c")
+    return employee.location_count > 1 ? `${varFirstLocation} +${employee.location_count - 1}` : varFirstLocation;
+  const name = employee.primary_location_name ?? (employee.location_count ? "Unassigned" : "No location");
+  return employee.location_count > 1 ? `${name} +${employee.location_count - 1}` : name;
 }

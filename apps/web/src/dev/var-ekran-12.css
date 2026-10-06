@@ -366,3 +366,99 @@
   padding-right: 24px;
   padding-left: 24px;
 }
+
+/* ---------- VAR-EKRAN-03 (Employees) ---------- */
+/* G1 b: the shared list language's add button (white, 36 high) at the filter row's end. */
+.employees-page .list-add-button {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 7px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+.employees-page .list-add-button:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface);
+}
+/* G1 c: same place, the action stays green. */
+.employees-page .var-e3g1-green {
+  height: 36px;
+  min-height: 36px;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 0 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.employees-page .catalog-toolbar-filter-row .toolbar-search { flex: 1 1 auto; }
+@media (max-width: 640px) {
+  .employees-page .catalog-toolbar-filter-row { flex-wrap: wrap; }
+  .employees-page .catalog-toolbar-filter-row :is(.list-add-button, .var-e3g1-green) { width: 100%; justify-content: center; }
+}
+
+/* G2 b: on the phone each person is one card row; the table hides. */
+.var-e3g2-cards { display: none; }
+@media (max-width: 640px) {
+  .var-e3g2-cards {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid #d7dcda;
+    border-radius: 7px;
+    background: var(--theme-surface);
+  }
+  .var-e3g2-cards li + li { border-top: 1px solid #e7eae8; }
+  .var-e3g2-cards button {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    width: 100%;
+    min-height: 64px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .var-e3g2-cards button:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: -2px; }
+  .var-e3g2-card-text { display: grid; min-width: 0; gap: 2px; }
+  .var-e3g2-card-text strong { overflow: hidden; color: var(--theme-text); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+  .var-e3g2-card-text small { overflow: hidden; color: var(--theme-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .employee-table-wrap[data-var-e3g2="b"] { display: none; }
+  /* G2 c: the whole table, full height, the name column pinned, a fade says more is to the right. */
+  .employee-table-wrap[data-var-e3g2="c"] {
+    flex: none;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  }
+  .employee-table-wrap[data-var-e3g2="c"] th:first-child,
+  .employee-table-wrap[data-var-e3g2="c"] td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--theme-surface);
+    box-shadow: 1px 0 0 #e7eae8;
+  }
+  .employee-table-wrap[data-var-e3g2="c"] th:first-child { background: #f3f5f3; z-index: 3; }
+  .employee-table-wrap[data-var-e3g2="c"] .employee-table { min-width: 720px; }
+  :root:has(.employee-table-wrap:is([data-var-e3g2="b"], [data-var-e3g2="c"])) .employees-page { height: auto; overflow: visible; }
+}
