@@ -160,31 +160,43 @@ function rowPerson(row: RequestTableRow): { name: string; detail: string } {
   const name = item.owner_name ?? item.shift.employee_name ?? "Unknown employee";
   if (item.kind === "swap" && item.requested_shift) {
     const other = item.requested_shift.employee_name;
-    return { name, detail: `${other ? `for ${other}'s` : "for"} ${shortDate(item.requested_shift.scheduled_date)}` };
+    return { name, detail: `${other ? `for ${other}'s` : "for"} ${shortDate(item.requested_shift.scheduled_date, { weekday: true })}` };
   }
   const candidates = item.candidate_count;
   return { name, detail: candidates ? `${candidates} ${candidates === 1 ? "candidate" : "candidates"}` : "Looking for cover" };
 }
 
-/** K-S10: one date form; the year only when it is not this year. */
-export function shortDate(value: string, now = new Date()) {
-  const date = new Date(value.length === 10 ? `${value}T12:00:00` : value);
+/** K-S10: one date form; the year only when it is not this year. A shift
+ * names its weekday; a time off date does not (artifact, Version 2). */
+export function shortDate(value: string, options: { weekday?: boolean; year?: boolean } = {}, now = new Date()) {
+  const date = toDate(value);
   return new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
+    weekday: options.weekday ? "short" : undefined,
     month: "short",
     day: "numeric",
-    year: date.getFullYear() === now.getFullYear() ? undefined : "numeric",
+    year: (options.year ?? true) && date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   }).format(date);
+}
+
+/** "Apr 25 – Apr 27, 2029": a range in one year names that year once, at its end. */
+export function dateRange(start: string, end: string, now = new Date()) {
+  if (start === end) return shortDate(start, {}, now);
+  const sameYear = toDate(start).getFullYear() === toDate(end).getFullYear();
+  return `${shortDate(start, { year: !sameYear }, now)} – ${shortDate(end, {}, now)}`;
+}
+
+function toDate(value: string) {
+  return new Date(value.length === 10 ? `${value}T12:00:00` : value);
 }
 
 function rowWhen(row: RequestTableRow, timeFormat: "12h" | "24h") {
   if (row.source === "time_off") {
     const { start_date: start, end_date: end } = row.request;
-    return start === end ? shortDate(start) : `${shortDate(start)} – ${shortDate(end)}`;
+    return dateRange(start, end);
   }
   const shift = row.request.shift;
   const hours = shift.start_time && shift.end_time ? ` · ${formatTimeRange(shift.start_time, shift.end_time, timeFormat, "–")}` : "";
-  return `${shortDate(shift.scheduled_date)}${hours}`;
+  return `${shortDate(shift.scheduled_date, { weekday: true })}${hours}`;
 }
 
 function rowDecideBy(row: RequestTableRow, timeFormat: "12h" | "24h") {
