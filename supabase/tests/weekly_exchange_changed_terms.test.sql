@@ -227,6 +227,20 @@ select pg_temp.flush();
 select is(public.shift_exchange_live_status(w,cid),'invalidated','a direct offer whose one acceptance ends, ends') from ws,state where n=82;
 select is((select status from public.shift_exchange_applications where id=aid),'invalidated','with its acceptance') from state where n=82;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(82)),(select first_emp from ws),'and nobody''s shift changed');
+-- Approved time off at the new hours is no overlap: the acceptance stays and
+-- the approval meets the leave (D6; the preview cell above).
+insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,location_id,publication_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
+ select pg_temp.shift_id(84),pg_temp.shift_id(94),w,loc,'ad428000-0000-4000-8000-000000000014',first_emp,job,start_day+5,'10:00','12:00','explicit','UTC' from ws;
+select pg_temp.flush();
+do $$declare f ws%rowtype; r jsonb; begin select * into f from ws;
+ r:=pg_temp.command(f.first_user,jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift_id(84)));
+ r:=pg_temp.command(f.second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(84),'case_id',r->>'case_id'));
+ insert into state select 84,(r->>'case_id')::uuid,a.id,(r->>'revision')::integer,null from public.shift_exchange_applications a where a.case_id=(r->>'case_id')::uuid;
+end; $$;
+select tests.approved_leave(w,second_emp,second_user,loc,start_day+5,'14:00','15:00') from ws;
+update public.schedule_published_shifts set start_time='13:30',end_time='15:30' where id=pg_temp.shift_id(84);
+select pg_temp.flush();
+select is((select status from public.shift_exchange_applications where id=aid),'pending_manager','new hours over her approved time off keep her acceptance') from state where n=84;
 
 select ok(not has_function_privilege('authenticated','public.refresh_weekly_exchange_terms(uuid,uuid)','execute'),'employee cannot rewrite request snapshots directly');
 select ok(not has_function_privilege('service_role','public.refresh_weekly_exchange_terms(uuid,uuid)','execute'),'snapshot refresh is not an exposed RPC');
