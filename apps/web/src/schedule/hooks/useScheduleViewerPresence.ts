@@ -48,64 +48,80 @@ function sameScheduleViewers(
 export function useScheduleViewerPresence({
   workspaceId,
   weekStart,
-  locationId,
+  locationIds,
   authUserId,
   mode,
 }: {
   readonly workspaceId: string | null;
   readonly weekStart: string;
-  readonly locationId: string | null;
+  /** D-D3: every shown location, so an edit at any of them is seen. */
+  readonly locationIds: readonly string[];
   readonly authUserId: string | null;
   readonly mode: "preview" | "edit";
 }): ScheduleViewerPresence[] {
   const [viewers, setViewers] = useState<ScheduleViewerPresence[]>([]);
-  const channelName = useMemo(
+  const channelNames = useMemo(
     () =>
-      workspaceId && locationId
-        ? `schedule:presence:${workspaceId}:${locationId}:${weekStart}`
-        : null,
-    [locationId, weekStart, workspaceId],
+      workspaceId
+        ? [...new Set(locationIds)].map(
+            (locationId) => `schedule:presence:${workspaceId}:${locationId}:${weekStart}`,
+          )
+        : [],
+    [locationIds, weekStart, workspaceId],
   );
 
   useEffect(() => {
     const client = supabaseClient;
-    if (!client || !channelName || !authUserId) {
+    if (!client || !channelNames.length || !authUserId) {
       setViewers([]);
       return undefined;
     }
 
-    // Private: only people who can read this location's schedule may join.
-    const channel = client.channel(channelName, {
-      config: { private: true, presence: { key: authUserId } },
-    });
+    // Private: only people who can read a location's schedule may join its channel.
+    const channels = channelNames.map((name) =>
+      client.channel(name, {
+        config: { private: true, presence: { key: authUserId } },
+      }),
+    );
 
     const syncPresence = () => {
-      const state = channel.presenceState<PresenceMeta>();
-      const next = Object.values(state)
-        .flat()
-        .map(normalizeSchedulePresence)
-        .filter((viewer): viewer is ScheduleViewerPresence =>
-          Boolean(viewer),
-        );
+      // One row per person: whoever edits at any shown location counts as editing.
+      const byUser = new Map<string, ScheduleViewerPresence>();
+      for (const channel of channels) {
+        for (const viewer of Object.values(channel.presenceState<PresenceMeta>())
+          .flat()
+          .map(normalizeSchedulePresence)) {
+          if (!viewer) continue;
+          const seen = byUser.get(viewer.userId);
+          if (!seen || (seen.mode !== "edit" && viewer.mode === "edit")) {
+            byUser.set(viewer.userId, viewer);
+          }
+        }
+      }
+      const next = [...byUser.values()];
       setViewers((current) =>
         sameScheduleViewers(current, next) ? current : next,
       );
     };
 
-    channel.on("presence", { event: "sync" }, syncPresence).subscribe((status) => {
-      if (status !== "SUBSCRIBED") return;
-      void channel.track({
-        user_id: authUserId,
-        mode,
-        online_at: new Date().toISOString(),
+    for (const channel of channels) {
+      channel.on("presence", { event: "sync" }, syncPresence).subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        void channel.track({
+          user_id: authUserId,
+          mode,
+          online_at: new Date().toISOString(),
+        });
       });
-    });
+    }
 
     return () => {
-      void channel.untrack();
-      void client.removeChannel(channel);
+      for (const channel of channels) {
+        void channel.untrack();
+        void client.removeChannel(channel);
+      }
     };
-  }, [authUserId, channelName, mode]);
+  }, [authUserId, channelNames, mode]);
 
   return viewers;
 }

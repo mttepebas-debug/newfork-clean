@@ -711,19 +711,11 @@ export function SchedulePage({
       session?.source_draft_id,
     ],
   );
-  const presenceLocationId = useMemo(() => {
-    const data = query.data;
-    if (!data) return null;
-    const selectedIds = validIds(
-      search.get("locations"),
-      data.locations.map((item) => item.id),
-    );
-    return selectedIds[0] ?? data.locations[0]?.id ?? null;
-  }, [query.data, search]);
+  // D-D3: presence follows every shown location, not just the first.
   const scheduleViewers = useScheduleViewerPresence({
     workspaceId: context?.workspace.id ?? null,
     weekStart: query.data?.week_start ?? selectedDate,
-    locationId: presenceLocationId,
+    locationIds: pendingOpsLocationIds,
     authUserId: account?.userId ?? context?.userId ?? null,
     mode: gridEditSession ? "edit" : "preview",
   });
