@@ -410,3 +410,22 @@
 - BL-768 (KK-174) ve BL-771 (Q1) kararları KARARLAR'da yok; yalnız BACKLOG / görev dosyasında.
 - BL-183'ün kapanış kanıtı eskimiş (`notify_owner_time_off_open_shifts` kalktı, yerine `app_private.time_off_notify_shifts_opened`).
 - Kısmi kapanışlar (madde açık, parçası kapandı): BL-282 (CSV formülü), BL-694 (veri), BL-702 (ad sızıntısı), BL-168 (web yarısı), BL-280 (4).
+
+## 4. Gece turu (BL-TAZELIK-GECE, 2026-10-06 akşam, `44e41a54`)
+
+Kapsam: ekran gruplarının (Schedule, Requests, Employees, Availability, Workspace, Documents) dışında kalan, bugün tazelik satırı almamış 185 açık madde. Dört salt okur alt ajan; ham tablolar `gece-parca1..4.md`. Test koşulmadı, iki SELECT (BL-556, BL-651).
+
+| Hüküm | Sayı |
+|---|---|
+| Ekrana ait, ölçülmedi (ekran turu ölçer) | 26 |
+| Geçerli (17'si karar bekliyor) | 128 |
+| Değişmiş (yeni metin tazelik satırında) | 18 |
+| Bayat, kapandı | 9: BL-043, BL-048, BL-083 (+ numarasız seed replay satırı), BL-195, BL-281, BL-373, BL-514, BL-763, BL-764 |
+| Birleşti, kapandı | 4: BL-521 → BL-491, BL-757 → BL-367, BL-447 → BL-504, BL-368 → BL-262 |
+| Ölçülemedi | 4: BL-337, BL-423, BL-665, BL-684 |
+
+Kayıt temizliği: açık gruplarda "Kapandı" satırı taşıyan 44 madde (bugünkü 13 + önceki turların 31'i) "Kapanan maddeler" bölümüne taşındı; açık listede artık yalnız açık madde var.
+
+Elle doğrulanan bayat örneği: BL-764 — `.github/workflows/ci.yml:146` `needs: [check, db]`.
+
+Dikkat: BL-027 artık "yenile" değil "ekle" (canlıda `RESEND_API_KEY` tanımlı değil); BL-538 (ILKELER boyutu) büyüdü, 32 848 bayt; BL-520 git dışı `meyhouse.sql` silinmiş `sort_order` kolonuna yazıyor, yerel `db reset` bu dosyada durur.

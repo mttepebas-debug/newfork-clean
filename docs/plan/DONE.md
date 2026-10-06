@@ -224,3 +224,17 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-10-06 | BL-133 | kapandı: `activate_employee_onboarding_case_service` drop edildi (`20261006000000:3099`). | 6b0d5d7b
 2026-10-06 | BL-042 | bayat: ölçülecek bir iddia yok ("drawer UI polish"); işi EKRAN-03 C2 ve ayrı BL'ler aldı | 9146ba6b
 2026-10-06 | EKRAN-06 Documents keşfi: bayat maddeler kapandı | BL-118 (owner'ın gönüllü yüklemesi FB-6.6 B ile main'de), BL-096 ve numarasız "pgTAP borcu" (adı geçen test dosyaları CI yeşil listesinde ya da silinmiş) bayattı; BL-344 BL-566'ya, BL-528 ve BL-590 BL-497'ye birleşti; BL-374'ün ve BL-276'nın belge kısmı kapandı. Ekranda değişiklik yok; backlog kısaldı. | 53545e48
+2026-10-06 | BL-043 | bayat: Sayfa ve Upcoming / Past / Archived sekmeleri var (`settings/ImportantDatesSettingsPage.tsx:249-251`, `3767fb91`, DOC-TABLE); "ek fonksiyonlar" tanımsız; somut bulgu ayrı maddede (BL-598); ekran 8 turu sırada (`EKRAN-PLA | 44e41a54
+2026-10-06 | BL-048 | bayat: Çökme 2026-09-10'da düzeltildi: `ed5c0f78` "fix: prevent add department crash" (`JobCatalogEditor.tsx`: `canSave`, tanımlanmadan önce okunan `save`'in arkasına taşındı); görev dosyası bu commit'i anmıyor. Tarayıcıda yeni | 44e41a54
+2026-10-06 | BL-763 | bayat: `bce5765a` "fresh-world and heavy SQL setup runs in beforeAll with its own budget (BL-763)": `e2e/flows/account-password-change.spec.ts:63-64`, `shift-hub-time-off.spec.ts:31-32` `test.setTimeout(180_000)`; sonraki main  | 44e41a54
+2026-10-06 | BL-764 | bayat: `29e504d5` "e2e waits for check and db": `.github/workflows/ci.yml:146` `needs: [check, db]` | 44e41a54
+2026-10-06 | BL-083 | bayat: Seed her CI koşusunda replay ediliyor (`ci.yml:86` `supabase start`, `supabase/config.toml:77` `sql_paths`); main CI 37490245700 @`7fa7e670` (HEAD'in 5 commit gerisi, arada `supabase/` değişmedi) yeşil → replay hatasız | 44e41a54
+2026-10-06 | BL-195 | bayat: Birim yarısı `7d94022d` (useId, `NoAccessState.tsx:20`); test 403 + `authz.out_of_scope` (`App.test.tsx:1104-1105`); açık kalan e2e yarısı `9f1cc3b3` ile geldi: `e2e/flows/scope-and-employee-view.spec.ts:173-178` ("You d | 44e41a54
+2026-10-06 | BL-281 | bayat: (1),(3) `4490f8e3`'te kapandı; (2) `time_off_cancellation_requests.test.sql`'de `todo` 0 (grep); (4) ikinci admin `authorization_matrix.test.sql:34-35` (`kaan`, BL-129 kapandı) | 44e41a54
+2026-10-06 | BL-373 | bayat: Üç dosya yeşil listede: `ci-green.txt:159-161`; `cc7b3ac2` "three notification files green (FB-6.7)"; "nine" geçişi 0 (grep) | 44e41a54
+2026-10-06 | BL-514 | bayat: `apps/web/src/styles.css:12046-12049` `.scheduling-form > fieldset > :is(.form-error, .form-success) { padding: 16px 24px }` — `f3d4abd6` (FB-6.3.6b, 2026-10-01 17:01Z, maddenin dayandığı `4a6ef0a8`'den sonra); form `org | 44e41a54
+2026-10-06 | BL-521 | birleşti: BL-491 aynı işi taşıyor; açık iş orada | 44e41a54
+2026-10-06 | BL-757 | birleşti: BL-367 aynı işi taşıyor; açık iş orada | 44e41a54
+2026-10-06 | BL-447 | birleşti: BL-504 aynı işi taşıyor; açık iş orada | 44e41a54
+2026-10-06 | BL-368 | birleşti: BL-262 aynı işi taşıyor; açık iş orada | 44e41a54
+2026-10-06 | (numarasız) Genel seed/SQL replay hataları | bayat: BL-083 ile aynı kanıt; seed her CI koşusunda hatasız replay ediliyor | 44e41a54
