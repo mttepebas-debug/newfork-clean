@@ -5,8 +5,14 @@ import { createScheduleReadService } from "./schedule-service";
 const mocks = vi.hoisted(() => {
   const rpc = vi.fn();
   const from = vi.fn();
-  const send = vi.fn(async () => "ok");
-  const channel = { send };
+  // `send` records what was broadcast; the service broadcasts over REST with
+  // httpSend (BL-435), the channel has no implicit-fallback send.
+  const send = vi.fn(async (_message: { type: string; event: string; payload: unknown }) => "ok");
+  const httpSend = vi.fn(async (event: string, payload: unknown) => {
+    await send({ type: "broadcast", event, payload });
+    return { success: true as const };
+  });
+  const channel = { httpSend };
   const removeChannel = vi.fn(async () => "ok");
   const channelFn = vi.fn((_topic: string, _options: unknown) => channel);
   const createClient = vi.fn(() => ({

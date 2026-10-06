@@ -1293,14 +1293,12 @@ async function broadcastScheduleInvalidation(
         { config: { private: true } },
       );
       try {
-        await channel.send({
-          type: "broadcast",
-          event: "schedule_invalidation",
-          payload: {
-            kind: "schedule_invalidation",
-            // A channel names only its own location, never its neighbours.
-            ...removeUndefinedFields({ ...payload, location_ids: [locationId] }),
-          },
+        // BL-435: over REST on purpose; the API never joins the channel, and
+        // send()'s implicit REST fallback is deprecated.
+        await channel.httpSend("schedule_invalidation", {
+          kind: "schedule_invalidation",
+          // A channel names only its own location, never its neighbours.
+          ...removeUndefinedFields({ ...payload, location_ids: [locationId] }),
         });
       } catch {
         // Realtime is advisory; the write already succeeded and HTTP clients still refetch.
