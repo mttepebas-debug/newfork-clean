@@ -12935,10 +12935,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   width: max-content;
   max-width: 150px;
   padding: 3px 7px;
-  border: 1px solid #ced8d3;
+  /* Theme tokens, not raw hex (BL-257); each within a shade of the old value. */
+  border: 1px solid var(--theme-border-strong);
   border-radius: 4px;
-  background: #f0f4f2;
-  color: #4f5f58;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
