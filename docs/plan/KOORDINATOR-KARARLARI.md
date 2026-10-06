@@ -1622,5 +1622,5 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Ne için:** CI'ın üç paralel işi + her runner'ın Supabase yığını + oturumların yerel koşuları PC'yi kapattı; bugün 5 e2e kırmızısı da aynı yükten.
 - **Dayanak:** Mert'in kararı; CLAUDE.md §3 (en çok iki ağır iş) sıkılaştırıldı.
 - **Geri alma:** `cd ~/actions-runner-N && sudo ./svc.sh start`.
-- **Durum:** yürürlükte; REMOTE-CI sabah Mert'e.
+- **Durum:** yürürlükte; REMOTE-CI sabah Mert'e (`docs/plan/research/REMOTE-CI.md`, önerilen Hetzner ~$8–12/ay). Düzeltme ~14:05Z: CI-DOCS gereksizdi — `ci.yml`'de `paths-ignore` zaten var (planlama ölçtü); iptal edildi.
 - **Mert:** kendisi seçti.

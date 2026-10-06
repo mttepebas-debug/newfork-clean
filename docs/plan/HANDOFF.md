@@ -10,13 +10,13 @@
 - **Backlog:** "sadece backlogda olanların tazeliklerini kontrol et. hala geçerliyse backlogları azaltmaya çalış". Kapsam Schedule + Requests + Employees maddeleri. Planlama tazeliği ölçer (bayat → kanıtla kapanır), geçerliyi "salt hata düzeltmesi" / "karar ister" diye ayırır; hatlar sıraları bitince "salt hata düzeltmesi"ni alır (görünürse dalda).
 - **Sabah raporu (Mert uyanınca ilk mesaj):** ne bitti, ne canlıda, sabah onayını bekleyen dallar + görüntüleri (SendUserFile), backlog'dan kapananlar ve nedeni, sorular (tek tur, §13 şablonu).
 
-- **PC yeniden başladı (~13:40Z, aşırı yük) → TEK AĞIR İŞ (Mert ~13:50Z; KK-176):** runner 2 ve 3 durduruldu, CI tek runner'da sırayla (~25 dk); yerel ağır iş (tam test, e2e, test:db, build) yalnız `db.lock` ile ve `gh run list` boşken. Hatlar 13:55Z'de bu kuralla yeniden başlatıldı; dört sabitli oturumda Remote Control açık. CI-DOCS (docs push'u CI koşturmasın) arayüz hattında; REMOTE-CI araştırması planlamada (sabah Mert'e).
+- **PC yeniden başladı (~13:40Z, aşırı yük) → TEK AĞIR İŞ (Mert ~13:50Z; KK-176):** runner 2 ve 3 durduruldu, CI tek runner'da sırayla (~25 dk); yerel ağır iş (tam test, e2e, test:db, build) yalnız `db.lock` ile ve `gh run list` boşken. Hatlar 13:55Z'de bu kuralla yeniden başlatıldı; dört sabitli oturumda Remote Control açık. CI-DOCS gereksiz çıktı (paths-ignore zaten var; iptal edildi); REMOTE-CI araştırması planlamada (sabah Mert'e).
 
 ## 1. Yön ve kurallar
 - **Koordinatör işçi değil (KK-159):** kod, ölçüm, test, kapı, ekran görüntüsü, alt ajan YOK. Oturumların görüntülerine bakmak ve Mert'e göndermek serbest.
 - **Beş kural (KK-165)**; **görsel soru dersi:** önce nerede / kim / ne oluyor / sorun ne; görüntüye kendin bak; Mert'in seçtiğini yeniden onaya sunma (OBSERVATIONS 2026-10-06, iki kez).
 - **Gönderim:** R0–R2 oturum izinsiz; R3 ve her canlı migration koordinatörün izniyle (riskli diff'i oku).
-- **Docs gönderimi CI tetikliyor** ve koşan CI'ı iptal edebilir: kayıtları topla, CI bitince gönder.
+- **Docs gönderimi CI koşturmaz** (`ci.yml` `paths-ignore: docs/**, **/*.md`); main'de yeni koşu eskisini iptal etmez, bekler (BL-756). Kod + docs aynı push'ta giderse CI koşar.
 - **Kilit:** `node scripts/lock.mjs take main "koordinator/<iş>"` ayrı komutta, sonra push, sonra release.
 - **GateGuard** her yeni scratchpad dosyasında olgu ister; yazıp yeniden dene.
 - **Kırmızı main:** bugün 5 e2e kırmızısı, hepsi yük (VAR-E2E-GIRIS, VAR-E2E-2). Önce ayır (kod mu, yük mü), yalnız düşen işi yeniden koşturt; aynı test tekrar düşerse sınıflandırma görevi. E2E-YUK (`29e504d5`: e2e `needs: [check, db]` + flow 7 `test.slow()`) girdi; ilk koşusu 37467116856.
