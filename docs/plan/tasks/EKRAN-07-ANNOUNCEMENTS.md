@@ -58,6 +58,9 @@ Bir kişi için: Admin Zeynep "Yeni menü tadımı"nı yazar, Audience sekmesind
 | E7-25 daraltma yarışı | A1 (kişi listesiyle) | BL-539 |
 | E7-26 telefon | C1 (BL-599 kart satırı kararı) | BL-542, BL-599, BL-877 |
 | E7-27 saat dilimi | S2 / S25 cevabından sonra A3 + C1 | BL-878 |
+| C görsel QA YENİ: owner ekranı yüklenirken / hatada çalışan görünümünde | C1 | BL-879 |
+| C görsel QA YENİ: arama kutusu odağı (ortak bileşen) | EKRAN-02 C3 ortak bileşen işi (C1 doğrular) | BL-880 |
+| C görsel QA YENİ: telefonda taslak "Draft · <oluşturma tarihi>" | C1 (BL-599 kart satırıyla) | BL-881 |
 | Prototip taşı (27 madde, OZET §2) | C1 (+ veri dilimleri) | yukarıdakiler |
 | Test boşlukları (OZET §1 sonu) | ilgili dilim + D | — |
 

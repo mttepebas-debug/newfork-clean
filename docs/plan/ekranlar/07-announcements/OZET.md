@@ -1,6 +1,6 @@
 # EKRAN-07 Announcements — keşif özeti (2026-10-06, `6e7ac0dd`)
 
-Kaynaklar: `A-backlog-prototip.md` (nf-planlama), `B-guvenlik.md` (nf-guvenlik, DENETİM SONUCU: BULGU VAR — kritik 0, yüksek 0, orta 3, düşük 3), `D-kod-davranis.md` (genel ajan). Üçü de salt okur; yerel DB'de yalnız SELECT, test koşulmadı. `C-gorsel.md` (görsel QA) ayrı ağır iş, henüz yok.
+Kaynaklar: `A-backlog-prototip.md` (nf-planlama), `B-guvenlik.md` (nf-guvenlik, DENETİM SONUCU: BULGU VAR — kritik 0, yüksek 0, orta 3, düşük 3), `D-kod-davranis.md` (genel ajan). Üçü de salt okur; yerel DB'de yalnız SELECT, test koşulmadı. `C-gorsel.md` (görsel QA) §7'de.
 
 Ekranın sınırı: sol menü → Announcements (`/app/announcements`, `/app/announcements/:id`), yazma / düzenleme / yayın / arşiv penceresi, çalışanın okuma ve "Acknowledge"ı, Employee view → Home → "Team notices" kartı, dakikalık yayın işi. Sınırda: Workspace kutusu (EKRAN-05), Important Dates (8), Notifications (9), Settings → Acknowledgements (10), ortak bileşenler (EKRAN-02 C3).
 
@@ -77,3 +77,11 @@ Koordinatörün notları: K3 kabul ama metin ekranda görünür — görev dosya
 - Keşif: A, B, D yazıldı (2026-10-06 akşam). C (görsel QA) ağır iş, izinle.
 - Koordinatör kararları KK-182 (§3). YENİ bulgular BL-858…878 aldı (E7-02 → BL-858, E7-03 → 859, E7-04 → 860, E7-05 → 861, E7-06 → 862, E7-08 → 863, E7-09 → 864, E7-10 → 865, E7-11 → 866, E7-12 → 867, E7-13 → 868, E7-15 → 869, E7-16 → 870, E7-17 → 871, E7-18 → 872, E7-19 → 873, E7-20 → 874, E7-21 → 875, E7-22 → 876, E7-26 → 877, E7-27 → 878); var olanlara ek: BL-543 (E7-01), BL-675 (E7-07), BL-176 (E7-14), BL-787 (K6), BL-044 (K4). Görev dosyası `tasks/EKRAN-07-ANNOUNCEMENTS.md`.
 - Bekleyen: Mert'in S1, S3, S4 cevabı (ekran 7 turu); S2 = SABAH S25 sohbeti; C görsel QA (izinle).
+
+## 7. C görsel QA (2026-10-06, `20332d46`)
+
+Rapor aynen: `C-gorsel.md` (nf-gorsel-qa, KARAR: DEĞİŞİKLİK İSTE — keşif turu, dal yok; 18 bulgu: orta 8, düşük 10). Görüntüler `artifacts/nf-gorsel-qa/EKRAN-07/` (worktree `newfork-wt/plan-e08`, gitignore'da). Roller owner, tek lokasyon müdürü (Ayşe), çalışan (Ali); 1440 ve 390. Veri yazılmadı: GET dışı istekler tarayıcıda engellendi; tek duyurulu test dünyası okuma cevabı tarayıcıda zenginleştirilerek ölçüldü.
+- Yeni maddeler: BL-879 (owner ekranı yüklenirken / hatada çalışan görünümünde), BL-880 (arama kutusunda odak görünmüyor; ortak bileşen), BL-881 (telefonda taslak satırı oluşturma tarihini gösteriyor).
+- Var olan maddelere ek kanıt: BL-541 (değişmiş: 13 px, 24 px düğme), BL-864, BL-871, BL-873.
+- Kalan bulgular keşifteki maddeleri ve görev dosyasının C1'ini doğruluyor: Publish beyaz ve tek yeşil düğme yok (A5 / A6), Esc uzun metni sormadan atıyor (A7, P26), ham "Internal server error" (BL-866), telefon (BL-599, BL-542, BL-877), sekmelerde ok tuşu (BL-602), boş hâl (C1), okuma penceresi (BL-876), Home kartı (BL-870), hedef metni (BL-678), Delete / Unpublish (BL-543), sayfalama (BL-868 / BL-787). Öneriler (zevk) raporun "Öneriler" bölümünde, BL almadı.
+- Sağlam: sayfa iskeleti, sütun oranları (40 / 26 / 16 / 18), yeşil "New announcement", durum çipleri, kontrast (en düşük 4,67:1), pencere odak tuzağı ve Esc dönüşü, iki tık kırmızı Delete.
