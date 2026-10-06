@@ -74,7 +74,7 @@ describe("scheduled schedule export cron", () => {
     ).toBe("2026-03-08");
   });
 
-  it("renders the current published schedule and records success when any recipient succeeds", async () => {
+  it("does not count an email that missed some recipients as sent (D-D4)", async () => {
     const sent: string[] = [];
     const service = scheduleServiceMock([
       scheduleCandidate({
@@ -95,11 +95,31 @@ describe("scheduled schedule export cron", () => {
     expect(result).toEqual({
       checked: 1,
       due: 1,
-      sent: 1,
-      failed: 0,
+      sent: 0,
+      failed: 1,
       skipped: 0,
     });
     expect(sent).toEqual(["one@example.test", "two@example.test"]);
+    expect(service.recordScheduledExportSuccess).not.toHaveBeenCalled();
+    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scheduleId: "8a000000-0000-4000-8000-000000000001",
+        error: "Not delivered to 1 of 2 recipients: bounce",
+      }),
+    );
+  });
+
+  it("renders the current published schedule and records success when every recipient gets it", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({ recipients: ["one@example.test", "two@example.test"] }),
+    ]);
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send: vi.fn(async () => undefined) },
+    });
+
+    expect(result).toEqual({ checked: 1, due: 1, sent: 1, failed: 0, skipped: 0 });
     expect(service.previewExport).toHaveBeenCalledWith(
       expect.objectContaining({
         weekStart: "2026-08-17",
@@ -113,7 +133,7 @@ describe("scheduled schedule export cron", () => {
         format: "csv",
         params: expect.objectContaining({
           week_start: "2026-08-17",
-          delivered: 1,
+          delivered: 2,
         }),
       }),
     );

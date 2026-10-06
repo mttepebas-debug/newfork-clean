@@ -446,7 +446,9 @@ function countPrintColumns(
   );
 }
 
-function csvCell(value: string, delimiter: string): string {
+// B-6: a cell a spreadsheet would read as a formula opens as text (OWASP CSV injection).
+function csvCell(raw: string, delimiter: string): string {
+  const value = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   return value.includes(delimiter) || /["\r\n]/.test(value)
     ? `"${value.replaceAll('"', '""')}"`
     : value;

@@ -138,8 +138,14 @@ export async function runScheduledExportsCron(input: {
       const delivered = deliveries.filter(
         (delivery) => delivery.status === "fulfilled",
       ).length;
-      if (delivered === 0) {
-        throw new Error(firstRejectedReason(deliveries) ?? "Email delivery failed");
+      // D-D4: an email that missed anyone is not "sent"; the failure names how many.
+      if (delivered < schedule.recipients.length) {
+        const reason = firstRejectedReason(deliveries) ?? "Email delivery failed";
+        throw new Error(
+          delivered === 0
+            ? reason
+            : `Not delivered to ${schedule.recipients.length - delivered} of ${schedule.recipients.length} recipients: ${reason}`,
+        );
       }
       await input.service.recordScheduledExportSuccess({
         workspaceId: schedule.workspace_id,

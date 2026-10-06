@@ -92,6 +92,16 @@ describe("schedule export rendering", () => {
     expect(csv.replaceAll("\r\n", "").includes("\r")).toBe(false);
   });
 
+  it("opens a cell that starts like a formula as text in a spreadsheet (B-6, BL-282)", () => {
+    const names = ['=HYPERLINK("http://evil.test","Ali")', "+1+1", "-2+3", "@SUM(A1)", "\tTab", "\rReturn"];
+    const source: ScheduleExportPreview = { ...preview, rows: names.map((employee_name) => ({ ...preview.rows[0]!, employee_name })) };
+    const csv = renderScheduleCsv(prepareScheduleExport(source, settings), settings);
+
+    expect(csv).toContain(`"'=HYPERLINK(""http://evil.test"",""Ali"")"`);
+    for (const cell of ["'+1+1", "'-2+3", "'@SUM(A1)", "'\tTab", "\"'\rReturn\""]) expect(csv).toContain(cell);
+    expect(csv).not.toMatch(/(^|,)[=+\-@\t]/m);
+  });
+
   it("renders a valid XLSX workbook with summary and schedule sheets", async () => {
     const buffer = await renderScheduleWorkbook(preview, {
       ...settings,
