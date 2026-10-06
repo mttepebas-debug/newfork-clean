@@ -14,9 +14,10 @@ import { sendResendEmail } from "../email/resend-email.js";
 import { HttpError } from "../http-error.js";
 
 export const SCHEDULE_EXPORT_AUTO_DISABLE_FAILURES = 3;
-// ponytail: a fixed pool; each send can wait 30 s (resend-email.ts), so four
-// at a time keeps a busy hour inside the cron's limit. Raise it, or split the
-// candidates across runs, if the schedule count outgrows it (BL-356).
+// ponytail: a fixed pool of four schedules prepared side by side; the pace of
+// the sends themselves is the shared 600 ms queue below (~100 sends a minute).
+// Split the candidates across runs if one hour's sends outgrow the function's
+// time limit (BL-356).
 const SCHEDULE_EXPORT_CONCURRENCY = 4;
 
 export interface ScheduleExportDelivery {

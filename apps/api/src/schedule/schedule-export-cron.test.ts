@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   ScheduleExportPreview,
   ScheduleExportSettings,
@@ -22,6 +22,10 @@ beforeEach(() => {
   vi.spyOn(scheduleExportTiming, "wait").mockImplementation(async (ms: number) => {
     waits.push(ms);
   });
+});
+// A frozen clock or spied wait never outlives its test.
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 const settings: ScheduleExportSettings = {
@@ -159,8 +163,11 @@ describe("scheduled schedule export cron", () => {
   });
 
   it("starts each send at least 600 ms after the one before, across schedules", async () => {
+    // A frozen clock: each send waits exactly its turn behind the last.
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-08-17T15:00:00.000Z"));
     const service = scheduleServiceMock([
-      scheduleCandidate({ recipients: ["a@example.test", "b@example.test", "c@example.test"] }),
+      scheduleCandidate({ recipients: ["a@example.test", "b@example.test"] }),
+      scheduleCandidate({ id: "8a000000-0000-4000-8000-000000000002", recipients: ["c@example.test", "d@example.test"] }),
     ]);
     await runScheduledExportsCron({
       service,
@@ -168,8 +175,8 @@ describe("scheduled schedule export cron", () => {
       delivery: { send: vi.fn(async () => undefined) },
     });
 
-    // The clock does not move in the test: each send waits its turn behind the last.
-    expect(waits.filter((ms) => ms > 0 && ms < 5_000)).toEqual([600, 1200]);
+    // Two schedules, four sends, one queue: no two sends share a turn.
+    expect(waits.filter((ms) => ms > 0 && ms < 5_000)).toEqual([600, 1200, 1800]);
   });
 
   it("keeps the missed-recipients note within 500 characters", async () => {
