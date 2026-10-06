@@ -2,8 +2,8 @@
 
 > **Özet (5 satır)**
 > 1. Gece biriken ham soru: **73** (ekran keşifleri 12, veri hattı raporu 4, tazelik turu 51, REMOTE-CI 1, Resend 1, Schedule'ın eski görsel ve düğme maddeleri 3, gece ekran onayı 1). Sayım `origin/main` `d543727a` üzerinde, 2026-10-06 gece.
-> 2. Birleştirip cevaplıları ayırınca **24 karar** kaldı: 21'i bu sabah sorulur (S1–S21), 3 görsel soru varyant ya da senin "bekle"n yüzünden sonraya kalır (S22). 43 madde soru değil (aşağıda "Soru değil" listesi, dayanağıyla).
-> 3. **6 tur**, her turda en çok 4 soru.
+> 2. Birleştirip cevaplıları ayırınca **24 karar** kaldı: 21'i bu sabah sorulur (S1–S21), 3 görsel soru varyant ya da senin "bekle"n yüzünden sonraya kalır (S22). 43 madde soru değil (aşağıda "Soru değil" listesi, dayanağıyla). Sonradan eklenen: S23 ve S24 (bu sabah), S25 (önce sohbette, temel model).
+> 3. **7 tur**, her turda en çok 4 soru (2026-10-06 akşam yeniden bölündü: hat durduranlar önde).
 > 4. **Tur 1 neden önce:** dört hattın üçü onu bekliyor. Gece dalda hazır ekran işleri senin onayını, takas onay ekranı (Requests → Review) iki görsel seçimi, takas yetkisinin main'e gidişi de ultrareview cevabını bekliyor.
 > 5. Tahmini süre: Tur 1 ~10 dk (görüntülere bakmak dahil), sonraki turlar 3–5'er dk; toplam ~35 dk.
 
@@ -78,20 +78,31 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 
 ---
 
-## Tur 2 — veri hattının sıradaki dilimi ve altyapı
+## Tur 2 — veri hattını ve bütün hatları durduranlar
 
-### S23. Yerel veritabanında kalan iki test dünyası ne olsun?
-- **Hat:** hiçbir hat durmuyor; yalnız yerel bir test kırmızı. Cevap gelene kadar yerel `test:db` sonucu bu testte hep kırmızı okunur.
-- **Bugün:** 2026-10-06 15:53Z'deki bir deneme sırasında ortak yerel veritabanına iki test dünyası (World ra, World rx: 2 workspace, 9 kullanıcı) kalıcı yazıldı. Yerel "belge türleri" testi bu yüzden düşüyor. CI ve canlı etkilenmiyor (CI her koşuda temiz veritabanı kurar). Gece silmek denendi; ürünün kendi korumaları (workspace'in aktif owner'ı kalmalı, değiştirilemez kayıtlar) silmeyi durdurdu, hiçbir şey yazılmadı. 692 satırın tam yedeği alındı: `.newfork-inbox/backup-test-worlds-ra-rx-20261006/rows.jsonl`.
-- **(a) Yerel `supabase db reset`: veritabanı sıfırdan kurulur (~1 dk). (Önerilen)**
-  Zayıf yanı: yerel test verisinin hepsi gider; Meyhouse demo verisi de yeniden kurulmalı ve git dışındaki `meyhouse.sql` artık silinmiş sütunlara yazdığı için reset bu dosyada durabilir (BL-520), önce dosyanın yeniden üretilmesi gerekebilir. O sırada yerel test koşan oturum kesilir; reset hatların boş anına konmalı.
-  `Dayanak: CLAUDE.md §7 (reset senin onayını ister) + ILKELER P01 (canlı veri yok, bozuk yerel veri onarılmaz, yeniden kurulur)`
-- **(b) Korumaları tek transaction'da kapatıp yalnız iki test dünyasını silmek (yedekli; önce geri alınan denemede yetim satır sayılır).**
-  Zayıf yanı: ürünün korumalarını atlamak demek; gözden kaçan bir tabloda yetim satır kalabilir ve sonraki yerel testleri sessizce bozabilir.
-- **(c) Bırakmak: yalnız yerel "belge türleri" testi kırmızı kalır.**
-  Zayıf yanı: yerel kırmızı her koşuda yeniden ayıklanır; testin kendi zayıflığı (bütün veritabanında başlığa göre arıyor) ayrıca backlog'da (BL-841) ve o düzelince bu kırmızı kendiliğinden kalkar.
+### S24. Lokasyonu değişen vardiya yeni lokasyonda yayınlanınca eski lokasyonun yayını ne olur?
+- **Hat:** veri hattı DB-4 (Schedule'da Edit'e girerken çıkan hata, BL-759) kök çözüm için bu cevabı bekliyor; cevaba kadar yalnız kırmızı test yazılır.
+- **Bugün:** Ayşe, Kadıköy'deki Salı vardiyasını taslakta Beşiktaş'a taşır ve yalnız Beşiktaş'ı yayınlar. Vardiya iki yayında birden kalır (Kadıköy'ün eski yayını + Beşiktaş'ın yenisi): çalışan aynı vardiyayı iki yerde görebilir ve Ayşe o haftada Edit'e basınca düzenleme açılmıyor.
+- **(a) Taşınan vardiya yeni lokasyonda yayınlanınca eski lokasyonun yayınından otomatik düşer; yayın önizlemesi bunu bir satırla söyler ("Kadikoy loses 1 shift moved to Besiktas"). (Önerilen)**
+  Zayıf yanı: Kadıköy'ün yayını, Kadıköy hiç yayınlanmadan değişmiş olur; Kadıköy müdürü Can bunu yalnız önizleme satırından ve bildirimden öğrenir.
+  `Dayanak: ILKELER P09 (veri sessizce düşmez, uyarılır) + okuma modelinin bugünkü kuralı ("lokasyonu bugünküyle eşleşen yayın konuşur")`
+- **(b) Eski lokasyonun da yayınlanması istenir: Beşiktaş'ı yayınlarken Kadıköy de seçili olmak zorunda.**
+  Zayıf yanı: Kadıköy'de yarım kalan başka bir taslak varsa Ayşe onu da yayınlamak zorunda kalır; Kadıköy başka müdürünse Ayşe'nin yetkisi yetmeyebilir.
+- **(c) Yalnız Edit'in açılmasını düzelt; vardiya iki yayında kalmaya devam etsin.**
+  Zayıf yanı: en hızlı yol ama kök sorun kalır; çalışan aynı vardiyayı iki lokasyonda görmeye devam eder.
 - (d) Önce sohbette konuşalım.
-- Kaynak: `.newfork-inbox/done/20261006T165128-nf-db-veri-olay-test-dunyasi.md`.
+- Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 2); BL-759.
+
+### S7. Ağır testler (CI) nerede koşsun?
+- **Hat:** dört hattı yavaşlatıyor. Bugün ağır işler (tam test, e2e, veritabanı testi) senin bilgisayarında tek tek sıraya giriyor; dün aşırı yükten kapandı.
+- **Bugün:** CI tek runner'la ve "aynı anda tek ağır iş" kuralıyla bilgisayarında koşuyor; bir main koşusu ~20 dk. Sen 2026-10-06'da "mümkünse remote yapalım" dedin.
+- **Örnek:** yoğun bir günde 25 gönderim, her biri ~20 dk; arada oturumlar ağır iş izni için sıra bekliyor.
+- **(a) Bulutta küçük bir sunucu (Hetzner, ~$8–12/ay) runner olur; bilgisayarın boşalır, kod gizli kalır. Hesabı sen açarsın, kurulumu bir oturum yapar. (Önerilen)**
+  Zayıf yanı: yeni ücretli hesap, ILKELER P06'ya ("lansmandan önce yeni ücretli hesap açılmaz") istisna. 8 GB'lık sunucu işleri sırayla koşturur, bugünkü üç paralel runner kadar hızlı değil (ilk koşuda ölçülür). Fiyat ikincil kaynaktan; hesap açmadan hetzner.com'da doğrulanır.
+  `Dayanak: senin 2026-10-06 ~13:50Z isteğin ("remote yapalım") + docs/plan/research/REMOTE-CI.md; para kısmı için yok — yeni karar (P06 istisnası)`
+- (b) GitHub'ın makineleri: kurulum yok; kullanıma göre ~$13–145/ay, yoğun haftada pahalı.
+- (c) Bugünkü gibi bilgisayarında, tek ağır iş kuralıyla ($0, yavaş).
+- Kaçış: "Önce sohbette konuşalım".
 
 ### S5. Eş müdür, öteki müdürün cover talebini kapatabilsin mi?
 - **Hat:** durdurmuyor. Cevap gelirse veri hattının şimdi başladığı A3'e eklenir; gelmezse bugünkü davranış sürer.
@@ -114,16 +125,9 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - (b) Hepsi yayındakine döner; Ayşe'nin yeni notu silinir.
 - (c) Not kalır, ama Ayşe'ye "Shift moved to Hande; check the note" uyarısı çıkar.
 
-### S7. Ağır testler (CI) nerede koşsun?
-- **Hat:** dört hattı yavaşlatıyor. Bugün ağır işler (tam test, e2e, veritabanı testi) senin bilgisayarında tek tek sıraya giriyor; dün aşırı yükten kapandı.
-- **Bugün:** CI tek runner'la ve "aynı anda tek ağır iş" kuralıyla bilgisayarında koşuyor; bir main koşusu ~20 dk. Sen 2026-10-06'da "mümkünse remote yapalım" dedin.
-- **Örnek:** yoğun bir günde 25 gönderim, her biri ~20 dk; arada oturumlar ağır iş izni için sıra bekliyor.
-- **(a) Bulutta küçük bir sunucu (Hetzner, ~$8–12/ay) runner olur; bilgisayarın boşalır, kod gizli kalır. Hesabı sen açarsın, kurulumu bir oturum yapar. (Önerilen)**
-  Zayıf yanı: yeni ücretli hesap, ILKELER P06'ya ("lansmandan önce yeni ücretli hesap açılmaz") istisna. 8 GB'lık sunucu işleri sırayla koşturur, bugünkü üç paralel runner kadar hızlı değil (ilk koşuda ölçülür). Fiyat ikincil kaynaktan; hesap açmadan hetzner.com'da doğrulanır.
-  `Dayanak: senin 2026-10-06 ~13:50Z isteğin ("remote yapalım") + docs/plan/research/REMOTE-CI.md; para kısmı için yok — yeni karar (P06 istisnası)`
-- (b) GitHub'ın makineleri: kurulum yok; kullanıma göre ~$13–145/ay, yoğun haftada pahalı.
-- (c) Bugünkü gibi bilgisayarında, tek ağır iş kuralıyla ($0, yavaş).
-- Kaçış: "Önce sohbette konuşalım".
+---
+
+## Tur 3 — canlı e-posta ve yerel veritabanı (kod hattını durdurmuyor)
 
 ### S8. Canlıda e-posta: Resend'i ne zaman kuruyorsun?
 - **Hat:** kod hattını durdurmuyor; canlıda davet ve parola sıfırlamayı durduruyor.
@@ -134,22 +138,23 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - (b) Lansmana yakın; o zamana kadar canlıda e-posta yok.
 - (c) Başka alan adıyla (ör. `newfork.app` alınırsa) — önce alan adı kararı.
 
-### S24. Lokasyonu değişen vardiya yeni lokasyonda yayınlanınca eski lokasyonun yayını ne olur?
-- **Hat:** veri hattı DB-4 (Schedule'da Edit'e girerken çıkan hata, BL-759) kök çözüm için bu cevabı bekliyor; cevaba kadar yalnız kırmızı test yazılır.
-- **Bugün:** Ayşe, Kadıköy'deki Salı vardiyasını taslakta Beşiktaş'a taşır ve yalnız Beşiktaş'ı yayınlar. Vardiya iki yayında birden kalır (Kadıköy'ün eski yayını + Beşiktaş'ın yenisi): çalışan aynı vardiyayı iki yerde görebilir ve Ayşe o haftada Edit'e basınca düzenleme açılmıyor.
-- **(a) Taşınan vardiya yeni lokasyonda yayınlanınca eski lokasyonun yayınından otomatik düşer; yayın önizlemesi bunu bir satırla söyler ("Kadikoy loses 1 shift moved to Besiktas"). (Önerilen)**
-  Zayıf yanı: Kadıköy'ün yayını, Kadıköy hiç yayınlanmadan değişmiş olur; Kadıköy müdürü Can bunu yalnız önizleme satırından ve bildirimden öğrenir.
-  `Dayanak: ILKELER P09 (veri sessizce düşmez, uyarılır) + okuma modelinin bugünkü kuralı ("lokasyonu bugünküyle eşleşen yayın konuşur")`
-- **(b) Eski lokasyonun da yayınlanması istenir: Beşiktaş'ı yayınlarken Kadıköy de seçili olmak zorunda.**
-  Zayıf yanı: Kadıköy'de yarım kalan başka bir taslak varsa Ayşe onu da yayınlamak zorunda kalır; Kadıköy başka müdürünse Ayşe'nin yetkisi yetmeyebilir.
-- **(c) Yalnız Edit'in açılmasını düzelt; vardiya iki yayında kalmaya devam etsin.**
-  Zayıf yanı: en hızlı yol ama kök sorun kalır; çalışan aynı vardiyayı iki lokasyonda görmeye devam eder.
+### S23. Yerel veritabanında kalan iki test dünyası ne olsun?
+- **Hat:** hiçbir hat durmuyor; yalnız yerel bir test kırmızı. Cevap gelene kadar yerel `test:db` sonucu bu testte hep kırmızı okunur.
+- **Bugün:** 2026-10-06 15:53Z'deki bir deneme sırasında ortak yerel veritabanına iki test dünyası (World ra, World rx: 2 workspace, 9 kullanıcı) kalıcı yazıldı. Yerel "belge türleri" testi bu yüzden düşüyor. CI ve canlı etkilenmiyor (CI her koşuda temiz veritabanı kurar). Gece silmek denendi; ürünün kendi korumaları (workspace'in aktif owner'ı kalmalı, değiştirilemez kayıtlar) silmeyi durdurdu, hiçbir şey yazılmadı. 692 satırın tam yedeği alındı: `.newfork-inbox/backup-test-worlds-ra-rx-20261006/rows.jsonl`.
+- **(a) Yerel `supabase db reset`: veritabanı sıfırdan kurulur (~1 dk). (Önerilen)**
+  Zayıf yanı: yerel test verisinin hepsi gider; Meyhouse demo verisi de yeniden kurulmalı ve git dışındaki `meyhouse.sql` artık silinmiş sütunlara yazdığı için reset bu dosyada durabilir (BL-520), önce dosyanın yeniden üretilmesi gerekebilir. O sırada yerel test koşan oturum kesilir; reset hatların boş anına konmalı.
+  `Dayanak: CLAUDE.md §7 (reset senin onayını ister) + ILKELER P01 (canlı veri yok, bozuk yerel veri onarılmaz, yeniden kurulur)`
+- **(b) Korumaları tek transaction'da kapatıp yalnız iki test dünyasını silmek (yedekli; önce geri alınan denemede yetim satır sayılır).**
+  Zayıf yanı: ürünün korumalarını atlamak demek; gözden kaçan bir tabloda yetim satır kalabilir ve sonraki yerel testleri sessizce bozabilir.
+- **(c) Bırakmak: yalnız yerel "belge türleri" testi kırmızı kalır.**
+  Zayıf yanı: yerel kırmızı her koşuda yeniden ayıklanır; testin kendi zayıflığı (bütün veritabanında başlığa göre arıyor) ayrıca backlog'da (BL-841) ve o düzelince bu kırmızı kendiliğinden kalkar.
 - (d) Önce sohbette konuşalım.
-- Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 2); BL-759.
+- Kaynak: `.newfork-inbox/done/20261006T165128-nf-db-veri-olay-test-dunyasi.md`.
 
 ---
 
-## Tur 3 — Employees ve Availability (veri hattına sırası gelince durdurur)
+## Tur 4 — Employees ve Availability (veri hattına sırası gelince durdurur)
+
 Veri hattının sırası: Requests A3 → A4 → Employees A1–A4 → Availability A1 → Workspace A1. Bu turdaki cevaplar o dilimlere gerekir; bugün hiçbir oturum beklemiyor.
 
 ### S9. Arşivlenmiş lokasyondaki kişi o lokasyondan çıkarılabilsin mi?
@@ -187,7 +192,7 @@ Veri hattının sırası: Requests A3 → A4 → Employees A1–A4 → Availabil
 
 ---
 
-## Tur 4 — Workspace ana sayfası (sırası en son gelen ekran)
+## Tur 5 — Workspace ana sayfası (sırası en son gelen ekran)
 
 ### S13. İzni olmayan müdür Workspace'teki sayı kutusunu nasıl görsün?
 - **Bugün:** sol menü → Workspace → Pending requests. Yalnız Availability'yi yöneten Can, bekleyen talep varken "Time off 0" görüyor. Sıfır yanlış: talep var ama Can'ın görme izni yok.
@@ -224,7 +229,7 @@ Veri hattının sırası: Requests A3 → A4 → Employees A1–A4 → Availabil
 
 ---
 
-## Tur 5 — kalan ürün soruları
+## Tur 6 — kalan ürün soruları
 
 ### S17. Belge süresi işi ve bildirimi kendiliğinden üretilsin mi; ayrıca "expired" bildirimi gitsin mi?
 - **Bugün:** Ali'nin Food Handler kartı Cumartesi doluyor. Hafta sonu kimse Workspace'i açmazsa ne Todos'ta iş açılıyor ne owner'a bildirim gidiyor; Pazartesi biri sayfayı açınca ikisi birden üretiliyor. "Expires soon" bildirimi gittiyse, süre dolunca ikinci bir bildirim gitmiyor.
@@ -255,7 +260,7 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
 
 ---
 
-## Tur 6 — görsel, varyantı hazır olanlar (hat durdurmuyor)
+## Tur 7 — görsel, varyantı hazır olanlar (hat durdurmuyor)
 
 ### S20. Görsel — Schedule üst çubuğu dar pencerede
 - **Bugün:** Schedule üst çubuğu 1024 px'te 4 satıra, 936 px'te 7 satıra diziliyor; Ayşe ızgarayı ekranın yarısından başlayarak görüyor. 2026-10-06'da dört görüntü gördün ve "başka bir fikrim var" dedin (HANDOFF §4.5). O fikir henüz dinlenmedi.
