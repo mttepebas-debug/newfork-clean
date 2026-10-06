@@ -149,9 +149,9 @@
     .sx-root button.sx-primary,
     button.sx-primary
   ) {
-  color: #fff;
-  background: #256b56;
-  border-color: #256b56;
+  color: var(--theme-on-accent);
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
 }
 .requests-catalog-page .nf-button.danger {
   color: var(--job-error);
@@ -216,9 +216,10 @@
 .requests-catalog-page label {
   font-size: 12px;
 }
+/* A mouse press leaves no ring; the keyboard keeps the shared focus ring (C1). */
 .requests-catalog-page
-  :is(button, summary, [tabindex]):is(:focus, :focus-visible) {
-  outline: none;
+  :is(button, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: 0;
   box-shadow: none;
 }
 .request-sr-only {
