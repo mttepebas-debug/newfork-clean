@@ -1,8 +1,8 @@
-import { RequestError, requestFailure } from "../lib/request-error";
+import { RequestError } from "../lib/request-error";
 import {
   scheduleRequestsReadModelSchema,
 } from "@newfork/shared/schedule";
-import { apiRequest, getTabWorkspaceId, supabaseClient } from "../lib/supabase";
+import { apiRequest, supabaseClient } from "../lib/supabase";
 import {
   timeOffRevokeResultSchema,
   timeOffShortenResultSchema,
@@ -15,38 +15,13 @@ import {
   type TimeOffSubmitInput,
   type TimeOffVerdictInput,
 } from "@newfork/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-async function request(
-  _workspaceId: string,
-  path: string,
-  init: RequestInit = {},
-) {
-  if (!supabaseClient)
-    throw new Error("Schedule request storage is not configured");
-  const token = (await supabaseClient.auth.getSession()).data.session
-    ?.access_token;
-  if (!token) throw new Error("A current session is required");
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${token}`);
-  if (init.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-  const tabWorkspaceId = getTabWorkspaceId();
-  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/schedule/requests${path}`,
-    {
-      ...init,
-      headers,
-    },
-  );
-  const body = (await response.json().catch(() => null)) as unknown;
-  if (!response.ok)
-    throw requestFailure(body, response.status, "Schedule request operation failed");
-  return body;
-}
+/** The API's search limit; longer text is cut, never sent to fail (R2-10). */
+const searchLimit = 120;
 
+// EKRAN-02 B1 (R2-21): the one Requests route, through the shared helper
+// (a lost session signs out there).
 export async function getScheduleRequests(
   workspaceId: string,
   filters: {
@@ -54,18 +29,36 @@ export async function getScheduleRequests(
     locationId: string;
     search: string;
     timeOffCursor?: string;
+    limit?: number;
   },
 ) {
+  if (!supabaseClient) throw new Error("Schedule request storage is not configured");
   const query = new URLSearchParams({
     time_off_queue: filters.timeOffQueue,
-    search: filters.search,
+    search: filters.search.trim().slice(0, searchLimit),
   });
   if (filters.locationId) query.set("location_id", filters.locationId);
   if (filters.timeOffCursor)
     query.set("time_off_cursor", filters.timeOffCursor);
+  if (filters.limit) query.set("limit", String(filters.limit));
   return scheduleRequestsReadModelSchema.parse(
-    await request(workspaceId, `?${query}`),
+    await apiRequest(supabaseClient, `/v1/workspaces/${workspaceId}/schedule/requests?${query}`),
   );
+}
+
+/**
+ * Every open (pending) time off request the reader may read, for Needs review
+ * and In progress (K-S8). The open queue is short; it is read whole.
+ */
+export async function getOpenTimeOffRequests(workspaceId: string, filters: { locationId: string; search: string }) {
+  const rows = [];
+  let cursor: string | undefined;
+  do {
+    const page = await getScheduleRequests(workspaceId, { ...filters, timeOffQueue: "needs_review", timeOffCursor: cursor, limit: 100 });
+    rows.push(...page.time_off_requests);
+    cursor = page.time_off_next_cursor ?? undefined;
+  } while (cursor);
+  return rows;
 }
 
 /** BL-127: a manager gives back hours of approved time off; the core decides who may. */
@@ -129,6 +122,8 @@ export function useScheduleRequests(
     queryKey: [...timeOffKeys.requests(workspaceId ?? ""), filters.timeOffQueue, filters.locationId, filters.search, filters.timeOffCursor],
     queryFn: () => getScheduleRequests(workspaceId!, filters),
     enabled: Boolean(workspaceId),
+    // R2-10: typing in search keeps the last rows on screen, and the box its focus.
+    placeholderData: keepPreviousData,
   });
 }
 export function useSubmitTimeOff(workspaceId: string) {

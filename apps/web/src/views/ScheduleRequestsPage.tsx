@@ -26,7 +26,6 @@ import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchang
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { PermissionRoute } from "../auth/PermissionRoute";
 import {
   AvailabilityDraftScope,
   requestAvailabilityNavigation,
@@ -41,7 +40,7 @@ import { ConfirmDialog } from "../shell/ConfirmDialog";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
-import { noAccessHomePath } from "../auth/resolveLanding";
+import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
 type Tab = "time-off" | "shift-changes";
 type RequestSortKey = "employee" | "date" | "decide_by" | "status" | "review";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
@@ -49,16 +48,14 @@ type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
+  const { context } = useAuth();
   if (params.get("tab") === "availability") {
     return <Navigate to="/app/availability" replace />;
   }
+  // EKRAN-02 B1: the door asks the core, like the tabs do.
+  if (!can(context, "requests.read") && !can(context, "exchange.read"))
+    return <Navigate to={appLandingPath(context)} replace />;
   return (
-    <PermissionRoute
-      anyOf={[
-        "schedule.time_off_requests.read",
-        "schedule.shift_change_requests.read",
-      ]}
-    >
       <AvailabilityDraftScope
         labels={{
           saving: "Saving request decision",
@@ -70,7 +67,6 @@ export function ScheduleRequestsPage() {
       >
         <ScheduleRequestsPageContent />
       </AvailabilityDraftScope>
-    </PermissionRoute>
   );
 }
 function ScheduleRequestsPageContent() {

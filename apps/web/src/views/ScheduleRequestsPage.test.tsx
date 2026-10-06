@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
-import { RequestError } from "../lib/request-error";
+import { RequestError, requestFailure } from "../lib/request-error";
 import { inDeviceZone, plain } from "../employee-hub/device-zone.testing";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -111,14 +111,16 @@ let readFailure: { status: number; body: unknown } | null = null;
 // Library's 1 s default for findBy/waitFor is what ran out there (U19).
 configure({ asyncUtilTimeout: 5000 });
 
-const fetchRequests = vi.fn(async () =>
-  readFailure
-    ? new Response(JSON.stringify(readFailure.body), { status: readFailure.status })
-    : new Response(JSON.stringify(read), { status: 200 }));
+// The Requests read (GET .../schedule/requests); decisions go to apiRequest.
+const fetchRequests = vi.fn(async (_path: string) => {
+  if (readFailure) throw requestFailure(readFailure.body, readFailure.status, "Workspace operation failed");
+  return read;
+});
 const apiRequest = vi.fn();
 vi.mock("../lib/supabase", () => ({
   supabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } },
-  apiRequest: (...args: unknown[]) => apiRequest(...args),
+  apiRequest: (client: unknown, path: string, init?: RequestInit) =>
+    path.includes("/schedule/requests?") ? fetchRequests(path) : apiRequest(client, path, init),
   getTabWorkspaceId: () => null,
 }));
 vi.mock("../auth/AuthContext", () => ({
@@ -173,7 +175,6 @@ beforeEach(() => {
   read = fixture;
   readFailure = null;
   vi.clearAllMocks();
-  vi.stubGlobal("fetch", fetchRequests);
   vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
 });
 
@@ -190,12 +191,6 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
     renderPage("/app/schedule/requests?tab=availability");
     await screen.findByRole("heading", { name: "Employee Hub" });
-    expect(fetchRequests).not.toHaveBeenCalled();
-  });
-  it("does not treat employee-record read permission as request queue access", async () => {
-    activeContext = { ...context, permissions: ["workspace.read", "employees.read"] };
-    renderPage();
-    await screen.findByRole("heading", { name: "Workspace" });
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   it("keeps only Time off and Shift changes tabs and opens the manager Shift Hub", async () => {
@@ -221,6 +216,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage();
     await screen.findByRole("heading", { name: "Requests" });
     expect(screen.getAllByRole("tab")).toHaveLength(1);
+  });
+  // EKRAN-02 B1: the page's door asks the core, like its tabs do.
+  it("sends away someone whose role names a request permission the core does not grant here", async () => {
+    activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read" && action !== "exchange.read") };
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(fetchRequests).not.toHaveBeenCalled();
   });
   it("hides the time off queue from someone the core does not let read it", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
@@ -470,5 +472,25 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to requests" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
+// EKRAN-02 B1 (R2-10): search narrows the list in place.
+describe("search", () => {
+  it("keeps the list and the search box while the next rows load", async () => {
+    renderPage();
+    const box = await screen.findByLabelText("Search requests");
+    await screen.findByRole("button", { name: /Alex Kim/ });
+    let answer: (model: ScheduleRequestsReadModel) => void = () => undefined;
+    fetchRequests.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
+    box.focus();
+    fireEvent.change(box, { target: { value: "a".repeat(200) } });
+    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
+    expect(screen.queryByText("Loading requests...")).toBeNull();
+    expect(screen.getByRole("button", { name: /Alex Kim/ })).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText("Search requests"));
+    const asked = new URL(fetchRequests.mock.calls.at(-1)![0], "http://x").searchParams.get("search");
+    expect(asked).toHaveLength(120);
+    answer(read);
   });
 });
