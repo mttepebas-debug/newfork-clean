@@ -223,3 +223,4 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-10-06 | BL-135 | bayat: Okuma modeli artık notu yazanı veriyor (`note_author`, `scheduleAvailabilityMark.ts:114`). | 68c7bd8c
 2026-10-06 | BL-133 | kapandı: `activate_employee_onboarding_case_service` drop edildi (`20261006000000:3099`). | 6b0d5d7b
 2026-10-06 | BL-042 | bayat: ölçülecek bir iddia yok ("drawer UI polish"); işi EKRAN-03 C2 ve ayrı BL'ler aldı | 9146ba6b
+2026-10-06 | EKRAN-06 Documents keşfi: bayat maddeler kapandı | BL-118 (owner'ın gönüllü yüklemesi FB-6.6 B ile main'de), BL-096 ve numarasız "pgTAP borcu" (adı geçen test dosyaları CI yeşil listesinde ya da silinmiş) bayattı; BL-344 BL-566'ya, BL-528 ve BL-590 BL-497'ye birleşti; BL-374'ün ve BL-276'nın belge kısmı kapandı. Ekranda değişiklik yok; backlog kısaldı. | 53545e48
