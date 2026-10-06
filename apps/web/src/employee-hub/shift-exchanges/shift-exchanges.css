@@ -1,13 +1,14 @@
+/* The Shift Hub reads the app's own theme tokens (R2-47); light theme only. */
 .sx-root {
-  --sx-bg: #f5f7f3;
-  --sx-card: #fff;
-  --sx-ink: #243a32;
-  --sx-muted: #53675b;
-  --sx-border: #dce4da;
-  --sx-green: #25624d;
-  --sx-tint: #eaf1e8;
-  --sx-amber: #77510d;
-  --sx-amber-bg: #fff4d9;
+  --sx-bg: var(--theme-page);
+  --sx-card: var(--theme-surface);
+  --sx-ink: var(--theme-text);
+  --sx-muted: var(--theme-text-secondary);
+  --sx-border: var(--theme-border);
+  --sx-green: var(--theme-accent-strong);
+  --sx-tint: var(--theme-selected);
+  --sx-amber: var(--theme-warning);
+  --sx-amber-bg: var(--theme-warning-soft);
   color: var(--sx-ink);
   font: inherit;
   line-height: 1.5;
@@ -55,13 +56,13 @@
   outline-offset: 3px;
 }
 .sx-root button.sx-primary {
-  color: #fff;
+  color: var(--theme-on-accent);
   background: var(--sx-green);
   border-color: var(--sx-green);
   font-weight: 600;
 }
 .sx-root button.sx-primary:hover:not(:disabled) {
-  background: #1b4b3a;
+  background: var(--theme-accent-deep);
 }
 .sx-root h2,
 .sx-root h3,
@@ -421,7 +422,7 @@
 }
 .sx-error {
   background: var(--theme-danger-soft);
-  color: #a13028;
+  color: var(--theme-danger-strong);
 }
 .sx-notice {
   display: flex;
@@ -454,11 +455,11 @@
   background: var(--sx-card);
   color: var(--sx-ink);
   overflow-y: auto;
-  box-shadow: 0 20px 80px #10201835;
+  box-shadow: 0 20px 80px color-mix(in srgb, var(--theme-text) 21%, transparent);
   margin: auto;
 }
 .sx-dialog::backdrop {
-  background: #13271f70;
+  background: color-mix(in srgb, var(--theme-text) 44%, transparent);
   backdrop-filter: blur(3px);
 }
 .sx-dialog > header {
@@ -491,7 +492,7 @@
 }
 .sx-schedule-recovery {
   padding: 16px 20px;
-  border-block: 1px solid #cbd6cf;
+  border-block: 1px solid var(--theme-border-strong);
   max-height: 50vh;
   overflow-y: auto;
   flex: 1 1 auto;
@@ -524,7 +525,7 @@
 .sx-schedule-recovery li {
   display: grid;
   gap: 5px;
-  border: 1px solid #cbd6cf;
+  border: 1px solid var(--theme-border-strong);
   padding: 12px;
   border-radius: 10px;
   overflow-wrap: anywhere;
@@ -542,7 +543,7 @@
   outline-offset: 3px;
 }
 .sx-schedule-recovery [role="alert"] {
-  color: #a33024;
+  color: var(--theme-danger-strong);
 }
 .sx-field {
   display: grid;
@@ -641,17 +642,6 @@
   background: var(--sx-tint);
   border-radius: 16px;
 }
-.dark .sx-root {
-  --sx-bg: #17251f;
-  --sx-card: #21342b;
-  --sx-ink: #eff5ef;
-  --sx-muted: #b9cbbd;
-  --sx-border: #40574a;
-  --sx-green: #9fd7b9;
-  --sx-tint: #304c3c;
-  --sx-amber: #f2d28c;
-  --sx-amber-bg: #44391f;
-}
 .sx-clock-detail {
   margin-block: 10px;
   padding: 10px 12px;
@@ -706,16 +696,6 @@
   outline: 2px solid var(--sx-green);
   outline-offset: 3px;
   border-radius: 4px;
-}
-.dark .sx-root button.sx-primary {
-  color: #143426;
-}
-.dark .sx-root button.sx-primary:hover:not(:disabled) {
-  background: #b3e4c9;
-}
-.dark .sx-root .sx-error {
-  background: #482a28;
-  color: #ffc4bc;
 }
 /* Width comes from the shared top-level page container, like every other
    main navigation page. */
