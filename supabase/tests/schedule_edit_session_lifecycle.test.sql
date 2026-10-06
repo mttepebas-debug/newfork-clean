@@ -131,6 +131,17 @@ select pg_temp.add('can', pg_temp.sid((select result from el_other)), 5, 'K', 4)
 select pg_temp.open('zeynep', 5, 'draft', tests.id('el:plan_b'));
 select is(pg_temp.open('can', 5, 'draft', tests.id('el:plan_b')) ->> 'status', 'conflict', 'Can is told Zeynep edits Plan B');
 select is(pg_temp.status(pg_temp.sid((select result from el_other))), 'active', 'and his Plan C edit stays open, untouched');
+-- Zeynep adds to Plan B unsaved and her lease runs out; Can asks again.
+select tests.remember('el:edit:z', (select s.id from public.schedule_edit_sessions s
+  where s.source_draft_id = tests.id('el:plan_b') and s.status = 'active'));
+select pg_temp.add('zeynep', tests.id('el:edit:z'), 5, 'K', 5);
+select pg_temp.expire(tests.id('el:edit:z'));
+create temp table el_both as select pg_temp.open('can', 5, 'draft', tests.id('el:plan_b')) result;
+select is((select result -> 'session' ->> 'source_draft_id' from el_both), tests.id('el:plan_b')::text,
+  'Can opens Plan B when both his and Zeynep''s unsaved work are put aside');
+select matches((select result ->> 'recovered_draft_name' from el_both), '^Auto-save · Zeynep Person · ',
+  'the answer names Zeynep''s Auto-save draft');
+select is(pg_temp.status(pg_temp.sid((select result from el_other))), 'recovered', 'and his Plan C edit is closed into his own');
 
 -- 4. Each manager sees only their own unsaved changes (D-Y5) -----------------------
 

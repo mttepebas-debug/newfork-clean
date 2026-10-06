@@ -128,6 +128,7 @@ declare
   own_session public.schedule_edit_sessions%rowtype;
   holder public.schedule_edit_sessions%rowtype;
   set_aside public.schedule_edit_sessions%rowtype;
+  set_aside_draft_id uuid;
   source_draft public.schedule_drafts%rowtype;
   edit_session_id uuid;
   session_source public.schedule_edit_source;
@@ -238,7 +239,9 @@ begin
   end if;
 
   if set_aside.id is not null and set_aside.id is distinct from holder.id then
-    recovery_draft_id := coalesce(recovery_draft_id, app_private.close_schedule_edit_session(set_aside));
+    -- Closed always; the answer names the other editor's draft first.
+    set_aside_draft_id := app_private.close_schedule_edit_session(set_aside);
+    recovery_draft_id := coalesce(recovery_draft_id, set_aside_draft_id);
   end if;
 
   if own_session.id is not null then
