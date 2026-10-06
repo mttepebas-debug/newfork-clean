@@ -1,7 +1,7 @@
 # EKRAN-02 AUTHZ-DUMP — yetki ikizi A1–A3 matrisine uyduruldu
 
 - **İş:** AUTHZ-DUMP (koordinatör, veri hattının A1A2 + A3 dallarının ardından) · **Rol:** `nf-backend` (web oturumu) · **Sınıf:** R3 (yetki ikizi)
-- **Dal:** `task/authz-dump` · **Taban:** `task/ekran-02-a3` @`2ee14550` (A1A2'yi içerir; main'de değil) · **Commit:** `8363f329` (+ bu kayıt)
+- **Dal:** `task/authz-dump` · **Taban:** `task/ekran-02-a3` @`4b6a6369` (önce `2ee14550`; A3'ün inceleme düzeltmesine taşındı, matris değişmedi, yeniden döküm aynı 5253 hücre) (A1A2'yi içerir; main'de değil) · **Commit:** `ce119b8e` (rebase öncesi `8363f329`, inceleme bu sha'da) (+ bu kayıt)
 - **Durum:** dalda, **push yok** — sabah A1A2 + A3 + AUTHZ-DUMP birlikte (koordinatörün "gönder" izniyle, R3).
 
 ## Sonrası için
@@ -19,7 +19,7 @@
   4. `requests.read` izni `schedule.time_off_requests.manage` (K-S3).
   5. K-S2: ikiz belge kısıtını modellemiyor; değişiklik yok (inceleme Düşük 2).
 - **Kanıt:** önce kırmızı — `sourceSha256` testi; döküm sonrası `requests.read` izni ve iki hücre (`can`, `nil` → `case:ayse-k2`: SQL deny, TS allow) + yeni D3 testi; sonra `pnpm.cmd --filter @newfork/shared exec vitest run src/authorization.test.ts` 23/23. Etkilenen web testleri (`exchange-data.test.ts`, `ScheduleRequestsPage.test.tsx`, `src/auth`) 93/93.
-- **Tam kapı:** (ağır iş izniyle, A3'ün tam koşusundan sonra; bu dosyanın son hâlinde yazılır)
+- **Tam kapı** (ağır iş izni 16:50Z, `4b6a6369` üstünde): lint ✓, typecheck ✓, test ui 9 · shared 212 · api 1009 ✓, web 2209 ✓ + 1 yükte kırmızı (`App.test.tsx` "opens the standalone schedule templates page…": başlık çizilmedi) — boşta tek başına ✓ (508 ms) ve dosyanın tamamı 95/95 ✓; bu iş web'e dokunmuyor, yük kaynaklı sayıldı (CLAUDE.md §3). build 4/4 ✓.
 - **Ekranda:** değişen yok (web bu eylemleri bugün hedefli sormuyor).
 
 ## İnceleme
