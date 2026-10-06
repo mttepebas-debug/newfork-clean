@@ -167,7 +167,7 @@ insert into public.workspace_roles(id,workspace_id,name,access_class)
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
  select w,'ad423000-0000-4000-8000-000000000013',p from ws,unnest(array['workspace.read','schedule.read','schedule.publish']) p;
 update public.workspace_memberships set role_id='ad423000-0000-4000-8000-000000000013' where workspace_id=(select w from ws) and user_id=(select manager from ws);
-select ok(not public.schedule_actor_can_manage_service(manager,w,loc),'custom publisher does not have edit permission') from ws;
+select is(app_private.authz_reason(manager,w,'schedule.edit',array[loc]),'missing_permission','custom publisher does not have edit permission') from ws;
 select lives_ok($$select pg_temp.preflight()$$,'canonical preflight honors publish permission independently of edit');
 update ws set preview=pg_temp.preflight();
 select lives_ok($$select pg_temp.publish()$$,'publish-only manager can retain accepted assignments');
