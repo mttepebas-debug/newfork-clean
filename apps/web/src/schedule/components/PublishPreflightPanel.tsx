@@ -1,3 +1,4 @@
+import { devVar } from "../../dev/varEkran12";
 import type {
   ScheduleEmployee,
   ScheduleLocation,
@@ -164,6 +165,17 @@ export function PublishPreflightPanel({
         ) : (
           <ShieldAlert size={17} aria-hidden />
         )}
+        {!ready && devVar("bl441") === "b" ? (
+          <div>
+            {/* VAR-EKRAN-12 BL-441 B (KARARLAR Schedule 2026-10-06): one plain sentence, top only. */}
+            <strong>
+              {[
+                blockerCount ? `${blockerCount} ${blockerCount === 1 ? "shift needs" : "shifts need"} a fix before you can publish.` : null,
+                risks.length + newConflicts.length ? `${risks.length + newConflicts.length} more to review.` : null,
+              ].filter(Boolean).join(" ")}
+            </strong>
+          </div>
+        ) : (
         <div>
           <strong>
             {ready
@@ -192,6 +204,7 @@ export function PublishPreflightPanel({
                   : "Every override is recorded with the published audit trail."}
           </span>
         </div>
+        )}
       </div>
 
       {preview.status === "past_week_closed" ? (

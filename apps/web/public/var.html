@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedule decisions — live</title>
+<style>
+  :root { --text: #17231e; --muted: #5f6b66; --line: #dce3df; --accent: #176954; --soft: #f4f5f3; }
+  body { margin: 0; background: var(--soft); color: var(--text); font: 15px/1.5 Inter, system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  p.lead { margin: 0 0 20px; color: var(--muted); }
+  section { margin: 0 0 14px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  h2 { margin: 0 0 4px; font-size: 16px; }
+  section p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+  ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .tag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: #e7f1ed; color: var(--accent); font-size: 12px; font-weight: 650; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Schedule decisions — live</h1>
+  <p class="lead">Each link opens the real app with a sample week drawn in your browser (nothing is saved). Sign in first; the links keep you signed in.</p>
+
+  <section>
+    <h2>Availability and time off in the cell <span class="tag">new model</span></h2>
+    <p>Rows to look at: Burak (Tue, name "!"), Busra and Diana (time off), Carlos (Wed, empty cell "!"), Ersin (Fri, clashing shift), Ferhat (Thu, two shifts), Juan (three shifts on Tue, time off on Thu).</p>
+    <ul>
+      <li><a href="/app/schedule?date=2026-09-28&var=hucre-a,av-on">New model — Availability on</a></li>
+      <li><a href="/app/schedule?date=2026-09-28&var=hucre-a,av-off">New model — Availability off</a></li>
+      <li><a href="/app/schedule?date=2026-09-28&var=x-a,av-on">Today, for comparison</a></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Publish → Pre-flight: the count once, in plain words <span class="tag">decided</span></h2>
+    <p>Opens the real Publish window with sample findings; press <b>Next</b>.</p>
+    <ul>
+      <li><a href="/availability-preview.html?view=publish-return&var=bl441-b">New: "1 shift needs a fix before you can publish. 1 more to review."</a></li>
+      <li><a href="/availability-preview.html?view=publish-return&var=bl441-a">Today: the count twice</a></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Top bar in a narrow window <span class="tag">open</span></h2>
+    <p>Make the browser window about 1024 px wide (or narrower) to see the difference.</p>
+    <ul>
+      <li><a href="/app/schedule?date=2026-09-28&var=bl445-a">A — today: the bar wraps into several rows</a></li>
+      <li><a href="/app/schedule?date=2026-09-28&var=bl445-b">B — icons only under 1280 px</a></li>
+      <li><a href="/app/schedule?date=2026-09-28&var=bl445-c">C — one "Filters" button</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

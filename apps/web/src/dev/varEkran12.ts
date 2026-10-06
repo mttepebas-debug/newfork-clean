@@ -42,6 +42,16 @@ export function installVarAttributes(): void {
   }
   window.addEventListener("popstate", sync);
   sync();
+  // ?var=av-off / av-on: the Schedule's "Availability" switch (it only shows in
+  // edit mode) set from the address, so the off state opens with one click.
+  const av = devVar("av");
+  if (av === "off" || av === "on") {
+    try {
+      const key = "organizer-schedule-ui";
+      const stored = JSON.parse(localStorage.getItem(key) ?? "{}") as { state?: Record<string, unknown> };
+      localStorage.setItem(key, JSON.stringify({ ...stored, state: { ...(stored.state ?? {}), showAvailability: av === "on" } }));
+    } catch { /* private window: the switch keeps its own value */ }
+  }
   // Machado et al. 2009 matrices, severity 1.0: ?var=cb-p / cb-d.
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("aria-hidden", "true");
@@ -59,15 +69,16 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
   const wanted = search.get("locations")?.split(",")[0];
   const location = model.locations.find((item) => item.id === wanted) ?? model.locations[0];
   if (!location) return model;
-  const lunch = model.shift_types[0];
-  const dinner = model.shift_types[1] ?? lunch;
+  // A workspace without shift types still gets a lunch and a dinner (hours only).
+  const lunch = model.shift_types[0] ?? { id: null, default_start_time: "11:30", default_end_time: "15:30" };
+  const dinner = model.shift_types[1] ?? (model.shift_types[0] ? lunch : { id: null, default_start_time: "16:15", default_end_time: "23:30" });
   const jobIds = new Set(model.jobs.map((job) => job.id));
   const days = Array.from({ length: 7 }, (_, index) => addDays(model.week_start, index));
   const fallbackJob = model.jobs[0]?.id;
   const people = model.employees
     .filter((employee) => employee.location_ids.includes(location.id) && !employee.is_excluded_from_schedule)
     .sort((left, right) => left.display_name.localeCompare(right.display_name))
-    .slice(0, 16);
+    .slice(0, 40);
   const offset = offsetOf(model, location.id);
 
   // Marks on the first rows, so every case sits on one screen (VAR-HUCRE):
@@ -84,7 +95,11 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
   const leave = new Map<number, readonly number[]>([
     [2, [2, 3]],
     [5, [0, 1]],
+    [10, [3]],
   ]);
+  // Row 11: three shifts in one cell (Tue) and approved time off on Thu, so the
+  // red fill must cover a cell that grew to three shifts' height.
+  const threeShiftPerson = 10;
 
   const shifts: ScheduleShift[] = [];
   let serial = 0;
@@ -100,6 +115,18 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
       const type = onMark ? (person === 1 ? lunch : dinner) : (person + day) % 3 === 0 ? dinner : lunch;
       if (!type) return;
       if (mark?.allDay && mark.day === day) return;
+      if (person === threeShiftPerson && day === 1 && lunch && dinner) {
+        for (const [type, start, end] of [[lunch, "07:00", "11:00"], [lunch, "11:30", "15:30"], [dinner, "16:15", "23:30"]] as const) {
+          serial += 1;
+          shifts.push({
+            id: `00000000-0000-4000-8000-${serial.toString(16).padStart(12, "0")}`,
+            location_id: location.id, employee_id: employee.id, job_id: jobId, shift_type_id: type.id, scheduled_date: date,
+            start_time: start, end_time: end, crosses_midnight: false,
+            unpaid_break_minutes: 0, hide_time_on_badge: false, note: "", warning_codes: [],
+          });
+        }
+        return;
+      }
       if (onMark && person === 8 && lunch) {
         serial += 1;
         shifts.push({
@@ -128,12 +155,17 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
     });
   });
 
+  const names = ["Alex Rivera", "Burak Kaya", "Busra Yilmaz", "Carlos Garcia", "Deniz Aksoy", "Diana Lopez", "Elif Demir", "Ersin Coklu", "Ferhat Arslan", "Hakan Celik", "Juan Almaraz", "Kevin Brooks", "Leyla Sahin", "Maria Santos", "Nora Kim", "Omar Haddad"];
+  const renamed = (employee: (typeof model.employees)[number]) => {
+    const person = people.indexOf(employee);
+    return person >= 0 && search.get("demo") !== "names" ? { ...employee, display_name: names[person] ?? `Zara Team ${person + 1}` } : employee;
+  };
   const employees = model.employees.map((employee) => {
     const person = people.indexOf(employee);
-    if (person < 0) return employee;
+    if (person < 0) return renamed(employee);
     const mark = unavailable.get(person);
     const leaveDays = leave.get(person) ?? [];
-    if (!mark && !leaveDays.length) return employee;
+    if (!mark && !leaveDays.length) return renamed(employee);
     const instant = (day: number, time: string) =>
       new Date(Date.parse(`${days[day]}T${time === "24:00" ? "23:59" : time}:00Z`) - offset * 1000 + (time === "24:00" ? 60_000 : 0)).toISOString();
     const projection = {
@@ -157,10 +189,12 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
       })),
     };
     const others = (employee.weekly_availability ?? []).filter((item) => item.location_id !== location.id);
-    return { ...employee, weekly_availability: [...others, projection] } as typeof employee;
+    return { ...renamed(employee), weekly_availability: [...others, projection] } as typeof employee;
   });
 
-  return { ...model, employees, shifts: [...model.shifts.filter((shift) => shift.location_id !== location.id), ...shifts] };
+  // e2e world jobs carry test suffixes ("Barista docghwwd"); show the plain name.
+  const jobs = model.jobs.map((job) => ({ ...job, name: job.name.replace(/\s+[a-z0-9][a-z0-9-]*$/, "") }));
+  return { ...model, jobs, employees, shifts: [...model.shifts.filter((shift) => shift.location_id !== location.id), ...shifts] };
 }
 
 function offsetOf(model: ScheduleReadModel, locationId: string): number {
