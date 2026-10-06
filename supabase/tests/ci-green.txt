@@ -67,6 +67,7 @@ supabase/tests/schedule_draft_availability_reads.test.sql
 supabase/tests/schedule_edit_locks.test.sql
 supabase/tests/schedule_edit_session_lifecycle.test.sql
 supabase/tests/schedule_edit_session_scope.test.sql
+supabase/tests/schedule_edit_session_undo.test.sql
 supabase/tests/schedule_edit_sessions.test.sql
 supabase/tests/schedule_edit_start_ignores_column_shadowed_source_draft.test.sql
 supabase/tests/schedule_grid_read_budget.test.sql
