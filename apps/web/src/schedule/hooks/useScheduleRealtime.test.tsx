@@ -3,7 +3,6 @@ import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { supabaseClient } from "../../lib/supabase";
 import { useScheduleRealtime } from "./useScheduleRealtime";
 
 type BroadcastHandler = (event: { payload: unknown }) => void;
