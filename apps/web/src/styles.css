@@ -14409,3 +14409,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   }
 }
 .current-user-avatar { width: 24px; height: 24px; flex: 0 0 24px; object-fit: cover; border-radius: 50%; display: inline-grid; place-items: center; background: var(--surface-muted, #edf1ee); color: var(--text-primary, #183c30); font-size: 10px; font-weight: 700; }
+
+/* On a phone the column picker has no room in the tab row and the list turns
+   into cards (C1b), so it is not offered there; a clipped control must not
+   take keyboard focus (EKRAN-03 C1a visual QA). */
+@media (max-width: 720px) {
+  .employees-page .employee-column-picker {
+    display: none;
+  }
+}
