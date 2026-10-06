@@ -167,3 +167,10 @@ KK-180 dışında, Mert'te kalan ürün soruları: E6-11 (BL-825) S1, E6-03 (BL-
 - [x] Koordinatör kararları KK-180 + BL-821…837 (2026-10-06)
 - [ ] Mert soruları S1–S10 (ekran 6 turunda)
 - [x] Görev dosyası `tasks/EKRAN-06-DOCUMENTS.md` (draft, 2026-10-06)
+
+## 7. C görsel QA (2026-10-06, `d311a2c5`)
+
+Rapor aynen: `C-gorsel.md` (nf-gorsel-qa, KARAR: DEĞİŞİKLİK İSTE — keşif turu, dal yok). Görüntüler `artifacts/nf-gorsel-qa/EKRAN-06/` (ana klasör).
+- Yeni maddeler: BL-852, BL-853, BL-854, BL-855, BL-856, BL-857. BL-851 (EKRAN-06 bulgu 2) de bu ekranın C1'ine girer.
+- Var olan maddelere ek kanıt: BL-595.
+- Kalan bulgular keşifteki maddeleri doğruluyor (eşleşme sütunu raporda); öneriler (zevk) raporun "Öneriler" bölümünde, BL almadı.

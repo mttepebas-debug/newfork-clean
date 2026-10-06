@@ -81,6 +81,7 @@ Sıra kuralı (CLAUDE.md §4): veri önce, sunum sonra; aynı dosyaya iki oturum
 - **Reviewer:** `nf-guvenlik` zorunlu.
 
 ### C1 — Liste ve çekmece görünümü (`nf-arayuz`; R2)
+- **C görsel QA bulguları (2026-10-06, `d311a2c5`):** `docs/plan/ekranlar/04-availability/C-gorsel.md`; yeni BL-842, BL-843, BL-844, BL-845; ek kanıt BL-600, BL-801, BL-798, BL-677. C1 başlamadan okunur.
 - **Ne:** Sistem 1 ortak dili ve sayfalama görünümü (ortak bileşen EKRAN-02 C3); AV11 tablo kendi içinde kayar, başlık yapışkan; BL-661 "1 employee"; K2 "Manager note" adı ve "Last edited by" satırı; BL-800 önizleme sayfası silinir; S1'in seçimi (BL-796); S2'nin seçimi (telefon; BL-599, PHONE A1); C raporunun bulguları (geldiğinde).
 - **Touches:** `apps/web/src/views/AvailabilityPage.tsx` (görünüm), `weekly-team.css`, `WeeklyPreferencesForm.tsx` (görünüm, ad), `apps/web/src/employee-hub/EmployeeHubPage.tsx` (yalnız S1), `apps/web/availability-preview.html` ve `WeeklyPreferencesForm.preview.tsx` (silinir).
 - **Bağımlılık:** B1 main'de; S1, S2 cevaplandı; EKRAN-02 C3 (sayfalama bileşeni) main'de; EKRAN-03 C main'de (hat sırası).

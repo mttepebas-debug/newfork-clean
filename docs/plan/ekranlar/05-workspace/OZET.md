@@ -118,3 +118,10 @@ Not (kararla kabul, bulgu sayılmadı): kişiye bağlı olmayan to-do'yu workspa
 - [x] Koordinatör kararları KK-179 + BL-804…818 (2026-10-06)
 - [ ] Mert soruları S1–S6 (sabah)
 - [x] Görev dosyası `tasks/EKRAN-05-WORKSPACE.md` (draft, 2026-10-06)
+
+## 7. C görsel QA (2026-10-06, `d311a2c5`)
+
+Rapor aynen: `C-gorsel.md` (nf-gorsel-qa, KARAR: DEĞİŞİKLİK İSTE — keşif turu, dal yok). Görüntüler `artifacts/nf-gorsel-qa/EKRAN-05/` (ana klasör).
+- Yeni maddeler: BL-846, BL-847, BL-848, BL-849, BL-850, BL-851.
+- Var olan maddelere ek kanıt: BL-813, BL-814, BL-666.
+- Kalan bulgular keşifteki maddeleri doğruluyor (eşleşme sütunu raporda); öneriler (zevk) raporun "Öneriler" bölümünde, BL almadı.

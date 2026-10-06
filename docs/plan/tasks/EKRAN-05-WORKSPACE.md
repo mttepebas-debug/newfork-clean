@@ -85,6 +85,7 @@ Sıra kuralı (CLAUDE.md §4): veri önce, sunum sonra; aynı dosyaya iki oturum
 - **Reviewer:** `nf-guvenlik` zorunlu.
 
 ### C1 — Kartlar, Customize ve checklist görünümü (`nf-arayuz`; R2)
+- **C görsel QA bulguları (2026-10-06, `d311a2c5`):** `docs/plan/ekranlar/05-workspace/C-gorsel.md`; yeni BL-846, BL-847, BL-848, BL-849, BL-850, BL-851; ek kanıt BL-813, BL-814, BL-666. C1 başlamadan okunur.
 - **Ne:** U41 (Cancel beyaz vazgeç; `secondary` sınıfı silinir; Customize ve Add yeşil aksiyon); BL-813 (iki sekme uyarısı ya da son durumla yenileme; gizli kart Customize'da etkileşimsiz; hepsi gizlenince tek cümle; simgelerde `aria-hidden`); BL-666 (3)–(6) ("General", ok yalnız açılan satırda, "View all notifications" tek satır, "New announcement" yeni duyuru penceresini açar); BL-810 (Announcements "View all"); W37 (bağlantı üzerinde alt çizgi, öteki ekranlarla ölçülerek); BL-816 (ölü CSS); S5'in seçimi (BL-815); S3'ün seçimi (BL-811 adımları, Settings → General metni kişi başına); S1 / S2 seçimlerinin görünümü; C raporunun bulguları (geldiğinde).
 - **Touches:** `apps/web/src/views/WorkspacePage.tsx` (görünüm), `apps/web/src/styles.css` (Workspace bölümü), `apps/web/src/settings/GeneralSettingsPage.tsx` (yalnız metin), `apps/web/src/views/AnnouncementsPage.tsx` (yalnız "yeni" adresle açılış, BL-666 (6)).
 - **Bağımlılık:** B1 main'de; S1, S3, S5 cevaplandı (S2 yalnız Todos kutusu); EKRAN-04 C1 main'de (hat sırası; `styles.css` sıcak dosya).

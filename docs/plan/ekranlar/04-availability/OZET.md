@@ -81,3 +81,10 @@ Keşif 2026-10-06 (gece, `nf-planlama` oturumu; koordinatörün GECE-3 görevi).
 Açık: C (görsel QA) makine boşalınca; sonra Mert'in S1–S3 seçimleri, koordinatörün K1–K6 kararları, görev dosyası ve BL numaraları (E4-xx YENİ'leri).
 
 Kararlar: KK-178 (K1, K2, K3, K4, K6 kabul; K5 KARARLAR 69/72/73 düzeltildi). BL numaraları: BL-789–BL-800 (2026-10-06). Görev dosyası: `docs/plan/tasks/EKRAN-04-AVAILABILITY.md`.
+
+## 7. C görsel QA (2026-10-06, `d311a2c5`)
+
+Rapor aynen: `C-gorsel.md` (nf-gorsel-qa, KARAR: DEĞİŞİKLİK İSTE — keşif turu, dal yok). Görüntüler `artifacts/nf-gorsel-qa/EKRAN-04/` (ana klasör).
+- Yeni maddeler: BL-842, BL-843, BL-844, BL-845.
+- Var olan maddelere ek kanıt: BL-600, BL-801, BL-798, BL-677.
+- Kalan bulgular keşifteki maddeleri doğruluyor (eşleşme sütunu raporda); öneriler (zevk) raporun "Öneriler" bölümünde, BL almadı.

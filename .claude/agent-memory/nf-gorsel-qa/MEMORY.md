@@ -7,8 +7,10 @@
 - [Schedule quiet-dialog pattern](schedule-quiet-dialog-pattern.md) — shared attr for Publish/Templates; safe QA open paths
 - [Time-off QA login and dialogs](time-off-qa-login-and-dialogs.md) — owner-capable world e2e1790693406000, no pending time off (page.route), `.app-confirm-layer` for the confirm dialog
 - [Schedule tip QA data + traps](schedule-tip-qa-data-and-traps.md) — week 2026-09-21 data, manager_notes/card injection, focus-scroll closes bubble, no max-height
-- [Availability QA logins + traps](availability-qa-logins-and-traps.md) — AVAIL-002 accounts, type-mode Meyhouse, onboarding user, phone Save swallowed, shared Discard dialog gray buttons
+- [Availability QA logins + traps](availability-qa-logins-and-traps.md) — AVAIL-002 + EKRAN-04 accounts (owner seed pw grant, world Ayse 1-location mgr), team API + error mock shape, phone Save trap
 - [Schedule edit-mode QA traps](schedule-edit-mode-qa-traps.md) — reach edit mode via New Schedule -> pencil; stale active session reopens the OLD draft; Discard in finally; phone tap traps
 - [Availability design artifact, local render](avail-design-artifact-local-render.md) — save artifact files + static server + postMessage availgo; lab-only styles and old-look bubbles; Settings menu clipped at 375
 - [Font swap before/after trick](font-swap-before-after-trick.md) — Segoe override via addStyleTag; Inter wraps at 375/360 (Schedule bar, Availability tabs), 390 Settings button
 - [DOC-TABLE list pages QA paths](doc-table-list-pages-qa-paths.md) — routes, world roles, important-dates mock, Playwright traps, pre-existing a11y gaps
+- [Workspace home QA paths](workspace-dashboard-qa-paths.md) — EKRAN-05: dashboard API mock, admin Zeynep, main.app-main scroll, zod-enum mock trap, phone hides Schedule links on purpose
+- [Documents QA paths](documents-qa-paths.md) — EKRAN-06: world doc data, preview POST allowed in read-only guard, list APIs to mock, row locators
