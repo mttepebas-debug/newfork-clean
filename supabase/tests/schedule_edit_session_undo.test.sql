@@ -329,6 +329,34 @@ select is((select count(*)::integer from public.schedule_edit_session_shifts whe
 select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e8'))),
   'PT409 schedule.nothing_to_undo', 'and nothing is left to undo');
 
+-- Restoring approved assignments (Schedule, editing, after an approved swap) is
+-- not a step either: Undo would put the shift back on the person who gave it
+-- away, and the save would refuse it again.
+select tests.publish_week('ud', 9, '[
+  {"label": "u9", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"}
+]');
+select tests.remember('ud:e9', pg_temp.open('owner', 9, 'blank', array['K']));
+select pg_temp.add('owner', tests.id('ud:e9'), pg_temp.shift(null, 9, 4));
+-- ponytail: the edit was opened before the swap; in one transaction both carry the same now().
+update public.schedule_edit_sessions set created_at = now() - interval '1 minute' where id = tests.id('ud:e9');
+create temp table ud_case as select tests.cover_case('ud', 'u9', 'ali', 'emre') as opened;
+select public.shift_exchanges_command_service(tests.user('ud:owner'), tests.id('ud'), jsonb_build_object(
+  'action', 'approve', 'case_id', opened, 'application_id', tests.id('ud:application:u9'),
+  'expected_revision', (select c.revision from public.shift_exchange_cases c where c.id = opened),
+  'fingerprint', public.shift_exchange_preview(tests.user('ud:owner'), tests.id('ud'), opened,
+    tests.id('ud:application:u9')) ->> 'fingerprint'), gen_random_uuid())
+from ud_case;
+select tests.settle();
+create temp table ud_restored as select public.shift_exchange_schedule_recovery_service(tests.user('ud:owner'), tests.id('ud'),
+  tests.id('ud:e9'), public.shift_exchange_schedule_recovery_service(tests.user('ud:owner'), tests.id('ud'), tests.id('ud:e9'))
+  ->> 'fingerprint', gen_random_uuid()) as v;
+select is((select count(*)::integer from public.schedule_edit_session_shifts
+    where session_id = tests.id('ud:e9') and employee_id = tests.id('ud:emre') and scheduled_date = tests.week(9) + 1), 1,
+  'the approved swap is in the edit: Emre has the Tuesday');
+select is((select (v ->> 'undo_depth')::integer from ud_restored), 0, 'after restoring it Undo has nothing to take back');
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'owner', tests.id('ud:e9'))),
+  'PT409 schedule.nothing_to_undo', 'and Undo says so');
+
 -- 9. Nobody in the browser reads or calls it -----------------------------------------
 
 select is(has_function_privilege('authenticated',
@@ -346,9 +374,9 @@ $$, array[
   -- the holder's steps: Undo takes them back
   'mutate_schedule_edit_shift_service', 'bulk_delete_schedule_edit_shifts_service', 'apply_schedule_auto_fill_service',
   'apply_schedule_template_service', 'add_schedule_pending_op_service', 'remove_schedule_pending_op_service',
-  'shift_exchange_schedule_recovery_service',
-  -- not a step: the shifts an edit opens with; a swap or a closed day (schedule_edit_undo_barrier)
-  'acquire_schedule_edit_session_service', 'shift_exchange_rebase_drafts', 'important_date_close_shifts',
+  -- not a step: the shifts an edit opens with; a swap, its restore or a closed day (schedule_edit_undo_barrier)
+  'acquire_schedule_edit_session_service', 'shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service',
+  'important_date_close_shifts',
   -- the edit closes: its history goes
   'save_schedule_edit_session_service', 'discard_schedule_edit_session_service',
   -- Undo itself
@@ -356,8 +384,9 @@ $$, array[
 ], 'every writer of an open edit''s shifts is a step or says it is not');
 select is((select count(*)::integer from pg_proc where
     (proname = 'acquire_schedule_edit_session_service' and prosrc like '%app_private.schedule_edit_undo_steps%')
-    or (proname in ('shift_exchange_rebase_drafts', 'important_date_close_shifts') and prosrc like '%schedule_edit_undo_barrier()%')),
-  3, 'and each one that is not a step clears itself out of the history');
+    or (proname in ('shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service', 'important_date_close_shifts')
+      and prosrc like '%schedule_edit_undo_barrier()%')),
+  4, 'and each one that is not a step clears itself out of the history');
 
 select * from finish();
 rollback;
