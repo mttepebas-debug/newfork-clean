@@ -47,38 +47,38 @@ FB-6.4 bu görevin A1, A2, B1, C2 ve D dilimlerine dağılır: A1 = FB-6.4 A1 (m
 13. **Büyüklük:** FB-6.4'ün 19 puanı aynen; bu görevin toplamı aşağıda.
 
 ## Bulgu → dilim eşlemesi (OZET §1, önem sırasıyla)
-Kimlikler OZET'teki gibi; "YENİ" = BL numarası henüz yok (koordinatör alır).
+Kimlikler OZET'teki gibi. Keşifte "YENİ" denen bulgular BL numarasını PLAN-EKRAN-12'de aldı (2026-10-06, BL-724–BL-754; BACKLOG "Requests ekranı keşfi: yeni bulgular"). Yeni numara almayan üç ek mevcut maddeye yazıldı: BL-363, BL-674, BL-602.
 
 | Bulgu | Ne | Backlog | Dilim |
 |---|---|---|---|
-| R2-01 | Shift changes onayı çekirdeğe sormuyor (eş müdür, kısıtlı müdür, kendi vakasında ret) | BL-276 (1), BL-189; ret dalı YENİ | A2 (+ D e2e) |
-| R2-02 | Yol / dinlenme takası engelliyor | YENİ (FB-6.4 A1.3) | A1 (veri), C2 (işaret, G2) |
-| R2-03 | Time off "Older" her sayfa sınırında bir talep atlıyor | YENİ | **A0** |
-| R2-04 | Shift changes'te yıkıcı onay düğmeleri yeşil, tek tık | YENİ | C2 |
+| R2-01 | Shift changes onayı çekirdeğe sormuyor (eş müdür, kısıtlı müdür, kendi vakasında ret) | BL-276 (1), BL-189; ret dalı BL-726 | A2 (+ D e2e) |
+| R2-02 | Yol / dinlenme takası engelliyor | BL-725 (FB-6.4 A1.3) | A1 (veri), C2 (işaret, G2) |
+| R2-03 | Time off "Older" her sayfa sınırında bir talep atlıyor | BL-724 | **A0** |
+| R2-04 | Shift changes'te yıkıcı onay düğmeleri yeşil, tek tık | BL-748 | C2 |
 | R2-05 | Görünür odak halkası yok | BL-657 | C1 |
 | R2-06 | Deny/Revoke'tan vazgeçince odak kayboluyor; Esc çekmeceyi kapatmıyor | BL-656 | C3 |
-| R2-07 | Kısıtlı çalışan takas açıp başvurabiliyor | YENİ (FB-6.4 A2.2) | A2 |
-| R2-08 | Belgesi eksik müdür Requests'i göremiyor (K-S2) | YENİ | A3 (okuma), B2 (yönlendirme istisnası, kapalı düğmeler) |
-| R2-09 | Bildirimden gelen müdür kapanmış izni açamıyor | YENİ | B2 |
-| R2-10 | Arama / filtre bütün sayfayı yeniden yüklüyor, imleç kayboluyor, 120+ karakter geri dönüşsüz hata | YENİ | B1 |
-| R2-11 | Yükleme / hata hâlinde çerçeve kayboluyor, ham hata, yeniden deneme yok | BL-654 + YENİ | B1 (hata türü), C1 (çerçeve, Try again) |
-| R2-12 | Sıralama yalnız ekrandaki 50 satıra | YENİ | A3 (sunucu sıralaması), B2 (bağlama) |
-| R2-13 | Tek karar aynı kişiye iki bildirim | YENİ | A3 |
-| R2-14 | Takas bildirimleri owner'a ve bütün admin'lere (K-S4) | YENİ | A2 |
-| R2-15 | Özel rolde Time off "View" (K-S3) | YENİ | A3 (izin anahtarı), B1 (shared + Roles ekranı) |
-| R2-16 | Saat değişince çakışan kabul düşmüyor | YENİ (BL-227 testi) | A1 |
+| R2-07 | Kısıtlı çalışan takas açıp başvurabiliyor | BL-727 (FB-6.4 A2.2) | A2 |
+| R2-08 | Belgesi eksik müdür Requests'i göremiyor (K-S2) | BL-728 | A3 (okuma), B2 (yönlendirme istisnası, kapalı düğmeler) |
+| R2-09 | Bildirimden gelen müdür kapanmış izni açamıyor | BL-740 | B2 |
+| R2-10 | Arama / filtre bütün sayfayı yeniden yüklüyor, imleç kayboluyor, 120+ karakter geri dönüşsüz hata | BL-741 | B1 |
+| R2-11 | Yükleme / hata hâlinde çerçeve kayboluyor, ham hata, yeniden deneme yok | BL-654 + BL-742 | B1 (hata türü), C1 (çerçeve, Try again) |
+| R2-12 | Sıralama yalnız ekrandaki 50 satıra | BL-729 | A3 (sunucu sıralaması), B2 (bağlama) |
+| R2-13 | Tek karar aynı kişiye iki bildirim | BL-730 | A3 |
+| R2-14 | Takas bildirimleri owner'a ve bütün admin'lere (K-S4) | BL-731 | A2 |
+| R2-15 | Özel rolde Time off "View" (K-S3) | BL-732 | A3 (izin anahtarı), B1 (shared + Roles ekranı) |
+| R2-16 | Saat değişince çakışan kabul düşmüyor | BL-733 (BL-227 testi) | A1 |
 | R2-17 | Onay ekranında "kendi rızasıyla" ve müdür notu işareti yok (M6, M12) | FB-6.4 B.1 / B.4 | A1 (veri), C2 (S5-B) |
-| R2-18 | İki lokasyonlu takasta onay vermiş müdür vakayı hâlâ işi sanıyor, tekrar basabiliyor | YENİ | A2 (oy tekrarı / sayım), B2 (durum) |
-| R2-19 | Private manager note hiç gösterilmiyor (K-S5) | YENİ | A2 (okuma), B2 (gösterim) |
-| R2-20 | Vakaya tıklamak bütün ekranı iskelete çeviriyor | YENİ | B1 |
-| R2-21 | Okuma API'si rota içinde yetki soruyor; iki rota; 403/404; ikinci istek yardımcısı, 401 | BL-363, BL-176 + YENİ | B1 |
+| R2-18 | İki lokasyonlu takasta onay vermiş müdür vakayı hâlâ işi sanıyor, tekrar basabiliyor | BL-734 | A2 (oy tekrarı / sayım), B2 (durum) |
+| R2-19 | Private manager note hiç gösterilmiyor (K-S5) | BL-735 | A2 (okuma), B2 (gösterim) |
+| R2-20 | Vakaya tıklamak bütün ekranı iskelete çeviriyor | BL-743 | B1 |
+| R2-21 | Okuma API'si rota içinde yetki soruyor; iki rota; 403/404; ikinci istek yardımcısı, 401 | BL-363 (+ ek 2026-10-06: ikinci istek yardımcısı, 401, 403/404), BL-176 | B1 |
 | R2-22 | "Entire shift released…" satırlarını eski yardımcı süzüyor | BL-179 | A2 |
-| R2-23 | İzin kısaltma bildirimini yalnız son onaylayan alıyor | YENİ | A3 |
+| R2-23 | İzin kısaltma bildirimini yalnız son onaylayan alıyor | BL-736 | A3 |
 | R2-24 | Shorten formu çekmeceyi kaplıyor, stilsiz | BL-658 (1) | C1 |
 | R2-25 | Açılan vardiya listesi kelime kelime kırılıyor | BL-658 (3) | C1 |
 | R2-26 | Arama kutusu iki çerçeve | BL-658 (2) | C1 |
-| R2-27 | Time off ile Shift changes iki tasarım dili; 30 px kayma | BL-658 (4)(5)(6)(7) + YENİ | C2 (Shift changes kısmı), C1 (kayma, Time off kısmı) |
-| R2-28 | Tarih / saat dört biçimde; 12/24 ayarı yok sayılıyor | BL-674 + YENİ | C1 (Time off), C2 (Shift changes, `ExchangeShiftCard`) |
+| R2-27 | Time off ile Shift changes iki tasarım dili; 30 px kayma | BL-658 (4)(5)(6)(7) + BL-749 (kayma) | C2 (Shift changes kısmı), C1 (kayma, Time off kısmı) |
+| R2-28 | Tarih / saat dört biçimde; 12/24 ayarı yok sayılıyor | BL-674 (+ ek 2026-10-06: Time off saatleri) | C1 (Time off), C2 (Shift changes, `ExchangeShiftCard`) |
 | R2-29 | Ortak liste dili taşınmamış (K-S6) | BL-604 | C1 (Time off), C2 (Shift changes) |
 | R2-30 | Arama / açılır liste / beyaz düğme kenarı (K-S7) | BL-255, BL-600 | V (varyant), C3 (uygulama) |
 | R2-31 | Ortak çekmece açıkken toast tıklanamıyor | BL-515 | C3 |
@@ -87,25 +87,25 @@ Kimlikler OZET'teki gibi; "YENİ" = BL numarası henüz yok (koordinatör alır)
 | R2-34 | Takas testi seed lokasyonunun saat dilimini değiştiriyor | BL-217 | A1 |
 | R2-35 | Telefonda başlıklar sütunlarla eşleşmiyor | BL-513 | C1 |
 | R2-36 | Telefonda Shift changes filtre boşlukları | BL-400 | C2 |
-| R2-37 | Aynı durum çipi iki renkte | YENİ | C1 (Time off), C2 (Shift changes) |
+| R2-37 | Aynı durum çipi iki renkte | BL-750 | C1 (Time off), C2 (Shift changes) |
 | R2-38 | Deny / Revoke düz beyaz | BL-256 + BL-399 | C1 |
 | R2-39 | Sıralı sütun oku yalnız fareyle | BL-663 | C3 |
 | R2-40 | Takas retleri "Hayır" sözleşmesine uymuyor | BL-375 + FB-6.4 A3.1 | A2 (hint), B1 (API + `NoAccessState`) |
-| R2-41 | Kapanmış iptalde yanlış metinler; owner'a "View-only access" | BL-653 + YENİ | C1 |
-| R2-42 | Geri çekilen talep "Revoked" görünüyor | YENİ | A3 (okuma modeli), C1 (etiket) |
-| R2-43 | Revoke geçmiş izinde de görünüyor; pencere açık kalan vardiyaları söylemiyor | YENİ | B2 |
-| R2-44 | Eşzamanlı kararda ikinci müdürün çekmecesi açıklamasız kapanıyor | YENİ | B2 |
-| R2-45 | Çalışana karar bildirimi sonucu söylemiyor | YENİ | A3 |
-| R2-46 | Roles'taki izin açıklaması olmayan "return"ı sayıyor | YENİ | B1 |
-| R2-47 | Ölü kod (sarmalayıcı, `conflict_count`, `.request-sr-only`, parametre, 4 karanlık tema kuralı, 30 ham renk) | YENİ | B2 (TS), C2 (`shift-exchanges.css`) |
-| R2-48 | Ekran okuyucu: `aria-pressed`, satır adı, sekmeler ok tuşuyla | YENİ + BL-602 | C1 |
-| R2-49 | "Cancel swap request" / "Close search" ad uyuşmazlığı | YENİ | C2 |
-| R2-50 | Tek tıkla onay başarısız olunca odak kayboluyor | YENİ | C1 |
+| R2-41 | Kapanmış iptalde yanlış metinler; owner'a "View-only access" | BL-653 + BL-751 | C1 |
+| R2-42 | Geri çekilen talep "Revoked" görünüyor | BL-737 | A3 (okuma modeli), C1 (etiket) |
+| R2-43 | Revoke geçmiş izinde de görünüyor; pencere açık kalan vardiyaları söylemiyor | BL-744 | B2 |
+| R2-44 | Eşzamanlı kararda ikinci müdürün çekmecesi açıklamasız kapanıyor | BL-745 | B2 |
+| R2-45 | Çalışana karar bildirimi sonucu söylemiyor | BL-738 | A3 |
+| R2-46 | Roles'taki izin açıklaması olmayan "return"ı sayıyor | BL-746 | B1 |
+| R2-47 | Ölü kod (sarmalayıcı, `conflict_count`, `.request-sr-only`, parametre, 4 karanlık tema kuralı, 30 ham renk) | BL-747 | B2 (TS), C2 (`shift-exchanges.css`) |
+| R2-48 | Ekran okuyucu: `aria-pressed`, satır adı, sekmeler ok tuşuyla | BL-752 + BL-602 (+ ek 2026-10-06: sekmeler) | C1 |
+| R2-49 | "Cancel swap request" / "Close search" ad uyuşmazlığı | BL-753 | C2 |
+| R2-50 | Tek tıkla onay başarısız olunca odak kayboluyor | BL-754 | C1 |
 | R2-51 | "All 1 active applications will close." | BL-661 | C2 |
 | R2-52 | Sistemin kısaltma satırı düz "Leave cancellation" | BL-364 | A3 (okuma modeli), V (G3), C1 |
 | R2-53 | Kısaltma bildirimi onaylayana "is back on the schedule" | BL-396 | A3 |
 | R2-54 | Kısaltma / iptal formunda ham renkler, mavi odak | BL-398 | C1 |
-| R2-55 | Küçük API / şema kusurları | BL-411, BL-509, BL-506, BL-517, BL-518, BL-110 + YENİ (`segment_id` 500, yorumdaki izin adı) | A3 (DB), B1 (API + shared) |
+| R2-55 | Küçük API / şema kusurları | BL-411, BL-509, BL-506, BL-517, BL-518, BL-110 + BL-739 (`segment_id` 500, yorumdaki izin adı) | A3 (DB), B1 (API + shared) |
 | R2-56 | Takas test / yarış boşlukları | BL-227, BL-228, BL-229 | A1 |
 | R2-57 | 850/900 ağırlık ortak onay kutusu başlığında | BL-589 | C3 |
 | R2-58 | Test boşlukları listesi | — | her dilim kendi testini getirir; D e2e'leri |

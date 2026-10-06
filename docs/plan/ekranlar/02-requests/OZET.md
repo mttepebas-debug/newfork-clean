@@ -542,3 +542,5 @@ Koordinatör ILKELER ve KARARLAR'la yeniden tarar, kendi dayanağıyla verebilec
 - **Görsel kararlar (varyantla):** G1–G4 ve S7.
 
 Kapanış durumu: keşif ve kararlar bitti (2026-10-05). Sırada görev dosyası ve uygulama; FB-6.4 Takas bu ekranın işi.
+
+Görev dosyası: `docs/plan/tasks/EKRAN-02-REQUESTS.md` (FB-6.4 Takas dahil). Yeni bulguların BL numaraları: BL-724–BL-754 (PLAN-EKRAN-12, 2026-10-06); eşleme görev dosyasının "Bulgu → dilim eşlemesi" tablosunda.

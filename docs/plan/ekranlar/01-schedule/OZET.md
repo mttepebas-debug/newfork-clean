@@ -136,3 +136,5 @@ S1–S6 ve CLAUDE.md'deki aktif program satırı 2026-10-05'te soruldu. Cevaplar
 
 ## Kapanış durumu
 Açık: keşif ve kararlar bitti (2026-10-05). Sırada görev dosyası (`docs/plan/tasks/EKRAN-01-SCHEDULE.md`), sonra uygulama. Varyant gerekenler (BL-445, BL-524, BL-525, BL-441, C-D11, C-P2) gerçek ekranda gösterilecek.
+
+Görev dosyası: `docs/plan/tasks/EKRAN-01-SCHEDULE.md`. Yeni bulguların BL numaraları: BL-688–BL-723 (PLAN-EKRAN-12, 2026-10-06); eşleme görev dosyasının başındaki "YENİ bulgu → BL eşlemesi" tablosunda.

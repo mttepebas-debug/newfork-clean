@@ -11,7 +11,49 @@ Session: -   Branch: dilim başına `task/ekran-01-<dilim>`   Worktree: `newfork
 
 **Kimlikler:** `D-Y2` = D raporu yüksek 2; `D-O4` orta 4; `D-D1` düşük 1; `B-4` = B raporu bulgu 4;
 `C-D3` = C raporu masaüstü 3; `C-P1` telefon 1; `S1.x–S5.x` = A raporu Tablo 2 prototip kalemleri. YENİ bulgular
-henüz BL numarası almadı; koordinatör BACKLOG'a yazınca numara buraya eklenir.
+BL numarasını PLAN-EKRAN-12'de aldı (2026-10-06, BL-688–BL-723; BACKLOG "Schedule ekranı keşfi: yeni bulgular"); eşleme aşağıdaki tabloda.
+
+**YENİ bulgu → BL eşlemesi (PLAN-EKRAN-12, 2026-10-06):**
+
+| Bulgu | BL | Dilim |
+|---|---|---|
+| D-Y2 | BL-688 | DB-1b, W-1b |
+| D-Y1 = BL-689 | BL-689 | W-1b (+DB-1c) |
+| D-Y3 = BL-690 | BL-690 | W-1a |
+| D-Y4 = BL-691 | BL-691 | W-1a |
+| D-Y5 = BL-692 | BL-692 | DB-1b, W-1b |
+| B-2 | BL-693 | DB-2 |
+| B-4 / D-O4 = BL-694 | BL-694 | DB-3, W-3 |
+| D-O6 = BL-695 | BL-695 | DB-1b, W-1b |
+| D-O2 = BL-696 | BL-696 | DB-3 |
+| D-O1 = BL-697 | BL-697 | DB-3 |
+| D-O9 = BL-698 | BL-698 | DB-1b, W-1b |
+| D-O3 = BL-699 | BL-699 | W-3 |
+| B-5 | BL-700 | BE-1 |
+| B-7 | BL-701 | DB-4 |
+| B-9 | BL-702 | DB-1a |
+| D-D4 | BL-703 | BE-2 |
+| Sürükleme rengi (Mert) | BL-704 | DRAG |
+| D-O5 | BL-705 | W-3 |
+| D-O8 | BL-706 | W-2 |
+| C-D1 | BL-707 | W-2 |
+| D-D1 | BL-708 | W-3 |
+| D-D3 | BL-709 | W-1b |
+| D-D2 | BL-710 | W-3 |
+| C-D3 | BL-711 (kısmen BL-327 (3)) | W-2 |
+| C-D4 | BL-712 | W-2 |
+| C-D5 | BL-713 | W-2 |
+| C-D2 | BL-714 | W-4 |
+| C-D7 | BL-715 | W-3 |
+| C-D8 | BL-716 | W-4 |
+| C-D11 | BL-717 | VAR |
+| C-P2 | BL-718 | VAR |
+| C-D6 | BL-719 | W-1b / W-3 |
+| C-D9 | BL-720 | W-4 |
+| C-D12 | BL-721 | W-4 |
+| C-D16 | BL-722 | W-4 |
+| C raporu "Küçük" listesi (4 kalem) | BL-723 | W-4 |
+| D-D5 iki yeni ikiz rota | BL-280 (+ ek 2026-10-06) | BE-1 |
 
 ---
 
@@ -42,12 +84,12 @@ düşmesi, Undo), başka lokasyonun taslağını bozamaz, ekran klavyeyle ve tel
 ### 1. Veri kaybı ve düzenleme oturumu
 | Bulgu | Ne | Dilim |
 |---|---|---|
-| D-Y2 (+C-D6) | Hareketsizlikte iş habersiz siliniyor → S1 | DB-1b, W-1b |
+| D-Y2 (+C-D6) = BL-688 (+BL-719) | Hareketsizlikte iş habersiz siliniyor → S1 | DB-1b, W-1b |
 | D-Y3 | Kilit uyarının son 1–2 dk'sında düşüyor; tek çıkış Discard | W-1a |
 | D-Y1 | Undo yalnız ekranda → S2 | W-1b (+DB-1c gerekirse) |
 | D-Y4 | Yenileme / hafta değişince taslak boş görünüyor | W-1a |
 | D-Y5 | İki yöneticinin kaydedilmemiş işi birbirine biniyor | DB-1b, W-1b |
-| B-1 + B-2 + B-3 | Başka lokasyonun taslağına kayıt; canlı kanal çekirdek dışında; kapsamı daralan müdürün oturumu yaşıyor | DB-1a, DB-2 |
+| B-1 + B-2 (= BL-693) + B-3 | Başka lokasyonun taslağına kayıt; canlı kanal çekirdek dışında; kapsamı daralan müdürün oturumu yaşıyor | DB-1a, DB-2 |
 | B-4 / D-O4 | Overwrite: başlamış vardiyayı siliyor, tek tık, bütün lokasyonlar → S3 | DB-3, W-3 |
 | D-O6 | Başkası düzenlerken taslak silinebiliyor | DB-1b, W-1b |
 | D-O9 | Kurtarma taslağı sessiz ve teknik adlı; yanlış taslak açılabiliyor | DB-1b, W-1b (Açık soru 1) |
@@ -56,7 +98,7 @@ düşmesi, Undo), başka lokasyonun taslağını bozamaz, ekran klavyeyle ve tel
 | D-O3 | Açık vardiyaya düşen sayı söylenmiyor | W-3 |
 | BL-238 | Pazar akşamı "bu hafta" UTC'yle kilitleniyor | DB-4 |
 | D-O1 | Yayındaki haftaya yeni vardiya "Live - published" yazıyor | DB-3 |
-| **Sürükleme rengi (Mert, 2026-10-05 ~22:05Z)** | Kabul eden hücre yeşil, etmeyen kırmızı; ayrı madde | DRAG |
+| **Sürükleme rengi (Mert, 2026-10-05 ~22:05Z)** = BL-704 | Kabul eden hücre yeşil, etmeyen kırmızı; ayrı madde | DRAG |
 
 **Sürükleme rengi ayrıntısı.** Üç sürükleme: (1) hücreden hücreye vardiya, (2) rol ayırıcı satırındaki hazır vardiya
 (preset), (3) Unassigned satırındaki açık vardiya. Hücre, vardiyanın lokasyonu, işi ve tarih / saatine göre kabul
