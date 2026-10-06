@@ -28,12 +28,6 @@
 .requests-catalog-page .catalog-status-tabs {
   justify-self: start;
 }
-.requests-catalog-page .requests-workbench {
-  display: block;
-  min-height: 0;
-  border: 0;
-  background: transparent;
-}
 .requests-catalog-page .requests-list {
   border: 1px solid var(--job-border);
   border-radius: 7px;
@@ -112,11 +106,6 @@
   gap: 4px;
   font-size: 12px;
 }
-.requests-catalog-page .request-pagination {
-  padding: 10px 14px;
-  border-top: 1px solid var(--job-border);
-  background: var(--job-subtle);
-}
 .requests-catalog-page .requests-empty {
   min-height: 130px;
   padding: 28px 16px;
@@ -126,7 +115,6 @@
 .requests-catalog-page
   :is(
     .nf-button,
-    .request-pagination button,
     .sx-root button:not(.request-catalog-button),
     button.sx-primary,
     button.sx-icon,
