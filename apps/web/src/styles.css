@@ -1296,19 +1296,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The sort arrow is always there (BL-663): a quiet two-way arrow on an
+   unsorted heading, one solid arrow in the sorted direction on the sorted one,
+   read from the heading's aria-sort. */
 .catalog-sort-icon {
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 120ms ease;
+  color: var(--theme-muted);
 }
-.catalog-sort-button:hover .catalog-sort-icon,
-.catalog-sort-button:focus-visible .catalog-sort-icon {
-  opacity: 1;
+.catalog-sort-icon--ascending,
+.catalog-sort-icon--descending,
+[aria-sort="ascending"] .catalog-sort-icon--none,
+[aria-sort="descending"] .catalog-sort-icon--none {
+  display: none;
 }
-.employee-table th:hover .catalog-sort-icon,
-.catalog-column-headings > *:hover .catalog-sort-icon,
-.weekly-team-table th:hover .catalog-sort-icon {
-  opacity: 1;
+[aria-sort="ascending"] .catalog-sort-icon--ascending,
+[aria-sort="descending"] .catalog-sort-icon--descending {
+  display: block;
+  color: var(--theme-text);
 }
 /* An empty catalog table keeps its heading row; the space under it is the
    soft ground (Settings → Documents, KARARLAR "Ekran kararları → Settings"). */
