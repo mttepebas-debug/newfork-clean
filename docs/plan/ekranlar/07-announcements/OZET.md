@@ -49,7 +49,8 @@ Test boşlukları (D "Test boşlukları"): `announcements_and_dates_follow_k1_k6
 - **Bırak (3):** G10 (iki tık onayının bozulma biçimi; gerçek `ConfirmButton` doğru), AW6 (Message satır tahmini; gerçek uygulama daha iyi), AW38 (mockup düğmeleri).
 - **Varyant / soru (4):** Unpublish düğmesinin yeri (S1); "Only you" etiketi (K19 kuralı var, etiket yalnız prototipte; tek satırla gösterilir); Acknowledge sekmesindeki durum adları (koordinatör, K3); telefonda süzgeç dizilişi (G2 telefon konuşmasına bağlı).
 
-## 3. Koordinatör kararı önerileri (KARARLAR / ILKELER birebir cevaplıyor)
+## 3. Koordinatör kararları — KK-182 (2026-10-06; önerildiği gibi kabul, notlarla)
+Koordinatörün notları: K3 kabul ama metin ekranda görünür — görev dosyasında "Mert ekran görüntüsünde görür". K5 kabul, plan olarak: kodun çalışma biçimi değişiyor; ekran 7 turunda yapılır, gece değil. S2 ayrı soru açılmaz; SABAH-SORULAR S25'in yanına not düşüldü (aynı temel model).
 - **K1 — Görev dosyası:** EKRAN-07 görev dosyası FB-6.7'nin duyuru kısmının yerine geçer. Veri dilimleri (R3, `nf-db` + `nf-backend`): (a) K24 kişi listesi + K19 taslak gizliliği ve silme + E7-02 alıcı kuralı; (b) K22 anahtar ve rütbe + K27 soru + K23 Remind + K26 geçmiş; (c) K21 bildirim + K20 sunucu reddi + E7-03 yayın anında yetki + E7-15. Sonra web, sonra ekran. Dayanak: KARARLAR K19–K27; ILKELER P02 (çekirdekte tam çözüm).
 - **K2 — Eski dal:** `task/fb-6.7-ui` (16 commit, main'in 312 gerisinde, #170 öncesi kurallar) duyuru kısmı birleştirilmez; dal silinmez, ekran 8 turunun başında kapalı gün ve önemli tarih parçaları için hasat edilir. Dayanak: ILKELER P22 (en güncel karar kazanır).
 - **K3 — Durum adları:** Acknowledge sekmesindeki "Not required", "Received", "Didn't acknowledge" prototipteki gibi kalır. Dayanak: K22, K12 eki, P21.
@@ -74,4 +75,5 @@ Test boşlukları (D "Test boşlukları"): `announcements_and_dates_follow_k1_k6
 
 ## 6. Kapanış durumu
 - Keşif: A, B, D yazıldı (2026-10-06 akşam). C (görsel QA) ağır iş, izinle.
-- Bekleyen: koordinatör kararları (§3), YENİ bulgulara BL numarası (son numara BL-857), Mert'in S1–S4 cevabı (ekran 7 turu), görev dosyası `tasks/EKRAN-07-ANNOUNCEMENTS.md`.
+- Koordinatör kararları KK-182 (§3). YENİ bulgular BL-858…878 aldı (E7-02 → BL-858, E7-03 → 859, E7-04 → 860, E7-05 → 861, E7-06 → 862, E7-08 → 863, E7-09 → 864, E7-10 → 865, E7-11 → 866, E7-12 → 867, E7-13 → 868, E7-15 → 869, E7-16 → 870, E7-17 → 871, E7-18 → 872, E7-19 → 873, E7-20 → 874, E7-21 → 875, E7-22 → 876, E7-26 → 877, E7-27 → 878); var olanlara ek: BL-543 (E7-01), BL-675 (E7-07), BL-176 (E7-14), BL-787 (K6), BL-044 (K4). Görev dosyası `tasks/EKRAN-07-ANNOUNCEMENTS.md`.
+- Bekleyen: Mert'in S1, S3, S4 cevabı (ekran 7 turu); S2 = SABAH S25 sohbeti; C görsel QA (izinle).

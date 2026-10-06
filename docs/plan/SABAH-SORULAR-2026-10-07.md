@@ -307,6 +307,7 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
   Zayıf yanı: New York'un kapanmış haftası Los Angeles yüzünden birkaç saat daha düzenlenebilir kalır; "geçmiş hafta kilidi" New York için gecikir.
 - (d) Önce sohbette konuşalım (bu soru için varsayılan yol).
 - Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 1); BL-238, KK-6.
+- **Aynı sohbette (KK-182):** duyurunun "Publish at / Expires at" saati de bu modele bağlı — bugün yazanın tarayıcısının saati: New York'taki owner Palo Alto için 09:00 seçer, duyuru Palo Alto'da 06:00'da çıkar (BL-878, EKRAN-07 S2). Ayrı soru açılmaz; S25'in cevabı ikisine birden uygulanır.
 
 ---
 
