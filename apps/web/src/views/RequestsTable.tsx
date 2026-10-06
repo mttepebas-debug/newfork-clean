@@ -10,7 +10,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { formatTimeOffDeadline } from "../employee-hub/time-off-split";
-import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import {
   requestTypeLabels,
   type OpenRequestRow,
@@ -185,6 +184,23 @@ export function dateRange(start: string, end: string, now = new Date()) {
   return `${shortDate(start, { year: !sameYear }, now)} – ${shortDate(end, {}, now)}`;
 }
 
+/** "3:30–11:00 PM", "11:00 AM–3:00 PM", "15:30–23:00" (artifact, Version 2). */
+export function clockRange(start: string, end: string, timeFormat: "12h" | "24h") {
+  const parts = (value: string) => {
+    const [hour = 0, minute = 0] = value.split(":").map(Number);
+    return { hour, minute: String(minute).padStart(2, "0") };
+  };
+  const from = parts(start);
+  const to = parts(end);
+  if (timeFormat === "24h")
+    return `${String(from.hour).padStart(2, "0")}:${from.minute}–${String(to.hour).padStart(2, "0")}:${to.minute}`;
+  const half = (hour: number) => (hour % 24 < 12 ? "AM" : "PM");
+  const clock = (time: { hour: number; minute: string }) => `${time.hour % 12 || 12}:${time.minute}`;
+  return half(from.hour) === half(to.hour)
+    ? `${clock(from)}–${clock(to)} ${half(to.hour)}`
+    : `${clock(from)} ${half(from.hour)}–${clock(to)} ${half(to.hour)}`;
+}
+
 function toDate(value: string) {
   return new Date(value.length === 10 ? `${value}T12:00:00` : value);
 }
@@ -195,7 +211,7 @@ function rowWhen(row: RequestTableRow, timeFormat: "12h" | "24h") {
     return dateRange(start, end);
   }
   const shift = row.request.shift;
-  const hours = shift.start_time && shift.end_time ? ` · ${formatTimeRange(shift.start_time, shift.end_time, timeFormat, "–")}` : "";
+  const hours = shift.start_time && shift.end_time ? ` · ${clockRange(shift.start_time, shift.end_time, timeFormat)}` : "";
   return `${shortDate(shift.scheduled_date, { weekday: true })}${hours}`;
 }
 
