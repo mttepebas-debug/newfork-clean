@@ -1513,3 +1513,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** CLAUDE.md'nin bu commit'ten önceki hâli.
 - **Durum:** yürürlükte.
 - **Mert:** kendi talimatı ve seçimleri.
+
+### KK-166 (2026-10-06) Varyant turunun 1. bölümü ve BE-2 sorusu: sorulmadan verilen dört karar
+- **Karar (ne):** (1) Publish özetinin metni: "1 shift needs a fix before you can publish. 1 more to review." (Mert "developer dili olmasın, sen bul" dedi). (2) "Telefon" ölçüsü 768 px (mevcut mobil sınır). (3) Telefon düzeni sorusu (C-P2) Mert'in "Schedule telefonda tamamen kapalı" kararıyla düştü; W-5 bu kararın uygulamasına döner. (4) BE-2: haftalık e-postada kısmi teslim kapanma sayacına girmez (P09). Mert'in kendi seçimleri ve tarifi KARARLAR "Schedule"da: telefonda kapalı (ters seçim), müsaitlik/izin hücre gösterimi (seçenek dışı), ad "!" Durum 1, Publish özeti üstte. Açık: dar pencere üst çubuğu (BL-445) — Mert görsel olarak görmek istedi, dört görüntü gönderildi; hız testi (BL-562) — Mert "50 ile 80 ms arasında hissedilir fark var mı?" diye konuşmak istedi, cevap verildi, karar bekliyor.
+- **Nerede:** KARARLAR "Schedule"; ILKELER A "Cihaz" ve P04 kanıtı; BACKLOG BL-756.
+- **Ne zaman:** 2026-10-06 ~04:20–05:10Z.
+- **Ne için:** Mert'e yalnız kuralın cevaplamadığını sormak (CLAUDE.md §13).
+- **Uygulamada etkisi:** henüz yok; web hattı telefonda kapalı Schedule'ı, arayüz hattı yeni hücre modelini varyant olarak kuracak.
+- **Dayanak:** (1) Mert'in "sen bul"u + P21; (2) P19; (3) Mert'in kararı; (4) ILKELER P09.
+- **Geri alma:** KARARLAR satırları.
+- **Durum:** kayda geçti.
+- **Mert:** raporda "Senin yerine verdiğim kararlar"da gösterilir.

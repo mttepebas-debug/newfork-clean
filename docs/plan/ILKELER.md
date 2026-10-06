@@ -40,7 +40,7 @@
   - Çalışan arayüzü ve uygulaması sonra gelir ama ikinci sınıf değildir; aynı kalitede yapılır.
   - Reddedilen öneri: "müdür kazanır".
 - **Cihaz** (Mert, 2026-10-01): müdür masaüstünden, çalışan telefondan kullanır. Yönetim ekranları
-  masaüstüne göre tasarlanır, telefonda çalışır. Çalışan ekranları telefona göre tasarlanır.
+  masaüstüne göre tasarlanır, telefonda çalışır. Çalışan ekranları telefona göre tasarlanır. Ters seçim (Mert, 2026-10-06): Schedule telefonda tamamen kapalı; "telefonda yalnız görüntüleme" önerisi reddedildi. Yönetim ekranının telefonda çalışması kuralı Schedule için geçmez (KARARLAR Schedule).
 - **Rakipler** (Mert, 2026-10-01): kendi yolumuz; rakip yalnız referanstır. 7shifts, Homebase,
   When I Work ve Deputy ne yapıyor araştırılır ve gösterilir; karar Mert'in kurallarından ve bu
   ilkelerden çıkar. Reddedilen seçenekler: "restoran akışında 7shifts esas", "sadelikte Homebase
@@ -102,6 +102,7 @@
   setinden üçünde Mert önerilenin dışını seçti (S2 not kartı, S3 tek katlanır satır, S4 günün
   çizelgesi) ve "anahtar kapalıyken '!' de gizlensin" dedi. Görsel seçimde Claude'un önerisi zayıf
   dayanak; varyant gösterilmeden karar verilmez (KARARLAR "Müsaitlik" → Tasarım seçimleri).
+- Kanıt (2026-10-06, seçenek dışı; EKRAN-01 varyant turu): müsaitlik ve izin hücresi için gösterilen B/C/D varyantlarının hiçbiri seçilmedi; Mert yeni bir model tarif etti (izin düz kırmızı + "TIME OFF", müsait-değil taraması kalkar, köşe ve kart "!"). Varyant, Mert'in kendi tasarımını tetikleyen bir araç; tarif edilen model de kodlamadan önce gerçek ekranda gösterilir (KARARLAR Schedule).
 - Kanıt (2026-10-04, ters seçim, marka adım 3): Schedule sağ üst butonları için UI-09 ve stil B'ye
   dayanarak "tek yeşil Publish" önerildi; Mert gerçek ekranda üç varyanttan "bugünkü gibi siyah"ı
   seçti. Genel kural (UI-09) bir ekranın kendi görsel kimliğini ezmez; ekranın bugünkü görünümü de
