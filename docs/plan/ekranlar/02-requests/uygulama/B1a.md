@@ -36,7 +36,7 @@
 5. **Giriş kapısı.** Requests sayfası artık rolün izin anahtarına değil çekirdeğin eylem listesine bakıyor (`can(requests.read) || can(exchange.read)`), sekmeleri gibi.
 
 **Ölçümler:**
-- Açık vardiya değişiklikleri tarih penceresinden bağımsız hep dönüyor: `shift_exchanges_read_service`'te `x.status='open' or …` (`supabase/migrations/20260929190000_time_off_shortens_for_a_shift.sql:625`). Pencere (bugün → +42 gün) yalnız kapanmışları sınırlıyor → açık liste tam; A4'ü açık sekmelere genişletmek gerekmiyor.
+- ~~Açık vardiya değişiklikleri tarih penceresinden bağımsız hep dönüyor … A4'ü açık sekmelere genişletmek gerekmiyor.~~ **Düzeltme 2026-10-06 ~17:00Z (yanlış ölçüm, benim hatam):** sorgunun ilk süzgeci açık vakayı alıyor (`x.status='open' or …`), ama döngünün içindeki ikinci süzgeç vakayı vardiya tarihi pencerenin (varsayılan bugün → +42 gün, en çok 62 gün) dışındaysa atlıyor (`20261007150000_shift_exchanges_ask_the_core.sql:650-653`, öncesi `20260929190000_…sql:651-652`). Açık liste tam **değil**: 6 haftadan ileri bir cover talebi Needs review'a düşmez (BL-839). İstemci pencereyi genişleterek çözemez (62 gün tavanı); veri yarısı A4'te, web yarısı B1b'de.
 - Bekleyen izin kuyruğu imleçle 100'lük sayfalarla sonuna kadar okunuyor (`getOpenTimeOffRequests`).
 - `awaiting_other_manager` vaka düzeyinde ("herhangi bir oy var"), bakan müdüre göre değil (`…_shortens_for_a_shift.sql:662`) → R2-18 notu.
 
