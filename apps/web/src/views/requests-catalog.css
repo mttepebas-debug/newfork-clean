@@ -167,7 +167,7 @@
   max-width: 100%;
   min-height: 36px;
   padding: 7px 10px;
-  border: 1px solid var(--job-border);
+  border: 1px solid var(--theme-border-control); /* S7: the shared field edge, not the 1.25:1 job edge */
   border-radius: 5px;
   background: var(--job-bg);
   color: var(--job-text);
