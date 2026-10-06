@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { TOAST_LAYER_ATTRIBUTE } from "../shell/toastLayer";
 import "./jobs-settings.css";
 
 const focusableSelector =
@@ -34,7 +35,9 @@ export function CatalogDrawer({
     const background = Array.from(document.body.children)
       .filter(
         (element): element is HTMLElement =>
-          element instanceof HTMLElement && element !== root.parentElement,
+          element instanceof HTMLElement &&
+          element !== root.parentElement &&
+          !element.hasAttribute(TOAST_LAYER_ATTRIBUTE),
       )
       .map((element) => ({ element, inert: element.inert }));
     background.forEach(({ element }) => {
