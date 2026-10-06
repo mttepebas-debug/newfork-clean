@@ -84,7 +84,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 
 | # | Ekran (uygulamadaki adı) | Kim | Prototip karşılaştırması | Durum |
 |---|---|---|---|---|
-| 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar — görev dosyası yazıldı (`tasks/EKRAN-01-SCHEDULE.md`, 2026-10-06), 6 açık soru |
+| 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | uygulama — 12/19 dilim main'de (+11 ek dilim: BE-2b, TEL-KAPALI, CI-HIZ, VAR-UYG, UNDO-db-bulgu…); kalan DB-4, W-2, W-3, W-4, W-5, T-1, K-1, Z; 6 açık soru cevaplandı (KARARLAR Schedule 2026-10-06); kapanış ölçümü `ekranlar/01-schedule/KAPANIS-OLCUMU-2026-10-06.md` |
 | 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | karar — görev dosyası hazır (`tasks/EKRAN-03-EMPLOYEES.md`, 2026-10-06), 1 açık soru (Q1 Mert'e); G2 telefon konuşmasında |
 | 4 | Availability | owner, müdür | P2 | sırada · sayfalama (25 / 50 / 100) bu turda: Availability (Mert 2026-10-06, BL-787) |
