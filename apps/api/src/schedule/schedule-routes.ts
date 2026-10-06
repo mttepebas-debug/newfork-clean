@@ -458,7 +458,6 @@ export function registerScheduleRoutes(
     }
   });
 
-
   app.patch("/schedule/edit-lock/heartbeat", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeSessionBodySchema.safeParse(request.body);
@@ -480,7 +479,6 @@ export function registerScheduleRoutes(
       return scheduleError(reply, error);
     }
   });
-
 
   app.delete("/schedule/edit-lock/release", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");
