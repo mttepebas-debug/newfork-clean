@@ -85,7 +85,6 @@ import {
 import { AutoFillReviewOverlay } from "../schedule/components/AutoFillReviewOverlay";
 import { DefaultHoursReviewDialog } from "../schedule/components/DefaultHoursReviewDialog";
 import { DraftDropdownMenu } from "../schedule/components/DraftDropdownMenu";
-import { EnterEditModeDialog } from "../schedule/components/EnterEditModeDialog";
 import { ScheduleConflictSheet } from "../schedule/components/ScheduleConflictSheet";
 import { ScheduleNoteConfirm } from "../schedule/components/ScheduleNoteConfirm";
 import { scheduleDropReviewAsk } from "../schedule/lib/scheduleDropReviewAsk";
@@ -298,7 +297,6 @@ export function SchedulePage({
   });
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);
-  const [sourceOpen, setSourceOpen] = useState(false);
   const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
   const [, setEditorDirty] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
@@ -440,7 +438,6 @@ export function SchedulePage({
         | "export"
         | "templates"
         | "publish"
-        | "source"
         | "newSchedule"
         | null = null,
     ) => {
@@ -457,7 +454,6 @@ export function SchedulePage({
         setPublishOpen(false);
         setPublishDraftOverride(null);
       }
-      if (keep !== "source") setSourceOpen(false);
       if (keep !== "newSchedule") {
         setNewScheduleMenuOpen(false);
         setNewScheduleDismissSignal((current) => current + 1);
@@ -472,7 +468,6 @@ export function SchedulePage({
   const topActionSurfaceOpen =
     templatesOpen ||
     publishOpen ||
-    sourceOpen ||
     newScheduleMenuOpen ||
     publishMenuOpen;
   useEffect(() => {
@@ -1153,10 +1148,7 @@ export function SchedulePage({
       editLocationIds,
     );
     if (!result) return;
-    if (result.status === "conflict") {
-      setSourceOpen(false);
-      return;
-    }
+    if (result.status === "conflict") return;
     enterEditModeWithResetFilters(
       result.session.source_draft_id,
       preserveFilters,
@@ -1165,7 +1157,6 @@ export function SchedulePage({
         : null,
     );
     clearUndoStack();
-    setSourceOpen(false);
     return result.session;
   };
 
@@ -2029,10 +2020,6 @@ export function SchedulePage({
       setSaveOpen(false);
       return true;
     }
-    if (sourceOpen) {
-      setSourceOpen(false);
-      return true;
-    }
     if (templatesOpen) {
       setTemplatesOpen(false);
       return true;
@@ -2854,16 +2841,6 @@ export function SchedulePage({
         }}
         onDismiss={() => setCellMenu(null)}
       />
-      {sourceOpen && !pastWeek ? (
-        <EnterEditModeDialog
-          open={sourceOpen}
-          drafts={drafts}
-          onOpenChange={setSourceOpen}
-          onStartBlank={() => acquire("blank")}
-          onLoadDraft={(draftId) => acquire("draft", draftId)}
-          onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
-        />
-      ) : null}
       {conflict ? (
         <ScheduleEditLockedDialogComponent
           open
