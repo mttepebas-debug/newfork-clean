@@ -300,8 +300,8 @@ select is(pg_temp.status(tests.id('tz:ali:4:cancel')), 'pending', 'the one that 
 
 select is(
   (select jsonb_build_object('schedule', j.schedule, 'command', j.command) from cron.job j where j.jobname = 'time-off-deadlines'),
-  '{"schedule": "* * * * *", "command": "select app_private.time_off_sweep()"}'::jsonb,
-  'the job runs every minute, at most 100 requests a pass (BL-506)');
+  '{"schedule": "*/5 * * * *", "command": "select app_private.time_off_sweep()"}'::jsonb,
+  'the job runs every five minutes');
 
 select * from finish();
 rollback;

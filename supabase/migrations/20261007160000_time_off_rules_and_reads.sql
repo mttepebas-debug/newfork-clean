@@ -10,7 +10,7 @@
 --   R2-42  the list says which closed request the employee withdrew.
 --   R2-52  ...and which hours the system gave back (BL-364).
 --   BL-507 a request the deadline job cannot close leaves a record.
---   BL-506 the deadline job closes at most 100 per pass, every minute.
+--   BL-506 the deadline job's pass bound is a parameter (tests close one at a time).
 --   BL-411 who may not act here at all hears so before a request is looked up.
 --   R2-55  a malformed period id is a bad request (22023), not a server error.
 
@@ -575,7 +575,7 @@ revoke all on app_private.time_off_sweep_failures from public, anon, authenticat
 
 drop function app_private.time_off_sweep();
 
-CREATE OR REPLACE FUNCTION app_private.time_off_sweep(pass_limit integer DEFAULT 100)
+CREATE OR REPLACE FUNCTION app_private.time_off_sweep(pass_limit integer DEFAULT 500)
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -591,9 +591,10 @@ declare
   reminder_due boolean;
   done integer := 0;
 begin
-  -- ponytail: every workspace lock is held to the end of the pass; a pass of at
-  -- most pass_limit requests, every minute, bounds that. Commit per request in
-  -- a procedure if one pass still holds Schedule writes too long (BL-506).
+  -- ponytail: every workspace lock is held to the end of the pass (BL-506), and
+  -- the second loop always takes the earliest deadlines of every workspace, so
+  -- request 501 waits behind 500 with nothing due. Fix both together: commit per
+  -- request in a procedure and take loop two in a fair turn.
   -- Not decided in time: the system declines it.
   for r in select q.id, q.workspace_id from public.schedule_time_off_requests q
     where q.status = 'pending' and q.decide_by is not null and q.decide_by <= now()
@@ -698,7 +699,6 @@ end;
 $function$;
 
 revoke all on function app_private.time_off_sweep(integer) from public, anon, authenticated, service_role;
-select cron.schedule('time-off-deadlines', '* * * * *', 'select app_private.time_off_sweep()');
 
 -- BL-411, R2-55 -------------------------------------------------------------------
 
