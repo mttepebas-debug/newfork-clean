@@ -257,7 +257,7 @@ insert into service_class values
   ('terminate_employee_service', 'employee.terminate'),
   ('touch_workspace_membership_service', 'account.self'),
   ('unapprove_signature_retention_policy_service', 'settings.documents.write'),
-  ('undo_schedule_edit_session_service', 'schedule.edit'),
+  ('undo_schedule_edit_session_step_service', 'schedule.edit'),
   ('unpublish_schedule_service', 'schedule.publish'),
   ('unpublish_signature_template_service', 'settings.documents.write'),
   ('update_department_with_jobs_service', 'settings.jobs.write'),

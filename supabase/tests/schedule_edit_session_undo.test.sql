@@ -3,10 +3,11 @@ create extension if not exists pgtap with schema extensions;
 select * from no_plan();
 
 -- EKRAN-01 DB-1c (S2, KK-171): Undo takes the last step back on the server
--- too, in one piece. A move, a paste, a template, Auto-fill: whatever the step
--- touched goes back to how it was, or nothing changes. Only the edit's own
--- holder undoes it; nobody else's edit moves. A saved step is not undone (the
--- save closes the edit).
+-- too, in one piece. A step is one write call from the screen: a move, a
+-- paste, a template, Auto-fill. Whatever it touched goes back to how it was,
+-- or nothing changes. The edit keeps its last 25 steps and says how many
+-- (undo_depth). Only the edit's own holder undoes it; nobody else's edit
+-- moves. A saved step is not undone (the save closes the edit).
 -- Ayşe and Zeynep manage Kadıköy (K); Can manages Kadıköy and Beşiktaş (B).
 -- Ali and Emre cook at Kadıköy.
 
@@ -20,6 +21,10 @@ select tests.publish_week('ud', 2, '[
   {"label": "p1", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"},
   {"label": "p2", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "17:00"}
 ]');
+select tests.publish_week('ud', 6, '[
+  {"label": "p6k", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"},
+  {"label": "p6b", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"}
+]');
 
 create function pg_temp.refusal(statement text) returns text language plpgsql as $$
 declare code text; reason text;
@@ -31,6 +36,16 @@ exception when others then
   return code || ' ' || reason;
 end;
 $$;
+create function pg_temp.refusal_hint(statement text) returns text language plpgsql as $$
+declare code text; reason text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+  return code || ' ' || coalesce(reason, '');
+end;
+$$;
 create function pg_temp.open(actor text, n integer, source text, locs text[] default null) returns uuid language sql as $$
   select (public.acquire_schedule_edit_session_service(tests.user('ud:' || actor), tests.id('ud'), tests.week(n),
     source::public.schedule_edit_source, null,
@@ -38,6 +53,9 @@ create function pg_temp.open(actor text, n integer, source text, locs text[] def
 $$;
 create function pg_temp.rev(session uuid) returns integer language sql as $$
   select revision from public.schedule_edit_sessions where id = session
+$$;
+create function pg_temp.depth(actor text, session uuid) returns integer language sql as $$
+  select (public.get_schedule_edit_session_service(tests.user('ud:' || actor), tests.id('ud'), session) ->> 'undo_depth')::integer
 $$;
 create function pg_temp.shift(person text, n integer, day integer, loc text default 'K') returns jsonb language sql as $$
   select jsonb_build_object('location_id', tests.id('ud:' || loc),
@@ -68,9 +86,9 @@ create function pg_temp.paste(actor text, session uuid, shifts jsonb) returns js
   select public.create_schedule_shifts_batch_service(tests.user('ud:' || actor), tests.id('ud'), session,
     pg_temp.rev(session), shifts, gen_random_uuid())
 $$;
-create function pg_temp.undo(actor text, session uuid, back_to integer) returns jsonb language sql as $$
-  select public.undo_schedule_edit_session_service(tests.user('ud:' || actor), tests.id('ud'), session,
-    pg_temp.rev(session), back_to)
+create function pg_temp.undo(actor text, session uuid) returns jsonb language sql as $$
+  select public.undo_schedule_edit_session_step_service(tests.user('ud:' || actor), tests.id('ud'), session,
+    pg_temp.rev(session))
 $$;
 -- What the edit holds, comparable before and after: every row but its revision and clock.
 create function pg_temp.state(session uuid) returns jsonb language sql as $$
@@ -80,77 +98,79 @@ $$;
 create function pg_temp.row_of(session uuid, shift uuid) returns public.schedule_edit_session_shifts language sql as $$
   select s from public.schedule_edit_session_shifts s where s.session_id = session and s.id = shift
 $$;
+create temp table ud_before (v jsonb);
+create temp table ud_rev (v integer);
 
 -- 1. Ayşe drags Ali's Tuesday to Wednesday and presses Undo (KARARLAR Schedule) --
 
 select tests.remember('ud:e1', pg_temp.open('ayse', 1, 'blank'));
+select is(pg_temp.depth('ayse', tests.id('ud:e1')), 0, 'a new edit has nothing to undo');
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e1'))),
+  'PT409 schedule.nothing_to_undo', 'and Undo says so');
 select tests.remember('ud:e1:tue', pg_temp.add('ayse', tests.id('ud:e1'), pg_temp.shift('ali', 1, 1)));
-create temp table ud_before as select pg_temp.state(tests.id('ud:e1')) v;
-create temp table ud_mark as select pg_temp.rev(tests.id('ud:e1')) v;
-select pg_temp.change('ayse', tests.id('ud:e1'), tests.id('ud:e1:tue'),
-  jsonb_build_object('scheduled_date', tests.week(1) + 2));
-select is((pg_temp.row_of(tests.id('ud:e1'), tests.id('ud:e1:tue'))).scheduled_date, tests.week(1) + 2,
-  'the move is on the server');
-create temp table ud_answer as select pg_temp.undo('ayse', tests.id('ud:e1'), (select v from ud_mark)) v;
+insert into ud_before select pg_temp.state(tests.id('ud:e1'));
+insert into ud_rev select pg_temp.rev(tests.id('ud:e1'));
+select is((pg_temp.change('ayse', tests.id('ud:e1'), tests.id('ud:e1:tue'),
+  jsonb_build_object('scheduled_date', tests.week(1) + 2)) ->> 'undo_depth')::integer, 2,
+  'every step''s answer says how many steps Undo can take back');
+create temp table ud_answer as select pg_temp.undo('ayse', tests.id('ud:e1')) v;
 select is((pg_temp.row_of(tests.id('ud:e1'), tests.id('ud:e1:tue'))).scheduled_date, tests.week(1) + 1,
   'Undo puts Ali''s shift back on Tuesday on the server');
 select is(pg_temp.state(tests.id('ud:e1')), (select v from ud_before), 'the edit is exactly as before the move');
 select is((select (v ->> 'revision')::integer from ud_answer), pg_temp.rev(tests.id('ud:e1')),
   'the answer is the edit as the screen reloads it');
-select cmp_ok(pg_temp.rev(tests.id('ud:e1')), '>', (select v from ud_mark) + 1, 'the edit''s revision moves on, never back');
+select is((select (v ->> 'undo_depth')::integer from ud_answer), 1, 'one step is left: adding the shift');
+select cmp_ok(pg_temp.rev(tests.id('ud:e1')), '>', (select v from ud_rev) + 1, 'the edit''s revision moves on, never back');
 -- The next step after Undo is not "session revision stale" (W-1b Done when 2).
 select lives_ok($$select pg_temp.change('ayse', tests.id('ud:e1'), tests.id('ud:e1:tue'), '{"start_time": "10:00"}'::jsonb)$$,
   'the next step after Undo goes through');
 
--- 2. A paste of three shifts is one Undo (a template, Auto-fill, a paste: one step) -
+-- 2. A paste of three shifts is one step (a template, Auto-fill: one call, one step)
 
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e1'));
 truncate ud_before; insert into ud_before select pg_temp.state(tests.id('ud:e1'));
 select pg_temp.paste('ayse', tests.id('ud:e1'), jsonb_build_array(
   pg_temp.shift('ali', 1, 3), pg_temp.shift('emre', 1, 3), pg_temp.shift(null, 1, 4)));
 select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = tests.id('ud:e1')), 4,
-  'the paste wrote three shifts, one revision each');
-select pg_temp.undo('ayse', tests.id('ud:e1'), (select v from ud_mark));
+  'the paste wrote three shifts');
+select is(pg_temp.depth('ayse', tests.id('ud:e1')), 3, 'as one step');
+select pg_temp.undo('ayse', tests.id('ud:e1'));
 select is(pg_temp.state(tests.id('ud:e1')), (select v from ud_before), 'one Undo takes the whole paste back');
 
 -- 3. Steps go back one at a time, newest first -------------------------------------
 
-create temp table ud_steps (step integer primary key, mark integer, state jsonb);
-insert into ud_steps select 1, pg_temp.rev(tests.id('ud:e1')), pg_temp.state(tests.id('ud:e1'));
+create temp table ud_steps (step integer primary key, state jsonb);
+insert into ud_steps select 1, pg_temp.state(tests.id('ud:e1'));
 select tests.remember('ud:e1:fri', pg_temp.add('ayse', tests.id('ud:e1'), pg_temp.shift('emre', 1, 4)));
-insert into ud_steps select 2, pg_temp.rev(tests.id('ud:e1')), pg_temp.state(tests.id('ud:e1'));
+insert into ud_steps select 2, pg_temp.state(tests.id('ud:e1'));
 select pg_temp.change('ayse', tests.id('ud:e1'), tests.id('ud:e1:fri'), jsonb_build_object('employee_id', tests.id('ud:ali')));
-insert into ud_steps select 3, pg_temp.rev(tests.id('ud:e1')), pg_temp.state(tests.id('ud:e1'));
+insert into ud_steps select 3, pg_temp.state(tests.id('ud:e1'));
 select pg_temp.remove('ayse', tests.id('ud:e1'), tests.id('ud:e1:tue'));
-select pg_temp.undo('ayse', tests.id('ud:e1'), (select mark from ud_steps where step = 3));
+select pg_temp.undo('ayse', tests.id('ud:e1'));
 select is(pg_temp.state(tests.id('ud:e1')), (select state from ud_steps where step = 3), 'the delete is undone: Tuesday is back');
 select is((pg_temp.row_of(tests.id('ud:e1'), tests.id('ud:e1:tue'))).id, tests.id('ud:e1:tue'), 'with its own id');
-select pg_temp.undo('ayse', tests.id('ud:e1'), (select mark from ud_steps where step = 2));
+select pg_temp.undo('ayse', tests.id('ud:e1'));
 select is(pg_temp.state(tests.id('ud:e1')), (select state from ud_steps where step = 2), 'then Friday is Emre''s again');
-select pg_temp.undo('ayse', tests.id('ud:e1'), (select mark from ud_steps where step = 1));
+select pg_temp.undo('ayse', tests.id('ud:e1'));
 select is(pg_temp.state(tests.id('ud:e1')), (select state from ud_steps where step = 1), 'then Friday is gone');
-select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'ayse', tests.id('ud:e1'), pg_temp.rev(tests.id('ud:e1')))),
-  '22023 undo unavailable', 'nothing is left to undo at the current revision');
 
 -- 4. A published shift goes back to "published", not to a pending change ---------
 
 select tests.remember('ud:e2', pg_temp.open('ayse', 2, 'published'));
 select tests.remember('ud:e2:p1', (select source_shift_id from public.schedule_published_shifts where id = tests.id('ud:shift:p1')));
 select tests.remember('ud:e2:p2', (select source_shift_id from public.schedule_published_shifts where id = tests.id('ud:shift:p2')));
+select is(pg_temp.depth('ayse', tests.id('ud:e2')), 0, 'opening a published week is not a step');
 truncate ud_before; insert into ud_before select pg_temp.state(tests.id('ud:e2'));
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e2'));
 select pg_temp.change('ayse', tests.id('ud:e2'), tests.id('ud:e2:p1'), '{"start_time": "11:00"}'::jsonb);
 select is((pg_temp.row_of(tests.id('ud:e2'), tests.id('ud:e2:p1'))).pending_op_type, 'update', 'the change is pending');
-select pg_temp.undo('ayse', tests.id('ud:e2'), (select v from ud_mark));
+select pg_temp.undo('ayse', tests.id('ud:e2'));
 select is((pg_temp.row_of(tests.id('ud:e2'), tests.id('ud:e2:p1'))).pending_op_type, null,
   'after Undo the shift is published again, not a pending change');
 select is((pg_temp.row_of(tests.id('ud:e2'), tests.id('ud:e2:p1'))).locked, true, 'and locked as it was');
 select is(pg_temp.state(tests.id('ud:e2')), (select v from ud_before), 'the edit is as it was opened');
 
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e2'));
 select pg_temp.remove('ayse', tests.id('ud:e2'), tests.id('ud:e2:p2'));
 select is((pg_temp.row_of(tests.id('ud:e2'), tests.id('ud:e2:p2'))).pending_op_type, 'delete', 'Emre''s Wednesday is marked to go');
-select pg_temp.undo('ayse', tests.id('ud:e2'), (select v from ud_mark));
+select pg_temp.undo('ayse', tests.id('ud:e2'));
 select is(pg_temp.state(tests.id('ud:e2')), (select v from ud_before), 'Undo takes the mark back');
 
 -- 5. All or nothing ------------------------------------------------------------------
@@ -160,108 +180,164 @@ select is(pg_temp.state(tests.id('ud:e2')), (select v from ud_before), 'Undo tak
 select tests.remember('ud:e3', pg_temp.open('ayse', 3, 'blank'));
 select tests.remember('ud:e3:ali', pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('ali', 3, 1)));
 select tests.remember('ud:e3:emre', pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 1)));
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e3'));
 select public.bulk_delete_schedule_edit_shifts_service(tests.user('ud:ayse'), tests.id('ud'),
   array[tests.id('ud:e3:ali'), tests.id('ud:e3:emre')]);
 select tests.approved_leave(tests.id('ud'), tests.id('ud:ali'), tests.user('ud:ali'), tests.id('ud:K'), tests.week(3) + 1, '17:00', '23:00');
 truncate ud_before; insert into ud_before select pg_temp.state(tests.id('ud:e3'));
-create temp table ud_rev as select pg_temp.rev(tests.id('ud:e3')) v;
-select throws_ok(format('select pg_temp.undo(%L, %L, %s)', 'ayse', tests.id('ud:e3'), (select v from ud_mark)),
+truncate ud_rev; insert into ud_rev select pg_temp.rev(tests.id('ud:e3'));
+select throws_ok(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e3')),
   '23514', null, 'Undo that would put Ali on his time off is refused');
 select is(pg_temp.state(tests.id('ud:e3')), (select v from ud_before), 'and Emre''s evening is not back either');
 select is(pg_temp.rev(tests.id('ud:e3')), (select v from ud_rev), 'nothing of the edit moved');
+select is(pg_temp.depth('ayse', tests.id('ud:e3')), 3, 'the step is still there to undo');
 
 -- 6. Only the holder; nobody else's edit moves --------------------------------------
 
 select tests.remember('ud:e4', pg_temp.open('can', 4, 'blank', array['B']));
 select pg_temp.add('can', tests.id('ud:e4'), pg_temp.shift(null, 4, 1, 'B'));
 create temp table ud_can as select pg_temp.state(tests.id('ud:e4')) state, pg_temp.rev(tests.id('ud:e4')) rev,
-  (select count(*) from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e4')) steps;
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e1'));
+  pg_temp.depth('can', tests.id('ud:e4')) depth;
 select pg_temp.add('ayse', tests.id('ud:e1'), pg_temp.shift('ali', 1, 5));
-select pg_temp.undo('ayse', tests.id('ud:e1'), (select v from ud_mark));
+select pg_temp.undo('ayse', tests.id('ud:e1'));
 select is((select state from ud_can), pg_temp.state(tests.id('ud:e4')), 'Ayşe''s Undo leaves Can''s edit alone');
 select is((select rev from ud_can), pg_temp.rev(tests.id('ud:e4')), 'its revision too');
-select is((select steps from ud_can), (select count(*) from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e4')),
-  'and its Undo history');
+select is((select depth from ud_can), pg_temp.depth('can', tests.id('ud:e4')), 'and its Undo history');
 
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e1'));
 select pg_temp.add('ayse', tests.id('ud:e1'), pg_temp.shift('ali', 1, 6));
-select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'zeynep', tests.id('ud:e1'), (select v from ud_mark))),
+select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'zeynep', tests.id('ud:e1'))),
   'P0002 edit session not found', 'Zeynep cannot undo Ayşe''s step');
-select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'ali', tests.id('ud:e1'), (select v from ud_mark))),
+select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ali', tests.id('ud:e1'))),
   'P0002 edit session not found', 'nor can Ali');
-select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_service(%L, %L, %L, %s, %s)',
-  tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'), pg_temp.rev(tests.id('ud:e1')) - 1, (select v from ud_mark))),
+select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',
+  tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'), pg_temp.rev(tests.id('ud:e1')) - 1)),
   '40001 session revision stale', 'a screen behind the edit is told to reload');
-select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'ayse', tests.id('ud:e1'), (select v from ud_mark))),
-  'allowed', 'Ayşe can');
+select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e1'))), 'allowed', 'Ayşe can');
 
--- 7. What the edit did not do itself cannot be undone across ------------------------
-
--- Can widens his edit to Kadıköy: the shifts that arrive are not a step of his.
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e4'));
-select pg_temp.open('can', 4, 'blank', array['K']);
-select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'can', tests.id('ud:e4'), (select v from ud_mark) - 1)),
-  '22023 undo unavailable', 'Undo stops where the edit was picked up again');
-select tests.remember('ud:e4:k', pg_temp.add('can', tests.id('ud:e4'), pg_temp.shift(null, 4, 2)));
-select lives_ok(format('select pg_temp.undo(%L, %L, %s)', 'can', tests.id('ud:e4'), (select v from ud_mark)),
-  'the step after it is undone as usual');
-select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = tests.id('ud:e4')), 1,
-  'and only that step');
-
--- A saved edit is closed: nothing of it is undone, and its history is gone.
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e3'));
-select pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 2));
-select public.save_schedule_edit_session_service(tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e3'),
-  pg_temp.rev(tests.id('ud:e3')), 'Week 3 plan');
-select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'ayse', tests.id('ud:e3'), (select v from ud_mark))),
-  '40001 edit lease expired', 'Undo after Save draft is refused');
-select is((select count(*)::integer from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e3')), 0,
-  'the closed edit keeps no Undo history');
-
--- Can no longer works at Beşiktaş: his week 5 edit there is not his to undo.
-create function pg_temp.refusal_hint(statement text) returns text language plpgsql as $$
-declare code text; reason text;
-begin
-  execute statement;
-  return 'allowed';
-exception when others then
-  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
-  return code || ' ' || coalesce(reason, '');
-end;
-$$;
-select tests.remember('ud:e5', pg_temp.open('can', 5, 'blank', array['K', 'B']));
-truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e5'));
-select pg_temp.add('can', tests.id('ud:e5'), pg_temp.shift(null, 5, 1, 'B'));
-truncate ud_can; insert into ud_can select pg_temp.state(tests.id('ud:e5')), pg_temp.rev(tests.id('ud:e5')),
-  (select count(*) from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e5'));
+-- Can no longer works at Beşiktaş: his edit there is not his to undo.
+truncate ud_can; insert into ud_can select pg_temp.state(tests.id('ud:e4')), pg_temp.rev(tests.id('ud:e4')),
+  pg_temp.depth('can', tests.id('ud:e4'));
 select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('ud') and m.user_id = tests.user('ud:can')), tests.id('ud:B'));
-select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L, %s)', 'can', tests.id('ud:e5'), (select v from ud_mark))),
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'can', tests.id('ud:e4'))),
   '42501 authz.out_of_scope', 'Can, gone from Beşiktaş, cannot undo his step there');
-select is((select state from ud_can), pg_temp.state(tests.id('ud:e5')), 'the shift stays');
-select is((select rev from ud_can), pg_temp.rev(tests.id('ud:e5')), 'the revision too');
-select is((select steps from ud_can), (select count(*) from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e5')),
-  'and the history');
+select is((select state from ud_can), pg_temp.state(tests.id('ud:e4')), 'the shift stays');
+select is((select rev from ud_can), pg_temp.rev(tests.id('ud:e4')), 'the revision too');
+select is((select count(*)::integer from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e4')),
+  (select depth from ud_can), 'and the history');
+select tests.works_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('ud') and m.user_id = tests.user('ud:can')), tests.id('ud:B'));
 
 -- An edit of another workspace is not found from this one.
 select tests.world('ux');
 select tests.remember('ux:e1', (public.acquire_schedule_edit_session_service(tests.user('ux:owner'), tests.id('ux'),
   tests.week(1), 'blank', null) -> 'session' ->> 'id')::uuid);
-select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_service(%L, %L, %L, %s, %s)',
-  tests.user('ux:owner'), tests.id('ud'), tests.id('ux:e1'), pg_temp.rev(tests.id('ux:e1')), pg_temp.rev(tests.id('ux:e1')) - 1)),
+select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',
+  tests.user('ux:owner'), tests.id('ud'), tests.id('ux:e1'), pg_temp.rev(tests.id('ux:e1')))),
   'P0002 edit session not found', 'another workspace''s edit is not found');
 
--- 8. Nobody in the browser reads or calls it -----------------------------------------
+-- 7. What the edit did not do itself is not a step ------------------------------------
+
+-- Can opens the published week 6 at Beşiktaş, adds a shift, then widens the edit
+-- to Kadıköy: Kadıköy's published shifts arrive, but they are not a step of his.
+select tests.remember('ud:e6', pg_temp.open('can', 6, 'published', array['B']));
+select pg_temp.add('can', tests.id('ud:e6'), pg_temp.shift(null, 6, 2, 'B'));
+select pg_temp.open('can', 6, 'published', array['K']);
+select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = tests.id('ud:e6')), 3,
+  'Kadıköy''s shift arrived');
+select is(pg_temp.depth('can', tests.id('ud:e6')), 1, 'the reload keeps his step, and adds none');
+select pg_temp.undo('can', tests.id('ud:e6'));
+select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = tests.id('ud:e6')), 2,
+  'Undo takes back only his shift');
+
+-- A swap rewrites Ayşe's open edit: Undo does not take it back, nor cross it.
+select tests.remember('ud:e7', pg_temp.open('ayse', 7, 'blank'));
+select tests.remember('ud:e7:ali', pg_temp.add('ayse', tests.id('ud:e7'), pg_temp.shift('ali', 7, 1)));
+select public.shift_exchange_rebase_drafts(tests.id('ud'), to_jsonb(pg_temp.row_of(tests.id('ud:e7'), tests.id('ud:e7:ali'))),
+  tests.id('ud:emre'));
+select is((pg_temp.row_of(tests.id('ud:e7'), tests.id('ud:e7:ali'))).employee_id, tests.id('ud:emre'), 'the swap gave the shift to Emre');
+select is(pg_temp.depth('ayse', tests.id('ud:e7')), 0, 'the edit''s history is gone');
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e7'))),
+  'PT409 schedule.nothing_to_undo', 'Undo has nothing to take back');
+
+-- A saved edit is closed: nothing of it is undone, and its history is gone.
+select pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 2));
+select public.save_schedule_edit_session_service(tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e3'),
+  pg_temp.rev(tests.id('ud:e3')), 'Week 3 plan');
+select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e3'))),
+  '40001 edit lease expired', 'Undo after Save draft is refused');
+select is((select count(*)::integer from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e3')), 0,
+  'the closed edit keeps no Undo history');
+
+-- 8. The last 25 steps --------------------------------------------------------------
+
+select tests.remember('ud:e8', pg_temp.open('ayse', 8, 'blank'));
+-- One statement per step, as the screen sends them.
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 1));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 2));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 3));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 4));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 5));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 6));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 0));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 1));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 2));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 3));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 4));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 5));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 6));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 0));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 1));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 2));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 3));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 4));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 5));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 6));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 0));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 1));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 2));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 3));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 4));
+select pg_temp.add('ayse', tests.id('ud:e8'), pg_temp.shift(null, 8, 5));
+select is(pg_temp.depth('ayse', tests.id('ud:e8')), 25, 'after 26 steps Undo can take back 25');
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select pg_temp.undo('ayse', tests.id('ud:e8'));
+select is((select count(*)::integer from public.schedule_edit_session_shifts where session_id = tests.id('ud:e8')), 1,
+  'the first step stays');
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e8'))),
+  'PT409 schedule.nothing_to_undo', 'and nothing is left to undo');
+
+-- 9. Nobody in the browser reads or calls it -----------------------------------------
 
 select is(has_function_privilege('authenticated',
-  'public.undo_schedule_edit_session_service(uuid, uuid, uuid, integer, integer)', 'execute'), false, 'the browser cannot call Undo');
+  'public.undo_schedule_edit_session_step_service(uuid, uuid, uuid, integer)', 'execute'), false, 'the browser cannot call Undo');
 select is(has_table_privilege('authenticated', 'app_private.schedule_edit_undo_steps', 'select'), false,
   'nor read the history');
 
--- 9. Every writer of an open edit's shifts is a step Undo takes back, or a line
--- Undo stops at. A new writer fails here until somebody says which it is.
+-- 10. Every writer of an open edit's shifts is a step Undo takes back, or not a
+-- step and says so. A new writer fails here until somebody says which it is.
 select set_eq($$
   select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname in ('public', 'app_private')
@@ -271,16 +347,17 @@ $$, array[
   'mutate_schedule_edit_shift_service', 'bulk_delete_schedule_edit_shifts_service', 'apply_schedule_auto_fill_service',
   'apply_schedule_template_service', 'add_schedule_pending_op_service', 'remove_schedule_pending_op_service',
   'shift_exchange_schedule_recovery_service',
-  -- not a step: Undo stops here (undo_floor_revision)
+  -- not a step: the shifts an edit opens with; a swap or a closed day (schedule_edit_undo_barrier)
   'acquire_schedule_edit_session_service', 'shift_exchange_rebase_drafts', 'important_date_close_shifts',
   -- the edit closes: its history goes
   'save_schedule_edit_session_service', 'discard_schedule_edit_session_service',
   -- Undo itself
-  'undo_schedule_edit_session_service'
-], 'every writer of an open edit''s shifts is a step or a line for Undo');
-select is((select count(*)::integer from pg_proc where proname in
-    ('acquire_schedule_edit_session_service', 'shift_exchange_rebase_drafts', 'important_date_close_shifts')
-    and prosrc like '%undo_floor_revision%'), 3, 'and each line sets where Undo stops');
+  'undo_schedule_edit_session_step_service'
+], 'every writer of an open edit''s shifts is a step or says it is not');
+select is((select count(*)::integer from pg_proc where
+    (proname = 'acquire_schedule_edit_session_service' and prosrc like '%app_private.schedule_edit_undo_steps%')
+    or (proname in ('shift_exchange_rebase_drafts', 'important_date_close_shifts') and prosrc like '%schedule_edit_undo_barrier()%')),
+  3, 'and each one that is not a step clears itself out of the history');
 
 select * from finish();
 rollback;
