@@ -114,10 +114,8 @@ type ScheduleInvalidationTarget =
 
 interface ScheduleInvalidationPayload {
   readonly workspace_id: string;
-  readonly actor_user_id: string;
   readonly week_start?: string;
   readonly location_ids?: readonly string[];
-  readonly draft_id?: string | null;
   readonly targets: readonly ScheduleInvalidationTarget[];
   readonly changed_shift_ids?: readonly string[];
 }
@@ -585,10 +583,8 @@ export function createScheduleReadService(options: {
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: session.week_start,
         location_ids: scheduleSessionLocationIds(session),
-        draft_id: session.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
         changed_shift_ids: [input.shiftId],
       });
@@ -603,9 +599,9 @@ export function createScheduleReadService(options: {
       if (error) throw rpcFailure(error);
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
-        workspace_id: input.workspaceId, actor_user_id: input.actorUserId,
+        workspace_id: input.workspaceId,
         week_start: session.week_start, location_ids: scheduleSessionLocationIds(session),
-        draft_id: session.source_draft_id, targets: ["draft_shifts", "pending_ops", "edit_lock"],
+        targets: ["draft_shifts", "pending_ops", "edit_lock"],
       });
       return session;
     },
@@ -622,12 +618,10 @@ export function createScheduleReadService(options: {
       const result = scheduleBulkDeleteResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: result.session?.week_start,
         location_ids: result.session
           ? scheduleSessionLocationIds(result.session)
           : undefined,
-        draft_id: result.session?.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
         changed_shift_ids: input.shiftIds,
       });
@@ -662,10 +656,8 @@ export function createScheduleReadService(options: {
       const session = scheduleEditSessionSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: session.week_start,
         location_ids: scheduleSessionLocationIds(session),
-        draft_id: session.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
         changed_shift_ids: input.command.shift_ids,
       });
@@ -689,9 +681,8 @@ export function createScheduleReadService(options: {
       const draft = scheduleDraftSummarySchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: draft.week_start,
-        draft_id: draft.id,
+        location_ids: await draftLocationIds(client, input.workspaceId, draft.id),
         targets: ["drafts", "draft_shifts", "pending_ops"],
       });
       return draft;
@@ -720,8 +711,7 @@ export function createScheduleReadService(options: {
       const result = scheduleDraftDeleteResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: workspaceId,
-        actor_user_id: actorUserId,
-        draft_id: result.draft_id,
+        location_ids: await draftLocationIds(client, workspaceId, result.draft_id),
         targets: ["drafts", "draft_shifts", "pending_ops"],
       });
       return result;
@@ -756,7 +746,6 @@ export function createScheduleReadService(options: {
       const result = schedulePendingOpMutationResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         location_ids: pendingOpLocationIds(input.pendingOp.payload),
         targets: ["pending_ops", "draft_shifts"],
         changed_shift_ids: input.pendingOp.target_shift_id
@@ -779,7 +768,6 @@ export function createScheduleReadService(options: {
       const result = schedulePendingOpMutationResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         location_ids: pendingOpLocationIds(input.pendingOp.payload),
         targets: ["pending_ops", "draft_shifts"],
         changed_shift_ids: [input.opId],
@@ -799,7 +787,6 @@ export function createScheduleReadService(options: {
       const result = schedulePendingOpMutationResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         targets: ["pending_ops", "draft_shifts"],
         changed_shift_ids: [input.opId],
       });
@@ -873,10 +860,8 @@ export function createScheduleReadService(options: {
       if (result.status !== "published") return result;
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: result.week_start,
         location_ids: result.location_ids,
-        draft_id: result.draft_id,
         targets: [
           "published_shifts",
           "drafts",
@@ -911,7 +896,6 @@ export function createScheduleReadService(options: {
       const result = scheduleUnpublishResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: result.week_start,
         location_ids: result.location_ids,
         targets: ["published_shifts", "employee_my_schedule"],
@@ -992,10 +976,8 @@ export function createScheduleReadService(options: {
       const result = scheduleTemplateApplyResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: result.session.week_start,
         location_ids: scheduleSessionLocationIds(result.session),
-        draft_id: result.session.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
       });
       return result;
@@ -1028,10 +1010,8 @@ export function createScheduleReadService(options: {
       const result = scheduleAutoFillApplyResultSchema.parse(data);
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
-        actor_user_id: input.actorUserId,
         week_start: result.session.week_start,
         location_ids: scheduleSessionLocationIds(result.session),
-        draft_id: result.session.source_draft_id,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
         changed_shift_ids: result.applied.map(
           (assignment) => assignment.shift_id,
@@ -1257,25 +1237,49 @@ async function broadcastScheduleInvalidation(
   client: SupabaseClient,
   payload: ScheduleInvalidationPayload,
 ): Promise<void> {
-  // Private: only readers of this workspace's schedule receive it.
-  const channel = client.channel(
-    `schedule:invalidation:${payload.workspace_id}`,
-    { config: { private: true } },
+  // DB-2: one private channel per location, joined only by that location's
+  // schedule readers. A change with no known location sends nothing; screens
+  // still refetch over HTTP.
+  const workspaceId = payload.workspace_id.toLowerCase();
+  const locationIds = [...new Set((payload.location_ids ?? []).map((id) => id.toLowerCase()))];
+  await Promise.all(
+    locationIds.map(async (locationId) => {
+      const channel = client.channel(
+        `schedule:invalidation:${workspaceId}:${locationId}`,
+        { config: { private: true } },
+      );
+      try {
+        await channel.send({
+          type: "broadcast",
+          event: "schedule_invalidation",
+          payload: {
+            kind: "schedule_invalidation",
+            // A channel names only its own location, never its neighbours.
+            ...removeUndefinedFields({ ...payload, location_ids: [locationId] }),
+          },
+        });
+      } catch {
+        // Realtime is advisory; the write already succeeded and HTTP clients still refetch.
+      } finally {
+        await client.removeChannel(channel).catch(() => undefined);
+      }
+    }),
   );
-  try {
-    await channel.send({
-      type: "broadcast",
-      event: "schedule_invalidation",
-      payload: {
-        kind: "schedule_invalidation",
-        ...removeUndefinedFields(payload),
-      },
-    });
-  } catch {
-    // Realtime is advisory; the write already succeeded and HTTP clients still refetch.
-  } finally {
-    await client.removeChannel(channel).catch(() => undefined);
-  }
+}
+
+async function draftLocationIds(
+  client: SupabaseClient,
+  workspaceId: string,
+  draftId: string,
+): Promise<readonly string[]> {
+  // The RPC has already authorized this draft; its row only picks the channels.
+  const { data } = await client
+    .from("schedule_drafts")
+    .select("location_ids")
+    .eq("workspace_id", workspaceId)
+    .eq("id", draftId)
+    .maybeSingle();
+  return Array.isArray(data?.location_ids) ? data.location_ids : [];
 }
 
 function scheduleSessionLocationIds(
