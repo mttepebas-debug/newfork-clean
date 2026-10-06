@@ -297,6 +297,7 @@ describe("scheduleGridLayout", () => {
           crosses_midnight: false,
           hide_time_on_badge: false,
           label_names: ["Lead"],
+          warning_codes: ["availability"],
         },
       ] as never,
       jobs: [{ id: "job-1", name: "Server" }] as never,
@@ -319,7 +320,8 @@ describe("scheduleGridLayout", () => {
     });
 
     expect(version).toContain(
-      "shift-1:09:00:17:00:false:false:type-1:job-1:loc-1:Lead",
+      // The availability "!" takes room on the card (KARARLAR Schedule, 2026-10-06).
+      "shift-1:09:00:17:00:false:false:type-1:job-1:loc-1:Lead:true",
     );
     expect(version).toContain("job-1:Server");
     expect(version.endsWith("true|true|true|true|24h|true|true")).toBe(true);

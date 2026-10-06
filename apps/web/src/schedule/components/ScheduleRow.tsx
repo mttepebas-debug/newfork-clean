@@ -418,13 +418,6 @@ export function ScheduleRow({
                 })
               }
             >
-              {availabilityMark?.kind === "unavailable" && employee && displayStacks.length === 0 ? (
-                <AvailabilityMarkButton
-                  className="schedule-availability-mark-corner"
-                  label={`${employee.display_name}: unavailable on ${formatAvailabilityMarkDay(day)}`}
-                  lines={availabilityMark.windows.map((window) => formatAvailabilityMarkLine(day, window, timeFormat))}
-                />
-              ) : null}
               {displayStacks.map(({ shift, groupedShiftIds, stackCount }) =>
                 isGhostScheduleShift(shift) ? (
                   <GhostShiftCard
@@ -497,6 +490,14 @@ export function ScheduleRow({
                   <Plus size={12} aria-hidden />
                   <span>Add shift</span>
                 </button>
+              ) : null}
+              {/* After the add layer: the "!" stays pressable over it. */}
+              {availabilityMark?.kind === "unavailable" && employee && displayStacks.length === 0 ? (
+                <AvailabilityMarkButton
+                  className="schedule-availability-mark-corner"
+                  label={`${employee.display_name}: unavailable on ${formatAvailabilityMarkDay(day)}`}
+                  lines={availabilityMark.windows.map((window) => formatAvailabilityMarkLine(day, window, timeFormat))}
+                />
               ) : null}
             </div>
           );

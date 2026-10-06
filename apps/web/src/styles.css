@@ -10943,15 +10943,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
     transition: none;
   }
 }
+/* Over the cell's add layer (z-index 1, earlier in the cell), under the frozen
+   Unassigned row (z-index 2) when the row scrolls beneath it. */
 .schedule-availability-mark-corner {
   position: absolute;
   top: 5px;
   right: 5px;
-  z-index: 2;
-}
-.schedule-availability-mark-card {
-  position: relative;
-  z-index: 2;
+  z-index: 1;
 }
 .schedule-availability-mark-window {
   position: fixed;
