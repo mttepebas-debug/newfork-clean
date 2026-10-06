@@ -47,10 +47,15 @@ export function ConfirmDialog({
   // Read at key time, so a new onCancel each render does not re-run the effect.
   const latest = useRef({ busy, onCancel });
   latest.current = { busy, onCancel };
+  // Who opened the box, read while rendering: by the effect an autoFocus field
+  // inside the box already holds focus, and focus would fall to the page (BL-656).
+  const opener = useRef<HTMLElement | null>(null);
+  if (!open) opener.current = null;
+  else opener.current ??= document.activeElement as HTMLElement | null;
 
   useEffect(() => {
     if (!open) return undefined;
-    const previous = document.activeElement as HTMLElement | null;
+    const previous = opener.current;
     if (!dialog.current?.contains(document.activeElement)) {
       dialog.current?.querySelector<HTMLElement>(".secondary-button")?.focus();
     }
