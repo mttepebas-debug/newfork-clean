@@ -15,6 +15,9 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  History,
+  Lock,
+  Search,
   RefreshCw,
   ShieldCheck,
   Users,
@@ -41,6 +44,23 @@ import {
   refreshExchangeSurfaces,
 } from "./exchange-data";
 import "./shift-exchanges.css";
+import { devVar } from "../../dev/varEkran12";
+
+// VAR-EKRAN-12 G2: travel and rest flags on the approval (sample values; A1 has no data yet).
+function VarRuleFlags({ giver, receiver, inline = false }: { readonly giver: string; readonly receiver: string; readonly inline?: boolean }) {
+  const rows = [
+    { label: "Travel", value: "30 min", rule: "rule 45 min", who: `${receiver}: Besiktas ends 3:00 PM, Kadikoy starts 3:30 PM` },
+    { label: "Rest", value: "8 h", rule: "rule 10 h", who: `${giver}: closes 11:30 PM, this shift starts 7:30 AM` },
+  ];
+  if (inline) return <>{rows.map((row) => <p key={row.label} className="sx-pending var-g2-line"><AlertTriangle size={14} aria-hidden /> <strong>{`${row.label} ${row.value}, ${row.rule}.`}</strong> {row.who}</p>)}</>;
+  return (
+    <div className="var-g2-box" role="note">
+      <p className="var-g2-title"><AlertTriangle size={15} aria-hidden /> Check before approving</p>
+      {rows.map((row) => <p key={row.label}><strong>{`${row.label} ${row.value}`}</strong> <span>{`(${row.rule})`}</span> · {row.who}</p>)}
+      <p className="var-g2-foot">A flag, not a block. You decide.</p>
+    </div>
+  );
+}
 import { ExchangeShiftCard, shiftHours } from "./ExchangeShiftCard";
 export { ExchangeShiftCard } from "./ExchangeShiftCard";
 
@@ -521,6 +541,30 @@ export function ShiftExchangeHub({
             " If the response was lost, retry the same action to check its result."}
         </p>
       )}
+      {manager && devVar("g4") === "b" ? (
+        <div className="requests-toolbar catalog-toolbar">
+          <div className="catalog-toolbar-status-row">
+            <div className="catalog-status-tabs" role="group" aria-label="Shift change queues">
+              {tabs.map(([key, label]) => (
+                <button key={key} className={view === key ? "active" : ""} onClick={() => navigate({ hub_view: key, case: null })}>
+                  {key === "history" ? <History size={15} /> : null} {label}
+                  {key === "ready" && readyCount ? <span className="var-g4-count">{readyCount}</span> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="catalog-toolbar-filter-row">
+            <select className="toolbar-filter-select" aria-label="Filter by location" value={locationFilter} onChange={(e) => navigate({ location: e.target.value })}>
+              <option value="">All my locations</option>
+              {locations.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+            <label className="requests-search toolbar-search">
+              <Search size={16} aria-hidden />
+              <input type="search" aria-label="Search shifts" value={search} onChange={(e) => navigate({ q: e.target.value })} placeholder="Search date, location or position" />
+            </label>
+          </div>
+        </div>
+      ) : (<>
       <nav
         className="sx-tabs"
         aria-label={manager ? "Shift change queues" : "Shift Hub views"}
@@ -561,6 +605,7 @@ export function ShiftExchangeHub({
           />
         </label>
       </div>
+      </>)}
       <div
         className={`sx-workbench ${selected ? "sx-has-detail" : ""} ${manager ? "sx-manager" : ""}`}
       >
@@ -1217,6 +1262,9 @@ function CaseDetail({
                       : "Recheck needed"}
                   </span>
                 )}
+                {manager && devVar("g2") === "d" && a.eligibility ? (
+                  <span className="var-g2-chips"><span>Travel 30 min · rule 45</span><span>Rest 8 h · rule 10</span></span>
+                ) : null}
                 {manager &&
                   a.eligibility?.status !== "eligible" &&
                   a.eligibility && (
@@ -1344,6 +1392,7 @@ function CaseDetail({
         ))}
       {manager && current && item.status === "open" && (
         <section className="sx-preview" aria-labelledby={reviewTitleId}>
+          {devVar("g2") === "c" ? <VarRuleFlags giver={item.owner_name ?? "Original owner"} receiver={current.employee_name} /> : null}
           <p className="sx-eyebrow">IF APPROVED</p>
           <h4 id={reviewTitleId} ref={reviewHeading} tabIndex={-1}>
             {item.owner_name ?? "Open shift"} → {current.employee_name}
@@ -1393,10 +1442,17 @@ function CaseDetail({
               giverName={item.owner_name ?? "Original owner"}
             />
           )}
-          <div className="sx-actions">
+          {devVar("g2") === "b" ? <VarRuleFlags giver={item.owner_name ?? "Original owner"} receiver={current.employee_name} inline /> : null}
+          {devVar("g1") === "b" || devVar("g1") === "c" ? (
+            <p className="var-g1-note">
+              <Lock size={14} aria-hidden /> Another Kadikoy manager, the owner or an admin decides this request.
+            </p>
+          ) : null}
+          <div className="sx-actions" hidden={devVar("g1") === "c"}>
             <button
               className="sx-primary"
               disabled={
+                devVar("g1") === "b" ||
                 !actionable ||
                 !preview.data?.allowed ||
                 preview.isFetching ||
@@ -1410,7 +1466,7 @@ function CaseDetail({
                 : `Approve transfer to ${current.employee_name}`}
             </button>
             <button
-              disabled={!actionable}
+              disabled={devVar("g1") === "b" || !actionable}
               onClick={() => setDecision("reject")}
             >
               Decline this application

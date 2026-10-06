@@ -232,12 +232,12 @@ export function ScheduleTopBar({
   const [varFiltersOpen, setVarFiltersOpen] = useState(false);
   const varActiveFilters =
     (hideUnscheduled ? 1 : 0) +
-    [
-      [selectedLocationIds, locations],
-      [selectedShiftTypeIds, shiftTypes],
-      [selectedJobIds, jobs],
-      [selectedEmployeeIds, employees],
-    ].filter(([selected, all]) => selected.length > 0 && selected.length < all.length).length;
+    ([
+      [selectedLocationIds.length, locations.length],
+      [selectedShiftTypeIds.length, shiftTypes.length],
+      [selectedJobIds.length, jobs.length],
+      [selectedEmployeeIds.length, employees.length],
+    ] as const).filter(([selected, all]) => selected > 0 && selected < all).length;
 
   return (
     <header className="schedule-topbar" data-schedule-top-bar>

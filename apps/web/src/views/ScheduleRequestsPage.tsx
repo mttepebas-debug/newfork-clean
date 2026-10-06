@@ -12,9 +12,11 @@ import {
   ChevronRight,
   Clock3,
   History,
+  Scissors,
   Search,
   X,
 } from "lucide-react";
+import { devVar } from "../dev/varEkran12";
 import { useMemo, useState, type ReactNode } from "react";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
@@ -394,7 +396,7 @@ function ScheduleRequestsPageContent() {
           </div>
           {sortedRows.length ? (
             <>
-              {sortedRows.map((row) => (
+              {varG3Order(sortedRows).map((row) => (
                 <RequestRow
                   key={row.id}
                   row={row}
@@ -580,6 +582,15 @@ function ActDialog({
   );
 }
 
+// VAR-EKRAN-12 G3 c: a shortening sits right under the time off it shortened.
+function varG3Order(rows: readonly TimeOffRequest[]): readonly TimeOffRequest[] {
+  if (devVar("g3") !== "c") return rows;
+  const children = rows.filter((row) => row.request_type === "time_off_cancellation" && row.cancellation?.parent_request_id);
+  const rest = rows.filter((row) => !children.includes(row));
+  return rest.flatMap((row) => [row, ...children.filter((child) => child.cancellation?.parent_request_id === row.id)])
+    .concat(children.filter((child) => !rest.some((row) => row.id === child.cancellation?.parent_request_id)));
+}
+
 function RequestRow({
   row,
   timeFormat,
@@ -591,22 +602,31 @@ function RequestRow({
 }) {
   const opens = row.progress ? timeOffOpenedShiftCount(row.progress) : 0;
   const zone = requestZone(row);
+  // VAR-EKRAN-12 G3: the shortening the system wrote when a manager placed a shift.
+  const g3 = row.request_type === "time_off_cancellation" ? devVar("g3") : null;
+  const shortenedBy = row.events.find((event) => event.action === "approved")?.actor_name;
   return (
     <button
       type="button"
-      className="job-catalog-row request-catalog-row request-catalog-button"
+      className={`job-catalog-row request-catalog-row request-catalog-button${g3 === "c" ? " var-g3-child" : ""}`}
       onClick={onSelect}
     >
       <span className="job-row-identity">
         <span className="request-catalog-marker">
-          <CalendarOff size={16} />
+          {g3 === "b" || g3 === "c" ? <Scissors size={16} /> : <CalendarOff size={16} />}
         </span>
         <span className="job-name-stack">
           <span className="job-row-name" title={row.employee_name}>
-            {row.employee_name}
+            {g3 === "c" ? "Shortened for a shift" : row.employee_name}
           </span>
           {row.request_type === "time_off_cancellation" && (
-            <small>Leave cancellation</small>
+            <small>
+              {g3 === "b"
+                ? `Shortened for a shift${shortenedBy ? ` · by ${shortenedBy}` : ""}`
+                : g3 === "c"
+                  ? `${shortenedBy ? `By ${shortenedBy} · ` : ""}shortens the time off above`
+                  : "Leave cancellation"}
+            </small>
           )}
         </span>
       </span>

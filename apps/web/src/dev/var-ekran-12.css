@@ -197,3 +197,67 @@
   :root[data-var-cp2="c"] .schedule-location-header { min-height: 0 !important; height: auto !important; padding: 10px 12px !important; }
   :root[data-var-cp2="c"] .schedule-day-header { min-height: 0 !important; height: auto !important; padding: 6px 12px !important; }
 }
+
+/* ---------- G3: the system's time-off shortening in Requests → Time off → Closed ---------- */
+.request-catalog-row.var-g3-child {
+  background: var(--theme-surface-soft) !important;
+  box-shadow: inset 3px 0 0 var(--theme-border-strong);
+}
+.request-catalog-row.var-g3-child .job-row-name { font-weight: 600; }
+.request-catalog-row.var-g3-child .job-row-identity { padding-left: 28px; }
+
+/* ---------- G1: a manager who cannot decide this shift change ---------- */
+.var-g1-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+}
+:root[data-var-g1="b"] .sx-preview .sx-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- G2: travel / rest flags on the approval ---------- */
+.var-g2-box {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--theme-availability) 45%, transparent);
+  border-radius: 8px;
+  background: var(--theme-availability-soft);
+  color: var(--theme-availability-text);
+  font-size: 13px;
+}
+.var-g2-box p { margin: 0; }
+.var-g2-title { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.var-g2-foot { color: var(--theme-muted-strong); font-size: 12px; }
+.var-g2-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 6px; }
+.var-g2-chips > span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--theme-availability-soft);
+  color: var(--theme-availability-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+/* ---------- G4: Shift changes takes Time off's controls ---------- */
+.var-g4-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 750;
+}
+:root[data-var-g1="c"] .sx-preview .sx-actions { display: none; }
+/* S7: Requests still draws its own #e1e7e3 (1.25:1); under ?var=s7-* it takes
+   the shared token so both options compare on the same page. */
+:root[data-var-s7] .requests-toolbar :is(.toolbar-filter-select, .toolbar-search) { border-color: var(--theme-border-control); }
+:root[data-var-s7] .requests-toolbar .toolbar-search input { border-color: transparent; }
