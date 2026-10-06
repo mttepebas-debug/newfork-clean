@@ -1614,3 +1614,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** dallar main'e girmediği için yok; KARARLAR satırları.
 - **Durum:** hatlarda yürüyor; sabah raporu.
 - **Mert:** kendisi seçti.
+
+### KK-176 (2026-10-06) PC aşırı yükten kapandı: tek runner, tek ağır iş; uzak CI araştırması
+- **Karar (ne):** Mert (~13:50Z): "e2e ci gibi ağır test ve koşuları aynı anda yapma hatta mümkünse bunları benim pc de yapmayalım artık remote yapalım"; seçimi "Tek runner, tek ağır iş" (önerilen). Koordinatör runner 2 ve 3'ün servislerini ve CI Supabase konteynerlerini durdurdu (Mert'in onayıyla, kendi penceresinde); hatlara kural: ağır iş öncesi `gh run list`, yerel ağır iş `db.lock` ile. Ek: CI-DOCS (yalnız docs/agent-memory push'u CI koşturmaz) arayüz hattına; REMOTE-CI araştırması (GitHub-hosted, bulut VM, Claude bulut oturumu; dolar; P06 çelişkisi) planlamaya. Mert'in sabitli oturumlarında Remote Control açıldı (Mert'in isteği; kendi BofA oturumu bir sonraki turunda bağlanır).
+- **Nerede:** WSL `~/actions-runner-2`, `~/actions-runner-3`; KARARLAR OPS-01 eki; HANDOFF §0.
+- **Ne zaman:** 2026-10-06 ~13:45–13:58Z.
+- **Ne için:** CI'ın üç paralel işi + her runner'ın Supabase yığını + oturumların yerel koşuları PC'yi kapattı; bugün 5 e2e kırmızısı da aynı yükten.
+- **Dayanak:** Mert'in kararı; CLAUDE.md §3 (en çok iki ağır iş) sıkılaştırıldı.
+- **Geri alma:** `cd ~/actions-runner-N && sudo ./svc.sh start`.
+- **Durum:** yürürlükte; REMOTE-CI sabah Mert'e.
+- **Mert:** kendisi seçti.
