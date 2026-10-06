@@ -57,7 +57,6 @@ import { ScheduleState } from "../schedule/components/ScheduleState";
 import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
 import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
 import {
-  acquireScheduleEditSession,
   applyScheduleAutoFill,
   applyScheduleTemplate,
   bulkDeleteShifts,
@@ -69,7 +68,6 @@ import {
   discardScheduleEditSession,
   deleteScheduleTemplate,
   draftsKey,
-  heartbeatScheduleEditSession,
   listScheduleDrafts,
   listScheduleTemplates,
   fetchSchedulePublicationStatus,
@@ -115,8 +113,8 @@ import { RetroactiveEditDialog } from "../schedule/components/RetroactiveEditDia
 import {
   EDIT_IDLE_TIMEOUT_MS,
   EDIT_IDLE_WARNING_MS,
-  useEditIdleTimer,
 } from "../schedule/hooks/useEditIdleTimer";
+import { useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
@@ -210,15 +208,6 @@ import {
 } from "../schedule/lib/scheduleDismissal";
 import { useConfirmDialog } from "../shell/ConfirmDialog";
 
-interface ScheduleLockConflict {
-  readonly sessionId?: string;
-  readonly holderName: string;
-  readonly lastHeartbeat: string;
-  readonly expiresAt: string;
-  readonly source: "blank" | "published" | "draft";
-  readonly draftId: string | null;
-}
-
 type SaveRecoveryIntent =
   | {
       readonly kind: "save" | "save-and-export";
@@ -287,18 +276,26 @@ export function SchedulePage({
   );
   const gates = scheduleGates(context);
   const canExportSchedules = gates.export;
-  const [session, setSession] = useState<ScheduleEditSession | null>(null);
-  // A context transition must invalidate old saves even if the same session is later resumed.
-  const mutationContext = useMemo(() => ({
-    userId: context?.userId, workspaceId: context?.workspace.id,
-    sessionId: session?.id, revision: session?.revision,
-  }), [context?.userId, context?.workspace.id, session?.id, session?.revision]);
-  const currentMutationContext = useRef<typeof mutationContext | null>(mutationContext);
-  currentMutationContext.current = mutationContext;
-  useEffect(() => {
-    currentMutationContext.current = mutationContext;
-    return () => { currentMutationContext.current = null; };
-  }, [mutationContext]);
+  const {
+    session,
+    setSession,
+    mutationContext,
+    currentMutationContext,
+    conflict,
+    setConflict,
+    acquire: acquireEditSession,
+    idleSeconds,
+    keepEditing,
+  } = useScheduleEditSession({
+    userId: context?.userId,
+    workspaceId: context?.workspace.id,
+    onError: (message) => setOperationError(message),
+    onIdleEnded: () => {
+      setScheduleMode("preview", null);
+      updateSelectedIds([]);
+      clearUndoStack();
+    },
+  });
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -307,7 +304,6 @@ export function SchedulePage({
   const [saveOpen, setSaveOpen] = useState(false);
   const [exportAfterSave, setExportAfterSave] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
-  const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
@@ -385,7 +381,6 @@ export function SchedulePage({
   );
   const undoSnapshotRef = useRef<ScheduleEditSession | null>(null);
   const undoStackRef = useRef<ScheduleEditSession[]>([]);
-  const editAcquireRequestRef = useRef<symbol | null>(null);
   const setUndoSnapshotState = useCallback(
     (next: ScheduleEditSession | null) => {
       undoSnapshotRef.current = next;
@@ -413,7 +408,6 @@ export function SchedulePage({
     null,
   );
   const [cellMenu, setCellMenu] = useState<CellContextMenuTarget | null>(null);
-  const lastActivityRef = useRef(Date.now());
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishChoices, setPublishChoices] = useState<SchedulePublicationChoices | null>(null);
   const [preflightShiftId, setPreflightShiftId] = useState<string | null>(null);
@@ -764,38 +758,6 @@ export function SchedulePage({
       setEditorDirty(false);
     }
   }, [editor]);
-
-  useEffect(() => {
-    if (!session) return;
-    const heartbeat = window.setInterval(() => {
-      if (!context) return;
-      if (Date.now() - lastActivityRef.current >= 15 * 60 * 1000) return;
-      void heartbeatScheduleEditSession(context.workspace.id, session.id)
-        .then(setSession)
-        .catch((error: Error) => setOperationError(error.message));
-    }, 60_000);
-    return () => window.clearInterval(heartbeat);
-  }, [context, session?.id]);
-
-  const handleIdleActivity = useCallback(() => {
-    lastActivityRef.current = Date.now();
-  }, []);
-  const handleIdleTimeout = useCallback(() => {
-    if (!context || !session) return;
-    void discardScheduleEditSession(context.workspace.id, session.id).finally(
-      () => {
-        setSession(null);
-        setScheduleMode("preview", null);
-        updateSelectedIds([]);
-        clearUndoStack();
-      },
-    );
-  }, [clearUndoStack, context, session, setScheduleMode, updateSelectedIds]);
-  const { secondsRemaining: idleSeconds, keepAlive: keepEditing } = useEditIdleTimer({
-    enabled: Boolean(session),
-    onActivity: handleIdleActivity,
-    onTimeout: handleIdleTimeout,
-  });
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -1181,57 +1143,30 @@ export function SchedulePage({
     const filteredLocationIds = validIds(search.get("locations"), allLocationIds);
     // The filtered locations, or every location the person may edit.
     const editLocationIds = filteredLocationIds.length ? filteredLocationIds : null;
-    const requestId = Symbol(
-      source === "published"
-        ? "schedule-live-edit-acquire"
-        : "schedule-edit-acquire",
-    );
-    editAcquireRequestRef.current = requestId;
     setOperationError(null);
     setNewScheduleMenuOpen(false);
     setNewScheduleDismissSignal((current) => current + 1);
-    try {
-      const result = await acquireScheduleEditSession(
-        context.workspace.id,
-        query.data.week_start,
-        source,
-        draftId,
-        editLocationIds,
-      );
-      if (editAcquireRequestRef.current !== requestId) return;
-      if (result.status === "conflict") {
-        setConflict({
-          sessionId: result.session_id,
-          holderName: result.holder_name,
-          lastHeartbeat: result.last_heartbeat,
-          expiresAt: result.expires_at,
-          source,
-          draftId,
-        });
-        setSourceOpen(false);
-        return;
-      }
-      setSession(result.session);
-      enterEditModeWithResetFilters(
-        result.session.source_draft_id,
-        preserveFilters,
-        result.session.location_ids.length < allLocationIds.length
-          ? result.session.location_ids
-          : null,
-      );
-      clearUndoStack();
+    const result = await acquireEditSession(
+      query.data.week_start,
+      source,
+      draftId,
+      editLocationIds,
+    );
+    if (!result) return;
+    if (result.status === "conflict") {
       setSourceOpen(false);
-      setConflict(null);
-      return result.session;
-    } catch (error) {
-      if (editAcquireRequestRef.current === requestId) {
-        setOperationError((error as Error).message);
-      }
-    } finally {
-      if (editAcquireRequestRef.current === requestId) {
-        editAcquireRequestRef.current = null;
-      }
+      return;
     }
+    enterEditModeWithResetFilters(
+      result.session.source_draft_id,
+      preserveFilters,
+      result.session.location_ids.length < allLocationIds.length
+        ? result.session.location_ids
+        : null,
+    );
+    clearUndoStack();
+    setSourceOpen(false);
+    return result.session;
   };
 
   const discardEditSession = () => {
