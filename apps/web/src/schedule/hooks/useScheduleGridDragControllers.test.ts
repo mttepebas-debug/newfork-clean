@@ -340,3 +340,32 @@ describe("useScheduleGridDragControllers helpers", () => {
     });
   });
 });
+
+// DRAG (KARARLAR Schedule, 2026-10-06): with the workspace's conflict rules in
+// the read (approved time off = block), every drag gives the three colours:
+// green on a free cell, amber on unavailable hours, red on approved time off.
+describe("drop colours with the conflict rules in the read (DRAG)", () => {
+  // Tue 2026-08-18 unavailable all day; Wed 2026-08-19 approved time off.
+  const ruled: ScheduleReadModel = { ...unavailable, employees: unavailable.employees.map(employee => ({ ...employee,
+    weekly_availability: employee.weekly_availability!.map(projection => ({ ...projection,
+      leave_intervals: [{ start_at: "2026-08-19T07:00:00Z", end_at: "2026-08-20T07:00:00Z" }] })),
+  })) };
+  const cells = [["free", "2026-08-21", "allowed"], ["unavailable", "2026-08-18", "warning"], ["time off", "2026-08-19", "blocked"]] as const;
+  const openShift = { ...shift, employee_id: null };
+
+  it.each(cells)("moving, copying and placing an open shift on a %s cell", (_name, date, status) => {
+    for (const [moved, copy] of [[shift, false], [shift, true], [openShift, false]] as const) {
+      expect(evaluateScheduleShiftDropTarget({ model: ruled, shift: moved, target: { shiftId, locationId, employeeId, date, copy } }).targetStatus).toBe(status);
+    }
+  });
+
+  it.each(cells)("dropping a preset on a %s cell", (_name, date, status) => {
+    expect(evaluateSchedulePresetDropTarget({ model: ruled, useDefaultTimesForScheduling: true,
+      target: { locationId, employeeId, jobId, shiftTypeId, label: "Dinner", color: "#2563eb", date, startTime: "16:00", endTime: "22:00" },
+    }).targetStatus).toBe(status);
+  });
+
+  it("takes a shift moved to the Unassigned row", () => {
+    expect(evaluateScheduleShiftDropTarget({ model: ruled, shift, target: { shiftId, locationId, employeeId: null, date: "2026-08-21", copy: false } }).targetStatus).toBe("allowed");
+  });
+});

@@ -5838,19 +5838,22 @@ button.workspace-switcher-item:hover:not(:disabled) {
   outline: 2px solid #2b7e67;
   outline-offset: -2px;
 }
+/* A dragged shift's target cell (KARARLAR Schedule, 2026-10-06): green takes
+   it, amber is a warning the drop asks about (availability orange), red is a
+   real block. Each outline is at least 3:1 on its own fill. */
 .schedule-cell[data-drop-status="allowed"] {
-  background: #e4f4ec;
-  outline: 2px solid #2b7e67;
+  background: var(--theme-success-soft);
+  outline: 2px solid var(--theme-accent);
   outline-offset: -2px;
 }
 .schedule-cell[data-drop-status="blocked"] {
-  background: #f9e9e5;
-  outline: 2px solid #c45b43;
+  background: var(--theme-danger-soft);
+  outline: 2px solid var(--theme-danger);
   outline-offset: -2px;
 }
 .schedule-cell[data-drop-status="warning"] {
-  background: #fff4da;
-  outline: 2px solid #c57b08;
+  background: var(--theme-warning-soft);
+  outline: 2px solid var(--theme-availability);
   outline-offset: -2px;
 }
 .schedule-shift-drag-preview[data-status="warning"]

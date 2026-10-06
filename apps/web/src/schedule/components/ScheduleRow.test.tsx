@@ -6,6 +6,7 @@ import type {
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { shiftDropTargetKey } from "../lib/scheduleDragTargets";
 import { ScheduleRow } from "./ScheduleRow";
 
 const location = {
@@ -537,5 +538,38 @@ describe("ScheduleRow blank-cell interactions", () => {
     fireEvent.doubleClick(cell, { clientX: 210, clientY: 90 });
 
     expect(onCreate).not.toHaveBeenCalled();
+  });
+});
+
+// DRAG (KARARLAR Schedule, 2026-10-06): the cell under a dragged shift says
+// green, amber or red through data-drop-status; only that cell does.
+describe("ScheduleRow drop status (DRAG)", () => {
+  const dragState = (targetStatus: "allowed" | "warning" | "blocked") => ({
+    activeShiftId: "shift-9",
+    label: "Server, 4:00 PM - 10:00 PM",
+    pointerX: 24,
+    pointerY: 32,
+    previewWidth: 126,
+    previewHeight: 58,
+    targetKey: shiftDropTargetKey("emp-1", "loc-1", "2026-08-18"),
+    targetLocationId: "loc-1",
+    targetDate: "2026-08-18",
+    targetStatus,
+    reason: null,
+    copy: false,
+  });
+
+  it.each(["allowed", "warning", "blocked"] as const)("marks the target cell %s and leaves the others alone", (status) => {
+    const { container } = renderRow({ days: ["2026-08-17", "2026-08-18"], draggedShiftId: "shift-9", dragState: dragState(status) });
+    const cells = container.querySelectorAll<HTMLElement>("[data-drop-cell=\"true\"]");
+    expect([...cells].map((cell) => [cell.dataset.date, cell.dataset.dropStatus])).toEqual([
+      ["2026-08-17", undefined],
+      ["2026-08-18", status],
+    ]);
+  });
+
+  it("marks no cell while nothing is dragged", () => {
+    const { container } = renderRow({ days: ["2026-08-17", "2026-08-18"] });
+    expect(container.querySelectorAll("[data-drop-status]")).toHaveLength(0);
   });
 });

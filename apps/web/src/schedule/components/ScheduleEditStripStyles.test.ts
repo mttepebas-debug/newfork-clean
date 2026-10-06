@@ -29,3 +29,13 @@ describe("Schedule edit strip and Settings menu styles (AVAIL-002 C1)", () => {
     expect(pressed).not.toMatch(/#[0-9a-f]{3,6}\b/i);
   });
 });
+
+describe("Schedule drop colours (DRAG)", () => {
+  // The three drop states take their colours from the theme, not raw hex.
+  it.each(["allowed", "warning", "blocked"])("draws the %s drop cell with theme tokens", (status) => {
+    const body = bodyOf(`.schedule-cell[data-drop-status="${status}"]`);
+    expect(body).toMatch(/background: var\(--theme-[a-z-]+\)/);
+    expect(body).toMatch(/outline: 2px solid var\(--theme-[a-z-]+\)/);
+    expect(body).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
