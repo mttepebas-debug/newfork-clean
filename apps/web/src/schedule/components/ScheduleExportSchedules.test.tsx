@@ -114,6 +114,34 @@ describe("ScheduleExportSchedules", () => {
     expect(screen.queryByText(lastError)).toBeNull();
   });
 
+  // KK-166: a partly delivered email keeps the rule on, and says who missed it.
+  it("names who a partly delivered email missed while the rule stays on", () => {
+    render(
+      <ScheduleExportSchedules
+        presets={[preset()]}
+        schedules={[
+          schedule({
+            enabled: true,
+            last_sent_at: "2026-08-17T15:00:00.000Z",
+            last_error: "Not delivered to 1 of 10 recipients: ali@example.test",
+            auto_disabled_at: null,
+          }),
+        ]}
+        selectedLocationIds={["11111111-1111-4111-8111-111111111111"]}
+        pending={false}
+        run={(action) => void action()}
+        onCreate={vi.fn()}
+        onToggle={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Not delivered to 1 of 10 recipients: ali@example.test"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Auto-disabled/)).toBeNull();
+  });
+
   it("creates a scheduled export from the form and clears editable fields", async () => {
     // The new schedule takes the device's zone; pin it so the machine's
     // own zone does not decide the result (U16).

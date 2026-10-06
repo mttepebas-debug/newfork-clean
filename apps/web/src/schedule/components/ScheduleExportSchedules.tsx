@@ -105,6 +105,11 @@ export function ScheduleExportSchedules({
                         ? ` - ${truncateScheduleExportError(schedule.last_error)}`
                         : ""}
                     </small>
+                  ) : schedule.last_error ? (
+                    // KK-166: a partly delivered email keeps the rule on and names who missed it.
+                    <small className="warning" title={schedule.last_error}>
+                      {truncateScheduleExportError(schedule.last_error)}
+                    </small>
                   ) : null}
                 </span>
               </label>
