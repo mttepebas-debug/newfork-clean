@@ -5,6 +5,30 @@
  */
 export const SCHEDULE_WINDOW_SELECTOR = "dialog, [role='dialog'], [role='alertdialog']";
 
+// The Schedule's top action menus and windows (Publish, drafts, export).
+const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [
+  "[data-schedule-top-action-trigger]",
+  ".schedule-draft-menu",
+  ".schedule-save-menu-anchor",
+  ".schedule-save-draft-menu",
+  ".schedule-action-menu",
+  ".schedule-published-menu",
+  ".schedule-dialog",
+  ".schedule-edit-banner",
+  ".schedule-export-panel",
+  "[data-schedule-export-v2]",
+  "[data-employee-drawer-panel='true']",
+].join(",");
+
+/**
+ * A press that closes an open top action menu: anywhere but the menus
+ * themselves and any window, whose presses are the window's (the save
+ * recovery sheet's Discard, for one).
+ */
+export function isTopActionOutsidePress(target: Element): boolean {
+  return !target.closest(`${SCHEDULE_TOP_ACTION_SURFACE_SELECTOR}, ${SCHEDULE_WINDOW_SELECTOR}`);
+}
+
 export function escapeAttributeValue(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

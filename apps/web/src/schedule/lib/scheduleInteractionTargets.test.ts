@@ -12,9 +12,21 @@ import {
   isScheduleSurfaceTarget,
   isSuppressedScheduleClickTarget,
   isTextEditingTarget,
+  isTopActionOutsidePress,
 } from "./scheduleInteractionTargets";
 
 describe("scheduleInteractionTargets", () => {
+  it("never counts a press inside a window as a press outside the top actions (G14 window rule)", () => {
+    document.body.innerHTML = `
+      <div class="schedule-save-recovery-sheet" role="dialog"><button id="discard">Discard</button></div>
+      <dialog open><button id="native">Keep</button></dialog>
+      <div class="schedule-draft-menu"><button id="menu">Edit live schedule</button></div>
+      <div data-schedule-grid-frame><span id="grid">Mon 7</span></div>`;
+    expect(isTopActionOutsidePress(document.getElementById("discard")!)).toBe(false);
+    expect(isTopActionOutsidePress(document.getElementById("native")!)).toBe(false);
+    expect(isTopActionOutsidePress(document.getElementById("menu")!)).toBe(false);
+    expect(isTopActionOutsidePress(document.getElementById("grid")!)).toBe(true);
+  });
   it("preserves grid focus and filters when a nonmodal export sidebar is clicked", () => {
     document.body.innerHTML = '<aside><section data-schedule-export-v2><p id="export-copy">Output options</p></section></aside>';
     const target = document.getElementById("export-copy")!;

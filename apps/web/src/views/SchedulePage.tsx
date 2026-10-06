@@ -192,6 +192,7 @@ import { publicationStateForShift } from "../schedule/lib/scheduleShiftMetadata"
 import { toScheduleShiftMutation } from "../schedule/lib/scheduleShiftMutation";
 import {
   SCHEDULE_WINDOW_SELECTOR,
+  isTopActionOutsidePress,
   isBlankScheduleDismissTarget,
   isMatchingScheduleLocationHeaderTarget,
   isScheduleEditFocusedShiftBlankDismissTarget,
@@ -228,20 +229,6 @@ type SaveRecoveryState = {
 } | null;
 
 const NO_DRAFTS: readonly ScheduleDraftSummary[] = [];
-
-const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [
-  "[data-schedule-top-action-trigger]",
-  ".schedule-draft-menu",
-  ".schedule-save-menu-anchor",
-  ".schedule-save-draft-menu",
-  ".schedule-action-menu",
-  ".schedule-published-menu",
-  ".schedule-dialog",
-  ".schedule-edit-banner",
-  ".schedule-export-panel",
-  "[data-schedule-export-v2]",
-  "[data-employee-drawer-panel='true']",
-].join(",");
 
 const SCHEDULE_FILTER_QUERY_PARAMS = [
   "locations",
@@ -477,7 +464,7 @@ export function SchedulePage({
     const closeFromOutsideTopAction = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      if (target.closest(SCHEDULE_TOP_ACTION_SURFACE_SELECTOR)) return;
+      if (!isTopActionOutsidePress(target)) return;
       closeTopActionSurfaces();
       topActionBlockedClickTargetRef.current = target;
       suppressedScheduleClickTargetRef.current = target;
@@ -2107,7 +2094,7 @@ export function SchedulePage({
     if (!(target instanceof Element) || target.closest("[data-schedule-export-v2]")) return;
     if (
       topActionSurfaceOpen &&
-      !target.closest(SCHEDULE_TOP_ACTION_SURFACE_SELECTOR)
+      isTopActionOutsidePress(target)
     ) {
       closeTopActionSurfaces();
       suppressedScheduleClickTargetRef.current = target;
