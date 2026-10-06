@@ -382,8 +382,11 @@ select is(pg_temp.try($$select pg_temp.save_date('owner', array['K'], 'Last Tues
   'P0001 important_date.past', 'K11: a closed day cannot be put on last week''s Tuesday');
 select tests.remember('r:date:this-week', pg_temp.save_date('owner', array['K'], 'This Tuesday closed',
   starts => public.schedule_current_week_start_service(tests.id('r')) + 1, kind => 'closed_day'));
+-- Its anniversary falls on this week's Thursday, never on the Tuesday above (on a
+-- Tuesday, three years before today would land on it and close it twice).
 select tests.remember('r:date:yearly-closed', pg_temp.save_date('owner', array['K'], 'Yearly closed',
-  starts => (current_date - interval '3 years')::date, kind => 'closed_day', recurrence => 'annual'));
+  starts => (public.schedule_current_week_start_service(tests.id('r')) + 3 - interval '3 years')::date,
+  kind => 'closed_day', recurrence => 'annual'));
 select is((select count(*)::integer from public.schedule_closures c where c.workspace_id = tests.id('r')
            and c.closed_date = public.schedule_current_week_start_service(tests.id('r')) - 6), 0,
   'P09: a closed day put on last week''s Tuesday leaves that locked week as it was');
