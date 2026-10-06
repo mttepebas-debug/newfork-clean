@@ -43,6 +43,8 @@ const announcementRow = (page: Page, title: string) =>
   page.getByRole("table", { name: "Announcements" }).getByText(title, { exact: true });
 
 test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should not (flow 7)", async ({ browser }) => {
+  // Four people sign in one after another; the budget is three times on purpose (VAR-E2E-2).
+  test.slow();
   const suffix = Math.random().toString(36).slice(2, 7);
   const title = `Inventory count ${suffix}`;
   // A second Kadikoy manager, with a sign-in of their own (tests.password

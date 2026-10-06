@@ -140,7 +140,10 @@ jobs:
   # Browser tests (Playwright): the real sign-in screen, API and web app against a
   # fresh local Supabase; people come from the test world builder with a password
   # (FOUNDATION-B stage 2d).
+  # e2e waits for check and db: three heavy jobs at once on the one PC timed
+  # tests out under load (VAR-E2E-2, BL-764).
   e2e:
+    needs: [check, db]
     runs-on: *runner
     timeout-minutes: 30
     steps:
