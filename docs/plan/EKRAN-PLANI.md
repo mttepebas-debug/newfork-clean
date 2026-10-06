@@ -87,12 +87,12 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 | 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar — görev dosyası yazıldı (`tasks/EKRAN-01-SCHEDULE.md`, 2026-10-06), 6 açık soru |
 | 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | karar — görev dosyası hazır (`tasks/EKRAN-03-EMPLOYEES.md`, 2026-10-06), 1 açık soru (Q1 Mert'e); G2 telefon konuşmasında |
-| 4 | Availability | owner, müdür | P2 | sırada |
+| 4 | Availability | owner, müdür | P2 | sırada · sayfalama (25 / 50 / 100) bu turda: Availability (Mert 2026-10-06, BL-787) |
 | 5 | Workspace (ana sayfa) | owner, müdür | P1 | sırada |
-| 6 | Documents | owner, müdür | P2 | sırada |
-| 7 | Announcements | herkes | P4 | sırada |
-| 8 | Important Dates | owner, müdür | P4 | sırada |
-| 9 | Notifications | herkes | P4 | sırada |
+| 6 | Documents | owner, müdür | P2 | sırada · sayfalama (25 / 50 / 100) bu turda: Settings → Documents ve Employees → Documents (Mert 2026-10-06, BL-787) |
+| 7 | Announcements | herkes | P4 | sırada · sayfalama (25 / 50 / 100) bu turda: Announcements (Mert 2026-10-06, BL-787) |
+| 8 | Important Dates | owner, müdür | P4 | sırada · sayfalama (25 / 50 / 100) bu turda: Important Dates (Mert 2026-10-06, BL-787) |
+| 9 | Notifications | herkes | P4 | sırada · sayfalama (25 / 50 / 100) bu turda: Notifications (Mert 2026-10-06, BL-787) |
 | 10 | Settings (General, Locations, Jobs, Notifications, Schedule rules, Conflict handling, Shift catalog, Roles & permissions, Documents, Acknowledgements, Support) | owner, admin | P3, PROTO-ESIT-SET | sırada |
 | 11 | Employee view → Home | çalışan | P5, PHONE-EMP | sırada |
 | 12 | Employee view → Schedule | çalışan | EMP-SCHED | sırada |

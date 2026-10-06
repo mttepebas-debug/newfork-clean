@@ -48,7 +48,7 @@ Bir kişi için: Owner Mert, yanlışlıkla işten çıkardığı garson Ali'yi 
 | E3-09 resmî ad API'den (K11) | A2 | BL-769 |
 | E3-10 Restore (S1) | A1 + B1 + B2 | BL-770 |
 | E3-11 100 satır tavanı | A4 + B1 + C1 | BL-282 |
-| E3-12 bekleyen izin / taslak açık (P09) | A1 + B2 (Q1) | BL-388 + BL-771 |
+| E3-12 bekleyen izin / taslak açık (P09) | A1 + B2 (Q1 cevaplandı) | BL-388 + BL-771 |
 | E3-13 müdür lokasyon kuralı dört yolda | A1 (Restore) + A3 (davet kabulü); lokasyon / iş silme Settings | BL-456, BL-452, BL-474 |
 | E3-14 kurulum bitmeden davet | A3 | BL-419 |
 | E3-15 telefonda Terminate / Restore | C2 | BL-407 |
@@ -94,10 +94,10 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce, sunum sonra yeni `origi
   - S1 / E3-10: hesapla Restore (`restore_access`) ana yol; işten çıkarmada üyeliğin eski durumu (`active` / `pending_activation`) snapshot'a; Restore eski duruma döner; komut `archived_at` durumunu kontrol eder (bayat ekrandan ters çağrı reddedilir); `keep_manager_at_a_location` çağrılır; eksik atama varsa Restore seçilen lokasyon / iş ile birlikte yazılır (tek işlem); silinmiş hesapta (mezar taşı) hesapla Restore reddedilir, anlamlı hint ile; belge zorunlulukları KK-170'e göre yeniden açılır (geçerli onaylı belge `completed`, eksik / süresi dolmuş yeni süreyle). "Invite to a new email": bağ kopar, yeni adrese davet, onboarding özel bilgileri dolu kalır, belge yüklemeleri ve politika imzaları baştan (bugünkü `reset_employee_onboarding_for_rehire` bu kurala göre düzeltilir).
   - Restore cevabı pencere için listeleri döner: hâlâ boş vardiyalar (tarih, saat), eksik belgeler (ad, son tarih).
   - E3-20: API'nin boşaltmadan lokasyondan çıkaran / arşivleyen ikiz yolu silinir (`retired_objects_stay_gone`).
-  - E3-12: işten çıkarmada bekleyen izin talepleri ve taslak vardiyalar — Q1'in cevabına göre; cevap gelene kadar yalnız pencere için sayı döner (P09: kullanıcı uyarılır).
+  - E3-12 / BL-771 (Q1 cevaplandı, Mert 2026-10-06 (seçenek dışı): "otomatik geri çekilir ama terminate penceresi bundan bahsetmez. üzerinde shift zaten varsa onlar açığa düşecek diye uyarır bu daha kritik"): işten çıkarmayla kişinin bekleyen izin talepleri otomatik geri çekilir ("Withdrawn", karar veren müdürün Needs review'undan düşer); pencere bunu anmaz. Pencere için döndürülen tek liste boşalacak yayınlanmış vardiyalardır (tarih, saat, lokasyon). Taslak vardiya yarısı BL-388'de ayrı.
   - E3-05: `employee_offboarding_followups` ya okunur (Q2'nin cevabıyla bildirim) ya silinir (ölü sistem kalmaz).
 - **Touches:** `supabase/migrations/<yeni>.sql`, `supabase/tests/employee_termination_offboarding.test.sql`, `employees_on_the_core.test.sql`, `bl052_document_rehire.test.sql`, yeni `employee_restore.test.sql`, `authorization_matrix.test.sql`, `retired_objects_stay_gone.test.sql`, `ci-green.txt`.
-- **Bağımlılık:** yok (ilk iş). Q1 / Q2 cevabı yalnız E3-12 / E3-05 kısmını bekletir.
+- **Bağımlılık:** yok (ilk iş). Q1 ve Q2 cevaplandı (2026-10-06); bekleyen kısım yok.
 - **Done when:** (a) geçmiş tarihli çıkarmada `now()`'dan önceki yayınlanmış vardiya boşalmıyor (pgTAP, önce kırmızı); (b) lokasyonsuz kişi çıkarılabiliyor; (c) onboarding'i yarım çıkarılan kişi Restore'da `pending_activation`'a, tam kişi `active`'e döner; (d) aktif kayda ters Restore çağrısı reddedilir; (e) lokasyonsuz müdür Restore'u lokasyon seçilmeden reddedilir; (f) silinmiş hesapta hesapla Restore reddedilir; (g) Restore sonrası geçerli onaylı belge `completed`, eksik belge `deadline_at = now() + period_days` (pgTAP, sabit tarih yok); (h) müdür Restore edemez, admin başka admin'i Restore edemez (matris hücreleri); (i) ikiz yol yok; `authz_catalog` sayaçları yalnız azaldı.
 - **Test plan:** kırmızı pgTAP → migration (tek transaction + rollback) → `test:db` (`db.lock`).
 - **Reviewer:** `nf-guvenlik` zorunlu. Ultrareview önerisi aşağıda.
@@ -131,7 +131,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce, sunum sonra yeni `origi
 - **Reviewer:** `nf-guvenlik` zorunlu.
 
 ### B2 — Çekmece ve pencere davranışları (`nf-backend`; R2)
-- **Ne:** Restore penceresi (iki eylem, sonuç metni, eksik atama seçimi, hâlâ boş vardiyalar ve eksik belgeler listesi, silinmiş hesap yönlendirmesi); Terminate penceresi (K4 saat dilimi, E3-12 sayıları, T2 gerekçe hatası alan altında); K2 Preferred name salt okunur (E3-04); K3 acil durum kişisi tek Save (P5); K9 Access metni (AC8); K10 "Close"; E3-19 eşzamanlı düzenleme (yazılan kaybolmaz, tek satır açıklama); E10 atama uyarısı zamanı; AC4 rol seçici sırası; P4 / P8 telefon maskesi ve yinelenen e-posta uyarısı (BL-503).
+- **Ne:** Restore penceresi (iki eylem, sonuç metni, eksik atama seçimi, hâlâ boş vardiyalar ve eksik belgeler listesi, silinmiş hesap yönlendirmesi); Terminate penceresi (K4 saat dilimi, boşalacak yayınlanmış vardiyaların uyarısı — "Ali's 2 published shifts will become unassigned: Sat Oct 11, Sun Oct 12" (E3-12, Q1: bekleyen izin talepleri pencerede anılmaz, sessizce geri çekilir), T2 gerekçe hatası alan altında); K2 Preferred name salt okunur (E3-04); K3 acil durum kişisi tek Save (P5); K9 Access metni (AC8); K10 "Close"; E3-19 eşzamanlı düzenleme (yazılan kaybolmaz, tek satır açıklama); E10 atama uyarısı zamanı; AC4 rol seçici sırası; P4 / P8 telefon maskesi ve yinelenen e-posta uyarısı (BL-503).
 - **Touches:** `apps/web/src/employees/EmployeeDrawer.tsx`, `EmployeesPage.tsx` (davranış), ilgili `*.test.tsx`.
 - **Bağımlılık:** B1 main'de.
 - **Done when:** her madde için web vitest (önce kırmızı); çekmece kapanırken sormaz (P26, KARARLAR K7).
@@ -217,6 +217,8 @@ pgTAP (A1–A4) önce kırmızı, migration rollback denemesi, `test:db` `db.loc
    - (c) Pencere sorar: geri çek / açık bırak.
    - Kaçış: "Claude karar versin".
 4. Etki: A1'in E3-12 kısmı ve B2'nin Terminate penceresi.
+
+**Cevap 2026-10-06 (Mert 2026-10-06 (seçenek dışı): "otomatik geri çekilir ama terminate penceresi bundan bahsetmez. üzerinde shift zaten varsa onlar açığa düşecek diye uyarır bu daha kritik").** Seçeneklerin hiçbiri birebir değil: (a)'nın geri çekmesi var, pencere metni yok; pencerenin uyarısı boşalacak vardiyalar içindir. Uygulama: A1 (otomatik geri çekme + vardiya listesi), B2 (pencere metni). KARARLAR'a yazmak koordinatörün.
 
 **Q2 — (koordinatöre) İşten çıkarmanın bildirimi kime gider?** Bugün hiç kimseye; `employee_offboarding_followups` satırı yazılıyor, okuyan yok (E3-05). Öneri: boşalan yayınlanmış vardiya varsa o lokasyonun müdürüne uygulama içi bildirim ("Ali's 2 shifts are unassigned"); işten çıkarılan kişiye bildirim yok. Dayanak: ILKELER P07 (işi doğrudan etkilenen) + S1 satır 10 (Restore bildirimi). Koordinatör kararı yeterli (P07 birebir); tablo ya bu bildirime bağlanır ya silinir.
 
