@@ -1480,3 +1480,25 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Durum:** kayda geçti.
 - **Mert:** raporda "Senin yerine verdiğim kararlar" tablosunda gördü.
 - **Açık nokta:** e-posta haftası "kapsam dışı" cevabının yalnız hafta kuralını mı yoksa Export e-posta panelini (W-3) de mi kapsadığı; W-3 başlamadan Mert'e tek satırla sorulur.
+
+### KK-163 (2026-10-06) Ekran turunun uygulama raporları repoda arşivlenir ve ekran kapanınca damıtılır
+- **Karar (ne):** Mert (~03:05Z): oturumlara verilen inceleme işlerinin sonuçları hem plan için kullanılsın hem repoda belge olarak kalsın; "formatı, konumunu, adını, içeriğini sen belirle… you can roast me". Koordinatörün biçimi: dilim başına `docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md` (künye + "Sonrası için" en çok 5 madde + rapor + incelemeler olduğu gibi), işi yapan oturum kendi dilim commit'ine ekler; ekran kapanınca koordinatör "Sonrası için" maddelerini rol hafızasına, KARARLAR'a ve backlog'a taşır, OZET'e "Uygulama kaydı" tablosu yazar. Mert'e söylenen eleştiri: ham rapor okunmaz, değer dersin kendiliğinden okunan yere taşınmasında; kodu anlatan kısım ilk eskir, bu yüzden arşiv tarihli kalır.
+- **Nerede:** `docs/plan/EKRAN-PLANI.md` "Uygulama arşivi ve damıtma"; `CLAUDE.md` §10.
+- **Ne zaman:** 2026-10-06 ~03:10Z.
+- **Ne için:** harcanan token ve zamanın bulguları kaybolmasın; bir sonraki oturum aynı tuzağa düşmesin.
+- **Uygulamada etkisi:** ekranda yok; her dilim commit'ine bir belge dosyası eklenir (ek gönderim yok).
+- **Dayanak:** Mert'in talimatı ve biçimi koordinatöre bırakması.
+- **Geri alma:** EKRAN-PLANI bölümü ve CLAUDE.md §10 satırı.
+- **Durum:** yürürlükte; A0 (kuraldan önce gönderime çıktı) arşivini veri hattı bir sonraki dilim commit'iyle ekler.
+- **Mert:** talimat onun; biçim koordinatörün.
+
+### KK-164 (2026-10-06) Düzenlerken başka haftaya geçiş: o hafta görünüm modunda, düzenleme açık kalır
+- **Karar (ne):** W-1a raporundaki ürün sorusu (D-Y4'ün ikinci yarısı) sorulmadan cevaplandı: (a). Bkz. KARARLAR "Schedule".
+- **Nerede:** KARARLAR "Schedule"; uygulama EKRAN-01 W-1b.
+- **Ne zaman:** 2026-10-06 ~03:10Z.
+- **Ne için:** kural birebir kapsıyor; Mert'e yalnız kapsanmayan sorular gider (CLAUDE.md §13).
+- **Uygulamada etkisi:** W-1b sonrası Schedule → Edit → "Next week" boş ızgara yerine o haftanın görünümünü açar.
+- **Dayanak:** ILKELER P10 + A bölümü anti-hedef (ek onay adımı yok).
+- **Geri alma:** KARARLAR satırı; Mert ters çevirirse "ters çevrildi".
+- **Durum:** kayda geçti, W-1b'de uygulanacak.
+- **Mert:** raporda "Senin yerine verdiğim kararlar"da gösterilir.

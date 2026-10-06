@@ -328,6 +328,9 @@ Rol ajanından ve işçi oturumundan koordinatöre (Türkçe, kod okumayan biri 
 (1) nerede duruyor, (2) ne yapıldı (etkisi), (3) açık kalan ve nedeni, (4) ekranda ne değişti,
 (5) sırada ne var (yolda bulunanlar dahil). Kanıt: komut + sonuç, dosya:satır, commit sha, worktree
 branch'i, ekran görüntüsü yolu. İnceleme rollerinde en üstte KARAR satırı.
+Ekran planındaki dilimde rapor, inceleme raporlarıyla birlikte ve başında "Sonrası için" bölümüyle
+`docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md`'ye de yazılır, dilimin commit'ine girer
+(Mert, 2026-10-06; biçim `docs/plan/EKRAN-PLANI.md` "Uygulama arşivi").
 
 Koordinatörden kullanıcıya, her iş bitiminde, tablo ve listelerle:
 1. **Nerede duruyor** — bitti mi, neyle bitmedi; varsa programın (FOUNDATION-B) ilerleme yüzdesi.

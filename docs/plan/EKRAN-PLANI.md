@@ -23,8 +23,18 @@ FOUNDATION-B ve `ILERLEME-PLANI.md` kayıt olarak durur; kalan işleri ekranlara
 2. **Kayıt.** Raporlar olduğu gibi repoya girer: `docs/plan/ekranlar/<no>-<ekran>/` klasörüne, her ajan için bir dosya (`A-backlog-prototip.md`, `B-guvenlik.md`, `C-gorsel.md`, `D-kod-davranis.md`) ve bir `OZET.md`. Özet, bulguları tek listede toplar; Mert'in seçimleri ve kapanış durumu da oraya yazılır.
 3. **Konuşma.** Mert'e özet gider: bulgular ve taşı / bırak listesi. Seçimler tıklamalı yapılır. Görsel kararlar gerçek ekranda varyantla verilir (P04). Davranış kuralları önce sohbette konuşulur (P18).
 4. **Görev dosyası.** `docs/plan/tasks/EKRAN-<ad>.md` açılır; ne zaman bitmiş sayılacağı ölçülebilir yazılır, risk sınıfı belirtilir (`DELEGASYON.md`).
-5. **Uygulama ve inceleme.** İşi rol ajanları yapar, risk sınıfına göre incelenir, tam kapıdan geçer, main'e alınır.
-6. **Kapanış.** Ekran "bitti" diye işaretlenir; kanıtlar görev dosyasına ve `OZET.md`'ye yazılır; kısa rapor gider; sonraki ekrana geçilir.
+5. **Uygulama ve inceleme.** İşi rol oturumları yapar, risk sınıfına göre incelenir, tam kapıdan geçer, main'e alınır. Her dilimin raporu ve incelemesi repoda arşivlenir (aşağıda "Uygulama arşivi").
+6. **Kapanış.** Ekran "bitti" diye işaretlenir; kanıtlar görev dosyasına ve `OZET.md`'ye yazılır; arşivin "Sonrası için" maddeleri damıtılır (aşağıda); kısa rapor gider; sonraki ekrana geçilir.
+
+### Uygulama arşivi ve damıtma (Mert, 2026-10-06: "token ve zaman harcamışken bulgular unutulacağına dokümante edilip saklansın"; format koordinatörün, KK-163)
+- **Arşiv (değişmez):** `docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md` (ör. `01-schedule/uygulama/W-1a.md`, `02-requests/uygulama/A0.md`). Varyant ve ölçüm raporları da (`VAR.md`, `DRAG-olcum.md`). İşi yapan oturum dosyayı **kendi dilim commit'ine** ekler; ek gönderim yok. Sonradan düzeltilmez: tarihli, sha'lı "o anki fotoğraf".
+- **Dosyanın biçimi:**
+  1. Künye tablosu: ekran | dilim | rol / oturum | sınıf | inceleme kararı (`ONAY @sha`, kim) | tarih. Main sha'sı ve CI koşusu gönderimden sonra bilindiği için dosyada değil; OZET'teki uygulama kaydına yazılır.
+  2. `## Sonrası için` — en çok 5 madde, her biri tek cümle; yoksa "yok". Türleri: **Tuzak** (zaman yediren şey + nasıl önlenir), **Kalıp** (tekrar kullanılacak komut, yol, test deseni), **Ölçüm** (değer + nerede + tarih + sha), **Karar adayı** (kural olabilecek şey). Rolün bir sonraki oturumunun bilmesi gereken şey burada.
+  3. `## Rapor` — koordinatöre giden rapor, olduğu gibi.
+  4. `## İnceleme` — her inceleme (güvenlik, kod, görsel) kendi alt başlığıyla, olduğu gibi; KARAR satırı en üstte.
+- **Damıtma (ekran kapanınca, koordinatör):** "Sonrası için" maddeleri kendiliğinden okunan yerlere taşınır — Tuzak ve Kalıp rolün hafızasına (`.claude/agent-memory/<rol>/`, o rolün ajanları otomatik yükler); Karar adayı KARARLAR'a ya da Mert'e soruya; Ölçüm ilgili backlog maddesine. OZET'e "Uygulama kaydı" tablosu: dilim | etkisi (tek cümle) | main sha | CI | arşiv dosyası.
+- **Neden böyle:** ham rapor aylar sonra baştan sona okunmaz; değeri birkaç cümlelik derste. Ders kendiliğinden okunan yere taşınmazsa kullanılmaz. Kodu anlatan kısım ilk eskiyen kısım olduğu için arşiv tarihli kalır, güncellenmez.
 - Yolda çıkan ve ekranın önünde olmayan iş `BACKLOG.md`'ye yazılır: grubuyla ve iki işaretle (`leave` / `do`).
 - Bütün ekranlar bitince genel değerlendirme (recap) yapılır.
 
@@ -75,7 +85,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 |---|---|---|---|---|
 | 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar — görev dosyası yazıldı (`tasks/EKRAN-01-SCHEDULE.md`, 2026-10-06), 6 açık soru |
 | 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
-| 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | sırada |
+| 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | keşif (2026-10-06, planlama oturumu; Mert: Schedule ve Requests kodlanırken başlasın) |
 | 4 | Availability | owner, müdür | P2 | sırada |
 | 5 | Workspace (ana sayfa) | owner, müdür | P1 | sırada |
 | 6 | Documents | owner, müdür | P2 | sırada |
@@ -106,3 +116,5 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
   - **Sınır:** Schedule ile ortak dosyada iki oturum aynı anda yazmaz.
   - **Kayıt:** `BACKLOG.md`'yi ve bu dosyayı yalnız koordinatör yazar.
 - 2026-10-06 ~01:45Z — İki ekranın görev dosyaları yazıldı ve main'e alındı (KK-160). Aynı turda Mert koordinatörü işçilikten çıkardı (KK-159): görev dosyalarını bundan sonra planlama oturumu yazar, uygulama ve main'e gönderim işi yapan oturumdadır.
+- 2026-10-06 ~02:45Z — Mert: sıradaki ekranın keşfi Schedule ve Requests kodlanırken başlasın (önerilen). Employees keşfi planlama oturumunda başladı.
+- 2026-10-06 ~03:10Z — Uygulama arşivi ve damıtma kuralı (KK-163).
