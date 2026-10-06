@@ -74,7 +74,10 @@ describe("scheduled schedule export cron", () => {
     ).toBe("2026-03-08");
   });
 
-  it("does not count an email that missed some recipients as sent (D-D4)", async () => {
+  // KK-166: a partly delivered email keeps the rule on. It is recorded as sent
+  // with a note naming who missed it; only a total failure counts toward
+  // switching the rule off.
+  it("records a partly delivered email as sent, naming who missed it", async () => {
     const sent: string[] = [];
     const service = scheduleServiceMock([
       scheduleCandidate({
@@ -92,20 +95,50 @@ describe("scheduled schedule export cron", () => {
       },
     });
 
-    expect(result).toEqual({
-      checked: 1,
-      due: 1,
-      sent: 0,
-      failed: 1,
-      skipped: 0,
-    });
+    expect(result).toEqual({ checked: 1, due: 1, sent: 1, failed: 0, skipped: 0 });
     expect(sent).toEqual(["one@example.test", "two@example.test"]);
-    expect(service.recordScheduledExportSuccess).not.toHaveBeenCalled();
-    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith(
+    expect(service.recordScheduledExportFailure).not.toHaveBeenCalled();
+    expect(service.recordScheduledExportSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         scheduleId: "8a000000-0000-4000-8000-000000000001",
-        error: "Not delivered to 1 of 2 recipients: bounce",
+        undelivered: "Not delivered to 1 of 2 recipients: two@example.test",
+        params: expect.objectContaining({ recipients: 2, delivered: 1 }),
       }),
+    );
+  });
+
+  it("keeps the missed-recipients note within 500 characters", async () => {
+    const recipients = Array.from({ length: 40 }, (_, index) => `person-${index}@example.test`);
+    const service = scheduleServiceMock([scheduleCandidate({ recipients })]);
+    await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: {
+        send: vi.fn(async (message) => {
+          if (message.to !== "person-0@example.test") throw new Error("bounce");
+        }),
+      },
+    });
+
+    const note = service.recordScheduledExportSuccess.mock.calls[0]?.[0]?.undelivered as string;
+    expect(note.startsWith("Not delivered to 39 of 40 recipients: person-1@example.test, ")).toBe(true);
+    expect(note.length).toBeLessThanOrEqual(500);
+  });
+
+  it("counts an email that reached nobody as a failure", async () => {
+    const service = scheduleServiceMock([
+      scheduleCandidate({ recipients: ["one@example.test", "two@example.test"] }),
+    ]);
+    const result = await runScheduledExportsCron({
+      service,
+      now: new Date("2026-08-17T15:00:00.000Z"),
+      delivery: { send: vi.fn(async () => { throw new Error("bounce"); }) },
+    });
+
+    expect(result).toEqual({ checked: 1, due: 1, sent: 0, failed: 1, skipped: 0 });
+    expect(service.recordScheduledExportSuccess).not.toHaveBeenCalled();
+    expect(service.recordScheduledExportFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "bounce" }),
     );
   });
 
@@ -127,6 +160,7 @@ describe("scheduled schedule export cron", () => {
         locationIds: ["11000000-0000-4000-8000-000000000001"],
       }),
     );
+    expect(service.recordScheduledExportSuccess.mock.calls[0]?.[0]).not.toHaveProperty("undelivered");
     expect(service.recordScheduledExportSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         scheduleId: "8a000000-0000-4000-8000-000000000001",

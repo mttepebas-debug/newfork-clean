@@ -393,6 +393,8 @@ export interface ScheduleReadService {
     sentAt: Date;
     format: string;
     params: Record<string, unknown>;
+    /** A partly delivered email: who it missed (KK-166). */
+    undelivered?: string;
   }): Promise<ScheduleExportSchedule>;
   recordScheduledExportFailure(input: {
     workspaceId: string;
@@ -1164,6 +1166,7 @@ export function createScheduleReadService(options: {
           target_sent_at: input.sentAt.toISOString(),
           target_format: input.format,
           target_params: input.params,
+          ...(input.undelivered ? { target_undelivered: input.undelivered } : {}),
         },
       );
       if (error) throw rpcFailure(error);

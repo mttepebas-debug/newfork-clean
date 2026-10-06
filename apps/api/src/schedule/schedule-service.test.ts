@@ -211,6 +211,22 @@ describe("createScheduleReadService read model", () => {
   });
 });
 
+describe("createScheduleReadService scheduled export record", () => {
+  const recorded = { id: "8a000000-0000-4000-8000-000000000001" };
+  it("passes a partly delivered email's note to the database, and none for a full one (KK-166)", async () => {
+    mocks.rpc.mockResolvedValue({ data: recorded, error: { code: "stop", message: "parse skipped" } });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const base = { workspaceId, scheduleId: recorded.id, sentAt: new Date("2026-08-17T15:00:00.000Z"), format: "csv", params: {} };
+    await service.recordScheduledExportSuccess({ ...base, undelivered: "Not delivered to 1 of 2 recipients: two@example.test" }).catch(() => undefined);
+    await service.recordScheduledExportSuccess(base).catch(() => undefined);
+
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "record_schedule_export_schedule_success_service", expect.objectContaining({
+      target_undelivered: "Not delivered to 1 of 2 recipients: two@example.test",
+    }));
+    expect(mocks.rpc.mock.calls[1]?.[1]).not.toHaveProperty("target_undelivered");
+  });
+});
+
 describe("createScheduleReadService realtime invalidation", () => {
   const refreshedPreview = { status: "publish_ready", workspace_id: workspaceId, week_start: "2026-08-17", draft_id: draftId, draft_revision: 2, fingerprint: "b".repeat(64), locations: [], findings: [] };
   const publishInput = { actorUserId, workspaceId, draftId, locationIds: [locationId], departmentIds: [departmentId], includeNoDepartment: false, expectedDraftRevision: 2, fingerprint: "a".repeat(64), overrides: [] };

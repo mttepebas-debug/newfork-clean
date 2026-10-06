@@ -51,6 +51,9 @@ class StoppedExport extends Error {}
 const UNREADABLE_EXPORT =
   "This scheduled export's saved settings can no longer be read. Edit and save it again.";
 
+// The database keeps at most this much of the missed-recipients note.
+const UNDELIVERED_NOTE_LIMIT = 500;
+
 export async function runScheduledExportsCron(input: {
   service: ScheduleReadService;
   delivery: ScheduleExportDelivery;
@@ -135,19 +138,20 @@ export async function runScheduledExportsCron(input: {
           }),
         ),
       );
-      const delivered = deliveries.filter(
-        (delivery) => delivery.status === "fulfilled",
-      ).length;
-      // D-D4: an email that missed anyone is not "sent"; the failure names how many.
-      if (delivered < schedule.recipients.length) {
-        const reason = firstRejectedReason(deliveries) ?? "Email delivery failed";
-        throw new Error(
-          delivered === 0
-            ? reason
-            : `Not delivered to ${schedule.recipients.length - delivered} of ${schedule.recipients.length} recipients: ${reason}`,
-        );
+      const missed = schedule.recipients.filter(
+        (_, index) => deliveries[index]?.status === "rejected",
+      );
+      const delivered = schedule.recipients.length - missed.length;
+      // Only an email that reached nobody is a failure toward switching the rule off.
+      if (delivered === 0) {
+        throw new Error(firstRejectedReason(deliveries) ?? "Email delivery failed");
       }
+      // KK-166: a partly delivered email keeps the rule on; the note names who missed it.
+      const undelivered = missed.length
+        ? `Not delivered to ${missed.length} of ${schedule.recipients.length} recipients: ${missed.join(", ")}`.slice(0, UNDELIVERED_NOTE_LIMIT)
+        : undefined;
       await input.service.recordScheduledExportSuccess({
+        ...(undelivered ? { undelivered } : {}),
         workspaceId: schedule.workspace_id,
         scheduleId: schedule.id,
         sentAt: now,
