@@ -39,6 +39,7 @@ import {
   notificationChangeStorageKey,
 } from "../communications/communications-data";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
+import { devVar } from "../dev/varEkran12";
 
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 
@@ -182,7 +183,8 @@ export function AppShell() {
   const { context, account, signOut } = useAuth();
   useAccountNotificationRealtime(account?.userId ?? context?.userId);
   useExchangeRealtime(context);
-  const [collapsed, setCollapsed] = useState(false);
+  // VAR-EKRAN-12 C-D11 c: the Schedule opens with the menu folded to its rail.
+  const [collapsed, setCollapsed] = useState(() => devVar("cd11") === "c");
   const [sidebarPanelOwner, setSidebarPanelOwner] = useState<string | null>(null);
   const [sidebarPanelCollapsed, setSidebarPanelCollapsed] = useState(false);
   const [sidebarPanelTarget, setSidebarPanelTarget] = useState<HTMLDivElement | null>(null);

@@ -15,6 +15,10 @@ import { PublishReturnPreview } from "../schedule/components/PublishReturn.previ
 
 const params = new URLSearchParams(location.search);
 if (["preflight", "publish-return"].includes(params.get("view") ?? "")) void import("../styles.css");
+if (params.get("var")) {
+  void import("../dev/var-ekran-12.css");
+  void import("../dev/varEkran12").then((module) => module.installVarAttributes());
+}
 const mode = params.get("mode") === "time" ? "time_range" : "shift_type";
 const audience = params.get("view") === "employee" ? "employee" : "manager";
 const preflight: SchedulePublicationPreview = {
@@ -29,6 +33,14 @@ const preflight: SchedulePublicationPreview = {
     message: "This shift overlaps unavailable hours.",
   })),
 };
+// VAR-EKRAN-12 BL-441: one blocker and one risk, so the count reads "1 blocker · 1 risk".
+if (params.get("var")?.includes("bl441")) {
+  const base = { location_id: "ad420000-0000-4000-8000-000000000093", location_name: "Palo Alto extended dining room", scheduled_date: "2026-09-17" };
+  preflight.findings.unshift(
+    { ...base, id: "b".repeat(64), code: "double_booking", severity: "hard", overrideable: false, tier: "blocker", employee_name: "Burak Barkoren", employee_id: "ad420000-0000-4000-8000-000000000081", shift_ids: ["ad420000-0000-4000-8000-000000000061"], message: "Burak is on two shifts at the same time." },
+    { ...base, id: "c".repeat(64), code: "clopening", severity: "soft", overrideable: true, tier: "risk", employee_name: "Carlos Garcia", employee_id: "ad420000-0000-4000-8000-000000000082", shift_ids: ["ad420000-0000-4000-8000-000000000062"], message: "Closes at 11:30 PM and opens at 7:00 AM the next day." },
+  );
+}
 const employee = emptyWeeklyPreference(mode);
 const reminder = emptyWeeklyPreference(mode);
 employee.days[0]!.all_day = true;

@@ -67,6 +67,7 @@ import {
   type UpdateSchedulePendingOpInput,
   type UpdateScheduleExportScheduleInput,
 } from "@newfork/shared/schedule";
+import { devDemoScheduleModel } from "../dev/varEkran12";
 import {
   getTabWorkspaceId,
   supabaseClient,
@@ -163,9 +164,9 @@ export async function getScheduleReadModel(
   view: ScheduleView,
 ): Promise<ScheduleReadModel> {
   const query = new URLSearchParams({ date, view });
-  return scheduleReadModelSchema.parse(
+  return devDemoScheduleModel(scheduleReadModelSchema.parse(
     await activeScheduleRequest(`/schedule/reference?${query}`),
-  );
+  ));
 }
 
 export async function listScheduleDrafts(

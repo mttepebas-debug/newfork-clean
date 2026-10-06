@@ -1,0 +1,199 @@
+/* VAR-EKRAN-12 — DEV-only variants (branch task/var-ekran-12, never merged).
+   Every rule hangs on :root[data-var-<id>="<letter>"], set from ?var=<id>-<letter>. */
+
+/* ---------- Colour-blind preview: ?var=cb-p (protanopia), cb-d (deuteranopia) ---------- */
+:root[data-var-cb="p"] .schedule-grid-scroll { filter: url(#var-cb-protanopia); }
+:root[data-var-cb="d"] .schedule-grid-scroll { filter: url(#var-cb-deuteranopia); }
+
+/* ---------- BL-525: time off vs unavailable by shape, not only colour ---------- */
+/* b — a red "×" badge in the time-off cell's corner. */
+:root[data-var-bl525="b"] .schedule-cell[data-availability-kind="time_off"]::after {
+  content: "\00d7";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--theme-time-off);
+  color: var(--theme-on-accent);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+/* c — time off gets a cross-hatch (two directions); unavailable keeps one. */
+:root[data-var-bl525="c"] .schedule-cell[data-availability-kind="time_off"] {
+  background-image:
+    repeating-linear-gradient(135deg, transparent 0 6px, var(--schedule-availability-line) 6px 9px),
+    repeating-linear-gradient(45deg, transparent 0 6px, var(--schedule-availability-line) 6px 9px);
+}
+/* d — an empty time-off cell says so in words; the hatch stays. */
+:root[data-var-bl525="d"] .schedule-cell[data-availability-kind="time_off"]:not(:has(.schedule-shift-badge))::before {
+  content: "Time off";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--theme-danger-text);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+:root[data-var-bl525="d"] .schedule-cell[data-availability-kind="time_off"]:not(:has(.schedule-shift-badge)) {
+  background-image: none;
+}
+
+/* ---------- BL-524: the name column's availability mark ---------- */
+:root[data-var-bl524]:not([data-var-bl524="a"]) .schedule-employee-cell .schedule-employee-availability { display: none; }
+/* b — the grid's own orange "!" with the rich bubble (same look as a card's "!"). */
+.var-bl524-dot.nf-tooltip-trigger {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: default;
+}
+.var-bl524-dot > [hidden] { display: none !important; }
+/* c — no mark: one quiet line under the name. */
+.var-bl524-line {
+  overflow: hidden;
+  color: var(--theme-availability-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- BL-445: the top bar in a narrow window ---------- */
+.var-bl445-filters { display: contents; }
+/* b — under 1280px every secondary control keeps only its icon; one row. The
+   words stay in the DOM (font-size 0), so the button's name is unchanged. */
+@media (max-width: 1279px) {
+  :root[data-var-bl445="b"] .schedule-command-group { gap: 4px; }
+  :root[data-var-bl445="b"] .schedule-action-group { gap: 4px; }
+  :root[data-var-bl445="b"] .schedule-topbar { gap: 6px; padding-inline: 10px; }
+  :root[data-var-bl445="b"] :is(.schedule-command-menu-trigger, .schedule-hide-unscheduled, .schedule-topbar-filter > summary, .schedule-export-action, .schedule-template-action) {
+    gap: 0;
+    min-width: 32px;
+    padding-inline: 7px;
+    font-size: 0;
+  }
+  :root[data-var-bl445="b"] .schedule-topbar-filter[data-active="true"] > summary::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    margin-left: 4px;
+    border-radius: 999px;
+    background: var(--theme-accent);
+  }
+}
+/* c — one "Filters" button; the controls open under it as a card. Under
+   1280px Export and Templates keep only their icon, as in b. */
+@media (max-width: 1279px) {
+  :root[data-var-bl445="c"] :is(.schedule-export-action, .schedule-template-action) {
+    gap: 0;
+    min-width: 32px;
+    padding-inline: 7px;
+    font-size: 0;
+  }
+  :root[data-var-bl445="c"] .schedule-action-group { gap: 4px; }
+}
+.var-bl445-filters-toggle { flex: 0 0 auto; width: auto; }
+:root[data-var-bl445="c"] .var-bl445-filters { display: none; }
+:root[data-var-bl445="c"] .var-bl445-filters[data-open="true"] {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 16px;
+  z-index: 120;
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 560px;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  box-shadow: 0 12px 32px rgba(23, 33, 29, 0.14);
+}
+.var-bl445-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+/* ---------- BL-441: Publish → Pre-flight says its count twice ---------- */
+/* b — the count stays at the top of the panel; the footer says nothing. */
+:root[data-var-bl441="b"] .schedule-publication-footer-summary { visibility: hidden; }
+/* c — the count stays in the footer next to the buttons; the panel opens on the findings. */
+:root[data-var-bl441="c"] .schedule-publish-preflight-summary { display: none; }
+
+/* ---------- S7: control border 3:1 (today #aeb9b4 = 1.84:1 on the page) ---------- */
+:root[data-var-s7="b"] {
+  --theme-border-control: #7f8c86;
+}
+
+/* ---------- C-D11: a one-location week at 1440 shows 5 of 7 days ---------- */
+/* b — the seven days always share the width; cards narrow and cut their words. */
+:root[data-var-cd11="b"] .schedule-grid-exact {
+  width: 100% !important;
+  grid-template-columns: 200px repeat(7, minmax(0, 1fr)) !important;
+}
+:root[data-var-cd11="b"] .schedule-grid-exact .schedule-shift-badge { min-width: 0; }
+/* c — no CSS: AppShell starts with the menu folded (devVar). */
+
+/* ---------- C-P2: the phone layout (390px) ---------- */
+/* b — the name column narrows to 112px; names may take two lines. */
+@media (max-width: 599px) {
+  :root[data-var-cp2="b"] .schedule-grid-exact {
+    --schedule-employee-column-width: 112px !important;
+    grid-template-columns: 112px repeat(7, minmax(var(--schedule-day-column-min), 1fr)) !important;
+  }
+  :root[data-var-cp2="b"] .schedule-employee-cell { padding-inline: 8px; }
+  :root[data-var-cp2="b"] .schedule-employee-cell strong { white-space: normal; line-height: 1.2; }
+}
+/* c — one day at a time as a list: the name is a thin heading, the day's
+   shifts run the full width under it (opens with ?view=day). */
+@media (max-width: 599px) {
+  :root[data-var-cp2="c"] .schedule-grid-exact {
+    width: 100% !important;
+    grid-template-columns: 1fr !important;
+  }
+  :root[data-var-cp2="c"] .schedule-grid-exact > * { grid-column: 1 / -1 !important; position: static !important; }
+  :root[data-var-cp2="c"] .schedule-employee-cell {
+    min-height: 0 !important;
+    padding: 8px 12px 2px !important;
+    border-bottom: 0 !important;
+    background: var(--theme-surface) !important;
+  }
+  :root[data-var-cp2="c"] .schedule-cell { min-height: 0 !important; padding: 4px 12px 10px !important; }
+  :root[data-var-cp2="c"] .schedule-cell:not(:has(.schedule-shift-badge)):not([data-availability-kind]) { display: none; }
+  :root[data-var-cp2="c"] .schedule-employee-cell:has(+ .schedule-cell:not(:has(.schedule-shift-badge)):not([data-availability-kind])) { display: none; }
+  :root[data-var-cp2="c"] .schedule-cell[data-availability-kind] { min-height: 40px !important; }
+}
+@media (max-width: 599px) {
+  :root[data-var-cp2="c"] :is(.schedule-grid-corner, .schedule-employee-header) { display: none !important; }
+  :root[data-var-cp2="c"] .schedule-location-header { min-height: 0 !important; height: auto !important; padding: 10px 12px !important; }
+  :root[data-var-cp2="c"] .schedule-day-header { min-height: 0 !important; height: auto !important; padding: 6px 12px !important; }
+}

@@ -1,7 +1,66 @@
 import type { ScheduleEmployee } from "@newfork/shared/schedule";
 import { CalendarOff } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
+import { devVar } from "../../dev/varEkran12";
+import { Tooltip } from "../../shell/Tooltip";
+import {
+  formatAvailabilityMarkDay,
+  formatAvailabilityRange,
+  scheduleAvailabilityMarks,
+} from "../lib/scheduleAvailabilityMark";
 import { weeklyEmployeeSummary } from "../lib/scheduleWeeklyAvailability";
+
+// VAR-EKRAN-12 BL-524: the week's unavailable days, in people's words.
+function varUnavailableDays(employee: ScheduleEmployee) {
+  return (employee.weekly_availability ?? []).flatMap((projection) =>
+    [...scheduleAvailabilityMarks(projection)]
+      .filter(([, mark]) => mark.kind === "unavailable")
+      .map(([date, mark]) => ({
+        date,
+        lines: mark.kind === "unavailable"
+          ? mark.windows.map((window) => formatAvailabilityRange("unavailable", window, "12h"))
+          : [],
+      })),
+  );
+}
+
+function VarAvailabilityDot({ employee }: { readonly employee: ScheduleEmployee }) {
+  const days = varUnavailableDays(employee);
+  if (!days.length) return null;
+  const content = (
+    <>
+      <span className="schedule-availability-tip-band">
+        <span className="schedule-availability-tip-dot" aria-hidden="true">!</span>
+        <span className="schedule-availability-tip-who">
+          <strong>{employee.display_name}</strong>
+          <span>Unavailable this week</span>
+        </span>
+      </span>
+      <span className="schedule-availability-tip-body">
+        {days.map((day) => (
+          <strong key={day.date}>{`${formatAvailabilityMarkDay(day.date)} · ${day.lines.join(", ")}`}</strong>
+        ))}
+      </span>
+    </>
+  );
+  return (
+    <Tooltip
+      rich
+      className="var-bl524-dot"
+      label={`${employee.display_name} is unavailable on ${days.map((day) => formatAvailabilityMarkDay(day.date)).join(", ")}`}
+      content={content}
+    >
+      !
+    </Tooltip>
+  );
+}
+
+function VarAvailabilityLine({ employee }: { readonly employee: ScheduleEmployee }) {
+  const days = varUnavailableDays(employee);
+  if (!days.length) return null;
+  const names = days.map((day) => new Date(`${day.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" }));
+  return <span className="var-bl524-line">{`Unavailable ${names.join(", ")}`}</span>;
+}
 
 export function ScheduleEmployeeCard({
   editing,
@@ -79,10 +138,12 @@ export function ScheduleEmployeeCard({
               <CalendarOff size={13} aria-hidden />
             </span>
           ) : null}
+          {employee && devVar("bl524") === "b" ? <VarAvailabilityDot employee={employee} /> : null}
         </div>
       ) : (
         <strong>Unassigned</strong>
       )}
+      {employee && devVar("bl524") === "c" ? <VarAvailabilityLine employee={employee} /> : null}
       {!employee ? (
         <span>{`${openShiftCount} open ${openShiftCount === 1 ? "shift" : "shifts"}`}</span>
       ) : null}

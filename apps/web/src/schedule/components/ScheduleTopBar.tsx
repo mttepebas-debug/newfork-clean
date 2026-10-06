@@ -16,7 +16,9 @@ import {
   MapPin,
   SlidersHorizontal,
   Snowflake,
+  ListFilter,
 } from "lucide-react";
+import { devVar } from "../../dev/varEkran12";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -226,6 +228,16 @@ export function ScheduleTopBar({
     setOpenDropdownId(null);
   }, []);
   useCloseOnEscape(openDropdownId ? closeDropdownOnEscape : null);
+  // VAR-EKRAN-12 BL-445 c: the filters fold into one "Filters" button.
+  const [varFiltersOpen, setVarFiltersOpen] = useState(false);
+  const varActiveFilters =
+    (hideUnscheduled ? 1 : 0) +
+    [
+      [selectedLocationIds, locations],
+      [selectedShiftTypeIds, shiftTypes],
+      [selectedJobIds, jobs],
+      [selectedEmployeeIds, employees],
+    ].filter(([selected, all]) => selected.length > 0 && selected.length < all.length).length;
 
   return (
     <header className="schedule-topbar" data-schedule-top-bar>
@@ -271,6 +283,18 @@ export function ScheduleTopBar({
           onPrevious={onPreviousViewPeriod}
           onNext={onNextViewPeriod}
         />
+        {devVar("bl445") === "c" ? (
+          <button
+            type="button"
+            className="schedule-command-menu-trigger var-bl445-filters-toggle"
+            aria-expanded={varFiltersOpen}
+            onClick={() => setVarFiltersOpen((value) => !value)}
+          >
+            <ListFilter size={15} aria-hidden /> Filters
+            {varActiveFilters ? <span className="var-bl445-count">{varActiveFilters}</span> : null}
+          </button>
+        ) : null}
+        <div className="var-bl445-filters" data-open={varFiltersOpen}>
         <div className="schedule-command-menu">
           <button
             type="button"
@@ -401,6 +425,7 @@ export function ScheduleTopBar({
             onOpenChange={(open) => setDropdownOpen("employees", open)}
           />
         ) : null}
+        </div>
       </div>
       {actions ? <div className="schedule-action-group">{actions}</div> : null}
       <h1 id="schedule-title" className="sr-only">
