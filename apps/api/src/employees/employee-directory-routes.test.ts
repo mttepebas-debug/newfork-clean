@@ -461,6 +461,34 @@ describe("employee directory routes", () => {
     await app.close();
   });
 
+  // EMP-LIMIT (P09): a workspace past one page of people lists every one of
+  // them; the database hands out at most 200 a call.
+  it("lists every employee of a workspace bigger than one database page", async () => {
+    const people = Array.from({ length: 450 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      workspace_id: workspaceId, employee_code: `E-${String(1000 + index)}`,
+      first_name: "Person", last_name: `No ${index}`, preferred_name: "", display_name: `Person No ${index}`,
+      invitation_email: null, start_date: null, primary_location_id: null, primary_location_name: null,
+      location_count: 0, primary_job_id: null, primary_job_name: null, job_count: 0, role_name: null,
+      display_status: "active", archived_at: null, revision: 1,
+    }));
+    const rpc = vi.fn(async (_name: string, args: { page_limit: number; page_offset: number }) => ({
+      data: people.slice(args.page_offset, args.page_offset + Math.min(args.page_limit, 200)), error: null,
+    }));
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${workspaceId}/employees`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json()).toHaveLength(450);
+    await app.close();
+  });
+
   it("hands a save with no primary job to the database, which decides (BL-218 .3b)", async () => {
     const save = vi.fn(async () => employeeId);
     const app = buildApp({

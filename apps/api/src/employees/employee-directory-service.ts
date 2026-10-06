@@ -215,18 +215,26 @@ export function createEmployeeDirectoryServiceWithClient(
       if (error) throw rpcFailure(error);
       return employeeReferenceDataSchema.parse(data);
     },
+    // EMP-LIMIT (P09): every person, a database page (at most 200, ordered by
+    // name then id) at a time; one call used to stop at 100 without a word.
     async list(input) {
-      return employeeSummarySchema.array().parse(
-        await rpc("list_employees_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-          include_archived: input.archived,
-          search_text: input.search,
-          status_filter: input.archived ? "all" : input.status,
-          page_limit: 100,
-          page_offset: 0,
-        }),
-      );
+      const pageSize = 200;
+      const people = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const page = employeeSummarySchema.array().parse(
+          await rpc("list_employees_service", {
+            actor_user_id: input.actorUserId,
+            target_workspace_id: input.workspaceId,
+            include_archived: input.archived,
+            search_text: input.search,
+            status_filter: input.archived ? "all" : input.status,
+            page_limit: pageSize,
+            page_offset: offset,
+          }),
+        );
+        people.push(...page);
+        if (page.length < pageSize) return people;
+      }
     },
     async get(input) {
       return employeeDetailSchema.parse(
