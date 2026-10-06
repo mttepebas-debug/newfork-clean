@@ -95,11 +95,12 @@ select is(
 -- 176 after the onboarding review, 175 after the Workspace layout (KK-36),
 -- 173 after the reorder command went (BL-475), 171 after the old time-off
 -- decision paths went (FB-6.3.7), 161 after announcements and important dates moved to the
--- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6). Target 0.
+-- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6), 100 after the Schedule
+-- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 111, 'refusals without an authz hint only go down'
+  '<=', 100, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
