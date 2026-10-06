@@ -396,5 +396,47 @@ select is((select (s ->> 'will_change')::boolean from ap, jsonb_array_elements(v
 select is((select count(*)::integer from ap, jsonb_array_elements(v -> 'shifts') s, jsonb_array_elements(s -> 'after_assessment' -> 'reasons') r
   where k = 'dusk' and r ->> 'code' = 'note'), 0, 'a shift lead who cannot read the note does not get it there either');
 
+-- 10. VAR-UYG-DB review: Emre's Tuesday at Kadikoy moves to Besiktas on Friday
+-- and only Besiktas is published, so the shift sits in both current
+-- publications. The draft still opens in Edit mode, with one answer per shift.
+select tests.world('dp');
+select tests.person('dp', 'emre', 'employee', array['K', 'B'], array['cook']);
+insert into ap select 'dp:draft', to_jsonb(tests.publish_week('dp', 3,
+  '[{"label": "x", "loc": "K", "person": "emre", "job": "cook", "day": 1, "start": "18:00", "end": "22:00"},
+    {"label": "y", "loc": "B", "person": "emre", "job": "cook", "day": 2, "start": "10:00", "end": "14:00"}]'));
+create function pg_temp.dp_move() returns void language plpgsql as $$
+declare
+  d uuid := (select (v #>> '{}')::uuid from ap where k = 'dp:draft');
+  x uuid := (select source_shift_id from public.schedule_published_shifts where id = tests.id('dp:shift:x'));
+  sid uuid;
+  payload jsonb;
+  preview jsonb;
+begin
+  sid := (public.acquire_schedule_edit_session_service(tests.user('dp:owner'), tests.id('dp'), tests.week(3), 'draft', d)
+    -> 'session' ->> 'id')::uuid;
+  payload := jsonb_build_object('location_id', tests.id('dp:B'), 'employee_id', tests.id('dp:emre'), 'job_id', tests.id('dp:job:cook'),
+    'scheduled_date', tests.week(3) + 4, 'time_basis', 'explicit', 'start_time', '08:00', 'end_time', '12:00',
+    'time_timezone', 'Europe/Istanbul', 'note', '', 'hide_time_on_badge', false, 'label_ids', '[]'::jsonb, 'label_names', '[]'::jsonb);
+  payload := payload || jsonb_build_object('availability_assessment_fingerprint',
+    public.assess_schedule_shift_service(tests.user('dp:owner'), tests.id('dp'), payload, x, sid) ->> 'fingerprint');
+  perform public.mutate_schedule_edit_shift_service(tests.user('dp:owner'), tests.id('dp'), sid,
+    (select revision from public.schedule_edit_sessions where id = sid), 'update', x,
+    (select revision from public.schedule_edit_session_shifts where session_id = sid and id = x), payload, gen_random_uuid());
+  perform public.save_schedule_edit_session_service(tests.user('dp:owner'), tests.id('dp'), sid,
+    (select revision from public.schedule_edit_sessions where id = sid), 'moved', d, (select revision from public.schedule_drafts where id = d));
+  preview := public.preview_schedule_publication_service(tests.user('dp:owner'), tests.id('dp'), d, array[tests.id('dp:B')], null, true);
+  perform public.publish_schedule_draft_service(tests.user('dp:owner'), tests.id('dp'), d, array[tests.id('dp:B')], null, true,
+    (select revision from public.schedule_drafts where id = d), preview ->> 'fingerprint', '[]'::jsonb);
+end;
+$$;
+select pg_temp.dp_move();
+select is((select count(*)::integer from public.schedule_published_shifts p
+  join public.schedule_location_publications l on l.id = p.publication_id and l.status = 'current'
+  where p.source_shift_id = (select source_shift_id from public.schedule_published_shifts where id = tests.id('dp:shift:x'))),
+  2, 'the moved shift is in both current publications');
+select lives_ok($$select public.acquire_schedule_edit_session_service(tests.user('dp:owner'), tests.id('dp'), tests.week(3), 'draft',
+  (select (v #>> '{}')::uuid from ap where k = 'dp:draft'))$$,
+  'the draft still opens in Edit mode');
+
 select * from finish();
 rollback;

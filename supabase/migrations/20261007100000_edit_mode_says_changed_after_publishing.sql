@@ -95,7 +95,10 @@ begin
               where week.employee_id = c.employee_id and week.location_id = c.location_id
                 and week.unavailable && app_private.shift_time_range(c.scheduled_date, c.start_time, c.end_time, c.time_timezone))
             and not coalesce((c.availability_snapshot -> 'first' ->> 'has_own_mark')::boolean, true)
-          from counterpart c where c.edit_shift_id = shift.id), false),
+          from counterpart c where c.edit_shift_id = shift.id
+          -- A shift moved to another location and published only there sits in
+          -- two current publications; the one at its location today speaks.
+          order by (c.location_id = shift.location_id) desc limit 1), false),
         'warning_codes', to_jsonb(array_remove(array[
           case when exists (
             select 1 from public.schedule_closures closure
