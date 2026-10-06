@@ -63,8 +63,8 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 
 | # | Ekran (uygulamadaki adı) | Kim | Prototip karşılaştırması | Durum |
 |---|---|---|---|---|
-| 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar (keşif bitti 2026-10-05; `ekranlar/01-schedule/OZET.md`) |
-| 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | keşif (2026-10-05, ayrı oturum — Mert'in isteği) |
+| 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar — görev dosyası yazıldı (`tasks/EKRAN-01-SCHEDULE.md`, 2026-10-06), 6 açık soru |
+| 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | sırada |
 | 4 | Availability | owner, müdür | P2 | sırada |
 | 5 | Workspace (ana sayfa) | owner, müdür | P1 | sırada |
@@ -95,3 +95,4 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
   - **Konuşma:** ekran oturumu keşfi bitirir, raporu koordinatöre yollar; Mert'e sorular koordinatörden gider.
   - **Sınır:** Schedule ile ortak dosyada iki oturum aynı anda yazmaz.
   - **Kayıt:** `BACKLOG.md`'yi ve bu dosyayı yalnız koordinatör yazar.
+- 2026-10-06 ~01:45Z — İki ekranın görev dosyaları yazıldı ve main'e alındı (KK-160). Aynı turda Mert koordinatörü işçilikten çıkardı (KK-159): görev dosyalarını bundan sonra planlama oturumu yazar, uygulama ve main'e gönderim işi yapan oturumdadır.

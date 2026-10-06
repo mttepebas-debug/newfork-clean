@@ -54,7 +54,12 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 - **Koordinatör:** Claude Code masaüstü uygulamasındaki "Koordinatör" oturumu
   (kimliği her devirde değişir; güncel `local_…` kimliği `docs/plan/HANDOFF.md`'nin başında yazar,
   `origin/main`'den okunur). Kullanıcının tek muhatabıdır: işi kullanıcıdan
-  alır, onaylatır, role verir, raporu kontrol eder, main'e alır, kullanıcıya raporlar.
+  alır, onaylatır, oturuma verir, raporu ve main'e girişi kontrol eder, kullanıcıya raporlar.
+- **Koordinatör işçi değildir (Mert, 2026-10-06).** Kod yazmaz; test, ölçüm, kapı, dev sunucusu
+  koşturmaz; ekran görüntüsü almaz; **alt ajan çağırmaz**; main'e kod göndermez. İşi: plan,
+  kayıtlar (backlog, kararlar, ilerleme, devir), görev dağıtımı ve oturum yönetimi, kurallar
+  ("yap / yapma"), MVP hazırlığı, belgeler. Hız, verim, kalite, oturumların denetimi ve Mert'le
+  tek muhatap olmaktan sorumludur. Ayrıntı ve sınıflar: `DELEGASYON.md`.
 - **Rol ajanları** (`.claude/agents/`): sabit uzmanlık, model, effort ve araç sınırıyla tanımlı.
   Yeni ya da değişen rol dosyası, oturum yeniden başlatılınca yüklenir.
 
@@ -68,13 +73,12 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
   | `nf-gorsel-qa` | ekran görüntüsüyle görsel tutarlılık ve erişilebilirlik | hayır |
   | `nf-planlama` | görev dosyası, backlog, keşif/ölçüm, araştırma, pre-mortem | yalnız `docs/plan/**` |
 
-- **İki çalışma biçimi.** Kısa ve orta işler (inceleme, görsel QA, keşif, araştırma, plan, test
-  koşturma, sınırlı düzeltme) koordinatörün çağırdığı **subagent** olarak koşar: rol çağrılır, işini
-  yapar, raporunu verir ve kapanır. Uzun kod işleri (saatler süren, çok adımlı, kullanıcının izlemek
-  isteyebileceği) **işçi oturumunda** koşar: koordinatör bir görev kartı çıkarır, kullanıcı tek
-  tıkla açar; oturum ilgili rol dosyasını okuyup o rolün kurallarıyla çalışır (bölüm 12).
-  Hangisinin gerektiği — ya da hiçbirinin gerekmediği, koordinatörün kendisinin yapacağı —
-  `DELEGASYON.md`'deki risk sınıfına göre karar verilir; roller yalnız gerektiğinde çağrılır.
+- **Her iş bir oturumda koşar** (Mert, 2026-10-06). Kısa işler (inceleme, görsel QA, keşif,
+  araştırma, görev dosyası, test koşturma, sınırlı düzeltme) havuzdaki boş bir oturuma verilir;
+  uzun kod işleri rol oturumunda koşar (bölüm 12). Oturum ilgili rol dosyasını okuyup o rolün
+  kurallarıyla çalışır ve gerekirse **kendi** alt ajanını (`nf-guvenlik`, `nf-gorsel-qa` gibi)
+  çağırır. Hangi oturumun ve hangi incelemenin gerektiği `DELEGASYON.md`'deki risk sınıfına göre
+  belirlenir.
 - **Onay zinciri:** yeni iş kullanıcı onaylamadan başlamaz (bölüm 11.3). Rol ajanı ve işçi oturumu
   yalnız koordinatörün görev mesajındaki kapsamda çalışır; görev mesajı hedef, kapsam (içi / dışı),
   Done when, dokunulacak dosyalar ve skill'leri taşır.
@@ -95,6 +99,12 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
     `node scripts/inbox.mjs wait` (çıkınca işler, yeniden başlatır). İşlenen rapor `inbox.mjs ack <ad>`.
   - Yoklama `node scripts/inbox.mjs board` ile: her oturumun dalı, HEAD'i, kirli dosyası, son
     hareketi; 20 dk'dan uzun sessiz "working" oturum `TAKILDI` işaretlidir.
+  - **Bekçi (Mert, 2026-10-06):** posta kutusu en az 2 dakikada bir kontrol edilir. `wait`'in
+    yanında arka planda 120 sn'lik bir döngü koşar; okunmamış rapor ya da `TAKILDI` görünce çıkar,
+    koordinatör işler ve döngüyü yeniden başlatır. 20 dakika iletişim kurmayan oturum (boşta
+    beklediği kesin olan hariç) koordinatör tarafından bizzat kontrol edilir: `list_events`,
+    `git -C <worktree> status/log`, pano. Ölü oturumun artık heartbeat'i silinmez,
+    `.newfork-inbox/status-stale/`'e taşınır.
   - Boştaki oturuma iş, görev dosyasını gösteren `send_message` ile verilir; rolün modeli ve
     effort'u `set_session_model` / `set_session_effort` ile ayarlanır.
   - Takılan oturum: önce pano + `git -C <worktree> status/log`, sonra `stop_session`, sonra kayıt.
@@ -120,13 +130,13 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
   landing/pazarlama sayfaları, `apps/web/public`), `packages/ui/**`, `docs/design-canvas.md`,
   `docs/brand/**`.
 - `nf-planlama`: `docs/plan/**`.
-- Koordinatör: `CLAUDE.md`, `.claude/**`, `docs/adr/**`, kök config'ler, `vercel.json`
-  (`CLAUDE.md` ve `.claude/agents/**` kullanıcı onayıyla değişir) ve her şeyin main'e alınması.
-  R0–R1 işlerde (`DELEGASYON.md`) koordinatör her dosyayı kendi worktree'sinde yazabilir; o sırada
-  aynı dosyada bir rol çalışmıyorsa.
+- Koordinatör: `CLAUDE.md`, `DELEGASYON.md`, `.claude/**`, `docs/adr/**`, `docs/plan` kayıtları
+  (`BACKLOG.md`, `KARARLAR.md`, `KOORDINATOR-KARARLARI.md`, `EKRAN-PLANI.md`, `HANDOFF.md`, `DONE.md`,
+  ekran `OZET.md`'leri), kök config'ler, `vercel.json` (`CLAUDE.md` ve `.claude/agents/**` kullanıcı
+  onayıyla değişir). Kod dosyası yazmaz; kök config değişikliği de bir oturuma verilir.
 - Task dosyasının "Touches" alanı kimin hangi dosyaya dokunacağını yazar. Aynı dilimde veri ve
   sunum varsa sıra: `nf-backend` / `nf-db` işlevsel kısmı (veri + çalışan ekran) bitirir ve
-  sözleşmeyi (tip, hook, durumlar) raporunda yazılı verir; koordinatör onu main'e alır; `nf-arayuz`
+  sözleşmeyi (tip, hook, durumlar) raporunda yazılı verir; o parça main'e girer; `nf-arayuz`
   yeni `origin/main`'den görsel kısmı yapar. Dilim iki parça da main'e girince kapanır.
 
 ## 5. İş akışı (her iş)
@@ -136,13 +146,15 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
    düzelmiş ya da şekli farklı; madde bugünkü hâline göre yeniden yazılır), **bayat** (zaten
    düzelmiş ya da artık anlamsız; kanıtıyla kapatılır, iş açılmaz). Hüküm, tarih ve commit ile
    maddenin altına yazılır: "Tazelik 2026-09-26 (`<commit>`): geçerli — <kanıt, dosya:satır>".
-   Kullanıcıya iş, bu hükümle birlikte sunulur. Kontrolü `nf-planlama` yapar (kod okuma, SELECT);
-   küçük maddede koordinatör kendisi yapar.
+   Kullanıcıya iş, bu hükümle birlikte sunulur. Kontrolü `nf-planlama` oturumu yapar (kod okuma,
+   SELECT); koordinatör ölçmez.
 1. Onay: kullanıcı işi onaylar (bölüm 11.3).
-2. Plan: `nf-planlama` `docs/plan/tasks/<ID>.md` açar (`_TEMPLATE.md`: Goal / In scope /
-   Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı). "Done when" ölçülebilir.
+2. Plan: koordinatör çerçeveyi koyar (sıra, kapsam, Done when, risk sınıfı, Mert'in kararları);
+   `nf-planlama` oturumu `docs/plan/tasks/<ID>.md`'yi yazar (`_TEMPLATE.md`: Goal / In scope /
+   Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı); koordinatör okur,
+   düzeltir ve main'e alır. "Done when" ölçülebilir.
 3. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
-4. Uygulama: risk sınıfına göre koordinatör ya da ilgili rol (`DELEGASYON.md`). Hata için önce onu
+4. Uygulama: ilgili rol oturumu (`DELEGASYON.md`). Hata için önce onu
    yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test.
    **Sormadan açılan skill'ler** (kullanıcı kararları 2026-10-02): her oturum (koordinatör, rol,
    işçi) aşağıdaki skill'leri kendi yargısıyla açar; onay istemez, görev mesajında yazmasını da
@@ -162,10 +174,11 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
      yanlışsa gerekçeyle itiraz edilir; körü körüne uygulanmaz.
    - `superpowers:verification-before-completion` — "bitti", "yeşil", "düzeldi", "main'de" demeden
      önce: iddia komut + sonuç, sha ya da CI koşusuyla kanıtlanır.
-5. İnceleme: risk sınıfının istediği kadar (`DELEGASYON.md` §3): R0 yok; R1 koordinatörün kendi
-   okuması + ekran görüntüsü; R2 tek bağımsız inceleme; R3 `nf-guvenlik` zorunlu (ekran değiştiyse
-   `nf-gorsel-qa` da). Onay `ONAY @<commit-sha>` biçiminde. Değişiklik istenirse aynı rol ajanına
-   düzeltme için yeniden yazılır.
+5. İnceleme: risk sınıfının istediği kadar (`DELEGASYON.md` §3): R0 yok; R1 oturumun kendi
+   okuması + ekran görüntüsü, koordinatör raporu okur; R2 tek bağımsız inceleme; R3 `nf-guvenlik`
+   zorunlu (ekran değiştiyse `nf-gorsel-qa` da). İncelemeyi işi yapan oturum kendi alt ajanıyla
+   ya da koordinatörün verdiği ayrı oturum yapar. Onay `ONAY @<commit-sha>` biçiminde.
+   Değişiklik istenirse aynı oturuma düzeltme için yeniden yazılır.
    **Ultrareview hatırlatması** (kullanıcı kararı 2026-09-28): kod işi bitip main'e alınmadan önce
    iş riskli bir yüzeye dokunuyorsa kullanıcıya ultrareview önerilir. Riskli yüzey şunlardır: yetki,
    RLS, grant, migration, `*_service`, katılım/davet, sahiplik devri, veri silme. Ayrıca birçok dosyaya
@@ -177,17 +190,19 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
    (kullanıcı kararı 2026-10-01, KARAR-001) yalnız en riskli işte önerilir (yetki çekirdeği, RLS,
    grant, veri silme) ve öneride dolar tutarı yazılır. Bulgular `nf-guvenlik` incelemesine eklenir;
    onun yerine geçmez.
-6. Entegrasyon: koordinatör (bölüm 6).
+6. Entegrasyon: koordinatörün "gönder" izniyle işi yapan oturum (bölüm 6); koordinatör sonra
+   commit'in main'de ve main CI'ın yeşil olduğunu bağımsız kontrol eder.
 7. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
-   (`nf-planlama` ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
+   (işi yapan oturum ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
 
 ## 6. Git, worktree, entegrasyon (kod kaybı olmaz)
 - Kullanıcının ana klasörü (`newfork-clean`, main) referanstır: orada iş yapılmaz, branch
   değiştirilmez; koordinatör yalnız `git fetch` ve fast-forward ile güncel tutar.
-- Koordinatörün docs ve config işleri ayrık worktree'de: `../newfork-wt/coord` (`git fetch` →
-  `git checkout --detach origin/main` → düzenle → commit → `git push origin HEAD:main`).
-- Yazan rol ajanları (`isolation: worktree`) geçici worktree'de çalışır (`.claude/worktrees/`);
-  kendi branch'ine commit eder, push etmez. İşçi oturumları `../newfork-wt/<id>` worktree'sinde,
+- Koordinatörün kayıt ve belge işleri ayrık worktree'de: `../newfork-wt/coord` (`git fetch` →
+  `git checkout --detach origin/main` → düzenle → commit → `git push origin HEAD:main`; yalnız
+  docs-only gönderim).
+- Oturumların çağırdığı yazan alt ajanlar (`isolation: worktree`) geçici worktree'de çalışır
+  (`.claude/worktrees/`); kendi branch'ine commit eder, push etmez. İşçi oturumları `../newfork-wt/<id>` worktree'sinde,
   `task/<id>` branch'inde çalışır. Hepsi güncel `origin/main`'den açılır (`git fetch origin` önce).
 - Yeni worktree kurulumu: `pnpm.cmd install`, `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build`,
   yalnız yerel `.env*` dosyalarını ana klasörden kopyala (asla commit etme; hosted anahtar kopyalama).
@@ -195,8 +210,9 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 - Ekran görüntüleri ve geçici kanıtlar: `artifacts/<rol>/<id>/` (gitignore'da).
 - Tam kapı: `pnpm.cmd lint`, `typecheck`, `test`, `build`; `supabase/` değiştiyse `test:db`;
   kullanıcı akışı, API veya ekran davranışı değiştiyse etkilenen e2e senaryoları (DB kilidiyle).
-- main'e gönderme (yalnız koordinatör; rol ajanı ve işçi oturumu push etmez, işçi oturumuna
-  koordinatör açıkça izin verirse o oturum aynı adımları izler):
+- main'e gönderme (Mert, 2026-10-06: işi yapan oturum gönderir, yalnız koordinatörün o iş için
+  açık "gönder" izniyle; izinsiz oturum push etmez; koordinatör kod göndermez, gönderimden sonra
+  commit'i ve main CI'ı bağımsız kontrol eder):
   1. Risk sınıfının istediği inceleme tamam (`DELEGASYON.md` §3; R3'te `nf-guvenlik`
      `ONAY @<sha>`). Sınıf ve karar raporda tek satır.
   2. `main.lock` al (bölüm 7).
@@ -392,9 +408,8 @@ Kısa yaz, ham araç çıktısı yapıştırma.
     Bağlam dolarken iş sınırında durulur: yarım iş bitirilir ya da park edilir, bitmiş commit'lenir,
     yalnız sohbette yaşayan bilgi task dosyasına yazılır. Her iş bitişinde bakım satırında bağlam
     doluluğu yazılır; yarıyı geçince bir sonraki sınırda devir raporu (`docs/plan/HANDOFF.md`) ve
-    yeni koordinatör oturumu önerilir (kullanıcı kararı 2026-09-26). Uzun kod işleri rol
-    oturumlarında (bölüm 12) yürür; alt ajan yalnız kısa işte (inceleme, görsel QA, ölçüm, keşif);
-    kısa ve düşük riskli iş koordinatörde kalır (`DELEGASYON.md`).
+    yeni koordinatör oturumu önerilir (kullanıcı kararı 2026-09-26). Her iş oturumlarda yürür
+    (bölüm 12); koordinatör iş yapmaz ve alt ajan çağırmaz (Mert, 2026-10-06; `DELEGASYON.md`).
 11. **Rol hafızası.** Rollerin öğrendikleri `.claude/agent-memory/<rol>/`'da (git'te). Koordinatör
     ayda bir farkı okur; yanlış ya da eskimiş kaydı sildirir.
 

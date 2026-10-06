@@ -1435,3 +1435,25 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırları; Mert ters çevirirse "ters çevrildi" yazılır.
 - **Durum:** kayda geçti, uygulama bekliyor.
 - **Mert:** görmedi; iş raporunda "Senin yerine verdiğim kararlar" listesinde gösterilir.
+
+### KK-159 (2026-10-06) Koordinatör işçi değil; alt ajan yok; main'e işi yapan oturum gönderir; görev dosyasını planlama oturumu yazar; 2 dk bekçi
+- **Karar (ne):** Mert'in talimatı (~01:35Z, koordinatörün penceresinde): "koordinatör olarak bu sessionda (şuan çalışan 3 agent hariç) bir daha asla işçi olarak çalışmanı istemiyorum. Sadece plan yapacaksın, logları tutacaksın, ilerlemeyi takip edeceksin, diğer sessionlara taskleri delege edeceksin, do ve don'tsları belirleyeceksin, mvpye hazırlık yapacaksın, dokümantasyon yapacaksın. İlerleyişin hızından, efficient oluşundan, kalitesinden ve agentları/sessionları kontrol etmeden ve benimle iletişim kuran tek kişi olmaktan sorumlu olacaksın." Aynı turda üç tıklamalı seçim, üçü de önerilen: (1) koordinatör alt ajan çağırmaz, inceleme ve görsel QA dahil her iş oturuma gider; (2) main'e işi yapan oturum, koordinatörün açık "gönder" izniyle gönderir, koordinatör sonra commit'i ve main CI'ı kontrol eder; (3) ayrıntılı görev dosyasını planlama oturumu yazar, koordinatör çerçeveyi koyar ve onaylar. Ek talimat (~01:40Z): "mailboxu her 2dk'da bir kontrol edeceksin. Eğer bir session (idle beklediğinden eminsen sorun yok) 20dk boyunca hiç iletişim kurmazsa, akıbetini kontrol etmek için o sessionı gidip bizzat sen kontrol edeceksin."
+- **Nerede:** `DELEGASYON.md` (baştan yazıldı: §1 ilke, §3 sınıflarda "yazan", §4 adım 5, §6); `CLAUDE.md` §3 (koordinatör tanımı, "Her iş bir oturumda koşar", el kitabına bekçi), §4 (koordinatörün dosyaları), §5 adım 0/2/4/5/6/7, §6 (main'e gönderme), §11.10.
+- **Ne zaman:** 2026-10-06 ~01:35–01:50Z.
+- **Ne için:** koordinatörün bağlamını plan, kayıt ve denetime ayırmak; Schedule görev dosyası alt ajanla ~320 bin, Requests ~370 bin token harcadı.
+- **Uygulamada etkisi:** ekranda yok. Süreçte: koordinatör kod, ölçüm, test, ekran görüntüsü yapmaz; her iş havuz ya da rol oturumuna gider; bekçi döngüsü (120 sn) okunmamış raporda ya da 20 dk sessiz "working" oturumda koordinatörü uyandırır. İlk bekçi turunda ölü bir oturumun artık heartbeat'i (`e9d6534f…`, worktree silinmiş, son commit `6358125b` main'de) `.newfork-inbox/status-stale/`'e taşındı.
+- **Dayanak:** Mert'in açık talimatı (ILKELER dayanak sırası 1).
+- **Geri alma:** iki dosyanın bu commit'ten önceki hâli (`9bb4373a`).
+- **Durum:** yürürlükte. 09-29 kararının "koordinatör kendisi yapar" varsayılanı ters çevrildi.
+- **Mert:** kendi talimatı ve seçimleri.
+
+### KK-160 (2026-10-06) İki ekranın görev dosyaları main'e; yerel oturum dosyaları silindi
+- **Karar (ne):** `docs/plan/tasks/EKRAN-01-SCHEDULE.md` (19 dilim) ve `docs/plan/tasks/EKRAN-02-REQUESTS.md` (11 dilim, FB-6.4 dahil) bu devrin ilk işinde, KK-159'dan önce başlatılmış iki `nf-planlama` alt ajanıyla yazıldı ve main'e alındı. Mert'in seçimiyle yerel test girişlerinin 11 `*state.json` dosyası silindi (soruda 10 dendi; listeleme kesikti, koordinatörün hatası).
+- **Nerede:** iki görev dosyası; `.temp/`, `artifacts/` (git dışı).
+- **Ne zaman:** 2026-10-06 ~01:20–01:45Z.
+- **Ne için:** ekran planının 4. adımı.
+- **Uygulamada etkisi:** ekranda yok. Açık sorular: Schedule 6, Requests 2 (Mert'e); Requests Q3 (kenar rengi tek yerde) koordinatörde.
+- **Dayanak:** EKRAN-PLANI "Bir ekranın turu" madde 4 (onaylı planın sıradaki adımı, CLAUDE.md §11.3).
+- **Geri alma:** dosyaları silen commit.
+- **Durum:** görev dosyaları onay bekliyor; dilimler Mert'le plan konuşmasından sonra oturumlara verilecek.
+- **Mert:** silmeyi seçti; görev dosyalarını henüz görmedi.
