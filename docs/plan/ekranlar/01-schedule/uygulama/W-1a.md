@@ -85,17 +85,48 @@ Skills: superpowers:test-driven-development (her davranış değişikliği önce
 ## İnceleme
 
 ### Tur 1 — KARAR: DEĞİŞİKLİK İSTENİYOR (@d7318c87)
+KARAR: DEĞİŞİKLİK İSTENİYOR
+
 Reviewed `d7318c87` (HEAD) against `origin/main`, apps/web only. I could not run git or vitest here (no shell), so I read the final files and compared against the main checkout's `SchedulePage.tsx`. Nothing was executed, including the vitest/eslint/typecheck runs you suggested. Commits 1 and 2 look behaviour-neutral. Commit 3 has the problems below.
 
-**1. `recoverLease` treats a brand-new session as a "resumed" one, which can silently drop unsaved work.** `useScheduleEditSession.ts:134-149` returns `result.session` for any non-conflict status; it does not check `result.status === "resumed"`. The migration only resumes when the person's own session is still `status='active'`. Scenario: Ayşe's lease lapses while she sleeps; Manager B opens the same draft (her dirty shifts go to a "Recovered edit …" draft); B leaves; Ayşe's heartbeat or Save gets 409; `recoverLease` creates a fresh session from the stored draft; the grid silently reverts and Save stores the stale content. Fix: accept only `resumed`; otherwise end the edit with a real message; test `acquired` / `acquired_after_recovery`.
+**1. `recoverLease` treats a brand-new session as a "resumed" one, which can silently drop unsaved work.**
+- `useScheduleEditSession.ts:134-149` returns `result.session` for any non-conflict status. It does not check `result.status === "resumed"`.
+- The migration only resumes when the person's own session is still `status='active'` (`20260926160000…sql:333-339, 399, 449`).
+- Scenario: Ayşe's lease lapses while she sleeps on a draft. Manager B opens the same draft, and that acquire closes her session and writes her dirty shifts to a "Recovered edit …" draft (lines 375-396). B leaves. Ayşe wakes and her heartbeat or Save gets 409. `recoverLease` calls acquire, finds no own session and no holder, and creates a fresh session from the stored draft. The status is `acquired` or `acquired_after_recovery`.
+- The hook then `setSession`s that fresh session, and the grid silently reverts to the old draft content.
+- On the Save path, the retry saves that stale content as the draft, so her edits are lost with no message. The new session id also changes `mutationContext`, so the outer `saveDraftFromMenu` returns `null` at `SchedulePage.tsx:1240` with no feedback.
+- Fix: accept only `status === "resumed"`. For anything else, call `setSession(null)` and `onEnded()` and show a real message such as "Your edit ended; unsaved changes were kept as a recovered draft". Add a test for the `acquired` and `acquired_after_recovery` cases.
 
-**2. The resume `useEffect` can re-acquire the session the user just discarded.** It fires whenever `isEditMode && !session`; `discardEditSession` calls `setSession(null)` then `setSearch(mode=preview)` directly, so a render with `session===null` and `mode=edit` is possible; the manager clicks Discard and lands back in edit mode with a new lock. Fix: record the attempt key whenever a session exists (or use `setScheduleMode`); test acquire called once after Discard.
+**2. The resume `useEffect` can re-acquire the session the user just discarded.**
+- `SchedulePage.tsx:1168-1180` fires whenever `isEditMode && !session`. The ref guard only stops repeats of the same attempt key, and a normal entry via the page `acquire()` never sets it.
+- `discardEditSession` (line 1187) calls `setSession(null)` and then `setSearch(mode=preview)` directly, not through `setScheduleMode`. So there is no optimistic mode, and `isEditMode` stays true until the router update lands.
+- I did not run it, but I expect React Router 7 to apply that update in a transition. If so, there is a render with `session===null` and `mode=edit`. The effect fires, and `acquire` (sent after the discard request) creates a new session and calls `enterEditModeWithResetFilters`.
+- Failure scenario: the manager clicks Discard and lands back in edit mode with a new lock on the published schedule.
+- Fix: have `discardEditSession` use `setScheduleMode("preview", null)` so the optimistic mode applies. Alternatively, set `resumeAttemptRef.current` for the current key whenever a session is acquired or ended. Add a test: enter edit through the UI, press Discard, and assert acquire was called exactly once.
 
-**3. The raw "edit lease expired" text can still reach the Save path.** A second 409 after the one retry is rethrown and `getSaveDraftFailureMessage` returns it verbatim. Fix: map `isEditLeaseExpired` to the "could not be reconnected" message.
+**3. The raw "edit lease expired" text can still reach the Save path.**
+- `SchedulePage.tsx:1316` retries once. If the retried save also returns 409 "edit lease expired", it is rethrown, because `leaseRecovered` is true.
+- `saveDraftFromMenu` (lines 1282-1286) then runs `getSaveDraftFailureMessage(error.body, error.message)`, which returns `body.error` ("edit lease expired") verbatim. That is shown through `setOperationError` and the save-recovery dialog.
+- Fix: in the `catch`, map `isEditLeaseExpired(error)` to the same "could not be reconnected" message. The existing App test only covers the success path.
 
-**4. The idle timer is re-armed by every heartbeat, and the new test hides it.** Pre-existing on main (`handleIdleTimeout` deps include the `session` object; heartbeat does `.then(setSession)`), but D-Y3 depends on it: the "Keep editing?" countdown can never be reached and the 20-min keep-alive does nothing. The test mocks the heartbeat to resolve the same object. Fix: depend on `session?.id` / read through a ref; return fresh objects in the test and assert the edit ends at 20 min.
+**4. The idle timer is re-armed by every heartbeat, and the new test hides it.**
+- This also existed on main (the `handleIdleTimeout` deps include the `session` object, and the heartbeat did `.then(setSession)`). So commit 1 is neutral, but D-Y3 depends on it.
+- The heartbeat returns a new object each minute, so `handleIdleTimeout` changes. That re-runs the `useEditIdleTimer` effect, which calls `arm()`. `arm()` closes the warning, resets `secondsRemaining` to null, restarts the 15/20 min timers and resets `lastActivityRef`.
+- Result: the "Keep editing?" countdown can never be reached while the tab is open and the heartbeat succeeds. The keep-alive extension to 20 min does nothing in production.
+- The new test at `useScheduleEditSession.test.tsx:56` mocks the heartbeat to resolve the same `session` object, so `setSession` is a no-op and the test passes.
+- Fix:
+  - Make `handleIdleTimeout` depend on `session?.id` (read the rest through `sessionRef`).
+  - Have the heartbeat return a fresh object in the test, and assert that the idle `onEnded` fires after 20 min.
+- If you would rather fix this in a later slice, flag it explicitly.
 
-Minor: `recoverLease` shares `acquireRequestRef` with `acquire` (overlap returns stale null); missing tests for the resume fallback, the once-per-key guard, Save when `recoverLease` returns null. No memory note.
+**Minor**
+- `recoverLease` calls the shared `acquire`, which uses a single `acquireRequestRef`. If the heartbeat's recovery overlaps the Save's recovery, one call returns `null` as "stale". Save then throws "could not be reconnected" even though the lease was recovered. Rare.
+- Missing tests:
+  - the resume effect falling back to preview when acquire returns a conflict or `null`;
+  - the resume effect's once-per-key guard;
+  - Save when `recoverLease` returns `null`.
+
+No memory note from me.
 
 ### Tur 2 — KARAR: ONAY @aee42edf
 I read `git diff d7318c87..aee42edf` through the final files and ran nothing (no shell). I found no remaining blocking issues.
