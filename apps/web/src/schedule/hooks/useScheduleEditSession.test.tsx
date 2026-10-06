@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   acquireScheduleEditSession,
+  discardScheduleEditSession,
   heartbeatScheduleEditSession,
   ScheduleRequestError,
 } from "../schedule-data";
@@ -42,7 +43,7 @@ function renderEditSession() {
   const hook = renderHook(() =>
     useScheduleEditSession({ userId: session.holder_user_id, workspaceId: WORKSPACE_ID, onError, onEnded }),
   );
-  return { ...hook, onError };
+  return { ...hook, onError, onEnded };
 }
 
 async function startEditing(hook: ReturnType<typeof renderEditSession>) {
@@ -53,7 +54,9 @@ async function startEditing(hook: ReturnType<typeof renderEditSession>) {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.mocked(acquireScheduleEditSession).mockReset();
-  vi.mocked(heartbeatScheduleEditSession).mockReset().mockResolvedValue(session);
+  // Every heartbeat answers with a fresh copy, as the API does.
+  vi.mocked(heartbeatScheduleEditSession).mockReset().mockImplementation(() => Promise.resolve({ ...session }));
+  vi.mocked(discardScheduleEditSession).mockClear();
 });
 
 afterEach(() => {
@@ -69,6 +72,34 @@ describe("useScheduleEditSession", () => {
     await act(() => vi.advanceTimersByTimeAsync(19 * 60 * 1000));
 
     expect(vi.mocked(heartbeatScheduleEditSession).mock.calls.length).toBe(19);
+    expect(hook.result.current.idleSeconds).not.toBeNull();
+    expect(hook.onEnded).not.toHaveBeenCalled();
+  });
+
+  it("still ends the edit at the idle timeout although every heartbeat answers", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(20 * 60 * 1000));
+
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("does not pass off a fresh edit as the lapsed one; it releases it and ends the edit", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    const fresh = { ...session, id: "66666666-6666-4666-8666-666666666666", dirty: false };
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session: fresh });
+
+    let recovered: ScheduleEditSession | null = session;
+    await act(async () => { recovered = await hook.result.current.recoverLease(); });
+
+    expect(recovered).toBeNull();
+    expect(hook.result.current.session).toBeNull();
+    expect(discardScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, fresh.id);
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.onError).toHaveBeenCalledWith(expect.not.stringMatching(/lease/i));
   });
 
   it("picks the same edit back up when its lock lapsed, without a raw error (D-Y3)", async () => {
@@ -90,7 +121,7 @@ describe("useScheduleEditSession", () => {
   it("recoverLease resumes the open edit and hands back the live session", async () => {
     const hook = renderEditSession();
     await startEditing(hook);
-    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session });
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: { ...session } });
 
     let recovered: ScheduleEditSession | null = null;
     await act(async () => { recovered = await hook.result.current.recoverLease(); });

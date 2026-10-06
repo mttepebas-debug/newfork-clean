@@ -2043,6 +2043,10 @@ describe("App", () => {
     render(<App />);
     await signInAs("owner");
     await openPublishedScheduleEditor();
+    // The server resumes the same person's own edit.
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...makeDefaultEditAcquireResult(), status: "resumed",
+    });
     fireEvent.click(
       await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
     );
@@ -2078,6 +2082,41 @@ describe("App", () => {
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
     expect(window.location.search).toContain(`draft=${draftId}`);
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves edit mode for good on Discard; the reload resume does not take the lock again", async () => {
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+
+    await waitFor(() => expect(window.location.search).toContain("mode=preview"));
+    await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 50)); });
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Discard" })).toBeNull();
+  });
+
+  it("says the edit could not be reconnected, never the raw lock text, when the lock lapses twice", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    const lapsed = () => new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired" });
+    saveMock.mockRejectedValueOnce(lapsed());
+    saveMock.mockRejectedValueOnce(lapsed());
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...makeDefaultEditAcquireResult(), status: "resumed",
+    });
+    fireEvent.click(await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }));
+    fireEvent.change(screen.getByLabelText("Draft name"), { target: { value: "Twice lapsed" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+
+    expect(await screen.findByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/edit lease expired/i)).toBeNull();
   });
 
   it("confirms backend draft name conflicts before overwriting the owned draft", async () => {

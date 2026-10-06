@@ -1166,9 +1166,11 @@ export function SchedulePage({
   // the server resumes their own open edit of this week.
   const resumeAttemptRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!isEditMode || session || !context || !query.data) return;
+    if (!isEditMode || !context || !query.data) return;
     const attempt = `${context.workspace.id}:${query.data.week_start}:${activeDraftId ?? ""}`;
-    if (resumeAttemptRef.current === attempt) return;
+    // An edit this page already held (then saved or discarded) is never taken again here.
+    if (session) resumeAttemptRef.current = attempt;
+    if (session || resumeAttemptRef.current === attempt) return;
     resumeAttemptRef.current = attempt;
     if (pastWeek || !gates.edit) {
       setScheduleMode("preview", activeDraftId);
@@ -1313,8 +1315,8 @@ export function SchedulePage({
     } catch (error) {
       if (currentMutationContext.current !== savingContext) return null;
       // D-Y3: the lock lapsed (sleep, lost network); pick the same edit back up and save once more.
-      if (isEditLeaseExpired(error) && !leaseRecovered) {
-        const live = await recoverLease();
+      if (isEditLeaseExpired(error)) {
+        const live = leaseRecovered ? null : await recoverLease();
         if (!live) throw new Error("Your edit could not be reconnected. Check your connection and try again.");
         return saveDraftWithRetroactivePrompt(name, target, acknowledgePastEdits, live, true);
       }

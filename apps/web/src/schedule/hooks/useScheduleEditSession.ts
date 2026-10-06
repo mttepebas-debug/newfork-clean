@@ -61,13 +61,15 @@ export function useScheduleEditSession({
   const handleIdleActivity = useCallback(() => {
     lastActivityRef.current = Date.now();
   }, []);
+  // Reads the session through the ref: a heartbeat's fresh copy must not re-arm the idle timer.
   const handleIdleTimeout = useCallback(() => {
-    if (!workspaceId || !session) return;
-    void discardScheduleEditSession(workspaceId, session.id).finally(() => {
+    const current = sessionRef.current;
+    if (!workspaceId || !current) return;
+    void discardScheduleEditSession(workspaceId, current.id).finally(() => {
       setSession(null);
       callbacks.current.onEnded();
     });
-  }, [workspaceId, session]);
+  }, [workspaceId]);
   const { secondsRemaining: idleSeconds, keepAlive: keepEditing } = useEditIdleTimer({
     enabled: Boolean(session),
     onActivity: handleIdleActivity,
@@ -128,25 +130,48 @@ export function useScheduleEditSession({
   );
 
   /**
-   * D-Y3: a lapsed lock is picked back up by the same person (the server resumes
-   * their own edit). Null when it went to someone else or could not be reached.
+   * D-Y3: a lapsed lock is picked back up by the same person: the server resumes
+   * their own open edit. Anything else (someone else holds it, or the server
+   * opened a new edit because the old one was closed) ends this edit rather
+   * than passing a different session off as the same work. Null when not resumed.
    */
   const recoverLease = useCallback(async (): Promise<ScheduleEditSession | null> => {
     const current = sessionRef.current;
-    if (!current) return null;
-    const result = await acquire(
-      current.week_start,
-      current.source_kind,
-      current.source_draft_id,
-      current.location_ids,
-    );
-    if (result?.status === "conflict") {
-      setSession(null);
-      callbacks.current.onEnded();
+    if (!workspaceId || !current) return null;
+    let result: ScheduleEditAcquireResult;
+    try {
+      result = await acquireScheduleEditSession(
+        workspaceId,
+        current.week_start,
+        current.source_kind,
+        current.source_draft_id,
+        current.location_ids,
+      );
+    } catch {
       return null;
     }
-    return result?.session ?? null;
-  }, [acquire]);
+    if (sessionRef.current?.id !== current.id) return null;
+    if (result.status === "resumed" && result.session.id === current.id) {
+      setSession(result.session);
+      return result.session;
+    }
+    if (result.status === "conflict") {
+      setConflict({
+        sessionId: result.session_id,
+        holderName: result.holder_name,
+        lastHeartbeat: result.last_heartbeat,
+        expiresAt: result.expires_at,
+        source: current.source_kind,
+        draftId: current.source_draft_id,
+      });
+    } else {
+      void discardScheduleEditSession(workspaceId, result.session.id).catch(() => undefined);
+      callbacks.current.onError("Your edit ended while you were away. Open the schedule again to keep editing.");
+    }
+    setSession(null);
+    callbacks.current.onEnded();
+    return null;
+  }, [workspaceId]);
 
   // The lock lives as long as the idle countdown: it may not lapse while
   // Keep editing? still offers to keep the work.
