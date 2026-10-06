@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(4);
+select plan(5);
 
 -- Isolated records; the standard local seed supplies the workspace and its owner.
 -- Location A is published from a named draft, location B by a publication with no draft.
@@ -52,6 +52,13 @@ select is(
   (select fields->>'source_draft_name' from status_for where location_id='db000000-0000-4000-8000-000000000001'),
   'Spring week final',
   'a deleted (archived) draft keeps the name it was published under'
+);
+
+-- The menu says who published, never "Unknown" (BL-371).
+select is(
+  (select fields->>'published_by_name' from status_for where location_id='db000000-0000-4000-8000-000000000002'),
+  'Local Owner',
+  'the status names who published the location'
 );
 
 select * from finish();
