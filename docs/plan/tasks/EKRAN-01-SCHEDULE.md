@@ -473,5 +473,7 @@ iki kez "iki inceleme yeter" dedi (ILKELER P06 kanıtları); öneri buna göre t
 - (b) Her zaman bir sonraki hafta.
 - (c) Kuralı kuran seçsin ("this week" / "next week") — anti-hedef "ayar cehennemi"ne dikkat.
 
+**Cevaplar (2026-10-06, KARARLAR "Schedule"):** Soru 1 (a) koordinatör kararı (KK-162) · Soru 2 (a) Mert: üç renk · Soru 3 (a) koordinatör kararı (P22) · Soru 4 (a) koordinatör kararı: BL-362 Requests turuna · Soru 5 (a) Mert: kaydedilen adım geri alınmaz · Soru 6 Mert: kapsam dışı, BL-437'ye not (W-3 başlamadan koordinatör yeniden açar).
+
 ## Notes / Result
 (Dilim kapandıkça: dilim, commit, kanıt; 37 kalem tablosu; ölçülmedi maddelerinin hükümleri.)

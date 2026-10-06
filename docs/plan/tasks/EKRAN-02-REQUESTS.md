@@ -336,5 +336,7 @@ Puan ölçütü ILERLEME "Büyüklük ölçütü" (FB-6.4'ün 19 puanı A1 5 + A
 - `--theme-border-control` (`styles.css:85`, `#aeb9b4`) hem Schedule üst çubuğunun kenarı (EKRAN-01 BL-450, `styles.css:3571`) hem liste sayfalarının arama / açılır liste kenarı (`list-page.css:91,113`). EKRAN-01 OZET'i BL-450 için "3:1'e koyulaştırılır" kararını koordinatör kararı olarak yazdı (ILKELER P19); EKRAN-02'de Mert aynı renk için "ikisini yan yana göster" dedi (K-S7, P04).
 - Öneri: token değişikliği S7'nin varyant seçimine bağlanır ve tek yerde (C3) yapılır; EKRAN-01'in BL-450'si ya C3'ü bekler ya da ayrı bir token alır. Karar koordinatörün (iki ekranın sırası); Mert'e giden S7 varyantında Schedule üst çubuğu da gösterilir.
 
+**Cevaplar (2026-10-06, KARARLAR "Schedule → Requests"):** Q1 (a) Mert: Shift changes "View" kalır · Q2 (a) koordinatör kararı (KK-162): iki sekme açık, kararlar kapalı · Q3 koordinatör kararı (KK-162): kenar rengi token'ı tek yerde (C3) değişir, S7 varyant seçimine bağlı; varyantta Schedule üst çubuğu da gösterilir; EKRAN-01 BL-450 C3'ü bekler.
+
 ## Notes / Result
 - 2026-10-05: görev dosyası yazıldı (`nf-planlama`, dal `task/ekran-02-taskfile`). Ölçümler yukarıdaki Tazelik satırında. Koordinatöre: (1) `FB-6.4.md`'nin eşlenmesi (yukarıdaki 13 madde), (2) OZET §3'teki 31 yeni bulgunun BL numaraları ve eşleme tablosuna işlenmesi, (3) Q1–Q3.

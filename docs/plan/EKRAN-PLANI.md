@@ -58,6 +58,16 @@ Dört görev:
 - tam kapı yeşil, main CI yeşil;
 - masaüstü ve telefon ekran görüntüsü alındı.
 
+## Uygulama düzeni: hatlar (koordinatör kararı 2026-10-06, KK-161; Mert "en doğru kararı sen ver")
+Schedule ve Requests paralel yürür, ama işler ekrana göre değil **hatta** göre dağılır. Bilgisayar tek (aynı anda en çok iki ağır iş) ve iki ekranın veri işi aynı yetki ve test dosyalarına dokunuyor.
+- **Veri hattı** (tek `nf-db` oturumu): iki ekranın veri ve güvenlik dilimleri önem sırasıyla — EKRAN-02 A0 (talep kaybı) → EKRAN-01 DB-1a → DB-1b → DB-2 → DB-3 → EKRAN-02 A1 → A2 → A3 → EKRAN-01 DB-4 → DB-1c (W-1b gerektirirse).
+- **Web hattı** (tek `nf-backend` oturumu): EKRAN-01 W-1a → BE-1 → BE-2 → W-1b (DB-1b + DB-2 bitince) → EKRAN-02 B1 (A1–A3 bitince) → B2.
+- **Arayüz hattı** (tek `nf-arayuz` oturumu): önce iki ekranın görsel varyantları (EKRAN-01 VAR, EKRAN-02 V; main'e girmez), sonra DRAG ölçümü, sonra bağımlılıkları açılan görsel dilimler (EKRAN-01 W-3/W-2/W-4/W-5, EKRAN-02 C1/C2/C3).
+- **Planlama** (havuz oturumu, kısa işler): FB-6.4.md eşlemesi, keşfin YENİ bulgularına BL numarası, sonraki ekranların keşfi.
+- Görsel varyantlar kodlamayla aynı gün başlar, görsel dilimlerden önce Mert'e gösterilir (P04); veri ve oturum dilimleri seçimi beklemez.
+- Ölçüt: ilk dilimlerden sonra veri hattı darboğazsa ve makine boşsa ikinci veri oturumu açılır; ölçmeden açılmaz.
+- Sıcak dosyalar (aynı anda tek oturum): `SchedulePage.tsx`, `styles.css`, yetki matrisi / katalog test dosyaları, `ci-green.txt`. Oturum başlamadan panoya bakar.
+
 ## Ekranlar ve durum
 Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 

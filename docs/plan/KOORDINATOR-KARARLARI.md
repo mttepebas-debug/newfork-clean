@@ -1457,3 +1457,26 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** dosyaları silen commit.
 - **Durum:** görev dosyaları onay bekliyor; dilimler Mert'le plan konuşmasından sonra oturumlara verilecek.
 - **Mert:** silmeyi seçti; görev dosyalarını henüz görmedi.
+
+### KK-161 (2026-10-06) Schedule ve Requests paralel, hatlara göre; varyantlar kodlamayla aynı gün başlar
+- **Karar (ne):** Mert iki soruyu koordinatöre bıraktı ("en doğru kararı sen ver"). (1) İki ekran paralel yürür, işler ekrana göre değil hatta göre dağılır: veri hattı (tek `nf-db`), web hattı (tek `nf-backend`), arayüz hattı (tek `nf-arayuz`), planlama (havuz). İlk veri işi EKRAN-02 A0 (Requests "Older" sayfalaması talep kaybediyor). (2) Görsel varyantlar kodlamayla aynı gün başlar ve görsel dilimlerden önce Mert'e gösterilir; veri ve oturum dilimleri seçimi beklemez.
+- **Nerede:** `docs/plan/EKRAN-PLANI.md` "Uygulama düzeni: hatlar".
+- **Ne zaman:** 2026-10-06 ~02:00Z.
+- **Ne için:** iki veri oturumu aynı yetki/test dosyalarında ve tek makinede birbirini keser; varyantı kodun önüne koymak veri hattını boşuna bekletir, arkasına koymak görsel dilimde yeniden iş doğurur.
+- **Uygulamada etkisi:** ekranda henüz yok; üç hat oturumu açılır.
+- **Dayanak:** Mert'in açık devri; CLAUDE.md §3 (en çok iki ağır iş), §4 (aynı dosyaya iki rol); ILKELER P04, P17 (hızlanmak işi bölmektir).
+- **Geri alma:** ikinci veri oturumu ölçüme göre açılır; hat düzeni EKRAN-PLANI'da değişir.
+- **Durum:** yürürlükte.
+- **Mert:** kararı koordinatöre bıraktı; raporda gösterildi.
+
+### KK-162 (2026-10-06) Görev dosyalarındaki dört soru sorulmadan cevaplandı
+- **Karar (ne):** KARARLAR / ILKELER birebir kapsadığı için: EKRAN-01 Soru 1 (kilidi düşenin işi "Auto-save" adlı ayrı taslak, ikisine tek satır, bildirim yok), Soru 3 (Replace iki tık, ilk tıkta etki yazısı; P22), Soru 4 (BL-362 Requests turuna; P18); EKRAN-02 Q2 (belgesi eksik müdür iki sekmeyi görür, kararlar kapalı), Q3 (kenar rengi token'ı tek yerde C3'te, S7 seçimine bağlı; BL-450 C3'ü bekler). Mert'e dört soru soruldu: üç renk (a), Undo kaydedileni geri almaz (a), Shift changes View kalır (a); e-posta haftası "kapsam dışı" (BL-437 notu).
+- **Nerede:** KARARLAR "Schedule" ve "Schedule → Requests"; iki görev dosyasının soru bölümü; BL-437.
+- **Ne zaman:** 2026-10-06 ~02:00Z.
+- **Ne için:** Mert'e yalnız kuralın cevaplamadığı soruları sormak (CLAUDE.md §13).
+- **Uygulamada etkisi:** henüz yok; ilgili dilimlere girer.
+- **Dayanak:** yukarıda her biri için.
+- **Geri alma:** KARARLAR satırları; Mert ters çevirirse "ters çevrildi".
+- **Durum:** kayda geçti.
+- **Mert:** raporda "Senin yerine verdiğim kararlar" tablosunda gördü.
+- **Açık nokta:** e-posta haftası "kapsam dışı" cevabının yalnız hafta kuralını mı yoksa Export e-posta panelini (W-3) de mi kapsadığı; W-3 başlamadan Mert'e tek satırla sorulur.
