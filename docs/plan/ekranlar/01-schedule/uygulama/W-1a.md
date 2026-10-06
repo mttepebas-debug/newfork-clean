@@ -129,10 +129,21 @@ Reviewed `d7318c87` (HEAD) against `origin/main`, apps/web only. I could not run
 No memory note from me.
 
 ### Tur 2 — KARAR: ONAY @aee42edf
-I read `git diff d7318c87..aee42edf` through the final files and ran nothing (no shell). I found no remaining blocking issues.
-- Finding 1: fixed — `recoverLease` calls `acquireScheduleEditSession` directly (no shared request ref, so the overlap minor is gone), accepts only `resumed` with the same session id; `conflict` opens the lock dialog; any other status discards the fresh session and ends the edit with a plain sentence; stale answers are dropped.
-- Finding 2: fixed — the resume effect records the attempt key on every render where a session exists; a discarded, saved or idle-ended edit is never re-acquired.
-- Finding 3: fixed — a second lease expiry throws the plain "could not be reconnected" message.
-- Finding 4: fixed — `handleIdleTimeout` reads `sessionRef` and depends only on `[workspaceId]`; only real user activity resets the timer.
+KARAR: ONAY @aee42edf
 
-Two small points, neither blocking, both already on main: a heartbeat answer arriving after Discard can still `setSession` the old session; lease-expiry 409s on shift mutations (not Save) still show the raw text through `mutate`. I did not independently run the 958-test Schedule suite you quoted.
+I read `git diff d7318c87..aee42edf` through the final files and ran nothing (no shell). I found no remaining blocking issues.
+
+- **Finding 1 (new session passed off as the old one):** fixed. `recoverLease` (`useScheduleEditSession.ts:138-174`) now calls `acquireScheduleEditSession` directly, so it no longer shares the acquire request ref, and the overlap minor goes away too. It accepts only `status === "resumed"` with the same session id.
+  - A `conflict` result opens the lock dialog.
+  - Any other status discards the fresh session and ends the edit with a plain sentence through `onError`.
+  - `sessionRef.current?.id !== current.id` drops stale answers.
+  - On the Save path, the outer save then returns silently because the context changed. The "ended while you were away" message and the lock dialog still show.
+- **Finding 2 (Discard re-taking the lock):** fixed. The resume effect (`SchedulePage.tsx:1168-1181`) records the attempt key on every render where a session exists. A discarded, saved or idle-ended edit is therefore never re-acquired. That covers the case where `isEditMode` is briefly still true with `session === null`.
+- **Finding 3 (raw "edit lease expired" text):** fixed. `SchedulePage.tsx:1318-1321` handles a second lease expiry with `leaseRecovered` true by throwing the plain "could not be reconnected" message. The raw text no longer reaches `getSaveDraftFailureMessage` on the Save path.
+- **Finding 4 (heartbeat re-arming the idle timer):** fixed. `handleIdleTimeout` (lines 65-72) reads `sessionRef` and depends only on `[workspaceId]`. A heartbeat's new session copy no longer re-arms `useEditIdleTimer`. `onActivity` and `onTimeout` are now stable, so only real user activity resets it.
+
+Two small points, neither blocking, both already on main before this branch:
+- A heartbeat answer that arrives after Discard can still call `setSession` with the old session.
+- Lease-expiry 409s on shift mutations (not Save) still show the raw text through `mutate`. This is outside the Save path you scoped.
+
+I did not independently run the 958-test Schedule suite you quoted.
