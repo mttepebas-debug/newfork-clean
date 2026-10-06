@@ -3268,6 +3268,7 @@ function scheduleServiceMock(
     }),
     discardSession: async () => undefined,
     autosaveSession: async () => ({ status: "nothing_to_save", draft_id: null, draft_name: null }),
+    undoSessionStep: async () => scheduleSessionMockModel(),
     deleteDraft: async (_actorUserId, _workspaceId, draftId) => ({
       status: "deleted",
       draft_id: draftId,

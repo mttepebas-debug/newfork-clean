@@ -27,6 +27,7 @@ import {
   deleteScheduleExportSchedule,
   deleteScheduleShift,
   discardScheduleEditSession,
+  undoScheduleEditSessionStep,
   fetchPendingOps,
   fetchScheduleDraftShifts,
   fetchSchedulePublicationStatus,
@@ -635,6 +636,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   saveScheduleDraft: vi.fn(),
   discardScheduleEditSession: vi.fn().mockResolvedValue(undefined),
   autosaveScheduleEditSession: vi.fn().mockResolvedValue({ status: "nothing_to_save", draft_id: null, draft_name: null }),
+  undoScheduleEditSessionStep: vi.fn(),
   previewSchedulePublication: vi.fn(),
   publishScheduleDraft: vi.fn(),
   previewScheduleUnpublish: vi.fn(),
@@ -4255,16 +4257,42 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Delete 2" })).toBeTruthy();
   }, 15_000);
 
+  // S2 (KK-171): with no step on the server to take back, Undo is faded and does nothing.
+  it("keeps Undo faded until the edit has a step to take back", async () => {
+    vi.mocked(undoScheduleEditSessionStep).mockReset();
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    expect((undo as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    expect(undoScheduleEditSessionStep).not.toHaveBeenCalled();
+  });
+
   it("moves shifts with the reference-style pointer drag interaction", async () => {
     const updateMock = vi.mocked(updateScheduleShift);
     const createMock = vi.mocked(createScheduleShift);
     updateMock.mockClear();
     createMock.mockClear();
+    // S2 (KK-171): every write is one step the server can take back.
+    // Like the server, Undo puts back the shifts as they were before the last write.
+    let beforeLastWrite: Awaited<ReturnType<typeof undoScheduleEditSessionStep>> | null = null;
+    const undoMock = vi.mocked(undoScheduleEditSessionStep);
+    undoMock.mockReset();
+    undoMock.mockImplementation(async (_workspaceId, currentSession) => ({
+      ...currentSession,
+      shifts: beforeLastWrite?.shifts ?? currentSession.shifts,
+      revision: currentSession.revision + 1,
+      undo_depth: Math.max(0, (currentSession.undo_depth ?? 0) - 1),
+    }));
     updateMock.mockImplementation(
-      async (_workspaceId, currentSession, shiftId, _revision, input) => ({
+      async (_workspaceId, currentSession, shiftId, _revision, input) => (beforeLastWrite = currentSession, {
         ...currentSession,
         dirty: true,
         revision: currentSession.revision + 1,
+        undo_depth: (currentSession.undo_depth ?? 0) + 1,
         shifts: currentSession.shifts.map((shift) =>
           shift.id === shiftId
             ? { ...shift, ...input, revision: shift.revision + 1 }
@@ -4273,10 +4301,11 @@ describe("App", () => {
       }),
     );
     createMock.mockImplementation(
-      async (_workspaceId, currentSession, input) => ({
+      async (_workspaceId, currentSession, input) => (beforeLastWrite = currentSession, {
         ...currentSession,
         dirty: true,
         revision: currentSession.revision + 1,
+        undo_depth: (currentSession.undo_depth ?? 0) + 1,
         shifts: [
           ...currentSession.shifts,
           {
@@ -4408,6 +4437,9 @@ describe("App", () => {
       await Promise.resolve();
     });
     expect(await screen.findByText("Last edit undone")).toBeTruthy();
+    // The step goes back on the server, from the revision the drag left.
+    expect(undoMock).toHaveBeenCalledTimes(1);
+    expect(undoMock.mock.calls[0]?.[1]).toMatchObject({ undo_depth: 1 });
 
     const copyShiftBadge = await waitFor(() => {
       const badge = container.querySelector<HTMLElement>(

@@ -209,6 +209,12 @@ export interface ScheduleReadService {
     workspaceId: string,
     sessionId: string,
   ): Promise<ScheduleEditAutosaveResult>;
+  undoSessionStep(input: {
+    actorUserId: string;
+    workspaceId: string;
+    sessionId: string;
+    expectedSessionRevision: number;
+  }): Promise<ScheduleEditSession>;
   deleteDraft(
     actorUserId: string,
     workspaceId: string,
@@ -702,6 +708,26 @@ export function createScheduleReadService(options: {
         },
       );
       if (error) throw rpcFailure(error);
+    },
+    async undoSessionStep(input) {
+      const { data, error } = await client.rpc(
+        "undo_schedule_edit_session_step_service",
+        {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_session_id: input.sessionId,
+          expected_session_revision: input.expectedSessionRevision,
+        },
+      );
+      if (error) throw rpcFailure(error);
+      const session = scheduleEditSessionSchema.parse(data);
+      await broadcastScheduleInvalidation(client, {
+        workspace_id: input.workspaceId,
+        week_start: session.week_start,
+        location_ids: scheduleSessionLocationIds(session),
+        targets: ["draft_shifts", "pending_ops", "edit_lock"],
+      });
+      return session;
     },
     async autosaveSession(actorUserId, workspaceId, sessionId) {
       const { data, error } = await client.rpc(

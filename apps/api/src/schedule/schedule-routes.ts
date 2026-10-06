@@ -939,6 +939,31 @@ export function registerScheduleRoutes(
     }
   });
 
+  // S2 (KK-171): Undo takes the edit's last step back on the server.
+  app.post("/schedule/edit-sessions/:sessionId/undo", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
+    const params = activeSessionParamsSchema.safeParse(request.params);
+    const body = mutationRevisionSchema.safeParse(request.body);
+    if (!params.success || !body.success)
+      return reply.status(400).send({ error: "Valid undo required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Schedule service is not configured" });
+    try {
+      return reply.send(
+        await options.service.undoSessionStep({
+          actorUserId: context.userId,
+          workspaceId: context.workspace.id,
+          sessionId: params.data.sessionId,
+          expectedSessionRevision: body.data.expected_session_revision,
+        }),
+      );
+    } catch (error) {
+      return scheduleError(reply, error);
+    }
+  });
+
   app.post("/schedule/edit-sessions/:sessionId/auto-fill-preview", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");
     const params = activeSessionParamsSchema.safeParse(request.params);

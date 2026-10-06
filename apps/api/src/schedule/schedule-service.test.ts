@@ -212,6 +212,37 @@ describe("createScheduleReadService read model", () => {
 });
 
 // S1: when the idle countdown ends the edit is kept as an "Auto-save" draft.
+// S2 (KK-171): Undo takes the edit's last step back on the server.
+describe("createScheduleReadService undo", () => {
+  it("asks the server to take the last step back and tells the edit's locations", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { ...scheduleSessionModel(), revision: 4, undo_depth: 2 }, error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    const session = await service.undoSessionStep({
+      actorUserId, workspaceId, sessionId: "87000000-0000-4000-8000-000000000001", expectedSessionRevision: 3,
+    });
+
+    expect(session.undo_depth).toBe(2);
+    expect(mocks.rpc).toHaveBeenCalledWith("undo_schedule_edit_session_step_service", {
+      actor_user_id: actorUserId, target_workspace_id: workspaceId,
+      target_session_id: "87000000-0000-4000-8000-000000000001", expected_session_revision: 3,
+    });
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ targets: ["draft_shifts", "pending_ops", "edit_lock"] }),
+    }));
+  });
+
+  it("keeps the database's reason when there is nothing to undo", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "nothing to undo", hint: "schedule.nothing_to_undo" } });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    await expect(service.undoSessionStep({
+      actorUserId, workspaceId, sessionId: "87000000-0000-4000-8000-000000000001", expectedSessionRevision: 3,
+    })).rejects.toMatchObject({ statusCode: 409, reason: "schedule.nothing_to_undo" });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+});
+
 describe("createScheduleReadService autosave", () => {
   it("keeps an idle edit as a draft and tells that draft's locations", async () => {
     mocks.rpc.mockResolvedValueOnce({

@@ -66,6 +66,8 @@ import {
   deleteScheduleShift,
   deleteScheduleDraft,
   discardScheduleEditSession,
+  undoScheduleEditSessionStep,
+  isNothingToUndo,
   deleteScheduleTemplate,
   isEditLeaseExpired,
   draftsKey,
@@ -282,7 +284,6 @@ export function SchedulePage({
     onEnded: () => {
       setScheduleMode("preview", null);
       updateSelectedIds([]);
-      clearUndoStack();
     },
     // S1: the idle edit became an "Auto-save" draft; the person finds it in the draft menu.
     onAutoSaved: (draftName) => {
@@ -384,34 +385,6 @@ export function SchedulePage({
       }, durationMs);
     }
   }, []);
-  const [undoSnapshot, setUndoSnapshot] = useState<ScheduleEditSession | null>(
-    null,
-  );
-  const undoSnapshotRef = useRef<ScheduleEditSession | null>(null);
-  const undoStackRef = useRef<ScheduleEditSession[]>([]);
-  const setUndoSnapshotState = useCallback(
-    (next: ScheduleEditSession | null) => {
-      undoSnapshotRef.current = next;
-      setUndoSnapshot(next);
-    },
-    [],
-  );
-  const clearUndoStack = useCallback(() => {
-    undoStackRef.current = [];
-    setUndoSnapshotState(null);
-  }, [setUndoSnapshotState]);
-  const rememberUndoSnapshot = useCallback(
-    (snapshot: ScheduleEditSession) => {
-      undoStackRef.current = [...undoStackRef.current, snapshot].slice(-25);
-      setUndoSnapshotState(snapshot);
-    },
-    [setUndoSnapshotState],
-  );
-  const popUndoSnapshot = useCallback(() => {
-    const snapshot = undoStackRef.current.pop() ?? null;
-    setUndoSnapshotState(undoStackRef.current.at(-1) ?? null);
-    return snapshot;
-  }, [setUndoSnapshotState]);
   const [shiftMenu, setShiftMenu] = useState<ShiftContextMenuTarget | null>(
     null,
   );
@@ -1158,7 +1131,6 @@ export function SchedulePage({
         ? result.session.location_ids
         : null,
     );
-    clearUndoStack();
     return result.session;
   };
 
@@ -1207,7 +1179,6 @@ export function SchedulePage({
     setSearch(nextSearch, { replace: true });
     setPendingOps([]);
     updateSelectedIds([]);
-    clearUndoStack();
     setClipboard(null);
     setPasteArmed(false);
     setPasteModeNotice(null);
@@ -1263,7 +1234,6 @@ export function SchedulePage({
       setScheduleMode("preview", saved.id);
       setPendingOps([]);
       updateSelectedIds([]);
-      clearUndoStack();
       invalidateScheduleCaches(saved.id);
       void query.refetch();
       return saved;
@@ -1425,12 +1395,10 @@ export function SchedulePage({
     throwOnError = false,
   ) => {
     setOperationError(null);
-    const previousSession = session;
     try {
       const next = await runWithLease(action);
       if (throwOnError && mutationContext !== currentMutationContext.current) return null;
       if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
-      if (previousSession) rememberUndoSnapshot(previousSession);
       setSession(next);
       return next;
     } catch (error) {
@@ -1571,15 +1539,38 @@ export function SchedulePage({
     });
   };
 
-  const undoLastEdit = () => {
-    const snapshot = popUndoSnapshot();
-    if (!snapshot) return;
-    setSession(snapshot);
-    setPendingOps([]);
-    toast.success("Last edit undone", {
-      dedupeKey: "schedule-undo-last-edit",
-      description: "The draft returned to the previous edit state.",
-    });
+  // S2 (KK-171): Undo takes the last step back on the server; steps saved with
+  // Save draft are not undone (the save closes the edit).
+  const canUndo = (gridEditSession?.undo_depth ?? 0) > 0;
+  const undoLastEdit = async () => {
+    if (!context || !session || !canUndo) return;
+    try {
+      const next = await mutate(
+        () => undoScheduleEditSessionStep(context.workspace.id, session),
+        undefined,
+        true,
+      );
+      if (!next) return;
+      void queryClient.invalidateQueries({
+        queryKey: ["schedule-pending-ops", context.workspace.id, next.week_start],
+      });
+      toast.success("Last edit undone", {
+        dedupeKey: "schedule-undo-last-edit",
+        description: "The draft returned to the previous edit state.",
+      });
+    } catch (error) {
+      // Nothing left on the server: the button simply fades.
+      if (isNothingToUndo(error)) {
+        setSession((current) => (current ? { ...current, undo_depth: 0 } : current));
+        return;
+      }
+      const caught = error as Error;
+      setOperationError(caught.message);
+      toast.error("Last edit could not be undone", {
+        dedupeKey: "schedule-undo-failed",
+        description: formatScheduleConflictMessage(caught.message),
+      });
+    }
   };
 
   const deleteShiftById = async (id: string) => {
@@ -1687,12 +1678,12 @@ export function SchedulePage({
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key.toLowerCase() === "z" &&
-        undoSnapshotRef.current
+        canUndo
       ) {
         if (!gridEditSession) return;
         event.preventDefault();
         event.stopPropagation();
-        undoLastEdit();
+        void undoLastEdit();
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
@@ -1746,7 +1737,7 @@ export function SchedulePage({
     gridEditSession,
     togglePasteMode,
     undoLastEdit,
-    undoSnapshot,
+    canUndo,
     visibleSelectableShiftIds,
   ]);
 
@@ -2596,8 +2587,8 @@ export function SchedulePage({
               <Trash2 size={15} /> Delete {selectedIds.length}
             </button>
           ) : null}
-          {gridEditSession && undoSnapshot ? (
-            <button type="button" onClick={undoLastEdit}>
+          {gridEditSession ? (
+            <button type="button" disabled={!canUndo} onClick={() => void undoLastEdit()}>
               Undo
             </button>
           ) : null}
@@ -3062,7 +3053,6 @@ export function SchedulePage({
                 dedupeKey: "schedule-approved-assignments-restored",
                 description: "Your notes and other edits are preserved. Review the draft, then save when ready.",
               });
-              clearUndoStack();
             }}
           />
         )}
@@ -3361,7 +3351,6 @@ export function SchedulePage({
                         description: templateAppliedDescription(templateName, result),
                       },
                     );
-                    rememberUndoSnapshot(gridEditSession);
                     setSession(result.session);
                     closeTemplates();
                   })
@@ -3380,7 +3369,7 @@ export function SchedulePage({
         />
       ) : null}
       {defaultHoursOpen && context && gridEditSession ? <DefaultHoursReviewDialog key={`${context.workspace.id}:${gridEditSession.id}`} workspaceId={context.workspace.id} session={gridEditSession} model={model} initialSelectedIds={selectedIds}
-        onClose={() => setDefaultHoursOpen(false)} onApplied={result => { rememberUndoSnapshot(gridEditSession); setSession(result); }} /> : null}
+        onClose={() => setDefaultHoursOpen(false)} onApplied={result => setSession(result)} /> : null}
       {autoFill && context && gridEditSession ? (
         <AutoFillReviewOverlay
           preview={autoFill}
@@ -3392,7 +3381,6 @@ export function SchedulePage({
               autoFill,
               assignments,
             ).then((result) => {
-              rememberUndoSnapshot(gridEditSession);
               setSession(result.session);
               if (result.rejected.length)
                 setOperationError(

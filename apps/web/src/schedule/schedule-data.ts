@@ -97,6 +97,11 @@ function editConflictCode(error: unknown): unknown {
     : undefined;
 }
 
+/** S2: the server had no step left to take back. */
+export function isNothingToUndo(error: unknown): boolean {
+  return requestReason(error) === "schedule.nothing_to_undo";
+}
+
 /** DB-1a: the authorization core said no (scope shrank, or the target is unknown). */
 export function isScheduleAccessRefused(error: unknown): boolean {
   const reason = requestReason(error);
@@ -400,6 +405,19 @@ export async function deleteScheduleDraft(
     }
     throw error;
   }
+}
+
+/** S2 (KK-171): takes this edit's last step back on the server. */
+export async function undoScheduleEditSessionStep(
+  workspaceId: string,
+  session: ScheduleEditSession,
+): Promise<ScheduleEditSession> {
+  return scheduleEditSessionSchema.parse(
+    await activeScheduleRequest(`/schedule/edit-sessions/${session.id}/undo`, {
+      method: "POST",
+      body: JSON.stringify({ expected_session_revision: session.revision }),
+    }),
+  );
 }
 
 /** S1: keeps an idle edit as an "Auto-save" draft and closes it. */

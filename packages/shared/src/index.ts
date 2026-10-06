@@ -1610,6 +1610,8 @@ export const scheduleEditSessionSchema = z.object({
   // The locations this edit covers; saving replaces its draft only there.
   location_ids: z.array(z.string().uuid()).min(1),
   shifts: z.array(scheduleEditableShiftSchema),
+  // S2 (KK-171): steps Undo can still take back on the server, 0-25.
+  undo_depth: z.coerce.number().int().min(0).max(25).optional(),
 });
 export type ScheduleEditSession = z.infer<typeof scheduleEditSessionSchema>;
 
