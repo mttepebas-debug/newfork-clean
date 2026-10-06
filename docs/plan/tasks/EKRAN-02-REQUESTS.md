@@ -4,6 +4,8 @@ Session: -   Branch: task/ekran-02-<dilim>   Worktree: newfork-wt/ekran-02-<dili
 Reviewer: dilim başına (aşağıdaki tablo). R3 dilimleri (A1, A2, A3, B1) `nf-guvenlik` zorunlu; ekran değişen dilimler (C1, C2, C3) `nf-gorsel-qa`. Ultrareview satırı aşağıda.
 Risk sınıfı (toplam): **R3** — yetki çekirdeği, eski yardımcıların silinmesi, katalog sayaçları, "hayır" sözleşmesi (DELEGASYON §3; sınıf en riskli parçaya göre).
 
+**Güncelleme 2026-10-06 (`nf-planlama`, koordinatörün görevi; `origin/main` `48de63c5`): Requests tek tablo + sayfalama.** Mert'in 2026-10-06 kararları (KARARLAR "Schedule → Requests" → "Requests tek tablo…", Genel → "Liste sayfalarının ortak dili" → Sayfalama, main `3526a364`; KK-173; artifact https://claude.ai/artifact/R22hrq2pwAET22CKT6K1BE Version 2; arayüz raporu `.newfork-inbox/done/20261006T103122-nf-arayuz-arayuz-var-art-list-2.md`) ekranın iki sekmeli yapısını kaldırıyor. Değişen: Ürün kurallarına K-S8–K-S10; V'nin durumu; yeni A4 + B3 (Closed birleşik okuma); B1, B2, C1, C2, C3'ün kapsamı; dilim tablosu; Done when 10–11. A0 main'de (`666ff634`, `fcbb8e24`); A1 ve A2 değişmez; A3'ten R2-12 çıktı (A4'e). Metin silinmedi, değişen yerde "Güncelleme 2026-10-06" notu var.
+
 **Kaynaklar:** keşif özeti `docs/plan/ekranlar/02-requests/OZET.md` (§1 tek liste R2-01…R2-58, §2 prototip taşı/bırak, §6 plan düzeltmeleri, §7 sınırda, §10 Mert'in seçimleri); raporlar `A-backlog-prototip.md`, `B-guvenlik.md`, `C-gorsel.md`, `D-kod-davranis.md`; KARARLAR "Schedule → Requests" (7 satır, 2026-10-05), "Takas, bırakılan vardiya (pickup), cover — uygunluk", "İzin (time off)", "Müsaitlik" M6 / M8 ve "Tasarım seçimleri"; KK-158; mevcut `docs/plan/tasks/FB-6.4.md`.
 
 **Tazelik 2026-10-05 (`origin/main` `9bb4373a`): geçerli.** Keşif aynı gün `e929abc7` üzerinde yapıldı. O tarihten bu yana `apps/ packages/ supabase/ api/ e2e/` altında commit yok; son kod commit'i `021da39d` (2026-10-05 11:57 -07:00, keşiften önce) — `git log origin/main -1 -- apps packages supabase api e2e` (koordinatör de ölçtü). Bu dosya için elle doğrulananlar: `grep -rn "permissions.includes" apps/web/src | wc -l` = 21; `schedule-requests-routes.ts`'te 2; `ci-not-green.txt`'te 2 dosya (`weekly_exchange_changed_terms` dahil); `--theme-border-control: #aeb9b4` (`apps/web/src/styles.css:85`) hem Schedule üst çubuğunda (`styles.css:3571`) hem liste sayfalarında (`views/list-page.css:91,113`) kullanılıyor. **Uyarı:** `FB-6.4.md`'deki dosya:satır kanıtları 2026-10-03'te (`af488295`) ölçüldü; arada AVAIL-002 (19 commit, `ff422433`) main'e girdi. Çekirdek iddialar 2026-10-05 keşfinde yeniden ölçüldü (altı fonksiyon / 13 çağrı, hint'siz 42501 sayıları, `eligibility` yok — A "Kanıt listesi"), ama satır numaraları kaymış olabilir; A1 ve A2 işe başlarken kendi ölçümünü yapar.
@@ -25,6 +27,18 @@ Mert'in seçimleri ve KARARLAR satırları (OZET §10, KARARLAR "Schedule → Re
 - **K-S6 Ortak liste dili:** Requests bu turda liste sayfalarının ortak diline geçer; Time off ve Shift changes ortak iskelete gelir (KK-158; KARARLAR Genel "Liste sayfalarının ortak dili"). Eski dilde kalan Employees, Settings → Locations, Jobs, Acknowledgements, Shift catalog kendi turlarında geçer.
 - **K-S7 Arama kutusu / açılır liste kenarı:** görsel karar bekliyor; Mert "ikisini yan yana göster" dedi (bugünkü 1,86:1 ve 3:1). Varyant dilimi.
 - **KK-158'in kabul ettiği §6 önerileri:** yıkıcı düğmeler (Decline application, Close search) kırmızı iki tık (R2-04, CLAUDE.md §9); yol / dinlenme engel değil işaret (R2-02, KARARLAR "Yol ve dinlenme süresi"); gerçek çakışmada kabul düşer (R2-16, ILKELER P24); tek karar tek bildirim (R2-13); izin kısaltma bildirimi izni onaylayan herkese (R2-23); metin düzeltmeleri (R2-41, R2-42, R2-45; P21); geçmiş izinde Revoke gizli (R2-43, P25); "Discard request decision?" sarmalayıcısı silinir, Shorten kapanırken sormaz (R2-47, P26); BL-508 bayat.
+- **K-S8 Tek tablo (Mert, 2026-10-06; KARARLAR "Schedule → Requests" → "Requests tek tablo; tarih süzgeci yerine Request type"):** Time off ve vardiya değişiklikleri iki sekme / iki katman yerine **tek tabloda**.
+  - Sekme satırı tek: **Needs review** (karar sende: sana düşen bekleyen izin + müdür onayı bekleyen swap / cover / open shift) · **In progress** (başkasının ya da çalışanların cevabı bekleniyor: "Finding cover", "Awaiting response", oyunu vermiş müdürün çok lokasyonlu izni) · **Closed**.
+  - Süzgeç satırı: Location · **Request type** (çoklu seçim: Time off, Swap, Cover, Open shift) · arama; sağ uçta düğme yok (Requests'te oluşturma eylemi yok). Kişinin okuma izni olmayan tür süzgeçte hiç görünmez.
+  - Sütunlar: Employee (altında türe özgü ikinci satır: açılan vardiya sayısı, takasın karşılığı, aday sayısı, "Cancels approved time off"), Type (renkli işaret + metin), When, Decide by, Status, Review.
+  - Sıra: açık sekmeler Decide by'a göre (en yakın üstte); Closed en yeni karar üstte.
+  - Örnek: Kadıköy müdürü Ayşe Requests'i açar; Ali'nin Salı izni ile Emre'nin Cuma takası Needs review'da alt alta; yalnız izinleri görmek için Request type → Time off.
+  - Reddedilen: iki katlı sekmeler ("shared design'a ters").
+- **K-S9 Sayfalama (Mert, 2026-10-06; KARARLAR Genel → "Liste sayfalarının ortak dili" → Sayfalama):** tablonun altında satır sayısı 25 / 50 / 100 (varsayılan 50) ve sayfa numaraları; üç sekmenin üçünde. Reddedilen: "Load older", tarih aralığı, "son 30 gün". A0'ın "Newest / Older" düğmeleri bu turda sayfa numaralarına döner.
+- **K-S10 Küçük kararlar (KK-173, koordinatör, 2026-10-06):** Open shift dördüncü tür (müdür onayı bekleyen açık vardiya başka yerde görünmüyor, P09); tür adı "Cover" (bugünkü ad); Open shift satırında kişi yuvarlağı yerine boş vardiya işareti; When tek tarih biçimi, yıl yalnız bu yıldan farklıysa ("Tue, Oct 14 · 5–11 PM", "Mar 3, 2027"); Closed en yeni karar üstte; **açık sekmeler istemcide iki listeyi birleştirir, Closed sunucuda tek okuma yolu** (yetki `requests.read` ve `exchange.read` ayrı uygulanır).
+- **K-S2'nin Shift changes kısmı ve Shift changes "View"i cevaplandı** (Açık sorular Q1 (a), Q2 (a)); tek tabloda: belgesi eksik müdür bütün türleri görür, hiçbirine karar veremez; özel roldeki Shift changes "View"i kalır (o rol swap / cover / open shift satırlarını görür, Review'da karar düğmesi yok).
+- **K-S7 seçildi:** `--theme-border-control` = `#7f8c86` (KARARLAR "Schedule → Requests", Mert 2026-10-06). **G1 seçildi:** karar veremeyen müdürde Approve / Decline soluk ve kapalı, altında kilitli neden satırı.
+
 - **Takas uygunluğu** (KARARLAR "Takas… uygunluk"; FB-6.4 D1–D7): lokasyon + iş ataması ve çift vardiya engel; kendi müsaitliği ve onaylı izni rızayla ezilir (kabulde "emin misin?", onayda "kendi rızasıyla"); cover listesinde onaylı izinli yok, müsait olmayan etiketli var; pickup / cover'ı vardiyanın lokasyonu, iki lokasyonlu takası ikisi onaylar; kimse kendini, eş rütbe birbirini onaylamaz; kısıtlı kişi takas açamaz / başvuramaz (owner muaf).
 - **Müsaitlik tasarım seçimleri** (KARARLAR "Müsaitlik → Tasarım seçimleri", Mert 2026-10-04): takas kabulünde çalışanın "emin misin?"i **S4-E** (günün çizelgesi), yöneticinin onayında rıza **S5-B** ("IF APPROVED" bölümünde amber rıza satırı). FB-6.4'te ayrıca varyant hazırlanmaz.
 
@@ -118,6 +132,7 @@ Backlog'dan ekranın içinde kalan ve yukarıda bulguya bağlı olmayanlar: BL-0
 Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; çalışan ekran dahil), main'e girer; sunum sonra (`nf-arayuz`) yeni `origin/main`'den. Aynı dosyaya iki oturum aynı anda konmaz.
 
 ### V — Görsel varyantlar (`nf-arayuz`; R1)
+- **Güncelleme 2026-10-06 — durum:** G1 ve S7 seçildi (KARARLAR "Schedule → Requests", Mert ~09:10Z). **G2 ve G3 açık:** Mert yazılı seçenekleri anlamadı; senaryoyla yeniden gösterilecek (KARARLAR aynı bölüm). **G4 düştü:** ayrı Shift changes sekmesi kalmadığı için "Shift changes'in Time off denetimini alması" sorusu yok (K-S8). Liste düzeni ayrıca seçildi (Sistem 1, tek tablo; artifact Version 2) — V'de yeniden varyant yok.
 - **Ne:** gerçek uygulamada, DEV'de query param ile (ör. `?variant=g1-a`) açılan varyantlar; Mert ekranda seçer (ILKELER P04). Dal `task/ekran-02-varyant`, **main'e girmez**; seçilen varyant C1 / C2 / C3'te yazılır, ötekiler hiç main'e girmez.
   - **G1:** müdürün onaylayamadığı vakada Approve / Confirm transfer kapalı mı, gizli mi (Shift changes → vaka). İki varyant.
   - **G2:** onay ekranında yol / dinlenme işaretinin ("Travel 30 min, rule 45 min", "Rest 8 h, rule 10 h") görünümü ve yeri; S5-B'nin "IF APPROVED" bölümüyle birlikte. 2–3 varyant.
@@ -130,6 +145,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Test plan:** yok (main'e girmiyor). Reviewer: yok; koordinatör ekran görüntülerini okur.
 
 ### A0 — Time off sayfalaması (`nf-db`; R2) — ilk iş
+- **Güncelleme 2026-10-06:** main'de (`666ff634`, `fcbb8e24`; arşiv `952017a4`). İmleçli "Newest / Older" yolu K-S9 ile ekrandan kalkar; Closed A4 + B3'ün birleşik okumasına geçince bu yolun Closed kullanımı silinir (ikiz sistem yok, CLAUDE.md §9). Açık sekmeler aynı fonksiyonu sayfasız okursa (B1 ölçer) fonksiyon kalır, imleç parametresi kalkar.
 - **Ne:** R2-03. `get_schedule_requests_service`'in imleci (`supabase/migrations/20261003040000_time_off_forgets_location_and_parts.sql:915-925`: `limit target_limit + 1` içinden `min(created_at)`, sonraki sayfa `< cursor`) her sayfa sınırında bir satırı atlıyor. Düzeltme yeni migration'la (uygulanmış migration değişmez). `leave: high / do: safe`.
 - **Touches:** `supabase/migrations/<yeni>.sql`, `supabase/tests/schedule_requests.test.sql` (ya da yeni `schedule_requests_paging.test.sql`), `supabase/tests/ci-green.txt`.
 - **Bağımlılık:** yok. A1–A3'ten önce, ayrı küçük dal ve ayrı main gönderimi (Older'daki kayıp sessiz veri kaybı; P09).
@@ -154,6 +170,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Reviewer:** `nf-guvenlik` zorunlu (A1 ile tek ONAY).
 
 ### A3 — Time off kuralları ve okuma modeli (`nf-db`; R3: K-S2 ve K-S3 yetki)
+- **Güncelleme 2026-10-06:** (1) **R2-12 (sunucu tarafı sıralama) ve Done when (e) A4'e taşındı:** Closed'un sırası birleşik okumada; açık sekmeler istemcide Decide by'a göre sıralanır (K-S10). (2) Q1 ve Q2 cevaplandı (aşağıda "Cevaplar"): K-S2'nin `exchange.read` istisnası (belgesi eksik müdür swap / cover / open shift satırlarını da okur, karar veremez) bu dilime girer; Shift changes "View"i kalır, dokunulmaz. (3) Geri kalanı değişmez.
 - **Ne:**
   - R2-08 / K-S2: belgesi eksik müdür `requests.read` ile Time off (ve Q2'nin cevabına göre Shift changes) okur; `time_off.decide` kapalı kalır. Kuralın KARARLAR "Kısıtlı kişi" satırıyla ilişkisi: S2 daha yeni ve özel (P22), yalnız Requests okumasını açar.
   - R2-15 / K-S3: `schedule.time_off_requests.read` özel rolde ayrı seviye olarak kalkar; görme `…manage` ile gelir. Eski rollerde kalan "View" satırları silinir (P01; geriye uyumluluk dalı yok).
@@ -172,7 +189,17 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Test plan:** kırmızı pgTAP → migration (rollback denemesi) → `test:db`.
 - **Reviewer:** `nf-guvenlik` zorunlu.
 
+### A4 — Closed birleşik okuma fonksiyonu (`nf-db`; R3: iki yetki kapısı, okuma) — yeni 2026-10-06
+- **Ne:** K-S9 + K-S10. Closed tek okuma yolu: kapanmış izin talepleri ve kapanmış vardiya değişiklikleri (swap, cover, open shift) **tek sırada** (en yeni karar üstte), **toplam sayı** ve **sayfa** (25 / 50 / 100, sayfa numarası → offset ya da sıralama anahtarı; teknik seçim `nf-db`, P19), sunucuda **tür süzgeci** (Time off / Swap / Cover / Open shift), **lokasyon süzgeci** ve **arama** (kişi adı, tarih metni). Yetki iki kapıyı ayrı uygular: izin satırı `requests.read` kuralıyla (KARARLAR "İzin" S1: kapanmış izni yalnız ona karar verebilenler ve sahibi görür; S4, S5), vardiya değişikliği satırı `exchange.read` kuralıyla; izni olmayan türün satırı ve sayısı dönmez (bilinmeyen tür ile izinsiz tür aynı cevabı alır). Neden DB'de: iki ayrı sayfalı kaynağı istemci ya da API doğru birleştiremez (sayfa sınırları kayar, sayaç tutmaz — arayüz raporu (b)); bugün vardiya değişiklikleri adreste `from` / `to` ile bugün → +6 hafta penceresinde okunuyor, kapanmış eski vaka hiç gelmiyor.
+- Ayrıca R2-12 (A3'ten): Closed'un sırası sayfalar boyunca kesintisiz.
+- **Touches:** `supabase/migrations/<yeni>.sql` (okuma `*_service` fonksiyonu, yetki çekirdeği üzerinden; `authz_catalog` / `authorization_coverage` sınıflaması), yeni `supabase/tests/requests_closed_unified_read.test.sql`, `authorization_matrix.test.sql`, `ci-green.txt`.
+- **Bağımlılık:** A2 + A3 main'de (aynı matris / katalog dosyaları; A3'ün K-S2 istisnası bu fonksiyonda da geçerli olmalı).
+- **Done when:** (a) 120 kapanmış talep (60 izin + 60 vardiya değişikliği, aynı anlı iki karar dahil) 50'lik sayfalarda birleşince 120 farklı satır, en yeni karar üstte, sayı 120 (pgTAP; önce kırmızı); (b) tür süzgeci ve sayı uyumlu (Time off seçilince 60); (c) eş rütbe müdür kendi karar veremeyeceği kapanmış izni görmez, sahibi görür (KARARLAR "İzin" S1; pgTAP); (d) `exchange.read` olmayan özel rolde vardiya satırı ve sayısı 0; (e) belgesi eksik müdür okur (K-S2); (f) `authz_catalog` sayaçları yalnız azaldı ya da yeni fonksiyon sınıflandı; (g) okuma süresi ölçülü (1.000 kapanmış talepte ilk sayfa; sonuç Notes'a).
+- **Test plan:** kırmızı pgTAP → migration (rollback denemesi) → `test:db` (`db.lock`).
+- **Reviewer:** `nf-guvenlik` zorunlu (yeni okuma yetki yüzeyi).
+
 ### B1 — FB-6.4 A3 + Requests API, shared ve web veri katmanı (`nf-backend`; R3: "hayır" sözleşmesi, izin anahtarları)
+- **Güncelleme 2026-10-06 (K-S8–K-S10) — eklenen:** (1) **açık sekmelerin birleşik verisi:** web veri katmanında iki kaynak (`GET …/schedule/requests` izin, `GET …/shift-exchanges` vardiya değişikliği; `requests-data.ts:50`, `exchange-data.ts:62`) tek hook'ta birleşir, Needs review / In progress ayrımı ve Decide by sırası veri katmanında; izni olmayan tür hiç istenmez. Açık listeler sayfasız ve tam okunur (B1 ölçer: bugünkü izin ucu imleçli; açık listede tavan gerekirse A4'ün fonksiyonu açık sekmelere de genişletilir, bu dosyada yazılır). İstemci sayfalaması (25 / 50 / 100) birleşik listede. (2) **Request type** süzgeci: `exchange_kind` `swap`, `cover`, `open_pickup` (`packages/shared`) + izin; ekran adları "Swap", "Cover", "Open shift", "Time off"; çoklu seçim adreste tutulur. (3) R2-09 derin bağlantı (`?request=<id>`) doğru sekmeyi (Needs review / In progress / Closed) seçer. (4) Müdür listesi artık `ShiftExchangeHub` listesini çizmez; vardiya değişikliği inceleme çekmecesi kalır. Çalışanın Shift Hub'ı (ekran 13) aynı bileşeni kullanıyorsa ona dokunulmaz (regresyon C2'de bakılır).
 - **Ne:** `FB-6.4.md` A3.1–A3.6 (A3.5 yukarıdaki madde 6 ile). Bulgular: R2-21 (BL-363, BL-176, ikinci istek yardımcısı tek yardımcıya iner ve 401'de çıkışa yönlendirir, üye olmayana 404), R2-40 (BL-375, `isNoAccess` + ortak `NoAccessState`), R2-32 (BL-200), R2-10 (arama / filtre değişince önceki veri ekranda kalır, `placeholderData`; arama uzunluk sınırı şemada ve ekran hata yazısına düşmez), R2-20 (aynı kök, Shift changes), R2-11'in veri yarısı (hata türü: erişim yok / bağlantı / sunucu), R2-15'in shared + ekran yarısı (`packages/shared/src/role-permissions.ts`'te Time off yalnız "Manage"; Settings → Roles'ta "View" seçeneği kalkar), R2-46 (izin açıklaması), R2-55'in API / shared yarısı (BL-411 eşlemesi, BL-509: yalnız gerçek "bayat" 409, BL-517 shared şeması, BL-518 saat dilimi zorunlu, BL-110 shared `time_unknown`).
 - **Touches:** `apps/api/src/schedule/schedule-requests-routes.ts`, `schedule-requests-service.ts`, `apps/api/src/shift-exchanges/**`, `apps/api/src/time-off/time-off-voting-service.ts`, `time-off-shorten-*.ts`, `apps/api/src/app.test.ts` (Requests satırları), `packages/shared/src/shift-exchanges.ts`, `employee-hub.ts`, `time-off.ts`, `role-permissions.ts`, `apps/web/src/schedule/requests-data.ts`, `apps/web/src/employee-hub/shift-exchanges/exchange-data.ts`, `apps/web/src/auth/**`, `apps/web/src/lib/no-access.ts`, `apps/web/src/views/ScheduleRequestsPage.tsx` (yalnız kapı ve sorgu), `ShiftExchangeHub.tsx` (yalnız veri ve `isNoAccess`), `apps/web/src/settings/RolesSettingsPage.tsx` (yalnız seçenek listesi).
 - **Bağımlılık:** A1 + A2 + A3 main'de (A3.2 shared şeması motorun şeklini izler; K-S3 DB'de önce kalkar).
@@ -181,6 +208,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Reviewer:** `nf-guvenlik` zorunlu (A3 ayrı ONAY, `FB-6.4.md`).
 
 ### B2 — Requests'in çalışan davranışları (`nf-backend`; R2)
+- **Güncelleme 2026-10-06:** (1) R2-12 (sıralama parametresi) B3'e taşındı. (2) R2-18 tek tabloda: oyunu vermiş müdürün vakası Needs review'dan In progress'e geçer. (3) R2-09'daki "outside your list filters" bandı tek tabloda süzgeçlere göre (Location / Request type / arama) yazılır; tarih penceresi kalktığı için "Try another date range" metni yok.
 - **Ne:** ekran mantığı (görünüm değil):
   - R2-09: bildirimden `?request=<id>` ile gelen kapanmış talep, doğru kuyruğu (Closed) seçip çekmeceyi açar; görülemeyen talepte Shift changes'teki "outside your list filters" bandının Time off karşılığı.
   - R2-08 / K-S2 ekranı: `apps/web/src/documents/DocumentAccessRoute.tsx`'te Requests için yönlendirme istisnası; Approve / Deny kapalı, yanında "belgen eksik" notu (metin C1'de cilalanır).
@@ -196,7 +224,17 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Test plan:** web vitest; tam kapı.
 - **Reviewer:** tek bağımsız inceleme (`nf-guvenlik` ya da `/code-review`; DocumentAccessRoute istisnası yönlendirmeyi değiştirdiği için `nf-guvenlik` önerilir).
 
+### B3 — Closed birleşik okuma ucu ve sayfalama (`nf-backend`; R3: yetki sözleşmesi) — yeni 2026-10-06
+- **Ne:** A4'ün fonksiyonunu çağıran tek API ucu (ör. `GET /v1/workspaces/:w/requests/closed?page=&page_size=&types=&location=&q=`; ad `nf-backend`'in, P19), zod şeması (`packages/shared`: satır şekli iki türü taşır, `page_size` yalnız 25 / 50 / 100), "hayır" sözleşmesi (üye olmayan 404, yetkisiz 403 + `authz.*`), web hook'u (sayfa / boyut / süzgeç adreste; süzgeç değişince sayfa 1). Closed sekmesi bu uca bağlanır; izin ucunun imleçli Closed yolu ve vardiya değişikliklerinin `from` / `to` penceresi müdür ekranından kalkar (ikiz yol bırakılmaz; çalışanın kendi listeleri ekran 11–13'ün, dokunulmaz).
+- Ayrıca R2-12 (B2'den): sıralama parametresi.
+- **Touches:** `apps/api/src/schedule/**` ya da yeni `apps/api/src/requests/**`, `apps/api/src/app.test.ts` (Requests satırları), `packages/shared/src/<requests>.ts`, `apps/web/src/schedule/requests-data.ts`, `apps/web/src/views/ScheduleRequestsPage.tsx` (yalnız sorgu ve sayfa durumu).
+- **Bağımlılık:** A4 main'de; B1 main'de (aynı dosyalar).
+- **Done when:** (a) API vitest: 404 / 403 / `page_size` 30 reddi / tür süzgeci; (b) web vitest: Closed'da 120 satırda "1 2 3" (50'lik), boyut 100 seçilince "1 2", süzgeç değişince sayfa 1; (c) müdür ekranında vardiya değişikliği `from` / `to` parametresi 0 (grep).
+- **Test plan:** API + web vitest; tam kapı.
+- **Reviewer:** `nf-guvenlik` (A4 ile tek ONAY olabilir).
+
 ### C1 — Time off görünümü ve ekran geneli (`nf-arayuz`; R1/R2)
+- **Güncelleme 2026-10-06 — C1 artık "Requests tek tablo + ekran geneli":** K-S8 sekme satırı, süzgeç satırı (Location · Request type çoklu · arama; sağ uç boş), sütunlar, Type işaretleri, Open shift boş vardiya işareti, When tek tarih biçimi (K-S10), sayfalama görünümü (K-S9; ortak bileşen C3'te), boş hâller (her sekme için), K-S7 kenar rengi; ölçüler KARARLAR Genel "Liste sayfalarının ortak dili" (Sistem 1). Time off çekmecesinin bulguları aşağıdaki gibi kalır. R2-48'in sekme kısmı (ok tuşu) tek sekme satırına uygulanır. **R2-27'nin Shift changes listesi kısmı buraya taşındı** (başlık satırı, arama simgesi, boş hâlde tek çerçeve — tek tabloda tek kez); "Try another date range" metni ve G4 düştü. Touches'a `apps/web/src/views/list-page.css` (ortak değer değişmez) eklenir; `ShiftExchangeHub.tsx` dokunulmaz (C2'nin).
 - **Ne:** K-S6 Time off kısmı (R2-29 BL-604: `list-page` iskeleti; ölçüler KARARLAR Genel "Liste sayfalarının ortak dili"), R2-27'nin 30 px kayması, R2-26 (BL-658 (2)), R2-24 (BL-658 (1), R85), R2-25 (BL-658 (3)), R2-05 (BL-657), R2-35 (BL-513), R2-37 (Time off çipi), R2-38 (BL-256 + BL-399), R2-28 Time off kısmı (Activity, onay saati, Shorten "GMT+3"; workspace 12/24 ayarı), R2-41 (BL-653 + "View-only access" yerine "karar verilecek bir şey yok" anlamı), R2-42 etiketi, R2-54 (BL-398), R2-11 görünüm (başlık ve sekmeler kalır, "Try again"), R2-48 (`aria-pressed`, satır adı, sekmeler ok tuşuyla — BL-602), R2-50 (başarısız tek tık onayında odak), G3 seçimi (R2-52), K-S2 notunun metni.
 - **Touches:** `apps/web/src/views/ScheduleRequestsPage.tsx` (görünüm), `requests-catalog.css`, `list-page.css` (yalnız Requests'e özgü ek gerekirse; ortak değer değişmez), `TimeOffShorten.tsx`, `TimeOffProgressPanel.tsx`, `apps/web/src/employee-hub/time-off.css`, `apps/web/src/styles.css` (yalnız `.request-*` satırları, ör. `:13037-13041`).
 - **Bağımlılık:** B2 main'de (aynı dosya `ScheduleRequestsPage.tsx`), V'de G3 seçildi. C2 ile paralel olabilir (dosyalar ayrık; `styles.css`'te ikisi farklı satırlar — yine de aynı anda yazılmaz, sırayla gönderilir).
@@ -205,6 +243,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Reviewer:** `nf-gorsel-qa` (ekran teslim edilen şey); güvenlik incelemesi yok (veri / yetki değişmiyor).
 
 ### C2 — Shift changes görünümü + FB-6.4 B (`nf-arayuz`; R2: ekran Shift Hub ile ortak)
+- **Güncelleme 2026-10-06 — C2 artık "vardiya değişikliği incelemesi + FB-6.4 B":** müdürün ayrı Shift changes listesi kalmadı (K-S8); C2 tek tablodaki Review'dan açılan vardiya değişikliği çekmecesini / penceresini ve Shift Hub'daki FB-6.4 B ekranlarını (S4-E, S5-B, G1 kapalı düğme + neden satırı, G2 seçilince işaret) kapsar. R2-27'nin liste kısmı C1'e gitti; Shift changes ile Time off'un başlık / arama / sekme yüksekliği karşılaştırması düştü (tek tablo). Çekmece kısmı (X 17×17, R2-28 saat biçimi, R2-04 kırmızı iki tık, BL-397, R2-36, R2-49, R2-51) aynen kalır. Bağımlılık: C1 main'de (Review düğmesinin açtığı yer C1'in tablosunda).
 - **Ne:** `FB-6.4.md` B.1–B.4 (madde 8: kabulde S4-E, onayda S5-B; G1 ve G2 seçimleri), R2-02 / R2-17 işaretleri, R2-04 (Decline application ve Close search kırmızı iki tık, `ConfirmButton` / `useConfirmClick`), R2-27 Shift changes kısmı (BL-658 (4)(5)(6)(7): Time off denetimi, arama simgesi, başlık satırı, X 17×17, boş hâlde tek çerçeve, "Try another date range" metni; G4 teyidi), K-S6 Shift changes kısmı, R2-28 Shift changes kısmı (`ExchangeShiftCard.tsx:44` sabit `"12h"`, ham ISO tarih; R52, R59), R2-36 (BL-400), R2-37 Shift changes çipi, R2-47 CSS kısmı (4 karanlık tema kuralı, 30 ham renk), R2-49, R2-51 (BL-661), BL-397 (rıza metni tek görünüm), BL-110 hub metni ("Unconfirmed"), `EmployeeDashboard.tsx:325` ölü çapa.
 - **Touches:** `apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx` (görünüm), `shift-exchanges.css`, `ExchangeShiftCard.tsx`, `apps/web/src/views/EmployeeDashboard.tsx` (yalnız çapa).
 - **Bağımlılık:** B2 main'de (aynı dosya), V'de G1 + G2 seçildi.
@@ -213,6 +252,7 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 - **Reviewer:** `nf-gorsel-qa` zorunlu; ekran yetki sonucunu gösteriyor (G1) ama yetki kodu değişmiyor → güvenlik incelemesi yok.
 
 ### C3 — Ortak bileşenler (`nf-arayuz`; R2) — EKRAN-01 ile sırayla
+- **Güncelleme 2026-10-06:** (1) **Ortak sayfalama bileşeni** (K-S9: 25 / 50 / 100, varsayılan 50, sayfa numaraları; ölçüler arayüz hattı ortak dile göre koyar) burada bir kez yazılır; Requests ilk kullanıcısıdır. Öteki liste sayfaları (Employees → EKRAN-03; Notifications, Announcements, Important Dates, Settings → Documents, Employees → Documents, Availability) aynı bileşeni kendi turlarında alır — hangisinin önce yazacağı koordinatörün sırası (EKRAN-03 aynı anda yürüyorsa bileşeni ilk yazan dilim sahibidir). (2) S7 seçildi (`#7f8c86`); token değişikliği C3'te, Schedule üst çubuğu ve bütün liste sayfaları birlikte (KARARLAR; Q3 cevabı). C1'den önce yapılabilir (C1 bileşeni kullanır): **sıra C3 → C1 → C2**.
 - **Ne:** R2-06 (BL-656: `ConfirmDialog` kapanınca odak açan düğmeye döner; Esc önce pencereyi, sonra çekmeceyi kapatır), BL-580 (`ConfirmDialog` telefonda 8 px kayma; sınırda, Schedule'da da var), R2-31 (BL-515: `CatalogDrawer` açıkken toast tıklanır ve okunur), R2-39 (BL-663: sıralı sütun oku hep görünür — Settings katalog listeleri de değişir), R2-57 (BL-589: `.app-confirm h2` 850/900), R2-30 / K-S7'nin seçimi (BL-600 + BL-255: `--theme-border-control` ve beyaz düğme kenarı).
 - **Ortak değer kuralı:** sıralı sütun oku ve kenar rengi ortak değerdir. Önce kural KARARLAR'a yazılır (koordinatör), değişen öteki ekranlar adıyla söylenir: oku → Settings → Locations, Jobs, Acknowledgements, Shift catalog, Employees; kenar → bütün liste sayfaları ve Schedule üst çubuğu (aynı token, `styles.css:85`, `:3571`). Uyuşmayan ekranları düzeltmeden önce sorulur (bu dilimde yalnız token değişir; ekranlar zaten token'ı okuyor).
 - **Touches:** `apps/web/src/shell/ConfirmDialog.tsx`, `apps/web/src/settings/CatalogDrawer.tsx`, `apps/web/src/views/CatalogSortButton.tsx`, `apps/web/src/styles.css` (`:85`, `:1298-1310`, `:7361`, `:7394`), `packages/ui/**` (beyaz düğme kenarı orada ise).
@@ -245,6 +285,20 @@ Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce (`nf-db`, `nf-backend`; 
 | D e2e | `nf-test` | R2 | C2 | `supabase/test-support/builder.sql` (gerekirse) | 3 |
 | **Toplam** | | **R3** | | | **36** |
 
+**Güncelleme 2026-10-06 — eklenen satırlar ve sıra:**
+
+| Dilim | Rol | Sınıf | Bağımlılık | EKRAN-01 ile ortak dosya | Büyüklük (puan) |
+|---|---|---|---|---|---|
+| A0 sayfalama | `nf-db` | R2 | — | — | 1 (**main'de**, `666ff634`) |
+| A4 Closed birleşik okuma | `nf-db` | R3 | A2 + A3 | `authorization_matrix`, `authz_catalog`, `ci-green.txt` | 3 |
+| B3 Closed ucu + sayfalama | `nf-backend` | R3 | A4 + B1 | yok | 2 |
+| C1 tek tablo + ekran geneli | `nf-arayuz` | R2 (önceki R1/R2) | B2, B3, C3 | `styles.css` | 4 (önceki 3) |
+| C2 inceleme + FB-6.4 B | `nf-arayuz` | R2 | C1 | yok | 2 (önceki 3; liste kısmı C1'e) |
+| C3 ortak bileşenler + sayfalama | `nf-arayuz` | R2 | EKRAN-01 sırası | `ConfirmDialog.tsx`, `styles.css`, `packages/ui/**` | 3 (önceki 2) |
+| **Yeni toplam** | | **R3** | | | **42** (36 + A4 3 + B3 2 + C1 1 − C2 1 + C3 1) |
+
+Yeni sıra: `nf-db` hattı A1 → A2 → A3 → **A4**; `nf-backend` hattı B1 → B2 → **B3**; `nf-arayuz` hattı **C3 → C1 → C2** (C3 sayfalama bileşenini getirir; C1 tabloyu B3'ün Closed ucuna bağlı çizer; C2 Review çekmecesi C1'in tablosundan açılır); D C2'den sonra. V'nin kalan işi G2 + G3 (C1 / C2 bunları bekler, C3 beklemez).
+
 Puan ölçütü ILERLEME "Büyüklük ölçütü" (FB-6.4'ün 19 puanı A1 5 + A2 5 + A3 3 + B 3 + C 3 burada A1, A2, B1, C2, D'ye dağıldı). Takvim tahmini: paralel iki hatla (`nf-db` hattı ve V) ~2,5–3 kişi-hafta.
 
 **Paralellik:** V ve A0 hemen başlar. `nf-db` hattı (A0 → A1 → A2 → A3) tek sırada (aynı test dosyaları). B1 → B2 tek sırada. C1 ile C2 aynı anda yürüyebilir (ayrı dosyalar), ama main'e sırayla gider. C3, EKRAN-01'le ortak dosyalar yüzünden sıraya girer.
@@ -273,7 +327,7 @@ Puan ölçütü ILERLEME "Büyüklük ölçütü" (FB-6.4'ün 19 puanı A1 5 + A
 9. **BL-508** bayat (KK-158) ve **BL-041** şemsiye: kayıt işi, koordinatörün.
 
 ## Done when (ekranın tamamı)
-1. A0, A1, A2, A3, B1, B2, C1, C2, C3, D dilimlerinin her birinin Done when'i kanıtıyla bu dosyanın Notes / Result'ında (komut + sonuç, sha).
+1. A0, A1, A2, A3, A4, B1, B2, B3, C1, C2, C3, D dilimlerinin her birinin Done when'i kanıtıyla bu dosyanın Notes / Result'ında (komut + sonuç, sha).
 2. OZET §1'in 58 bulgusunun her biri bir dilimde kapandı ya da Out of scope'ta adıyla duruyor (yukarıdaki eşleme tablosuna "kapandı <sha>" sütunu eklenir).
 3. Prototip "taşı" listesinin 14 maddesi gerçek uygulamada (ekran görüntüsüyle).
 4. Ekranın açık backlog maddeleri (A raporunun 39'u) kapandı ya da Out of scope'ta adıyla; BL-041 kapandı.
@@ -282,6 +336,8 @@ Puan ölçütü ILERLEME "Büyüklük ölçütü" (FB-6.4'ün 19 puanı A1 5 + A
 7. Tam kapı yeşil (lint, typecheck, test, build, `test:db`, etkilenen e2e); main CI check + db + e2e yeşil.
 8. Masaüstü 1440 ve telefon 390 ekran görüntüleri (owner, tek lokasyon müdürü, belgesi eksik müdür) `artifacts/nf-gorsel-qa/EKRAN-02/kapanis/`; `nf-gorsel-qa` ONAY.
 9. Schedule ızgara okuması ≤ 50 ms korundu (`schedule_grid_read_budget`).
+10. **(2026-10-06)** Requests tek tablo: üç sekme, Location · Request type (çoklu) · arama, altı sütun, Open shift satırı; Kadıköy müdürü Ayşe'nin ekranında Ali'nin izni ve Emre'nin takası aynı listede (ekran görüntüsü 1440 + 390); müdür ekranında ikinci liste (Shift changes) yok.
+11. **(2026-10-06)** Sayfalama üç sekmede: 25 / 50 / 100, varsayılan 50, sayfa numaraları; Closed 120 kapanmış talepte "1 2 3" ve tür süzgeciyle sayı tutarlı (A4 pgTAP + B3 vitest + ekran görüntüsü).
 
 ## Touches (özet)
 - `nf-db`: `supabase/migrations/**` (yeni), `supabase/tests/**` (A0–A3'te adıyla), `ci-green.txt`, `ci-not-green.txt`.
@@ -339,4 +395,5 @@ Puan ölçütü ILERLEME "Büyüklük ölçütü" (FB-6.4'ün 19 puanı A1 5 + A
 **Cevaplar (2026-10-06, KARARLAR "Schedule → Requests"):** Q1 (a) Mert: Shift changes "View" kalır · Q2 (a) koordinatör kararı (KK-162): iki sekme açık, kararlar kapalı · Q3 koordinatör kararı (KK-162): kenar rengi token'ı tek yerde (C3) değişir, S7 varyant seçimine bağlı; varyantta Schedule üst çubuğu da gösterilir; EKRAN-01 BL-450 C3'ü bekler.
 
 ## Notes / Result
+- 2026-10-06: tek tablo + sayfalama güncellemesi (`nf-planlama`, koordinatörün görevi; taban `48de63c5`). Claude'un verdiği teknik kararlar (P19): Closed birleşik okuma DB fonksiyonu olarak `nf-db`'de (A4), uç ve şema `nf-backend`'de (B3) — iki sayfalı kaynak API'de doğru birleşmez; ortak sayfalama bileşeni C3'te bir kez; sıra C3 → C1 → C2. Koordinatöre: (1) öteki liste sayfalarının sayfalaması hangi işte (EKRAN-03 Employees'i kendisi alır; Notifications, Announcements, Important Dates, Settings → Documents, Employees → Documents, Availability ekran turları ya da ayrı ortak iş) — sıra koordinatörün; (2) açık sekmelerde tavan gerekip gerekmediği B1'de ölçülür (gerekirse A4 açık sekmelere genişler); (3) G2 + G3 senaryolu yeniden gösterim bekliyor.
 - 2026-10-05: görev dosyası yazıldı (`nf-planlama`, dal `task/ekran-02-taskfile`). Ölçümler yukarıdaki Tazelik satırında. Koordinatöre: (1) `FB-6.4.md`'nin eşlenmesi (yukarıdaki 13 madde), (2) OZET §3'teki 31 yeni bulgunun BL numaraları ve eşleme tablosuna işlenmesi, (3) Q1–Q3.
