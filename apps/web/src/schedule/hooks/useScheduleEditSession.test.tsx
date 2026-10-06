@@ -126,6 +126,49 @@ describe("useScheduleEditSession", () => {
     expect(hook.onRecovered).not.toHaveBeenCalled();
   });
 
+  // A heartbeat answering after the edit ended (Discard, Save) must not bring it back.
+  it("ignores a heartbeat that answers after the edit ended", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    let answer: (value: ScheduleEditSession) => void = () => undefined;
+    vi.mocked(heartbeatScheduleEditSession).mockImplementationOnce(
+      () => new Promise((resolve) => { answer = resolve; }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    act(() => hook.result.current.setSession(null));
+    await act(async () => { answer({ ...session }); });
+
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  // A shift change whose lock lapsed picks the edit back up and tries once more,
+  // never showing the raw lock text (W-1a follow-up).
+  it("retries a change once after picking a lapsed lock back up", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: { ...session } });
+    const action = vi.fn().mockRejectedValueOnce(leaseExpired()).mockResolvedValueOnce("done");
+
+    let result: unknown;
+    await act(async () => { result = await hook.result.current.runWithLease(action); });
+
+    expect(result).toBe("done");
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("says plainly when a change's lock lapses twice", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: { ...session } });
+    const action = vi.fn().mockRejectedValue(leaseExpired());
+
+    let failure: unknown;
+    await act(async () => { failure = await hook.result.current.runWithLease(action).catch((error: unknown) => error); });
+
+    expect((failure as Error).message).toBe("Your edit could not be reconnected. Check your connection and try again.");
+  });
+
   it("closes an edit with nothing to keep quietly", async () => {
     vi.mocked(autosaveScheduleEditSession).mockResolvedValueOnce({ status: "nothing_to_save", draft_id: null, draft_name: null });
     const hook = renderEditSession();

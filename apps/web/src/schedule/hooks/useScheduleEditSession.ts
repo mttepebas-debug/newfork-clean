@@ -14,6 +14,9 @@ import {
 import type { ScheduleMutationContext } from "../lib/scheduleMutationContext";
 import { EDIT_IDLE_TIMEOUT_MS, useEditIdleTimer } from "./useEditIdleTimer";
 
+export const EDIT_NOT_RECONNECTED =
+  "Your edit could not be reconnected. Check your connection and try again.";
+
 export interface ScheduleLockConflict {
   readonly sessionId?: string;
   readonly holderName: string;
@@ -189,6 +192,24 @@ export function useScheduleEditSession({
     return null;
   }, [workspaceId]);
 
+  /**
+   * Runs a change; if its lock lapsed, picks the edit back up and tries once
+   * more. A second lapse reads as a plain sentence, never the raw lock text.
+   */
+  const runWithLease = useCallback(async <T,>(action: () => Promise<T>): Promise<T> => {
+    try {
+      return await action();
+    } catch (error) {
+      if (!isEditLeaseExpired(error) || !(await recoverLease())) throw error;
+    }
+    try {
+      return await action();
+    } catch (error) {
+      if (isEditLeaseExpired(error)) throw new Error(EDIT_NOT_RECONNECTED);
+      throw error;
+    }
+  }, [recoverLease]);
+
   // The lock lives as long as the idle countdown: it may not lapse while
   // Keep editing? still offers to keep the work.
   const sessionId = session?.id;
@@ -198,8 +219,12 @@ export function useScheduleEditSession({
       if (!workspaceId) return;
       if (Date.now() - lastActivityRef.current >= EDIT_IDLE_TIMEOUT_MS) return;
       void heartbeatScheduleEditSession(workspaceId, sessionId)
-        .then(setSession)
+        .then((next) => {
+          // An answer arriving after the edit ended (Discard, Save) does not bring it back.
+          if (sessionRef.current?.id === sessionId) setSession(next);
+        })
         .catch((error: Error) => {
+          if (sessionRef.current?.id !== sessionId) return;
           if (isEditLeaseExpired(error)) void recoverLease();
           else callbacks.current.onError(error.message);
         });
@@ -216,6 +241,7 @@ export function useScheduleEditSession({
     setConflict,
     acquire,
     recoverLease,
+    runWithLease,
     idleSeconds,
     keepEditing,
   };

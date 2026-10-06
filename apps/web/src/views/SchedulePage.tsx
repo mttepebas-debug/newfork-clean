@@ -114,7 +114,7 @@ import {
   EDIT_IDLE_TIMEOUT_MS,
   EDIT_IDLE_WARNING_MS,
 } from "../schedule/hooks/useEditIdleTimer";
-import { useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
+import { EDIT_NOT_RECONNECTED, useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
@@ -272,6 +272,7 @@ export function SchedulePage({
     setConflict,
     acquire: acquireEditSession,
     recoverLease,
+    runWithLease,
     idleSeconds,
     keepEditing,
   } = useScheduleEditSession({
@@ -1328,7 +1329,7 @@ export function SchedulePage({
       // D-Y3: the lock lapsed (sleep, lost network); pick the same edit back up and save once more.
       if (isEditLeaseExpired(error)) {
         const live = leaseRecovered ? null : await recoverLease();
-        if (!live) throw new Error("Your edit could not be reconnected. Check your connection and try again.");
+        if (!live) throw new Error(EDIT_NOT_RECONNECTED);
         return saveDraftWithRetroactivePrompt(name, target, acknowledgePastEdits, live, true);
       }
       const retroactiveError = parseRetroactiveEditError(error);
@@ -1426,7 +1427,7 @@ export function SchedulePage({
     setOperationError(null);
     const previousSession = session;
     try {
-      const next = await action();
+      const next = await runWithLease(action);
       if (throwOnError && mutationContext !== currentMutationContext.current) return null;
       if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
       if (previousSession) rememberUndoSnapshot(previousSession);
