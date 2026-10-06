@@ -35,18 +35,24 @@ export function ListPagination({
   readonly onPageChange: (page: number) => void;
   readonly onPageSizeChange: (size: ListPageSize) => void;
 }) {
-  // ponytail: nothing to choose when the list fits on the smallest page.
-  if (total <= LIST_PAGE_SIZES[0]) return null;
+  // ponytail: nothing to choose when the list fits on the smallest page,
+  // unless the caller is still past page 1 and needs the way back.
+  if (total <= LIST_PAGE_SIZES[0] && page <= 1) return null;
   const last = Math.max(1, Math.ceil(total / pageSize));
-  const first = (page - 1) * pageSize + 1;
-  const end = Math.min(page * pageSize, total);
+  // A shrinking list or a bigger page can leave the caller past the end; show the last page.
+  const current = Math.min(Math.max(page, 1), last);
+  const first = total === 0 ? 0 : (current - 1) * pageSize + 1;
+  const end = Math.min(current * pageSize, total);
   return (
     <nav className="list-pagination" aria-label="Pages">
       <label className="list-pagination-size">
         <span>Rows per page</span>
         <select
           value={pageSize}
-          onChange={(event) => onPageSizeChange(Number(event.target.value) as ListPageSize)}
+          onChange={(event) => {
+            onPageSizeChange(Number(event.target.value) as ListPageSize);
+            onPageChange(1);
+          }}
         >
           {LIST_PAGE_SIZES.map((size) => (
             <option key={size} value={size}>
@@ -60,12 +66,12 @@ export function ListPagination({
         <button
           type="button"
           aria-label="Previous page"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+          disabled={current <= 1}
+          onClick={() => onPageChange(current - 1)}
         >
           <ChevronLeft size={14} aria-hidden />
         </button>
-        {pageNumbers(page, last).map((item, index) =>
+        {pageNumbers(current, last).map((item, index) =>
           item === "gap" ? (
             <span key={`gap-${index}`} className="list-pagination-gap" aria-hidden>
               …
@@ -75,7 +81,7 @@ export function ListPagination({
               key={item}
               type="button"
               aria-label={`Page ${item}`}
-              aria-current={item === page ? "page" : undefined}
+              aria-current={item === current ? "page" : undefined}
               onClick={() => onPageChange(item)}
             >
               {item}
@@ -85,8 +91,8 @@ export function ListPagination({
         <button
           type="button"
           aria-label="Next page"
-          disabled={page >= last}
-          onClick={() => onPageChange(page + 1)}
+          disabled={current >= last}
+          onClick={() => onPageChange(current + 1)}
         >
           <ChevronRight size={14} aria-hidden />
         </button>
