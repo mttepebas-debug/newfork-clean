@@ -80,7 +80,7 @@ Koordinatörün notları: K3 kabul ama metin ekranda görünür — görev dosya
 
 ## 7. C görsel QA (2026-10-06, `20332d46`)
 
-Rapor aynen: `C-gorsel.md` (nf-gorsel-qa, KARAR: DEĞİŞİKLİK İSTE — keşif turu, dal yok; 18 bulgu: orta 8, düşük 10). Görüntüler `artifacts/nf-gorsel-qa/EKRAN-07/` (worktree `newfork-wt/plan-e08`, gitignore'da). Roller owner, tek lokasyon müdürü (Ayşe), çalışan (Ali); 1440 ve 390. Veri yazılmadı: GET dışı istekler tarayıcıda engellendi; tek duyurulu test dünyası okuma cevabı tarayıcıda zenginleştirilerek ölçüldü.
+Rapor aynen: `C-gorsel.md` (nf-gorsel-qa, KARAR: DEĞİŞİKLİK İSTE — keşif turu, dal yok; 18 bulgu: orta 8, düşük 10). Görüntüler `artifacts/nf-gorsel-qa/EKRAN-07/` (ana klasör, gitignore'da). Roller owner, tek lokasyon müdürü (Ayşe), çalışan (Ali); 1440 ve 390. Veri yazılmadı: GET dışı istekler tarayıcıda engellendi; tek duyurulu test dünyası okuma cevabı tarayıcıda zenginleştirilerek ölçüldü.
 - Yeni maddeler: BL-879 (owner ekranı yüklenirken / hatada çalışan görünümünde), BL-880 (arama kutusunda odak görünmüyor; ortak bileşen), BL-881 (telefonda taslak satırı oluşturma tarihini gösteriyor).
 - Var olan maddelere ek kanıt: BL-541 (değişmiş: 13 px, 24 px düğme), BL-864, BL-871, BL-873.
 - Kalan bulgular keşifteki maddeleri ve görev dosyasının C1'ini doğruluyor: Publish beyaz ve tek yeşil düğme yok (A5 / A6), Esc uzun metni sormadan atıyor (A7, P26), ham "Internal server error" (BL-866), telefon (BL-599, BL-542, BL-877), sekmelerde ok tuşu (BL-602), boş hâl (C1), okuma penceresi (BL-876), Home kartı (BL-870), hedef metni (BL-678), Delete / Unpublish (BL-543), sayfalama (BL-868 / BL-787). Öneriler (zevk) raporun "Öneriler" bölümünde, BL almadı.
