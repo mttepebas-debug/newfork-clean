@@ -238,3 +238,5 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-10-06 | BL-447 | birleşti: BL-504 aynı işi taşıyor; açık iş orada | 44e41a54
 2026-10-06 | BL-368 | birleşti: BL-262 aynı işi taşıyor; açık iş orada | 44e41a54
 2026-10-06 | (numarasız) Genel seed/SQL replay hataları | bayat: BL-083 ile aynı kanıt; seed her CI koşusunda hatasız replay ediliyor | 44e41a54
+2026-10-06 | BL-326 | bayat: yayın önizlemesi hedef lokasyon taslakta değilse 22023 ile reddediyor (`39855536`); DB-4 yeşil kilit testi ekler | d311a2c5
+2026-10-06 | BL-537 | bayat: kapanış görünümünde planlayıcı workspace süzgecini itiyor (0,078 ms, 650 lokasyon) | d311a2c5

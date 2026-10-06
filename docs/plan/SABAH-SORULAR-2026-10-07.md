@@ -134,6 +134,19 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - (b) Lansmana yakın; o zamana kadar canlıda e-posta yok.
 - (c) Başka alan adıyla (ör. `newfork.app` alınırsa) — önce alan adı kararı.
 
+### S24. Lokasyonu değişen vardiya yeni lokasyonda yayınlanınca eski lokasyonun yayını ne olur?
+- **Hat:** veri hattı DB-4 (Schedule'da Edit'e girerken çıkan hata, BL-759) kök çözüm için bu cevabı bekliyor; cevaba kadar yalnız kırmızı test yazılır.
+- **Bugün:** Ayşe, Kadıköy'deki Salı vardiyasını taslakta Beşiktaş'a taşır ve yalnız Beşiktaş'ı yayınlar. Vardiya iki yayında birden kalır (Kadıköy'ün eski yayını + Beşiktaş'ın yenisi): çalışan aynı vardiyayı iki yerde görebilir ve Ayşe o haftada Edit'e basınca düzenleme açılmıyor.
+- **(a) Taşınan vardiya yeni lokasyonda yayınlanınca eski lokasyonun yayınından otomatik düşer; yayın önizlemesi bunu bir satırla söyler ("Kadikoy loses 1 shift moved to Besiktas"). (Önerilen)**
+  Zayıf yanı: Kadıköy'ün yayını, Kadıköy hiç yayınlanmadan değişmiş olur; Kadıköy müdürü Can bunu yalnız önizleme satırından ve bildirimden öğrenir.
+  `Dayanak: ILKELER P09 (veri sessizce düşmez, uyarılır) + okuma modelinin bugünkü kuralı ("lokasyonu bugünküyle eşleşen yayın konuşur")`
+- **(b) Eski lokasyonun da yayınlanması istenir: Beşiktaş'ı yayınlarken Kadıköy de seçili olmak zorunda.**
+  Zayıf yanı: Kadıköy'de yarım kalan başka bir taslak varsa Ayşe onu da yayınlamak zorunda kalır; Kadıköy başka müdürünse Ayşe'nin yetkisi yetmeyebilir.
+- **(c) Yalnız Edit'in açılmasını düzelt; vardiya iki yayında kalmaya devam etsin.**
+  Zayıf yanı: en hızlı yol ama kök sorun kalır; çalışan aynı vardiyayı iki lokasyonda görmeye devam eder.
+- (d) Önce sohbette konuşalım.
+- Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 2); BL-759.
+
 ---
 
 ## Tur 3 — Employees ve Availability (veri hattına sırası gelince durdurur)
@@ -272,6 +285,23 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
 | Employees telefon listesi: kart satırı mı, kaydırmalı tablo mu? Telefondaki kesik "No app access", "START D…", "Manage logo" taşması da buna bağlı | https://claude.ai/artifact/CQx4kkeVq1CJF3zGchvkXC | 2026-10-06 ~11:50Z "bekle" dedin; önce masaüstü Sistem 1 bitsin |
 | Availability telefonda: kart satırı / yapışkan sütunlu tablo / "Available on a computer" | **henüz hazır değil** (Availability turunun V dilimi) | varyant hazırlanınca |
 | Workspace başlığı: liste iskeleti / yalnız selamlama + tarih / bugünkü | **henüz hazır değil** (Workspace turunun V dilimi) | varyant hazırlanınca |
+
+---
+
+## Önce sohbette konuşulacak — temel model (ILKELER P18; seçim sohbetten sonra)
+
+### S25. Birden çok lokasyonlu işte "bu hafta" hangi saate göre hesaplansın?
+- **Hat:** veri hattı DB-4 BL-238'in kodunu bu karara bağlı tutuyor; DB-4'ün geri kalanı beklemiyor. Saat dilimi modeli temel model olduğu için önce sohbette konuşulur (P18).
+- **Bugün:** Schedule ve Settings → Important dates "bu hafta"yı UTC'ye göre hesaplıyor. Örnek: Los Angeles şubesinde Pazar 20:00 (UTC'de Pazartesi 03:00) Ayşe gelecek haftayı düzenleyemiyor, ekranda "geçmiş hafta" sayılıyor; her Pazar akşamı CI'da da kırmızı çıkıyor. Koordinatör kararı KK-6 "vardiyanın lokasyonunun saat dilimi" diyor, ama bir düzenleme ya da önemli tarih birden çok lokasyona yayılabiliyor (ör. New York + Los Angeles).
+- **(a) Her lokasyon kendi saatiyle: kayıt ya da yayın, işin dokunduğu her lokasyonda ayrı ayrı "geçmiş mi" diye bakılır; bir lokasyon için hafta bitmişse yalnız o lokasyonun satırı reddedilir ya da uyarılır. (Önerilen)**
+  Zayıf yanı: tek bir kayıt yarı kabul, yarı ret olabilir; ekranın bunu satır satır anlatması gerekir ve 8 sunucu fonksiyonuna dokunur (büyük, R3).
+  `Dayanak: KK-6 ("lokasyonun saat dilimi") + ILKELER P23 (çok lokasyonlu iş baştan kapsanır)`
+- **(b) Workspace'in ana saat dilimi: tek saat, basit.**
+  Zayıf yanı: New York'ta Pazartesi sabahı Los Angeles hâlâ Pazar akşamıyken Los Angeles müdürü haftasını düzenleyemez; aynı sorun başka saatte sürer.
+- **(c) En geç lokasyon: lokasyonlardan biri hâlâ o haftadaysa hafta herkes için açık sayılır.**
+  Zayıf yanı: New York'un kapanmış haftası Los Angeles yüzünden birkaç saat daha düzenlenebilir kalır; "geçmiş hafta kilidi" New York için gecikir.
+- (d) Önce sohbette konuşalım (bu soru için varsayılan yol).
+- Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 1); BL-238, KK-6.
 
 ---
 
