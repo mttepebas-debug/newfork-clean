@@ -194,6 +194,25 @@ describe("ScheduleGrid", () => {
     expect(container.querySelector('[data-availability-kind="time_off"]')).not.toBeNull();
   });
 
+  it.each([
+    ["(a) some clash", [true, false], 1, false],
+    ["(b) none clash", [false, false, false], 0, true],
+    ["(c) all clash", [true, true], 2, false],
+  ] as const)("in a cell with two or more shifts, %s: the \"!\" sits on the clashing cards, else by the name (Mert, 2026-10-06)", (_case, clashes, cardMarks, nameMark) => {
+    const marked = availabilityModel([0], true);
+    const model = { ...marked, shifts: clashes.map((clash, index) => ({
+      ...marked.shifts[0]!,
+      id: `66666666-6666-4666-8666-66666666666${index}`,
+      start_time: `${10 + index * 4}:00`,
+      end_time: `${13 + index * 4}:00`,
+      warning_codes: clash ? ["availability" as const] : [],
+    })) };
+    const { container } = renderGrid({ model, session: editSession(model) });
+    expect(container.querySelectorAll(".schedule-availability-mark-card")).toHaveLength(cardMarks);
+    expect(container.querySelector(".schedule-availability-mark-corner")).toBeNull();
+    expect(container.querySelector(".schedule-availability-mark-name") !== null).toBe(nameMark);
+  });
+
   it("puts the \"!\" in an empty cell's corner, and by the name only once two days are marked (KARARLAR Schedule, 2026-10-06)", () => {
     const one = availabilityModel([4], false);
     const first = renderGrid({ model: one, session: editSession(one) });

@@ -177,6 +177,16 @@ describe("nameCellShowsAvailabilityMark (KARARLAR Schedule, 2026-10-06)", () => 
       { date: "2026-10-23", mark: allDay, shiftCount: 0, clashes: false },
     ])).toBe(true);
   });
+  // Two or more shifts in one cell (Mert, 2026-10-06 ~07:25Z).
+  it("(a) some shifts clash: the cards say it, the day does not light the name", () => {
+    expect(nameCellShowsAvailabilityMark([{ date: "2026-10-20", mark: evening, shiftCount: 2, clashes: true }])).toBe(false);
+  });
+  it("(b) none of the shifts clash: the corner hides under them, so the name says it", () => {
+    expect(nameCellShowsAvailabilityMark([{ date: "2026-10-20", mark: evening, shiftCount: 3, clashes: false }])).toBe(true);
+  });
+  it("(c) every shift clashes: the cards say it, the name stays off for one day", () => {
+    expect(nameCellShowsAvailabilityMark([{ date: "2026-10-20", mark: allDay, shiftCount: 2, clashes: true }])).toBe(false);
+  });
   it("counts a day once across two locations, and never counts time off", () => {
     expect(nameCellShowsAvailabilityMark([
       { date: "2026-10-23", mark: allDay, shiftCount: 0, clashes: false },
