@@ -1,0 +1,3 @@
+.ssr
+# Heartbeat files a repo hook writes to a Windows path; on Linux they land here.
+C:/

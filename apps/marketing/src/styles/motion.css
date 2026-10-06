@@ -1,0 +1,111 @@
+/* Scene state machine (see src/motion/scene.ts). Generated rules for
+   beats 1-24: [data-at="N"] is hidden until the scene reaches beat N,
+   [data-until="N"] leaves at beat N. Without :root[data-animate="on"] every
+   scene shows its finished frame: data-at elements visible, data-until gone. */
+
+.scene {
+  transition: opacity var(--dur-reset) var(--ease-standard);
+}
+.scene.is-resetting {
+  opacity: 0;
+}
+.scene.no-transition,
+.scene.no-transition * {
+  transition: none !important;
+}
+
+:root:not([data-animate="on"]) .scene [data-until] {
+  display: none;
+}
+
+:root[data-animate="on"] .scene [data-at],
+:root[data-animate="on"] .scene [data-until] {
+  transition:
+    opacity var(--beat-dur, var(--dur-2)) var(--beat-ease, var(--ease-standard)),
+    transform var(--beat-dur, var(--dur-2)) var(--beat-ease, var(--ease-standard)),
+    clip-path var(--beat-dur, var(--dur-2)) var(--beat-ease, var(--ease-standard));
+  transition-delay: calc(var(--i, 0) * var(--stagger, 60ms));
+}
+
+:root[data-animate="on"] .scene:not(.s1) [data-at="1"],
+:root[data-animate="on"] .scene:not(.s2) [data-at="2"],
+:root[data-animate="on"] .scene:not(.s3) [data-at="3"],
+:root[data-animate="on"] .scene:not(.s4) [data-at="4"],
+:root[data-animate="on"] .scene:not(.s5) [data-at="5"],
+:root[data-animate="on"] .scene:not(.s6) [data-at="6"],
+:root[data-animate="on"] .scene:not(.s7) [data-at="7"],
+:root[data-animate="on"] .scene:not(.s8) [data-at="8"],
+:root[data-animate="on"] .scene:not(.s9) [data-at="9"],
+:root[data-animate="on"] .scene:not(.s10) [data-at="10"],
+:root[data-animate="on"] .scene:not(.s11) [data-at="11"],
+:root[data-animate="on"] .scene:not(.s12) [data-at="12"],
+:root[data-animate="on"] .scene:not(.s13) [data-at="13"],
+:root[data-animate="on"] .scene:not(.s14) [data-at="14"],
+:root[data-animate="on"] .scene:not(.s15) [data-at="15"],
+:root[data-animate="on"] .scene:not(.s16) [data-at="16"],
+:root[data-animate="on"] .scene:not(.s17) [data-at="17"],
+:root[data-animate="on"] .scene:not(.s18) [data-at="18"],
+:root[data-animate="on"] .scene:not(.s19) [data-at="19"],
+:root[data-animate="on"] .scene:not(.s20) [data-at="20"],
+:root[data-animate="on"] .scene:not(.s21) [data-at="21"],
+:root[data-animate="on"] .scene:not(.s22) [data-at="22"],
+:root[data-animate="on"] .scene:not(.s23) [data-at="23"],
+:root[data-animate="on"] .scene:not(.s24) [data-at="24"] {
+  opacity: 0;
+  transform: var(--from, translateY(6px));
+  pointer-events: none;
+}
+
+:root[data-animate="on"] .scene.s1 [data-until="1"],
+:root[data-animate="on"] .scene.s2 [data-until="2"],
+:root[data-animate="on"] .scene.s3 [data-until="3"],
+:root[data-animate="on"] .scene.s4 [data-until="4"],
+:root[data-animate="on"] .scene.s5 [data-until="5"],
+:root[data-animate="on"] .scene.s6 [data-until="6"],
+:root[data-animate="on"] .scene.s7 [data-until="7"],
+:root[data-animate="on"] .scene.s8 [data-until="8"],
+:root[data-animate="on"] .scene.s9 [data-until="9"],
+:root[data-animate="on"] .scene.s10 [data-until="10"],
+:root[data-animate="on"] .scene.s11 [data-until="11"],
+:root[data-animate="on"] .scene.s12 [data-until="12"],
+:root[data-animate="on"] .scene.s13 [data-until="13"],
+:root[data-animate="on"] .scene.s14 [data-until="14"],
+:root[data-animate="on"] .scene.s15 [data-until="15"],
+:root[data-animate="on"] .scene.s16 [data-until="16"],
+:root[data-animate="on"] .scene.s17 [data-until="17"],
+:root[data-animate="on"] .scene.s18 [data-until="18"],
+:root[data-animate="on"] .scene.s19 [data-until="19"],
+:root[data-animate="on"] .scene.s20 [data-until="20"],
+:root[data-animate="on"] .scene.s21 [data-until="21"],
+:root[data-animate="on"] .scene.s22 [data-until="22"],
+:root[data-animate="on"] .scene.s23 [data-until="23"],
+:root[data-animate="on"] .scene.s24 [data-until="24"] {
+  opacity: 0;
+  transform: var(--to, none);
+  pointer-events: none;
+  transition-delay: 0ms;
+}
+
+
+/* Generic entrance for prose blocks: present in static mode, risen in once
+   the block is seen when animating (src/motion/Reveal.tsx). */
+:root[data-animate="on"] .reveal {
+  transition:
+    opacity var(--dur-3) var(--ease-out),
+    transform var(--dur-3) var(--ease-out);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+:root[data-animate="on"] .reveal:not(.is-in) {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
