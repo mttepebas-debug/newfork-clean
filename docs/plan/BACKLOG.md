@@ -1858,6 +1858,13 @@ Kaynak: `docs/plan/ekranlar/04-availability/` (keşif main `b5fabb27` / `75ba8cc
 - **BL-800 (leave: low / do: safe) Geliştirme önizleme sayfası (`apps/web/availability-preview.html`, `WeeklyPreferencesForm.preview.tsx`) duruyor (E4-21).** Yayına girmiyor, yalnız yerel geliştirme sunucusunda açılıyor; ürün bileşenleriyle aynı bakım yükünü taşıyor. Silinir ya da bilerek tutulur. Neden bekliyor: EKRAN-04 arayüz dilimi.
 
 
+## Ortak bileşenler: EKRAN-02 C3 görsel QA'dan (2026-10-06)
+Kaynak: `.newfork-inbox/done/20261006T145231-nf-arayuz-arayuz-ekran-02-c3.md` (EKRAN-02 C3 görsel QA önerileri; koordinatör aktardı, 2026-10-06).
+
+- **BL-801 (leave: medium / do: moderate) Arama kutusu ve açılır liste kenarının yeni rengi (S7, `#7f8c86`) her yere ulaşmadı.** Mert 2026-10-06 kenarı 3:1 kontrasta koyulaştırdı (KARARLAR Schedule → Requests, S7); ama bazı ekranlar token yerine kendi rengini kullanıyor: Employees arama kutusu ve lokasyon listesi (`#cdd3d0` / `#d5dad7`, ~1,4:1), Settings → Jobs ve Shift types arama çerçevesi, Notifications "Mark as read" (~1,2:1). Örnek: Ayşe Employees'te arama kutusunun kenarını zor seçer. WCAG 1.4.11. Neden bekliyor: `nf-arayuz`; her ekran kendi turunda ya da tek token taraması (koordinatörün sırası).
+- **BL-802 (leave: medium / do: moderate) Telefonda onay penceresi düğmeleri 38 px (dokunma hedefi 44 px'in altında).** Ortak `ConfirmDialog` düğmeleri 390 px'te 38 px yükseklikte; BL-334'ün kardeşi (ortak `.icon-button` 38×36). Örnek: çalışan telefonda izin iptalini onaylarken düğmeyi kaçırır. Neden bekliyor: `nf-arayuz`, ortak bileşen; EKRAN-02 C3 sonrası.
+- **BL-803 (leave: low / do: safe) Çekmece açıkken bildirim (toast) altta ortalanıyor; çekmecenin sol kenarını kesip alt satırına biniyor.** Örnek: Ayşe Employees çekmecesinde Save'e basınca "Employee saved." çekmecenin alt düğmelerinin üstüne düşer. BL-515 ile komşu (toast çekmece açıkken tıklanabilir oldu). Neden bekliyor: `nf-arayuz`, ortak bileşen.
+
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
 - **BL-495 (kapandı; açıkken işaretleri low / safe) Kurulum sihirbazında Management satırında "Remove" düğmesi görünüyor.** Kurulum sihirbazı → 3. adım "What jobs do people work?" → "Your structure": Management her workspace'le gelen korunan departman, ama satırında "Remove" duruyor. Örnek: yeni owner Management'ı silmeye çalışır. Kaynak: `nf-arayuz` BL-480 raporu. `nf-arayuz`.
