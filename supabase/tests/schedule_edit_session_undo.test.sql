@@ -220,6 +220,39 @@ select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L, %s)', 'ayse', test
 select is((select count(*)::integer from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e3')), 0,
   'the closed edit keeps no Undo history');
 
+-- Can no longer works at Beşiktaş: his week 5 edit there is not his to undo.
+create function pg_temp.refusal_hint(statement text) returns text language plpgsql as $$
+declare code text; reason text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+  return code || ' ' || coalesce(reason, '');
+end;
+$$;
+select tests.remember('ud:e5', pg_temp.open('can', 5, 'blank', array['K', 'B']));
+truncate ud_mark; insert into ud_mark select pg_temp.rev(tests.id('ud:e5'));
+select pg_temp.add('can', tests.id('ud:e5'), pg_temp.shift(null, 5, 1, 'B'));
+truncate ud_can; insert into ud_can select pg_temp.state(tests.id('ud:e5')), pg_temp.rev(tests.id('ud:e5')),
+  (select count(*) from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e5'));
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('ud') and m.user_id = tests.user('ud:can')), tests.id('ud:B'));
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L, %s)', 'can', tests.id('ud:e5'), (select v from ud_mark))),
+  '42501 authz.out_of_scope', 'Can, gone from Beşiktaş, cannot undo his step there');
+select is((select state from ud_can), pg_temp.state(tests.id('ud:e5')), 'the shift stays');
+select is((select rev from ud_can), pg_temp.rev(tests.id('ud:e5')), 'the revision too');
+select is((select steps from ud_can), (select count(*) from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e5')),
+  'and the history');
+
+-- An edit of another workspace is not found from this one.
+select tests.world('ux');
+select tests.remember('ux:e1', (public.acquire_schedule_edit_session_service(tests.user('ux:owner'), tests.id('ux'),
+  tests.week(1), 'blank', null) -> 'session' ->> 'id')::uuid);
+select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_service(%L, %L, %L, %s, %s)',
+  tests.user('ux:owner'), tests.id('ud'), tests.id('ux:e1'), pg_temp.rev(tests.id('ux:e1')), pg_temp.rev(tests.id('ux:e1')) - 1)),
+  'P0002 edit session not found', 'another workspace''s edit is not found');
+
 -- 8. Nobody in the browser reads or calls it -----------------------------------------
 
 select is(has_function_privilege('authenticated',
@@ -232,7 +265,7 @@ select is(has_table_privilege('authenticated', 'app_private.schedule_edit_undo_s
 select set_eq($$
   select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname in ('public', 'app_private')
-    and p.prosrc ~* '(insert into|update|delete from)\s+public\.schedule_edit_session_shifts'
+    and p.prosrc ~* '(insert\s+into|update|delete\s+from)\s+public\.schedule_edit_session_shifts'
 $$, array[
   -- the holder's steps: Undo takes them back
   'mutate_schedule_edit_shift_service', 'bulk_delete_schedule_edit_shifts_service', 'apply_schedule_auto_fill_service',

@@ -8,8 +8,10 @@
 --   the revision from before the click.
 -- * undo_schedule_edit_session_service(..., target_revision) puts every shift
 --   the steps from target_revision on touched back as it was, in one
---   transaction: if one cannot go back (Ali has approved time off by now), none
---   does. Example: Ayşe pastes 24 shifts at revision 7 and presses Undo with 7;
+--   transaction: if a rule refuses one of them (a required document missing by
+--   now, the shift's person on approved time off), none goes back; time off a
+--   draft's copy hides from the edit is still refused on publish. Example: Ayşe
+--   pastes 24 shifts at revision 7 and presses Undo with 7;
 --   the 24 go, and the edit moves on to the next revision.
 -- * Undo does not cross what the edit did not do itself: picking the edit up
 --   again, a swap or a closed day rewriting it (undo_floor_revision). Saving,
@@ -92,7 +94,7 @@ begin
   select * into edit from public.schedule_edit_sessions session
   where session.id = target_session_id and session.workspace_id = target_workspace_id
   for update;
-  if edit.id is null or edit.holder_user_id <> actor_user_id then
+  if edit.id is null or edit.holder_user_id is distinct from actor_user_id then
     raise exception 'edit session not found' using errcode = 'P0002';
   end if;
   -- The edit's locations are still the person's to edit (B-3).
@@ -100,7 +102,7 @@ begin
   if edit.status <> 'active' or edit.expires_at <= now() then
     raise exception 'edit lease expired' using errcode = '40001';
   end if;
-  if edit.revision <> expected_session_revision then
+  if edit.revision is distinct from expected_session_revision then
     raise exception 'session revision stale' using errcode = '40001';
   end if;
   if target_revision is null or target_revision < edit.undo_floor_revision or target_revision >= edit.revision then
