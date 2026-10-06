@@ -29,6 +29,8 @@ import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
 import "./schedule-shift-save.css";
 import { useShiftNoteCorner } from "./ShiftNoteCorner";
+import { devVar } from "../../dev/varEkran12";
+import { VarMarkButton, varMarkLines } from "../../dev/VarMark";
 
 const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
 
@@ -343,7 +345,13 @@ export function ShiftCard({
       {noteCorner.corner}
       {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
-          {showAvailabilityCorner ? (
+          {showAvailabilityCorner && devVar("hucre") === "b" && employeeName && availabilityMark?.kind === "unavailable" ? (
+            <VarMarkButton
+              className="var-mark-card"
+              label={`${employeeName}: unavailable during this shift`}
+              lines={varMarkLines(shift.scheduled_date, availabilityMark, employeeName)}
+            />
+          ) : showAvailabilityCorner ? (
             <span
               className="schedule-shift-availability-flag"
               aria-hidden="true"

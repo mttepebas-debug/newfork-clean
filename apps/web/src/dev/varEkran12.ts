@@ -92,6 +92,10 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
     [7, { day: 4, from: "14:00", to: "24:00", allDay: false }],
     [8, { day: 3, from: "18:00", to: "24:00", allDay: false }],
   ]);
+  // Burak has a second unavailable day (Fri, all day): the name "!" lists both.
+  const extra = new Map<number, { day: number; from: string; to: string; allDay: boolean }>([
+    [1, { day: 4, from: "00:00", to: "24:00", allDay: true }],
+  ]);
   const leave = new Map<number, readonly number[]>([
     [2, [2, 3]],
     [5, [0, 1]],
@@ -115,6 +119,7 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
       const type = onMark ? (person === 1 ? lunch : dinner) : (person + day) % 3 === 0 ? dinner : lunch;
       if (!type) return;
       if (mark?.allDay && mark.day === day) return;
+      if (extra.get(person)?.day === day) return;
       if (person === threeShiftPerson && day === 1 && lunch && dinner) {
         for (const [type, start, end] of [[lunch, "07:00", "11:00"], [lunch, "11:30", "15:30"], [dinner, "16:15", "23:30"]] as const) {
           serial += 1;
@@ -164,6 +169,7 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
     const person = people.indexOf(employee);
     if (person < 0) return renamed(employee);
     const mark = unavailable.get(person);
+    const extraMark = extra.get(person);
     const leaveDays = leave.get(person) ?? [];
     if (!mark && !leaveDays.length) return renamed(employee);
     const instant = (day: number, time: string) =>
@@ -174,8 +180,8 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
       timezone: location.timezone ?? "America/Los_Angeles",
       week_start: model.week_start,
       status: "ready" as const,
-      unavailable_intervals: mark ? [{ start_at: instant(mark.day, mark.from), end_at: instant(mark.day, mark.to) }] : [],
-      employee_intervals: mark ? [{ start_at: instant(mark.day, mark.from), end_at: instant(mark.day, mark.to) }] : [],
+      unavailable_intervals: [mark, extraMark].flatMap((item) => item ? [{ start_at: instant(item.day, item.from), end_at: instant(item.day, item.to) }] : []),
+      employee_intervals: [mark, extraMark].flatMap((item) => item ? [{ start_at: instant(item.day, item.from), end_at: instant(item.day, item.to) }] : []),
       note_intervals: [],
       manager_notes: null,
       note_author: null,
@@ -184,8 +190,8 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
       clock_segments: [{ start_at: instant(0, "00:00"), end_at: instant(6, "24:00"), offset_seconds: offset }],
       days: days.map((date, day) => ({
         date,
-        has_unavailable: mark?.day === day,
-        all_day: mark?.day === day && mark.allDay,
+        has_unavailable: mark?.day === day || extraMark?.day === day,
+        all_day: (mark?.day === day && mark.allDay) || (extraMark?.day === day && extraMark.allDay),
       })),
     };
     const others = (employee.weekly_availability ?? []).filter((item) => item.location_id !== location.id);

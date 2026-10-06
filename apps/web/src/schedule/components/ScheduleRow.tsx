@@ -24,6 +24,7 @@ import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
 import { shiftDropTargetKey } from "../lib/scheduleDragTargets";
 import { devVar } from "../../dev/varEkran12";
+import { VarMarkButton, varMarkLines } from "../../dev/VarMark";
 import {
   resolveScheduleInteractionLocationId,
   type ScheduleGridLocationGroup,
@@ -406,7 +407,15 @@ export function ScheduleRow({
                 })
               }
             >
-              {availabilityMark && employee ? (
+              {availabilityMark && employee && devVar("hucre") === "b" ? (
+                availabilityMark.kind === "unavailable" && displayStacks.length === 0 ? (
+                  <VarMarkButton
+                    className="var-mark-corner"
+                    label={`${employee.display_name}: unavailable on ${day}`}
+                    lines={varMarkLines(day, availabilityMark, employee.display_name)}
+                  />
+                ) : null
+              ) : availabilityMark && employee ? (
                 <ScheduleAvailabilityCellTip
                   mark={availabilityMark}
                   employeeName={employee.display_name}

@@ -2,6 +2,7 @@ import type { ScheduleEmployee } from "@newfork/shared/schedule";
 import { CalendarOff } from "lucide-react";
 import type { CSSProperties, RefObject } from "react";
 import { devVar } from "../../dev/varEkran12";
+import { VarMarkButton, varMarkLines } from "../../dev/VarMark";
 import { Tooltip } from "../../shell/Tooltip";
 import {
   formatAvailabilityMarkDay,
@@ -165,7 +166,14 @@ export function ScheduleEmployeeCard({
             </span>
           ) : null}
           {employee && devVar("bl524") === "b" ? <VarAvailabilityDot employee={employee} /> : null}
-          {employee && devVar("hucre") && varCoveredDays.length ? <VarCoveredDot name={employee.display_name} days={varCoveredDays} /> : null}
+          {employee && devVar("hucre") === "b" && varCoveredDays.length ? (
+            <VarMarkButton
+              className="var-mark-name"
+              label={`${employee.display_name}: unavailable days this week`}
+              lines={(employee.weekly_availability ?? []).flatMap((projection) =>
+                [...scheduleAvailabilityMarks(projection)].flatMap(([date, mark]) => varMarkLines(date, mark, employee.display_name)))}
+            />
+          ) : employee && devVar("hucre") && varCoveredDays.length ? <VarCoveredDot name={employee.display_name} days={varCoveredDays} /> : null}
         </div>
       ) : (
         <strong>Unassigned</strong>
