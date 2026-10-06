@@ -1594,3 +1594,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** (1) canlıda yedekten fonksiyonlar + yeni migration; (2) KARARLAR satırı; (3) test commit'i.
 - **Durum:** (1) main yeşilini bekliyor; (3) arayüz hattında sırada.
 - **Mert:** sohbette söylendi.
+
+### KK-174 (2026-10-06) İşten çıkarma bildirimi; hat sırası; B1 bölündü; e2e yükü; canlı = main
+- **Karar (ne):** (1) EKRAN-03 Q2: işten çıkarmada boşalan yayınlanmış vardiya varsa yalnız o lokasyonun müdürüne uygulama içi bildirim ("Ali's 2 shifts are unassigned"); çıkarılan kişiye yok; `employee_offboarding_followups` bu bildirime bağlanır (BL-768). (2) Hat sırası: veri EKRAN-02 A1→A4, sonra EKRAN-03 A1→A4 (aynı matris ve katalog test dosyaları, ekran ekran); web EKRAN-02 B1→B3, sonra EKRAN-03 B; arayüz E2E-YUK → EKRAN-02 C3→C1→C2, sonra EKRAN-03 V/C. (3) EKRAN-02 B1 ikiye bölündü: B1a (A1–A3'e bağlı olmayan kısım: açık sekmelerin istemci birleşimi, Request type süzgeci, sayfalamanın veri tarafı, R2-10/-11/-20/-21/-32) şimdi; B1b A1–A3 main'e girince. Sayfalamanın veri tarafı web hattında, görünüm bileşeni C3'te arayüz hattında (hook şekli sözleşme). (4) e2e yükü: CI'da `e2e` işi `needs: [check, db]` (BL-764) + yalnız flow 7'ye `test.slow()` (dört kişiyle sırayla giriş); flow 7'yi bölmek yok. (5) Mert'in "biten işleri live a uygula"sı ölçüldü: canlı web/API = main başı `48de63c5` (bugünkü 30 production yayını başarılı, /health 200, paket taramasında bugünkü değişiklikler var); main'e girmemiş bitmiş ürün işi yok; canlı DB karşılaştırması veri hattında (CANLI-ESIT-DB). E-posta canlıda kapalı: Resend anahtarı Mert'te (MVP-RESEND adımları 12:35Z iletildi).
+- **Nerede:** EKRAN-03 görev dosyası (Q2), EKRAN-PLANI hatlar, EKRAN-02 B1, `.github/workflows/ci.yml` + `announcement-reaches-its-people.spec.ts`, BACKLOG BL-764/BL-768.
+- **Ne zaman:** 2026-10-06 ~12:30–12:58Z.
+- **Ne için:** (1) P07: bildirim işi doğrudan etkilenene. (2)–(3) Tek veri hattı aynı test dosyalarını iki ekranda aynı anda yazamaz; web hattı boşta kalmasın (P17 "hızlanmak işi bölmektir"). (4) Bugün 5 e2e kırmızısı, her biri bütün gönderimleri dondurdu; kök neden yük ve dört girişli test (VAR-E2E-2 iz ölçümü). (5) Mert canlıyı istedi; kanıtla.
+- **Dayanak:** ILKELER P07, P17, P19; CLAUDE.md §3 (en çok iki ağır iş), §11.9.
+- **Geri alma:** (1) görev dosyası satırı; (4) iki satırlık commit.
+- **Durum:** (1)–(3) kayıtta ve hatlarda; (4) arayüz hattında; (5) DB karşılaştırması bekleniyor.
+- **Mert:** sohbette söylendi.
