@@ -229,6 +229,25 @@ select is((select pg_temp.findings(v, 'emre') -> 0 ->> 'tier' from ap where k = 
 select ok(pg_temp.card(3, tests.id('ap:shift:emre_tue')) -> 'warning_codes' ? 'availability', 'the Schedule grid shows it on his published shift');
 select is((pg_temp.card(3, tests.id('ap:shift:emre_tue')) ->> 'availability_changed_after_publish')::boolean, true,
   'and says it changed after publishing');
+-- Edit mode reads the edit, not the published week (VAR-UYG-DB): the same
+-- flag comes from each shift's published counterpart; a new shift has none.
+insert into ap select 'edit3', public.acquire_schedule_edit_session_service(tests.user('ap:owner'), tests.id('ap'),
+  tests.week(3), 'published', null) -> 'session';
+create function pg_temp.edit_card(day integer) returns jsonb language sql as $$
+  select x from ap, jsonb_array_elements(public.get_schedule_edit_session_service(tests.user('ap:owner'), tests.id('ap'),
+    (ap.v ->> 'id')::uuid) -> 'shifts') x
+  where ap.k = 'edit3' and x ->> 'employee_id' = tests.id('ap:emre')::text and (x ->> 'scheduled_date')::date = tests.week(3) + day
+$$;
+select is((pg_temp.edit_card(1) ->> 'availability_changed_after_publish')::boolean, true,
+  'in Edit mode Emre''s Tuesday also says it changed after publishing');
+select is((pg_temp.edit_card(3) ->> 'availability_changed_after_publish')::boolean, false,
+  'his Thursday does not');
+select tests.add_shift(tests.user('ap:owner'), 'ap', (select (v ->> 'id')::uuid from ap where k = 'edit3'), 3,
+  '{"loc": "K", "person": "emre", "job": "cook", "day": 4, "start": "18:00", "end": "22:00"}');
+select is((pg_temp.edit_card(4) ->> 'availability_changed_after_publish')::boolean, false,
+  'a shift added in the edit was never published: false');
+select public.discard_schedule_edit_session_service(tests.user('ap:owner'), tests.id('ap'), (v ->> 'id')::uuid)
+from ap where k = 'edit3';
 -- Approved time off is not a change of availability.
 select tests.approved_leave(tests.id('ap'), tests.id('ap:emre'), tests.user('ap:emre'), tests.id('ap:K'), tests.week(3) + 3, '08:00', '14:00');
 select is((pg_temp.card(3, tests.id('ap:shift:emre_thu')) ->> 'availability_changed_after_publish')::boolean, false,
