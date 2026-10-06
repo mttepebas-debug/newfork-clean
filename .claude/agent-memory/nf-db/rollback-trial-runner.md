@@ -64,3 +64,5 @@ Before a batch: run ONE file first, then prove nothing stayed, e.g. `select key 
 
 Related: [[core-call-cost]], [[sql-traps-core-translation]].
 - A migration that loosens a rule breaks the ci-green cell that locked the old refusal (EKRAN-02 A3: K-S2 opened `requests.read` to a document-blocked manager; `schedule_asks_the_core` still expected `authz.document_blocked`). Before review, grep `supabase/tests` for the action key and the old hint, and run each hit.
+- 2026-10-06: main normalised `supabase/tests/ci-green.txt` to LF (the CRLF notes above are stale); an old worktree copy can still be CRLF and then `git diff --stat` shows every line. Append with `printf '...\n'` and check the diff is one line.
+- A search over a field the row masks leaks the row's existence (EKRAN-02 A4: an applicant-only manager found other applicants by name). Filter the searched text by the same rule the row builder uses.
