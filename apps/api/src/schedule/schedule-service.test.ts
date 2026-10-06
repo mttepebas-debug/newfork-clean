@@ -156,11 +156,7 @@ describe("createScheduleReadService read model", () => {
     expect(result.jobs).toEqual(jobs);
     expect(result.employees.map((employee) => employee.primary_job_id)).toEqual([null, jobs[1]!.id]);
   });
-  it("loads independent metadata concurrently after the authorized read model", async () => {
-    let resolveSettings!: (value: { data: { time_format: string }; error: null }) => void;
-    const settingsResult = new Promise<{ data: { time_format: string }; error: null }>((resolve) => {
-      resolveSettings = resolve;
-    });
+  it("reads the week's important dates after the authorized read model", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: {
         workspace_id: workspaceId,
@@ -179,15 +175,6 @@ describe("createScheduleReadService read model", () => {
       error: null,
     });
     mocks.from.mockImplementation((table: string) => {
-      if (table === "workspace_scheduling_settings") {
-        return {
-          select: () => ({
-            eq: () => ({
-              maybeSingle: () => settingsResult,
-            }),
-          }),
-        };
-      }
       if (table === "important_dates") {
         const chain = {
           eq: () => chain,
@@ -210,7 +197,6 @@ describe("createScheduleReadService read model", () => {
 
     const result = service.getReadModel(actorUserId, workspaceId, "2026-08-19");
     await vi.waitFor(() => expect(mocks.from).toHaveBeenCalledWith("important_dates"));
-    resolveSettings({ data: { time_format: "12h" }, error: null });
     await expect(result).resolves.toMatchObject({
       workspace_id: workspaceId,
       week_start: "2026-08-17",
