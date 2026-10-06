@@ -1524,3 +1524,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırları.
 - **Durum:** kayda geçti.
 - **Mert:** raporda "Senin yerine verdiğim kararlar"da gösterilir.
+
+### KK-167 (2026-10-06) Uygulama sırasında sorulmadan verilen kararlar ve ayrımlar
+- **Karar (ne):** (1) Availability düğmesi kapalıyken yeni hücre modelinde turuncu her şey gizlenir, TIME OFF kalır (M8, M10/S1). (2) BE-2b: kısmi teslim ardışık başarısızlık sayacını sıfırlar ("yalnız tam başarısızlık sayılır"); işin veritabanı kısmı veri hattına (BE-2b-DB). (3) TEL-KAPALI-2: telefonda Schedule'a götüren sayfa içi bağlantılar gizlenir (Mert'in "tamamen kapalı" kararı). (4) Kırmızı main ayrımları: üç kez kod değil yük (50 ms testi 67/57 ms; TEL-KAPALI e2e zaman aşımları pc-2; ShiftQuickEditor 1181 ms) — koda düzeltme yazdırılmadı, yalnız düşen iş yeniden koşturuldu; kalıcı çözüm CI-HIZ (Mert'in seçimi). (5) M2 metni ölçümle düzeltildi (müdür çalışanın müsaitliğini yazamaz; kod zaten böyle). (6) Müsaitlik "!" penceresinde "by" her zaman çalışan (yalnız çalışan yazar).
+- **Nerede:** KARARLAR "Schedule" ve "Ürün kuralları → Müsaitlik" M2; BACKLOG BL-101, BL-562, BL-756, BL-757; DONE.
+- **Ne zaman:** 2026-10-06 ~05:00–06:40Z.
+- **Ne için:** Mert'e yalnız kuralın cevaplamadığını sormak; kırmızıyı koda yüklemeden ayırmak (CLAUDE.md §11.9).
+- **Dayanak:** her biri için yukarıda.
+- **Geri alma:** KARARLAR satırları.
+- **Durum:** kayda geçti.
+- **Mert:** devir raporunda "Senin yerine verdiğim kararlar"da.

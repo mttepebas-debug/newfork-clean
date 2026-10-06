@@ -118,3 +118,4 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 - 2026-10-06 ~01:45Z — İki ekranın görev dosyaları yazıldı ve main'e alındı (KK-160). Aynı turda Mert koordinatörü işçilikten çıkardı (KK-159): görev dosyalarını bundan sonra planlama oturumu yazar, uygulama ve main'e gönderim işi yapan oturumdadır.
 - 2026-10-06 ~02:45Z — Mert: sıradaki ekranın keşfi Schedule ve Requests kodlanırken başlasın (önerilen). Employees keşfi planlama oturumunda başladı.
 - 2026-10-06 ~03:10Z — Uygulama arşivi ve damıtma kuralı (KK-163).
+- 2026-10-06 ~03:00–06:40Z — Uygulama başladı (dört hat). Main'de ve canlıda: EKRAN-02 A0; EKRAN-01 DB-1a, W-1a, BE-1, BE-2, DRAG-API, DRAG-UI, TEL-KAPALI; CI-HIZ. Gönderimde: DB-1b, BE-2b-DB, TEL-KAPALI-2. Varyant turu 1 karara bağlandı (KARARLAR Schedule); canlı inceleme sayfası `var.html` (arayüz hattı). Ekran 3 Employees keşfi main'de (`7eb3dc0d`), karar turu bekliyor.
