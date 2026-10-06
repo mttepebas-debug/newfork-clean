@@ -322,7 +322,7 @@ export function EmployeeDashboard({
               label: "Open shifts",
               detail: "Find another opportunity",
               icon: Plus,
-              to: "shift-hub#open-shifts",
+              to: "shift-hub",
             },
           ].map(({ label, detail, icon: Icon, to }) => (
             <Link key={label} to={`${base}/${to}`}>
