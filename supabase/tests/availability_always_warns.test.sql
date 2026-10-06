@@ -246,6 +246,16 @@ select tests.add_shift(tests.user('ap:owner'), 'ap', (select (v ->> 'id')::uuid 
   '{"loc": "K", "person": "emre", "job": "cook", "day": 4, "start": "18:00", "end": "22:00"}');
 select is((pg_temp.edit_card(4) ->> 'availability_changed_after_publish')::boolean, false,
   'a shift added in the edit was never published: false');
+-- KK-171: given to Ali in the edit, Emre's Tuesday no longer says "changed
+-- after publishing" -- that was Emre's mark, and Ali is on the card now.
+-- ponytail: reassigned directly; the flag only reads the edit as it stands.
+update public.schedule_edit_session_shifts set employee_id = tests.id('ap:ali')
+where session_id = (select (v ->> 'id')::uuid from ap where k = 'edit3')
+  and employee_id = tests.id('ap:emre') and scheduled_date = tests.week(3) + 1;
+select is((select (x ->> 'availability_changed_after_publish')::boolean from ap,
+    jsonb_array_elements(public.get_schedule_edit_session_service(tests.user('ap:owner'), tests.id('ap'), (ap.v ->> 'id')::uuid) -> 'shifts') x
+  where ap.k = 'edit3' and x ->> 'employee_id' = tests.id('ap:ali')::text and (x ->> 'scheduled_date')::date = tests.week(3) + 1),
+  false, 'given to Ali in the edit, the Tuesday no longer says it changed after publishing');
 select public.discard_schedule_edit_session_service(tests.user('ap:owner'), tests.id('ap'), (v ->> 'id')::uuid)
 from ap where k = 'edit3';
 -- Approved time off is not a change of availability.
