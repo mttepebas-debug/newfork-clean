@@ -12802,13 +12802,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font: inherit;
   font-size: 13px;
 }
-.requests-workbench {
-  min-height: 610px;
-  display: grid;
-  grid-template-columns: minmax(330px, 0.86fr) minmax(470px, 1.4fr);
-  border: 1px solid #ccd5d1;
-  background: var(--theme-surface);
-}
 .requests-list {
   min-width: 0;
   border-right: 1px solid #d8dedb;
@@ -13066,13 +13059,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .requests-empty span {
   font-size: 12px;
 }
-.request-pagination {
-  padding: 12px;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  border-top: 1px solid #e2e7e4;
-}
 .detail-empty {
   min-height: 500px;
 }
@@ -13153,9 +13139,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: var(--theme-surface);
 }
 @media (max-width: 1040px) {
-  .requests-workbench {
-    grid-template-columns: minmax(290px, 0.75fr) minmax(400px, 1fr);
-  }
   .request-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13176,10 +13159,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .request-queue-toggle button {
     flex: 1;
     justify-content: center;
-  }
-  .requests-workbench {
-    min-height: 520px;
-    display: block;
   }
   .requests-list {
     min-height: 500px;
