@@ -860,43 +860,54 @@ describe("api app", () => {
     ]);
   });
 
-  it("forwards reference-style Schedule Requests aliases from active workspace context", async () => {
-    const calls: unknown[] = [];
+  // EKRAN-02 B1 (R2-21): one read route; the header-workspace copy is gone.
+  it("has one Schedule Requests read route", async () => {
+    const get = vi.fn();
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
-      scheduleRequestsService: {
-        get: async (input: Parameters<ScheduleRequestsService["get"]>[0]) => {
-          calls.push({ kind: "get", input });
-          return {
-            workspace_id: resolvedContext.workspace.id,
-            locations: [],
-            time_off_pending_count: 0,
-            time_off_next_cursor: null,
-            time_off_requests: [],
-          };
-        },
-      } as unknown as ScheduleRequestsService,
+      scheduleRequestsService: { get } as unknown as ScheduleRequestsService,
     });
     const read = await app.inject({
       method: "GET",
-      url: "/schedule/requests?time_off_queue=closed&search=alex&limit=25",
+      url: "/schedule/requests?time_off_queue=closed",
       headers: { authorization: "Bearer valid-token" },
     });
-    expect(read.statusCode).toBe(200);
-    expect(calls).toEqual([
-      {
-        kind: "get",
-        input: {
-          actorUserId: resolvedContext.userId,
-          workspaceId: resolvedContext.workspace.id,
-          timeOffQueue: "closed",
-          locationId: null,
-          search: "alex",
-          timeOffCursor: null,
-          limit: 25,
-        },
-      },
-    ]);
+    expect(read.statusCode).toBe(404);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  // R2-21: who may read is the authorization core's answer, not the route's.
+  it("answers Schedule Requests with the core's no for a member who may read neither list", async () => {
+    const get = vi.fn(async () => {
+      throw rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.out_of_scope", details: "requests.read" });
+    });
+    const app = buildApp({
+      contextResolver: { resolve: async () => ({ ...resolvedContext, permissions: [], actions: [] }) },
+      scheduleRequestsService: { get } as unknown as ScheduleRequestsService,
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ reason: "authz.out_of_scope" });
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks a Schedule Requests reader without a session to sign in", async () => {
+    const get = vi.fn();
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleRequestsService: { get } as unknown as ScheduleRequestsService,
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${resolvedContext.workspace.id}/schedule/requests`,
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ reason: "session.required" });
+    expect(get).not.toHaveBeenCalled();
   });
 
   it("returns generic not found for Schedule Requests workspace mismatches", async () => {
