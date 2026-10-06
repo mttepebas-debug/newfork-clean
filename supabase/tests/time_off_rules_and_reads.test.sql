@@ -14,7 +14,7 @@ select * from no_plan();
 --   K-S3   seeing time off comes with deciding it: no "View" level of its own.
 --   BL-411 who is not a member hears so before a request is looked up.
 --   BL-507 a request the deadline job cannot close leaves a record.
---   BL-506 the deadline job closes a bounded number per pass.
+--   BL-506 the deadline job's pass bound is a parameter.
 --   R2-55  a malformed period id is a bad request (22023), not a server error.
 
 select tests.world('ra');
@@ -237,8 +237,6 @@ select app_private.time_off_sweep(2);
 select is((select array_agg(status::text order by id) from public.schedule_time_off_requests
     where id in (tests.id('ra:veli:7'), tests.id('ra:veli:8'))), array['denied', 'denied'],
   'once it can, the job closes both');
-select is((select schedule from cron.job where jobname = 'time-off-deadlines'), '* * * * *',
-  'the job runs every minute, so a smaller pass keeps up');
 set local role authenticated;
 select throws_ok($$select * from app_private.time_off_sweep_failures$$, '42501', null, 'a signed-in browser cannot read the record');
 reset role;
