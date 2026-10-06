@@ -46,3 +46,4 @@
 - [Kopya kuralı id üzerinden](checklist-copy-rule-by-id.md) — oturum dalı eklenen kural taslaktan açılan oturumda kopyayı tanımaz (source_published null); keep seçimi ezilir (DB-3)
 - [Yayın karşılığı tekil değil](checklist-published-counterpart-not-unique.md) — taşınıp yalnız yeni lokasyonda yayınlanan vardiya iki güncel yayında; skaler alt sorgu 21000 (VAR-UYG-DB)
 - [İzin bekçisinin atlamaları](checklist-availability-guard-hydration-skip.md) — INSERT hidrasyon + UPDATE aynı kimlik izin kontrolünü atlar; "Undo izni engeller" yalnız blank kaynakta (DB-1c)
+- [Saatle sıralanan adımlar](checklist-step-order-by-clock.md) — statement_timestamp sırası, revision kontrolsüz yazarla yarışta uygulama sırasından sapar; sıra numarası öner (DB-1c)
