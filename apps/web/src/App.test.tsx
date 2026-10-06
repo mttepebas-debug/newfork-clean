@@ -1078,6 +1078,15 @@ describe("App", () => {
     expect(screen.getAllByRole("link", { name: "Requests" }).length).toBeGreaterThan(0);
   });
 
+  it("offers no way into Schedule from Workspace on a phone (TEL-KAPALI-2)", async () => {
+    emulatePhone();
+    window.history.pushState({}, "", "/app/workspace");
+    render(<App />);
+    await signInAs("owner");
+    await screen.findByRole("link", { name: /View employees/ });
+    expect(screen.queryAllByRole("link", { name: /Open Schedule|First schedule view/ })).toHaveLength(0);
+  });
+
   it("keeps Schedule's export and templates addresses closed on a phone too", async () => {
     emulatePhone();
     window.history.pushState({}, "", "/app/schedule/templates");

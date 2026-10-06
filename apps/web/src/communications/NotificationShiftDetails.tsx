@@ -1,3 +1,4 @@
+import { usePhoneWidth } from "../lib/usePhoneWidth";
 import type {
   ExchangeCase,
   ExchangeShift,
@@ -177,6 +178,7 @@ function PublishedShift({
   manager: boolean;
   onNavigate?: () => void;
 }) {
+  const phone = usePhoneWidth();
   const url = manager
     ? `/app/schedule?date=${shift.scheduled_date}&view=day&locations=${shift.location_id}`
     : `/app/employee-hub/schedule?date=${shift.scheduled_date}&view=day`;
@@ -191,9 +193,11 @@ function PublishedShift({
         published={published}
         className="notification-shift-owner"
       />
-      <Link to={url} onClick={onNavigate}>
-        Open schedule<span className="sr-only"> · {label}</span>
-      </Link>
+      {manager && phone ? null : (
+        <Link to={url} onClick={onNavigate}>
+          Open schedule<span className="sr-only"> · {label}</span>
+        </Link>
+      )}
     </div>
   );
 }

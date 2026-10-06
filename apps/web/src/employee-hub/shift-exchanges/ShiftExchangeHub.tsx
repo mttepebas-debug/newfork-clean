@@ -1,3 +1,4 @@
+import { usePhoneWidth } from "../../lib/usePhoneWidth";
 import { todayIn } from "../../lib/today";
 import { CatalogDrawer } from "../../settings/CatalogDrawer";
 import type {
@@ -980,6 +981,7 @@ function CaseDetail({
   run: (command: ExchangeCommand) => Promise<unknown>;
   onRenew: () => void;
 }) {
+  const phone = usePhoneWidth();
   const [working, setWorking] = useState(false);
   const [candidate, setCandidate] = useState("");
   const [decision, setDecision] = useState<
@@ -1454,12 +1456,14 @@ function CaseDetail({
           ))}
         </ol>
       </details>
-      <Link
-        className="sx-text-link"
-        to={manager ? "/app/schedule" : "/app/employee-hub/schedule"}
-      >
-        View current schedule <ChevronRight size={15} />
-      </Link>
+      {manager && phone ? null : (
+        <Link
+          className="sx-text-link"
+          to={manager ? "/app/schedule" : "/app/employee-hub/schedule"}
+        >
+          View current schedule <ChevronRight size={15} />
+        </Link>
+      )}
       {decision && (
         <ExchangeDialog
           title={

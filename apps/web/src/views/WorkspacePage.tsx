@@ -1,3 +1,4 @@
+import { usePhoneWidth } from "../lib/usePhoneWidth";
 import type {
   NotificationRecord,
   OwnerSetupChecklistItemId,
@@ -282,6 +283,7 @@ function OwnerSetupChecklist({
 }: {
   readonly workspaceId: string;
 }) {
+  const phone = usePhoneWidth();
   const queryClient = useQueryClient();
   const queryKey = ["owner-setup-checklist", workspaceId];
   const progressQuery = useQuery({
@@ -324,7 +326,8 @@ function OwnerSetupChecklist({
         </p>
       ) : null}
       <div className="owner-setup-checklist-list">
-        {ownerSetupChecklistItems.map((item) => {
+        {/* KARARLAR "Schedule telefonda tamamen kapalı": a phone is not sent to Schedule. */}
+        {ownerSetupChecklistItems.filter((item) => !(phone && item.to === "/app/schedule")).map((item) => {
           const done = visited.has(item.id);
           const content = (
             <>
@@ -374,6 +377,7 @@ function Widget({
   };
   workspaceId: string;
 }) {
+  const phone = usePhoneWidth();
   if (id === "operations") {
     return (
       <div className="workspace-metrics">
@@ -405,7 +409,7 @@ function Widget({
       <div className="workspace-focus-number">
         <strong>{model.metrics.today_open_shift_count}</strong>
         <span>unassigned shifts today</span>
-        <WidgetLink to="/app/schedule">Open Schedule</WidgetLink>
+        {phone ? null : <WidgetLink to="/app/schedule">Open Schedule</WidgetLink>}
       </div>
     );
   }
@@ -444,9 +448,11 @@ function Widget({
   }
   return (
     <div className="workspace-quick-actions">
-      <WidgetLink to="/app/schedule">
-        <CalendarDays size={16} /> Open Schedule
-      </WidgetLink>
+      {phone ? null : (
+        <WidgetLink to="/app/schedule">
+          <CalendarDays size={16} /> Open Schedule
+        </WidgetLink>
+      )}
       <WidgetLink to="/app/employees">
         <Users size={16} /> View employees
       </WidgetLink>
