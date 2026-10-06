@@ -1544,3 +1544,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** (1) yeni migration ile eski politika; (2) KARARLAR satırı.
 - **Durum:** kayda geçti.
 - **Mert:** raporda "Senin yerine verdiğim kararlar"da.
+
+### KK-169 (2026-10-06) Employees keşif önerileri K1–K12 ve iki Schedule okuması
+- **Karar (ne):** (1) EKRAN-03 OZET §3'teki K1–K12'nin hepsi verildi (KARARLAR Employees, tek satır). K5 için ayrıca KARARLAR "Preferred name → Manager approval" satırına bakıldı: onaylayan müdür, bildirim de ona. (2) Schedule "!" penceresinde "Changed after publishing" satırı kalır (K18 + M11; arayüz hattının sorusu). (3) Çok vardiyalı hücrede kısmi çakışmanın ad "!"ini tetiklememesi Mert'e soruldu, onaylandı.
+- **Nerede:** KARARLAR "Employees", "Schedule"; OZET §9.
+- **Ne zaman:** 2026-10-06 ~07:30–07:50Z.
+- **Ne için:** Mert'e yalnız kuralın cevaplamadığını sormak (CLAUDE.md §13); 12 önerinin her biri bir KARARLAR satırına ya da ilkeye birebir dayanıyor.
+- **Dayanak:** OZET §3'te her önerinin yanında; (2) KARARLAR K18 (Mert 2026-10-02).
+- **Geri alma:** KARARLAR satırları.
+- **Durum:** kayda geçti.
+- **Mert:** raporda "Senin yerine verdiğim kararlar"da.

@@ -282,4 +282,15 @@ AC10 (terfide müsaitliğin silinmesi, M14) uygulanmış; kapalı. Sınırdaki p
 | C'nin süreçleri durdu | `netstat` 5638/5639 | LISTEN yok |
 
 ## 9. Mert'in seçimleri ve kapanış durumu
-(Konuşma adımında koordinatör doldurur.)
+(Konuşma adımı 2026-10-06 ~07:50Z, koordinatör `local_9c7e674a…`; ayrıntı KARARLAR "Employees", KK-169.)
+| Soru | Mert'in seçimi |
+|---|---|
+| S1 Restore | Seçenek dışı: yeni davet yok, aynı e-posta / hesapla erişim geri verilir; uç durumlar açık → `nf-planlama` EKRAN-03-S1 (`S1-restore.md`) |
+| S2 Send reminder | (a) önerilen: aynı bağlantı, bitiş değişmez; Resend yeni bağlantı + 7 gün |
+| S3 Internal note | (a) önerilen: yalnız üst rütbe |
+| S4 Özel bilgi | (a) önerilen: yalnız alt rütbe, izin ne olursa olsun |
+| S5 Documents adımı | (a) önerilen: Documents ekranının (6) turunda |
+| K1–K12 | Koordinatör hepsini verdi (KK-169) |
+| G1–G3 | Açık: arayüz hattında varyant ("!" işinden sonra) |
+
+Kapanış durumu: görev dosyası S1 senaryoları ve G1–G3'ten sonra yazılır; S2–S5 ve K1–K12 ona girer.
