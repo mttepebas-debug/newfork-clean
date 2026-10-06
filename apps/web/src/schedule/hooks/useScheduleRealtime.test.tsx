@@ -69,13 +69,14 @@ beforeEach(() => {
 });
 
 describe("useScheduleRealtime", () => {
-  it("subscribes to the workspace's private schedule invalidation channel", () => {
+  // DB-2: one private channel per shown location, never the workspace-wide one.
+  it("joins each shown location's private schedule invalidation channel", () => {
     const { unmount } = renderRealtimeHook();
 
-    expect(supabaseClient?.channel).toHaveBeenCalledWith(
-      "schedule:invalidation:workspace",
-      { config: { private: true } },
-    );
+    expect(mocks.channelMock.mock.calls).toEqual([
+      ["schedule:invalidation:workspace:loc-1", { config: { private: true } }],
+      ["schedule:invalidation:workspace:loc-2", { config: { private: true } }],
+    ]);
     expect(mocks.channel.on).toHaveBeenCalledWith(
       "broadcast",
       { event: "schedule_invalidation" },
@@ -85,7 +86,27 @@ describe("useScheduleRealtime", () => {
 
     unmount();
 
-    expect(mocks.removeChannelMock).toHaveBeenCalledWith(mocks.channel);
+    expect(mocks.removeChannelMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes the open draft on a draft change that names no draft", () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    renderRealtimeHook(queryClient);
+
+    mocks.broadcastHandler?.({
+      payload: {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-04",
+        location_ids: ["loc-1"],
+        targets: ["draft_shifts"],
+      },
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["schedule-read", "workspace"],
+    });
   });
 
   it("invalidates matching schedule, pending op, and draft caches", () => {
@@ -99,7 +120,6 @@ describe("useScheduleRealtime", () => {
         workspace_id: "workspace",
         week_start: "2026-05-04",
         location_ids: ["loc-2"],
-        draft_id: "draft-1",
         targets: [
           "published_shifts",
           "draft_shifts",
@@ -132,7 +152,6 @@ describe("useScheduleRealtime", () => {
         workspace_id: "workspace",
         week_start: "2026-05-04",
         location_ids: ["loc-2"],
-        draft_id: null,
         targets: ["published_shifts"],
       },
     });
