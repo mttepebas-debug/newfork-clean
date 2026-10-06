@@ -121,10 +121,10 @@ select is(pg_temp.refusal(format('select public.get_schedule_edit_session_servic
 select is(pg_temp.save('ayse', tests.id('es:edit:a2'), 'Plan A', tests.id('es:plan_a')), '42501 authz.out_of_scope',
   'and saves nothing');
 select is(pg_temp.draft_state(tests.id('es:plan_a')), 'Plan A r1 1', 'Plan A is as it was');
-select isnt(pg_temp.open('zeynep', 1, 'draft', tests.id('es:plan_a'), array['K']) ->> 'status', 'conflict',
+select is(pg_temp.open('zeynep', 1, 'draft', tests.id('es:plan_a'), array['K']) ->> 'status', 'acquired',
   'Zeynep opens Plan A at once: Ayşe''s edit no longer holds it');
-select isnt((select s.status::text from public.schedule_edit_sessions s where s.id = tests.id('es:edit:a2')), 'active',
-  'Ayşe''s Plan A edit is closed');
+select is((select s.status::text from public.schedule_edit_sessions s where s.id = tests.id('es:edit:a2')), 'expired',
+  'Ayşe''s Plan A edit is closed (nothing unsaved in it)');
 
 select is((select array(select jsonb_array_elements_text(r -> 'session' -> 'location_ids'))::uuid[]
   from pg_temp.open('ayse', 3, 'blank', null, array['B']) r), array[tests.id('es:B')],
