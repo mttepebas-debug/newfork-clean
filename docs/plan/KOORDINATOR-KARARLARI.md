@@ -1554,3 +1554,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırları.
 - **Durum:** kayda geçti.
 - **Mert:** raporda "Senin yerine verdiğim kararlar"da.
+
+### KK-170 (2026-10-06) Restore'da geçerli belge, DB-3 çift okuması
+- **Karar (ne):** (1) "Invite to a new email" ile geri dönen kişide süresi dolmamış onaylı belge sayılmaya devam eder; süresi dolmuş ya da eksik olan yeniden istenir; politika imzaları yeni hesapla baştan. Mert "claude karar versin. profesyonel kurumsal bir saas için hangisi olmalı" dedi. (2) S1-restore.md'deki kurala dayanan yedi senaryo ve üç teknik karar kabul. (3) DB-3: şablon Replace lokasyon ve departmanı çift olarak eşler (veri hattının okuması), KARARLAR satırı düzeltildi.
+- **Nerede:** KARARLAR "Employees" (Restore satırı), "Schedule" (Overwrite satırı).
+- **Ne zaman:** 2026-10-06 ~08:45Z.
+- **Ne için:** (1) Belge çalışan kaydının, hesabın değil; işveren onu zaten incelemiş. Geçerli gıda kartını yeniden istemek "kurumsal hantallık" (ILKELER A anti-hedef). ABD'de I-9'da da işe yeniden alınan kişi için (3 yıl içinde) mevcut kayıt kullanılabiliyor; süresi dolan yeniden doğrulanır. İmza ise kişinin hesabına bağlı beyan: yeni hesap yeniden imzalar. (3) ILKELER P09.
+- **Dayanak:** ILKELER A anti-hedefler + P09; Mert'in "poliçe imzalama sıfırlanır"ı.
+- **Geri alma:** KARARLAR satırları.
+- **Durum:** kayda geçti.
+- **Mert:** sohbette söylendi.

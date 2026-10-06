@@ -149,6 +149,9 @@
 - Kanıt (2026-10-05, seçenek dışı; FB-6.7 akış cevabı 4): duyuru onayında "yalnız çalışanlar sayılsın" önerildi; Mert rütbeye bağladı: "Üst rütbe acknowledge etmesini istiyorsa alt rütbe acknowledge etmek zorundadır"; eş müdür yalnız bildirim alır, sayılmaz. Yükümlülük yukarıdan aşağı akar, eş rütbe birbirini bağlamaz (KARARLAR K22 eki).
 - Kanıt (2026-10-05, seçenek dışı; EKRAN-02 Requests, S1): owner'ın kendi takası / devri için "onaysız kaydolsun, müdürlere bilgi gitsin" önerildi (izindeki rütbe satırına benzeterek); Mert: "Lokasyon müdürü, owner ya da admin" onaylar. Owner'ın kendi vardiya değişikliğinde onay bir üst kademeye değil, o lokasyonun müdürüne de gidebilir; kimse kendini onaylamaz (KARARLAR "Schedule → Requests").
 
+- Kanıt (2026-10-06, ters seçim; EKRAN-03 K5): tercih edilen ad bildirimi için "yalnız karar verecek lokasyon müdürüne" (P07, "admin gürültüsü yok") verildi; Mert: "hem ownera hem admine hem de onaylayacak müdüre gitsin tek birinin onayı yeterli". Duyurudaki gibi (K5, 2026-10-02) admin'in bildirim alması P07'nin "admin gürültüsü yok" kısmını bu onayda da geçersiz kıldı.
+- Kanıt (2026-10-06, daraltma; EKRAN-03 K11): resmî adı doğrudan değiştirmek "owner / admin" diye verilmişti; Mert: "SADECE OWNER OLSUN ADMIN DE YAPAMASIN". Öneri onayında ise admin alt rütbeyi onaylar, admin'in kendi önerisini yalnız owner ("ilerde HR gibi bir role açarsak ona da ekleriz"). Bordro / kimlik verisinde doğrudan değişiklik en üst kademede.
+
 **P08. Ayrıcalık bugünkü rolden gelir.**
 - Kural: kurucuya ya da owner'a "saygı" istisnası yapılmaz. Rol düşünce muafiyet de düşer; owner
   da bir işe atanmadan o işe yazılmaz. İstisna yalnız veri modelinde tanımlıysa vardır

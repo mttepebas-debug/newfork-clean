@@ -285,7 +285,8 @@ AC10 (terfide müsaitliğin silinmesi, M14) uygulanmış; kapalı. Sınırdaki p
 (Konuşma adımı 2026-10-06 ~07:50Z, koordinatör `local_9c7e674a…`; ayrıntı KARARLAR "Employees", KK-169.)
 | Soru | Mert'in seçimi |
 |---|---|
-| S1 Restore | Seçenek dışı: yeni davet yok, aynı e-posta / hesapla erişim geri verilir; uç durumlar açık → `nf-planlama` EKRAN-03-S1 (`S1-restore.md`) |
+| S1 Restore | Seçenek dışı: yeni davet yok, aynı e-posta / hesapla erişim geri verilir. Uç durumlar `S1-restore.md`: Q1 sohbette ("Invite to a new email", bilgiler dolu, politika imzası baştan, geçerli belge sayılır — KK-170), Q2 ve Q3 önerilen |
+| K5, K11 | Mert değiştirdi: ad bildirimi owner + admin + müdür, ilk onay yeter; resmî adı doğrudan yalnız owner değiştirir |
 | S2 Send reminder | (a) önerilen: aynı bağlantı, bitiş değişmez; Resend yeni bağlantı + 7 gün |
 | S3 Internal note | (a) önerilen: yalnız üst rütbe |
 | S4 Özel bilgi | (a) önerilen: yalnız alt rütbe, izin ne olursa olsun |
