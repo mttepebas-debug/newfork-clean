@@ -2653,12 +2653,13 @@ describe("App", () => {
     );
 
     fireEvent.click(app.getAllByRole("button", { name: "Invalid-Host" })[0]!);
-    expect(await app.findByText("Preset shift is unavailable")).toBeTruthy();
+    // The toast lives in its own layer under <body>, outside the app container (BL-515).
+    expect(await screen.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      app.getByText(/^Start and end time cannot be the same\./),
+      screen.getByText(/^Start and end time cannot be the same\./),
     ).toBeTruthy();
     expect(
-      app.getByText(/Invalid-Host \/ Open shift \/ Main Dining \/ 2026-08-18/),
+      screen.getByText(/Invalid-Host \/ Open shift \/ Main Dining \/ 2026-08-18/),
     ).toBeTruthy();
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();
     const gridLabels = Array.from(
@@ -2823,9 +2824,10 @@ describe("App", () => {
     fireEvent.pointerUp(blockedPreset, { clientX: 18, clientY: 18 });
     fireEvent.click(blockedPreset, { clientX: 18, clientY: 18 });
 
-    expect(await app.findByText("Preset shift is unavailable")).toBeTruthy();
+    // The toast lives in its own layer under <body>, outside the app container (BL-515).
+    expect(await screen.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      app.getByText(/Location is closed for Dinner\./),
+      screen.getByText(/Location is closed for Dinner\./),
     ).toBeTruthy();
     expect(createScheduleShift).not.toHaveBeenCalled();
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();
