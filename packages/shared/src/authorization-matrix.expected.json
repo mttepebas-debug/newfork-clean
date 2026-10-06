@@ -1,5 +1,5 @@
 {
- "sourceSha256": "63c6abc1f639a23769d62c49aa7b9e88ead9ad1b56c5b516f6b1cecf58309446",
+ "sourceSha256": "97a6a5e9501196677fe44614db9cded67e1abddd600ae7e523b4cbc40c6020aa",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -353,6 +353,16 @@
    ],
    "class": null,
    "holder": null
+  },
+  {
+   "label": "case:ayse-k2",
+   "kind": "case",
+   "tenant": "m",
+   "locs": [
+    "K"
+   ],
+   "class": "manager",
+   "holder": "ayse"
   },
   {
    "label": "case:emre-k",
@@ -1016,27 +1026,6 @@
    "blank": "null"
   },
   {
-   "key": "legacy.schedule_can_manage",
-   "targetKind": "location",
-   "permission": "schedule.manage",
-   "coreKey": "schedule.edit",
-   "blank": "null"
-  },
-  {
-   "key": "legacy.schedule_can_publish",
-   "targetKind": "location",
-   "permission": "schedule.publish",
-   "coreKey": "schedule.publish",
-   "blank": "null"
-  },
-  {
-   "key": "legacy.schedule_capability",
-   "targetKind": "location",
-   "permission": "schedule.manage",
-   "coreKey": "schedule.edit",
-   "blank": "null"
-  },
-  {
    "key": "notifications.read_own",
    "targetKind": "workspace",
    "permission": null,
@@ -1081,7 +1070,7 @@
   {
    "key": "requests.read",
    "targetKind": "time_off",
-   "permission": "schedule.time_off_requests.read",
+   "permission": "schedule.time_off_requests.manage",
    "coreKey": "requests.read",
    "blank": "null"
   },
@@ -21904,6 +21893,12 @@
   [
    "exchange.approve",
    "ali",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "ali",
    "case:emre-k",
    "deny"
   ],
@@ -21916,6 +21911,12 @@
   [
    "exchange.approve",
    "aydan",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "aydan",
    "case:emre-k",
    "deny"
   ],
@@ -21928,6 +21929,12 @@
   [
    "exchange.approve",
    "ayse",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "ayse",
    "case:emre-k",
    "allow"
   ],
@@ -21940,6 +21947,12 @@
   [
    "exchange.approve",
    "can",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "can",
    "case:emre-k",
    "allow"
   ],
@@ -21952,6 +21965,12 @@
   [
    "exchange.approve",
    "derya",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "derya",
    "case:emre-k",
    "deny"
   ],
@@ -21964,6 +21983,12 @@
   [
    "exchange.approve",
    "emre",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "emre",
    "case:emre-k",
    "deny"
   ],
@@ -21976,6 +22001,12 @@
   [
    "exchange.approve",
    "kaan",
+   "case:ayse-k2",
+   "allow"
+  ],
+  [
+   "exchange.approve",
+   "kaan",
    "case:emre-k",
    "allow"
   ],
@@ -21988,6 +22019,12 @@
   [
    "exchange.approve",
    "mehmet",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "mehmet",
    "case:emre-k",
    "deny"
   ],
@@ -22000,6 +22037,12 @@
   [
    "exchange.approve",
    "nil",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "nil",
    "case:emre-k",
    "allow"
   ],
@@ -22012,6 +22055,12 @@
   [
    "exchange.approve",
    "nur",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "nur",
    "case:emre-k",
    "deny"
   ],
@@ -22024,6 +22073,12 @@
   [
    "exchange.approve",
    "olcay",
+   "case:ayse-k2",
+   "allow"
+  ],
+  [
+   "exchange.approve",
+   "olcay",
    "case:emre-k",
    "allow"
   ],
@@ -22036,6 +22091,12 @@
   [
    "exchange.approve",
    "pelin",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "pelin",
    "case:emre-k",
    "deny"
   ],
@@ -22048,6 +22109,12 @@
   [
    "exchange.approve",
    "remzi",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "remzi",
    "case:emre-k",
    "deny"
   ],
@@ -22060,6 +22127,12 @@
   [
    "exchange.approve",
    "sami",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "sami",
    "case:emre-k",
    "deny"
   ],
@@ -22072,6 +22145,12 @@
   [
    "exchange.approve",
    "veli",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "veli",
    "case:emre-k",
    "deny"
   ],
@@ -22084,6 +22163,12 @@
   [
    "exchange.approve",
    "xavier",
+   "case:ayse-k2",
+   "deny"
+  ],
+  [
+   "exchange.approve",
+   "xavier",
    "case:emre-k",
    "deny"
   ],
@@ -22092,6 +22177,12 @@
    "xavier",
    "case:veli-b",
    "deny"
+  ],
+  [
+   "exchange.approve",
+   "zeynep",
+   "case:ayse-k2",
+   "allow"
   ],
   [
    "exchange.approve",
@@ -22818,1230 +22909,6 @@
    "zeynep",
    "workspace",
    "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ali",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ali",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ali",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ali",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "aydan",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "aydan",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "aydan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "aydan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ayse",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ayse",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ayse",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "ayse",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "can",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "can",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "can",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "can",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "derya",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "derya",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "derya",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "derya",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "emre",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "emre",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "emre",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "emre",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "kaan",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "kaan",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "kaan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "kaan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "mehmet",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "mehmet",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "mehmet",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "mehmet",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nil",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nil",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nil",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nil",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nur",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nur",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nur",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "nur",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "olcay",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "olcay",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "olcay",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "olcay",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "pelin",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "pelin",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "pelin",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "pelin",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "remzi",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "remzi",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "remzi",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "remzi",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "sami",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "sami",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "sami",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "sami",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "veli",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "veli",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "veli",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "veli",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "xavier",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "xavier",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "xavier",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "xavier",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "zeynep",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "zeynep",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "zeynep",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_manage",
-   "zeynep",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ali",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ali",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ali",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ali",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "aydan",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "aydan",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "aydan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "aydan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ayse",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ayse",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ayse",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "ayse",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "can",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "can",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "can",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "can",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "derya",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "derya",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "derya",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "derya",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "emre",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "emre",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "emre",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "emre",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "kaan",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "kaan",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "kaan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "kaan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "mehmet",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "mehmet",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "mehmet",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "mehmet",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nil",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nil",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nil",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nil",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nur",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nur",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nur",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "nur",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "olcay",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "olcay",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "olcay",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "olcay",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "pelin",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "pelin",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "pelin",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "pelin",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "remzi",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "remzi",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "remzi",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "remzi",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "sami",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "sami",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "sami",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "sami",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "veli",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "veli",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "veli",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "veli",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "xavier",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "xavier",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "xavier",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "xavier",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "zeynep",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "zeynep",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "zeynep",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_can_publish",
-   "zeynep",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ali",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ali",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ali",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ali",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "aydan",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "aydan",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "aydan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "aydan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ayse",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ayse",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ayse",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "ayse",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "can",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "can",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "can",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "can",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "derya",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "derya",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "derya",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "derya",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "emre",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "emre",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "emre",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "emre",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "kaan",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "kaan",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "kaan",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "kaan",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "mehmet",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "mehmet",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "mehmet",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "mehmet",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nil",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nil",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nil",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nil",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nur",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nur",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nur",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "nur",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "olcay",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "olcay",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "olcay",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "olcay",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "pelin",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "pelin",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "pelin",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "pelin",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "remzi",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "remzi",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "remzi",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "remzi",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "sami",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "sami",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "sami",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "sami",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "veli",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "veli",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "veli",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "veli",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "xavier",
-   "B",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "xavier",
-   "K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "xavier",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "xavier",
-   "x:K",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "zeynep",
-   "B",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "zeynep",
-   "K",
-   "allow"
-  ],
-  [
-   "legacy.schedule_capability",
-   "zeynep",
-   "none",
-   "deny"
-  ],
-  [
-   "legacy.schedule_capability",
-   "zeynep",
-   "x:K",
-   "deny"
   ],
   [
    "notifications.read_own",
