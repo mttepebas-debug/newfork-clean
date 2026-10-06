@@ -23,7 +23,12 @@ export function SignInPage() {
     (location.state as { from?: string } | null)?.from ?? "/app";
   const destination = safeSignInDestination(requestedDestination);
   const inviteFlow = isInviteAcceptDestination(destination);
-  const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
+  // The marketing site's "Start free" links here with ?mode=signup.
+  const [creatingAccount, setCreatingAccount] = useState(
+    () =>
+      inviteFlow ||
+      new URLSearchParams(location.search).get("mode") === "signup",
+  );
   // The address a new account must confirm before it can sign in.
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(
     null,
