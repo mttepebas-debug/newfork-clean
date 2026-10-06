@@ -406,7 +406,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('time_off.revoke', 'leave', 'schedule.time_off_requests.manage', false, false,
    $$select public.revoke_time_off_service($1, $2, $3,
        (select r.revision from public.schedule_time_off_requests r where r.id = $3), 'matrix probe') is not null$$),
-  ('requests.read', 'time_off', 'schedule.time_off_requests.read', false, true,
+  -- seeing time off comes with deciding it: no "View" level of its own (EKRAN-02 K-S3)
+  ('requests.read', 'time_off', 'schedule.time_off_requests.manage', false, true,
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service($1, $2, 'needs_review')
        -> 'time_off_requests') r where (r ->> 'id')::uuid = $3)$$),
   -- One location (FB-6.7 K1); a blank location is no location, never everywhere.
