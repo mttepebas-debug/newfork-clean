@@ -43,7 +43,7 @@ export function ListAddButton({
   readonly disabled?: boolean;
 }) {
   return (
-    <Button className="list-add-button" disabled={disabled} onClick={onClick}>
+    <Button className="list-add-button list-add-action" disabled={disabled} onClick={onClick}>
       <Plus size={14} strokeWidth={2} aria-hidden />
       {label}
     </Button>

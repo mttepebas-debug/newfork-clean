@@ -119,7 +119,7 @@
   font-size: 13px;
 }
 
-/* The add button, and the Notifications bulk button: white, 36 high,
+/* The add button (green below) and the Notifications bulk button (white), 36 high,
    as wide as its words. */
 .list-page .list-add-button {
   display: inline-flex;
@@ -148,6 +148,18 @@
 .list-page .list-add-button:focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
+}
+/* A list page's own add action (New document, New announcement, New date) is
+   green, the action colour (Mert, 2026-10-06, list system 1). The Notifications
+   bulk button keeps the white style above. */
+.list-page .list-add-button.list-add-action {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.list-page .list-add-button.list-add-action:hover:not(:disabled) {
+  border-color: var(--theme-accent-strong);
+  background: var(--theme-accent-strong);
 }
 .list-page .list-add-button:disabled {
   border-color: var(--theme-border-subtle);
