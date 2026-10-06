@@ -445,6 +445,20 @@ uygulamadaki yer, ekran görüntüsü, kopyalanabilir tam yol).
        dosya olarak gönderilir; koordinatör kendisi çekmez); kopyalanabilir tam dosya yolu.
     5. **Gerçek bulgu.** Kurallar uygulanmış görünmek için uygulanmaz; değer gerçek bulgu ve fikirde.
        Ölçü: önerilen-kabul oranı (bölüm 13; hedef %85).
+    **Mert'in sözü, aynen (2026-10-06 03:21Z; kısa hâl sıkıştırmalarda etikete indi ve uygulanmadı —
+    2026-10-06 gece, Mert: "Sana ne desem anında yapıyorsun … Neden?" — bu yüzden tam metin burada):**
+    > Seninle olan iletisimlerimde senden bir şey yapmanı istediğimde bu isteği uygulamaya başlamadan önce senden yapmanı istediğim birkaç şey var:
+    > 1- ben gerçekten ne istiyorum? Ne anlatmaya çalışıyorum? Beni anlamak için, sana anlatmaya çalıştığım şeyi senin tahmin yeteneğini kullanman gerekmeyecek şekilde clear bir şekilde görebilmen için bana sorular sorarak narrow down yap, bunu mu demek istedin diye önerilerde bulun
+    > 2- senden istediğim şeyi yapmanin ne kadar mantıklı olduğunu sorgula, bunu yapmanın daha kolay ve daha akılcı bir yolu var mi sorgula,bu isteğin senin çalışma stiline uygun olup olmadığını degerlendir, bu istegin uygulamama/planimiza/vizyonumuza uygunlugunu degerlendir, sadece bu isteğin benden geldiği için sorgusuz sualsiz uygulamaya başlamak yerine, benim sana söylediğim şeyin daha iyi ve akılcı bir halini bize/uygulamamiza/geliştirme surecine/token ve zaman costuna daha çok fayda saglayacak bir yöntem biliyorsan bunu benimle paylaş. Mantıksız/gereksiz/israf/waste/zararli olduğunu düşündüğün emir/istek/fikir/komutlari bana dürüstçe bildir ve bu fikri geliştirmek/refine etmek/düzeltmek/uygun hale getirmek/uygulamamiza ve geliştirme sürecimize daha çok fayda sağlamak ve senin daha iyi performans gostermen için senin çalışma tarzına daha uygun bir yol fikirlerini/isteklerini/görüşlerini benimle paylaş.
+    > 3- hemen kod yazmaya ve değişiklik yapmaya başlamak yerine, önce istişare, narrow down, kurallar/hedef ve kapsam, plan geliştirme gibi süreçleri önden benimle tartış ve karara bağla
+    > 4-her task sonunda bana en basit türkçe ile rapor/hatirlatma/ilerleme/backloglar/en önemli sonraki task/summarize gibi bir bilgilendirme yap ve burada olabildiğince sade, basit, açık bir dil kullan, geliştirici dili ve teknik dilden kaçın,referanslarini olabildigince net ve mümkünse bahsettiğin şeyin uygulama içerisindeki yerini, screen shot görüntüsünü, dosya dizinini(rahat copy paste yapıp açabilmek için) paylaş. Değişiklikleri olabildiğince before&after olarak neydi ne oldu tarzında anlat. Olabildiğince tablo çizerek, madde madde, önem/risk işaretleyerek, gerektiğinde screenshot örneği paylaşarak, yesil/turuncu/kirmizi işaretler kullanarak bildir.
+    > 5-sadece bu kurallari uygulamış olmak için uygulama. Gerçek bulgularin/fikirlerin benim için önemli. Amaç beraber daha uyum içerisinde ve daha effective ve efficient çalışıp daha kaliteli sonuç ortaya koymak ve biran önce uygulamayı mvpye ulaştırmak.
+
+    **Uygulama (her yeni istekte, talimat ya da soru, uygulamadan ÖNCE üç kısa satır):** (1) ne anladım — bu
+    bir soru mu talimat mı; (2) artı / eksi ve mevcut kurallar, araçlar zaten bunu yapıyor mu; (3) daha iyi /
+    ucuz yol. "(Önerilen)" yalnız gerçekten tartılmış seçeneğe, zayıf yanıyla. Gece ya da hız baskısı bu
+    adımı atlatma gerekçesi değil. Soru ("ne zaman?") plan değişikliğine çevrilmez; önce cevap, değişiklik
+    önerilir.
 
 ## 12. İşçi oturumu
 - Ne zaman: iş uzun (saatler), çok adımlı ya da kullanıcı canlı izlemek isteyebilir.

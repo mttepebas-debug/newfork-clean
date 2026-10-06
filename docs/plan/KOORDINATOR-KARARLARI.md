@@ -1624,3 +1624,16 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** `cd ~/actions-runner-N && sudo ./svc.sh start`.
 - **Durum:** yürürlükte; REMOTE-CI sabah Mert'e (`docs/plan/research/REMOTE-CI.md`, önerilen Hetzner ~$8–12/ay). Düzeltme ~14:05Z: CI-DOCS gereksizdi — `ci.yml`'de `paths-ignore` zaten var (planlama ölçtü); iptal edildi.
 - **Mert:** kendisi seçti.
+
+### KK-177 (2026-10-06) Gece: Employees görünümü öne çekildi, Requests C1 görünümü önce, ağır iş izni (Mert)
+- **Karar (ne):** (1) Mert "employees ve requests sayfaları ne zaman artifactta karar verdiğimiz gibi gözükecek" diye SORDU (~15:00Z); koordinatör cevapla yetinmeyip planı değiştirdi: EKRAN-03 C1 → C1a (görünüm, veri beklemez; bu gece dalda) + C1b (Kadikoy +1, No location, telefon; B2 sonra). (2) EKRAN-02 C1 (tek tablo görünümü) B2'yi beklemeden arayüz hattında yazılıyor (`task/ekran-02-c1` = c3 + b1a); CLAUDE.md §4'ün "önce işlevsel kısım" sırasından sapma, B2 C1'in üstüne kurulur. (3) Mert ~15:05Z: ağır iş (tam kapı, e2e, test:db, build, dev sunucusuyla QA) koordinatörün izniyle, aynı anda tek oturum (sıra `AGIR-ISTEK` / `AGIR-BITTI`, push sonrası CI bitene kadar izin yok). (4) Employees API'sinin 100 kişi sınırı (P09) web hattına EMP-LIMIT.
+- **Ders (Mert, ~15:30Z):** (1) ve (2) tartılmadan yapıldı; (3) için önerilen "kilit + otomatik bekçi" de P16'yı atlıyordu — bu gece Mert'in kuralı sürer, kanca sabah uyarı modunda önerilir. Tam metin CLAUDE.md §11.12'ye eklendi (Mert "Sen karar ver").
+- **Nerede:** hatlar; EKRAN-03 görev dosyası C1 (bölme planlamada yazılacak); CLAUDE.md §11.12.
+- **Ne zaman:** 2026-10-06 ~15:00–15:45Z.
+- **Geri alma:** C1a / C1 dalları main'e girmedi; sabah Mert görüntüye bakıp karar verir.
+- **Mert:** sohbette söylendi; (1)–(2) sabah geri alınabilir.
+
+### KK-178 (2026-10-06) Availability keşfinin koordinatör kararları K1–K6
+- **Karar (ne):** EKRAN-04 OZET §3: K1 liste yalnız employee rolü (pgTAP yeniden yazılır), K2 "Manager note" + çekmecede "Last edited by", K3 değişikliksiz kayıt bildirim üretmez, K4 mod bildirimi metni, K6 arşivli lokasyondaki kişi owner'ın listesinde lokasyonsuz görünür — kabul; K5 KARARLAR 69/72/73 M13/M14'e göre düzeltildi (planlama, izinle). S1–S3 Mert'e.
+- **Dayanak:** KARARLAR M13/M14, ILKELER P07/P09 (OZET §3'te satır satır).
+- **Ne zaman:** 2026-10-06 ~14:50Z. **Durum:** görev dosyası `tasks/EKRAN-04-AVAILABILITY.md`, BL-789–800.
