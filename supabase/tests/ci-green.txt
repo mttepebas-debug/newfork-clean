@@ -106,7 +106,7 @@ supabase/tests/time_off_doors_close_with_the_workspace.test.sql
 supabase/tests/time_off_physical_request_counts.test.sql
 supabase/tests/time_off_requested_periods.test.sql
 supabase/tests/timezone_names.test.sql
-supabase/tests/weekly_assignment_candidates.test.sql
+supabase/tests/eligibility_matrix.test.sql
 supabase/tests/weekly_availability_preferences.test.sql
 supabase/tests/weekly_exchange_acceptance.test.sql
 supabase/tests/weekly_onboarding_preferences.test.sql
@@ -168,3 +168,5 @@ supabase/tests/bl052_document_definitions.test.sql
 supabase/tests/bl052_document_employee_assignment_preview.test.sql
 supabase/tests/employee_onboarding_rls.test.sql
 supabase/tests/documents_on_the_core.test.sql
+supabase/tests/weekly_exchange_changed_terms.test.sql
+supabase/tests/approved_cover_and_pickup_survive_a_stale_draft.test.sql
