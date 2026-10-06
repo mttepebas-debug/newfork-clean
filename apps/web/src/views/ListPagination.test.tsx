@@ -38,6 +38,26 @@ describe("ListPagination", () => {
     expect(container.firstChild).toBeNull();
   });
 
+  it("never shows a page past the end, and a new page size starts again at page 1", () => {
+    const onPageChange = vi.fn();
+    const onPageSizeChange = vi.fn();
+    render(
+      <ListPagination total={120} page={3} pageSize={100} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Pages" });
+    expect(within(nav).getByText("101–120 of 120")).toBeTruthy();
+    expect(within(nav).getByRole("button", { name: "Page 2" }).getAttribute("aria-current")).toBe("page");
+
+    fireEvent.change(within(nav).getByRole("combobox", { name: "Rows per page" }), { target: { value: "25" } });
+    expect(onPageSizeChange).toHaveBeenLastCalledWith(25);
+    expect(onPageChange).toHaveBeenLastCalledWith(1);
+  });
+
+  it("keeps the way back to page 1 when the list shrinks under one small page", () => {
+    render(<ListPagination total={20} page={2} pageSize={25} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Page 1" })).toBeTruthy();
+  });
+
   it("keeps the first, last and neighbouring pages and folds the rest", () => {
     expect(pageNumbers(1, 3)).toEqual([1, 2, 3]);
     expect(pageNumbers(1, 20)).toEqual([1, 2, 3, "gap", 20]);
