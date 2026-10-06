@@ -111,6 +111,21 @@ describe("useScheduleGridDragControllers helpers", () => {
     const excluded = { ...unavailable, employees: unavailable.employees.map(employee => ({ ...employee, is_excluded_from_schedule: true })) };
     expect(evaluateScheduleShiftDropTarget({ model: excluded, shift, target })).toMatchObject({ allowed: false, targetStatus: "blocked" });
   });
+  // DRAG-API: with the read model's conflict rules (the API now passes them through) a free cell is
+  // green and an approved day off is red; without them every drop falls back to orange.
+  it("colors a free cell allowed and an approved day off blocked once the rules arrive", () => {
+    const ready = { ...unavailable, employees: unavailable.employees.map(employee => ({ ...employee,
+      weekly_availability: employee.weekly_availability!.map(item => ({ ...item, unavailable_intervals: [],
+        leave_intervals: [{ start_at: "2026-08-19T07:00:00Z", end_at: "2026-08-20T07:00:00Z" }],
+        days: item.days.map(day => ({ ...day, has_unavailable: false, all_day: false })) })),
+    })) } as ScheduleReadModel;
+    const free = { shiftId, locationId, employeeId, date: "2026-08-20", copy: false };
+    const dayOff = { ...free, date: "2026-08-19" };
+    expect(evaluateScheduleShiftDropTarget({ model: ready, shift, target: free })).toMatchObject({ allowed: true, targetStatus: "allowed" });
+    expect(evaluateScheduleShiftDropTarget({ model: ready, shift, target: dayOff })).toMatchObject({ allowed: false, targetStatus: "blocked" });
+    const noRules = { ...ready, settings: { time_format: "12h" as const } };
+    expect(evaluateScheduleShiftDropTarget({ model: noRules, shift, target: free })).toMatchObject({ targetStatus: "warning" });
+  });
   it("formats the reference drag preview label", () => {
     expect(formatScheduleDragShiftLabel(model, shift)).toBe(
       "Server, 9:00 AM - 5:30 PM",

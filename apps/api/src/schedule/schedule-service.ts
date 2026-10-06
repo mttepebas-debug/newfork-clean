@@ -455,12 +455,7 @@ export function createScheduleReadService(options: {
       const weekEnd = addDaysIso(weekStart, 6);
       // The RPC has established the actor's scope. These independent reads
       // share that scope and need not add three sequential network waits.
-      const [settingsResult, closuresResult, importantDatesResult, shortNamesResult] = await Promise.all([
-        client
-          .from("workspace_scheduling_settings")
-          .select("time_format")
-          .eq("workspace_id", workspaceId)
-          .maybeSingle(),
+      const [closuresResult, importantDatesResult, shortNamesResult] = await Promise.all([
         allowedLocationIds.length
           ? client
             .from("schedule_closures")
@@ -493,7 +488,6 @@ export function createScheduleReadService(options: {
               .eq("workspace_id", workspaceId).in("id", allowedLocationIds)
           : Promise.resolve({ data: [], error: null }),
       ]);
-      const { data: settings } = settingsResult;
       const { data: closures, error: closuresError } = closuresResult;
       const { data: importantDates, error: importantDatesError } = importantDatesResult;
       if (closuresError) throw rpcFailure(closuresError);
@@ -507,12 +501,9 @@ export function createScheduleReadService(options: {
               ...location, short_name: shortNames.get(location.id as string),
             }))
           : [],
-        settings: {
-          time_format:
-            settings?.time_format === "24h" || settings?.time_format === "12h"
-              ? settings.time_format
-              : "12h",
-        },
+        // DRAG-API: the read model's own settings (time format, conflict rules, travel and rest
+        // minutes) pass through; the drag colours and K17 read the rules from here.
+        settings: readModelPayload.settings,
         closures: closures ?? [],
         important_dates: (importantDates ?? [])
           .flatMap((date) => {

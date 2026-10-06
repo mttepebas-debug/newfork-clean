@@ -58,6 +58,29 @@ describe("createScheduleReadService read model", () => {
     expect(locationEq).toHaveBeenCalledWith("workspace_id", workspaceId);
     expect(locationIn).toHaveBeenCalledWith("id", [locationId]);
   });
+  it("passes the Schedule's conflict rules through, so a drag can tell allowed from blocked (DRAG-API)", async () => {
+    const settings = {
+      time_format: "24h",
+      conflict_rules: { approved_time_off: "block", closed_location: "confirm_once", minimum_travel: "confirm",
+        minimum_rest: "confirm", document_required: "confirm", document_conditional_grace: "warn", document_conditional_overdue: "confirm" },
+      minimum_travel_minutes: 30,
+      minimum_rest_minutes: 600,
+    };
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday", settings,
+      locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
+      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+    }, error: null });
+    mocks.from.mockImplementation(() => {
+      const chain = {
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain, or: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
+      }; return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const result = await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
+    expect(result.settings).toEqual(settings);
+  });
   it("reads only the week's closed days, not every closed day before it (FB-6.7)", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
       locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
