@@ -221,9 +221,6 @@ insert into service_class values
   ('save_signature_template_draft_service', 'settings.documents.write'),
   ('save_workspace_layout_service', 'workspace.todos'),
   ('save_workspace_role_service', 'settings.roles.write'),
-  ('schedule_actor_can_manage_service', 'exempt:predicate'),
-  ('schedule_actor_can_publish_service', 'exempt:predicate'),
-  ('schedule_actor_has_capability_service', 'exempt:predicate'),
   ('schedule_current_week_start_service', 'schedule.read'),
   ('schedule_draft_has_hard_document_conflicts_service', 'exempt:predicate'),
   ('schedule_shift_in_department_scope_service', 'exempt:predicate'),
@@ -317,8 +314,8 @@ select ok(
     'exempt:worker', 'exempt:token', 'exempt:predicate')),
   'every exemption is one of the stated reasons'
 );
--- FB-6.7 took the announcement helpers (16 -> 11).
-select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 11, 'permission helpers only go down');
+-- FB-6.7 took the announcement helpers (16 -> 11), FB-6.4 A2 the three Schedule helpers (11 -> 8).
+select cmp_ok((select count(*)::integer from service_class where class = 'exempt:predicate'), '<=', 8, 'permission helpers only go down');
 
 select * from finish();
 rollback;

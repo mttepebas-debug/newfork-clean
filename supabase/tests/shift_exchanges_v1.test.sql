@@ -288,7 +288,10 @@ select tests.works_at(m.id, l) from public.workspace_memberships m
 select is(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->>'allowed','false','AT41 owner with manager role cannot approve their own release') from sx_state;
 select is(public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'allowed','false','AT41 recipient with manager role cannot approve their own pickup') from sx_state;
 select ok(public.shift_exchange_preview(pg_temp.actor(1),pg_temp.w(),cid,aid)->'reasons' @> '["A separate manager must approve your own exchange"]'::jsonb,'AT41 self-approval rejection explains the independent reviewer requirement') from sx_state;
-select throws_ok($$select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'fingerprint'),gen_random_uuid()) from sx_state$$,'PT409',null,'AT41 recipient manager cannot bypass preview using the final command');
+select throws_ok($$select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',public.shift_exchange_preview(pg_temp.actor(2),pg_temp.w(),cid,aid)->>'fingerprint'),gen_random_uuid()) from sx_state$$,'42501','Not allowed','AT41 recipient manager cannot bypass preview using the final command');
+-- AT17 below counts votes, not rank: the two people swapping are employees again (D3).
+update public.workspace_memberships set role='employee',role_id=(select r.id from public.workspace_roles r where r.workspace_id=pg_temp.w() and r.system_key='employee')
+ where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(1),pg_temp.actor(2));
 -- A material change after the first scoped approval requires fresh consent and votes.
 select tests.works_at(id, '11000000-0000-4000-8000-000000000001') from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5);
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(10),'requested_shift_id',pg_temp.shift(15)),gen_random_uuid());
