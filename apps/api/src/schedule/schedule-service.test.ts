@@ -757,7 +757,6 @@ describe("createScheduleReadService realtime invalidation", () => {
         week_start: "2026-08-17",
         location_ids: [locationId],
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
-        changed_shift_ids: ["81000000-0000-4000-8000-000000000001"],
       },
     });
   });

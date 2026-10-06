@@ -19,7 +19,6 @@ export interface ScheduleInvalidationPayload {
   readonly week_start?: string;
   readonly location_ids?: readonly string[];
   readonly targets: readonly ScheduleInvalidationTarget[];
-  readonly changed_shift_ids?: readonly string[];
 }
 
 interface UseScheduleRealtimeOptions {
@@ -109,10 +108,7 @@ export function isScheduleInvalidationPayload(
     (payload.week_start === undefined || typeof payload.week_start === "string") &&
     (payload.location_ids === undefined ||
       (Array.isArray(payload.location_ids) &&
-        payload.location_ids.every((id) => typeof id === "string"))) &&
-    (payload.changed_shift_ids === undefined ||
-      (Array.isArray(payload.changed_shift_ids) &&
-        payload.changed_shift_ids.every((id) => typeof id === "string")))
+        payload.location_ids.every((id) => typeof id === "string")))
   );
 }
 

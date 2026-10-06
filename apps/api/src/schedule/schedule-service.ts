@@ -117,7 +117,6 @@ interface ScheduleInvalidationPayload {
   readonly week_start?: string;
   readonly location_ids?: readonly string[];
   readonly targets: readonly ScheduleInvalidationTarget[];
-  readonly changed_shift_ids?: readonly string[];
 }
 
 export interface ScheduleReadService {
@@ -586,7 +585,6 @@ export function createScheduleReadService(options: {
         week_start: session.week_start,
         location_ids: scheduleSessionLocationIds(session),
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
-        changed_shift_ids: [input.shiftId],
       });
       return session;
     },
@@ -623,7 +621,6 @@ export function createScheduleReadService(options: {
           ? scheduleSessionLocationIds(result.session)
           : undefined,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
-        changed_shift_ids: input.shiftIds,
       });
       return result;
     },
@@ -659,7 +656,6 @@ export function createScheduleReadService(options: {
         week_start: session.week_start,
         location_ids: scheduleSessionLocationIds(session),
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
-        changed_shift_ids: input.command.shift_ids,
       });
       return session;
     },
@@ -748,9 +744,6 @@ export function createScheduleReadService(options: {
         workspace_id: input.workspaceId,
         location_ids: pendingOpLocationIds(input.pendingOp.payload),
         targets: ["pending_ops", "draft_shifts"],
-        changed_shift_ids: input.pendingOp.target_shift_id
-          ? [input.pendingOp.target_shift_id]
-          : undefined,
       });
       return result;
     },
@@ -770,7 +763,6 @@ export function createScheduleReadService(options: {
         workspace_id: input.workspaceId,
         location_ids: pendingOpLocationIds(input.pendingOp.payload),
         targets: ["pending_ops", "draft_shifts"],
-        changed_shift_ids: [input.opId],
       });
       return result;
     },
@@ -788,7 +780,6 @@ export function createScheduleReadService(options: {
       await broadcastScheduleInvalidation(client, {
         workspace_id: input.workspaceId,
         targets: ["pending_ops", "draft_shifts"],
-        changed_shift_ids: [input.opId],
       });
       return result;
     },
@@ -1013,9 +1004,6 @@ export function createScheduleReadService(options: {
         week_start: result.session.week_start,
         location_ids: scheduleSessionLocationIds(result.session),
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
-        changed_shift_ids: result.applied.map(
-          (assignment) => assignment.shift_id,
-        ),
       });
       return result;
     },
