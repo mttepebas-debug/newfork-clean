@@ -235,6 +235,29 @@ select is((select employee_id from public.schedule_edit_session_shifts s
 select cmp_ok((select revision from public.schedule_edit_sessions where id = tests.id('c:open-edit')), '>',
   (select revision from open_edit_before), 'BL-545: the edit''s revision moves, so the open screen reloads it');
 
+-- BL-545, review round 1: a draft saved from the published week and opened
+-- again carries the published shift's id without the copy mark. Ayse keeps
+-- Ali on Wednesday: the draft and the open edit keep him too (K13).
+
+select tests.publish_week('c', 4, '[{"label": "ali_wed4", "person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "17:00"}]');
+select tests.remember('c:edit4', (public.acquire_schedule_edit_session_service(pg_temp.u('owner'), tests.id('c'),
+  tests.week(4), 'published', null) -> 'session' ->> 'id')::uuid);
+select tests.remember('c:draft4', (public.save_schedule_edit_session_service(pg_temp.u('owner'), tests.id('c'),
+  tests.id('c:edit4'), (select revision from public.schedule_edit_sessions where id = tests.id('c:edit4')),
+  'Changes', null, null) ->> 'id')::uuid);
+select tests.remember('c:edit4b', (public.acquire_schedule_edit_session_service(pg_temp.u('owner'), tests.id('c'),
+  tests.week(4), 'draft', tests.id('c:draft4')) -> 'session' ->> 'id')::uuid);
+select is((pg_temp.preview('ayse', array['K'], tests.week(4) + 2) ->> 'draft_shift_count')::integer, 0,
+  'BL-545: a copy of a published shift is not a draft shift that will drop');
+select pg_temp.close_day('ayse', array['K'], 'Gas leak', tests.week(4) + 2,
+  keep => array[tests.id('c:shift:ali_wed4')],
+  fingerprint => pg_temp.preview('ayse', array['K'], tests.week(4) + 2) ->> 'fingerprint');
+select is(pg_temp.holder('ali_wed4'), tests.id('c:ali'), 'BL-545: kept, Ali stays on the published shift');
+select is((select employee_id from public.schedule_draft_shifts d where d.draft_id = tests.id('c:draft4')),
+  tests.id('c:ali'), 'BL-545: and on the saved draft''s copy');
+select is((select employee_id from public.schedule_edit_session_shifts s where s.session_id = tests.id('c:edit4b')),
+  tests.id('c:ali'), 'BL-545: and in the open edit');
+
 -- O1 (K11): Can's Tuesday shift sits in a draft four years back, and a yearly
 -- closed day that began that day is republished.
 -- ponytail: the old draft and the yearly date are put in place directly; the

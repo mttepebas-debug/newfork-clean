@@ -19,9 +19,51 @@ alter table public.schedule_template_shifts
     constraint schedule_template_shifts_unpaid_break_minutes_check
     check (unpaid_break_minutes = any (array[0, 15, 30, 45, 60]));
 
--- The shifts of an edit that Replace takes away: at a location the template
--- writes to, in a department it writes to (or one picked), not yet started,
--- not already staged for removal. One rule for the preview and the apply.
+-- The departments a Replace or its preview names: checked once, the same way
+-- for both. No list = the whole template ('{}' back); '__no_department__'
+-- stands for jobs without a department.
+create function app_private.schedule_template_department_ids(w uuid, department_keys text[])
+returns uuid[]
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  ids uuid[];
+begin
+  if department_keys is null then
+    return '{}'::uuid[];
+  end if;
+  if cardinality(department_keys) = 0 then
+    raise exception 'select at least one department' using errcode = '22023';
+  end if;
+  if exists (
+    select 1 from unnest(department_keys) as key(value)
+    where key.value <> '__no_department__'
+      and key.value !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  ) then
+    raise exception 'invalid department key' using errcode = '22023';
+  end if;
+  ids := array(select key.value::uuid from unnest(department_keys) as key(value) where key.value <> '__no_department__');
+  if exists (
+    select 1 from unnest(ids) as selected(id)
+    left join public.departments department
+      on department.id = selected.id and department.workspace_id = w and department.archived_at is null
+    where department.id is null
+  ) then
+    raise exception 'schedule template department not found' using errcode = 'P0002';
+  end if;
+  return ids;
+end;
+$$;
+
+revoke all on function app_private.schedule_template_department_ids(uuid, text[]) from public, anon, authenticated;
+
+-- The shifts of an edit that Replace takes away: at a (location, department)
+-- pair the template writes to -- only among the departments picked, if any --
+-- not yet started, not already staged for removal. One rule for the preview
+-- and the apply.
 create function app_private.schedule_template_replace_targets(
   w uuid, edit_session uuid, template uuid, department_keys text[])
 returns setof uuid
@@ -37,21 +79,22 @@ as $$
     where template_shift.template_id = template and template_shift.workspace_id = w
       and template_shift.location_id = any (public.live_location_ids(w, array(
         select distinct s.location_id from public.schedule_template_shifts s where s.template_id = template)))
+  ), picked as (
+    select app_private.schedule_template_department_ids(w, department_keys) as ids
   )
   select edit_shift.id
   from public.schedule_edit_session_shifts edit_shift
   join public.jobs job on job.id = edit_shift.job_id and job.workspace_id = edit_shift.workspace_id
   join public.locations location on location.id = edit_shift.location_id and location.workspace_id = edit_shift.workspace_id
+  cross join picked
   where edit_shift.session_id = edit_session and edit_shift.workspace_id = w
     and edit_shift.pending_op_type is distinct from 'delete'
-    and edit_shift.location_id in (select t.location_id from template_shift t)
-    and case
-      when department_keys is null
-        then exists (select 1 from template_shift t where t.department_id is not distinct from job.department_id)
-      else job.department_id = any (array(
-             select key::uuid from unnest(department_keys) key where key <> '__no_department__'))
-        or (job.department_id is null and '__no_department__' = any (department_keys))
-    end
+    and exists (
+      select 1 from template_shift t
+      where t.location_id = edit_shift.location_id and t.department_id is not distinct from job.department_id)
+    and (department_keys is null
+      or job.department_id = any (picked.ids)
+      or (job.department_id is null and '__no_department__' = any (department_keys)))
     -- A shift that has started stays (P09); an unknown time counts as not started.
     and coalesce(lower(app_private.shift_time_range(edit_shift.scheduled_date, edit_shift.start_time,
           edit_shift.end_time, coalesce(edit_shift.time_timezone, location.timezone))) > now(), true)
@@ -145,40 +188,9 @@ begin
     raise exception 'invalid template apply mode' using errcode = '22023';
   end if;
 
-  -- No department list: the whole template, as the six-argument twin did.
-  if department_keys is not null then
-    if cardinality(department_keys) = 0 then
-      raise exception 'select at least one department' using errcode = '22023';
-    end if;
-
-    if exists (
-      select 1
-      from unnest(department_keys) as key(value)
-      where key.value <> '__no_department__'
-        and key.value !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-    ) then
-      raise exception 'invalid department key' using errcode = '22023';
-    end if;
-
-    select coalesce(array_agg(key.value::uuid), '{}'::uuid[])
-      into selected_department_ids
-    from unnest(department_keys) as key(value)
-    where key.value <> '__no_department__';
-
-    include_no_department := '__no_department__' = any(department_keys);
-  end if;
-
-  if exists (
-    select 1
-    from unnest(selected_department_ids) as selected_department(id)
-    left join public.departments department
-      on department.id = selected_department.id
-     and department.workspace_id = target_workspace_id
-     and department.archived_at is null
-    where department.id is null
-  ) then
-    raise exception 'schedule template department not found' using errcode = 'P0002';
-  end if;
+  -- No department list: the whole template. Checked the same way as the preview.
+  selected_department_ids := app_private.schedule_template_department_ids(target_workspace_id, department_keys);
+  include_no_department := coalesce('__no_department__' = any (department_keys), false);
 
   select *
     into target_session
@@ -831,6 +843,13 @@ AS $function$
          and edit_shift.scheduled_date = newly.closed_date and edit_shift.employee_id is not null
          and edit_shift.source_published_shift_id is null and edit_shift.pending_op_type is distinct from 'delete'
         join public.schedule_edit_sessions edit on edit.id = edit_shift.session_id and edit.status = 'active'
+        -- An edit opened from a draft carries the published shift's id without
+        -- the copy mark; that copy follows the published shift too (K13 keep).
+        where not exists (
+          select 1 from public.schedule_published_shifts published
+          join public.schedule_location_publications publication
+            on publication.id = published.publication_id and publication.status = 'current'
+          where published.workspace_id = w and coalesce(published.source_shift_id, published.id) = edit_shift.id)
       ) dropping), '[]'::jsonb))
 $function$;
 
