@@ -24,8 +24,14 @@ async function open(browser: Browser, person: Person, path: string): Promise<Pag
   return page;
 }
 
-test("an employee takes a shift inside their approved time off and it shortens at approval", async ({ browser }) => {
-  const caseId = sql(`
+// The week, Ali's leave and Emre's cover case are setup, not the test (BL-763):
+// under CI load these SQL calls alone can eat a test's 60 s.
+let caseId = "";
+let day = "";
+test.beforeAll(() => {
+  test.setTimeout(180_000);
+  const started = Date.now();
+  caseId = sql(`
     select tests.publish_week('${run}', 6, '[
       {"label": "emre-wed6", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "10:00", "end": "14:00"}
     ]');
@@ -37,7 +43,11 @@ test("an employee takes a shift inside their approved time off and it shortens a
     select public.shift_exchanges_command_service(tests.user('${run}:emre'), tests.id('${run}'),
       jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('${run}:shift:emre-wed6')),
       gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
-  const day = sql(`select tests.week(6) + 2;`);
+  day = sql(`select tests.week(6) + 2;`);
+  console.log(`shift-hub-time-off setup: ${Date.now() - started} ms`);
+});
+
+test("an employee takes a shift inside their approved time off and it shortens at approval", async ({ browser }) => {
   const leaveCovers = () => sql(`select bool_or(public.time_off_effective_ranges(s.id) && tstzrange(
       (x ->> 'starts_at')::timestamptz, (x ->> 'ends_at')::timestamptz, '[)'))
     from public.schedule_time_off_segments s join public.schedule_time_off_requests r on r.id = s.request_id

@@ -19,8 +19,8 @@ function sql(query: string): string {
 }
 
 /** A fresh workspace with one employee, Kai; returns Kai's email. */
-function kaiWithPassword(): string {
-  const w = `sec3pw${Date.now()}`;
+function kaiWithPassword(tag: string): string {
+  const w = `sec3pw${Date.now()}${tag}`;
   const printed = sql(`
     select tests.world('${w}');
     select tests.person('${w}', 'kai', 'employee', array['K'], array['cook']);
@@ -56,8 +56,20 @@ async function changePassword(page: Page, current: string) {
   await page.getByRole("button", { name: "Change password", exact: true }).click();
 }
 
+// Building a world is setup, not the test (BL-763): under CI load it alone can
+// take longer than a test's 60 s, so it runs here with its own budget.
+let kaiForWrongPassword = "";
+let kaiForRightPassword = "";
+test.beforeAll(() => {
+  test.setTimeout(180_000);
+  const started = Date.now();
+  kaiForWrongPassword = kaiWithPassword("a");
+  kaiForRightPassword = kaiWithPassword("b");
+  console.log(`account-password-change setup: ${Date.now() - started} ms`);
+});
+
 test("a wrong current password does not change the password", async ({ page, browser }) => {
-  const email = kaiWithPassword();
+  const email = kaiForWrongPassword;
   await signInAs(page, email, oldPassword);
   await expect(page).toHaveURL(/\/app\//);
 
@@ -70,7 +82,7 @@ test("a wrong current password does not change the password", async ({ page, bro
 });
 
 test("the right current password changes it, and the new one signs in", async ({ page, browser }) => {
-  const email = kaiWithPassword();
+  const email = kaiForRightPassword;
   await signInAs(page, email, oldPassword);
   await expect(page).toHaveURL(/\/app\//);
 

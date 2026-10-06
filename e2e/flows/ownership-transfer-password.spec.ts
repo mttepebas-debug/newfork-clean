@@ -27,8 +27,8 @@ interface Offer {
 }
 
 /** A workspace whose owner has offered it to admin Ada. */
-function offerToAda(): Offer {
-  const w = `sec3ot${Date.now()}`;
+function offerToAda(tag: string): Offer {
+  const w = `sec3ot${Date.now()}${tag}`;
   const printed = sql(`
     select tests.world('${w}');
     select tests.person('${w}', 'ada', 'admin', array['K'], array['cook']);
@@ -71,8 +71,19 @@ async function freshToken(email: string, password: string): Promise<string> {
   return body.access_token;
 }
 
+// Building a world is setup, not the test (BL-763): its own budget, not the 60 s.
+let offerForPage: Offer;
+let offerForToken: Offer;
+test.beforeAll(() => {
+  test.setTimeout(180_000);
+  const started = Date.now();
+  offerForPage = offerToAda("a");
+  offerForToken = offerToAda("b");
+  console.log(`ownership-transfer-password setup: ${Date.now() - started} ms`);
+});
+
 test("Ada takes over the workspace with their password on Account > Workspaces", async ({ page }) => {
-  const offer = offerToAda();
+  const offer = offerForPage;
   await signInAs(page, offer.adaEmail, adaPassword);
 
   await page.goto("/account/workspaces");
@@ -84,7 +95,7 @@ test("Ada takes over the workspace with their password on Account > Workspaces",
 });
 
 test("a fresh token with the wrong password does not take over the workspace", async () => {
-  const offer = offerToAda();
+  const offer = offerForToken;
   // A token minted this second: the old check (how recent the token is) passes.
   const token = await freshToken(offer.adaEmail, adaPassword);
 
