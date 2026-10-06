@@ -181,10 +181,12 @@
   outline: 0;
   padding-left: 0;
 }
+/* One frame: the S7 edge sits on the search box, its input has none. */
 .requests-catalog-page .catalog-toolbar .requests-search.toolbar-search {
   min-height: 36px;
   height: 36px;
   padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
   border-radius: 6px;
   color: var(--job-muted);
 }
@@ -198,6 +200,7 @@
   min-height: 0;
   height: 34px;
   padding: 0;
+  border: 0;
   color: var(--job-text);
   font-size: 12px;
 }
