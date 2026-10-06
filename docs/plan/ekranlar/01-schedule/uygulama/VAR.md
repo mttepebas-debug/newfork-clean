@@ -155,3 +155,6 @@ main'de görünürde bir şey değişmedi. Yalnız dalda, DEV'de, `?var=` ile.
 4. C-P2 C seçilirse lokasyon başlığı sağa yaslı kalıyor (cila, W-5).
 
 Skill: `superpowers:verification-before-completion` (iddialar komut çıktısı ve dosya:satırla). `systematic-debugging` açılmadı: beklenmedik bozulma yok, DRAG kök nedeni ölçümle bulundu.
+
+## 8. Sonuç (VAR-UYG, 2026-10-06)
+- VAR-HUCRE (a → b → c) Mert'in seçimleri ve ad "!" kuralıyla gerçek Schedule'a girdi: `uygulama/VAR-UYG.md`. Varyant kodu main'e girmedi; dal `task/var-ekran-12` EKRAN-03 ve Requests varyantları için açık kalıyor.
