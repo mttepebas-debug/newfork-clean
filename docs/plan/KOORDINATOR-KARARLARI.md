@@ -1502,3 +1502,14 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırı; Mert ters çevirirse "ters çevrildi".
 - **Durum:** kayda geçti, W-1b'de uygulanacak.
 - **Mert:** raporda "Senin yerine verdiğim kararlar"da gösterilir.
+
+### KK-165 (2026-10-06) Mert'le çalışmanın beş kuralı ve dört iş akışı eki
+- **Karar (ne):** Mert (~03:20Z): koordinatör bir isteği uygulamadan önce (1) sorularla netleştirir, (2) isteğin mantığını ve daha iyi yolunu sorgular, israf ya da zararlıysa dürüstçe söyler, (3) hedef / kapsam / planı önce kararlaştırır, (4) her işin sonunda en sade Türkçeyle rapor verir (öncesi / sonrası, tablo, 🟢🟠🔴, uygulamadaki yer, ekran görüntüsü, kopyalanabilir yol), (5) bunları gösteriş için değil gerçek bulgu için yapar. Netleştirme turunda üç seçim (üçü önerilen): ölçek işin boyuna göre; tam rapor iş sonunda, arada 2–3 satır; kapsam koordinatör + oturum raporlarının dili. Mert'in "iş akışına eklemek istediğin bir şey var mı" sorusuna koordinatörün dört önerisi, dördü seçildi: A dürtme mesajı yok (30 dk cevapsızlık hariç); B R0–R2'de ONAY + tam kapı + Done when tamamsa oturum izin beklemeden gönderir, R3 ve canlı migration izinle; C raporun başında koordinatör için 5 satır; D hattı durdurmayan sorular birikir, üçü geçince ya da "soru turu"nda gelir.
+- **Nerede:** `CLAUDE.md` §3 (posta kutusu), §5 adım 6, §6 (main'e gönderme), §10, §11.2, §11.12.
+- **Ne zaman:** 2026-10-06 ~03:20–03:40Z.
+- **Ne için:** sorgusuz uygulama yerine ortak karar; hatların koordinatörü beklememesi; koordinatör bağlamının yavaş dolması.
+- **Uygulamada etkisi:** ekranda yok; süreçte R0–R2 dilimleri koordinatörü beklemeden main'e girer.
+- **Dayanak:** Mert'in talimatı ve seçimleri. B, KK-159'daki "her gönderim izinle" seçimini R0–R2 için gevşetti (Mert seçti).
+- **Geri alma:** CLAUDE.md'nin bu commit'ten önceki hâli.
+- **Durum:** yürürlükte.
+- **Mert:** kendi talimatı ve seçimleri.

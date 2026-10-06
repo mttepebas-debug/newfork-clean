@@ -90,8 +90,8 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 - **Posta kutusu (COORD-CTRL, kullanıcı kararı 2026-09-30).** Rapor mesajla değil dosyayla gider:
   `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md>` (klasör
   `C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı). Adres koordinatörün kimliğine bağlı
-  değildir; devirde rapor kaybolmaz. Ardından koordinatöre tek satırlık `send_message` dürtmesi
-  gidebilir; ulaşmasa da rapor kaybolmaz. Koordinatör meşgulken yeni rapor bir sonraki araç
+  değildir; devirde rapor kaybolmaz. Ayrı `send_message` dürtmesi gönderilmez (Mert, 2026-10-06):
+  posta kutusu koordinatörü 5 sn içinde uyandırır; yalnız 30 dk cevap gelmezse tek satır dürtme gider. Koordinatör meşgulken yeni rapor bir sonraki araç
   çağrısında hook ile bağlamına düşer; boştayken arka plandaki `inbox.mjs wait` onu uyandırır.
   Oturum işini `node scripts/inbox.mjs status "<iş-id>" "<durum>"` ile panoya yazar.
 - **Koordinatörün el kitabı.**
@@ -190,8 +190,9 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
    (kullanıcı kararı 2026-10-01, KARAR-001) yalnız en riskli işte önerilir (yetki çekirdeği, RLS,
    grant, veri silme) ve öneride dolar tutarı yazılır. Bulgular `nf-guvenlik` incelemesine eklenir;
    onun yerine geçmez.
-6. Entegrasyon: koordinatörün "gönder" izniyle işi yapan oturum (bölüm 6); koordinatör sonra
-   commit'in main'de ve main CI'ın yeşil olduğunu bağımsız kontrol eder.
+6. Entegrasyon: işi yapan oturum gönderir (bölüm 6: R0–R2'de koşullar tamamsa izin beklemeden, R3'te
+   koordinatörün "gönder" izniyle); koordinatör sonra commit'in main'de ve main CI'ın yeşil olduğunu
+   bağımsız kontrol eder.
 7. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
    (işi yapan oturum ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
 
@@ -210,9 +211,14 @@ Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden ön
 - Ekran görüntüleri ve geçici kanıtlar: `artifacts/<rol>/<id>/` (gitignore'da).
 - Tam kapı: `pnpm.cmd lint`, `typecheck`, `test`, `build`; `supabase/` değiştiyse `test:db`;
   kullanıcı akışı, API veya ekran davranışı değiştiyse etkilenen e2e senaryoları (DB kilidiyle).
-- main'e gönderme (Mert, 2026-10-06: işi yapan oturum gönderir, yalnız koordinatörün o iş için
-  açık "gönder" izniyle; izinsiz oturum push etmez; koordinatör kod göndermez, gönderimden sonra
-  commit'i ve main CI'ı bağımsız kontrol eder):
+- main'e gönderme (Mert, 2026-10-06; KK-159, KK-165): işi yapan oturum gönderir; koordinatör kod
+  göndermez, gönderimden sonra commit'i ve main CI'ı bağımsız kontrol eder.
+  - **R0–R2:** sınıfın istediği inceleme ONAY + rebase sonrası tam kapı yeşil + Done when kanıtlı ise
+    oturum izin beklemeden gönderir; raporunda "gönderildi" der.
+  - **R3** (yetki, RLS, grant, `*_service` sınıflandırması, katılım/davet, sahiplik devri, veri silme,
+    parola/oturum) ve her canlı (hosted) migration: koordinatörün o iş için açık "gönder" izni
+    gerekir; koordinatör diff'in riskli kısmını okur. İzinsiz oturum R3'te push etmez.
+  Adımlar:
   1. Risk sınıfının istediği inceleme tamam (`DELEGASYON.md` §3; R3'te `nf-guvenlik`
      `ONAY @<sha>`). Sınıf ve karar raporda tek satır.
   2. `main.lock` al (bölüm 7).
@@ -328,6 +334,10 @@ Rol ajanından ve işçi oturumundan koordinatöre (Türkçe, kod okumayan biri 
 (1) nerede duruyor, (2) ne yapıldı (etkisi), (3) açık kalan ve nedeni, (4) ekranda ne değişti,
 (5) sırada ne var (yolda bulunanlar dahil). Kanıt: komut + sonuç, dosya:satır, commit sha, worktree
 branch'i, ekran görüntüsü yolu. İnceleme rollerinde en üstte KARAR satırı.
+Raporun en üstünde **koordinatör için 5 satır** (Mert, 2026-10-06; KK-165): Karar (inceleme ONAY/RED,
+sınıf) · İzin (gönderildi / R3: izin bekliyor / canlı migration isteği) · Risk (🟢 / 🟠 / 🔴 + tek cümle) ·
+Soru (Mert'e ya da koordinatöre; yoksa "yok") · Sonraki (oturumun sıradaki işi). Gövde bölüm 11.12'deki
+sade dille: öncesi / sonrası, uygulamadaki yeri, ekran görüntüsü yolu.
 Ekran planındaki dilimde rapor, inceleme raporlarıyla birlikte ve başında "Sonrası için" bölümüyle
 `docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md`'ye de yazılır, dilimin commit'ine girer
 (Mert, 2026-10-06; biçim `docs/plan/EKRAN-PLANI.md` "Uygulama arşivi").
@@ -341,7 +351,8 @@ Koordinatörden kullanıcıya, her iş bitiminde, tablo ve listelerle:
 5. **Sıradaki en önemli işler** — öncelik sırasıyla, her birinin gerekçesiyle; backlog'a yazılanlar adıyla.
 6. **Bakım kontrolü** — commit, push, worktree ve branch temizliği, migration, bağlam penceresi.
    Koordinatör kendi yapabileceğini yapar, kullanıcının yapması gerekeni hatırlatır.
-Kısa yaz, ham araç çıktısı yapıştırma.
+Kısa yaz, ham araç çıktısı yapıştırma. Dil ve biçim bölüm 11.12'deki gibi (öncesi / sonrası, 🟢🟠🔴,
+uygulamadaki yer, ekran görüntüsü, kopyalanabilir tam yol).
 
 ## 11. Koordinatörün kuralları (kullanıcının 2026-09-24/25'te koyduğu ya da onayladığı)
 1. **Türkçe.** Kullanıcıya giden her şey Türkçe: soru, rapor, özet, durum satırı; kullanıcı
@@ -353,7 +364,8 @@ Kısa yaz, ham araç çıktısı yapıştırma.
    uygulamadaki yeri (ekran adı ve yolu), bir kişi için ne değiştirdiği, somut bir örnek. Backlog
    numarası tek başına yazılmaz ("CI'ı hızlandırmak (BL-112)"). Sorular tek tıkla cevaplanır:
    seçenekler adlı, önerilen ilk sırada, "(Önerilen)" etiketli ve dayanağıyla (bölüm 13); sorular
-   toplanıp tek turda sorulur.
+   toplanıp tek turda sorulur. Bir hattı durduran soru hemen sorulur; durdurmayanlar birikir, üçü geçince
+   ya da Mert "soru turu" deyince tek seferde gelir (Mert, 2026-10-06).
    Tekrarlayan maliyet ilk mesajda DOLAR olarak, kaynağıyla. Hata saklanmaz: "benim hatam" denir.
 3. **İşin başında.** Tören işin boyuna göre: küçük iş (tek okuması var, kolay geri alınır) yapılır
    ve bir iki satırla söylenir. Gerçek iş (birden fazla okuması var, geri dönüşü pahalı ya da ortak
@@ -415,6 +427,24 @@ Kısa yaz, ham araç çıktısı yapıştırma.
     (bölüm 12); koordinatör iş yapmaz ve alt ajan çağırmaz (Mert, 2026-10-06; `DELEGASYON.md`).
 11. **Rol hafızası.** Rollerin öğrendikleri `.claude/agent-memory/<rol>/`'da (git'te). Koordinatör
     ayda bir farkı okur; yanlış ya da eskimiş kaydı sildirir.
+12. **Mert'le çalışma: beş kural (Mert, 2026-10-06; KK-165).** Amaç gösteriş değil: daha uyumlu ve
+    verimli çalışıp MVP'ye hızlı varmak. Tören işin boyuna göre (madde 3): küçük, tek okumalı, kolay geri
+    alınan işte tek satır ("küçük iş diye okudum"; daha iyi yol varsa o da) ve yapılır; gerçek işte beşi
+    birden. Kapsam: koordinatör; 4. maddedeki rapor dili oturumların koordinatöre raporlarında da geçerli.
+    1. **Netleştir.** Mert'in ne istediği tahmin edilmez. Sonucu değiştiren her belirsizlik tek turda,
+       tıklamalı sorulur; "bunu mu demek istedin?" okuması önerilen seçenek olur. Sonucu değiştirmeyen
+       şüphe sorulmaz.
+    2. **Sorgula.** İstek Mert'ten geldi diye sorgusuz uygulanmaz: mantıklı mı, daha kolay ya da ucuz
+       yolu var mı, çalışma biçimine, plana ve vizyona uyuyor mu. Gereksiz, israf ya da zararlı görülen
+       istek açıkça söylenir ve daha iyi hâli önerilir (ör. 2026-10-06 "her şeyi sakla" → arşiv + damıtma).
+    3. **Önce kararlaş.** Değişiklikten önce hedef, kapsam ve plan Mert'le karara bağlanır (madde 3).
+    4. **Sade rapor.** Mert'in verdiği her işin sonunda ve her ekran / dilim main'e girince bölüm 10
+       biçiminde tam rapor; aradaki durum mesajları 2–3 satır, aynı dille. Geliştirici dili yok; öncesi /
+       sonrası ("neydi, ne oldu"); tablo ve madde; 🟢 tamam / 🟠 dikkat / 🔴 risk ya da engel; uygulamadaki
+       yeri (ekran → menü → düğme); ekran görüntüsü (oturumların `artifacts/` altındaki görüntüsü, Mert'e
+       dosya olarak gönderilir; koordinatör kendisi çekmez); kopyalanabilir tam dosya yolu.
+    5. **Gerçek bulgu.** Kurallar uygulanmış görünmek için uygulanmaz; değer gerçek bulgu ve fikirde.
+       Ölçü: önerilen-kabul oranı (bölüm 13; hedef %85).
 
 ## 12. İşçi oturumu
 - Ne zaman: iş uzun (saatler), çok adımlı ya da kullanıcı canlı izlemek isteyebilir.
