@@ -168,7 +168,11 @@ select is(pg_temp.at_gate('nur', g.action), '42501 authz.out_of_scope ' || g.act
 from gate g order by g.action;
 select is(pg_temp.at_gate('aydan', g.action), '42501 authz.document_blocked ' || g.action,
   g.action || ': a manager missing a required document is blocked')
-from gate g order by g.action;
+from gate g where g.action not in ('requests.read', 'exchange.read') order by g.action;
+-- ...but reads Requests and decides nothing there (EKRAN-02 K-S2).
+select is(pg_temp.at_gate('aydan', g.action), 'allowed',
+  g.action || ': a manager missing a required document still reads Requests')
+from gate g where g.action in ('requests.read', 'exchange.read') order by g.action;
 select is(pg_temp.at_gate('emre', g.action), '42501 authz.missing_permission ' || g.action,
   g.action || ': an employee does not hold the permission')
 from gate g order by g.action;
