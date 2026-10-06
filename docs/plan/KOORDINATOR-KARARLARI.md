@@ -1534,3 +1534,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırları.
 - **Durum:** kayda geçti.
 - **Mert:** devir raporunda "Senin yerine verdiğim kararlar"da.
+
+### KK-168 (2026-10-06) DB-2 sırası ve ad "!" okuması
+- **Karar (ne):** (1) DB-2 (Schedule canlı kanalı lokasyon başına; R3) API ve web parçasını beklemeden main'e ve canlıya girer; aradaki sürede Schedule başka müdürün kaydında kendiliğinden yenilenmez, HTTP yeniden çekme sürer. Web hattı API yayınını ve W-1b aboneliğini hemen, DB-2 sözleşmesiyle başlatır; boşluk web hattının bir sonraki gönderimiyle kapanır. Veri hattının önerisi "üçü tek pencerede" idi; reddedildi. (2) Ad "!" gün sayımında izin (TIME OFF) sayılmaz.
+- **Nerede:** EKRAN-01 DB-2 (`task/ekran-01-db-2`, `d271cd09`, `nf-guvenlik` ONAY @bcfbb0a5); KARARLAR Schedule.
+- **Ne zaman:** 2026-10-06 ~07:15Z.
+- **Ne için:** (1) Canlı kullanıcı yok; dal üstüne dal kurup üç parçayı aynı pencereye sıkıştırmak (ILKELER P01'in reddettiği aşamalı geçiş töreni) web hattını bekletir. Güvenlik tarafı sıkılaşıyor, açık yok; tek etkisi geçici yenileme kaybı. (2) İzin ayrı kavram (kırmızı TIME OFF), "!" turuncu müsaitlik.
+- **Dayanak:** (1) ILKELER P01 + P15; koordinatör diff'in riskli kısmını okudu (iki politika: konu deseni ^…$ ile tam, uuid dönüşümü desen tuttuktan sonra, yazma yalnız presence). (2) KARARLAR Müsaitlik M8 / M10.
+- **Geri alma:** (1) yeni migration ile eski politika; (2) KARARLAR satırı.
+- **Durum:** kayda geçti.
+- **Mert:** raporda "Senin yerine verdiğim kararlar"da.
