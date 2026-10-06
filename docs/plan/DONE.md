@@ -186,3 +186,40 @@ Format: `YYYY-MM-DD | ID | sonuç | commit`. Yalnızca sona ekle. Buradaki kanı
 2026-10-06 | BL-562 Schedule hız testi CI'da tek başına | Hız testi artık diğer testler bitince makine boşken koşuyor; yük altında main'i kırmıyor, 50 ms sınırı aynı (`23f168ae`).
 2026-10-06 | BL-756 main CI koşuları birbirini iptal etmiyor | Yeni gönderim main'deki koşan kontrolü iptal edip kırmızıyı gizlemiyor (`23f168ae`).
 2026-10-06 | BL-101 canlı zamanlanmış işler sunucuya ulaşıyor | Bildirim kuyruğu canlıda çalışıyor (434/434 reddedilirken 200); haftalık e-posta için Resend anahtarı bekliyor.
+2026-10-06 | BL-724 | kapandı: `666ff634` / migration `20261007040000_time_off_pages_lose_no_request.sql`: imleç artık sayfanın son satırının zamanı, `created_at < cursor`. `schedule_requests_paging.test.sql` (7 | 666ff634
+2026-10-06 | BL-718 | bayat: KARARLAR :519 "Schedule telefonda tamamen kapalı"; `81aa5544` + `bdd1be43` | 81aa5544
+2026-10-06 | BL-709 | kapandı: W-1b `fe5f1b61`: görünen her lokasyon izleniyor | fe5f1b61
+2026-10-06 | BL-704 | kapandı: DRAG-API `7f7e90dc` (kurallar ekrana ulaşıyor) + DRAG-UI `4d2e571a` (token, üç durum testli) | 7f7e90dc
+2026-10-06 | BL-703 | kapandı: `efe215a4` + BE-2b `7bd0190f`/`d2264f7a`/`27f102db`: kısmi teslim notu, kural açık kalıyor | efe215a4
+2026-10-06 | BL-700 | kapandı: BE-1 `7cb8813c`: Export authorize çekirdeğe soruyor, eski kapı silindi | 7cb8813c
+2026-10-06 | BL-698 | kapandı: DB-1b ad biçimi + `recovered_draft_name`; `12b8e9b1` açılışta tek satır | 12b8e9b1
+2026-10-06 | BL-697 | kapandı: DB-3: yeni vardiya `source_published_shift_id` almıyor; web `scheduleShiftMetadata.ts:25-32` buna bakıyor | 9146ba6b
+2026-10-06 | BL-696 | kapandı: DB-3 `511aed11`: şablon molayı saklıyor ve uyguluyor | 511aed11
+2026-10-06 | BL-695 | kapandı: DB-1b: kira canlıyken 409 `schedule.draft_being_edited` + `46ed4225` sade metin | 46ed4225
+2026-10-06 | BL-693 | kapandı: `8fec3a7d` (lokasyon başına `rls_can`) + `39e94551`/`ae526db3` (yükte taslak, kullanıcı, vardiya kimliği yok) | 8fec3a7d
+2026-10-06 | BL-692 | kapandı: DB-1b: bekleyen değişiklik listesi yalnız çağıranın; e2e `57726b9a` | 57726b9a
+2026-10-06 | BL-691 | kapandı: `6501b429` (yenileyince düzenleme sürüyor) + `f667cfd5` (başka hafta görünüm modunda) | 6501b429
+2026-10-06 | BL-690 | kapandı: W-1a `6501b429`/`8440c6bb` + W-1b `659f0b9f`: geri sayımda kilit düşmüyor, düşerse bir kez kurtarılıp yeniden deneniyor | 6501b429
+2026-10-06 | BL-689 | kapandı: DB-1c `bb7df088`/`ec38901d` + `05c19950`/`9a6fe619`: Undo sunucudaki adımı geri alıyor; `b921a0fd` takas geri yüklemesi Undo adımı değil | bb7df088
+2026-10-06 | BL-688 | kapandı: DB-1b `20339ae2`/`40f2948a`/`a089f778` + `ed74a30b`: süre dolunca `autosave`, "Auto-save · ad · saat" taslağı | 20339ae2
+2026-10-06 | BL-685 | kapandı: shared `confirm_scope` (`availability-assessment.ts:79`), web `closedDayAnswer.ts:10`. | e986f346
+2026-10-06 | BL-619 | bayat: `own_mark` yalnız `week.unavailable` sayıyor, izni saymıyor (okuma modeli :221-224); Edit tarafı da aynı (`1154d318`). | 4f0a43a0
+2026-10-06 | BL-616 | kapandı: `EnterEditModeDialog` grep 0. | 6682304e
+2026-10-06 | BL-587 | bayat: 375 px'te Schedule kapalı. | 81aa5544
+2026-10-06 | BL-578 | bayat: 390 px'te Schedule kapalı. | 81aa5544
+2026-10-06 | BL-573 | bayat: Telefonda Schedule kapalı; balon da silindi. | 81aa5544
+2026-10-06 | BL-570 | kapandı: `ScheduleAvailabilityTip` silindi; "You can still schedule" grep 0. | e4231bfb
+2026-10-06 | BL-545 | kapandı: DB-3: K16 açık düzenlemeye de uygulanıyor; `closed_days_reach_the_shifts` testi. | 511aed11
+2026-10-06 | BL-525 | kapandı: İzin düz kırmızı "TIME OFF"; turuncu tarama silindi. | e4231bfb
+2026-10-06 | BL-524 | kapandı: `ScheduleEmployeeCard`'da `CalendarOff` yok; ad "!" kuralı geldi. | e4231bfb
+2026-10-06 | BL-508 | bayat: `time_off_seen_by_who_decides` pgTAP, `ci-green.txt:158` | 9146ba6b
+2026-10-06 | BL-412 | kapandı: `list_schedule_weekly_shifts_service` artık 42501 + `out_of_scope` veriyor; P0002 yok. | a4e0ba11
+2026-10-06 | BL-391 | kapandı: Anahtar silindi; okuma hatayı içeride yakalıyor (`SchedulePage.tsx:934-946`). | 2de22655
+2026-10-06 | BL-333 | bayat: 375 px'te Schedule kapalı. | 81aa5544
+2026-10-06 | BL-320 | bayat: Schedule 768 px altında kapalı. | 81aa5544
+2026-10-06 | BL-292 | kapandı: Canlı gövdede `case when row_payload ? 'note'`; anahtar yoksa not korunuyor. | 511aed11
+2026-10-06 | BL-224 | kapandı: `delete_schedule_draft_service` artık tek yardımcıyı çağırıyor (`app_private.live_draft_locations`). | 20339ae2
+2026-10-06 | BL-159 | kapandı: DB-1a: tetikleyici oturumun lokasyonuna bakıyor, ret artık `out_of_scope`. | a4e0ba11
+2026-10-06 | BL-135 | bayat: Okuma modeli artık notu yazanı veriyor (`note_author`, `scheduleAvailabilityMark.ts:114`). | 68c7bd8c
+2026-10-06 | BL-133 | kapandı: `activate_employee_onboarding_case_service` drop edildi (`20261006000000:3099`). | 6b0d5d7b
+2026-10-06 | BL-042 | bayat: ölçülecek bir iddia yok ("drawer UI polish"); işi EKRAN-03 C2 ve ayrı BL'ler aldı | 9146ba6b
