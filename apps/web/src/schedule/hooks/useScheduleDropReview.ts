@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ScheduleConflictRules, ShiftAvailabilityAssessment } from "@newfork/shared";
+import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 import type { SchedulePendingOp, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { useToast } from "@newfork/ui";
 import { loadShiftAvailability } from "../../availability/availability-data";
@@ -41,7 +41,6 @@ function status(assessment: ShiftAvailabilityAssessment | null, answeredClosedDa
 
 export function useScheduleDropReview(
   workspaceId: string | undefined, sessionId: string | undefined, revision: number | undefined,
-  closedDayRule?: ScheduleConflictRules["closed_location"],
 ) {
   const toast = useToast();
   const [review, setReview] = useState<Review | null>(null);
@@ -91,7 +90,7 @@ export function useScheduleDropReview(
         assessments.push(await loadShiftAvailability(workspaceId, item.input, item.shiftId, sessionId));
         if (!isCurrent()) return;
       }
-      const states = assessments.map(value => status(value, closedDayAlreadyAnswered(value, closedDayRule, sessionId)));
+      const states = assessments.map(value => status(value, closedDayAlreadyAnswered(value, sessionId)));
       const blocked = states.some(state => state.blocked);
       const warningCount = states.filter(state => state.warning && !state.accepted).length;
       const unconfirmed = states.some((state, index) => state.needsConfirmation && (
@@ -111,7 +110,7 @@ export function useScheduleDropReview(
         return;
       }
       // K17: an answered closed day holds for the rest of this editing session.
-      if (confirmation) assessments.forEach((value, index) => { if (states[index]!.needsConfirmation) rememberClosedDayAnswer(value, closedDayRule, sessionId); });
+      if (confirmation) assessments.forEach((value, index) => { if (states[index]!.needsConfirmation) rememberClosedDayAnswer(value, sessionId); });
       const saved = await drop.save(drop.items.map((item, index) => ({ ...item.input,
         ...(states[index]!.warning ? { availability_assessment_fingerprint: assessments[index]!.fingerprint } : {}),
       })));

@@ -1,30 +1,30 @@
-import { closedLocationAsks, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
-
-type ClosedDayRule = ScheduleConflictRules["closed_location"] | undefined;
+import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 
 // K17: editing sessions in which the person already accepted a shift on a
 // closed day. Keyed by session id, so a new session (discard, publish, idle
 // timeout) asks again. ponytail: never pruned; one id per session is tiny.
 const answeredSessions = new Set<string>();
 
+type Reason = ShiftAvailabilityAssessment["reasons"][number];
+// BL-685: the server marks a "confirm once" closed day on the reason itself.
+const onceForSession = (reason: Reason) => reason.code === "closed_location" && reason.confirm_scope === "edit_session";
+
 /**
- * Whether this assessment asks only because of a closed day that this editing
- * session already accepted. The caller still sends the fingerprint: the server
- * records an acceptance for every shift.
+ * Whether this assessment asks only because of a "confirm once" closed day that
+ * this editing session already accepted. The caller still sends the
+ * fingerprint: the server records an acceptance for every shift.
  */
 export function closedDayAlreadyAnswered(
-  assessment: ShiftAvailabilityAssessment | null | undefined, rule: ClosedDayRule, sessionId: string | undefined,
+  assessment: ShiftAvailabilityAssessment | null | undefined, sessionId: string | undefined,
 ): boolean {
-  if (!assessment || !rule || !sessionId || assessment.operation !== "warning_requires_override") return false;
+  if (!assessment || !sessionId || assessment.operation !== "warning_requires_override") return false;
   const asking = assessment.reasons.filter(reason => reason.severity === "confirm" || reason.severity === "block");
-  return asking.length > 0 && asking.every(reason => reason.code === "closed_location")
-    && !closedLocationAsks(rule, answeredSessions.has(sessionId));
+  return asking.length > 0 && asking.every(onceForSession) && answeredSessions.has(sessionId);
 }
 
-/** Keeps the answer for the rest of the session when the rule is "confirm once". */
+/** Keeps the answer for the rest of the session when the server marked the closed day "confirm once". */
 export function rememberClosedDayAnswer(
-  assessment: ShiftAvailabilityAssessment | null | undefined, rule: ClosedDayRule, sessionId: string | undefined,
+  assessment: ShiftAvailabilityAssessment | null | undefined, sessionId: string | undefined,
 ): void {
-  if (sessionId && rule === "confirm_once" && assessment?.reasons.some(reason => reason.code === "closed_location"))
-    answeredSessions.add(sessionId);
+  if (sessionId && assessment?.reasons.some(onceForSession)) answeredSessions.add(sessionId);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { closedLocationAsks, closedLocationSeverity, DEFAULT_SCHEDULE_CONFLICT_RULES, scheduleConflictRulesSchema } from "./availability-assessment";
+import { closedLocationSeverity, DEFAULT_SCHEDULE_CONFLICT_RULES, scheduleConflictRulesSchema, shiftAvailabilityAssessmentSchema } from "./availability-assessment";
 import { schedulePublicationOverrideInputSchema, schedulePublishFindingSchema } from "./index";
 
 describe("scheduleConflictRulesSchema", () => {
@@ -21,13 +21,16 @@ describe("closed location in three steps (K17)", () => {
       expect(scheduleConflictRulesSchema.safeParse({ ...DEFAULT_SCHEDULE_CONFLICT_RULES, closed_location: step }).success).toBe(true);
     expect(scheduleConflictRulesSchema.safeParse({ ...DEFAULT_SCHEDULE_CONFLICT_RULES, closed_location: "warn" }).success).toBe(false);
   });
-  it("asks once a session on confirm_once, every cell on confirm, never on block (it refuses)", () => {
+  it("asks on confirm_once like confirm, and refuses on block", () => {
     expect(closedLocationSeverity("confirm_once")).toBe("confirm");
     expect(closedLocationSeverity("block")).toBe("block");
-    expect(closedLocationAsks("confirm_once", false)).toBe(true);
-    expect(closedLocationAsks("confirm_once", true)).toBe(false);
-    expect(closedLocationAsks("confirm", true)).toBe(true);
-    expect(closedLocationAsks("block", false)).toBe(false);
+  });
+  it("keeps the server's confirm once mark on the reason (BL-685)", () => {
+    const reason = { code: "closed_location", message: "Closed.", definite: true, severity: "confirm", confirm_scope: "edit_session" };
+    const shape = shiftAvailabilityAssessmentSchema.shape.reasons.element;
+    expect(shape.parse(reason).confirm_scope).toBe("edit_session");
+    expect(shape.parse({ ...reason, confirm_scope: undefined }).confirm_scope).toBeUndefined();
+    expect(shape.safeParse({ ...reason, confirm_scope: "forever" }).success).toBe(false);
   });
 });
 

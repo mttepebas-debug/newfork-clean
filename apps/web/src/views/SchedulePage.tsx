@@ -643,8 +643,7 @@ export function SchedulePage({
   useEffect(() => {
     setExportOpen(false); setExportAfterSave(false); setSaveOpen(false);
   }, [context?.workspace.id, context?.userId]);
-  const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision,
-    query.data?.settings.conflict_rules?.closed_location);
+  const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision);
   const displayedPendingOps = useMemo(
     () => gridEditSession ? [...pendingOps, ...dropReview.optimisticOps] : [],
     [gridEditSession, pendingOps, dropReview.optimisticOps],

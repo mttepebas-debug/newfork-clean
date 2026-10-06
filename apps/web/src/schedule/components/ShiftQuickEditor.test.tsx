@@ -134,9 +134,13 @@ describe("ShiftQuickEditor", () => {
       ...confirmedAvailability, conflict_severity: "confirm" as const, operation: "warning_requires_override" as const, warning_policy: "confirm" as const, reasons,
     });
     // Each call is one cell: the editor opens, the manager presses Add shift.
-    async function addOnClosedDay(rule: "confirm" | "confirm_once", sessionId: string) {
+    // BL-685: the server's reason says "confirm once" (confirm_scope); the page's settings do not decide.
+    const onceClosed = { ...closed, confirm_scope: "edit_session" as const };
+    async function addOnClosedDay(rule: "confirm" | "confirm_once", sessionId: string,
+      reasons: ShiftAvailabilityAssessment["reasons"] = [rule === "confirm_once" ? onceClosed : closed]) {
       const onSubmit = vi.fn().mockResolvedValue("saved");
-      const view = render(<ShiftQuickEditor model={{ ...model, settings: { ...model.settings, conflict_rules: { approved_time_off: "block", closed_location: rule, minimum_travel: "confirm", minimum_rest: "confirm" } } }}
+      vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay(reasons));
+      const view = render(<ShiftQuickEditor model={{ ...model, settings: { ...model.settings, conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" } } }}
         state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }} sessionId={sessionId}
         timeFormat="12h" formatTime={value => value} addDays={value => value} scheduleClosureCoversDate={() => false}
         onClose={vi.fn()} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={onSubmit} />);
@@ -167,8 +171,8 @@ describe("ShiftQuickEditor", () => {
     });
     it("confirm once: another confirm reason on the cell still asks", async () => {
       expect((await addOnClosedDay("confirm_once", "editor-rest")).asked).toBe(true);
-      vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay([closed, { code: "minimum_rest", severity: "confirm", definite: true, message: "Not enough rest." }]));
-      expect((await addOnClosedDay("confirm_once", "editor-rest")).asked).toBe(true);
+      expect((await addOnClosedDay("confirm_once", "editor-rest",
+        [onceClosed, { code: "minimum_rest", severity: "confirm", definite: true, message: "Not enough rest." }])).asked).toBe(true);
     });
   });
   function renderAssigned(onSubmit = vi.fn().mockResolvedValue("saved")) {

@@ -292,9 +292,12 @@ describe("closed day under K17 (BL-606)", () => {
   const closed = { code: "closed_location", message: "This location is closed.", definite: true, severity: "confirm" as const };
   const closedDay = (changes: Partial<ShiftAvailabilityAssessment> = {}) =>
     assessment({ conflict_severity: "confirm", warning_policy: "confirm", reasons: [closed], ...changes });
+  // BL-685: "confirm once" travels on the server's reason (confirm_scope), not in the page's settings.
+  const onceClosed = { ...closed, confirm_scope: "edit_session" as const };
   function closedSetup(session: string, rule: "confirm" | "confirm_once") {
+    vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay({ reasons: [rule === "confirm_once" ? onceClosed : closed] }));
     const save = vi.fn().mockResolvedValue(true);
-    const hook = renderHook(({ id }) => useScheduleDropReview("workspace", id, 1, rule), { initialProps: { id: session } });
+    const hook = renderHook(({ id }) => useScheduleDropReview("workspace", id, 1), { initialProps: { id: session } });
     const move = () => act(() => hook.result.current.start({ input, shiftId: "shift", save }));
     return { ...hook, save, move };
   }
@@ -335,7 +338,7 @@ describe("closed day under K17 (BL-606)", () => {
     const h = closedSetup("session-rest", "confirm_once");
     await answerFirst(h);
     vi.mocked(loadShiftAvailability).mockResolvedValue(closedDay({
-      reasons: [closed, { code: "minimum_rest", message: "Not enough rest", definite: true, severity: "confirm" }],
+      reasons: [onceClosed, { code: "minimum_rest", message: "Not enough rest", definite: true, severity: "confirm" }],
     }));
     h.move();
     await waitFor(() => expect(h.result.current.review).not.toBeNull());

@@ -37,16 +37,10 @@ export const DEFAULT_SCHEDULE_CONFLICT_RULES: ScheduleConflictRules = {
 
 /**
  * K17: "confirm once" asks like "confirm"; the Schedule keeps the answer for
- * the rest of its editing session (the server reports confirm_scope:
- * "edit_session" on the reason).
+ * the rest of its editing session, told by the reason's confirm_scope.
  */
 export function closedLocationSeverity(rule: ScheduleConflictRules["closed_location"]): ScheduleConflictSeverity {
   return rule === "confirm_once" ? "confirm" : rule;
-}
-
-/** K17: whether a cell on a closed day still asks, given this editing session's answers so far. */
-export function closedLocationAsks(rule: ScheduleConflictRules["closed_location"], confirmedThisSession: boolean): boolean {
-  return rule === "confirm" || (rule === "confirm_once" && !confirmedThisSession);
 }
 
 export function highestScheduleConflictSeverity(values: readonly ScheduleConflictSeverity[]): ScheduleConflictSeverity {
@@ -81,6 +75,8 @@ export const shiftAvailabilityAssessmentSchema = z.object({
       definite: z.boolean(),
       severity: scheduleConflictSeveritySchema.optional(),
       intervals: z.array(interval).optional(),
+      // K17 / BL-685: the server marks a "confirm once" closed day; the answer holds for the editing session.
+      confirm_scope: z.literal("edit_session").optional(),
     }),
   ),
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
