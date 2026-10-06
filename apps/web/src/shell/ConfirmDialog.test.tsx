@@ -1,6 +1,28 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { useState } from "react";
+import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { ConfirmDialog, useConfirmDialog } from "./ConfirmDialog";
+
+// Requests → Time off: Deny opens a box with a note field inside the drawer (BL-656).
+function DenyInDrawer({ onClose }: { onClose: () => void }) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <CatalogDrawer label="Time off request" onClose={onClose}>
+      <button type="button" onClick={() => setAsking(true)}>Deny</button>
+      <ConfirmDialog
+        open={asking}
+        title="Deny this request?"
+        confirmLabel="Deny"
+        destructive
+        onConfirm={() => setAsking(false)}
+        onCancel={() => setAsking(false)}
+      >
+        <textarea aria-label="Note" autoFocus />
+      </ConfirmDialog>
+    </CatalogDrawer>
+  );
+}
 
 function Asker({ onAnswer }: { onAnswer: (answer: boolean) => void }) {
   const { confirm, dialog } = useConfirmDialog();
@@ -25,6 +47,22 @@ function Asker({ onAnswer }: { onAnswer: (answer: boolean) => void }) {
 }
 
 describe("ConfirmDialog", () => {
+  it("gives focus back to the button that opened it when a field took focus first, and Escape then closes the drawer (BL-656)", async () => {
+    const onClose = vi.fn();
+    render(<DenyInDrawer onClose={onClose} />);
+    const deny = screen.getByRole("button", { name: "Deny" });
+    deny.focus();
+
+    fireEvent.click(deny);
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Note" }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Cancel" })));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(document.activeElement).toBe(deny);
+
+    await act(async () => fireEvent.keyDown(document.activeElement!, { key: "Escape" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("answers true on the red button and false on Cancel or Escape, then returns focus", async () => {
     const onAnswer = vi.fn();
     render(<Asker onAnswer={onAnswer} />);
