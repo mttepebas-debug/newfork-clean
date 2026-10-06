@@ -447,6 +447,11 @@ select is((select count(*)::integer from public.schedule_published_shifts p
 select lives_ok($$select public.acquire_schedule_edit_session_service(tests.user('dp:owner'), tests.id('dp'), tests.week(3), 'draft',
   (select (v #>> '{}')::uuid from ap where k = 'dp:draft'))$$,
   'the draft still opens in Edit mode');
+-- BL-759: from the published week Edit fails (23505) while the moved shift
+-- sits in both publications. Red until the publish rule is decided.
+select todo('BL-759: waits for what a publish does with a shift moved out of a location', 1);
+select lives_ok($$select public.acquire_schedule_edit_session_service(tests.user('dp:owner'), tests.id('dp'), tests.week(3), 'published', null)$$,
+  'the published week opens in Edit mode');
 
 select * from finish();
 rollback;

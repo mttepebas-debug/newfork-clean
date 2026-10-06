@@ -177,3 +177,7 @@ supabase/tests/requests_closed_unified_read.test.sql
 supabase/tests/shift_exchange_rejection_reason_stays_with_the_applicant.test.sql
 supabase/tests/swap_review_preview_measures.test.sql
 supabase/tests/workspace_box_shows_live_announcements.test.sql
+supabase/tests/published_shift_rechecks_time_off.test.sql
+supabase/tests/publish_stays_in_its_draft.test.sql
+supabase/tests/schedule_bulk_paths_keep_rest.test.sql
+supabase/tests/schedule_read_model_important_dates.test.sql
