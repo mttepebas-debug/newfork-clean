@@ -10,6 +10,8 @@ import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
 const NOTE = "Zeynep has not saved this";
+// A week no other spec uses (0-9 are taken; schedule-publish-approved-exchange counts week 5's versions).
+const WEEK = 500;
 
 function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
@@ -32,23 +34,23 @@ const notedCard = (page: Page) => page.locator('[data-shift-badge][data-has-note
 
 test("one manager's unsaved change stays off another manager's grid", async ({ browser }) => {
   sql(`
-    select tests.publish_week('${run}', ${roundWeek(5)}, '[
+    select tests.publish_week('${run}', ${roundWeek(WEEK)}, '[
       {"label": "${roundLabel("ali-own")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
     ]');`);
-  const monday = sql(`select tests.week(${roundWeek(5)});`);
+  const monday = sql(`select tests.week(${roundWeek(WEEK)});`);
 
   const ayse = await editLiveWeek(browser, "ayse", monday);
   const zeynep = await editLiveWeek(browser, "zeynep", monday);
 
+  // In edit mode a double click opens the card.
+  await alisCard(zeynep).first().dblclick();
+  const editor = zeynep.getByRole("dialog");
+  await editor.getByRole("textbox", { name: "Note", exact: true }).fill(NOTE);
   // Ayse's screen rereads its pending changes when Zeynep's change goes live.
   const ayseRereads = ayse.waitForRequest(
     (request) => request.method() === "GET" && /\/schedule\/pending-ops\?/.test(request.url()),
     { timeout: 15_000 },
   );
-  // In edit mode a double click opens the card.
-  await alisCard(zeynep).first().dblclick();
-  const editor = zeynep.getByRole("dialog");
-  await editor.getByRole("textbox", { name: "Note", exact: true }).fill(NOTE);
   await editor.getByRole("button", { name: "Save", exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(notedCard(zeynep)).toHaveCount(1);
