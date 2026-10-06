@@ -83,10 +83,13 @@ select tests.publish_week('m', 0, '[
   {"label": "emre-k", "person": "emre", "loc": "K", "job": "cook",   "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "veli-b", "person": "veli", "loc": "B", "job": "server", "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "ali-k",  "person": "ali",  "loc": "K", "job": "cook",   "day": 4, "start": "09:00", "end": "15:00"},
-  {"label": "ayse-k", "person": "ayse", "loc": "K", "job": "cook",   "day": 3, "start": "09:00", "end": "15:00"}
+  {"label": "ayse-k", "person": "ayse", "loc": "K", "job": "cook",   "day": 3, "start": "09:00", "end": "15:00"},
+  {"label": "ayse-k2", "person": "ayse", "loc": "K", "job": "cook",  "day": 5, "start": "09:00", "end": "15:00"}
 ]');
 select tests.cover_case('m', 'emre-k', 'emre', 'ali');
 select tests.cover_case('m', 'veli-b', 'veli', 'ali');
+-- A manager's own shift: her peers do not decide it (D3).
+select tests.cover_case('m', 'ayse-k2', 'ayse', 'emre');
 -- Drafts and templates at one or both locations (REUSE "Taslak ve lokasyon"
 -- B3, K-2; M2 publish and export).
 -- ponytail: stored as they are; a draft is written by saving a whole edit and
@@ -264,6 +267,7 @@ insert into target values
   ('sh:ayse-k',  'shift',     'm', '{K}',   'manager',  'ayse'),
   ('case:emre-k', 'case',     'm', '{K}',   'employee', 'emre'),
   ('case:veli-b', 'case',     'm', '{B}',   'employee', 'veli'),
+  ('case:ayse-k2', 'case',    'm', '{K}',   'manager',  'ayse'),
   ('dr:K',       'draft',     'm', '{K}',   null,       null),
   ('dr:B',       'draft',     'm', '{B}',   null,       null),
   ('dr:KB',      'draft',     'm', '{K,B}', null,       null),
@@ -494,17 +498,6 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('settings.people.read', 'workspace', 'employees.read', false, false,
    $$select public.get_employee_name_settings_service($1, $2) is not null$$);
 
--- The consistency layer: the older helpers that each answer "may this person
--- manage this location?" on their own. They must all give the same answer as
--- the rule, a blank location included. Stage 4 replaces them with the core.
-insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
-  ('legacy.schedule_can_manage', 'location', 'schedule.manage', false, true,
-   $$select public.schedule_actor_can_manage_service($1, $2, $3)$$),
-  ('legacy.schedule_capability', 'location', 'schedule.manage', false, true,
-   $$select public.schedule_actor_has_capability_service($1, $2, 'schedule.manage', $3)$$),
-  ('legacy.schedule_can_publish', 'location', 'schedule.publish', false, true,
-   $$select public.schedule_actor_can_publish_service($1, $2, $3)$$);
-
 -- Somebody's documents (FB-6.6): read, and decided on. Exempting is the
 -- decision a probe can make on any badge without a submission.
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
@@ -605,9 +598,6 @@ insert into core_action (key, core_key, blank) values
   ('important_date.write_wide', 'important_date.write_wide', 'null'),
   ('read.membership', 'membership.read', 'null'),
   ('read.audit', 'audit.read', 'null'),
-  ('legacy.schedule_can_manage', 'schedule.edit', 'null'),
-  ('legacy.schedule_capability', 'schedule.edit', 'null'),
-  ('legacy.schedule_can_publish', 'schedule.publish', 'null'),
   ('notifications.read_own', 'notifications.read_own', 'null'),
   ('documents.read', 'documents.read', 'null'),
   ('documents.review', 'documents.review', 'null'),
@@ -867,13 +857,6 @@ begin
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
     return 'deny';
 
-  when 'legacy.schedule_can_manage', 'legacy.schedule_capability', 'legacy.schedule_can_publish' then
-    -- Manage reach at one location: admin and owner anywhere in the
-    -- workspace, a manager where they work, nobody at a blank location.
-    if t.locs is null then return 'deny'; end if;
-    if p.class in ('owner', 'admin') then return 'allow'; end if;
-    return case when covers then 'allow' else 'deny' end;
-
   when 'schedule.publish' then
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
@@ -887,8 +870,11 @@ begin
     return case when covers then 'allow' else 'deny' end;
 
   when 'exchange.approve' then
-    -- A pickup or cover is approved at the shift's location only.
+    -- A pickup or cover is approved at the shift's location only, one rank
+    -- above the person it is about; nobody decides their own (D3, P07). The
+    -- owner's own goes to whoever decides the place (EKRAN-02 K-S1).
     if is_self then return 'deny'; end if;
+    if t.class <> 'owner' and pg_temp.rank(t.class) >= pg_temp.rank(p.class) then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 
@@ -930,10 +916,8 @@ create temporary table known_gap (
   targets text[],
   reason text not null
 );
-insert into known_gap values
-  ('legacy-blank-location', null,
-   '{legacy.schedule_can_manage,legacy.schedule_capability,legacy.schedule_can_publish}', '{none}',
-   'the old location helpers answer yes for a blank location to every manager, admin and owner: blank means everywhere, E2. 56 callers pass null for "anywhere"; each moves to scope_set() with its domain and the helpers go (stage 6)');
+-- FB-6.4 A2 closed the last known gap (legacy-blank-location): the three
+-- old Schedule helpers are gone. A new gap is a row here.
 
 create temporary table known_hit (id text primary key);
 

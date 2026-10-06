@@ -42,11 +42,12 @@ select cmp_ok(
 -- can_access_employee's two copies (45 -> 43), can_manage_employee_record (43 -> 42),
 -- the to-do list's own role reading (42 -> 41), FB-6.3.3 the time-off notice
 -- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
--- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26).
+-- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26),
+-- FB-6.4 A2 the three Schedule helpers (26 -> 23).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 26, 'functions with their own scope or rank logic only go down'
+  '<=', 23, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
@@ -97,11 +98,12 @@ select is(
 -- 173 after the reorder command went (BL-475), 171 after the old time-off
 -- decision paths went (FB-6.3.7), 161 after announcements and important dates moved to the
 -- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6), 100 after the Schedule
--- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it). Target 0.
+-- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it), 83 after Shift Hub's
+-- (FB-6.4 A2). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 100, 'refusals without an authz hint only go down'
+  '<=', 83, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or

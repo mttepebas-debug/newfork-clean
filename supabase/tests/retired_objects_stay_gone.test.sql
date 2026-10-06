@@ -352,6 +352,11 @@ insert into retired (kind, name, step) values
   ('function', 'weekly_assignment_candidate_base', 'FB-6.4'),
   ('function', 'weekly_assignment_candidate_check', 'FB-6.4'),
   ('function', 'weekly_exchange_candidate_check', 'FB-6.4');
+-- FB-6.4 A2: Shift Hub and time off ask the core; the Schedule helpers go (FB-6.1 K-1).
+insert into retired (kind, name, step) values
+  ('function', 'schedule_actor_can_manage_service', 'FB-6.4'),
+  ('function', 'schedule_actor_can_publish_service', 'FB-6.4'),
+  ('function', 'schedule_actor_has_capability_service', 'FB-6.4');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
