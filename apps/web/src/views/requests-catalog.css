@@ -762,3 +762,9 @@
   color: var(--theme-muted);
   text-align: right;
 }
+/* On a phone the type menu is as wide as the other filters. */
+@media (max-width: 720px) {
+  .requests-catalog-page .requests-type-filter {
+    flex: 1 1 100%;
+  }
+}
