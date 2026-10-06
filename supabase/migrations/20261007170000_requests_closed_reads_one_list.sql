@@ -278,9 +278,12 @@ begin
    and (needle = '' or concat_ws(' ', c.offered_snapshot ->> 'employee_name', c.requested_snapshot ->> 'employee_name',
          app_private.request_date_text((c.offered_snapshot ->> 'date')::date),
          app_private.request_date_text((c.requested_snapshot ->> 'date')::date),
+         -- Only the applications the row shows: a reader who only applied finds no one else's.
          (select string_agg(concat_ws(' ', ae.first_name, ae.last_name, ae.preferred_name), ' ')
           from public.shift_exchange_applications a join public.employee_profiles ae on ae.id = a.employee_id
-          where a.case_id = c.id)) ilike '%' || needle || '%')
+          where a.case_id = c.id and (a.employee_id = emp_id or c.owner_id = emp_id
+           or (c.offered_snapshot ->> 'location_id')::uuid = any (shift_scope)
+           or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope))))) ilike '%' || needle || '%')
  ), page as (
   select l.* from listed l order by l.closed_at desc, l.kind, l.id
   offset (target_page - 1) * target_page_size limit target_page_size

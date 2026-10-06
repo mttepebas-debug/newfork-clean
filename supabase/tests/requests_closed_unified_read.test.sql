@@ -174,6 +174,29 @@ select is((pg_temp.closed('tolga') ->> 'total')::integer, 58, 'Tolga''s whole li
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('tolga', size => 100) -> 'rows') i
   where i ->> 'kind' <> 'time_off'), 0, 'and every row is time off');
 
+-- A manager who owns or applied to a shift change elsewhere reads it, as the shift
+-- changes list shows it: no decision, nobody else's application or note.
+update public.shift_exchange_cases set owner_id = tests.id('rc:mehmet'), private_note = 'Owner note'
+where id = (select id from rc_seed where kind = 'cover' and n = 24);
+update public.shift_exchange_cases set private_note = 'Owner note' where id = (select id from rc_seed where kind = 'cover' and n = 21);
+insert into public.shift_exchange_applications (workspace_id, case_id, employee_id, status, consent_fingerprint, reason)
+select tests.id('rc'), s.id, tests.id('rc:' || who), 'closed_case_cancelled', 'x', initcap(who) || ' can cover'
+from rc_seed s cross join unnest(array['mehmet', 'veli']) who where s.kind = 'cover' and s.n = 21;
+create function pg_temp.case_of(who text, n integer) returns jsonb language sql as $$
+  select i -> 'exchange' from jsonb_array_elements(pg_temp.closed(who, array['cover'], size => 100) -> 'rows') i
+  where i ->> 'id' = (select id::text from rc_seed where kind = 'cover' and rc_seed.n = case_of.n)
+$$;
+select is((pg_temp.closed('mehmet', array['swap', 'cover', 'open_pickup']) ->> 'total')::integer, 5,
+  'Mehmet reads Besiktas''s three, the Kadikoy cover he owns and the one he applied to');
+select is(pg_temp.case_of('mehmet', 24) ->> 'can_manage', 'false', 'he does not decide his own');
+select is(pg_temp.case_of('mehmet', 24) ->> 'private_note', 'Owner note', 'and reads its note as its owner');
+select is(pg_temp.case_of('mehmet', 21) ->> 'can_manage', 'false', 'nor the one he applied to');
+select is(pg_temp.case_of('mehmet', 21) ->> 'private_note', '', 'whose note is not his');
+select is((select array_agg(a ->> 'employee_name') from jsonb_array_elements(pg_temp.case_of('mehmet', 21) -> 'applications') a),
+  array['Mehmet Person'], 'and only his own application');
+select is((pg_temp.closed('mehmet', q => 'veli') ->> 'total')::integer, 0, 'a search does not find an application he cannot see');
+select is((pg_temp.closed('owner', array['cover'], q => 'mehmet') ->> 'total')::integer, 1, 'the owner finds the cover by its applicant');
+
 -- (e) K-S2: a manager missing a document reads the closed list --------------------
 create temporary table required_document (id uuid, preview jsonb);
 insert into required_document (id)
