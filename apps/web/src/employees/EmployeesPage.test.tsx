@@ -92,10 +92,10 @@ vi.mock("./EmployeeDrawer", () => ({
   EmployeeDrawer: () => <div role="dialog">Employee drawer</div>,
 }));
 
-function renderPage(initialEntry = "/app/employees") {
+function renderPage(initialEntry = "/app/employees", data: EmployeeSummary[] = employees) {
   window.localStorage.clear();
   currentContext = context;
-  vi.mocked(listEmployees).mockResolvedValue(employees);
+  vi.mocked(listEmployees).mockResolvedValue(data);
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -230,5 +230,79 @@ describe("EmployeesPage add employee", () => {
     };
     expect(await screen.findByText("Alex Kim")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add employee" })).toBeNull();
+  });
+});
+
+// EKRAN-03 C1a: the shared list language, pagination and keyboard fixes.
+describe("EmployeesPage list (EKRAN-03 C1a)", () => {
+  it("puts a green Add employee at the right end of the filter row, not in the header (G1)", async () => {
+    const { container } = renderPage();
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    const add = screen.getByRole("button", { name: "Add employee" });
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+    expect(add.className).toContain("list-add-action");
+    expect(container.querySelector(".catalog-page-header")?.contains(add)).toBe(false);
+    expect(container.querySelector(".employees-page")?.classList.contains("list-page")).toBe(true);
+  });
+
+  it("marks the chosen status tab with aria-pressed (L3)", async () => {
+    renderPage("/app/employees?status=invited");
+    expect(await screen.findByText("Blair Patel")).toBeTruthy();
+    const group = screen.getByRole("group", { name: "Employee status" });
+    expect(within(group).getByRole("button", { name: "Invited" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(group).getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("closes the column picker with Escape and gives focus back to its button (L7)", async () => {
+    renderPage();
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    const trigger = screen.getByRole("button", { name: "Table column settings" });
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Employee table columns" })).toBeTruthy();
+    fireEvent.keyDown(screen.getByLabelText("Access"), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Employee table columns" })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("keeps the chosen location in the list when the tab has nobody there (L11)", async () => {
+    renderPage(`/app/employees?location=${employees[0]!.primary_location_id}`);
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    vi.mocked(listEmployees).mockResolvedValue([employees[1]!]);
+    fireEvent.click(screen.getByRole("button", { name: "Invited" }));
+    await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "invited"));
+    const select = screen.getByRole("combobox", { name: "Filter employees by location" }) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe(employees[0]!.primary_location_id));
+    expect(within(select).getByRole("option", { name: "Main Dining" })).toBeTruthy();
+  });
+
+  it("says No matching employees on an empty status tab, not No employees yet (L26)", async () => {
+    renderPage("/app/employees?status=onboarding", []);
+    expect(await screen.findByText("No matching employees")).toBeTruthy();
+    expect(screen.queryByText("No employees yet")).toBeNull();
+  });
+
+  it("opens a row with Space as well as Enter (E3-17)", async () => {
+    renderPage();
+    const row = (await screen.findByText("Alex Kim")).closest("tr")!;
+    fireEvent.keyDown(row, { key: " " });
+    expect(await screen.findByText("Employee drawer")).toBeTruthy();
+  });
+
+  it("shows 50 people a page and the page numbers under a long list (K-S9)", async () => {
+    const many = Array.from({ length: 120 }, (_, index) => ({
+      ...employees[0]!,
+      id: `15000000-0000-4000-8000-${String(index + 100).padStart(12, "0")}`,
+      employee_code: `NF-${index + 100}`,
+      display_name: `Person ${String(index + 1).padStart(3, "0")}`,
+    }));
+    renderPage("/app/employees", many);
+    expect(await screen.findByText("Person 001")).toBeTruthy();
+    const nav = screen.getByRole("navigation", { name: "Pages" });
+    expect(within(nav).getByText("1–50 of 120")).toBeTruthy();
+    expect(within(nav).getAllByRole("button", { name: /^Page \d$/ }).map((b) => b.textContent)).toEqual(["1", "2", "3"]);
+    expect(screen.getByRole("table").querySelectorAll("tbody tr")).toHaveLength(50);
+    fireEvent.click(within(nav).getByRole("button", { name: "Page 3" }));
+    expect(screen.getByRole("table").querySelectorAll("tbody tr")).toHaveLength(20);
+    expect(screen.getByText("Person 120")).toBeTruthy();
   });
 });

@@ -1,4 +1,3 @@
-import { Button } from "@newfork/ui";
 import { useQuery } from "@tanstack/react-query";
 import {
   Archive,
@@ -6,7 +5,6 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   Eye,
-  Plus,
   RotateCcw,
   Search,
   Settings2,
@@ -23,7 +21,8 @@ import {
 import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { CatalogPageHeader } from "../views/CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import { DEFAULT_LIST_PAGE_SIZE, ListPagination } from "../views/ListPagination";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import { listEmployees } from "./employee-data";
@@ -92,6 +91,10 @@ export default function EmployeesPage() {
     key: EmployeeColumnKey;
     descending: boolean;
   }>({ key: "employee", descending: false });
+  // Client-side pages over today's list (K-S9). A new filter or sort starts at page 1.
+  const listKey = [archived, status, locationFilter, deferredSearch, sort.key, sort.descending].join("|");
+  const [paging, setPaging] = useState({ key: listKey, page: 1, size: DEFAULT_LIST_PAGE_SIZE as number });
+  const page = paging.key === listKey ? paging.page : 1;
 
   const employees = useQuery({
     queryKey: ["employees", workspaceId, archived, deferredSearch, status],
@@ -199,20 +202,29 @@ export default function EmployeesPage() {
       visible: [...defaultVisibleColumns],
     });
 
+  // Names seen in any tab, so a chosen location stays a choice on a tab with
+  // nobody there instead of falling back to "All locations" (L11).
+  const seenLocations = useRef(new Map<string, string>());
   const locationOptions = useMemo(() => {
     const options = new Map<string, string>();
     for (const employee of employees.data ?? []) {
       if (employee.primary_location_id && employee.primary_location_name) {
+        seenLocations.current.set(
+          employee.primary_location_id,
+          employee.primary_location_name,
+        );
         options.set(
           employee.primary_location_id,
           employee.primary_location_name,
         );
       }
     }
+    const chosen = seenLocations.current.get(locationFilter);
+    if (chosen) options.set(locationFilter, chosen);
     return [...options.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((left, right) => left.name.localeCompare(right.name));
-  }, [employees.data]);
+  }, [employees.data, locationFilter]);
   const visibleEmployees = useMemo(
     () =>
       [...(employees.data ?? [])]
@@ -230,6 +242,14 @@ export default function EmployeesPage() {
         ),
     [employees.data, locationFilter, sort],
   );
+  const lastPage = Math.max(1, Math.ceil(visibleEmployees.length / paging.size));
+  const shownPage = Math.min(page, lastPage);
+  const pageEmployees = visibleEmployees.slice(
+    (shownPage - 1) * paging.size,
+    shownPage * paging.size,
+  );
+  const filtered =
+    Boolean(search) || locationFilter !== "all" || status !== "all";
 
   const drawerOpen = creating || Boolean(employeeId);
   // The API's "no" gets the one no-access card, never its raw sentence.
@@ -241,30 +261,12 @@ export default function EmployeesPage() {
       />
     );
   return (
-    <section className="employees-page" aria-labelledby="employees-title">
+    <section className="employees-page list-page" aria-labelledby="employees-title">
       <CatalogPageHeader
         eyebrow="YOUR TEAM. CONNECTED AND READY."
         title="Employees"
         titleId="employees-title"
         description="Manage employee profiles, assignments, invitations, and workspace access."
-        action={
-          !archived && canCreate ? (
-            <Button
-              onClick={() =>
-                setParams(
-                  nextParams({
-                    mode: "create",
-                    employeeId: null,
-                    section: "profile",
-                  }),
-                )
-              }
-            >
-              <Plus size={17} aria-hidden />
-              Add employee
-            </Button>
-          ) : null
-        }
       />
 
       <div className="employees-toolbar catalog-toolbar">
@@ -279,6 +281,7 @@ export default function EmployeesPage() {
                 type="button"
                 key={value}
                 className={status === value && !archived ? "active" : ""}
+                aria-pressed={status === value && !archived}
                 onClick={() => {
                   const nextStatus = value === "all" ? null : value;
                   if (archived) {
@@ -299,6 +302,7 @@ export default function EmployeesPage() {
             <button
               type="button"
               className={archived ? "active" : ""}
+              aria-pressed={archived}
               onClick={() =>
                 navigateEmployeeRoute("/app/employees/archive", {
                   status: null,
@@ -355,6 +359,20 @@ export default function EmployeesPage() {
               placeholder="Search name, location, or job"
             />
           </label>
+          {!archived && canCreate ? (
+            <ListAddButton
+              label="Add employee"
+              onClick={() =>
+                setParams(
+                  nextParams({
+                    mode: "create",
+                    employeeId: null,
+                    section: "profile",
+                  }),
+                )
+              }
+            />
+          ) : null}
         </div>
       </div>
 
@@ -397,7 +415,7 @@ export default function EmployeesPage() {
             </tr>
           </thead>
           <tbody>
-            {visibleEmployees.map((employee) => (
+            {pageEmployees.map((employee) => (
               <tr
                 key={employee.id}
                 onClick={() =>
@@ -409,7 +427,10 @@ export default function EmployeesPage() {
                 }
                 tabIndex={0}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter")
+                  // Enter or Space opens the row, as on a button (E3-17).
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === " ") event.preventDefault();
+                  if (event.key === "Enter" || event.key === " ")
                     updateParams({
                       employeeId: employee.id,
                       mode: null,
@@ -437,17 +458,20 @@ export default function EmployeesPage() {
         {!employees.isLoading &&
         !employees.error &&
         visibleEmployees.length === 0 ? (
-          <div className="employees-empty">
-            <Users size={24} aria-hidden />
-            <strong>
-              {search || locationFilter !== "all"
+          // A status tab with nobody in it is a filter too (L26).
+          <div className="catalog-table-empty">
+            <span className="catalog-table-empty-icon" aria-hidden>
+              <Users size={22} />
+            </span>
+            <h2>
+              {filtered
                 ? "No matching employees"
                 : archived
                   ? "No archived employees"
                   : "No employees yet"}
-            </strong>
+            </h2>
             <p>
-              {search || locationFilter !== "all"
+              {filtered
                 ? "Try a different name, location, or job."
                 : archived
                   ? "Archived records will remain available here."
@@ -456,6 +480,15 @@ export default function EmployeesPage() {
           </div>
         ) : null}
       </div>
+      <ListPagination
+        total={visibleEmployees.length}
+        page={shownPage}
+        pageSize={paging.size}
+        onPageChange={(next) =>
+          setPaging((current) => ({ ...current, key: listKey, page: next }))
+        }
+        onPageSizeChange={(size) => setPaging({ key: listKey, page: 1, size })}
+      />
 
       {drawerOpen ? (
         <EmployeeDrawer
@@ -494,6 +527,7 @@ function EmployeeColumnPicker({
 }) {
   const [open, setOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -505,14 +539,25 @@ function EmployeeColumnPicker({
         setOpen(false);
       }
     };
+    // Escape closes it and gives focus back to the button that opened it (L7).
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
     document.addEventListener("pointerdown", dismissOutside, true);
-    return () =>
+    document.addEventListener("keydown", escape);
+    return () => {
       document.removeEventListener("pointerdown", dismissOutside, true);
+      document.removeEventListener("keydown", escape);
+    };
   }, [open]);
 
   return (
     <div className="employee-column-picker" ref={pickerRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="secondary-button compact employee-column-trigger"
         aria-label="Table column settings"
