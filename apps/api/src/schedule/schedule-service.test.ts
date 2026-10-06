@@ -8,13 +8,14 @@ const mocks = vi.hoisted(() => {
   const send = vi.fn(async () => "ok");
   const channel = { send };
   const removeChannel = vi.fn(async () => "ok");
+  const channelFn = vi.fn((_topic: string, _options: unknown) => channel);
   const createClient = vi.fn(() => ({
     rpc,
     from,
-    channel: vi.fn(() => channel),
+    channel: channelFn,
     removeChannel,
   }));
-  return { channel, createClient, from, removeChannel, rpc, send };
+  return { channel, channelFn, createClient, from, removeChannel, rpc, send };
 });
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -34,6 +35,7 @@ beforeEach(() => {
   mocks.send.mockClear();
   mocks.send.mockResolvedValue("ok");
   mocks.removeChannel.mockClear();
+  mocks.channelFn.mockClear();
 });
 
 describe("createScheduleReadService read model", () => {
@@ -290,10 +292,8 @@ describe("createScheduleReadService realtime invalidation", () => {
       payload: {
         kind: "schedule_invalidation",
         workspace_id: workspaceId,
-        actor_user_id: actorUserId,
         week_start: "2026-08-17",
         location_ids: [locationId],
-        draft_id: draftId,
         targets: [
           "published_shifts",
           "drafts",
@@ -754,10 +754,8 @@ describe("createScheduleReadService realtime invalidation", () => {
       payload: {
         kind: "schedule_invalidation",
         workspace_id: workspaceId,
-        actor_user_id: actorUserId,
         week_start: "2026-08-17",
         location_ids: [locationId],
-        draft_id: draftId,
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
         changed_shift_ids: ["81000000-0000-4000-8000-000000000001"],
       },
@@ -791,6 +789,11 @@ describe("createScheduleReadService realtime invalidation", () => {
 
   it("keeps successful writes successful when realtime broadcast fails", async () => {
     mocks.send.mockRejectedValueOnce(new Error("realtime unavailable"));
+    mocks.from.mockImplementation(() => {
+      const chain = { select: () => chain, eq: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { location_ids: [locationId] }, error: null }) };
+      return chain;
+    });
     mocks.rpc.mockResolvedValueOnce({
       data: {
         id: draftId,
@@ -822,6 +825,73 @@ describe("createScheduleReadService realtime invalidation", () => {
 
     expect(result.id).toBe(draftId);
     expect(mocks.removeChannel).toHaveBeenCalledWith(mocks.channel);
+  });
+
+  // DB-2: one private channel per location; Kadikoy's channel never names Besiktas.
+  it("sends each location its own channel, naming only that location", async () => {
+    const otherLocationId = "11000000-0000-4000-8000-000000000002";
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        status: "published", workspace_id: workspaceId, week_start: "2026-08-17", draft_id: draftId,
+        draft_revision: 2, location_ids: [locationId, otherLocationId],
+        publication_ids: ["86000000-0000-4000-8000-000000000001"], published_shift_count: 4,
+        published_at: "2026-08-17T12:00:00.000Z",
+      },
+      error: null,
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await service.publish({ actorUserId, workspaceId, draftId, locationIds: [locationId, otherLocationId],
+      expectedDraftRevision: 2, fingerprint: "a".repeat(64), overrides: [] });
+
+    expect(mocks.channelFn.mock.calls).toEqual([
+      [`schedule:invalidation:${workspaceId}:${locationId}`, { config: { private: true } }],
+      [`schedule:invalidation:${workspaceId}:${otherLocationId}`, { config: { private: true } }],
+    ]);
+    const payloads = mocks.send.mock.calls.map((call) => (call as unknown as [{ payload: Record<string, unknown> }])[0].payload);
+    expect(payloads.map((payload) => payload.location_ids)).toEqual([[locationId], [otherLocationId]]);
+    for (const payload of payloads) {
+      expect(payload).not.toHaveProperty("draft_id");
+      expect(payload).not.toHaveProperty("actor_user_id");
+    }
+  });
+
+  it("sends nothing when a change names no location", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { status: "ok", op_id: draftId }, error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await service.removePendingOp({ actorUserId, workspaceId, opId: draftId });
+
+    expect(mocks.channelFn).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("finds a saved draft's locations in the workspace before sending", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: { id: draftId, workspace_id: workspaceId, week_start: "2026-08-17", name: "Dinner draft", revision: 1,
+        created_by: actorUserId, updated_by: actorUserId, created_at: "2026-08-17T12:00:00.000Z",
+        updated_at: "2026-08-17T12:00:00.000Z" },
+      error: null,
+    });
+    const eq = vi.fn();
+    mocks.from.mockImplementation(() => {
+      const chain = {
+        select: () => chain,
+        eq: (...args: unknown[]) => { eq(...args); return chain; },
+        maybeSingle: () => Promise.resolve({ data: { location_ids: [locationId] }, error: null }),
+      };
+      return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    await service.saveSession({ actorUserId, workspaceId, sessionId: "87000000-0000-4000-8000-000000000001",
+      expectedSessionRevision: 1, name: "Dinner draft", draftId: null, expectedDraftRevision: null });
+
+    expect(mocks.from).toHaveBeenCalledWith("schedule_drafts");
+    expect(eq).toHaveBeenCalledWith("workspace_id", workspaceId);
+    expect(eq).toHaveBeenCalledWith("id", draftId);
+    expect(mocks.channelFn).toHaveBeenCalledWith(`schedule:invalidation:${workspaceId}:${locationId}`, { config: { private: true } });
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({
+      payload: { kind: "schedule_invalidation", workspace_id: workspaceId, week_start: "2026-08-17",
+        location_ids: [locationId], targets: ["drafts", "draft_shifts", "pending_ops"] },
+    }));
   });
 });
 
