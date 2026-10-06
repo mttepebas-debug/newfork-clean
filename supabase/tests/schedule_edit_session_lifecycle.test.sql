@@ -79,6 +79,19 @@ select is(pg_temp.status(tests.id('el:edit:1b')), 'expired', 'and leaves no draf
 select is(pg_temp.refusal(format('select public.autosave_schedule_edit_session_service(%L, %L, %L)',
   tests.user('el:zeynep'), tests.id('el'), tests.id('el:edit:1'))), 'P0002 ', 'nobody auto-saves somebody else''s edit');
 
+-- A second auto-save in the same minute of the same week gets its own name.
+select tests.remember('el:edit:1c', pg_temp.sid(pg_temp.open('ayse', 1, 'blank', null)));
+select pg_temp.add('ayse', tests.id('el:edit:1c'), 1, 'K', 3);
+select is(pg_temp.autosave('ayse', tests.id('el:edit:1c')) ->> 'draft_name',
+  (select result ->> 'draft_name' from el_saved) || ' (2)', 'a second auto-save that minute is named "(2)"');
+-- On a 24-hour workspace the time reads that way.
+update public.workspace_scheduling_settings set time_format = '24h' where workspace_id = tests.id('el');
+select tests.remember('el:edit:1d', pg_temp.sid(pg_temp.open('ayse', 2, 'blank', null)));
+select pg_temp.add('ayse', tests.id('el:edit:1d'), 2, 'K', 3);
+select matches(pg_temp.autosave('ayse', tests.id('el:edit:1d')) ->> 'draft_name',
+  '^Auto-save · Ayse Person · [A-Z][a-z]{2} [0-9]{1,2}, [0-9]{2}:[0-9]{2}$', 'on a 24-hour workspace the time is 24-hour');
+update public.workspace_scheduling_settings set time_format = '12h' where workspace_id = tests.id('el');
+
 -- 2. Somebody else's lease ran out: same name (D-O9, KK-162) ----------------------
 
 select tests.remember('el:edit:2', pg_temp.sid(pg_temp.open('zeynep', 3, 'blank', null)));
@@ -113,6 +126,12 @@ select matches((select result ->> 'recovered_draft_name' from el_other), '^Auto-
   'his unsaved Plan B work is in his Auto-save draft');
 select is(pg_temp.status(tests.id('el:edit:6')), 'recovered', 'the Plan B edit is closed');
 
+-- Zeynep now edits Plan B; Can, with unsaved Plan C work, asks for Plan B.
+select pg_temp.add('can', pg_temp.sid((select result from el_other)), 5, 'K', 4);
+select pg_temp.open('zeynep', 5, 'draft', tests.id('el:plan_b'));
+select is(pg_temp.open('can', 5, 'draft', tests.id('el:plan_b')) ->> 'status', 'conflict', 'Can is told Zeynep edits Plan B');
+select is(pg_temp.status(pg_temp.sid((select result from el_other))), 'active', 'and his Plan C edit stays open, untouched');
+
 -- 4. Each manager sees only their own unsaved changes (D-Y5) -----------------------
 
 -- Ayşe takes the published Tuesday shift off, unsaved; the owner edits the same week.
@@ -126,6 +145,9 @@ select is(jsonb_array_length(public.list_schedule_pending_ops_service(tests.user
   0, 'the owner''s grid gets none of Ayşe''s unsaved changes');
 select is(jsonb_array_length(public.list_schedule_pending_ops_service(tests.user('el:ayse'), tests.id('el'), tests.week(4)) -> 'pending_ops'),
   1, 'Ayşe''s gets hers');
+create temp table el_off as select pg_temp.autosave('ayse', tests.id('el:edit:7')) result;
+select is((select count(*)::integer from public.schedule_draft_shifts ds where ds.draft_id = (select (result ->> 'draft_id')::uuid from el_off)),
+  0, 'the Tuesday shift she took off does not come back in her Auto-save draft');
 
 -- 5. A draft being edited is not deleted under the editor (D-O6) ------------------
 
@@ -161,6 +183,20 @@ select is(pg_temp.refusal(format('select public.add_schedule_pending_op_service(
 select is(pg_temp.refusal(format('select public.discard_schedule_edit_session_service(%L, %L, %L)',
   tests.user('el:can'), tests.id('el'), tests.id('el:edit:12'))), '42501 authz.out_of_scope',
   'and does not throw away its Kadıköy work');
+
+-- 7. A draft's archived location no longer counts (BL-224, KARARLAR Q-B/Q-C) -------
+
+select tests.remember('el:edit:13', pg_temp.sid(pg_temp.open('owner', 8, 'blank', null, array['K', 'B'])));
+select pg_temp.add('owner', tests.id('el:edit:13'), 8, 'K', 1);
+select pg_temp.add('owner', tests.id('el:edit:13'), 8, 'B', 1);
+select tests.remember('el:plan_e', pg_temp.save('owner', tests.id('el:edit:13'), 'Plan E'));
+select is(pg_temp.refusal(format('select public.delete_schedule_draft_service(%L, %L, %L)',
+  tests.user('el:zeynep'), tests.id('el'), tests.id('el:plan_e'))), '42501 authz.out_of_scope',
+  'Zeynep (Kadıköy) cannot delete the Kadıköy and Beşiktaş draft');
+update public.locations set archived_at = now() where id = tests.id('el:B');
+select is(pg_temp.refusal(format('select public.delete_schedule_draft_service(%L, %L, %L)',
+  tests.user('el:zeynep'), tests.id('el'), tests.id('el:plan_e'))), 'allowed',
+  'once Beşiktaş is archived, she can');
 
 select * from finish();
 rollback;

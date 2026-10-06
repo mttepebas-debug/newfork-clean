@@ -16,7 +16,7 @@
 --   schedule.draft_being_edited. Once their lease ran out, deleting closes
 --   their edit first (Auto-save), so their next save is not "draft revision
 --   stale" for ever (D-O6).
--- * A draft's live locations (deleted locations left out, KARARLAR Q-B) come
+-- * A draft's live locations (archived and deleted left out, KARARLAR Q-B/Q-C) come
 --   from one helper, for deleting and for saving into it (BL-224).
 -- * Discard and the pending-change commands ask the core for the edit's
 --   locations, like heartbeat, read and save (DB-1a review finding 1).
@@ -27,10 +27,11 @@ language sql
 stable
 set search_path to ''
 as $function$
-  -- KARARLAR Q-B: a deleted location no longer counts for the draft.
+  -- KARARLAR Q-B, Q-C: an archived or deleted location no longer counts for
+  -- the draft; live is what the core calls live.
   select array(select place from unnest(locs) place
-    where not exists (select 1 from public.locations closed
-      where closed.id = place and closed.workspace_id = w and closed.deleted_at is not null))
+    where exists (select 1 from public.locations location
+      where location.id = place and location.workspace_id = w and app_private.location_is_live(location)))
 $function$;
 revoke all on function app_private.live_draft_locations(uuid, uuid[]) from public, anon, authenticated;
 
@@ -68,7 +69,8 @@ begin
     insert into public.schedule_draft_shifts (id, workspace_id, draft_id, location_id, employee_id, job_id, shift_type_id, scheduled_date, start_time, end_time, time_basis, time_snapshot, time_timezone, unpaid_break_minutes, hide_time_on_badge, note, revision, label_ids, label_names)
     select id, workspace_id, recovery_draft_id, location_id, employee_id, job_id, shift_type_id, scheduled_date, start_time, end_time, time_basis, time_snapshot, time_timezone, unpaid_break_minutes, hide_time_on_badge, note, revision, label_ids, label_names
     from public.schedule_edit_session_shifts
-    where session_id = edit.id;
+    -- A shift the person took off stays off, as when they save.
+    where session_id = edit.id and pending_op_type is distinct from 'delete';
   end if;
   update public.schedule_edit_sessions
   set status = case when recovery_draft_id is null then 'expired'::public.schedule_edit_session_status
@@ -125,6 +127,7 @@ declare
   adding uuid[];
   own_session public.schedule_edit_sessions%rowtype;
   holder public.schedule_edit_sessions%rowtype;
+  set_aside public.schedule_edit_sessions%rowtype;
   source_draft public.schedule_drafts%rowtype;
   edit_session_id uuid;
   session_source public.schedule_edit_source;
@@ -180,11 +183,12 @@ begin
   -- they start again where they may (B-3).
   -- Asking for another draft or source of the week puts the open edit aside
   -- the same way (D-O9): it is never resumed in place of what was asked for.
+  -- It closes below, once nobody else's edit of the asked draft says no.
   if own_session.id is not null
     and (app_private.authz_reason(actor_user_id, target_workspace_id, 'schedule.edit', own_session.location_ids) is not null
       or own_session.source_kind is distinct from requested_source
       or own_session.source_draft_id is distinct from case when requested_source = 'draft' then requested_draft_id end) then
-    recovery_draft_id := app_private.close_schedule_edit_session(own_session);
+    set_aside := own_session;
     own_session := null;
   end if;
   adding := array(
@@ -227,10 +231,14 @@ begin
     end if;
 
     -- An expired edit of the draft closes; unsaved work becomes a recovery draft.
-    -- ponytail: if the person's own edit was put aside too, the answer names only this one.
+    -- ponytail: if the person's own edit is put aside too, the answer names only this one.
     if holder.id is not null then
-      recovery_draft_id := coalesce(app_private.close_schedule_edit_session(holder), recovery_draft_id);
+      recovery_draft_id := app_private.close_schedule_edit_session(holder);
     end if;
+  end if;
+
+  if set_aside.id is not null and set_aside.id is distinct from holder.id then
+    recovery_draft_id := coalesce(recovery_draft_id, app_private.close_schedule_edit_session(set_aside));
   end if;
 
   if own_session.id is not null then
@@ -585,6 +593,8 @@ declare
   target_draft public.schedule_drafts%rowtype;
   editing public.schedule_edit_sessions%rowtype;
 begin
+  -- The lock opening and saving an edit take, in the same order.
+  perform public.availability_lock_workspace(target_workspace_id);
   select * into target_draft
   from public.schedule_drafts draft
   where draft.id = target_draft_id
@@ -602,7 +612,8 @@ begin
   select * into editing from public.schedule_edit_sessions session
   where session.source_draft_id = target_draft_id and session.status = 'active'
   for update;
-  if editing.id is not null and editing.expires_at > now() then
+  if editing.id is not null and editing.expires_at > now()
+    and app_private.authz_reason(editing.holder_user_id, target_workspace_id, 'schedule.edit', editing.location_ids) is null then
     raise exception 'draft is being edited' using errcode = 'PT409', hint = 'schedule.draft_being_edited';
   end if;
   if editing.id is not null then

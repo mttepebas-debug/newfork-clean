@@ -38,14 +38,16 @@ update public.schedule_edit_sessions set dirty=true,revision=7,
 where id=(select session from lease_fixture);
 update lease_fixture f set snapshot=(select to_jsonb(s) from public.schedule_edit_session_shifts s where s.session_id=f.session);
 set local role service_role;
-update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'published',null);
-select is(result->>'status','resumed','live same-holder acquire resumes instead of replacing source') from lease_fixture;
+-- The same draft asked for again resumes the open edit; another draft or source
+-- puts it aside instead (EKRAN-01 DB-1b, schedule_edit_session_lifecycle).
+update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft);
+select is(result->>'status','resumed','live same-holder acquire of the same draft resumes') from lease_fixture;
 select is((result->'session'->>'expires_at')::timestamptz,now()+interval '4 minutes','live resume refreshes lease') from lease_fixture;
 set local role postgres;
 update public.schedule_edit_sessions set last_heartbeat=now()-interval '5 minutes',expires_at=now()-interval '1 minute'
 where id=(select session from lease_fixture);
 set local role service_role;
-update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'blank',null);
+update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft);
 select is((result->'session'->>'id')::uuid,session,'expired same-holder keeps session identity') from lease_fixture;
 select ok((result->'session'->>'expires_at')::timestamptz>now(),'expired resume returns a usable lease') from lease_fixture;
 select is((result->'session'->>'revision')::integer,7,'resume preserves revision') from lease_fixture;
