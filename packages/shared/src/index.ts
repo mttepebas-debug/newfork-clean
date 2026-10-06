@@ -1611,7 +1611,8 @@ export const scheduleEditSessionSchema = z.object({
   location_ids: z.array(z.string().uuid()).min(1),
   shifts: z.array(scheduleEditableShiftSchema),
   // S2 (KK-171): steps Undo can still take back on the server, 0-25.
-  undo_depth: z.coerce.number().int().min(0).max(25).optional(),
+  // The database keeps at most 25; the screen does not enforce it.
+  undo_depth: z.coerce.number().int().min(0).optional(),
 });
 export type ScheduleEditSession = z.infer<typeof scheduleEditSessionSchema>;
 

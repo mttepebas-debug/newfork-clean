@@ -1542,8 +1542,11 @@ export function SchedulePage({
   // S2 (KK-171): Undo takes the last step back on the server; steps saved with
   // Save draft are not undone (the save closes the edit).
   const canUndo = (gridEditSession?.undo_depth ?? 0) > 0;
+  // One Undo at a time: a held Ctrl+Z would otherwise send the same revision twice.
+  const undoInFlightRef = useRef(false);
   const undoLastEdit = async () => {
-    if (!context || !session || !canUndo) return;
+    if (!context || !session || !canUndo || undoInFlightRef.current) return;
+    undoInFlightRef.current = true;
     try {
       const next = await mutate(
         () => undoScheduleEditSessionStep(context.workspace.id, session),
@@ -1564,12 +1567,19 @@ export function SchedulePage({
         setSession((current) => (current ? { ...current, undo_depth: 0 } : current));
         return;
       }
-      const caught = error as Error;
-      setOperationError(caught.message);
+      // The server refused the step (a rule that applies now, or the edit moved on):
+      // nothing changed, and the person reads one plain sentence.
+      const message =
+        error instanceof ScheduleRequestError && error.status >= 400 && error.status < 500
+          ? "This step can no longer be undone."
+          : (error as Error).message;
+      setOperationError(message);
       toast.error("Last edit could not be undone", {
         dedupeKey: "schedule-undo-failed",
-        description: formatScheduleConflictMessage(caught.message),
+        description: message,
       });
+    } finally {
+      undoInFlightRef.current = false;
     }
   };
 

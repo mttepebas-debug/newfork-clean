@@ -572,6 +572,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./schedule/schedule-data")>();
   return {
   ScheduleRequestError: actual.ScheduleRequestError,
+  isNothingToUndo: actual.isNothingToUndo,
   isEditLeaseExpired: actual.isEditLeaseExpired,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
   authorizeScheduleExportV2: vi.fn().mockResolvedValue(undefined),
@@ -4269,6 +4270,35 @@ describe("App", () => {
     expect((undo as HTMLButtonElement).disabled).toBe(true);
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     expect(undoScheduleEditSessionStep).not.toHaveBeenCalled();
+  });
+
+  // A step the rules no longer allow back reads as one plain sentence, and a held
+  // Ctrl+Z sends one Undo at a time.
+  it("says plainly when a step can no longer be undone, and sends one Undo at a time", async () => {
+    const undoMock = vi.mocked(undoScheduleEditSessionStep);
+    undoMock.mockReset();
+    let refuse: (error: Error) => void = () => undefined;
+    undoMock.mockImplementation(() => new Promise((_resolve, reject) => { refuse = reject; }));
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired, session: { ...acquired.session, undo_depth: 1 },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    await waitFor(() => expect((undo as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+    expect(undoMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      refuse(new ScheduleRequestError("employee document hard conflict", 400, { error: "employee document hard conflict" }));
+    });
+    expect((await screen.findAllByText("This step can no longer be undone.")).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/employee document hard conflict/)).toBeNull();
   });
 
   it("moves shifts with the reference-style pointer drag interaction", async () => {
