@@ -28,6 +28,7 @@ insert into service_class values
   ('apply_schedule_auto_fill_service', 'schedule.edit'),
   ('apply_schedule_default_hours_service', 'schedule.edit'),
   ('apply_schedule_template_service', 'schedule.templates'),
+  ('autosave_schedule_edit_session_service', 'schedule.edit'),
   ('approve_signature_retention_policy_service', 'settings.documents.write'),
   ('assess_schedule_shift_service', 'schedule.edit'),
   ('assess_weekly_schedule_assignment_service', 'schedule.edit'),
