@@ -94,6 +94,11 @@ select throws_ok($$select public.weekly_publication_decisions(jsonb_build_object
     jsonb_build_object('id', 'not-a-note-0001', 'code', 'time_off_pending', 'severity', 'soft', 'overrideable', false, 'tier', 'risk'))),
   '[]'::jsonb)$$,
   '22023', 'Review the current schedule conflicts before publishing', 'a soft finding above a note is not passed over');
+-- A finding nobody can override stays unpublishable even with a decision on it (BL-510).
+select throws_ok($$select public.weekly_publication_decisions(jsonb_build_object('findings', jsonb_build_array(
+    jsonb_build_object('id', 'not-a-note-0002', 'code', 'time_off_pending', 'severity', 'soft', 'overrideable', false, 'tier', 'risk'))),
+  jsonb_build_array(jsonb_build_object('finding_id', 'not-a-note-0002')))$$,
+  '22023', 'This schedule conflict cannot be overridden', 'a decision does not override what cannot be overridden');
 
 -- 4. Decided requests ---------------------------------------------------------
 
