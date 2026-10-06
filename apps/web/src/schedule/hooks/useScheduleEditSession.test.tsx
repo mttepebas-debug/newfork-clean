@@ -169,6 +169,32 @@ describe("useScheduleEditSession", () => {
     expect((failure as Error).message).toBe("Your edit could not be reconnected. Check your connection and try again.");
   });
 
+  // DB-1a: a person whose scope shrank is refused with 403 authz.*; the edit closes, plainly.
+  it("closes the edit and says why when the person may no longer edit it", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(heartbeatScheduleEditSession).mockRejectedValueOnce(
+      new ScheduleRequestError("Not allowed", 403, { error: "Not allowed", reason: "authz.out_of_scope" }),
+    );
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    expect(hook.onError).toHaveBeenCalledWith("You can no longer edit this schedule, so your edit closed.");
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("says a draft is no longer available when opening it is refused", async () => {
+    const hook = renderEditSession();
+    vi.mocked(acquireScheduleEditSession).mockRejectedValueOnce(
+      new ScheduleRequestError("Not allowed", 403, { error: "Not allowed", reason: "authz.out_of_scope" }),
+    );
+
+    await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+
+    expect(hook.onError).toHaveBeenCalledWith("This draft is no longer available to you.");
+  });
+
   it("closes an edit with nothing to keep quietly", async () => {
     vi.mocked(autosaveScheduleEditSession).mockResolvedValueOnce({ status: "nothing_to_save", draft_id: null, draft_name: null });
     const hook = renderEditSession();

@@ -10,6 +10,7 @@ import {
   discardScheduleEditSession,
   heartbeatScheduleEditSession,
   isEditLeaseExpired,
+  isScheduleAccessRefused,
 } from "../schedule-data";
 import type { ScheduleMutationContext } from "../lib/scheduleMutationContext";
 import { EDIT_IDLE_TIMEOUT_MS, useEditIdleTimer } from "./useEditIdleTimer";
@@ -136,7 +137,12 @@ export function useScheduleEditSession({
         return result;
       } catch (error) {
         if (acquireRequestRef.current === requestId) {
-          callbacks.current.onError((error as Error).message);
+          // DB-1a: an unknown or no longer reachable draft gets the core's refusal.
+          callbacks.current.onError(
+            source === "draft" && isScheduleAccessRefused(error)
+              ? "This draft is no longer available to you."
+              : (error as Error).message,
+          );
         }
         return null;
       } finally {
@@ -226,7 +232,12 @@ export function useScheduleEditSession({
         .catch((error: Error) => {
           if (sessionRef.current?.id !== sessionId) return;
           if (isEditLeaseExpired(error)) void recoverLease();
-          else callbacks.current.onError(error.message);
+          else if (isScheduleAccessRefused(error)) {
+            // DB-1a: the person's scope shrank; the edit cannot go on.
+            callbacks.current.onError("You can no longer edit this schedule, so your edit closed.");
+            setSession(null);
+            callbacks.current.onEnded();
+          } else callbacks.current.onError(error.message);
         });
     }, 60_000);
     return () => window.clearInterval(heartbeat);

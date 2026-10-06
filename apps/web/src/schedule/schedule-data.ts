@@ -97,6 +97,13 @@ function editConflictCode(error: unknown): unknown {
     : undefined;
 }
 
+/** DB-1a: the authorization core said no (scope shrank, or the target is unknown). */
+export function isScheduleAccessRefused(error: unknown): boolean {
+  const reason = requestReason(error);
+  return error instanceof ScheduleRequestError && error.status === 403 &&
+    typeof reason === "string" && reason.startsWith("authz.");
+}
+
 /** The edit lock lapsed (sleep, lost network): the same person may pick the edit back up. */
 export function isEditLeaseExpired(error: unknown): boolean {
   return editConflictCode(error) === "edit_lease_expired";
