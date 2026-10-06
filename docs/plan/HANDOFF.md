@@ -3,6 +3,13 @@
 - **Oturum:** "Koordinatör" `local_9c7e674a-3796-486f-a7f7-613c4ce0c02e`. Mert bu pencerede `/compact` ya da `/clear` yazar; kimlik DEĞİŞMEZ. Bugün bir kez `/compact` yapıldı; gece kendiliğinden sıkışabilir — bu dosya sırayı taşır.
 - **Önce oku:** `CLAUDE.md` (§3 koordinatör işçi değil, §6 R0–R2 izinsiz gönderim, §10 5 satırlık rapor başı, §11.12 beş kural), `DELEGASYON.md`, `docs/plan/ILKELER.md`, `docs/plan/EKRAN-PLANI.md` ("Uygulama düzeni: hatlar", "Uygulama arşivi").
 
+## 00. GÜNCEL DURUM (2026-10-06 ~17:05Z) — sıkıştırmadan sonra ÖNCE BUNU OKU
+- **Gece durum dosyaları (koordinatörün scratchpad'i, bu oturum):** sabah raporu notları `C:/Users/TheWe/AppData/Local/Temp/claude/C--Users-TheWe-Documents-Codex-newfork-clean/53bf53b1-53ab-488d-9ec7-a96202015189/scratchpad/sabah-raporu.md`; ağır iş izin sırası `.../scratchpad/agir-kuyruk.md`. İkisi de güncel tutulur.
+- **AĞIR İŞ İZNİ (Mert ~15:05Z; hafıza `heavy-run-permission`):** tam kapı, e2e, tam test:db, build, dev sunucusuyla QA yalnız koordinatörün izniyle, aynı anda tek oturum; `AGIR-ISTEK` → "AĞIR İZİN: <rol> başla" → `AGIR-BITTI`; push sonrası CI bitene kadar izin yok. Tek runner (runner 2, 3 durduruldu; KK-176).
+- **CLAUDE.md §11.12'de Mert'in beş kuralının TAM METNİ** (1ac3226d): her istekte önce ne anladım / artı-eksi + mevcut kural / daha iyi yol. Bu gece tartmadan uyguladığım için Mert uyardı (OBSERVATIONS).
+- **Sabah:** soru listesi `docs/plan/SABAH-SORULAR-2026-10-07.md` (Tur 1 hat durduranlar + yerel DB reset sorusu); dallar sabah onayına: Requests C3, C1, B1a, C2-css; Employees C1a; arayüz salt-hata; BL-435. R3 paket A1A2 + A3 + AUTHZ-DUMP gönderimi + ultrareview sorusu (canlıda K-S3 yalnız-View rol satırı silme: önce say). Görüntü yolları sabah-raporu.md'de.
+- **Hatlar (17:05Z):** veri temizleniyor → EKRAN-02 A4 (devir `.newfork-inbox/done/20261006T165239-nf-db-veri-ekran-02-a3.md`); web AUTHZ-DUMP + BL-435 ağır izinde (push yok); arayüz salt-hata kapısı sırada; planlama EKRAN-04/05/06 C görsel QA sırada.
+
 ## 0. GECE KURALI (Mert, 2026-10-06 ~13:05–13:20Z; KK-175)
 - **Sıra:** "sessionları yöneterek sayfalama inceleme işini bitir sonra da backloglara dön". Önce ekran dilimleri (sayfa sayfa plan), sonra backlog.
 - **Ekran değişiklikleri sabahı bekler:** ekranda görünen bir şeyi değiştiren iş main'e GİRMEZ — dalında hazır, tam kapı yeşil, öncesi/sonrası görüntüleri `artifacts/<rol>/<iş>/`, raporda "sabah onayına hazır". Veri, API, CI, test işleri normal kuralla main'e ve canlıya gider (R3 koordinatör izniyle, canlı migration yedekli).
