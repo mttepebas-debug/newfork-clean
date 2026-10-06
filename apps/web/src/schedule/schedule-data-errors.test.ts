@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isEditLeaseExpired, isEditSessionStale, listScheduleTemplates, ScheduleRequestError } from "./schedule-data";
+import { deleteScheduleDraft, isEditLeaseExpired, isEditSessionStale, listScheduleTemplates, ScheduleRequestError } from "./schedule-data";
 
 vi.mock("../lib/supabase", () => ({
   supabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } },
@@ -16,6 +16,18 @@ async function failure(response: Response | Error): Promise<unknown> {
   }));
   return listScheduleTemplates("workspace").then(() => null, (error: unknown) => error);
 }
+
+// D-O6: a draft someone is editing cannot be deleted; the person reads why.
+describe("deleting a draft someone is editing", () => {
+  it("says the draft is being edited instead of the database's words", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      JSON.stringify({ error: "draft is being edited", reason: "schedule.draft_being_edited" }),
+      { status: 409, headers: { "Content-Type": "application/json" } },
+    )));
+    const error = await deleteScheduleDraft("workspace", "draft").then(() => null, (failure: unknown) => failure);
+    expect((error as Error).message).toBe("Someone is editing this draft. Try again when they finish.");
+  });
+});
 
 describe("Schedule request failures read as plain sentences (D-O7)", () => {
   it("does not show the HTML of a 502 page or a JSON parse error", async () => {

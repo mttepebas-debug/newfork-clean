@@ -85,6 +85,12 @@ export class ScheduleRequestError extends Error {
   }
 }
 
+function requestReason(error: unknown): unknown {
+  return error instanceof ScheduleRequestError && typeof error.body === "object" && error.body
+    ? (error.body as { reason?: unknown }).reason
+    : undefined;
+}
+
 function editConflictCode(error: unknown): unknown {
   return error instanceof ScheduleRequestError && error.status === 409 && typeof error.body === "object" && error.body
     ? (error.body as { code?: unknown }).code
@@ -374,11 +380,19 @@ export async function deleteScheduleDraft(
   workspaceId: string,
   draftId: string,
 ): Promise<ScheduleDraftDeleteResult> {
-  return scheduleDraftDeleteResultSchema.parse(
-    await activeScheduleRequest(`/schedule/drafts/${draftId}`, {
-      method: "DELETE",
-    }),
-  );
+  try {
+    return scheduleDraftDeleteResultSchema.parse(
+      await activeScheduleRequest(`/schedule/drafts/${draftId}`, {
+        method: "DELETE",
+      }),
+    );
+  } catch (error) {
+    // D-O6: the server keeps a draft somebody is editing.
+    if (requestReason(error) === "schedule.draft_being_edited") {
+      throw new Error("Someone is editing this draft. Try again when they finish.");
+    }
+    throw error;
+  }
 }
 
 /** S1: keeps an idle edit as an "Auto-save" draft and closes it. */
