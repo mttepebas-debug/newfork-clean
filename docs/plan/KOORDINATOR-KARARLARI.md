@@ -1604,3 +1604,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** (1) görev dosyası satırı; (4) iki satırlık commit.
 - **Durum:** (1)–(3) kayıtta ve hatlarda; (4) arayüz hattında; (5) DB karşılaştırması bekleniyor.
 - **Mert:** sohbette söylendi.
+
+### KK-175 (2026-10-06) Gece kuralı: ekran değişiklikleri sabahı bekler; Q1, O1, sayfalama zamanı
+- **Karar (ne):** Mert uyumadan önce (~13:05Z) dört cevap verdi. (1) Gece planı: "Ekran değişiklikleri sabahı beklesin" — veri ve API dilimleri main'e ve canlıya gider (R3'te koordinatör izni, canlı migration yedekli); ekranda görünen bir şeyi değiştiren dilim dalında hazırlanır, tam kapı + öncesi/sonrası görüntüleri, push yok; sabah Mert görüntülere bakıp onaylar. Etkilenen: EKRAN-02 B1a, C3, C1, C2 (ve B1b/B2/B3'ün ekran kısmı). (2) EKRAN-03 Q1 (seçenek dışı): bekleyen izin sessizce geri çekilir, pencere yalnız açığa düşecek vardiyaları söyler (KARARLAR Employees, ILKELER P09 istisna kanıtı). (3) BE-2b O1: geçici hatada bir kez yeniden deneme + hız sınırı altında sıra; web hattında yeni dilim BE-2b-O1 (R2, ekran değişmiyorsa gider). (4) Sayfalama: kalan altı liste sayfası kendi ekran turunda (BL-787; ayrı tarama yok).
+- **Nerede:** dört hatta mesajla (13:00–13:05Z); KARARLAR Employees + Schedule; ILKELER P09; BL-787 ve EKRAN-03 görev dosyası planlama hattında.
+- **Ne zaman:** 2026-10-06 ~13:05Z.
+- **Ne için:** Mert sabaha kadar yok; görünür değişiklikleri kendi gözüyle onaylamak istiyor (P04), veri ve API işleri durmasın (P15, P17).
+- **Dayanak:** Mert'in cevapları; CLAUDE.md §8 sürekli yetki.
+- **Geri alma:** dallar main'e girmediği için yok; KARARLAR satırları.
+- **Durum:** hatlarda yürüyor; sabah raporu.
+- **Mert:** kendisi seçti.
