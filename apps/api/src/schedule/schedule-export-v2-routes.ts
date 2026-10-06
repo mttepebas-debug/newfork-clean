@@ -1,7 +1,7 @@
 import { locationShortNameSchema, scheduleExportV2ScopeSchema } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { resolveAuthorizedWorkspaceContext, type WorkspaceContextResolver } from "../auth/workspace-context";
+import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
 import type { ScheduleReadService } from "./schedule-service";
 
 const paramsSchema = z.object({ workspaceId: z.string().uuid() });
@@ -17,9 +17,8 @@ export function registerScheduleExportV2Routes(app: FastifyInstance, options: {
     const body = scheduleExportV2ScopeSchema.safeParse(request.body);
     if (!params.success || !body.success) return reply.code(400).send({ error: "Valid export preview scope required" });
     const workspaceId = params.data.workspaceId;
-    const context = await resolveAuthorizedWorkspaceContext({ authorization: request.headers.authorization,
-      workspaceId, permission: "schedule.export", resolver: options.contextResolver });
-    if (!context || context.membership.role === "employee") return reply.code(403).send({ error: "Schedule export access required" });
+    // The core answers who may export; a workspace they are not in is not there (404).
+    const context = authorize(await resolveActor(request.headers.authorization, workspaceId, options.contextResolver), "schedule.export");
     const service = options.service;
     if (!service) return reply.code(503).send({ error: "Schedule export authorization is unavailable" });
     const scope = body.data;

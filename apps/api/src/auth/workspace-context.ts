@@ -78,32 +78,6 @@ export function authorize(
   throw new HttpError("Not allowed", 403, { reason: "authz.out_of_scope", detail: action });
 }
 
-export async function resolveAuthorizedWorkspaceContext(input: {
-  readonly authorization: string | undefined;
-  readonly workspaceId: string;
-  readonly permission: Permission;
-  readonly resolver: WorkspaceContextResolver | null;
-  readonly allowIncompleteOnboarding?: boolean;
-}): Promise<ActiveWorkspaceContext | null> {
-  const accessToken = bearerToken(input.authorization);
-  if (!input.resolver) return null;
-  if (!accessToken) throw signedOut();
-
-  const context = await input.resolver.resolve(accessToken, input.workspaceId);
-  if (
-    !context ||
-    context.workspace.id !== input.workspaceId ||
-    context.membership.status !== "active" ||
-    context.documentAccess.restricted ||
-    (!input.allowIncompleteOnboarding &&
-      context.onboarding.status !== "complete") ||
-    !context.permissions.includes(input.permission)
-  ) {
-    return null;
-  }
-  return context;
-}
-
 export async function resolveWorkspaceAuthorization(input: {
   readonly authorization: string | undefined;
   readonly workspaceId: string;

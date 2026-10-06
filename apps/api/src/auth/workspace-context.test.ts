@@ -5,7 +5,6 @@ import {
   authorize,
   createSupabaseWorkspaceContextResolver,
   resolveActor,
-  resolveAuthorizedWorkspaceContext,
   resolveWorkspaceAnyPermissionAuthorization,
   resolveWorkspaceAuthorization,
   resolveWorkspaceMembership,
@@ -257,7 +256,6 @@ describe("resolveWorkspaceAuthorization", () => {
     await expect(resolveWorkspaceAuthorization({ ...input, permission: "workspace.manage" })).rejects.toMatchObject({ statusCode: 401 });
     await expect(resolveWorkspaceAnyPermissionAuthorization({ ...input, anyOf: ["workspace.manage"] })).rejects.toMatchObject({ statusCode: 401 });
     await expect(resolveWorkspaceMembership(input)).rejects.toMatchObject({ statusCode: 401 });
-    await expect(resolveAuthorizedWorkspaceContext({ ...input, permission: "workspace.manage" })).rejects.toMatchObject({ statusCode: 401 });
     expect(resolver.resolve).not.toHaveBeenCalled();
   });
 

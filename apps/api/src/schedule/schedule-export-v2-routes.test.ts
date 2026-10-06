@@ -1,12 +1,14 @@
 import Fastify from "fastify";
 import type { ActiveWorkspaceContext, ScheduleReadModel, ScheduleExportV2Scope } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
+import { replyWithError } from "../http-error";
 import { registerScheduleExportV2Routes } from "./schedule-export-v2-routes";
 import type { ScheduleReadService } from "./schedule-service";
 
 const id = (n: number) => `afa70000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const context = { userId: id(1), workspace: { id: id(2) }, membership: { role: "owner", status: "active" },
-  onboarding: { status: "complete" }, documentAccess: { restricted: false }, permissions: ["schedule.export"] } as ActiveWorkspaceContext;
+  onboarding: { status: "complete" }, documentAccess: { restricted: false }, permissions: ["schedule.export"],
+  actions: ["schedule.export"] } as unknown as ActiveWorkspaceContext;
 const scope: ScheduleExportV2Scope = { week_start: "2026-09-14", dates: ["2026-09-14"], location_ids: [id(3)],
   employee_ids: [id(4)], shift_ids: [id(5)], source: { kind: "published" } };
 const model = { workspace_id: id(2), week_start: scope.week_start, locations: [{ id: id(3), short_name: "MRK" }],
@@ -14,6 +16,7 @@ const model = { workspace_id: id(2), week_start: scope.week_start, locations: [{
 
 function setup(value: ActiveWorkspaceContext | null = context) {
   const app = Fastify();
+  app.setErrorHandler(replyWithError);
   const getReadModel = vi.fn().mockResolvedValue(model);
   const listDrafts = vi.fn().mockResolvedValue({ drafts: [{ id: id(6), workspace_id: id(2), week_start: scope.week_start, revision: 3 }] });
   const listWeeklyShifts = vi.fn().mockResolvedValue({ shifts: model.shifts });
@@ -34,16 +37,25 @@ describe("Export v2 read-only server authorization", () => {
     expect(getReadModel).toHaveBeenCalledWith(id(1), id(2), scope.week_start); expect(listDrafts).not.toHaveBeenCalled();
     await app.close();
   });
-  it.each(["no-token", "no-context", "employee", "inactive", "onboarding", "no-permission", "other-workspace"])("denies %s before reading schedule data", async reason => {
-    const value = structuredClone(context);
-    if (reason === "employee") value.membership.role = "employee";
-    if (reason === "inactive") value.membership.status = "pending_activation" as typeof value.membership.status;
-    if (reason === "onboarding") value.onboarding.status = "required" as typeof value.onboarding.status;
-    if (reason === "no-permission") value.permissions = [];
+  it.each([
+    ["no-token", 401, "session.required"],
+    ["no-context", 404, "authz.not_member"],
+    ["other-workspace", 404, "authz.not_member"],
+    // The authorization core decides who may export (rank, permission, onboarding, access); the route only reads its answer (B-5).
+    ["no-export-action", 403, "authz.out_of_scope"],
+  ] as const)("denies %s before reading schedule data", async (reason, status, key) => {
+    const value = structuredClone(context) as ActiveWorkspaceContext & { actions: string[] };
     if (reason === "other-workspace") value.workspace.id = id(99);
+    if (reason === "no-export-action") value.actions = [];
     const { app, post, getReadModel } = setup(reason === "no-context" ? null : value);
-    expect((await post(scope, reason === "no-token" ? "" : "Bearer test")).statusCode).toBe(reason === "no-token" ? 401 : 403);
+    const response = await post(scope, reason === "no-token" ? "" : "Bearer test");
+    expect(response.statusCode).toBe(status);
+    expect(response.json().reason).toBe(key);
     expect(getReadModel).not.toHaveBeenCalled(); await app.close();
+  });
+  it("follows the core, not the membership role: an employee the core allows to export is authorized", async () => {
+    const { app, post } = setup({ ...context, membership: { ...context.membership, role: "employee" } } as ActiveWorkspaceContext);
+    expect((await post()).statusCode).toBe(200); await app.close();
   });
   it.each([
     { ...scope, location_ids: [id(99)] }, { ...scope, employee_ids: [id(99)] },
@@ -69,7 +81,7 @@ describe("Export v2 read-only server authorization", () => {
   it("fails closed on revoked permissions, missing short names or a failing source read", async () => {
     const { app, post, getReadModel, resolve } = setup();
     expect((await post()).statusCode).toBe(200);
-    resolve.mockResolvedValueOnce({ ...context, permissions: [] }); expect((await post()).statusCode).toBe(403);
+    resolve.mockResolvedValueOnce({ ...context, actions: [] }); expect((await post()).statusCode).toBe(403);
     getReadModel.mockResolvedValueOnce({ ...model, locations: [{ id: id(3), short_name: null }] }); expect((await post()).statusCode).toBe(409);
     getReadModel.mockRejectedValueOnce(new Error("private database diagnostic"));
     const failed = await post(); expect(failed.statusCode).toBe(503); expect(failed.body).not.toContain("private database");
