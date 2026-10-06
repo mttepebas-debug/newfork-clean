@@ -10,27 +10,27 @@ Keşif 2026-10-06 (gece, `nf-planlama` oturumu; koordinatörün GECE-3 görevi).
 
 | # | Bulgu | Nerede / örnek | Kaynak | Backlog | İşaret |
 |---|---|---|---|---|---|
-| E4-01 | **Müdür, admin ve owner listede ve hep "Not submitted"** — M13/M14'e göre müsaitliği yalnız employee girer. Bir pgTAP bu davranışı kilitliyor (`weekly_team_availability.test.sql:58`). | Ayşe "Not submitted"ı açınca müdür Can'ı ve owner Mert'i kovalar; "N employees" şişer. Yerelde bir workspace'te 36 kişinin 17'si | A K1, D O1 | YENİ | leave: medium / do: moderate |
-| E4-02 | **Değişikliksiz kayıt bütün yöneticilere bildirim gönderiyor** ("Week confirmed.") | Ali Salı'yı işaretleyip geri alır, Save → Ayşe, Can, admin, owner bildirim alır. Yerelde 254 bildirimin 28'i | D O2 | YENİ | leave: medium / do: safe |
-| E4-03 | **Müsaitlik / yayın kaydı sürerken izin talebi ve vardiya tipi kaydı beklemeden reddediliyor** (workspace kilidi, tek deneme) | Ayşe yayınlarken Ali izin talebi gönderir → "The schedule is being updated…" | D O3 | YENİ (sınırda: Requests, Schedule) | leave: medium / do: moderate |
-| E4-04 | **Yönetici Employee view → My availability'de açıklamasız kilitli form görüyor** | Can kendi çalışan görünümünde kapalı alanlar ve Save görür, nedeni yazmaz | D O4 | YENİ | leave: medium / do: safe |
+| E4-01 | **Müdür, admin ve owner listede ve hep "Not submitted"** — M13/M14'e göre müsaitliği yalnız employee girer. Bir pgTAP bu davranışı kilitliyor (`weekly_team_availability.test.sql:58`). | Ayşe "Not submitted"ı açınca müdür Can'ı ve owner Mert'i kovalar; "N employees" şişer. Yerelde bir workspace'te 36 kişinin 17'si | A K1, D O1 | BL-789 | leave: medium / do: moderate |
+| E4-02 | **Değişikliksiz kayıt bütün yöneticilere bildirim gönderiyor** ("Week confirmed.") | Ali Salı'yı işaretleyip geri alır, Save → Ayşe, Can, admin, owner bildirim alır. Yerelde 254 bildirimin 28'i | D O2 | BL-790 | leave: medium / do: safe |
+| E4-03 | **Müsaitlik / yayın kaydı sürerken izin talebi ve vardiya tipi kaydı beklemeden reddediliyor** (workspace kilidi, tek deneme) | Ayşe yayınlarken Ali izin talebi gönderir → "The schedule is being updated…" | D O3 | BL-791 (sınırda: Requests, Schedule) | leave: medium / do: moderate |
+| E4-04 | **Yönetici Employee view → My availability'de açıklamasız kilitli form görüyor** | Can kendi çalışan görünümünde kapalı alanlar ve Save görür, nedeni yazmaz | D O4 | BL-796 | leave: medium / do: safe |
 | E4-05 | Sayfalama yok (25 / 50 / 100) | 80 kişilik zincirde tek sayfa | A, D | BL-787 | leave: medium / do: safe |
 | E4-06 | Okuma ucunun izin kapısı rotada da (`weekly-preferences-routes.ts:56`); ekrana ham "Team availability access required." çıkıyor | Rolü değişen müdür sayfayı yenileyince | A, B D4, D D1 | BL-565 | leave: medium / do: moderate |
 | E4-07 | Telefonda tablo yana kayıyor (1030 px), sayı kesiliyor | 390 px | A | BL-599 (Availability kısmı) | leave: medium / do: moderate |
 | E4-08 | Availability ekranı için e2e yok ("çalışan kaydeder → yönetici bildirim → çekmece" zinciri) | — | A, D | OBS-002 | leave: medium / do: moderate |
-| E4-09 | Tek lokasyonu arşivlenen kişi owner'ın listesinden de kayboluyor | Beşiktaş arşivlenir, Emre listede yok | B D3 | YENİ | leave: low / do: safe |
+| E4-09 | Tek lokasyonu arşivlenen kişi owner'ın listesinden de kayboluyor | Beşiktaş arşivlenir, Emre listede yok | B D3 | BL-792 | leave: low / do: safe |
 | E4-10 | Davetli (kabul etmemiş) admin / müdür adayına not yazılabiliyor | Selin admin davetli, Ayşe not yazar | B D2 | BL-773 (müsaitlik yüzü) | leave: low / do: risky |
 | E4-11 | Terfide notun eski kopyaları geçmiş / komut tablosunda kalıyor | Ali müdür olunca "School mornings" metni kalır | B D1, D D3 | BL-569 | leave: low / do: safe |
 | E4-12 | Terfiyle kayıt yarışı müdüre hafta bırakabilir (DB kısıtı yok) | — | B D6 | BL-567 | leave: low / do: moderate |
 | E4-13 | Çalışan kaydı sonradan müdür hesabına bağlanınca terfi tetikleyicisi çalışmıyor | — | A, B, D D7 | BL-153 | leave: low / do: safe |
-| E4-14 | 409'dan sonra form kendini yenilemiyor; aynı Save yine reddediliyor, "Reload" düğmesi yok | Ayşe ve Can aynı notu düzenler | D D2 | YENİ | leave: low / do: safe |
-| E4-15 | Ham hata cümleleri (zod dökümü, "Idempotency key…", "Availability storage is not configured") | Sayfa kutusu, çekmece, Settings paneli | A K5, D D1 | BL-621 + YENİ | leave: low / do: safe |
-| E4-16 | Notun adı tutarsız: kural "Manager note", çekmece "Manager reminders"; "Last edited by" çekmecede yok | Employees çekmecesi → Availability | A K2, K3 | YENİ | leave: low / do: safe |
-| E4-17 | Mod değişikliği bildirimi haftası olmayana da "Your saved week was converted" diyor | Yeni garson Deniz | D D4 | YENİ | leave: low / do: safe |
+| E4-14 | 409'dan sonra form kendini yenilemiyor; aynı Save yine reddediliyor, "Reload" düğmesi yok | Ayşe ve Can aynı notu düzenler | D D2 | BL-797 | leave: low / do: safe |
+| E4-15 | Ham hata cümleleri (zod dökümü, "Idempotency key…", "Availability storage is not configured") | Sayfa kutusu, çekmece, Settings paneli | A K5, D D1 | BL-621 + BL-798 | leave: low / do: safe |
+| E4-16 | Notun adı tutarsız: kural "Manager note", çekmece "Manager reminders"; "Last edited by" çekmecede yok | Employees çekmecesi → Availability | A K2, K3 | BL-799 | leave: low / do: safe |
+| E4-17 | Mod değişikliği bildirimi haftası olmayana da "Your saved week was converted" diyor | Yeni garson Deniz | D D4 | BL-793 | leave: low / do: safe |
 | E4-18 | "1 employees" | Kadıköy tek kişi | A | BL-661 | leave: low / do: safe |
-| E4-19 | Uyarı kutusu ucu üye olmayana 404 yerine 403 | sınırda: Schedule | B D5 | YENİ | leave: low / do: safe |
-| E4-20 | KARARLAR satır 69, 72, 73 M13'ten önceden kalma (müdürün müsaitliği ve Team availability'de not) | — | D D5 | YENİ (kayıt) | leave: low / do: safe |
-| E4-21 | Geliştirme önizleme sayfası (`availability-preview.html`) duruyor | yalnız yerel | D D6 | YENİ | leave: low / do: safe |
+| E4-19 | Uyarı kutusu ucu üye olmayana 404 yerine 403 | sınırda: Schedule | B D5 | BL-794 | leave: low / do: safe |
+| E4-20 | KARARLAR satır 69, 72, 73 M13'ten önceden kalma (müdürün müsaitliği ve Team availability'de not) | — | D D5 | düzeltildi (KARARLAR, KK-178) | leave: low / do: safe |
+| E4-21 | Geliştirme önizleme sayfası (`availability-preview.html`) duruyor | yalnız yerel | D D6 | BL-800 | leave: low / do: safe |
 | E4-22 | BL-262'nin Availability kısmı kapandı (`weekly_team_availability` yeşil listede); kalan Settings'in | — | A | BL-262 (değişmiş) | — |
 
 ## 2. Prototipten taşı / bırak (A §3)
@@ -79,3 +79,5 @@ Keşif 2026-10-06 (gece, `nf-planlama` oturumu; koordinatörün GECE-3 görevi).
 
 ## 6. Kapanış durumu
 Açık: C (görsel QA) makine boşalınca; sonra Mert'in S1–S3 seçimleri, koordinatörün K1–K6 kararları, görev dosyası ve BL numaraları (E4-xx YENİ'leri).
+
+Kararlar: KK-178 (K1, K2, K3, K4, K6 kabul; K5 KARARLAR 69/72/73 düzeltildi). BL numaraları: BL-789–BL-800 (2026-10-06). Görev dosyası: `docs/plan/tasks/EKRAN-04-AVAILABILITY.md`.
