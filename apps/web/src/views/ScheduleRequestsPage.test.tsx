@@ -164,7 +164,7 @@ function withRequest(change: Partial<TimeOffRequest>) {
   read = { ...fixture, time_off_requests: [{ ...pending, ...change }] };
 }
 async function openTimeOffRequest() {
-  fireEvent.click(await screen.findByRole("button", { name: /Alex Kim/ }));
+  fireEvent.click(await screen.findByRole("row", { name: /Alex Kim/ }));
   return screen.findByRole("dialog", { name: "Review request" });
 }
 const calls = () => apiRequest.mock.calls.map(([, path, init]) => [path, JSON.parse((init as RequestInit).body as string)]);
@@ -193,29 +193,49 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await screen.findByRole("heading", { name: "Employee Hub" });
     expect(fetchRequests).not.toHaveBeenCalled();
   });
-  it("keeps only Time off and Shift changes tabs and opens the manager Shift Hub", async () => {
+  // EKRAN-02 C1 (K-S8): one table; tabs follow the work, not the request type.
+  it("lists time off and shift changes in one table under Needs review, In progress and Closed", async () => {
     renderPage();
-    await screen.findByText("Alex Kim");
-    expect(screen.getAllByRole("tab")).toHaveLength(2);
-    fireEvent.click(screen.getByRole("tab", { name: /Shift changes/ }));
-    await screen.findByRole("heading", { name: "Shift changes" });
-    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.anything());
-    expect(screen.getByRole("tab", { name: "Time off 1" })).toBeTruthy();
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    const tabs = screen.getByRole("group", { name: "Request status" });
+    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["Needs review1", "In progress", "Closed"]);
+    expect(within(tabs).getByRole("button", { name: /Needs review/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true);
+    expect(screen.getByRole("group", { name: "Request type" })).toBeTruthy();
+    for (const label of ["Time off", "Swap", "Cover", "Open shift"]) expect(screen.getByRole("checkbox", { name: label })).toBeTruthy();
+  });
+  it("keeps the request type choice in the address and moves along the tabs with the arrow keys (R2-48)", async () => {
+    renderPage();
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Time off" }));
+    expect(screen.getByLabelText("Current URL").textContent).toContain("types=swap%2Ccover%2Copen_pickup");
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    const needsReview = screen.getByRole("button", { name: /Needs review/ });
+    needsReview.focus();
+    fireEvent.keyDown(needsReview, { key: "ArrowRight" });
+    expect(document.activeElement?.textContent).toBe("In progress");
   });
   it("lands a manager notification link on its Shift Hub case", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
-    renderPage(`/app/schedule/requests?tab=shift-changes&case=${caseId}`);
+    renderPage(`/app/schedule/requests?case=${caseId}`);
     await screen.findByRole("heading", { name: "Shift changes" });
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
   });
-  it.each([
-    ["schedule.time_off_requests.read", "requests.read"],
-    ["schedule.shift_change_requests.read", "exchange.read"],
-  ] as const)("keeps a request-only reader with %s inside their permitted queue", async (permission, action) => {
-    activeContext = { ...context, permissions: ["workspace.read", permission], actions: ["workspace.read", action] };
+  it("keeps a time off reader to time off: no request type menu, no shift change list asked for", async () => {
+    activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };
+    renderPage();
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
+    expect(getExchanges).not.toHaveBeenCalled();
+  });
+  it("keeps a shift change reader to shift changes: no Time off type, no time off list asked for", async () => {
+    activeContext = { ...context, permissions: ["workspace.read", "schedule.shift_change_requests.read"], actions: ["workspace.read", "exchange.read"] };
     renderPage();
     await screen.findByRole("heading", { name: "Requests" });
-    expect(screen.getAllByRole("tab")).toHaveLength(1);
+    expect(screen.queryByRole("checkbox", { name: "Time off" })).toBeNull();
+    expect(screen.getByRole("checkbox", { name: "Swap" })).toBeTruthy();
+    expect(fetchRequests).not.toHaveBeenCalled();
   });
   // EKRAN-02 B1: the page's door asks the core, like its tabs do.
   it("sends away someone whose role names a request permission the core does not grant here", async () => {
@@ -228,12 +248,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
     renderPage();
     await screen.findByRole("heading", { name: "Requests" });
-    expect(screen.queryByRole("tab", { name: /Time off/ })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Time off" })).toBeNull();
+    expect(fetchRequests).not.toHaveBeenCalled();
   });
 
   it("lists a request with no location by its decide-by time and the shifts it would open", async () => {
     renderPage();
-    const row = await screen.findByRole("button", { name: /Alex Kim/ });
+    const row = await screen.findByRole("row", { name: /Alex Kim/ });
     expect(screen.getByRole("columnheader", { name: /Decide by/ })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: /Location/ })).toBeNull();
     expect(row.textContent).toContain("Jan 14");
@@ -256,7 +277,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     for (const device of ["America/Los_Angeles", "Asia/Tokyo"]) {
       await inDeviceZone(device, async () => {
         const view = renderPage();
-        const row = await screen.findByRole("button", { name: /Alex Kim/ });
+        const row = await screen.findByRole("row", { name: /Alex Kim/ });
         expect(plain(row.textContent)).toContain("Jan 14, 12:00 PM Istanbul time");
         const drawer = await openTimeOffRequest();
         const panel = within(drawer).getByRole("region", { name: "Approval progress" });
@@ -292,7 +313,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
 
   it("shows no vote buttons when the core says this reader cannot vote", async () => {
     withRequest({ progress: { ...progress, can_vote: false, can_decide_alone: false } });
-    renderPage();
+    renderPage("/app/schedule/requests?tab=in_progress");
     const drawer = await openTimeOffRequest();
     expect(within(drawer).queryByRole("button", { name: /Approve/ })).toBeNull();
     expect(within(drawer).queryByRole("button", { name: /Deny/ })).toBeNull();
@@ -392,7 +413,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("revokes approved time off only with a reason", async () => {
     withRequest({ status: "approved", revision: 3, progress: null });
     apiRequest.mockResolvedValueOnce({ status: "revoked", request_id: requestId, revision: 4 });
-    renderPage();
+    renderPage("/app/schedule/requests?tab=closed");
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: /Revoke/ }));
     const box = await screen.findByRole("alertdialog", { name: "Revoke time off?" });
@@ -407,13 +428,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("does not offer revoke without the core's revoke action", async () => {
     withRequest({ status: "approved", progress: null });
     activeContext = { ...context, actions: context.actions.filter(action => action !== "time_off.revoke") };
-    renderPage();
+    renderPage("/app/schedule/requests?tab=closed");
     const drawer = await openTimeOffRequest();
     expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
   });
   it("does not offer revoke on an approved cancellation", async () => {
     withRequest({ status: "approved", request_type: "time_off_cancellation", progress: null });
-    renderPage();
+    renderPage("/app/schedule/requests?tab=closed");
     const drawer = await openTimeOffRequest();
     expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
   });
@@ -434,7 +455,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     withRequest({ status: "approved", revision: 2, progress: null,
       segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
     apiRequest.mockResolvedValueOnce({ status: "approved", request_id: requestId, revision: 3 });
-    renderPage();
+    renderPage("/app/schedule/requests?tab=closed");
     await openTimeOffRequest();
     fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
@@ -480,14 +501,14 @@ describe("search", () => {
   it("keeps the list and the search box while the next rows load", async () => {
     renderPage();
     const box = await screen.findByLabelText("Search requests");
-    await screen.findByRole("button", { name: /Alex Kim/ });
+    await screen.findByRole("row", { name: /Alex Kim/ });
     let answer: (model: ScheduleRequestsReadModel) => void = () => undefined;
     fetchRequests.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
     box.focus();
     fireEvent.change(box, { target: { value: "a".repeat(200) } });
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
     expect(screen.queryByText("Loading requests...")).toBeNull();
-    expect(screen.getByRole("button", { name: /Alex Kim/ })).toBeTruthy();
+    expect(screen.getByRole("row", { name: /Alex Kim/ })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByLabelText("Search requests"));
     const asked = new URL(fetchRequests.mock.calls.at(-1)![0], "http://x").searchParams.get("search");
     expect(asked).toHaveLength(120);

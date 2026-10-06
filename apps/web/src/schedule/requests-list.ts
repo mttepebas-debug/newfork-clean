@@ -48,7 +48,8 @@ function exchangeTab(item: ExchangeCase): OpenRequestRow["tab"] {
 }
 
 function timeOffTab(item: TimeOffRequest): OpenRequestRow["tab"] {
-  return item.progress?.can_vote && !item.progress.my_vote ? "needs_review" : "in_progress";
+  const progress = item.progress;
+  return progress && (progress.can_vote || progress.can_decide_alone) && !progress.my_vote ? "needs_review" : "in_progress";
 }
 
 function exchangeMatches(item: ExchangeCase, filters: OpenRequestFilters): boolean {
