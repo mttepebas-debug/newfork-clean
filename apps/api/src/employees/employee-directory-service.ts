@@ -215,12 +215,12 @@ export function createEmployeeDirectoryServiceWithClient(
       if (error) throw rpcFailure(error);
       return employeeReferenceDataSchema.parse(data);
     },
-    // EMP-LIMIT (P09): every person, a database page (at most 200, ordered by
-    // name then id) at a time; one call used to stop at 100 without a word.
+    // EMP-LIMIT (P09): every person, page after page (ordered by name then id),
+    // until an empty one; one call used to stop at 100 without a word. The
+    // offset follows what came back, so a smaller database cap loses nobody.
     async list(input) {
-      const pageSize = 200;
-      const people = [];
-      for (let offset = 0; ; offset += pageSize) {
+      const people: EmployeeSummary[] = [];
+      for (;;) {
         const page = employeeSummarySchema.array().parse(
           await rpc("list_employees_service", {
             actor_user_id: input.actorUserId,
@@ -228,12 +228,12 @@ export function createEmployeeDirectoryServiceWithClient(
             include_archived: input.archived,
             search_text: input.search,
             status_filter: input.archived ? "all" : input.status,
-            page_limit: pageSize,
-            page_offset: offset,
+            page_limit: 200,
+            page_offset: people.length,
           }),
         );
+        if (page.length === 0) return people;
         people.push(...page);
-        if (page.length < pageSize) return people;
       }
     },
     async get(input) {

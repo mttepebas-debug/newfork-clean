@@ -463,8 +463,9 @@ describe("employee directory routes", () => {
 
   // EMP-LIMIT (P09): a workspace past one page of people lists every one of
   // them; the database hands out at most 200 a call.
-  it("lists every employee of a workspace bigger than one database page", async () => {
-    const people = Array.from({ length: 450 }, (_, index) => ({
+  // A page shorter than asked is not the end: the database's cap could shrink.
+  it.each([[450, 200], [400, 200], [450, 100]])("lists all %i employees when the database hands out %i a call", async (count, cap) => {
+    const people = Array.from({ length: count }, (_, index) => ({
       id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
       workspace_id: workspaceId, employee_code: `E-${String(1000 + index)}`,
       first_name: "Person", last_name: `No ${index}`, preferred_name: "", display_name: `Person No ${index}`,
@@ -472,8 +473,8 @@ describe("employee directory routes", () => {
       location_count: 0, primary_job_id: null, primary_job_name: null, job_count: 0, role_name: null,
       display_status: "active", archived_at: null, revision: 1,
     }));
-    const rpc = vi.fn(async (_name: string, args: { page_limit: number; page_offset: number }) => ({
-      data: people.slice(args.page_offset, args.page_offset + Math.min(args.page_limit, 200)), error: null,
+    const rpc = vi.fn(async (_name: string, args: { page_limit: number; page_offset: number; search_text: string }) => ({
+      data: people.slice(args.page_offset, args.page_offset + Math.min(args.page_limit, cap)), error: null,
     }));
     const app = buildApp({
       contextResolver: { resolve: async () => context },
@@ -485,7 +486,8 @@ describe("employee directory routes", () => {
       headers: { authorization: "Bearer valid-token" },
     });
     expect(response.statusCode, response.body).toBe(200);
-    expect(response.json()).toHaveLength(450);
+    expect(response.json().map((person: { id: string }) => person.id)).toEqual(people.map((person) => person.id));
+    expect(rpc.mock.calls.every(([, args]) => args.search_text === "")).toBe(true);
     await app.close();
   });
 
