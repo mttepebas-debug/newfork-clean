@@ -1,6 +1,7 @@
 import {
   Accessibility,
   ArrowRight,
+  Cookie,
   Mail,
   ScrollText,
   ShieldCheck,
@@ -313,6 +314,61 @@ export function ContactPage() {
           Do not send passwords, authentication codes, SSNs, identity documents,
           payment information, or full employee records in an initial message.
         </p>
+      </DocumentSection>
+    </TrustPage>
+  );
+}
+
+export function CookiesPage() {
+  return (
+    <TrustPage
+      eyebrow="Cookies"
+      icon={<Cookie size={22} />}
+      intro="What Newfork stores in your browser, why, and how to clear it."
+      title="Cookie policy"
+    >
+      <DocumentSection title="Essential storage only">
+        <p>
+          Newfork uses browser storage only where the service cannot work
+          without it. There are no advertising cookies, no cross-site tracking
+          and no optional analytics in this build, so there is nothing to opt
+          in or out of.
+        </p>
+      </DocumentSection>
+
+      <DocumentSection title="What we store">
+        <ul>
+          <li>
+            <strong>Sign-in session.</strong> Keeps you signed in between
+            visits and protects your account. Removed when you sign out.
+          </li>
+          <li>
+            <strong>Interface preferences.</strong> Remembers choices you make
+            in the app, such as the selected workspace or view.
+          </li>
+          <li>
+            <strong>Cookie notice.</strong> Remembers that you have seen the
+            notice on the home page so it does not appear again.
+          </li>
+        </ul>
+      </DocumentSection>
+
+      <DocumentSection title="Managing storage">
+        <p>
+          You can clear cookies and site data at any time in your browser
+          settings. Clearing them signs you out and resets your preferences.
+        </p>
+      </DocumentSection>
+
+      <DocumentSection title="Changes">
+        <p>
+          If Newfork ever adds optional cookies, this page will list them and
+          you will be asked for consent before they are set.
+        </p>
+        <Link className="public-inline-link" to="/your-privacy-choices">
+          Your privacy choices
+          <ArrowRight size={15} aria-hidden />
+        </Link>
       </DocumentSection>
     </TrustPage>
   );
