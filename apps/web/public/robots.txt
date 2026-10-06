@@ -1,0 +1,13 @@
+# The public site is the landing page and the trust pages; everything a
+# signed-in account sees stays out of search results.
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /account/
+Disallow: /workspaces
+Disallow: /welcome
+Disallow: /onboarding
+Disallow: /accept-invite
+Disallow: /invite/
+Disallow: /reset-password
+Disallow: /api/

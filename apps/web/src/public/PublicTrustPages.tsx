@@ -1,6 +1,7 @@
 import {
   Accessibility,
   ArrowRight,
+  Cookie,
   Mail,
   ScrollText,
   ShieldCheck,
@@ -366,6 +367,70 @@ export function PrivacyChoicesPage() {
         </p>
         <Link className="public-inline-link" to="/privacy">
           Read the privacy summary
+          <ArrowRight size={15} aria-hidden />
+        </Link>
+      </DocumentSection>
+    </TrustPage>
+  );
+}
+
+export function CookiesPage() {
+  return (
+    <TrustPage
+      eyebrow="Trust center"
+      icon={<Cookie size={22} />}
+      intro="What Newfork keeps in your browser, and what it does not."
+      title="Cookies"
+    >
+      <DocumentSection title="Essential storage only">
+        <p>
+          Newfork does not set advertising or analytics cookies and does not
+          load third-party trackers. The only things kept in your browser are
+          needed for the product to work, so there is nothing to opt into or out
+          of.
+        </p>
+      </DocumentSection>
+
+      <DocumentSection title="What is stored">
+        <dl className="public-data-list">
+          <div>
+            <dt>Sign-in session</dt>
+            <dd>
+              Supabase authentication keeps your session in browser storage so
+              you stay signed in. Signing out removes it.
+            </dd>
+          </div>
+          <div>
+            <dt>Interface preferences</dt>
+            <dd>
+              Choices such as the selected workspace and view settings, so the
+              product opens the way you left it.
+            </dd>
+          </div>
+          <div>
+            <dt>Cookie notice</dt>
+            <dd>
+              A single flag that remembers you have read the notice on the
+              public site, so it is not shown again.
+            </dd>
+          </div>
+        </dl>
+      </DocumentSection>
+
+      <DocumentSection title="Fonts and third parties">
+        <p>
+          The Inter typeface is served from Newfork itself, not from a font
+          service, so loading a page does not send your address to anyone else.
+        </p>
+      </DocumentSection>
+
+      <DocumentSection title="Clearing storage">
+        <p>
+          You can clear site data from your browser settings at any time. You
+          will be signed out and the cookie notice will appear once more.
+        </p>
+        <Link className="public-inline-link" to="/your-privacy-choices">
+          Review your privacy choices
           <ArrowRight size={15} aria-hidden />
         </Link>
       </DocumentSection>

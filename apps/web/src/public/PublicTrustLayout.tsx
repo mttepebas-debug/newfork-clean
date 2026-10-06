@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 const trustLinks = [
   { label: "Privacy", to: "/privacy" },
   { label: "Terms", to: "/terms" },
+  { label: "Cookies", to: "/cookies" },
   { label: "Accessibility", to: "/accessibility" },
   { label: "Contact", to: "/contact" },
 ] as const;
@@ -21,7 +22,7 @@ export default function PublicTrustLayout() {
     <div className="public-trust-shell">
       <header className="public-trust-header">
         <div className="public-trust-header-inner">
-          <Link className="public-trust-brand" to="/privacy">
+          <Link className="public-trust-brand" to="/">
             NEWFORK
           </Link>
           <nav aria-label="Trust pages">

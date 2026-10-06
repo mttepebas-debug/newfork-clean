@@ -801,6 +801,20 @@ vi.mock("./communications/communications-data", () => ({
 }));
 
 describe("App", () => {
+  it("sends a signed-in account from the site root into the app, not the public landing page", async () => {
+    testAuth.role = "owner";
+    window.history.pushState({}, "", "/");
+    render(<App />);
+
+    await waitFor(
+      () => expect(window.location.pathname.startsWith("/app")).toBe(true),
+      { timeout: 10000 },
+    );
+    expect(
+      screen.queryByRole("heading", { name: /run every shift/i }),
+    ).toBeNull();
+  });
+
   it("protects workspace routes and opens the authenticated shell", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-24");
     const { container } = render(<App />);

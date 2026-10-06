@@ -5,7 +5,10 @@ import { hubPath } from "../auth/resolveLanding";
 import { sessionExpiredStorageKey } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 
-export function SignInPage() {
+/** `startCreating`: the public site's "Start free trial" lands here, at /sign-up. */
+export function SignInPage({
+  startCreating = false,
+}: { readonly startCreating?: boolean } = {}) {
   const {
     authenticated,
     context,
@@ -23,7 +26,9 @@ export function SignInPage() {
     (location.state as { from?: string } | null)?.from ?? "/app";
   const destination = safeSignInDestination(requestedDestination);
   const inviteFlow = isInviteAcceptDestination(destination);
-  const [creatingAccount, setCreatingAccount] = useState(inviteFlow);
+  const [creatingAccount, setCreatingAccount] = useState(
+    inviteFlow || startCreating,
+  );
   // The address a new account must confirm before it can sign in.
   const [confirmationSentTo, setConfirmationSentTo] = useState<string | null>(
     null,

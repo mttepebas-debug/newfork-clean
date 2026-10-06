@@ -11,6 +11,7 @@ describe("Phase 9 public trust pages", () => {
   it.each([
     ["/privacy", "Privacy"],
     ["/terms", "Terms"],
+    ["/cookies", "Cookies"],
     ["/accessibility", "Accessibility"],
     ["/contact", "Contact"],
     ["/your-privacy-choices", "Your privacy choices"],

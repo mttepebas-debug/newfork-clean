@@ -50,6 +50,12 @@ const PrivacyChoicesPage = lazy(() =>
     default: module.PrivacyChoicesPage,
   })),
 );
+const CookiesPage = lazy(() =>
+  import("./public/PublicTrustPages").then((module) => ({
+    default: module.CookiesPage,
+  })),
+);
+const LandingPage = lazy(() => import("./marketing/LandingPage"));
 const PreferencesPage = lazy(() => import("./account/PreferencesPage"));
 const NotificationPreferencesPage = lazy(
   () => import("./account/NotificationPreferencesPage"),
@@ -148,9 +154,16 @@ export function App() {
             }
           >
             <Routes>
+              {/* The public site; its section links are real URLs too. */}
+              {["/", "/pricing", "/faq", "/features", "/product"].map(
+                (path) => (
+                  <Route key={path} path={path} element={<LandingPage />} />
+                ),
+              )}
               <Route element={<PublicTrustLayout />}>
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/cookies" element={<CookiesPage />} />
                 <Route path="/accessibility" element={<AccessibilityPage />} />
                 <Route path="/contact" element={<ContactPage />} />
                 <Route
@@ -159,6 +172,7 @@ export function App() {
                 />
               </Route>
               <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/sign-up" element={<SignInPage startCreating />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route
