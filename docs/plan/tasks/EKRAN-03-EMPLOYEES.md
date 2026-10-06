@@ -37,48 +37,48 @@ Bir kişi için: Owner Mert, yanlışlıkla işten çıkardığı garson Ali'yi 
 ## Bulgu → dilim eşlemesi
 | Bulgu | Dilim | Backlog |
 |---|---|---|
-| E3-01 lokasyonsuz / Remote terminate (K4) | A1 + B2 | YENİ |
-| E3-02 geçmiş tarihli terminate (K1) | A1 | YENİ |
-| E3-03 Send reminder (S2) | A3 + B1 | YENİ |
-| E3-04 Preferred name kaydedilmiyor (K2) | B2 | YENİ |
-| E3-05 offboarding follow-ups boş, haber yok | A1 + A3 (Q2) | YENİ |
-| E3-06 Confirm termination yeşil (K8) | C2 | YENİ |
+| E3-01 lokasyonsuz / Remote terminate (K4) | A1 + B2 | BL-765 |
+| E3-02 geçmiş tarihli terminate (K1) | A1 | BL-766 |
+| E3-03 Send reminder (S2) | A3 + B1 | BL-767 |
+| E3-04 Preferred name kaydedilmiyor (K2) | B2 | BL-777 |
+| E3-05 offboarding follow-ups boş, haber yok | A1 + A3 (Q2) | BL-768 |
+| E3-06 Confirm termination yeşil (K8) | C2 | BL-778 |
 | E3-07 çekmece odağı | C2 | BL-478 |
 | E3-08 ABD form kuralları, e-posta tekilliği | A2 + B2 | BL-503 |
-| E3-09 resmî ad API'den (K11) | A2 | YENİ |
-| E3-10 Restore (S1) | A1 + B1 + B2 | YENİ |
+| E3-09 resmî ad API'den (K11) | A2 | BL-769 |
+| E3-10 Restore (S1) | A1 + B1 + B2 | BL-770 |
 | E3-11 100 satır tavanı | A4 + B1 + C1 | BL-282 |
-| E3-12 bekleyen izin / taslak açık (P09) | A1 + B2 (Q1) | BL-388 + YENİ |
+| E3-12 bekleyen izin / taslak açık (P09) | A1 + B2 (Q1) | BL-388 + BL-771 |
 | E3-13 müdür lokasyon kuralı dört yolda | A1 (Restore) + A3 (davet kabulü); lokasyon / iş silme Settings | BL-456, BL-452, BL-474 |
 | E3-14 kurulum bitmeden davet | A3 | BL-419 |
 | E3-15 telefonda Terminate / Restore | C2 | BL-407 |
-| E3-16 Terminate penceresi klavye, balon | C2 | YENİ |
-| E3-17 satır odağı, Space | C1 | YENİ |
+| E3-16 Terminate penceresi klavye, balon | C2 | BL-779 |
+| E3-17 satır odağı, Space | C1 | BL-780 |
 | E3-18 ham DB metni | B1 | BL-620, BL-621 |
-| E3-19 eşzamanlı düzenleme takılması | B2 | YENİ |
-| E3-20 ikiz yol (boşaltmadan çıkarma / arşiv) | A1 | YENİ |
+| E3-19 eşzamanlı düzenleme takılması | B2 | BL-781 |
+| E3-20 ikiz yol (boşaltmadan çıkarma / arşiv) | A1 | BL-772 |
 | E3-21 lokasyon süzgeci (K6) | A4 + C1 | BL-436 + ek |
-| E3-22 doğrulama hatası gri | C2 | YENİ |
+| E3-22 doğrulama hatası gri | C2 | BL-782 |
 | E3-23 eski liste dili, `aria-pressed` (K7) | C1 | BL-604 + ek |
 | E3-24 telefonda liste | C1 (G2 bekler) | BL-599 |
-| E3-25 telefonda çekmece başlığı | C2 | YENİ |
-| E3-26 tarayıcı kutucukları, Access düğmeleri | C2 | YENİ |
+| E3-25 telefonda çekmece başlığı | C2 | BL-783 |
+| E3-26 tarayıcı kutucukları, Access düğmeleri | C2 | BL-784 |
 | E3-27 erişilebilirlik küçükleri | C1 + C2 | BL-429, BL-259, BL-663, BL-670 |
 | E3-28 kaydı olmayan owner, görünen ad üç tablo | A4 | BL-338, BL-079 |
 | E3-29 gövde yetkiden önce doğrulanıyor | B1 | BL-383 |
 | E3-30 test boşlukları | D (+ her dilimin kendi testi) | BL-438 + ek |
-| E3-31 davetli admin "çalışan" sayılıyor (K12) | A2 | YENİ |
-| E3-32 özel bilgi kapısı satır içi | A2 + B1 | YENİ |
-| E3-33 workspace fotoğraf yolu | B1 | YENİ |
-| E3-34 bayat önbellek | B1 | YENİ |
-| E3-35 History zayıf | A4 + C2 | YENİ |
-| E3-36 tercih edilen ad bildirimi (K5) | A3 | YENİ |
+| E3-31 davetli admin "çalışan" sayılıyor (K12) | A2 | BL-773 |
+| E3-32 özel bilgi kapısı satır içi | A2 + B1 | BL-774 |
+| E3-33 workspace fotoğraf yolu | B1 | BL-775 |
+| E3-34 bayat önbellek | B1 | BL-785 |
+| E3-35 History zayıf | A4 + C2 | BL-786 |
+| E3-36 tercih edilen ad bildirimi (K5) | A3 | BL-776 |
 | E3-37 durum / metin tutarsızlıkları (K9, K10) | C2 | BL-674, BL-408, BL-662, BL-428, BL-430 |
 | E3-38 ölü ve ikiz kod | B1 + A1 | BL-401 |
 | G3 "Kadikoy +1" | A4 + C1 | BL-428 |
 | Prototip taşı (12): L3, L7, L11, L26, P4, P5, P8, E10, AC4, AC8, T2, T3 | C1 (L3, L7, L11, L26), B2 + C2 (P4, P5, E10, AC4, AC8, T2, T3), A2 + B2 (P8) | OZET §2 |
 
-"YENİ" bulgular BL numarasını koordinatörden alır (PLAN-EKRAN-12 kalıbı); bu dosya numara vermez.
+"YENİ" denen 22 bulgu BL numarasını 2026-10-06'da aldı: BL-765–BL-786 (BACKLOG "Employees ekranı keşfi: yeni bulgular"); E3-12'nin izin yarısı BL-771.
 
 ## In scope (dilimler)
 Sıra kuralı (CLAUDE.md §4): veri ve sözleşme önce, sunum sonra yeni `origin/main`'den; aynı dosyaya iki oturum aynı anda konmaz.
@@ -219,6 +219,8 @@ pgTAP (A1–A4) önce kırmızı, migration rollback denemesi, `test:db` `db.loc
 4. Etki: A1'in E3-12 kısmı ve B2'nin Terminate penceresi.
 
 **Q2 — (koordinatöre) İşten çıkarmanın bildirimi kime gider?** Bugün hiç kimseye; `employee_offboarding_followups` satırı yazılıyor, okuyan yok (E3-05). Öneri: boşalan yayınlanmış vardiya varsa o lokasyonun müdürüne uygulama içi bildirim ("Ali's 2 shifts are unassigned"); işten çıkarılan kişiye bildirim yok. Dayanak: ILKELER P07 (işi doğrudan etkilenen) + S1 satır 10 (Restore bildirimi). Koordinatör kararı yeterli (P07 birebir); tablo ya bu bildirime bağlanır ya silinir.
+
+**Karar 2026-10-06, koordinatör (KK-174):** öneri kabul (P07 birebir). İşten çıkarmada boşalan yayınlanmış vardiya varsa yalnız o lokasyonun müdürüne uygulama içi bildirim ("Ali's 2 shifts are unassigned"); çıkarılan kişiye bildirim yok; `employee_offboarding_followups` bu bildirime bağlanır (A1 yazar, A3 bildirimi üretir). Q1 Mert'e soru turunda gider; A1'in E3-12 kısmı onu bekler.
 
 ## Notes / Result
 - 2026-10-06: görev dosyası yazıldı (`nf-planlama`, dal `task/plan-ekran-02-03`, taban `28c2b94e`). Tazelik yukarıda (38/38 geçerli). Koordinatöre: (1) "YENİ" bulguların BL numaraları; (2) Q1 Mert'e, Q2 koordinatöre; (3) G2 mobil konuşmasında; (4) EKRAN-PLANI'nda EKRAN-03 durum satırı ("keşif") ve hat sırası güncellenmeli (bu dosya EKRAN-PLANI'nı yazmaz); (5) OZET §5 / §9'daki "G1–G3 açık" bayat — KARARLAR'da G1 ve G3 seçildi.

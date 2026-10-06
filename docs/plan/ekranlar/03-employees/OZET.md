@@ -239,6 +239,7 @@ AC10 (terfide müsaitliğin silinmesi, M14) uygulanmış; kapalı. Sınırdaki p
 - **(c) Backlog'a yaz.**
 
 ## 5. Görsel kararlar (varyantla; ILKELER P04)
+_Güncelleme 2026-10-06: G1 ve G3 seçildi, G2 açık — aşağıdaki §9 satırı ve KARARLAR "Employees" (G1 :368 Sistem 1, "Add employee" yeşil, filtre satırının sağ ucu; G3 :367 "Kadikoy +1"; G2 telefon listesi mobil konuşmasında)._
 - **G1:** Ortak liste diline geçerken "Add employee" düğmesinin yeri ve rengi: başlıkta yeşil (bugün) mi, filtre satırında beyaz (ortak dil) mı.
 - **G2:** Telefonda Employees listesi: kart satırı mı, kaydırmalı tablo mu (E3-24).
 - **G3:** Owner'ın Location hücresi: "All locations" mı, "<ilk lokasyon> +N" mi (BL-428).
@@ -292,6 +293,8 @@ AC10 (terfide müsaitliğin silinmesi, M14) uygulanmış; kapalı. Sınırdaki p
 | S4 Özel bilgi | (a) önerilen: yalnız alt rütbe, izin ne olursa olsun |
 | S5 Documents adımı | (a) önerilen: Documents ekranının (6) turunda |
 | K1–K12 | Koordinatör hepsini verdi (KK-169) |
-| G1–G3 | Açık: arayüz hattında varyant ("!" işinden sonra) |
+| G1–G3 | G1 seçildi: Sistem 1, "Add employee" yeşil, filtre satırının sağ ucu (Mert 2026-10-06, KARARLAR Employees). G3 seçildi: owner'ın Location hücresi "Kadikoy +1" (Mert 2026-10-06). G2 (telefon listesi) açık: mobil konuşmasında. |
 
 Kapanış durumu: görev dosyası S1 senaryoları ve G1–G3'ten sonra yazılır; S2–S5 ve K1–K12 ona girer.
+
+Görev dosyası: `docs/plan/tasks/EKRAN-03-EMPLOYEES.md` (2026-10-06). Yeni bulguların BL numaraları: BL-765–BL-786.

@@ -73,6 +73,7 @@ Schedule ve Requests paralel yürür, ama işler ekrana göre değil **hatta** g
 - **Veri hattı** (tek `nf-db` oturumu): iki ekranın veri ve güvenlik dilimleri önem sırasıyla — EKRAN-02 A0 (talep kaybı) → EKRAN-01 DB-1a → DB-1b → DB-2 → DB-3 → EKRAN-02 A1 → A2 → A3 → EKRAN-01 DB-4 → DB-1c (W-1b gerektirirse).
 - **Web hattı** (tek `nf-backend` oturumu): EKRAN-01 W-1a → BE-1 → BE-2 → W-1b (DB-1b + DB-2 bitince) → EKRAN-02 B1 (A1–A3 bitince) → B2.
 - **Arayüz hattı** (tek `nf-arayuz` oturumu): önce iki ekranın görsel varyantları (EKRAN-01 VAR, EKRAN-02 V; main'e girmez), sonra DRAG ölçümü, sonra bağımlılıkları açılan görsel dilimler (EKRAN-01 W-3/W-2/W-4/W-5, EKRAN-02 C1/C2/C3).
+- **Sıra güncellemesi (koordinatör kararı 2026-10-06, KK-174):** veri hattı EKRAN-02 A1 → A2 → A3 → A4, sonra EKRAN-03 A1 → A2 → A3 → A4 (aynı test dosyaları; ekran ekran). Web hattı EKRAN-02 B1 → B2 → B3, sonra EKRAN-03 B1 → B2. Arayüz hattı VAR-E2E-2, sonra EKRAN-02 C3 → C1 → C2, sonra EKRAN-03 V / C1 / C2.
 - **Planlama** (havuz oturumu, kısa işler): FB-6.4.md eşlemesi, keşfin YENİ bulgularına BL numarası, sonraki ekranların keşfi.
 - Görsel varyantlar kodlamayla aynı gün başlar, görsel dilimlerden önce Mert'e gösterilir (P04); veri ve oturum dilimleri seçimi beklemez.
 - Ölçüt: ilk dilimlerden sonra veri hattı darboğazsa ve makine boşsa ikinci veri oturumu açılır; ölçmeden açılmaz.
@@ -85,7 +86,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 |---|---|---|---|---|
 | 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | karar — görev dosyası yazıldı (`tasks/EKRAN-01-SCHEDULE.md`, 2026-10-06), 6 açık soru |
 | 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
-| 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | keşif (2026-10-06, planlama oturumu; Mert: Schedule ve Requests kodlanırken başlasın) |
+| 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | karar — görev dosyası hazır (`tasks/EKRAN-03-EMPLOYEES.md`, 2026-10-06), 1 açık soru (Q1 Mert'e); G2 telefon konuşmasında |
 | 4 | Availability | owner, müdür | P2 | sırada |
 | 5 | Workspace (ana sayfa) | owner, müdür | P1 | sırada |
 | 6 | Documents | owner, müdür | P2 | sırada |
