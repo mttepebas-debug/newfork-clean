@@ -230,7 +230,7 @@ export function ShiftCard({
       data-selected={selected}
       data-dragging={dragging}
       data-job-color-dot={false}
-      data-has-markers={Boolean(publicationState) || showAvailabilityCorner}
+      data-has-markers={Boolean(publicationState) || (showAvailabilityCorner && !(devVar("hucre") === "c" && !(editing || devVar("ed") === "on")))}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
       data-availability-warning={availabilityWarning ? "true" : undefined}
@@ -345,7 +345,7 @@ export function ShiftCard({
       {noteCorner.corner}
       {publicationState || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
-          {showAvailabilityCorner && devVar("hucre") === "b" && employeeName && availabilityMark?.kind === "unavailable" ? (
+          {showAvailabilityCorner && devVar("hucre") === "c" && !(editing || devVar("ed") === "on") ? null : showAvailabilityCorner && (devVar("hucre") === "b" || devVar("hucre") === "c") && employeeName && availabilityMark?.kind === "unavailable" ? (
             <VarMarkButton
               className="var-mark-card"
               label={`${employeeName}: unavailable during this shift`}

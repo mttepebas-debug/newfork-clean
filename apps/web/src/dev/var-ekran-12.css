@@ -359,3 +359,10 @@
   font-weight: 600;
 }
 .var-mark-pop p { margin: 0; }
+
+/* VAR-HUCRE c: a card's "!" sits in its corner and the words stay centred
+   (equal room on both sides); the measured column width already counts the mark. */
+:root[data-var-hucre="c"] .schedule-shift-badge[data-has-markers="true"]:not([data-stack-count]) .schedule-shift-badge-content {
+  padding-right: 24px;
+  padding-left: 24px;
+}

@@ -166,7 +166,7 @@ export function ScheduleEmployeeCard({
             </span>
           ) : null}
           {employee && devVar("bl524") === "b" ? <VarAvailabilityDot employee={employee} /> : null}
-          {employee && devVar("hucre") === "b" && varCoveredDays.length ? (
+          {employee && (devVar("hucre") === "b" || devVar("hucre") === "c") && varCoveredDays.length ? (
             <VarMarkButton
               className="var-mark-name"
               label={`${employee.display_name}: unavailable days this week`}

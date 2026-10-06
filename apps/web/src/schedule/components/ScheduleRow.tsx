@@ -220,7 +220,7 @@ export function ScheduleRow({
         const mark = cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))?.availabilityMark;
         const cell = employeeShifts.filter((shift) => location.sourceIds.includes(shift.location_id) && shift.scheduled_date === day);
         return mark?.kind === "unavailable" && cell.length > 0 && !cell.some((shift) => shift.warning_codes.includes("availability"));
-      }).map((day) => ({ day, mark: cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))!.availabilityMark! })))
+      }).filter(() => devVar("hucre") !== "c" || editing || devVar("ed") === "on").map((day) => ({ day, mark: cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))!.availabilityMark! })))
     : [];
 
   return (
@@ -407,7 +407,7 @@ export function ScheduleRow({
                 })
               }
             >
-              {availabilityMark && employee && devVar("hucre") === "b" ? (
+              {availabilityMark && employee && (devVar("hucre") === "b" || (devVar("hucre") === "c" && (editing || devVar("ed") === "on"))) ? (
                 availabilityMark.kind === "unavailable" && displayStacks.length === 0 ? (
                   <VarMarkButton
                     className="var-mark-corner"

@@ -42,6 +42,12 @@ export function installVarAttributes(): void {
   }
   window.addEventListener("popstate", sync);
   sync();
+  // VAR-HUCRE c: one listener set up before any page listener, so an open "!"
+  // window gets the first say on a press or Escape (the page's own rules —
+  // clear selection, jump to this week — never see that press).
+  const hub = (event: Event) => (window as unknown as { __varMarkHub?: (event: Event) => void }).__varMarkHub?.(event);
+  window.addEventListener("pointerdown", hub, true);
+  window.addEventListener("keydown", hub, true);
   // ?var=av-off / av-on: the Schedule's "Availability" switch (it only shows in
   // edit mode) set from the address, so the off state opens with one click.
   const av = devVar("av");
@@ -75,6 +81,7 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
   const jobIds = new Set(model.jobs.map((job) => job.id));
   const days = Array.from({ length: 7 }, (_, index) => addDays(model.week_start, index));
   const fallbackJob = model.jobs[0]?.id;
+  const longJobId = model.jobs[model.jobs.length - 1]?.id;
   const people = model.employees
     .filter((employee) => employee.location_ids.includes(location.id) && !employee.is_excluded_from_schedule)
     .sort((left, right) => left.display_name.localeCompare(right.display_name))
@@ -156,6 +163,8 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
         hide_time_on_badge: false,
         note: "",
         warning_codes: onMark && type === dinner ? ["availability"] : [],
+        // VAR-HUCRE c: Ersin's clashing shift has a long job name.
+        ...(onMark && person === 7 && longJobId ? { job_id: longJobId } : {}),
       });
     });
   });
@@ -199,7 +208,7 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
   });
 
   // e2e world jobs carry test suffixes ("Barista docghwwd"); show the plain name.
-  const jobs = model.jobs.map((job) => ({ ...job, name: job.name.replace(/\s+[a-z0-9][a-z0-9-]*$/, "") }));
+  const jobs = model.jobs.map((job) => job.id === longJobId ? { ...job, name: "Senior Banquet Captain" } : ({ ...job, name: job.name.replace(/\s+[a-z0-9][a-z0-9-]*$/, "") }));
   return { ...model, jobs, employees, shifts: [...model.shifts.filter((shift) => shift.location_id !== location.id), ...shifts] };
 }
 

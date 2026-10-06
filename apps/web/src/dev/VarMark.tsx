@@ -3,6 +3,7 @@
 // The window closes on Escape, a press outside, or the same "!" again; that
 // first Escape / outside press only closes the window and reaches nothing else.
 import { useEffect, useRef, useState } from "react";
+import { devVar } from "./varEkran12";
 import { createPortal } from "react-dom";
 
 import {
@@ -18,7 +19,9 @@ export function varMarkLines(day: string, mark: ScheduleAvailabilityMark, name: 
   if (mark.kind !== "unavailable") return [];
   return mark.windows.map((window) => {
     const hours = formatAvailabilityRange("unavailable", window, "12h").replace(/^Unavailable /, "");
-    return `Marked unavailable ${formatAvailabilityMarkDay(day)} · ${hours.charAt(0).toUpperCase()}${hours.slice(1)} by ${firstName(name)}`;
+    // c: only the employee can mark it, so the window says no "by".
+    const by = devVar("hucre") === "c" ? "" : ` by ${firstName(name)}`;
+    return `Marked unavailable ${formatAvailabilityMarkDay(day)} · ${hours.charAt(0).toUpperCase()}${hours.slice(1)}${by}`;
   });
 }
 
@@ -44,27 +47,32 @@ export function VarMarkButton({ lines, label, className = "" }: {
       };
       window.addEventListener(type, stop, true);
     };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+    const handle = (event: Event) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setOpen(false);
+        button.current?.focus();
+        return;
+      }
+      const target = event.target as Element;
+      if (button.current?.contains(target) || card.current?.contains(target)) return;
+      // Another "!" is the one exception: it closes this window and opens its own.
+      if (target.closest?.(".var-mark")) {
+        setOpen(false);
+        return;
+      }
       event.preventDefault();
       event.stopImmediatePropagation();
-      setOpen(false);
-      button.current?.focus();
-    };
-    const onDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (button.current?.contains(target) || card.current?.contains(target)) return;
-      event.preventDefault();
-      event.stopPropagation();
       swallowOnce("mousedown");
       swallowOnce("click");
       setOpen(false);
     };
-    window.addEventListener("keydown", onKey, true);
-    window.addEventListener("pointerdown", onDown, true);
+    const holder = window as unknown as { __varMarkHub?: (event: Event) => void };
+    holder.__varMarkHub = handle;
     return () => {
-      window.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("pointerdown", onDown, true);
+      if (holder.__varMarkHub === handle) holder.__varMarkHub = undefined;
     };
   }, [open]);
 

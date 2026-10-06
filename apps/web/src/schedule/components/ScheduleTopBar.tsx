@@ -716,6 +716,7 @@ function SettingsMenuPanel({
             icon={showAvailability ? <Eye size={15} /> : <EyeOff size={15} />}
             label={showHideLabel(Boolean(showAvailability), "Availability")}
             onClick={onToggleAvailability}
+            disabled={devVar("hucre") === "c" && unassignedRowSettingsDisabled && devVar("ed") !== "on"}
           />
         </>
       ) : null}
