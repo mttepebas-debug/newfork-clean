@@ -50,7 +50,6 @@ const PrivacyChoicesPage = lazy(() =>
     default: module.PrivacyChoicesPage,
   })),
 );
-const LandingPage = lazy(() => import("./public/LandingPage"));
 const PreferencesPage = lazy(() => import("./account/PreferencesPage"));
 const NotificationPreferencesPage = lazy(
   () => import("./account/NotificationPreferencesPage"),
@@ -159,7 +158,6 @@ export function App() {
                   element={<PrivacyChoicesPage />}
                 />
               </Route>
-              <Route path="/" element={<LandingPage />} />
               <Route path="/sign-in" element={<SignInPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
