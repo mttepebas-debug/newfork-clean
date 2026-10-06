@@ -93,6 +93,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
   - **Tazelik 2026-09-29 (`12dbc741`, BACKLOG-PROGRAM G24): geçerli** — env/port/checkout'u tek komutla kontrol eden script yok (`scripts/`: `ci-supabase-apart.sh`, `export-local-fixture.mjs`, `lock{,.test}.mjs`, `reload-test-builder.mjs`; `package.json:5-16`'da yok).
   - **İşaret 2026-09-30 (kayıt oturumu; madde ve kaynakları okunarak):** geliştirme konforu; tek yeni betik.
   - **Tazelik 2026-10-06 (`44e41a54`, BL-TAZELIK-GECE): geçerli** — `scripts/` ve `package.json:5-16`'da env/port/checkout kontrol betiği yok
+- BL-841 (leave: low / do: safe) **`supabase/tests/document_types_rls.test.sql` belge türlerini bütün veritabanında başlığa göre arıyor.** `where title in ('Food handler card', 'Team handbook')` (`:56`) kendi workspace'iyle süzmüyor; ortak yerel DB'de başka bir test dünyası aynı başlığı taşıyınca test duplicate key ile düşüyor. Örnek: 2026-10-06 15:53Z olayından kalan iki test dünyası (World ra/rx) yerel koşuyu kırmızıya çevirdi; CI etkilenmedi (her koşu temiz DB). Düzeltme: sorgu testin kendi workspace kimliğiyle süzülür. `nf-test`. Neden bekliyor: yalnız yerelde kırmızı, kısa iş. Kaynak: `.newfork-inbox/done/20261006T165128-nf-db-veri-olay-test-dunyasi.md`, koordinatör aktardı (2026-10-06).
 
 ## MVP sonrası
 - BL-009 (leave: low / do: belirsiz) Kiosk ve PIN reset.

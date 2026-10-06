@@ -76,6 +76,19 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
   `Dayanak: KARARLAR Schedule → Requests "Requests tek tablo" (Type sütunu) + ILKELER P20 (global bileşen diline sadakat)`
 - (1), (2), (3), (5) varyant numarasıyla seçilir. Not: 1 ile 4 birlikte de seçilebilir (sütunda tür, alt yazıda kim).
 
+### S23. Yerel veritabanında kalan iki test dünyası ne olsun?
+- **Hat:** hiçbir hat durmuyor; yalnız yerel bir test kırmızı. Cevap gelene kadar yerel `test:db` sonucu bu testte hep kırmızı okunur.
+- **Bugün:** 2026-10-06 15:53Z'deki bir deneme sırasında ortak yerel veritabanına iki test dünyası (World ra, World rx: 2 workspace, 9 kullanıcı) kalıcı yazıldı. Yerel "belge türleri" testi bu yüzden düşüyor. CI ve canlı etkilenmiyor (CI her koşuda temiz veritabanı kurar). Gece silmek denendi; ürünün kendi korumaları (workspace'in aktif owner'ı kalmalı, değiştirilemez kayıtlar) silmeyi durdurdu, hiçbir şey yazılmadı. 692 satırın tam yedeği alındı: `.newfork-inbox/backup-test-worlds-ra-rx-20261006/rows.jsonl`.
+- **(a) Yerel `supabase db reset`: veritabanı sıfırdan kurulur (~1 dk). (Önerilen)**
+  Zayıf yanı: yerel test verisinin hepsi gider; Meyhouse demo verisi de yeniden kurulmalı ve git dışındaki `meyhouse.sql` artık silinmiş sütunlara yazdığı için reset bu dosyada durabilir (BL-520), önce dosyanın yeniden üretilmesi gerekebilir. O sırada yerel test koşan oturum kesilir; reset hatların boş anına konmalı.
+  `Dayanak: CLAUDE.md §7 (reset senin onayını ister) + ILKELER P01 (canlı veri yok, bozuk yerel veri onarılmaz, yeniden kurulur)`
+- **(b) Korumaları tek transaction'da kapatıp yalnız iki test dünyasını silmek (yedekli; önce geri alınan denemede yetim satır sayılır).**
+  Zayıf yanı: ürünün korumalarını atlamak demek; gözden kaçan bir tabloda yetim satır kalabilir ve sonraki yerel testleri sessizce bozabilir.
+- **(c) Bırakmak: yalnız yerel "belge türleri" testi kırmızı kalır.**
+  Zayıf yanı: yerel kırmızı her koşuda yeniden ayıklanır; testin kendi zayıflığı (bütün veritabanında başlığa göre arıyor) ayrıca backlog'da (BL-841) ve o düzelince bu kırmızı kendiliğinden kalkar.
+- (d) Önce sohbette konuşalım.
+- Kaynak: `.newfork-inbox/done/20261006T165128-nf-db-veri-olay-test-dunyasi.md`.
+
 ---
 
 ## Tur 2 — veri hattının sıradaki dilimi ve altyapı
