@@ -67,6 +67,16 @@ describe("openRequestRows", () => {
     ]);
   });
 
+  // An admin or owner who decides alone has nobody before them: the request is theirs now (EKRAN-02 C1).
+  it("puts a request the reader decides alone in Needs review", () => {
+    const rows = openRequestRows(
+      [timeOff("t-alone", "2026-10-10T12:00:00Z", { can_vote: false, can_decide_alone: true, my_vote: null })],
+      [],
+      all,
+    );
+    expect(rows.map((row) => [row.id, row.tab])).toEqual([["t-alone", "needs_review"]]);
+  });
+
   it("orders by Decide by, nearest first, with no deadline last", () => {
     const rows = openRequestRows(
       [timeOff("t-none", null, { can_vote: true }), timeOff("t-late", "2026-10-20T12:00:00Z", { can_vote: true })],

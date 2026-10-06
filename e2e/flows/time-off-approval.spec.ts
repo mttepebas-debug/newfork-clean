@@ -83,7 +83,7 @@ const ownRequest = (page: Page, note: string) =>
 
 /** Requests -> Time off with the request's drawer open. */
 async function review(page: Page, request: string) {
-  await page.goto(`/app/schedule/requests?tab=time-off&request=${request}`);
+  await page.goto(`/app/schedule/requests?request=${request}`);
   const drawer = page.getByRole("dialog", { name: "Review request" });
   await expect(drawer).toBeVisible();
   return drawer;
@@ -174,9 +174,8 @@ test("the owner decides alone, then revokes with a reason", async ({ browser }) 
   expect(statusOf(request)).toBe("approved");
 
   // Approved requests sit under Closed; Revoke wants a reason before it acts.
-  await owner.goto("/app/schedule/requests?tab=time-off");
-  await owner.getByRole("group", { name: "Queue" }).getByRole("button", { name: "Closed" }).click();
-  await owner.getByRole("button", { name: new RegExp(asker.name) }).click();
+  await owner.goto("/app/schedule/requests?tab=closed");
+  await owner.getByRole("row", { name: new RegExp(asker.name) }).click();
   await owner.getByRole("dialog", { name: "Review request" }).getByRole("button", { name: "Revoke", exact: true }).click();
   const revoke = owner.getByRole("alertdialog", { name: "Revoke time off?" });
   await expect(revoke.getByRole("button", { name: "Revoke", exact: true })).toBeDisabled();
