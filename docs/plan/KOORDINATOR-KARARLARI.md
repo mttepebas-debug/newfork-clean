@@ -1584,3 +1584,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırları; LIST-YESIL tek commit.
 - **Durum:** (1)–(2) arayüz hattında sırada; (3) main'de, CI 37449526408 izleniyor.
 - **Mert:** sohbette söylendi.
+
+### KK-173 (2026-10-06) DB-1c gönder + canlı izni; Requests'in küçük kararları; giriş zaman aşımı test kurulumunda
+- **Karar (ne):** (1) EKRAN-01 DB-1c (Undo sunucuda): R3 gönder izni ve canlı migration izni (`20261007120000`), main yeşil olunca; önce tam test:db, canlıda yedek + md5 + advisors + SELECT. Riskli kısmı koordinatör okudu: servis security definer + boş search_path, sahip kontrolü, `authorize(edit.location_ids)`, revizyon/kira kontrolü, belge kuralı; tablo `app_private`, RLS açık, grant'lar kapalı. Üç Düşük not ve yayın kontrolü backlog'a (BL-761, BL-762), şimdi düzeltilmez. (2) Requests: Open shift dördüncü tür; tür adı "Cover"; Open shift satırında boş vardiya işareti; When tek tarih biçimi; Closed en yeni karar üstte; açık sekmeler istemcide iki listeyi birleştirir, Closed'un sayfalaması sunucuda tek okuma yolu ister (ayrı dilim, `nf-backend`, yetki iki kapıyı ayrı uygular). (3) VAR-E2E-GIRIS: iki giriş zaman aşımı kod değil, test gövdesindeki eşzamanlı SQL kurulumu + yük; düzeltme (BL-763, R0, yalnız test dosyası) arayüz hattına LIST-YESIL'den sonra, nf-test kurallarıyla; CI sırası (BL-764) BL-763'ün ölçümünden sonra. (4) W-1b CI 37452022042: yalnız düşen e2e yeniden koşturuldu (web hattı).
+- **Nerede:** EKRAN-01 DB-1c (dal `task/ekran-01-db-1c` @86cfd059); KARARLAR Schedule → Requests ve Genel → "Liste sayfalarının ortak dili"; BACKLOG BL-761…BL-764.
+- **Ne zaman:** 2026-10-06 ~10:50–11:10Z.
+- **Ne için:** (1) Ekran 1'in son veri dilimi; Undo ekran ve kayıt ayrışmadan geri alır. (2) Open shift talebi Requests'ten çıkarsa hiçbir yerde görünmez (P09); iki küçük düzeltme görsel tutarlılık (§9). (3) Kırmızı main bütün gönderimleri donduruyor; bugün üç kez.
+- **Dayanak:** DELEGASYON §3 (R3); ILKELER P09, P19; CLAUDE.md §9, §11.4 (işin önündeki), §11.9.
+- **Geri alma:** (1) canlıda yedekten fonksiyonlar + yeni migration; (2) KARARLAR satırı; (3) test commit'i.
+- **Durum:** (1) main yeşilini bekliyor; (3) arayüz hattında sırada.
+- **Mert:** sohbette söylendi.
