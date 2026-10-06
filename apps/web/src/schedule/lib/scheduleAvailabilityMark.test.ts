@@ -6,7 +6,9 @@ import {
   formatAvailabilityRange,
   formatNoteBy,
   formatNoteWhen,
+  formatAvailabilityMarkLine,
   mergeAvailabilityMarks,
+  nameCellShowsAvailabilityMark,
   scheduleAvailabilityMarks,
   windowsDuringShift,
 } from "./scheduleAvailabilityMark";
@@ -152,5 +154,42 @@ describe("formatNoteBy", () => {
     expect(formatNoteBy(withMeta(null, null))).toBeNull();
     expect(formatNoteBy(projection({}))).toBeNull();
     expect(formatNoteBy(undefined)).toBeNull();
+  });
+});
+
+describe("nameCellShowsAvailabilityMark (KARARLAR Schedule, 2026-10-06)", () => {
+  const allDay = { kind: "unavailable", windows: [{ from: 0, to: 1440 }] } as const;
+  const evening = { kind: "unavailable", windows: [{ from: 18 * 60, to: 1440 }] } as const;
+  const timeOff = { kind: "time_off", ranges: [{ from: 0, to: 1440 }] } as const;
+
+  it("stays off for one unavailable day whose corner mark is in sight", () => {
+    expect(nameCellShowsAvailabilityMark([{ date: "2026-10-23", mark: allDay, shiftCount: 0, clashes: false }])).toBe(false);
+  });
+  it("stays off for one day whose clashing card already shows the mark", () => {
+    expect(nameCellShowsAvailabilityMark([{ date: "2026-10-23", mark: evening, shiftCount: 1, clashes: true }])).toBe(false);
+  });
+  it("shows when a shift that does not clash hides the corner mark", () => {
+    expect(nameCellShowsAvailabilityMark([{ date: "2026-10-20", mark: evening, shiftCount: 1, clashes: false }])).toBe(true);
+  });
+  it("shows for two or more unavailable days, wherever their mark sits", () => {
+    expect(nameCellShowsAvailabilityMark([
+      { date: "2026-10-20", mark: evening, shiftCount: 1, clashes: true },
+      { date: "2026-10-23", mark: allDay, shiftCount: 0, clashes: false },
+    ])).toBe(true);
+  });
+  it("counts a day once across two locations, and never counts time off", () => {
+    expect(nameCellShowsAvailabilityMark([
+      { date: "2026-10-23", mark: allDay, shiftCount: 0, clashes: false },
+      { date: "2026-10-23", mark: allDay, shiftCount: 0, clashes: false },
+      { date: "2026-10-21", mark: timeOff, shiftCount: 0, clashes: false },
+      { date: "2026-10-22", mark: null, shiftCount: 1, clashes: false },
+    ])).toBe(false);
+  });
+});
+
+describe("formatAvailabilityMarkLine", () => {
+  it("says the date and the hours, no author", () => {
+    expect(formatAvailabilityMarkLine("2026-09-30", { from: 0, to: 1440 }, "12h")).toBe("Marked unavailable Wed, Sep 30 · All day");
+    expect(formatAvailabilityMarkLine("2026-10-02", { from: 14 * 60, to: 1440 }, "12h")).toBe("Marked unavailable Fri, Oct 2 · After 2:00 PM");
   });
 });

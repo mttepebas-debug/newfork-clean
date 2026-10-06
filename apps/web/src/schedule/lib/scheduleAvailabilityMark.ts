@@ -123,6 +123,32 @@ export function formatNoteWhen(projection: Projection | undefined, day: string, 
   return `${weekday} ${windows.map((window) => hoursWords(window, timeFormat)).join(", ")}`;
 }
 
+/** The "!" window's line: "Marked unavailable Wed, Sep 30 · All day" (no author: only the employee marks it, M2). */
+export function formatAvailabilityMarkLine(day: string, window: AvailabilityWindow, timeFormat: "12h" | "24h"): string {
+  const hours = hoursWords(window, timeFormat);
+  return `Marked unavailable ${formatAvailabilityMarkDay(day)} · ${hours.charAt(0).toUpperCase()}${hours.slice(1)}`;
+}
+
+/** One of the row's cells, as the name-cell "!" reads it. */
+export interface NameCellAvailabilityDay {
+  readonly date: string;
+  readonly mark: ScheduleAvailabilityMark | null;
+  readonly shiftCount: number;
+  /** A shift in the cell runs into the unavailable hours (its card shows the "!"). */
+  readonly clashes: boolean;
+}
+
+/**
+ * The name cell's "!" (Mert, 2026-10-06) shows in two cases only: a shift that
+ * does not clash hides a cell's corner "!", or the person is unavailable on
+ * two or more days this week. Time off is not availability and never counts.
+ */
+export function nameCellShowsAvailabilityMark(cells: readonly NameCellAvailabilityDay[]): boolean {
+  const unavailable = cells.filter((cell) => cell.mark?.kind === "unavailable");
+  return new Set(unavailable.map((cell) => cell.date)).size >= 2
+    || unavailable.some((cell) => cell.shiftCount > 0 && !cell.clashes);
+}
+
 export function formatAvailabilityMarkDay(day: string): string {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "short",
