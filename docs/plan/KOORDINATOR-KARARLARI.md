@@ -1564,3 +1564,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** KARARLAR satırları.
 - **Durum:** kayda geçti.
 - **Mert:** sohbette söylendi.
+
+### KK-171 (2026-10-06) Edit'te "changed after publishing" kişiye bağlı; Undo sunucuda tek adım; veri hattı sırası
+- **Karar (ne):** (1) Edit modunda vardiyanın kişisi yayındakinden farklıysa `availability_changed_after_publish` false (Emre'nin Salı'sı Ali'ye verilince işaret kalkar). (2) W-1b S2: Undo sunucuda tek ve bölünmez "son adımı geri al" yoluyla geri alır (DB-1c, veri hattı); web yalnız ekranla sırayla tekil işlem göndermez. (3) Veri hattı sırası: DB-1c, EKRAN-02 A1'den önce (ekran planı: ekran 1 komple biter; W-1b'yi kapatır).
+- **Nerede:** VAR-UYG-DB-2 (main `c8294ccb`, canlı `20261007110000`); görev dosyası EKRAN-01 DB-1c.
+- **Ne zaman:** 2026-10-06 ~09:35–10:10Z.
+- **Ne için:** (1) İşaret yayındaki kişinin işaretiydi; başka kişinin kartında yanlış bilgi olur. (2) Şablon, Auto-fill, yapıştırma tek Undo adımında 24 vardiyaya dokunabiliyor; tekil işlemler yarıda kalırsa ekran ve kayıt ayrışır.
+- **Dayanak:** (1) KARARLAR K18 + ILKELER P11; (2) KARARLAR Schedule "Undo sunucuda da geri alır" + görev dosyası DB-1c (atomik geri dönüş) + P19; (3) EKRAN-PLANI.
+- **Geri alma:** (1) yeni migration; (2)–(3) sıra değişikliği.
+- **Durum:** kayda geçti.
+- **Mert:** sohbette söylendi (Undo).
