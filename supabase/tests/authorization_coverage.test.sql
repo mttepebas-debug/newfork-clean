@@ -99,6 +99,8 @@ insert into service_class values
   ('get_schedule_publication_history_service', 'schedule.read'),
   ('get_schedule_publication_status_service', 'schedule.read'),
   ('get_schedule_read_model_service', 'schedule.read'),
+  -- also exchange.read for its shift-change rows (EKRAN-02 A4)
+  ('get_schedule_requests_closed_service', 'requests.read'),
   ('get_schedule_requests_service', 'requests.read'),
   ('get_schedule_template_service', 'schedule.templates.read'),
   ('get_workspace_dashboard_service', 'workspace.read'),
