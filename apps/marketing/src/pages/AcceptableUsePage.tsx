@@ -1,7 +1,7 @@
 export default function AcceptableUsePage() {
   return (
-    <main>
+    <section className="container">
       <h1>AcceptableUsePage</h1>
-    </main>
+    </section>
   );
 }

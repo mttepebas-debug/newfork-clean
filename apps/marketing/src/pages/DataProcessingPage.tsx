@@ -1,7 +1,7 @@
 export default function DataProcessingPage() {
   return (
-    <main>
+    <section className="container">
       <h1>DataProcessingPage</h1>
-    </main>
+    </section>
   );
 }

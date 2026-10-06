@@ -1,7 +1,7 @@
 export default function LegalIndexPage() {
   return (
-    <main>
+    <section className="container">
       <h1>LegalIndexPage</h1>
-    </main>
+    </section>
   );
 }

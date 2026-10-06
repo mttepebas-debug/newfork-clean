@@ -1,7 +1,7 @@
 export default function PrivacyChoicesPage() {
   return (
-    <main>
+    <section className="container">
       <h1>PrivacyChoicesPage</h1>
-    </main>
+    </section>
   );
 }

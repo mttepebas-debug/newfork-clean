@@ -1,7 +1,7 @@
 export default function AccessibilityPage() {
   return (
-    <main>
+    <section className="container">
       <h1>AccessibilityPage</h1>
-    </main>
+    </section>
   );
 }

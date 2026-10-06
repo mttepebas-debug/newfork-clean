@@ -1,7 +1,7 @@
 export default function ManagersPage() {
   return (
-    <main>
+    <section className="container">
       <h1>ManagersPage</h1>
-    </main>
+    </section>
   );
 }

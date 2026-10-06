@@ -1,7 +1,7 @@
 export default function TeamsPage() {
   return (
-    <main>
+    <section className="container">
       <h1>TeamsPage</h1>
-    </main>
+    </section>
   );
 }

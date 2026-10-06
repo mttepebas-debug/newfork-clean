@@ -1,7 +1,7 @@
 export default function CookiesPage() {
   return (
-    <main>
+    <section className="container">
       <h1>CookiesPage</h1>
-    </main>
+    </section>
   );
 }

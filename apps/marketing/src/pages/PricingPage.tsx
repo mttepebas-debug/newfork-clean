@@ -1,7 +1,7 @@
 export default function PricingPage() {
   return (
-    <main>
+    <section className="container">
       <h1>PricingPage</h1>
-    </main>
+    </section>
   );
 }

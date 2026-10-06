@@ -1,7 +1,7 @@
 export default function MultiLocationPage() {
   return (
-    <main>
+    <section className="container">
       <h1>MultiLocationPage</h1>
-    </main>
+    </section>
   );
 }

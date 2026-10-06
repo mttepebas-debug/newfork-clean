@@ -1,7 +1,7 @@
 export default function TermsPage() {
   return (
-    <main>
+    <section className="container">
       <h1>TermsPage</h1>
-    </main>
+    </section>
   );
 }

@@ -1,7 +1,7 @@
 export default function ProductPage() {
   return (
-    <main>
+    <section className="container">
       <h1>ProductPage</h1>
-    </main>
+    </section>
   );
 }

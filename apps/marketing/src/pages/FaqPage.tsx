@@ -1,7 +1,7 @@
 export default function FaqPage() {
   return (
-    <main>
+    <section className="container">
       <h1>FaqPage</h1>
-    </main>
+    </section>
   );
 }

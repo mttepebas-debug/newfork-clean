@@ -1,7 +1,7 @@
 export default function SecurityPage() {
   return (
-    <main>
+    <section className="container">
       <h1>SecurityPage</h1>
-    </main>
+    </section>
   );
 }
