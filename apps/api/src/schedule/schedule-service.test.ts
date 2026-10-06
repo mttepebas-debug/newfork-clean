@@ -211,6 +211,40 @@ describe("createScheduleReadService read model", () => {
   });
 });
 
+// S1: when the idle countdown ends the edit is kept as an "Auto-save" draft.
+describe("createScheduleReadService autosave", () => {
+  it("keeps an idle edit as a draft and tells that draft's locations", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: { status: "saved", draft_id: draftId, draft_name: "Auto-save · Ayse Yilmaz · Oct 5, 9:14 PM" },
+      error: null,
+    });
+    mocks.from.mockImplementation(() => {
+      const chain = { select: () => chain, eq: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { location_ids: [locationId] }, error: null }) };
+      return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const sessionId = "87000000-0000-4000-8000-000000000001";
+
+    await expect(service.autosaveSession(actorUserId, workspaceId, sessionId)).resolves.toEqual({
+      status: "saved", draft_id: draftId, draft_name: "Auto-save · Ayse Yilmaz · Oct 5, 9:14 PM",
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("autosave_schedule_edit_session_service", {
+      actor_user_id: actorUserId, target_workspace_id: workspaceId, target_session_id: sessionId,
+    });
+    expect(mocks.channelFn).toHaveBeenCalledWith(`schedule:invalidation:${workspaceId}:${locationId}`, { config: { private: true } });
+  });
+
+  it("closes an edit with nothing to keep without telling anyone", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { status: "nothing_to_save", draft_id: null, draft_name: null }, error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    await expect(service.autosaveSession(actorUserId, workspaceId, "87000000-0000-4000-8000-000000000001"))
+      .resolves.toEqual({ status: "nothing_to_save", draft_id: null, draft_name: null });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+});
+
 describe("createScheduleReadService scheduled export record", () => {
   const recorded = { id: "8a000000-0000-4000-8000-000000000001" };
   it("passes a partly delivered email's note to the database, and none for a full one (KK-166)", async () => {

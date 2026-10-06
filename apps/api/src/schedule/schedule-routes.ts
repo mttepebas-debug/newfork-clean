@@ -501,6 +501,29 @@ export function registerScheduleRoutes(
     }
   });
 
+  // S1: the idle countdown ended; the edit is kept as an "Auto-save" draft.
+  app.post("/schedule/edit-lock/autosave", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.edit");
+    const body = activeSessionBodySchema.safeParse(request.body);
+    if (!body.success)
+      return reply.status(400).send({ error: "Valid edit session required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Schedule service is not configured" });
+    try {
+      return reply.send(
+        await options.service.autosaveSession(
+          context.userId,
+          context.workspace.id,
+          body.data.session_id,
+        ),
+      );
+    } catch (error) {
+      return scheduleError(reply, error);
+    }
+  });
+
   app.post("/schedule/drafts/save", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");
     const body = activeSaveBodySchema.safeParse(request.body);

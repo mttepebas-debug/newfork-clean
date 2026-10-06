@@ -6,6 +6,7 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   acquireScheduleEditSession,
+  autosaveScheduleEditSession,
   discardScheduleEditSession,
   heartbeatScheduleEditSession,
   isEditLeaseExpired,
@@ -28,6 +29,8 @@ export interface UseScheduleEditSessionArgs {
   readonly onError: (message: string) => void;
   /** The edit ended (idle timeout, or its lock went to someone else); the page leaves edit mode. */
   readonly onEnded: () => void;
+  /** S1: the idle countdown ended and the work was kept as this draft. */
+  readonly onAutoSaved?: (draftName: string) => void;
 }
 
 /** The person's Schedule edit session: the lock, its heartbeat and the idle timeout. */
@@ -36,12 +39,13 @@ export function useScheduleEditSession({
   workspaceId,
   onError,
   onEnded,
+  onAutoSaved,
 }: UseScheduleEditSessionArgs) {
   const [session, setSession] = useState<ScheduleEditSession | null>(null);
   const [conflict, setConflict] = useState<ScheduleLockConflict | null>(null);
   // The page passes fresh callbacks every render; timers read the latest.
-  const callbacks = useRef({ onError, onEnded });
-  callbacks.current = { onError, onEnded };
+  const callbacks = useRef({ onError, onEnded, onAutoSaved });
+  callbacks.current = { onError, onEnded, onAutoSaved };
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -62,13 +66,19 @@ export function useScheduleEditSession({
     lastActivityRef.current = Date.now();
   }, []);
   // Reads the session through the ref: a heartbeat's fresh copy must not re-arm the idle timer.
+  // S1: the work is kept as an "Auto-save" draft, never thrown away.
   const handleIdleTimeout = useCallback(() => {
     const current = sessionRef.current;
     if (!workspaceId || !current) return;
-    void discardScheduleEditSession(workspaceId, current.id).finally(() => {
-      setSession(null);
-      callbacks.current.onEnded();
-    });
+    void autosaveScheduleEditSession(workspaceId, current.id)
+      .then((result) => {
+        if (result.status === "saved") callbacks.current.onAutoSaved?.(result.draft_name);
+      })
+      .catch((error: Error) => callbacks.current.onError(error.message))
+      .finally(() => {
+        setSession(null);
+        callbacks.current.onEnded();
+      });
   }, [workspaceId]);
   const { secondsRemaining: idleSeconds, keepAlive: keepEditing } = useEditIdleTimer({
     enabled: Boolean(session),

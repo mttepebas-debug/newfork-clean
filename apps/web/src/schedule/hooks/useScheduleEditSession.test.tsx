@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   acquireScheduleEditSession,
+  autosaveScheduleEditSession,
   discardScheduleEditSession,
   heartbeatScheduleEditSession,
   ScheduleRequestError,
@@ -15,6 +16,7 @@ vi.mock("../schedule-data", async (importOriginal) => ({
   acquireScheduleEditSession: vi.fn(),
   heartbeatScheduleEditSession: vi.fn(),
   discardScheduleEditSession: vi.fn().mockResolvedValue(undefined),
+  autosaveScheduleEditSession: vi.fn(),
 }));
 
 const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
@@ -40,10 +42,11 @@ const leaseExpired = () =>
 function renderEditSession() {
   const onError = vi.fn();
   const onEnded = vi.fn();
+  const onAutoSaved = vi.fn();
   const hook = renderHook(() =>
-    useScheduleEditSession({ userId: session.holder_user_id, workspaceId: WORKSPACE_ID, onError, onEnded }),
+    useScheduleEditSession({ userId: session.holder_user_id, workspaceId: WORKSPACE_ID, onError, onEnded, onAutoSaved }),
   );
-  return { ...hook, onError, onEnded };
+  return { ...hook, onError, onEnded, onAutoSaved };
 }
 
 async function startEditing(hook: ReturnType<typeof renderEditSession>) {
@@ -57,6 +60,9 @@ beforeEach(() => {
   // Every heartbeat answers with a fresh copy, as the API does.
   vi.mocked(heartbeatScheduleEditSession).mockReset().mockImplementation(() => Promise.resolve({ ...session }));
   vi.mocked(discardScheduleEditSession).mockClear();
+  vi.mocked(autosaveScheduleEditSession).mockReset().mockResolvedValue({
+    status: "saved", draft_id: "55555555-5555-4555-8555-555555555555", draft_name: "Auto-save · Ayse Yilmaz · Aug 17, 12:15 PM",
+  });
 });
 
 afterEach(() => {
@@ -68,10 +74,10 @@ describe("useScheduleEditSession", () => {
     const hook = renderEditSession();
     await startEditing(hook);
 
-    // No activity: the warning opens at 15 min and the edit ends at 20 min.
-    await act(() => vi.advanceTimersByTimeAsync(19 * 60 * 1000));
+    // No activity: the warning opens at 15 min and counts down 15 s (S1).
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 10_000));
 
-    expect(vi.mocked(heartbeatScheduleEditSession).mock.calls.length).toBe(19);
+    expect(vi.mocked(heartbeatScheduleEditSession).mock.calls.length).toBe(15);
     expect(hook.result.current.idleSeconds).not.toBeNull();
     expect(hook.onEnded).not.toHaveBeenCalled();
   });
@@ -80,10 +86,33 @@ describe("useScheduleEditSession", () => {
     const hook = renderEditSession();
     await startEditing(hook);
 
-    await act(() => vi.advanceTimersByTimeAsync(20 * 60 * 1000));
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
 
     expect(hook.onEnded).toHaveBeenCalledTimes(1);
     expect(hook.result.current.session).toBeNull();
+  });
+
+  // S1 (KARARLAR "Hareketsizlik"): the work is kept, never thrown away.
+  it("keeps the work as an Auto-save draft when the countdown ends, and says so", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    expect(hook.onAutoSaved).toHaveBeenCalledWith("Auto-save · Ayse Yilmaz · Aug 17, 12:15 PM");
+  });
+
+  it("closes an edit with nothing to keep quietly", async () => {
+    vi.mocked(autosaveScheduleEditSession).mockResolvedValueOnce({ status: "nothing_to_save", draft_id: null, draft_name: null });
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.onAutoSaved).not.toHaveBeenCalled();
   });
 
   it("does not pass off a fresh edit as the lapsed one; it releases it and ends the edit", async () => {

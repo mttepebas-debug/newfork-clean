@@ -7,6 +7,7 @@ import {
   scheduleBulkDeleteResultSchema,
   scheduleDraftSummarySchema,
   scheduleEditAcquireResultSchema,
+  scheduleEditAutosaveResultSchema,
   scheduleEditSessionSchema,
   scheduleAutoFillApplyResultSchema,
   scheduleAutoFillPreviewSchema,
@@ -28,6 +29,7 @@ import {
   scheduleUnpublishResultSchema,
   type ScheduleDraftList,
   type ScheduleDraftDeleteResult,
+  type ScheduleEditAutosaveResult,
   type ScheduleBulkDeleteResult,
   type ScheduleDraftSummary,
   type ScheduleEditAcquireResult,
@@ -375,6 +377,19 @@ export async function deleteScheduleDraft(
   return scheduleDraftDeleteResultSchema.parse(
     await activeScheduleRequest(`/schedule/drafts/${draftId}`, {
       method: "DELETE",
+    }),
+  );
+}
+
+/** S1: keeps an idle edit as an "Auto-save" draft and closes it. */
+export async function autosaveScheduleEditSession(
+  workspaceId: string,
+  sessionId: string,
+): Promise<ScheduleEditAutosaveResult> {
+  return scheduleEditAutosaveResultSchema.parse(
+    await activeScheduleRequest("/schedule/edit-lock/autosave", {
+      method: "POST",
+      body: JSON.stringify({ session_id: sessionId }),
     }),
   );
 }

@@ -5,6 +5,7 @@ import {
   type ScheduleDefaultHoursPreview,
   scheduleDraftListSchema,
   scheduleDraftDeleteResultSchema,
+  scheduleEditAutosaveResultSchema,
   scheduleBulkDeleteResultSchema,
   scheduleDraftSummarySchema,
   scheduleEditAcquireResultSchema,
@@ -33,6 +34,7 @@ import {
   scheduleTemplateListSchema,
   type ScheduleDraftList,
   type ScheduleDraftDeleteResult,
+  type ScheduleEditAutosaveResult,
   type ScheduleBulkDeleteResult,
   type ScheduleDraftSummary,
   type ScheduleEditAcquireResult,
@@ -202,6 +204,11 @@ export interface ScheduleReadService {
     workspaceId: string,
     sessionId: string,
   ): Promise<void>;
+  autosaveSession(
+    actorUserId: string,
+    workspaceId: string,
+    sessionId: string,
+  ): Promise<ScheduleEditAutosaveResult>;
   deleteDraft(
     actorUserId: string,
     workspaceId: string,
@@ -695,6 +702,26 @@ export function createScheduleReadService(options: {
         },
       );
       if (error) throw rpcFailure(error);
+    },
+    async autosaveSession(actorUserId, workspaceId, sessionId) {
+      const { data, error } = await client.rpc(
+        "autosave_schedule_edit_session_service",
+        {
+          actor_user_id: actorUserId,
+          target_workspace_id: workspaceId,
+          target_session_id: sessionId,
+        },
+      );
+      if (error) throw rpcFailure(error);
+      const result = scheduleEditAutosaveResultSchema.parse(data);
+      if (result.status === "saved") {
+        await broadcastScheduleInvalidation(client, {
+          workspace_id: workspaceId,
+          location_ids: await draftLocationIds(client, workspaceId, result.draft_id),
+          targets: ["drafts", "pending_ops"],
+        });
+      }
+      return result;
     },
     async deleteDraft(actorUserId, workspaceId, draftId) {
       const { data, error } = await client.rpc(

@@ -29,6 +29,7 @@ const routes: readonly Row[] = [
   ["POST", "/schedule/edit-lock/acquire", "schedule.edit"],
   ["PATCH", "/schedule/edit-lock/heartbeat", "schedule.edit"],
   ["DELETE", "/schedule/edit-lock/release", "schedule.edit"],
+  ["POST", "/schedule/edit-lock/autosave", "schedule.edit"],
   ["POST", "/schedule/drafts/save", "schedule.edit"],
   ["DELETE", "/schedule/drafts/:id", "schedule.edit"],
   ["POST", "/schedule/publish-preview", "schedule.publish"],

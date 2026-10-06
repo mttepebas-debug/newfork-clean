@@ -3267,6 +3267,7 @@ function scheduleServiceMock(
       updated_at: "2026-08-17T12:00:00.000Z",
     }),
     discardSession: async () => undefined,
+    autosaveSession: async () => ({ status: "nothing_to_save", draft_id: null, draft_name: null }),
     deleteDraft: async (_actorUserId, _workspaceId, draftId) => ({
       status: "deleted",
       draft_id: draftId,

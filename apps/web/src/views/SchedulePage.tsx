@@ -283,6 +283,16 @@ export function SchedulePage({
       updateSelectedIds([]);
       clearUndoStack();
     },
+    // S1: the idle edit became an "Auto-save" draft; the person finds it in the draft menu.
+    onAutoSaved: (draftName) => {
+      if (context) {
+        void queryClient.invalidateQueries({ queryKey: ["schedule-drafts", context.workspace.id] });
+      }
+      toast.info("Your changes were saved as a draft", {
+        dedupeKey: "schedule-autosaved",
+        description: draftName,
+      });
+    },
   });
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);

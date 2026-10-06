@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export const EDIT_IDLE_WARNING_MS = 15 * 60 * 1000;
-export const EDIT_IDLE_TIMEOUT_MS = 20 * 60 * 1000;
+// KARARLAR Schedule "Hareketsizlik": a 15-second countdown after the warning (S1).
+export const EDIT_IDLE_TIMEOUT_MS = EDIT_IDLE_WARNING_MS + 15 * 1000;
 const ACTIVITY_EVENTS = ["pointerdown", "keydown", "wheel", "touchstart"] as const;
 
 export interface UseEditIdleTimerArgs {

@@ -634,6 +634,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   restoreScheduleShift: vi.fn(),
   saveScheduleDraft: vi.fn(),
   discardScheduleEditSession: vi.fn().mockResolvedValue(undefined),
+  autosaveScheduleEditSession: vi.fn().mockResolvedValue({ status: "nothing_to_save", draft_id: null, draft_name: null }),
   previewSchedulePublication: vi.fn(),
   publishScheduleDraft: vi.fn(),
   previewScheduleUnpublish: vi.fn(),

@@ -1788,6 +1788,12 @@ export const scheduleBulkDeleteResultSchema = z.object({
 export type ScheduleBulkDeleteResult = z.infer<
   typeof scheduleBulkDeleteResultSchema
 >;
+// S1: an idle edit kept as an "Auto-save" draft, or closed with nothing to keep.
+export const scheduleEditAutosaveResultSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("saved"), draft_id: z.string().uuid(), draft_name: z.string() }),
+  z.object({ status: z.literal("nothing_to_save"), draft_id: z.null(), draft_name: z.null() }),
+]);
+export type ScheduleEditAutosaveResult = z.infer<typeof scheduleEditAutosaveResultSchema>;
 export const scheduleDraftDeleteResultSchema = z.object({
   status: z.literal("deleted"),
   draft_id: z.string().uuid(),
