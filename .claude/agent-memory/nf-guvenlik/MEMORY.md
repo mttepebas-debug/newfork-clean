@@ -45,3 +45,4 @@
 - [Toplu yol tekil korumayı atlar](checklist-bulk-path-skips-single-guards.md) — şablon overwrite başlamış vardiya onayını ve locked işaretini atlıyor; toplu yolda tekil yan işleri ara
 - [Kopya kuralı id üzerinden](checklist-copy-rule-by-id.md) — oturum dalı eklenen kural taslaktan açılan oturumda kopyayı tanımaz (source_published null); keep seçimi ezilir (DB-3)
 - [Yayın karşılığı tekil değil](checklist-published-counterpart-not-unique.md) — taşınıp yalnız yeni lokasyonda yayınlanan vardiya iki güncel yayında; skaler alt sorgu 21000 (VAR-UYG-DB)
+- [İzin bekçisinin atlamaları](checklist-availability-guard-hydration-skip.md) — INSERT hidrasyon + UPDATE aynı kimlik izin kontrolünü atlar; "Undo izni engeller" yalnız blank kaynakta (DB-1c)
