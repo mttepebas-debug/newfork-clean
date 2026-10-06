@@ -49,6 +49,7 @@ export function useScheduleViewerPresence({
   workspaceId,
   weekStart,
   locationIds,
+  editLocationIds = [],
   authUserId,
   mode,
 }: {
@@ -56,29 +57,35 @@ export function useScheduleViewerPresence({
   readonly weekStart: string;
   /** D-D3: every shown location, so an edit at any of them is seen. */
   readonly locationIds: readonly string[];
+  /** Where the person's edit reaches; elsewhere they show as looking. */
+  readonly editLocationIds?: readonly string[];
   readonly authUserId: string | null;
   readonly mode: "preview" | "edit";
 }): ScheduleViewerPresence[] {
   const [viewers, setViewers] = useState<ScheduleViewerPresence[]>([]);
-  const channelNames = useMemo(
-    () =>
-      workspaceId
-        ? [...new Set(locationIds)].map(
-            (locationId) => `schedule:presence:${workspaceId}:${locationId}:${weekStart}`,
-          )
-        : [],
-    [locationIds, weekStart, workspaceId],
+  const editKey = editLocationIds.join(",");
+  const channelPlan = useMemo(
+    () => {
+      const editing = new Set(editKey ? editKey.split(",") : []);
+      return workspaceId
+        ? [...new Set(locationIds)].map((locationId) => ({
+            name: `schedule:presence:${workspaceId}:${locationId}:${weekStart}`,
+            mode: mode === "edit" && editing.has(locationId) ? "edit" as const : "preview" as const,
+          }))
+        : [];
+    },
+    [editKey, locationIds, mode, weekStart, workspaceId],
   );
 
   useEffect(() => {
     const client = supabaseClient;
-    if (!client || !channelNames.length || !authUserId) {
+    if (!client || !channelPlan.length || !authUserId) {
       setViewers([]);
       return undefined;
     }
 
     // Private: only people who can read a location's schedule may join its channel.
-    const channels = channelNames.map((name) =>
+    const channels = channelPlan.map(({ name }) =>
       client.channel(name, {
         config: { private: true, presence: { key: authUserId } },
       }),
@@ -104,16 +111,16 @@ export function useScheduleViewerPresence({
       );
     };
 
-    for (const channel of channels) {
+    channels.forEach((channel, index) => {
       channel.on("presence", { event: "sync" }, syncPresence).subscribe((status) => {
         if (status !== "SUBSCRIBED") return;
         void channel.track({
           user_id: authUserId,
-          mode,
+          mode: channelPlan[index]!.mode,
           online_at: new Date().toISOString(),
         });
       });
-    }
+    });
 
     return () => {
       for (const channel of channels) {
@@ -121,7 +128,7 @@ export function useScheduleViewerPresence({
         void client.removeChannel(channel);
       }
     };
-  }, [authUserId, channelNames, mode]);
+  }, [authUserId, channelPlan]);
 
   return viewers;
 }

@@ -6,6 +6,7 @@ import { useScheduleViewerPresence } from "./useScheduleViewerPresence";
 type Sync = () => void;
 
 const mocks = vi.hoisted(() => {
+  const tracked: [string, string][] = [];
   const channels: {
     name: string;
     sync: Sync | null;
@@ -20,14 +21,17 @@ const mocks = vi.hoisted(() => {
         entry.sync = handler;
         return api;
       },
-      subscribe: () => api,
-      track: vi.fn(),
+      subscribe: (callback?: (status: string) => void) => {
+        callback?.("SUBSCRIBED");
+        return api;
+      },
+      track: vi.fn((meta: { mode: string }) => tracked.push([name, meta.mode])),
       untrack: vi.fn(),
       presenceState: () => entry.state,
     };
     return api;
   });
-  return { channels, channel, removeChannel };
+  return { channels, channel, removeChannel, tracked };
 });
 
 vi.mock("../../lib/supabase", () => ({
@@ -36,6 +40,7 @@ vi.mock("../../lib/supabase", () => ({
 
 beforeEach(() => {
   mocks.channels.length = 0;
+  mocks.tracked.length = 0;
   mocks.channel.mockClear();
   mocks.removeChannel.mockClear();
 });
@@ -72,6 +77,25 @@ describe("useScheduleViewerPresence across shown locations", () => {
     expect(result.current.map((viewer) => [viewer.userId, viewer.mode])).toEqual([
       ["zeynep", "edit"],
       ["mehmet", "preview"],
+    ]);
+  });
+
+  // Ayse edits only Kadikoy: with All locations shown, Besiktas sees her looking, not editing.
+  it("says editing only where the edit reaches", () => {
+    renderHook(() =>
+      useScheduleViewerPresence({
+        workspaceId: "workspace",
+        weekStart: "2026-05-04",
+        locationIds: ["kadikoy", "besiktas"],
+        editLocationIds: ["kadikoy"],
+        authUserId: "ayse",
+        mode: "edit",
+      }),
+    );
+
+    expect(mocks.tracked).toEqual([
+      ["schedule:presence:workspace:kadikoy:2026-05-04", "edit"],
+      ["schedule:presence:workspace:besiktas:2026-05-04", "preview"],
     ]);
   });
 });

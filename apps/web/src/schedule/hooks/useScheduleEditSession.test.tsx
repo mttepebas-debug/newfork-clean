@@ -184,6 +184,19 @@ describe("useScheduleEditSession", () => {
     expect(hook.result.current.session).toBeNull();
   });
 
+  it("says why when keeping an idle edit is refused", async () => {
+    vi.mocked(autosaveScheduleEditSession).mockRejectedValueOnce(
+      new ScheduleRequestError("Not allowed", 403, { error: "Not allowed", reason: "authz.out_of_scope" }),
+    );
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(hook.onError).toHaveBeenCalledWith("You can no longer edit this schedule, so your edit closed.");
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+  });
+
   it("says a draft is no longer available when opening it is refused", async () => {
     const hook = renderEditSession();
     vi.mocked(acquireScheduleEditSession).mockRejectedValueOnce(

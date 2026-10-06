@@ -18,6 +18,8 @@ import { EDIT_IDLE_TIMEOUT_MS, useEditIdleTimer } from "./useEditIdleTimer";
 export const EDIT_NOT_RECONNECTED =
   "Your edit could not be reconnected. Check your connection and try again.";
 
+const EDIT_REFUSED = "You can no longer edit this schedule, so your edit closed.";
+
 export interface ScheduleLockConflict {
   readonly sessionId?: string;
   readonly holderName: string;
@@ -81,7 +83,9 @@ export function useScheduleEditSession({
       .then((result) => {
         if (result.status === "saved") callbacks.current.onAutoSaved?.(result.draft_name);
       })
-      .catch((error: Error) => callbacks.current.onError(error.message))
+      .catch((error: Error) => callbacks.current.onError(
+        isScheduleAccessRefused(error) ? EDIT_REFUSED : error.message,
+      ))
       .finally(() => {
         setSession(null);
         callbacks.current.onEnded();
@@ -234,7 +238,7 @@ export function useScheduleEditSession({
           if (isEditLeaseExpired(error)) void recoverLease();
           else if (isScheduleAccessRefused(error)) {
             // DB-1a: the person's scope shrank; the edit cannot go on.
-            callbacks.current.onError("You can no longer edit this schedule, so your edit closed.");
+            callbacks.current.onError(EDIT_REFUSED);
             setSession(null);
             callbacks.current.onEnded();
           } else callbacks.current.onError(error.message);

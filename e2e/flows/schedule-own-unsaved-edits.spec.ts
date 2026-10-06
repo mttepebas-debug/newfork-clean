@@ -40,6 +40,11 @@ test("one manager's unsaved change stays off another manager's grid", async ({ b
   const ayse = await editLiveWeek(browser, "ayse", monday);
   const zeynep = await editLiveWeek(browser, "zeynep", monday);
 
+  // Ayse's screen rereads its pending changes when Zeynep's change goes live.
+  const ayseRereads = ayse.waitForRequest(
+    (request) => request.method() === "GET" && /\/schedule\/pending-ops\?/.test(request.url()),
+    { timeout: 15_000 },
+  );
   // In edit mode a double click opens the card.
   await alisCard(zeynep).first().dblclick();
   const editor = zeynep.getByRole("dialog");
@@ -48,8 +53,8 @@ test("one manager's unsaved change stays off another manager's grid", async ({ b
   await expect(editor).toHaveCount(0);
   await expect(notedCard(zeynep)).toHaveCount(1);
 
-  // Long enough for the live update and the pending-change reread to land.
-  await ayse.waitForTimeout(3_000);
+  await ayseRereads;
+  await ayse.waitForLoadState("networkidle");
   await expect(alisCard(ayse)).toHaveCount(1);
   await expect(notedCard(ayse)).toHaveCount(0);
 });

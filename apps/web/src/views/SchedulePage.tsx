@@ -716,6 +716,7 @@ export function SchedulePage({
     workspaceId: context?.workspace.id ?? null,
     weekStart: query.data?.week_start ?? selectedDate,
     locationIds: pendingOpsLocationIds,
+    editLocationIds: gridEditSession?.location_ids,
     authUserId: account?.userId ?? context?.userId ?? null,
     mode: gridEditSession ? "edit" : "preview",
   });
