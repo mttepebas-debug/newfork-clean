@@ -1574,3 +1574,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Geri alma:** (1) yeni migration; (2)–(3) sıra değişikliği.
 - **Durum:** kayda geçti.
 - **Mert:** sohbette söylendi (Undo).
+
+### KK-172 (2026-10-06) Liste düzeni Sistem 1; yeşil ekleme düğmesi hemen; aralıklı kırmızının kökü kodda çıktı
+- **Karar (ne):** (1) Mert'in Sistem 1 (C) seçimi ve Requests tek tablo isteği arayüz hattına VAR-ART-LIST-2 olarak verildi: artifact güncellenir, öteki sistemler kalkar; önerilen tek sekme satırı Needs review / In progress / Closed, ortak sütunlar Employee, Type, When, Decide by, Status, Review. (2) Mert "Hemen, tek küçük işle" dedi: LIST-YESIL (R1, arayüz hattı) Settings → Documents, Announcements, Important Dates ekleme düğmelerini ve boş hâl düğmelerini yeşile çevirir; `styles.css`'e dokunmaz (web hattında). (3) VAR-UYG-KIRMIZI: main CI 37443040170'daki aralıklı kırmızı yük değil, kod çıktı (Publish menüsünün dışarı-basış dinleyicisi pencere içindeki basışı dışarı sayıyordu); arayüz hattı kırmızı testle düzeltti, main `88f5e7a1` (R1, izinsiz gönderim).
+- **Nerede:** KARARLAR Genel → "Liste sayfalarının ortak dili", Employees G1, Schedule → Requests; BACKLOG BL-757, BL-760.
+- **Ne zaman:** 2026-10-06 ~10:20–10:30Z.
+- **Ne için:** (1)–(2) Mert'in seçimi; ortak dil bütün liste sayfalarında tek. (3) "Yük" sınıflandırması kodun gerçek yarışını gizleyecekti; sınıflandırma görevi kökü buldu.
+- **Dayanak:** Mert'in 2026-10-06 seçimi; CLAUDE.md §9 düğme dili; §11.9 kırmızı ayrımı.
+- **Geri alma:** KARARLAR satırları; LIST-YESIL tek commit.
+- **Durum:** (1)–(2) arayüz hattında sırada; (3) main'de, CI 37449526408 izleniyor.
+- **Mert:** sohbette söylendi.
