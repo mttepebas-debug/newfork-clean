@@ -19,7 +19,7 @@
 ## 2. Oturumlar ve hatlar (hepsi Remote Control açık, sabitli)
 | Oturum | Kimlik | Rol | Şu an | Sırada |
 |---|---|---|---|---|
-| Veri hattı: nf-db | `local_c2ed4f3f-934a-48cd-82d9-1e99087b91cd` | nf-db, high | DB-1b (R3, izinli) + BE-2b-DB (R2) gönderiyor; DB-1b canlı migration izni verildi (yeşil main sonrası) | DB-2 → DB-3 → EKRAN-02 A1 → A2 → A3 → DB-4 → DB-1c; BL-494 (BE-1 raporundan) |
+| Veri hattı: nf-db | `local_c2ed4f3f-934a-48cd-82d9-1e99087b91cd` | nf-db, high | Temizlendi (~07:00Z, bağlam %86 idi; devir notu posta kutusu `done/20261006T065218-…-be-2b-canli-devir.md`), DB-2'ye başladı. DB-1b ve BE-2b-DB main'de (`137d8b70`) ve canlıda. | DB-2 → DB-3 → EKRAN-02 A1 → A2 → A3 → DB-4 → DB-1c; BL-494 |
 | Web hattı: nf-backend | `local_c9810f32-30fd-4fe4-b343-1185c9a111ef` | nf-backend, medium | TEL-KAPALI-2 gönderimi | W-1b (DB-1b + DB-2 main'de olunca; DB-1a / DB-1b sözleşme değişiklikleri raporlarında) → BE-2b API kısmı (BE-2b-DB'den sonra, dal `task/ekran-01-be-2b`) → EKRAN-02 B1 → B2 |
 | Arayüz hattı: nf-arayuz | `local_6cda4e74-9638-44d9-931c-9ce8c2e1fa3c` | nf-arayuz, medium | Müsaitlik "!" tıklanır pencere canlı varyantı (Mert bekliyor); varyant sunucusu 5612/5613, başlangıç `http://127.0.0.1:5612/var.html` | Mert onaylayınca: VAR.md belge commit'i, hücre modeli + "!" uygulama dilimi (W-4 içinde), BL-441 metni; Requests görsel dilimleri (C1–C3) bağımlılıklarla |
 | Rol: nf-planlama (Kayıt ve plan) | `local_47a5c079-bbdb-4533-a9d3-6fb7062efea7` | nf-planlama / gerekince nf-test, medium | boşta (CI-HIZ ve CI-HIZ-2 bitti, main'de) | EKRAN-03 Employees görev dosyası + BL numaraları (Mert'in kararlarından sonra); BL-757 |
@@ -27,7 +27,7 @@
 - Ağır iş kuralı sık çiğneniyor (üç hat + CI tek bilgisayarda; bugün üç kırmızı yükten geldi). İkinci veri oturumu AÇILMAZ; asıl darboğaz bilgisayar.
 
 ## 3. Mert'e açık sorular / turlar
-1. **Canlı inceleme (devirden önce başladı):** `var.html` — yeni müsaitlik/izin hücre modeli (KARARLAR Schedule), "!" tıklanır pencere, Availability kapalı hâli, Publish metni. Mert "canlıda görüp karar vermek istiyorum" dedi. Giriş adımları arayüz hattının raporunda (parola dosya yolu: `e2e/global-setup.ts:21`; sohbete yazılmaz).
+1. **Canlı inceleme:** Mert "!" penceresini gördü ("harika"), 5 düzeltme verdi (KARARLAR Schedule) → arayüz hattı VAR-HUCRE c'yi kuruyor; gelince Mert'e göster, onaylarsa uygulama dilimi. Önceki metin: `var.html` — yeni müsaitlik/izin hücre modeli (KARARLAR Schedule), "!" tıklanır pencere, Availability kapalı hâli, Publish metni. Mert "canlıda görüp karar vermek istiyorum" dedi. Giriş adımları arayüz hattının raporunda (parola dosya yolu: `e2e/global-setup.ts:21`; sohbete yazılmaz).
 2. **BL-445 dar pencere üst çubuğu:** Mert "başka fikrim var" dedi, fikrini henüz yazmadı.
 3. **Requests görsel turu 2:** C-D11 (tek lokasyonda Pazar görünmüyor), S7 (kenar rengi, Schedule üst çubuğu da), G1, G2, G3, G4 (teyit). Görüntüler `artifacts/nf-arayuz/VAR-EKRAN-12/02-requests/`, `01-schedule/C-D11/`.
 4. **Employees (EKRAN-03):** OZET'te S1–S5 + G1–G3; K1–K12 koordinatör önerilerini önce koordinatör okur, kurala uyanları verir.
