@@ -25,8 +25,6 @@ interface UseScheduleRealtimeOptions {
   readonly workspaceId: string | null | undefined;
   readonly weekStart: string;
   readonly locationIds: readonly string[];
-  // ponytail: ignored since DB-2 (payloads name no draft); SchedulePage drops it in W-1b.
-  readonly activeDraftId?: string | null;
 }
 
 export function useScheduleRealtime({

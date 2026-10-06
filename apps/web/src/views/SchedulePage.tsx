@@ -610,7 +610,6 @@ export function SchedulePage({
     workspaceId: context?.workspace.id ?? null,
     weekStart: query.data?.week_start ?? selectedDate,
     locationIds: pendingOpsLocationIds,
-    activeDraftId: gridEditSession?.source_draft_id ?? activeDraftId,
   });
   const pendingOpsQuery = usePendingOpsQuery(
     context?.workspace.id ?? null,

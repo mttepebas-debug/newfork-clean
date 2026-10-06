@@ -53,7 +53,6 @@ function renderRealtimeHook(queryClient = new QueryClient()) {
         workspaceId: "workspace",
         weekStart: "2026-05-04",
         locationIds: ["loc-1", "loc-2"],
-        activeDraftId: "draft-1",
       }),
     { wrapper: wrapper(queryClient) },
   );
