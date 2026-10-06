@@ -974,7 +974,8 @@ export function SchedulePage({
     } catch (error) {
       if (requestId === publicationRequestIdRef.current)
         setPublicationStatus(null);
-      throw error;
+      // BL-391: a status read that fails leaves no unhandled rejection; the reason goes to the console.
+      console.error(error);
     }
   }, [context, query.data]);
 
@@ -1034,7 +1035,7 @@ export function SchedulePage({
       setPublicationStatus(null);
       return;
     }
-    void refreshPublicationStatus().catch(() => undefined);
+    void refreshPublicationStatus();
   }, [context, gridEditSession, query.data, refreshPublicationStatus]);
 
   useEffect(() => {

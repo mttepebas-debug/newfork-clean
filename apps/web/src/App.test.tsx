@@ -38,8 +38,6 @@ import {
   listScheduleRecentExports,
   listScheduleTemplates,
   previewScheduleAutoFill,
-  previewScheduleExport,
-  previewScheduleExportHtml,
   previewSchedulePublication,
   previewScheduleUnpublish,
   publishScheduleDraft,
@@ -449,8 +447,6 @@ function resetScheduleApiMocks() {
   vi.mocked(listScheduleTemplates).mockResolvedValue({ templates: [] });
   vi.mocked(previewScheduleAutoFill).mockReset();
   vi.mocked(applyScheduleAutoFill).mockReset();
-  vi.mocked(previewScheduleExport).mockReset();
-  vi.mocked(previewScheduleExportHtml).mockReset();
   vi.mocked(listScheduleExportPresets).mockReset();
   vi.mocked(listScheduleExportPresets).mockResolvedValue({
     presets: [
@@ -649,9 +645,6 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   applyScheduleTemplate: vi.fn(),
   previewScheduleAutoFill: vi.fn(),
   applyScheduleAutoFill: vi.fn(),
-  previewScheduleExport: vi.fn(),
-  previewScheduleExportHtml: vi.fn(),
-  downloadScheduleExport: vi.fn(),
   listScheduleExportPresets: vi.fn().mockResolvedValue({
     presets: [
       {
@@ -5344,6 +5337,33 @@ describe("App", () => {
     consoleError.mockRestore();
   }, 15_000);
 
+  it("keeps a failed publication status read out of unhandled rejections (BL-391)", async () => {
+    const draft = {
+      id: "99999999-9999-4999-8999-999999999992", workspace_id: scheduleFixture.workspace_id,
+      week_start: scheduleFixture.week_start, name: "Status down week", revision: 1,
+      created_by: "88888888-8888-4888-8888-888888888888", updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek("2026-10-26"));
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      window.history.pushState({}, "", "/app/schedule?date=2026-10-26");
+      render(<App />);
+      await signInAs("owner");
+      const published = await screen.findByRole("button", { name: "Published" });
+      vi.mocked(fetchSchedulePublicationStatus).mockRejectedValue(new Error("status down"));
+      fireEvent.click(published);
+      fireEvent.click(screen.getByRole("button", { name: "Publish another draft" }));
+      await waitFor(() => expect(fetchSchedulePublicationStatus).toHaveBeenCalledTimes(2));
+      await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 20)); });
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
+  });
+
   it("records confirmation when publishing schedule risks", async () => {
     const draft = {
       id: "99999999-9999-4999-8999-999999999998",
@@ -5732,7 +5752,6 @@ describe("App", () => {
       filename: "MAIN_2026-08-17_2026-08-23",
       shifts: expect.arrayContaining([expect.objectContaining({ id: scheduleFixture.shifts[0]!.id })]),
     }), expect.objectContaining({ format: "pdf", destination: "download" }));
-    expect(previewScheduleExport).not.toHaveBeenCalled();
     expect(screen.getByRole("region", { name: "Export settings" })).toBeTruthy();
   });
 

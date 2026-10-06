@@ -12,7 +12,6 @@ import {
   scheduleAutoFillPreviewSchema,
   scheduleExportPresetListSchema,
   scheduleExportPresetSchema,
-  scheduleExportPreviewSchema,
   scheduleRecentExportEventListSchema,
   scheduleExportScheduleListSchema,
   scheduleExportScheduleSchema,
@@ -23,9 +22,6 @@ import {
   schedulePublicationStatusSchema,
   schedulePublishResultSchema,
   schedulePendingOpListSchema,
-  schedulePendingOpMutationResultSchema,
-  createSchedulePendingOpInputSchema,
-  updateSchedulePendingOpInputSchema,
   scheduleReadModelSchema,
   legacyScheduleShiftListSchema,
   scheduleUnpublishPreviewSchema,
@@ -40,8 +36,6 @@ import {
   type ScheduleAutoFillAssignment,
   type ScheduleAutoFillPreview,
   type ScheduleExportPreset,
-  type ScheduleExportPreview,
-  type ScheduleExportRequest,
   type ScheduleExportSchedule,
   type ScheduleExportSettings,
   type ScheduleRecentExportEvent,
@@ -55,7 +49,6 @@ import {
   type SchedulePublicationStatus,
   type SchedulePublishResult,
   type SchedulePendingOp,
-  type SchedulePendingOpMutationResult,
   type ScheduleReadModel,
   type LegacyScheduleShiftList,
   type ScheduleShiftMutationInput,
@@ -63,8 +56,6 @@ import {
   type ScheduleUnpublishPreview,
   type ScheduleUnpublishResult,
   type CreateScheduleExportScheduleInput,
-  type CreateSchedulePendingOpInput,
-  type UpdateSchedulePendingOpInput,
   type UpdateScheduleExportScheduleInput,
 } from "@newfork/shared/schedule";
 import {
@@ -125,28 +116,6 @@ export function pendingOpsKey(
     locationId,
     draftId,
   ] as const;
-}
-
-export function scheduleEditLockKey(
-  workspaceId: string | null,
-  weekStart: string,
-  draftId: string | null = null,
-) {
-  return ["schedule-edit-lock", workspaceId, weekStart, draftId] as const;
-}
-
-export function schedulePublicationStatusKey(
-  workspaceId: string | null,
-  weekStart: string,
-) {
-  return ["schedule-publication-status", workspaceId, weekStart] as const;
-}
-
-export function scheduleExportPreviewHtmlKey(
-  workspaceId: string | null,
-  request: ScheduleExportRequest,
-) {
-  return ["schedule-export-preview-html", workspaceId, request] as const;
 }
 
 export function draftsKey(workspaceId: string | null, weekStart: string) {
@@ -242,42 +211,6 @@ export async function fetchPendingOps(
   if (scope.draft_id) query.set("draft_id", scope.draft_id);
   return schedulePendingOpListSchema.parse(
     await activeScheduleRequest(`/schedule/pending-ops?${query}`),
-  );
-}
-
-export async function addPendingOp(
-  _workspaceId: string,
-  input: CreateSchedulePendingOpInput,
-): Promise<SchedulePendingOpMutationResult> {
-  return schedulePendingOpMutationResultSchema.parse(
-    await activeScheduleRequest("/schedule/pending-ops", {
-      method: "POST",
-      body: JSON.stringify(createSchedulePendingOpInputSchema.parse(input)),
-    }),
-  );
-}
-
-export async function updatePendingOp(
-  _workspaceId: string,
-  opId: string,
-  input: UpdateSchedulePendingOpInput,
-): Promise<SchedulePendingOpMutationResult> {
-  return schedulePendingOpMutationResultSchema.parse(
-    await activeScheduleRequest(`/schedule/pending-ops/${opId}`, {
-      method: "PATCH",
-      body: JSON.stringify(updateSchedulePendingOpInputSchema.parse(input)),
-    }),
-  );
-}
-
-export async function removePendingOp(
-  _workspaceId: string,
-  opId: string,
-): Promise<SchedulePendingOpMutationResult> {
-  return schedulePendingOpMutationResultSchema.parse(
-    await activeScheduleRequest(`/schedule/pending-ops/${opId}`, {
-      method: "DELETE",
-    }),
   );
 }
 
@@ -668,44 +601,6 @@ export async function applyScheduleAutoFill(
   );
 }
 
-export async function previewScheduleExport(
-  workspaceId: string,
-  request: ScheduleExportRequest,
-): Promise<ScheduleExportPreview> {
-  return scheduleExportPreviewSchema.parse(
-    await activeScheduleRequest("/schedule/export/preview", {
-      method: "POST",
-      body: JSON.stringify(request),
-    }),
-  );
-}
-
-export async function previewScheduleExportHtml(
-  workspaceId: string,
-  request: ScheduleExportRequest,
-): Promise<string> {
-  const result = await activeScheduleRequest("/schedule/export/preview-html", {
-    method: "POST",
-    body: JSON.stringify(request),
-  });
-  if (
-    typeof result === "object" &&
-    result &&
-    "html" in result &&
-    typeof result.html === "string"
-  ) {
-    return result.html;
-  }
-  throw new Error("Schedule export preview HTML was not returned");
-}
-
-export async function downloadScheduleExport(
-  workspaceId: string,
-  request: ScheduleExportRequest,
-): Promise<Blob> {
-  return activeScheduleDownload("/schedule/export", request);
-}
-
 export async function listScheduleExportPresets(
   _workspaceId: string,
 ): Promise<{ presets: ScheduleExportPreset[] }> {
@@ -798,37 +693,6 @@ export async function listScheduleRecentExports(
   return scheduleRecentExportEventListSchema.parse(
     await activeScheduleRequest("/schedule/exports/recent"),
   );
-}
-
-async function activeScheduleDownload(
-  path: string,
-  body: ScheduleExportRequest,
-): Promise<Blob> {
-  if (!supabaseClient) throw new Error("Schedule storage is not configured");
-  const session = await supabaseClient.auth.getSession();
-  const token = session.data.session?.access_token;
-  if (!token) throw new Error("A current session is required for Schedule");
-  const headers = new Headers({
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  });
-  const tabWorkspaceId = getTabWorkspaceId();
-  if (tabWorkspaceId) headers.set("X-Newfork-Workspace-Id", tabWorkspaceId);
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${path}`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    },
-  );
-  if (!response.ok) {
-    const result = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    throw new Error(result?.error ?? "Schedule export failed");
-  }
-  return response.blob();
 }
 
 async function activeScheduleRequest(
