@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(26);
 
 -- EKRAN-01 DB-3 (KARARLAR Schedule, Mert 2026-10-05; D-O4, B-4, D-O2, D-O1).
 -- Replace ("overwrite") clears only the template's own locations and
@@ -189,6 +189,9 @@ select is(pg_temp.apply_said(tests.id('tr:s5'), tests.id('tr:template'), $q$arra
   'and in the apply');
 select is(pg_temp.preview_said('tr:owner', tests.id('tr:s5'), tests.id('tr:template'), $q$'{}'::text[]$q$), '22023',
   'no department picked: 22023 in the preview too');
+select tests.remember('tr:s_empty', pg_temp.session(7, 'blank'));
+select is(pg_temp.preview_said('tr:owner', tests.id('tr:s_empty'), tests.id('tr:template'), $q$array['nope']$q$), '22023',
+  'review round 2: an empty edit still refuses a bad key in the preview');
 select is(pg_temp.preview_said('tr:owner', tests.id('tr:s5'), tests.id('tr:template'), format('array[%L]', gen_random_uuid())),
   'P0002', 'an unknown department: P0002 in the preview, as in the apply');
 

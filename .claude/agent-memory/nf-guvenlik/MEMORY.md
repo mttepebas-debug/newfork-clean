@@ -43,3 +43,4 @@
 - [Rütbe daraltması: onboarding + terfi](checklist-rank-narrowing-onboarding-and-promotion.md) — own eylemi yalnız employee olunca onboarding adımı aktivasyonu kilitler mi, terfi edenin kaydı donar mı (AVAIL-002)
 - [Sayım kanıt değil + id sızıntısı](checklist-grep-count-and-id-leak.md) — gövdede scope_set var diye yazma kapsamlı sayılmaz; realtime yükündeki id "tahmin edilemez" yolları açar
 - [Toplu yol tekil korumayı atlar](checklist-bulk-path-skips-single-guards.md) — şablon overwrite başlamış vardiya onayını ve locked işaretini atlıyor; toplu yolda tekil yan işleri ara
+- [Kopya kuralı id üzerinden](checklist-copy-rule-by-id.md) — oturum dalı eklenen kural taslaktan açılan oturumda kopyayı tanımaz (source_published null); keep seçimi ezilir (DB-3)

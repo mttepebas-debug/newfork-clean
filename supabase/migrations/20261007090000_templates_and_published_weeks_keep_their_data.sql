@@ -956,6 +956,8 @@ begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.templates',
     target_locations => app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.templates'));
   template_scope := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.templates');
+  -- Checked here too: the count below never reaches it when the edit is empty.
+  perform app_private.schedule_template_department_ids(target_workspace_id, department_keys);
 
   if not exists (
     select 1 from public.schedule_edit_sessions session
