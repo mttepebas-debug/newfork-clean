@@ -19,10 +19,6 @@ select tests.remember('sd:draft:first', tests.publish_week('sd', 1, '[
   {"label": "ali-tue", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "deniz-wed", "person": "deniz", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
 ]'));
--- ponytail: one transaction has one now(); the first publication moves an
--- hour back so the swap below is approved after it, as it would be for real.
-update public.schedule_location_publications set published_at = published_at - interval '1 hour'
-where workspace_id = tests.id('sd');
 
 create temporary table sd (key text primary key, value jsonb);
 create function pg_temp.command(person text, command jsonb) returns jsonb language sql as $$
@@ -71,6 +67,13 @@ select pg_temp.command('ayse', jsonb_build_object('action', 'approve', 'case_id'
   'fingerprint', public.shift_exchange_preview(tests.user('sd:ayse'), tests.id('sd'), pg_temp.case_id(), pg_temp.application_id()) ->> 'fingerprint'));
 select tests.settle();
 select is(pg_temp.tuesday_holder(), tests.id('sd:deniz'), 'the approved swap gives Tuesday to Deniz');
+-- ponytail: one transaction has one now(). The publication goes two hours
+-- back and the approval one, so the drafts and the editing session written
+-- below come after both, as they would for real. A cover and a pickup
+-- approved in the publication's own moment: approved_cover_and_pickup_survive_a_stale_draft.
+update public.schedule_location_publications set published_at = published_at - interval '2 hours'
+where workspace_id = tests.id('sd');
+update public.shift_exchange_cases set updated_at = now() - interval '1 hour' where id = pg_temp.case_id();
 
 -- 1. The draft the swap reached has nothing to say about it.
 select is(pg_temp.undone(pg_temp.preview(tests.id('sd:draft:first'))), '[]'::jsonb,

@@ -76,8 +76,8 @@ select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'
 select ok(not exists (select 1 from jsonb_array_elements(public.shift_exchanges_candidates_service(tests.user('sto:emre'), tests.id('sto'),
     tests.id('sto:shift:emre-wed')) -> 'employees') e where e ->> 'id' = tests.id('sto:ali')::text),
   'a cover search never lists someone on approved leave');
-select ok(public.weekly_exchange_candidate_check(tests.id('sto'), tests.id('sto:ali'),
-    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed'))) ->> 'status' = 'ineligible',
+select ok(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
+    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed')), '{"operation": "release_pickup"}') ->> 'status' = 'ineligible',
   'without Ali''s own agreement his leave still blocks the shift');
 select tests.remember('sto:case', (pg_temp.command('emre', jsonb_build_object('action', 'create', 'kind', 'cover',
   'shift_id', tests.id('sto:shift:emre-wed'))) ->> 'case_id')::uuid);
@@ -130,8 +130,8 @@ select ok(not (pg_temp.leave(tests.id('sto:ali:time_off')) && pg_temp.span('emre
 select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed-late'), 'the rest of his day off stays');
 select is((select status::text from public.schedule_time_off_requests where id = tests.id('sto:ali:time_off')), 'approved',
   'the leave stays approved; the hours given back read off it (FB-6.3)');
-select ok(public.weekly_exchange_candidate_check(tests.id('sto'), tests.id('sto:ali'),
-    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed-late'))) ->> 'status' = 'ineligible',
+select ok(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
+    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed-late')), '{"operation": "release_pickup"}') ->> 'status' = 'ineligible',
   'and still blocks the later shift he did not agree to');
 
 -- 6. Mert, who approved the leave, hears; nobody is asked to review anything.

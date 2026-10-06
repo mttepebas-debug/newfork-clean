@@ -52,9 +52,10 @@ select cmp_ok(
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
 -- folded Schedule's 24 into one function per job (37 -> 13), and with them
 -- the grid's own scope reading (60 -> 59 above). FB-6.7 the _legacy announcement publish (13 -> 12).
+-- FB-6.4 A1 folded weekly_assignment_candidate_base into app_private.eligibility (12 -> 11).
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 12, '_base, _vN and _legacy functions only go down'
+  '<=', 11, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.

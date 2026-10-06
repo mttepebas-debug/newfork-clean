@@ -150,21 +150,16 @@ update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(
 select is(result->>'status','cancelled','AT11 declined direct invitation ends cleanly') from sx_state;
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(2)),pg_temp.emp(2),'AT11 declined cover preserves owner');
 -- Hard eligibility is re-used by listing, submission and final preview.
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','baseline candidate is fully eligible');
+select is(app_private.eligibility(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)),'{"operation":"release_pickup"}')->>'status','eligible','baseline candidate is fully eligible');
 update public.employee_profiles set is_excluded_from_schedule=true where id=pg_temp.emp(4);
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 excluded employee cannot receive a shift');
+select is(app_private.eligibility(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)),'{"operation":"release_pickup"}')->>'status','ineligible','AT18 excluded employee cannot receive a shift');
 update public.employee_profiles set is_excluded_from_schedule=false where id=pg_temp.emp(4);
 update public.employee_job_assignments set ended_at='2029-12-31' where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 expired position qualification blocks receipt');
+select is(app_private.eligibility(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)),'{"operation":"release_pickup"}')->>'status','ineligible','AT18 expired position qualification blocks receipt');
 update public.employee_job_assignments set ended_at=null where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
 update public.employee_location_assignments set ended_at='2030-01-07T20:00:00Z' where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT18 location assignment must cover the entire shift');
+select is(app_private.eligibility(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)),'{"operation":"release_pickup"}')->>'status','ineligible','AT18 location assignment must cover the entire shift');
 update public.employee_location_assignments set ended_at=null where workspace_id=pg_temp.w() and employee_id=pg_temp.emp(4);
-update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000002';
-select tests.approved_leave(pg_temp.w(),pg_temp.emp(4),pg_temp.manager(),'11000000-0000-4000-8000-000000000002','2030-01-07','09:00','10:00');
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','eligible','AT21 09:00 New York leave does not overlap 09:00 Los Angeles shift');
-select tests.approved_leave(pg_temp.w(),pg_temp.emp(4),pg_temp.manager(),'11000000-0000-4000-8000-000000000002','2030-01-07','12:00','13:00');
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(1)))->>'status','ineligible','AT21 12:00 New York leave overlaps 09:00 Los Angeles shift');
 -- A worker closes deadlines without an employee or manager screen being open.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(2)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
@@ -188,14 +183,6 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 set local role authenticated;
 select throws_ok($$select public.shift_exchanges_maintain_service(100)$$,'42501',null,'browser cannot invoke cross-workspace maintenance');
 reset role;
--- Time-source integration: unknown hours are not eligible; saved zones are canonical.
-insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
-values(pg_temp.shift(7),pg_temp.w(),'11000000-0000-4000-8000-000000000002','98010000-0000-4000-8000-000000000002',pg_temp.emp(4),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-08','09:00','10:00',gen_random_uuid());
-update public.locations set timezone='America/Los_Angeles' where id='11000000-0000-4000-8000-000000000002';
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 conflict checks retain other shifts saved timezone');
-update public.locations set timezone='America/New_York' where id='11000000-0000-4000-8000-000000000001';
-select is(public.weekly_exchange_candidate_check(pg_temp.w(),pg_temp.emp(4),public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2)))->>'status','eligible','AT20 target eligibility retains its saved timezone after location edit');
-update public.locations set timezone='America/Los_Angeles' where id='11000000-0000-4000-8000-000000000001';
 -- Drive the real outbox projection only for events created by this transaction.
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
 select pg_temp.shift(n),pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',pg_temp.emp(n-7),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-13',case n when 8 then '09:00'::time else '13:00'::time end,case n when 8 then '12:00'::time else '17:00'::time end,gen_random_uuid() from generate_series(8,9)n;

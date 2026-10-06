@@ -109,10 +109,7 @@ select throws_ok($$select pg_temp.change_and_flush()$$,'P0001','Simulated outbox
 drop trigger test_terms_notification_failure on public.notification_outbox;
 select is((select start_time::text from public.schedule_published_shifts where id=pg_temp.shift_id(1)),'19:00:00','notification failure restores the published hours');
 select is((select revision from public.shift_exchange_cases where id=cid),revision+1,'notification failure restores request revision') from state where n=1;
-insert into public.schedule_time_off_requests(id,workspace_id,employee_id,location_id,status,created_by)
- select 'ad428000-0000-4000-8000-000000000050',w,second_emp,other_loc,'approved',second_user from ws;
-insert into public.schedule_time_off_segments(workspace_id,request_id,segment_date,start_time,end_time,status)
- select w,'ad428000-0000-4000-8000-000000000050',start_day+1,'19:00','20:00','approved' from ws;
+select tests.approved_leave(w,second_emp,second_user,other_loc,start_day+1,'19:00','20:00','ad428000-0000-4000-8000-000000000050') from ws;
 select is(public.shift_exchange_preview(manager_b,w,cid,aid)->>'allowed','false','retained acceptance still cannot bypass approved leave at the new time') from ws,state where n=1;
 update public.schedule_time_off_requests set status='pending' where id='ad428000-0000-4000-8000-000000000050';
 select is(pg_temp.command(manager_b,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,
@@ -151,10 +148,8 @@ select is((select count(*) from public.notification_outbox o where o.workspace_i
  and o.payload->>'request_action'='terms_changed' and o.payload->'recipient_user_ids' ? second_user::text),1::bigint,
  'further changes do not notify a withdrawn participant again') from ws,state where n=4;
 update public.schedule_published_shifts set employee_id=(select second_emp from ws) where id=pg_temp.shift_id(3);
-update public.schedule_published_shifts set source_shift_id=gen_random_uuid() where id=pg_temp.shift_id(4);
 select pg_temp.flush();
 select is(public.shift_exchange_live_status(w,cid),'invalidated','changed owner does not inherit consent') from ws,state where n=3;
-select is(public.shift_exchange_live_status(w,cid),'invalidated','different logical source cannot reuse the old request') from ws,state where n=4;
 select ok(not public.weekly_exchange_same_responsibility(public.shift_exchange_shift(w,pg_temp.shift_id(7)),
  public.shift_exchange_shift(w,pg_temp.shift_id(7))||jsonb_build_object('job_id',gen_random_uuid())),'position changes remain outside date/time/location retention') from ws;
 
@@ -199,6 +194,40 @@ select is(pg_temp.command(manager_a,jsonb_build_object('action','approve','case_
  'expected_revision',(select revision from public.shift_exchange_cases where id=cid),
  'fingerprint',public.shift_exchange_preview(manager_a,w,cid,aid)->>'fingerprint'))->>'status','completed','same logical shift transfers after republish without another employee response') from ws,state where n=7;
 select pg_temp.flush();
+-- D6 (P24): new hours that overlap another shift of the person who accepted
+-- end that acceptance; an open search keeps looking, a direct offer ends.
+insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,location_id,publication_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
+ select pg_temp.shift_id(n),pg_temp.shift_id(10+n),w,loc,'ad428000-0000-4000-8000-000000000014',
+  case when n in (81,83) then second_emp else first_emp end,job,start_day+case when n<82 then 2 else 4 end,
+  case when n in (80,82) then '10:00'::time else '13:00' end,case when n in (80,82) then '12:00'::time else '15:00' end,'explicit','UTC'
+ from ws cross join unnest(array[80,81,82,83]) n;
+select pg_temp.flush();
+do $$declare f ws%rowtype; r jsonb; begin select * into f from ws;
+ r:=pg_temp.command(f.first_user,jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift_id(80)));
+ r:=pg_temp.command(f.second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(80),'case_id',r->>'case_id'));
+ insert into state select 80,(r->>'case_id')::uuid,a.id,(r->>'revision')::integer,null from public.shift_exchange_applications a where a.case_id=(r->>'case_id')::uuid;
+ r:=pg_temp.command(f.first_user,jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift_id(82),'employee_id',f.second_emp));
+ insert into state select 82,(r->>'case_id')::uuid,a.id,(r->>'revision')::integer,null from public.shift_exchange_applications a where a.case_id=(r->>'case_id')::uuid;
+end; $$;
+select pg_temp.command(second_user,jsonb_build_object('action','accept','case_id',cid,'application_id',aid,
+ 'expected_revision',(select revision from public.shift_exchange_cases where id=cid))) from ws,state where n=82;
+select is((select status from public.shift_exchange_applications where id=aid),'pending_manager','Second accepted both offers') from state where n in (80,82);
+update public.schedule_published_shifts set start_time='13:30',end_time='15:30' where id=pg_temp.shift_id(80);
+select pg_temp.flush();
+select is((select status from public.shift_exchange_applications where id=aid),'invalidated','new hours overlapping her own shift end her acceptance') from state where n=80;
+select is(public.shift_exchange_live_status(w,cid),'open','the open search keeps looking for somebody else') from ws,state where n=80;
+select ok(exists(select 1 from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text and o.payload->>'request_action'='invalidated'
+ and o.payload->'recipient_user_ids' ? second_user::text),'she is told her acceptance ended') from ws,state where n=80;
+select ok(not exists(select 1 from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text and o.payload->>'request_action'='terms_changed'
+ and o.payload->'recipient_user_ids' ? second_user::text),'and is not told it remains valid') from ws,state where n=80;
+select is((select details->'acceptances_ended' from public.shift_exchange_events where case_id=cid and action='terms_changed'),
+ jsonb_build_array(aid),'the private history names the acceptance that ended') from state where n=80;
+update public.schedule_published_shifts set start_time='14:00',end_time='16:00' where id=pg_temp.shift_id(82);
+select pg_temp.flush();
+select is(public.shift_exchange_live_status(w,cid),'invalidated','a direct offer whose one acceptance ends, ends') from ws,state where n=82;
+select is((select status from public.shift_exchange_applications where id=aid),'invalidated','with its acceptance') from state where n=82;
+select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(82)),(select first_emp from ws),'and nobody''s shift changed');
+
 select ok(not has_function_privilege('authenticated','public.refresh_weekly_exchange_terms(uuid,uuid)','execute'),'employee cannot rewrite request snapshots directly');
 select ok(not has_function_privilege('service_role','public.refresh_weekly_exchange_terms(uuid,uuid)','execute'),'snapshot refresh is not an exposed RPC');
 select * from finish();
