@@ -44,9 +44,9 @@
 - API: `pnpm.cmd --filter @newfork/api exec vitest run src/app.test.ts src/route-error-contract.test.ts` → önce 4 kırmızı (200≠404, nedensiz 403, 403≠401), sonra 120/120 yeşil.
 - Web: `requests-list.test.ts` 11, `requests-data.test.ts` 3 (önce 3 kırmızı), `ScheduleRequestsPage.test.tsx` 35 yeşil. Arama testi düzeltme geri alınınca kırmızı ("Loading requests..." görünüyor), düzeltmeyle yeşil. Kapı testi önce kırmızı.
 - `pnpm.cmd --filter @newfork/web typecheck`, `--filter @newfork/api typecheck` temiz; lint'te yalnız önceden var olan uyarılar.
-- Tam kapı: (bu dosyanın son hâlinde yazılır)
+- Tam kapı (ağır iş izniyle, 2026-10-06 ~15:45Z): lint ✓, typecheck ✓, test: ui 9, shared 210, api 1011 ✓, web ilk koşuda 1 kırmızı — `lib/refusal-reaches-screens.test.ts` `./supabase` taklidinde `apiRequest` yoktu (Requests okuması artık ortak yardımcıdan geçiyor); taklide gerçek yardımcının hata davranışı eklendi (`d9d22c11`), web 2225 ✓ / 1 atlanan, build 4/4 ✓.
 
-**Ekran görüntüleri:** `artifacts/nf-backend/EKRAN-02-B1a/` (öncesi / sonrası; bu dosyanın son hâlinde yazılır).
+**Ekran görüntüleri** (ayse, Kadıköy müdürü, 1440×900): `C:/Users/TheWe/Documents/Codex/newfork-clean/artifacts/nf-backend/EKRAN-02-B1a/` — `oncesi-2-200-karakter-arama.png`: bütün sayfa "Valid schedule request query required" yazısına dönüyor, arama kutusu ve sekmeler kayboluyor; `sonrasi-2-200-karakter-arama.png`: sayfa, sekmeler ve arama kutusu yerinde, odak kutuda, liste "Queue clear". `*-1-acilis.png` açılışlar (aynı görünüm).
 
 **Senin yerine verdiğim teknik kararlar (P19):**
 - Kalan rota `/v1/workspaces/:ws/schedule/requests` (ötekilerle aynı biçim; web header'lıyı çağırıyordu, taşındı).
