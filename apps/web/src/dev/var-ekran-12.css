@@ -261,3 +261,48 @@
    the shared token so both options compare on the same page. */
 :root[data-var-s7] .requests-toolbar :is(.toolbar-filter-select, .toolbar-search) { border-color: var(--theme-border-control); }
 :root[data-var-s7] .requests-toolbar .toolbar-search input { border-color: transparent; }
+
+/* ---------- VAR-HUCRE: Mert's new availability / time-off cell (KARARLAR Schedule 2026-10-06) ---------- */
+/* (1) Time off: flat red fill, "TIME OFF", no hatch. */
+:root[data-var-hucre] .schedule-cell[data-availability-kind="time_off"] {
+  background-image: none;
+  background-color: var(--theme-time-off-soft);
+}
+:root[data-var-hucre] .schedule-cell[data-availability-kind="time_off"]:not(:has(.schedule-shift-badge))::before {
+  content: "Time off";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--theme-danger-text);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+/* (2) Unavailable: no hatch, no fill, no frame; an orange "!" in the empty cell's top-right corner. */
+:root[data-var-hucre] .schedule-cell[data-availability-kind="unavailable"] {
+  background-image: none;
+  background-color: var(--theme-surface);
+  box-shadow: none;
+}
+:root[data-var-hucre] .schedule-cell[data-availability-kind="unavailable"]:not(:has(.schedule-shift-badge))::after {
+  content: "!";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+/* Availability toggle off (?var=hucre-off): today's rule hides the unavailable mark, keeps time off. */
+:root[data-var-hucre] .schedule-employee-cell .schedule-employee-availability { display: none; }

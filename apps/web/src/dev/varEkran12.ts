@@ -70,12 +70,16 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
     .slice(0, 16);
   const offset = offsetOf(model, location.id);
 
-  // Marks on the first rows, so orange and red sit next to each other:
-  // row 2 unavailable Tue evening, row 4 all day Sat, rows 3 and 6 on time off.
+  // Marks on the first rows, so every case sits on one screen (VAR-HUCRE):
+  // row 2 unavailable Tue after 6 PM with a lunch shift (fits: name "!"),
+  // row 4 all day Wed with no shift (empty cell), row 8 Fri after 2 PM with a
+  // dinner shift (clashes: card "!"), row 9 Thu after 6 PM with lunch + dinner
+  // (only dinner clashes), rows 3 and 6 on time off.
   const unavailable = new Map<number, { day: number; from: string; to: string; allDay: boolean }>([
-    [1, { day: 1, from: "14:00", to: "24:00", allDay: false }],
+    [1, { day: 1, from: "18:00", to: "24:00", allDay: false }],
     [3, { day: 2, from: "00:00", to: "24:00", allDay: true }],
-    [7, { day: 5, from: "00:00", to: "24:00", allDay: true }],
+    [7, { day: 4, from: "14:00", to: "24:00", allDay: false }],
+    [8, { day: 3, from: "18:00", to: "24:00", allDay: false }],
   ]);
   const leave = new Map<number, readonly number[]>([
     [2, [2, 3]],
@@ -92,9 +96,19 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
       if ((person + day) % 7 === 5 || (person + day) % 7 === 6) return;
       if (leave.get(person)?.includes(day)) return;
       const mark = unavailable.get(person);
-      const type = (mark && !mark.allDay && mark.day === day) || (person + day) % 3 === 0 ? dinner : lunch;
+      const onMark = Boolean(mark && !mark.allDay && mark.day === day);
+      const type = onMark ? (person === 1 ? lunch : dinner) : (person + day) % 3 === 0 ? dinner : lunch;
       if (!type) return;
       if (mark?.allDay && mark.day === day) return;
+      if (onMark && person === 8 && lunch) {
+        serial += 1;
+        shifts.push({
+          id: `00000000-0000-4000-8000-${serial.toString(16).padStart(12, "0")}`,
+          location_id: location.id, employee_id: employee.id, job_id: jobId, shift_type_id: lunch.id, scheduled_date: date,
+          start_time: lunch.default_start_time ?? "11:30", end_time: lunch.default_end_time ?? "15:30", crosses_midnight: false,
+          unpaid_break_minutes: 0, hide_time_on_badge: false, note: "", warning_codes: [],
+        });
+      }
       serial += 1;
       shifts.push({
         id: `00000000-0000-4000-8000-${serial.toString(16).padStart(12, "0")}`,
@@ -109,7 +123,7 @@ export function devDemoScheduleModel(model: ScheduleReadModel): ScheduleReadMode
         unpaid_break_minutes: 0,
         hide_time_on_badge: false,
         note: "",
-        warning_codes: mark && !mark.allDay && mark.day === day && type === dinner ? ["availability"] : [],
+        warning_codes: onMark && type === dinner ? ["availability"] : [],
       });
     });
   });

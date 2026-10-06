@@ -7,6 +7,7 @@ import {
   formatAvailabilityMarkDay,
   formatAvailabilityRange,
   scheduleAvailabilityMarks,
+  type ScheduleAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
 import { weeklyEmployeeSummary } from "../lib/scheduleWeeklyAvailability";
 
@@ -55,6 +56,29 @@ function VarAvailabilityDot({ employee }: { readonly employee: ScheduleEmployee 
   );
 }
 
+// VAR-HUCRE Durum 1: the "!" a shift covers moves to the name cell; the bubble names the day.
+function VarCoveredDot({ name, days }: { readonly name: string; readonly days: readonly { day: string; mark: ScheduleAvailabilityMark }[] }) {
+  const lines = days.map(({ day, mark }) => `${formatAvailabilityMarkDay(day)} · ${mark.kind === "unavailable" ? mark.windows.map((window) => formatAvailabilityRange("unavailable", window, "12h")).join(", ") : ""}`);
+  return (
+    <Tooltip
+      rich
+      className="var-bl524-dot"
+      label={`${name}: ${lines.join("; ")}`}
+      content={
+        <>
+          <span className="schedule-availability-tip-band">
+            <span className="schedule-availability-tip-dot" aria-hidden="true">!</span>
+            <span className="schedule-availability-tip-who"><strong>{name}</strong><span>Unavailable, under a shift that fits</span></span>
+          </span>
+          <span className="schedule-availability-tip-body">{lines.map((line) => <strong key={line}>{line}</strong>)}</span>
+        </>
+      }
+    >
+      !
+    </Tooltip>
+  );
+}
+
 function VarAvailabilityLine({ employee }: { readonly employee: ScheduleEmployee }) {
   const days = varUnavailableDays(employee);
   if (!days.length) return null;
@@ -71,6 +95,7 @@ export function ScheduleEmployeeCard({
   rowStyle,
   anchorRef,
   onOpenEmployeeCard,
+  varCoveredDays = [],
 }: {
   readonly editing: boolean;
   readonly employee: ScheduleEmployee | null;
@@ -80,6 +105,7 @@ export function ScheduleEmployeeCard({
   readonly rowStyle: CSSProperties;
   readonly anchorRef: RefObject<HTMLDivElement | null>;
   readonly onOpenEmployeeCard: (employeeId: string) => void;
+  readonly varCoveredDays?: readonly { day: string; mark: ScheduleAvailabilityMark }[];
 }) {
   const isUnassignedRow = !employee;
   const availabilitySummary = employee ? weeklyEmployeeSummary(employee) : null;
@@ -139,6 +165,7 @@ export function ScheduleEmployeeCard({
             </span>
           ) : null}
           {employee && devVar("bl524") === "b" ? <VarAvailabilityDot employee={employee} /> : null}
+          {employee && devVar("hucre") && varCoveredDays.length ? <VarCoveredDot name={employee.display_name} days={varCoveredDays} /> : null}
         </div>
       ) : (
         <strong>Unassigned</strong>

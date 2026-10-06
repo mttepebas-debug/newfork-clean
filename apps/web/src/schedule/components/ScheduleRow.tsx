@@ -23,6 +23,7 @@ import {
 import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
 import { shiftDropTargetKey } from "../lib/scheduleDragTargets";
+import { devVar } from "../../dev/varEkran12";
 import {
   resolveScheduleInteractionLocationId,
   type ScheduleGridLocationGroup,
@@ -211,9 +212,20 @@ export function ScheduleRow({
     "--schedule-row-badge-height": `${badgeHeight}px`,
   } as CSSProperties;
 
+  // VAR-EKRAN-12 VAR-HUCRE (Durum 1): days whose unavailable mark sits under a
+  // shift that does not clash with it, so only the name cell can say so.
+  const varCoveredDays = employee && devVar("hucre")
+    ? locations.flatMap((location) => days.filter((day) => {
+        const mark = cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))?.availabilityMark;
+        const cell = employeeShifts.filter((shift) => location.sourceIds.includes(shift.location_id) && shift.scheduled_date === day);
+        return mark?.kind === "unavailable" && cell.length > 0 && !cell.some((shift) => shift.warning_codes.includes("availability"));
+      }).map((day) => ({ day, mark: cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))!.availabilityMark! })))
+    : [];
+
   return (
     <>
       <ScheduleEmployeeCard
+        varCoveredDays={varCoveredDays}
         editing={editing}
         employee={employee}
         openShiftCount={displayedOpenShiftCount}
