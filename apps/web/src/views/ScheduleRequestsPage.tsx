@@ -1,15 +1,14 @@
 import { CatalogDrawer } from "../settings/CatalogDrawer";
-import { CatalogSortButton } from "./CatalogSortButton";
 import { CatalogPageHeader } from "./CatalogPageHeader";
+import { ListPagination } from "./ListPagination";
+import { RequestsTable, RequestTypeFilter, type RequestTableRow } from "./RequestsTable";
 import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
-  CalendarOff,
   Check,
-  ChevronRight,
   Clock3,
   History,
   Search,
@@ -20,7 +19,6 @@ import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
 import { TimeOffProgressPanel } from "./TimeOffProgressPanel";
-import { formatTimeOffDeadline } from "../employee-hub/time-off-split";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
@@ -37,12 +35,17 @@ import {
   useVoteOnTimeOff,
 } from "../schedule/requests-data";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
+import {
+  pageOf,
+  readRequestsParams,
+  requestTypesFor,
+  useOpenRequests,
+  type RequestTab,
+} from "../schedule/requests-list";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
-type Tab = "time-off" | "shift-changes";
-type RequestSortKey = "employee" | "date" | "decide_by" | "status" | "review";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
@@ -76,71 +79,70 @@ function ScheduleRequestsPageContent() {
   const workspaceId = context?.workspace.id ?? "";
   const canReadTimeOff = can(context, "requests.read");
   const canReadShift = can(context, "exchange.read");
-  const requestedTab = params.get("tab");
-  const tab: Tab =
-    requestedTab === "shift-changes" && canReadShift
-      ? "shift-changes"
-      : canReadTimeOff
-        ? "time-off"
-        : "shift-changes";
-  const [timeOffQueue, setTimeOffQueue] = useState<"needs_review" | "closed">(
-    "needs_review",
-  );
+  const allowedTypes = requestTypesFor({ timeOff: canReadTimeOff, shiftChanges: canReadShift });
+  const view = readRequestsParams(params, allowedTypes);
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<{
-    key: RequestSortKey;
-    descending: boolean;
-  }>({ key: "date", descending: false });
-  const [timeOffCursor, setTimeOffCursor] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
   const [act, setAct] = useState<Act | null>(null);
   const [actText, setActText] = useState("");
   const [actError, setActError] = useState("");
   const toast = useToast();
-  // Said inside the drawer while it stays open; the page behind it, the toast
-  // included, is inert then (CatalogDrawer).
+  // Said inside the drawer while it stays open (CatalogDrawer).
   const [drawerNotice, setDrawerNotice] = useState<DrawerNotice | null>(null);
   const vote = useVoteOnTimeOff(workspaceId);
   const revoke = useRevokeTimeOff(workspaceId);
-  // Also loaded under Shift changes, so the Time off tab keeps its count.
-  const query = useScheduleRequests(canReadTimeOff ? context?.workspace.id : undefined, {
-    timeOffQueue,
+  const open = useOpenRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, {
+    types: view.types,
     locationId,
     search,
-    timeOffCursor,
   });
-  const rows = query.data?.time_off_requests;
-  const sortedRows = useMemo(
+  // Closed is time off only until the one closed list lands (B3); it also
+  // brings the location list and the workspace time format.
+  const closed = useScheduleRequests(canReadTimeOff ? context?.workspace.id : undefined, {
+    timeOffQueue: "closed",
+    locationId,
+    search,
+  });
+  const closedRows = useMemo<RequestTableRow[]>(
     () =>
-      [...(rows ?? [])].sort(
-        (left, right) =>
-          compareValues(
-            requestSortValue(left, sort.key),
-            requestSortValue(right, sort.key),
-          ) * (sort.descending ? -1 : 1),
-      ),
-    [rows, sort],
+      view.types.includes("time_off")
+        ? (closed.data?.time_off_requests ?? []).map((request) => ({
+            source: "time_off" as const,
+            id: request.id,
+            type: "time_off" as const,
+            tab: "closed" as const,
+            decideBy: null,
+            request,
+          }))
+        : [],
+    [closed.data, view.types],
   );
-  const selected = useMemo(
-    () => rows?.find((row) => row.id === selectedId) ?? null,
-    [rows, selectedId],
-  );
+  const tabRows: RequestTableRow[] =
+    view.tab === "closed" ? closedRows : open.rows.filter((row) => row.tab === view.tab);
+  const page = pageOf(tabRows, view.page, view.pageSize);
+  const counts = {
+    needs_review: open.rows.filter((row) => row.tab === "needs_review").length,
+    in_progress: open.rows.filter((row) => row.tab === "in_progress").length,
+  };
+  const timeOffById = new Map<string, TimeOffRequest>();
+  for (const row of [...open.rows, ...closedRows]) if (row.source === "time_off") timeOffById.set(row.id, row.request);
+  const selected = timeOffById.get(selectedId) ?? null;
 
-  function changeTab(next: Tab) {
+  function setView(values: Record<string, string | null>) {
     requestAvailabilityNavigation(() => {
-      const nextParams = new URLSearchParams(params);
-      nextParams.set("tab", next);
-      nextParams.delete("request");
-      nextParams.delete("case");
-      nextParams.delete("offer");
-      setParams(nextParams);
-      setSelectedId("");
+      setParams(
+        (previous) => {
+          const next = new URLSearchParams(previous);
+          for (const [key, value] of Object.entries(values)) {
+            if (value) next.set(key, value);
+            else next.delete(key);
+          }
+          return next;
+        },
+        { replace: true },
+      );
     });
-  }
-  function resetPaging() {
-    setTimeOffCursor("");
-    setSelectedId("");
   }
   function selectRequest(id: string) {
     setSelectedId(id);
@@ -154,6 +156,12 @@ function ScheduleRequestsPageContent() {
       },
       { preventScrollReset: true },
     );
+  }
+  function openRow(row: RequestTableRow) {
+    // A shift change opens its review where it lives today (Shift Hub's
+    // manager view, ?case=); C2 gives it its own drawer here.
+    if (row.source === "exchange") setView({ case: row.id });
+    else selectRequest(row.id);
   }
   function startAct(request: TimeOffRequest, kind: Act["kind"]) {
     setActText("");
@@ -177,7 +185,7 @@ function ScheduleRequestsPageContent() {
     setDrawerNotice(null);
     try {
       let message: string;
-      let closed = true;
+      let closedNow = true;
       if (kind === "revoke") {
         await revoke.mutateAsync({
           requestId: request.id,
@@ -193,11 +201,11 @@ function ScheduleRequestsPageContent() {
             expected_impact: request.progress!.impact!.fingerprint,
           },
         });
-        closed = result.final;
+        closedNow = result.final;
         message = verdictMessage(request, kind, result.final, result.remaining);
       }
       setAct(null);
-      if (closed) {
+      if (closedNow) {
         selectRequest("");
         toast.success(message);
       } else setDrawerNotice({ text: message });
@@ -220,45 +228,18 @@ function ScheduleRequestsPageContent() {
       title="Requests"
       titleId="requests-title"
       description="Review time off and shift change requests in one place."
-      action={
-        <div className="requests-tabs" role="tablist" aria-label="Request type">
-          {canReadTimeOff ? (
-            <button
-              role="tab"
-              aria-selected={tab === "time-off"}
-              className={tab === "time-off" ? "active" : ""}
-              onClick={() => changeTab("time-off")}
-            >
-              Time off{" "}
-              {query.data ? (
-                <strong>{query.data.time_off_pending_count}</strong>
-              ) : null}
-            </button>
-          ) : null}
-          {canReadShift ? (
-            <button
-              role="tab"
-              aria-selected={tab === "shift-changes"}
-              className={tab === "shift-changes" ? "active" : ""}
-              onClick={() => changeTab("shift-changes")}
-            >
-              Shift changes
-            </button>
-          ) : null}
-        </div>
-      }
     />
   );
-  // Shift Hub reads ?case= itself, so manager notification links land here.
   // The API's "no" gets the one no-access card, never its raw sentence.
-  if (isNoAccess(query.error))
+  if (open.failure === "no_access" || isNoAccess(closed.error))
     return (
       <NoAccessState
         subject="requests"
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
     );
-  if (tab === "shift-changes" && canReadShift && context)
+  // Shift Hub reads ?case= itself; manager notification links land here too.
+  if (params.has("case") && canReadShift && context)
     return (
       <section
         className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
@@ -272,48 +253,54 @@ function ScheduleRequestsPageContent() {
         />
       </section>
     );
-  if (query.isLoading) return <RequestState text="Loading requests..." />;
-  if (query.isError || !query.data)
-    return (
-      <RequestState
-        text={
-          query.error instanceof Error
-            ? query.error.message
-            : "Requests unavailable"
-        }
-        error
-      />
-    );
-  const timeFormat = query.data.time_format ?? "12h";
+  const timeFormat = closed.data?.time_format ?? "12h";
+  const loading = view.tab === "closed" ? closed.isLoading : open.isLoading;
+  const failed = view.tab === "closed" ? closed.isError : Boolean(open.failure);
+  const tabs: [RequestTab, string][] = [
+    ["needs_review", "Needs review"],
+    ["in_progress", "In progress"],
+    ["closed", "Closed"],
+  ];
 
   return (
     <section
-      className="settings-page jobs-settings-page requests-catalog-page requests-page"
+      className="settings-page jobs-settings-page requests-catalog-page requests-page list-page"
       aria-labelledby="requests-title"
     >
       {header}
 
       <div className="requests-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div className="catalog-status-tabs" role="group" aria-label="Queue">
-            <button
-              className={timeOffQueue === "needs_review" ? "active" : ""}
-              onClick={() => {
-                setTimeOffQueue("needs_review");
-                resetPaging();
-              }}
-            >
-              Needs review
-            </button>
-            <button
-              className={timeOffQueue === "closed" ? "active" : ""}
-              onClick={() => {
-                setTimeOffQueue("closed");
-                resetPaging();
-              }}
-            >
-              <History size={15} /> Closed
-            </button>
+          <div
+            className="catalog-status-tabs"
+            role="group"
+            aria-label="Request status"
+            onKeyDown={(event) => {
+              // R2-48: the arrow keys move along the tabs.
+              if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+              const buttons = [...event.currentTarget.querySelectorAll("button")];
+              const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+              if (at < 0) return;
+              event.preventDefault();
+              buttons[(at + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
+            }}
+          >
+            {tabs.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={view.tab === key ? "active" : ""}
+                aria-pressed={view.tab === key}
+                onClick={() => {
+                  selectRequest("");
+                  setView({ tab: key === "needs_review" ? null : key, page: null });
+                }}
+              >
+                {key === "closed" ? <History size={14} aria-hidden /> : null}
+                {label}
+                {key !== "closed" && counts[key] ? <strong>{counts[key]}</strong> : null}
+              </button>
+            ))}
           </div>
         </div>
         <div className="catalog-toolbar-filter-row">
@@ -323,16 +310,25 @@ function ScheduleRequestsPageContent() {
             aria-label="Filter by location"
             onChange={(event) => {
               setLocationId(event.target.value);
-              resetPaging();
+              setView({ page: null });
             }}
           >
             <option value="">All locations</option>
-            {query.data.locations.map((location) => (
+            {(closed.data?.locations ?? []).map((location) => (
               <option key={location.id} value={location.id}>
                 {location.name}
               </option>
             ))}
           </select>
+          {allowedTypes.length > 1 ? (
+            <RequestTypeFilter
+              allowed={allowedTypes}
+              chosen={view.types}
+              onChange={(types) =>
+                setView({ types: types.length === allowedTypes.length ? null : types.join(","), page: null })
+              }
+            />
+          ) : null}
           <label className="requests-search toolbar-search">
             <Search size={16} aria-hidden />
             <input
@@ -342,132 +338,74 @@ function ScheduleRequestsPageContent() {
               aria-label="Search requests"
               onChange={(event) => {
                 setSearch(event.target.value);
-                resetPaging();
+                setView({ page: null });
               }}
             />
           </label>
         </div>
       </div>
-      <div className="requests-workbench">
-        <div
-          className="requests-list job-catalog"
-          aria-label={`${tab} requests`}
-        >
-          <div className="job-column-headings catalog-column-headings request-catalog-row">
-            {(
-              [
-                ["employee", "Employee", undefined],
-                ["date", "Dates", undefined],
-                ["decide_by", "Decide by", "request-location-column"],
-                ["status", "Status", undefined],
-                ["review", "Review", "request-impact-column"],
-              ] as const
-            ).map(([key, label, className]) => (
-              <span
-                key={key}
-                className={className}
-                role="columnheader"
-                aria-sort={
-                  sort.key === key
-                    ? sort.descending
-                      ? "descending"
-                      : "ascending"
-                    : "none"
-                }
-              >
-                <CatalogSortButton
-                  label={label}
-                  active={sort.key === key}
-                  onClick={() =>
-                    setSort({
-                      key,
-                      descending: sort.key === key ? !sort.descending : false,
-                    })
-                  }
-                />
-              </span>
-            ))}
+
+      <div className="employee-table-wrap requests-table-wrap">
+        <RequestsTable rows={page.rows} timeFormat={timeFormat} onOpen={openRow} />
+        {loading ? <p className="settings-state">Loading requests...</p> : null}
+        {!loading && failed ? (
+          <div className="catalog-table-empty" role="alert">
+            <span className="catalog-table-empty-icon" aria-hidden>
+              <AlertTriangle size={22} />
+            </span>
+            <h2>Requests could not load</h2>
+            <p>Check your connection and try again.</p>
           </div>
-          {sortedRows.length ? (
-            <>
-              {sortedRows.map((row) => (
-                <RequestRow
-                  key={row.id}
-                  row={row}
-                  timeFormat={timeFormat}
-                  onSelect={() => selectRequest(row.id)}
-                />
-              ))}
-              {timeOffCursor || query.data.time_off_next_cursor ? (
-                <div
-                  className="request-pagination"
-                  aria-label="Request history pages"
-                >
-                  {timeOffCursor ? (
-                    <button
-                      className="nf-button secondary"
-                      onClick={() => {
-                        setTimeOffCursor("");
-                        setSelectedId("");
-                      }}
-                    >
-                      Newest
-                    </button>
-                  ) : null}
-                  {query.data.time_off_next_cursor ? (
-                    <button
-                      className="nf-button secondary"
-                      onClick={() => {
-                        setTimeOffCursor(query.data.time_off_next_cursor!);
-                        setSelectedId("");
-                      }}
-                    >
-                      Older
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="requests-empty">
+        ) : null}
+        {!loading && !failed && !page.rows.length ? (
+          <div className="catalog-table-empty">
+            <span className="catalog-table-empty-icon" aria-hidden>
               <Check size={22} />
-              <strong>Queue clear</strong>
-              <span>No requests match these filters.</span>
-            </div>
-          )}
-        </div>
-        {selected && (
-          <CatalogDrawer
-            label="Review request"
-            className="requests-catalog-page requests-review-drawer"
-            onClose={() => selectRequest("")}
-          >
-            <TimeOffDetail
-              request={selected}
-              timeFormat={timeFormat}
-              notice={drawerNotice}
-              busy={vote.isPending || revoke.isPending}
-              // ponytail: "may they revoke somewhere"; the API asks per person.
-              canRevoke={can(context, "time_off.revoke")}
-              onClose={() => selectRequest("")}
-              onAct={(kind) => startAct(selected, kind)}
-              shorten={
-                <TimeOffShorten
-                  key={`${selected.id}:${selected.revision}`}
-                  request={selected}
-                  workspaceId={workspaceId}
-                  timeFormat={timeFormat}
-                  onDone={(message) => {
-                    selectRequest("");
-                    toast.success(message);
-                    void refreshExchangeSurfaces(client, workspaceId);
-                  }}
-                />
-              }
-            />
-          </CatalogDrawer>
-        )}
+            </span>
+            <h2>{emptyTitle(view.tab)}</h2>
+            <p>{emptyText(view.tab)}</p>
+          </div>
+        ) : null}
       </div>
+      <ListPagination
+        total={page.total}
+        page={page.page}
+        pageSize={view.pageSize}
+        onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
+        onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
+      />
+
+      {selected && (
+        <CatalogDrawer
+          label="Review request"
+          className="requests-catalog-page requests-review-drawer"
+          onClose={() => selectRequest("")}
+        >
+          <TimeOffDetail
+            request={selected}
+            timeFormat={timeFormat}
+            notice={drawerNotice}
+            busy={vote.isPending || revoke.isPending}
+            // ponytail: "may they revoke somewhere"; the API asks per person.
+            canRevoke={can(context, "time_off.revoke")}
+            onClose={() => selectRequest("")}
+            onAct={(kind) => startAct(selected, kind)}
+            shorten={
+              <TimeOffShorten
+                key={`${selected.id}:${selected.revision}`}
+                request={selected}
+                workspaceId={workspaceId}
+                timeFormat={timeFormat}
+                onDone={(message) => {
+                  selectRequest("");
+                  toast.success(message);
+                  void refreshExchangeSurfaces(client, workspaceId);
+                }}
+              />
+            }
+          />
+        </CatalogDrawer>
+      )}
       {act ? (
         <ActDialog
           act={act}
@@ -481,6 +419,17 @@ function ScheduleRequestsPageContent() {
       ) : null}
     </section>
   );
+}
+
+function emptyTitle(tab: RequestTab) {
+  return tab === "needs_review" ? "Queue clear" : tab === "in_progress" ? "Nothing in progress" : "No closed requests";
+}
+function emptyText(tab: RequestTab) {
+  return tab === "needs_review"
+    ? "No requests need your decision for these filters."
+    : tab === "in_progress"
+      ? "No requests are waiting on somebody else for these filters."
+      : "No closed requests match these filters.";
 }
 
 function verdictMessage(
@@ -574,85 +523,6 @@ function ActDialog({
       {error ? <p className="form-error" role="alert">{error}</p> : null}
     </ConfirmDialog>
   );
-}
-
-function RequestRow({
-  row,
-  timeFormat,
-  onSelect,
-}: {
-  row: TimeOffRequest;
-  timeFormat: "12h" | "24h";
-  onSelect: () => void;
-}) {
-  const opens = row.progress ? timeOffOpenedShiftCount(row.progress) : 0;
-  const zone = requestZone(row);
-  return (
-    <button
-      type="button"
-      className="job-catalog-row request-catalog-row request-catalog-button"
-      onClick={onSelect}
-    >
-      <span className="job-row-identity">
-        <span className="request-catalog-marker">
-          <CalendarOff size={16} />
-        </span>
-        <span className="job-name-stack">
-          <span className="job-row-name" title={row.employee_name}>
-            {row.employee_name}
-          </span>
-          {row.request_type === "time_off_cancellation" && (
-            <small>Leave cancellation</small>
-          )}
-        </span>
-      </span>
-      <span className="request-catalog-meta">
-        {`${formatDate(row.start_date)} - ${formatDate(row.end_date)}`}
-      </span>
-      <span className="request-catalog-meta request-location-column">
-        {row.status === "pending" && row.decide_by && zone ? formatTimeOffDeadline(row.decide_by, zone, timeFormat) : ""}
-      </span>
-      <span
-        className={`request-status status-${row.status.replaceAll("_", "-")}`}
-      >
-        {statusLabel(row.status)}
-      </span>
-      <span className="request-impact-column request-catalog-meta">
-        {opens ? (
-          <span
-            className="request-conflict-count"
-            title="Shifts that become open"
-          >
-            <AlertTriangle size={14} />
-            {opens}
-          </span>
-        ) : (
-          <ChevronRight size={15} aria-hidden />
-        )}
-      </span>
-    </button>
-  );
-}
-
-function requestSortValue(
-  row: TimeOffRequest,
-  key: RequestSortKey,
-): string | number {
-  if (key === "employee") return row.employee_name;
-  if (key === "date") return row.start_date;
-  if (key === "decide_by") return row.decide_by ?? "";
-  if (key === "review") return row.progress ? timeOffOpenedShiftCount(row.progress) : 0;
-  return row.status;
-}
-
-function compareValues(left: string | number, right: string | number): number {
-  if (typeof left === "number" && typeof right === "number") {
-    return left - right;
-  }
-  return String(left).localeCompare(String(right), undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
 }
 
 function TimeOffDetail({
@@ -825,20 +695,6 @@ function Timeline({
         ))}
       </ol>
     </section>
-  );
-}
-
-function RequestState({
-  text,
-  error = false,
-}: {
-  text: string;
-  error?: boolean;
-}) {
-  return (
-    <main className={`schedule-state ${error ? "error" : ""}`}>
-      <strong>{text}</strong>
-    </main>
   );
 }
 
