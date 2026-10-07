@@ -1809,3 +1809,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Ne:** CLAUDE.md §5.3 "canlı (hosted) işlem için Mert'in 'evet'i işi yapan oturumun kendi penceresine yazılır; aktarılan onay geçmez". KK-206/211/213'te ve gece talimatlarında canlı migration için benim "gönder"imi yeterli saydım; ACIL-40001 oturumu fark etti. Düzeltme: bütün canlı veritabanı işlemleri sabah, Mert'in her oturumun kendi penceresindeki "evet"iyle. Main sırası OPS-03'e göre: alan / fonksiyon ekleyen ya da kodun bağlı olduğu değişiklik (EKRAN-01 paket 1 #20, BL-804) canlıyla birlikte sabah; daraltan (GA-1 REVOKE) gece main'e gidebilir (yayındaki kod kırılmaz), canlısı sabah; ACIL-40001 canlı + main birlikte sabah (oturumun seçimi b).
 - **Çelişki:** §5.1 "sürekli yetkiler … 'gönder' iznini vermek, canlı migration dahil" ile §5.3 aynı dosyada çelişiyor; gece katı okuma seçildi, sabah Mert'e soru (SABAH-SORULAR G10).
 - **Dayanak:** CLAUDE.md §5.1, §5.3; KARARLAR OPS-03.
+
+### KK-215 (2026-10-07 gece) PARALEL-1 kapandı; BL-964 (kanca tırnak içi) aynı oturuma
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~11:45Z. **Nerede:** main `702f2b69` (CI 37608195446 yeşil); BACKLOG BL-897, BL-755, BL-516, BL-788, BL-760 kapandı, BL-497 notu, BL-964.
+- **Ne:** PARALEL-1 main'de; ekran oturumlarına yeni `test:db` bildirildi (rebase sonrası `node scripts/test-db.mjs --load-only` ile ortak DB tazelenir). "4 ERROR" cevabı: üçü ortak DB kayması (BL-497, BL-841), biri CI dışı gerçek kırmızı (BL-227) — yeni madde yok. Kancanın tırnağa duyarsız bölmesi (BL-964) 2026-10-14 engel tarihinden önce kapanmalı; araç işini bilen PARALEL-1 oturumuna gece işi olarak verildi (R2, `/code-review`, migration yok).
+- **Dayanak:** CLAUDE.md §4.2, §4.5; ILKELER P16.
