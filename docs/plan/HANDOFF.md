@@ -30,6 +30,10 @@
   - ~11:15Z: **Sabah "evet" bekleyen canlı işler (KK-214, her biri kendi oturumunun penceresinde):** ACIL-40001 (EKRAN-08 oturumu, dal `task/acil-40001`, 24 fonksiyon 40001→PT409, dal CI 37611123359 yeşil, `nf-guvenlik` ONAY; canlı + main birlikte); EKRAN-01 paket 1 (#20 sütun → canlı önce); GUVENLIK-A GA-1 (main gece gidebilir, canlı sabah) ve GA-4; BL-804 (EKRAN-16 oturumu; canlı önce).
   - PARALEL-1 main'de (`702f2b69`, CI 37608195446 yeşil): BL-897/755/760 kapandı; oturum şimdi BL-964 (kanca tırnak içi + `git push \⏎` atlaması, son tarih 10-14). Main CI kırmızısı (37598002511) yeniden koşuyla yeşile döndü.
   - Kararlar: Jobs V1 (KARARLAR Settings), Locations A, Important Dates L1 + Note, H2 uyarı kutuları; BL-958 (40001 döngüsü), BL-959 (kapalı günlü hafta 500 → EKRAN-01), BL-910 (ret gerekçesi sızıntısı → EKRAN-02 paketi).
+  - ~12:20Z: **GA-1 main'de** (`a79ff194`, CI 37615016851 yeşil; `jobs.department_id` bileşik FK ile korunuyor, hücre `fa6a9964`); ortak yerel DB'ye uygulandı; **canlıda açık** — sabah GA-1 + GA-4 canlı (GUVENLIK-A oturumu), GA-4 main. GUVENLIK-A DURDURULABILIR.
+  - BL-964 kapandı (`a57f2a4c`); BL-841 kapandı, BL-497 kısmen (`3fec39b8`); BL-965 (belge bakım işi tarihsiz belgede çöküyor, bütün workspace'ler) PARALEL-1 oturumunda, canlı sabah. BL-966 (kapanış gözlenebilirliği) backlog.
+  - **Sabah "evet" listesi (pencere pencere):** ACIL-40001 (EKRAN-08 oturumu), EKRAN-01 paket 1, GUVENLIK-A (GA-1 canlı + GA-4), BL-804 (EKRAN-16 oturumu), BL-965 (PARALEL-1 oturumu), EKRAN-02 veri paketi (S1'e bağlı). G10 cevabı (a) gelirse bunlar tek "gönder"le koordinatöre geçer.
+  - Koordinatör bağlamı %79 (12:20Z); 5 saatlik limit %56 (12:50Z sıfırlanır), haftalık %23.
 
 ## 000. GÜNCEL DURUM (2026-10-07 ~09:35Z) — ÖNCE BUNU OKU
 - **Mert'in uyarısı (09:30Z, üçüncü kez):** "hiç sorgulamıyorsun … ne tavsiye veriyorsun ne karşı çıkıyorsun ne fikrini sunuyorsun". Her yeni isteğe önce: ne anladım · artı/eksi + çakışan kural · önerim/itirazım (DERSLER 10-06 gece girişi). Kural önerisi olarak sorulan soru kapatıldı, cevap bekliyor.
