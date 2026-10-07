@@ -230,14 +230,14 @@ describe("scheduleFilterModel", () => {
         date: "2026-08-18",
         endDate: "2026-08-19",
         kind: "important",
-        title: "event: Anniversary",
+        title: "Event: Anniversary",
         recurrence: "none",
       },
       {
         date: "2025-07-04",
         endDate: "2025-07-04",
         kind: "important",
-        title: "holiday: Holiday",
+        title: "Holiday: Holiday",
         recurrence: "annual",
       },
     ]);

@@ -39,7 +39,7 @@ describe("DayHeaderCell", () => {
     expect(header.getAttribute("data-schedule-day-header-content")).toBe(
       "true",
     );
-    expect(screen.getByLabelText("Important: event: Anniversary")).toBeTruthy();
+    expect(screen.getByLabelText("Important: Event: Anniversary")).toBeTruthy();
   });
 
   it("uses the reference slate cue for today's date number", () => {

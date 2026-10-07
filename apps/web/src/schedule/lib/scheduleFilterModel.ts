@@ -8,6 +8,7 @@ import type {
 import type { CalendarMarker } from "../components/MiniCalendar";
 import type { ScheduleFilterChipView } from "../components/ScheduleFilterCommandStrip";
 import { matchesScheduleEmployeeFilters } from "./employeeEligibility";
+import { importantDateTypeLabels } from "../../lib/importantDateTypes";
 
 export function createScheduleCalendarMarkers(
   closures: ScheduleReadModel["closures"],
@@ -54,7 +55,7 @@ export function createScheduleCalendarMarkers(
       date: importantDate.starts_on,
       endDate: importantDate.ends_on,
       kind: "important",
-      title: `${importantDate.type}: ${importantDate.title}`,
+      title: `${importantDateTypeLabels[importantDate.type]}: ${importantDate.title}`,
       recurrence: importantDate.recurrence,
     });
   }

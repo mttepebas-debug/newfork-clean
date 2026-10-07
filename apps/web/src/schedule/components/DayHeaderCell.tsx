@@ -7,6 +7,7 @@ import {
   formatDay,
   formatDayNumber,
 } from "../lib/scheduleDateTime";
+import { importantDateTypeLabels } from "../../lib/importantDateTypes";
 
 interface DayHeaderCellProps {
   readonly date: string;
@@ -37,7 +38,7 @@ export function DayHeaderCell({
 }: DayHeaderCellProps) {
   const closedReason = closure?.title ?? "Closed";
   const importantSummary = importantDates
-    .map((item) => `${item.type}: ${item.title}`)
+    .map((item) => `${importantDateTypeLabels[item.type]}: ${item.title}`)
     .join(" · ");
   const partialClosedCount = closure
     ? 0
