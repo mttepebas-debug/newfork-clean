@@ -1787,3 +1787,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Ne:** oturumun kararları onaylandı: senkron tek tablo, kuyruk yalnız e-posta (P19); katalog yalnız veritabanında, `packages/shared`'de kopya yok (§2.A.4); saklama 90 gün, hesap güvenliği 1 yıl; sessiz saat ve özet MVP'de yok (CLAUDE.md §1 "bildirim gürültüsü yok", P13); canlı kanal yalnız sinyal, eski bildirim verisi taşınmaz (P01), paket tek seferde. Saklama ve sessiz saat ürün kuralına yakın olduğu için G8'de Mert'e itiraz hakkıyla yazıldı. Kod EKRAN-02 paketinden ve Mert'in G8 cevaplarından sonra (B1).
 - **Not:** narrowing mesajı (KK-203 daraltma) oturuma geç ulaştı; eski Settings sayfası da incelenmiş — zararı yok, rapor tek yerde.
 - **Dayanak:** CLAUDE.md §1, §2.A.4, §5.1; ILKELER P01, P13, P18, P19.
+
+### KK-211 (2026-10-07 gece) BL-958 acil: 40001 döngüsü iki oturuma bölündü
+- **Kim:** koordinatör (`f2f4ad49…`); Mert uyuyor, gece kuralı (soru sabaha, acil iş sürer). **Ne zaman:** 2026-10-07 ~10:50Z.
+- **Ne:** kalıcı koşulda 40001 atan fonksiyonlar PostgREST'in sonsuz yeniden denemesiyle API havuzunu dolduruyor (bütün kiracılar). Önemli tarih + duyuru tarafı ACIL-40001 olarak EKRAN-08 oturumuna (kodu bulan o, ekran onun; Mert'in sabah çekmece kararları için bağlamı korunur), Schedule düzenleme oturumu tarafı EKRAN-01'e (#18'den önce). Biçim tek: Schedule publish'teki `serialization_failure → PT409` + `hint`. R3: `nf-guvenlik`, tam kapı + `test:db`, "gönder" koordinatörde, canlı önce yedekle. Görev dosyası onayı beklenmez (acil).
+- **Neden Mert'e sorulmadı:** canlıda müşteri yok ama canlı API bütün kiracılar için ortak; düzeltme davranış değiştirmiyor (aynı ret, doğru kodla) — ürün kararı değil.
+- **Dayanak:** CLAUDE.md §2.A.2 ("hayır" tek biçim), §4.3.5, §4.5; ILKELER P09.
