@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 441, last: 20261008022536_document_maintenance_keeps_going.sql
--- fingerprint: sha256:4fd1b943c76431fa5675c3d8d553b8b8f9dc80863ea1e28435fb6fdc4d579a4c
+-- migrations: 442, last: 20261008022536_document_maintenance_keeps_going.sql
+-- fingerprint: sha256:f5b6053207b2d02276cb8a853840a8b22d642cffcd9a755b05784833fceb3f43
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14690,6 +14690,7 @@ begin
       target_unpaid_break_minutes integer;
       target_hide_time_on_badge boolean;
       target_note text;
+      kept public.schedule_edit_session_shifts%rowtype;
     begin
       select * into target_session from public.schedule_edit_sessions session
       where session.id = target_session_id and session.workspace_id = target_workspace_id
@@ -14713,11 +14714,18 @@ begin
         target_scheduled_date := (row_payload->>'scheduled_date')::date;
         target_start_time := nullif(row_payload->>'start_time','')::time;
         target_end_time := nullif(row_payload->>'end_time','')::time;
-        target_unpaid_break_minutes := coalesce((row_payload->>'unpaid_break_minutes')::integer, 0);
-        target_hide_time_on_badge := coalesce((row_payload->>'hide_time_on_badge')::boolean, false);
+        -- A field the payload leaves out keeps the shift's own value; a new
+        -- shift starts from the default (BL-292, EKRAN-01 #11).
+        select * into kept from public.schedule_edit_session_shifts s
+        where s.session_id = target_session_id and s.id = row_shift_id;
+        target_unpaid_break_minutes := case when row_payload ? 'unpaid_break_minutes'
+          then coalesce((row_payload->>'unpaid_break_minutes')::integer, 0)
+          else coalesce(kept.unpaid_break_minutes, 0) end;
+        target_hide_time_on_badge := case when row_payload ? 'hide_time_on_badge'
+          then coalesce((row_payload->>'hide_time_on_badge')::boolean, false)
+          else coalesce(kept.hide_time_on_badge, false) end;
         target_note := case when row_payload ? 'note' then coalesce(row_payload->>'note', '')
-          else coalesce((select s.note from public.schedule_edit_session_shifts s
-                         where s.session_id = target_session_id and s.id = row_shift_id), '') end;
+          else coalesce(kept.note, '') end;
         if target_start_time = target_end_time then
           raise exception 'Start and end time cannot be the same.' using errcode = '22023';
         end if;
