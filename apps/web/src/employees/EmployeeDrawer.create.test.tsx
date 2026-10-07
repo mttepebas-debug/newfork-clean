@@ -101,6 +101,17 @@ describe("employee create flow", () => {
   // K2 as changed by KK-205 (BL-777): a preferred name typed here was dropped
   // without a word. Nobody can fill it on a new employee, so it is not shown;
   // the employee asks for it in onboarding or their profile.
+  // E10 (BL-669 3): what Employment lacks is said there, not on Profile
+  // before the person has reached it.
+  it("says a missing location or job only from the Employment step", () => {
+    setup();
+    fillNames();
+    const blocker = () => document.querySelector('.employee-drawer-error[role="status"]');
+    expect(blocker()).toBeNull();
+    next();
+    expect(blocker()?.textContent).toBeTruthy();
+  });
+
   it("does not show Preferred name on a new employee", () => {
     setup();
     expect(screen.getByLabelText("First name")).toBeTruthy();

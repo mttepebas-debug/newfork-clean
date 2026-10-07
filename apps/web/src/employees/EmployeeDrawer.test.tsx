@@ -2965,6 +2965,26 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
     expect(document.activeElement).toBe(last);
   });
 
+  // AC4 (BL-669 2): the Access role picker lists roles in the invite picker's
+  // order (lowest first), whatever order the server sends.
+  it("lists roles in Access in the invite picker's order", async () => {
+    inviteRolesFixture = [
+      { id: managerRoleId, name: "Manager", systemKey: "manager", accessClass: "manager" },
+      { id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" },
+    ];
+    renderDrawer("access", {
+      ...detail,
+      role_id: employeeRoleId,
+      role_name: "Employee",
+      user_id: "16000000-0000-4000-8000-000000000005",
+      display_status: "active",
+    });
+    const role = (await screen.findByLabelText("Workspace role")) as HTMLSelectElement;
+    await waitFor(() =>
+      expect(Array.from(role.options).map((option) => option.textContent)).toEqual(["Employee", "Manager"]),
+    );
+  });
+
   // #46 (BL-429): a manager reaches why Terminate is switched off by keyboard
   // and by tap, in the app's bubble; pressing it opens nothing.
   it("says why Terminate is switched off on focus and on a tap", async () => {

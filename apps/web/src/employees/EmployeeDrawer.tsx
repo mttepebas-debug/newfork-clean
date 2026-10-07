@@ -1130,7 +1130,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       draft,
                       updateDraft,
                       detail.data,
-                      props.creating && references.data
+                      // One order for every role picker (AC4, BL-669).
+                      references.data
                         ? { ...references.data, inviteRoles }
                         : references.data,
                       inviteRoleId,
@@ -1268,7 +1269,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             <p className="employee-drawer-error" role="alert">
               {error}
             </p>
-          ) : dirty && readiness.assignmentBlocker ? (
+          ) : dirty &&
+            readiness.assignmentBlocker &&
+            // A new person hears about Employment once there (E10, BL-669).
+            !(props.creating && activeSection === "profile") ? (
             <p className="employee-drawer-error" role="status">
               {readiness.assignmentBlocker}
             </p>
