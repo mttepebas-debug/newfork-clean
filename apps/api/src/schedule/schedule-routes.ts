@@ -1424,11 +1424,10 @@ function pastEditPayload(error: unknown): Record<string, unknown> | null {
 
 /** The two refusals the screen reads a body for; everything else goes to the global handler. */
 // D-O7: the edit conflicts the web acts on travel with a code, so it never matches the sentence.
+// BL-958: the database names them in the hint of a PT409 (a 40001 is retried by PostgREST without end).
 const EDIT_CONFLICT_CODES: Readonly<Record<string, string>> = {
-  "edit lease expired": "edit_lease_expired",
-  "session revision stale": "edit_session_stale",
-  "shift revision stale": "edit_session_stale",
-  "draft revision stale": "edit_session_stale",
+  "schedule.edit_lease_expired": "edit_lease_expired",
+  "schedule.edit_session_stale": "edit_session_stale",
 };
 
 function scheduleError(reply: FastifyReply, error: unknown) {
@@ -1450,7 +1449,7 @@ function scheduleError(reply: FastifyReply, error: unknown) {
       code: error.pgCode,
       status: "availability_review_required",
     });
-  const code = error instanceof HttpError && error.pgCode === "40001" ? EDIT_CONFLICT_CODES[error.message] : undefined;
+  const code = error instanceof HttpError && error.pgCode === "PT409" && error.reason ? EDIT_CONFLICT_CODES[error.reason] : undefined;
   if (code) return reply.status(409).send({ error: (error as HttpError).message, code });
   throw error;
 }
