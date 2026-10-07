@@ -3298,6 +3298,9 @@ describe("App", () => {
       await screen.findByRole("dialog", { name: "Edit shift" }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Delete shift" }));
+    // BL-707 (UI-12): the first press only asks, as the strip's Delete does.
+    expect(deleteMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
     await waitFor(() => expect(deleteMock).toHaveBeenCalled());
     expect(deleteMock.mock.calls.at(-1)?.[2]).toBe(
       scheduleFixture.shifts[0]!.id,
