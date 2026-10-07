@@ -521,6 +521,8 @@ describe("EmployeeDrawer", () => {
     const dialog = screen.getByRole("dialog", { name: "Terminate employee" });
     fireEvent.change(within(dialog).getByLabelText("Effective date and time"), { target: { value: "2026-09-01T12:00" } });
     fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Employment ended" } });
+    // Two clicks: termination is destructive (K8).
+    fireEvent.click(within(dialog).getByRole("button", { name: "Terminate" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Confirm termination" }));
     await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2026-09-01"])?.isInvalidated).toBe(true));
     expect(client.getQueryState(["workspace-dashboard", workspaceId])?.isInvalidated).toBe(true);
@@ -545,6 +547,8 @@ describe("EmployeeDrawer", () => {
     fireEvent.change(within(dialog).getByLabelText("Reason"), {
       target: { value: "Employment ended" },
     });
+    // Two clicks: termination is destructive (K8).
+    fireEvent.click(within(dialog).getByRole("button", { name: "Terminate" }));
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Confirm termination" }),
     );
@@ -1792,6 +1796,8 @@ describe("EmployeeDrawer", () => {
     fireEvent.change(within(dialog).getByLabelText("Reason"), {
       target: { value: "Employment ended" },
     });
+    // Two clicks: termination is destructive (K8).
+    fireEvent.click(within(dialog).getByRole("button", { name: "Terminate" }));
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Confirm termination" }),
     );
@@ -2691,5 +2697,135 @@ describe("EmployeeDrawer after a removal from a location", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(onClose).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
+  });
+});
+
+// EKRAN-03 #1, #7, #8, #16: the termination window and the preferred name.
+describe("EmployeeDrawer termination window (EKRAN-03)", () => {
+  const noLocationLeft = {
+    ...detail,
+    primary_location_id: null,
+    primary_location_name: null,
+    location_count: 0,
+    locations: [],
+  } satisfies EmployeeDetail;
+  const workspaceLocation = (id: string, name: string, timezone: string, archived = false) => ({
+    id,
+    name,
+    archived,
+    timezone,
+  });
+
+  beforeEach(() => vi.mocked(terminateEmployee).mockClear());
+
+  async function openTermination(fixture: EmployeeDetail = detail) {
+    renderDrawer("employment", fixture);
+    fireEvent.click(await screen.findByRole("button", { name: "Terminate employee" }));
+    return screen.getByRole("dialog", { name: "Terminate employee" });
+  }
+
+  // #1 (BL-765, K4): the server takes any valid zone from somebody with no
+  // location left; the window offered none and stayed switched off.
+  it("offers the workspace's time zones to somebody with no location left", async () => {
+    vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
+      locations: [
+        workspaceLocation("11000000-0000-4000-8000-0000000000c1", "Kadikoy", "America/New_York"),
+        workspaceLocation("11000000-0000-4000-8000-0000000000c2", "Uptown", "America/Chicago"),
+        workspaceLocation("11000000-0000-4000-8000-0000000000c3", "Besiktas", "America/New_York"),
+        workspaceLocation("11000000-0000-4000-8000-0000000000c4", "Old Port", "America/Denver", true),
+      ],
+      departments: [],
+      jobs: [],
+      inviteRoles: [],
+    });
+    const dialog = await openTermination(noLocationLeft);
+    const zone = await within(dialog).findByLabelText("Worksite timezone");
+    await waitFor(() =>
+      expect(
+        Array.from((zone as HTMLSelectElement).options).map((option) => option.value),
+      ).toEqual(["America/New_York", "America/Chicago"]),
+    );
+    expect(within(dialog).queryByText("An active employee location with a timezone is required.")).toBeNull();
+    fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Employment ended" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Terminate" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm termination" }));
+    await waitFor(() =>
+      expect(terminateEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        employeeId,
+        expect.objectContaining({ worksiteTimezone: "America/New_York" }),
+      ),
+    );
+  });
+
+  // #7 (BL-778, K8): termination is destructive: red, and a second click.
+  it("asks twice, in red, before terminating", async () => {
+    const dialog = await openTermination();
+    fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Employment ended" } });
+    const terminate = within(dialog).getByRole("button", { name: "Terminate" });
+    expect(terminate.className).toContain("danger-button");
+    fireEvent.click(terminate);
+    expect(terminateEmployee).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm termination" }));
+    await waitFor(() => expect(terminateEmployee).toHaveBeenCalledTimes(1));
+  });
+
+  // Arming must not move Cancel: the button is as wide as its armed words
+  // from the start (measured 112 → 191 px before).
+  it("keeps the button as wide at rest as when armed", async () => {
+    const dialog = await openTermination();
+    const terminate = within(dialog).getByRole("button", { name: "Terminate" });
+    const sizer = terminate.querySelector("[aria-hidden='true']");
+    expect(sizer?.textContent).toBe("Confirm termination");
+  });
+
+  // #8 (BL-779, T2): what is missing is said under its field, not in the
+  // browser's bubble, and nothing is armed.
+  it("says a missing reason under the field and does not arm", async () => {
+    const dialog = await openTermination();
+    expect(dialog.querySelector("form")?.noValidate).toBe(true);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Terminate" }));
+    const reason = within(dialog).getByLabelText("Reason");
+    expect(reason.getAttribute("aria-invalid")).toBe("true");
+    const message = document.getElementById(reason.getAttribute("aria-describedby") ?? "");
+    expect(message?.textContent).toBe("Enter a reason of at least 3 characters.");
+    expect(document.activeElement).toBe(reason);
+    expect(within(dialog).queryByRole("button", { name: "Confirm termination" })).toBeNull();
+    expect(terminateEmployee).not.toHaveBeenCalled();
+  });
+
+  // #8 (BL-779): the window takes the focus, keeps Tab inside, and Escape
+  // hands it back to the button that opened it.
+  it("puts the focus on the first field when it opens", async () => {
+    const dialog = await openTermination();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(within(dialog).getByLabelText("Effective date and time")),
+    );
+  });
+
+  it("keeps Tab inside the window", async () => {
+    const dialog = await openTermination();
+    const close = within(dialog).getByRole("button", { name: "Close termination dialog" });
+    const terminate = within(dialog).getByRole("button", { name: "Terminate" });
+    terminate.focus();
+    fireEvent.keyDown(terminate, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+    fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(terminate);
+  });
+
+  it("gives the focus back to Terminate employee on Escape", async () => {
+    const dialog = await openTermination();
+    fireEvent.keyDown(within(dialog).getByLabelText("Reason"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Terminate employee" })).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Terminate employee" }));
+  });
+
+  // #16 (BL-777, K2): typed here, it was dropped without a word.
+  it("keeps Preferred name read-only before the person is active", async () => {
+    renderDrawer("profile");
+    const preferred = await screen.findByLabelText("Preferred name");
+    expect((preferred as HTMLInputElement).disabled).toBe(true);
+    expect(lockReason(preferred)).toBe("Changed only by the employee's request");
   });
 });

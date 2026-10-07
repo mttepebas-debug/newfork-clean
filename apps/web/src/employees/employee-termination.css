@@ -1,0 +1,14 @@
+/* Employees: the termination window (EKRAN-03). Tokens only. */
+
+/* The confirm button is as wide at rest ("Terminate") as armed ("Confirm
+   termination"): both words share one cell, the unused one keeps the width. */
+.employee-termination-confirm {
+  display: inline-grid;
+  justify-items: center;
+}
+.employee-termination-confirm > span {
+  grid-area: 1 / 1;
+}
+.employee-termination-confirm > span[aria-hidden="true"] {
+  visibility: hidden;
+}

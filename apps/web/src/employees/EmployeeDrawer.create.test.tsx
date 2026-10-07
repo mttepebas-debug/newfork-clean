@@ -98,6 +98,13 @@ describe("employee create flow", () => {
     expect(screen.queryByLabelText("Phone")).toBeNull();
   });
 
+  // K2 (BL-777): a preferred name typed here was dropped without a word; it
+  // changes only by the employee's request and an answer.
+  it("keeps Preferred name read-only on a new employee", () => {
+    setup();
+    expect((screen.getByLabelText("Preferred name") as HTMLInputElement).disabled).toBe(true);
+  });
+
   it.each(["Enter", "Escape", "outside"])(
     "creates with Enter then closes unchanged with %s",
     async (closeMethod) => {

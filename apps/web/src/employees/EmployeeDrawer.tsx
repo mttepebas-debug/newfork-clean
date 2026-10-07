@@ -15,7 +15,7 @@ import {
   type EmployeeSection,
   type WorkspaceRole,
 } from "@newfork/shared";
-import { Button, ConfirmButton, useToast } from "@newfork/ui";
+import { Button, ConfirmButton, useConfirmClick, useToast } from "@newfork/ui";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -52,6 +52,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
+import "./employee-termination.css";
 import {
   getEmployeeDetail,
   getEmployeeAvatar,
@@ -162,6 +163,16 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const [error, setError] = useState<string | null>(null);
   const [developmentUrl, setDevelopmentUrl] = useState<string | null>(null);
   const [terminationOpen, setTerminationOpen] = useState(false);
+  // The button that opens the termination window takes the focus back when
+  // it closes, however it closes (BL-779).
+  const lifecycleButtonRef = useRef<HTMLButtonElement>(null);
+  const terminationWasOpen = useRef(false);
+  useEffect(() => {
+    if (terminationWasOpen.current && !terminationOpen) {
+      lifecycleButtonRef.current?.focus();
+    }
+    terminationWasOpen.current = terminationOpen;
+  }, [terminationOpen]);
   const [terminationNotice, setTerminationNotice] = useState<string | null>(
     null,
   );
@@ -1350,6 +1361,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   <PassiveTerminate reason="Save your changes before terminating the employee" />
                 ) : !props.creating && canChangeLifecycle ? (
                   <button
+                    ref={lifecycleButtonRef}
                     type="button"
                     className={`employee-lifecycle-button${archived ? " restore" : ""}`}
                     disabled={
@@ -1474,6 +1486,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 (assignment) => assignment.id === location.id,
               ),
             )}
+            workspaceLocations={(references.data?.locations ?? []).filter(
+              (location) => !location.archived,
+            )}
             primaryLocationId={detail.data.primary_location_id}
             pending={terminationMutation.isPending}
             error={terminationMutation.isError ? error : null}
@@ -1489,6 +1504,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 function EmployeeTerminationDialog({
   employeeName,
   locations,
+  workspaceLocations,
   primaryLocationId,
   pending,
   error,
@@ -1497,6 +1513,8 @@ function EmployeeTerminationDialog({
 }: {
   readonly employeeName: string;
   readonly locations: readonly EmployeeOption[];
+  /** The workspace's open locations: their zones serve somebody with none left (K4). */
+  readonly workspaceLocations: readonly EmployeeOption[];
   readonly primaryLocationId: string | null;
   readonly pending: boolean;
   readonly error: string | null;
@@ -1504,19 +1522,71 @@ function EmployeeTerminationDialog({
   readonly onSubmit: (input: EmployeeTerminationInput) => void;
 }) {
   const titleId = useId();
-  const timezoneOptions = Array.from(
-    new Set(locations.map((location) => location.timezone).filter(Boolean)),
-  ) as string[];
+  const fieldId = useId();
+  const zonesOf = (rows: readonly EmployeeOption[]) =>
+    Array.from(new Set(rows.map((row) => row.timezone).filter(Boolean))) as string[];
+  // The zone is one of the places they work. With no location left (K4,
+  // BL-765) the server takes any valid zone: the workspace's are offered.
+  const ownZones = zonesOf(locations);
+  const timezoneOptions = ownZones.length ? ownZones : zonesOf(workspaceLocations);
   const primaryTimezone =
     locations.find((location) => location.id === primaryLocationId)?.timezone ??
     timezoneOptions[0] ??
     "";
-  const [timezone, setTimezone] = useState(primaryTimezone);
+  const [chosenTimezone, setTimezone] = useState(primaryTimezone);
+  // The pick lists can arrive after the window opens.
+  const timezone = timezoneOptions.includes(chosenTimezone)
+    ? chosenTimezone
+    : primaryTimezone;
   const [effectiveLocal, setEffectiveLocal] = useState(() =>
     localDateTimeValue(new Date(), primaryTimezone || undefined),
   );
   const [reason, setReason] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    effective?: string;
+    reason?: string;
+  }>({});
   const idempotencyKey = useRef(crypto.randomUUID());
+  const dialogRef = useRef<HTMLElement>(null);
+  const effectiveRef = useRef<HTMLInputElement>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    effectiveRef.current?.focus();
+  }, []);
+
+  // Said under the field, not in the browser's bubble (T2, BL-779).
+  function validate() {
+    const next = {
+      effective: !effectiveLocal
+        ? "Enter the effective date and time."
+        : effectiveLocal > localDateTimeValue(new Date(), timezone || undefined)
+          ? "The effective time can't be in the future."
+          : undefined,
+      reason:
+        reason.trim().length < 3
+          ? "Enter a reason of at least 3 characters."
+          : undefined,
+    };
+    setFieldErrors(next);
+    if (next.effective) effectiveRef.current?.focus();
+    else if (next.reason) reasonRef.current?.focus();
+    return !next.effective && !next.reason;
+  }
+
+  function submit() {
+    onSubmit({
+      effectiveLocal,
+      worksiteTimezone: timezone,
+      reason,
+      idempotencyKey: idempotencyKey.current,
+    });
+  }
+
+  // Destructive: red, and a second click (K8, BL-778).
+  const { armed, confirmProps } = useConfirmClick(() => {
+    if (validate()) submit();
+  });
 
   return (
     <div className="employee-termination-layer" role="presentation">
@@ -1527,10 +1597,29 @@ function EmployeeTerminationDialog({
         onClick={onClose}
       />
       <section
+        ref={dialogRef}
         className="employee-termination-dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onKeyDown={(event) => {
+          // Tab stays in the window (BL-779).
+          if (event.key !== "Tab") return;
+          const items = Array.from(
+            dialogRef.current?.querySelectorAll<HTMLElement>(
+              "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled)",
+            ) ?? [],
+          );
+          const first = items[0],
+            last = items[items.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
       >
         <header>
           <div>
@@ -1546,26 +1635,31 @@ function EmployeeTerminationDialog({
             <X size={16} />
           </button>
         </header>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmit({
-              effectiveLocal,
-              worksiteTimezone: timezone,
-              reason,
-              idempotencyKey: idempotencyKey.current,
-            });
-          }}
-        >
+        <form noValidate onSubmit={(event) => event.preventDefault()}>
           <label>
             Effective date and time
             <input
+              ref={effectiveRef}
+              // Named here: the error under it sits inside the label.
+              aria-label="Effective date and time"
               type="datetime-local"
               value={effectiveLocal}
               max={localDateTimeValue(new Date(), timezone || undefined)}
-              onChange={(event) => setEffectiveLocal(event.target.value)}
-              required
+              onChange={(event) => {
+                setEffectiveLocal(event.target.value);
+                setFieldErrors((current) => ({ ...current, effective: undefined }));
+              }}
+              aria-required
+              aria-invalid={fieldErrors.effective ? true : undefined}
+              aria-describedby={
+                fieldErrors.effective ? `${fieldId}-effective` : undefined
+              }
             />
+            {fieldErrors.effective ? (
+              <small id={`${fieldId}-effective`} className="employee-field-error">
+                {fieldErrors.effective}
+              </small>
+            ) : null}
           </label>
           <label>
             Worksite timezone
@@ -1576,7 +1670,7 @@ function EmployeeTerminationDialog({
                 setTimezone(nextTimezone);
                 setEffectiveLocal(localDateTimeValue(new Date(), nextTimezone));
               }}
-              required
+              aria-required
             >
               {timezoneOptions.map((option) => (
                 <option key={option} value={option}>
@@ -1588,12 +1682,23 @@ function EmployeeTerminationDialog({
           <label>
             Reason
             <textarea
+              ref={reasonRef}
+              aria-label="Reason"
               value={reason}
-              minLength={3}
               maxLength={240}
-              onChange={(event) => setReason(event.target.value)}
-              required
+              onChange={(event) => {
+                setReason(event.target.value);
+                setFieldErrors((current) => ({ ...current, reason: undefined }));
+              }}
+              aria-required
+              aria-invalid={fieldErrors.reason ? true : undefined}
+              aria-describedby={fieldErrors.reason ? `${fieldId}-reason` : undefined}
             />
+            {fieldErrors.reason ? (
+              <small id={`${fieldId}-reason`} className="employee-field-error">
+                {fieldErrors.reason}
+              </small>
+            ) : null}
           </label>
           <p className="employee-termination-warning">
             Access will be suspended. Published shifts starting at or after the
@@ -1617,9 +1722,29 @@ function EmployeeTerminationDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={pending || !timezoneOptions.length}>
-              {pending ? "Terminating" : "Confirm termination"}
+            <Button
+              type="button"
+              className="danger-button"
+              disabled={pending || !timezoneOptions.length}
+              {...confirmProps}
+              onClick={(event) => {
+                // Nothing is armed while a field is missing (BL-779).
+                if (!armed && !validate()) return;
+                confirmProps.onClick(event);
+              }}
+              data-confirming={armed}
+            >
+              {/* As wide at rest as armed, so Cancel never moves. */}
+              <span className="employee-termination-confirm">
+                <span>
+                  {pending ? "Terminating" : armed ? "Confirm termination" : "Terminate"}
+                </span>
+                <span aria-hidden="true">Confirm termination</span>
+              </span>
             </Button>
+            <span className="sr-only" role="status">
+              {armed ? "Confirm termination" : ""}
+            </span>
           </footer>
         </form>
       </section>
@@ -2025,13 +2150,14 @@ function ProfileSection({
               }
             />
           </div>
+          {/* K2 (BL-777): a preferred name changes only by the employee's
+              request and an answer; the save never wrote what was typed here. */}
           <Field
             label="Preferred name"
             value={draft.preferred_name}
-            disabled={identityReadOnly}
-            onChange={(value) =>
-              setDraft((current) => ({ ...current, preferred_name: value }))
-            }
+            disabled
+            lockedReason="Changed only by the employee's request"
+            onChange={() => undefined}
           />
           {!creating && canReadPrivate ? (
             <ReadOnlyField
