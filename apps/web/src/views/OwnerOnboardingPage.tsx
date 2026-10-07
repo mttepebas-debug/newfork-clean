@@ -630,6 +630,8 @@ export default function OwnerOnboardingPage() {
           Job name
           <input
             id="job-panel-name"
+            // Named outright: the rule's line sits inside the label.
+            aria-label="Job name"
             value={jobPanelName}
             maxLength={100}
             onChange={(event) => setJobPanelName(event.target.value)}
@@ -944,6 +946,8 @@ export default function OwnerOnboardingPage() {
                     First name
                     <input
                       id="owner-first-name"
+                      // Named outright: the rule's line sits inside the label.
+                      aria-label="First name"
                       value={ownerFirstName}
                       maxLength={80}
                       onChange={(event) => setOwnerFirstName(event.target.value)}
@@ -958,6 +962,8 @@ export default function OwnerOnboardingPage() {
                     Middle name <span className="field-optional">optional</span>
                     <input
                       id="owner-middle-name"
+                      // Named outright: the rule's line sits inside the label.
+                      aria-label="Middle name"
                       value={ownerMiddleName}
                       maxLength={80}
                       onChange={(event) => setOwnerMiddleName(event.target.value)}
@@ -970,6 +976,8 @@ export default function OwnerOnboardingPage() {
                     Last name
                     <input
                       id="owner-last-name"
+                      // Named outright: the rule's line sits inside the label.
+                      aria-label="Last name"
                       value={ownerLastName}
                       maxLength={80}
                       onChange={(event) => setOwnerLastName(event.target.value)}
@@ -988,6 +996,8 @@ export default function OwnerOnboardingPage() {
                   Workspace name
                   <input
                     id="workspace-name"
+                    // Named outright: the rule's line sits inside the label.
+                    aria-label="Workspace name"
                     value={workspaceName}
                     maxLength={120}
                     onChange={(event) => setWorkspaceName(event.target.value)}
@@ -1290,6 +1300,12 @@ export default function OwnerOnboardingPage() {
                         )}
                       </div>
                     </div>
+                    {renamingDepartmentId === department.id ? (
+                      <LetterRuleError
+                        value={renameDepartmentName}
+                        id="rename-department-error"
+                      />
+                    ) : null}
                     <JobChips
                       jobs={jobsIn(department.id)}
                       empty="No jobs in this department yet."
@@ -1347,6 +1363,8 @@ export default function OwnerOnboardingPage() {
                     Department name
                     <input
                       id="department-name"
+                      // Named outright: the rule's line sits inside the label.
+                      aria-label="Department name"
                       value={departmentName}
                       maxLength={100}
                       onChange={(event) =>
@@ -1380,6 +1398,8 @@ export default function OwnerOnboardingPage() {
                       Job or role
                       <input
                         id="job-name"
+                        // Named outright: the rule's line sits inside the label.
+                        aria-label="Job or role"
                         value={jobName}
                         maxLength={100}
                         onChange={(event) => setJobName(event.target.value)}
@@ -1599,6 +1619,8 @@ function LocationFields({
         Location name
         <input
           id="location-name"
+          // Named outright: the rule's line sits inside the label.
+          aria-label="Location name"
           value={draft.name}
           maxLength={120}
           onChange={(event) => onChange({ ...draft, name: event.target.value }, "name")}
@@ -1659,6 +1681,8 @@ function LocationFields({
         Street address
         <input
           id="location-street"
+          // Named outright: the rule's line sits inside the label.
+          aria-label="Street address"
           value={draft.street_address}
           maxLength={180}
           onChange={(event) =>
@@ -1677,6 +1701,8 @@ function LocationFields({
         City
         <input
           id="location-city"
+          // Named outright: the rule's line sits inside the label.
+          aria-label="City"
           value={draft.city}
           maxLength={100}
           onChange={(event) => onChange({ ...draft, city: event.target.value }, "city")}
@@ -1693,6 +1719,8 @@ function LocationFields({
         State or region
         <input
           id="location-region"
+          // Named outright: the rule's line sits inside the label.
+          aria-label="State or region"
           value={draft.region}
           maxLength={100}
           onChange={(event) =>
@@ -1741,7 +1769,7 @@ function LocationFields({
         <UsPhoneInput
           id="location-phone"
           // Named outright: the +1 sits inside the label.
-          aria-label="Phone number"
+          aria-label="Phone number (optional)"
           value={draft.phone}
           onChange={(phone) => onChange({ ...draft, phone }, "phone")}
           aria-invalid={errors.phone ? true : undefined}
@@ -1845,6 +1873,8 @@ function EmployeeFields({
         First name
         <input
           id="employee-first-name"
+          // Named outright: the rule's line sits inside the label.
+          aria-label="First name"
           value={draft.first_name}
           maxLength={80}
           onChange={(event) =>
@@ -1859,6 +1889,8 @@ function EmployeeFields({
         Last name
         <input
           id="employee-last-name"
+          // Named outright: the rule's line sits inside the label.
+          aria-label="Last name"
           value={draft.last_name}
           maxLength={80}
           onChange={(event) =>

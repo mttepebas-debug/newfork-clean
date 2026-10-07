@@ -1147,9 +1147,10 @@ describe("OwnerOnboardingPage", () => {
 
 // BL-503: KARARLAR "Form ve girdi kuralları (ABD)" on every setup field.
 describe("OwnerOnboardingPage US form rules", () => {
-  // The line sits inside the label, so the label is matched by its start.
+  // The line sits inside the label; the field's name stays the label alone,
+  // so a screen reader does not read the line twice.
   const saysUnder = (label: string) => {
-    const field = screen.getByLabelText(new RegExp(`^${label}`));
+    const field = screen.getByRole("textbox", { name: label });
     const line = screen.getByText(usLettersMessage, { selector: `#${field.getAttribute("aria-describedby")}` });
     expect(field.getAttribute("aria-invalid")).toBe("true");
     return line;
@@ -1199,6 +1200,19 @@ describe("OwnerOnboardingPage US form rules", () => {
     fireEvent.change(screen.getByLabelText("Job or role"), { target: { value: "Garsonİ" } });
     expect(saysUnder("Job or role")).toBeTruthy();
     expect(screen.getByRole("button", { name: /add job/i })).toHaveProperty("disabled", true);
+  });
+
+  it("says under a department being renamed", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(3);
+    await screen.findByRole("heading", { name: "What jobs do people work?" });
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+    fireEvent.change(screen.getByRole("textbox", { name: `Rename ${department.name}` }), {
+      target: { value: "Mutfak Ağı" },
+    });
+    expect(saysUnder(`Rename ${department.name}`)).toBeTruthy();
   });
 
   it("says under the team member's First name", async () => {
