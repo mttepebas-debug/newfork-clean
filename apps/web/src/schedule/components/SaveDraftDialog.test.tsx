@@ -64,7 +64,11 @@ describe("SaveDraftDialog", () => {
     ).toBeTruthy();
 
     // BL-708 (UI-12): overwriting another draft asks twice, as Publish ▾ does.
+    // Enter does not overwrite; it moves to the button that does.
     fireEvent.submit(screen.getByLabelText("Draft name"));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Overwrite draft" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Overwrite draft" }));
     expect(onSave).not.toHaveBeenCalled();
 

@@ -28,8 +28,13 @@ export function SaveDraftDialog({
         className="schedule-save-form"
         onSubmit={(event) => {
           event.preventDefault();
-          // Overwriting another draft is the button's second click, never Enter (BL-708).
-          if (!busy && !target) onSave(name, null);
+          // Overwriting another draft is the button's second click, never
+          // Enter (BL-708); Enter moves to that button instead.
+          if (target)
+            event.currentTarget
+              .querySelector<HTMLButtonElement>("[data-save-draft-overwrite]")
+              ?.focus();
+          else if (!busy) onSave(name, null);
         }}
       >
         <label>
@@ -75,6 +80,7 @@ export function SaveDraftDialog({
           {target ? (
             // UI-12: overwriting another draft asks twice, as Publish ▾ does.
             <ConfirmButton
+              data-save-draft-overwrite
               unstyled
               className="danger"
               disabled={busy}
