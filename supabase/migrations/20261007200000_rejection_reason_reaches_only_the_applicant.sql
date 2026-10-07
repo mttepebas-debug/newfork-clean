@@ -88,7 +88,8 @@ begin
    'eligibility',case when (allowed or a.employee_id=emp_id) and live_status='open' then (app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',case when a.employee_id=emp_id and a.status='invited' then 'true'::jsonb else a.time_off_consent end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))-case when allowed then '{}'::text[] else array['approval_flags'] end) || case when a.employee_id=emp_id and a.status='invited' then jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp_id,s)) else '{}'::jsonb end end) order by a.created_at),'[]'::jsonb)
   into apps from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id where a.case_id=c.id and (allowed or mine or a.employee_id=emp_id);
   select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'action',e.action,'created_at',e.created_at,
-   -- BL-910: a declined application's reason is read by the applicant and by who decides.
+   -- BL-910: a declined application's reason is read by the applicant and by who reads the
+   -- location's requests (allowed), as applications[].reason already is.
    'message',case when e.action='application_rejected' and not allowed and not exists(select 1 from public.shift_exchange_applications a
     where a.id=e.application_id and a.employee_id=emp_id) then 'A request for your shift was declined. You are still responsible for this shift.' else e.message end,
    -- K-S5: the note goes to who decides this case for this application too.
