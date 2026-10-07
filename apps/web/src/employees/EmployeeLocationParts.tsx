@@ -1,7 +1,7 @@
 import type { EmployeeDetail, EmployeeSummary } from "@newfork/shared";
 import { ConfirmButton } from "@newfork/ui";
 import { Info, Lock, MapPin } from "lucide-react";
-import { useId } from "react";
+import { Tooltip } from "../shell/Tooltip";
 import "./employee-location-parts.css";
 
 /*
@@ -50,31 +50,26 @@ export function RemoveFromLocationButton({
 }
 
 /**
- * Terminate shown switched off: to a manager, or while a draft is unsaved. The
- * reason is its title and, off screen, what it is described by.
+ * Terminate shown switched off: to a manager, or while a draft is unsaved. It
+ * stays reachable and does nothing; the reason opens in the app's bubble on
+ * hover, keyboard focus and a tap, and is what it is described by (BL-429).
  */
 export function PassiveTerminate({
   reason = terminateOnlyAdmin,
 }: {
   readonly reason?: string;
 }) {
-  const reasonId = useId();
   return (
-    <>
-      <button
-        type="button"
-        className="employee-lifecycle-button employee-terminate-passive"
-        disabled
-        title={reason}
-        aria-describedby={reasonId}
-      >
-        <Lock size={15} aria-hidden />
-        Terminate employee
-      </button>
-      <span id={reasonId} className="sr-only">
-        {reason}
-      </span>
-    </>
+    <Tooltip
+      unstyled
+      label="Terminate employee"
+      content={reason}
+      className="employee-lifecycle-button employee-terminate-passive"
+      aria-disabled="true"
+    >
+      <Lock size={15} aria-hidden />
+      Terminate employee
+    </Tooltip>
   );
 }
 

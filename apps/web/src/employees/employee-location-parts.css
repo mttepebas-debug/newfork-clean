@@ -28,12 +28,12 @@
 }
 
 /* Terminate, switched off for a manager, and the reason under Locations. */
-.employee-lifecycle-button.employee-terminate-passive:disabled {
+.employee-lifecycle-button.employee-terminate-passive[aria-disabled="true"] {
   padding: 0 8px;
   color: var(--theme-muted-strong);
   cursor: not-allowed;
 }
-.employee-lifecycle-button.employee-terminate-passive:disabled:hover {
+.employee-lifecycle-button.employee-terminate-passive[aria-disabled="true"]:hover {
   background: transparent;
 }
 .employee-terminate-note {

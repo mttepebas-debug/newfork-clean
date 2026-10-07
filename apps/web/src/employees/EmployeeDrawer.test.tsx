@@ -286,6 +286,21 @@ async function employeeLoaded() {
   });
 }
 
+/** Everything a control is described by (a Tooltip's text or an off-screen note). */
+function describedBy(control: HTMLElement): string {
+  return (control.getAttribute("aria-describedby") ?? "")
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ")
+    .trim();
+}
+
+/** A Terminate switched off: still reachable by keyboard and tap, does nothing (BL-429). */
+function switchedOff(control: HTMLElement) {
+  expect(control.getAttribute("aria-disabled")).toBe("true");
+  expect((control as HTMLButtonElement).disabled).toBe(false);
+}
+
 /** The off-screen reason a switched-off control is described by. */
 function lockReason(control: HTMLElement): string | null {
   return (
@@ -2107,9 +2122,8 @@ describe("EmployeeDrawer locations and access follow the server", () => {
     currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
     renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
     const terminate = (await screen.findByRole("button", { name: "Terminate employee" })) as HTMLButtonElement;
-    expect(terminate.disabled).toBe(true);
-    expect(terminate.title).toBe("Only an admin or the owner can terminate an employee.");
-    expect(lockReason(terminate)).toBe("Only an admin or the owner can terminate an employee.");
+    switchedOff(terminate);
+    expect(describedBy(terminate)).toBe("Only an admin or the owner can terminate an employee.");
     expect(
       screen.getByText(/Only an admin or the owner can terminate an employee\. To take Alex off Main Dining, use Remove\./),
     ).toBeTruthy();
@@ -2586,8 +2600,8 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     renderDrawer("access", linked);
     await pickManager();
     const terminate = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
-    expect(terminate.disabled).toBe(true);
-    expect(terminate.title).toBe("Save your changes before terminating the employee");
+    switchedOff(terminate);
+    expect(describedBy(terminate)).toBe("Save your changes before terminating the employee");
   });
 
   // Visual QA D1: switched off has one look, the manager's, and says why.
@@ -2597,9 +2611,9 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     expect(live.classList.contains("employee-terminate-passive")).toBe(false);
     await pickManager();
     const held = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
-    expect(held.disabled).toBe(true);
+    switchedOff(held);
     expect(held.classList.contains("employee-terminate-passive")).toBe(true);
-    expect(lockReason(held)).toBe("Save your changes before terminating the employee");
+    expect(describedBy(held)).toBe("Save your changes before terminating the employee");
   });
 
   it("offers Save changes to a reader who may change the role and not the record", async () => {
@@ -2949,6 +2963,22 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
     expect(document.activeElement).toBe(first);
     fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
     expect(document.activeElement).toBe(last);
+  });
+
+  // #46 (BL-429): a manager reaches why Terminate is switched off by keyboard
+  // and by tap, in the app's bubble; pressing it opens nothing.
+  it("says why Terminate is switched off on focus and on a tap", async () => {
+    currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
+    renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
+    const terminate = await screen.findByRole("button", { name: "Terminate employee" });
+    fireEvent.focus(terminate);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(
+      "Only an admin or the owner can terminate an employee.",
+    );
+    fireEvent.blur(terminate);
+    fireEvent.click(terminate);
+    expect(screen.getByRole("tooltip").textContent).toBe("Only an admin or the owner can terminate an employee.");
+    expect(screen.queryByRole("dialog", { name: "Terminate employee" })).toBeNull();
   });
 
   // The row that opened it can leave the list (removed from the location):
