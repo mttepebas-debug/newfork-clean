@@ -53,15 +53,15 @@ set local role postgres;
 create temporary table document_type_ids (label text primary key, id uuid not null);
 insert into document_type_ids
 select title, id from public.document_types
-where title in ('Food handler card', 'Team handbook');
+where workspace_id = '24000000-0000-4000-8000-000000000001' and title in ('Food handler card', 'Team handbook');
 grant select on document_type_ids to service_role;
 select is((select count(*)::integer from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001'), 2, 'document types are stored');
 select ok(
-  (select required_at_onboarding and requires_review and tracks_expiry from public.document_types where title = 'Food handler card'),
+  (select required_at_onboarding and requires_review and tracks_expiry from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001' and title = 'Food handler card'),
   'workflow metadata is persisted'
 );
 select is(
-  (select expiry_schedule_impact::text from public.document_types where title = 'Food handler card'),
+  (select expiry_schedule_impact::text from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001' and title = 'Food handler card'),
   'warn',
   'expiry schedule impact is persisted'
 );
@@ -117,7 +117,7 @@ select lives_ok(
   'admin can update a document type'
 );
 set local role postgres;
-select is((select description from public.document_types where title = 'Team handbook'), 'Current handbook upload', 'document update is persisted');
+select is((select description from public.document_types where workspace_id = '24000000-0000-4000-8000-000000000001' and title = 'Team handbook'), 'Current handbook upload', 'document update is persisted');
 set local role service_role;
 select lives_ok(
   $$select public.set_document_type_archived_service(
@@ -128,7 +128,7 @@ select lives_ok(
   'admin can archive a document type'
 );
 set local role postgres;
-select is((select count(*)::integer from public.audit_events where action = 'document_type.archived'), 1, 'document archive is audited');
+select is((select count(*)::integer from public.audit_events where action = 'document_type.archived' and workspace_id = '24000000-0000-4000-8000-000000000001'), 1, 'document archive is audited');
 
 set local role service_role;
 select throws_ok(

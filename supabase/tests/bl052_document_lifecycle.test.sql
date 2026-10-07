@@ -36,7 +36,7 @@ select is(public.submit_employee_document_lifecycle_service('15200000-0000-4000-
 select ok((select paused_remaining_seconds>0 from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),'submit preserves remaining time');
 select is(public.review_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',3,
  (select submitted_document_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),'approve','','full',
- (select jsonb_agg(jsonb_build_object('id',file_id,'decision','keep')) from public.employee_document_submission_files)),4,'owner approves current version');
+ (select jsonb_agg(jsonb_build_object('id',file_id,'decision','keep')) from public.employee_document_submission_files where submission_id=(select submitted_document_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'))),4,'owner approves current version');
 select ok((select approved_document_id is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),'approval is separately retained');
 
 select is(public.save_employee_document_draft_file_service('15200000-0000-4000-8000-000000000002','65200000-0000-4000-8000-000000000001',4,
@@ -52,7 +52,7 @@ select is(public.review_employee_document_lifecycle_service('15200000-0000-4000-
  (select jsonb_agg(jsonb_build_object('id',file_id,'decision','keep')) from public.employee_document_submission_files where submission_id=(select submitted_document_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'))),7,'reject renewal with full correction period');
 select is((select app_private.document_obligation_state(r,now()) from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),'completed','valid old approval survives rejection');
 select ok((select deadline_at=now()+interval '168 hours' from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),'full correction uses server decision instant');
-select ok((select metadata ? 'old_deadline' and metadata ? 'new_deadline' and metadata->>'correction_period'='full' from public.onboarding_events where action='document.reject'),'rejection deadline and choice are audited');
+select ok((select metadata ? 'old_deadline' and metadata ? 'new_deadline' and metadata->>'correction_period'='full' from public.onboarding_events where workspace_id='25200000-0000-4000-8000-000000000001' and action='document.reject'),'rejection deadline and choice are audited');
 
 -- Controlled timestamps exercise pending-expiry and pre-existing suspension.
 update public.employee_document_submissions set state='pending_review' where id=(select submitted_document_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001');
@@ -81,7 +81,8 @@ select lives_ok($$select public.get_employee_document_lifecycle_service('1520000
 select throws_ok($$select public.get_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',true)$$,'42501','Not allowed','service RPC denies wrong actor without relying on RLS bypass');
 select throws_ok($$insert into public.employee_document_submission_files(submission_id,file_id,requirement_id,workspace_id,employee_id)
  select s.id,f.file_id,s.requirement_id,'25200000-0000-4000-8000-000000000099',s.employee_id
- from public.employee_document_submissions s cross join public.employee_document_submission_files f where s.id<>f.submission_id limit 1$$,'23503',null,'composite submission/file references reject forged tenant');
+ from public.employee_document_submissions s cross join public.employee_document_submission_files f
+ where s.workspace_id='25200000-0000-4000-8000-000000000001' and f.workspace_id='25200000-0000-4000-8000-000000000001' and s.id<>f.submission_id limit 1$$,'23503',null,'composite submission/file references reject forged tenant');
 reset role;
 -- Independent global job / location targeting: no invented paired assignment.
 select ok(app_private.document_target_matches('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','{"operator":"and","location_ids":["85200000-0000-4000-8000-000000000002"],"job_ids":["a5200000-0000-4000-8000-000000000001"]}'),'global cook job matches employee at either assigned location');
