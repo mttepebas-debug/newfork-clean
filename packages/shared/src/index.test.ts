@@ -13,7 +13,9 @@ import {
   scheduleJobSchema,
   scheduleShiftLabelSchema,
   documentTypeInputSchema,
+  employeeDetailSchema,
   employeeInputSchema,
+  employmentContactRecordFromRow,
   employeeReferenceDataSchema,
   employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
@@ -1668,6 +1670,52 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
 
 // BL-503: the schemas follow KARARLAR "Form ve girdi kuralları (ABD)".
 // BL-969: the data follows it too, so a read takes the schema a write takes.
+// BL-969 review: the Employees drawer and Account > Profile read a person's
+// contact with the rule the data keeps.
+describe("a person's contact read with the rule the data keeps (BL-969)", () => {
+  const contact = {
+    legal_first_name: "Taylor",
+    legal_last_name: "Reed",
+    phone: "+13105559999",
+    date_of_birth: null,
+    emergency_contact_name: "Morgan Reed",
+    emergency_contact_relationship: "Spouse",
+    emergency_contact_email: "",
+    emergency_contact_phone: "+13105550001",
+    share_phone_with_teammates: false,
+    share_email_with_teammates: false,
+  };
+  const privateContact = employeeDetailSchema.shape.private_contact;
+
+  it("takes phones only in E.164 and names only under the letter rule", () => {
+    expect(privateContact.safeParse(contact).success).toBe(true);
+    expect(privateContact.safeParse({ ...contact, phone: null, emergency_contact_phone: null, emergency_contact_name: null, emergency_contact_relationship: null }).success).toBe(true);
+    expect(privateContact.safeParse({ ...contact, phone: "3105559999" }).success).toBe(false);
+    expect(privateContact.safeParse({ ...contact, emergency_contact_phone: "555-0100" }).success).toBe(false);
+    for (const field of ["legal_first_name", "legal_last_name", "emergency_contact_name", "emergency_contact_relationship", "city"]) {
+      expect(privateContact.safeParse({ ...contact, [field]: "Şişli" }).success, field).toBe(false);
+    }
+  });
+
+  it("reads a person's own employment record the same way", () => {
+    const row = {
+      workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      workspace_name: "Meyhouse",
+      employee_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fe",
+      preferred_name: "",
+      phone: "+13105559999",
+      emergency_contact_name: "",
+      emergency_contact_relationship: "",
+      emergency_contact_phone: "",
+      emergency_contact_email: "",
+    };
+    expect(employmentContactRecordFromRow(row).emergencyContactPhone).toBe("");
+    expect(employmentContactRecordFromRow({ ...row, emergency_contact_phone: "+14155550100" }).emergencyContactPhone).toBe("+14155550100");
+    expect(() => employmentContactRecordFromRow({ ...row, emergency_contact_phone: "4155550100" })).toThrow();
+    expect(() => employmentContactRecordFromRow({ ...row, phone: "+442079460958" })).toThrow();
+  });
+});
+
 describe("US form rules on the schemas (BL-503, BL-969)", () => {
   const profile = {
     legal_first_name: "Taylor",

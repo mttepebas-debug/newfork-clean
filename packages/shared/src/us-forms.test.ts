@@ -19,6 +19,15 @@ describe("the US letter rule", () => {
     }
   });
 
+  // Pasted from macOS or a PDF, ş and İ can arrive as a letter plus a mark
+  // (BL-969 review): they are the same letters and the rule holds for them.
+  it("refuses the letters written as a base letter and a combining mark", () => {
+    for (const name of ["S\u0327is\u0327li", "Ag\u0306ca", "I\u0307stanbul"]) {
+      expect(hasTurkishOnlyLetters(name), name).toBe(true);
+    }
+    expect(hasTurkishOnlyLetters("Jose\u0301")).toBe(false);
+  });
+
   it("lets other Latin accents and hyphens through", () => {
     for (const name of ["José Peña", "Zoë", "Anne-Marie", "Müller", "Çelik", "Öztürk", "O'Brien"]) {
       expect(hasTurkishOnlyLetters(name)).toBe(false);
@@ -42,12 +51,19 @@ describe("the US phone rule", () => {
     expect(usPhoneDigits("41555501001234")).toBe("4155550100");
   });
 
-  it("takes nothing from a pasted number from outside the US", () => {
-    // Cut to ten digits, "+44 …" would become a wrong US number.
-    expect(usPhoneDigits("+44 20 7946 0958")).toBe("");
-    expect(formatUsPhone("+44 20 7946 0958")).toBe("");
+  // BL-969 review: cut to ten digits, "+44 …" read as a wrong US number. A
+  // number with another country code stays as typed, so it reads as what it is
+  // and is refused on save; a "+" typed on its own stays until the next key.
+  it("shows a number from outside the US as typed, never as a US one", () => {
+    for (const typed of ["+44 20 7946 0958", "(+44) 20 7946 0958", "+(44) 2079 4609", "tel:+442079460958"]) {
+      expect(usPhoneDigits(typed), typed).toBe("");
+      expect(formatUsPhone(typed), typed).toBe(typed);
+    }
+    expect(formatUsPhone("\uFF0B44 2079")).toBe("+44 2079");
+    expect(formatUsPhone("+")).toBe("+");
+    expect(formatUsPhone("+4")).toBe("+4");
+    expect(formatUsPhone("+1")).toBe("");
     expect(formatUsPhone("+1 415 555 0100")).toBe("(415) 555-0100");
-    expect(formatUsPhone("+")).toBe("");
   });
 
   it("masks while typing", () => {
@@ -56,6 +72,32 @@ describe("the US phone rule", () => {
     expect(formatUsPhone("4155")).toBe("(415) 5");
     expect(formatUsPhone("4155550100")).toBe("(415) 555-0100");
     expect(formatUsPhone("+14155550100")).toBe("(415) 555-0100");
+  });
+
+  // The same table is in supabase/tests/account_avatar_phone_contract.test.sql:
+  // the database's app_private.account_phone_e164 answers it the same way.
+  it("reads every way a number is written the way the database does", () => {
+    const table: ReadonlyArray<readonly [string, string | null]> = [
+      ["(415) 555-0100", "+14155550100"],
+      ["+1 (415) 555-0100", "+14155550100"],
+      ["1-415-555-0100", "+14155550100"],
+      ["415.555.0100", "+14155550100"],
+      ["\t+1 415 555 0100", "+14155550100"],
+      ["\uFF0B1 415 555 0100", "+14155550100"],
+      ["\uFF14\uFF11\uFF15\uFF15\uFF15\uFF15\uFF10\uFF11\uFF10\uFF10", "+14155550100"],
+      ["+44 20 7946 0958", null],
+      ["(+44) 20 7946 0958", null],
+      ["+(44) 2079 4609", null],
+      ["\t+32 2 123 45 67", null],
+      ["\u00A0+47 1234 5678", null],
+      ["\uFF0B44 2079460958", null],
+      ["tel:+442079460958", null],
+      ["(015) 555-0100", null],
+      ["555-0100", null],
+      ["4155550100 ext 12", null],
+      ["", null],
+    ];
+    for (const [typed, stored] of table) expect(toUsPhone(typed), JSON.stringify(typed)).toBe(stored);
   });
 
   it("stores ten digits as +1 and nothing less", () => {
