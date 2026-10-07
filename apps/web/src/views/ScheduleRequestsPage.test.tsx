@@ -112,9 +112,12 @@ let readFailure: { status: number; body: unknown } | null = null;
 configure({ asyncUtilTimeout: 5000 });
 
 // The Requests read (GET .../schedule/requests); decisions go to apiRequest.
-const fetchRequests = vi.fn(async (_path: string) => {
+// Each queue answers with its own requests: pending ones for needs_review,
+// the rest for closed.
+const fetchRequests = vi.fn(async (path: string) => {
   if (readFailure) throw requestFailure(readFailure.body, readFailure.status, "Workspace operation failed");
-  return read;
+  const closed = new URL(path, "http://x").searchParams.get("time_off_queue") === "closed";
+  return { ...read, time_off_requests: read.time_off_requests.filter((request) => (request.status === "pending") !== closed) };
 });
 const apiRequest = vi.fn();
 vi.mock("../lib/supabase", () => ({
@@ -193,28 +196,43 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await screen.findByRole("heading", { name: "Employee Hub" });
     expect(fetchRequests).not.toHaveBeenCalled();
   });
-  // EKRAN-02 C1 (K-S8): one table; tabs follow the work, not the request type.
-  it("lists time off and shift changes in one table under Needs review, In progress and Closed", async () => {
+  // KARARLAR Schedule → Requests, Ek 2026-10-07: the tabs are request types,
+  // each with what is still open; the filter row is Location and search.
+  it("lists time off and shift changes in one table under the request type tabs", async () => {
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
-    const tabs = screen.getByRole("group", { name: "Request status" });
-    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["Needs review1", "In progress", "Closed"]);
-    expect(within(tabs).getByRole("button", { name: /Needs review/ }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.queryByRole("tab")).toBeNull();
+    const tabs = screen.getByRole("group", { name: "Request type" });
+    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["All1", "Time off1", "Swap", "Cover", "Open shift"]);
+    expect(within(tabs).getByRole("button", { name: /All/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("group", { name: "Request status" })).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true);
-    expect(screen.getByRole("group", { name: "Request type" })).toBeTruthy();
-    for (const label of ["Time off", "Swap", "Cover", "Open shift"]) expect(screen.getByRole("checkbox", { name: label })).toBeTruthy();
   });
-  it("keeps the request type choice in the address and moves along the tabs with the arrow keys (R2-48)", async () => {
+  it("keeps the request type tab in the address and moves along the tabs with the arrow keys (R2-48)", async () => {
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
-    fireEvent.click(screen.getByRole("checkbox", { name: "Time off" }));
-    expect(screen.getByLabelText("Current URL").textContent).toContain("types=swap%2Ccover%2Copen_pickup");
+    fireEvent.click(screen.getByRole("button", { name: /^Swap/ }));
+    expect(screen.getByLabelText("Current URL").textContent).toContain("type=swap");
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
-    const needsReview = screen.getByRole("button", { name: /Needs review/ });
-    needsReview.focus();
-    fireEvent.keyDown(needsReview, { key: "ArrowRight" });
-    expect(document.activeElement?.textContent).toBe("In progress");
+    const all = screen.getByRole("button", { name: /^All/ });
+    all.focus();
+    fireEvent.keyDown(all, { key: "ArrowRight" });
+    expect(document.activeElement?.textContent).toBe("Time off1");
+  });
+  // P09: a closed request stays in the one list, under the open ones.
+  it("lists a closed request under the open ones in the same table", async () => {
+    const approved: TimeOffRequest = {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved", progress: null,
+      events: [{ id: "97400000-0000-4000-8000-000000000001", action: "approved", actor_name: "Ayşe Yılmaz", note: "", created_at: "2035-01-10T09:00:00Z" }],
+    };
+    read = { ...fixture, time_off_requests: [pending, approved] };
+    renderPage();
+    const closed = await screen.findByRole("row", { name: /Deniz Acar/ });
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows.map((row) => row.getAttribute("aria-label")?.split(",")[0])).toEqual(["Alex Kim", "Deniz Acar"]);
+    expect(within(closed).getByText("Approved")).toBeTruthy();
+    expect(within(rows[0]!).getByText("Needs review")).toBeTruthy();
+    expect(fetchRequests.mock.calls.some(([path]) => path.includes("time_off_queue=closed"))).toBe(true);
   });
   it("lands a manager notification link on its Shift Hub case", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
@@ -222,19 +240,19 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await screen.findByRole("heading", { name: "Shift changes" });
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
   });
-  it("keeps a time off reader to time off: no request type menu, no shift change list asked for", async () => {
+  it("keeps a time off reader to time off: no request type tabs, no shift change list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
     expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(getExchanges).not.toHaveBeenCalled();
   });
-  it("keeps a shift change reader to shift changes: no Time off type, no time off list asked for", async () => {
+  it("keeps a shift change reader to shift changes: no Time off tab, no time off list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.shift_change_requests.read"], actions: ["workspace.read", "exchange.read"] };
     renderPage();
-    await screen.findByRole("heading", { name: "Requests" });
-    expect(screen.queryByRole("checkbox", { name: "Time off" })).toBeNull();
-    expect(screen.getByRole("checkbox", { name: "Swap" })).toBeTruthy();
+    const tabs = await screen.findByRole("group", { name: "Request type" });
+    expect(within(tabs).queryByRole("button", { name: /Time off/ })).toBeNull();
+    expect(within(tabs).getByRole("button", { name: /^Swap/ })).toBeTruthy();
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // EKRAN-02 B1: the page's door asks the core, like its tabs do.
@@ -247,8 +265,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("hides the time off queue from someone the core does not let read it", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
     renderPage();
-    await screen.findByRole("heading", { name: "Requests" });
-    expect(screen.queryByRole("checkbox", { name: "Time off" })).toBeNull();
+    const tabs = await screen.findByRole("group", { name: "Request type" });
+    expect(within(tabs).queryByRole("button", { name: /Time off/ })).toBeNull();
     expect(fetchRequests).not.toHaveBeenCalled();
   });
 
@@ -278,7 +296,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       await inDeviceZone(device, async () => {
         const view = renderPage();
         const row = await screen.findByRole("row", { name: /Alex Kim/ });
-        expect(plain(row.textContent)).toContain("Jan 14, 12:00 PM Istanbul time");
+        expect(plain(within(row).getByText(/^Jan 14, 12:00 PM$/).textContent)).toBe("Jan 14, 12:00 PM");
+        expect(within(row).getByText("Istanbul time")).toBeTruthy();
         const drawer = await openTimeOffRequest();
         const panel = within(drawer).getByRole("region", { name: "Approval progress" });
         expect(plain(panel.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
@@ -313,7 +332,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
 
   it("shows no vote buttons when the core says this reader cannot vote", async () => {
     withRequest({ progress: { ...progress, can_vote: false, can_decide_alone: false } });
-    renderPage("/app/schedule/requests?tab=in_progress");
+    renderPage();
     const drawer = await openTimeOffRequest();
     expect(within(drawer).queryByRole("button", { name: /Approve/ })).toBeNull();
     expect(within(drawer).queryByRole("button", { name: /Deny/ })).toBeNull();
@@ -413,7 +432,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("revokes approved time off only with a reason", async () => {
     withRequest({ status: "approved", revision: 3, progress: null });
     apiRequest.mockResolvedValueOnce({ status: "revoked", request_id: requestId, revision: 4 });
-    renderPage("/app/schedule/requests?tab=closed");
+    renderPage();
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: /Revoke/ }));
     const box = await screen.findByRole("alertdialog", { name: "Revoke time off?" });
@@ -428,13 +447,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("does not offer revoke without the core's revoke action", async () => {
     withRequest({ status: "approved", progress: null });
     activeContext = { ...context, actions: context.actions.filter(action => action !== "time_off.revoke") };
-    renderPage("/app/schedule/requests?tab=closed");
+    renderPage();
     const drawer = await openTimeOffRequest();
     expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
   });
   it("does not offer revoke on an approved cancellation", async () => {
     withRequest({ status: "approved", request_type: "time_off_cancellation", progress: null });
-    renderPage("/app/schedule/requests?tab=closed");
+    renderPage();
     const drawer = await openTimeOffRequest();
     expect(within(drawer).queryByRole("button", { name: /Revoke/ })).toBeNull();
   });
@@ -455,7 +474,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     withRequest({ status: "approved", revision: 2, progress: null,
       segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
     apiRequest.mockResolvedValueOnce({ status: "approved", request_id: requestId, revision: 3 });
-    renderPage("/app/schedule/requests?tab=closed");
+    renderPage();
     await openTimeOffRequest();
     fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
@@ -483,6 +502,21 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(client.getQueryState(["schedule-read", workspaceId, "2035-01-15"])?.isInvalidated).toBe(true));
     expect(client.getQueryState(["workspace-dashboard", workspaceId])?.isInvalidated).toBe(true);
+  });
+});
+
+describe("a list that did not load (R2-11)", () => {
+  it("says so in words and asks again on Try again", async () => {
+    readFailure = { status: 500, body: { error: "boom" } };
+    renderPage();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Requests could not load");
+    expect(screen.queryByText("boom")).toBeNull();
+    const asked = fetchRequests.mock.calls.length;
+    readFailure = null;
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
+    expect(fetchRequests.mock.calls.length).toBeGreaterThan(asked);
   });
 });
 
