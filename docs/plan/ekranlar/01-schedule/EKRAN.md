@@ -81,13 +81,13 @@
 | 34 | Schedule'ın kendi pencereleri stil B'de: Export, Unpublish, Save draft, Review auto-fill, Review default hours, Keep editing?, Retroactive edit, Edit locked. "Keep editing?" sonucu söyler (süre dolunca işin "Auto-save" taslağına gideceğini) (BL-318, BL-715, BL-719). Ortak `ConfirmDialog` bu maddede yok (Requests C3'ün) | R1 | önce/sonra 1440 | ⏳ `styles.css` gerekirse önce koordinatör |
 | 35 | Publish → Pre-flight sayımı yalnız üstte: "1 shift needs a fix before you can publish. 1 more to review."; alttaki "N blocker · N risk" kalkar (BL-441; `PublishScheduleDialog.tsx:888-904`) | R1 | vitest + önce/sonra | ⏳ |
 | 36 | Publish penceresinde haftalık saat özeti ve "40+ scheduled hours" listesi (BL-121, KK-9) | R2 | vitest + önce/sonra | ⏳ yerleşim gözle (bkz. §5) |
-| 37 | Save draft penceresinde başka taslağın üstüne kaydetme iki tık, menüdeki gibi (BL-708; `SaveDraftDialog.tsx:44-74`) | R1 | `SaveDraftDialog.test` | ⏳ dalda hazır: @`3c1b5c07` |
+| 37 | Save draft penceresinde başka taslağın üstüne kaydetme iki tık, menüdeki gibi (BL-708; `SaveDraftDialog.tsx:44-74`) | R1 | `SaveDraftDialog.test` | ⏳ dalda hazır: @`3c1b5c07` (+ Enter odağı Overwrite'a taşır @`fde20ccd`) |
 | 38 | Onaylı izin üstündeki yayınlanmış vardiya (yalnız rızayla alınabilir) hücrede ne kırmızı ne "!" taşır (BL-579, S6; `ShiftCard.tsx:122,125`) | R1 | vitest | ⏳ |
-| 39 | Aynı çakışma sorusu vardiya penceresinde ve sayfada tek cümle (BL-577; `ShiftQuickEditor.tsx:1066`, `SchedulePage.tsx:3035`) | R1 | vitest | ⏳ cümle koordinatörden |
-| 40 | "Schedule published" bildirimindeki sayı değişen vardiyaları sayar, bütün yayını değil (BL-614) | R2 | API / pgTAP | ⏳ |
+| 39 | Aynı çakışma sorusu vardiya penceresinde ve sayfada tek cümle (BL-577; `ShiftQuickEditor.tsx:1066`, `SchedulePage.tsx:3035`) | R1 | `ShiftQuickEditor.test` M8 | ⏳ dalda hazır: @`a3c496cd` — cümle "Schedule this shift anyway?" (tek sabit) |
+| 40 | "Schedule published" bildirimindeki sayı değişen vardiyaları sayar, bütün yayını değil (BL-614) | R1 | `App.test` yayın toast'ı (sunucu 12 der, toast 0) | ⏳ dalda hazır: @`7f7be244` (sunucuya dokunmadan: önizlemedeki eklenen + değişen + kaldırılan) |
 | 41 | Auto-fill mesajında tekil / çoğul doğru (BL-710; `SchedulePage.tsx:3397`) | R0 | `autoFillText.test`, `App.test` auto-fill | ⏳ dalda hazır: @`88412e77` (penceredeki "Apply 1 assignments" de düzeldi) |
 | 42 | Şablon mesajı emojili etiket adını yarım karakterle kesmez (BL-236; `templateApplyMessage.ts:11`) | R0 | `templateApplyMessage.test` BL-236 | ⏳ dalda hazır: @`666f699a` |
-| 43 | Varsayılan saat penceresi arşivli vardiya tipini kendi adıyla gösterir, "Saved shift type" değil (BL-499; `DefaultHoursReviewDialog.tsx:92`) | R1 | vitest | ⏳ metin koordinatörden ("<ad> (archived)" önerisi) |
+| 43 | Varsayılan saat penceresi arşivli vardiya tipini kendi adıyla gösterir, "Saved shift type" değil (BL-499; `DefaultHoursReviewDialog.tsx:92`) | R1 | `DefaultHoursReviewDialog.test` BL-499 | ⏳ dalda hazır: @`6593dfd0` — "<ad> (archived)" |
 | 44 | Ekrana ham hata metni çıkmaz; 502 HTML cevabında da tek sade cümle (BL-395; bugün ≥19 yer: `SchedulePage.tsx` 905, 927, 968, 982, 1193, 1269-1270, 1410, 1575, 3414 + 10 dosya) | R1 | vitest + `rg` | ⏳ |
 | 45 | Unpublish penceresinin metni kendi içinde çelişmez ("This cannot be undone. Republish to restore.") ve "unworked shifts" jargonu yok. YENİ (C-D15) | R1 | vitest | ⏳ |
 
@@ -119,12 +119,12 @@ Prototipten taşınacak 37 kalemin bugünkü hâli: 6 var, 8 kısmen, 19 yok, 4 
 | 62 | Basılamayan Publish hover'da koyulaşmaz (S1.6; `styles.css:4339-4352`) | R1 | vitest | ⏳ |
 | 63 | Mini takvimde odak halkası komşu günün altında kalmaz (S1.7) | R1 | önce/sonra | ⏳ |
 | 64 | Vardiya kartı satırları token rengiyle (S2.1; ham `#596660`, `styles.css:11005`) | R1 | `rg` | ⏳ |
-| 65 | Önemli gün balonu "Halloween" diye okunur, "event: Halloween" değil; sürükleme engel cümlesi okunur tarih ve saatle ("covers 2026-10-03 -." değil) (BL-611, S2.2, S4.5, S4.6) | R1 | vitest | ⏳ |
-| 66 | Gün toplamı ekran okuyucuya okunur tarihle söylenir (S2.5; `ScheduleTotalsRow.tsx:58`) | R1 | vitest | ⏳ |
+| 65 | Önemli gün balonu "Halloween" diye okunur, "event: Halloween" değil; sürükleme engel cümlesi okunur tarih ve saatle ("covers 2026-10-03 -." değil) (BL-611, S2.2, S4.5, S4.6) | R1 | `DayHeaderCell.test`, `ScheduleDayHeaderCells.test`, `scheduleFilterModel.test`, `schedule-conflicts.test` | ⏳ dalda hazır: @`c565447d` (tür adları tek tabloda, Settings de oradan okur) |
+| 66 | Gün toplamı ekran okuyucuya okunur tarihle söylenir (S2.5; `ScheduleTotalsRow.tsx:58`) | R1 | `ScheduleTotalsRow.test`, `ScheduleGrid.hour-totals.test` | ⏳ dalda hazır: @`49f4e7de` |
 | 67 | Paste mode açıkken hücreler yeşil ve kopya imleci; etiket bildirimle üst üste binmez; kapanınca kırmızı engel mesajı temizlenir (BL-609, S3.1–S3.3; `data-paste-armed` hiç set edilmiyor) | R1 | vitest + önce/sonra | ⏳ |
 | 68 | Menü ve pencereler kısa geçişle açılır; sistemde hareket azaltma açıksa geçiş yok (S3.8, S3.9, S4.8, S5.1) | R1 | önce/sonra | ⏳ |
 | 69 | Sürükleme engel cümlesi "…" ile kesilir (S3.10; `styles.css:6219-6223`) | R1 | önce/sonra | ⏳ |
-| 70 | Auto-fill penceresi 600 px, tarih "Tue, Oct 6" (S3.11; `AutoFillReviewOverlay.tsx:107` ham ISO) | R1 | vitest | ⏳ |
+| 70 | Auto-fill penceresi 600 px, tarih "Tue, Oct 6" (S3.11; `AutoFillReviewOverlay.tsx:107` ham ISO) | R1 | `App.test` auto-fill | ⏳ kısmen dalda: tarih @`49f4e7de`; 600 px CSS turunda |
 | 71 | Varsayılan saat penceresinde aralıklar düzenli, tarih okunur (S3.12) | R1 | önce/sonra | ⏳ |
 | 72 | Vardiya penceresi klavyeyle açılınca da düzgün yerde açılır (bugün sol üst); 24 saatte dakika atlamaz; kural kutusunda cümle tekrarı yok; işaretli hücrede hover taramayı silmez (BL-613, S4.1–S4.4) | R1 | vitest | ⏳ dakika ve cümle kalemleri ölç |
 | 73 | Seçim kutularında yazı bir boy büyür (S4.7) | R1 | önce/sonra | ⏳ ölç |
@@ -135,8 +135,8 @@ Prototipten taşınacak 37 kalemin bugünkü hâli: 6 var, 8 kısmen, 19 yok, 4 
 | 78 | Çakışma kartı vardiya düzenleyicisinin Cancel düğmesini örtmez (BL-716) | R1 | önce/sonra | ⏳ ölç |
 | 79 | Vardiya düzenleyicisinin içinde hiza ve boyut tutarlı (BL-720) | R1 | önce/sonra + ölçüm | ⏳ ölç |
 | 80 | Hafta değişince "Next week" ve Settings düğmeleri yerinde kalır (BL-721; tarih kutusu sabit genişlik) | R1 | ölçüm | ⏳ |
-| 81 | Yüklenirken geliştirici dili yok ("Resolving the published week." gider); geçmiş haftada taslak satırı "read-only" açıklaması taşır; mini takvimde ay dışı günler ≥4,5:1; hayalet vardiya iğnesinin adı lokasyonu söyler (BL-723) | R1 | vitest | ⏳ |
-| 82 | Settings menüsünde "Role separators" (BL-655; "Seperators") | R0 | vitest | ⏳ |
+| 81 | Yüklenirken geliştirici dili yok ("Resolving the published week." gider); geçmiş haftada taslak satırı "read-only" açıklaması taşır; mini takvimde ay dışı günler ≥4,5:1; hayalet vardiya iğnesinin adı lokasyonu söyler (BL-723) | R1 | `ShiftCard.test` | ⏳ kısmen dalda: (1) yükleme metni, (4) iğne adı @`46c54ab1`; (2) read-only açıklaması ve (3) kontrast CSS turunda |
+| 82 | Settings menüsünde "Role separators" (BL-655; "Seperators") | R0 | `ScheduleTopBar.test`, `App.test` | ⏳ dalda hazır: @`d133da89` |
 | 83 | Hücredeki çakışma çizgisi oluşamayan bir durum içinse silinir (BL-522) | R1 | ölçüm | ⏳ ölç |
 | 84 | Availability kapalıyken gün sütunu daralmaz, saat iki satıra bölünmez (BL-574) | R1 | ölçüm | ⏳ ölç |
 | 85 | Ölü CSS silinir: `.schedule-shift-drawer` (BL-346), `.schedule-publish-action:disabled` (BL-453), Schedule telefonda kapandığı için 520 / 720 px Schedule kuralları (TEL-KAPALI artığı) | R1 | `rg` | ⏳ `styles.css`: önce koordinatör |
