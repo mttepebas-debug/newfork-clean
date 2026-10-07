@@ -63,7 +63,12 @@ describe("SaveDraftDialog", () => {
       ),
     ).toBeTruthy();
 
+    // BL-708 (UI-12): overwriting another draft asks twice, as Publish ▾ does.
+    fireEvent.submit(screen.getByLabelText("Draft name"));
     fireEvent.click(screen.getByRole("button", { name: "Overwrite draft" }));
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm overwrite" }));
 
     expect(onSave).toHaveBeenCalledWith("Service week", draft);
   });
