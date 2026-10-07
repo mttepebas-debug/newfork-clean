@@ -6,7 +6,7 @@ import type {
 import { closedLocationSeverity, getShiftTimeBasis, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
-import { formatTime } from "./lib/scheduleDateTime";
+import { formatTime, formatWeekdayDate } from "./lib/scheduleDateTime";
 
 export type ScheduleConflictReason =
   string | { readonly message?: unknown; readonly [key: string]: unknown };
@@ -120,13 +120,6 @@ function targetEvidence(reason: Record<string, unknown>): string {
   return ` Requested location: ${location}.`;
 }
 
-function readableDay(iso: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "this day";
-  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric", timeZone: "UTC",
-  });
-}
-
 function dateEvidence(reason: Record<string, unknown>): string {
   const date =
     safeCustomerText(reason.date) || safeCustomerText(reason.scheduled_date);
@@ -231,7 +224,7 @@ export function formatScheduleConflictMessage(
 
   if (reason.type === "time_off") {
     // BL-611: a day and hours a person reads, never the stored ISO date.
-    const date = readableDay(safeCustomerText(reason.date));
+    const date = formatWeekdayDate(safeCustomerText(reason.date));
     const startTime = safeCustomerText(reason.start_time);
     const endTime = safeCustomerText(reason.end_time);
     const hours =

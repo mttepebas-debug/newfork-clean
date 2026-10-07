@@ -6,6 +6,7 @@ import type {
 import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { autoFillApplyLabel } from "../lib/autoFillText";
+import { formatWeekdayDate } from "../lib/scheduleDateTime";
 
 export function AutoFillReviewOverlay({
   preview,
@@ -105,7 +106,7 @@ export function AutoFillReviewOverlay({
                     {proposal.job_name} · {proposal.location_name}
                   </strong>
                   <small>
-                    {proposal.scheduled_date} · {formatTime(proposal.start_time)}
+                    {formatWeekdayDate(proposal.scheduled_date)} · {formatTime(proposal.start_time)}
                     –
                     {formatTime(proposal.end_time)}
                   </small>
@@ -119,7 +120,7 @@ export function AutoFillReviewOverlay({
                 </span>
                 <div className="schedule-autofill-controls">
                   <select
-                    aria-label={`Assignment for ${proposal.job_name} on ${proposal.scheduled_date}`}
+                    aria-label={`Assignment for ${proposal.job_name} on ${formatWeekdayDate(proposal.scheduled_date)}`}
                     value={selectedEmployeeId}
                     disabled={isRejected}
                     onChange={(event) =>
@@ -144,7 +145,7 @@ export function AutoFillReviewOverlay({
                     type="button"
                     aria-label={`${isRejected ? "Undo reject" : "Reject"} ${
                       proposal.job_name
-                    } on ${proposal.scheduled_date}`}
+                    } on ${formatWeekdayDate(proposal.scheduled_date)}`}
                     onClick={() => toggleReject(proposal.shift_id)}
                   >
                     <X size={14} />
