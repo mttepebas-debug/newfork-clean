@@ -183,6 +183,18 @@ describe("ScheduleGrid", () => {
   };
 
   it.each([
+    [false, false],
+    [true, true],
+  ])("with editing = %s, the Unassigned row shows = %s, open shifts or not (BL-681, KARARLAR Schedule 2026-10-05)", (editing, rowShows) => {
+    const base = scheduleModel();
+    const model = scheduleModel({
+      shifts: [...base.shifts, { ...base.shifts[0]!, id: "66666666-6666-4666-8666-666666666667", employee_id: null }],
+    });
+    const { container } = renderGrid({ model, session: editing ? editSession(model) : null });
+    expect(container.querySelector(".schedule-employee-cell[data-unassigned='true']") !== null).toBe(rowShows);
+  });
+
+  it.each([
     [true, true],
     [true, false],
     [false, true],
