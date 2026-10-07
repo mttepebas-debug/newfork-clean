@@ -30,6 +30,13 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - Sorular tam metniyle `docs/plan/ekranlar/16-giris-katilim/OZET.md` §2'de (bugün → örnek → seçenekler, önerilen ilk): **S1** davet varken "Create your workspace" görünürlüğü; **S2** başka workspace'te çalışan kişinin kendi işletmesini açması; **S3** resmî adı onay bekleyen çalışana "In review" (BL-646); **S4** middle name resmî adın parçası mı.
 - Görsel sunum ve seçim sayfası: https://claude.ai/artifact/PEYuSjGWXGN9dkb9LipikY (9 ekran, masaüstü + telefon, 45 bulgu; Değiştir / Bırak / Konuşalım seçimleri sayfanın kaydına düşer, koordinatör okur).
 
+### G8. Bildirim sistemi: 6 temel model sorusu (önce sohbette, P18; BILDIRIM)
+- Sorular `docs/plan/tasks/BILDIRIM.md` §10'da (kanal, ayar, owner/admin, karar sonrası, program yayını, cover). Özet: bugün Settings → Notifications'ta 29 kart / 267 kontrolün yalnız "Enabled"ı bir şeyi değiştiriyor; 162 olaydan 77'si mesaj üretiyor, 18'i eksik (ör. vardiyası alınan kişiye haber yok), 10'u gürültülü. Plan: tek tablo, tek alıcı kuralı (lokasyon müdürü, yoksa admin/owner), workspace ayarı yok, 34 türlük katalog, B0–B8 dilimleri.
+- Koordinatörün kabul ettiği varsayılanlar (KK-210, itiraz edersen değişir): sessiz saat ve günlük özet MVP'de yok; bildirim 90 gün saklanır (hesap güvenliği 1 yıl); eski bildirim verisi taşınmaz.
+
+### G9. Bildirim merkezi ve ayar sayfası: varyant seçimi (BILDIRIM)
+- https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv — merkez A/B/C, ayar A/B/C.
+
 ---
 
 ## Tur 1 — hat durduranlar
