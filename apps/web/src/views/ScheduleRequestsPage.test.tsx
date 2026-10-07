@@ -185,6 +185,8 @@ const calls = () => apiRequest.mock.calls.map(([, path, init]) => [path, JSON.pa
 const verdict = (body: object) => ({ status: "pending", final: false, alone: false, remaining: 1, revision: 2, request_id: requestId, ...body });
 
 beforeEach(() => {
+  HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) { this.removeAttribute("open"); };
   activeContext = context;
   read = fixture;
   readFailure = null;
@@ -329,6 +331,25 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${caseId}`);
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+  });
+  // EKRAN-02 C2 (H2): a swap opens its review window over the list, not Shift Hub.
+  it("opens a swap in its review window over the list", async () => {
+    const swapId = "97500000-0000-4000-8000-000000000003";
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
+      id: swapId, kind: "swap", audience: "direct", status: "open", stage: "awaiting_peer", revision: 1,
+      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000005", employee_name: "Deniz Acar" },
+      applications: [{ id: "97600000-0000-4000-8000-000000000003", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",
+        status: "invited", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],
+      candidate_count: 1, can_manage: true, is_owner: false, history: [],
+    }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage();
+    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Swap/ }));
+    const review = await screen.findByRole("dialog", { name: "Swap request" });
+    expect(review.textContent).toContain("Emre Person ⇄ Deniz Acar");
+    expect(screen.getByLabelText("Current URL").textContent).not.toContain("case=");
+    fireEvent.click(within(review).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Swap request" })).toBeNull());
   });
   // Shift Hub's Renew swaps ?case= for ?offer=; its offer form opens here.
   it("keeps Shift Hub on screen for its offer form", async () => {
