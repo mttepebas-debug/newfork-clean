@@ -34,10 +34,10 @@ select is((select x->'after'->>'start_time' from jsonb_array_elements(preview->'
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'12:00:00','preview writes no shift') from dhr d;
 select is((select count(*)::integer from public.schedule_default_hours_reviews where session_id=(select session from dhr)),0,'preview writes no audit review');
 select throws_ok($$select public.preview_schedule_default_hours_service('afa70000-0000-4000-8000-000000000099',w,session,command) from dhr$$,'42501',null,'another user cannot preview a held session');
-select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,session,command||'{"expected_session_revision":0}') from dhr$$,'40001',null,'stale session revision is rejected');
+select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,session,command||'{"expected_session_revision":0}') from dhr$$,'PT409',null,'stale session revision is rejected');
 select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('shift_ids',jsonb_build_array(named,named))) from dhr$$,'22023',null,'duplicate selections are rejected');
 select throws_ok($$select public.preview_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('starts_on',week-1)) from dhr$$,'22023',null,'selection is bounded by the edit week');
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint','stale','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'apply requires the exact reviewed fingerprint');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint','stale','idempotency_key',gen_random_uuid())) from dhr$$,'PT409',null,'apply requires the exact reviewed fingerprint');
 update dhr set command=command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid());
 update dhr set result=public.apply_schedule_default_hours_service(actor,w,session,command);
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'11:00:00','apply changes the selected reference hours') from dhr d;
@@ -45,7 +45,7 @@ select is((select time_snapshot->>'default_revision' from public.schedule_edit_s
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.explicit_shift),'09:00:00','explicit clock hours are untouched') from dhr d;
 select ok((result->>'dirty')::boolean,'result remains an unsaved edit session') from dhr;
 select is(public.apply_schedule_default_hours_service(actor,w,session,command),result,'identical retry returns the committed result') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||'{"confirm_availability":true}') from dhr$$,'40001',null,'retry key cannot authorize different review content');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||'{"confirm_availability":true}') from dhr$$,'PT409',null,'retry key cannot authorize different review content');
 select is((select count(*)::integer from public.schedule_default_hours_reviews where session_id=(select session from dhr)),1,'one immutable review is recorded');
 select throws_ok($$update public.schedule_default_hours_reviews set command='{}' where session_id=(select session from dhr)$$,'23514',null,'review evidence cannot be rewritten');
 select is((select count(*)::integer from public.audit_events where action='schedule.default_hours_applied' and target_id=(select session::text from dhr)),1,'application is audited once');
@@ -53,7 +53,7 @@ update public.shift_types set default_start_time='10:00',default_end_time='18:00
 update dhr set command=(command-'idempotency_key'-'fingerprint')||jsonb_build_object('expected_session_revision',(result->>'revision')::integer);
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 update public.shift_types set default_start_time='10:30' where id=(select typ from dhr);
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'default edits after preview require a new review');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'PT409',null,'default edits after preview require a new review');
 -- A populated selection compares occupancy and authoritative employee capacity.
 select public.mutate_schedule_edit_shift_service(d.actor,d.w,d.session,s.revision,'update',d.named,x.revision,to_jsonb(x)||jsonb_build_object('employee_id',d.emp),null)
  from dhr d join public.schedule_edit_sessions s on s.id=d.session join public.schedule_edit_session_shifts x on x.session_id=d.session and x.id=d.named;
@@ -99,7 +99,7 @@ update dhr set command=command||jsonb_build_object('overrides',jsonb_build_array
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,0,'authorized reason permits reviewing the soft override') from dhr;
 select tests.approved_leave(w,emp,actor,loc,week,'13:00','14:00') from dhr;
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'40001',null,'approved leave arriving after review makes the fingerprint stale');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr$$,'PT409',null,'approved leave arriving after review makes the fingerprint stale');
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is((preview->>'blocked_count')::integer,1,'approved leave stays a hard block') from dhr;
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.named),'10:30:00','rejected attempts preserve the last applied reference hours') from dhr d;
@@ -122,7 +122,7 @@ update dhr_pub d set command=jsonb_build_object('expected_session_revision',s.re
 update dhr_pub set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 -- An assignment that ends after the review makes the review stale: no row of the batch is applied.
 update public.employee_job_assignments set ended_at=now() where employee_id=(select emp from dhr_pub) and job_id=(select job from dhr_pub);
-select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr_pub$$,'40001',null,'an assignment ending after review rejects the entire batch');
+select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr_pub$$,'PT409',null,'an assignment ending after review rejects the entire batch');
 select is((select start_time::text from public.schedule_edit_session_shifts where session_id=d.session and id=d.shift),'12:00:00','no row of the rejected batch is applied') from dhr_pub d;
 update public.employee_job_assignments set ended_at=null where employee_id=(select emp from dhr_pub) and job_id=(select job from dhr_pub);
 update dhr_pub set result=public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid()));
