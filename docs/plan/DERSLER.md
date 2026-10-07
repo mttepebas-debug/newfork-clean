@@ -708,6 +708,7 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Ne oldu:** Mert ~15:30Z: "Sana ne desem anında yapıyorsun. Hiç artısını eksisini doğruluğunu faydasını zararını tartmıyorsun. Hiç daha iyi öneride bulunmuyorsun." Gece beş yerde: ağır iş izni kuralını tartmadan kurdum (kilit zaten aynı işi görüyordu, ben darboğaz oldum); "ne zaman?" sorusunu plan değişikliğine çevirdim (EKRAN-03 C1 öne çekildi); CLAUDE.md §4 sırasını sabaha yetişmek için kendim çiğnedim; Mert'in kendi oturumuna RC açmaya çalıştım; 214 salt hata için sabah onay yükünü sınırlamadım. Sonra önerdiğim alternatifi de "(Önerilen)" diye fazla güçlü sundum; Mert "en iyisi mi" diye sorunca gerçek tartıda bu gece için en iyisi olmadığı çıktı (P16'yı atlıyordu).
 - **Maliyeti:** Mert'in güveni; bir düzeltme turu; geri alınması gerekebilecek üç plan değişikliği.
 - **Alışkanlık:** Mert'in her yeni isteğinde (talimat ya da soru) önce üç satır: (1) doğru anladım mı, soru mu talimat mı; (2) artı/eksi + mevcut kurallarla çakışma (ILKELER, CLAUDE.md, araçlar zaten yapıyor mu); (3) daha iyi/ucuz yol var mı. Ancak sonra uygula ya da öner. "(Önerilen)" yalnız gerçekten tartılmış seçeneğe; zayıf yanını da yaz. Gece/hız baskısı bu adımı atlatma gerekçesi değil.
+- **Yine 2026-10-07 (CLAUDEMD-REWRITE, Mert'in oturumu):** "her gönderim koordinatör izniyle" kuralını ben önerdim, Mert kabul etti; değerlendirmede ağır koşu kilidiyle aynı işi gören çift kapı olduğu görüldü ve geri alındı (§4.9'da yalnız kilit gelene kadar geçiş olarak kaldı). Maliyet: bir öneri-geri alma turu. Alışkanlık genişledi: kendi önerdiğin kuralı da bütün tabloda yeniden tart; kural eklemeden önce aynı amaca hizmet eden mevcut mekanizmayı (kilit, kanca, CI) sor.
 
 ## 2026-10-06 — Newfork veri hattı (nf-db): Undo ucu, onu kullanacak hattın önerisi gelince yeniden kuruldu
 - **Ne oldu:** EKRAN-01 DB-1c'de sunucu Undo'sunu "ekran hedef revizyonu gönderir" diye tasarlayıp ONAY'a kadar götürdüm (@5c65dc2b). Aynı saatlerde web hattı, ucu kullanacak taraf olarak kendi sözleşme önerisini yazıyordu (adım sunucuda, `undo_depth`); koordinatör onu iletince tasarımı değiştirdim ve ikinci bir R3 inceleme turu gerekti.
@@ -718,3 +719,18 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Ne oldu:** EKRAN-02 B1a'da açık takasların tarih penceresinden muaf olduğunu `where x.status='open' or …` satırına bakarak ölçtüm, raporda "açık liste tam, A4'ü genişletmeye gerek yok" yazdım. Aynı fonksiyonun döngüsünde pencere dışındaki vakayı atlayan ikinci bir `continue` vardı (BL-839 bunu ayrıca buldu). Hem rapor hem koordinatörün A4 planı yanlış bilgiyle yürüdü.
 - **Maliyeti:** B1a kaydının düzeltilmesi, koordinatöre düzeltme mesajı, A4 kapsamının yeniden konuşulması; bir hat yanlış öncülle birkaç saat ilerledi.
 - **Alışkanlık:** "bu satırlar dönüyor" iddiasını bir sorgunun ilk WHERE'inden değil, fonksiyonun sonuna kadar okuyarak (döngü içi `continue` / `return` dahil) ya da gerçek bir SELECT'le ölç; ölçemiyorsan raporda "kod okuması, döngü sonuna kadar" diye yaz.
+
+## 2026-10-07 — Newfork Mert'in oturumu (CLAUDEMD-REWRITE): skill çağrısına ek iş eklendi
+- **Ne oldu:** Mert `/claude-md-improver` çağırdı; Claude "taslağı birleştirip denetleyeyim" diye ek bir iş varsaydı. Mert: "audit etmeni istemiştim sadece, birleştir demedim".
+- **Maliyeti:** bir tur ve güven.
+- **Alışkanlık:** skill ya da komut çağrısı görevin kendisidir; yalnız o işi yap. Ek adım gerekiyorsa tek satırla sor.
+
+## 2026-10-07 — Newfork Mert'in oturumu (CLAUDEMD-REWRITE): kurala değer ölçmeden sabitlendi
+- **Ne oldu:** telefon ekran görüntüsü genişliği kurala 375 diye yazıldı; uygulama ve bütün QA 390 kullanıyordu. Denetimde yakalandı.
+- **Maliyeti:** az; yayından önce düzeltildi. Kaçsaydı QA görüntüleri iki genişlikte üretilecekti.
+- **Alışkanlık:** kurala bir değer yazmadan önce bugünkü değeri repoda ara (`grep`); kural mevcut uygulamayı yazar, yeni değer uydurmaz.
+
+## 2026-10-07 — Newfork Mert'in oturumu (CLAUDEMD-REWRITE): iyi giden — 63 karar tek tıklık turlarla kilitlendi, hiçbiri kaybolmadı
+- **Ne oldu:** CLAUDE.md yeniden yazımında her bölüm tek tıklık soru turlarıyla kilitlendi; son metin ve karar izleme tablosu (63 karar → satır) uygulamadan önce Mert'e okutuldu.
+- **Neden iyi gitti:** karar → satır eşlemesi tablo olarak görünür olunca eksik ya da çifte yazılan karar uygulamadan önce yakalandı.
+- **Alışkanlık:** çok kararlı bir belge yeniden yazımında önce karar listesini çıkar, her kararın hangi satıra gittiğini tabloyla göster, sonra yaz.
