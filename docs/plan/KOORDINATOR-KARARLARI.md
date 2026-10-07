@@ -1829,3 +1829,13 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~12:40Z. **Nerede:** `task/acil-40001` (EKRAN-08 oturumu), `task/ekran-02-data` @`d32c12f3` (17 commit, `nf-guvenlik` ONAY @`acfb0e9b`, BL-910 + ikinci sızıntı `history[].message` kapandı).
 - **Ne:** ikisi de sabah Mert'in kendi pencerelerindeki "evet"ini bekliyor (§5.3). Sıra: ACIL-40001 önce (küçük, kritik: API havuzu), sonra paket (R3, S1 cevabına bağlı); paket taşınırken izin fonksiyonlarındaki 8 `40001` satırı PT409'a çevrilir, önce kırmızı test. DB-4 (EKRAN-01) paketten sonra taşınır. Daha önce sızmış ret gerekçesi kayıtlarının silinmesi yapılmaz (canlı kullanıcı yok, P01; canlıda veri silme Mert onayı). Mert'e yeni soru G12.
 - **Dayanak:** CLAUDE.md §5.1, §5.3; KARARLAR OPS-03; ILKELER P01, P08.
+
+### KK-219 (2026-10-07 gece) EKRAN-03 dört cevap; BL-503 (ABD form kuralları) EKRAN-03 oturumuna
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~13:10Z. **Nerede:** EKRAN-03 gece raporu (main `9ebdc113`…`bdf54974`, CI 37623856007 yeşil, 7/59 ✅).
+- **Ne:** (1) BL-503 uygulama geneli ayrı iş, EKRAN-03 oturumuna gece işi: ortak harf şeması (`packages/shared`) + ortak telefon alanı, Account / kurulum / Employees / Locations aynı parçayı kullanır, API aynı şemayla reddeder, ikizler silinir; R2; karar KARARLAR'da (2026-10-01) olduğu için gönderim Mert'i beklemez, önce/sonra sabah gösterilir; DB kısıtı gerekirse ayrı madde. (2) BL-485: KK-62 Employees kapanış turuna kadar kalır, görünür neden görsel karar (P04). (3) BL-465: 30 sn sonra var olan "Check the previous request" akışı. (4) BL-459 `styles.css` açılınca #42 ile. Yolda: BL-967 (owner acil durum kişisini silemiyor).
+- **Dayanak:** KARARLAR "Form ve girdi kuralları (ABD)"; CLAUDE.md §2.A.4; ILKELER P04, P11, P12.
+
+### KK-220 (2026-10-07 gece) Migration'lar gönderim anında main'in son migration'ının arkasına yeniden numaralanır; EKRAN-01 web paketi main'de
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~13:50Z. **Nerede:** KARARLAR OPS-05 eki; EKRAN-01 main `a2b22ab5..d017320c` (17 web maddesi + BL-959, CI 37627942589 yeşil).
+- **Ne:** EKRAN-01'in önerisi kabul: dört migration'ı (`20261007200000/100/200`, `220000`) ve gece hazırlanan öbür dalların migration'larını (EKRAN-02 paketi `140000`–`200000`, ACIL-40001 `210000`, GA-4, BL-804, BL-965) sabah gönderimde main'in o anki son migration'ının arkasına yeniden numarala; içerik aynı, şema yeniden üretilir. Sabah sırası KK-218'deki gibi (ACIL önce); her gönderim öncekinin numarasına bakar.
+- **Dayanak:** ILKELER P19; KARARLAR OPS-05.

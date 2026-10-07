@@ -2152,6 +2152,8 @@ Kaynak `ekranlar/16-giris-katilim/` (main `ca4326f6`); metni EKRAN-16 oturumu ha
 
 - **BL-966 (leave: low / do: safe) Planlı kapanış başarısız olursa iz yalnız Postgres günlüğünde (WARNING).** GA-4 (BL-906) sonrası cron "failed" yazmıyor. Kalıcı iz (`audit_events` ya da tablo) ya da izleme sorgusu: `closure_scheduled and closure_effective_at < now() - interval '10 minutes'`. Neden bekliyor: canlıda bekleyen planlı kapanış yok; GA-4 canlıya girince eklenir. Bulan: GUVENLIK-A (D1), 2026-10-07.
 
+- **BL-967 (leave: low / do: safe) Owner kaydettiği acil durum kişisini silemiyor.** Employees → owner çekmecesi: iki alan boşken Save kapalı (sunucu ad + numara istiyor); eski ayrı düğmede de böyleydi. Doğru davranış KARARLAR'da yok (silme serbest mi, zorunlu mu) — Employees kapanış turunda Mert'e. Bulan: EKRAN-03 `nf-guvenlik` incelemesi, 2026-10-07.
+
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
   - **Kapandı 2026-10-07 (`a57f2a4c`, main CI 37612833201 yeşil).** Kanca yalnız gerçek ayırıcılarda bölüyor (tırnak, heredoc, here-string, `#` yorumu metin; satır devamı tek komut; `bash -c` / `pwsh -Command` / `cmd /c` içi okunur). Ek: `git push \⏎ origin HEAD:main` artık main kilidini soruyor. Not: kanca oturumun başladığı klasörden yüklenir; eski klasörden açılmış oturum yeni bölmeyi o klasör main'i alana kadar görmez.
