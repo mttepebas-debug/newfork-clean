@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { deleteScheduleDraft, isEditLeaseExpired, isEditSessionStale, listScheduleTemplates, ScheduleRequestError } from "./schedule-data";
+import { requestErrorText } from "../lib/request-error";
 
 vi.mock("../lib/supabase", () => ({
   supabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } },
@@ -26,6 +27,8 @@ describe("deleting a draft someone is editing", () => {
     )));
     const error = await deleteScheduleDraft("workspace", "draft").then(() => null, (failure: unknown) => failure);
     expect((error as Error).message).toBe("Someone is editing this draft. Try again when they finish.");
+    // BL-395: and that sentence is what the screen shows.
+    expect(requestErrorText(error)).toBe("Someone is editing this draft. Try again when they finish.");
   });
 });
 

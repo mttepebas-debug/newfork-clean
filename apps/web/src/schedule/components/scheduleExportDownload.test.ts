@@ -36,9 +36,12 @@ describe("scheduleExportDownload", () => {
     );
   });
 
-  it("keeps explicit error messages for other failures", () => {
+  it("keeps the API's sentence for a refusal and never shows a raw error (BL-395)", () => {
+    expect(
+      scheduleExportErrorMessage(new ScheduleRequestError("This week has no shifts to export.", 409, {})),
+    ).toBe("This week has no shifts to export.");
     expect(scheduleExportErrorMessage(new Error("network failed"))).toBe(
-      "network failed",
+      "Export was not generated. Try again after refreshing the schedule.",
     );
   });
 

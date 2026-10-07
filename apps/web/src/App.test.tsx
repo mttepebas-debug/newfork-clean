@@ -444,6 +444,8 @@ function resetScheduleApiMocks() {
   vi.mocked(saveScheduleDraft).mockReset();
   vi.mocked(previewSchedulePublication).mockReset();
   vi.mocked(publishScheduleDraft).mockReset();
+  vi.mocked(previewScheduleUnpublish).mockReset();
+  vi.mocked(unpublishSchedule).mockReset();
   vi.mocked(listScheduleTemplates).mockReset();
   vi.mocked(listScheduleTemplates).mockResolvedValue({ templates: [] });
   vi.mocked(previewScheduleAutoFill).mockReset();
@@ -2174,6 +2176,8 @@ describe("App", () => {
     expect(await screen.findByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
     expect(saveMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByText(/edit lease expired/i)).toBeNull();
+    // BL-395: what the person reads instead is the reconnect sentence, not a generic one.
+    expect(screen.getAllByText("Your edit could not be reconnected. Check your connection and try again.").length).toBeGreaterThan(0);
   });
 
   it("confirms backend draft name conflicts before overwriting the owned draft", async () => {
@@ -5035,6 +5039,37 @@ describe("App", () => {
     ).toBeTruthy();
     await waitFor(() => expect(window.location.search).not.toContain("draft="));
   }, 15_000);
+
+  it("says a past week cannot be unpublished in its own words (BL-395)", async () => {
+    const weekStart = "2026-11-16";
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek(weekStart));
+    vi.mocked(previewScheduleUnpublish).mockResolvedValueOnce({
+      status: "past_week_closed",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      locations: [{
+        location_id: scheduleFixture.locations[0]!.id,
+        location_name: scheduleFixture.locations[0]!.name,
+        publication_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        version: 1,
+        shift_count: 1,
+      }],
+      fingerprint: "f".repeat(64),
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }));
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish schedule" }));
+    const dialog = await screen.findByRole("dialog", { name: "Unpublish schedule" });
+    fireEvent.click(within(dialog).getByLabelText(/Main Dining/));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Unpublish 1 location" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm unpublish" }));
+
+    expect(await within(dialog).findByText("Past schedule weeks cannot be unpublished.")).toBeTruthy();
+    expect(unpublishSchedule).not.toHaveBeenCalled();
+  });
 
   it("reopens the returned draft preview after unpublishing the live schedule", async () => {
     const weekStart = "2026-11-16";
