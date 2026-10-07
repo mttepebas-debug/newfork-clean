@@ -304,8 +304,29 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     !detail.data?.archived_at &&
     (detail.data?.allowed.change_role ?? false);
   const roleDirty = roleEditable && roleNow !== roleSaved;
+  // The owner's own emergency contact goes with the one Save (K3, P20).
+  const ownOwnerRecord = Boolean(
+    detail.data &&
+      context?.userId &&
+      detail.data.user_id === context.userId &&
+      detail.data.is_workspace_owner,
+  );
+  const contactBaseline: ContactDraft = {
+    name: detail.data?.private_contact?.emergency_contact_name ?? "",
+    relationship: detail.data?.private_contact?.emergency_contact_relationship ?? "",
+    phone: detail.data?.private_contact?.emergency_contact_phone ?? "",
+  };
+  const [contactDraft, setContactDraft] = useState<ContactDraft | null>(null);
+  const contactNow = contactDraft ?? contactBaseline;
+  const contactDirty =
+    ownOwnerRecord &&
+    contactDraft !== null &&
+    JSON.stringify(contactDraft) !== JSON.stringify(contactBaseline);
+  // Both halves: a name with no number is not a contact (the server's rule).
+  const contactReady =
+    contactNow.name.trim().length > 0 && contactNow.phone.trim().length >= 7;
   // What Save changes has to send; Terminate and Invite wait for it too.
-  const anyDirty = dirty || roleDirty;
+  const anyDirty = dirty || roleDirty || contactDirty;
 
   useEffect(() => {
     const subjectChanged = lastDraftSubjectKeyRef.current !== draftSubjectKey;
@@ -329,6 +350,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       }
       setUncertainCreate(false);
       setRolePicked(null);
+      setContactDraft(null);
       setTerminationNotice(null);
     }
   }, [baselineKey, draftSubjectKey]);
@@ -441,6 +463,20 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         draftEditedRef.current = false;
         allowNextDraftRefreshRef.current = true;
       }
+      const contactSent = contactDirty;
+      if (contactSent) {
+        try {
+          await saveOwnEmploymentContact(workspaceId, savedId, {
+            name: contactNow.name.trim(),
+            relationship: contactNow.relationship.trim(),
+            phone: contactNow.phone.trim(),
+            email: detail.data?.private_contact?.emergency_contact_email ?? "",
+          });
+        } catch {
+          if (recordSent) await refreshRecord();
+          throw new Error("Emergency contact could not be saved");
+        }
+      }
       if (roleDirty) {
         try {
           await updateEmployeeRole(workspaceId, savedId, roleNow);
@@ -453,9 +489,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         draftEditedRef.current = false;
         allowNextDraftRefreshRef.current = true;
       }
-      return { savedId, recordSent, roleSent: roleDirty };
+      return { savedId, recordSent, roleSent: roleDirty, contactSent };
     },
-    onSuccess: async ({ savedId, recordSent, roleSent }) => {
+    onSuccess: async ({ savedId, recordSent, roleSent, contactSent }) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
         queryClient.invalidateQueries({
@@ -473,6 +509,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           : []),
       ]);
       setRolePicked(null);
+      if (contactSent) setContactDraft(null);
       setError(null);
       if (props.creating) props.onCreated(savedId);
       // A role saved alone leaves the reader on Access (K7 (ii)).
@@ -1211,12 +1248,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       roleNow,
                       setRolePicked,
                       busy,
-                      Boolean(
-                        detail.data &&
-                          context?.userId &&
-                          detail.data.user_id === context.userId &&
-                          detail.data.is_workspace_owner,
-                      ),
+                      ownOwnerRecord
+                        ? {
+                            value: contactNow,
+                            onChange: setContactDraft,
+                            required: contactDirty,
+                            disabled: busy || readOnly,
+                          }
+                        : null,
                       canDecideLegalName,
                       {
                         onRemove: (locationId) =>
@@ -1542,7 +1581,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       // Same gate the create flow already has. Without it,
                       // clearing the last location or job left Save enabled and
                       // the server refused it after the round trip.
-                      (dirty && !readiness.employeeReady)
+                      (dirty && !readiness.employeeReady) ||
+                      // Half an emergency contact is not one (K3).
+                      (contactDirty && !contactReady)
                     }
                   >
                     {saveMutation.isPending
@@ -1909,7 +1950,7 @@ function renderSection(
   onRoleChange: (roleId: string) => void,
   changingRole: boolean,
   /** The viewer is looking at their own record, and they own the workspace. */
-  ownOwnerRecord: boolean,
+  ownContact: OwnContactControl | null,
   canDecideLegalName: boolean,
   locationActions: EmployeeLocationActions,
   creating = false,
@@ -1929,11 +1970,7 @@ function renderSection(
         pendingNameTarget={
           detail ? { workspaceId: detail.workspace_id, employeeId: detail.id } : null
         }
-        ownEmergencyContact={
-          ownOwnerRecord && detail
-            ? { workspaceId: detail.workspace_id, employeeId: detail.id }
-            : null
-        }
+        ownEmergencyContact={ownContact}
         emailInputRef={emailInputRef}
         onboarding={onboarding}
         onboardingLoading={onboardingLoading}
@@ -2174,7 +2211,7 @@ function ProfileSection({
   accountEmail: string | null;
   privateContact: EmployeeDetail["private_contact"];
   /** Present only on the owner's own record, which onboarding never asks. */
-  ownEmergencyContact: { workspaceId: string; employeeId: string } | null;
+  ownEmergencyContact: OwnContactControl | null;
   /** The record being looked at, so a waiting preferred name can be answered. */
   pendingNameTarget: { workspaceId: string; employeeId: string } | null;
   emailInputRef: React.RefObject<HTMLInputElement | null>;
@@ -2294,11 +2331,7 @@ function ProfileSection({
             />
           )}
           {ownEmergencyContact ? (
-            <OwnEmergencyContact
-              workspaceId={ownEmergencyContact.workspaceId}
-              employeeId={ownEmergencyContact.employeeId}
-              contact={privateContact}
-            />
+            <OwnEmergencyContact control={ownEmergencyContact} />
           ) : null}
           {!creating && canReadPrivate && !ownEmergencyContact ? (
             <ReadOnlyField
@@ -3516,78 +3549,48 @@ function errorMessage(error: unknown): string {
  * and the owner never runs it, so theirs is entered here — by them, and never
  * required.
  */
-function OwnEmergencyContact({
-  workspaceId,
-  employeeId,
-  contact,
-}: {
-  readonly workspaceId: string;
-  readonly employeeId: string;
-  readonly contact: EmployeeDetail["private_contact"];
-}) {
-  const queryClient = useQueryClient();
-  const [name, setName] = useState(contact?.emergency_contact_name ?? "");
-  const [relationship, setRelationship] = useState(
-    contact?.emergency_contact_relationship ?? "",
-  );
-  const [phone, setPhone] = useState(contact?.emergency_contact_phone ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const save = useMutation({
-    mutationFn: () =>
-      saveOwnEmploymentContact(workspaceId, employeeId, {
-        name: name.trim(),
-        relationship: relationship.trim(),
-        phone: phone.trim(),
-        email: contact?.emergency_contact_email ?? "",
-      }),
-    onSuccess: async () => {
-      setError(null);
-      await queryClient.invalidateQueries({
-        queryKey: ["employee-detail", workspaceId, employeeId],
-      });
-    },
-    onError: () => setError("Emergency contact could not be saved"),
-  });
-  // Both halves or neither: a name with no number is not a contact.
-  const ready = name.trim().length > 0 && phone.trim().length >= 7;
+/** The owner's own emergency contact, typed into the drawer's one Save (K3). */
+type ContactDraft = {
+  readonly name: string;
+  readonly relationship: string;
+  readonly phone: string;
+};
 
+interface OwnContactControl {
+  readonly value: ContactDraft;
+  readonly onChange: (next: ContactDraft) => void;
+  /** Once anything is typed, a name and a number are both needed. */
+  readonly required: boolean;
+  readonly disabled: boolean;
+}
+
+function OwnEmergencyContact({ control }: { readonly control: OwnContactControl }) {
+  const { value, onChange, required, disabled } = control;
   return (
     <>
       <Field
         label="Emergency contact"
-        optional
-        value={name}
-        disabled={save.isPending}
-        onChange={setName}
+        optional={!required}
+        required={required}
+        value={value.name}
+        disabled={disabled}
+        onChange={(name) => onChange({ ...value, name })}
       />
       <Field
         label="Relationship"
         optional
-        value={relationship}
-        disabled={save.isPending}
-        onChange={setRelationship}
+        value={value.relationship}
+        disabled={disabled}
+        onChange={(relationship) => onChange({ ...value, relationship })}
       />
       <Field
         label="Emergency phone"
-        optional
-        value={phone}
-        disabled={save.isPending}
-        onChange={setPhone}
+        optional={!required}
+        required={required}
+        value={value.phone}
+        disabled={disabled}
+        onChange={(phone) => onChange({ ...value, phone })}
       />
-      <div className="employee-field employee-field-action">
-        <Button
-          type="button"
-          disabled={!ready || save.isPending}
-          onClick={() => save.mutate()}
-        >
-          {save.isPending ? "Saving" : "Save emergency contact"}
-        </Button>
-        {error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
     </>
   );
 }

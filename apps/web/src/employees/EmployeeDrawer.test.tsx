@@ -835,8 +835,9 @@ describe("EmployeeDrawer", () => {
   });
 
   // Everyone else gives an emergency contact while onboarding. The owner never
-  // runs it, so theirs is entered here — by them, and never required.
-  it("lets the owner enter their own emergency contact", async () => {
+  // runs it, so theirs is entered here — by them, and never required. It goes
+  // with the drawer's one Save (K3, P20).
+  it("lets the owner enter their own emergency contact, saved with Save changes", async () => {
     vi.mocked(saveOwnEmploymentContact).mockResolvedValue(undefined);
     renderDrawer("profile", {
       ...detail,
@@ -851,9 +852,8 @@ describe("EmployeeDrawer", () => {
     fireEvent.change(screen.getByLabelText("Emergency phone"), {
       target: { value: "3105550101" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save emergency contact" }),
-    );
+    expect(screen.queryByRole("button", { name: "Save emergency contact" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() =>
       expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
@@ -865,6 +865,7 @@ describe("EmployeeDrawer", () => {
         }),
       ),
     );
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 
   it("will not save half an emergency contact", async () => {
@@ -880,9 +881,8 @@ describe("EmployeeDrawer", () => {
       target: { value: "Morgan Tepebas" },
     });
 
-    expect(
-      screen.getByRole("button", { name: "Save emergency contact" }),
-    ).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Emergency phone").getAttribute("aria-required")).toBe("true");
   });
 
   it("shows somebody else's emergency contact without offering to edit it", async () => {
