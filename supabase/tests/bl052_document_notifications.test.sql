@@ -111,23 +111,32 @@ select is(app_private.document_notification_policy((select id from public.notifi
 -- BL-965: an approved document that tracks no expiry has no days left. The nightly batch must step over it:
 -- before the fix the expiry key was NULL, the dedup insert failed and the whole batch rolled back, so no
 -- workspace got its reminders or its suspensions. A second employee of this workspace holds one such
--- document and one overdue requirement that suspends access.
+-- document; a third has an overdue requirement that suspends access, handled in the same call.
+insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+values('15200000-0000-4000-8000-000000000004','00000000-0000-0000-0000-000000000000','authenticated','authenticated','bl052-4@example.test','','{}','{}',now(),now());
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values
- ('35200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000003','employee','active',true);
-insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,invitation_email,created_by)
-values('45200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000003','E-0002','Undated','Employee','','bl052-3@example.test','15200000-0000-4000-8000-000000000001');
-insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by)
-values('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','85200000-0000-4000-8000-000000000001',true,'15200000-0000-4000-8000-000000000001');
-insert into public.employee_onboarding_cases(id,workspace_id,employee_id,membership_id)
-values('55200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','35200000-0000-4000-8000-000000000003');
+ ('35200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000003','employee','active',true),
+ ('35200000-0000-4000-8000-000000000004','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000004','employee','active',true);
+insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,invitation_email,created_by) values
+ ('45200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000003','E-0002','Undated','Employee','','bl052-3@example.test','15200000-0000-4000-8000-000000000001'),
+ ('45200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000004','E-0003','Overdue','Employee','','bl052-4@example.test','15200000-0000-4000-8000-000000000001');
+insert into public.employee_location_assignments(workspace_id,employee_id,location_id,is_primary,created_by) values
+ ('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','85200000-0000-4000-8000-000000000001',true,'15200000-0000-4000-8000-000000000001'),
+ ('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000003','85200000-0000-4000-8000-000000000001',true,'15200000-0000-4000-8000-000000000001');
+insert into public.employee_onboarding_cases(id,workspace_id,employee_id,membership_id) values
+ ('55200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','35200000-0000-4000-8000-000000000003'),
+ ('55200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000003','35200000-0000-4000-8000-000000000004');
 insert into public.employee_onboarding_requirements(id,workspace_id,employee_id,case_id,kind,title,required,blocks_activation,requires_review,sort_order,source_snapshot,lifecycle_user_id,lifecycle_settings,deadline_at)
 values
  ('65200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','55200000-0000-4000-8000-000000000002','document','Food permit',true,false,true,1,
   '{"accepted_formats":["pdf"],"tracks_expiry":false,"timezone":"America/Los_Angeles"}','15200000-0000-4000-8000-000000000003',
   '{"mode":"conditional","target":{"location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"assignment_scope":"all_active","period_days":7,"suspend_on_overdue":true,"extra_fields":[]}',now()+interval '7 days'),
- ('65200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','55200000-0000-4000-8000-000000000002','document','Background check',true,false,true,2,
-  '{"accepted_formats":["pdf"],"tracks_expiry":false,"timezone":"America/Los_Angeles"}','15200000-0000-4000-8000-000000000003',
-  '{"mode":"conditional","target":{"location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"assignment_scope":"all_active","period_days":7,"suspend_on_overdue":true,"extra_fields":[]}',now()-interval '1 day');
+ ('65200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000003','55200000-0000-4000-8000-000000000003','document','Background check',true,false,true,1,
+  '{"accepted_formats":["pdf"],"tracks_expiry":false,"timezone":"America/Los_Angeles"}','15200000-0000-4000-8000-000000000004',
+  '{"mode":"conditional","target":{"location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"assignment_scope":"all_active","period_days":7,"suspend_on_overdue":true,"extra_fields":[]}',now()+interval '7 days');
+-- ponytail: an active membership's insert sets deadline_at to now()+period_days, and now() is fixed in
+-- this transaction, so the period is moved into the past by hand to make the requirement overdue.
+update public.employee_onboarding_requirements set deadline_at=now()-interval '1 day' where id='65200000-0000-4000-8000-000000000003';
 select is(public.save_employee_document_draft_file_service('15200000-0000-4000-8000-000000000003','65200000-0000-4000-8000-000000000002',1,
  '25200000-0000-4000-8000-000000000001/45200000-0000-4000-8000-000000000002/65200000-0000-4000-8000-000000000002/75200000-0000-4000-8000-000000000003.pdf','permit.pdf','application/pdf',100),2,'undated document: draft');
 select is(public.submit_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000003','65200000-0000-4000-8000-000000000002',2,
@@ -138,6 +147,6 @@ select is(public.review_employee_document_lifecycle_service('15200000-0000-4000-
 select ok((select s.state='accepted' and s.expiry_date is null from public.employee_onboarding_requirements r join public.employee_document_submissions s on s.id=r.approved_document_id where r.id='65200000-0000-4000-8000-000000000002'),'an approved document without an expiry date is in place');
 select lives_ok($$select pg_temp.maintain(((current_date+5)::text||' 10:00:00')::timestamp at time zone 'America/Los_Angeles')$$,'the batch steps over an approved document without an expiry date');
 select is((select count(*)::integer from public.notification_outbox where workspace_id='25200000-0000-4000-8000-000000000001' and type_key='people.documents.expiry' and subject_id='45200000-0000-4000-8000-000000000002'),0,'a document without an expiry date gets no expiry reminder');
-select ok((select document_suspended_at is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000003'),'the same batch still suspends access for an overdue requirement');
-select is((select count(*)::integer from public.notification_outbox where workspace_id='25200000-0000-4000-8000-000000000001' and type_key='people.documents.missing' and subject_id='45200000-0000-4000-8000-000000000002'),1,'the same batch still sends the missing-documents reminder');
+select ok((select document_suspended_at is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000003'),'the same batch still suspends access for another employee''s overdue requirement');
+select is((select count(*)::integer from public.notification_outbox where workspace_id='25200000-0000-4000-8000-000000000001' and type_key='people.documents.missing' and subject_id='45200000-0000-4000-8000-000000000003'),1,'the same batch still sends the missing-documents reminder');
 select * from finish();rollback;
