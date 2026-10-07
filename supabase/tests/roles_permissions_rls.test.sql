@@ -100,7 +100,7 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
 ('b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000001',true,'b1051001-0000-4000-8000-000000000001'),
 ('b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000002',false,'b1051001-0000-4000-8000-000000000001'),
 ('b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000004','b1051006-0000-4000-8000-000000000001',true,'b1051001-0000-4000-8000-000000000001');
-insert into public.employee_private_profiles(employee_id,workspace_id,legal_first_name,legal_last_name,phone,emergency_contact_name,emergency_contact_phone) values('b1051004-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','Private','Person','555-0100','Test Contact','555-0101');
+insert into public.employee_private_profiles(employee_id,workspace_id,legal_first_name,legal_last_name,phone,emergency_contact_name,emergency_contact_phone) values('b1051004-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','Private','Person','+14155550100','Test Contact','+14155550101');
 set constraints all immediate;
 set constraints all deferred;
 select is((select count(*)::integer from public.membership_location_scopes where membership_id='b1051003-0000-4000-8000-000000000003'),1,'Manager scope projects their employee assignment only');

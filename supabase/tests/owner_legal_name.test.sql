@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(65);
 
 -- BL-080. An owner gives their legal name at the first step of setup: the
 -- three name fields there are the legal name as well as the account's and the
@@ -96,13 +96,15 @@ select is(
 );
 
 -- Going back to the first step during setup and correcting it corrects it.
-select is(pg_temp.save_setup('Mert', '', 'Tepebaş'), 'allowed', 'the first step can be corrected during setup');
+select is(pg_temp.save_setup('Mert', '', 'Tepebasi'), 'allowed', 'the first step can be corrected during setup');
 select is(
   (select legal_first_name || '|' || legal_middle_name || '|' || legal_last_name
    from public.employee_private_profiles where employee_id = tests.id('fresh:owner:employee')),
-  'Mert||Tepebaş',
+  'Mert||Tepebasi',
   'and the correction is the legal name'
 );
+-- BL-969: the US letter rule holds in the data too.
+select is(pg_temp.save_setup('Mert', '', 'Tepebaş'), '23514', 'a legal name with Turkish-only letters is refused');
 
 -- 2. The account area does not guess a legal name ---------------------------------------
 
@@ -312,6 +314,75 @@ select is(
   0,
   'an admin with none is not offered at all'
 );
+
+-- 9. The US letter rule in the data (BL-969) -------------------------------------------
+
+-- KARARLAR "Form ve girdi kuralları (ABD)": ş, ğ, ı and İ are refused wherever a
+-- form takes a name or an address, whichever way the row is written; other
+-- Latin accents and hyphens are not.
+create function pg_temp.letters(target_table text, target_column text, row_id uuid, typed text,
+  key_column text default 'id')
+returns text language sql as $$
+  select pg_temp.refusal(format('update public.%I set %I = %L where %I = %L',
+    target_table, target_column, typed, key_column, row_id))
+$$;
+
+select is(pg_temp.letters('workspaces', 'name', tests.id('ln'), 'Kadıköy Cafe'), '23514',
+  'a workspace name refuses Turkish-only letters');
+select is(pg_temp.letters('workspaces', 'name', tests.id('ln'), 'José Peña-Smith Grill'), 'allowed',
+  'and takes other Latin accents and hyphens');
+select is(pg_temp.letters('locations', 'name', tests.id('ln:K'), 'Kadıköy'), '23514', 'a location name refuses them');
+select is(pg_temp.letters('locations', 'street_address', tests.id('ln:K'), '1 Moda Caddesi Şehit'), '23514',
+  'a location street refuses them');
+select is(pg_temp.letters('locations', 'city', tests.id('ln:K'), 'İstanbul'), '23514', 'a location city refuses them');
+select is(pg_temp.letters('locations', 'city', tests.id('ln:K'), 'Peñasco'), 'allowed', 'and takes ñ');
+select is(pg_temp.letters('locations', 'region', tests.id('ln:K'), 'Kadıköy'), '23514', 'a location region refuses them');
+select is(pg_temp.letters('departments', 'name', tests.id('ln:kitchen'), 'Mutfak Ağı'), '23514',
+  'a department name refuses them');
+select is(pg_temp.letters('jobs', 'name', tests.id('ln:job:cook'), 'Aşçı'), '23514', 'a job name refuses them');
+select is(pg_temp.letters('employee_profiles', 'first_name', tests.id('ln:owner'), 'Ayşe'), '23514',
+  'an employee''s first name refuses them');
+select is(pg_temp.letters('employee_profiles', 'first_name', tests.id('ln:owner'), 'José'), 'allowed',
+  'and takes é');
+select is(pg_temp.letters('employee_profiles', 'middle_name', tests.id('ln:owner'), 'Gül'), 'allowed',
+  'ü is not one of the four');
+select is(pg_temp.letters('employee_profiles', 'middle_name', tests.id('ln:owner'), 'Ağca'), '23514',
+  'an employee''s middle name refuses them');
+select is(pg_temp.letters('employee_profiles', 'last_name', tests.id('ln:owner'), 'Yılmaz'), '23514',
+  'an employee''s last name refuses them');
+select is(pg_temp.letters('employee_profiles', 'preferred_name', tests.id('ln:owner'), 'Işık'), '23514',
+  'an employee''s preferred name refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'legal_first_name', tests.id('ln:owner'), 'Ayşe', 'employee_id'),
+  '23514', 'a legal first name refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'legal_middle_name', tests.id('ln:owner'), 'Ağca', 'employee_id'),
+  '23514', 'a legal middle name refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'legal_last_name', tests.id('ln:owner'), 'Yılmaz', 'employee_id'),
+  '23514', 'a legal last name refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'legal_last_name', tests.id('ln:owner'), 'Peña-Smith', 'employee_id'),
+  'allowed', 'and takes ñ and a hyphen');
+select is(pg_temp.letters('employee_private_profiles', 'preferred_name', tests.id('ln:owner'), 'Işık', 'employee_id'),
+  '23514', 'a private preferred name refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'street_address', tests.id('ln:owner'), '1 Bağdat Caddesi', 'employee_id'),
+  '23514', 'a home street refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'city', tests.id('ln:owner'), 'Şişli', 'employee_id'),
+  '23514', 'a home city refuses them');
+select is(pg_temp.letters('employee_private_profiles', 'region', tests.id('ln:owner'), 'İstanbul', 'employee_id'),
+  '23514', 'a home state refuses them');
+select is(
+  pg_temp.refusal(format(
+    'update public.employee_private_profiles set emergency_contact_name = %L, emergency_contact_relationship = %L, emergency_contact_phone = %L where employee_id = %L',
+    'Ayşe', 'Friend', '+14155550100', tests.id('ln:owner'))),
+  '23514', 'an emergency contact''s name refuses them');
+select is(
+  pg_temp.refusal(format(
+    'update public.employee_private_profiles set emergency_contact_name = %L, emergency_contact_relationship = %L, emergency_contact_phone = %L where employee_id = %L',
+    'Ayse', 'Kardeş', '+14155550100', tests.id('ln:owner'))),
+  '23514', 'an emergency contact''s relationship refuses them');
+select is(
+  pg_temp.refusal(format(
+    'insert into public.employee_preferred_name_requests (workspace_id, employee_id, requested_name, status, requested_by) values (%L, %L, %L, %L, %L)',
+    tests.id('ln'), tests.id('ln:owner'), 'Işık', 'rejected', tests.user('ln:owner'))),
+  '23514', 'a preferred name request refuses them');
 
 select * from finish();
 rollback;

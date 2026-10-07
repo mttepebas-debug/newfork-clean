@@ -56,7 +56,7 @@ from (values
 ) as m(workspace_id, status, employee_id);
 
 insert into public.employee_private_profiles (employee_id, workspace_id, legal_first_name, legal_last_name, phone)
-select e.id, e.workspace_id, 'Ali', 'Person', '3105550000'
+select e.id, e.workspace_id, 'Ali', 'Person', '+13105550000'
 from public.employee_profiles e where e.id::text like '33510000-%';
 
 create function pg_temp.phone_of(target_employee_id uuid) returns text
@@ -86,9 +86,9 @@ select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000001'), '+1312555019
   'and so does his record in the second workspace');
 
 -- (b) What does not follow.
-select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000002'), '3105550000',
+select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000002'), '+13105550000',
   'an archived record keeps the number it had');
-select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000003'), '3105550000',
+select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000003'), '+13105550000',
   'a record behind a suspended membership keeps the number it had');
 select is(pg_temp.phone_of((select bea_here from ph)), '+14155550123',
   'somebody else''s record is not touched');

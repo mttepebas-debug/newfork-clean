@@ -12,11 +12,10 @@ values
   ('17000000-0000-4000-8000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'final-approval@example.test', '', '{}', '{}', now(), now()),
   ('17000000-0000-4000-8000-000000000007', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'review-auto@example.test', '', '{}', '{}', now(), now());
 
-insert into public.user_profiles (user_id, display_name, phone)
+insert into public.user_profiles (user_id, display_name)
 values (
   '17000000-0000-4000-8000-000000000003',
-  'Taylor account',
-  '3105559999'
+  'Taylor account'
 );
 
 insert into public.workspaces (id, name, created_by)
