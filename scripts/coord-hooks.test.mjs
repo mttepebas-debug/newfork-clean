@@ -13,10 +13,23 @@ import { execFileSync, spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-coord-test-"));
 process.env.NEWFORK_LOCK_DIR = path.join(root, "locks");
 process.env.NEWFORK_INBOX_DIR = path.join(root, "inbox");
+process.env.CLAUDE_CODE_SESSION_ID = "s-test"; // the session lock.mjs take() records; matches bash() below
 
 const inbox = await import("./inbox.mjs");
 const { take } = await import("./lock.mjs");
-const { evaluate } = await import("./guard.mjs");
+const { evaluate, runStep, recordsAllow, ENFORCE_FROM } = await import("./guard.mjs");
+
+// OTOMASYON-3: warnings until ENFORCE_FROM, refusals after it.
+const BEFORE = ENFORCE_FROM - 24 * 3600 * 1000;
+const AFTER = ENFORCE_FROM + 24 * 3600 * 1000;
+const takeAs = (session, name, arg) => {
+  process.env.CLAUDE_CODE_SESSION_ID = session;
+  try {
+    return take(name, arg);
+  } finally {
+    process.env.CLAUDE_CODE_SESSION_ID = "s-test";
+  }
+};
 
 const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
 const origin = path.join(root, "origin.git");
@@ -43,6 +56,51 @@ const bash = (command, extra = {}) => ({ tool_name: "Bash", session_id: "s-test"
 beforeEach(() => {
   fs.rmSync(process.env.NEWFORK_LOCK_DIR, { recursive: true, force: true });
   fs.rmSync(process.env.NEWFORK_INBOX_DIR, { recursive: true, force: true });
+  process.env.NEWFORK_CI_STATE = "idle"; // never ask the real `gh` from a test
+});
+
+const cloneRepo = (name) => {
+  const dir = path.join(root, name);
+  execFileSync("git", ["clone", "-q", origin, dir], { stdio: "ignore" });
+  return dir;
+};
+const commitFile = (dir, file) => {
+  fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
+  fs.writeFileSync(path.join(dir, file), "x");
+  git(dir, "add", file);
+  git(dir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", file);
+};
+
+// A Claude Code transcript head: the first real user message, after the injected reminders.
+const transcript = (name, firstText) => {
+  const file = path.join(root, `${name}.jsonl`);
+  const lines = [
+    { type: "queue-operation", operation: "enqueue" },
+    { type: "attachment", attachment: { type: "hook" } },
+    {
+      type: "user",
+      message: {
+        role: "user",
+        content: [
+          { type: "text", text: "<system-reminder>\nYou are operating in a git worktree.\n</system-reminder>" },
+          { type: "text", text: firstText },
+        ],
+      },
+    },
+    { type: "assistant", message: { content: [{ type: "text", text: "Rol: not the user" }] } },
+  ];
+  fs.writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+  return file;
+};
+const roleTranscript = transcript("role", "Rol: nf-backend (araç/otomasyon). Repo: C:\\x");
+const mertTranscript = transcript("mert", "Schedule ekranındaki boşluğu düzelt.\nRol: değil, soru");
+const edit = (file, extra = {}) => ({
+  tool_name: "Edit",
+  session_id: "s-role",
+  cwd: repo,
+  transcript_path: roleTranscript,
+  tool_input: { file_path: file, old_string: "a", new_string: "b" },
+  ...extra,
 });
 
 after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -204,4 +262,239 @@ test("e2e gap: screen code ahead of origin/main warns until a passing run stamps
   const sha = git(work, "rev-parse", "HEAD");
   fs.appendFileSync(path.join(process.env.NEWFORK_INBOX_DIR, "e2e-pass.jsonl"), `${JSON.stringify({ sha })}\n`);
   assert.deepEqual(e2eGap(work), []);
+});
+
+// ---- OTOMASYON-3: heavy-run lock -------------------------------------------------------------
+
+test("runStep: which commands are gate steps, test:db or e2e", () => {
+  for (const [cmd, step] of [
+    ["pnpm.cmd test", "test"],
+    ["pnpm run build", "build"],
+    ["pnpm.cmd test:db", "test:db"],
+    ["supabase test db", "test:db"],
+    ["pnpm.cmd e2e", "e2e"],
+    ["npx playwright test e2e/flows/x.spec.ts", "e2e"],
+    ["pnpm exec playwright test", "e2e"],
+    ["turbo run build", "build"],
+    ["& pnpm.cmd test 2>&1", "test"],
+    ["CI=1 pnpm.cmd build", "build"],
+    ["pnpm.cmd lint", "lint"],
+    ["pnpm.cmd typecheck --force", "typecheck"],
+  ])
+    assert.equal(runStep(cmd), step, cmd);
+  for (const cmd of [
+    "pnpm.cmd --filter @newfork/web exec vitest run src/x.test.tsx",
+    "pnpm.cmd --filter @newfork/web test",
+    "pnpm.cmd -F @newfork/api build",
+    "pnpm -C apps/web test",
+    "turbo test --filter=@newfork/api",
+    "node --test scripts/lock.test.mjs",
+    'git commit -m "pnpm test"',
+    "pnpm.cmd install",
+    "echo playwright test",
+  ])
+    assert.equal(runStep(cmd), null, cmd);
+});
+
+test("a lone lint or typecheck is not a heavy run (typecheck: 24 s cold, 2026-10-07)", () => {
+  for (const cmd of ["pnpm.cmd lint", "pnpm.cmd typecheck", "pnpm.cmd lint && pnpm.cmd typecheck"]) {
+    const r = evaluate(bash(cmd), AFTER);
+    assert.equal(r.block, false, cmd);
+    assert.equal(r.warn ?? null, null, cmd);
+  }
+  assert.deepEqual(auditLines(), []);
+});
+
+test("heavy run without heavy.lock: a warning in the first week, a refusal after it", () => {
+  const w = evaluate(bash("pnpm.cmd test"), BEFORE);
+  assert.equal(w.block, false);
+  assert.match(w.warn, /heavy\.lock/);
+  assert.equal(auditLines().at(-1).event, "heavy-warn");
+  const b = evaluate(bash("pnpm.cmd test"), AFTER);
+  assert.equal(b.block, true);
+  assert.match(b.message, /node scripts\/lock\.mjs take heavy/);
+  assert.match(b.message, /NF_OVERRIDE/);
+  assert.equal(auditLines().at(-1).event, "heavy-block");
+});
+
+test("heavy run with this session's heavy.lock passes and is counted", () => {
+  take("heavy", "nf-test/gate, tam kapı");
+  const r = evaluate(bash("pnpm.cmd lint && pnpm.cmd typecheck && pnpm.cmd test && pnpm.cmd build"), AFTER);
+  assert.equal(r.block, false);
+  assert.equal(r.warn ?? null, null);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "heavy-ok");
+  assert.equal(e.step, "test");
+});
+
+test("heavy.lock held by another session: warning, then refusal, naming the holder", () => {
+  takeAs("s-other", "heavy", "nf-db/x, e2e");
+  assert.match(evaluate(bash("pnpm.cmd build"), BEFORE).warn, /nf-db\/x/);
+  const b = evaluate(bash("pnpm.cmd build"), AFTER);
+  assert.equal(b.block, true);
+  assert.match(b.message, /nf-db\/x/);
+});
+
+test("heavy.lock taken earlier in the same && chain counts; after ; it does not", () => {
+  assert.equal(evaluate(bash('node scripts/lock.mjs take heavy "nf-test/x, kapı" && pnpm.cmd test'), AFTER).block, false);
+  assert.equal(evaluate(bash('node scripts/lock.mjs take heavy "nf-test/x, kapı"; pnpm.cmd test'), AFTER).block, true);
+  assert.equal(evaluate(bash('node scripts/lock.mjs take db "nf-test/x, e2e" && pnpm.cmd e2e'), AFTER).block, true);
+});
+
+test("e2e with db.lock but no heavy.lock warns, and the message names both locks in order", () => {
+  take("db", "nf-test/e2e, flows");
+  const r = evaluate(bash("pnpm.cmd e2e"), BEFORE);
+  assert.equal(r.block, false);
+  assert.match(r.warn, /önce db\.lock, sonra heavy\.lock/);
+  assert.match(evaluate(bash("pnpm.cmd test:db"), AFTER).message, /önce db\.lock, sonra heavy\.lock/);
+});
+
+test("CI running: a local heavy run warns even with the lock; gh unreachable is logged, never blocks", () => {
+  take("heavy", "nf-test/gate, kapı");
+  process.env.NEWFORK_CI_STATE = "running";
+  assert.match(evaluate(bash("pnpm.cmd test:db"), BEFORE).warn, /CI koşuyor/);
+  assert.equal(evaluate(bash("pnpm.cmd test:db"), AFTER).block, true);
+  process.env.NEWFORK_CI_STATE = "unknown";
+  assert.equal(evaluate(bash("pnpm.cmd test:db"), AFTER).block, false);
+  assert.ok(auditLines().some((e) => e.event === "heavy-ci-unknown"));
+});
+
+test("NF_OVERRIDE in front of a heavy run passes and logs the reason", () => {
+  const r = evaluate(bash('NF_OVERRIDE="Mert ölçüm istedi" pnpm.cmd test'), AFTER);
+  assert.equal(r.block, false);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "heavy-override");
+  assert.equal(e.reason, "Mert ölçüm istedi");
+  assert.equal(evaluate(bash("$env:NF_OVERRIDE='ps'; pnpm.cmd e2e", { tool_name: "PowerShell" }), AFTER).block, false);
+  assert.equal(evaluate(bash('git commit -m "NF_OVERRIDE=x" && pnpm.cmd test'), AFTER).block, true);
+});
+
+test("a push that starts CI while another session holds heavy.lock: warning, then refusal", () => {
+  const code = cloneRepo("repo-push-code");
+  commitFile(code, "apps/api/src/x.ts");
+  takeAs("s-other", "heavy", "nf-db/x, e2e");
+  const push = (now) => evaluate(bash("git push origin HEAD:task/x", { cwd: code }), now);
+  assert.match(push(BEFORE).warn, /CI/);
+  const b = push(AFTER);
+  assert.equal(b.block, true);
+  assert.match(b.message, /nf-db\/x/);
+});
+
+test("a docs-only push starts no CI and a push with my own heavy.lock is quiet", () => {
+  const docs = cloneRepo("repo-push-docs");
+  commitFile(docs, "docs/plan/x.md");
+  const code = cloneRepo("repo-push-mine");
+  commitFile(code, "apps/web/src/y.ts");
+  takeAs("s-other", "heavy", "nf-db/x, e2e");
+  const r = evaluate(bash("git push origin HEAD:task/x", { cwd: docs }), AFTER);
+  assert.equal(r.block, false);
+  assert.equal(r.warn ?? null, null);
+  fs.rmSync(path.join(process.env.NEWFORK_LOCK_DIR, "heavy.lock"));
+  take("heavy", "nf-test/mine, kapı");
+  const mine = evaluate(bash("git push origin HEAD:task/y", { cwd: code }), AFTER);
+  assert.equal(mine.block, false);
+  assert.equal(mine.warn ?? null, null);
+});
+
+// ---- OTOMASYON-3: record files (CLAUDE.md §4.8) ----------------------------------------------
+
+test("records: a role session editing a record file gets a warning, then a refusal", () => {
+  const file = path.join(repo, "docs", "plan", "BACKLOG.md");
+  const w = evaluate(edit(file), BEFORE);
+  assert.equal(w.block, false);
+  assert.match(w.warn, /koordinatör/);
+  assert.equal(auditLines().at(-1).event, "records-warn");
+  const b = evaluate(edit(file.replaceAll("/", "\\"), { tool_name: "Write" }), AFTER);
+  assert.equal(b.block, true);
+  assert.match(b.message, /records-allow/);
+  assert.equal(auditLines().at(-1).event, "records-block");
+});
+
+test("records: a role session's own task file, the coordinator and Mert's session write freely", async () => {
+  assert.equal(evaluate(edit(path.join(repo, "docs/plan/tasks/X.md")), AFTER).block, false);
+  assert.equal(evaluate(edit(path.join(repo, "docs/plan/research/BACKLOG.md")), AFTER).block, false);
+  await inbox.runHook("pre", bash("node scripts/inbox.mjs claim", { session_id: "s-coord" }));
+  assert.equal(evaluate(edit(path.join(repo, "docs/plan/HANDOFF.md"), { session_id: "s-coord" }), AFTER).block, false);
+  const mert = evaluate(edit(path.join(repo, "docs/plan/DONE.md"), { session_id: "s-mert", transcript_path: mertTranscript }), AFTER);
+  assert.equal(mert.block, false);
+  assert.equal(mert.warn ?? null, null);
+  assert.deepEqual(
+    auditLines().filter((e) => e.event.startsWith("records")),
+    [],
+  );
+});
+
+test("records: the session title the coordinator sets decides; a quoted title in Mert's words does not", () => {
+  const user = (content, extra = {}) => ({ type: "user", message: { role: "user", content }, ...extra });
+  const title = (customTitle) => ({ type: "custom-title", customTitle, sessionId: "x" });
+  const write = (name, lines) => {
+    const file = path.join(root, `${name}.jsonl`);
+    fs.writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+    return file;
+  };
+  const isRole = (lines, name) =>
+    evaluate(edit(path.join(repo, "docs/plan/BACKLOG.md"), { transcript_path: write(name, lines) }), BEFORE).warn !== null;
+  // a pool session handed a role: its title turns into "Rol: …" (CLAUDE.md §4.1)
+  const pool = [
+    title("Bekle: handoff raporu gelene kadar idle (8)"),
+    user("Idle kal. Sana bir handoff raporu gelene kadar hiçbir iş yapma."),
+    { type: "assistant", message: { content: [{ type: "text", text: "Rol: bekliyorum" }] } },
+    user('<cross-session-message from="local_x" name="Koordinatör">\nEKRAN-02 A4: başla\n</cross-session-message>'),
+    title("Rol: nf-db (Veritabanı ve Yetki)"),
+  ];
+  assert.equal(isRole(pool, "pool"), true);
+  // retired: the latest title wins
+  assert.equal(isRole([...pool, title("(eski) Rol: nf-db (Veritabanı ve Yetki)")], "retired"), false);
+  // Mert's own session naming another session's title, a tool result and a meta message holding "Rol:"
+  const mert = [
+    user("Rol: nf-planlama (Kayıt ve ilerleme) adında 2 session var, hangisi eski?"),
+    user([{ type: "tool_result", tool_use_id: "t2", content: "Rol: nf-backend (dosyadan okunan)." }]),
+    user("Rol: x (y).", { isMeta: true }),
+    title("Kayıt temizliği"),
+  ];
+  assert.equal(isRole(mert, "mert-quotes"), false);
+});
+
+test("records: an unreadable transcript lets the write through and logs it", () => {
+  const r = evaluate(edit(path.join(repo, "docs/plan/KARARLAR.md"), { transcript_path: path.join(root, "missing.jsonl") }), AFTER);
+  assert.equal(r.block, false);
+  assert.equal(auditLines().at(-1).event, "records-unknown");
+});
+
+test("records: records-allow lets one role session write, and both steps are logged", () => {
+  recordsAllow("s-role", "Mert bu oturumda istedi");
+  assert.equal(evaluate(edit(path.join(repo, "docs/plan/DERSLER.md")), AFTER).block, false);
+  const events = auditLines().map((e) => e.event);
+  assert.ok(events.includes("records-allow"));
+  assert.equal(events.at(-1), "records-allowed");
+  assert.equal(evaluate(edit(path.join(repo, "docs/plan/DERSLER.md"), { session_id: "s-role-2" }), AFTER).block, true);
+});
+
+test("records: a role session's git commit carrying a record file warns", () => {
+  const work = cloneRepo("repo-records");
+  fs.mkdirSync(path.join(work, "docs/plan"), { recursive: true });
+  fs.writeFileSync(path.join(work, "docs/plan/BACKLOG.md"), "x");
+  git(work, "add", "docs/plan/BACKLOG.md");
+  const commit = (cmd, extra = {}) =>
+    evaluate(bash(cmd, { cwd: work, session_id: "s-role", transcript_path: roleTranscript, ...extra }), BEFORE);
+  assert.match(commit('git commit -m "docs: x"').warn, /BACKLOG\.md/);
+  assert.equal(commit('git commit -m "docs: x"', { session_id: "s-mert", transcript_path: mertTranscript }).warn ?? null, null);
+  git(work, "reset", "-q");
+  assert.match(commit('git commit -m "x" -- docs/plan/DONE.md').warn, /DONE\.md/);
+  assert.equal(commit('git commit -m "x" -- docs/plan/tasks/X.md').warn ?? null, null);
+});
+
+test("guard CLI routes Edit to the record check and records-allow writes the session's pass", () => {
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "guard.mjs")], {
+    input: JSON.stringify(edit(path.join(repo, "docs/plan/EKRAN-PLANI.md"))),
+    encoding: "utf8",
+  });
+  const said = r.status === 2 ? r.stderr : (JSON.parse(r.stdout || "{}").systemMessage ?? "");
+  assert.match(said, /koordinatör/);
+  const a = spawnSync(process.execPath, [path.join(import.meta.dirname, "guard.mjs"), "records-allow", "Mert istedi"], {
+    encoding: "utf8",
+    env: { ...process.env, CLAUDE_CODE_SESSION_ID: "s-cli" },
+  });
+  assert.equal(a.status, 0, a.stderr);
+  assert.equal(evaluate(edit(path.join(repo, "docs/plan/EKRAN-PLANI.md"), { session_id: "s-cli" }), AFTER).block, false);
 });

@@ -16,9 +16,10 @@ const { take, release, status } = await import("./lock.mjs");
 
 const dbLock = path.join(tmpDir, "db.lock");
 const mainLock = path.join(tmpDir, "main.lock");
+const heavyLock = path.join(tmpDir, "heavy.lock");
 
 beforeEach(() => {
-  for (const f of [dbLock, mainLock]) fs.rmSync(f, { force: true });
+  for (const f of [dbLock, mainLock, heavyLock]) fs.rmSync(f, { force: true });
 });
 
 after(() => {
@@ -126,6 +127,33 @@ test("take rejects an identity whose role or session half is empty (BL-196)", ()
     assert.equal(result.ok, false, `accepted "${arg}"`);
     assert.equal(fs.existsSync(dbLock), false);
   }
+});
+
+test("heavy.lock takes, reports and releases like the others (OTOMASYON-3)", () => {
+  assert.equal(take("heavy", "nf-test/gate, tam kapı").ok, true);
+  assert.equal(take("heavy", "nf-db/other, e2e").ok, false);
+  const held = status().find((l) => l.name === "heavy");
+  assert.equal(held.identity, "nf-test/gate");
+  assert.equal(release("heavy", "nf-test/gate").ok, true);
+  assert.equal(status().find((l) => l.name === "heavy").free, true);
+});
+
+test("a lock records the Claude session and folder that took it, so the guard can tell whose it is", () => {
+  const prev = process.env.CLAUDE_CODE_SESSION_ID;
+  process.env.CLAUDE_CODE_SESSION_ID = "sess-123";
+  try {
+    take("heavy", "nf-test/owner, e2e");
+  } finally {
+    if (prev === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
+    else process.env.CLAUDE_CODE_SESSION_ID = prev;
+  }
+  const held = status().find((l) => l.name === "heavy");
+  assert.equal(held.session, "sess-123");
+  assert.equal(held.cwd, process.cwd());
+});
+
+test("an unknown lock name is refused and the message lists the three names", () => {
+  assert.throws(() => take("ci", "nf-test/x, y"), /db\|main\|heavy/);
 });
 
 test("a plain-text lock's age comes from the file mtime and turns stale after 2h (BL-196)", () => {

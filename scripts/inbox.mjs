@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// COORD-CTRL: the coordinator's inbox and session board (CLAUDE.md §3, §12).
+// COORD-CTRL: the coordinator's inbox and session board (CLAUDE.md §4.1, §6).
 // Reports go to a shared folder instead of a chat message, so they survive a
 // busy or replaced coordinator. Folder (git-free, next to .newfork-locks):
 //   new/<stamp>-<from>-<task>.md   unread reports     done/   acknowledged

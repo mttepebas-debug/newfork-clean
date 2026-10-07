@@ -1,11 +1,19 @@
 #!/usr/bin/env node
-// COORD-CTRL: PreToolUse guard for Bash/PowerShell (CLAUDE.md §6, §7).
+// COORD-CTRL + OTOMASYON-3: PreToolUse guard (CLAUDE.md §4.2, §4.8, §6).
+// Bash/PowerShell:
 // - A push to main needs a live main.lock (scripts/lock.mjs). Without one it is
 //   refused, unless the push itself is prefixed with NF_OVERRIDE="<reason>": then
 //   origin/main is first saved as refs/nf-backup/main/<stamp> and the bypass is logged.
+// - One heavy run at a time: a gate test/build, test:db or e2e needs this session's
+//   heavy.lock and no CI run in progress; a push that starts CI must not overlap another
+//   session's heavy.lock. NF_OVERRIDE in front of the command passes and is logged.
 // - Deleting a branch or removing a worktree is allowed, but the tip is saved
 //   under refs/nf-backup/... first.
-// - Every decision lands in <inbox>/audit.log (one JSON object per line, secrets masked).
+// Edit/Write, and a role session's git commit: the record files of CLAUDE.md §4.8 are
+// written only by the coordinator and by Mert's own sessions. `guard.mjs records-allow`
+// is the logged way out for one session.
+// Heavy-run and record problems warn until ENFORCE_FROM and are refused after it (ILKELER P16).
+// Every decision lands in <inbox>/audit.log (one JSON object per line, secrets masked).
 // Fail-closed only for a push to main: if evaluate() itself breaks, that push
 // is refused (NF_OVERRIDE still passes). Everything else fails open.
 import fs from "node:fs";
@@ -13,7 +21,11 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { status as lockStatus } from "./lock.mjs";
-import { INBOX_DIR } from "./inbox.mjs";
+import { INBOX_DIR, isCoordinator } from "./inbox.mjs";
+
+// The first week only warns; rollback = move this day forward.
+const ENFORCE_DAY = "2026-10-14";
+export const ENFORCE_FROM = Date.parse(`${ENFORCE_DAY}T00:00:00+03:00`);
 
 const AUDIT = () => path.join(INBOX_DIR, "audit.log");
 // Commands already refused by .claude/settings.json deny rules; attempts are logged.
@@ -43,9 +55,9 @@ export const redact = (s) =>
     .replace(/(\/\/[^:\s/@]+:)[^@\s]+@/g, "$1***@")
     .replace(/(--password[=\s]+|PGPASSWORD=|Bearer\s+|(?:api[_-]?key|token|secret)[=:]\s*)\S+/gi, "$1***");
 
-// The override counts only as an assignment in front of the push itself:
+// The override counts only as an assignment in front of the guarded command itself:
 // bash `NF_OVERRIDE="why" git push …`, or PowerShell `$env:NF_OVERRIDE='why'; git push …`
-// (the segment right before the push). Text anywhere else (a commit message) does not count.
+// (the segment right before it). Text anywhere else (a commit message) does not count.
 const REASON = String.raw`\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))`;
 export function overrideReason(segs, i) {
   const pick = (m) => (m ? (m[1] ?? m[2] ?? m[3] ?? "").trim() || "(gerekçe yok)" : null);
@@ -56,7 +68,7 @@ export function overrideReason(segs, i) {
 }
 
 // ponytail: shell-ish split on && || ; | newline; quoting inside a segment is not parsed, and a
-// push wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not seen.
+// command wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not seen.
 // Each segment carries the operator in front of it; an empty segment between two
 // operators keeps the weaker one (anything but && breaks a chain).
 const SEP = /(&&|\|\||[;|\n])/;
@@ -79,17 +91,17 @@ export const segments = (cmd) => chain(cmd).map((c) => c.seg);
 const words = (seg) => (seg.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map((w) => w.replace(/^["']|["']$/g, ""));
 
 // BL-500: `node scripts/lock.mjs take main "…" && … && git push …` takes the lock only
-// when the command runs, after this hook. Joined by && alone, the push runs only if
-// the take succeeded, so the chain counts as holding the lock.
-const takesMain = (seg) => {
+// when the command runs, after this hook. Joined by && alone, the guarded step runs only if
+// the take succeeded, so the chain counts as holding the lock. Same for heavy.lock.
+const takesLock = (seg, name) => {
   const w = words(seg);
   const n = w.findIndex((x) => /(^|[\\/])node(\.exe)?$/.test(x));
-  return n >= 0 && /(^|[\\/])lock\.mjs$/.test(w[n + 1] ?? "") && w[n + 2] === "take" && w[n + 3] === "main";
+  return n >= 0 && /(^|[\\/])lock\.mjs$/.test(w[n + 1] ?? "") && w[n + 2] === "take" && w[n + 3] === name;
 };
-export function takesMainBefore(links, i) {
+export function takesLockBefore(links, i, name) {
   for (let j = i; j > 0; j--) {
     if (links[j].sep !== "&&") return false;
-    if (takesMain(links[j - 1].seg)) return true;
+    if (takesLock(links[j - 1].seg, name)) return true;
   }
   return false;
 }
@@ -110,21 +122,31 @@ function gitCall(seg, sub) {
   return { cwd, args: w.slice(i + 1) };
 }
 
-export function pushesMain(seg, cwd) {
+// Where a push goes: its directory and the destination branch names ("*" for --all/--mirror).
+function pushCall(seg, cwd) {
   const call = gitCall(seg, "push");
-  if (!call) return false;
+  if (!call) return null;
   const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
-  if (call.args.some((a) => a === "--all" || a === "--mirror")) return true;
+  if (call.args.some((a) => a === "--all" || a === "--mirror")) return { dir, dests: ["*"] };
   const plain = call.args.filter((a) => !a.startsWith("-"));
   // --repo=<remote> names the remote as an option, so every plain arg is a refspec
   const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
   const current = () => tryGit(dir, ["branch", "--show-current"]);
-  if (!refspecs.length) return current() === "main";
-  return refspecs.some((spec) => {
+  if (!refspecs.length) return { dir, dests: [current()] };
+  const dests = refspecs.map((spec) => {
     const s = spec.replace(/^\+/, "");
-    const dst = s.includes(":") ? s.split(":")[1] : s === "HEAD" ? current() : s;
-    return dst === "main" || dst === "refs/heads/main";
+    return (s.includes(":") ? s.split(":")[1] : s === "HEAD" ? current() : s).replace(/^refs\/heads\//, "");
   });
+  return { dir, dests };
+}
+const toMain = (push) => push.dests.some((d) => d === "main" || d === "*");
+
+// ci.yml runs on pushes to main and task/**, unless only docs/** and *.md changed.
+const DOCS_ONLY = /^docs\/|\.md$/;
+function startsCI(push) {
+  if (!push.dests.some((d) => d === "*" || d === "main" || d.startsWith("task/"))) return false;
+  const files = tryGit(push.dir, ["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+  return files.some((f) => !DOCS_ONLY.test(f));
 }
 
 // e2e before a push (CLAUDE.md §6, Mert 2026-10-01 "warning mode", ILKELER P16):
@@ -151,6 +173,213 @@ export function e2eGap(dir) {
     shas = fs.readFileSync(E2E_PASS(), "utf8").trim().split("\n").slice(-30).map((l) => JSON.parse(l).sha);
   } catch {}
   return shas.some((sha) => sameContent(dir, sha)) ? [] : files;
+}
+
+// ---- heavy runs (CLAUDE.md §4.2: CI, e2e, test:db and the gate run one at a time) ----
+
+const GATE = new Set(["lint", "typecheck", "test", "build"]);
+// A lone lint or typecheck takes seconds (root typecheck 24 s cold, 2026-10-07); a gate of more
+// than two steps always holds test or build, so those two carry the rule.
+const HEAVY = new Set(["test", "build", "test:db", "e2e"]);
+const FOCUSED = /^(--filter|-F|-C|--dir)(=|$)/;
+const prog = (x) => path.basename(String(x ?? "")).toLowerCase().replace(/\.(cmd|exe|ps1)$/, "");
+
+// The gate step, "test:db" or "e2e" a segment runs, else null. A filtered run is focused, not heavy.
+// ponytail: a bare `pnpm test` started inside apps/web runs that package only; it still counts.
+export function runStep(seg) {
+  // drop `VAR=value ` prefixes first: a quoted value may hold spaces (NF_OVERRIDE="two words")
+  let w = words(seg.replace(/^(?:&\s*)?(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, ""));
+  if (w[0] === "&") w = w.slice(1);
+  if (["npx", "pnpx"].includes(prog(w[0]))) w = w.slice(1);
+  else if (prog(w[0]) === "pnpm" && ["exec", "dlx"].includes(w[1])) w = w.slice(2);
+  while (w.length && w[0].startsWith("-")) w = w.slice(1);
+  const p = prog(w[0]);
+  const args = w.slice(1);
+  if (p === "supabase") return args[0] === "test" && args[1] === "db" ? "test:db" : null;
+  if (p === "playwright") return args[0] === "test" ? "e2e" : null;
+  if ((p !== "pnpm" && p !== "turbo") || args.some((a) => FOCUSED.test(a))) return null;
+  const script = args.find((a) => !a.startsWith("-") && a !== "run");
+  if (p === "pnpm" && (script === "test:db" || script === "e2e")) return script;
+  return GATE.has(script) ? script : null;
+}
+
+const samePath = (a, b) => !!a && !!b && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+function heavyLock(input) {
+  const l = lockStatus().find((x) => x.name === "heavy");
+  if (l.free) return { free: true };
+  // lock.mjs records CLAUDE_CODE_SESSION_ID, the same id the hook gets; a terminal has only cwd
+  const mine = l.session ? l.session === input.session_id : samePath(l.cwd, input.cwd ?? process.cwd());
+  const info = `${l.identity}, ${l.ageMinutes ?? "?"} dk${l.stale ? ", bayat: 2 saatten eski, koordinatöre sor" : ""}`;
+  return { free: false, mine, info };
+}
+
+// GitHub Actions runs not yet completed (queued counts: the single runner is the user's PC).
+export function ciState(cwd) {
+  const forced = process.env.NEWFORK_CI_STATE; // tests only: idle | running | unknown
+  if (forced) return { state: forced, runs: [] };
+  try {
+    const out = execFileSync("gh", ["run", "list", "--limit", "5", "--json", "status,name,headBranch"], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 10000,
+    });
+    const runs = JSON.parse(out).filter((r) => r.status !== "completed");
+    return { state: runs.length ? "running" : "idle", runs };
+  } catch {
+    return { state: "unknown", runs: [] };
+  }
+}
+
+function heavyRun(input, links, i, base, flag) {
+  const segs = links.map((l) => l.seg);
+  const step = runStep(segs[i]);
+  const reason = overrideReason(segs, i);
+  if (reason) {
+    audit({ ...base, event: "heavy-override", step, reason });
+    return null;
+  }
+  const problems = [];
+  const lock = heavyLock(input);
+  if (!lock.mine && !takesLockBefore(links, i, "heavy"))
+    problems.push(lock.free ? "heavy.lock alınmamış" : `heavy.lock başka oturumda (${lock.info})`);
+  const ci = ciState(input.cwd ?? process.cwd());
+  if (ci.state === "unknown") audit({ ...base, event: "heavy-ci-unknown", step });
+  if (ci.state === "running")
+    problems.push(`CI koşuyor${ci.runs.length ? ` (${ci.runs.map((r) => `${r.name} / ${r.headBranch}: ${r.status}`).join("; ")})` : ""}`);
+  if (!problems.length) {
+    audit({ ...base, event: "heavy-ok", step });
+    return null;
+  }
+  const take =
+    step === "e2e" || step === "test:db"
+      ? `önce db.lock, sonra heavy.lock: node scripts/lock.mjs take db "<rol/oturum>, <amaç>" && node scripts/lock.mjs take heavy "<rol/oturum>, <amaç>"`
+      : `node scripts/lock.mjs take heavy "<rol/oturum>, <amaç>"`;
+  return flag(
+    "heavy",
+    `ağır koşu (${step}): ${problems.join("; ")}. Aynı anda tek ağır koşu (CLAUDE.md §4.2). ` +
+      `Kilit: ${take}${ci.state === "running" ? "; CI bitene kadar bekle (gh run list --limit 3)" : ""}. ` +
+      `Bilinçli aşmak için ağır komutun başına NF_OVERRIDE="<gerekçe>" koy; kayda düşer.`,
+    { step, problems },
+  );
+}
+
+function heavyPush(input, links, i, base, flag) {
+  if (takesLockBefore(links, i, "heavy")) return null;
+  const lock = heavyLock(input);
+  if (lock.free || lock.mine) return null;
+  const reason = overrideReason(links.map((l) => l.seg), i);
+  if (reason) {
+    audit({ ...base, event: "heavy-override", step: "push", reason });
+    return null;
+  }
+  return flag(
+    "heavy",
+    `bu push CI'ı başlatır ama heavy.lock başka oturumda (${lock.info}); aynı anda tek ağır koşu (CLAUDE.md §4.2). ` +
+      `Kilit bırakılınca gönder. Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; kayda düşer.`,
+    { step: "push", lock: lock.info },
+  );
+}
+
+// ---- record files (CLAUDE.md §4.8: written by the coordinator and Mert's own sessions) ----
+
+const RECORDS = /(^|\/)docs\/plan\/(BACKLOG|KARARLAR|KOORDINATOR-KARARLARI|DONE|DERSLER|SABAH-SORULAR|HANDOFF|EKRAN-PLANI)\.md$/i;
+export const isRecordFile = (f) => RECORDS.test(String(f ?? "").replaceAll("\\", "/"));
+const ALLOW = (sid) => path.join(INBOX_DIR, "records-allow", `${String(sid).replace(/[^\w-]/g, "_")}.json`);
+
+// A user message's own text: no tool results, no injected reminders, no wrapper tags.
+const userText = (o) => {
+  if (o?.type !== "user" || o.isMeta) return "";
+  const c = o.message?.content;
+  return (typeof c === "string" ? c : Array.isArray(c) ? c.filter((b) => b?.type === "text").map((b) => b.text).join("\n") : "")
+    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
+    .replace(/<\/?[A-Za-z][\w-]*(\s[^>]*)?>/g, "");
+};
+
+const lineEnd = (text, at) => (text.indexOf("\n", at) < 0 ? text.length : text.indexOf("\n", at));
+const lineAt = (text, at) => text.slice(text.lastIndexOf("\n", at) + 1, lineEnd(text, at));
+// "Rol: nf-backend (araç/otomasyon)." -- the header itself, not a sentence that quotes a title.
+const HEADER = /^[*_#>\s]*Rol\s*:\s*[\w-]+\s*\([^)\n]*\)\s*([.,:;—–-]|$)/i;
+
+// CLAUDE.md §4.1: a role session is titled "Rol: <rol> (<uzmanlık>)" by the coordinator (the
+// transcript keeps every title as a custom-title line; the latest wins, "(eski) Rol: …" is retired),
+// or was opened from a task card whose first message starts with that header.
+// true = role session, false = not, null = no readable transcript.
+// ponytail: a worker with neither the title nor the header passes as Mert's session.
+export function roleSession(transcriptPath) {
+  let text;
+  try {
+    text = fs.readFileSync(transcriptPath, "utf8"); // 75 MB, the largest seen: under 0.5 s
+  } catch {
+    return null;
+  }
+  const t = text.lastIndexOf('"type":"custom-title"');
+  if (t >= 0) {
+    try {
+      if (/^Rol\s*:/i.test(String(JSON.parse(lineAt(text, t)).customTitle ?? "").trim())) return true;
+    } catch {}
+  }
+  // the first real user message: tool results, meta and reminder-only lines carry no text
+  for (let at = text.indexOf('"type":"user"'); at >= 0; at = text.indexOf('"type":"user"', lineEnd(text, at))) {
+    let first = "";
+    try {
+      first = userText(JSON.parse(lineAt(text, at))).split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+    } catch {}
+    if (first) return HEADER.test(first);
+  }
+  return t >= 0 ? false : null;
+}
+
+export function recordsAllow(sessionId, reason) {
+  if (!sessionId) return { ok: false, message: "oturum kimliği yok (CLAUDE_CODE_SESSION_ID); izin yazılmadı" };
+  const why = String(reason ?? "").trim() || "(gerekçe yok)";
+  fs.mkdirSync(path.dirname(ALLOW(sessionId)), { recursive: true });
+  fs.writeFileSync(ALLOW(sessionId), JSON.stringify({ session_id: sessionId, reason: why, at: new Date().toISOString() }));
+  audit({ session_id: sessionId, cwd: process.cwd(), event: "records-allow", reason: why });
+  return { ok: true, message: `kayıt dosyası izni bu oturum için yazıldı (${why}); audit.log'a düştü` };
+}
+
+function records(input, files, base, flag) {
+  if (isCoordinator(input.session_id)) return null;
+  const names = files.map((f) => path.basename(String(f).replaceAll("\\", "/")));
+  const role = roleSession(input.transcript_path);
+  if (role === null) {
+    audit({ ...base, event: "records-unknown", files: names });
+    return null;
+  }
+  if (!role) return null;
+  if (fs.existsSync(ALLOW(input.session_id))) {
+    audit({ ...base, event: "records-allowed", files: names });
+    return null;
+  }
+  return flag(
+    "records",
+    `kayıt dosyası (${names.join(", ")}): bu dosyalara yalnız koordinatör ve Mert'in açtığı oturum yazar (CLAUDE.md §4.8). ` +
+      `Raporunu görev dosyasına (docs/plan/tasks/<ID>.md) ya da ekran klasörüne (ekranlar/<no>-<ekran>/uygulama/) yaz; ` +
+      `kayda geçecek bilgiyi raporla koordinatöre bildir. Mert bu oturumda açıkça istediyse: ` +
+      `node scripts/guard.mjs records-allow "<gerekçe>" (kayda düşer).`,
+    { files: names },
+  );
+}
+
+// A git commit's record files: the staged ones plus any named on the command line.
+const COMMIT_VALUE = new Set(["-m", "-F", "-C", "-c", "-t", "--author", "--date", "--file", "--message", "--template", "--cleanup", "--fixup", "--squash", "--trailer", "--reuse-message", "--reedit-message"]);
+function commitRecords(seg, cwd) {
+  const call = gitCall(seg, "commit");
+  if (!call) return [];
+  const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
+  const named = [];
+  for (let k = 0; k < call.args.length; k++) {
+    const a = call.args[k];
+    if (a === "--") {
+      named.push(...call.args.slice(k + 1));
+      break;
+    }
+    if (COMMIT_VALUE.has(a)) k++;
+    else if (!a.startsWith("-")) named.push(a);
+  }
+  const staged = tryGit(dir, ["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
+  return [...new Set([...staged, ...named])].filter(isRecordFile);
 }
 
 function audit(entry) {
@@ -204,32 +433,79 @@ function backupBranches(seg, cwd, base) {
   return out;
 }
 
-// Returns { block, message }; performs backups and writes the audit log.
-export function evaluate(input) {
+// A problem is a warning until ENFORCE_FROM and a refusal after it; both are logged.
+function flagger(base, now, warns) {
+  return (kind, text, extra = {}) => {
+    const block = now >= ENFORCE_FROM;
+    audit({ ...base, event: `${kind}-${block ? "block" : "warn"}`, ...extra });
+    if (block) return { block: true, message: `Reddedildi: ${text}` };
+    warns.push(`Uyarı (${ENFORCE_DAY}'ten sonra engel): ${text}`);
+    return null;
+  };
+}
+const done = (warns) => ({ block: false, warn: warns.length ? warns.join("\n") : null });
+
+const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
+function evaluateEdit(input, now) {
+  const file = String(input.tool_input?.file_path ?? input.tool_input?.notebook_path ?? "");
+  if (!isRecordFile(file)) return done([]);
+  const base = { session_id: input.session_id ?? "", cwd: input.cwd ?? process.cwd(), tool: input.tool_name, file };
+  const warns = [];
+  try {
+    return records(input, [file], base, flagger(base, now, warns)) ?? done(warns);
+  } catch (err) {
+    try {
+      audit({ ...base, event: "guard-error", error: String(err?.message ?? err), blocked: false });
+    } catch {}
+    return done([]);
+  }
+}
+
+// Returns { block, message } or { block: false, warn }; performs backups and writes the audit log.
+export function evaluate(input, now = Date.now()) {
+  if (EDIT_TOOLS.test(input.tool_name ?? "")) return evaluateEdit(input, now);
   const cmd = input.tool_input?.command ?? "";
   const cwd = input.cwd ?? process.cwd();
   const base = { session_id: input.session_id ?? "", cwd, tool: input.tool_name ?? "", command: cmd };
   let segs = [];
-  let warn = null;
+  const warns = [];
+  const flag = flagger(base, now, warns);
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
 
     const links = chain(cmd);
     segs = links.map((l) => l.seg);
+    const heavyAt = segs.findIndex((s) => HEAVY.has(runStep(s)));
+    if (heavyAt >= 0) {
+      const r = heavyRun(input, links, heavyAt, base, flag);
+      if (r) return r;
+    }
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i];
       for (const entry of backupBranches(seg, cwd, base)) audit(entry);
 
-      if (!pushesMain(seg, cwd)) continue;
-      const pushDir = gitCall(seg, "push")?.cwd ? path.resolve(cwd, gitCall(seg, "push").cwd) : cwd;
-      const gap = e2eGap(pushDir);
+      const recs = commitRecords(seg, cwd);
+      if (recs.length) {
+        const r = records(input, recs, base, flag);
+        if (r) return r;
+      }
+
+      const push = pushCall(seg, cwd);
+      if (!push) continue;
+      if (startsCI(push)) {
+        const r = heavyPush(input, links, i, base, flag);
+        if (r) return r;
+      }
+      if (!toMain(push)) continue;
+      const gap = e2eGap(push.dir);
       if (gap.length) {
         audit({ ...base, event: "push-main-e2e-missing", files: gap.slice(0, 10) });
-        warn =
+        warns.push(
           `Uyarı: bu push ekran/API/e2e kodu değiştiriyor (${gap.length} dosya, ör. ${gap[0]}) ama aynı içerikte ` +
-          `geçen yerel e2e koşusu yok (CLAUDE.md §6). Commit'ten sonra etkilenen e2e'yi db.lock ile koştur. Push engellenmedi.`;
+            `geçen yerel e2e koşusu yok (CLAUDE.md §6). Commit'ten sonra etkilenen e2e'yi db.lock ile koştur. Push engellenmedi.`,
+        );
       }
-      if (takesMainBefore(links, i)) {
+      if (takesLockBefore(links, i, "main")) {
         audit({ ...base, event: "push-main-take-chained" });
         continue;
       }
@@ -254,7 +530,7 @@ export function evaluate(input) {
           `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
       };
     }
-    return { block: false, warn };
+    return done(warns);
   } catch (err) {
     const overridden = segs.some((_, i) => overrideReason(segs, i));
     const risky = /\bpush\b/.test(cmd) && /\bmain\b/.test(cmd) && !overridden;
@@ -268,13 +544,26 @@ export function evaluate(input) {
 }
 
 async function main() {
+  const [, , cmd, ...rest] = process.argv;
+  if (cmd === "records-allow") {
+    const r = recordsAllow(process.env.CLAUDE_CODE_SESSION_ID, rest.join(" "));
+    console.log(r.message);
+    if (!r.ok) process.exitCode = 1;
+    return;
+  }
+  if (cmd) {
+    console.error('usage: node scripts/guard.mjs records-allow "<gerekçe>"   (kanca olarak argümansız koşar)');
+    process.exitCode = 1;
+    return;
+  }
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
   let input = {};
   try {
     input = JSON.parse(raw || "{}");
   } catch {}
-  if (!/^(Bash|PowerShell)$/.test(input.tool_name ?? "")) return;
+  const tool = input.tool_name ?? "";
+  if (!/^(Bash|PowerShell)$/.test(tool) && !EDIT_TOOLS.test(tool)) return;
   const r = evaluate(input);
   if (r.block) {
     process.stderr.write(r.message);

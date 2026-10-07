@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Atomic take/release/status for the shared locks in CLAUDE.md §7
-// (db.lock / main.lock, C:/Users/TheWe/Documents/Codex/.newfork-locks).
+// Atomic take/release/status for the shared locks in CLAUDE.md §6
+// (db.lock / main.lock / heavy.lock, C:/Users/TheWe/Documents/Codex/.newfork-locks).
+// heavy.lock (OTOMASYON-3, CLAUDE.md §4.2): one heavy run at a time (gate, test:db, e2e,
+// a CI-starting push); scripts/guard.mjs checks it.
 // take() writes the full entry to a scratch file first, then places it with
 // fs.linkSync(tmp, file): the lock file only ever appears fully-formed
 // (EEXIST = already held), so there's no window where a reader sees an
@@ -12,11 +14,11 @@ import { pathToFileURL } from "node:url";
 
 const LOCK_DIR =
   process.env.NEWFORK_LOCK_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-locks";
-const STALE_MS = 2 * 60 * 60 * 1000; // CLAUDE.md §7: flag as stale, never auto-delete
-const LOCKS = ["db", "main"];
+const STALE_MS = 2 * 60 * 60 * 1000; // CLAUDE.md §6: flag as stale, never auto-delete
+const LOCKS = ["db", "main", "heavy"];
 
 function lockPath(name) {
-  if (!LOCKS.includes(name)) throw new Error(`unknown lock "${name}" (expected db|main)`);
+  if (!LOCKS.includes(name)) throw new Error(`unknown lock "${name}" (expected ${LOCKS.join("|")})`);
   return path.join(LOCK_DIR, `${name}.lock`);
 }
 
@@ -44,6 +46,8 @@ function readLock(file) {
       identity: typeof parsed.identity === "string" ? parsed.identity : "",
       purpose: typeof parsed.purpose === "string" ? parsed.purpose : "",
       startedAt: parsed.startedAt,
+      session: typeof parsed.session === "string" ? parsed.session : undefined,
+      cwd: typeof parsed.cwd === "string" ? parsed.cwd : undefined,
     };
   }
   const { identity, purpose } = splitIdentity(raw);
@@ -73,7 +77,16 @@ export function take(name, arg) {
   }
   fs.mkdirSync(LOCK_DIR, { recursive: true });
   const file = lockPath(name);
-  const entry = { identity, purpose, startedAt: new Date().toISOString(), pid: process.pid };
+  // session + cwd tell the guard whose lock it is: CLAUDE_CODE_SESSION_ID is the same id a
+  // hook receives as session_id; a terminal outside Claude Code has none, so cwd stands in.
+  const entry = {
+    identity,
+    purpose,
+    startedAt: new Date().toISOString(),
+    pid: process.pid,
+    session: process.env.CLAUDE_CODE_SESSION_ID || undefined,
+    cwd: process.cwd(),
+  };
   const tmp = path.join(LOCK_DIR, `.${name}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`);
   fs.writeFileSync(tmp, JSON.stringify(entry, null, 2));
   try {
@@ -121,6 +134,8 @@ export function status() {
       free: false,
       identity: held.identity || "?",
       purpose: held.purpose,
+      session: held.session,
+      cwd: held.cwd,
       ageMinutes: age,
       stale: age != null && age * 60000 > STALE_MS,
     };
@@ -143,8 +158,8 @@ function main() {
     cmd === "take" && name && arg ? take(name, arg) : cmd === "release" && name && arg ? release(name, arg) : null;
   if (!result) {
     console.error(
-      'usage: node scripts/lock.mjs take <db|main> "<rol/oturum, amaç>"   (kimlik "rol/oturum" biçiminde, ör. "nf-test/fb61-11")\n' +
-        '       node scripts/lock.mjs release <db|main> "<rol/oturum>"\n' +
+      'usage: node scripts/lock.mjs take <db|main|heavy> "<rol/oturum, amaç>"   (kimlik "rol/oturum" biçiminde, ör. "nf-test/fb61-11")\n' +
+        '       node scripts/lock.mjs release <db|main|heavy> "<rol/oturum>"\n' +
         "       node scripts/lock.mjs status",
     );
     process.exitCode = 1;
