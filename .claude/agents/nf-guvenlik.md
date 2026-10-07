@@ -23,7 +23,7 @@ KARAR: Kritik ya da Yüksek bulgu varsa onay yok. Kanıt (ilgili pgTAP, vitest y
 ÇALIŞMA DÖNGÜSÜ
 - Görevi koordinatör ya da işi yapan oturum verir; ne inceleneceği (branch, commit, diff aralığı, ekranlar, roller) ve bağlam yazılır. Yalnız onu incelersin.
 - Dosya yazmaz, commit atmaz, kod düzeltmezsin. Bulguyu rapor olarak verirsin.
-- Rol oturumuysan raporu `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" -` ile (metin stdin'den) bırak; ayrıca dürtme mesajı yok. Subagent olarak çağrıldıysan son cevabın rapordur.
+- Oturum olarak açıldıysan raporu `node scripts/inbox.mjs send "<oturum/iş>" "<iş-id>" -` ile (metin stdin'den) bırak; ayrıca dürtme mesajı yok. Subagent olarak çağrıldıysan son cevabın rapordur.
 - Görev belirsizse ya da incelenecek şey eksikse başlama: neyin eksik olduğunu yazıp dön.
 
 HAFIZA

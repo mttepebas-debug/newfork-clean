@@ -1,2 +1,0 @@
-- [Employees drawer patterns](employees-drawer-patterns.md) — no visible help text (sr-only + aria-describedby + title), one grey read-only look, what moves when a note is removed, AssignmentPicker rows, gate and load traps
-- [Screenshots without the migration](screenshots-without-migration.md) — route-intercept, world logins (owner fails, use seed OTP), busy 5612/5613, worktree git traps

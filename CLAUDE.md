@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Newfork — çalışma kuralları
 
-Bu dosya bu repoda çalışan her oturumun ortak kuralıdır (koordinatör, rol oturumları, alt ajanlar, Mert'in açtığı oturumlar). Mert'in (ürün sahibi) yeni yazılı talimatı bu dosyadan önce gelir. Rolün varsa uzmanlığın, sınırların ve dokunabileceğin dosyalar `.claude/agents/<rol>.md`'de. Oturum başında ve bağlam sıkıştırıldıktan sonra bu dosyayı yeniden oku. Bu repo MeyHouse değildir; MeyHouse kuralları burada geçersizdir.
+Bu dosya bu repoda çalışan her oturumun ortak kuralıdır (koordinatör, oturumlar, alt ajanlar, Mert'in açtığı oturumlar). Mert'in (ürün sahibi) yeni yazılı talimatı bu dosyadan önce gelir. Bir klasördeki koda dokunurken o klasörün kendi kuralı (`supabase/CLAUDE.md`, `apps/api/CLAUDE.md`, `apps/web/CLAUDE.md`, `e2e/CLAUDE.md`) kendiliğinden okunur. Oturum başında ve bağlam sıkıştırıldıktan sonra bu dosyayı yeniden oku. Bu repo MeyHouse değildir; MeyHouse kuralları burada geçersizdir.
 
 ## 1. Vizyon
 
@@ -35,7 +35,7 @@ Bu dosya bu repoda çalışan her oturumun ortak kuralıdır (koordinatör, rol 
 ### B. Kod kaybı olmaz
 1. Ana klasör (`newfork-clean`, main) referanstır: orada iş yapılmaz, dal değiştirilmez.
 2. Her iş kendi worktree'sinde ve dalında, güncel `origin/main`'den açılır.
-3. Başkasının işi ezilmez. Yasak: `git stash`, `reset --hard`, `checkout -- .`, force push, `--no-verify`, toplu `git clean`, başka rolün worktree'sinde değişiklik, isimle süreç öldürme. Yalnız kendi başlattığın PID durdurulur.
+3. Başkasının işi ezilmez. Yasak: `git stash`, `reset --hard`, `checkout -- .`, force push, `--no-verify`, toplu `git clean`, başka oturumun worktree'sinde değişiklik, isimle süreç öldürme. Yalnız kendi başlattığın PID durdurulur.
 4. Geri alınamaz her adımdan önce yedek alınır; yedeğin adı ve yeri raporda yazılır.
 
 ### C. Karar ilkeleri (özet)
@@ -85,12 +85,12 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 
 ## 4. Workflow
 
-### 4.1 Roller ve oturumlar
-- **Koordinatör:** Mert'in tek muhatabıdır; kod yazmaz. Mert'le §3'e göre konuşur. Büyük planı küçük işlere böler; okuma işini (keşif, tazelik, iddia doğrulama) salt okur alt ajanına (`nf-okur`), dosya yazan işi oturuma verir. Güncel kimliği `docs/plan/HANDOFF.md`'nin başında.
-- **Oturum:** işi yapar; rolü varsa rol dosyasını okur (`.claude/agents/`: `nf-db`, `nf-backend`, `nf-test`, `nf-arayuz`, `nf-guvenlik`, `nf-gorsel-qa`, `nf-planlama`, `nf-okur`). Sorusunu ve kararını Mert'e değil koordinatöre götürür. İş bitince raporunu bırakır, posta kutusuna haber verir (ayrıca dürtme mesajı yok) ve koordinatörden cevap gelene kadar boşta bekler.
+### 4.1 Koordinatör, oturumlar, alt ajanlar
+- **Koordinatör:** Mert'in tek muhatabıdır; kod yazmaz. Mert'i §3'e göre dinler, sorularla kapsamı daraltır, hedefi ve bitti ölçütünü yazar; Mert onaylayınca işi bir oturuma ya da alt ajana verir (Mert, 2026-10-07). Büyük planı küçük işlere böler; okuma işini (keşif, tazelik, iddia doğrulama) `nf-okur`'a, dosya yazan işi oturuma verir. Güncel kimliği `docs/plan/HANDOFF.md`'nin başında.
+- **Oturum:** tek tiptir, sabit rolü yoktur. İşi uçtan uca yapar (veritabanından ekrana); dokunduğu klasörün `CLAUDE.md`'si kendiliğinden yüklenir. Sorusunu ve kararını Mert'e değil koordinatöre götürür. İş bitince raporunu bırakır, posta kutusuna haber verir (ayrıca dürtme mesajı yok) ve koordinatörden cevap gelene kadar boşta bekler.
+- **Alt ajanlar** (`.claude/agents/`, ayrı oturum açılmaz): `nf-guvenlik` bağımsız güvenlik ve kod incelemesi (R3'te zorunlu); `nf-okur` salt okur keşif. Koordinatör ya da işi yapan oturum çağırır.
 - **Mert'in kendi açtığı oturum** Mert'le doğrudan konuşur ve bu dosyaya uyar; çıktısı bir işi etkiliyorsa koordinatöre de bildirir.
-- **Aynı dosyaya iki oturum aynı anda konmaz.** Dosya sahipliği rol dosyalarında yazılıdır.
-- **Rol oturumu** "Rol: <rol> (<uzmanlık>)" başlığıyla, Remote Control açık ve kenar çubuğunda sabitlenmiş başlar.
+- **Aynı dosyaya iki oturum aynı anda konmaz;** koordinatör işleri dosyaları çakışmayacak biçimde dağıtır.
 
 ### 4.2 Yalnız koordinatörün yönettikleri
 - **Oturum yaşamı.** Yeni oturum açar, Remote Control'ü açar, model ve effort'u işe göre ayarlar: mekanik iş (ad değiştirme, dosya taşıma, ölçüm) küçük model ve düşük effort; olağan iş orta; riskli ya da belirsiz iş en güçlü model ve yüksek effort. Bağlamı %50'yi geçen oturumu ilk iş sınırında devreder; kendi bağlamını da aynı ölçüyle izler (`HANDOFF.md`). İşi biten oturumu kontrol eder (§4.4) ve temizleyip havuza döndürür; havuzda 2'den fazla boş oturum varsa fazlasını arşivler. Yalnız bu reponun (`newfork-clean`) oturumlarını yönetir; başka klasördeki oturumlara dokunmaz.
@@ -110,15 +110,15 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
    - **R0** belge, yorum, metin, token, yalnız test: inceleme yok; ilgili hızlı kapı.
    - **R1** tek ekranda sınırlı, paylaşılan sözleşmeye dokunmuyor: oturumun kendi diff okuması, tam kapı, ekran görüntüsü.
    - **R2** paylaşılan parça (shared tip, API cevap şekli, yetkisiz okuma fonksiyonu, birden çok ekran, yetkiye dokunmayan migration): tek bağımsız inceleme (`nf-guvenlik` ya da `/code-review`, ikisi değil), tam kapı, etkilenen e2e.
-   - **R3** yetki, RLS, grant, `*_service` sınıflandırması, katılım/davet, sahiplik devri, veri silme, parola/oturum, canlı DDL: `nf-guvenlik` zorunlu (ekran değiştiyse `nf-gorsel-qa` da); tam kapı, `test:db`, etkilenen e2e; koordinatör diff'in riskli kısmını okur.
+   - **R3** yetki, RLS, grant, `*_service` sınıflandırması, katılım/davet, sahiplik devri, veri silme, parola/oturum, canlı DDL: `nf-guvenlik` zorunlu (ekran değiştiyse masaüstü ve telefon ekran görüntüsü de); tam kapı, `test:db`, etkilenen e2e; koordinatör diff'in riskli kısmını okur.
    - Onay biçimi `ONAY @<commit-sha>`.
 8. **Gönderim** §4.2'deki kurala göre; adımlar §6'da.
 9. **Kapanış** §4.4'e göre.
 
 ### 4.4 Kapanış
-1. **Oturum raporu tek yerde durur:** ekran işiyse `docs/plan/ekranlar/<no>-<ekran>/uygulama/`, değilse görev dosyasının sonuç bölümü; ekran dışı R0–R1 işte `DONE.md` satırı raporun kendisidir. Raporun başında 5 satır: Karar · İzin · Risk (🟢/🟠/🔴 + tek cümle) · Soru · Sonraki. Gövde: nerede duruyor, ne yapıldı (etkisi), açık kalan ve nedeni, ekranda ne değişti, sırada ne var. Kanıt: komut + sonuç, dosya:satır, commit sha, ekran görüntüsü yolu (`artifacts/<rol>/<iş-no>/`; masaüstü 1440, telefon 390). Posta kutusuna haber verilir.
+1. **Oturum raporu tek yerde durur:** ekran işiyse `docs/plan/ekranlar/<no>-<ekran>/uygulama/`, değilse görev dosyasının sonuç bölümü; ekran dışı R0–R1 işte posta kutusu notu raporun kendisidir. Raporun başında 5 satır: Karar · İzin · Risk (🟢/🟠/🔴 + tek cümle) · Soru · Sonraki. Gövde: nerede duruyor, ne yapıldı (etkisi), açık kalan ve nedeni, ekranda ne değişti, sırada ne var. Kanıt: komut + sonuç, dosya:satır, commit sha, ekran görüntüsü yolu (`artifacts/<iş-no>/`; masaüstü 1440, telefon 390). Posta kutusuna haber verilir.
 2. **Koordinatör doğrular:** commit main'de, main CI yeşil; riskli yüzeyde diff'i okur.
-3. **Kayıt:** `DONE.md`'ye rapora bağlantılı tek satır; iş backlog'dan geldiyse maddeye "Kapandı <tarih> (`<sha>`)" ve ölçülen sonuç; ekran işiyse `EKRAN-PLANI.md`'de ilerleme; ders varsa `DERSLER.md`.
+3. **Kayıt:** iş backlog'dan geldiyse maddeye "Kapandı <tarih> (`<sha>`)" ve ölçülen sonuç; ekran işiyse listede ✅ ve `EKRAN-PLANI.md`'de ilerleme; ders varsa `DERSLER.md`. Ayrı "biten işler" listesi tutulmaz: ne bittiği git geçmişinden okunur (`git log --since=<tarih> origin/main`; commit mesajı iş numarasını taşır).
 4. **Mert'e rapor:** 6 bölüm — nerede duruyor · ne yapıldı (etkisi, kanıtıyla) · açık kalanlar ve nedeni · ekranda ne değişti (ekran adıyla) · sıradaki en önemli işler (gerekçesiyle) · bakım (gönderim, temizlik, bağlam doluluğu). Yanında "senin yerine verdiğim kararlar" listesi ve plan ilerlemesi (ör. "Ekran planı: 12 ekrandan 3'ü bitti"). Öncesi/sonrası ("neydi, ne oldu"), 🟢/🟠/🔴, tablo ve madde; ekran görüntüsü Mert'e dosya olarak gönderilir.
 5. **Oturum kapanışı:** commit'leri main'de, main CI yeşil, dalı ve worktree'si silinmiş, arkada iş yok, bildiği her şey kayıtta → temizlenir → havuza döner.
 
@@ -130,7 +130,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 
 ### 4.6 Öğrenme
 - **Ders** yalnız şu durumlarda `docs/plan/DERSLER.md`'ye yazılır: istek bir şekilde okunup başka anlam taşıdı, bir şey yapılıp yeniden yapıldı, Mert bir bilgiyi, kelimeyi ya da yönü düzeltti, zaman kimsenin istemediği bir yere gitti, bir şey olağanüstü iyi gitti ve nedeni belli. Ne oldu, neye mal oldu, hangi alışkanlık önlerdi. Aynı ders ikinci kez yeni giriş olmaz; eski girişe tarih eklenir. Üçüncü kez görülen ders `CLAUDE.md`'ye kural önerisi olarak Mert'e gider.
-- **Haftalık denetim** (`/haftalik-denetim`, `nf-planlama`): kural dosyalarında çelişki, eskimiş bilgi, yalnız hafızada kalmış kural; §2.C özeti ile `ILKELER.md`'nin karşılaştırması; dört sayı: önerinin kabul oranı, haftalık Mert düzeltmesi, oturum başı sabit yük, gönderimden CI yeşiline süre. **Aylık:** tam denetim (rol hafızaları `.claude/agent-memory/<rol>/` dahil).
+- **Haftalık denetim** (`/haftalik-denetim`, koordinatörün verdiği bir oturum): kural dosyalarında çelişki, eskimiş bilgi, yalnız hafızada kalmış kural; §2.C özeti ile `ILKELER.md`'nin karşılaştırması; dört sayı: önerinin kabul oranı, haftalık Mert düzeltmesi, oturum başı sabit yük, gönderimden CI yeşiline süre. **Aylık:** tam denetim (klasör `CLAUDE.md`'leri ve alt ajan hafızaları `.claude/agent-memory/` dahil).
 - **Düzeltme:** eskimiş bilgiyi (olmayan dosya adı, eski oturum kimliği, ölü bağlantı) koordinatör düzeltir ve kayda yazar; kural eklemek, değiştirmek ya da silmek Mert onayıyla.
 - **Hafıza** (Claude'un otomatik hafızası) yalnız kullanıcı ve ortam bilgisi tutar; süreç kuralı oraya yazılmaz. Kural bu dosyaya, ders `DERSLER.md`'ye gider.
 
@@ -140,12 +140,12 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 - **Karar kaydı:** Mert'e sorulan her soru ve cevabı kancayla `.newfork-inbox/decisions.jsonl`'e yazılır (`scripts/decision-log.mjs`); kanca etiketi ya da dayanağı eksik öneriyi Mert'e göstermeden geri çevirir. Hedef: önerilen seçeneğin kabul oranı en az %85 (`node scripts/decision-log.mjs stats`).
 
 ### 4.8 Dosya haritası
-- **İlkeler:** (1) Her bilgi tek dosyada yaşar; başka yer bağlantı verir, kopyalamaz. (2) Her oturuma kendiliğinden yalnız bu dosya ve Claude'un hafıza dizini yüklenir; rol dosyası rol alınınca, gerisi aşağıdaki olayda okunur. (3) Kayıt dosyalarına (`BACKLOG`, `KARARLAR`, `KOORDINATOR-KARARLARI`, `DONE`, `DERSLER`, `SABAH-SORULAR`, `HANDOFF`, `EKRAN-PLANI`) yalnız koordinatör ve Mert'in açtığı oturum yazar; oturum yalnız kendi raporunu ekran klasörüne ya da görev dosyasına yazar. Kayıt koruma kancası bunu zorlar (önce uyarı). (4) `docs/archive/` kural değildir, okunmaz.
+- **İlkeler:** (1) Her bilgi tek dosyada yaşar; başka yer bağlantı verir, kopyalamaz. (2) Her oturuma kendiliğinden yalnız bu dosya ve Claude'un hafıza dizini yüklenir; klasör `CLAUDE.md`'si o klasördeki koda dokunulunca, gerisi aşağıdaki olayda okunur. (3) Kayıt dosyalarına (`BACKLOG`, `KARARLAR`, `KOORDINATOR-KARARLARI`, `DERSLER`, `SABAH-SORULAR`, `HANDOFF`, `EKRAN-PLANI`) yalnız koordinatör ve Mert'in açtığı oturum yazar; oturum yalnız kendi raporunu ekran klasörüne ya da görev dosyasına yazar. Kayıt koruma kancası bunu zorlar (önce uyarı). (4) `docs/archive/` kural değildir, okunmaz.
 
 | Olay | Okunur | Yazılır (kim) |
 |---|---|---|
 | Oturum açılır | `CLAUDE.md` (kendiliğinden) | — |
-| Rol alınır | `.claude/agents/<rol>.md` | — |
+| Bir klasördeki koda dokunulur | o klasörün `CLAUDE.md`'si (kendiliğinden) | — |
 | Koordinatör devralır | `HANDOFF.md`, `EKRAN-PLANI.md` | — |
 | Mert ürünle ilgili istek getirir | `ILKELER.md`, `KARARLAR.md` ilgili bölüm | — |
 | Backlog'dan iş alınır | madde + kod (`nf-okur`) | tazelik hükmü → `BACKLOG.md` (koordinatör) |
@@ -154,7 +154,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 | Koordinatör karar verir | — | `KOORDINATOR-KARARLARI.md`, 5N1K etiketiyle (koordinatör) |
 | Mert ürün kararı verir | — | `KARARLAR.md` (koordinatör) |
 | Yolda bulgu | — | rapor → `BACKLOG.md` (koordinatör) |
-| İş main'e girer | — | `DONE.md` tek satır; ekran işiyse `EKRAN-PLANI.md` ilerleme (koordinatör) |
+| İş main'e girer | — | ekran işiyse `EKRAN-PLANI.md` ilerleme (koordinatör) |
 | Ders çıkar | — | `DERSLER.md` (koordinatör) |
 | Gece Mert'e soru | — | `SABAH-SORULAR.md` (koordinatör) |
 | Sabah | `SABAH-SORULAR.md` | cevap → `KARARLAR.md` / `KOORDINATOR-KARARLARI.md`; soru silinir |
@@ -181,7 +181,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
    - yeni bağımlılık;
    - geri alınamaz silme, canlıda gerçek veri silme, `supabase db reset`, force push;
    - yasak listesini (`.claude/settings.json` deny) gevşetmek;
-   - bu dosyada, rol dosyalarında ya da `ILKELER.md`'de kural değişikliği (eskimiş bilgiyi düzeltmek hariç);
+   - bu dosyada, klasör `CLAUDE.md`'lerinde, alt ajan dosyalarında ya da `ILKELER.md`'de kural değişikliği (eskimiş bilgiyi düzeltmek hariç);
    - ikinci bir iş hattı açmak.
 3. **Aktarılan onay geçmez.** Geri alınamaz silme, `supabase db reset`, canlı (hosted) işlem, dosya indirme ve kalıcı kurulum için Mert'in "evet"i işi yapan oturumun kendi penceresine yazılır; başka bir oturumdan aktarılan onay geçmez.
 4. **Koordinatör karar vermekte zorlanırsa sorar.** Gece soru `SABAH-SORULAR.md`'ye yazılır; o soruya bağlı iş bekler.
@@ -199,7 +199,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 - Ortam: `.env.example` → `.env.local` (asla commit edilmez).
 
 ### Bir isteğin yolu
-Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`apps/api/src/<alan>/`) → `supabase.rpc('<ad>_service')` → RLS + `app_private.authorize()` / `scope_set()`. Web veriye doğrudan Supabase'den ulaşmaz. Web'deki `can()` (`apps/web/src/auth/can.ts`) ve `isNoAccess()` (`apps/web/src/lib/no-access.ts`) yalnız yansıtır; asıl karar veritabanındadır. Yeni `*_service`: `packages/shared/src/authorization-matrix-source.ts` + `authorization-matrix.expected.json` ve pgTAP kataloğunda sınıflanır.
+Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`apps/api/src/<alan>/`) → `supabase.rpc('<ad>_service')` → RLS + `app_private.authorize()` / `scope_set()`. Web veriye kural olarak API üzerinden ulaşır; bugünkü istisnalar (Settings kataloğu, hesap profili ve belge depolaması doğrudan supabase-js + RLS ile) `apps/web/CLAUDE.md`'de yazılıdır, yenisi eklenmez. Web'deki `can()` (`apps/web/src/auth/can.ts`) ve `isNoAccess()` (`apps/web/src/lib/no-access.ts`) yalnız yansıtır; asıl karar veritabanındadır. Yeni `*_service`: yetki matrisinde (`supabase/tests/authorization_matrix.test.sql`; `packages/shared/src/authorization-matrix.expected.json` ondan üretilen döküm) ve pgTAP kataloğunda (`supabase/tests/authz_catalog.test.sql`) sınıflanır.
 
 ### Komutlar
 - Kurulum ve çalıştırma: `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556).
@@ -209,16 +209,16 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 - Yeni worktree: `pnpm.cmd install` → `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build` → ana klasörden yalnız yerel `.env*` dosyaları kopyalanır (hosted anahtar kopyalanmaz).
 
 ### Worktree, posta kutusu, kilitler
-- Oturum worktree'si `../newfork-wt/<id>`, dal `task/<id>`; koordinatörün belge worktree'si `../newfork-wt/coord` (detached `origin/main`). Alt ajan worktree'leri `.claude/worktrees/`. Geçici kanıtlar `artifacts/<rol>/<iş-no>/` (gitignore'da).
-- Posta kutusu (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı): rapor `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md>`; durum `node scripts/inbox.mjs status "<iş-id>" "<durum>"`. Koordinatör: oturum başında `claim`, arka planda `wait`, işlenen rapor `ack <ad>`, yoklama `board`; `audit.log` her iş sonunda okunur.
-- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main> "<rol/oturum>, <amaç>"`, `release <db|main> "<rol/oturum>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
+- Oturum worktree'si `../newfork-wt/<id>`, dal `task/<id>`; koordinatörün belge worktree'si `../newfork-wt/coord` (detached `origin/main`). Alt ajan worktree'leri `.claude/worktrees/`. Geçici kanıtlar `artifacts/<iş-no>/` (gitignore'da).
+- Posta kutusu (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı): rapor `node scripts/inbox.mjs send "<oturum/iş>" "<iş-id>" <rapor.md>`; durum `node scripts/inbox.mjs status "<iş-id>" "<durum>"`. Koordinatör: oturum başında `claim`, arka planda `wait`, işlenen rapor `ack <ad>`, yoklama `board`; `audit.log` her iş sonunda okunur.
+- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main> "<oturum/iş>, <amaç>"`, `release <db|main> "<oturum/iş>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
   - `main.lock`: main'e gönderim; yoksa `scripts/guard.mjs` reddeder. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle; önce `refs/nf-backup/main/<zaman>` yedeği alınır ve `audit.log`'a yazılır.
   - `db.lock`: yerel DB'de migration uygulama, `test:db`, e2e, fixture üretimi. `db.lock` varken uygulamada veri girilmez.
   - Ağır koşu başlamadan `gh run list --limit 3` ile CI'a bakılır; CI koşuyorsa beklenir.
 
 ### Gönderim adımları
 1. İnceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder" izni (§4.2, §4.9).
-2. `node scripts/lock.mjs take main "<rol/oturum>, <iş>"`.
+2. `node scripts/lock.mjs take main "<oturum/iş>, <iş>"`.
 3. `git fetch origin && git rebase origin/main`; çatışma çözüldüyse inceleme yenilenir.
 4. Rebase sonrası tam kapı yeşil. Yalnız `.md` dosyaları değiştiyse kod kapısı gerekmez.
 5. `git push origin HEAD:main` (yalnız fast-forward); reddedilirse 3'e dönülür.
@@ -238,7 +238,7 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 - Ubuntu tek başına `wsl --terminate` / `--shutdown` ile yeniden başlatılmaz (Docker Desktop'ın bağlantısı kopar); çözüm Docker Desktop'ı yeniden başlatmaktır.
 
 ### Portlar (web / api)
-5555/5556 Mert'in dev sunucusu · 5565/5566 yerel e2e (yalnız `db.lock` sahibi) · 5590/5591, 5600/5601, 5610/5611 CI runner'ları · koordinatör 5642/5643 · `nf-arayuz` 5612/5613 · `nf-gorsel-qa` 5616/5617 · `nf-db` 5620/5621 · `nf-backend` 5622/5623 · `nf-test` 5626/5627 · `nf-guvenlik` 5628/5629 · işçi oturumu 5630/5631 ve 5632/5633 · `nf-planlama` 5638/5639. Bunlar başka amaçla kullanılmaz.
+5555/5556 Mert'in dev sunucusu · 5565/5566 yerel e2e (yalnız `db.lock` sahibi) · 5590/5591, 5600/5601, 5610/5611 CI runner'ları · koordinatör 5642/5643 · oturumlar 5612/5613, 5620/5621, 5622/5623, 5626/5627, 5630/5631, 5632/5633 (koordinatör görev mesajında hangisini kullanacağını yazar). Bunlar başka amaçla kullanılmaz.
 - Web: `pnpm.cmd --filter @newfork/web exec vite --host 127.0.0.1 --port <web> --strictPort` (`VITE_API_URL=http://localhost:<api>` ile).
 - API: `PORT=<api>`, `APP_URL=http://127.0.0.1:<web>` ile `pnpm.cmd --filter @newfork/api dev`.
 

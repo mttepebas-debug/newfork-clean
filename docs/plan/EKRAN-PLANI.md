@@ -18,15 +18,15 @@ FOUNDATION-B ve `ILERLEME-PLANI.md` (artık `docs/archive/`) kayıt olarak durur
 1. **Keşif.** Dört alt ajan aynı anda çalışır, hiçbiri kod değiştirmez:
    - kod ve davranış: hatalar, KARARLAR'a uymayan eksikler, test boşlukları;
    - güvenlik ve yetki (`nf-guvenlik`);
-   - görsel: masaüstü ve telefon, tutarlılık, erişilebilirlik (`nf-gorsel-qa`);
-   - açık backlog maddeleri, tazelik ölçümüyle, ve prototip farkları, "taşı / bırak" önerisiyle (`nf-planlama`).
+   - görsel: masaüstü ve telefon, tutarlılık, erişilebilirlik (genel ajan, gerçek uygulamada ekran görüntüsüyle);
+   - açık backlog maddeleri, tazelik ölçümüyle, ve prototip farkları, "taşı / bırak" önerisiyle (`nf-okur`).
 2. **Kayıt.** Raporlar olduğu gibi repoya girer: `docs/plan/ekranlar/<no>-<ekran>/` klasörüne, her ajan için bir dosya (`A-backlog-prototip.md`, `B-guvenlik.md`, `C-gorsel.md`, `D-kod-davranis.md`) ve bir `OZET.md`. Özet, bulguları tek listede toplar; Mert'in seçimleri ve kapanış durumu da oraya yazılır.
 3. **Konuşma.** Mert'e özet gider: bulgular ve taşı / bırak listesi. Seçimler tıklamalı yapılır. Görsel kararlar gerçek ekranda varyantla verilir (P04). Davranış kuralları önce sohbette konuşulur (P18).
 4. **Ekran dosyası ve kabul listesi** (Mert, 2026-10-07; ILKELER P17). `docs/plan/ekranlar/<no>-<ekran>/EKRAN.md` açılır: keşiften, `OZET.md`'den ve KARARLAR'dan çıkan **tek** kabul listesi. Görev dosyası açılmaz; risk sınıfı madde başına yazılır.
    - **Tek defter:** ekranın açık backlog maddeleri listeye taşınır ve `BACKLOG.md`'den çıkar (maddenin altına "EKRAN-<no> listesine taşındı <tarih>"). İş yalnız listede izlenir.
    - **Onay:** Mert listeyi başlamadan tek turda onaylar; liste sonradan yalnız Mert'in kararıyla değişir.
    - **Biçim:** `| # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt (test adı / ekran görüntüsü) | Durum |`. Durum: ⏳ açık · ✅ `<sha>` · ⏭ BL-xxx (Mert'in onayı, tarih).
-5. **Uygulama: tek sahip oturum.** Listeyi bir oturum veritabanından ekrana uçtan uca işler; bir katmana girerken o rolün dosyasını (`.claude/agents/<rol>.md`) okur.
+5. **Uygulama: tek sahip oturum.** Listeyi bir oturum veritabanından ekrana uçtan uca işler; dokunduğu klasörün `CLAUDE.md`'si (`supabase/`, `apps/api/`, `apps/web/`, `e2e/`) kendiliğinden okunur.
    - **Madde döngüsü:** önce kırmızı test → kod → yeşil → listede ✅ ve commit sha.
    - **Durum dosyada yaşar:** bağlam dolarsa oturum temizlenir ve listeden devam eder.
    - **İkinci oturum** yalnız birbirinden bağımsız maddeler için, sahip isterse açılır.
@@ -37,11 +37,11 @@ FOUNDATION-B ve `ILERLEME-PLANI.md` (artık `docs/archive/`) kayıt olarak durur
 ### Uygulama arşivi ve damıtma (Mert, 2026-10-06: "token ve zaman harcamışken bulgular unutulacağına dokümante edilip saklansın"; format koordinatörün, KK-163)
 - **Arşiv (değişmez):** `docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md` (ör. `01-schedule/uygulama/W-1a.md`, `02-requests/uygulama/A0.md`). Varyant ve ölçüm raporları da (`VAR.md`, `DRAG-olcum.md`). İşi yapan oturum dosyayı **kendi dilim commit'ine** ekler; ek gönderim yok. Sonradan düzeltilmez: tarihli, sha'lı "o anki fotoğraf".
 - **Dosyanın biçimi:**
-  1. Künye tablosu: ekran | dilim | rol / oturum | sınıf | inceleme kararı (`ONAY @sha`, kim) | tarih. Main sha'sı ve CI koşusu gönderimden sonra bilindiği için dosyada değil; OZET'teki uygulama kaydına yazılır.
+  1. Künye tablosu: ekran | dilim | oturum | sınıf | inceleme kararı (`ONAY @sha`, kim) | tarih. Main sha'sı ve CI koşusu gönderimden sonra bilindiği için dosyada değil; OZET'teki uygulama kaydına yazılır.
   2. `## Sonrası için` — en çok 5 madde, her biri tek cümle; yoksa "yok". Türleri: **Tuzak** (zaman yediren şey + nasıl önlenir), **Kalıp** (tekrar kullanılacak komut, yol, test deseni), **Ölçüm** (değer + nerede + tarih + sha), **Karar adayı** (kural olabilecek şey). Rolün bir sonraki oturumunun bilmesi gereken şey burada.
   3. `## Rapor` — koordinatöre giden rapor, olduğu gibi.
   4. `## İnceleme` — her inceleme (güvenlik, kod, görsel) kendi alt başlığıyla, olduğu gibi; KARAR satırı en üstte.
-- **Damıtma (ekran kapanınca, koordinatör):** "Sonrası için" maddeleri kendiliğinden okunan yerlere taşınır — Tuzak ve Kalıp rolün hafızasına (`.claude/agent-memory/<rol>/`, o rolün ajanları otomatik yükler); Karar adayı KARARLAR'a ya da Mert'e soruya; Ölçüm ilgili backlog maddesine. OZET'e "Uygulama kaydı" tablosu: dilim | etkisi (tek cümle) | main sha | CI | arşiv dosyası.
+- **Damıtma (ekran kapanınca, koordinatör):** "Sonrası için" maddeleri kendiliğinden okunan yerlere taşınır — Tuzak ve Kalıp ilgili klasörün `CLAUDE.md`'sine (`supabase/`, `apps/api/`, `apps/web/`, `e2e/`; o klasörde çalışan her oturum kendiliğinden okur); Karar adayı KARARLAR'a ya da Mert'e soruya; Ölçüm ilgili backlog maddesine. OZET'e "Uygulama kaydı" tablosu: dilim | etkisi (tek cümle) | main sha | CI | arşiv dosyası.
 - **Neden böyle:** ham rapor aylar sonra baştan sona okunmaz; değeri birkaç cümlelik derste. Ders kendiliğinden okunan yere taşınmazsa kullanılmaz. Kodu anlatan kısım ilk eskiyen kısım olduğu için arşiv tarihli kalır, güncellenmez.
 - Yolda çıkan ve ekranın önünde olmayan iş `BACKLOG.md`'ye yazılır: grubuyla ve iki işaretle (`leave` / `do`).
 - Bütün ekranlar bitince genel değerlendirme (recap) yapılır.
@@ -58,9 +58,9 @@ Dört görev:
 
 | Dosya | Ajan | Ne arar |
 |---|---|---|
-| `A-backlog-prototip.md` | `nf-planlama` | **Açık backlog maddeleri:** ekrana ait olanların hepsi, her biri için tazelik hükmü (geçerli / değişmiş / bayat / ölçülmedi). **Prototip farkları:** her biri için taşı / bırak / varyant gerekir önerisi ve dayanağı (prototip klasöründe `KANONIK.md`'yi okur; prototipe yazmaz). **KARARLAR'da olup kodda olmayan kurallar.** |
+| `A-backlog-prototip.md` | `nf-okur` | **Açık backlog maddeleri:** ekrana ait olanların hepsi, her biri için tazelik hükmü (geçerli / değişmiş / bayat / ölçülmedi). **Prototip farkları:** her biri için taşı / bırak / varyant gerekir önerisi ve dayanağı (prototip klasöründe `KANONIK.md`'yi okur; prototipe yazmaz). **KARARLAR'da olup kodda olmayan kurallar.** |
 | `B-guvenlik.md` | `nf-guvenlik` | Yetki kapısının çekirdek üzerinden işlemesi; RLS ve grant'lar; `*_service` sınıflandırması; ikiz ve eski fonksiyonlar; kapsam kuralı M2 (müdür yalnız kendi lokasyonu); sızıntı ve veri kaybı; web'de `can()` kullanımı. En üstte "DENETİM SONUCU". |
-| `C-gorsel.md` | `nf-gorsel-qa` | Gerçek uygulamada owner ve tek lokasyon müdürü, masaüstü 1440 ve telefon 390, bütün durumlar ve pencereler. CLAUDE.md §2.A'daki tutarlılık ve buton dili, WCAG AA, klavye ve odak, KARARLAR'daki ekran kararları. Ekran görüntüleri `artifacts/nf-gorsel-qa/EKRAN-<ad>/` altına. Ekran oturumunun kendi portu kullanılır (CLAUDE.md §6). |
+| `C-gorsel.md` | genel ajan (ekran görüntüsüyle) | Gerçek uygulamada owner ve tek lokasyon müdürü, masaüstü 1440 ve telefon 390, bütün durumlar ve pencereler. CLAUDE.md §2.A'daki tutarlılık ve buton dili, WCAG AA, klavye ve odak, KARARLAR'daki ekran kararları. Ekran görüntüleri `artifacts/EKRAN-<ad>/` altına. Ekran oturumunun kendi portu kullanılır (CLAUDE.md §6). |
 | `D-kod-davranis.md` | genel ajan (opus) | Akışları uçtan uca izler (web → API → DB). KARARLAR ve ILKELER'e uymayan davranışı, ikiz ve ölü kodu, ekrana çıkan ham hata metnini, sessizce düşen veriyi, saat dilimi ve yarış durumlarını arar; test boşluklarını listeler. Kanıtlanamayanlar ayrı listede. |
 
 `OZET.md` (ekran oturumu yazar):
