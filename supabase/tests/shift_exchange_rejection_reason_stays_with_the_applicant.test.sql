@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(8);
 
 -- BL-910 (EKRAN-02 #108; ILKELER P07, KARARLAR "Takas… uygunluk" K-S5): the
 -- reason a manager writes when declining an application is written for the
@@ -57,6 +57,14 @@ select is((select message from seen where who = 'ali'), 'You were late twice thi
   'Ali''s Shift Hub history keeps the reason');
 select is((select message from seen where who = 'emre'), 'A request for your shift was declined. You are still responsible for this shift.',
   'Emre''s Shift Hub history says the request was declined, not why');
+
+-- Ayse reads her location's requests in Requests (the manager view): the
+-- reason stays there, as the application's own reason does.
+select is((select h ->> 'message'
+  from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rr:ayse'), tests.id('rr'), true) -> 'cases') as c
+  cross join lateral jsonb_array_elements(c -> 'history') as h
+  where c ->> 'id' = tests.id('rr:case:emre-k')::text and h ->> 'action' = 'application_rejected'),
+  'You were late twice this month', 'Ayse, who reads Kadikoy''s requests, keeps the reason in Requests');
 
 select * from finish();
 rollback;
