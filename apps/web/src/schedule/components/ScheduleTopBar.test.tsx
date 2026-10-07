@@ -278,7 +278,7 @@ describe("ScheduleTopBar", () => {
       name: "Hide Preset badges",
     });
     const roleSeparators = screen.getByRole("button", {
-      name: "Hide Role Seperators",
+      name: "Hide Role Separators",
     });
 
     expect(alphabetical.getAttribute("aria-checked")).toBe("true");
@@ -316,7 +316,7 @@ describe("ScheduleTopBar", () => {
       screen.getByRole("button", { name: "Hide Preset badges" }),
     ).toHaveProperty("disabled", false);
     expect(
-      screen.getByRole("button", { name: "Hide Role Seperators" }),
+      screen.getByRole("button", { name: "Hide Role Separators" }),
     ).toHaveProperty("disabled", false);
 
     fireEvent.click(alphabeticalAfterSort);
