@@ -152,6 +152,34 @@ describe("SwapReview", () => {
     expect(getExchangePreview).not.toHaveBeenCalled();
   });
 
+  // A closed swap from the list's closed rows: its outcome, not a decision.
+  it("shows an approved swap's outcome and who swapped, without decision buttons", async () => {
+    renderReview({
+      ...swap, status: "completed", stage: "closed",
+      // After the swap the requested shift is Ali's: the names come from the request, not the live holder.
+      requested_shift: { ...swap.requested_shift!, employee_name: "Ali Person" },
+      applications: [{ ...swap.applications[0]!, status: "approved" }],
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Swap request" });
+    expect(within(dialog).getByText("Ali Person ⇄ Deniz Person")).toBeTruthy();
+    expect(within(dialog).getAllByRole("group").map((card) => card.getAttribute("aria-label"))).toEqual([
+      "Wed, Oct 14, Kadikoy, Ali to Deniz", "Fri, Oct 16, Besiktas, Deniz to Ali",
+    ]);
+    expect(dialog.textContent).toContain("Swap approved.");
+    expect(dialog.textContent).not.toContain("Decide by");
+    expect(within(dialog).queryByRole("button", { name: "Approve" })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: "Decline" })).toBeNull();
+    expect(getExchangePreview).not.toHaveBeenCalled();
+  });
+
+  it("says a swap ended when its deadline passed", async () => {
+    renderReview({ ...swap, status: "expired", stage: "closed", applications: [{ ...swap.applications[0]!, status: "expired" }] });
+    const dialog = await screen.findByRole("dialog", { name: "Swap request" });
+    expect(dialog.textContent).toContain("The decision deadline passed. No shifts changed.");
+    expect(within(dialog).getByText("Ali Person ⇄ Deniz Person")).toBeTruthy();
+    expect(within(dialog).queryByRole("button", { name: "Approve" })).toBeNull();
+  });
+
   it("says who it waits for while the other employee has not accepted", async () => {
     renderReview({ ...swap, stage: "awaiting_peer", applications: [{ ...swap.applications[0]!, status: "invited" }] });
     const dialog = await screen.findByRole("dialog", { name: "Swap request" });
