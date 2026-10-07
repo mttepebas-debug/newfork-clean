@@ -3,12 +3,29 @@
 - **Oturum (2026-10-07 06:08Z devir):** "Koordinatör" `local_70128f8f-5bc3-4776-92cf-1fe096aa4404` (posta kutusu `f2f4ad49-6b1b-4db6-a445-4198729b2a0f`, `inbox.mjs claim` yapıldı). Eski koordinatör `local_9c7e674a…` / `53bf53b1…` devredildi. Mert bu pencerede `/compact` ya da `/clear` yazar; kimlik DEĞİŞMEZ.
 - **Önce oku:** `CLAUDE.md` (2026-10-07: tek tip oturum, rol oturumu yok; alt ajan yalnız `nf-guvenlik`, `nf-okur`; klasör kuralları `apps/api`, `apps/web`, `supabase`, `e2e` altındaki `CLAUDE.md`'lerde), `docs/plan/EKRAN-PLANI.md` ("Bir ekranın turu": ekran tek sahip oturumda uçtan uca, kabul listesi Mert onaylı). `docs/plan/ILKELER.md` karar vermeden önce okunur.
 
-## 000. GÜNCEL DURUM (2026-10-07 ~07:00Z) — ÖNCE BUNU OKU
-- **Görev mesajı biçimi (KK-188):** koordinatörün oturuma verdiği her görev mesajı `Görev: <İŞ-ID>` satırıyla başlar. OTOMASYON-3'ün kayıt koruması işçi oturumunu bununla tanır (geçişte `Rol:` da işçi sayılır, 14 Ekim'e kadar).
-- **Açık işler (07:50Z):** EKRAN-02 Requests sahip oturumu `local_224535dd…` (worktree `../newfork-wt/ekran-02`, dal `task/ekran-02`): görünüm dilimi c3 → b1a → c1 + KARARLAR:535 2026-10-07 eki (tür sekmeleri, arama Location'a kadar); önce/sonra görüntüleri Mert'e, push "gönder"den sonra; veri paketi (A1A2, A3, AUTHZ-DUMP, A4; R3) sonra. G2/G3 varyant sayfası: https://claude.ai/artifact/KwshRJ1SygGaDgyKJuuHT3. OTOMASYON-3 bitti (main `7c3b0cdf`, CI 37585659665 yeşil): `heavy.lock`, kayıt koruması, karar kancası, `/gece-modu`, `/haftalik-denetim`; 2026-10-14'e kadar uyarı. Temizlenecek: `newfork-wt/ekran-02-ba` (yedek `artifacts/koordinator/yedek-ekran-02-ba-20261007/`; silme komutu ajanlara reddedildi, Mert'e verildi), kart worktree'si `.claude/worktrees/zealous-diffie-ec31cb` (değişiklik yok). Mert'in kendi oturumları: "Repo genişlik büyüklüğü", "CI/E2E/typecheck hızlandırma", "Knowledge graph", "Dev sunucusu başlat".
-- **CI:** tek koşucu (`newfork-local-pc`); 2 ve 3 açılışta kalkmaz (KK-187, OPS-01).
-- **Dün geceden sahipsiz kalan yerel dallar (push edilmedi, hat oturumları artık yok):** EKRAN-02 A1A2 / A3 / AUTHZ-DUMP (R3, veri), A4, B1a, B1b, C1, C2-css, C3; EKRAN-03 C1a; EKRAN-01 DB-4; `task/arayuz-salt-hata`; BL-435; VAR-EKRAN-03 (`task/var-ekran-12`). Raporları posta kutusu `done/` ve ekran klasörlerinde; görüntü yolları eski koordinatörün `sabah-raporu.md`'sinde (aşağıda). Yeni modelde her ekranın kalanı o ekranın sahip oturumuna, EKRAN.md kabul listesine taşınır (EKRAN-DOSYASI); hangi ekranla başlanacağını Mert seçer.
-- **Aşağıdaki §00–§6 2026-10-06 gecesinin kaydıdır;** hat oturumları ve "AĞIR İZİN" protokolü artık geçerli değil (ağır koşu kilidi OTOMASYON-3 ile geliyor).
+## 000. GÜNCEL DURUM (2026-10-07 ~09:35Z) — ÖNCE BUNU OKU
+- **Mert'in uyarısı (09:30Z, üçüncü kez):** "hiç sorgulamıyorsun … ne tavsiye veriyorsun ne karşı çıkıyorsun ne fikrini sunuyorsun". Her yeni isteğe önce: ne anladım · artı/eksi + çakışan kural · önerim/itirazım (DERSLER 10-06 gece girişi). Kural önerisi olarak sorulan soru kapatıldı, cevap bekliyor.
+- **Hat sayısı (KK-204):** Mert "şuan için bu kadar hat yeterli. ama durdurmayacagız bunları" — yeni hat yok, 11 hat sürer. Görev mesajı `Görev: <İŞ-ID>` ile başlar (KK-188). Alt ajan en az Opus 5.5 medium (KK-198).
+- **Mert hakkında (hafıza):** uzun liste okumaz → önce/sonra görüntüsü ve ≤10 satır özet; UI'da simetri/hizalama takıntısı → hizalama ölçülerek götürülür; görüntüyü göndermeden önce telefonunu da kendin aç (KK-199 dersi).
+
+| Hat | Oturum | Durum (09:35Z) | Sıradaki koordinatör adımı |
+|---|---|---|---|
+| EKRAN-02 Requests | `local_224535dd…` | tek tablo masaüstü hazır (`task/ekran-02` @`9891727d`, /code-review + tam kapı + 7 e2e yeşil); Mert "önce telefon düzelsin" → #67 telefon kartı | telefon görüntüleri gelince Mert'e önce/sonra → "gönder"; sonra C2 (H2 kesin, KARARLAR), veri paketi A1A2+A3+AUTHZ-DUMP+A4 (R3, nf-guvenlik yeniden, S1 ultrareview sorusu açık) |
+| EKRAN-01 Schedule | `local_6979dfbe…` | "başla" verildi: #11 → #9 → #20 → #18 (R3 gönder bende); iş kaybı beşlisi zaten kapalı | CSS maddeleri EKRAN-02 görünüm dilimi main'e girince; DB-4 veri paketinden ve S24'ten sonra; kayıt işleri bende (aşağıda) |
+| EKRAN-03 Employees | `local_e062291d…` | "başla": #1, #7, #8, #16 (yalnız `apps/web/src/employees/*`) | `styles.css` + c1a EKRAN-02 görünüm diliminden sonra; veri dilimleri paketten sonra |
+| PARALEL-1 | `local_0ea2b338…` | görev ONAY, şartla: izlenen pgTAP dosyalarına dokunmaz (geçici kopya) | gönderimden önce haber verecek → ekran oturumlarına yeni test:db davranışını bildir |
+| GUVENLIK-A | `local_bf8f7f46…` | salt okur ölçüm + plan | rapor → Mert'e özet; kod EKRAN-02 paketinden sonra |
+| EKRAN-16 keşif | `local_1f893110…` | salt okur dört ajan | rapor → YENİ bulgulara BL no |
+| EKRAN-08 çekmece | `local_05f60332…` | davranış testi + 5 tasarım artifact | rapor + artifact → Mert seçer → KARARLAR |
+| EKRAN-10 General | `local_a1ef992c…` | 5 rol inceleme + ≥6 tasarım | aynı |
+| EKRAN-10 Locations | `local_dd2f4f75…` | birebir artifact, Mert ayarlıyor | `LOCATIONS-TWEAKS.md` gelince koda iş açılacak (ortak parça kararları tek seferde; öneri Mert'te cevapsız) |
+| EKRAN-10 Jobs | `local_ba6dcfcd…` | aynı | `JOBS-TWEAKS.md` |
+| BILDIRIM | `local_2e4ae653…` | daraltıldı: eski sistem incelenmez; söküm listesi + olay envanteri + sıfırdan plan + ≤6 soru + ≥3 varyant | söküm yeni sistemin ilk dilimi (EKRAN-02 paketi eski fonksiyonlara yazıyor) |
+
+- **Bende bekleyen kayıt işleri:** EKRAN-01 raporundaki BACKLOG düzeltmeleri (BL-703, 194, 386, 705, 694, 101), BL-211 / BL-376 kapanışı, Schedule'ın 82 BL'sinin "EKRAN-01 listesine taşındı" notu, BL-038 K3–K6 → KARARLAR Schedule (kaynak `tasks/BL-038.md`); EKRAN-03 tazelik hükümleri (BL-765, BL-776, BL-407; KK-177/BL-282 kapandı); EKRAN-02 Requests BL'lerinin listeye taşınması. Raporlar posta kutusu `done/`'da (`20261007T081605-oturum-ekran-01…`, `20261007T081502-oturum-ekran-03…`, `20261007T070028-oturum-ekran-02…`).
+- **Temizlik:** `newfork-wt/ekran-02-ba` (yedek `artifacts/koordinator/yedek-ekran-02-ba-20261007/`; silme ajanlara reddedildi, komut Mert'te), `.claude/worktrees/handoff-koordinatorlugu-20c0b3` (rol hafızası yedeği `artifacts/koordinator/yedek-handoff-wt-agent-memory-20261007/`).
+- **CI:** tek koşucu; 2 ve 3 açılışta kalkmaz (KK-187). OTOMASYON-3 main'de: `heavy.lock`, kayıt koruması, karar kancası; 2026-10-14'e kadar uyarı.
+- **Kullanım (09:30Z):** 5 saatlik %16, haftalık %10. Koordinatör bağlamı %53 → bu not devir içindir; Mert `/compact` yazabilir.
 
 ## 00. GÜNCEL DURUM (2026-10-06 ~17:05Z) — sıkıştırmadan sonra ÖNCE BUNU OKU
 - **Gece durum dosyaları (koordinatörün scratchpad'i, bu oturum):** sabah raporu notları `C:/Users/TheWe/AppData/Local/Temp/claude/C--Users-TheWe-Documents-Codex-newfork-clean/53bf53b1-53ab-488d-9ec7-a96202015189/scratchpad/sabah-raporu.md`; ağır iş izin sırası `.../scratchpad/agir-kuyruk.md`. İkisi de güncel tutulur.
