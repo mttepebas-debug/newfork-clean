@@ -257,6 +257,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     !props.creating && activeSection === "availability" ? "div" : "form";
   const scrollRef = useRef<HTMLDivElement>(null);
   const draftEditedRef = useRef(false);
+  // The record the draft was built from: what was typed is measured against
+  // it, not against a newer copy read in the background (review Y1).
+  const draftBaseRef = useRef<EmployeeInput>(emptyDraft);
   const draftSubjectKey = `${workspaceId}:${
     props.creating ? "new" : (props.employeeId ?? "")
   }`;
@@ -338,6 +341,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       return;
     }
     setDraft(baseline);
+    draftBaseRef.current = baseline;
     draftEditedRef.current = false;
     allowNextDraftRefreshRef.current = false;
     lastDraftSubjectKeyRef.current = draftSubjectKey;
@@ -386,8 +390,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         else closeRef.current();
       }
     };
-    document.addEventListener("keydown", close);
-    return () => document.removeEventListener("keydown", close);
+    // On the window, after the page: a bubble or a box that spends Escape on
+    // itself stops it at the document, and the drawer keeps its draft (review D2).
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
   }, [props.onClose, terminationOpen]);
 
   // What this reader may do to this record is the server's answer
@@ -524,20 +530,17 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       // was typed over it, and let the next Save apply it. Fields left alone
       // take what the other person saved.
       const typed = draft;
-      const before = baseline;
+      const before = draftBaseRef.current;
       const fresh = await queryClient.fetchQuery({
         queryKey: ["employee-detail", workspaceId, props.employeeId],
         queryFn: () => getEmployeeDetail(workspaceId, props.employeeId ?? ""),
         staleTime: 0,
       });
-      const merged: Record<string, unknown> = { ...toDraft(fresh) };
-      for (const key of Object.keys(typed) as (keyof EmployeeInput)[]) {
-        if (key === "expected_revision") continue;
-        if (JSON.stringify(typed[key]) !== JSON.stringify(before[key]))
-          merged[key] = typed[key];
-      }
+      const next = toDraft(fresh);
+      const merged = mergeTypedOver(typed, before, next);
+      draftBaseRef.current = next;
       draftEditedRef.current = true;
-      setDraft(merged as EmployeeInput);
+      setDraft(merged);
       setError(
         "Someone else saved this employee meanwhile. Save again to apply your changes.",
       );
@@ -808,7 +811,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     // Somebody already saved is read first: until the form is up the focus
     // waits in the drawer, not on the row behind it (BL-478).
     (
-      panel?.querySelector<HTMLInputElement>("input") ??
+      panel?.querySelector<HTMLInputElement>("input:not(:disabled)") ??
       panel?.querySelector<HTMLElement>("button:not(:disabled)")
     )?.focus();
     return () => {
@@ -1003,6 +1006,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           }
           // Tab stays in the drawer (BL-478); the termination window keeps its own.
           if (event.key !== "Tab" || terminationOpen) return;
+          // A box opened from the drawer into the page (Request changes) bubbles
+          // its keys here through React; it keeps its own Tab (review O1).
+          if (!(event.target instanceof Node) || !dialogRef.current?.contains(event.target))
+            return;
           const items = Array.from(
             dialogRef.current?.querySelectorAll<HTMLElement>(
               "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
@@ -1010,11 +1017,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           ).filter((item) => item.getClientRects().length > 0);
           const first = items[0],
             last = items[items.length - 1];
-          if (
-            event.shiftKey &&
-            (document.activeElement === first ||
-              !items.includes(document.activeElement as HTMLElement))
-          ) {
+          if (event.shiftKey && document.activeElement === first) {
             event.preventDefault();
             last?.focus();
           } else if (!event.shiftKey && document.activeElement === last) {
@@ -3541,6 +3544,53 @@ function formatDateTime(value: string): string {
     ? "on an unknown date"
     : // To the minute (BL-674, Employees half).
       date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+/**
+ * What was typed over `before`, laid on `next` (someone else's save): a field
+ * typed wins, a field left alone takes the new value; lists take the items
+ * added and drop the items removed, so the other person's additions stay
+ * (BL-781, review O2). A primary no longer in its list falls back to the new
+ * one, then to the first.
+ */
+function mergeTypedOver(
+  typed: EmployeeInput,
+  before: EmployeeInput,
+  next: EmployeeInput,
+): EmployeeInput {
+  const merged: Record<string, unknown> = { ...next };
+  for (const key of Object.keys(typed) as (keyof EmployeeInput)[]) {
+    if (key === "expected_revision") continue;
+    const now = typed[key];
+    const was = before[key];
+    if (Array.isArray(now) && Array.isArray(was)) {
+      const base = (next[key] as string[] | undefined) ?? [];
+      const added = now.filter((id) => !was.includes(id));
+      const removed = was.filter((id) => !now.includes(id));
+      merged[key] = [
+        ...base.filter((id) => !removed.includes(id)),
+        ...added.filter((id) => !base.includes(id)),
+      ];
+    } else if (JSON.stringify(now) !== JSON.stringify(was)) {
+      merged[key] = now;
+    }
+  }
+  const result = merged as EmployeeInput;
+  const keepPrimary = (primary: string | null, list: readonly string[], fallback: string | null) =>
+    primary && list.includes(primary)
+      ? primary
+      : fallback && list.includes(fallback)
+        ? fallback
+        : (list[0] ?? null);
+  return {
+    ...result,
+    primary_location_id: keepPrimary(
+      result.primary_location_id,
+      result.location_ids,
+      next.primary_location_id,
+    ),
+    primary_job_id: keepPrimary(result.primary_job_id, result.job_ids, next.primary_job_id),
+  };
 }
 
 /** The record moved on under the form: the database's own conflict. */

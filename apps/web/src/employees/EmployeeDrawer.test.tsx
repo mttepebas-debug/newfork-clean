@@ -1733,6 +1733,22 @@ describe("EmployeeDrawer", () => {
       expect(changes.disabled).toBe(true);
     });
 
+    // Review O1: the drawer's Tab trap must leave a box opened from it alone.
+    it("keeps Shift+Tab inside the Request changes box", async () => {
+      const rects = vi
+        .spyOn(HTMLElement.prototype, "getClientRects")
+        .mockReturnValue([{}] as unknown as DOMRectList);
+      onTestFinished(() => rects.mockRestore());
+      currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
+      const { changes } = await reviewButtons();
+      fireEvent.click(changes);
+      const box = await screen.findByRole("alertdialog");
+      const first = within(box).getAllByRole("button")[0]!;
+      first.focus();
+      fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+      expect(box.contains(document.activeElement)).toBe(true);
+    });
+
     it("opens it to an admin for an employee", async () => {
       currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
       const { accept, changes } = await reviewButtons();
@@ -3024,6 +3040,45 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
     );
   });
 
+  // Review D1: a read-only record's switched-off fields cannot take the focus.
+  it("takes the focus on a read-only record already in the cache", async () => {
+    const { client, unmount } = renderDrawer("profile", { ...detail, allowed: { ...detail.allowed, save: false } });
+    await screen.findByLabelText("First name");
+    unmount();
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    onTestFinished(() => opener.remove());
+    opener.focus();
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <EmployeeDrawer
+            employeeId={employeeId}
+            creating={false}
+            section="profile"
+            onSectionChange={vi.fn()}
+            onClose={vi.fn()}
+            onCreated={vi.fn()}
+          />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText("First name");
+    expect(panel().contains(document.activeElement)).toBe(true);
+  });
+
+  // Review D2: Escape closes the reason bubble, not the drawer and its draft.
+  it("spends Escape on the reason bubble, keeping the drawer", async () => {
+    currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
+    const { onClose } = renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
+    const terminate = await screen.findByRole("button", { name: "Terminate employee" });
+    fireEvent.focus(terminate);
+    await screen.findByRole("tooltip");
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   // #46 (BL-429): a manager reaches why Terminate is switched off by keyboard
   // and by tap, in the app's bubble; pressing it opens nothing.
   it("says why Terminate is switched off on focus and on a tap", async () => {
@@ -3168,6 +3223,71 @@ describe("EmployeeDrawer when something is missing (EKRAN-03)", () => {
 
 // EKRAN-03 #25 (BL-781): two people save the same record.
 describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
+  // Review Y1: the record read again in the background must not turn the other
+  // person's change into "what was typed".
+  it("keeps the other person's change when the record was read again before Save", async () => {
+    const { client } = renderDrawer("profile");
+    fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Alexandra" } });
+    vi.mocked(getEmployeeDetail).mockResolvedValue({
+      ...detail,
+      last_name: "Reed",
+      display_name: "Alex Reed",
+      revision: 2,
+    });
+    await client.refetchQueries({ queryKey: ["employee-detail", workspaceId, employeeId] });
+    // The new revision is drawn before Save is pressed.
+    await screen.findByText("Alex Reed");
+    vi.mocked(saveEmployee).mockRejectedValueOnce(
+      new RequestError("employee revision conflict", undefined, undefined, 409),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Someone else saved this employee meanwhile. Save again to apply your changes.");
+    vi.mocked(saveEmployee).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ first_name: "Alexandra", last_name: "Reed", expected_revision: 2 }),
+        employeeId,
+      ),
+    );
+  });
+
+  // Review O2: lists merge by what was added and taken away, not as a whole.
+  it("keeps a job the other person added when another was added here", async () => {
+    const otherJob = "22000000-0000-4000-8000-0000000000e1";
+    const mineJob = "22000000-0000-4000-8000-0000000000e2";
+    vi.mocked(loadEmployeeReferenceData).mockResolvedValueOnce({
+      locations: detail.locations.map((location) => ({ ...location, timezone: "America/Los_Angeles" })),
+      departments: [],
+      jobs: [
+        { id: detail.jobs[0]!.id, name: "Server", archived: false, departmentId: null, owner: false },
+        { id: otherJob, name: "Host", archived: false, departmentId: null, owner: false },
+        { id: mineJob, name: "Busser", archived: false, departmentId: null, owner: false },
+      ],
+      inviteRoles: [],
+    });
+    renderDrawer("employment");
+    await employeeLoaded();
+    fireEvent.click(screen.getByLabelText("Busser"));
+    vi.mocked(saveEmployee).mockRejectedValueOnce(
+      new RequestError("employee revision conflict", undefined, undefined, 409),
+    );
+    vi.mocked(getEmployeeDetail).mockResolvedValue({
+      ...detail,
+      job_count: 2,
+      jobs: [...detail.jobs, { id: otherJob, name: "Host", primary: false, archived: false }],
+      revision: 2,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Someone else saved this employee meanwhile. Save again to apply your changes.");
+    vi.mocked(saveEmployee).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(saveEmployee).toHaveBeenCalled());
+    const sent = vi.mocked(saveEmployee).mock.calls[0]![1];
+    expect([...sent.job_ids].sort()).toEqual([detail.jobs[0]!.id, otherJob, mineJob].sort());
+  });
+
   it("keeps what was typed, takes up what the other saved, and saves on the next press", async () => {
     renderDrawer("profile");
     fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Alexandra" } });
