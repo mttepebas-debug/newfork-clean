@@ -4,7 +4,8 @@
 // busy or replaced coordinator. Folder (git-free, next to .newfork-locks):
 //   new/<stamp>-<from>-<task>.md   unread reports     done/   acknowledged
 //   status/<session>.json          heartbeat per session (written by hooks)
-//   label/<cwd-slug>.json          "which job, what state" set by the session
+//   label/<session>.json           "which job, what state" set by the session
+//                                  (label/cwd-<hash>.json from a terminal without a session id)
 //   coordinator.json               { session_id } of the current coordinator
 //   seen.json                      report names already shown to it
 // Directory is overridable via NEWFORK_INBOX_DIR (tests only).
@@ -17,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
 export const INBOX_DIR =
@@ -151,8 +153,16 @@ export function heartbeat(input, state, { force = false } = {}) {
   );
 }
 
-export function setLabel(cwd, task, state) {
-  writeAtomic(dir("label", `${slug(cwd)}.json`), JSON.stringify({ cwd, task, state, at: new Date().toISOString() }));
+// BL-755: a label belongs to the session (CLAUDE_CODE_SESSION_ID, the hook's session_id), not to a
+// folder: worktree paths share a long prefix, and a card session runs `status` after `cd` elsewhere.
+// A terminal has no session id and falls back to the whole folder path.
+const labelFile = (sessionId, cwd) =>
+  sessionId
+    ? dir("label", `${slug(sessionId)}.json`)
+    : dir("label", `cwd-${createHash("sha1").update(path.resolve(cwd).toLowerCase()).digest("hex").slice(0, 16)}.json`);
+
+export function setLabel(cwd, task, state, sessionId = process.env.CLAUDE_CODE_SESSION_ID) {
+  writeAtomic(labelFile(sessionId, cwd), JSON.stringify({ session_id: sessionId ?? null, cwd, task, state, at: new Date().toISOString() }));
 }
 
 export function board(now = Date.now()) {
@@ -165,7 +175,7 @@ export function board(now = Date.now()) {
     .map((f) => readJson(dir("status", f), null))
     .filter(Boolean)
     .map((s) => {
-      const label = readJson(dir("label", `${slug(s.cwd)}.json`), {});
+      const label = readJson(labelFile(s.session_id, s.cwd), null) ?? readJson(labelFile(null, s.cwd), {});
       const ageMin = Math.round((now - Date.parse(s.at)) / 60000);
       return {
         ...s,

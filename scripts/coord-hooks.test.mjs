@@ -232,7 +232,7 @@ test("inbox: mentioning claim does not claim; reports are framed; a subagent nev
 
 test("board: heartbeat shows branch and flags a silent working session as stuck", async () => {
   await inbox.runHook("post", bash("ls", { session_id: "worker-2" }));
-  inbox.setLabel(repo, "FB-6.3", "migration");
+  inbox.setLabel(repo, "FB-6.3", "migration", "worker-2");
   const [row] = inbox.board();
   assert.equal(row.branch, "main");
   assert.equal(row.head, git(repo, "rev-parse", "--short", "HEAD"));
@@ -242,6 +242,36 @@ test("board: heartbeat shows branch and flags a silent working session as stuck"
 
   await inbox.runHook("stop", bash("", { session_id: "worker-2" }));
   assert.equal(inbox.board(Date.now() + 30 * 60000)[0].stuck, false); // idle is not stuck
+});
+
+// PARALEL-1 (BL-755): worktree folders share a long prefix (…/newfork-clean/.claude/worktrees/…), and a
+// card session runs `status` after `cd ../newfork-wt/<id>`, away from the folder its hooks report.
+const shared = path.join(root, "a-folder-name-long-enough-that-two-worktrees-share-it");
+const wtA = path.join(shared, "ekran-01");
+const wtB = path.join(shared, "ekran-02");
+for (const d of [wtA, wtB]) fs.mkdirSync(d, { recursive: true });
+const tasks = () => Object.fromEntries(inbox.board().map((r) => [r.session_id, r.task]));
+
+test("board: two sessions in folders with a long shared prefix each keep their own label (BL-755)", async () => {
+  await inbox.runHook("post", bash("ls", { session_id: "s-01", cwd: wtA }));
+  await inbox.runHook("post", bash("ls", { session_id: "s-02", cwd: wtB }));
+  inbox.setLabel(wtA, "EKRAN-01", "grid", "s-01");
+  inbox.setLabel(wtB, "EKRAN-02", "drawer", "s-02");
+  assert.deepEqual(tasks(), { "s-01": "EKRAN-01", "s-02": "EKRAN-02" });
+});
+
+test("board: a label written after `cd` elsewhere still lands on the session's row (BL-755)", async () => {
+  await inbox.runHook("post", bash("ls", { session_id: "s-card", cwd: wtA }));
+  // a folder that shares no prefix with wtA, so the old 40-character cut cannot match it by accident
+  inbox.setLabel(path.join(path.parse(root).root, "elsewhere", "newfork-wt", "paralel-1"), "PARALEL-1", "tests", "s-card");
+  assert.deepEqual(tasks(), { "s-card": "PARALEL-1" });
+});
+
+test("board: a terminal label (no session id) matches the full folder, never a sibling's (BL-755)", async () => {
+  await inbox.runHook("post", bash("ls", { session_id: "s-01", cwd: wtA }));
+  await inbox.runHook("post", bash("ls", { session_id: "s-02", cwd: wtB }));
+  inbox.setLabel(wtB, "EKRAN-02", "", null);
+  assert.deepEqual(tasks(), { "s-01": "", "s-02": "EKRAN-02" });
 });
 
 test("e2e gap: screen code ahead of origin/main warns until a passing run stamps the same content", async () => {
@@ -264,6 +294,36 @@ test("e2e gap: screen code ahead of origin/main warns until a passing run stamps
   assert.deepEqual(e2eGap(work), []);
 });
 
+// PARALEL-1 (BL-760): what a push brings is its refspec's source, not the folder's HEAD.
+test("push to main reads the pushed source: HEAD's screen code does not warn for a docs-only source (BL-760)", () => {
+  const work = cloneRepo("repo-760-docs");
+  git(work, "checkout", "-q", "-b", "docs-only");
+  commitFile(work, "docs/plan/note.md");
+  git(work, "checkout", "-q", "-b", "variant", "origin/main");
+  commitFile(work, "apps/web/src/Variant.preview.tsx"); // HEAD: a variant branch full of screen code
+  take("main", "oturum/test, push");
+  takeAs("s-other", "heavy", "oturum/other, e2e"); // a code push would overlap it; a docs push starts no CI
+  const r = evaluate(bash("git push --dry-run origin docs-only:main", { cwd: work }));
+  assert.equal(r.block, false);
+  assert.equal(r.warn, null);
+  assert.equal(auditLines().some((l) => l.event === "push-main-e2e-missing" || l.event === "heavy-warn"), false);
+});
+
+test("push to main reads the pushed source: screen code on it warns while HEAD is clean (BL-760)", () => {
+  const work = cloneRepo("repo-760-feature");
+  git(work, "checkout", "-q", "-b", "feature");
+  commitFile(work, "apps/web/src/Feature.tsx");
+  git(work, "checkout", "-q", "main"); // HEAD equals origin/main
+  take("main", "oturum/test, push");
+  const r = evaluate(bash("git push --dry-run origin feature:main", { cwd: work }));
+  assert.equal(r.block, false);
+  assert.match(r.warn ?? "", /Feature\.tsx/);
+
+  // a passing e2e run on the source's content clears it, whatever HEAD is
+  fs.appendFileSync(path.join(process.env.NEWFORK_INBOX_DIR, "e2e-pass.jsonl"), `${JSON.stringify({ sha: git(work, "rev-parse", "feature") })}\n`);
+  assert.equal(evaluate(bash("git push --dry-run origin feature:main", { cwd: work })).warn, null);
+});
+
 // ---- OTOMASYON-3: heavy-run lock -------------------------------------------------------------
 
 test("runStep: which commands are gate steps, test:db or e2e", () => {
@@ -280,9 +340,13 @@ test("runStep: which commands are gate steps, test:db or e2e", () => {
     ["CI=1 pnpm.cmd build", "build"],
     ["pnpm.cmd lint", "lint"],
     ["pnpm.cmd typecheck --force", "typecheck"],
+    ["node scripts/test-db.mjs", "test:db"], // what `pnpm test:db` runs (PARALEL-1)
+    ["node scripts/test-db.mjs supabase/tests/x.test.sql", "test:db"],
   ])
     assert.equal(runStep(cmd), step, cmd);
   for (const cmd of [
+    "node scripts/test-db.mjs --load-only",
+    "node --test scripts/test-db.test.mjs",
     "pnpm.cmd --filter @newfork/web exec vitest run src/x.test.tsx",
     "pnpm.cmd --filter @newfork/web test",
     "pnpm.cmd -F @newfork/api build",

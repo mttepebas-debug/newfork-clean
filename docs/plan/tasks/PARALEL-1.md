@@ -1,5 +1,8 @@
 # PARALEL-1 Paralel oturumlar için üç araç açığı: test:db builder'ı, pano etiketi, push kancası
-Status: draft — koordinatör onayı bekleniyor (kod başlamadı)
+Status: ONAY (koordinatör, 2026-10-07 ~08:35Z) bir şartla: izlenen pgTAP dosyalarına (`supabase/tests/*.sql`) dokunulmaz.
+Şart tasarımda zaten karşılanıyor: kopyalar koşu anında gitignore'lu `supabase/tests/.builder-run/` altında üretilir, izlenen dosya
+değişmez; sonradan eklenen test dosyası da kopyalandığı için kendiliğinden kapsanır. Soru: (a) kabul (e2e kapsam dışı, rapora BACKLOG
+önerisi). Gönderimden önce koordinatöre tek satır; ekran oturumlarına yeni davranışı koordinatör bildirir.
 Session: oturum/paralel-1   Branch: task/paralel-1   Worktree: ../newfork-wt/paralel-1   DB: yerel (ölçüm için db.lock + heavy.lock)
 Risk: R2 (test:db akışı ve guard bütün oturumları etkiler; yetki, veri, canlı yok)
 Reviewer: tek bağımsız inceleme: `/code-review`

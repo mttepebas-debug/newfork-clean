@@ -173,32 +173,39 @@ function gitCall(seg, sub) {
   return { cwd, args: w.slice(i + 1) };
 }
 
-// Where a push goes: its directory and the destination branch names ("*" for --all/--mirror).
+// Files a pushed source changes against origin/main (what that refspec brings).
+const aheadFiles = (dir, src = "HEAD") =>
+  src ? tryGit(dir, ["diff", "--name-only", `origin/main...${src}`]).split("\n").filter(Boolean) : [];
+
+// Where a push goes: its directory and, per refspec, what it sends (src), where (dst; "*" for
+// --all/--mirror) and the files that brings. BL-760: `git push origin task/x:main` sends task/x
+// whatever HEAD is. src is null for a delete (`:main`), which brings no content.
 function pushCall(seg, cwd) {
   const call = gitCall(seg, "push");
   if (!call) return null;
   const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
-  if (call.args.some((a) => a === "--all" || a === "--mirror")) return { dir, dests: ["*"] };
+  const withAhead = (refs) => ({ dir, refs: refs.map((r) => ({ ...r, ahead: aheadFiles(dir, r.src) })) });
+  // ponytail: --all/--mirror send every branch; HEAD stands in for them, as before
+  if (call.args.some((a) => a === "--all" || a === "--mirror")) return withAhead([{ src: "HEAD", dst: "*" }]);
   const plain = call.args.filter((a) => !a.startsWith("-"));
   // --repo=<remote> names the remote as an option, so every plain arg is a refspec
   const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
   const current = () => tryGit(dir, ["branch", "--show-current"]);
-  if (!refspecs.length) return { dir, dests: [current()] };
-  const dests = refspecs.map((spec) => {
-    const s = spec.replace(/^\+/, "");
-    return (s.includes(":") ? s.split(":")[1] : s === "HEAD" ? current() : s).replace(/^refs\/heads\//, "");
-  });
-  return { dir, dests };
+  if (!refspecs.length) return withAhead([{ src: "HEAD", dst: current() }]);
+  return withAhead(
+    refspecs.map((spec) => {
+      const s = spec.replace(/^\+/, "");
+      const [src, dst] = s.includes(":") ? s.split(":") : [s, s === "HEAD" ? current() : s];
+      return { src: src || null, dst: dst.replace(/^refs\/heads\//, "") };
+    }),
+  );
 }
-const toMain = (push) => push.dests.some((d) => d === "main" || d === "*");
-
-// Files the branch changes against origin/main (what a push brings).
-const aheadFiles = (dir) => tryGit(dir, ["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+const toMain = (r) => r.dst === "main" || r.dst === "*";
 
 // ci.yml runs on pushes to main and task/**, unless only docs/** and *.md changed.
 const DOCS_ONLY = /^docs\/|\.md$/;
-const startsCI = (push, ahead) =>
-  push.dests.some((d) => d === "*" || d === "main" || d.startsWith("task/")) && ahead.some((f) => !DOCS_ONLY.test(f));
+const startsCI = (push) =>
+  push.refs.some((r) => (r.dst === "*" || r.dst === "main" || r.dst.startsWith("task/")) && r.ahead.some((f) => !DOCS_ONLY.test(f)));
 
 // e2e before a push (CLAUDE.md §6, Mert 2026-10-01 "warning mode", ILKELER P16):
 // e2e/e2e-pass-reporter.mjs appends a line here after a local run that passed on
@@ -206,22 +213,22 @@ const startsCI = (push, ahead) =>
 // such run on the same content gets a warning and an audit line; never a block.
 const E2E_PASS = () => path.join(INBOX_DIR, "e2e-pass.jsonl");
 const E2E_CODE = /^(apps\/web\/src|apps\/api\/src|packages\/(shared|ui)\/src|e2e)\//;
-const sameContent = (dir, sha) => {
+const sameContent = (dir, sha, src) => {
   try {
-    git(dir, ["diff", "--quiet", sha, "HEAD", "--", "apps", "packages", "e2e", "supabase"]);
+    git(dir, ["diff", "--quiet", sha, src, "--", "apps", "packages", "e2e", "supabase"]);
     return true;
   } catch {
     return false;
   }
 };
-export function e2eGap(dir, ahead = aheadFiles(dir)) {
+export function e2eGap(dir, src = "HEAD", ahead = aheadFiles(dir, src)) {
   const files = ahead.filter((f) => E2E_CODE.test(f) && !/\.test\.tsx?$/.test(f));
   if (!files.length) return [];
   let shas = [];
   try {
     shas = fs.readFileSync(E2E_PASS(), "utf8").trim().split("\n").slice(-30).map((l) => JSON.parse(l).sha);
   } catch {}
-  return shas.some((sha) => sameContent(dir, sha)) ? [] : files;
+  return shas.some((sha) => sameContent(dir, sha, src)) ? [] : files;
 }
 
 // ---- heavy runs (CLAUDE.md §4.2: CI, e2e, test:db and the gate run one at a time) ----
@@ -245,6 +252,8 @@ export function runStep(seg) {
   const p = prog(w[0]);
   const args = w.slice(1);
   if (p === "supabase") return args[0] === "test" && args[1] === "db" ? "test:db" : null;
+  // what `pnpm test:db` runs (PARALEL-1); --load-only reloads origin/main's builder and runs no test
+  if (p === "node" && /(^|[\\/])test-db\.mjs$/.test(args[0] ?? "")) return args.includes("--load-only") ? null : "test:db";
   if (p === "playwright") return args[0] === "test" ? "e2e" : null;
   if ((p !== "pnpm" && p !== "turbo") || args.some((a) => FOCUSED.test(a))) return null;
   const script = args.find((a) => !a.startsWith("-") && a !== "run");
@@ -541,13 +550,13 @@ export function evaluate(input, now = Date.now()) {
 
       const push = pushCall(seg, dirs[i]);
       if (!push) continue;
-      const ahead = aheadFiles(push.dir);
-      if (startsCI(push, ahead)) {
+      if (startsCI(push)) {
         const r = heavyPush(input, links, i, push.dir, base, flag);
         if (r) return r;
       }
-      if (!toMain(push)) continue;
-      const gap = e2eGap(push.dir, ahead);
+      const mainRefs = push.refs.filter(toMain);
+      if (!mainRefs.length) continue;
+      const gap = [...new Set(mainRefs.flatMap((r) => e2eGap(push.dir, r.src, r.ahead)))];
       if (gap.length) {
         audit({ ...base, event: "push-main-e2e-missing", files: gap.slice(0, 10) });
         warns.push(
