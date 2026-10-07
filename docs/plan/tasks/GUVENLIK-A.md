@@ -397,6 +397,7 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
 
 ### Sabah canlı adımları (Mert'in bu oturuma yazacağı "evet"ten sonra)
 Sıra: yedek (yalnız SELECT, çıktılar `artifacts/guvenlik-a/`) → GA-1 `apply_migration` → doğrulama → GA-4 `apply_migration` → doğrulama → `get_advisors` → GA-4 main gönderimi (rebase, tam kapı, push) → main CI.
+**Yeniden numara (KK-220, KARARLAR OPS-05 eki):** gönderim anında GA-4 migration'ı (`20261007233000_close_later_finishes_on_its_date.sql`) main'in o anki son migration'ının arkasına yeniden adlandırılır. İçerik aynı kalır, `pnpm.cmd db:schema` yeniden koşulur. Canlıya bu yeni adla uygulanır; md5 aynı kalır.
 
 ```sql
 
