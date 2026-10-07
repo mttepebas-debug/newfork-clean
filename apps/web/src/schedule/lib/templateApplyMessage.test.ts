@@ -14,6 +14,25 @@ describe("templateAppliedDescription", () => {
     ).toBe("Summer weekdays: 22 shifts added.");
   });
 
+  it("says how many shifts became open shifts (BL-699)", () => {
+    expect(
+      templateAppliedDescription("Standard week", {
+        applied_shift_count: 24,
+        converted_open_count: 2,
+        skipped: [],
+      }),
+    ).toBe("Standard week: 24 shifts added, 2 became open shifts.");
+    expect(
+      templateAppliedDescription("Standard week", {
+        applied_shift_count: 24,
+        converted_open_count: 1,
+        skipped: [label("Standby", 1)],
+      }),
+    ).toBe(
+      "Standard week: 24 shifts added, 1 became an open shift. Standby is archived, so 1 shift was added without it.",
+    );
+  });
+
   it("names one archived label and the shifts that came in without it", () => {
     expect(
       templateAppliedDescription("Summer weekdays", {
