@@ -11,7 +11,10 @@
 -- like a workspace-wide one, so a manager hears the same out_of_scope for a
 -- rule that does not exist as for one out of reach.
 -- Keeping the rule's own preset is always allowed; switching to another takes
--- one of the editor's own presets, as before.
+-- one of the editor's own presets, as before. The rule still sends as the
+-- person who set it up, so a location added by someone else must be one that
+-- person can export (review O1): the owner cannot add Beşiktaş to Ayşe's
+-- Kadıköy rule; changing its address or hour is free.
 
 create or replace function public.update_schedule_export_schedule_service(actor_user_id uuid, target_workspace_id uuid, target_schedule_id uuid, target_payload jsonb)
 returns jsonb
@@ -23,6 +26,7 @@ declare
   existing public.scheduled_schedule_exports%rowtype;
   updated public.scheduled_schedule_exports%rowtype;
   next_location_ids uuid[];
+  added_location_ids uuid[];
   next_preset_id uuid;
   preset_name text;
   reset_failure_state boolean := false;
@@ -56,6 +60,19 @@ begin
       select distinct requested.id from unnest(next_location_ids) requested(id)
       where requested.id = any (public.live_location_ids(target_workspace_id, next_location_ids))
          or not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[]))));
+  -- The rule sends as the person who set it up (the cron exports as them): a
+  -- location they cannot export would switch the rule off at its first send.
+  -- Whoever edits the rule may not reach past its owner with it.
+  added_location_ids := array(
+    select distinct requested.id from unnest(next_location_ids) requested(id)
+    where not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[])));
+  if actor_user_id is distinct from existing.created_by
+     and cardinality(added_location_ids) > 0
+     and app_private.authz_reason(existing.created_by, target_workspace_id, 'schedule.export',
+       target_locations => added_location_ids) is not null then
+    raise exception 'The person who set up this export cannot export a location you added.'
+      using errcode = '22023', hint = 'schedule.export_rule_beyond_its_owner';
+  end if;
 
   next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
   if not exists (
