@@ -1432,7 +1432,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   type="button"
                   onClick={props.onClose}
                 >
-                  Cancel
+                  {/* Nothing to cancel in a drawer that only reads (K10, BL-408). */}
+                  {canSubmit ? "Cancel" : "Close"}
                 </Button>
                 {!props.creating &&
                 !readOnly &&
@@ -1709,7 +1710,7 @@ function EmployeeTerminationDialog({
             >
               {timezoneOptions.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {zoneName(option)}
                 </option>
               ))}
             </select>
@@ -2422,7 +2423,12 @@ function EmploymentSection({
       ) : null}
       <AssignmentPicker
         label="Jobs"
-        required={!draft.is_remote && !draft.is_excluded_from_schedule}
+        // Nothing is asked of the owner here either (BL-482, KK-63).
+        required={
+          !detail?.is_workspace_owner &&
+          !draft.is_remote &&
+          !draft.is_excluded_from_schedule
+        }
         options={references?.jobs ?? []}
         departments={references?.departments}
         selected={draft.job_ids}
@@ -2529,9 +2535,12 @@ function AccessSection({
     Date.parse(invitation.expires_at) <= Date.now(),
   );
   const state = linked
-    ? detail?.display_status === "active"
-      ? "linked"
-      : "onboarding"
+    ? archived
+      ? // Linked but archived: not onboarding (K9, AC8).
+        "archived"
+      : detail?.display_status === "active"
+        ? "linked"
+        : "onboarding"
     : !email
       ? "no_email"
       : invitationExpired || invitation?.status === "expired"
@@ -2602,6 +2611,12 @@ function AccessSection({
       copy: "The employee record and work history are preserved. A new invite starts fresh onboarding.",
       tone: "neutral",
     },
+    archived: {
+      icon: <KeyRound size={18} aria-hidden />,
+      title: "Archived",
+      copy: "Access is suspended while the employee is archived.",
+      tone: "neutral",
+    },
     onboarding: {
       icon: <Clock3 size={18} aria-hidden />,
       title: "Onboarding in progress",
@@ -2656,7 +2671,12 @@ function AccessSection({
                 aria-describedby={ownerRoleReason ? ownerRoleReasonId : undefined}
                 value={roleId}
                 disabled={
-                  !canChangeRole || changingRole || assignableRoles.length === 0
+                  !canChangeRole ||
+                  changingRole ||
+                  assignableRoles.length === 0 ||
+                  // One role, the one they hold, is nothing to pick (BL-430).
+                  (assignableRoles.length === 1 &&
+                    assignableRoles[0]?.id === currentRoleId)
                 }
                 onChange={(event) => onRoleChange(event.target.value)}
               >
@@ -2787,6 +2807,7 @@ function EmployeeAvatarControl({
   const queryClient = useQueryClient();
   const scopeId = useId();
   const photoScope = "Remove only the photo shown for this workspace.";
+  const noPhoto = "There is no workspace photo to remove.";
   const avatar = useQuery({
     queryKey: ["employee-avatar", workspaceId, employeeId],
     queryFn: () => getEmployeeAvatar(workspaceId, employeeId),
@@ -2831,12 +2852,15 @@ function EmployeeAvatarControl({
           <UserRound size={20} />
         </span>
       )}
-      <div>
-        <strong>Profile photo removal</strong>
-        {remove.error ? (
-          <small role="alert">{errorMessage(remove.error)}</small>
-        ) : null}
-      </div>
+      {/* A row naming a removal nobody here can do is not drawn (BL-408). */}
+      {!readOnly ? (
+        <div>
+          <strong>Profile photo removal</strong>
+          {remove.error ? (
+            <small role="alert">{errorMessage(remove.error)}</small>
+          ) : null}
+        </div>
+      ) : null}
       {!readOnly ? (
         <ConfirmButton
           className="danger-button"
@@ -2845,7 +2869,7 @@ function EmployeeAvatarControl({
           confirmLabel="Confirm remove"
           // Which photo goes: read out and shown on hover, not printed.
           aria-describedby={scopeId}
-          title={photoScope}
+          title={hasAvatar ? photoScope : noPhoto}
           onConfirm={() => remove.mutate()}
         >
           <ImageOff size={15} aria-hidden />
@@ -2854,7 +2878,8 @@ function EmployeeAvatarControl({
       ) : null}
       {!readOnly ? (
         <span id={scopeId} className="sr-only">
-          {photoScope}
+          {/* Off for a reason that is said, too (BL-473). */}
+          {hasAvatar ? photoScope : noPhoto}
         </span>
       ) : null}
     </div>
@@ -2944,7 +2969,7 @@ function HistorySection({ detail }: { detail: EmployeeDetail | undefined }) {
           <span />
           <div>
             <strong>{event.summary || event.action}</strong>
-            <small>{new Date(event.occurred_at).toLocaleString()}</small>
+            <small>{formatDateTime(event.occurred_at)}</small>
           </div>
         </li>
       ))}
@@ -3387,11 +3412,28 @@ function CopyInvitationLinkButton({
   );
 }
 
+/** A zone in words, "Pacific Time (Los Angeles)", not its code (E3-37). */
+function zoneName(zone: string): string {
+  try {
+    const generic = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      timeZoneName: "longGeneric",
+    })
+      .formatToParts(new Date())
+      .find((part) => part.type === "timeZoneName")?.value;
+    const city = zone.split("/").pop()?.replaceAll("_", " ");
+    return generic && city ? `${generic} (${city})` : zone;
+  } catch {
+    return zone;
+  }
+}
+
 function formatDateTime(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "on an unknown date"
-    : date.toLocaleString();
+    : // To the minute (BL-674, Employees half).
+      date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 function errorMessage(error: unknown): string {

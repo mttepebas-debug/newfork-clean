@@ -2412,6 +2412,8 @@ describe("EmployeeDrawer EMP-001 look", () => {
   });
 
   it("prints no notes in the Profile photo group; the button says what it removes to a screen reader", async () => {
+    // With a photo to remove; without one the button says why it is off (BL-473).
+    vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({ present: true, url: "blob:photo" });
     renderDrawer("access");
     const remove = await screen.findByRole("button", { name: "Remove photo" });
     expect(described(remove)).toEqual({
@@ -2424,7 +2426,9 @@ describe("EmployeeDrawer EMP-001 look", () => {
 
   it("keeps no photo note for a reader who cannot remove the photo", async () => {
     renderDrawer("access", { ...detail, allowed: { ...detail.allowed, save: false } });
-    await screen.findByText("Profile photo removal");
+    await screen.findByRole("heading", { name: "Profile photo" });
+    // BL-408: a row naming a removal nobody here can do is not drawn.
+    expect(screen.queryByText("Profile photo removal")).toBeNull();
     expect(screen.queryByRole("button", { name: "Remove photo" })).toBeNull();
     expect(screen.queryByText("Remove only the photo shown for this workspace.")).toBeNull();
   });
@@ -2869,8 +2873,8 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
       jobs: [],
       inviteRoles: [],
     });
-    const zone = await within(dialog).findByDisplayValue("Pacific/Honolulu");
-    expect(zone).toBeTruthy();
+    const zone = within(dialog).getByLabelText("Worksite timezone") as HTMLSelectElement;
+    await waitFor(() => expect(zone.value).toBe("Pacific/Honolulu"));
     // Worked out inside the wait, so an hour turning over cannot fail it.
     await waitFor(() => {
       const [day, hour] = new Intl.DateTimeFormat("en-CA", {
@@ -2905,7 +2909,8 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
       jobs: [],
       inviteRoles: [],
     });
-    await within(dialog).findByDisplayValue("Pacific/Honolulu");
+    const zone = within(dialog).getByLabelText("Worksite timezone") as HTMLSelectElement;
+    await waitFor(() => expect(zone.value).toBe("Pacific/Honolulu"));
     expect(effective.value).toBe("2026-09-01T12:00");
   });
 
@@ -3018,5 +3023,82 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
     row.remove();
     unmount();
     expect(document.activeElement).toBe(search);
+  });
+});
+
+// EKRAN-03 #47 (E3-37): the drawer's words say what is true.
+describe("EmployeeDrawer words (EKRAN-03)", () => {
+  const archivedLinked = {
+    ...detail,
+    archived_at: "2026-09-01T00:00:00.000Z",
+    display_status: "archived" as const,
+    user_id: "16000000-0000-4000-8000-000000000005",
+    role_id: employeeRoleId,
+    role_name: "Employee",
+  } satisfies EmployeeDetail;
+
+  // K9 (AC8, BL-669 1).
+  it("says an archived person with a linked account is archived, not onboarding", async () => {
+    renderDrawer("access", archivedLinked);
+    expect(await screen.findByText("Access is suspended while the employee is archived.")).toBeTruthy();
+    expect(screen.queryByText("Onboarding in progress")).toBeNull();
+  });
+
+  // K10 (BL-408): nothing to cancel in a drawer that only reads.
+  it("offers one Close in a drawer that only reads", async () => {
+    renderDrawer("profile", archivedLinked);
+    expect(await screen.findByRole("button", { name: "Close" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
+
+  // BL-473: switched off with no photo, and says why.
+  it("says why Remove photo is off when there is no photo", async () => {
+    renderDrawer("access");
+    const remove = await screen.findByRole("button", { name: "Remove photo" });
+    expect(remove).toHaveProperty("disabled", true);
+    expect(describedBy(remove)).toBe("There is no workspace photo to remove.");
+  });
+
+  // BL-430: one role, the one they hold, is nothing to pick.
+  it("switches the role picker off when the only role is the person's own", async () => {
+    inviteRolesFixture = [{ id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" }];
+    renderDrawer("access", { ...archivedLinked, archived_at: null, display_status: "active" });
+    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("disabled", true);
+  });
+
+  // BL-482: nothing is asked of the owner's Jobs either.
+  it("does not mark the owner's Jobs as Required", async () => {
+    renderDrawer("employment", { ...detail, role_name: "Owner", is_workspace_owner: true });
+    const jobs = await screen.findByRole("group", { name: /^Jobs/ });
+    expect(within(jobs).queryByText("Required")).toBeNull();
+  });
+
+  // BL-674 (Employees): History reads to the minute.
+  it("writes History times without seconds", async () => {
+    renderDrawer("history", {
+      ...detail,
+      events: [
+        {
+          id: "e1000000-0000-4000-8000-000000000001",
+          action: "employee.updated",
+          occurred_at: "2026-10-07T09:15:42.000Z",
+          actor_user_id: "16000000-0000-4000-8000-000000000005",
+          summary: "Profile updated",
+        },
+      ],
+    });
+    const when = (await screen.findByText("Profile updated")).parentElement!.querySelector("small")!;
+    expect(when.textContent).not.toMatch(/:\d{2}:\d{2}/);
+    expect(when.textContent).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  // E3-37: a zone reads as its name, not its code.
+  it("names the worksite zone in words", async () => {
+    renderDrawer("employment");
+    fireEvent.click(await screen.findByRole("button", { name: "Terminate employee" }));
+    const dialog = screen.getByRole("dialog", { name: "Terminate employee" });
+    const zone = within(dialog).getByLabelText("Worksite timezone") as HTMLSelectElement;
+    await waitFor(() => expect(zone.options[0]?.textContent).toBe("Pacific Time (Los Angeles)"));
+    expect(zone.value).toBe("America/Los_Angeles");
   });
 });
