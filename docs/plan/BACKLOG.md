@@ -279,6 +279,7 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
 
 ## Kayıt bakımı (2026-09-25)
   - **Tazelik 2026-10-07 (EKRAN-16 keşfi, `fb9ced47`):** geçerli, iki kurulumda ölçüldü (E16-19).
+  - **Kapandı 2026-10-07 (`9e7abc62`, main CI 37636794750 yeşil; EKRAN-03 oturumu, KK-219).** Tek kaynak `packages/shared/src/us-forms.ts` (harf kuralı, telefon), tek alan `apps/web/src/shell/UsPhoneInput.tsx`; Account, owner / çalışan kurulumu, Employees, Locations, Jobs, General aynı parçayı kullanıyor; API aynı şemayla reddediyor. Kalan: okuma toleransları §2.A.5'e aykırı → BL-969.
 - **BL-501 (leave: low / do: safe) Plan belgelerinde bayat satırlar.** Kod okuyan oturum bu satırları bugünün gerçeği sanıp yanlış dayanak kurabilir. Satırlar:
   - `docs/plan/MVP-PLAN.md:18`: canlı Supabase olarak eski `ndcqztpwwzxcqlidgcwi`'yi anlatıyor; bugünkü canlı veritabanı `hvyvyisrqyathtliyyyv`.
   - `MVP-PLAN.md:19`: "Vercel cron dakikada bir" diyor; OPS-014 cron'ları pg_cron'a taşıdı.
@@ -2155,6 +2156,10 @@ Kaynak `ekranlar/16-giris-katilim/` (main `ca4326f6`); metni EKRAN-16 oturumu ha
 - **BL-967 (leave: low / do: safe) Owner kaydettiği acil durum kişisini silemiyor.** Employees → owner çekmecesi: iki alan boşken Save kapalı (sunucu ad + numara istiyor); eski ayrı düğmede de böyleydi. Doğru davranış KARARLAR'da yok (silme serbest mi, zorunlu mu) — Employees kapanış turunda Mert'e. Bulan: EKRAN-03 `nf-guvenlik` incelemesi, 2026-10-07.
 
 - **BL-968 (leave: medium / do: moderate) Unpublish penceresi olmayan bir şeyi söylüyor: "Active cover and swap requests for removed shifts will be closed."** `unpublish_schedule_service` talepleri kapatmıyor; `refresh_weekly_exchange_terms` vardiya yayından kalkınca erken çıkıyor; talep `open` kalıyor, yalnız onay anında "The published shift changed or was unpublished" ile takılıyor. Ya cümle değişir ya talepler gerçekten kapanır — ürün kararı (SABAH-SORULAR G14). Bulan: EKRAN-01 `nf-guvenlik` (D2, kod okuması), 2026-10-07.
+
+- **BL-969 (leave: medium / do: risky) Form kuralına uymayan eski veri için okuma toleransları (§2.A.5 ihlali) + DB kısıtı yok.** BL-503 eski veriyi okumak için tolerans bıraktı (values şemaları, `AuthContext` dalı, `loadAccountProfile`; "+44" numara boş açılır, "Aşçı" adı açılır). §2.A.5: kurala uymayan kayıt, ona tolerans gösteren kod ve testi silinir. Ayrıca General / departman / iş / lokasyon yazımları supabase-js ile doğrudan tabloya gidiyor, kural yalnız web'de. Çözüm: veriyi düzelten tek migration + CHECK kısıtları + toleransların silinmesi + seed / builder düzeltmesi. Neden bekliyor: beklemiyor — EKRAN-03 oturumuna verildi (KK-222); canlı veri değiştirdiği için R3, canlı sabah. Bulan: EKRAN-03, 2026-10-07.
+- **BL-970 (leave: medium / do: risky) Çalışan e-postası benzersiz değil (EKRAN-03 #22).** DB unique index + çift kayıt temizliği + okuma ucu gerekiyor; veri maddesi. Neden bekliyor: canlı veri temizliği Mert onayı ister; Employees veri dilimleriyle (EKRAN-02 paketinden sonra). Bulan: EKRAN-03, 2026-10-07.
+- **BL-971 (leave: low / do: safe) Employees çekmecesinde alan hata satırı kırmızı yerine gri.** `styles.css` `.employee-field small` (0,1,1) `.employee-field-error`'ı (0,1,0) eziyor; zorunlu alan hatası dahil. Neden bekliyor: `styles.css` EKRAN-02 görünüm diliminden sonra açılıyor. Bulan: EKRAN-03, 2026-10-07.
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.

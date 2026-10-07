@@ -1844,3 +1844,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~14:30Z. **Nerede:** EKRAN-01 paket 2 (`task/ekran-01-p2` @`ac01d469`, göçsüz, R2).
 - **Ne:** #35 KARARLAR:524'ün kalıbından: yalnız gözden geçirme varken "2 shifts to review before you publish."; kişiye bağlı bulgu onu doğuran vardiya üzerinden sayılır; "Fix hard blockers in the schedule before publishing." kalkar (Mert "geliştirici dili olmasın"). Önce/sonra paftası sabah. D2 (Unpublish metni talepleri kapatmıyor) ürün kararı → BL-968, SABAH G14. Paket 2 ikinci inceleme ONAY'ıyla gece gidebilir (göçsüz).
 - **Dayanak:** KARARLAR:524, KK-166; ILKELER P09, P21.
+
+### KK-222 (2026-10-07 gece) BL-503 kapandı; okuma toleransları §2.A.5'e aykırı → BL-969 aynı oturuma
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~14:50Z. **Nerede:** main `9e7abc62` (CI 37636794750 yeşil); BACKLOG BL-969…971.
+- **Ne:** ABD form kuralları tek kaynakla uygulama geneline yayıldı (önce/sonra `artifacts/BL-503/BL-503-once-sonra.png`, sabah Mert'e). Oturum eski veriyi okumak için tolerans bıraktı; §2.A.5 bunu yasaklıyor (canlı kullanıcı yok, eski veri korunmaz). Karar: veriyi düzelten tek migration + CHECK kısıtları + toleransların ve onları kuran testlerin silinmesi, EKRAN-03 oturumuna (R3, canlı veri; canlı sabah §5.3). Oturumun 1, 2, 3, 5, 6. kararları kabul. BL-970 e-posta benzersizliği ve BL-971 gri hata satırı ayrı maddeler.
+- **Dayanak:** CLAUDE.md §2.A.4, §2.A.5; ILKELER P01, P11, P12.
