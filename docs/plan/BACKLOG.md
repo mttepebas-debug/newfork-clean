@@ -104,6 +104,7 @@ Madde başına tek satır, yalnızca sona ekle. Bir madde aktif işe alınınca 
 - BL-841 (leave: low / do: safe) **`supabase/tests/document_types_rls.test.sql` belge türlerini bütün veritabanında başlığa göre arıyor.** `where title in ('Food handler card', 'Team handbook')` (`:56`) kendi workspace'iyle süzmüyor; ortak yerel DB'de başka bir test dünyası aynı başlığı taşıyınca test duplicate key ile düşüyor. Örnek: 2026-10-06 15:53Z olayından kalan iki test dünyası (World ra/rx) yerel koşuyu kırmızıya çevirdi; CI etkilenmedi (her koşu temiz DB). Düzeltme: sorgu testin kendi workspace kimliğiyle süzülür. `nf-test`. Neden bekliyor: yalnız yerelde kırmızı, kısa iş. Kaynak: `.newfork-inbox/done/20261006T165128-nf-db-veri-olay-test-dunyasi.md`, koordinatör aktardı (2026-10-06).
 
 ## MVP sonrası
+  - **Kapandı 2026-10-07 (`3fec39b8`, main CI 37616720898 yeşil).** `document_types_rls` kendi workspace'iyle süzülüyor; ortak DB'de yeşil.
 - BL-009 (leave: low / do: belirsiz) Kiosk ve PIN reset.
   - **İşaret 2026-09-30 (kayıt oturumu; madde ve kaynakları okunarak):** MVP sonrası (ROADMAP "Kapsam kararları"). do belirsiz: tasarım yok.
   - **Tazelik 2026-10-06 (`44e41a54`, BL-TAZELIK-GECE): geçerli** — `ROADMAP.md:41` MVP sonrası; kiosk kodu yok (tek eşleşme, işlev değil)
@@ -1009,6 +1010,7 @@ Kaynak: `nf-db` BL-475 raporu ve `nf-guvenlik` BL-475 raporu (ONAY @`7bce0322`; 
 ## G8b raporlarında ve gönderiminde bulunanlar (2026-09-30)
 Kaynak: `nf-backend` G8b raporu (yolda bulunanlar) ve koordinatörün G8b gönderimi, koordinatör aktardı (besleme #25).
   - **Not 2026-10-07 (PARALEL-1):** yerel tam koşudaki hata `bl052_document_lifecycle.test.sql:37` (kapsamsız `employee_document_submission_files` okuması; ortak DB'de 19 workspace, 90 satır) ve `bl052_document_notifications.test.sql:44` bu aileden; kalıcı çare testlerin kendi workspace kimliğiyle süzmesi.
+  - **Kısmen kapandı 2026-10-07 (`3fec39b8`).** `bl052_document_lifecycle` kendi workspace'iyle süzülüyor, yeşil. `bl052_document_notifications` (eski BL-590) açık: kırmızısı ürün kodunda (BL-965); servis düzelince aynı dosyadaki kapsamsız okumalar süzülecek.
 - **BL-499 (leave: low / do: safe) Varsayılan saatleri gözden geçirme penceresi arşivli vardiya tipine "Saved shift type" yazıyor.** `apps/web/src/schedule/components/DefaultHoursReviewDialog.tsx:92` adı yalnız `model.shift_types` içinde arıyor, bulamazsa "Saved shift type" yazıyor; K8'den sonra gerçek ad gösterilebilir. Ürün kararı olabilir (pencere yeni vardiya üretmek için; arşivli tipin adı istenir mi). Kod satırı kayıt oturumunca ölçüldü (`b8613af0`). `nf-backend` / `nf-arayuz`. Kaynak: `nf-backend` G8b raporu.
   - **Program 2026-09-30 (kayıt oturumu): G8.**
   - **Tazelik 2026-10-06 (`9146ba6b`, BACKLOG-TAZELIK-RE): geçerli** — `DefaultHoursReviewDialog.tsx:92` "Saved shift type". · sınıf: salt hata düzeltmesi · dilim: W-4
@@ -2145,6 +2147,8 @@ Kaynak `ekranlar/16-giris-katilim/` (main `ca4326f6`); metni EKRAN-16 oturumu ha
 - **BL-963 (leave: low / do: safe) Important Dates çekmecesinde dört hizalama / tutarlılık farkı.** Alan boyları 36 / 37,5 / 38 px (Type ile Locations alt çizgisi 2 px kayık; telefonda Locations 38, öteki 44); X başlıkla aynı çizgide değil (4,8 / 10,8 px); "Flag this date" kutusu tarayıcı mavisi; alan adları 11 px / 700 (öteki çekmecelerde 12 / 600). Mert simetriye önem veriyor. Kaynak: EKRAN-08-CEKMECE, 2026-10-07 (`ekranlar/08-important-dates/CEKMECE-INCELEME.md`). U4, U5, U7, U8.
 
 - **BL-964 (leave: high / do: moderate) Ağır koşu kancası tırnak içini komut sanıyor; 2026-10-14'ten sonra yanlış reddedecek.** `scripts/guard.mjs` `chain()` komutu tırnağa bakmadan `&&`, `;`, `|` ve satır sonunda bölüyor. Örnek: `node -e 's=s.replace("a.mjs","b.mjs && turbo test");'` → parça `turbo test"` ağır koşu sayılıyor. Bugün uyarı + `audit.log` `heavy-warn`; engel tarihinden sonra komut düşer. Neden bekliyor: beklemiyor — PARALEL-1 oturumuna verildi (KK-215), son tarih 2026-10-14. Bulan: PARALEL-1, 2026-10-07.
+
+- **BL-965 (leave: high / do: moderate) `documents_maintain_service` son kullanma tarihsiz onaylı belgede çöküyor; bütün workspace'lerin belge hatırlatmaları ve askı güncellemesi duruyor.** `schema.sql:9341` (fonksiyonun 34. satırı): `if days_left in (30,7,1) and app_private.enqueue_document_notification(..., 'expiry:'||…||days_left::text, …)` — `days_left` NULL olunca anahtar NULL → `document_notification_dedup.notification_key` NOT NULL ihlali (23502) → bütün parti geri döner. Kanıt: rollback'li deneme, ortak DB, `select public.documents_maintain_service(500, '2026-03-08 17:00:00Z')`. Ortak DB'de 18 workspace'te 64 tarihsiz onaylı belge. CI'da görünmez (temiz DB). Neden bekliyor: beklemiyor — PARALEL-1 oturumuna verildi (KK-216); canlı sabah (§5.3). Bulan: PARALEL-1, BL-497 işi, 2026-10-07.
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.

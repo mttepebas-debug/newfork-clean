@@ -1814,3 +1814,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~11:45Z. **Nerede:** main `702f2b69` (CI 37608195446 yeşil); BACKLOG BL-897, BL-755, BL-516, BL-788, BL-760 kapandı, BL-497 notu, BL-964.
 - **Ne:** PARALEL-1 main'de; ekran oturumlarına yeni `test:db` bildirildi (rebase sonrası `node scripts/test-db.mjs --load-only` ile ortak DB tazelenir). "4 ERROR" cevabı: üçü ortak DB kayması (BL-497, BL-841), biri CI dışı gerçek kırmızı (BL-227) — yeni madde yok. Kancanın tırnağa duyarsız bölmesi (BL-964) 2026-10-14 engel tarihinden önce kapanmalı; araç işini bilen PARALEL-1 oturumuna gece işi olarak verildi (R2, `/code-review`, migration yok).
 - **Dayanak:** CLAUDE.md §4.2, §4.5; ILKELER P16.
+
+### KK-216 (2026-10-07 gece) BL-841 kapandı, BL-497 kısmen; BL-965 aynı oturuma
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~12:20Z. **Nerede:** main `3fec39b8` (CI 37616720898 yeşil); BACKLOG BL-841, BL-497, BL-965.
+- **Ne:** iki test dosyası kendi workspace'iyle süzüldü (R0, beklenti aynı). Üçüncü dosyanın kırmızısı ürün hatası çıktı (BL-965: tarihsiz onaylı belge bakım işini bütün workspace'ler için düşürüyor) — test gevşetilmedi. Düzeltme R2 + migration, bulan oturuma; canlı ve main sabah (§5.3, KK-214).
+- **Dayanak:** CLAUDE.md §2.A.3 (beklenti gevşetilmez), §4.3.5; ILKELER P09.
