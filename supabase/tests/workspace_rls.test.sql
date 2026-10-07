@@ -386,7 +386,7 @@ select throws_ok(
     false,
     999
   )$$,
-  '40001',
+  'PT409',
   'owner onboarding revision conflict',
   'stale owner onboarding revision is rejected'
 );

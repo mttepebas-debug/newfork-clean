@@ -264,7 +264,7 @@ select throws_ok(
   $$select public.save_employee_onboarding_profile_service(
     '17000000-0000-4000-8000-000000000003', '{}'::jsonb, 1
   )$$,
-  '40001', 'onboarding changed; refresh required', 'stale profile write fails closed'
+  'PT409', 'onboarding changed; refresh required', 'stale profile write fails closed'
 );
 
 -- The employee's document and policy, through the paths the app uses today.

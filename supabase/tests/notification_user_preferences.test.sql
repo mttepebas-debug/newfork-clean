@@ -127,7 +127,7 @@ select throws_ok(
       'expected_version', 999
     ))
   )$$,
-  '40001',
+  'PT409',
   'stale notification preference version',
   'stale preference versions are rejected'
 );

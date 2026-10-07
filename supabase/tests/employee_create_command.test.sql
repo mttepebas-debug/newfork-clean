@@ -44,7 +44,7 @@ select is((select public.create_employee_command_service(
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000001', employee || '{"last_name":"Changed"}', employee_role) from create_fixture$$,
-  '40001', 'idempotency key belongs to different employee details', 'changed payload cannot reuse command');
+  'PT409', 'idempotency key belongs to different employee details', 'changed payload cannot reuse command');
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000003', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000001', employee, employee_role) from create_fixture$$,

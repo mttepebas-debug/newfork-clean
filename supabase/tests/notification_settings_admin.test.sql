@@ -103,7 +103,7 @@ select throws_ok(
     'e2100000-0000-4000-8000-000000000001', 'e2110000-0000-4000-8000-000000000001',
     'schedule.published', 1, 'global', null, 9, true, array['in_app'], 'immediate', 'Stale update attempt'
   )$$,
-  '40001',
+  'PT409',
   'notification policy stale version',
   'a stale optimistic version is rejected'
 );

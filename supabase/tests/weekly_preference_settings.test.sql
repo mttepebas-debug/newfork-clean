@@ -67,7 +67,7 @@ select is((select payload->'recipient_user_ids' from public.notification_outbox 
  jsonb_build_array((select actor from wp_fixture)),'every employee is told, never the manager (M4, D4)');
 select ok((select bool_and(position('Private manager note' in payload::text)=0) from public.notification_outbox where workspace_id=(select w from wp_fixture)),'mode notice contains no private reminders');
 select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}')$$,'22023',null,'key cannot be reused for another payload');
-select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}',2)$$,'40001',null,'stale revision cannot overwrite settings');
+select throws_ok($$select pg_temp.settings_save('{"onboarding_required":true}',2)$$,'PT409',null,'stale revision cannot overwrite settings');
 select is(pg_temp.settings_save('{"onboarding_required":true,"expected_revision":1}',2)->'settings'->>'revision','2','the onboarding setting saves');
 select is((select count(*) from public.notification_outbox where workspace_id=(select w from wp_fixture) and subject_type='availability_settings'),1::bigint,'onboarding changes do not send renewal spam');
 select is(pg_temp.settings_save('{"onboarding_required":true,"expected_revision":2}',3)->'settings'->>'revision','2','no-op save does not change revision');

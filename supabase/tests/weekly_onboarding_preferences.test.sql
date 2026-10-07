@@ -25,7 +25,7 @@ select ok((select required and blocks_activation and not requires_review and sta
 select is((select c.revision from public.employee_onboarding_cases c,wo_case f where c.id=f.id),2,'policy change advances onboarding revision');
 update public.employee_onboarding_requirements set status='completed' where case_id=(select id from wo_case) and kind='profile';
 select is(public.get_employee_onboarding_service(actor)->>'first_actionable_path','/welcome/availability','server routes to the required declaration') from wo_fixture;
-select throws_ok($$select public.submit_employee_onboarding_service(actor,1) from wo_fixture$$,'40001',null,'old onboarding revision cannot submit after policy change');
+select throws_ok($$select public.submit_employee_onboarding_service(actor,1) from wo_fixture$$,'PT409',null,'old onboarding revision cannot submit after policy change');
 select throws_ok($$select public.submit_employee_onboarding_service(actor,2) from wo_fixture$$,'23514',null,'required unsubmitted week cannot be bypassed');
 select throws_ok($$select public.review_employee_onboarding_service(owner_id,w,emp,'accept_requirement',
  (select id from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='availability'),null,2,true) from wo_fixture$$,

@@ -312,20 +312,48 @@ select is((select count(*)::integer from jsonb_array_elements(public.read_import
 select tests.remember('r:ann:rev', pg_temp.save_ann('owner', array['K'], 'Revisioned'));
 select is(pg_temp.try(format($$select public.save_announcement_audience_service(%L, %L, %L, null, 'Changed', 'Body', 'general',
     array['employee'], %L::uuid[], null, null, null, '{}', '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.locs(array['K']))),
-  '40001 ', 'KK-92 c: an announcement change that names no revision is refused');
+  'PT409 ', 'KK-92 c: an announcement change that names no revision is refused');
 select is(pg_temp.try(format($$select public.save_announcement_audience_service(%L, %L, %L, %s, 'Changed', 'Body', 'general',
     array['employee'], %L::uuid[], null, null, null, '{}', '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'),
     pg_temp.rev(tests.id('r:ann:rev')) - 1, pg_temp.locs(array['K']))),
-  '40001 ', 'KK-92 c: so is one made on an old revision');
+  'PT409 ', 'KK-92 c: so is one made on an old revision');
 select tests.remember('r:date:rev', pg_temp.save_date('owner', array['K'], 'Revisioned date'));
 select pg_temp.save_date('owner', array['K'], 'Revisioned date, saved once', id => tests.id('r:date:rev'));
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
     'none', '', true, %L::uuid[], %s)$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']),
     coalesce(pg_temp.date_rev(tests.id('r:date:rev')) - 1, 1))),
-  '40001 ', 'KK-92 c: an important date saved on an old revision is refused, not lost');
+  'PT409 ', 'KK-92 c: an important date saved on an old revision is refused, not lost');
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
     'none', '', true, %L::uuid[], null)$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']))),
-  '40001 ', 'KK-92 c: so is one that names no revision');
+  'PT409 ', 'KK-92 c: so is one that names no revision');
+select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, %L, %L, %s, 'archive')$$,
+    pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.rev(tests.id('r:ann:rev')) - 1)),
+  'PT409 ', 'KK-92 c: archiving an announcement on an old revision is refused too');
+
+-- BL-958: no lasting conflict is refused with 40001. PostgREST takes 40001 for
+-- a passing conflict and runs the same request again, forever, holding one of
+-- its connections; ten such saves stop the API for every workspace. A lasting
+-- conflict answers PT409, keeping its hint. The list is every function moved
+-- off 40001 (ACIL-40001): a later migration that brings 40001 back to one of
+-- them turns this red. Schedule's editing services are EKRAN-01's.
+select is(array(
+  select n.nspname || '.' || p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where (n.nspname, p.proname) in (
+      ('app_private', 'apply_owner_onboarding_update'), ('app_private', 'important_date_close_shifts'),
+      ('app_private', 'time_off_finalize'), ('app_private', 'time_off_release_shifts'),
+      ('public', 'create_employee_command_service'), ('public', 'decide_time_off_service'),
+      ('public', 'employee_request_action_service'), ('public', 'leave_employee_onboarding_service'),
+      ('public', 'publish_announcement_service'), ('public', 'request_time_off_cancellation_service'),
+      ('public', 'review_employee_onboarding_before_availability_service'), ('public', 'revoke_time_off_service'),
+      ('public', 'save_announcement_audience_service'), ('public', 'save_employee_onboarding_profile_service'),
+      ('public', 'save_employee_service'), ('public', 'save_important_date_service'),
+      ('public', 'save_notification_policy_service'), ('public', 'save_notification_user_preferences_service'),
+      ('public', 'set_announcement_state_service'), ('public', 'set_important_date_state_service'),
+      ('public', 'shorten_time_off_service'), ('public', 'submit_employee_onboarding_service'),
+      ('public', 'submit_time_off_service'), ('public', 'weekly_preference_settings_save_service'))
+    -- Every way to raise 40001; PL/pgSQL keywords are case-insensitive.
+    and p.prosrc ~* $re$(errcode\s*=\s*'(40001|serialization_failure)'|raise\s+(exception\s+)?sqlstate\s+'40001'|raise\s+serialization_failure)$re$
+  order by 1), '{}'::text[], 'BL-958: no lasting conflict in these 24 functions is refused with 40001');
 
 -- 11. Republishing an important date (K7) ---------------------------------------------------
 

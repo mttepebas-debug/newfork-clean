@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(118);
+select plan(119);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -423,8 +423,30 @@ select throws_ok(
     array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
     array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 1
   )$$,
-  '40001', 'employee revision conflict', 'stale employee update fails closed'
+  'PT409', 'employee revision conflict', 'stale employee update fails closed'
 );
+-- BL-958: the conflict answers PT409, never the 40001 PostgREST retries forever,
+-- and names itself so the screen can tell it from other refusals.
+set local role postgres;
+create function pg_temp.refusal_of(statement text) returns text language plpgsql as $f$
+declare state text; why text;
+begin
+  execute statement;
+  return 'ok';
+exception when others then
+  get stacked diagnostics state = returned_sqlstate, why = pg_exception_hint;
+  return state || ' ' || coalesce(why, '');
+end;
+$f$;
+select is(pg_temp.refusal_of($q$select public.save_employee_service(
+    '16000000-0000-4000-8000-000000000002',
+    '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'),
+    'Ada','', 'Lovelace', 'Ada', 'ada@example.test', null, '',
+    array['46000000-0000-4000-8000-000000000001']::uuid[], '46000000-0000-4000-8000-000000000001',
+    array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, false, 1
+  )$q$), 'PT409 employee.revision_conflict',
+  'BL-958: a stale employee save answers PT409 with the reason employee.revision_conflict');
+set local role service_role;
 select throws_ok(
   $$select public.set_employee_archived_service('16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'downtown'), true, false)$$,
   '42501', 'Not allowed', 'a manager does not archive: ending employment and archiving are admin and owner (KARARLAR)'
