@@ -5,9 +5,7 @@ import { Fragment, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import {
   departmentInputSchema,
-  departmentValuesSchema,
   jobInputSchema,
-  jobValuesSchema,
   type Department,
   type Job,
 } from "@newfork/shared";
@@ -102,8 +100,8 @@ export function JobCatalogEditor({
   const initialEntity =
     editor.item && !existingDepartment
       ? isJob
-        ? jobValuesSchema.parse(editor.item)
-        : departmentValuesSchema.parse(editor.item)
+        ? jobInputSchema.parse(editor.item)
+        : departmentInputSchema.parse(editor.item)
       : null;
   const rowDrafts = rows
     .filter((row, index) => index < rows.length - 1 || row.name.trim())

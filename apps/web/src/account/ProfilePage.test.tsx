@@ -159,15 +159,6 @@ describe("ProfilePage", () => {
     expect(updateAccount).not.toHaveBeenCalled();
   });
 
-  it("leaves a saved number from outside the US empty and asks for a US one", () => {
-    // Saved before BL-503; drawn into the mask it would read as a wrong US number.
-    account = { ...account, phone: "+442071234567" };
-    renderProfile();
-
-    expect(screen.getByLabelText("Phone number")).toHaveProperty("value", "");
-    expect(screen.getByText("To save, fill in phone number.")).toBeTruthy();
-  });
-
   it("previews a square crop without upload, cancels replacement and removes only on Save", async () => {
     account = { ...account, avatarObjectPath: "old-path", avatarUrl: "https://example.test/old.png" };
     renderProfile();
@@ -437,7 +428,7 @@ describe("ProfilePage", () => {
     expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
       second,
       `emp-${second}`,
-      // A US number in E.164 (BL-503), whatever way it was saved before.
+      // A US number in E.164 (BL-503).
       expect.objectContaining({ name: "Sam", relationship: "Spouse", phone: "+14155550199" }),
     );
     expect(requestPreferredName).toHaveBeenCalledTimes(2);

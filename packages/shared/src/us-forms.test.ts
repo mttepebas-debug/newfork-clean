@@ -7,7 +7,6 @@ import {
   toUsPhone,
   usLettersMessage,
   usPhoneDigits,
-  usPhoneDraft,
   usPhoneSchema,
   usText,
 } from "./us-forms";
@@ -73,19 +72,9 @@ describe("the US phone rule", () => {
     expect(toUsPhone("1 115 555 0100")).toBeNull();
   });
 
-  it("starts a phone field from a saved US number, and leaves any other one empty", () => {
-    expect(usPhoneDraft("+14155550100")).toBe("(415) 555-0100");
-    expect(usPhoneDraft("4155550199")).toBe("(415) 555-0199");
-    // Drawn into the mask, "+44 …" would read as a wrong US number.
-    expect(usPhoneDraft("+442079460958")).toBe("");
-    expect(usPhoneDraft(null)).toBe("");
-    expect(usPhoneDraft(undefined)).toBe("");
-  });
-
-  it("shows a saved US number one way and anything else as saved", () => {
+  // A saved number is a US one in E.164 (BL-969): it reads one way.
+  it("shows a saved number as +1 (415) 555-0100", () => {
     expect(displayUsPhone("+14155550100")).toBe("+1 (415) 555-0100");
-    expect(displayUsPhone("609 551 8910")).toBe("+1 (609) 551-8910");
-    expect(displayUsPhone("+44 20 7946 0958")).toBe("+44 20 7946 0958");
     expect(displayUsPhone(null)).toBeNull();
   });
 

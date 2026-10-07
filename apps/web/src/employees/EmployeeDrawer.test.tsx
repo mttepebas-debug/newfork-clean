@@ -886,33 +886,6 @@ describe("EmployeeDrawer", () => {
     expect(phone).toHaveProperty("value", "(310) 555-0101");
   });
 
-  it("opens the owner's saved non-US emergency phone empty", async () => {
-    renderDrawer("profile", {
-      ...detail,
-      user_id: context.userId,
-      role_name: "Owner",
-      is_workspace_owner: true,
-      private_contact: {
-        phone: null,
-        street_address: null,
-        city: null,
-        region: null,
-        postal_code: null,
-        country_code: null,
-        date_of_birth: null,
-        emergency_contact_name: "Morgan",
-        emergency_contact_relationship: null,
-        emergency_contact_phone: "+442079460958",
-        emergency_contact_email: "",
-        share_phone_with_teammates: false,
-        share_email_with_teammates: false,
-      },
-    });
-
-    // Drawn into the mask, "+44 …" would read as a wrong US number.
-    expect(await screen.findByLabelText("Emergency phone")).toHaveProperty("value", "");
-  });
-
   it("says under the owner's emergency contact that Turkish-only letters are not taken", async () => {
     renderDrawer("profile", {
       ...detail,
@@ -951,14 +924,6 @@ describe("EmployeeDrawer", () => {
       expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
     },
   );
-
-  // The drawer never writes the preferred name (KK-205), so one saved before
-  // the US rule does not hold the rest of the record (BL-503 review).
-  it("saves a record whose preferred name predates the US letter rule", async () => {
-    renderDrawer("profile", { ...detail, preferred_name: "Ayşe" });
-    fireEvent.change(await screen.findByLabelText("Middle name"), { target: { value: "Jo" } });
-    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
-  });
 
   it("will not save half an emergency contact", async () => {
     renderDrawer("profile", {
@@ -3440,7 +3405,7 @@ describe("EmployeeDrawer phone numbers (EKRAN-03)", () => {
     date_of_birth: null,
     emergency_contact_name: "Morgan",
     emergency_contact_relationship: null,
-    emergency_contact_phone: "609 551 8910",
+    emergency_contact_phone: "+16095518910",
     emergency_contact_email: "",
     share_phone_with_teammates: false,
     share_email_with_teammates: false,
@@ -3452,8 +3417,4 @@ describe("EmployeeDrawer phone numbers (EKRAN-03)", () => {
     expect((screen.getByLabelText("Emergency phone") as HTMLInputElement).value).toBe("+1 (609) 551-8910");
   });
 
-  it("leaves a number that is not ten US digits as it was saved", async () => {
-    renderDrawer("profile", { ...detail, private_contact: { ...withNumbers, phone: "+44 20 7946 0958" } });
-    expect(((await screen.findByLabelText("Phone")) as HTMLInputElement).value).toBe("+44 20 7946 0958");
-  });
 });

@@ -11,7 +11,6 @@ import {
   employeeSectionSchema,
   toUsPhone,
   usLettersMessage,
-  usPhoneDraft,
   usPhoneMessage,
   type EmployeeDetail,
   type EmployeeInput,
@@ -324,7 +323,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const contactBaseline: ContactDraft = {
     name: detail.data?.private_contact?.emergency_contact_name ?? "",
     relationship: detail.data?.private_contact?.emergency_contact_relationship ?? "",
-    phone: usPhoneDraft(detail.data?.private_contact?.emergency_contact_phone),
+    phone: detail.data?.private_contact?.emergency_contact_phone ?? "",
   };
   const [contactDraft, setContactDraft] = useState<ContactDraft | null>(null);
   const contactNow = contactDraft ?? contactBaseline;

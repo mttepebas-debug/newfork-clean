@@ -4,7 +4,6 @@ import {
   hasTurkishOnlyLetters,
   toUsPhone,
   usLettersMessage,
-  usPhoneDraft,
   type EmployeeOnboarding,
   type EmployeeOnboardingProfile,
   type EmployeeOnboardingRequirement,
@@ -536,7 +535,7 @@ function ProfileStep({
       legal_middle_name: model.profile?.legal_middle_name ?? "",
       legal_last_name: model.profile?.legal_last_name ?? "",
       preferred_name: model.profile?.preferred_name ?? "",
-      phone: phoneOnAccount ? accountPhone : usPhoneDraft(model.profile?.phone),
+      phone: phoneOnAccount ? accountPhone : (model.profile?.phone ?? ""),
       street_address: model.profile?.street_address ?? "",
       city: model.profile?.city ?? "",
       region: model.profile?.region ?? "",
@@ -547,7 +546,7 @@ function ProfileStep({
       emergency_contact_relationship:
         model.profile?.emergency_contact_relationship ?? "",
       emergency_contact_email: model.profile?.emergency_contact_email ?? "",
-      emergency_contact_phone: usPhoneDraft(model.profile?.emergency_contact_phone),
+      emergency_contact_phone: model.profile?.emergency_contact_phone ?? "",
       share_phone_with_teammates:
         model.profile?.share_phone_with_teammates ?? false,
       share_email_with_teammates:
@@ -599,12 +598,7 @@ function ProfileStep({
             personalFields.has(String(item.path[0])) === (page === "personal"),
         );
     if (issue || (page === "emergency" && !parsed.success)) {
-      // The account's number shows here read-only, so say where it changes.
-      setValidationError(
-        phoneOnAccount && issue?.path[0] === "phone"
-          ? "Your account phone is not a US number. Change it in Account › Profile."
-          : (issue?.message ?? "Complete all required fields."),
-      );
+      setValidationError(issue?.message ?? "Complete all required fields.");
       return;
     }
     setValidationError(null);
@@ -754,8 +748,7 @@ function ProfileStep({
         />
         <PhoneField
           label="Phone"
-          // A saved number from outside the US shows empty, not as a wrong US one.
-          value={phoneOnAccount ? usPhoneDraft(accountPhone) : profile.phone}
+          value={phoneOnAccount ? accountPhone : profile.phone}
           onChange={(value) => setProfile({ ...profile, phone: value })}
           readOnly={phoneOnAccount}
           help={

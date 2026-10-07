@@ -10,7 +10,6 @@ import {
   type OwnerLegalName,
   accountProfileSchema,
   activeWorkspaceContextSchema,
-  toUsPhone,
   workspaceSummarySchema,
   type AccountProfile,
   type ActiveWorkspaceContext,
@@ -177,7 +176,7 @@ export async function loadAccountProfile(
   const [profileResult, preferenceResult] = await Promise.all([
     client
       .from("user_profiles")
-      .select("display_name,phone,phone_e164,avatar_object_path")
+      .select("display_name,phone_e164,avatar_object_path")
       .eq("user_id", user.id)
       .maybeSingle(),
     client
@@ -201,15 +200,11 @@ export async function loadAccountProfile(
       .createSignedUrl(avatarObjectPath, 3600);
     avatarUrl = signedAvatar.error ? null : signedAvatar.data.signedUrl;
   }
-  const storedPhone =
-    profileResult.data?.phone_e164 ?? profileResult.data?.phone ?? null;
   return accountProfileSchema.parse({
     userId: user.id,
     email: user.email,
     displayName: profileResult.data?.display_name ?? metadataName,
-    // A US number in E.164; one saved before the US rule loads as saved, and
-    // Profile asks for a US one (BL-503).
-    phone: (storedPhone && toUsPhone(storedPhone)) ?? storedPhone,
+    phone: profileResult.data?.phone_e164 ?? null,
     avatarObjectPath,
     avatarUrl,
     theme: preferenceResult.data?.theme ?? "system",
@@ -226,7 +221,6 @@ export async function saveAccountProfile(
     client.from("user_profiles").upsert({
       user_id: profile.userId,
       display_name: profile.displayName,
-      phone: profile.phone,
       phone_e164: profile.phone,
       avatar_object_path: profile.avatarObjectPath,
       updated_at: new Date().toISOString(),

@@ -180,14 +180,13 @@ describe("tab workspace context", () => {
 });
 
 describe("account profile persistence", () => {
-  it("loads normalized legacy phone, personal formats and a signed private avatar", async () => {
+  it("loads the account phone, personal formats and a signed private avatar", async () => {
     const avatarPath = `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`;
     const results = {
       user_profiles: {
         data: {
           display_name: "Alex Kim",
-          phone: "3105550100",
-          phone_e164: null,
+          phone_e164: "+13105550100",
           avatar_object_path: avatarPath,
         },
         error: null,
@@ -201,9 +200,10 @@ describe("account profile persistence", () => {
         error: null,
       },
     } as const;
+    const select = vi.fn();
     const from = vi.fn((table: keyof typeof results) => {
       const chain = {
-        select: vi.fn(() => chain),
+        select: select.mockImplementation(() => chain),
         eq: vi.fn(() => chain),
         maybeSingle: vi.fn(async () => results[table]),
       };
@@ -235,32 +235,8 @@ describe("account profile persistence", () => {
       dateFormat: "YYYY-MM-DD",
     });
     expect(createSignedUrl).toHaveBeenCalledWith(avatarPath, 3600);
-  });
-
-  // BL-503: the US phone rule is for a number being typed. A number saved
-  // before it still loads, so the account opens and Profile asks for a US one.
-  it("loads a saved number from outside the US as it was saved", async () => {
-    const results = {
-      user_profiles: {
-        data: { display_name: "Alex Kim", phone: null, phone_e164: "+442079460958", avatar_object_path: null },
-        error: null,
-      },
-      user_preferences: { data: null, error: null },
-    } as const;
-    const from = vi.fn((table: keyof typeof results) => {
-      const chain = {
-        select: vi.fn(() => chain),
-        eq: vi.fn(() => chain),
-        maybeSingle: vi.fn(async () => results[table]),
-      };
-      return chain;
-    });
-    const profile = await loadAccountProfile(
-      { from, storage: { from: vi.fn() } } as unknown as SupabaseClient,
-      { id: workspaceId, email: "alex@example.test", user_metadata: {} } as never,
-    );
-
-    expect(profile.phone).toBe("+442079460958");
+    // The account keeps one phone column (BL-969).
+    expect(select).toHaveBeenCalledWith("display_name,phone_e164,avatar_object_path");
   });
 
   it("writes the canonical phone, private avatar path and display preferences", async () => {
@@ -280,13 +256,13 @@ describe("account profile persistence", () => {
 
     await saveAccountProfile({ from } as unknown as SupabaseClient, profile);
 
-    expect(upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        phone: "+13105550100",
-        phone_e164: "+13105550100",
-        avatar_object_path: profile.avatarObjectPath,
-      }),
-    );
+    expect(upsert).toHaveBeenCalledWith({
+      user_id: workspaceId,
+      display_name: "Alex Kim",
+      phone_e164: "+13105550100",
+      avatar_object_path: profile.avatarObjectPath,
+      updated_at: expect.any(String),
+    });
     expect(upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         theme: "dark",

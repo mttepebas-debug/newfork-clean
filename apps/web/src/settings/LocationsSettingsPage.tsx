@@ -2,7 +2,6 @@ import { CatalogDrawer } from "./CatalogDrawer";
 import {
   displayUsPhone,
   suggestLocationShortName,
-  usPhoneDraft,
   type Location,
   type LocationInput,
 } from "@newfork/shared";
@@ -64,7 +63,7 @@ function locationDraft(location: Location): LocationDraft {
   return {
     name: location.name,
     short_name: location.short_name,
-    phone: usPhoneDraft(location.phone),
+    phone: location.phone ?? "",
     street_address: location.street_address,
     city: location.city,
     region: location.region,
