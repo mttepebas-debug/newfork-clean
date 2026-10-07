@@ -309,6 +309,11 @@ button.pb-link {
 .onboarding-field > .pb-link {
   justify-self: end;
 }
+/* The US letter rule's line under a field (BL-503) keeps the error colour. */
+.onboarding-field > small.form-error {
+  margin: 0;
+  color: var(--theme-danger-strong);
+}
 /* The way back sits centred under the form or the answer. */
 .pb-stage > .pb-link {
   margin-top: 20px;

@@ -1,6 +1,10 @@
 import { todayIn } from "../lib/today";
 import {
   employeeOnboardingProfileSchema,
+  hasTurkishOnlyLetters,
+  toUsPhone,
+  usLettersMessage,
+  usPhoneDraft,
   type EmployeeOnboarding,
   type EmployeeOnboardingProfile,
   type EmployeeOnboardingRequirement,
@@ -24,6 +28,7 @@ import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { setTabWorkspaceId } from "../lib/supabase";
+import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
   AccountBlock,
   BusinessRow,
@@ -531,7 +536,7 @@ function ProfileStep({
       legal_middle_name: model.profile?.legal_middle_name ?? "",
       legal_last_name: model.profile?.legal_last_name ?? "",
       preferred_name: model.profile?.preferred_name ?? "",
-      phone: phoneOnAccount ? accountPhone : (model.profile?.phone ?? ""),
+      phone: phoneOnAccount ? accountPhone : usPhoneDraft(model.profile?.phone),
       street_address: model.profile?.street_address ?? "",
       city: model.profile?.city ?? "",
       region: model.profile?.region ?? "",
@@ -542,7 +547,7 @@ function ProfileStep({
       emergency_contact_relationship:
         model.profile?.emergency_contact_relationship ?? "",
       emergency_contact_email: model.profile?.emergency_contact_email ?? "",
-      emergency_contact_phone: model.profile?.emergency_contact_phone ?? "",
+      emergency_contact_phone: usPhoneDraft(model.profile?.emergency_contact_phone),
       share_phone_with_teammates:
         model.profile?.share_phone_with_teammates ?? false,
       share_email_with_teammates:
@@ -552,8 +557,14 @@ function ProfileStep({
   );
   const [profile, setProfile] = useState(initial);
   // What is checked and sent: the account's phone when it has one, even if the
-  // account changed after this step opened.
-  const draft = phoneOnAccount ? { ...profile, phone: accountPhone } : profile;
+  // account changed after this step opened; both numbers in E.164 (BL-503).
+  const typed = phoneOnAccount ? { ...profile, phone: accountPhone } : profile;
+  const draft = {
+    ...typed,
+    phone: toUsPhone(typed.phone) ?? typed.phone,
+    emergency_contact_phone:
+      toUsPhone(typed.emergency_contact_phone) ?? typed.emergency_contact_phone,
+  };
   const [validationError, setValidationError] = useState<string | null>(null);
   const relationshipOptions = [
     "Spouse/partner",
@@ -656,10 +667,8 @@ function ProfileStep({
               }
             />
           ) : null}
-          <TextField
+          <PhoneField
             label="Phone"
-            type="tel"
-            minLength={7}
             value={profile.emergency_contact_phone}
             onChange={(value) =>
               setProfile({ ...profile, emergency_contact_phone: value })
@@ -738,11 +747,10 @@ function ProfileStep({
           wide
           help="The address you signed in with. Change it in your account settings."
         />
-        <TextField
+        <PhoneField
           label="Phone"
-          type="tel"
-          minLength={7}
-          value={draft.phone}
+          // A saved number from outside the US shows empty, not as a wrong US one.
+          value={phoneOnAccount ? usPhoneDraft(accountPhone) : profile.phone}
           onChange={(value) => setProfile({ ...profile, phone: value })}
           readOnly={phoneOnAccount}
           help={
@@ -1042,6 +1050,11 @@ function TextField({
   readonly optional?: boolean;
 }) {
   const id = useId();
+  // The US letter rule (BL-503), said under the field as it is typed.
+  const lettersBroken = type === "text" && !readOnly && hasTurkishOnlyLetters(value);
+  const describedBy = [help ? `${id}-help` : null, lettersBroken ? `${id}-letters` : null]
+    .filter(Boolean)
+    .join(" ");
   return (
     <div className={`onboarding-field${wide ? " wide" : ""}`}>
       <label htmlFor={id}>
@@ -1057,8 +1070,45 @@ function TextField({
         minLength={minLength}
         max={max}
         readOnly={readOnly}
-        aria-describedby={help ? `${id}-help` : undefined}
+        aria-invalid={lettersBroken ? true : undefined}
+        aria-describedby={describedBy || undefined}
         onChange={(event) => onChange(event.target.value)}
+      />
+      {lettersBroken ? (
+        <small id={`${id}-letters`} className="form-error" role="alert">
+          {usLettersMessage}
+        </small>
+      ) : null}
+      {help ? <small id={`${id}-help`}>{help}</small> : null}
+    </div>
+  );
+}
+
+/** The one US phone field (BL-503) in this page's field frame. */
+function PhoneField({
+  label,
+  value,
+  onChange,
+  readOnly = false,
+  help,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly readOnly?: boolean;
+  readonly help?: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <div className="onboarding-field">
+      <label htmlFor={id}>{label}</label>
+      <UsPhoneInput
+        id={id}
+        value={value}
+        required
+        readOnly={readOnly}
+        aria-describedby={help ? `${id}-help` : undefined}
+        onChange={onChange}
       />
       {help ? <small id={`${id}-help`}>{help}</small> : null}
     </div>

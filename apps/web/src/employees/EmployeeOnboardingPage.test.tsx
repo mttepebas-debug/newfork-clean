@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { usLettersMessage } from "@newfork/shared";
 import EmployeeOnboardingPage from "./EmployeeOnboardingPage";
 import {
   emptyWeeklyPreference,
@@ -38,7 +39,7 @@ const authMock = vi.hoisted(() => ({
   refresh: vi.fn(async () => null),
   signOut: vi.fn(async () => undefined),
   /** The phone on the account; null for an account that has none yet. */
-  phone: "3105559999" as string | null,
+  phone: "+13105559999" as string | null,
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -157,7 +158,7 @@ describe("EmployeeOnboardingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authMock.refresh.mockResolvedValue(null);
-    authMock.phone = "3105559999";
+    authMock.phone = "+13105559999";
     vi.mocked(getMyOnboarding).mockResolvedValue(onboarding);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     vi.mocked(saveWeeklyPreferences).mockImplementation(
@@ -486,6 +487,29 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
   }
 
+  /** Page one filled in, ready for Continue. */
+  async function fillPersonal() {
+    fireEvent.change(await screen.findByLabelText("Legal first name"), {
+      target: { value: "Taylor" },
+    });
+    fireEvent.change(screen.getByLabelText("Legal last name"), {
+      target: { value: "Reed" },
+    });
+    fireEvent.change(screen.getByLabelText("Date of birth"), {
+      target: { value: "1990-02-14" },
+    });
+    fireEvent.change(screen.getByLabelText("Street address"), {
+      target: { value: "100 Main Street" },
+    });
+    fireEvent.change(screen.getByLabelText("City"), {
+      target: { value: "Los Angeles" },
+    });
+    fireEvent.change(screen.getByLabelText("State"), { target: { value: "CA" } });
+    fireEvent.change(screen.getByLabelText("ZIP code"), {
+      target: { value: "90012" },
+    });
+  }
+
   function renderProfileStep() {
     render(
       <QueryClientProvider
@@ -505,7 +529,7 @@ describe("EmployeeOnboardingPage", () => {
     renderProfileStep();
 
     const phone = (await screen.findByLabelText(/^Phone/)) as HTMLInputElement;
-    expect(phone.value).toBe("3105559999");
+    expect(phone.value).toBe("(310) 555-9999");
     expect(phone.readOnly).toBe(true);
     expect(
       screen.getByRole("link", { name: "Account › Profile" }).getAttribute("href"),
@@ -515,7 +539,11 @@ describe("EmployeeOnboardingPage", () => {
     await waitFor(() =>
       expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
         onboarding.workspace_id,
-        expect.objectContaining({ phone: "3105559999" }),
+        // Both numbers go in E.164 (BL-503).
+        expect.objectContaining({
+          phone: "+13105559999",
+          emergency_contact_phone: "+13105550101",
+        }),
         1,
       ),
     );
@@ -535,7 +563,7 @@ describe("EmployeeOnboardingPage", () => {
     await waitFor(() =>
       expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
         onboarding.workspace_id,
-        expect.objectContaining({ phone: "4155550135" }),
+        expect.objectContaining({ phone: "+14155550135" }),
         1,
       ),
     );
@@ -569,7 +597,62 @@ describe("EmployeeOnboardingPage", () => {
     expect((screen.getByLabelText("Legal last name") as HTMLInputElement).value).toBe(
       "Reed",
     );
-    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "4155550123");
+    expect(screen.getByLabelText(/^Phone/)).toHaveProperty("value", "(415) 555-0123");
+  });
+
+  // BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
+  it("draws both phones with a fixed +1", async () => {
+    authMock.phone = null;
+    renderProfileStep();
+    const own = await screen.findByLabelText(/^Phone/);
+    expect(own.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
+    await fillPersonal();
+    fireEvent.change(own, { target: { value: "4155550135" } });
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+    const contact = await screen.findByLabelText("Phone");
+    expect(contact.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
+    fireEvent.change(contact, { target: { value: "310555010199" } });
+    expect(contact).toHaveProperty("value", "(310) 555-0101");
+  });
+
+  it("leaves a saved number from outside the US empty", async () => {
+    authMock.phone = null;
+    vi.mocked(getMyOnboarding).mockResolvedValue({
+      ...onboarding,
+      profile: { legal_first_name: "Taylor", phone: "+442079460958" },
+    });
+    renderProfileStep();
+    // Drawn into the mask, "+44 …" would read as a wrong US number.
+    expect(await screen.findByLabelText(/^Phone/)).toHaveProperty("value", "");
+  });
+
+  it.each([["Legal first name"], ["Preferred name"], ["Street address"], ["City"]])(
+    "says under %s that Turkish-only letters are not taken, and does not move on",
+    async (label) => {
+      renderProfileStep();
+      await fillPersonal();
+      const field = screen.getByLabelText(new RegExp(`^${label}`));
+      fireEvent.change(field, { target: { value: "Şişli" } });
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      const described = (field.getAttribute("aria-describedby") ?? "").split(" ");
+      expect(
+        described.map((id) => document.getElementById(id)?.textContent),
+      ).toContain(usLettersMessage);
+      fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+      expect(screen.queryByLabelText("Full name")).toBeNull();
+    },
+  );
+
+  it("says under the contact's name that Turkish-only letters are not taken", async () => {
+    renderProfileStep();
+    await fillPersonal();
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+    const name = await screen.findByLabelText("Full name");
+    fireEvent.change(name, { target: { value: "Ayşe Yılmaz" } });
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(name.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      usLettersMessage,
+    );
   });
 
   it("lets the employee step back to the account landing without abandoning onboarding", async () => {
