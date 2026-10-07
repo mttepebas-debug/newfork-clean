@@ -46,6 +46,10 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
     **adında** taşıyordu (`custom-title`), ilk mesaj "Idle kal…" idi. `Görev:` kuralıyla bugün 11 işçi (14 Ekim sonrası 10),
     hepsi koordinatör mesajı ya da EKRAN-02 kartı. Satır başı düz `Görev:` aranır: "# Görev: …" ile başlayan iki eski kayıt
     (2026-09-21, Mert'in yapıştırdığı istem) işçi sayılmasın diye. Zayıf yanı: `Görev:` satırıyla başlamayan işçi kaçar.
+  - `Rol:` desteği 2026-10-14'te kodda kendiliğinden düşer (`scripts/guard.mjs` `workerSession`: `now < ENFORCE_FROM` iken
+    `Görev|Rol`, sonra yalnız `Görev`); ayrı iş gerekmez. O tarihten sonra `Rol` dalı tek satırla silinebilir (temizlik).
+  - Koordinatörün aynı değişikliği bildiren mesajı 2026-10-07 ~07:10Z'de geldi; ayrım o saatte zaten KK-188'e göre yazılmıştı
+    (`7852e8ce`), içerik aynı.
 - Ek katman (KK-187'de kabul): işçi oturumunda `git commit`, staged ya da adıyla verilen kayıt dosyası içeriyorsa aynı uyarı.
   Edit/Write dışındaki yazmaları (python, `sed -i`, `Set-Content`) main'e girmeden yakalar.
 - Kademe: kilitle aynı tarih (önce uyarı, 2026-10-14'ten sonra engel). Kaçış: `node scripts/guard.mjs records-allow "<gerekçe>"`
@@ -76,7 +80,9 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
 - `CLAUDE.md` §6 kilit listesine `heavy.lock` satırı (ne zaman alınır, uyarı → engel tarihi, kaçış). Bu satır olmazsa oturumlar
   kilidi nasıl alacağını bilmez; kural değil, var olan kuralın (§4.2 "ağır koşu kilidiyle zorlanır") aracı.
 - `ILKELER.md` P15'teki "(ağır koşu kilidi gelene kadar her gönderim izinle, §4.9)" parantezi: §4.9 kalkınca eskiyen atıf. Rol
-  dosyalarındaki aynı atıf dosyalarla birlikte CLAUDE-INCE'de silindi; kalan `nf-guvenlik` / `nf-okur`'da yok.
+  dosyalarındaki aynı atıf dosyalarla birlikte CLAUDE-INCE'de silindi; kalan `nf-guvenlik` / `nf-okur`'da yok. Yeniden sayım
+  (2026-10-07 ~07:10Z, `origin/main` `e2e90d37` üstünde): `CLAUDE.md`, klasör `CLAUDE.md`'leri, `.claude/`, `ILKELER`, `KARARLAR`,
+  `EKRAN-PLANI`, `HANDOFF`'ta §4.9 atfı **0**.
 - `CLAUDE.md` §4.8 ilke (3): "önce uyarı" → "2026-10-14'e kadar uyarı, sonra engel" ve kaçış yolu (`records-allow`) tek cümle.
 - Betiklerin yardım ve ret metinlerinde kilit kimliği "rol/oturum" → "oturum/iş" (CLAUDE.md §6 artık böyle yazıyor).
 
