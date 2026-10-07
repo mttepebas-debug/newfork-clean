@@ -57,7 +57,7 @@ select is((template->'template'->>'open_slot_count')::integer,2,'assignment stri
 select is((select jsonb_array_length(public.list_schedule_templates_service(owner_id,w)->'templates') from ta_ids),1,'template list returns accessible template') from phase5d_state;
 select is((select max((x->>'day_offset')::integer) from phase5d_state,jsonb_array_elements(template->'shifts') x),1,'template stores relative day offsets');
 select is((select count(*)::integer from public.schedule_template_events where workspace_id=(select w from ta_ids) and action='created'),1,'template creation is audited');
-select throws_ok(format($$select public.rename_schedule_template_service(%L,%L,%L,'Stale',99)$$,(select owner_id from ta_ids),(select w from ta_ids),(select template->'template'->>'id' from phase5d_state)),'40001','schedule template revision stale','stale template rename fails');
+select throws_ok(format($$select public.rename_schedule_template_service(%L,%L,%L,'Stale',99)$$,(select owner_id from ta_ids),(select w from ta_ids),(select template->'template'->>'id' from phase5d_state)),'PT409','schedule template revision stale','stale template rename fails');
 update phase5d_state s set template=(select public.rename_schedule_template_service(owner_id,w,(s.template->'template'->>'id')::uuid,'Opening pattern',1) from ta_ids);
 select is((template->'template'->>'revision')::integer,2,'template rename increments revision') from phase5d_state;
 update phase5d_state set assigned_template=(select public.create_schedule_template_service(owner_id,w,draft_id,'Assigned pattern',false) from ta_ids);
@@ -73,14 +73,14 @@ select is((applied->>'applied_shift_count')::integer,2,'template apply copies bo
 select is(jsonb_array_length(applied->'session'->'shifts'),2,'applied session returns complete snapshot') from phase5d_state;
 select is((select count(*)::integer from jsonb_array_elements(applied->'session'->'shifts') x where x->>'employee_id' is null),2,'stripped template remains open after apply') from phase5d_state;
 select is((select count(*)::integer from public.schedule_template_events where workspace_id=(select w from ta_ids) and action='applied'),1,'template application is audited');
-select throws_ok(format($$select public.apply_schedule_template_service(%L,%L,%L,1,%L,'merge')$$,(select owner_id from ta_ids),(select w from ta_ids),(select acquired->'session'->>'id' from phase5d_state),(select template->'template'->>'id' from phase5d_state)),'40001','session revision stale','template apply rejects stale edit revision');
+select throws_ok(format($$select public.apply_schedule_template_service(%L,%L,%L,1,%L,'merge')$$,(select owner_id from ta_ids),(select w from ta_ids),(select acquired->'session'->>'id' from phase5d_state),(select template->'template'->>'id' from phase5d_state)),'PT409','session revision stale','template apply rejects stale edit revision');
 
 update phase5d_state s set autofill=(select public.preview_schedule_auto_fill_service(owner_id,w,(s.applied->'session'->>'id')::uuid) from ta_ids);
 select is(autofill->>'status','review_ready','auto-fill produces review') from phase5d_state;
 select ok(jsonb_array_length(autofill->'proposals')>0,'auto-fill proposes eligible employees') from phase5d_state;
 select is(autofill->'proposals'->0->>'recommended_employee_id',(select alex::text from ta_ids),'auto-fill recommendation is deterministic') from phase5d_state;
 select ok(jsonb_array_length(autofill->'proposals'->0->'candidates')>0,'auto-fill exposes review candidates') from phase5d_state;
-select throws_ok(format($$select public.apply_schedule_auto_fill_service(%L,%L,%L,%s,%L,'[]')$$,(select owner_id from ta_ids),(select w from ta_ids),(select autofill->>'session_id' from phase5d_state),(select autofill->>'session_revision' from phase5d_state),repeat('f',64)),'40001','stale auto-fill preview','auto-fill rejects stale fingerprint');
+select throws_ok(format($$select public.apply_schedule_auto_fill_service(%L,%L,%L,%s,%L,'[]')$$,(select owner_id from ta_ids),(select w from ta_ids),(select autofill->>'session_id' from phase5d_state),(select autofill->>'session_revision' from phase5d_state),repeat('f',64)),'PT409','stale auto-fill preview','auto-fill rejects stale fingerprint');
 update phase5d_state s set autofill_applied=(select public.apply_schedule_auto_fill_service(owner_id,w,(s.autofill->>'session_id')::uuid,(s.autofill->>'session_revision')::integer,s.autofill->>'fingerprint',
  (select jsonb_agg(jsonb_build_object('shift_id',p->>'shift_id','employee_id',p->>'recommended_employee_id')) from jsonb_array_elements(s.autofill->'proposals') p)) from ta_ids);
 select ok(jsonb_array_length(autofill_applied->'applied')>0,'reviewed auto-fill assignments apply') from phase5d_state;

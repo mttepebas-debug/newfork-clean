@@ -40,7 +40,7 @@ describe("atomic Schedule paste route", () => {
   });
   it("preserves stale-assessment errors as conflicts", async () => {
     const { app, createShiftsBatch } = setup();
-    createShiftsBatch.mockRejectedValueOnce(rpcFailure({ message: "Review changed", code: "40001" }));
+    createShiftsBatch.mockRejectedValueOnce(rpcFailure({ message: "Review changed", code: "PT409" }));
     expect((await app.inject({ method: "POST", url: "/shifts/batch", headers, payload: body })).statusCode).toBe(409);
     await app.close();
   });
