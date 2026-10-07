@@ -65,21 +65,25 @@ function exchangeMatches(item: ExchangeCase, filters: RequestFilters): boolean {
     .some((name) => name?.toLowerCase().includes(search));
 }
 
+// Times are compared as instants: the API may write any offset.
+const instant = (value: string | null) => (value === null ? null : Date.parse(value));
+
 // When a closed request was decided: its last event, else when it was asked.
 function lastAt(events: readonly { created_at: string }[], createdAt: string) {
-  return events.reduce((latest, event) => (event.created_at > latest ? event.created_at : latest), createdAt);
+  return events.reduce((latest, event) => (instant(event.created_at)! > instant(latest)! ? event.created_at : latest), createdAt);
 }
 
 function compareRows(left: RequestRow, right: RequestRow) {
   const leftOpen = left.state !== "closed";
   if (leftOpen !== (right.state !== "closed")) return leftOpen ? -1 : 1;
   if (leftOpen) {
-    if (left.decideBy === right.decideBy) return 0;
-    if (left.decideBy === null) return 1;
-    if (right.decideBy === null) return -1;
-    return left.decideBy < right.decideBy ? -1 : 1;
+    const [from, to] = [instant(left.decideBy), instant(right.decideBy)];
+    if (from === to) return 0;
+    if (from === null) return 1;
+    if (to === null) return -1;
+    return from - to;
   }
-  return left.closedAt === right.closedAt ? 0 : (left.closedAt ?? "") > (right.closedAt ?? "") ? -1 : 1;
+  return (instant(right.closedAt) ?? 0) - (instant(left.closedAt) ?? 0);
 }
 
 /**
