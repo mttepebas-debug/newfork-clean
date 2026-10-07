@@ -1,12 +1,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(21);
 
 -- BL-199: a manager's note on a shift ("Bring the catering order list") goes
 -- wherever the shift goes. Saving the week, making a template of it and
--- applying that template, and publishing all carry the note along. The edit
--- service empties a note the payload leaves out; that is today's contract and
--- is written down here, not changed. Two decisions (user, 2026-09-28) are
+-- applying that template, and publishing all carry the note along. An edit
+-- whose payload leaves the note (or the break, or "hide the time") out keeps
+-- it (BL-292, EKRAN-01 #11). Two decisions (user, 2026-09-28) are
 -- locked too: S4 (a) a change to the note alone makes its owner an affected
 -- employee at the next publish, who hears about it with everyone else;
 -- S5 (a) after an approved swap or pickup the note stays with the shift, and
@@ -135,6 +135,33 @@ select is(
   (select s.note from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
   '',
   'BL-292: an empty note clears it');
+
+-- EKRAN-01 #11: the unpaid break and "hide the time" stay put the same way.
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'),
+  '{"unpaid_break_minutes": 30, "hide_time_on_badge": true}');
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'), '{}',
+  array['unpaid_break_minutes', 'hide_time_on_badge']);
+
+select is(
+  (select s.unpaid_break_minutes from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  30,
+  'an edit whose payload leaves the break out keeps the 30-minute break');
+select is(
+  (select s.hide_time_on_badge from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  true,
+  'an edit whose payload leaves "hide the time" out keeps it on');
+
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'),
+  '{"unpaid_break_minutes": 0, "hide_time_on_badge": false}');
+
+select is(
+  (select s.unpaid_break_minutes from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  0,
+  'a break of 0 sent on purpose clears it');
+select is(
+  (select s.hide_time_on_badge from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  false,
+  '"hide the time" sent as false turns it off');
 
 -- 5. S4 (a): a change to the note alone is a change for its owner ---------------------
 
