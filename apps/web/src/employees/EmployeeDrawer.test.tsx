@@ -3223,6 +3223,26 @@ describe("EmployeeDrawer when something is missing (EKRAN-03)", () => {
 
 // EKRAN-03 #25 (BL-781): two people save the same record.
 describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
+  // Review O3: a merge does not pick a primary nobody chose (P11): a Remote
+  // person, or the owner, may have jobs and locations and no primary.
+  it("does not invent a primary the record did not have", async () => {
+    const remote = { ...detail, is_remote: true, primary_job_id: null, primary_location_id: null };
+    renderDrawer("profile", remote);
+    fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Alexandra" } });
+    vi.mocked(saveEmployee).mockRejectedValueOnce(
+      new RequestError("Conflict", "employee.revision_conflict", undefined, 409),
+    );
+    vi.mocked(getEmployeeDetail).mockResolvedValue({ ...remote, last_name: "Reed", revision: 2 });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Someone else saved this employee meanwhile. Save again to apply your changes.");
+    vi.mocked(saveEmployee).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(saveEmployee).toHaveBeenCalled());
+    const sent = vi.mocked(saveEmployee).mock.calls[0]![1];
+    expect(sent.primary_job_id).toBeNull();
+    expect(sent.primary_location_id).toBeNull();
+  });
+
   // Review Y1: the record read again in the background must not turn the other
   // person's change into "what was typed".
   it("keeps the other person's change when the record was read again before Save", async () => {

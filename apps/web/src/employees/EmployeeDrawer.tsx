@@ -3551,7 +3551,7 @@ function formatDateTime(value: string): string {
  * typed wins, a field left alone takes the new value; lists take the items
  * added and drop the items removed, so the other person's additions stay
  * (BL-781, review O2). A primary no longer in its list falls back to the new
- * one, then to the first.
+ * one, else to none.
  */
 function mergeTypedOver(
   typed: EmployeeInput,
@@ -3576,12 +3576,15 @@ function mergeTypedOver(
     }
   }
   const result = merged as EmployeeInput;
+  // No primary stays none (a Remote person, the owner); one taken out of its
+  // list falls back to the new record's, else to none and the form asks.
+  // Nothing is picked for the person (P11, review O3).
   const keepPrimary = (primary: string | null, list: readonly string[], fallback: string | null) =>
-    primary && list.includes(primary)
+    primary === null || list.includes(primary)
       ? primary
       : fallback && list.includes(fallback)
         ? fallback
-        : (list[0] ?? null);
+        : null;
   return {
     ...result,
     primary_location_id: keepPrimary(
