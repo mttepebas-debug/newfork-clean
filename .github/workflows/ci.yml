@@ -51,6 +51,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # the grow-only guard compares against the previous commit
+      - uses: actions/setup-node@v4 # the schema snapshot check below; no packages needed
+        with:
+          node-version: 22
       - uses: supabase/setup-cli@v1
         with:
           version: 2.109.0 # pinned: image versions and privilege defaults follow the CLI
@@ -89,6 +92,12 @@ jobs:
             supabase stop --no-backup || true
             sleep $((attempt * 8))
           done
+      # SCHEMA-SNAP: supabase/schema.sql must be what these migrations build
+      # (seed.sql and the test world builder add nothing to public/app_private).
+      # Before pgTAP, so no test leftovers. A warning until STRICT flips in the
+      # script (ILKELER P16: a new check arrives as a warning).
+      - name: Schema snapshot matches the migrations
+        run: node scripts/schema-snapshot.mjs check
       # The Schedule speed budget stays on the green list (it only grows) but
       # runs in the db-budget job below, alone, once the PC is quiet.
       - name: pgTAP (green list)

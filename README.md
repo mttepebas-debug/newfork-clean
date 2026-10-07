@@ -31,6 +31,12 @@ Shared locks (`db.lock`, `main.lock`, see CLAUDE.md §7): `node scripts/lock.mjs
 or `status` — `take`/`release` exit 1 on conflict instead of overwriting. Covered by `pnpm.cmd test`
 (runs `node --test scripts/lock.test.mjs` first).
 
+Current schema: `supabase/schema.sql` is a read-only dump of the `public` and `app_private`
+schemas as the migrations build them; read it for a function's or policy's current definition.
+After adding a migration run `pnpm.cmd db:schema` (throwaway database, never the shared one) and
+commit the file with it. `pnpm.cmd lint` warns when the file is older than the migrations; CI's
+db job compares it with a fresh dump.
+
 ## Plan
 
 Working rules: [`CLAUDE.md`](CLAUDE.md). Current plan: [`docs/plan/EKRAN-PLANI.md`](docs/plan/EKRAN-PLANI.md); tasks and backlog live in `docs/plan/`.
