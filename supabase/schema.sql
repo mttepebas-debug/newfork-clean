@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 438, last: 20261007230000_catalog_rows_stay_in_their_workspace.sql
--- fingerprint: sha256:7266a6e0ca8ad79c093e02e78a2b3a1db7527150c9973e3e056a27d1d3667c4b
+-- migrations: 438, last: 20261007200000_shift_edit_keeps_break_and_hidden_time.sql
+-- fingerprint: sha256:4e1ba21de76608de2a8802b914a167aaca0e57ab09bc7651076c0966196437f0
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14651,6 +14651,7 @@ begin
       target_unpaid_break_minutes integer;
       target_hide_time_on_badge boolean;
       target_note text;
+      kept public.schedule_edit_session_shifts%rowtype;
     begin
       select * into target_session from public.schedule_edit_sessions session
       where session.id = target_session_id and session.workspace_id = target_workspace_id
@@ -14674,11 +14675,18 @@ begin
         target_scheduled_date := (row_payload->>'scheduled_date')::date;
         target_start_time := nullif(row_payload->>'start_time','')::time;
         target_end_time := nullif(row_payload->>'end_time','')::time;
-        target_unpaid_break_minutes := coalesce((row_payload->>'unpaid_break_minutes')::integer, 0);
-        target_hide_time_on_badge := coalesce((row_payload->>'hide_time_on_badge')::boolean, false);
+        -- A field the payload leaves out keeps the shift's own value; a new
+        -- shift starts from the default (BL-292, EKRAN-01 #11).
+        select * into kept from public.schedule_edit_session_shifts s
+        where s.session_id = target_session_id and s.id = row_shift_id;
+        target_unpaid_break_minutes := case when row_payload ? 'unpaid_break_minutes'
+          then coalesce((row_payload->>'unpaid_break_minutes')::integer, 0)
+          else coalesce(kept.unpaid_break_minutes, 0) end;
+        target_hide_time_on_badge := case when row_payload ? 'hide_time_on_badge'
+          then coalesce((row_payload->>'hide_time_on_badge')::boolean, false)
+          else coalesce(kept.hide_time_on_badge, false) end;
         target_note := case when row_payload ? 'note' then coalesce(row_payload->>'note', '')
-          else coalesce((select s.note from public.schedule_edit_session_shifts s
-                         where s.session_id = target_session_id and s.id = row_shift_id), '') end;
+          else coalesce(kept.note, '') end;
         if target_start_time = target_end_time then
           raise exception 'Start and end time cannot be the same.' using errcode = '22023';
         end if;
@@ -34111,7 +34119,7 @@ REVOKE ALL ON FUNCTION "app_private"."live_locations"("w" "uuid", "ids" "uuid"[]
 
 
 
-GRANT SELECT,INSERT ON TABLE "public"."locations" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."locations" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."locations" TO "service_role";
 
 
@@ -34124,50 +34132,15 @@ GRANT SELECT("workspace_id") ON TABLE "public"."locations" TO "service_role";
 
 
 
-GRANT UPDATE("name") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("street_address") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("city") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("region") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("postal_code") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("country_code") ON TABLE "public"."locations" TO "authenticated";
-
-
-
 GRANT SELECT("timezone") ON TABLE "public"."locations" TO "service_role";
-GRANT UPDATE("timezone") ON TABLE "public"."locations" TO "authenticated";
 
 
 
 GRANT SELECT("archived_at") ON TABLE "public"."locations" TO "service_role";
-GRANT UPDATE("archived_at") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("updated_at") ON TABLE "public"."locations" TO "authenticated";
 
 
 
 GRANT SELECT("short_name") ON TABLE "public"."locations" TO "service_role";
-GRANT UPDATE("short_name") ON TABLE "public"."locations" TO "authenticated";
-
-
-
-GRANT UPDATE("phone") ON TABLE "public"."locations" TO "authenticated";
 
 
 
@@ -36366,24 +36339,8 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."audit_events" TO "
 
 
 
-GRANT SELECT,INSERT ON TABLE "public"."departments" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."departments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."departments" TO "service_role";
-
-
-
-GRANT UPDATE("name") ON TABLE "public"."departments" TO "authenticated";
-
-
-
-GRANT UPDATE("color") ON TABLE "public"."departments" TO "authenticated";
-
-
-
-GRANT UPDATE("archived_at") ON TABLE "public"."departments" TO "authenticated";
-
-
-
-GRANT UPDATE("updated_at") ON TABLE "public"."departments" TO "authenticated";
 
 
 
@@ -36472,28 +36429,8 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."important_date_shi
 
 
 
-GRANT SELECT,INSERT ON TABLE "public"."jobs" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."jobs" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."jobs" TO "service_role";
-
-
-
-GRANT UPDATE("department_id") ON TABLE "public"."jobs" TO "authenticated";
-
-
-
-GRANT UPDATE("name") ON TABLE "public"."jobs" TO "authenticated";
-
-
-
-GRANT UPDATE("color") ON TABLE "public"."jobs" TO "authenticated";
-
-
-
-GRANT UPDATE("archived_at") ON TABLE "public"."jobs" TO "authenticated";
-
-
-
-GRANT UPDATE("updated_at") ON TABLE "public"."jobs" TO "authenticated";
 
 
 
@@ -36650,24 +36587,8 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_excha
 
 
 
-GRANT SELECT,INSERT ON TABLE "public"."shift_labels" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."shift_labels" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_labels" TO "service_role";
-
-
-
-GRANT UPDATE("name") ON TABLE "public"."shift_labels" TO "authenticated";
-
-
-
-GRANT UPDATE("color") ON TABLE "public"."shift_labels" TO "authenticated";
-
-
-
-GRANT UPDATE("archived_at") ON TABLE "public"."shift_labels" TO "authenticated";
-
-
-
-GRANT UPDATE("updated_at") ON TABLE "public"."shift_labels" TO "authenticated";
 
 
 
@@ -36675,32 +36596,8 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_type_
 
 
 
-GRANT SELECT,INSERT ON TABLE "public"."shift_types" TO "authenticated";
+GRANT SELECT,INSERT,UPDATE ON TABLE "public"."shift_types" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_types" TO "service_role";
-
-
-
-GRANT UPDATE("name") ON TABLE "public"."shift_types" TO "authenticated";
-
-
-
-GRANT UPDATE("color") ON TABLE "public"."shift_types" TO "authenticated";
-
-
-
-GRANT UPDATE("default_start_time") ON TABLE "public"."shift_types" TO "authenticated";
-
-
-
-GRANT UPDATE("default_end_time") ON TABLE "public"."shift_types" TO "authenticated";
-
-
-
-GRANT UPDATE("archived_at") ON TABLE "public"."shift_types" TO "authenticated";
-
-
-
-GRANT UPDATE("updated_at") ON TABLE "public"."shift_types" TO "authenticated";
 
 
 
