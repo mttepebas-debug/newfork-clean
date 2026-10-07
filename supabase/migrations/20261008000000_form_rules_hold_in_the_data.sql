@@ -5,8 +5,15 @@
 -- the one schema it writes with (CLAUDE.md §2.A.4–5).
 --
 -- Nothing changes when the data needs a person's decision: a required phone
--- that is not a US number, or a name that would take another one's place once
--- its letters are replaced, stops the migration with the count (P09).
+-- that is not a US number, an account number that would overwrite a different
+-- one on a record, or a name that would take another one's place once its
+-- letters are replaced, stops the migration with the count (P09).
+--
+-- The column kept for the old account phone goes in the next migration, once
+-- the web that no longer reads it is live.
+
+-- A busy table answers in seconds with an error rather than holding the rest.
+set local lock_timeout = '5s';
 
 -- A US number in E.164 from whatever was saved, or null when it is not one.
 create function pg_temp.us_phone(saved text) returns text
@@ -31,6 +38,7 @@ do $check$
 declare
   required_phones integer;
   account_phones integer;
+  overwritten_phones integer;
   collisions integer;
 begin
   select count(*) into required_phones
@@ -52,6 +60,21 @@ begin
       where record.user_id = account.user_id and private_record.phone is not null
     );
 
+  -- A number taken over from the old column reaches the person's records too;
+  -- it must not replace a different number one of them holds.
+  select count(*) into overwritten_phones
+  from public.user_profiles account
+  where account.phone_e164 is null
+    and pg_temp.us_phone(account.phone) is not null
+    and exists (
+      select 1
+      from public.employee_profiles record
+      join public.employee_private_profiles private_record on private_record.employee_id = record.id
+      where record.user_id = account.user_id
+        and private_record.phone is not null
+        and pg_temp.us_phone(private_record.phone) is distinct from pg_temp.us_phone(account.phone)
+    );
+
   select count(*) into collisions from (
     select workspace_id, lower(translate(name, 'şŞğĞıİ', 'sSgGiI'))
     from public.locations where archived_at is null
@@ -66,15 +89,25 @@ begin
     group by 1, 2 having count(*) > 1
   ) clashing;
 
-  if required_phones + account_phones + collisions > 0 then
-    raise exception 'BL-969 stopped before changing anything: % required phone(s) and % account phone(s) are not US numbers; % name(s) would clash once their letters are replaced',
-      required_phones, account_phones, collisions
+  if required_phones + account_phones + overwritten_phones + collisions > 0 then
+    raise exception 'BL-969 stopped before changing anything: % required phone(s) and % account phone(s) are not US numbers; % old account number(s) would overwrite a different one on a record; % name(s) would clash once their letters are replaced',
+      required_phones, account_phones, overwritten_phones, collisions
       using errcode = 'P0001';
   end if;
 end;
 $check$;
 
 -- 1. The rows written before the rule -------------------------------------------------
+
+-- Deferred document checks run at once from here, so the tables can change
+-- shape after the rows do.
+set constraints public.document_assignment_changed immediate;
+
+-- A deleted catalog row refuses every edit from the screens. This one
+-- correction goes past that guard, which is back before the tables change shape.
+alter table public.locations disable trigger catalog_deletion_state_guard;
+alter table public.departments disable trigger catalog_deletion_state_guard;
+alter table public.jobs disable trigger jobs_deletion_state_guard;
 
 update public.workspaces set
     name = translate(name, 'şŞğĞıİ', 'sSgGiI')
@@ -132,6 +165,10 @@ update public.employee_preferred_name_requests set
     requested_name = translate(requested_name, 'şŞğĞıİ', 'sSgGiI')
 where requested_name ~ '[şŞğĞıİ]';
 
+alter table public.locations enable trigger catalog_deletion_state_guard;
+alter table public.departments enable trigger catalog_deletion_state_guard;
+alter table public.jobs enable trigger jobs_deletion_state_guard;
+
 update public.employee_private_profiles
 set phone = pg_temp.us_phone(phone)
 where phone is not null and phone is distinct from pg_temp.us_phone(phone);
@@ -148,10 +185,6 @@ update public.user_profiles
 set phone_e164 = coalesce(pg_temp.us_phone(phone_e164), pg_temp.us_phone(phone)),
     updated_at = now()
 where phone_e164 is distinct from coalesce(pg_temp.us_phone(phone_e164), pg_temp.us_phone(phone));
-
--- The updates above leave deferred document checks pending; the tables change
--- shape next.
-set constraints public.document_assignment_changed immediate;
 
 -- 2. One way in for a phone -------------------------------------------------------------
 
@@ -435,8 +468,4 @@ alter table public.employee_private_profiles
 alter table public.user_profiles
   drop constraint user_profiles_phone_e164_check,
   add constraint user_profiles_phone_e164_us_phone
-    check (phone_e164 ~ '^\+1[2-9][0-9]{9}$'),
-  drop column phone;
-
-comment on column public.user_profiles.phone_e164 is
-  'The account phone, a US number in E.164. The one phone: every live employee record copies it (KK-7).';
+    check (phone_e164 ~ '^\+1[2-9][0-9]{9}$');
