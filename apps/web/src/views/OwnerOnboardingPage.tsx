@@ -8,11 +8,12 @@ import {
 } from "@newfork/shared";
 import {
   checkLocationDraft,
-  formatUsPhone,
   type LocationDraft,
   type LocationFieldErrors,
 } from "../settings/location-draft";
 import { LocationTimezoneField } from "../settings/LocationTimezoneField";
+import { UsPhoneInput } from "../shell/UsPhoneInput";
+import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 import { ConfirmButton } from "@newfork/ui";
 import {
   BriefcaseBusiness,
@@ -527,7 +528,12 @@ export default function OwnerOnboardingPage() {
   };
 
   const renameDepartment = async (department: Department): Promise<void> => {
-    if (!workspaceId || renameDepartmentName.trim().length === 0) return;
+    if (
+      !workspaceId ||
+      renameDepartmentName.trim().length === 0 ||
+      breaksLetterRule(renameDepartmentName)
+    )
+      return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -578,7 +584,7 @@ export default function OwnerOnboardingPage() {
   };
 
   const saveOpenJob = async (job: Job): Promise<void> => {
-    if (!workspaceId || jobPanelName.trim().length === 0) return;
+    if (!workspaceId || jobPanelName.trim().length === 0 || breaksLetterRule(jobPanelName)) return;
     setSubmitting(true);
     setError(null);
     setSuccess(null);
@@ -626,7 +632,9 @@ export default function OwnerOnboardingPage() {
             value={jobPanelName}
             maxLength={100}
             onChange={(event) => setJobPanelName(event.target.value)}
+            {...letterRuleProps(jobPanelName, "job-panel-name-error")}
           />
+          <LetterRuleError value={jobPanelName} id="job-panel-name-error" />
         </label>
         <label htmlFor="job-panel-department">
           Department
@@ -649,7 +657,7 @@ export default function OwnerOnboardingPage() {
           <button
             type="button"
             className="pb-btn pb-btn-primary"
-            disabled={submitting || jobPanelName.trim().length === 0}
+            disabled={submitting || jobPanelName.trim().length === 0 || breaksLetterRule(jobPanelName)}
             onClick={() => void saveOpenJob(job)}
           >
             Save
@@ -941,7 +949,9 @@ export default function OwnerOnboardingPage() {
                       autoComplete="given-name"
                       autoFocus
                       required
+                      {...letterRuleProps(ownerFirstName, "owner-first-name-error")}
                     />
+                    <LetterRuleError value={ownerFirstName} id="owner-first-name-error" />
                   </label>
                   <label htmlFor="owner-middle-name">
                     Middle name <span className="field-optional">optional</span>
@@ -951,7 +961,9 @@ export default function OwnerOnboardingPage() {
                       maxLength={80}
                       onChange={(event) => setOwnerMiddleName(event.target.value)}
                       autoComplete="additional-name"
+                      {...letterRuleProps(ownerMiddleName, "owner-middle-name-error")}
                     />
+                    <LetterRuleError value={ownerMiddleName} id="owner-middle-name-error" />
                   </label>
                   <label htmlFor="owner-last-name">
                     Last name
@@ -962,7 +974,9 @@ export default function OwnerOnboardingPage() {
                       onChange={(event) => setOwnerLastName(event.target.value)}
                       autoComplete="family-name"
                       required
+                      {...letterRuleProps(ownerLastName, "owner-last-name-error")}
                     />
+                    <LetterRuleError value={ownerLastName} id="owner-last-name-error" />
                   </label>
                   <small id="owner-name-help" className="field-help">
                     Documents and signatures use this name. Go by something
@@ -977,7 +991,9 @@ export default function OwnerOnboardingPage() {
                     maxLength={120}
                     onChange={(event) => setWorkspaceName(event.target.value)}
                     required
+                    {...letterRuleProps(workspaceName, "workspace-name-error")}
                   />
+                  <LetterRuleError value={workspaceName} id="workspace-name-error" />
                 </label>
               </div>
               <Feedback success={success} />
@@ -989,7 +1005,8 @@ export default function OwnerOnboardingPage() {
                     submitting ||
                     workspaceName.trim().length === 0 ||
                     ownerFirstName.trim().length === 0 ||
-                    ownerLastName.trim().length === 0
+                    ownerLastName.trim().length === 0 ||
+                    breaksLetterRule(workspaceName, ownerFirstName, ownerMiddleName, ownerLastName)
                   }
                 >
                   Continue <ChevronRight size={16} aria-hidden />
@@ -1192,6 +1209,7 @@ export default function OwnerOnboardingPage() {
                           onChange={(event) =>
                             setRenameDepartmentName(event.target.value)
                           }
+                          {...letterRuleProps(renameDepartmentName, "rename-department-error")}
                           onKeyDown={(event) => {
                             if (event.key === "Enter") {
                               event.preventDefault();
@@ -1215,7 +1233,8 @@ export default function OwnerOnboardingPage() {
                               className="pb-btn pb-btn-secondary"
                               disabled={
                                 submitting ||
-                                renameDepartmentName.trim().length === 0
+                                renameDepartmentName.trim().length === 0 ||
+                                breaksLetterRule(renameDepartmentName)
                               }
                               onClick={() => void renameDepartment(department)}
                             >
@@ -1334,7 +1353,9 @@ export default function OwnerOnboardingPage() {
                       }
                       placeholder="Front of house"
                       required
+                      {...letterRuleProps(departmentName, "department-name-error")}
                     />
+                    <LetterRuleError value={departmentName} id="department-name-error" />
                   </label>
                 ) : (
                   <>
@@ -1363,7 +1384,9 @@ export default function OwnerOnboardingPage() {
                         onChange={(event) => setJobName(event.target.value)}
                         placeholder="Server"
                         required
+                        {...letterRuleProps(jobName, "job-name-error")}
                       />
+                      <LetterRuleError value={jobName} id="job-name-error" />
                     </label>
                   </>
                 )}
@@ -1392,7 +1415,9 @@ export default function OwnerOnboardingPage() {
                       className="pb-btn pb-btn-secondary"
                       type="submit"
                       disabled={
-                        submitting || departmentName.trim().length === 0
+                        submitting ||
+                        departmentName.trim().length === 0 ||
+                        breaksLetterRule(departmentName)
                       }
                     >
                       <Plus size={15} aria-hidden /> Add department
@@ -1411,7 +1436,9 @@ export default function OwnerOnboardingPage() {
                     <button
                       className="pb-btn pb-btn-secondary"
                       type="submit"
-                      disabled={submitting || jobName.trim().length === 0}
+                      disabled={
+                        submitting || jobName.trim().length === 0 || breaksLetterRule(jobName)
+                      }
                     >
                       <BriefcaseBusiness size={15} aria-hidden /> Add job
                     </button>
@@ -1573,10 +1600,17 @@ function LocationFields({
           id="location-name"
           value={draft.name}
           maxLength={120}
-          onChange={(event) => onChange({ ...draft, name: event.target.value })}
+          onChange={(event) => onChange({ ...draft, name: event.target.value }, "name")}
           placeholder="Main dining room"
           required
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? "location-name-error" : undefined}
         />
+        {errors.name ? (
+          <small className="form-error" id="location-name-error" role="alert">
+            {errors.name}
+          </small>
+        ) : null}
       </label>
       <label htmlFor="location-short-name">
         Short name
@@ -1627,9 +1661,16 @@ function LocationFields({
           value={draft.street_address}
           maxLength={180}
           onChange={(event) =>
-            onChange({ ...draft, street_address: event.target.value })
+            onChange({ ...draft, street_address: event.target.value }, "street_address")
           }
+          aria-invalid={errors.street_address ? true : undefined}
+          aria-describedby={errors.street_address ? "location-street-error" : undefined}
         />
+        {errors.street_address ? (
+          <small className="form-error" id="location-street-error" role="alert">
+            {errors.street_address}
+          </small>
+        ) : null}
       </label>
       <label htmlFor="location-city">
         City
@@ -1637,8 +1678,15 @@ function LocationFields({
           id="location-city"
           value={draft.city}
           maxLength={100}
-          onChange={(event) => onChange({ ...draft, city: event.target.value })}
+          onChange={(event) => onChange({ ...draft, city: event.target.value }, "city")}
+          aria-invalid={errors.city ? true : undefined}
+          aria-describedby={errors.city ? "location-city-error" : undefined}
         />
+        {errors.city ? (
+          <small className="form-error" id="location-city-error" role="alert">
+            {errors.city}
+          </small>
+        ) : null}
       </label>
       <label htmlFor="location-region">
         State or region
@@ -1647,9 +1695,16 @@ function LocationFields({
           value={draft.region}
           maxLength={100}
           onChange={(event) =>
-            onChange({ ...draft, region: event.target.value })
+            onChange({ ...draft, region: event.target.value }, "region")
           }
+          aria-invalid={errors.region ? true : undefined}
+          aria-describedby={errors.region ? "location-region-error" : undefined}
         />
+        {errors.region ? (
+          <small className="form-error" id="location-region-error" role="alert">
+            {errors.region}
+          </small>
+        ) : null}
       </label>
       <label htmlFor="location-postal">
         Postal code
@@ -1682,19 +1737,12 @@ function LocationFields({
         <legend>Contact</legend>
       <label htmlFor="location-phone">
         Phone number (optional)
-        <input
+        <UsPhoneInput
           id="location-phone"
-          type="tel"
-          inputMode="numeric"
+          // Named outright: the +1 sits inside the label.
+          aria-label="Phone number"
           value={draft.phone}
-          maxLength={14}
-          onChange={(event) =>
-            onChange(
-              { ...draft, phone: formatUsPhone(event.target.value) },
-              "phone",
-            )
-          }
-          placeholder="(415) 555-0100"
+          onChange={(phone) => onChange({ ...draft, phone }, "phone")}
           aria-invalid={errors.phone ? true : undefined}
           aria-describedby={errors.phone ? "location-phone-error" : undefined}
         />
@@ -1802,7 +1850,9 @@ function EmployeeFields({
             onChange({ ...draft, first_name: event.target.value })
           }
           required
+          {...letterRuleProps(draft.first_name, "employee-first-name-error")}
         />
+        <LetterRuleError value={draft.first_name} id="employee-first-name-error" />
       </label>
       <label htmlFor="employee-last-name">
         Last name
@@ -1814,7 +1864,9 @@ function EmployeeFields({
             onChange({ ...draft, last_name: event.target.value })
           }
           required
+          {...letterRuleProps(draft.last_name, "employee-last-name-error")}
         />
+        <LetterRuleError value={draft.last_name} id="employee-last-name-error" />
       </label>
       <label htmlFor="employee-start-date">
         Start date

@@ -14,9 +14,10 @@ import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import { LocationTimezoneField } from "./LocationTimezoneField";
+import { displayUsPhone } from "@newfork/shared";
+import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
   checkLocationDraft,
-  formatUsPhone,
   type LocationDraft,
   type LocationFieldErrors as FieldErrors,
 } from "./location-draft";
@@ -58,7 +59,7 @@ function locationDraft(location: Location): LocationDraft {
   return {
     name: location.name,
     short_name: location.short_name,
-    phone: formatUsPhone(location.phone ?? ""),
+    phone: location.phone ?? "",
     street_address: location.street_address,
     city: location.city,
     region: location.region,
@@ -248,9 +249,8 @@ export default function LocationsSettingsPage() {
                   label="Location name"
                   value={draft.name}
                   maxLength={120}
-                  onChange={(value) =>
-                    setDraft((current) => ({ ...current, name: value }))
-                  }
+                  error={fieldErrors.name}
+                  onChange={(value) => setField("name", value)}
                 />
                 <FormField
                   label="Short name"
@@ -264,42 +264,34 @@ export default function LocationsSettingsPage() {
                 />
                 <FormField
                   label="Phone number"
-                  type="tel"
-                  inputMode="numeric"
+                  phone
                   optional
                   value={draft.phone}
                   maxLength={14}
-                  placeholder="(415) 555-0100"
                   error={fieldErrors.phone}
-                  onChange={(value) => setField("phone", formatUsPhone(value))}
+                  onChange={(value) => setField("phone", value)}
                 />
                 <FormField
                   label="Street address"
                   value={draft.street_address}
                   maxLength={180}
                   className="field-wide"
-                  onChange={(value) =>
-                    setDraft((current) => ({
-                      ...current,
-                      street_address: value,
-                    }))
-                  }
+                  error={fieldErrors.street_address}
+                  onChange={(value) => setField("street_address", value)}
                 />
                 <FormField
                   label="City"
                   value={draft.city}
                   maxLength={100}
-                  onChange={(value) =>
-                    setDraft((current) => ({ ...current, city: value }))
-                  }
+                  error={fieldErrors.city}
+                  onChange={(value) => setField("city", value)}
                 />
                 <FormField
                   label="State / region"
                   value={draft.region}
                   maxLength={100}
-                  onChange={(value) =>
-                    setDraft((current) => ({ ...current, region: value }))
-                  }
+                  error={fieldErrors.region}
+                  onChange={(value) => setField("region", value)}
                 />
                 <FormField
                   label="ZIP / postal code"
@@ -400,7 +392,7 @@ export default function LocationsSettingsPage() {
               timezones.find(([value]) => value === location.timezone)?.[1] ??
               location.timezone;
             const address = `${location.street_address}, ${location.city}, ${location.region} ${location.postal_code}`;
-            const phone = location.phone ? formatUsPhone(location.phone) : "—";
+            const phone = displayUsPhone(location.phone) ?? "—";
             return (
               <div
                 className="job-catalog-row location-catalog-row"
@@ -476,6 +468,7 @@ function FormField({
   optional = false,
   type = "text",
   inputMode,
+  phone = false,
 }: {
   readonly label: string;
   readonly value: string;
@@ -487,23 +480,37 @@ function FormField({
   readonly optional?: boolean;
   readonly type?: "text" | "tel";
   readonly inputMode?: "numeric";
+  /** The one US phone field: a fixed +1 and the mask (BL-503). */
+  readonly phone?: boolean;
 }) {
   const errorId = useId();
   return (
     <div className={`location-field ${className}`}>
       <label className="job-field">
         <span>{label}</span>
-        <input
-          type={type}
-          inputMode={inputMode}
-          value={value}
-          maxLength={maxLength}
-          placeholder={placeholder}
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
-          onChange={(event) => onChange(event.target.value)}
-          required={!optional}
-        />
+        {phone ? (
+          <UsPhoneInput
+            value={value}
+            // Named outright: the +1 sits inside the label.
+            aria-label={label}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            onChange={onChange}
+            required={!optional}
+          />
+        ) : (
+          <input
+            type={type}
+            inputMode={inputMode}
+            value={value}
+            maxLength={maxLength}
+            placeholder={placeholder}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? errorId : undefined}
+            onChange={(event) => onChange(event.target.value)}
+            required={!optional}
+          />
+        )}
       </label>
       {error ? (
         <small className="location-field-error" id={errorId} role="alert">

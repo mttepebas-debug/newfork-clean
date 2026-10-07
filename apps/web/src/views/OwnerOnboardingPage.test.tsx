@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { usLettersMessage, usPhoneMessage } from "@newfork/shared";
 import type {
   ActiveWorkspaceContext,
   Department,
@@ -441,7 +442,7 @@ describe("OwnerOnboardingPage", () => {
       screen.getAllByRole("alert").map((alert) => alert.textContent),
     ).toEqual([
       expect.stringContaining("letters A–Z, numbers or hyphens"),
-      "Enter a 10-digit US phone number",
+      usPhoneMessage,
     ]);
     expect(
       screen.getByLabelText(/^Short name/).getAttribute("aria-invalid"),
@@ -1127,5 +1128,72 @@ describe("OwnerOnboardingPage", () => {
     expect(
       await screen.findByRole("button", { name: "Switch workspace" }),
     ).toBeTruthy();
+  });
+});
+
+// BL-503: KARARLAR "Form ve girdi kuralları (ABD)" on every setup field.
+describe("OwnerOnboardingPage US form rules", () => {
+  // The line sits inside the label, so the label is matched by its start.
+  const saysUnder = (label: string) => {
+    const field = screen.getByLabelText(new RegExp(`^${label}`));
+    const line = screen.getByText(usLettersMessage, { selector: `#${field.getAttribute("aria-describedby")}` });
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    return line;
+  };
+
+  it.each([["Last name"], ["Workspace name"]])("says under %s that Turkish-only letters are not taken, and holds Continue", async (label) => {
+    renderPage(1);
+    fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Mert" } });
+    fireEvent.change(screen.getByLabelText("Last name"), { target: { value: "Tepebas" } });
+    fireEvent.change(screen.getByLabelText("Workspace name"), { target: { value: "Meyhouse" } });
+    fireEvent.change(screen.getByLabelText(label), { target: { value: "Kadıköy Şube" } });
+    expect(saysUnder(label)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /continue/i })).toHaveProperty("disabled", true);
+  });
+
+  it("says under Location name on save, and draws the phone with its +1", async () => {
+    renderPage(2);
+    await screen.findByRole("heading", { name: "Where does your team work?" });
+    const phone = screen.getByLabelText(/^Phone number/);
+    expect(phone.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
+    fireEvent.change(screen.getByLabelText("Location name"), { target: { value: "Kadıköy" } });
+    fireEvent.change(screen.getByLabelText(/^Short name/), { target: { value: "KDK" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Time zone" }), { target: { value: "America/New_York" } });
+    fireEvent.click(screen.getByRole("button", { name: /add location/i }));
+    expect(saysUnder("Location name")).toBeTruthy();
+    expect(saveLocation).not.toHaveBeenCalled();
+  });
+
+  it("says under Department name and holds Add department", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(3);
+    await screen.findByRole("heading", { name: "What jobs do people work?" });
+    fireEvent.click(screen.getByRole("button", { name: /new department/i }));
+    fireEvent.change(screen.getByLabelText("Department name"), { target: { value: "Mutfak Ağı" } });
+    expect(saysUnder("Department name")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /add department/i })).toHaveProperty("disabled", true);
+  });
+
+  it("says under Job or role and holds Add job", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(3);
+    await screen.findByRole("heading", { name: "What jobs do people work?" });
+    fireEvent.change(screen.getByLabelText("Job or role"), { target: { value: "Garsonİ" } });
+    expect(saysUnder("Job or role")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /add job/i })).toHaveProperty("disabled", true);
+  });
+
+  it("says under the team member's First name", async () => {
+    vi.mocked(listLocations).mockResolvedValue([location]);
+    vi.mocked(listDepartments).mockResolvedValue([department]);
+    vi.mocked(listJobs).mockResolvedValue([job]);
+    renderPage(4);
+    await screen.findByRole("heading", { name: "Add your team" });
+    fireEvent.change(screen.getByLabelText("First name"), { target: { value: "Ayşe" } });
+    expect(saysUnder("First name")).toBeTruthy();
   });
 });

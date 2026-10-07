@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LocationsSettingsPage from "./LocationsSettingsPage";
-import { formatUsPhone } from "./location-draft";
+import { formatUsPhone, usLettersMessage } from "@newfork/shared";
 import { listLocations, saveLocation } from "./organization-data";
 
 const state = vi.hoisted(() => ({ canEdit: true }));
@@ -35,7 +35,8 @@ describe("Locations table", () => {
     await screen.findByRole("button", { name: /^Deniz/ });
     expect(screen.getByText("Address")).toBeTruthy();
     expect(screen.getByText("Phone number")).toBeTruthy();
-    expect(screen.getByText("(415) 555-0100")).toBeTruthy();
+    // One way to show a saved US number (P4, BL-503).
+    expect(screen.getByText("+1 (415) 555-0100")).toBeTruthy();
     expect(screen.queryByText("DNZ")).toBeNull();
   });
 });
@@ -91,6 +92,14 @@ describe("Location short name editor", () => {
 describe("Location phone", () => {
   it.each([["4", "(4"], ["4155", "(415) 5"], ["14155550100", "(415) 555-0100"], ["415-555-0100 99", "(415) 555-0100"], ["", ""]])(
     "formats %s as %s", (value, expected) => expect(formatUsPhone(value)).toBe(expected));
+  // BL-503: the one US phone field, a fixed +1 before the number.
+  it("draws the fixed +1 before the number", async () => {
+    page();
+    fireEvent.click(await screen.findByRole("button", { name: /^Deniz/ }));
+    const phone = screen.getByLabelText("Phone number");
+    expect(phone.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
+  });
+
   it("saves US numbers in E.164 and rejects incomplete ones", async () => {
     page();
     fireEvent.click(await screen.findByRole("button", { name: /^Deniz/ }));
@@ -104,4 +113,20 @@ describe("Location phone", () => {
     fireEvent.click(save());
     await waitFor(() => expect(saveLocation).toHaveBeenCalledWith("workspace", expect.objectContaining({ phone: "+16505550142", short_name: "DNZ" }), "deniz"));
   });
+});
+
+// BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
+describe("Location names and addresses", () => {
+  it.each([["Location name"], ["Street address"], ["City"], ["State / region"]])(
+    "says under %s that Turkish-only letters are not taken, and saves nothing",
+    async (label) => {
+      page();
+      fireEvent.click(await screen.findByRole("button", { name: /^Deniz/ }));
+      fireEvent.change(screen.getByLabelText(label), { target: { value: "Kadıköy" } });
+      fireEvent.click(save());
+      const error = await screen.findByText(usLettersMessage);
+      expect(error.id).toBe(screen.getByLabelText(label).getAttribute("aria-describedby"));
+      expect(saveLocation).not.toHaveBeenCalled();
+    },
+  );
 });
