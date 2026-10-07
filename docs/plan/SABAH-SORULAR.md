@@ -11,6 +11,23 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 
 ---
 
+## Tur 0 — 2026-10-07 gecesinin kararları (önce bunlar; görsellerle)
+
+### G1. Settings → General: altı tasarımdan hangisi? (EKRAN-10)
+- **Nerede:** Settings → General (`/app/settings/general`). Bugün sayfada dört ayrı kaydetme yeri var (logo penceresi, ad "Save changes", "Hide checklist", preferred name düğmesi), dört yeşil düğme dört farklı genişlikte, başlık Documents'a geçerken 50 px kayıyor.
+- **Tasarımlar:** https://claude.ai/artifact/Kwz63F5JeddW5S7y2kSsAi (v2) — altı varyant, masaüstü + telefon, bugünkü sayfayla yan yana. Hepsinde tek Save sağ altta (KARARLAR "Kaydetme", P20 — koordinatör kararı KK-208, soru değil).
+- Seçim varyant harfiyle; önerilen sabah koordinatörün bakışıyla eklenecek.
+
+### G2. Settings → General'a hangi öneriler girsin? (çoklu seçim; EKRAN-10)
+- Aynı artifact'ta Ö1–Ö4 düğmeyle açılıp kapanıyor. Oturumun önerisi: Ö2 ve Ö3 hemen, Ö4 Billing ile, Ö1 sohbetten sonra (G3).
+
+### G3. Workspace saat dilimi (temel model — önce sohbette, P18; EKRAN-10 G-15)
+- **Bugün:** workspace düzeyinde saat dilimi yok, yalnız her lokasyonun kendi saat dilimi var. Ama iki kayıt (KK-169 K4, BL-765) "workspace saat dilimi" varsayıyor; Employees'te Remote kişinin işten çıkarılması bu yüzden lokasyonların saat dilimine bakıyor.
+- **Örnek:** Bosphorus Kitchen'ın Los Angeles ve Las Vegas lokasyonları var; Remote çalışan Deniz'in işten çıkarma saati hangi dilimde yazılır?
+- **Seçenekler:** (a) salt okunur özet kalsın (lokasyonlardan), (b) gerçek bir "workspace saat dilimi" ayarı açılsın, (c) hiç gösterilmesin. Sohbette konuşulur.
+
+---
+
 ## Tur 1 — hat durduranlar
 
 ### S1. Takas yetkisi işi main'e giderken ultrareview koşturalım mı?
