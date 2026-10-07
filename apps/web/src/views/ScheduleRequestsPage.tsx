@@ -395,7 +395,8 @@ function ScheduleRequestsPageContent() {
         const swap = data.exchanges.find((item) => item.id === swapId && item.kind === "swap");
         return swap ? (
           <SwapReview
-            key={`${swap.id}:${swap.revision}`}
+            // One window per swap: a refresh keeps a reason being typed (P26).
+            key={swap.id}
             item={swap}
             workspace={workspaceId}
             timeFormat={timeFormat}
