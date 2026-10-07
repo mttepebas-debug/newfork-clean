@@ -1760,3 +1760,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Ne:** K2 "Add employee'de ve aktif olmayan kişide Preferred name salt okunur" uygulanınca Add employee'de boş, gri, kimsenin dolduramadığı bir alan çıktı. Yeni karar: Add employee'de alan yok; aktif olmayan kişide değer varsa salt okunur metin, yoksa satır yok. Ad çalışanın isteğiyle onboarding / profilde girilir (KARARLAR:271 iki mod aynen).
 - **Neden:** ölü alan formda gürültü; P20 "UI sade ve kompakt". K2 bir koordinatör kararıydı; Mert kararı değil.
 - **Dayanak:** ILKELER P19, P20; KARARLAR:271, :393.
+
+### KK-206 (2026-10-07) GUVENLIK-A sırası: GA-1 hemen, GA-2/GA-3 EKRAN-02 paketinden sonra, planlı kapanış GA-4
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~09:50Z. **Nerede:** `tasks/GUVENLIK-A.md` (dal `task/guvenlik-a`), BACKLOG BL-906…909 ve aile A tazelik notları.
+- **Ne:** (1) GA-1 (kiracılar arası taşıma kilidi: 5 katalog tablosunda kolon UPDATE izni ve FK) EKRAN-02 paketini beklemeden başlar — §2.A.1'in en üst kuralı, dosyaları EKRAN-02 ile çakışmıyor; yeni pgTAP dosyası yok (`ci-green.txt` kapalı), var olan dosyaya hücre; migration sırası kırmızı testle gösterilir. (2) GA-2 ve GA-3 EKRAN-02 paketinden sonra; GA-3 taşıdığı rotalardaki rota-yerel kapıları da siler, ama bildirim rotası ve 4 bildirim fonksiyonu BILDIRIM sökümüne bırakılır. (3) YB-1 / BL-906 (planlı kapanış tamamlanmıyor) oturumun önerdiği "ayrı acil iş" yerine GUVENLIK-A'nın sonunda GA-4: Mert'in yeni hat yasağı (KK-204), canlıda müşteri yok.
+- **Reddedilen:** oturumun "YB-1 ayrı acil iş" önerisi (yeni hat demek); GA-1'i de EKRAN-02 paketine bekletmek (kiracı sınırı açığı gereksiz yere açık kalırdı).
+- **Dayanak:** CLAUDE.md §2.A.1, §2.A.4, §4.3.5, §4.3.7 (R3); ILKELER P01, P02, P17.
