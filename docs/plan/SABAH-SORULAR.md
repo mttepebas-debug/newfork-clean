@@ -26,6 +26,10 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - **Örnek:** Bosphorus Kitchen'ın Los Angeles ve Las Vegas lokasyonları var; Remote çalışan Deniz'in işten çıkarma saati hangi dilimde yazılır?
 - **Seçenekler:** (a) salt okunur özet kalsın (lokasyonlardan), (b) gerçek bir "workspace saat dilimi" ayarı açılsın, (c) hiç gösterilmesin. Sohbette konuşulur.
 
+### G4–G7. Giriş ve katılım: dört karar (EKRAN-16)
+- Sorular tam metniyle `docs/plan/ekranlar/16-giris-katilim/OZET.md` §2'de (bugün → örnek → seçenekler, önerilen ilk): **S1** davet varken "Create your workspace" görünürlüğü; **S2** başka workspace'te çalışan kişinin kendi işletmesini açması; **S3** resmî adı onay bekleyen çalışana "In review" (BL-646); **S4** middle name resmî adın parçası mı.
+- Görsel sunum ve seçim sayfası: https://claude.ai/artifact/PEYuSjGWXGN9dkb9LipikY (9 ekran, masaüstü + telefon, 45 bulgu; Değiştir / Bırak / Konuşalım seçimleri sayfanın kaydına düşer, koordinatör okur).
+
 ---
 
 ## Tur 1 — hat durduranlar
