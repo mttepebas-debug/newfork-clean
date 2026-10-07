@@ -600,9 +600,9 @@ describe("GhostShiftCard", () => {
     // The place is behind the pin, not on its own line.
     // Not written on the card: the pin's bubble and its hidden description carry it.
     expect(screen.queryByText("Patio", { ignore: "[hidden]" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Location", description: "Patio" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Location: Patio", description: "Patio" })).toBeTruthy();
     expect(badge.querySelector("[data-shift-badge-location]")).toBeNull();
-    expect(screen.getByRole("button", { name: "Location" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Location: Patio" })).toBeTruthy();
     expect(screen.getByText("5:00 PM - 10:30 PM")).toBeTruthy();
     expect(badge.getAttribute("aria-label")).toContain(
       "also scheduled at Patio",
@@ -631,7 +631,7 @@ describe("GhostShiftCard", () => {
       />,
     );
 
-    const pin = screen.getByRole("button", { name: "Location" });
+    const pin = screen.getByRole("button", { name: "Location: Besiktas" });
     expect(screen.queryByRole("tooltip")).toBeNull();
     fireEvent.focus(pin);
     const tooltip = screen.getByRole("tooltip");
