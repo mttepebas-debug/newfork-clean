@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(41);
+select plan(47);
 
 -- FB-6.1 step .4: every Schedule job is one function, and the rules that name
 -- several locations at once ask the authorization core for each of them
@@ -207,6 +207,33 @@ select is(pg_temp.said(format($$select public.delete_schedule_export_schedule_se
 select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
   tests.user('fj:ayse'), tests.id('fj'), tests.id('fj:export:K'), jsonb_build_object('send_hour', 9))),
   'allowed', 'Ayşe still changes her own rule');
+-- The rule sends as the person who set it up: a location Ayşe cannot export
+-- would switch it off at its first send, so nobody adds one for her (review O1).
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:owner'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('location_ids', jsonb_build_array(tests.id('fj:K'), tests.id('fj:B'))))),
+  '22023 schedule.export_rule_beyond_its_owner', 'the owner cannot add Beşiktaş, which Ayşe does not export, to her rule');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('location_ids', jsonb_build_array(tests.id('fj:K'), tests.id('fj:B'))))),
+  '22023 schedule.export_rule_beyond_its_owner', 'nor can Can, who manages both');
+-- A rule keeps its own preset; switching it takes one of the editor's own.
+select public.create_schedule_export_preset_service(tests.user('fj:owner'), tests.id('fj'), 'Owner weekly', '{}'::jsonb);
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('preset_id', (select p.id from public.schedule_export_presets p
+    where p.workspace_id = tests.id('fj') and p.name = 'Owner weekly')))),
+  'P0002', 'Can cannot switch Ayşe''s rule to the owner''s preset');
+-- Another workspace's owner reaches nothing here, whatever the rule id.
+select tests.world('fk');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fk:owner'), tests.id('fk'), tests.id('fj:export:K'), jsonb_build_object('send_hour', 7))),
+  'P0002', 'another workspace''s owner does not find Ayşe''s rule');
+select is(pg_temp.said(format($$select public.delete_schedule_export_schedule_service(%L, %L, %L)$$,
+  tests.user('fk:owner'), tests.id('fk'), tests.id('fj:export:K'))),
+  'P0002', 'nor deletes it');
+select is((select s.send_hour::integer from public.scheduled_schedule_exports s where s.id = tests.id('fj:export:K')),
+  9, 'and the rule is as Ayşe left it');
 
 -- 6. Last, B3 again: the admin deletes T ------------------------------------------------------
 select is(pg_temp.said(format($$select public.delete_schedule_draft_service(%L, %L, %L)$$,
