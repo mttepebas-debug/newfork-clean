@@ -2,7 +2,7 @@
 - **İzin:** yok. Yalnız `.md` dosyası `task/ekran-10` dalında.
 - **Risk:** 🔴 BL-178 bugün de açık. `settings.general.manage` verilmiş özel müdür rolü workspace adını, logoyu ve kurulum listesini yazabiliyor. Roles ekranı bu izni müdüre sunuyor.
 - **Soru:** 5 soru (§8): altı tasarımdan hangisi; tek Save davranışı; dört öneriden hangileri (Ö1–Ö4); Ö1 seçilirse workspace saat dilimi modeli (önce sohbette); kurulum listesini admin'in görmesi (EKRAN-05 S3).
-- **Sonraki:** Mert tasarımı seçer. Sonra EKRAN-10 `EKRAN.md` kabul listesi açılır. BL-178 / BL-232 GUVENLIK-A paketinde kalır.
+- **Sonraki:** DURDURULABILIR, sabah Mert'in seçimi (tasarım + öneriler Ö1–Ö4). Sonra EKRAN-10 `EKRAN.md` kabul listesi açılır. BL-178 / BL-232 GUVENLIK-A paketinde kalır.
 
 # EKRAN-10 · Settings → General: inceleme, altı tasarım ve dört öneri
 
