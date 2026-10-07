@@ -6,6 +6,7 @@ import { renderSchedulePdf } from "./pdf";
 import { assertSafeExportCanvas, ExportImageTooLargeError } from "./png";
 import { defaultExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot } from "./snapshot";
+import { requestErrorText } from "../../lib/request-error";
 
 function fixture(employeeCount = 2): ScheduleExportSnapshot {
   return {
@@ -140,6 +141,10 @@ describe("Export v2 real output engines", () => {
     const base = fixture(1);
     const source = { ...base, locations: [base.locations[0]!], shifts: [{ ...base.shifts[0]!, label: "Very long label ".repeat(200) }] };
     await expect(renderSchedulePdf(source, { ...defaultExportPreferences, destination: "print" })).rejects.toThrow("taller than a printable page");
+    // BL-395: the export panel shows this sentence, not a generic one.
+    const failure = await renderSchedulePdf(source, { ...defaultExportPreferences, destination: "print" }).catch((error: unknown) => error);
+    expect(requestErrorText(failure)).toMatch(/taller than a printable page/);
+    expect(requestErrorText(new ExportImageTooLargeError())).toMatch(/exceeds safe browser limits/);
   }, 30000);
 
   it("round trips an XLSX with all sheets, shift subrows, row-only freeze and numeric dates/clocks", async () => {

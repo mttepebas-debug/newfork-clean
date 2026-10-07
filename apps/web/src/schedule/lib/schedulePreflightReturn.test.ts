@@ -1,6 +1,16 @@
 import type { ScheduleEditableShift } from "@newfork/shared/schedule";
 import { describe, expect, it } from "vitest";
 import { preflightReturnSearch, preflightReturnShift } from "./schedulePreflightReturn";
+import { requestErrorText } from "../../lib/request-error";
+
+function thrown(run: () => unknown): unknown {
+  try {
+    run();
+  } catch (error) {
+    return error;
+  }
+  return null;
+}
 
 const shift: ScheduleEditableShift = {
   id: "shift-1", location_id: "loc-1", employee_id: "emp-1", job_id: "job-1", shift_type_id: "type-1",
@@ -39,8 +49,13 @@ describe("preflight return", () => {
   });
   it("does not replace a different open draft", () => {
     expect(() => preflightReturnShift({ source_draft_id: "draft-2", shifts: [shift] }, "draft-1", [shift.id])).toThrow("Save or close your current draft");
+    // BL-395: the sentence reaches the Publish window, not a generic one.
+    expect(requestErrorText(thrown(() => preflightReturnShift({ source_draft_id: "draft-2", shifts: [shift] }, "draft-1", [shift.id]))))
+      .toBe("Save or close your current draft before opening another draft.");
   });
   it("reports a removed target instead of choosing another shift", () => {
     expect(() => preflightReturnShift({ source_draft_id: "draft-1", shifts: [shift] }, "draft-1", ["deleted-shift"])).toThrow("no longer in the draft");
+    expect(requestErrorText(thrown(() => preflightReturnShift({ source_draft_id: "draft-1", shifts: [shift] }, "draft-1", ["deleted-shift"]))))
+      .toMatch(/no longer in the draft/);
   });
 });

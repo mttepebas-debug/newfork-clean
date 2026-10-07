@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { RequestError, requestErrorText } from "./request-error";
+import { RequestError, requestErrorText, ScreenError } from "./request-error";
 
 // A request error of the Schedule's own shape: a sentence and a numeric status.
 class StatusError extends Error {
@@ -37,6 +37,19 @@ describe("requestErrorText (G11, BL-395)", () => {
     expect(requestErrorText(new Error('[{"code":"invalid_type","path":["shifts"]}]'))).toBe(plain);
     expect(requestErrorText(new TypeError("Failed to fetch"))).toBe(plain);
     expect(requestErrorText("boom")).toBe(plain);
+  });
+
+  it("shows a sentence the app wrote for the person (ScreenError), never a plain Error's", () => {
+    expect(requestErrorText(new ScreenError("Past schedule weeks cannot be unpublished."))).toBe(
+      "Past schedule weeks cannot be unpublished.",
+    );
+    class TooLarge extends ScreenError {}
+    expect(requestErrorText(new TooLarge("This image exceeds safe browser limits."))).toBe(
+      "This image exceeds safe browser limits.",
+    );
+    expect(requestErrorText(new Error("Schedule storage is not configured"))).toBe(
+      "Newfork could not finish that. Try again in a moment.",
+    );
   });
 
   it("uses the caller's sentence when the failure says nothing a person can use", () => {
