@@ -39,6 +39,13 @@ describe("Schedule request failures read as plain sentences (D-O7)", () => {
     expect((error as Error).message).toBe("Newfork could not finish that. Try again in a moment.");
   });
 
+  it("does not show the API's 'Internal server error' either (BL-395)", async () => {
+    const error = await failure(Response.json({ error: "Internal server error" }, { status: 500 }));
+    expect(error).toBeInstanceOf(ScheduleRequestError);
+    expect((error as ScheduleRequestError).status).toBe(500);
+    expect((error as Error).message).toBe("Newfork could not finish that. Try again in a moment.");
+  });
+
   it("says the connection dropped instead of the browser's Failed to fetch", async () => {
     const error = await failure(new TypeError("Failed to fetch"));
     expect(error).toBeInstanceOf(ScheduleRequestError);
