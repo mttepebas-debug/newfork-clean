@@ -38,10 +38,11 @@ export function RequestsTable({
   return (
     <table className="employee-table requests-table">
       <colgroup>
-        <col style={{ width: "27%" }} />
+        <col style={{ width: "25%" }} />
         <col style={{ width: "12%" }} />
         <col style={{ width: "24%" }} />
-        <col style={{ width: "16%" }} />
+        {/* "Dec 24, 12:00 AM" fits whole at the phone's 780 px table, too. */}
+        <col style={{ width: "18%" }} />
         <col style={{ width: "13%" }} />
         <col style={{ width: "8%" }} />
       </colgroup>
