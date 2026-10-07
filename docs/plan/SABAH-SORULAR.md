@@ -51,6 +51,12 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - **Bugün (paketle):** ret gerekçesi artık yalnız başvurana ve lokasyonun taleplerini okuyan müdüre gidiyor; vardiya sahibine genel cümle ("A request for your shift was declined. You are still responsible for this shift."). Vardiya sahibi aynı zamanda müdürse (Emre Kadıköy'de shift manager) gerekçeyi Requests'te görüyor, Shift Hub'da görmüyor.
 - **(a) (Önerilen)** Böyle kalsın: Emre rolü gereği lokasyonun bütün ret gerekçelerini zaten okuyor; kendi vardiyası için ayrı gizleme kuralı ikinci bir kural olur. Dayanak: ILKELER P08 (ayrıcalık bugünkü rolden gelir). **(b)** Kendi vardiyasının gerekçesi Requests'te de gizlensin (rolden bağımsız sahip kuralı).
 
+### G13. H2 takas penceresi uygulandı: üç küçük soru (EKRAN-02 C2; görüntüler `newfork-wt/ekran-02/artifacts/ekran-02/c2/h2-{clean,travel,rest,two,timeoff,locked,waiting,decline}-{1440,390}.png`)
+- **(1) Öteki vardiyanın komşusu yoksa yeşil kutu:** dinlenme kuralı Ali'nin vardiyasında tutmuyor; Deniz'in vardiyasının iki gün içinde komşu vardiyası yok. Bugün yeşil kutu "No shift nearby / 10 h needed" yazıyor. **Önerim: böyle kalsın** (senin "boşluk kalmasın" kuralın; doğru veri, P11).
+- **(2) "Decide by" bölge adı:** pencerede "Decide by Oct 13, 9:00 AM" (kilitlediğin H2 böyleydi), aynı takasın tablo satırında "Istanbul time" var. KARARLAR:133 son karar anını dilim adıyla yazmayı söylüyor. **Önerim: pencereye de "Istanbul time" eklensin** (tek kural; kilitli görünüme küçük ek). Diğeri: pencere böyle kalsın.
+- **(3) Telefon (390):** iki kart yan yana sığmıyor (kartın içi 123 px, en uzun kutu 139 px); kartlar alt alta, ⇄ dikey. **Önerim: böyle kalsın**; görüntüye bak.
+- Gönderim: tek tablo ve veri paketi main'e girdikten sonra; yeni e2e paketin migration'larıyla yeşil koşmadan gönderilmez (`nf-guvenlik` ONAY @`09cd161d` koşulu).
+
 ---
 
 ## Tur 1 — hat durduranlar
