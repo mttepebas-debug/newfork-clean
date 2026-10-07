@@ -17,6 +17,7 @@ export function ScheduleTemplatesDialog({
   drafts,
   session,
   departments = [],
+  initialDraftId = null,
   onClose,
   onCreate,
   onRename,
@@ -27,6 +28,8 @@ export function ScheduleTemplatesDialog({
   readonly drafts: readonly ScheduleDraftSummary[];
   readonly session: ScheduleEditSession | null;
   readonly departments?: ScheduleReadModel["departments"];
+  /** New Schedule ▾ → Save as template opens the window on the open draft (BL-705). */
+  readonly initialDraftId?: string | null;
   readonly onClose: () => void;
   readonly onCreate: (
     draftId: string,
@@ -46,7 +49,7 @@ export function ScheduleTemplatesDialog({
 }) {
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? "");
   const selected = templates.find((item) => item.id === selectedId) ?? null;
-  const [draftId, setDraftId] = useState(drafts[0]?.id ?? "");
+  const [draftId, setDraftId] = useState(initialDraftId ?? drafts[0]?.id ?? "");
   const [name, setName] = useState("");
   const [stripAssignments, setStripAssignments] = useState(true);
   const [rename, setRename] = useState(selected?.name ?? "");
