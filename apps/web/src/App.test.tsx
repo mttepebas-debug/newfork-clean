@@ -2417,14 +2417,14 @@ describe("App", () => {
       app.getByRole("button", { name: "Show Preset badges" }),
     ).toHaveProperty("disabled", true);
     expect(
-      app.getByRole("button", { name: "Show Role Seperators" }),
+      app.getByRole("button", { name: "Show Role Separators" }),
     ).toHaveProperty("disabled", true);
     fireEvent.click(app.getByRole("menuitemradio", { name: "Job/Position" }));
     expect(
       app.getByRole("button", { name: "Hide Preset badges" }),
     ).toHaveProperty("disabled", false);
     expect(
-      app.getByRole("button", { name: "Hide Role Seperators" }),
+      app.getByRole("button", { name: "Hide Role Separators" }),
     ).toHaveProperty("disabled", false);
 
     expect(employeeOrder()).toEqual([
@@ -2459,7 +2459,7 @@ describe("App", () => {
         .employeeSortMode,
     ).toBe("byJob");
     fireEvent.click(app.getByRole("button", { name: /Settings/ }));
-    fireEvent.click(app.getByRole("button", { name: "Hide Role Seperators" }));
+    fireEvent.click(app.getByRole("button", { name: "Hide Role Separators" }));
     expect(
       JSON.parse(window.localStorage.getItem("organizer-schedule-ui")!).state
         .showRoleSeparators,
@@ -2476,7 +2476,7 @@ describe("App", () => {
       "Aaron Primary Server",
       "Alice Server",
     ]);
-    fireEvent.click(app.getByRole("button", { name: "Show Role Seperators" }));
+    fireEvent.click(app.getByRole("button", { name: "Show Role Separators" }));
     expect(
       JSON.parse(window.localStorage.getItem("organizer-schedule-ui")!).state
         .showRoleSeparators,
