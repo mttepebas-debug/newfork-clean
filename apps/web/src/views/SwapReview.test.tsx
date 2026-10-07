@@ -3,13 +3,14 @@ import type { ExchangeCase, ExchangePreview } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SwapReview } from "./SwapReview";
-import { changeExchange, getExchangePreview } from "../employee-hub/shift-exchanges/exchange-data";
+import { changeExchange, getExchangePreview, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 
 configure({ asyncUtilTimeout: 5000 });
 vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../employee-hub/shift-exchanges/exchange-data")>()),
   getExchangePreview: vi.fn(),
   changeExchange: vi.fn(),
+  refreshExchangeSurfaces: vi.fn(),
 }));
 
 const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -60,6 +61,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close ??= function (this: HTMLDialogElement) { this.removeAttribute("open"); };
   vi.mocked(getExchangePreview).mockResolvedValue(preview());
   vi.mocked(changeExchange).mockResolvedValue({ case_id: caseId, revision: 5, status: "completed" } as never);
+  vi.mocked(refreshExchangeSurfaces).mockResolvedValue(undefined);
 });
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", 2026-10-07).
@@ -104,6 +106,18 @@ describe("SwapReview", () => {
     expect(vi.mocked(changeExchange).mock.calls[0]![1]).toMatchObject({
       action: "approve", case_id: caseId, application_id: applicationId, expected_revision: 4, fingerprint: "fp-1",
     });
+  });
+
+  // The decision is saved; a list refresh that fails afterwards does not turn it into an error.
+  it("reports a saved decision even when the refresh after it fails", async () => {
+    vi.mocked(refreshExchangeSurfaces).mockRejectedValue(new Error("offline"));
+    renderReview();
+    const approve = await screen.findByRole("button", { name: "Approve" });
+    await waitFor(() => expect((approve as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(approve);
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("Swap approved."));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(changeExchange).toHaveBeenCalledTimes(1);
   });
 
   // Kadikoy and Besiktas: Ayse's approval is one of two; nothing moves yet.

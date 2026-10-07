@@ -136,14 +136,15 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
         action, case_id: item.id, application_id: pending!.id, expected_revision: item.revision,
         fingerprint: preview.data?.fingerprint, reason: action === "reject" ? reason.trim() : "", private_note: "",
       }, key.current),
-    onSuccess: async (result, action) => {
-      await refreshExchangeSurfaces(client, workspace);
+    onSuccess: (result, action) => {
+      // The decision is saved: say so now; a failing refresh after it is not its error.
       // Two locations: the first approval is a vote; the shifts move on the last one.
       onDone(action === "reject" ? "Swap declined." : result.status === "completed" ? "Swap approved." : "Your approval is recorded. The other location's manager decides next.");
+      void refreshExchangeSurfaces(client, workspace).catch(() => undefined);
     },
     onError: () => {
       key.current = crypto.randomUUID();
-      void refreshExchangeSurfaces(client, workspace);
+      void refreshExchangeSurfaces(client, workspace).catch(() => undefined);
     },
   });
   const [offered, returned] = reviewBoxes([
