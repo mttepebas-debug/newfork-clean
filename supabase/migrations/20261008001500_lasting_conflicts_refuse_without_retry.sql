@@ -36,8 +36,9 @@ declare
     ['public', 'set_announcement_state_service'], ['public', 'set_important_date_state_service'],
     ['public', 'shorten_time_off_service'], ['public', 'submit_employee_onboarding_service'],
     ['public', 'submit_time_off_service'], ['public', 'weekly_preference_settings_save_service']];
-  -- The ways a body can raise 40001 (keywords are case-insensitive in PL/pgSQL).
-  raises_40001 constant text := $re$(errcode\s*=\s*'(40001|serialization_failure)'|raise\s+(exception\s+)?sqlstate\s+'40001'|raise\s+serialization_failure)$re$;
+  -- The ways a body can raise 40001 (keywords are case-insensitive in PL/pgSQL;
+  -- an option may be given with = or :=).
+  raises_40001 constant text := $re$(errcode\s*:?=\s*'(40001|serialization_failure)'|raise\s+(exception\s+)?sqlstate\s+'40001'|raise\s+serialization_failure)$re$;
   i integer;
   fn record;
   definition text;
@@ -57,10 +58,10 @@ begin
       definition := pg_get_functiondef(fn.oid);
       if targets[i][2] = 'save_employee_service' then
         definition := regexp_replace(definition,
-          $re$('employee revision conflict'\s+using\s+)errcode\s*=\s*'40001'$re$,
+          $re$('employee revision conflict'\s+using\s+)errcode\s*:?=\s*'40001'$re$,
           $rep$\1errcode = 'PT409', hint = 'employee.revision_conflict'$rep$, 'gi');
       end if;
-      definition := regexp_replace(definition, $re$errcode\s*=\s*'40001'$re$, $rep$errcode = 'PT409'$rep$, 'gi');
+      definition := regexp_replace(definition, $re$errcode\s*:?=\s*'40001'$re$, $rep$errcode = 'PT409'$rep$, 'gi');
       execute definition;
     end loop;
   end loop;

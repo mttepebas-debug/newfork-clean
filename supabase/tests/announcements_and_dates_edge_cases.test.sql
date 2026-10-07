@@ -351,8 +351,8 @@ select is(array(
       ('public', 'set_announcement_state_service'), ('public', 'set_important_date_state_service'),
       ('public', 'shorten_time_off_service'), ('public', 'submit_employee_onboarding_service'),
       ('public', 'submit_time_off_service'), ('public', 'weekly_preference_settings_save_service'))
-    -- Every way to raise 40001; PL/pgSQL keywords are case-insensitive.
-    and p.prosrc ~* $re$(errcode\s*=\s*'(40001|serialization_failure)'|raise\s+(exception\s+)?sqlstate\s+'40001'|raise\s+serialization_failure)$re$
+    -- Every way to raise 40001: PL/pgSQL keywords are case-insensitive, options take = or :=.
+    and p.prosrc ~* $re$(errcode\s*:?=\s*'(40001|serialization_failure)'|raise\s+(exception\s+)?sqlstate\s+'40001'|raise\s+serialization_failure)$re$
   order by 1), '{}'::text[], 'BL-958: no lasting conflict in these 24 functions is refused with 40001');
 
 -- 11. Republishing an important date (K7) ---------------------------------------------------
