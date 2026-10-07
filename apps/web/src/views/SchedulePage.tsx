@@ -148,6 +148,7 @@ import { followUpAfterUnpublish } from "../schedule/lib/scheduleUnpublishFollowU
 import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButton";
 import { formatSchedulePasteConflictContext } from "../schedule/lib/scheduleCatalogNames";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
+import { autoFillRejectedText } from "../schedule/lib/autoFillText";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
 import {
   applyShiftClipboardSnapshot,
@@ -3404,9 +3405,7 @@ export function SchedulePage({
             ).then((result) => {
               setSession(result.session);
               if (result.rejected.length)
-                setOperationError(
-                  `${result.rejected.length} auto-fill assignment could not be applied.`,
-                );
+                setOperationError(autoFillRejectedText(result.rejected.length));
               return result;
             })
           }
