@@ -1754,3 +1754,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** Mert'in kararı; koordinatör kayda geçirdi. **Ne zaman:** 2026-10-07 ~09:32Z.
 - **Ne:** Mert: "şuan için bu kadar hat yeterli. ama durdurmayacagız bunları". Açık hatlar: EKRAN-01 Schedule, EKRAN-02 Requests, EKRAN-03 Employees, PARALEL-1, GUVENLIK-A, EKRAN-16 keşif, EKRAN-08 çekmece, EKRAN-10 General, EKRAN-10 Locations, EKRAN-10 Jobs, BILDIRIM. Koordinatörün iki önerisi (Settings değişiklikleri koda tek iş olarak 1–3'ten sonra; "her isteğe önce üç satır" kuralı) Mert tarafından kapatıldı, cevaplanmadı; açık kalır, dayatılmaz.
 - **Dayanak:** Mert'in kararı; ILKELER P17 (kanıt eklendi).
+
+### KK-205 (2026-10-07) KK-169 K2 değişti: Add employee'de Preferred name hiç gösterilmez
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~09:40Z. **Nerede:** EKRAN-03 #16 (`task/ekran-03` @`79532ef0`, pafta `artifacts/EKRAN-03/simdi-1/`).
+- **Ne:** K2 "Add employee'de ve aktif olmayan kişide Preferred name salt okunur" uygulanınca Add employee'de boş, gri, kimsenin dolduramadığı bir alan çıktı. Yeni karar: Add employee'de alan yok; aktif olmayan kişide değer varsa salt okunur metin, yoksa satır yok. Ad çalışanın isteğiyle onboarding / profilde girilir (KARARLAR:271 iki mod aynen).
+- **Neden:** ölü alan formda gürültü; P20 "UI sade ve kompakt". K2 bir koordinatör kararıydı; Mert kararı değil.
+- **Dayanak:** ILKELER P19, P20; KARARLAR:271, :393.
