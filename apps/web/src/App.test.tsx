@@ -5191,6 +5191,19 @@ describe("App", () => {
     consoleError.mockRestore();
   });
 
+  it("says a plain sentence when Templates cannot open, never the raw error (BL-395)", async () => {
+    const raw = '[{"code":"invalid_type","path":["templates",0,"name"],"message":"Required"}]';
+    vi.mocked(listScheduleTemplates).mockRejectedValueOnce(new Error(raw));
+    window.history.pushState({}, "", "/app/schedule");
+    testAuth.role = "owner";
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Templates" }, { timeout: 5000 }));
+
+    expect(await screen.findByText("Newfork could not finish that. Try again in a moment.")).toBeTruthy();
+    expect(screen.queryByText(/invalid_type/)).toBeNull();
+  });
+
   // BL-392: a week that cannot be read must not trap the manager on it.
   it("keeps week navigation when the schedule cannot be read, and opens the week it is sent to", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
