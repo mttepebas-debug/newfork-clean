@@ -225,7 +225,7 @@ describe("ShiftQuickEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
     expect(sheet.textContent).toContain("unavailable hours");
-    expect(sheet.textContent).toContain("Do you want to assign this shift anyway?");
+    expect(sheet.textContent).toContain("Schedule this shift anyway?");
     expect(onSubmit).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));

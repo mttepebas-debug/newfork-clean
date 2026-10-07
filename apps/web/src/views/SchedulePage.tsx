@@ -88,7 +88,10 @@ import {
 import { AutoFillReviewOverlay } from "../schedule/components/AutoFillReviewOverlay";
 import { DefaultHoursReviewDialog } from "../schedule/components/DefaultHoursReviewDialog";
 import { DraftDropdownMenu } from "../schedule/components/DraftDropdownMenu";
-import { ScheduleConflictSheet } from "../schedule/components/ScheduleConflictSheet";
+import {
+  SCHEDULE_CONFLICT_QUESTION,
+  ScheduleConflictSheet,
+} from "../schedule/components/ScheduleConflictSheet";
 import { ScheduleNoteConfirm } from "../schedule/components/ScheduleNoteConfirm";
 import { scheduleDropReviewAsk } from "../schedule/lib/scheduleDropReviewAsk";
 import { ScheduleEditLockedDialog as ScheduleEditLockedDialogComponent } from "../schedule/components/ScheduleEditLockedDialog";
@@ -3052,7 +3055,7 @@ export function SchedulePage({
       ) : dropReview.review ? <ScheduleConflictSheet
         open
         messages={dropReviewAsk?.messages ?? []}
-        description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : "Review these scheduling conflicts before placing the shift."}
+        description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : SCHEDULE_CONFLICT_QUESTION}
         tone={dropReview.review.blocked ? "blocker" : "warning"}
         submitLabel={dropReview.review.blocked ? undefined : "Place shift"}
         onSubmit={dropReview.review.blocked ? undefined : dropReview.confirm}
