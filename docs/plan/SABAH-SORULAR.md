@@ -47,20 +47,6 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
   - (c) Önce görüntülere birlikte bakalım.
 - Kaynak: HANDOFF §4.1; inbox `…145231…c3.md`, `…151236…c1a.md`.
 
-### S3. Görsel — takas onay ekranında yol ve dinlenme uyarısı (G2)
-- **Hat:** Requests C2 (inceleme çekmecesi) bekliyor.
-- **Bugün:** Requests → Shift changes → Ali'nin takası → Review → "IF APPROVED". Deniz'in iki lokasyon arası yolu 30 dk, kural 45 dk; Ali'nin dinlenmesi 8 saat, kural 10 saat. Ekran bunu engel gibi gösteriyor: Approve kapalı, neden kırmızı, rakam yok. Kural ise "uyarı, engel değil". Veri tarafı dalda düzeldi: yol ve dinlenme artık onaylayana işaret olarak gidiyor.
-- **Varyantlar hazır:** https://claude.ai/artifact/UvHbxipPcLVHmMW1ZVE4Xh — bölüm 1.
-  1. Tek amber kutu: "2 things to check. You can still approve." ve rakamlı iki satır.
-  2. Kontrol tablosu.
-  3. İki gösterge çubuğu (30/45, 8/10).
-  4. Kararın yanında iki küçük çip.
-  5. Çizelgede taralı boşluk.
-- **(1) Tek amber kutu. (Önerilen)** Kutu hem "onaylayabilirsin" diyor hem rakamı ve saati veriyor; müdür neden kısa kaldığını açmadan görüyor.
-  Zayıf yanı: en uzun metinli varyant. Amber ton, Schedule'daki müsaitlik işaretinin rengine (`#d9730d`) yakın; aynı renk iki anlam taşıyabilir. Görsel seçimlerde önerim son günlerde dört kez tersine döndü (ILKELER P04 kanıtları), zayıf dayanak.
-  `Dayanak: KARARLAR:168 (yol / dinlenme işaret, engel değil) + ILKELER P11, P21 (doğru veri, tek mesaj)`
-- (2) – (5) varyant numarasıyla seçilir.
-
 ### S4. Görsel — müdürün izni kısalttığı satır (G3)
 - **Hat:** Requests C1 (tek tablo) bekliyor.
 - **Bugün:** Requests → Time off → Closed. Ayşe, Ali'nin 11 Ekim iznini bir vardiya (4–10 PM) için kısalttı. Satır, Ali'nin 28 Eylül'de kendi istediği iptalle aynı görünüyor: ikisi de "Leave cancellation".
