@@ -9,7 +9,7 @@ Skills: kod aşamasında `superpowers:test-driven-development` (her adım önce 
 Bugün (2026-10-07) yetki tarafındaki en tehlikeli 5 açık. Hepsi kodda duruyor; yerel veride hiçbiri kullanılmamış, canlı veri okunmadı.
 1. 🔴 Admin, Downtown müdürü Ayşe'nin özel rolüne Settings → Roles'tan "Locations: Edit" verebiliyor. Ayşe Uptown'ı tarayıcıdan arşivler, Uptown müdürü Burak lokasyonunu anında kaybeder; workspace adını, iş kataloğunu ve bildirim kurallarını da değiştirebilir. Kural (KARARLAR) "müdür tipine organizasyon ayarı verilemez" diyor; bir test bu yanlışı "doğru" diye kilitliyor.
 2. 🔴 Hem Meyhouse'ta admin hem kendi "Deniz Cafe"sinde owner olan Deniz, tarayıcıdan Meyhouse'un kullanılmamış bir işini, boş bir departmanını ya da herhangi bir vardiya etiketini kendi workspace'ine taşıyabiliyor. Meyhouse'ta kayıt uyarısız kaybolur, vardiyalardaki etiketler Deniz Cafe'nin kaydını gösterir.
-3. 🔴 Account → Workspaces → "Close later" ile kapatılan workspace hiç kapanmıyor. 14 gün geçince ekranlar kapalı sayıyor ama admin tarayıcıdan lokasyon, iş ve ad yazmaya devam edebiliyor, veri hiç silinmiyor.
+3. 🔴 Account → Workspaces → "Close later" ile kapatılan workspace hiç kapanmıyor. 14 gün geçince ekranlar kapalı sayıyor ama admin tarayıcıdan yeni lokasyon, iş ve departman ekleyip lokasyonları değiştirebiliyor; veri hiç silinmiyor.
 4. 🟠 Kadıköy müdürü Ali, eş müdür Ayşe'nin takasını onaylayabiliyor; Ayşe kendi vakasındaki adayı reddedebiliyor. Requests'in veri paketi main'e girince kapanıyor ("aramayı kapat" dalı açık kalıyor).
 5. 🟠 Settings'teki 19 işlem yetki merkezine hiç sormuyor (kapanmış workspace'e, rütbeye bakmıyor, "hayır"ı standart biçimde vermiyor); müdür rolüne "Roles: View" de verilebiliyor.
 Plan (KK-206): 2'yi kapatan GA-1 hemen; Requests paketi girince GA-2 (1), GA-3 (5), GA-4 (3). Ekranların payı Requests, Workspace ve Settings turlarına yazıldı; bildirim ayarları yeni bildirim sistemiyle sökülüyor.
@@ -166,7 +166,7 @@ Sıra: GA-1 (şimdi) → paket main'e girer → GA-2 → GA-3 → GA-4. Her biri
 **GA-3 Settings'in eski kapıdaki işlemleri çekirdeğe (BL-276'nın kalanı; BL-898'in bu rotalardaki payı).**
 - Bugün:
   - 12 fonksiyon (bildirim ayarlarının 4'ü hariç) ve 19 politika yetki merkezine sormuyor.
-  - Örnek: Meyhouse'un owner'ı Account → Workspaces → "Close later" seçti, 14 gün geçti. Çekirdek ve API workspace'i kapalı sayıyor, ama admin Selin tarayıcıdan lokasyon arşivleyip iş ekleyebiliyor, workspace adını değiştirebiliyor.
+  - Örnek: Downtown müdürü Ayşe'nin özel rolüne "Jobs: Edit" verildi. Ayşe bütün lokasyonların işlerini ekleyip değiştirir; çekirdek "müdüre organizasyon yazma yok" diyor ama bu yol çekirdeğe sormuyor. (Planlı kapanıştan sonra açık kalan yazma GA-4'te kapanıyor.)
   - İş kataloğu ve roller rotaları önce kendi `permissions.includes` kapısına bakıyor, sonra eski kapıya: iki kapı, ikisi de çekirdek değil.
 - Düzeltme:
   - **Bildirim: kapsam dışı (KK-206).** 4 bildirim ayarı fonksiyonu ve `notification-settings` rotası BILDIRIM oturumunun ilk diliminde sökülür. Eski kapının silinmesi o söküme de bağlı: sayaç onlar gidince düşer.
@@ -197,19 +197,28 @@ Sıra: GA-1 (şimdi) → paket main'e girer → GA-2 → GA-3 → GA-4. Her biri
     - `deleted`'i yalnız "Close now" yazıyor (:19093);
     - temizlik işi yalnız `deleted`'de kuyruğa giriyor (tetikleyici :31327);
     - `workspace-retention` cron'u (`30 3 * * *`) yalnız var olan temizlik işlerini yürütüyor.
-  - Sonuç: üyelikler `active` kalır, admin Selin tarayıcıdan katalog ve workspace adı yazmaya devam eder (GA-3'e kadar), veri hiç silinmez.
+  - Sonuç: üyelikler `active` kalır, veri hiç silinmez. Admin Selin tarayıcıdan şunları yapmaya devam eder (kırmızı testte ölçüldü):
+    - yeni departman, iş, lokasyon, vardiya tipi ve etiket ekleyebilir (INSERT politikası eski kapıdan geçiyor);
+    - lokasyonları değiştirip arşivleyebilir (lokasyonun okuma politikası da eski kapıdan);
+    - logoyu değiştirebilir.
+  - Öbür katalog güncellemeleri ve workspace adı tarihte zaten duruyor: bu tabloların okuma politikası (`is_workspace_member`) kapanmış workspace'i göstermiyor. Önceki "workspace adını değiştirebiliyor" iddiam yanlıştı (benim hatam; `nf-guvenlik` ölçümü de aynı genellemeyi yapmıştı).
 - Düzeltme:
-  - "Close now"un bitiriş adımları tek bir iç fonksiyona alınır. Bu adımlar: üyelikler `suspended`, `lifecycle_status = 'deleted'`, `closed_at`, kapanış talebi `completed`, düzenleme oturumlarının sona ermesi, bildirim işlerinin bastırılması (`request_workspace_closure_service` "immediate" dalı, :19039-19167).
-  - "Close now" ve yeni zamanlanmış bitiriş aynı fonksiyonu çağırır (ikiz yok).
-  - Bitiriş, `closure_effective_at` geçmiş `closure_scheduled` workspace'leri sırayla `deleted`'e geçirir. Var olan `workspace-retention` cron'unun başında koşar; yeni zamanlayıcı açılmaz.
+  - "Close now"un bitiriş adımları tek bir iç fonksiyona alınır: `app_private.finish_workspace_closure`. Adımlar: `lifecycle_status = 'deleted'`, `closed_at`, üyelikler `suspended`, bekleyen davetler `revoked`, düzenleme oturumlarının sona ermesi, bildirim işlerinin bastırılması, aktif workspace tercihlerinin silinmesi, denetim kaydı (`request_workspace_closure_service` "immediate" dalı, eski :19092-19167).
+  - "Close now" ve zamanlanmış bitiriş aynı fonksiyonu çağırır (ikiz yok). "Close now"un dönüşü ve denetim kaydı değişmez.
+  - `app_private.complete_due_workspace_closures()`, `closure_effective_at`'i geçmiş `closure_scheduled` workspace'leri `deleted`'e geçirir:
+    - kapanış tarihi `closed_at` olur;
+    - kapatan, planı açan owner'dır (talep kaydı yoksa workspace'i açan kişi);
+    - talep `completed`, denetim `workspace.closure.completed_scheduled`.
+  - pg_cron `workspace-closures` her 5 dakikada koşar (`time-off-deadlines` gibi doğrudan SQL). API'ye ve yeni `*_service`'e gerek kalmaz, katalog dosyalarına dokunulmaz. Teknik seçim (P19): retention cron'u API üzerinden geçtiği için ona eklemek yeni servis isterdi.
   - Temizlik işi var olan tetikleyiciyle kendiliğinden kuyruğa girer. Saklama süresi "Close now"daki kuralla aynı; yeni kural yazılmaz.
+  - Bilinen pencere: tarih ile işin koşması arasında (≤5 dk) owner planı iptal edebilir (`cancel_workspace_closure_service` tarihe bakmıyor). Ürün etkisi yok sayıldı, raporda.
   - Owner'ın tarihten önce iptali (:7907) değişmez.
-- Kırmızı test (paket girdikten sonra yeni dosya açılabilir): `supabase/tests/scheduled_closure_completes.test.sql`:
-  - tarihi geçmiş `closure_scheduled` workspace (zaman elle geçmişe çekilir) bitirişten sonra `deleted` olur;
-  - üyelikleri `suspended` olur, temizlik işi kuyruktadır, kapanış talebi `completed` olur;
-  - tarihi gelmemiş workspace'e dokunulmaz;
-  - bitirişten sonra admin'in RLS yazması reddedilir.
-  - API vitest: retention cron'u bitirişi temizlikten önce çağırır.
+- Kırmızı test (gece kuralı: yeni dosya yok; `account_workspace_controls.test.sql`'e, `ci-green.txt`'te). "Close Later Co" (tarihi geçmiş) ve "Not Yet Co" (tarihi gelmemiş):
+  - iş koşar; "Close Later Co" `deleted` olur ve `closed_at` = söz verilen tarih;
+  - üyelikleri `suspended`, talep `completed`, temizlik işi kuyrukta, denetim kaydı var;
+  - "Not Yet Co" `closure_scheduled` kalır;
+  - "Close Later Co"nun admin'i departman ekleyemez (42501) ve lokasyonu değiştiremez;
+  - `workspace-closures` işi `*/5 * * * *`.
 - Risk R3 (veri silme yolu, canlı DDL; yedek ve doğrulama §5.1) · Sıra 4.
 
 ### Ekran dilimlerine ait (bu görev yapmaz; yeri yazıldı, tekrar iş açılmaz)
@@ -246,7 +255,7 @@ GA-1…3 bitince kampanyanın ekran senaryolarına girmesi önerilenler:
 - **YB-4 (low / safe)** `public.can_access_location` ve `public.can_manage_workspace` `authenticated`'a açık RPC (:34576-34583). Yalnız kişinin kendi iznini döndürüyor, sızıntı yok. `can_manage_workspace` GA-3'te silinir; `can_access_location` `locations_select_scoped_member`'dan çıkınca kullanıcısı ölçülür.
 
 ## In scope (kod aşaması)
-GA-1, GA-2, GA-3, GA-4. Dokunulanlar: migration'lar, `schema.sql` yeniden üretimi, pgTAP, `retired_objects_stay_gone`, `authz_catalog` tavanları, yetki matrisi ve `authorization_matrix.expected.json`, `packages/shared/src/role-permissions.ts`, GA-3'ün rotalarındaki rota-yerel kapılar ve testleri, GA-4'te retention işçisi (`apps/api/src/account/workspace-retention-worker.ts`).
+GA-1, GA-2, GA-3, GA-4. Dokunulanlar: migration'lar, `schema.sql` yeniden üretimi, pgTAP, `retired_objects_stay_gone`, `authz_catalog` tavanları, yetki matrisi ve `authorization_matrix.expected.json`, `packages/shared/src/role-permissions.ts`, GA-3'ün rotalarındaki rota-yerel kapılar ve testleri, GA-4'te kapanış fonksiyonları ve `workspace-closures` cron işi.
 
 ## Out of scope
 - Takas (EKRAN-02).
@@ -269,11 +278,11 @@ GA-1, GA-2, GA-3, GA-4. Dokunulanlar: migration'lar, `schema.sql` yeniden üreti
 
 ## Touches
 - `supabase/migrations/<yeni>` (4) ve `supabase/schema.sql`.
-- GA-1 (paketten önce): yalnız var olan `browser_privileges.test.sql` ve `organization_basics_rls.test.sql`.
-- GA-2…4 yeni testler: `supabase/tests/{organization_settings_stay_with_owner_and_admin, settings_writes_ask_the_core, scheduled_closure_completes}.test.sql`.
+- GA-1 ve GA-4 (paketten önce, gece): yalnız var olan `browser_privileges.test.sql`, `organization_basics_rls.test.sql`, `account_workspace_controls.test.sql`.
+- GA-2 ve GA-3 yeni testler: `supabase/tests/{organization_settings_stay_with_owner_and_admin, settings_writes_ask_the_core}.test.sql`.
 - Değişen testler: `roles_permissions_rls.test.sql`, `authz_catalog.test.sql`, `authorization_matrix.test.sql`, `authorization_coverage.test.sql`, `retired_objects_stay_gone.test.sql`, `ci-green.txt`.
 - `packages/shared/src/authorization-matrix.expected.json`, `packages/shared/src/role-permissions.ts` ve testi.
-- API: `apps/api/src/settings/{jobs-management,organization-settings,roles}-routes.ts`, `apps/api/src/account/workspace-retention-worker.ts` ve testleri.
+- API (GA-3): `apps/api/src/settings/{jobs-management,organization-settings,roles}-routes.ts` ve testleri.
 
 ## Test plan
 Her adımda sıra aynı:
@@ -285,7 +294,7 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
 
 ## Risk notes
 - **Canlı veri:** canlıda bu izinleri taşıyan özel rol olabilir; GA-2 migration'ı onları siler. Gönderimden önce canlı SELECT (koordinatör izni) ve yedek (`pg_get_functiondef` + silinen satırlar).
-- **GA-1 kolon listesi:** kolon grant listesi web'in bugün yazdığı kolonlarla birebir olmalı; eksik kolon Settings formunu kırar. Settings e2e koşulur.
+- **GA-1 kolon listesi:** kolon grant listesi web'in bugün yazdığı kolonlarla birebir olmalı; eksik kolon Settings formunu kırar. Settings katalog formları için e2e senaryosu yok (`e2e/flows`); kanıt pgTAP `lives_ok` ile, beş tablonun form güncellemesi `organization_basics_rls.test.sql`'de.
 - **GA-3 okuma hızı:** RLS politikalarının `rls_can`'e geçmesi okumayı yavaşlatabilir (`app_private.actor()` ~7 sorgu). Locations listesi ve Schedule ızgarası okuması ölçülür (≤50 ms çıtası).
 - **Dosya sırası:** EKRAN-02 paketi matris, katalog ve `ci-green.txt`'e dokunuyor; bu görev paket main'e girmeden bu dosyaları açmaz.
 
@@ -329,3 +338,46 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
   - paket bu tabloların grant'ine dokunmuyor (diff grep 0).
 - **Kapı:** `pnpm.cmd lint`, `typecheck`, `test`, `build` yeşil; `schema-snapshot check-fast` yeşil; `schema.sql` yeniden üretildi (fark yalnız grant satırları).
 - **`test:db`:** ortak DB migration'ı main penceresinden önce görmediği için (supabase/CLAUDE.md) tam pgTAP koşusu dal push'unun CI'ında (temiz kurulum).
+- **İnceleme:** `nf-guvenlik` **ONAY @dbbb72d6** (engel ve önemli bulgu yok). Uygulanan düşük notlar:
+  - N1: "formlar hâlâ çalışır" hücresi departman, iş (departman değişikliği dahil) ve vardiya tipi saatlerini de kapsıyor.
+  - N2: geri alma yolu aşağıda.
+- Öbür notlar rapora kaldı:
+  - N3: üç test (`catalog_entity_deletion:47`, `jobs_department_bulk_assignments:108`, `management_owner_job:297`) `deleted_at` yazmasında artık tetikleyici yerine grant reddiyle 42501 alıyor; test adları tetikleyiciyi kanıtlamıyor.
+  - N4: tarayıcıdaki ret düz "permission denied", `authz.*` yok; Ekran 10'a kadar geçici yol.
+  - N5: paket sonra girerse yerelde `supabase migration up` eski tarihli dosyada uyarabilir; ortak DB'ye uygulama psql ile, main penceresinde.
+- **Geri alma:** `revoke update (<kolonlar>) on <5 tablo> from authenticated; grant update on public.departments, public.jobs, public.locations, public.shift_types, public.shift_labels to authenticated;` (eski tablo düzeyi grant; yalnız acil durumda, kiracılar arası taşımayı geri açar).
+
+### GA-4 uygulama (2026-10-07, gece, BL-906)
+- **Migration:** `supabase/migrations/20261007233000_close_later_finishes_on_its_date.sql`.
+  - `app_private.finish_workspace_closure` ("Close now"un bitirişi, tek yer);
+  - `request_workspace_closure_service` "immediate" dalı onu çağırıyor (dönüş ve denetim kaydı aynı);
+  - `app_private.complete_due_workspace_closures()`;
+  - pg_cron `workspace-closures` `*/5 * * * *`;
+  - iki iç fonksiyonda `public`, `anon`, `authenticated` için çalıştırma izni yok.
+- **Kırmızı** (GA-1'li, GA-4'süz, ortak DB, rollback'li): `account_workspace_controls` 10/65 düştü — fonksiyon yok; workspace `closure_scheduled` kaldı; üyelikler aktif (2); talep `scheduled`; temizlik ve denetim yok; admin departman ekledi ("caught: no exception") ve lokasyonu "After close" yaptı; cron yok.
+- **Kırmızıda yakalanan yanlışım:** "admin departmanı güncelleyebilir" hücresi düzeltmesiz de geçti. Bu tablolarda okuma politikası (`is_workspace_member` → `workspace_open_to_actor`) kapanmış workspace'i gizliyor, UPDATE 0 satır. Hücre bugün gerçekten açık olan iki yola (INSERT, lokasyon UPDATE) çevrildi. Plan ve özet buna göre düzeltildi.
+- **Yeşil** (GA-1 + GA-4):
+  - `account_workspace_controls` 65/65;
+  - kapanışa ya da cron'a dokunan öbür dosyalar migration'lı ve migration'sız aynı: `authorization_coverage`, `employee_private_storage_contract`, `lifecycle_refusals_carry_keys`, `time_off_deadlines`, `workspace_lifecycle`, `workspace_rls` 0 hata; `authorization_matrix`'teki 26 satır iki durumda da aynı "TODO known".
+- **EKRAN-02 paketi** kapanış fonksiyonlarına dokunmuyor (diff'te tek eşleşme ilgisiz `schedule_closures`).
+- **Şema:** `schema.sql` yeniden üretildi (439 migration), `check-fast` yeşil.
+- **İnceleme:** `nf-guvenlik` **ONAY @e4ecc990** (Kritik/Yüksek yok). Uygulananlar:
+  - **O1 (Orta):** iş bütün workspace'leri tek işlemde dolaşıyordu; birinin hatası o koşudaki bütün kapanışları geri alır ve her 5 dakikada takılırdı. Artık her workspace kendi alt işleminde (`begin … exception when others`, `time_off_sweep` kalıbı); hata `WARNING` olarak yazılıyor, workspace sonraki koşuya kalıyor.
+    - Kırmızı: bilerek bozulan "Broken Close Co" bütün koşuyu düşürdü, "Close Later Co" kapanmadı (9 hücre).
+    - Yeşil: 68/68; uyarı yalnız "Broken Close Co"yu adlandırıyor.
+  - **D2:** iş testte oturumsuz koşuyor, cron'daki gibi.
+  - **D3:** cron hücresi zamanlamayla birlikte komutu da sabitliyor.
+  - **D1:** tarihten sonra ≤5 dk iptal penceresi kabul edildi, değişmedi.
+- **Dal CI:** `37604813162` @e4ecc990 (O1'den önce): check, db, e2e, db-budget yeşil. O1 commit'i için yeni koşu push'ta.
+
+### GA-1 gönderim şartı (koordinatör, 2026-10-07 ~11:35Z)
+- **Soru:** iki workspace'te yetkili admin, Meyhouse'taki bir işi Deniz Cafe'nin departmanına bağlayabilir mi (`jobs.department_id` hâlâ yazılabilir)?
+- **Cevap: bağlayamaz.**
+  - Bileşik yabancı anahtar `jobs_department_id_workspace_id_fkey` `(department_id, workspace_id)` çiftini `departments(id, workspace_id)`'e bağlıyor (`supabase/migrations/20260817153000_organization_basics.sql:53`; main `supabase/schema.sql:32074`).
+  - GA-1'den sonra işin `workspace_id`'si değişemiyor; başka workspace'in departmanı bu çiftle eşleşmez → 23503.
+  - Koruma hücresi: `organization_basics_rls.test.sql` "a job cannot be tied to another workspace's department" (`da24ad98`; GA-1 migration'ıyla 20/20).
+  - Yazılabilir kolonlar arasında başka `*_id` yok: departments, locations, shift_types, shift_labels'ta hiç yok. workspaces'te `logo_storage_path` var ama yabancı anahtar değil (YB-2).
+
+### Gönderim durumu (2026-10-07 gece)
+- **GA-1 main'e** koordinatörün "gönder"iyle gidiyor (OPS-03: daraltan migration önce main). Kapsam: bu dosya, migration `20261007230000`, `schema.sql`, `browser_privileges` ve `organization_basics_rls` hücreleri. **Canlı** sabah, Mert'in bu oturuma yazacağı "evet"le (CLAUDE.md §5.3): önce yedek, sonra `apply_migration`, doğrulama.
+- **GA-4** dalda (`task/guvenlik-a`), gönderime hazırlanıyor. Ekleyen migration olduğu için sıra önce canlı, sonra main; ikisi de sabah, Mert'in "evet"inden sonra.
