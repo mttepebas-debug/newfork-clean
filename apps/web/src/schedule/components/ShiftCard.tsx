@@ -448,7 +448,7 @@ export function GhostShiftCard({
       {displayedLocation ? (
         <span className="schedule-shift-badge-markers">
           <Tooltip
-            label="Location"
+            label={`Location: ${displayedLocation}`}
             content={displayedLocation}
             className="schedule-ghost-location"
           >
