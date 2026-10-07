@@ -615,28 +615,6 @@ describe("EmployeeOnboardingPage", () => {
     expect(contact).toHaveProperty("value", "(310) 555-0101");
   });
 
-  it("says where to change an account phone from outside the US", async () => {
-    authMock.phone = "+442079460958";
-    renderProfileStep();
-    expect(await screen.findByLabelText(/^Phone/)).toHaveProperty("value", "");
-    await fillPersonal();
-    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Your account phone is not a US number. Change it in Account › Profile.",
-    );
-  });
-
-  it("leaves a saved number from outside the US empty", async () => {
-    authMock.phone = null;
-    vi.mocked(getMyOnboarding).mockResolvedValue({
-      ...onboarding,
-      profile: { legal_first_name: "Taylor", phone: "+442079460958" },
-    });
-    renderProfileStep();
-    // Drawn into the mask, "+44 …" would read as a wrong US number.
-    expect(await screen.findByLabelText(/^Phone/)).toHaveProperty("value", "");
-  });
-
   it.each([["Legal first name"], ["Preferred name"], ["Street address"], ["City"]])(
     "says under %s that Turkish-only letters are not taken, and does not move on",
     async (label) => {

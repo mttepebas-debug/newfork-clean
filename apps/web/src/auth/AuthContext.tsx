@@ -327,9 +327,7 @@ export function AuthProvider({
       const updated = accountProfileSchema.parse({
         ...account,
         displayName,
-        // The US rule is for a number being typed; one saved before it stays
-        // when another part changes (BL-503).
-        phone: phone === account.phone ? account.phone : normalizeAccountPhone(phone),
+        phone: normalizeAccountPhone(phone),
         theme,
         ...changes,
       });

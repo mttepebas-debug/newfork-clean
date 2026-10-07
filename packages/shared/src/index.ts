@@ -266,8 +266,8 @@ export const accountProfileSchema = z
     userId: z.string().uuid(),
     email: z.string().email(),
     displayName: z.string().trim().min(1).max(100),
-    // Read as saved; a write goes through normalizeAccountPhone.
-    phone: z.string().trim().nullable().default(null),
+    // A US number in E.164 (BL-969); a typed one goes through normalizeAccountPhone.
+    phone: usPhoneSchema.nullable().default(null),
     avatarObjectPath: z.string().trim().nullable().default(null),
     avatarUrl: z.string().url().nullable().default(null),
     theme: themePreferenceSchema,
@@ -401,12 +401,6 @@ export function employmentContactRecordFromRow(
  * signatures read. First and last are required; a middle name may be empty.
  * The limits are the database's (app_private.write_owner_legal_name).
  */
-const ownerLegalNameReadSchema = z.object({
-  firstName: z.string().trim().min(1).max(80),
-  middleName: z.string().trim().max(80),
-  lastName: z.string().trim().min(1).max(80),
-});
-/** What is written: the US letter rule on each name (BL-503). */
 export const ownerLegalNameSchema = z.object({
   firstName: usText(z.string().trim().min(1).max(80)),
   middleName: usText(z.string().trim().max(80)),
@@ -414,9 +408,9 @@ export const ownerLegalNameSchema = z.object({
 });
 export type OwnerLegalName = z.infer<typeof ownerLegalNameSchema>;
 
-/** What Account > Profile reads: null until a legal name is on file; read as saved. */
+/** What Account > Profile reads: null until a legal name is on file. */
 export const ownerLegalNameResponseSchema = z.object({
-  legalName: ownerLegalNameReadSchema.nullable(),
+  legalName: ownerLegalNameSchema.nullable(),
 });
 
 export const workspaceSummarySchema = z.object({
@@ -771,7 +765,8 @@ export const auditEventSchema = z.object({
 });
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 
-const entityNameSchema = z.string().trim().min(1).max(100);
+/** A department's or a job's name, under the US letter rule (BL-503, BL-969). */
+const entityNameSchema = usText(z.string().trim().min(1).max(100));
 export const colorSchema = z
   .string()
   .regex(/^#[0-9A-Fa-f]{6}$/, "Use a six-digit hex color");
@@ -806,12 +801,13 @@ export function suggestLocationShortName(name: string): string {
 export const locationSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
-  name: z.string().trim().min(1).max(120),
+  // The US letter rule (BL-503), in the data too (BL-969).
+  name: usText(z.string().trim().min(1).max(120)),
   short_name: locationShortNameSchema,
   phone: usPhoneSchema.nullable().optional(),
-  street_address: z.string().trim().max(180),
-  city: z.string().trim().max(100),
-  region: z.string().trim().max(100),
+  street_address: usText(z.string().trim().max(180)),
+  city: usText(z.string().trim().max(100)),
+  region: usText(z.string().trim().max(100)),
   postal_code: z.string().trim().max(20),
   country_code: z.string().regex(/^[A-Z]{2}$/),
   timezone: z.string().trim().min(1).max(80),
@@ -901,31 +897,20 @@ export const locationInputSchema = locationSchema.pick({
   short_name: locationShortNameSchema,
   phone: usPhoneSchema.nullable().optional(),
   timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone"),
-  // What is written follows the US letter rule; what was saved still reads (BL-503).
-  name: usText(z.string().trim().min(1).max(120)),
-  street_address: usText(z.string().trim().max(180)),
-  city: usText(z.string().trim().max(100)),
-  region: usText(z.string().trim().max(100)),
 });
 export type LocationInput = z.infer<typeof locationInputSchema>;
 
-/** A department's editable values as saved, read without today's write rules. */
-export const departmentValuesSchema = departmentSchema.pick({
+export const departmentInputSchema = departmentSchema.pick({
   name: true,
   color: true,
 });
-export const departmentInputSchema = departmentValuesSchema.extend({
-  name: usText(entityNameSchema),
-});
 export type DepartmentInput = z.infer<typeof departmentInputSchema>;
 
-/** A job's editable values as saved, read without today's write rules. */
-export const jobValuesSchema = jobSchema.pick({
+export const jobInputSchema = jobSchema.pick({
   name: true,
   color: true,
   department_id: true,
 });
-export const jobInputSchema = jobValuesSchema.extend({ name: usText(entityNameSchema) });
 export type JobInput = z.infer<typeof jobInputSchema>;
 
 export const departmentWithJobsInputSchema = z.object({
@@ -1021,8 +1006,7 @@ export const jobAssignmentResultSchema = z.object({
 export const jobDetailsChangesSchema = z
   .object({
     job: jobInputSchema.optional(),
-    // The values as saved, which may predate the US letter rule (BL-503).
-    expected_job: jobValuesSchema.optional(),
+    expected_job: jobInputSchema.optional(),
     changes: z.array(jobAssignmentChangeSchema).max(10000).default([]),
   })
   .superRefine((value, ctx) => {
@@ -2841,17 +2825,20 @@ export type EmployeeOnboardingRequirement = z.infer<
   typeof employeeOnboardingRequirementSchema
 >;
 
-/** The private profile as saved; reads take it as it is. */
+/**
+ * The private profile: the US letter rule on names, addresses and the contact,
+ * and phones as a US number in E.164 (BL-503), the same in the data (BL-969).
+ */
 const employeeOnboardingProfileBaseSchema = z.object({
-  legal_first_name: z.string().trim().min(1).max(80),
-  legal_middle_name: z.string().trim().max(80).optional(),
-  legal_last_name: z.string().trim().min(1).max(80),
+  legal_first_name: usText(z.string().trim().min(1).max(80)),
+  legal_middle_name: usText(z.string().trim().max(80)).optional(),
+  legal_last_name: usText(z.string().trim().min(1).max(80)),
   /** What the team calls this person; documents keep the legal name. */
-  preferred_name: z.string().trim().max(80).optional(),
-  phone: z.string().trim().min(7).max(30),
-  street_address: z.string().trim().min(1).max(180),
-  city: z.string().trim().min(1).max(100),
-  region: z.string().trim().min(1).max(100),
+  preferred_name: usText(z.string().trim().max(80)).optional(),
+  phone: usPhoneSchema,
+  street_address: usText(z.string().trim().min(1).max(180)),
+  city: usText(z.string().trim().min(1).max(100)),
+  region: usText(z.string().trim().min(1).max(100)),
   postal_code: z.string().trim().min(1).max(20),
   country_code: z.literal("US"),
   date_of_birth: z
@@ -2861,31 +2848,15 @@ const employeeOnboardingProfileBaseSchema = z.object({
       (value) => value <= new Date().toISOString().slice(0, 10),
       "Date of birth cannot be in the future",
     ),
-  emergency_contact_name: z.string().trim().min(1).max(120),
-  emergency_contact_relationship: z.string().trim().min(1).max(80),
+  emergency_contact_name: usText(z.string().trim().min(1).max(120)),
+  emergency_contact_relationship: usText(z.string().trim().min(1).max(80)),
   emergency_contact_email: z.string().trim().email().or(z.literal("")),
-  emergency_contact_phone: z.string().trim().min(7).max(30),
+  emergency_contact_phone: usPhoneSchema,
   share_phone_with_teammates: z.boolean(),
   share_email_with_teammates: z.boolean(),
 });
-/**
- * What onboarding writes: the US letter rule on names, addresses and the
- * contact, and phones as a US number in E.164 (BL-503).
- */
-const employeeOnboardingProfileObjectSchema = employeeOnboardingProfileBaseSchema.extend({
-  legal_first_name: usText(z.string().trim().min(1).max(80)),
-  legal_middle_name: usText(z.string().trim().max(80)).optional(),
-  legal_last_name: usText(z.string().trim().min(1).max(80)),
-  preferred_name: usText(z.string().trim().max(80)).optional(),
-  phone: usPhoneSchema,
-  street_address: usText(z.string().trim().min(1).max(180)),
-  city: usText(z.string().trim().min(1).max(100)),
-  region: usText(z.string().trim().min(1).max(100)),
-  emergency_contact_name: usText(z.string().trim().min(1).max(120)),
-  emergency_contact_relationship: usText(z.string().trim().min(1).max(80)),
-  emergency_contact_phone: usPhoneSchema,
-});
 
+/** A profile part way through onboarding: any part may still be missing. */
 const employeeOnboardingProfileReadSchema =
   employeeOnboardingProfileBaseSchema.partial().extend({
     street_address: employeeOnboardingProfileBaseSchema.shape.street_address
@@ -2909,7 +2880,7 @@ const employeeOnboardingProfileReadSchema =
   });
 
 export const employeeOnboardingProfileSchema =
-  employeeOnboardingProfileObjectSchema.superRefine((profile, context) => {
+  employeeOnboardingProfileBaseSchema.superRefine((profile, context) => {
     // Both are E.164 by now: the same number is the same string.
     if (profile.phone === profile.emergency_contact_phone) {
       context.addIssue({

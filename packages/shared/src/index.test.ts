@@ -9,7 +9,6 @@ import {
   canAccessWorkspace,
   departmentInputSchema,
   departmentSchema,
-  departmentValuesSchema,
   scheduleDepartmentSchema,
   scheduleJobSchema,
   scheduleShiftLabelSchema,
@@ -24,9 +23,9 @@ import {
   jobDetailsChangesSchema,
   jobInputSchema,
   jobSchema,
-  jobValuesSchema,
   locationInputSchema,
   locationSchema,
+  ownerLegalNameResponseSchema,
   ownerLegalNameSchema,
   managementAndOwnerRefusals,
   managementAndOwnerSentence,
@@ -1667,9 +1666,9 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
   });
 });
 
-// BL-503: the write schemas follow KARARLAR "Form ve girdi kuralları (ABD)";
-// what was saved before the rule still reads.
-describe("US form rules on the write schemas (BL-503)", () => {
+// BL-503: the schemas follow KARARLAR "Form ve girdi kuralları (ABD)".
+// BL-969: the data follows it too, so a read takes the schema a write takes.
+describe("US form rules on the schemas (BL-503, BL-969)", () => {
   const profile = {
     legal_first_name: "Taylor",
     legal_last_name: "Reed",
@@ -1745,35 +1744,58 @@ describe("US form rules on the write schemas (BL-503)", () => {
     expect(employeeInputSchema.safeParse({ ...employee, first_name: "Ayşe" }).success).toBe(false);
   });
 
-  it("still reads a department and a job saved before the rule, and lets their name be fixed", () => {
-    expect(departmentValuesSchema.parse({ name: "Mutfak Ağı", color: "#4478A8" }).name).toBe("Mutfak Ağı");
-    expect(jobValuesSchema.parse({ name: "Aşçı", color: "#4478A8", department_id: null }).name).toBe("Aşçı");
+  // BL-969: one schema; the database refuses what the forms refuse.
+  it("reads a department, a job and a location with the rule a write takes", () => {
+    const department = {
+      id: "12000000-0000-4000-8000-000000000001",
+      workspace_id: workspaceId,
+      color: "#4478A8",
+      archived_at: null,
+      system_key: null,
+    };
+    expect(departmentSchema.safeParse({ ...department, name: "Kitchen" }).success).toBe(true);
+    expect(departmentSchema.safeParse({ ...department, name: "Mutfak Ağı" }).success).toBe(false);
+    expect(jobSchema.safeParse({ ...department, department_id: null, system_key: null, name: "Aşçı" }).success).toBe(false);
+    const saved = {
+      ...location,
+      id: "11000000-0000-4000-8000-000000000001",
+      workspace_id: workspaceId,
+      phone: null,
+      sort_order: 0,
+      archived_at: null,
+    };
+    expect(locationSchema.safeParse(saved).success).toBe(true);
+    for (const field of ["name", "street_address", "city", "region"]) {
+      expect(locationSchema.safeParse({ ...saved, [field]: "Kadıköy" }).success, field).toBe(false);
+    }
     expect(
       jobDetailsChangesSchema.safeParse({
         job: { name: "Cook", color: "#4478A8", department_id: null },
         expected_job: { name: "Aşçı", color: "#4478A8", department_id: null },
       }).success,
-    ).toBe(true);
-    expect(
-      jobDetailsChangesSchema.safeParse({
-        job: { name: "Aşçıbaşı", color: "#4478A8", department_id: null },
-        expected_job: { name: "Aşçı", color: "#4478A8", department_id: null },
-      }).success,
     ).toBe(false);
   });
 
-  it("still reads a location saved before the rule", () => {
+  it("reads an onboarding profile, an owner's legal name and an account phone with the rule a write takes", () => {
+    const onboardingRead = (saved: Record<string, unknown>) =>
+      employeeOnboardingSchema.shape.profile.safeParse(saved).success;
+    expect(onboardingRead(profile)).toBe(true);
+    expect(onboardingRead({ ...profile, city: "Kadıköy" })).toBe(false);
+    expect(onboardingRead({ ...profile, emergency_contact_phone: "4155550100" })).toBe(false);
     expect(
-      locationSchema.safeParse({
-        ...location,
-        id: "11000000-0000-4000-8000-000000000001",
-        workspace_id: workspaceId,
-        name: "Kadıköy",
-        phone: null,
-        sort_order: 0,
-        archived_at: null,
+      ownerLegalNameResponseSchema.safeParse({
+        legalName: { firstName: "Mert", middleName: "", lastName: "Tepebaş" },
       }).success,
-    ).toBe(true);
+    ).toBe(false);
+    const account = {
+      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+      email: "owner@example.test",
+      displayName: "Owner",
+      theme: "system" as const,
+    };
+    expect(accountProfileSchema.safeParse({ ...account, phone: "+14155550100" }).success).toBe(true);
+    expect(accountProfileSchema.safeParse({ ...account, phone: "+442079460958" }).success).toBe(false);
+    expect(accountProfileSchema.safeParse({ ...account, phone: "4155550100" }).success).toBe(false);
   });
 
   it("takes phone numbers as a US number in E.164 only", () => {
