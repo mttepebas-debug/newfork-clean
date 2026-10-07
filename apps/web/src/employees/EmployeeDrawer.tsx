@@ -902,6 +902,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
   // Out of reach: only the card, no nameless record beside it (BL-402).
   const noAccess = isNoAccess(detail.error);
+  // A role just saved and nothing typed since (BL-463, BL-477).
+  const roleJustSaved =
+    saveMutation.isSuccess && saveMutation.data.roleSent && !anyDirty;
   return (
     <div className="employee-drawer-layer" role="presentation">
       <button
@@ -1126,6 +1129,16 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     subject="this employee"
                     homeHref={noAccessHomePath(context, "/app/employees")}
                   />
+                ) : detail.error && detail.data ? (
+                  // Read again after a save and failed: what was saved is
+                  // said, the server's sentence is not (BL-463).
+                  <p className="employee-panel-state error" role="alert">
+                    {roleJustSaved ? "Role saved. " : null}
+                    Couldn't reload this employee.{" "}
+                    <button type="button" onClick={() => void detail.refetch()}>
+                      Retry
+                    </button>
+                  </p>
                 ) : detail.error ? (
                   <p className="employee-panel-state error" role="alert">
                     {errorMessage(detail.error)}
@@ -1514,6 +1527,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             </footer>
           )}
         </DrawerForm>
+        {/* Heard as well as seen on the button (BL-477). */}
+        <span className="sr-only" role="status">
+          {roleJustSaved ? "Role saved." : ""}
+        </span>
         {terminationOpen && detail.data ? (
           <EmployeeTerminationDialog
             employeeName={`${detail.data.first_name} ${detail.data.last_name}`}

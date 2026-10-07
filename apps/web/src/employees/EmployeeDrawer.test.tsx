@@ -2557,6 +2557,28 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
   });
 
+  // BL-477: a role saved alone is heard, not only seen on the button.
+  it("tells a screen reader the role was saved", async () => {
+    renderDrawer("access", linked);
+    await pickManager();
+    vi.mocked(getEmployeeDetail).mockResolvedValue(asManager);
+    fireEvent.click(save());
+    await screen.findByRole("button", { name: "Done" });
+    expect(screen.getAllByRole("status").some((region) => region.textContent === "Role saved.")).toBe(true);
+  });
+
+  // BL-463: the role is saved even when reading the person again fails; the
+  // drawer says so and offers Retry instead of a bare error.
+  it("says the role was saved when reading the person again fails", async () => {
+    renderDrawer("access", linked);
+    await pickManager();
+    vi.mocked(getEmployeeDetail).mockRejectedValue(new Error("Failed to fetch"));
+    fireEvent.click(save());
+    expect(await screen.findByText(/^Role saved\. Couldn't reload this employee\./)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+  });
+
   it("sends the record, then the role, and returns to Profile", async () => {
     const { onSectionChange } = renderDrawer("profile", linked);
     fireEvent.change(await firstName(), { target: { value: "Alexa" } });
