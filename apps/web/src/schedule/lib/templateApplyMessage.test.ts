@@ -33,6 +33,18 @@ describe("templateAppliedDescription", () => {
     );
   });
 
+  it("shortens a long label name without cutting an emoji in half (BL-236)", () => {
+    const name = `${"A".repeat(26)}\u{1F373}BB`;
+    expect(
+      templateAppliedDescription("Brunch", {
+        applied_shift_count: 1,
+        skipped: [label(name, 1)],
+      }),
+    ).toBe(
+      `Brunch: 1 shift added. ${"A".repeat(26)}\u{1F373}… is archived, so 1 shift was added without it.`,
+    );
+  });
+
   it("names one archived label and the shifts that came in without it", () => {
     expect(
       templateAppliedDescription("Summer weekdays", {
