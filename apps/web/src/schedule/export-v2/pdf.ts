@@ -1,6 +1,7 @@
 import { createExportDocument, type ExportRowMeasurement } from "./document";
 import type { ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot } from "./snapshot";
+import { ScreenError } from "../../lib/request-error";
 
 export async function renderSchedulePdf(snapshot: ScheduleExportSnapshot, preferences: ExportPreferences): Promise<Blob> {
   const [{ default: pdfMake }, { default: fonts }] = await Promise.all([
@@ -18,7 +19,7 @@ export async function renderSchedulePdf(snapshot: ScheduleExportSnapshot, prefer
     // Only oversized employee groups become continued shift subrows. Normal groups
     // stay unbreakable. A single badge too tall for paper must never disappear.
     if (splitRows.size && (await measure()).length) {
-      throw new Error("One shift badge is taller than a printable page. Choose Download with one long page; no content has been removed or reduced.");
+      throw new ScreenError("One shift badge is taller than a printable page. Choose Download with one long page; no content has been removed or reduced.");
     }
   }
   return pdfMake.createPdf(createExportDocument(snapshot, preferences, { splitRows })).getBlob();

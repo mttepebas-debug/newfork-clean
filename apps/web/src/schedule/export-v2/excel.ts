@@ -3,6 +3,7 @@ import { exportDayDecoration, exportRowCells, exportSubtitle, exportTitleLines, 
 import { exportShiftLines } from "./badge-text";
 import type { ScheduleExportSnapshot } from "./snapshot";
 import type { ExportPreferences } from "./preferences";
+import { ScreenError } from "../../lib/request-error";
 
 export function exportSheetName(name: string, used: Set<string>): string {
   const base = truncateSheetName(name.replace(/[\x00-\x1f*?:/\\[\]]/g, "-").replace(/^'+|'+$/g, "").trim() || "Location", 31);
@@ -66,7 +67,7 @@ export async function createScheduleWorkbook(snapshot: ScheduleExportSnapshot, p
     if (dayNotes.some(Boolean)) {
       const notes = sheet.addRow(["", ...dayNotes]);
       notes.height = Math.max(25, ...dayNotes.map(value => value.split("\n").reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / 24)), 0) * 14 + 12));
-      if (notes.height > 409) throw new Error("Day annotations exceed Excel's readable row height. Choose PDF with one long page.");
+      if (notes.height > 409) throw new ScreenError("Day annotations exceed Excel's readable row height. Choose PDF with one long page.");
       notes.eachCell({ includeEmpty: true }, cell => { cell.alignment = { wrapText: true, vertical: "middle" }; cell.font = { name: "Arial", size: 10, bold: true }; });
     }
     let previousGroup: string | null = null;
@@ -85,7 +86,7 @@ export async function createScheduleWorkbook(snapshot: ScheduleExportSnapshot, p
         const values = cells.map(cell => cell[index] ? exportShiftLines(cell[index]!, group.merged).join("\n") : "");
         const row = sheet.addRow([index === 0 ? employee.name : "", ...values, ...(showTotals ? [index === 0 ? employee.total ?? "" : ""] : [])]);
         row.height = Math.max(group.merged ? 64 : 50, ...values.map(value => value.split("\n").reduce((lines, line) => lines + Math.max(1, Math.ceil(line.length / 24)), 0) * 14 + 12));
-        if (row.height > 409) throw new Error("One shift exceeds Excel's maximum readable row height. Choose PDF with one long page; no content has been clipped or reduced.");
+        if (row.height > 409) throw new ScreenError("One shift exceeds Excel's maximum readable row height. Choose PDF with one long page; no content has been clipped or reduced.");
         row.eachCell({ includeEmpty: true }, (cell, column) => {
           cell.font = { name: "Arial", size: 11, bold: column === 1, color: { argb: "FF183329" } };
           cell.alignment = { vertical: "middle", wrapText: true, indent: 1 };
