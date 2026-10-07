@@ -644,6 +644,18 @@ describe("ProfilePage US form rules", () => {
     expect(screen.queryByText(/Outside the US or Canada/)).toBeNull();
   });
 
+  it("keeps one line under Preferred name: the rule while it is broken, else the help", async () => {
+    ownerWithContact();
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    const help = "Shown everywhere except documents. A manager approves it.";
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ayşe" } });
+    expect(screen.queryByText(help)).toBeNull();
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ayse" } });
+    expect(screen.getByText(help)).toBeTruthy();
+    expect(screen.queryByText(usLettersMessage)).toBeNull();
+  });
+
   it.each([["Preferred name"], ["Legal last name"], ["Contact name"], ["Relationship"]])(
     "says under %s that Turkish-only letters are not taken, and keeps Save off",
     async (label) => {

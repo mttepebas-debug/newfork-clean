@@ -907,3 +907,8 @@
   margin: 0;
   color: var(--theme-danger-strong);
 }
+
+/* The +1 in the type of the number beside it, not of the label (BL-503). */
+.account-field .us-phone-prefix {
+  font-weight: 400;
+}

@@ -523,8 +523,12 @@ export default function ProfilePage() {
               }}
               {...letterRuleProps(preferred, "account-preferred-name-error")}
             />
-            <LetterRuleError value={preferred} id="account-preferred-name-error" />
-            <small>Shown everywhere except documents. A manager approves it.</small>
+            {/* One line under the field: the rule while it is broken, else the help. */}
+            {breaksLetterRule(preferred) ? (
+              <LetterRuleError value={preferred} id="account-preferred-name-error" />
+            ) : (
+              <small>Shown everywhere except documents. A manager approves it.</small>
+            )}
           </label>
           <label className="account-field account-field-span-2" htmlFor="account-phone-number">
             <span>Phone number</span>

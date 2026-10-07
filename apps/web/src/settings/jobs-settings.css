@@ -640,6 +640,13 @@
   font-weight: 600;
   margin-bottom: 7px;
 }
+/* The US phone field's frame is not a label line: it keeps the field's type,
+   so its +1 matches the number (BL-503). */
+.job-field > .us-phone-field {
+  margin-bottom: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
 .job-name-color {
   display: flex;
   gap: 8px;
