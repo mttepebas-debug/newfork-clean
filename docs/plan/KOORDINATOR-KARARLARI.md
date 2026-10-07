@@ -1653,3 +1653,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~06:35Z. **Nerede:** `BACKLOG.md` "Geliştirme ortamı", `DERSLER.md`.
 - **Ne:** (1) sıkı moda geçiş BL-896 olarak yazıldı (leave: medium / do: safe). (2) Önerilen KARARLAR OPS satırı YAZILMADI: aynı kural `CLAUDE.md` §6 "Veritabanı ve canlı" ve `nf-db` rol dosyasında zaten var (main `945fac37`); ikinci kopya tek dosya ilkesine aykırı (§4.8 ilke 1). (3) SCHEMA-SNAP dersi yeni giriş. (4) Uzak dal `origin/task/schema-snap` (içeriği main'de, yedek `refs/nf-backup/branch/task/schema-snap-remote-prerebase/20261007T062204Z`): ajan izinleri uzak dal silmeyi reddediyor; Mert'e bırakıldı.
 - **Dayanak:** CLAUDE.md §4.7, §4.8, §4.6.
+
+### KK-187 (2026-10-07) OTOMASYON-3 görev dosyası onayı; CI koşucu 2–3 kapatıldı
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~06:40–06:50Z. **Nerede:** `docs/plan/tasks/OTOMASYON-3.md` (dal `task/otomasyon-3`), WSL `runner` servisleri, KARARLAR OPS-01.
+- **Ne:** (1) OTOMASYON-3 görev dosyası ONAY; dört öneri kabul (14 Ekim uyarı→engel, `Rol:` ile rol oturumu ayrımı, `git commit` uyarısı, `/code-review`). İki düzeltme: kökten tek başına `lint` ağır sayılmaz (saniyelik, yanlış uyarı üretir), `typecheck` süresine göre oturum karar verir (~60 sn eşiği); `db.lock` var / `heavy.lock` yok e2e vakası teste girer. (2) Mert'in seçimiyle ("Tekrar tek koşucu (Önerilen)") CI koşucu 2 ve 3 durduruldu ve açılışta kalkmaz (`systemctl disable --now`); kök neden: dün yalnız `svc.sh stop` yapılmıştı, Ubuntu yeniden başlayınca kalktılar.
+- **Dayanak:** CLAUDE.md §4.3.3, §4.3.7 (R2), ILKELER P16, P19; Mert'in 2026-10-06 ~13:50Z kararı (KK-176) ve bugünkü seçimi.
