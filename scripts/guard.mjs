@@ -74,35 +74,69 @@ export function overrideReason(segs, i) {
 
 // Split on && || ; | newline, but only in the command's own code (BL-964): not inside quotes, a
 // heredoc body, a here-string or a `#` comment, and not at a line continuation. Bash and PowerShell
-// differ in their escape character (\ vs `) and in how a quote escapes itself.
-// ponytail: a command wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not
-// seen, and a lone `&` (background) is not a separator.
+// differ in their escape character (\ vs `) and in how a quote escapes itself. A command wrapped in
+// another shell (`bash -c "…"`, `pwsh -Command "…"`, `cmd /c "…"`) is read as that shell's commands.
+// ponytail: a lone `&` (background) is not a separator; `pwsh -EncodedCommand` is not decoded.
 // Each segment carries the operator in front of it; an empty segment between two
 // operators keeps the weaker one (anything but && breaks a chain).
 const SEP = /(&&|\|\||[;|\n])/;
-export function chain(cmd, shell = "bash") {
+const ENV = /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/;
+export function chain(cmd, shell = "bash", depth = 0) {
   const out = [];
   let sep = null;
   // a quote or $( left open: read it the old way, which splits more and so checks more
-  for (const part of split(cmd, shell) ?? dropBodies(cmd).split(SEP)) {
+  for (const part of scanPieces(cmd, shell) ?? dropBodies(cmd).split(SEP)) {
     if (/^(&&|\|\||[;|\n])$/.test(part)) {
       sep = sep && sep !== "&&" ? sep : part;
       continue;
     }
     const seg = part.trim().replace(/^\$?\(+\s*/, "").replace(/\s*\)+$/, "");
     if (!seg) continue;
-    out.push({ seg, sep });
+    const inner = depth < 3 ? wrapped(seg, shell) : null;
+    const links = inner ? chain(inner.script, inner.shell, depth + 1) : [];
+    if (links.length) {
+      // `NF_OVERRIDE="…" bash -c "…"` sets the variable for every command of the script
+      const env = seg.match(ENV)?.[0] ?? "";
+      out.push(...links.map((l, k) => ({ seg: env + l.seg, sep: k ? l.sep : sep })));
+    } else out.push({ seg, sep });
     sep = null;
   }
   return out;
 }
 export const segments = (cmd, shell) => chain(cmd, shell).map((c) => c.seg);
 
-// One pass over the command: the pieces between top-level separators, with the separators between
+// `bash -c "<script>"`, `sh -c '…'`, `pwsh [-NoProfile …] -Command "…"`, `cmd /c "…"`: the script and
+// the shell that runs it. Its outer quotes belong to the calling shell and are taken off with its rules.
+const WRAPPER =
+  /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)*(?:&\s*)?["']?(?:\S*[\\/])?(bash|sh|zsh|dash|pwsh|powershell|cmd)(?:\.exe)?["']?(?:\s+-[\w-]+)*?\s+(?:-[a-z]*c|-command|\/c)\s+/i;
+function wrapped(seg, outer) {
+  const m = seg.match(WRAPPER);
+  if (!m) return null;
+  let script = seg.slice(m[0].length).trim();
+  const q = script[0];
+  if (q === "'" || q === '"') {
+    let s = "";
+    for (let i = 1; i < script.length; i++) {
+      const c = script[i];
+      // Bash "…" drops the backslash only before $ ` " \ and a newline; PowerShell "…" drops every backtick
+      if (q === '"' && outer === "pwsh" && c === "`" && i + 1 < script.length) s += script[++i];
+      else if (q === '"' && outer !== "pwsh" && c === "\\" && /[$`"\\\n]/.test(script[i + 1] ?? "")) s += script[++i];
+      else if (c === q && outer === "pwsh" && script[i + 1] === q) s += script[++i];
+      else if (c === q) break;
+      else s += c;
+    }
+    script = s;
+  }
+  return { script, shell: /^(pwsh|powershell)$/i.test(m[1]) ? "pwsh" : "bash" };
+}
+
+// One pass over the command (BL-964): the pieces between top-level separators, with the separators between
 // them (the shape of String.split(SEP)), or null when a quote or a $( is still open at the end.
 // Quotes keep their text; heredoc and here-string bodies are dropped. Inside "…" a $( … ) is code
 // again (its quotes and heredocs are read) but stays part of the piece, as before.
-function split(cmd, shell) {
+// ponytail: a `#` comment inside "$( … )" can swallow its `)`; the scan then ends with $( open and
+// falls back to the old split (bash would read that command the same broken way).
+function scanPieces(cmd, shell) {
   const pwsh = shell === "pwsh";
   const esc = pwsh ? "`" : "\\";
   const parts = [];
@@ -110,6 +144,7 @@ function split(cmd, shell) {
   const heredocs = [];
   let cur = "";
   let i = 0;
+  let escaped = -1; // the last index taken by an escape in code: `\$'…'` is a plain $ and a plain '…'
   const cut = (op) => {
     parts.push(cur, op);
     cur = "";
@@ -180,6 +215,7 @@ function split(cmd, shell) {
       if (nl) i += 1 + nl[0].length; // a line continuation joins the next line
       else {
         cur += two;
+        escaped = i + 1;
         i += 2;
       }
       continue;
@@ -212,7 +248,7 @@ function split(cmd, shell) {
       i = e < 0 ? cmd.length : e + 2;
       continue;
     }
-    if (c === "'") stack.push({ mode: !pwsh && cmd[i - 1] === "$" ? "ansi" : "sq" });
+    if (c === "'") stack.push({ mode: !pwsh && cmd[i - 1] === "$" && escaped !== i - 1 ? "ansi" : "sq" });
     else if (c === '"') stack.push({ mode: "dq" });
     else if (c === "\n") {
       const past = heredocs.length ? pastBodies(i) : i;
@@ -243,7 +279,7 @@ function split(cmd, shell) {
 // Heredoc (`<<'EOF'`, `<<-EOF`) and PowerShell here-string (`@'` … `'@`) bodies are text, not
 // commands: a report line or a commit body starting with "pnpm.cmd test" runs nothing. A body
 // without its terminator is kept, so a stray "<<x" inside quotes never hides what follows.
-// Since BL-964 only the fallback for a command whose quoting split() cannot read.
+// Since BL-964 only the fallback for a command whose quoting scanPieces() cannot read.
 export function dropBodies(cmd) {
   const out = [];
   let close = null;

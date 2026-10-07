@@ -503,6 +503,25 @@ test("real separators still split: after a closing quote, and an unclosed quote 
   assert.equal(evaluate(bash('echo "never closed && pnpm.cmd test'), AFTER).block, true);
 });
 
+test("a command wrapped in another shell is read too: bash -c, sh -c, pwsh -Command, cmd /c (BL-964)", () => {
+  // the old split caught these by accident (a separator inside the quotes); reading quotes must not lose them
+  assert.equal(evaluate(bash('bash -c "cd x && git push --dry-run origin HEAD:main"')).block, true);
+  assert.equal(evaluate(ps('bash -lc "cd x; git push --dry-run origin HEAD:main"')).block, true);
+  assert.equal(evaluate(ps('cmd /c "cd x && git push --dry-run origin HEAD:main"')).block, true);
+  assert.equal(evaluate(bash("sh -c 'pnpm.cmd test'"), AFTER).block, true);
+  assert.equal(evaluate(ps('pwsh -NoProfile -Command "Set-Location x; pnpm.cmd e2e"'), AFTER).block, true);
+  assert.equal(evaluate(bash('bash -c "echo \\"a && pnpm.cmd test\\""'), AFTER).block, false); // its own quotes count
+});
+
+test("scanner edges: block comments, CRLF, two heredocs, <<<, a ) inside quotes in $( ) (BL-964)", () => {
+  quiet(ps("<# pnpm.cmd test; git push #> git status"));
+  quiet(bash("git commit -q -F - <<'EOF'\r\nfix: x && pnpm.cmd test\r\nEOF\r\ngit log -1"));
+  quiet(bash("cat <<A <<B > x\npnpm.cmd test\nA\npnpm.cmd build\nB"));
+  quiet(bash("git commit -m \"$(echo ')' ; echo \"a && pnpm.cmd test\")\""));
+  quiet(bash("echo \\$'a\\' && echo \"x; pnpm.cmd test\"")); // \$ is a plain $, so 'a\' is a plain '…' and closes
+  assert.equal(evaluate(bash("cat <<< 'x'\npnpm.cmd test"), AFTER).block, true); // a here-string word, not a heredoc
+});
+
 test("a line continuation joins one command: the push behind it still goes to main (BL-964)", () => {
   const work = cloneRepo("repo-964");
   git(work, "checkout", "-q", "-b", "feature"); // HEAD is not main, so only the refspec says main
