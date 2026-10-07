@@ -611,7 +611,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       const name = detail.data?.locations.find(
         (location) => location.id === locationId,
       )?.name;
-      await refreshRecord();
+      await Promise.all([
+        refreshRecord(),
+        // Their shifts there from now on were left open (BL-785).
+        refreshExchangeSurfaces(queryClient, workspaceId),
+      ]);
       // Off the one location the reader reached them through, the record is
       // no longer theirs to read: the drawer closes and says what happened.
       if (
@@ -3581,6 +3585,8 @@ export function PendingPreferredNameRow({
         queryKey: ["preferred-names-pending", workspaceId],
       });
       await cache.invalidateQueries({ queryKey: ["employee-detail"] });
+      // The list shows the name they now go by (BL-785).
+      await cache.invalidateQueries({ queryKey: ["employees", workspaceId] });
     },
     // Someone may have answered it already; show the current list.
     onError: () =>

@@ -2730,6 +2730,17 @@ describe("EmployeeDrawer after a removal from a location", () => {
     expect(toast.success).toHaveBeenCalledWith("Removed from Main Dining");
   });
 
+  // BL-785: their shifts there from now on were left open; Schedule reads again.
+  it("refreshes Schedule after a removal from a location", async () => {
+    vi.mocked(removeEmployeeFromLocation).mockResolvedValue({ releasedShiftCount: 1, locationsLeft: 1 });
+    const { client } = renderDrawer("employment");
+    client.setQueryData(["schedule-read", workspaceId, "2026-09-01"], { shifts: [] });
+    await removeFromMainDining();
+    await waitFor(() =>
+      expect(client.getQueryState(["schedule-read", workspaceId, "2026-09-01"])?.isInvalidated).toBe(true),
+    );
+  });
+
   it("stays open and reads the record again when the person is still in reach", async () => {
     vi.mocked(removeEmployeeFromLocation).mockResolvedValue({ releasedShiftCount: 0, locationsLeft: 1 });
     const { onClose } = renderDrawer("employment");

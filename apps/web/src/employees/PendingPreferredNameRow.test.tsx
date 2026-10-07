@@ -98,6 +98,23 @@ describe("a preferred name waiting for an answer", () => {
     );
   });
 
+  // BL-785: the list shows the name it now goes by; it is read again.
+  it("reads the Employees list again after an answer", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    client.setQueryData(["employees", workspaceId, false, "", "all"], []);
+    render(
+      <QueryClientProvider client={client}>
+        <PendingPreferredNameRow workspaceId={workspaceId} employeeId={employeeId} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Use it" }));
+
+    await waitFor(() =>
+      expect(client.getQueryState(["employees", workspaceId, false, "", "all"])?.isInvalidated).toBe(true),
+    );
+  });
+
   // BL-278 (8): a refused answer used to vanish; the manager thought it saved.
   it("says so when the answer does not go through", async () => {
     vi.mocked(decidePreferredName).mockRejectedValue(new Error("This request was already answered."));
