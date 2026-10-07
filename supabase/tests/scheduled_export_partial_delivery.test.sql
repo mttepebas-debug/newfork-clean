@@ -1,12 +1,15 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
 -- EKRAN-01 BE-2b (KK-166, KARARLAR Schedule "Haftalık e-postada kısmi teslim
 -- kuralı kapatmaz"): the weekly export email goes to 10 people; Ali's address
 -- is wrong. The week shows as not delivered to Ali, but the 9 who got it keep
 -- getting it: only a send that reached nobody counts toward the three that
 -- switch the rule off, and a send that reached anybody starts that count over.
+-- BL-795: the three are three weeks. The cron tries every five minutes through
+-- the send hour, so the email service being down for 15 minutes is one failed
+-- week, not three.
 
 select tests.world('pd');
 -- ponytail: stored as it is; there is no builder helper for scheduled exports.
@@ -24,6 +27,14 @@ create function pg_temp.partial() returns void language sql as $$
 $$;
 create function pg_temp.failed() returns void language sql as $$
   select public.record_schedule_export_schedule_failure_service(tests.id('pd'), tests.id('pd:rule'), 'Not delivered to any recipient');
+$$;
+-- ponytail: now() is fixed inside the transaction; a week passes by moving the
+-- last failure back.
+create function pg_temp.a_week_later() returns void language plpgsql as $$
+begin
+  update public.scheduled_schedule_exports set last_failed_at = last_failed_at - interval '7 days'
+  where id = tests.id('pd:rule');
+end
 $$;
 create function pg_temp.rule() returns public.scheduled_schedule_exports language sql as $$
   select s from public.scheduled_schedule_exports s where s.id = tests.id('pd:rule')
@@ -44,10 +55,18 @@ select pg_temp.failed();
 select pg_temp.partial();
 select is((pg_temp.rule()).consecutive_failures, 0, 'a send that reached anybody starts the count over');
 
+-- BL-795: down for 15 minutes, tried three times in the same hour.
 select pg_temp.failed();
 select pg_temp.failed();
 select pg_temp.failed();
-select is((pg_temp.rule()).consecutive_failures, 3, 'three sends that reached nobody');
+select is((pg_temp.rule()).consecutive_failures, 1, 'three tries in the same send hour are one failed week');
+select ok((pg_temp.rule()).enabled, 'and the rule stays on');
+
+select pg_temp.a_week_later();
+select pg_temp.failed();
+select pg_temp.a_week_later();
+select pg_temp.failed();
+select is((pg_temp.rule()).consecutive_failures, 3, 'three weeks that reached nobody');
 select ok(not (pg_temp.rule()).enabled, 'switch the rule off');
 
 select public.record_schedule_export_schedule_success_service(tests.id('pd'), tests.id('pd:rule'), now(), 'pdf', '{}'::jsonb);

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 441, last: 20261008002000_shift_edit_keeps_break_and_hidden_time.sql
--- fingerprint: sha256:bdbdb784721c218d83ae62e1531e6e755df6e7055967511c071095f9b22f9be9
+-- migrations: 442, last: 20261008002100_a_failed_send_hour_counts_once.sql
+-- fingerprint: sha256:ca5486b24eac5e19d4bd5cd75851d0620eec7c1f01d0695e4342b08d7a233620
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17963,27 +17963,40 @@ CREATE OR REPLACE FUNCTION "public"."record_schedule_export_schedule_failure_ser
     SET "search_path" TO ''
     AS $$
 declare
+  failures integer;
   updated public.scheduled_schedule_exports%rowtype;
 begin
+  select case
+           when s.consecutive_failures > 0 and s.last_failed_at > now() - interval '20 hours'
+             then s.consecutive_failures
+           else s.consecutive_failures + 1
+         end
+    into failures
+    from public.scheduled_schedule_exports s
+   where s.id = target_schedule_id
+     and s.workspace_id = target_workspace_id
+   for update;
+
+  if not found then
+    raise exception 'scheduled export not found' using errcode='P0002';
+  end if;
+
   update public.scheduled_schedule_exports
-     set consecutive_failures = consecutive_failures + 1,
+     set consecutive_failures = failures,
+         last_failed_at = now(),
          last_error = left(coalesce(nullif(btrim(target_error), ''), 'Scheduled export failed'), 500),
          enabled = case
-           when consecutive_failures + 1 >= auto_disable_after then false
+           when failures >= auto_disable_after then false
            else enabled
          end,
          auto_disabled_at = case
-           when consecutive_failures + 1 >= auto_disable_after then now()
+           when failures >= auto_disable_after then now()
            else auto_disabled_at
          end,
          updated_at = now()
    where id = target_schedule_id
      and workspace_id = target_workspace_id
    returning * into updated;
-
-  if not found then
-    raise exception 'scheduled export not found' using errcode='P0002';
-  end if;
 
   return public.schedule_export_schedule_json(
     updated,
@@ -22748,6 +22761,7 @@ CREATE TABLE IF NOT EXISTS "public"."scheduled_schedule_exports" (
     "updated_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "last_failed_at" timestamp with time zone,
     CONSTRAINT "scheduled_schedule_exports_day_check" CHECK ((("day_of_week" >= 0) AND ("day_of_week" <= 6))),
     CONSTRAINT "scheduled_schedule_exports_failures_check" CHECK (("consecutive_failures" >= 0)),
     CONSTRAINT "scheduled_schedule_exports_hour_check" CHECK ((("send_hour" >= 0) AND ("send_hour" <= 23))),
