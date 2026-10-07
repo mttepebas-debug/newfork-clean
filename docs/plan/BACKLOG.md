@@ -2162,6 +2162,8 @@ Kaynak `ekranlar/16-giris-katilim/` (main `ca4326f6`); metni EKRAN-16 oturumu ha
 - **BL-970 (leave: medium / do: risky) Çalışan e-postası benzersiz değil (EKRAN-03 #22).** DB unique index + çift kayıt temizliği + okuma ucu gerekiyor; veri maddesi. Neden bekliyor: canlı veri temizliği Mert onayı ister; Employees veri dilimleriyle (EKRAN-02 paketinden sonra). Bulan: EKRAN-03, 2026-10-07.
 - **BL-971 (leave: low / do: safe) Employees çekmecesinde alan hata satırı kırmızı yerine gri.** `styles.css` `.employee-field small` (0,1,1) `.employee-field-error`'ı (0,1,0) eziyor; zorunlu alan hatası dahil. Neden bekliyor: `styles.css` EKRAN-02 görünüm diliminden sonra açılıyor. Bulan: EKRAN-03, 2026-10-07.
 
+- **BL-972 (leave: low / do: safe) Liste süzgeç genişliği kayıtla kod arasında farklı.** KARARLAR:302 "en az 200 (Requirement, Category) ya da 180 (Location, Document type)" diyor; ortak CSS `.list-page.list-page .catalog-toolbar-filter-row .toolbar-filter-select` bugün herkese 200 (Employees Location da 200). Ortak değer (§4.7): hangisinin kalacağı Settings turunda Mert'e ekranlarıyla sorulur; simetri tercihi tek ölçüyü destekler. Bulan: EKRAN-10-JOBS, 2026-10-07.
+
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
   - **Kapandı 2026-10-07 (`a57f2a4c`, main CI 37612833201 yeşil).** Kanca yalnız gerçek ayırıcılarda bölüyor (tırnak, heredoc, here-string, `#` yorumu metin; satır devamı tek komut; `bash -c` / `pwsh -Command` / `cmd /c` içi okunur). Ek: `git push \⏎ origin HEAD:main` artık main kilidini soruyor. Not: kanca oturumun başladığı klasörden yüklenir; eski klasörden açılmış oturum yeni bölmeyi o klasör main'i alana kadar görmez.
