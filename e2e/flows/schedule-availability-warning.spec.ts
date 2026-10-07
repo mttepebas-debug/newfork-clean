@@ -161,7 +161,9 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
     await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
     await expect(dialog.getByText("Ready to publish", { exact: true })).toBeVisible();
     await expect(dialog.getByText("1 person is scheduled while unavailable", { exact: true })).toBeVisible();
-    await expect(dialog.getByText("No blockers · one thing to glance at", { exact: true })).toBeVisible();
+    // BL-441: said once, at the top; the footer repeats no count.
+    await expect(dialog.getByText("No blockers. One thing to glance at below.", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("No blockers · one thing to glance at", { exact: true })).toHaveCount(0);
     await expect(dialog.getByRole("checkbox")).toHaveCount(0);
     await expect(dialog.getByText(/Previously accepted|Acknowledged by/)).toHaveCount(0);
     const next = dialog.getByRole("button", { name: "Next", exact: true });

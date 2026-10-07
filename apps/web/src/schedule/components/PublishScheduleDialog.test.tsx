@@ -170,14 +170,14 @@ describe("PublishScheduleDialog", () => {
     const diff = review.querySelector(".schedule-publication-diff");
     expect(panel && diff && panel.compareDocumentPosition(diff) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // One summary of the findings in the body, not the dialog's and the panel's both.
-    expect(within(review).getAllByText("1 risk")).toHaveLength(1);
+    expect(within(review).getAllByText("1 shift to review before you publish.")).toHaveLength(1);
   });
 
-  // BL-311: the footer counted "1 blockers · 1 risks".
+  // BL-311, BL-441 (KARARLAR:524): the count is said once, at the top, in plain words; the footer repeats nothing.
   it.each([
-    [1, "1 blocker · 1 risk"],
-    [2, "2 blockers · 2 risks"],
-  ])("counts %i blocker and risk in the footer in the right number", async (count, summary) => {
+    [1, "1 shift needs a fix before you can publish. 1 more to review."],
+    [2, "2 shifts need a fix before you can publish. 2 more to review."],
+  ])("counts %i fix and review once, at the top, in the right number", async (count, summary) => {
     const findings = Array.from({ length: count }, (_unused, index) => [
       publishFinding({ id: `blocker-finding-000${index}`, code: "double_booking", shift_ids: [`aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa${index}`] }),
       publishFinding({ id: `risk-finding-000${index}`, code: "double_booking", tier: "risk", shift_ids: [`bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb${index}`] }),
@@ -186,7 +186,8 @@ describe("PublishScheduleDialog", () => {
 
     await clickReadyNext();
     await screen.findByTestId("schedule-publish-preview");
-    expect(document.querySelector(".schedule-publication-footer-summary")?.textContent).toBe(summary);
+    expect(screen.getByText(summary)).toBeTruthy();
+    expect(document.querySelector(".schedule-publication-footer-summary")?.textContent).toBe("");
   });
 
   it("names each draft without its revision number (BL-038 K5)", () => {
@@ -381,9 +382,9 @@ describe("PublishScheduleDialog", () => {
     expect(screen.getByText("Ready to publish")).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: "I've seen this warning and want to publish anyway" })).toBeNull();
     expect(screen.queryByText(/Acknowledged by/)).toBeNull();
-    // The footer agrees with the line above it: no blockers, one thing to glance at.
-    expect(screen.queryByText("No blockers or risks")).toBeNull();
-    expect(screen.getByText("No blockers · one thing to glance at")).toBeTruthy();
+    // The line above says it; the footer repeats nothing (BL-441).
+    expect(screen.getByText("No blockers. One thing to glance at below.")).toBeTruthy();
+    expect(document.querySelector(".schedule-publication-footer-summary")?.textContent).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(await screen.findByRole("button", { name: "Publish 1 location" }));
     await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
@@ -515,7 +516,7 @@ describe("PublishScheduleDialog", () => {
       screen.getByRole("dialog", { name: "Pre-flight check" }),
     ).toBeTruthy();
     expect(screen.getByTestId("schedule-publish-preview")).toBeTruthy();
-    expect(screen.getByText("No blockers or risks")).toBeTruthy();
+    expect(document.querySelector(".schedule-publication-footer-summary")?.textContent).toBe("");
     expect(
       screen.queryByRole("textbox", { name: "Search employees" }),
     ).toBeNull();
