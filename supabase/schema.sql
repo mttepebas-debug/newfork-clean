@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 438, last: 20261007230000_catalog_rows_stay_in_their_workspace.sql
--- fingerprint: sha256:7266a6e0ca8ad79c093e02e78a2b3a1db7527150c9973e3e056a27d1d3667c4b
+-- migrations: 439, last: 20261007235000_today_on_the_dashboard_is_each_locations_own_day.sql
+-- fingerprint: sha256:842555ce81c1f8ffe018ef4e3c898c73e8059fd0489f699ecc88c305e814ac37
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12109,11 +12109,40 @@ begin
     'workspace_id', target_workspace_id,
     'display_name', coalesce(profile.display_name, 'Manager'),
     'metrics', jsonb_build_object(
-      'today_shift_count', (select count(*) from public.schedule_published_shifts shift join public.schedule_location_publications publication on publication.id = shift.publication_id and publication.status = 'current' where shift.workspace_id = target_workspace_id and shift.scheduled_date = current_date and shift.location_id = any(schedule_places)),
-      'today_open_shift_count', (select count(*) from public.schedule_published_shifts shift join public.schedule_location_publications publication on publication.id = shift.publication_id and publication.status = 'current' where shift.workspace_id = target_workspace_id and shift.scheduled_date = current_date and shift.employee_id is null and shift.location_id = any(schedule_places)),
+      'today_shift_count', (
+        select count(*)
+        from public.schedule_published_shifts shift
+        join public.schedule_location_publications publication
+          on publication.id = shift.publication_id and publication.status = 'current'
+        join public.locations location on location.id = shift.location_id
+        where shift.workspace_id = target_workspace_id
+          -- Every zone's date is within a day of UTC's: keeps the date index range.
+          and shift.scheduled_date between (now() at time zone 'UTC')::date - 1 and (now() at time zone 'UTC')::date + 1
+          and shift.location_id = any(schedule_places)
+          and shift.scheduled_date = (now() at time zone location.timezone)::date
+      ),
+      'today_open_shift_count', (
+        select count(*)
+        from public.schedule_published_shifts shift
+        join public.schedule_location_publications publication
+          on publication.id = shift.publication_id and publication.status = 'current'
+        join public.locations location on location.id = shift.location_id
+        where shift.workspace_id = target_workspace_id
+          -- Every zone's date is within a day of UTC's: keeps the date index range.
+          and shift.scheduled_date between (now() at time zone 'UTC')::date - 1 and (now() at time zone 'UTC')::date + 1
+          and shift.location_id = any(schedule_places)
+          and shift.employee_id is null
+          and shift.scheduled_date = (now() at time zone location.timezone)::date
+      ),
       'pending_time_off_count', (select count(*) from public.schedule_time_off_requests request where request.workspace_id = target_workspace_id and request.status = 'pending'
         and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', request.employee_id) is null),
       'unread_notification_count', (select count(*) from public.notifications notification where notification.workspace_id = target_workspace_id and notification.recipient_user_id = actor_user_id and notification.dismissed_at is null and notification.read_at is null and notification.created_at <= now())
+    ),
+    'today_ends_at', (
+      select min(((now() at time zone location.timezone)::date + 1)::timestamp at time zone location.timezone)
+      from public.locations location
+      where location.workspace_id = target_workspace_id
+        and location.id = any(schedule_places)
     ),
     'announcements', coalesce((select jsonb_agg(item.value) from (select value from jsonb_array_elements((public.get_announcements_service(actor_user_id, target_workspace_id)->'announcements')) value where value->>'status' in ('published', 'scheduled') and (value->>'publish_at')::timestamptz <= now() limit 5) item), '[]'::jsonb),
     'notifications', coalesce(public.get_notifications_service(actor_user_id, target_workspace_id, null, false, null, 5)->'notifications', '[]'::jsonb),
