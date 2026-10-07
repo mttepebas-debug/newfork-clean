@@ -15,7 +15,11 @@
 // `write` never touches the shared local stack (project newfork-clean, ports
 // 553xx): it copies supabase/ to a temp folder, renames the project and moves
 // its ports to 595xx (the idea of scripts/ci-supabase-apart.sh; CI uses
-// 590xx-592xx), and starts or stops nothing unless both changes took.
+// 590xx-592xx), and starts or stops nothing unless both changes took. The name
+// is new on every run: `db start` answers "already running" with success, so a
+// shared name let a second run dump the first one's half-built database and
+// stop it (measured 2026-10-07). Two runs at once now collide on the ports and
+// the second fails alone.
 import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -52,6 +56,7 @@ export function render(dump, fp) {
     "-- schemas after every migration in supabase/migrations runs on an empty database.",
     "-- Nothing applies this file: change the schema with a new migration, then run",
     `-- ${REGENERATE} and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.`,
+    "-- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.",
     `-- migrations: ${fp.count}, last: ${fp.last}`,
     `-- fingerprint: sha256:${fp.hash}`,
   ];
@@ -63,28 +68,29 @@ export function headerHash(text) {
 }
 
 // Retargets a copy of supabase/config.toml; throws unless both changes took.
-export function apartConfig(toml) {
+export function apartConfig(toml, project) {
+  if (!project.startsWith(`${SNAP_PROJECT}-`)) throw new Error(`not a throwaway project: ${project}`);
   const out = noCr(toml)
-    .replace(/^project_id = .*$/m, `project_id = "${SNAP_PROJECT}"`)
+    .replace(/^project_id = .*$/m, `project_id = "${project}"`)
     .replace(/^((?:shadow_)?port) = 553(\d\d)$/gm, `$1 = ${SNAP_PORT_PREFIX}$2`);
-  if (!out.includes(`project_id = "${SNAP_PROJECT}"`) || /^(shadow_)?port = 553/m.test(out)) {
+  if (!out.includes(`project_id = "${project}"`) || /^(shadow_)?port = 553/m.test(out)) {
     throw new Error("could not move the throwaway project away from newfork-clean / 553xx");
   }
   return out;
 }
 
-function supabase(args) {
+function supabase(args, quiet = false) {
   // ponytail: shell on Windows only, where `supabase` is an npm .cmd shim.
   const win = process.platform === "win32";
   const argv = win ? args.map((a) => (/\s/.test(a) ? `"${a}"` : a)) : args;
-  return spawnSync("supabase", argv, { stdio: "inherit", shell: win }).status === 0;
+  return spawnSync("supabase", argv, { stdio: quiet ? "pipe" : "inherit", shell: win, encoding: "utf8" });
 }
 
 function dump(workdir) {
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "nf-schema-dump-")), "dump.sql");
   const args = ["db", "dump", "--local", "-s", "public,app_private", "-f", out];
   if (workdir) args.push("--workdir", workdir);
-  if (!supabase(args)) throw new Error("supabase db dump failed");
+  if (supabase(args).status !== 0) throw new Error("supabase db dump failed");
   const text = fs.readFileSync(out, "utf8");
   fs.rmSync(path.dirname(out), { recursive: true, force: true });
   return text;
@@ -100,21 +106,35 @@ function write() {
   for (const p of ["migrations", "seed.sql", "test-support"]) {
     fs.cpSync(path.join(ROOT, "supabase", p), path.join(sb, p), { recursive: true });
   }
+  const project = `${SNAP_PROJECT}-${process.pid}`;
   fs.writeFileSync(
     path.join(sb, "config.toml"),
-    apartConfig(fs.readFileSync(path.join(ROOT, "supabase", "config.toml"), "utf8")),
+    apartConfig(fs.readFileSync(path.join(ROOT, "supabase", "config.toml"), "utf8"), project),
   );
+  // CI pins the CLI; another version may dump differently and CI would disagree.
+  const pinned = /setup-cli@v1\s+with:\s+version:\s*([\d.]+)/.exec(
+    fs.readFileSync(path.join(ROOT, ".github", "workflows", "ci.yml"), "utf8"),
+  )?.[1];
+  const cli = supabase(["--version"], true).stdout?.trim();
+  if (pinned && cli !== pinned) console.warn(`warning: supabase CLI ${cli} here, CI pins ${pinned}`);
   const fp = fingerprint();
   try {
-    if (!supabase(["db", "start", "--workdir", work])) throw new Error("supabase db start failed");
+    if (supabase(["db", "start", "--workdir", work]).status !== 0) {
+      throw new Error(
+        `supabase db start failed; ports ${SNAP_PORT_PREFIX}xx busy? Another db:schema may be running ` +
+          `(or a killed one's containers: docker ps --filter name=${SNAP_PROJECT})`,
+      );
+    }
     fs.writeFileSync(SNAPSHOT, render(dump(work), fp));
     console.log(`wrote supabase/schema.sql (${fp.count} migrations, last ${fp.last})`);
   } finally {
     // BL-143: Docker's network prune lock is per daemon; a CI job stopping at
     // the same moment makes `stop` fail once. A retry is a no-op once stopped.
-    for (let i = 1; i <= 3 && !supabase(["stop", "--no-backup", "--workdir", work]); i++) {
+    let stopped = false;
+    for (let i = 1; i <= 3 && !(stopped = supabase(["stop", "--no-backup", "--workdir", work]).status === 0); i++) {
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, i * 5000);
     }
+    if (!stopped) console.warn(`warning: ${project} is still running: supabase stop --project-id ${project} --no-backup`);
     fs.rmSync(work, { recursive: true, force: true });
   }
 }

@@ -74,3 +74,39 @@ portlar değiştiyse başlatır ve durdurur (test bunu kilitliyor).
 Reviewer: `nf-guvenlik` (R2, tek göz).
 
 ## Notes / Result
+- 2026-10-07 (Mert'in tekil oturumu): Done when kanıtları.
+  1. Dal CI'ı 37577836799 (`9f392cd5`), `db` işi: "supabase/schema.sql matches the migrations".
+     Windows'ta üretilen dosya Linux CI'ın taze dökümüyle birebir aynı. check ve db yeşil.
+  2. İki ayrı geçici veritabanı (48 sn ve 40 sn): gövdeler `cmp` ile birebir aynı.
+  3. Uyarı yolu yerelde gösterildi:
+     - Ortak yerel DB'ye karşı `check` → "matches". Ortak DB'nin `public` / `app_private`
+       şeması main'deki migration'larla aynı.
+     - Sahte migration → `check-fast` uyarı verdi, çıkış 0; `STRICT` iken çıkış 1.
+     - Elle değiştirilmiş satır → `check` "first difference at line 20000" yazdı; `STRICT` iken
+       çıkış 1.
+  4. `pnpm.cmd db:schema` ~40-48 sn. README, CLAUDE.md §2 ve `nf-db` rol dosyası birer satır
+     aldı (Mert onayı 2026-10-07, bu oturumda, tıklamalı soru).
+  5. CI `db` işi: setup-node 1 sn + kontrol adımı 2 sn.
+- İnceleme: `nf-guvenlik` ONAY @`9f392cd5` (R2). Üç düşük bulgu vardı, üçü de kapatıldı:
+  - Aynı anda iki `db:schema`: inceleme "birbirini kapatır, yanlış dosya yazılmaz" dedi. Deneme
+    daha kötüsünü gösterdi:
+    - `db start` "Postgres database is already running." deyip başarı döndü.
+    - İkinci üretim, birincinin yarısı kurulmuş veritabanını döküp `schema.sql`'e yazdı ve onu
+      kapattı.
+    - Parmak izi doğru olduğu için `check-fast` bunu göremez; yalnız CI karşılaştırması yakalardı.
+
+    İlk düzeltme denemesi (`supabase status` ile önce bakmak) tutmadı: yalnız veritabanı açık
+    olan projeyi "çalışmıyor" sayıyor. Kalıcı düzeltme: her üretim kendi proje adını kullanıyor
+    (`newfork-schema-snap-<pid>`). Yeni denemede ikincisi "port is already allocated" ile durdu ve
+    hiçbir şey yazmadı. Birincinin dosyası doğru dökümle birebir aynı çıktı; geride konteyner
+    kalmadı.
+  - Durdurma üç kez başarısız olursa sessiz kalıyordu: artık uyarı ve kurtarma komutu yazıyor.
+  - Yerel CLI sürümü CI'daki sabit sürümden (2.109.0) farklıysa uyarıyor.
+  - Öneri de uygulandı: başlıkta CR notu.
+- Kapı: dal CI'ı `9f392cd5` için tam yeşil (check, db, e2e, db-budget). Sonraki commit'ler yalnız
+  betiği, testini, başlık satırını ve belgeleri değiştirdi. Bunları kapsayan kontroller yerelde
+  yeşil: `pnpm.cmd lint` ve kök betik testleri 46/46. typecheck, build ve web testleri bu
+  dosyaları kapsamıyor, o yüzden yeniden koşulmadı (CLAUDE.md §11.5). main CI tam kapıyı yeniden
+  koşar.
+- Yolda görülen: dal CI'ının `db` işi `actions-runner-3` üzerinde koştu. KK-176 2 ve 3 numaralı
+  koşucuları durdurmuştu; koordinatöre bildirildi.

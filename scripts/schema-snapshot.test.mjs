@@ -14,16 +14,17 @@ const config = (root) => fs.readFileSync(path.join(root, "supabase", "config.tom
 const repo = path.resolve(import.meta.dirname, "..");
 
 test("the throwaway project leaves newfork-clean and every 553xx port", () => {
-  const out = apartConfig(config(repo));
-  assert.match(out, /^project_id = "newfork-schema-snap"$/m);
+  const out = apartConfig(config(repo), "newfork-schema-snap-42");
+  assert.match(out, /^project_id = "newfork-schema-snap-42"$/m);
   assert.doesNotMatch(out, /newfork-clean/);
   assert.doesNotMatch(out, /^(shadow_)?port = 553/m);
   assert.match(out, /^port = 59522$/m);
 });
 
-test("a config it cannot retarget is refused, never started", () => {
-  assert.throws(() => apartConfig("[db]\nport = 55322\n"));
-  assert.throws(() => apartConfig('project_id = "newfork-clean"\n[db]\nport = 55322 # db\n'));
+test("a config or a name it cannot retarget is refused, never started", () => {
+  assert.throws(() => apartConfig("[db]\nport = 55322\n", "newfork-schema-snap-42"));
+  assert.throws(() => apartConfig('project_id = "newfork-clean"\n[db]\nport = 55322 # db\n', "newfork-schema-snap-42"));
+  assert.throws(() => apartConfig(config(repo), "newfork-clean"));
 });
 
 test("the fingerprint follows names and content, not line endings", () => {

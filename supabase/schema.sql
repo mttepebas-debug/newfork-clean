@@ -2,6 +2,7 @@
 -- schemas after every migration in supabase/migrations runs on an empty database.
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
+-- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 437, last: 20261007130000_restoring_a_swap_is_not_an_undo_step.sql
 -- fingerprint: sha256:d1197f9953eb00e06865cfca87d2221e8f8d0eb37e02026803390cc996ccc7e6
 
