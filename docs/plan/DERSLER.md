@@ -750,3 +750,8 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Ne oldu:** Requests tek tablonun masaüstü hâli hazırdı, telefonda tablo yana taşıyordu ve bir sekme ekran dışındaydı. "Gönder, telefon sıradaki iş (Önerilen)" dedim (dayanak P01, P15). Mert "Önce telefon düzelsin"i seçti.
 - **Maliyeti:** bir soru turu; önerinin tutmaması (kabul oranı).
 - **Alışkanlık:** Mert'in gördüğü bir ekran değişikliği yarım (bir cihazda bozuk) gitmez; §2.C "işin çekirdeğinde tam çözüm > ucuz kestirme" hız ilkelerinden önce gelir. Önce/sonra görüntüsünü göndermeden telefon görüntüsüne de bak; bozuksa soruyu sormadan düzelttir, sonra götür.
+
+## 2026-10-07 gece — Newfork koordinatör: canlı migration iznini kural dosyasının bir maddesine bakıp verdim, öbür maddeyi okumadım
+- **Ne oldu:** gece modunda dört oturuma "canlı migration için gönder bende, gece de geçerli" dedim (§5.1). §5.3 canlı (hosted) işlem için Mert'in "evet"inin işi yapan oturumun penceresine yazılmasını istiyor; ACIL-40001 oturumu fark etti ve gece canlıya dokunmadı.
+- **Maliyeti:** dört oturuma düzeltme mesajı; canlı işlemler sabaha kaldı. Oturum fark etmeseydi kural ihlaliyle canlıya değişiklik çıkacaktı.
+- **Alışkanlık:** bir yetkiyi kullanmadan önce kural dosyasında o yetkiyi sınırlayan başka bir madde var mı ara (`grep -n "canlı"`); iki madde çelişiyorsa katı olanla yürü ve Mert'e sor.

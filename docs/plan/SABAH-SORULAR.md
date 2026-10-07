@@ -37,6 +37,11 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 ### G9. Bildirim merkezi ve ayar sayfası: varyant seçimi (BILDIRIM)
 - https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv — merkez A/B/C, ayar A/B/C.
 
+### G10. Canlı veritabanı izni kimde? (kural çelişkisi, CLAUDE.md §5.1 ↔ §5.3)
+- **Bugün:** §5.1 koordinatöre "'gönder' iznini vermek, canlı migration dahil" sürekli yetkisini veriyor; §5.3 "canlı (hosted) işlem için Mert'in 'evet'i işi yapan oturumun kendi penceresine yazılır" diyor. Gece ikisi çelişti; katı okumayla bütün canlı işlemler sabaha kaldı (KK-214): ACIL-40001, Schedule paket 1, GA-1 canlısı, BL-804.
+- **Örnek:** Schedule oturumu 13 maddeyi hazırladı; biri yeni sütun ekliyor, önce canlıya gitmeli. Gece koordinatör izin veremediği için sabah sen o oturumun penceresine "evet" yazmadan hiçbiri yayına çıkmıyor.
+- **Seçenekler:** (a) koordinatörün "gönder"i canlı migration'ı da kapsar, §5.1'deki koşullarla (yedek, doğrulama, `get_advisors`); §5.3 yalnız geri alınamaz silme, `db reset`, ücretli işlem ve kalıcı kurulum için. **(Önerilen)** Zayıf yanı: gece canlıya senin görmediğin değişiklik çıkar. Dayanak: §5.1 sürekli yetkiler + ILKELER P15 (kodda hız), P01 (canlı müşteri yok). (b) Bugünkü katı okuma: her canlı işlem için senin o pencerede "evet"in. Zayıf yanı: gece yayına hiçbir veritabanı değişikliği çıkmaz, sabah 4–5 pencereye tek tek "evet".
+
 ---
 
 ## Tur 1 — hat durduranlar
