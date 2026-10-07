@@ -92,13 +92,13 @@ const transcript = (name, firstText) => {
   fs.writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
   return file;
 };
-const roleTranscript = transcript("role", "Rol: nf-backend (araç/otomasyon). Repo: C:\\x");
+const workerTranscript = transcript("worker", "Görev: OTOMASYON-3\nKapsam: ağır koşu kilidi");
 const mertTranscript = transcript("mert", "Schedule ekranındaki boşluğu düzelt.\nRol: değil, soru");
 const edit = (file, extra = {}) => ({
   tool_name: "Edit",
   session_id: "s-role",
   cwd: repo,
-  transcript_path: roleTranscript,
+  transcript_path: workerTranscript,
   tool_input: { file_path: file, old_string: "a", new_string: "b" },
   ...extra,
 });
@@ -398,7 +398,7 @@ test("a docs-only push starts no CI and a push with my own heavy.lock is quiet",
 
 // ---- OTOMASYON-3: record files (CLAUDE.md §4.8) ----------------------------------------------
 
-test("records: a role session editing a record file gets a warning, then a refusal", () => {
+test("records: a worker session editing a record file gets a warning, then a refusal", () => {
   const file = path.join(repo, "docs", "plan", "BACKLOG.md");
   const w = evaluate(edit(file), BEFORE);
   assert.equal(w.block, false);
@@ -410,12 +410,12 @@ test("records: a role session editing a record file gets a warning, then a refus
   assert.equal(auditLines().at(-1).event, "records-block");
 });
 
-test("records: a role session's own task file, the coordinator and Mert's session write freely", async () => {
+test("records: a worker's own task file, the coordinator and Mert's session write freely", async () => {
   assert.equal(evaluate(edit(path.join(repo, "docs/plan/tasks/X.md")), AFTER).block, false);
   assert.equal(evaluate(edit(path.join(repo, "docs/plan/research/BACKLOG.md")), AFTER).block, false);
   await inbox.runHook("pre", bash("node scripts/inbox.mjs claim", { session_id: "s-coord" }));
   assert.equal(evaluate(edit(path.join(repo, "docs/plan/HANDOFF.md"), { session_id: "s-coord" }), AFTER).block, false);
-  const mert = evaluate(edit(path.join(repo, "docs/plan/DONE.md"), { session_id: "s-mert", transcript_path: mertTranscript }), AFTER);
+  const mert = evaluate(edit(path.join(repo, "docs/plan/SABAH-SORULAR.md"), { session_id: "s-mert", transcript_path: mertTranscript }), AFTER);
   assert.equal(mert.block, false);
   assert.equal(mert.warn ?? null, null);
   assert.deepEqual(
@@ -424,35 +424,46 @@ test("records: a role session's own task file, the coordinator and Mert's sessio
   );
 });
 
-test("records: the session title the coordinator sets decides; a quoted title in Mert's words does not", () => {
+test("records: a worker is a session whose first message starts with Görev: (KK-188), Rol: until 2026-10-14", () => {
   const user = (content, extra = {}) => ({ type: "user", message: { role: "user", content }, ...extra });
-  const title = (customTitle) => ({ type: "custom-title", customTitle, sessionId: "x" });
   const write = (name, lines) => {
     const file = path.join(root, `${name}.jsonl`);
     fs.writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
     return file;
   };
-  const isRole = (lines, name) =>
-    evaluate(edit(path.join(repo, "docs/plan/BACKLOG.md"), { transcript_path: write(name, lines) }), BEFORE).warn !== null;
-  // a pool session handed a role: its title turns into "Rol: …" (CLAUDE.md §4.1)
-  const pool = [
-    title("Bekle: handoff raporu gelene kadar idle (8)"),
-    user("Idle kal. Sana bir handoff raporu gelene kadar hiçbir iş yapma."),
-    { type: "assistant", message: { content: [{ type: "text", text: "Rol: bekliyorum" }] } },
-    user('<cross-session-message from="local_x" name="Koordinatör">\nEKRAN-02 A4: başla\n</cross-session-message>'),
-    title("Rol: nf-db (Veritabanı ve Yetki)"),
+  const warned = (lines, name, now) =>
+    evaluate(edit(path.join(repo, "docs/plan/BACKLOG.md"), { transcript_path: write(name, lines) }), now).warn != null;
+  const refused = (lines, name) =>
+    evaluate(edit(path.join(repo, "docs/plan/BACKLOG.md"), { transcript_path: write(name, lines) }), AFTER).block;
+  // a cleared pool session gets its task as a message from the coordinator
+  const handed = [
+    user([{ type: "tool_result", tool_use_id: "t0", content: "Görev: araç çıktısı" }]),
+    user("Görev: x", { isMeta: true }),
+    user('<cross-session-message from="local_x" name="Koordinatör">\nGörev: EKRAN-02\nKapsam: …\n</cross-session-message>'),
   ];
-  assert.equal(isRole(pool, "pool"), true);
-  // retired: the latest title wins
-  assert.equal(isRole([...pool, title("(eski) Rol: nf-db (Veritabanı ve Yetki)")], "retired"), false);
-  // Mert's own session naming another session's title, a tool result and a meta message holding "Rol:"
+  assert.equal(refused(handed, "handed"), true);
+  // the old header still counts during the warning week only
+  const old = [user("Rol: nf-db (Veritabanı ve Yetki). EKRAN-02 A4")];
+  assert.equal(warned(old, "old-before", BEFORE), true);
+  assert.equal(refused(old, "old-after"), false);
+  // Mert's own session: only the first message counts, later ones may quote anything
   const mert = [
-    user("Rol: nf-planlama (Kayıt ve ilerleme) adında 2 session var, hangisi eski?"),
-    user([{ type: "tool_result", tool_use_id: "t2", content: "Rol: nf-backend (dosyadan okunan)." }]),
-    user("Rol: x (y).", { isMeta: true }),
-    title("Kayıt temizliği"),
+    user("Settings ekranını birlikte gezelim."),
+    user('<cross-session-message from="local_x" name="Koordinatör">\nGörev: bilgi notu\n</cross-session-message>'),
+    { type: "assistant", message: { content: [{ type: "text", text: "Görev: tamam" }] } },
   ];
-  assert.equal(isRole(mert, "mert-quotes"), false);
+  assert.equal(warned(mert, "mert-later", BEFORE), false);
+  // a prompt Mert pastes with a markdown heading is his own session, not a task message
+  assert.equal(warned([user("# Görev: katılım mimarisini planla\nTürkçe yanıt ver.")], "mert-heading", BEFORE), false);
+  assert.equal(refused([user("GÖREV: FB-6.4-tazelik")], "upper"), true);
+});
+
+test("records: DONE.md left the record list when it moved to docs/archive", () => {
+  for (const f of ["docs/plan/DONE.md", "docs/archive/DONE.md"]) {
+    const r = evaluate(edit(path.join(repo, f)), AFTER);
+    assert.equal(r.block, false, f);
+    assert.equal(r.warn ?? null, null, f);
+  }
 });
 
 test("records: an unreadable transcript lets the write through and logs it", () => {
@@ -461,7 +472,7 @@ test("records: an unreadable transcript lets the write through and logs it", () 
   assert.equal(auditLines().at(-1).event, "records-unknown");
 });
 
-test("records: records-allow lets one role session write, and both steps are logged", () => {
+test("records: records-allow lets one worker session write, and both steps are logged", () => {
   recordsAllow("s-role", "Mert bu oturumda istedi");
   assert.equal(evaluate(edit(path.join(repo, "docs/plan/DERSLER.md")), AFTER).block, false);
   const events = auditLines().map((e) => e.event);
@@ -470,18 +481,32 @@ test("records: records-allow lets one role session write, and both steps are log
   assert.equal(evaluate(edit(path.join(repo, "docs/plan/DERSLER.md"), { session_id: "s-role-2" }), AFTER).block, true);
 });
 
-test("records: a role session's git commit carrying a record file warns", () => {
+test("records: a worker session's git commit carrying a record file warns", () => {
   const work = cloneRepo("repo-records");
   fs.mkdirSync(path.join(work, "docs/plan"), { recursive: true });
   fs.writeFileSync(path.join(work, "docs/plan/BACKLOG.md"), "x");
   git(work, "add", "docs/plan/BACKLOG.md");
   const commit = (cmd, extra = {}) =>
-    evaluate(bash(cmd, { cwd: work, session_id: "s-role", transcript_path: roleTranscript, ...extra }), BEFORE);
+    evaluate(bash(cmd, { cwd: work, session_id: "s-role", transcript_path: workerTranscript, ...extra }), BEFORE);
   assert.match(commit('git commit -m "docs: x"').warn, /BACKLOG\.md/);
   assert.equal(commit('git commit -m "docs: x"', { session_id: "s-mert", transcript_path: mertTranscript }).warn ?? null, null);
   git(work, "reset", "-q");
-  assert.match(commit('git commit -m "x" -- docs/plan/DONE.md').warn, /DONE\.md/);
+  assert.match(commit('git commit -m "x" -- docs/plan/KARARLAR.md').warn, /KARARLAR\.md/);
   assert.equal(commit('git commit -m "x" -- docs/plan/tasks/X.md').warn ?? null, null);
+});
+
+test("`cd <worktree> && …` is followed: a card session starts in one folder and works in another", () => {
+  const work = cloneRepo("repo-cd");
+  fs.mkdirSync(path.join(work, "docs/plan"), { recursive: true });
+  fs.writeFileSync(path.join(work, "docs/plan/HANDOFF.md"), "x");
+  git(work, "add", "docs/plan/HANDOFF.md");
+  const inRepo = (cmd) => evaluate(bash(cmd, { session_id: "s-role", transcript_path: workerTranscript }), BEFORE);
+  assert.match(inRepo(`cd "${work}" && git commit -m "docs: x"`).warn, /HANDOFF\.md/);
+  assert.match(inRepo(`Set-Location '${work}'; git commit -m "docs: x"`).warn, /HANDOFF\.md/);
+  const code = cloneRepo("repo-cd-push");
+  commitFile(code, "apps/api/src/z.ts");
+  takeAs("s-other", "heavy", "nf-db/x, e2e");
+  assert.match(inRepo(`cd ${code.replaceAll("\\", "/")} && git push origin HEAD:task/z`).warn, /CI/);
 });
 
 test("guard CLI routes Edit to the record check and records-allow writes the session's pass", () => {

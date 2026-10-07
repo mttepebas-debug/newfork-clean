@@ -9,7 +9,7 @@
 //   session's heavy.lock. NF_OVERRIDE in front of the command passes and is logged.
 // - Deleting a branch or removing a worktree is allowed, but the tip is saved
 //   under refs/nf-backup/... first.
-// Edit/Write, and a role session's git commit: the record files of CLAUDE.md §4.8 are
+// Edit/Write, and a worker session's git commit: the record files of CLAUDE.md §4.8 are
 // written only by the coordinator and by Mert's own sessions. `guard.mjs records-allow`
 // is the logged way out for one session.
 // Heavy-run and record problems warn until ENFORCE_FROM and are refused after it (ILKELER P16).
@@ -89,6 +89,20 @@ export function chain(cmd) {
 }
 export const segments = (cmd) => chain(cmd).map((c) => c.seg);
 const words = (seg) => (seg.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map((w) => w.replace(/^["']|["']$/g, ""));
+
+// `cd <dir> && …` moves the rest of the command: the hook's cwd is only where the session started
+// (a session opened from a card starts in .claude/worktrees/<x> and works in ../newfork-wt/<id>).
+const CD = /^(cd|pushd|chdir|set-location|sl)$/i;
+export function folders(segs, cwd) {
+  let dir = cwd;
+  return segs.map((seg) => {
+    const w = words(seg);
+    const arg = CD.test(w[0] ?? "") ? w.slice(1).find((a) => !a.startsWith("-")) : null;
+    // Git Bash spells C:\x as /c/x
+    if (arg) dir = path.resolve(dir, process.platform === "win32" ? arg.replace(/^\/([a-z])(\/|$)/i, "$1:/") : arg);
+    return dir;
+  });
+}
 
 // BL-500: `node scripts/lock.mjs take main "…" && … && git push …` takes the lock only
 // when the command runs, after this hook. Joined by && alone, the guarded step runs only if
@@ -204,11 +218,11 @@ export function runStep(seg) {
 }
 
 const samePath = (a, b) => !!a && !!b && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
-function heavyLock(input) {
+function heavyLock(input, dir) {
   const l = lockStatus().find((x) => x.name === "heavy");
   if (l.free) return { free: true };
   // lock.mjs records CLAUDE_CODE_SESSION_ID, the same id the hook gets; a terminal has only cwd
-  const mine = l.session ? l.session === input.session_id : samePath(l.cwd, input.cwd ?? process.cwd());
+  const mine = l.session ? l.session === input.session_id : samePath(l.cwd, dir);
   const info = `${l.identity}, ${l.ageMinutes ?? "?"} dk${l.stale ? ", bayat: 2 saatten eski, koordinatöre sor" : ""}`;
   return { free: false, mine, info };
 }
@@ -231,7 +245,7 @@ export function ciState(cwd) {
   }
 }
 
-function heavyRun(input, links, i, base, flag) {
+function heavyRun(input, links, i, dir, base, flag) {
   const segs = links.map((l) => l.seg);
   const step = runStep(segs[i]);
   const reason = overrideReason(segs, i);
@@ -240,10 +254,10 @@ function heavyRun(input, links, i, base, flag) {
     return null;
   }
   const problems = [];
-  const lock = heavyLock(input);
+  const lock = heavyLock(input, dir);
   if (!lock.mine && !takesLockBefore(links, i, "heavy"))
     problems.push(lock.free ? "heavy.lock alınmamış" : `heavy.lock başka oturumda (${lock.info})`);
-  const ci = ciState(input.cwd ?? process.cwd());
+  const ci = ciState(dir);
   if (ci.state === "unknown") audit({ ...base, event: "heavy-ci-unknown", step });
   if (ci.state === "running")
     problems.push(`CI koşuyor${ci.runs.length ? ` (${ci.runs.map((r) => `${r.name} / ${r.headBranch}: ${r.status}`).join("; ")})` : ""}`);
@@ -253,8 +267,8 @@ function heavyRun(input, links, i, base, flag) {
   }
   const take =
     step === "e2e" || step === "test:db"
-      ? `önce db.lock, sonra heavy.lock: node scripts/lock.mjs take db "<rol/oturum>, <amaç>" && node scripts/lock.mjs take heavy "<rol/oturum>, <amaç>"`
-      : `node scripts/lock.mjs take heavy "<rol/oturum>, <amaç>"`;
+      ? `önce db.lock, sonra heavy.lock: node scripts/lock.mjs take db "<oturum/iş>, <amaç>" && node scripts/lock.mjs take heavy "<oturum/iş>, <amaç>"`
+      : `node scripts/lock.mjs take heavy "<oturum/iş>, <amaç>"`;
   return flag(
     "heavy",
     `ağır koşu (${step}): ${problems.join("; ")}. Aynı anda tek ağır koşu (CLAUDE.md §4.2). ` +
@@ -264,9 +278,9 @@ function heavyRun(input, links, i, base, flag) {
   );
 }
 
-function heavyPush(input, links, i, base, flag) {
+function heavyPush(input, links, i, dir, base, flag) {
   if (takesLockBefore(links, i, "heavy")) return null;
-  const lock = heavyLock(input);
+  const lock = heavyLock(input, dir);
   if (lock.free || lock.mine) return null;
   const reason = overrideReason(links.map((l) => l.seg), i);
   if (reason) {
@@ -283,7 +297,7 @@ function heavyPush(input, links, i, base, flag) {
 
 // ---- record files (CLAUDE.md §4.8: written by the coordinator and Mert's own sessions) ----
 
-const RECORDS = /(^|\/)docs\/plan\/(BACKLOG|KARARLAR|KOORDINATOR-KARARLARI|DONE|DERSLER|SABAH-SORULAR|HANDOFF|EKRAN-PLANI)\.md$/i;
+const RECORDS = /(^|\/)docs\/plan\/(BACKLOG|KARARLAR|KOORDINATOR-KARARLARI|DERSLER|SABAH-SORULAR|HANDOFF|EKRAN-PLANI)\.md$/i;
 export const isRecordFile = (f) => RECORDS.test(String(f ?? "").replaceAll("\\", "/"));
 const ALLOW = (sid) => path.join(INBOX_DIR, "records-allow", `${String(sid).replace(/[^\w-]/g, "_")}.json`);
 
@@ -296,38 +310,36 @@ const userText = (o) => {
     .replace(/<\/?[A-Za-z][\w-]*(\s[^>]*)?>/g, "");
 };
 
-const lineEnd = (text, at) => (text.indexOf("\n", at) < 0 ? text.length : text.indexOf("\n", at));
-const lineAt = (text, at) => text.slice(text.lastIndexOf("\n", at) + 1, lineEnd(text, at));
-// "Rol: nf-backend (araç/otomasyon)." -- the header itself, not a sentence that quotes a title.
-const HEADER = /^[*_#>\s]*Rol\s*:\s*[\w-]+\s*\([^)\n]*\)\s*([.,:;—–-]|$)/i;
-
-// CLAUDE.md §4.1: a role session is titled "Rol: <rol> (<uzmanlık>)" by the coordinator (the
-// transcript keeps every title as a custom-title line; the latest wins, "(eski) Rol: …" is retired),
-// or was opened from a task card whose first message starts with that header.
-// true = role session, false = not, null = no readable transcript.
-// ponytail: a worker with neither the title nor the header passes as Mert's session.
-export function roleSession(transcriptPath) {
-  let text;
+// KK-188: the coordinator's task message starts with "Görev: <İŞ-ID>", so a worker session is one
+// whose first real user message starts with it (a card, or the message a cleared pool session
+// gets). The old "Rol:" header counts during the warning week only. true = worker, false = not
+// (Mert's own session), null = no readable first message.
+// ponytail: a worker whose first message lacks the line passes as Mert's session.
+const HEAD_BYTES = 4 * 1024 * 1024; // the first user message sits after a few hook attachments
+export function workerSession(transcriptPath, now = Date.now()) {
+  let head;
   try {
-    text = fs.readFileSync(transcriptPath, "utf8"); // 75 MB, the largest seen: under 0.5 s
+    const fd = fs.openSync(transcriptPath, "r");
+    try {
+      const buf = Buffer.alloc(HEAD_BYTES);
+      head = buf.subarray(0, fs.readSync(fd, buf, 0, HEAD_BYTES, 0)).toString("utf8");
+    } finally {
+      fs.closeSync(fd);
+    }
   } catch {
     return null;
   }
-  const t = text.lastIndexOf('"type":"custom-title"');
-  if (t >= 0) {
-    try {
-      if (/^Rol\s*:/i.test(String(JSON.parse(lineAt(text, t)).customTitle ?? "").trim())) return true;
-    } catch {}
-  }
-  // the first real user message: tool results, meta and reminder-only lines carry no text
-  for (let at = text.indexOf('"type":"user"'); at >= 0; at = text.indexOf('"type":"user"', lineEnd(text, at))) {
+  // plain line start: "# Görev: …" is a prompt Mert pasted, not the coordinator's task message
+  const marker = now < ENFORCE_FROM ? /^(Görev|Rol)\s*:/i : /^Görev\s*:/i;
+  for (const line of head.split("\n")) {
+    if (!line.includes('"type":"user"')) continue;
     let first = "";
     try {
-      first = userText(JSON.parse(lineAt(text, at))).split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+      first = userText(JSON.parse(line)).split("\n").map((l) => l.trim()).find(Boolean) ?? "";
     } catch {}
-    if (first) return HEADER.test(first);
+    if (first) return marker.test(first);
   }
-  return t >= 0 ? false : null;
+  return null;
 }
 
 export function recordsAllow(sessionId, reason) {
@@ -339,15 +351,15 @@ export function recordsAllow(sessionId, reason) {
   return { ok: true, message: `kayıt dosyası izni bu oturum için yazıldı (${why}); audit.log'a düştü` };
 }
 
-function records(input, files, base, flag) {
+function records(input, files, base, flag, now) {
   if (isCoordinator(input.session_id)) return null;
   const names = files.map((f) => path.basename(String(f).replaceAll("\\", "/")));
-  const role = roleSession(input.transcript_path);
-  if (role === null) {
+  const worker = workerSession(input.transcript_path, now);
+  if (worker === null) {
     audit({ ...base, event: "records-unknown", files: names });
     return null;
   }
-  if (!role) return null;
+  if (!worker) return null;
   if (fs.existsSync(ALLOW(input.session_id))) {
     audit({ ...base, event: "records-allowed", files: names });
     return null;
@@ -452,7 +464,7 @@ function evaluateEdit(input, now) {
   const base = { session_id: input.session_id ?? "", cwd: input.cwd ?? process.cwd(), tool: input.tool_name, file };
   const warns = [];
   try {
-    return records(input, [file], base, flagger(base, now, warns)) ?? done(warns);
+    return records(input, [file], base, flagger(base, now, warns), now) ?? done(warns);
   } catch (err) {
     try {
       audit({ ...base, event: "guard-error", error: String(err?.message ?? err), blocked: false });
@@ -475,25 +487,26 @@ export function evaluate(input, now = Date.now()) {
 
     const links = chain(cmd);
     segs = links.map((l) => l.seg);
+    const dirs = folders(segs, cwd);
     const heavyAt = segs.findIndex((s) => HEAVY.has(runStep(s)));
     if (heavyAt >= 0) {
-      const r = heavyRun(input, links, heavyAt, base, flag);
+      const r = heavyRun(input, links, heavyAt, dirs[heavyAt], base, flag);
       if (r) return r;
     }
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i];
-      for (const entry of backupBranches(seg, cwd, base)) audit(entry);
+      for (const entry of backupBranches(seg, dirs[i], base)) audit(entry);
 
-      const recs = commitRecords(seg, cwd);
+      const recs = commitRecords(seg, dirs[i]);
       if (recs.length) {
-        const r = records(input, recs, base, flag);
+        const r = records(input, recs, base, flag, now);
         if (r) return r;
       }
 
-      const push = pushCall(seg, cwd);
+      const push = pushCall(seg, dirs[i]);
       if (!push) continue;
       if (startsCI(push)) {
-        const r = heavyPush(input, links, i, base, flag);
+        const r = heavyPush(input, links, i, push.dir, base, flag);
         if (r) return r;
       }
       if (!toMain(push)) continue;
@@ -517,7 +530,7 @@ export function evaluate(input, now = Date.now()) {
       }
       const reason = overrideReason(segs, i);
       if (reason) {
-        const b = backupMain(cwd);
+        const b = backupMain(push.dir);
         audit({ ...base, event: "push-main-override", reason, lock: lockInfo, backup: b.ref, sha: b.sha, fetched: b.fetched });
         continue;
       }
@@ -526,7 +539,7 @@ export function evaluate(input, now = Date.now()) {
         block: true,
         message:
           `main'e gönderim reddedildi: main.lock ${lock.free ? "alınmamış" : `bayat (${lockInfo})`}. ` +
-          `Önce: node scripts/lock.mjs take main "<rol/oturum>, <amaç>" (CLAUDE.md §6). ` +
+          `Önce: node scripts/lock.mjs take main "<oturum/iş>, <amaç>" (CLAUDE.md §6). ` +
           `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
       };
     }

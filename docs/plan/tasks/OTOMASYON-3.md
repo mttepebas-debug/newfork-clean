@@ -15,9 +15,9 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
   ayrıca `session` (`CLAUDE_CODE_SESSION_ID`; Bash ortamında var ve hook girdisindeki `session_id` ile aynı, ölçüldü) ve `cwd`
   taşır: guard "kilit bende mi, başkasında mı"yı bununla ayırır. Oturum kimliği yoksa (elle terminal) `cwd` ile.
 - Ağır koşu sayılanlar (guard komutu parçalara ayırıp her parçaya bakar):
-  - kökten `pnpm[.cmd] [run] test|build`, `turbo [run] test|build`; tek başına `lint` ve `typecheck` sayılmaz, ikiden fazla kapı
-    adımını (`lint`/`typecheck`/`test`/`build`) zincirleyen komut sayılır (onay düzeltmesi a). `--filter`/`-F`/`-C` varsa odaklı
-    koşu, sayılmaz; `pnpm --filter … exec vitest run <dosya>` sayılmaz;
+  - kökten `pnpm[.cmd] [run] test|build`, `turbo [run] test|build`; tek başına `lint` ve `typecheck` sayılmaz (onay düzeltmesi a).
+    İkiden fazla kapı adımını zincirleyen komut zaten `test` ya da `build` içerir (yalnız `lint` + `typecheck` iki adım), bu yüzden
+    ayrı sayaç yazılmadı. `--filter`/`-F`/`-C` varsa odaklı koşu, sayılmaz; `pnpm --filter … exec vitest run <dosya>` sayılmaz;
   - `pnpm test:db`, `supabase test db`; `pnpm e2e`, `playwright test`;
   - CI başlatan push: `main` ya da `task/**` dalına, yalnız `docs/**` / `*.md` değişmemişse (`ci.yml` `paths-ignore`).
 - Kontrol:
@@ -33,20 +33,23 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
   ağır koşu sayısını ve kaçışları sayar).
 
 ### 2. Kayıt dosyası koruması (`scripts/guard.mjs`, Edit/Write)
-- Dosyalar: `docs/plan/{BACKLOG,KARARLAR,KOORDINATOR-KARARLARI,DONE,DERSLER,SABAH-SORULAR,HANDOFF,EKRAN-PLANI}.md` (hangi
-  worktree'de olursa olsun).
+- Dosyalar: `docs/plan/{BACKLOG,KARARLAR,KOORDINATOR-KARARLARI,DERSLER,SABAH-SORULAR,HANDOFF,EKRAN-PLANI}.md` (hangi
+  worktree'de olursa olsun). `DONE.md` listeden çıktı: CLAUDE-INCE (main `3050021b`) onu `docs/archive/`'e taşıdı, §4.8 de çıkardı.
 - İzinli: (a) koordinatör = `coordinator.json`'daki `session_id` (`inbox.mjs claim`); (b) Mert'in açtığı oturum.
-- **Mert'in oturumunu ayırma önerisi:** tersinden tanımlanır. Rol oturumu = ilk gerçek kullanıcı mesajı (oturum kaydında,
-  `<system-reminder>` blokları atılınca) `Rol:` satırıyla başlayan oturum; bu zaten §4.1 kuralı ("Rol oturumu 'Rol: <rol>
-  (<uzmanlık>)' başlığıyla … başlar"). Koordinatör olmayan rol oturumu → uyarı/engel; geri kalan her oturum Mert'in sayılır.
-  Hook girdisindeki `transcript_path`'in yalnız başı okunur (ölçüldü: bu oturumda 5. satır). Kayıt okunamazsa izin verilir ve
-  `records-unknown` loglanır (biçim kuralı, erişim kuralı değil). Alt ajan ana oturumun hükmünü alır.
-  - Neden bu: yeni tören yok (oturum kendini kaydettirmez), bugünkü kurala dayanır. Zayıf yanı: `Rol:` ile başlamayan rol
-    oturumu kaçar (uyarı çıkmaz); yanlış engel üretmez.
-- Ek katman (ucuz, öneri): rol oturumunda `git commit`, staged ya da adıyla verilen kayıt dosyası içeriyorsa aynı uyarı. Edit/Write
-  dışındaki yazmaları (python, `sed -i`, `Set-Content`) main'e girmeden yakalar. İstemezsen çizerim.
+- **İşçi ayrımı (KK-188, koordinatör 2026-10-07 ~06:55Z):** işçi = ilk gerçek kullanıcı mesajı (oturum kaydında, araç sonuçları,
+  meta satırlar, `<system-reminder>` ve sarmalayıcı etiketler atılınca) satır başında `Görev:` ile başlayan oturum; geçişte `Rol:`
+  da, 14 Ekim'e kadar. Koordinatör olmayan işçi → uyarı/engel; geri kalan her oturum Mert'in sayılır. Kaydın yalnız ilk 4 MB'ı
+  okunur. Kayıt okunamazsa izin verilir ve `records-unknown` loglanır (biçim kuralı, erişim kuralı değil). Alt ajan ana oturumun
+  hükmünü alır.
+  - İlk öneri (`Rol:` başlığı, KK-187) CLAUDE-INCE'de rol oturumları kalkınca KK-188'le `Görev:`e döndü. Ölçüm (2026-10-07,
+    555 newfork oturum kaydı): ilk mesajı `Rol:` olan yalnız 1 kayıt vardı (bu oturum); eski rol oturumları "Rol: …"u oturum
+    **adında** taşıyordu (`custom-title`), ilk mesaj "Idle kal…" idi. `Görev:` kuralıyla bugün 11 işçi (14 Ekim sonrası 10),
+    hepsi koordinatör mesajı ya da EKRAN-02 kartı. Satır başı düz `Görev:` aranır: "# Görev: …" ile başlayan iki eski kayıt
+    (2026-09-21, Mert'in yapıştırdığı istem) işçi sayılmasın diye. Zayıf yanı: `Görev:` satırıyla başlamayan işçi kaçar.
+- Ek katman (KK-187'de kabul): işçi oturumunda `git commit`, staged ya da adıyla verilen kayıt dosyası içeriyorsa aynı uyarı.
+  Edit/Write dışındaki yazmaları (python, `sed -i`, `Set-Content`) main'e girmeden yakalar.
 - Kademe: kilitle aynı tarih (önce uyarı, 2026-10-14'ten sonra engel). Kaçış: `node scripts/guard.mjs records-allow "<gerekçe>"`
-  → o oturum için izin dosyası (`.newfork-inbox/records-allow/<oturum>.json`) + `audit.log` satırı. Mert bir rol oturumuna
+  → o oturum için izin dosyası (`.newfork-inbox/records-allow/<oturum>.json`) + `audit.log` satırı. Mert bir işçi oturumuna
   doğrudan "kayda yaz" derse bu yol.
 
 ### 3. Karar kaydı kancası
@@ -62,7 +65,7 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
   uyanma; 7 gün sınırı), her turda `inbox.mjs board` → 20 dk sessiz "working" oturuma `list_events`, ağır koşu sırası
   (`lock.mjs status`, `gh run list`), Mert'e soru → `SABAH-SORULAR.md`. Sabah: Mert'in ilk mesajıyla biter; önce sabah raporu
   (ne bitti, ne canlıda, nerede takıldı ve ne kadar ilerledi), sonra §3.7 soru turu; cron silinir.
-- `.claude/skills/haftalik-denetim/SKILL.md` (`nf-planlama`): §4.6 listesi (çelişki, eskimiş bilgi, yalnız hafızada kalmış kural,
+- `.claude/skills/haftalik-denetim/SKILL.md` (koordinatörün verdiği oturum; `nf-planlama` CLAUDE-INCE'de kalktı): §4.6 listesi (çelişki, eskimiş bilgi, yalnız hafızada kalmış kural,
   §2.C ↔ `ILKELER.md`), dört sayı ve her birinin komutu: kabul oranı (`decision-log.mjs stats`), haftalık Mert düzeltmesi
   (`decisions.jsonl` `picked_other` + `free_text` + KARARLAR/KK "ters çevrildi"), oturum başı sabit yük (yeni oturumda
   `get_usage`), gönderimden CI yeşiline süre (`gh run list --branch main --json …`). Aylık: rol hafızaları dahil. Çıktı
@@ -72,8 +75,10 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
 - `CLAUDE.md` §4.9 (iki geçiş satırı ve başlığı) silinir; §6 "Gönderim adımları" 1'deki "(§4.2, §4.9)" → "(§4.2)".
 - `CLAUDE.md` §6 kilit listesine `heavy.lock` satırı (ne zaman alınır, uyarı → engel tarihi, kaçış). Bu satır olmazsa oturumlar
   kilidi nasıl alacağını bilmez; kural değil, var olan kuralın (§4.2 "ağır koşu kilidiyle zorlanır") aracı.
-- Rol dosyalarındaki "(`CLAUDE.md` §4.2, §4.9)" (nf-arayuz, nf-backend, nf-db, nf-planlama, nf-test) ve `ILKELER.md` P15'teki
-  "(ağır koşu kilidi gelene kadar her gönderim izinle, §4.9)" parantezi: §4.9 kalkınca eskiyen atıf.
+- `ILKELER.md` P15'teki "(ağır koşu kilidi gelene kadar her gönderim izinle, §4.9)" parantezi: §4.9 kalkınca eskiyen atıf. Rol
+  dosyalarındaki aynı atıf dosyalarla birlikte CLAUDE-INCE'de silindi; kalan `nf-guvenlik` / `nf-okur`'da yok.
+- `CLAUDE.md` §4.8 ilke (3): "önce uyarı" → "2026-10-14'e kadar uyarı, sonra engel" ve kaçış yolu (`records-allow`) tek cümle.
+- Betiklerin yardım ve ret metinlerinde kilit kimliği "rol/oturum" → "oturum/iş" (CLAUDE.md §6 artık böyle yazıyor).
 
 ### Onay düzeltmeleri (koordinatör, 2026-10-07 ~06:40Z)
 - a) Tek başına kök `lint` ağır koşu değil (saniyelik). Tek başına `typecheck`: kökten bir kez ölçülür, ~60 sn altıysa sayılmaz.
@@ -81,7 +86,8 @@ Kaynak: CLAUDEMD-REWRITE planı "Faz 3" (Mert onaylı, 2026-10-06/07), KK-185 (5
   → sayılmaz.
 - b) Test vakası: `db.lock` alınmış ama `heavy.lock` alınmamış e2e → uyarı; e2e/test:db metni iki kilidi birden söyler
   ("önce db, sonra heavy").
-- Rapora bir satır: `Rol:` satırıyla başlamayan rol oturumu kayıt korumasından kaçar.
+- Rapora bir satır: `Rol:` satırıyla başlamayan rol oturumu kayıt korumasından kaçar (KK-188'den sonra: `Görev:` satırıyla
+  başlamayan işçi).
 
 ## Out of scope
 CI iş akışı, yeni bağımlılık, `.claude/settings.json` deny listesi, `db.lock` kuralı (e2e/test:db için ayrıca alınmaya devam eder),
@@ -91,14 +97,13 @@ koordinatör hafızasındaki eski "AĞIR İZİN" protokolü (raporda not olarak)
 - `node --test scripts/coord-hooks.test.mjs scripts/lock.test.mjs scripts/decision-log.test.mjs` yeşil; yeni testler önce kırmızı
   görüldü.
 - Tam kapı (lint, typecheck, test, build) yeşil; `heavy.lock` ile ve `gh run list` boşken.
-- Guard CLI'ı elle: uyarı modunda JSON uyarı, engel modunda exit 2; Edit kancası rol oturumunda uyarı, koordinatörde sessiz.
+- Guard CLI'ı elle: uyarı modunda JSON uyarı, engel modunda exit 2; Edit kancası işçi oturumunda uyarı, koordinatörde sessiz.
 - `/code-review` ONAY @<sha>; koordinatörün "gönder" izni (§4.9 bu gönderime kadar geçerli); main CI yeşil.
 
 ## Touches
-`scripts/lock.mjs`, `scripts/guard.mjs`, `scripts/inbox.mjs` (yalnız yorum), `scripts/decision-log.mjs`, `scripts/coord-hooks.test.mjs`,
-`scripts/lock.test.mjs`, `.claude/settings.json`, `.claude/skills/gece-modu/SKILL.md`, `.claude/skills/haftalik-denetim/SKILL.md`,
-`CLAUDE.md`, `docs/plan/ILKELER.md` (tek parantez), `.claude/agents/nf-{arayuz,backend,db,planlama,test}.md` (tek atıf),
-bu dosya.
+`scripts/lock.mjs`, `scripts/guard.mjs`, `scripts/inbox.mjs` (yalnız yorum ve yardım metni), `scripts/decision-log.mjs`,
+`scripts/coord-hooks.test.mjs`, `scripts/lock.test.mjs`, `.claude/settings.json`, `.claude/skills/gece-modu/SKILL.md`,
+`.claude/skills/haftalik-denetim/SKILL.md`, `CLAUDE.md`, `docs/plan/ILKELER.md` (tek parantez), bu dosya.
 
 ## Test plan
 `coord-hooks.test.mjs` (geçici klasör + geçici git deposu, gerçek kilit/posta kutusuna dokunmaz; `gh` ve saat test için
@@ -110,9 +115,11 @@ enjekte edilir):
 - kilit yok → uyarı (14 Ekim öncesi) / engel (sonrası); kilit bende → geçer; başkasında → uyarı/engel; `take heavy && pnpm test`
   zinciri geçer, `;` ile değil; `NF_OVERRIDE` geçer ve loglanır; CI koşuyor → uyarı; `gh` yok → geçer + `heavy-ci-unknown`.
 - push: başkası `heavy.lock` tutarken kod push'u uyarı; yalnız docs push'u sessiz; kendi kilidiyle sessiz.
-- kayıt: rol oturumu (kayıt dosyası `Rol:` ile başlıyor) `docs/plan/BACKLOG.md` Edit → uyarı/engel; aynı oturum
+- kayıt: işçi oturumu (kaydı `Görev:` ile başlıyor) `docs/plan/BACKLOG.md` Edit → uyarı/engel; aynı oturum
   `docs/plan/tasks/X.md` → sessiz; koordinatör → sessiz; Mert'in oturumu → sessiz; kayıt okunamaz → geçer + log;
-  `records-allow` sonrası geçer; rol oturumunda kayıt dosyası içeren `git commit` → uyarı.
+  `records-allow` sonrası geçer; işçi oturumunda kayıt dosyası içeren `git commit` → uyarı; koordinatör mesajıyla `Görev:` alan
+  temizlenmiş oturum işçi; `Rol:` yalnız 14 Ekim'e kadar; Mert'in oturumunda sonraki `Görev:` mesajı ve "# Görev:" istemi işçi
+  yapmaz; `DONE.md` artık kayıt dosyası değil.
 - `lock.test.mjs`: `heavy` take/release/status, `session`/`cwd` alanları.
 
 ## Risk notes

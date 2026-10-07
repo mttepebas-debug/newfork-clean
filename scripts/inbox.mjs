@@ -294,7 +294,7 @@ async function main() {
   }
   console.error(
     [
-      'usage: node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md|->',
+      'usage: node scripts/inbox.mjs send "<oturum/iş>" "<iş-id>" <rapor.md|->',
       "       node scripts/inbox.mjs list | ack <ad> | board",
       '       node scripts/inbox.mjs status "<iş-id>" "<durum>"',
       "       node scripts/inbox.mjs claim            (yalnız koordinatör, her devirde bir kez)",

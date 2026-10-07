@@ -223,7 +223,7 @@
   işleyelim"; 09-28 "Tüm repo denetimi".
 
 **P15. Kod ve git'te Claude hızlı ve özerktir.**
-- Kural: main'e gönderim `CLAUDE.md` §4.2'ye göre yapılır: R0–R2 işte kilitler serbestse oturum beklemeden gönderir; R3 işte ve canlı veritabanında koordinatörün "gönder" izni gerekir (ağır koşu kilidi gelene kadar her gönderim izinle, §4.9). Veri yazmayan gezinmeyi kendisi yapar. Kendi
+- Kural: main'e gönderim `CLAUDE.md` §4.2'ye göre yapılır: R0–R2 işte kilitler serbestse oturum beklemeden gönderir; R3 işte ve canlı veritabanında koordinatörün "gönder" izni gerekir. Veri yazmayan gezinmeyi kendisi yapar. Kendi
   yapabileceği bir operasyonu Mert'e devretmez.
 - Koşul: makine düzeyinde yeniden başlatma, oturum arşivi, başka oturumun dosyaları ve kalıcı yetki
   her seferinde tek tek sorulur. Mert çoğu zaman izin veriyor, ama yine sorulur.

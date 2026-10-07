@@ -22,7 +22,7 @@ function lockPath(name) {
   return path.join(LOCK_DIR, `${name}.lock`);
 }
 
-// Identity is "rol/oturum" (e.g. "nf-test/fb61-11"), the first
+// Identity is "oturum/iş" (e.g. "nf-backend/otomasyon-3"), the first
 // comma-separated field of both `take`'s and `release`'s argument.
 function splitIdentity(arg) {
   const [identity, ...rest] = arg.split(",");
@@ -72,7 +72,7 @@ export function take(name, arg) {
   if (!role || !session) {
     return {
       ok: false,
-      message: `kimlik "${identity}" geçersiz: "rol/oturum" biçiminde olmalı (ör. "nf-test/fb61-11")`,
+      message: `kimlik "${identity}" geçersiz: "oturum/iş" biçiminde olmalı (ör. "nf-backend/otomasyon-3")`,
     };
   }
   fs.mkdirSync(LOCK_DIR, { recursive: true });
@@ -158,8 +158,8 @@ function main() {
     cmd === "take" && name && arg ? take(name, arg) : cmd === "release" && name && arg ? release(name, arg) : null;
   if (!result) {
     console.error(
-      'usage: node scripts/lock.mjs take <db|main|heavy> "<rol/oturum, amaç>"   (kimlik "rol/oturum" biçiminde, ör. "nf-test/fb61-11")\n' +
-        '       node scripts/lock.mjs release <db|main|heavy> "<rol/oturum>"\n' +
+      'usage: node scripts/lock.mjs take <db|main|heavy> "<oturum/iş>, <amaç>"   (kimlik "oturum/iş" biçiminde, ör. "nf-backend/otomasyon-3")\n' +
+        '       node scripts/lock.mjs release <db|main|heavy> "<oturum/iş>"\n' +
         "       node scripts/lock.mjs status",
     );
     process.exitCode = 1;

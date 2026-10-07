@@ -140,7 +140,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 - **Karar kaydı:** Mert'e sorulan her soru ve cevabı kancayla `.newfork-inbox/decisions.jsonl`'e yazılır (`scripts/decision-log.mjs`); kanca etiketi ya da dayanağı eksik öneriyi Mert'e göstermeden geri çevirir. Hedef: önerilen seçeneğin kabul oranı en az %85 (`node scripts/decision-log.mjs stats`).
 
 ### 4.8 Dosya haritası
-- **İlkeler:** (1) Her bilgi tek dosyada yaşar; başka yer bağlantı verir, kopyalamaz. (2) Her oturuma kendiliğinden yalnız bu dosya ve Claude'un hafıza dizini yüklenir; klasör `CLAUDE.md`'si o klasördeki koda dokunulunca, gerisi aşağıdaki olayda okunur. (3) Kayıt dosyalarına (`BACKLOG`, `KARARLAR`, `KOORDINATOR-KARARLARI`, `DERSLER`, `SABAH-SORULAR`, `HANDOFF`, `EKRAN-PLANI`) yalnız koordinatör ve Mert'in açtığı oturum yazar; oturum yalnız kendi raporunu ekran klasörüne ya da görev dosyasına yazar. Kayıt koruma kancası bunu zorlar (önce uyarı). (4) `docs/archive/` kural değildir, okunmaz.
+- **İlkeler:** (1) Her bilgi tek dosyada yaşar; başka yer bağlantı verir, kopyalamaz. (2) Her oturuma kendiliğinden yalnız bu dosya ve Claude'un hafıza dizini yüklenir; klasör `CLAUDE.md`'si o klasördeki koda dokunulunca, gerisi aşağıdaki olayda okunur. (3) Kayıt dosyalarına (`BACKLOG`, `KARARLAR`, `KOORDINATOR-KARARLARI`, `DERSLER`, `SABAH-SORULAR`, `HANDOFF`, `EKRAN-PLANI`) yalnız koordinatör ve Mert'in açtığı oturum yazar; oturum yalnız kendi raporunu ekran klasörüne ya da görev dosyasına yazar. Kayıt koruma kancası bunu zorlar (2026-10-14'e kadar uyarı, sonra engel); Mert bir oturuma açıkça yazdırırsa o oturum `node scripts/guard.mjs records-allow "<gerekçe>"` koşar, `audit.log`'a yazılır. (4) `docs/archive/` kural değildir, okunmaz.
 
 | Olay | Okunur | Yazılır (kim) |
 |---|---|---|
@@ -160,11 +160,6 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 | Sabah | `SABAH-SORULAR.md` | cevap → `KARARLAR.md` / `KOORDINATOR-KARARLARI.md`; soru silinir |
 | Bağlam %50'yi geçer | — | `HANDOFF.md` (koordinatör) |
 | Haftalık / aylık denetim | kural dosyaları, `DERSLER.md`, hafıza | bulgu listesi → koordinatör |
-
-### 4.9 Geçiş (kalıcı değil)
-Şunlar henüz kodla zorlanmıyor; geldiklerinde bu bölümdeki satırları koordinatör siler:
-- Ağır koşu kilidi gelene kadar **her gönderim** (R0–R2 dahil) koordinatörün "gönder" izniyle yapılır.
-- Kayıt koruma kancası, karar kaydı kancası, `/gece-modu` ve `/haftalik-denetim` yazılana kadar bu kurallar yazılı olarak uygulanır.
 
 ## 5. Koordinatör kararları
 
@@ -214,10 +209,11 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 - Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main> "<oturum/iş>, <amaç>"`, `release <db|main> "<oturum/iş>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
   - `main.lock`: main'e gönderim; yoksa `scripts/guard.mjs` reddeder. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle; önce `refs/nf-backup/main/<zaman>` yedeği alınır ve `audit.log`'a yazılır.
   - `db.lock`: yerel DB'de migration uygulama, `test:db`, e2e, fixture üretimi. `db.lock` varken uygulamada veri girilmez.
+  - `heavy.lock`: aynı anda tek ağır koşu (§4.2). Ağır koşu: kökten `test` ya da `build` (tam kapı), `test:db`, e2e ve CI başlatan push (main ya da `task/**`, yalnız `docs/**` / `*.md` değilse). Tek başına `lint`, `typecheck` ve `--filter`'lı odaklı koşu sayılmaz. e2e ve `test:db` için önce `db.lock`, sonra `heavy.lock`. Kilit sende değilse ya da CI koşuyorsa `scripts/guard.mjs` 2026-10-14'e kadar uyarır, sonra reddeder; kaçış ağır komutun başına `NF_OVERRIDE="<gerekçe>"`, `audit.log`'a yazılır.
   - Ağır koşu başlamadan `gh run list --limit 3` ile CI'a bakılır; CI koşuyorsa beklenir.
 
 ### Gönderim adımları
-1. İnceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder" izni (§4.2, §4.9).
+1. İnceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder" izni (§4.2).
 2. `node scripts/lock.mjs take main "<oturum/iş>, <iş>"`.
 3. `git fetch origin && git rebase origin/main`; çatışma çözüldüyse inceleme yenilenir.
 4. Rebase sonrası tam kapı yeşil. Yalnız `.md` dosyaları değiştiyse kod kapısı gerekmez.
