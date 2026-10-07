@@ -200,13 +200,13 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 - Kurulum ve çalıştırma: `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556).
 - Tam kapı: `pnpm.cmd lint`, `pnpm.cmd typecheck`, `pnpm.cmd test`, `pnpm.cmd build`; `supabase/` değiştiyse `pnpm.cmd test:db`; kullanıcı akışı, API ya da ekran davranışı değiştiyse etkilenen e2e senaryoları.
 - Odaklı: `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`, `pnpm.cmd --filter @newfork/web typecheck`.
-- e2e: `pnpm.cmd e2e` (`e2e/playwright.config.ts`; yerelde 5565/5566, `db.lock` ile).
+- e2e: `pnpm.cmd e2e` (`e2e/playwright.config.ts`; yerelde 5565/5566, `db.lock` ve `heavy.lock` ile).
 - Yeni worktree: `pnpm.cmd install` → `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build` → ana klasörden yalnız yerel `.env*` dosyaları kopyalanır (hosted anahtar kopyalanmaz).
 
 ### Worktree, posta kutusu, kilitler
 - Oturum worktree'si `../newfork-wt/<id>`, dal `task/<id>`; koordinatörün belge worktree'si `../newfork-wt/coord` (detached `origin/main`). Alt ajan worktree'leri `.claude/worktrees/`. Geçici kanıtlar `artifacts/<iş-no>/` (gitignore'da).
 - Posta kutusu (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı): rapor `node scripts/inbox.mjs send "<oturum/iş>" "<iş-id>" <rapor.md>`; durum `node scripts/inbox.mjs status "<iş-id>" "<durum>"`. Koordinatör: oturum başında `claim`, arka planda `wait`, işlenen rapor `ack <ad>`, yoklama `board`; `audit.log` her iş sonunda okunur.
-- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main> "<oturum/iş>, <amaç>"`, `release <db|main> "<oturum/iş>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
+- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main|heavy> "<oturum/iş>, <amaç>"`, `release <db|main|heavy> "<oturum/iş>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
   - `main.lock`: main'e gönderim; yoksa `scripts/guard.mjs` reddeder. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle; önce `refs/nf-backup/main/<zaman>` yedeği alınır ve `audit.log`'a yazılır.
   - `db.lock`: yerel DB'de migration uygulama, `test:db`, e2e, fixture üretimi. `db.lock` varken uygulamada veri girilmez.
   - `heavy.lock`: aynı anda tek ağır koşu (§4.2). Ağır koşu: kökten `test` ya da `build` (tam kapı), `test:db`, e2e ve CI başlatan push (main ya da `task/**`, yalnız `docs/**` / `*.md` değilse). Tek başına `lint`, `typecheck` ve `--filter`'lı odaklı koşu sayılmaz. e2e ve `test:db` için önce `db.lock`, sonra `heavy.lock`. Kilit sende değilse ya da CI koşuyorsa `scripts/guard.mjs` 2026-10-14'e kadar uyarır, sonra reddeder; kaçış ağır komutun başına `NF_OVERRIDE="<gerekçe>"`, `audit.log`'a yazılır.
@@ -214,11 +214,11 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 
 ### Gönderim adımları
 1. İnceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder" izni (§4.2).
-2. `node scripts/lock.mjs take main "<oturum/iş>, <iş>"`.
+2. `node scripts/lock.mjs take main "<oturum/iş>, <iş>"`; kod değiştiyse `heavy` de (tam kapı ve CI başlatan push ağır koşudur).
 3. `git fetch origin && git rebase origin/main`; çatışma çözüldüyse inceleme yenilenir.
 4. Rebase sonrası tam kapı yeşil. Yalnız `.md` dosyaları değiştiyse kod kapısı gerekmez.
 5. `git push origin HEAD:main` (yalnız fast-forward); reddedilirse 3'e dönülür.
-6. Kilit bırakılır, main CI izlenir.
+6. Kilitler bırakılır, main CI izlenir.
 - Commit mesajı İngilizce Conventional Commits ve iş numarasıyla: `fix(schedule): ... (EKRAN-01)`. Dosyalar adıyla eklenir; `git commit -a` kullanılmaz.
 
 ### Veritabanı ve canlı

@@ -369,6 +369,39 @@ test("NF_OVERRIDE in front of a heavy run passes and logs the reason", () => {
   assert.equal(evaluate(bash('git commit -m "NF_OVERRIDE=x" && pnpm.cmd test'), AFTER).block, true);
 });
 
+test("heredoc and here-string bodies are text, not commands; what follows the terminator still counts", () => {
+  for (const cmd of [
+    "git commit -q -F - <<'EOF'\nfeat: x\n\npnpm.cmd build green\nEOF",
+    "cat > rapor.md <<'EOF'\nKomutlar:\npnpm.cmd test\n  EOF-not-yet\nEOF",
+    'git commit -m "$(cat <<EOF\npnpm.cmd test:db\nEOF\n)"',
+    "cat <<-EOF > x.md\n\tpnpm.cmd e2e\n\tEOF",
+    "@'\npnpm.cmd test:db\n'@ | Set-Content rapor.md",
+    '@"\npnpm.cmd build\n"@ | Out-File r.md',
+  ]) {
+    const r = evaluate(bash(cmd), AFTER);
+    assert.equal(r.block, false, cmd);
+    assert.equal(r.warn ?? null, null, cmd);
+  }
+  assert.equal(evaluate(bash("cat > x.md <<'EOF'\nnot a command\nEOF\npnpm.cmd test"), AFTER).block, true);
+  assert.equal(evaluate(bash("cat > x.md <<'EOF'\ngit push origin HEAD:main\nEOF"), AFTER).block, false);
+});
+
+test("PowerShell keeps $env:NF_OVERRIDE for the whole command, so a cd in between does not lose it", () => {
+  const ps = (command) => evaluate(bash(command, { tool_name: "PowerShell" }), AFTER);
+  assert.equal(ps("$env:NF_OVERRIDE='Mert istedi'; Set-Location C:/wt/x; pnpm.cmd e2e").block, false);
+  assert.equal(auditLines().at(-1).reason, "Mert istedi");
+  assert.equal(ps("Set-Location C:/wt/x; pnpm.cmd e2e; $env:NF_OVERRIDE='geç'").block, true);
+});
+
+test("ciState reads gh's list: any run not completed means CI is running", async () => {
+  const { runningRuns } = await import("./guard.mjs");
+  const json = (rows) => JSON.stringify(rows.map((status) => ({ status, name: "CI", headBranch: "main" })));
+  assert.deepEqual(runningRuns(json(["completed", "completed"])), []);
+  assert.equal(runningRuns(json(["completed", "in_progress"])).length, 1);
+  assert.equal(runningRuns(json(["queued", "waiting", "COMPLETED"])).length, 2);
+  assert.throws(() => runningRuns("not json"));
+});
+
 test("a push that starts CI while another session holds heavy.lock: warning, then refusal", () => {
   const code = cloneRepo("repo-push-code");
   commitFile(code, "apps/api/src/x.ts");

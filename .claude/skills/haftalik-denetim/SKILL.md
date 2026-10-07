@@ -21,7 +21,7 @@ Başlarken ilk iş `get_usage` (session `self`): `context.tokensUsed` 3. sayın�
 3. **Yalnız hafızada kalmış kural:** hafıza dosyasında olup `CLAUDE.md` / `ILKELER.md` / `KARARLAR.md`'de olmayan süreç kuralı (§4.6: hafıza yalnız kullanıcı ve ortam bilgisi tutar).
 4. **§2.C özeti ↔ `ILKELER.md`:** P01–P26 tablosundaki her satır tam metnin "Kural:" satırıyla aynı şeyi mi söylüyor; birinde olup ötekinde olmayan ilke.
 5. **Dersler:** `DERSLER.md`'de üçüncü kez görülen ders → `CLAUDE.md`'ye kural önerisi (Mert'e, koordinatör üzerinden).
-6. **Kancalar ve kaçışlar** (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/audit.log`, son 7 gün): `push-main-override`, `heavy-override`, `records-allow` (kim, gerekçe); `heavy-warn` / `heavy-block`, `records-warn` / `records-block` sayıları; `guard-error`. Yanlış pozitif varsa örneğiyle yaz.
+6. **Kancalar ve kaçışlar** (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/audit.log`, son 7 gün): `push-main-override`, `heavy-override`, `records-allow` (kim, gerekçe); `heavy-warn` / `heavy-block`, `records-warn` / `records-block` sayıları; `guard-error`; `heavy-ci-unknown` ve `records-unknown` (çoğalıyorsa `gh` ya da oturum kaydı biçimi değişmiştir ve kanca sessizce kör kalır). Yanlış pozitif varsa örneğiyle yaz.
 
 ## Dört sayı
 | # | Sayı | Komut / kaynak | Tanım |

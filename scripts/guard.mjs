@@ -21,7 +21,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { status as lockStatus } from "./lock.mjs";
-import { INBOX_DIR, isCoordinator } from "./inbox.mjs";
+import { INBOX_DIR, isCoordinator, slug } from "./inbox.mjs";
 
 // The first week only warns; rollback = move this day forward.
 const ENFORCE_DAY = "2026-10-14";
@@ -56,15 +56,20 @@ export const redact = (s) =>
     .replace(/(--password[=\s]+|PGPASSWORD=|Bearer\s+|(?:api[_-]?key|token|secret)[=:]\s*)\S+/gi, "$1***");
 
 // The override counts only as an assignment in front of the guarded command itself:
-// bash `NF_OVERRIDE="why" git push …`, or PowerShell `$env:NF_OVERRIDE='why'; git push …`
-// (the segment right before it). Text anywhere else (a commit message) does not count.
+// bash `NF_OVERRIDE="why" git push …`, or PowerShell `$env:NF_OVERRIDE='why'; … git push …`
+// (an earlier segment: PowerShell keeps the variable for the rest of the command, a
+// `Set-Location` in between included). Text anywhere else (a commit message) does not count.
 const REASON = String.raw`\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))`;
+const PS_OVERRIDE = new RegExp(`^\\$env:NF_OVERRIDE${REASON}\\s*$`, "i");
 export function overrideReason(segs, i) {
   const pick = (m) => (m ? (m[1] ?? m[2] ?? m[3] ?? "").trim() || "(gerekçe yok)" : null);
-  return (
-    pick(segs[i].match(new RegExp(`^NF_OVERRIDE${REASON}\\s`))) ??
-    (i > 0 ? pick(segs[i - 1].match(new RegExp(`^\\$env:NF_OVERRIDE${REASON}\\s*$`, "i"))) : null)
-  );
+  const own = pick(segs[i].match(new RegExp(`^NF_OVERRIDE${REASON}\\s`)));
+  if (own) return own;
+  for (let j = i - 1; j >= 0; j--) {
+    const ps = pick(segs[j].match(PS_OVERRIDE));
+    if (ps) return ps;
+  }
+  return null;
 }
 
 // ponytail: shell-ish split on && || ; | newline; quoting inside a segment is not parsed, and a
@@ -75,7 +80,7 @@ const SEP = /(&&|\|\||[;|\n])/;
 export function chain(cmd) {
   const out = [];
   let sep = null;
-  for (const part of cmd.split(SEP)) {
+  for (const part of dropBodies(cmd).split(SEP)) {
     if (/^(&&|\|\||[;|\n])$/.test(part)) {
       sep = sep && sep !== "&&" ? sep : part;
       continue;
@@ -88,6 +93,38 @@ export function chain(cmd) {
   return out;
 }
 export const segments = (cmd) => chain(cmd).map((c) => c.seg);
+
+// Heredoc (`<<'EOF'`, `<<-EOF`) and PowerShell here-string (`@'` … `'@`) bodies are text, not
+// commands: a report line or a commit body starting with "pnpm.cmd test" runs nothing. A body
+// without its terminator is kept, so a stray "<<x" inside quotes never hides what follows.
+export function dropBodies(cmd) {
+  const out = [];
+  let close = null;
+  let held = [];
+  for (const line of cmd.split("\n")) {
+    if (close) {
+      const rest = close(line);
+      if (rest === null) {
+        held.push(line);
+        continue;
+      }
+      close = null;
+      held = [];
+      if (rest.trim()) out.push(rest); // `'@ | Set-Content x` goes on as a command
+      continue;
+    }
+    out.push(line);
+    const here = line.match(/(?<!<)<<(-?)\s*(['"]?)([A-Za-z_]\w*)\2/);
+    const ps = line.match(/@(['"])\s*$/);
+    if (here) {
+      const [, dash, , tag] = here;
+      close = (l) => ((dash ? l.replace(/^\t+/, "") : l).trimEnd() === tag ? "" : null);
+    } else if (ps) {
+      close = (l) => (l.startsWith(`${ps[1]}@`) ? l.slice(2) : null);
+    }
+  }
+  return [...out, ...held].join("\n");
+}
 const words = (seg) => (seg.match(/"[^"]*"|'[^']*'|\S+/g) ?? []).map((w) => w.replace(/^["']|["']$/g, ""));
 
 // `cd <dir> && …` moves the rest of the command: the hook's cwd is only where the session started
@@ -155,13 +192,13 @@ function pushCall(seg, cwd) {
 }
 const toMain = (push) => push.dests.some((d) => d === "main" || d === "*");
 
+// Files the branch changes against origin/main (what a push brings).
+const aheadFiles = (dir) => tryGit(dir, ["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
+
 // ci.yml runs on pushes to main and task/**, unless only docs/** and *.md changed.
 const DOCS_ONLY = /^docs\/|\.md$/;
-function startsCI(push) {
-  if (!push.dests.some((d) => d === "*" || d === "main" || d.startsWith("task/"))) return false;
-  const files = tryGit(push.dir, ["diff", "--name-only", "origin/main...HEAD"]).split("\n").filter(Boolean);
-  return files.some((f) => !DOCS_ONLY.test(f));
-}
+const startsCI = (push, ahead) =>
+  push.dests.some((d) => d === "*" || d === "main" || d.startsWith("task/")) && ahead.some((f) => !DOCS_ONLY.test(f));
 
 // e2e before a push (CLAUDE.md §6, Mert 2026-10-01 "warning mode", ILKELER P16):
 // e2e/e2e-pass-reporter.mjs appends a line here after a local run that passed on
@@ -177,10 +214,8 @@ const sameContent = (dir, sha) => {
     return false;
   }
 };
-export function e2eGap(dir) {
-  const files = tryGit(dir, ["diff", "--name-only", "origin/main...HEAD"])
-    .split("\n")
-    .filter((f) => E2E_CODE.test(f) && !/\.test\.tsx?$/.test(f));
+export function e2eGap(dir, ahead = aheadFiles(dir)) {
+  const files = ahead.filter((f) => E2E_CODE.test(f) && !/\.test\.tsx?$/.test(f));
   if (!files.length) return [];
   let shas = [];
   try {
@@ -228,6 +263,7 @@ function heavyLock(input, dir) {
 }
 
 // GitHub Actions runs not yet completed (queued counts: the single runner is the user's PC).
+export const runningRuns = (ghJson) => JSON.parse(ghJson).filter((r) => String(r.status).toLowerCase() !== "completed");
 export function ciState(cwd) {
   const forced = process.env.NEWFORK_CI_STATE; // tests only: idle | running | unknown
   if (forced) return { state: forced, runs: [] };
@@ -238,7 +274,7 @@ export function ciState(cwd) {
       stdio: ["ignore", "pipe", "pipe"],
       timeout: 10000,
     });
-    const runs = JSON.parse(out).filter((r) => r.status !== "completed");
+    const runs = runningRuns(out);
     return { state: runs.length ? "running" : "idle", runs };
   } catch {
     return { state: "unknown", runs: [] };
@@ -299,7 +335,7 @@ function heavyPush(input, links, i, dir, base, flag) {
 
 const RECORDS = /(^|\/)docs\/plan\/(BACKLOG|KARARLAR|KOORDINATOR-KARARLARI|DERSLER|SABAH-SORULAR|HANDOFF|EKRAN-PLANI)\.md$/i;
 export const isRecordFile = (f) => RECORDS.test(String(f ?? "").replaceAll("\\", "/"));
-const ALLOW = (sid) => path.join(INBOX_DIR, "records-allow", `${String(sid).replace(/[^\w-]/g, "_")}.json`);
+const ALLOW = (sid) => path.join(INBOX_DIR, "records-allow", `${slug(sid)}.json`);
 
 // A user message's own text: no tool results, no injected reminders, no wrapper tags.
 const userText = (o) => {
@@ -321,8 +357,8 @@ export function workerSession(transcriptPath, now = Date.now()) {
   try {
     const fd = fs.openSync(transcriptPath, "r");
     try {
-      const buf = Buffer.alloc(HEAD_BYTES);
-      head = buf.subarray(0, fs.readSync(fd, buf, 0, HEAD_BYTES, 0)).toString("utf8");
+      const buf = Buffer.allocUnsafe(Math.min(fs.fstatSync(fd).size, HEAD_BYTES));
+      head = buf.subarray(0, fs.readSync(fd, buf, 0, buf.length, 0)).toString("utf8");
     } finally {
       fs.closeSync(fd);
     }
@@ -505,12 +541,13 @@ export function evaluate(input, now = Date.now()) {
 
       const push = pushCall(seg, dirs[i]);
       if (!push) continue;
-      if (startsCI(push)) {
+      const ahead = aheadFiles(push.dir);
+      if (startsCI(push, ahead)) {
         const r = heavyPush(input, links, i, push.dir, base, flag);
         if (r) return r;
       }
       if (!toMain(push)) continue;
-      const gap = e2eGap(push.dir);
+      const gap = e2eGap(push.dir, ahead);
       if (gap.length) {
         audit({ ...base, event: "push-main-e2e-missing", files: gap.slice(0, 10) });
         warns.push(

@@ -26,7 +26,7 @@ const STUCK_MIN = 20;
 const INJECT_CHARS = 3000; // per report; the full file stays on disk
 
 const dir = (...p) => path.join(INBOX_DIR, ...p);
-const slug = (s) =>
+export const slug = (s) =>
   String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "x";
 
 function writeAtomic(file, content) {
