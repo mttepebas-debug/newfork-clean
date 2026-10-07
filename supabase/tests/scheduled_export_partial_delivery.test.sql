@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(12);
 
 -- EKRAN-01 BE-2b (KK-166, KARARLAR Schedule "Haftalık e-postada kısmi teslim
 -- kuralı kapatmaz"): the weekly export email goes to 10 people; Ali's address
@@ -71,6 +71,15 @@ select ok(not (pg_temp.rule()).enabled, 'switch the rule off');
 
 select public.record_schedule_export_schedule_success_service(tests.id('pd'), tests.id('pd:rule'), now(), 'pdf', '{}'::jsonb);
 select is((pg_temp.rule()).last_error, null, 'a full send clears the note');
+
+-- A failure that will fail the same way next week (the cron's StoppedExport)
+-- still switches the rule off at once, even right after a counted one.
+-- ponytail: turned back on as it is; the edit screen does the same.
+update public.scheduled_schedule_exports set enabled = true where id = tests.id('pd:rule');
+select pg_temp.failed();
+select public.record_schedule_export_schedule_failure_service(tests.id('pd'), tests.id('pd:rule'),
+  'Every location in this export was deleted.', 1);
+select ok(not (pg_temp.rule()).enabled, 'a failure that cannot pass next week switches the rule off at once');
 
 select * from finish();
 rollback;
