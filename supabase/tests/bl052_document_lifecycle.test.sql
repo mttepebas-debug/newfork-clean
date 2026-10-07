@@ -82,7 +82,11 @@ select throws_ok($$select public.get_employee_document_lifecycle_service('152000
 select throws_ok($$insert into public.employee_document_submission_files(submission_id,file_id,requirement_id,workspace_id,employee_id)
  select s.id,f.file_id,s.requirement_id,'25200000-0000-4000-8000-000000000099',s.employee_id
  from public.employee_document_submissions s cross join public.employee_document_submission_files f
- where s.workspace_id='25200000-0000-4000-8000-000000000001' and f.workspace_id='25200000-0000-4000-8000-000000000001' and s.id<>f.submission_id limit 1$$,'23503',null,'composite submission/file references reject forged tenant');
+ where s.workspace_id='25200000-0000-4000-8000-000000000001' and f.workspace_id='25200000-0000-4000-8000-000000000001' and s.id<>f.submission_id
+ -- a file this submission does not hold yet: a held one meets the primary key (submission_id, file_id) first and
+ -- answers 23505 before the tenant check (BL-497-2: file ids are random, so an unordered pick hit it 2 runs in 20)
+   and not exists(select 1 from public.employee_document_submission_files held where held.submission_id=s.id and held.file_id=f.file_id)
+ order by s.id, f.file_id limit 1$$,'23503',null,'composite submission/file references reject forged tenant');
 reset role;
 -- Independent global job / location targeting: no invented paired assignment.
 select ok(app_private.document_target_matches('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','{"operator":"and","location_ids":["85200000-0000-4000-8000-000000000002"],"job_ids":["a5200000-0000-4000-8000-000000000001"]}'),'global cook job matches employee at either assigned location');
