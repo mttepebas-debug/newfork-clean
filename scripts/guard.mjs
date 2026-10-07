@@ -72,15 +72,19 @@ export function overrideReason(segs, i) {
   return null;
 }
 
-// ponytail: shell-ish split on && || ; | newline; quoting inside a segment is not parsed, and a
-// command wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not seen.
+// Split on && || ; | newline, but only in the command's own code (BL-964): not inside quotes, a
+// heredoc body, a here-string or a `#` comment, and not at a line continuation. Bash and PowerShell
+// differ in their escape character (\ vs `) and in how a quote escapes itself.
+// ponytail: a command wrapped in another shell (`bash -c "git push …"`, `pwsh -Command "…"`) is not
+// seen, and a lone `&` (background) is not a separator.
 // Each segment carries the operator in front of it; an empty segment between two
 // operators keeps the weaker one (anything but && breaks a chain).
 const SEP = /(&&|\|\||[;|\n])/;
-export function chain(cmd) {
+export function chain(cmd, shell = "bash") {
   const out = [];
   let sep = null;
-  for (const part of dropBodies(cmd).split(SEP)) {
+  // a quote or $( left open: read it the old way, which splits more and so checks more
+  for (const part of split(cmd, shell) ?? dropBodies(cmd).split(SEP)) {
     if (/^(&&|\|\||[;|\n])$/.test(part)) {
       sep = sep && sep !== "&&" ? sep : part;
       continue;
@@ -92,11 +96,154 @@ export function chain(cmd) {
   }
   return out;
 }
-export const segments = (cmd) => chain(cmd).map((c) => c.seg);
+export const segments = (cmd, shell) => chain(cmd, shell).map((c) => c.seg);
+
+// One pass over the command: the pieces between top-level separators, with the separators between
+// them (the shape of String.split(SEP)), or null when a quote or a $( is still open at the end.
+// Quotes keep their text; heredoc and here-string bodies are dropped. Inside "…" a $( … ) is code
+// again (its quotes and heredocs are read) but stays part of the piece, as before.
+function split(cmd, shell) {
+  const pwsh = shell === "pwsh";
+  const esc = pwsh ? "`" : "\\";
+  const parts = [];
+  const stack = [{ mode: "code", top: true, depth: 0 }]; // modes: code, sq '…', dq "…", ansi $'…'
+  const heredocs = [];
+  let cur = "";
+  let i = 0;
+  const cut = (op) => {
+    parts.push(cur, op);
+    cur = "";
+  };
+  // the index of the newline ending the last pending heredoc's terminator line, or -1 if one has none
+  const pastBodies = (from) => {
+    let at = from;
+    for (const { dash, tag } of heredocs.splice(0)) {
+      let found = -1;
+      for (let p = at + 1; p <= cmd.length; ) {
+        const e = cmd.indexOf("\n", p);
+        const end = e < 0 ? cmd.length : e;
+        const line = cmd.slice(p, end);
+        if ((dash ? line.replace(/^\t+/, "") : line).trimEnd() === tag) {
+          found = end;
+          break;
+        }
+        if (e < 0) break;
+        p = e + 1;
+      }
+      if (found < 0) return -1;
+      at = found;
+    }
+    return at;
+  };
+  while (i < cmd.length) {
+    const c = cmd[i];
+    const two = cmd.slice(i, i + 2);
+    const ctx = stack.at(-1);
+    if (ctx.mode === "sq") {
+      if (c === "'" && pwsh && cmd[i + 1] === "'") {
+        cur += "''";
+        i += 2;
+        continue;
+      }
+      if (c === "'") stack.pop();
+      cur += c;
+      i++;
+      continue;
+    }
+    if (ctx.mode === "ansi" || ctx.mode === "dq") {
+      const escape = ctx.mode === "ansi" ? "\\" : esc;
+      if (c === escape && i + 1 < cmd.length) {
+        cur += two;
+        i += 2;
+        continue;
+      }
+      const close = ctx.mode === "ansi" ? "'" : '"';
+      if (c === close && pwsh && cmd[i + 1] === close) {
+        cur += two;
+        i += 2;
+        continue;
+      }
+      if (c === close) stack.pop();
+      else if (ctx.mode === "dq" && two === "$(") {
+        stack.push({ mode: "code", top: false, depth: 0 });
+        cur += two;
+        i += 2;
+        continue;
+      }
+      cur += c;
+      i++;
+      continue;
+    }
+    // code
+    if (c === esc && i + 1 < cmd.length) {
+      const nl = cmd.slice(i + 1, i + 3).match(/^\r?\n/);
+      if (nl) i += 1 + nl[0].length; // a line continuation joins the next line
+      else {
+        cur += two;
+        i += 2;
+      }
+      continue;
+    }
+    const here = c === "@" && cmd.slice(i, i + 64).match(/^@(['"])[ \t]*\r?\n/);
+    if (here) {
+      const close = cmd.indexOf(`\n${here[1]}@`, i);
+      if (close >= 0) {
+        cur += `@${here[1]}${here[1]}@`; // the body is text; `'@ | Set-Content x` goes on as code
+        i = close + 3;
+        continue;
+      }
+    }
+    const doc =
+      two === "<<" && cmd[i + 2] !== "<" && cmd[i - 1] !== "<" &&
+      cmd.slice(i, i + 256).match(/^<<(-?)[ \t]*(?:(['"])([A-Za-z_]\w*)\2|\\?([A-Za-z_]\w*))/);
+    if (doc) {
+      heredocs.push({ dash: doc[1] === "-", tag: doc[3] ?? doc[4] });
+      cur += doc[0];
+      i += doc[0].length;
+      continue;
+    }
+    if (c === "#" && (i === 0 || /[\s;|&(]/.test(cmd[i - 1]))) {
+      const e = cmd.indexOf("\n", i); // a comment runs to the end of its line
+      i = e < 0 ? cmd.length : e;
+      continue;
+    }
+    if (pwsh && two === "<#") {
+      const e = cmd.indexOf("#>", i + 2);
+      i = e < 0 ? cmd.length : e + 2;
+      continue;
+    }
+    if (c === "'") stack.push({ mode: !pwsh && cmd[i - 1] === "$" ? "ansi" : "sq" });
+    else if (c === '"') stack.push({ mode: "dq" });
+    else if (c === "\n") {
+      const past = heredocs.length ? pastBodies(i) : i;
+      if (ctx.top) cut("\n");
+      else cur += "\n";
+      i = past < 0 ? i + 1 : past + 1;
+      continue;
+    } else if (!ctx.top) {
+      if (c === "(") ctx.depth++;
+      else if (c === ")" && ctx.depth-- === 0) stack.pop();
+    } else if (two === "&&" || two === "||") {
+      cut(two);
+      i += 2;
+      continue;
+    } else if (c === ";" || c === "|") {
+      cut(c);
+      i++;
+      continue;
+    }
+    cur += c;
+    i++;
+  }
+  if (stack.length > 1) return null;
+  parts.push(cur);
+  return parts;
+}
 
 // Heredoc (`<<'EOF'`, `<<-EOF`) and PowerShell here-string (`@'` … `'@`) bodies are text, not
 // commands: a report line or a commit body starting with "pnpm.cmd test" runs nothing. A body
 // without its terminator is kept, so a stray "<<x" inside quotes never hides what follows.
+// Since BL-964 only the fallback for a command whose quoting split() cannot read.
 export function dropBodies(cmd) {
   const out = [];
   let close = null;
@@ -532,7 +679,7 @@ export function evaluate(input, now = Date.now()) {
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
 
-    const links = chain(cmd);
+    const links = chain(cmd, input.tool_name === "PowerShell" ? "pwsh" : "bash");
     segs = links.map((l) => l.seg);
     const dirs = folders(segs, cwd);
     const heavyAt = segs.findIndex((s) => HEAVY.has(runStep(s)));

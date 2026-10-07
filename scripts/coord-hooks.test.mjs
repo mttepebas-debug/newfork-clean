@@ -453,6 +453,63 @@ test("heredoc and here-string bodies are text, not commands; what follows the te
   assert.equal(evaluate(bash("cat > x.md <<'EOF'\ngit push origin HEAD:main\nEOF"), AFTER).block, false);
 });
 
+// ---- BL-964: a separator counts only outside quotes, heredoc bodies and here-strings ----------------
+const ps = (command, extra = {}) => bash(command, { tool_name: "PowerShell", ...extra });
+const quiet = (input) => {
+  const r = evaluate(input, AFTER);
+  assert.equal(r.block, false, input.tool_input.command);
+  assert.equal(r.warn ?? null, null, input.tool_input.command);
+};
+
+test("quoted text is not a command: && ; | and a newline inside quotes split nothing (BL-964)", () => {
+  for (const cmd of [
+    `node -e 's=s.replace("a.mjs","b.mjs && turbo test");'`, // PARALEL-1, 2026-10-07: refused after 2026-10-14
+    `node -e "s=s.replace('a.mjs','b.mjs && turbo test');"`,
+    'git commit -m "fix: x; pnpm.cmd test passes"',
+    'git commit -m "first line\npnpm.cmd test is green"',
+    "git commit -m 'one | pnpm.cmd build'",
+    "echo $'it\\'s && pnpm.cmd test'",
+    'echo "say \\" && pnpm.cmd test"',
+    "echo done # && pnpm.cmd test",
+  ])
+    quiet(bash(cmd));
+});
+
+test("PowerShell quoting: '' and `\" and \"\" escape, a backslash does not (BL-964)", () => {
+  for (const cmd of [
+    "Write-Output 'it''s && pnpm.cmd test'",
+    'Write-Output "a`" ; pnpm.cmd test"',
+    'Write-Output "x""; pnpm.cmd build"',
+    "Write-Output done # ; pnpm.cmd test",
+  ])
+    quiet(ps(cmd));
+  // in PowerShell C:\wt\ ends with a plain backslash, so the string closes and the second command runs
+  assert.equal(evaluate(ps('Set-Location "C:\\wt\\"; pnpm.cmd test'), AFTER).block, true);
+});
+
+test("heredoc and here-string bodies may hold quotes; what follows them still counts (BL-964)", () => {
+  quiet(bash("git commit -q -F - <<'EOF'\nfix: Mert's \"quote\" && pnpm.cmd test\nEOF"));
+  quiet(bash('git commit -m "$(cat <<\'EOF\'\nfix: it\'s done; pnpm.cmd test:db\nEOF\n)"'));
+  quiet(ps("@'\nMert's note; pnpm.cmd test\n'@ | Set-Content r.md"));
+  quiet(ps('@"\nsay "hi" && pnpm.cmd build\n"@ | Out-File r.md'));
+  assert.equal(evaluate(bash("cat > x.md <<'EOF'\nit's\nEOF\npnpm.cmd test"), AFTER).block, true);
+  assert.equal(evaluate(ps("@'\nit's\n'@ | Set-Content r.md; pnpm.cmd test"), AFTER).block, true);
+});
+
+test("real separators still split: after a closing quote, and an unclosed quote fails safe (BL-964)", () => {
+  assert.equal(evaluate(bash('git commit -m "a && b" && pnpm.cmd test'), AFTER).block, true);
+  assert.equal(evaluate(bash("echo 'x;y'; pnpm.cmd build"), AFTER).block, true);
+  assert.equal(evaluate(ps("Write-Output 'a;b'; pnpm.cmd e2e"), AFTER).block, true);
+  assert.equal(evaluate(bash('echo "never closed && pnpm.cmd test'), AFTER).block, true);
+});
+
+test("a line continuation joins one command: the push behind it still goes to main (BL-964)", () => {
+  const work = cloneRepo("repo-964");
+  git(work, "checkout", "-q", "-b", "feature"); // HEAD is not main, so only the refspec says main
+  assert.equal(evaluate(bash("git push --dry-run \\\n  origin HEAD:main", { cwd: work })).block, true);
+  assert.equal(evaluate(ps("git push --dry-run `\n  origin HEAD:main", { cwd: work })).block, true);
+});
+
 test("PowerShell keeps $env:NF_OVERRIDE for the whole command, so a cd in between does not lose it", () => {
   const ps = (command) => evaluate(bash(command, { tool_name: "PowerShell" }), AFTER);
   assert.equal(ps("$env:NF_OVERRIDE='Mert istedi'; Set-Location C:/wt/x; pnpm.cmd e2e").block, false);
