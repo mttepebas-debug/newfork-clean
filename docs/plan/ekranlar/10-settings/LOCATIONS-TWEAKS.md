@@ -1,19 +1,32 @@
 # Settings → Locations: artifact ve tasarım seçimi (EKRAN-10-LOCATIONS)
 
-**Durum: ARA HÂL (2026-10-07 ~10:00Z, gece modu).** Mert'in kararı bekleniyor; son hâl değil.
+**Durum: ARA HÂL.** Mert A'yı seçti (2026-10-07); ince ayarlar ve "tamam" bekleniyor. Son hâl değil.
 
-- **Karar:** yok. Mert beş tasarımdan birini (ya da bir karışımını) seçecek.
+- **Karar:** Mert A'yı seçti (2026-10-07, bu oturumun penceresinde, cevabı: "a"). A "ortak liste dili", önerilendi.
 - **İzin:** gerekmiyor. Yalnız belge değişti; kod, migration ve veri değişmedi.
 - **Risk:** 🟢 Uygulamaya dokunulmadı. Artifact'lar özel, yalnız Mert'in hesabında.
-- **Soru:** Mert'e: "A, B, C, D, E'den hangisi; karışım olur mu?"
-- **Sonraki:** Sabah Mert'in seçimiyle artifact güncellenir. "Tamam" gelince bu dosya son hâle çevrilir. Koda uygulama ayrı iş olur ve onu koordinatör açar.
+- **Soru:** yok. Mert'in ince ayarları ya da "tamam" bekleniyor.
+- **Sonraki:** Mert'in ayarları tıklanabilir A kopyasına işlenir. "Tamam" gelince bu dosya son hâle çevrilir. Koda uygulama ayrı iş olur ve onu koordinatör açar.
 
 ## Artifact'lar
 
 | Ne | Bağlantı | Sürüm |
 |---|---|---|
-| Bugünkü sayfanın birebir kopyası (Mert'in ilk isteği: "artifacta gördüğü gibi kaydetsin") | https://claude.ai/artifact/Lru9WAg6HaSbdErLyMhU26 | 1 (`1791362235-ed21`) |
-| Beş tasarım (Mert'in ikinci isteği: "5 tane artifact örneği sun. drawer dahil. mobil görüntü dahil") | https://claude.ai/artifact/UWTcHirMHXjrfa9TND2TLE | 1 (`1791364478-45ed`) |
+| Tıklanabilir kopya. İnce ayarlar burada yapılır. | https://claude.ai/artifact/Lru9WAg6HaSbdErLyMhU26 | 2 (`1791369506-cc9d`) A tasarımı · 1 (`1791362235-ed21`) bugünkü sayfanın birebir kopyası |
+| Beş tasarım (Mert'in isteği: "5 tane artifact örneği sun. drawer dahil. mobil görüntü dahil") | https://claude.ai/artifact/UWTcHirMHXjrfa9TND2TLE | 2 (`1791369509-55ab`) A "Seçildi" işaretli · 1 (`1791364478-45ed`) |
+
+**A kopyası (sürüm 2):** Bugünkü sayfanın gerçek DOM'u, gerçek CSS'i (`list-page.css` dahil) ve A'nın küçük CSS'i (`a.css`) ile kuruldu.
+
+Kopyada çalışanlar:
+- Active / Archived sekmeleri; Archived boş hâlde "No archived locations".
+- New location çekmecesi; iki satırın Edit çekmecesi ve iki tıkla Delete.
+- ⋯ menüsü, Esc ve arama.
+
+Pencere 720 px'in altına inince telefon düzenine geçer. Telefonun alt çubuğu gerçek telefon DOM'undan alındı; telefonda Schedule kapalı olduğu için çubukta yok.
+
+Karşılaştırma: kopyanın görüntüleri, A'nın gerçek CSS ile çizimiyle kıyaslandı (2026-10-07).
+- Masaüstü ve telefon listesi 0 piksel farkla aynı.
+- Çekmecelerde tek fark, ilk alanın odak çerçevesi; çekmece açılınca gerçek uygulama da oraya odaklanıyor.
 
 **Birebir kopya:** Masaüstü 1440'ta gerçek DOM ve gerçek CSS kullanıldı. Kopya uygulama gibi tıklanıyor: liste, satır menüsü, Show archived, Add location çekmecesi, iki satırın Edit çekmecesi ve "Confirm delete" hâli.
 
@@ -27,11 +40,24 @@ Kontrol: bugünkü sayfa aynı yolla yeniden çizildi.
 - Liste gerçek ekranla 0 piksel farkla aynı.
 - Çekmecede tek fark, ilk alanın odak çerçevesi.
 
-## Mert'in ayarları
+## Mert'in ayarları (A üzerinde)
 
-Henüz yok. Mert ilk kopya üzerinden ayar istemedi; onun yerine beş tasarım istedi.
+Henüz yok. Her ayar şu biçimde yazılacak: öğe, özellik, eski değer → yeni değer, etkilenen `--theme-*` token'ı ya da ortak bileşen.
 
-## Beş tasarım (seçim bekliyor)
+A'nın başlangıç değerleri (ayarların "eski değer"i bunlar):
+
+| Öğe | Değer | Kaynak |
+|---|---|---|
+| Sayfa başlığı | 142 px sabit blok; üst yazı SETTINGS, başlık ve yeşil nokta; düğme yok | `list-page.css` (ortak) |
+| Sekme satırı | Active / Archived; 40 px yükseklik, altında 1 px `--theme-border` | `list-page.css` (ortak) |
+| Filtre satırı | 36 px; arama kalan genişliği doldurur; yeşil "New location" 36 px, 0 × 14 iç boşluk, köşe 7 | `list-page.css` (ortak) |
+| Tablo sütunları | Location 24 · Address 40 · Phone number 16 · Time zone 16 · menü 32 px; aralık 12 | `a.css` (yalnız Locations) |
+| Satır | en az 52 px; hücre 13 px `--theme-list-cell-text`; boş telefon "—" `--theme-text-faint` | `a.css` + `list-page.css` |
+| Başlık satırı | 40 px, 11 px büyük harf, zemin `--theme-list-head` | `list-page.css` (ortak) |
+| Çekmece | 640 px; iki sütunlu form; alanlar 36 px; kaydırma boşluğu yalnız kayarken (alan, X ve Save 1424'te) | `jobs-settings.css` (ortak) + `a.css` |
+| Telefon kartı | 1 px `--theme-list-frame`, köşe 8, iç boşluk 14 / 4 / 14 / 14; ad 15/600, adres 13, saat dilimi 12; kartlar arası 8 | `a.css` |
+
+## Beş tasarım (Mert A'yı seçti)
 
 Beşinde de aynı olanlar:
 - Başlık ortak liste dilinde: SETTINGS, başlık ve yeşil nokta; başlıkta düğme yok.
