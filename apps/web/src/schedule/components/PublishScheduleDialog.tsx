@@ -33,7 +33,6 @@ import {
   publishGatingRisks,
   publishHardBlockers,
   publishOverrideableBlockers,
-  publishAvailabilityLook,
   publishNewAvailabilityFindings,
   countLabel,
 } from "./PublishPreflightPanel";
@@ -218,11 +217,8 @@ export function PublishScheduleDialog({
       includeNoDepartment: selectedDepartmentKeys.includes(noDepartmentKey),
     };
   }, [allDepartmentKeys, departments.length, selectedDepartmentKeys]);
-  const softFindings = preview ? publishOverrideableBlockers(preview) : [];
   const hardFindings = preview ? publishHardBlockers(preview) : [];
-  const riskFindings = preview ? publishGatingRisks(preview) : [];
   const newAvailability = preview ? publishNewAvailabilityFindings(preview) : [];
-  const availabilityLook = preview ? publishAvailabilityLook(preview) : [];
   const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
   const availabilityConfirmed = !needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint;
   const hasHardBlocker = hardFindings.length > 0;
@@ -892,16 +888,8 @@ export function PublishScheduleDialog({
                 ? `${countLabel(scheduleConflicts.length, "conflict", "conflicts")} must be fixed`
                 : selectedLocationSummary
               : wizardStep === 2
-                ? [
-                    hardFindings.length + softFindings.length
-                      ? countLabel(hardFindings.length + softFindings.length, "blocker", "blockers")
-                      : null,
-                    riskFindings.length ? countLabel(riskFindings.length, "risk", "risks") : null,
-                    newAvailability.length ? countLabel(newAvailability.length, "schedule conflict", "schedule conflicts") : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") ||
-                  (availabilityLook.length ? "No blockers · one thing to glance at" : "No blockers or risks")
+                ? // BL-441: Pre-flight says its count once, at the top.
+                  null
                 : `${notifyEmployeeIds.length} of ${countLabel(affectedEmployeeIds.length, "employee", "employees")} will be notified`}
           </span>
           {wizardStep > 1 ? (

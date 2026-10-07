@@ -65,6 +65,20 @@ export function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+/**
+ * Pre-flight's one count, at the top, in plain words (BL-441; KARARLAR:524,
+ * KK-166, KK-221): what blocked publishing needs a fix, warnings and new
+ * conflicts are to review. A finding about a person counts as the shift
+ * that raised it.
+ */
+export function preflightCountSentence(fix: number, review: number): string {
+  const needsFix = `${countLabel(fix, "shift needs", "shifts need")} a fix before you can publish.`;
+  if (fix && review) return `${needsFix} ${review} more to review.`;
+  if (fix) return needsFix;
+  if (review) return `${countLabel(review, "shift", "shifts")} to review before you publish.`;
+  return "";
+}
+
 type SchedulePublishFindingWithPreflight = SchedulePublishFinding & {
   readonly tier?: PublishPreflightTier;
   readonly projected?: boolean;
@@ -168,13 +182,7 @@ export function PublishPreflightPanel({
           <strong>
             {ready
               ? "Ready to publish"
-              : [
-                  blockerCount ? countLabel(blockerCount, "blocker", "blockers") : null,
-                  risks.length ? countLabel(risks.length, "risk", "risks") : null,
-                  newConflicts.length ? countLabel(newConflicts.length, "schedule conflict", "schedule conflicts") : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
+              : preflightCountSentence(blockerCount, risks.length + newConflicts.length)}
           </strong>
           <span>
             {ready
@@ -184,7 +192,7 @@ export function PublishPreflightPanel({
               : blockReason
                 ? blockReasonText[blockReason]
               : hard.length
-                ? "Fix hard blockers in the schedule before publishing."
+                ? null
                 : newConflicts.length
                   ? "Review the conflicts below, then continue to publish."
                 : risks.length
