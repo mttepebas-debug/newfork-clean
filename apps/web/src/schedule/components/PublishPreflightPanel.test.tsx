@@ -118,7 +118,9 @@ describe("PublishPreflightPanel", () => {
   it("summarizes warnings without a reason input", () => {
     render(<PublishPreflightPanel preview={preview} locations={[mainDining]} />);
 
-    expect(screen.getByText("1 blocker")).toBeTruthy();
+    // KARARLAR:524, KK-221: one plain count at the top.
+    expect(screen.getByText("1 shift needs a fix before you can publish.")).toBeTruthy();
+    expect(screen.queryByText(/blocker/i)).toBeNull();
     expect(screen.getByText("Warnings to review")).toBeTruthy();
     expect(screen.getByText("Alex is outside availability.")).toBeTruthy();
     expect(screen.getByText("2026-08-17 · Main Dining")).toBeTruthy();

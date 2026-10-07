@@ -4811,7 +4811,7 @@ describe("App", () => {
       )?.textContent,
     ).toContain("Locations");
     await clickReadyButton(screen, "Next");
-    expect((await screen.findAllByText("1 blocker")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("1 shift needs a fix before you can publish.")).length).toBeGreaterThan(0);
     expect(
       container.querySelector(
         ".schedule-publication-steps span[data-active='true']",
@@ -5644,7 +5644,7 @@ describe("App", () => {
     await clickReadyButton(screen, "Next");
 
     expect(await screen.findByText("Risks")).toBeTruthy();
-    expect(screen.getAllByText("1 risk").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1 shift to review before you publish.").length).toBeGreaterThan(0);
     expect(screen.getByText("Projected")).toBeTruthy();
     expect(
       screen.getByText("Confirm the employee can still cover the shift."),
