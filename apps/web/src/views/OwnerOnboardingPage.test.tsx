@@ -501,6 +501,20 @@ describe("OwnerOnboardingPage", () => {
     expect(screen.getByText("America/Los_Angeles")).toBeTruthy();
   });
 
+  it("opens a saved US phone in the mask and a number from outside the US empty", async () => {
+    vi.mocked(listLocations).mockResolvedValue([
+      { ...location, phone: "+14155550100" },
+      { ...location, id: "uk-location", name: "Soho", phone: "+442079460958" },
+    ]);
+    renderPage(2);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Main Dining" }));
+    expect(screen.getByLabelText(/^Phone number/)).toHaveProperty("value", "(415) 555-0100");
+    fireEvent.click(screen.getByRole("button", { name: "Edit Soho" }));
+    // Drawn into the mask, "+44 …" would read as a wrong US number.
+    expect(screen.getByLabelText(/^Phone number/)).toHaveProperty("value", "");
+  });
+
   it("edits a location in the form instead of asking for all nine fields again", async () => {
     vi.mocked(listLocations).mockResolvedValue([location]);
     renderPage(2);

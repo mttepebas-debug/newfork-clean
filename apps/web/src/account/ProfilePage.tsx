@@ -1,5 +1,7 @@
 import {
   normalizeAccountPhone,
+  toUsPhone,
+  usPhoneDraft,
   type EmploymentContactRecord,
   type OwnerLegalName,
 } from "@newfork/shared";
@@ -39,6 +41,8 @@ import { AvatarCropDialog } from "./AvatarCropDialog";
 import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
 import { RequestError } from "../lib/request-error";
+import { UsPhoneInput } from "../shell/UsPhoneInput";
+import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 
 /**
  * What the page's one Save needs from each legal name form. The legal name is
@@ -49,6 +53,8 @@ type LegalNameHandle = {
   readonly dirty: boolean;
   /** First and last name are both there; the middle name may stay empty. */
   readonly filled: boolean;
+  /** No part breaks the US letter rule (BL-503). */
+  readonly lettersOk: boolean;
   readonly save: () => Promise<void>;
   readonly reset: () => void;
 };
@@ -80,7 +86,7 @@ function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
   return {
     name: lead?.emergencyContactName ?? "",
     relationship: lead?.emergencyContactRelationship ?? "",
-    phone: lead?.emergencyContactPhone ?? "",
+    phone: usPhoneDraft(lead?.emergencyContactPhone),
   };
 }
 
@@ -117,7 +123,7 @@ export default function ProfilePage() {
   const [preferredSent, setPreferredSent] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const [phone, setPhone] = useState(account?.phone ?? "");
+  const [phone, setPhone] = useState(usPhoneDraft(account?.phone));
   const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
   const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
@@ -128,7 +134,10 @@ export default function ProfilePage() {
   const [draftFile, setDraftFile] = useState<File | null>(null);
   const legalForms = useRef(new Map<string, LegalNameHandle>());
   const [legalState, setLegalState] = useState<
-    Record<string, { readonly dirty: boolean; readonly filled: boolean }>
+    Record<
+      string,
+      { readonly dirty: boolean; readonly filled: boolean; readonly lettersOk: boolean }
+    >
   >({});
   const registerLegalName = useCallback<RegisterLegalName>(
     (workspaceId, handle) => {
@@ -139,12 +148,18 @@ export default function ProfilePage() {
         if (
           handle &&
           before?.dirty === handle.dirty &&
-          before.filled === handle.filled
+          before.filled === handle.filled &&
+          before.lettersOk === handle.lettersOk
         )
           return current;
         if (!handle && !before) return current;
         const next = { ...current };
-        if (handle) next[workspaceId] = { dirty: handle.dirty, filled: handle.filled };
+        if (handle)
+          next[workspaceId] = {
+            dirty: handle.dirty,
+            filled: handle.filled,
+            lettersOk: handle.lettersOk,
+          };
         else delete next[workspaceId];
         return next;
       });
@@ -202,7 +217,7 @@ export default function ProfilePage() {
           (record) =>
             record.emergencyContactName !== contact.name ||
             record.emergencyContactRelationship !== contact.relationship ||
-            record.emergencyContactPhone !== contact.phone,
+            record.emergencyContactPhone !== (toUsPhone(contact.phone) ?? contact.phone),
         );
   const contactDirty = contactBehind.length > 0;
   const formDirty = dirty || legalDirty || preferredDirty || contactDirty;
@@ -210,12 +225,17 @@ export default function ProfilePage() {
   // What is still missing, by the labels on screen; Save waits for all of it.
   const missing = [
     legalFilled ? null : "legal name",
-    phone.trim() === "" ? "phone number" : null,
+    toUsPhone(phone) ? null : "phone number",
     hasContactForm && contact.name.trim() === "" ? "contact name" : null,
     hasContactForm && contact.relationship.trim() === "" ? "relationship" : null,
-    hasContactForm && contact.phone.trim().length < 7 ? "contact phone" : null,
+    hasContactForm && !toUsPhone(contact.phone) ? "contact phone" : null,
   ].filter((part): part is string => part !== null);
-  const complete = missing.length === 0;
+  // A field that breaks the US letter rule says so under itself.
+  const lettersOk =
+    Object.values(legalState).every((form) => form.lettersOk) &&
+    !breaksLetterRule(preferred) &&
+    !(hasContactForm && breaksLetterRule(contact.name, contact.relationship));
+  const complete = missing.length === 0 && lettersOk;
 
   useEffect(() => {
     if (!draftFile) return;
@@ -226,7 +246,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!account || dirty) return;
-    setPhone(account.phone ?? "");
+    setPhone(usPhoneDraft(account.phone));
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
   }, [account, dirty]);
@@ -256,7 +276,7 @@ export default function ProfilePage() {
     setPreferredDraft(null);
     setPreferredSent(new Set());
     setContactDraft(null);
-    setPhone(account.phone ?? "");
+    setPhone(usPhoneDraft(account.phone));
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
     for (const form of legalForms.current.values()) form.reset();
@@ -341,7 +361,7 @@ export default function ProfilePage() {
         await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
           name: contact.name,
           relationship: contact.relationship,
-          phone: contact.phone,
+          phone: toUsPhone(contact.phone) ?? contact.phone,
           email: record.emergencyContactEmail,
         });
       } catch (cause: unknown) {
@@ -501,26 +521,23 @@ export default function ProfilePage() {
                 setPreferredSent(new Set());
                 setSaved(null);
               }}
+              {...letterRuleProps(preferred, "account-preferred-name-error")}
             />
+            <LetterRuleError value={preferred} id="account-preferred-name-error" />
             <small>Shown everywhere except documents. A manager approves it.</small>
           </label>
           <label className="account-field account-field-span-2" htmlFor="account-phone-number">
             <span>Phone number</span>
-            {/* Without a leading +, the number is read as a US/Canada number. */}
-            <input
+            <UsPhoneInput
               id="account-phone-number"
               aria-label="Phone number"
-              type="tel"
               value={phone}
-              maxLength={30}
-              onChange={(event) => {
-                setPhone(event.target.value);
+              onChange={(next) => {
+                setPhone(next);
                 markDirty();
               }}
-              placeholder="415 555 0142"
               required
             />
-            <small>Outside the US or Canada, start with + and the country code.</small>
           </label>
         </div>
 
@@ -535,32 +552,40 @@ export default function ProfilePage() {
                   <span>Contact name</span>
                   <input
                     id="account-contact-name"
+                    aria-label="Contact name"
                     value={contact.name}
                     maxLength={120}
                     onChange={(event) => editContact("name", event.target.value)}
                     placeholder="Morgan Reyes"
                     required
+                    {...letterRuleProps(contact.name, "account-contact-name-error")}
                   />
+                  <LetterRuleError value={contact.name} id="account-contact-name-error" />
                 </label>
                 <label className="account-field" htmlFor="account-contact-relationship">
                   <span>Relationship</span>
                   <input
                     id="account-contact-relationship"
+                    aria-label="Relationship"
                     value={contact.relationship}
                     maxLength={80}
                     onChange={(event) => editContact("relationship", event.target.value)}
                     placeholder="Spouse"
                     required
+                    {...letterRuleProps(contact.relationship, "account-contact-relationship-error")}
+                  />
+                  <LetterRuleError
+                    value={contact.relationship}
+                    id="account-contact-relationship-error"
                   />
                 </label>
                 <label className="account-field" htmlFor="account-contact-phone">
                   <span>Contact phone</span>
-                  <input
+                  <UsPhoneInput
                     id="account-contact-phone"
+                    aria-label="Contact phone"
                     value={contact.phone}
-                    maxLength={30}
-                    onChange={(event) => editContact("phone", event.target.value)}
-                    placeholder="415 555 0199"
+                    onChange={(next) => editContact("phone", next)}
                     required
                   />
                 </label>
@@ -721,11 +746,13 @@ function OwnerLegalNameFields({
     draft.middleName !== initial.middleName ||
     draft.lastName !== initial.lastName;
   const filled = draft.firstName.trim() !== "" && draft.lastName.trim() !== "";
+  const lettersOk = !breaksLetterRule(draft.firstName, draft.middleName, draft.lastName);
 
   useEffect(() => {
     register(workspaceId, {
       dirty,
       filled,
+      lettersOk,
       save: () =>
         saveName({
           firstName: draft.firstName.trim(),
@@ -734,7 +761,7 @@ function OwnerLegalNameFields({
         }),
       reset: () => setDraft(initial),
     });
-  }, [dirty, draft, initial, filled, register, saveName, workspaceId]);
+  }, [dirty, draft, initial, filled, lettersOk, register, saveName, workspaceId]);
   useEffect(() => () => register(workspaceId, null), [register, workspaceId]);
 
   const field = (suffix: string) => `legal-name-${workspaceId}-${suffix}`;
@@ -756,7 +783,9 @@ function OwnerLegalNameFields({
           onEdit();
           setDraft({ ...draft, [part]: event.target.value });
         }}
+        {...letterRuleProps(draft[part], field(`${suffix}-error`))}
       />
+      <LetterRuleError value={draft[part]} id={field(`${suffix}-error`)} />
     </label>
   );
 

@@ -10,6 +10,7 @@ import {
   listOwnEmploymentRecords,
   saveOwnLegalName,
 } from "../lib/supabase";
+import { usLettersMessage } from "@newfork/shared";
 import { RequestError } from "../lib/request-error";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 import { uploadAccountAvatar, removeAccountAvatar } from "../lib/supabase";
@@ -77,6 +78,21 @@ function renderProfile() {
   );
 }
 
+function contactRecord(workspaceId: string, over: Record<string, string> = {}) {
+  return {
+    workspaceId,
+    workspaceName: "Meyhouse",
+    employeeId: `emp-${workspaceId}`,
+    preferredName: "",
+    phone: null,
+    emergencyContactName: "",
+    emergencyContactRelationship: "",
+    emergencyContactPhone: "",
+    emergencyContactEmail: "",
+    ...over,
+  };
+}
+
 describe("ProfilePage", () => {
   it("keeps the draft on Stay and leaves only after explicit discard", async () => {
     renderProfile();
@@ -138,9 +154,18 @@ describe("ProfilePage", () => {
 
     expect(screen.getByLabelText("Phone number")).toHaveProperty(
       "value",
-      "+14155550142",
+      "(415) 555-0142",
     );
     expect(updateAccount).not.toHaveBeenCalled();
+  });
+
+  it("leaves a saved number from outside the US empty and asks for a US one", () => {
+    // Saved before BL-503; drawn into the mask it would read as a wrong US number.
+    account = { ...account, phone: "+442071234567" };
+    renderProfile();
+
+    expect(screen.getByLabelText("Phone number")).toHaveProperty("value", "");
+    expect(screen.getByText("To save, fill in phone number.")).toBeTruthy();
   });
 
   it("previews a square crop without upload, cancels replacement and removes only on Save", async () => {
@@ -297,7 +322,7 @@ describe("ProfilePage", () => {
 
     const last = await screen.findByLabelText("Legal last name");
     await waitFor(() => expect(last).toHaveProperty("value", "Tepebas"));
-    fireEvent.change(last, { target: { value: "Tepebaş" } });
+    fireEvent.change(last, { target: { value: "Tepebasi" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
@@ -342,20 +367,6 @@ describe("ProfilePage", () => {
     );
     expect(screen.queryByLabelText("Legal first name")).toBeNull();
   });
-  function contactRecord(workspaceId: string, over: Record<string, string> = {}) {
-    return {
-      workspaceId,
-      workspaceName: "Meyhouse",
-      employeeId: `emp-${workspaceId}`,
-      preferredName: "",
-      phone: null,
-      emergencyContactName: "",
-      emergencyContactRelationship: "",
-      emergencyContactPhone: "",
-      emergencyContactEmail: "",
-      ...over,
-    };
-  }
 
   it("keeps Save off while a required field is empty, and lets the middle and preferred names stay empty", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
@@ -426,7 +437,8 @@ describe("ProfilePage", () => {
     expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
       second,
       `emp-${second}`,
-      expect.objectContaining({ name: "Sam", relationship: "Spouse", phone: "4155550199" }),
+      // A US number in E.164 (BL-503), whatever way it was saved before.
+      expect.objectContaining({ name: "Sam", relationship: "Spouse", phone: "+14155550199" }),
     );
     expect(requestPreferredName).toHaveBeenCalledTimes(2);
     expect(updateAccount).toHaveBeenCalledWith("Ay", "system", "+14155550142", expect.anything());
@@ -466,9 +478,15 @@ describe("ProfilePage", () => {
 
     fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ay" } });
     fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "Sam" } });
-    // After the Save, Meyhouse holds the new values and Ridgeline the old ones.
+    // After the Save, Meyhouse holds the new values, the phone now in E.164
+    // (BL-503), and Ridgeline the old ones.
     vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
-      { ...before[0]!, preferredName: "Ay", emergencyContactName: "Sam" },
+      {
+        ...before[0]!,
+        preferredName: "Ay",
+        emergencyContactName: "Sam",
+        emergencyContactPhone: "+14155550199",
+      },
       before[1]!,
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -594,3 +612,48 @@ function choosePhoto() {
   Object.defineProperty(image, "naturalHeight", { value: 400 });
   fireEvent.load(image);
 }
+
+// BL-503: KARARLAR "Form ve girdi kuralları (ABD)" on Account > Profile.
+describe("ProfilePage US form rules", () => {
+  const ownerWithContact = () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockResolvedValue({ firstName: "Mert", middleName: "", lastName: "Tepebas" });
+    vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+      contactRecord(ownedWorkspaceId, {
+        emergencyContactName: "Morgan",
+        emergencyContactRelationship: "Spouse",
+        emergencyContactPhone: "+14155550199",
+      }),
+    ]);
+  };
+  const saysUnder = (label: string) => {
+    const field = screen.getByLabelText(label);
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(usLettersMessage);
+  };
+
+  it("draws both phones with a fixed +1 and drops the international hint", async () => {
+    ownerWithContact();
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    for (const label of ["Phone number", "Contact phone"]) {
+      const field = screen.getByLabelText(label);
+      expect(field.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
+    }
+    expect((screen.getByLabelText("Contact phone") as HTMLInputElement).value).toBe("(415) 555-0199");
+    expect(screen.queryByText(/Outside the US or Canada/)).toBeNull();
+  });
+
+  it.each([["Preferred name"], ["Legal last name"], ["Contact name"], ["Relationship"]])(
+    "says under %s that Turkish-only letters are not taken, and keeps Save off",
+    async (label) => {
+      ownerWithContact();
+      renderProfile();
+      await screen.findByDisplayValue("Mert");
+      await screen.findByDisplayValue("Morgan");
+      fireEvent.change(screen.getByLabelText(label), { target: { value: "Ayşe" } });
+      saysUnder(label);
+      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    },
+  );
+});

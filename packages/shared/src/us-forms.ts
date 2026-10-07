@@ -39,14 +39,23 @@ export function formatUsPhone(value: string): string {
 
 /**
  * "+14155550100" for a whole US number: ten digits, or eleven after a country
- * 1. A foreign number ("+44 …") or too many digits is null, never cut down.
+ * 1, the area code not starting with 0 or 1. A foreign number ("+44 …") or too
+ * many digits is null, never cut down.
  */
 export function toUsPhone(value: string): string | null {
   const trimmed = value.trim();
   const digits = trimmed.replace(/\D/g, "");
   if (trimmed.startsWith("+") && !digits.startsWith("1")) return null;
   const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  return local.length === 10 ? `+1${local}` : null;
+  return /^[2-9]\d{9}$/.test(local) ? `+1${local}` : null;
+}
+
+/**
+ * What a phone field starts from: a saved US number in the mask, any other
+ * saved number left empty, since the mask would turn "+44 …" into a wrong US one.
+ */
+export function usPhoneDraft(saved: string | null | undefined): string {
+  return saved && toUsPhone(saved) ? formatUsPhone(saved) : "";
 }
 
 /** A saved US number as "+1 (415) 555-0100"; anything else stays as it was saved. */

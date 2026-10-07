@@ -1,6 +1,8 @@
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
+  displayUsPhone,
   suggestLocationShortName,
+  usPhoneDraft,
   type Location,
   type LocationInput,
 } from "@newfork/shared";
@@ -14,7 +16,6 @@ import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import { LocationTimezoneField } from "./LocationTimezoneField";
-import { displayUsPhone } from "@newfork/shared";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
   checkLocationDraft,
@@ -59,7 +60,7 @@ function locationDraft(location: Location): LocationDraft {
   return {
     name: location.name,
     short_name: location.short_name,
-    phone: location.phone ?? "",
+    phone: usPhoneDraft(location.phone),
     street_address: location.street_address,
     city: location.city,
     region: location.region,

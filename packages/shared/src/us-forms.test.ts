@@ -7,6 +7,7 @@ import {
   toUsPhone,
   usLettersMessage,
   usPhoneDigits,
+  usPhoneDraft,
   usPhoneSchema,
   usText,
 } from "./us-forms";
@@ -59,6 +60,18 @@ describe("the US phone rule", () => {
     expect(toUsPhone("+44 2079 4609")).toBeNull();
     expect(toUsPhone("+1 415 555 0100")).toBe("+14155550100");
     expect(toUsPhone("41555501009")).toBeNull();
+    // No US area code starts with 0 or 1, so the stored shape never takes one.
+    expect(toUsPhone("(015) 555-0100")).toBeNull();
+    expect(toUsPhone("1 115 555 0100")).toBeNull();
+  });
+
+  it("starts a phone field from a saved US number, and leaves any other one empty", () => {
+    expect(usPhoneDraft("+14155550100")).toBe("(415) 555-0100");
+    expect(usPhoneDraft("4155550199")).toBe("(415) 555-0199");
+    // Drawn into the mask, "+44 …" would read as a wrong US number.
+    expect(usPhoneDraft("+442079460958")).toBe("");
+    expect(usPhoneDraft(null)).toBe("");
+    expect(usPhoneDraft(undefined)).toBe("");
   });
 
   it("shows a saved US number one way and anything else as saved", () => {
