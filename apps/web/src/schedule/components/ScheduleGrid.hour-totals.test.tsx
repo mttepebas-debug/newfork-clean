@@ -224,7 +224,7 @@ describe("ScheduleGrid hour totals parity", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("gridcell", {
-        name: "Main Dining 2026-08-17 total hours 7h 30m",
+        name: "Main Dining Mon, Aug 17 total hours 7h 30m",
       }),
     ).toBeTruthy();
     expect(
@@ -300,7 +300,7 @@ describe("ScheduleGrid hour totals parity", () => {
 
     expect(
       screen.getByRole("gridcell", {
-        name: "Main Dining + Patio 2026-08-17 total hours 8h",
+        name: "Main Dining + Patio Mon, Aug 17 total hours 8h",
       }),
     ).toBeTruthy();
     expect(
