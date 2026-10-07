@@ -1686,3 +1686,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Reddedilenler:** Workspace (Ekran 5; daha az çakışma ama sırada sonra, BL-804 tek yüksek madde), Giriş ve katılım (Ekran 16; MVP için kritik ama e-posta canlıda yok, S8 Mert'te), güvenlik BL-178 / BL-276 (matris çakışması; EKRAN-02 paketinden sonra ilk aday).
 - **Not:** üç hat aynı bilgisayarda; ağır koşular `heavy.lock` ile sıraya girer, CI tek koşucuda (~16–25 dk). Darboğaz büyürse dördüncü hat açılmaz.
 - **Dayanak:** CLAUDE.md §4.1, §5.1; ILKELER P02, P09, P17; EKRAN-PLANI sırası.
+
+### KK-193 (2026-10-07) Dördüncü hat: paralel çalışma altyapısı (PARALEL-1)
+- **Kim:** koordinatör (`f2f4ad49…`), Mert'in isteğiyle ("1 session daha başlat önemli bir task daha ver", ~08:20Z; dördüncü hattın darboğaz uyarısı bir önceki mesajda söylendi, Mert yine istedi). **Nerede:** görev kartı "Make three parallel lines safe on one machine (PARALEL-1)".
+- **Ne:** dördüncü iş ekran değil araç: BL-897 (test:db dalın test dünyasını ortak DB'ye kalıcı yüklüyor — üç hat aynı DB'de çalışırken birinin testi ötekini habersiz bozar), BL-755 (pano etiketleri 40 karakterde kesilip oturumları karıştırıyor — koordinatörün 20 dk gözetimi buna bakıyor), BL-760 (gönderim kancası gönderilen ref yerine klasörün HEAD'ini okuyor). R2, görev dosyası + `/code-review`; ekran dosyalarına dokunmaz, ağır koşusu az.
+- **Neden bu:** üç paralel hattı güvenli kılar ve bilgisayara en az yükü ekler; ekran işi seçilseydi dördüncü ağır koşu kuyruğu ve yeni dosya çakışmaları gelirdi. **Reddedilenler:** Workspace (Ekran 5), Giriş ve katılım (Ekran 16; e-posta canlıda yok), güvenlik BL-178 / BL-276 (EKRAN-02 paketinden sonra).
+- **Dayanak:** CLAUDE.md §4.1, §4.2 (tek ağır koşu), §6; ILKELER P19.
