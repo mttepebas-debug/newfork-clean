@@ -3,16 +3,16 @@
 ## Mert için özet
 - **En ağır 5 hata (bugün, 2026-10-07):**
   1. Admin işten çıkarma tarihini yanlışlıkla 1 Eylül seçerse Ali'nin çalışılmış Eylül vardiyaları "Unassigned" olur; Restore da geri getirmez (#2).
-  2. Ayşe yeni garsona "Alex" yazar, "Employee saved." görür, ad kaydolmaz (#16).
+  2. Ayşe yeni garsona "Alex" yazar, "Employee saved." görür, ad kaydolmaz (#16). **Düzeldi 2026-10-07:** alan Add employee'de yok.
   3. Owner Mert, arşivdeki Ali'yi Restore edince Ali'nin hesabı kayıttan kopar; yeniden davet gerekir (#9).
-  4. Owner, son lokasyonundan çıkarılan Ali'yi işten çıkaramaz: düğme kapalı, oysa sunucu kabul ediyor (#1).
+  4. Owner, son lokasyonundan çıkarılan Ali'yi işten çıkaramaz: düğme kapalı, oysa sunucu kabul ediyor (#1). **Düzeldi 2026-10-07.**
   5. Davetli Emre'ye "Send reminder" her basışta hata verir (#28).
 - **Görsel karar bekleyen yok.** Masaüstü "Add employee" yeşil, arama satırının sonunda (6 · C); telefon listesi kişi başına kart (Mert, 2026-10-07, bu oturumda); owner'ın Location hücresi "Kadikoy +1". Görünen her değişiklik size önce/sonra görüntüsüyle gelecek.
 - **Kapandı:** 120 kişilik işletmede 20 kişinin görünmemesi (EMP-LIMIT, main'de).
 
 ---
 
-- **Durum: taslak** (`EKRAN-PLANI.md` "Bir ekranın turu" madde 4). Hata düzeltmeleri KARARLAR'da doğru davranışı yazılı olduğu için Mert onayı beklemez (koordinatörün görev mesajı, 2026-10-07); görsel maddeler önce/sonra görüntüsüyle gider.
+- **Durum: uygulamada** — 4 / 59 ✅ (2026-10-07; inceleme `nf-guvenlik` ONAY @`79532ef0` ve @`dbb71766`, R2: çekmece Schedule ve Availability'de de açılıyor). (`EKRAN-PLANI.md` "Bir ekranın turu" madde 4). Hata düzeltmeleri KARARLAR'da doğru davranışı yazılı olduğu için Mert onayı beklemez (koordinatörün görev mesajı, 2026-10-07); görsel maddeler önce/sonra görüntüsüyle gider.
 - **Yazan:** Employees'in tek sahip oturumu (`oturum/ekran-03`), 2026-10-07. Taban `origin/main` `d57be38c`. Dal `task/ekran-03`, worktree `newfork-wt/ekran-03`.
 - **Kaynaklar:** `OZET.md` (E3-01…E3-38, prototip taşı listesi, K1–K12, S1–S5) · `S1-restore.md` · `tasks/EKRAN-03-EMPLOYEES.md` (dilimler; bu dosya onun yerini alır, kayıt olarak kalır) · KARARLAR "Employees" ve Genel → "Liste sayfalarının ortak dili" · BACKLOG "Employees ekranı keşfi" (BL-765…786) ve eski Employees maddeleri.
 - **Örnek kişiler:** owner Mert, admin Zeynep, Kadıköy müdürleri Ayşe ve Hande (eş rütbe), garson Ali, davetli Emre.
@@ -50,14 +50,14 @@ Keşif tabanı `31649359`'dan bu yana Employees'e dokunan değişiklik yalnız i
 ### 2.1 İşten çıkarma ve Restore
 | # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt | Durum |
 |---|---|---|---|---|
-| 1 | Owner Mert, son lokasyonundan çıkarılmış ya da Remote olan Ali'yi işten çıkarabilir; pencere workspace'in saat dilimini sunar (E3-01 · BL-765 · K4) [şimdi] | R1 | `EmployeeDrawer.test.tsx` "terminates somebody with no location in the workspace time zone" (önce kırmızı) | ⏳ |
+| 1 | Owner Mert, son lokasyonundan çıkarılmış ya da Remote olan Ali'yi işten çıkarabilir; pencere workspace'in açık lokasyonlarının saat dilimlerini sunar (workspace'in kendi saat dilimi alanı yok) (E3-01 · BL-765 · K4) [şimdi] | R1 | `EmployeeDrawer.test.tsx` "offers the workspace's time zones to somebody with no location left", "suggests now in the worksite zone when the zones arrive late", "keeps a time already typed…"; `artifacts/EKRAN-03/simdi-1/` | ✅ `e9054530` + `48f03a64` |
 | 2 | Zeynep işten çıkarma tarihini geçmişe (1 Eylül) alsa da Ali'nin şimdiden önceki yayınlanmış vardiyaları Ali'de kalır; yalnız şimdiden sonrakiler boşalır (E3-02 · BL-766 · K1, P09) [veri] | R3 | `employee_termination_offboarding` (103-117 bugünkü kurala göre yeniden yazılır, önce kırmızı) | ⏳ |
 | 3 | Ali çıkarılınca bekleyen izin talepleri "Withdrawn" olur, Ayşe'nin Requests → Needs review'undan düşer; pencere bundan söz etmez; Restore geri getirmez (E3-12 · BL-771 · Mert Q1) [veri] | R3 | pgTAP `employee_termination_offboarding` (izin satırı) | ⏳ |
 | 4 | Ali çıkarılınca taslak programdaki (yayınlanmamış hafta, açık düzenleme) vardiyaları da Ali'de kalmaz (E3-12 taslak yarısı · BL-388) [veri] | R3 | pgTAP | ⏳ (Schedule düzenleme oturumuna dokunur: sıra koordinatörde) |
 | 5 | Terminate penceresi açığa düşecek yayınlanmış vardiyaları söyler: "Ali's 2 published shifts will become unassigned: Sat Oct 11, Sun Oct 12"; boşalacak vardiya yoksa uyarı yok (Mert Q1) [veri] | R2 | pgTAP önizleme okuması + web vitest | ⏳ |
 | 6 | Ali'nin vardiyası boşalırsa Kadıköy müdürü Ayşe uygulama içi "Ali's 2 shifts are unassigned" bildirimini alır; Ali'ye bildirim yok; boşalan yoksa bildirim yok. Penceredeki "create manager follow-ups" sözü buna göre yazılır (E3-05 · BL-768 · KK-174) [veri] | R3 | pgTAP alıcı sayımı | ⏳ |
-| 7 | "Confirm termination" kırmızı ve iki tık (E3-06 · BL-778 · K8 · T3) [şimdi] | R1 | web vitest (ilk tık göndermez) + ekran görüntüsü | ⏳ |
-| 8 | Terminate penceresi klavyeyle: açılınca odak ilk alanda, Tab pencerenin içinde döner, Esc'te odak "Terminate employee"a döner; gerekçe hatası alanın altında, tarayıcı balonu yok (E3-16 · BL-779 · T2) [şimdi] | R1 | web vitest | ⏳ |
+| 7 | İşten çıkarma onayı kırmızı ve iki tık: "Terminate" → "Confirm termination"; düğme iki hâlde de 191 px, Cancel yerinden oynamaz (`useConfirmClick`: eksik alanda hazırlanmayı durdurmak için `ConfirmButton` yerine) (E3-06 · BL-778 · K8 · T3) [şimdi] | R1 | "asks twice, in red, before terminating", "keeps the button as wide at rest as when armed"; `artifacts/EKRAN-03/simdi-1/EKRAN-03-simdi-1-once-sonra.png` | ✅ `e9054530` |
+| 8 | Terminate penceresi klavyeyle: açılınca odak ilk alanda, Tab pencerenin içinde döner, Esc / Cancel / kapat / işten çıkarma sonrası odak "Terminate employee"a döner; eksik tarih ya da gerekçe alanın altında, tarayıcı balonu yok, düğme hazırlanmaz (E3-16 · BL-779 · T2) [şimdi] | R1 | "says a missing reason under the field and does not arm", "puts the focus on the first field…", "keeps Tab inside the window", "gives the focus back…" (4); Chrome Tab sırası ölçümü `measures.json` | ✅ `e9054530` + `48f03a64` |
 | 9 | Owner Mert, arşivdeki Ali'yi "Restore employee" ile geri alır: Ali aynı girişle döner; onboarding'i yarımsa kaldığı adımdan sürer (kısıtlı), bitmişse tam erişim (E3-10 · BL-770 · S1) [veri] | R3 | yeni `employee_restore` pgTAP + web vitest | ⏳ |
 | 10 | Eski bir ekrandan gelen Restore, aktif kaydı bozmaz: komut kaydın o anki durumuna bakar ve reddeder (E3-10 · S1 teknik) [veri] | R3 | `employee_restore` | ⏳ |
 | 11 | Lokasyonu ya da birincil işi kalmamış Ali'nin Restore penceresi lokasyon ve iş seçtirir; geri dönen müdürse en az bir lokasyon şart (E3-13 · BL-456 Restore yolu · S1) [veri] | R3 | `employee_restore` | ⏳ |
@@ -69,7 +69,7 @@ Keşif tabanı `31649359`'dan bu yana Employees'e dokunan değişiklik yalnız i
 ### 2.2 Kişi kaydı, kimlik ve görünürlük
 | # | Davranış | Sınıf | Kanıt | Durum |
 |---|---|---|---|---|
-| 16 | Add employee'de ve henüz aktif olmayan kişide "Preferred name" salt okunur; Ayşe yazıp kaybedemez (ad talep ve cevapla değişir) (E3-04 · BL-777 · K2) [şimdi] | R1 | web vitest | ⏳ |
+| 16 | Add employee'de "Preferred name" alanı yok; var olan kişide ad kayıtlıysa salt okunur metin, yoksa satır yok — Ayşe yazıp kaybedemez (ad çalışanın isteğiyle değişir) (E3-04 · BL-777 · K2, koordinatör KK-205 ile değiştirdi 2026-10-07) [şimdi] | R1 | "does not show Preferred name on a new employee", "leaves Preferred name out when the person has none", "shows a preferred name as read-only text"; `artifacts/EKRAN-03/simdi-1/EKRAN-03-simdi-1-16-sonra.png` | ✅ `641f796e` |
 | 17 | Bağlı ya da aktif kayıtta resmî adı yalnız owner değiştirir; Zeynep ve Ayşe API'den de değiştiremez. Onboarding düzeltme önerisini alt rütbe için admin de onaylar (E3-09 · BL-769 · K11) [veri] | R3 | `employees_on_the_core`, `authorization_matrix` | ⏳ |
 | 18 | Admin olarak davet edilmiş ama kabul etmemiş Emre'nin kaydını Ayşe düzenleyemez: rütbe davetteki rolle (E3-31 · BL-773 · K12) [veri] | R3 | `employees_on_the_core` | ⏳ |
 | 19 | Hande hakkındaki internal note'u yalnız owner ve admin görür; eş müdür Ayşe görmez (S3) [veri] | R3 | `employee_directory_rls` | ⏳ |
