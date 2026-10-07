@@ -89,7 +89,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
             <label>Shift type<select value={typeId} onChange={e => setTypeId(e.target.value)}><option value="">All shift types</option>{model.shift_types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
           </div>
           <div className="default-hours-selection">{candidates.map(s => <label key={s.id}><input type="checkbox" checked={chosen.has(s.id)} onChange={e => setChosen(current => { const next = new Set(current); if (e.target.checked) next.add(s.id); else next.delete(s.id); return next; })} />
-            {s.scheduled_date} · {model.shift_types.find(t => t.id === s.shift_type_id)?.name ?? "Saved shift type"} · {model.employees.find(e => e.id === s.employee_id)?.display_name ?? "Open shift"} · {model.locations.find(l => l.id === s.location_id)?.name ?? "Location"}</label>)}</div>
+            {s.scheduled_date} · {shiftTypeName(model, s.shift_type_id)} · {model.employees.find(e => e.id === s.employee_id)?.display_name ?? "Open shift"} · {model.locations.find(l => l.id === s.location_id)?.name ?? "Location"}</label>)}</div>
         </fieldset>
         {!candidates.length ? <p>No saved reference-hour shifts in this range.</p> : null}
         {candidates.length && !command ? <p>{ids.length ? "Check the dates and shifts selected." : "Choose at least one shift to review."}</p> : null}
@@ -111,4 +111,12 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
       </div>
     </section>
   </div>;
+}
+
+// A type archived since keeps its name, marked so (BL-499).
+function shiftTypeName(model: ScheduleReadModel, shiftTypeId: string | null): string {
+  const active = model.shift_types.find(type => type.id === shiftTypeId);
+  if (active) return active.name;
+  const archived = model.referenced_shift_types?.find(type => type.id === shiftTypeId);
+  return archived ? `${archived.name} (archived)` : "No shift type";
 }
