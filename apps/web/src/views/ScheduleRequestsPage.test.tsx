@@ -245,6 +245,62 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(within(rows[0]!).getByText("Needs review")).toBeTruthy();
     expect(fetchRequests.mock.calls.some(([path]) => path.includes("time_off_queue=closed"))).toBe(true);
   });
+  // EKRAN-02 #67 (KARARLAR Genel, telefonda kart satırı): the phone shows a
+  // card per request: the type's mark and the name, When under it, Status on
+  // the right, and Decide by ("By …") only while the request is open.
+  it("gives each request a phone card: name and type, When, Status, Decide by only while open", async () => {
+    const approved: TimeOffRequest = {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved", progress: null,
+      events: [{ id: "97400000-0000-4000-8000-000000000001", action: "approved", actor_name: "Ayşe Yılmaz", note: "", created_at: "2035-01-10T09:00:00Z" }],
+    };
+    read = { ...fixture, time_off_requests: [pending, approved] };
+    renderPage();
+    const cards = await screen.findByRole("list", { name: "Requests" });
+    const open = await within(cards).findByRole("button", { name: /^Alex Kim, Time off/ });
+    expect(open.getAttribute("aria-label")).toContain("Needs review");
+    expect([...open.querySelectorAll(".list-card-line")].map((line) => plain(line.textContent))).toEqual([
+      "Jan 15 – Jan 16, 2035",
+      "By Jan 14, 9:00 AM UTC time",
+    ]);
+    const closed = within(cards).getByRole("button", { name: /^Deniz Acar, Time off/ });
+    expect([...closed.querySelectorAll(".list-card-line")].map((line) => line.textContent)).toEqual(["Jan 15 – Jan 16, 2035"]);
+    expect(closed.querySelector(".list-chip")?.textContent).toBe("Approved");
+    fireEvent.click(open);
+    expect(await screen.findByRole("dialog", { name: "Review request" })).toBeTruthy();
+  });
+  // Five tabs do not fit a phone: the row scrolls, and a faded edge says so.
+  it("fades the tab row's edge where more tabs wait, and brings the chosen tab into view", async () => {
+    const shown: string[] = [];
+    HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.textContent ?? ""); };
+    renderPage("/app/schedule/requests?type=open_pickup");
+    const tabs = await screen.findByRole("group", { name: "Request type" });
+    await waitFor(() => expect(shown).toContain("Open shift"));
+    const row = tabs.parentElement!;
+    Object.defineProperty(row, "scrollWidth", { configurable: true, value: 380 });
+    Object.defineProperty(row, "clientWidth", { configurable: true, value: 298 });
+    row.scrollLeft = 0;
+    fireEvent.scroll(row);
+    expect(row.getAttribute("data-more")).toBe("right");
+    row.scrollLeft = 40;
+    fireEvent.scroll(row);
+    expect(row.getAttribute("data-more")).toBe("both");
+    row.scrollLeft = 82;
+    fireEvent.scroll(row);
+    expect(row.getAttribute("data-more")).toBe("left");
+  });
+  // One list from three reads: it is drawn once all of them answered, so rows
+  // never jump as a late read slots its requests in between.
+  it("draws the list once every read has answered", async () => {
+    let answer: (value: Awaited<ReturnType<typeof getExchanges>>) => void = () => undefined;
+    vi.mocked(getExchanges).mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    renderPage();
+    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThanOrEqual(2));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    expect(screen.getByText("Loading requests...")).toBeTruthy();
+    answer({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
+    expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
+  });
   // P09: a closed swap stays in the one list with its outcome.
   it("lists a closed shift change under the open requests with its outcome", async () => {
     const closedSwap = {

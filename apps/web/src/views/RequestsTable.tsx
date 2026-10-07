@@ -8,7 +8,8 @@ import {
   UserRoundSearch,
   type LucideIcon,
 } from "lucide-react";
-import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { formatTimeOffDeadline, timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { ListCard, ListCards } from "./ListCards";
 import { requestTypeLabels, type RequestRow, type RequestType } from "../schedule/requests-list";
 
 // EKRAN-02 C1 (KARARLAR Schedule → Requests, K-S8 – K-S10, KK-173): one table
@@ -133,6 +134,48 @@ function RequestRowView({
   );
 }
 
+/** The phone's list (#67): a card per request instead of the table. */
+export function RequestCards({
+  rows,
+  timeFormat,
+  onOpen,
+}: {
+  readonly rows: readonly RequestRow[];
+  readonly timeFormat: "12h" | "24h";
+  readonly onOpen: (row: RequestRow) => void;
+}) {
+  return (
+    <ListCards label="Requests">
+      {rows.map((row) => {
+        const Icon = typeIcons[row.type];
+        const person = rowPerson(row);
+        const status = statusText(rowStatus(row));
+        const when = rowWhen(row, timeFormat);
+        const deadline = rowDeadline(row, timeFormat);
+        return (
+          <ListCard
+            key={`${row.source}:${row.id}`}
+            label={`${person.name}, ${requestTypeLabels[row.type]}, ${when}, ${status}`}
+            // The type's mark leads the card, so the name keeps the width it needs.
+            mark={<Icon size={16} />}
+            markDashed={row.type === "open_pickup"}
+            title={<span>{person.name}</span>}
+            status={
+              <span className="list-chip" data-tone={statusTone(rowStatus(row))}>
+                {status}
+              </span>
+            }
+            // "By …" fits a phone with the zone's name ("Los Angeles time" too);
+            // "Decide by …" did not (KARARLAR:133 names the zone).
+            lines={[when, deadline ? `By ${deadline}` : null]}
+            onOpen={() => onOpen(row)}
+          />
+        );
+      })}
+    </ListCards>
+  );
+}
+
 function rowPerson(row: RequestRow): { name: string; detail: string } {
   if (row.source === "time_off") {
     const request = row.request;
@@ -209,9 +252,18 @@ function rowWhen(row: RequestRow, timeFormat: "12h" | "24h") {
   return `${shortDate(shift.scheduled_date, { weekday: true })}${hours}`;
 }
 
+function rowZone(row: RequestRow) {
+  return row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
+}
+
+function rowDeadline(row: RequestRow, timeFormat: "12h" | "24h") {
+  const zone = rowZone(row);
+  return row.decideBy && zone ? formatTimeOffDeadline(row.decideBy, zone, timeFormat) : null;
+}
+
 // KARARLAR:133 names the zone; it gets its own line so it is never cut.
 function RowDecideBy({ row, timeFormat }: { row: RequestRow; timeFormat: "12h" | "24h" }) {
-  const zone = row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
+  const zone = rowZone(row);
   if (!row.decideBy || !zone) return null;
   return (
     <span className="request-deadline">

@@ -711,3 +711,49 @@
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* EKRAN-02 #67: the phone (KARARLAR Genel, telefonda kart satırı). Cards stand
+   in for the table; every touch target is 44 high. Five type tabs do not fit:
+   the row scrolls and fades at the edge where more tabs wait. */
+@media (max-width: 720px) {
+  .requests-page.list-page.list-page .requests-table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .requests-page .requests-table {
+    display: none;
+  }
+  .requests-page.list-page.list-page .catalog-toolbar-status-row {
+    height: 44px;
+    min-height: 44px;
+    scrollbar-width: none;
+  }
+  .requests-page.list-page.list-page .catalog-toolbar .catalog-status-tabs button {
+    height: 44px;
+    min-height: 44px;
+  }
+  .requests-page .catalog-toolbar-status-row[data-more="right"] {
+    mask-image: linear-gradient(to right, var(--theme-text) calc(100% - 32px), transparent);
+  }
+  .requests-page .catalog-toolbar-status-row[data-more="left"] {
+    mask-image: linear-gradient(to left, var(--theme-text) calc(100% - 32px), transparent);
+  }
+  .requests-page .catalog-toolbar-status-row[data-more="both"] {
+    mask-image: linear-gradient(to right, transparent, var(--theme-text) 32px, var(--theme-text) calc(100% - 32px), transparent);
+  }
+  .requests-page .catalog-table-empty .nf-button {
+    min-height: 44px;
+  }
+  /* Pages: back, the current page, next; the range line says where you are. */
+  .requests-page .list-pagination select,
+  .requests-page .list-pagination-pages button {
+    height: 44px;
+    min-width: 44px;
+  }
+  .requests-page .list-pagination-pages button[aria-label^="Page "]:not([aria-current]),
+  .requests-page .list-pagination-gap {
+    display: none;
+  }
+}
