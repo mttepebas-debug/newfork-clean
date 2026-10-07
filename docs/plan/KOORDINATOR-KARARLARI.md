@@ -1839,3 +1839,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~13:50Z. **Nerede:** KARARLAR OPS-05 eki; EKRAN-01 main `a2b22ab5..d017320c` (17 web maddesi + BL-959, CI 37627942589 yeşil).
 - **Ne:** EKRAN-01'in önerisi kabul: dört migration'ı (`20261007200000/100/200`, `220000`) ve gece hazırlanan öbür dalların migration'larını (EKRAN-02 paketi `140000`–`200000`, ACIL-40001 `210000`, GA-4, BL-804, BL-965) sabah gönderimde main'in o anki son migration'ının arkasına yeniden numarala; içerik aynı, şema yeniden üretilir. Sabah sırası KK-218'deki gibi (ACIL önce); her gönderim öncekinin numarasına bakar.
 - **Dayanak:** ILKELER P19; KARARLAR OPS-05.
+
+### KK-221 (2026-10-07 gece) Schedule pre-flight cümleleri (#35) ve BL-968
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~14:30Z. **Nerede:** EKRAN-01 paket 2 (`task/ekran-01-p2` @`ac01d469`, göçsüz, R2).
+- **Ne:** #35 KARARLAR:524'ün kalıbından: yalnız gözden geçirme varken "2 shifts to review before you publish."; kişiye bağlı bulgu onu doğuran vardiya üzerinden sayılır; "Fix hard blockers in the schedule before publishing." kalkar (Mert "geliştirici dili olmasın"). Önce/sonra paftası sabah. D2 (Unpublish metni talepleri kapatmıyor) ürün kararı → BL-968, SABAH G14. Paket 2 ikinci inceleme ONAY'ıyla gece gidebilir (göçsüz).
+- **Dayanak:** KARARLAR:524, KK-166; ILKELER P09, P21.

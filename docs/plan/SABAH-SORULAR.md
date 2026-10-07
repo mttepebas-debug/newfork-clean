@@ -57,6 +57,10 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - **(3) Telefon (390):** iki kart yan yana sığmıyor (kartın içi 123 px, en uzun kutu 139 px); kartlar alt alta, ⇄ dikey. **Önerim: böyle kalsın**; görüntüye bak.
 - Gönderim: tek tablo ve veri paketi main'e girdikten sonra; yeni e2e paketin migration'larıyla yeşil koşmadan gönderilmez (`nf-guvenlik` ONAY @`09cd161d` koşulu).
 
+### G14. Yayından kaldırılan vardiyanın açık takas / cover talebi ne olsun? (BL-968, EKRAN-01)
+- **Bugün:** Schedule → Unpublish penceresi "Active cover and swap requests for removed shifts will be closed." diyor ama kapatmıyor. Örnek: Ayşe Cuma vardiyası için cover aramış; müdür haftayı yayından kaldırıyor; talep Requests'te açık kalıyor, onaylanmaya çalışılınca "The published shift changed or was unpublished" hatası.
+- **(a) (Önerilen)** Talepler gerçekten kapanır ("closed: shift unpublished"), sahibi ve başvuranlar tek bildirim alır; pencere metni doğru olur. Dayanak: ILKELER P09 (veri sessizce düşmez), P07. **(b)** Talepler açık kalır, pencere metni düzeltilir ("…stay open until the week is published again").
+
 ---
 
 ## Tur 1 — hat durduranlar

@@ -2154,6 +2154,8 @@ Kaynak `ekranlar/16-giris-katilim/` (main `ca4326f6`); metni EKRAN-16 oturumu ha
 
 - **BL-967 (leave: low / do: safe) Owner kaydettiği acil durum kişisini silemiyor.** Employees → owner çekmecesi: iki alan boşken Save kapalı (sunucu ad + numara istiyor); eski ayrı düğmede de böyleydi. Doğru davranış KARARLAR'da yok (silme serbest mi, zorunlu mu) — Employees kapanış turunda Mert'e. Bulan: EKRAN-03 `nf-guvenlik` incelemesi, 2026-10-07.
 
+- **BL-968 (leave: medium / do: moderate) Unpublish penceresi olmayan bir şeyi söylüyor: "Active cover and swap requests for removed shifts will be closed."** `unpublish_schedule_service` talepleri kapatmıyor; `refresh_weekly_exchange_terms` vardiya yayından kalkınca erken çıkıyor; talep `open` kalıyor, yalnız onay anında "The published shift changed or was unpublished" ile takılıyor. Ya cümle değişir ya talepler gerçekten kapanır — ürün kararı (SABAH-SORULAR G14). Bulan: EKRAN-01 `nf-guvenlik` (D2, kod okuması), 2026-10-07.
+
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
   - **Kapandı 2026-10-07 (`a57f2a4c`, main CI 37612833201 yeşil).** Kanca yalnız gerçek ayırıcılarda bölüyor (tırnak, heredoc, here-string, `#` yorumu metin; satır devamı tek komut; `bash -c` / `pwsh -Command` / `cmd /c` içi okunur). Ek: `git push \⏎ origin HEAD:main` artık main kilidini soruyor. Not: kanca oturumun başladığı klasörden yüklenir; eski klasörden açılmış oturum yeni bölmeyi o klasör main'i alana kadar görmez.
