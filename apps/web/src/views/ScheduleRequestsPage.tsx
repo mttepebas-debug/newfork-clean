@@ -2,6 +2,7 @@ import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import { ListPagination } from "./ListPagination";
 import { RequestCards, RequestsTable } from "./RequestsTable";
+import { SwapReview } from "./SwapReview";
 import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
@@ -86,6 +87,8 @@ function ScheduleRequestsPageContent() {
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
+  // EKRAN-02 C2 (H2): the swap whose review window is open over the list.
+  const [swapId, setSwapId] = useState("");
   const [act, setAct] = useState<Act | null>(null);
   const [actText, setActText] = useState("");
   const [actError, setActError] = useState("");
@@ -135,10 +138,11 @@ function ScheduleRequestsPageContent() {
     );
   }
   function openRow(row: RequestRow) {
-    // A shift change opens its review where it lives today (Shift Hub's
-    // manager view, ?case=); C2 gives it its own drawer here. It is a step
-    // the browser's Back undoes, so it is pushed, not replaced.
-    if (row.source === "exchange")
+    // A swap opens its review window over the list (H2). A cover or open
+    // shift opens its review where it lives today (Shift Hub's manager view,
+    // ?case=); that is a step the browser's Back undoes, so it is pushed.
+    if (row.source === "exchange" && row.type === "swap") setSwapId(row.id);
+    else if (row.source === "exchange")
       requestAvailabilityNavigation(() =>
         setParams((previous) => {
           const next = new URLSearchParams(previous);
@@ -387,6 +391,22 @@ function ScheduleRequestsPageContent() {
           />
         </CatalogDrawer>
       )}
+      {(() => {
+        const swap = data.exchanges.find((item) => item.id === swapId && item.kind === "swap");
+        return swap ? (
+          <SwapReview
+            key={`${swap.id}:${swap.revision}`}
+            item={swap}
+            workspace={workspaceId}
+            timeFormat={timeFormat}
+            onClose={() => setSwapId("")}
+            onDone={(message) => {
+              setSwapId("");
+              toast.success(message);
+            }}
+          />
+        ) : null;
+      })()}
       {act ? (
         <ActDialog
           act={act}
