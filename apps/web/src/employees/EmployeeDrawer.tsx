@@ -1541,6 +1541,17 @@ function EmployeeTerminationDialog({
   const [effectiveLocal, setEffectiveLocal] = useState(() =>
     localDateTimeValue(new Date(), primaryTimezone || undefined),
   );
+  // Zones that arrive after the window opened: "now" is suggested again where
+  // the person works, not in the reader's own zone.
+  // A time already typed stays (P10).
+  const zoneKnown = useRef(Boolean(timezone));
+  const effectiveTyped = useRef(false);
+  useEffect(() => {
+    if (zoneKnown.current || !timezone) return;
+    zoneKnown.current = true;
+    if (!effectiveTyped.current)
+      setEffectiveLocal(localDateTimeValue(new Date(), timezone));
+  }, [timezone]);
   const [reason, setReason] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     effective?: string;
@@ -1646,6 +1657,7 @@ function EmployeeTerminationDialog({
               value={effectiveLocal}
               max={localDateTimeValue(new Date(), timezone || undefined)}
               onChange={(event) => {
+                effectiveTyped.current = true;
                 setEffectiveLocal(event.target.value);
                 setFieldErrors((current) => ({ ...current, effective: undefined }));
               }}
@@ -1724,7 +1736,7 @@ function EmployeeTerminationDialog({
             </Button>
             <Button
               type="button"
-              className="danger-button"
+              className={`danger-button${armed ? " is-armed" : ""}`}
               disabled={pending || !timezoneOptions.length}
               {...confirmProps}
               onClick={(event) => {

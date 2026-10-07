@@ -2815,6 +2815,84 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
     expect(document.activeElement).toBe(terminate);
   });
 
+  // However the window closes, the focus goes back to the button that opened it.
+  it.each([
+    ["Cancel", (dialog: HTMLElement) => within(dialog).getByRole("button", { name: "Cancel" })],
+    ["the close button", (dialog: HTMLElement) => within(dialog).getByRole("button", { name: "Close termination dialog" })],
+  ])("gives the focus back to Terminate employee after %s", async (_name, closer) => {
+    const dialog = await openTermination();
+    fireEvent.click(closer(dialog));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Terminate employee" })).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Terminate employee" }));
+  });
+
+  // The window closes while the request is still settling and the button is
+  // switched off; the focus must still land on it once it is back.
+  it("gives the focus back to the drawer's button after a termination", async () => {
+    const dialog = await openTermination();
+    fireEvent.change(within(dialog).getByLabelText("Reason"), { target: { value: "Employment ended" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Terminate" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm termination" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Terminate employee" })).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Terminate employee" })),
+    );
+  });
+
+  // The pick lists can arrive after the window opens: the suggested time is
+  // then "now" where the person works, not in the reader's own zone.
+  it("suggests now in the worksite zone when the zones arrive late", async () => {
+    let answer: (value: Awaited<ReturnType<typeof loadEmployeeReferenceData>>) => void = () => undefined;
+    vi.mocked(loadEmployeeReferenceData).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const dialog = await openTermination();
+    answer({
+      locations: detail.locations.map((location) => ({ ...location, timezone: "Pacific/Honolulu" })),
+      departments: [],
+      jobs: [],
+      inviteRoles: [],
+    });
+    const zone = await within(dialog).findByDisplayValue("Pacific/Honolulu");
+    expect(zone).toBeTruthy();
+    const honolulu = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Pacific/Honolulu",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      hourCycle: "h23",
+    }).format(new Date());
+    const [day, hour] = honolulu.split(", ");
+    await waitFor(() =>
+      expect(
+        (within(dialog).getByLabelText("Effective date and time") as HTMLInputElement).value.slice(0, 13),
+      ).toBe(`${day}T${hour}`),
+    );
+  });
+
+  it("keeps a time already typed when the zones arrive late", async () => {
+    let answer: (value: Awaited<ReturnType<typeof loadEmployeeReferenceData>>) => void = () => undefined;
+    vi.mocked(loadEmployeeReferenceData).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const dialog = await openTermination();
+    const effective = within(dialog).getByLabelText("Effective date and time") as HTMLInputElement;
+    fireEvent.change(effective, { target: { value: "2026-09-01T12:00" } });
+    answer({
+      locations: detail.locations.map((location) => ({ ...location, timezone: "Pacific/Honolulu" })),
+      departments: [],
+      jobs: [],
+      inviteRoles: [],
+    });
+    await within(dialog).findByDisplayValue("Pacific/Honolulu");
+    expect(effective.value).toBe("2026-09-01T12:00");
+  });
+
   it("gives the focus back to Terminate employee on Escape", async () => {
     const dialog = await openTermination();
     fireEvent.keyDown(within(dialog).getByLabelText("Reason"), { key: "Escape" });
