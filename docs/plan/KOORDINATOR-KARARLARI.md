@@ -1732,3 +1732,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Ne (Mert'in sözü):** "1 session daha başlat http://localhost:5555/app/settings/general a başlasın ve artifact varyasyon çıkarsın en az 6 tane". EKRAN-08 çekmece işiyle aynı biçim: gerçek uygulamada beş rolle (owner, admin, müdür, `settings.general.manage` verilmiş özel müdür, çalışan) test, BL-178'in bugünkü hâli (GUVENLIK-A'ya bağlanır), odaklı testler, UI/UX, ≥6 varyantlı artifact, `ekranlar/10-settings/GENERAL-INCELEME.md`. Kod, migration, test dosyası, ağır koşu yok; dev sunucusu yoksa 5632/5633.
 - **Not:** sekiz oturum açık; ağır koşu yapan yalnız üç ekran hattı ve PARALEL-1.
 - **Dayanak:** Mert'in açık isteği; ILKELER P04, P12, P20, P26.
+
+### KK-201 (2026-10-07) Dokuzuncu hat: Settings → Locations birebir artifact kopyası, Mert'in arayüz ayarları için
+- **Kim:** Mert'in isteği, koordinatör uyguladı (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~09:15Z. **Nerede:** görev kartı "Mirror Settings Locations as an artifact for tweaks (EKRAN-10 Locations)".
+- **Ne (Mert'in sözü):** "1 session daha başlat http://localhost:5555/app/settings/locations inceleme yapmadan sadece artifacta gördüğü gibi kaydetsin artifact üzerinden ufak ui tweek yapacağım". Oturum inceleme yapmaz, kod değiştirmez: sayfanın (ve açılan pencerelerinin) DOM + hesaplanmış stil kopyasını yayınlar, Mert'in ayarlarını artifact'ta uygular, her ayarın eski → yeni değerini `ekranlar/10-settings/LOCATIONS-TWEAKS.md`'de tutar; ortak değer değişiyorsa Mert'e söyler (§4.7). Koda uygulama ayrı iş, koordinatör açar. Dev sunucusu yoksa 5634/5635.
+- **Dayanak:** Mert'in açık isteği; CLAUDE.md §4.7; ILKELER P03 (görünüm turunda Mert'in listesi kesin kapsam).
