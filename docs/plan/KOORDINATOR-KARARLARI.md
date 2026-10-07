@@ -1749,3 +1749,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Sıra:** plan ve Mert'in temel model kararları gelmeden kod başlamaz; kod aşaması EKRAN-02 veri paketinden sonra (takas bildirim kitlesi orada değişiyor).
 - **Dayanak:** Mert'in açık isteği; CLAUDE.md §1 ("bildirim gürültüsü" asla), §2.A.4; ILKELER P07, P18.
 - **Daraltma 2026-10-07 ~09:25Z (Mert: "bana sorarsan bugünkü bildirimi araştırmasın incelemesin bile istersen direk söksün atsın"):** eski sistem değerlendirilmez (eski sayfanın UI/UX'i, ayar denemeleri, motorun ayrıntılı haritası çıktı). Kalanlar: kısa söküm listesi (her nesnenin çağıranı; davet / parola sıfırlama / haftalık Schedule e-postası bildirimden ayrılır, kırılmaz), olay envanteri, sıfırdan plan, ≤6 soru, ≥3 varyant. Söküm yeni sistemin ilk dilimi; ayrı erken söküm yok, çünkü EKRAN-02 veri paketinin yerel dalları eski bildirim fonksiyonlarına yazıyor. Arada uygulamada bildirim olmaması kabul (P01).
+
+### KK-204 (2026-10-07) Hat sayısı: yeni hat yok, açık 11 hat sürer
+- **Kim:** Mert'in kararı; koordinatör kayda geçirdi. **Ne zaman:** 2026-10-07 ~09:32Z.
+- **Ne:** Mert: "şuan için bu kadar hat yeterli. ama durdurmayacagız bunları". Açık hatlar: EKRAN-01 Schedule, EKRAN-02 Requests, EKRAN-03 Employees, PARALEL-1, GUVENLIK-A, EKRAN-16 keşif, EKRAN-08 çekmece, EKRAN-10 General, EKRAN-10 Locations, EKRAN-10 Jobs, BILDIRIM. Koordinatörün iki önerisi (Settings değişiklikleri koda tek iş olarak 1–3'ten sonra; "her isteğe önce üç satır" kuralı) Mert tarafından kapatıldı, cevaplanmadı; açık kalır, dayatılmaz.
+- **Dayanak:** Mert'in kararı; ILKELER P17 (kanıt eklendi).

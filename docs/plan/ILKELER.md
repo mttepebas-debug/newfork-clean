@@ -251,6 +251,7 @@
   eklenir.
 - İkinci iş (Mert, 2026-10-01): yalnız Mert isterse açılır. Bağımsız bir iş bulunursa Claude onu
   seçenek olarak sunar; kendisi açmaz.
+- Kanıt (Mert, 2026-10-07): Mert bir sabahta hatları tek tek istedi ve 11 oturuma çıkardı (Requests, Schedule, Employees, PARALEL-1, GUVENLIK-A, Ekran 16 keşfi, Important Dates çekmecesi, Settings General / Locations / Jobs, bildirim planı); koordinatör yükü (Mert'in göz atacağı tasarım ve sorular) söyleyince: "şuan için bu kadar hat yeterli. ama durdurmayacagız bunları". Açılmış hat durdurulmaz; yeni hat yalnız Mert isteyince.
 - Kanıt: 09-28 "Tek hat. Bir taske başlayınca o task bitene kadar ilerleyelim", "1 taski küçük
   parçalara bölüp aynı anda birden fazla sessionda ilerletme".
 - Kanıt (2026-10-04, ters seçim): Settings → Documents tablosu (tek ekran, yalnız görünüm, R1) için "AVAIL-002 bitince" önerildi; Mert "Hemen, paralel" seçti. Mert'in kendi istediği küçük ve dosyaları çakışmayan ekran işi, tek hat sürerken de paralel açılabiliyor; ikinci işi Mert açar kuralı geçerli (KARARLAR Ekran kararları → Settings → Documents).
