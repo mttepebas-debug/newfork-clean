@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(41);
 
 -- FB-6.1 step .4: every Schedule job is one function, and the rules that name
 -- several locations at once ask the authorization core for each of them
@@ -178,6 +178,35 @@ select is(pg_temp.said(format($$select public.update_schedule_export_schedule_se
   (select s.id from public.scheduled_schedule_exports s where s.workspace_id = tests.id('fj') and s.created_by = tests.user('fj:ayse')),
   jsonb_build_object('location_ids', jsonb_build_array(tests.id('fj:K'), tests.id('fj:B'))))),
   '42501 authz.out_of_scope schedule.export', 'nor adds Beşiktaş to it later');
+
+-- BL-494 (KARARLAR 2026-10-01): a weekly export rule is changed by whoever
+-- reaches its locations, not only by who set it up. The owner and Can, who
+-- manages Kadıköy too, change Ayşe's Kadıköy rule; Mehmet, Beşiktaş only,
+-- cannot, and his answer for her rule is the one for a rule that does not exist.
+select tests.person('fj', 'mehmet', 'manager', array['B'], array['cook']);
+select tests.remember('fj:export:K', (select s.id from public.scheduled_schedule_exports s
+  where s.workspace_id = tests.id('fj') and s.created_by = tests.user('fj:ayse')));
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:owner'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('recipients', '["chef@example.test"]'::jsonb))),
+  'allowed', 'the owner changes the address on Ayşe''s Kadıköy rule');
+select is((select s.recipients from public.scheduled_schedule_exports s where s.id = tests.id('fj:export:K')),
+  '["chef@example.test"]'::jsonb, 'and the rule now goes to the new address');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'), jsonb_build_object('send_hour', 10))),
+  'allowed', 'Can, who manages Kadıköy too, changes it');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:mehmet'), tests.id('fj'), tests.id('fj:export:K'), jsonb_build_object('send_hour', 11))),
+  '42501 authz.out_of_scope schedule.export', 'Mehmet, Beşiktaş only, does not');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:mehmet'), tests.id('fj'), gen_random_uuid(), jsonb_build_object('send_hour', 11))),
+  '42501 authz.out_of_scope schedule.export', 'and a rule that does not exist answers him the same');
+select is(pg_temp.said(format($$select public.delete_schedule_export_schedule_service(%L, %L, %L)$$,
+  tests.user('fj:mehmet'), tests.id('fj'), tests.id('fj:export:K'))),
+  '42501 authz.out_of_scope schedule.export', 'nor does he delete it');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:ayse'), tests.id('fj'), tests.id('fj:export:K'), jsonb_build_object('send_hour', 9))),
+  'allowed', 'Ayşe still changes her own rule');
 
 -- 6. Last, B3 again: the admin deletes T ------------------------------------------------------
 select is(pg_temp.said(format($$select public.delete_schedule_draft_service(%L, %L, %L)$$,
