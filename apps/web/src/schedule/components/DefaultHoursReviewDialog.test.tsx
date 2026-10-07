@@ -103,6 +103,12 @@ describe("default-hours batch review", () => {
     expect(screen.queryByText(/expected array|Too small/i)).toBeNull();
     expect(screen.getByRole("button", { name: "Review 0 shifts" }).hasAttribute("disabled")).toBe(true);
   });
+  it("names a shift type archived since by its own name (BL-499)", () => {
+    const archived = { ...model, shift_types: [], referenced_shift_types: [{ id, name: "Brunch" }] } as unknown as ScheduleReadModel;
+    render(<DefaultHoursReviewDialog workspaceId={id} session={session} model={archived} onApplied={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByText(/Brunch \(archived\)/)).toBeTruthy();
+    expect(screen.queryByText(/Saved shift type/)).toBeNull();
+  });
   it("asks for a shift when every shift in range is unticked (BL-202)", () => {
     setup(); fireEvent.click(screen.getByRole("checkbox"));
     expect(screen.getByText("Choose at least one shift to review.")).toBeTruthy();
