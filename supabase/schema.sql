@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 440, last: 20261007200200_export_rule_is_changed_by_who_reaches_it.sql
--- fingerprint: sha256:f67e7f420dc2a6c268e65f5ceb3197b17b66b6daac5411e793a4b2b9bba777f0
+-- fingerprint: sha256:e92beea4dceb590f83143e9c5415670f4535ca0d8b4e2d90de9ca003e596f134
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26209,6 +26209,7 @@ declare
   existing public.scheduled_schedule_exports%rowtype;
   updated public.scheduled_schedule_exports%rowtype;
   next_location_ids uuid[];
+  added_location_ids uuid[];
   next_preset_id uuid;
   preset_name text;
   reset_failure_state boolean := false;
@@ -26242,6 +26243,19 @@ begin
       select distinct requested.id from unnest(next_location_ids) requested(id)
       where requested.id = any (public.live_location_ids(target_workspace_id, next_location_ids))
          or not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[]))));
+  -- The rule sends as the person who set it up (the cron exports as them): a
+  -- location they cannot export would switch the rule off at its first send.
+  -- Whoever edits the rule may not reach past its owner with it.
+  added_location_ids := array(
+    select distinct requested.id from unnest(next_location_ids) requested(id)
+    where not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[])));
+  if actor_user_id is distinct from existing.created_by
+     and cardinality(added_location_ids) > 0
+     and app_private.authz_reason(existing.created_by, target_workspace_id, 'schedule.export',
+       target_locations => added_location_ids) is not null then
+    raise exception 'The person who set up this export cannot export a location you added.'
+      using errcode = '22023', hint = 'schedule.export_rule_beyond_its_owner';
+  end if;
 
   next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
   if not exists (
