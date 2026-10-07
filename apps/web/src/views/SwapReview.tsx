@@ -17,7 +17,15 @@ import "./swap-review.css";
 // block approval); Decide by at the bottom left, Decline and Approve at the
 // right. Decline asks for the reason the employee reads (BL-910: only them).
 
-const firstName = (name: string | null | undefined) => (name ?? "").split(" ")[0] || "Open shift";
+const firstName = (name: string | null | undefined) => (name ?? "").split(" ")[0] || "Teammate";
+
+// A closed swap says how it ended instead of asking for a decision.
+const outcomes: Partial<Record<ExchangeCase["status"], string>> = {
+  completed: "Swap approved.",
+  cancelled: "Swap request closed. No shifts changed.",
+  expired: "The decision deadline passed. No shifts changed.",
+  invalidated: "Shift details changed, so the swap ended. No shifts changed.",
+};
 
 /** "3:30 PM – 11:00 PM": both ends name their half of the day, thin spaces around the dash. */
 export function reviewHours(start: string | null, end: string | null, timeFormat: "12h" | "24h") {
@@ -106,7 +114,10 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
   const client = useQueryClient();
   const pending = item.applications.find((application) => application.status === "pending_manager");
   const invited = item.applications.find((application) => application.status === "invited");
-  const applicant = pending ?? invited;
+  // The other person comes from the request itself: once a swap is approved the
+  // requested shift's live holder is the owner (EKRAN-02 C2 review).
+  const applicant = pending ?? invited ?? item.applications.find((application) => application.status === "approved") ?? item.applications.at(-1);
+  const open = item.status === "open";
   const owner = firstName(item.owner_name);
   const other = firstName(applicant?.employee_name ?? item.requested_shift?.employee_name);
   const [declining, setDeclining] = useState(false);
@@ -190,8 +201,10 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
         </div>
       ) : (
         <footer className="swap-review-foot">
-          <span className="swap-review-deadline">Decide by {decideBy}</span>
-          {pending || !invited ? (
+          {open ? <span className="swap-review-deadline">Decide by {decideBy}</span> : null}
+          {!open ? (
+            <span className="swap-review-deadline" role="status">{outcomes[item.status] ?? "This swap request is closed."}</span>
+          ) : pending || !invited ? (
             <>
               <button type="button" className="nf-button secondary-button" disabled={!decides || !pending || decide.isPending} onClick={() => setDeclining(true)}>
                 Decline
