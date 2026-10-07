@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(45);
 
 -- G8a / BL-132 (KK-13). An archived location counts in the authorization core
 -- as a deleted one does: nobody's scope holds it, no target on it is reached,
@@ -133,6 +133,23 @@ select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_
     (select e.id from public.scheduled_schedule_exports e where e.workspace_id = tests.id('ar')),
     jsonb_build_object('location_ids', jsonb_build_array(tests.id('ar:K'), tests.id('ar:B'))))),
   '42501', 'Kaan cannot add the archived Besiktas, which he does not manage, to his scheduled export');
+-- BL-494 (KARARLAR 2026-10-01): a rule whose every location is archived is
+-- fixed or deleted only by the owner or an admin.
+insert into public.scheduled_schedule_exports
+  (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
+values (tests.id('ar'), (select p.id from public.schedule_export_presets p where p.workspace_id = tests.id('ar')),
+  'Besiktas', '["ayse@example.test"]'::jsonb, array[tests.id('ar:B')], 1, 9, tests.user('ar:ayse'), tests.user('ar:ayse'));
+select tests.remember('ar:export:B', (select e.id from public.scheduled_schedule_exports e
+  where e.workspace_id = tests.id('ar') and e.name = 'Besiktas'));
+select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)',
+    tests.user('ar:ayse'), tests.id('ar'), tests.id('ar:export:B'), '{"send_hour": 10}')),
+  '42501', 'Ayse, whose Besiktas is archived, cannot change her Besiktas rule');
+select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)',
+    tests.user('ar:zeynep'), tests.id('ar'), tests.id('ar:export:B'), '{"send_hour": 10}')),
+  'allowed', 'the admin can');
+select is(pg_temp.refusal(format('select public.delete_schedule_export_schedule_service(%L, %L, %L)',
+    tests.user('ar:owner'), tests.id('ar'), tests.id('ar:export:B'))),
+  'allowed', 'and the owner deletes it');
 
 -- 3. The owner restores Besiktas -----------------------------------------------------------
 
