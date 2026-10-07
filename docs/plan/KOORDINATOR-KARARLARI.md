@@ -1737,3 +1737,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** Mert'in isteği, koordinatör uyguladı (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~09:15Z. **Nerede:** görev kartı "Mirror Settings Locations as an artifact for tweaks (EKRAN-10 Locations)".
 - **Ne (Mert'in sözü):** "1 session daha başlat http://localhost:5555/app/settings/locations inceleme yapmadan sadece artifacta gördüğü gibi kaydetsin artifact üzerinden ufak ui tweek yapacağım". Oturum inceleme yapmaz, kod değiştirmez: sayfanın (ve açılan pencerelerinin) DOM + hesaplanmış stil kopyasını yayınlar, Mert'in ayarlarını artifact'ta uygular, her ayarın eski → yeni değerini `ekranlar/10-settings/LOCATIONS-TWEAKS.md`'de tutar; ortak değer değişiyorsa Mert'e söyler (§4.7). Koda uygulama ayrı iş, koordinatör açar. Dev sunucusu yoksa 5634/5635.
 - **Dayanak:** Mert'in açık isteği; CLAUDE.md §4.7; ILKELER P03 (görünüm turunda Mert'in listesi kesin kapsam).
+
+### KK-202 (2026-10-07) Onuncu hat: Settings → Jobs birebir artifact kopyası, Mert'in arayüz değişiklikleri için
+- **Kim:** Mert'in isteği, koordinatör uyguladı (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~09:18Z. **Nerede:** görev kartı "Mirror Settings Jobs as an artifact for tweaks (EKRAN-10 Jobs)".
+- **Ne (Mert'in sözü):** "1 session daha başlat ve http://localhost:5555/app/settings/jobs başlasın. inceleme yapmasın sadece artifacta kaydetsin orda ui değişikliği ypapacam". KK-201 ile aynı biçim; liste `ekranlar/10-settings/JOBS-TWEAKS.md`. Locations ve Jobs aynı ortak öğeleri (buton, başlık, çekmece) taşıdığı için iki oturumda aynı ortak değer farklı değişirse koordinatöre bildirilir; koda uygulama tek iş olarak açılır. Dev sunucusu yoksa 5636/5637.
+- **Dayanak:** Mert'in açık isteği; CLAUDE.md §4.7.
