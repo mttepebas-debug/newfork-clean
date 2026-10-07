@@ -1819,3 +1819,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~12:20Z. **Nerede:** main `3fec39b8` (CI 37616720898 yeşil); BACKLOG BL-841, BL-497, BL-965.
 - **Ne:** iki test dosyası kendi workspace'iyle süzüldü (R0, beklenti aynı). Üçüncü dosyanın kırmızısı ürün hatası çıktı (BL-965: tarihsiz onaylı belge bakım işini bütün workspace'ler için düşürüyor) — test gevşetilmedi. Düzeltme R2 + migration, bulan oturuma; canlı ve main sabah (§5.3, KK-214).
 - **Dayanak:** CLAUDE.md §2.A.3 (beklenti gevşetilmez), §4.3.5; ILKELER P09.
+
+### KK-217 (2026-10-07 gece) BL-559 / BL-821 gece işi değilmiş; sabah sorusu oldu (benim seçim hatam)
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~12:35Z.
+- **Ne:** KK-207'deki gece adaylarını ("Mert kararı istemiyor") ölçmeden yazmıştım; GUVENLIK-A oturumu ikisinin de açık Mert sorusu olduğunu gösterdi (EKRAN-06 S2 / S7; `OZET.md:156`, `tasks/EKRAN-06-DOCUMENTS.md:32,37`) ve kod yazmadan durdu. BL-559 sabah G3 saat dilimi konuşmasına eklendi, BL-821 G11 oldu. Gece adayı seçerken önce maddenin "Neden bekliyor" satırına ve ekranın OZET sorularına bakılır.
+- **Dayanak:** CLAUDE.md §5.1–5.2; ILKELER P18.
