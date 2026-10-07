@@ -734,3 +734,8 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Ne oldu:** CLAUDE.md yeniden yazımında her bölüm tek tıklık soru turlarıyla kilitlendi; son metin ve karar izleme tablosu (63 karar → satır) uygulamadan önce Mert'e okutuldu.
 - **Neden iyi gitti:** karar → satır eşlemesi tablo olarak görünür olunca eksik ya da çifte yazılan karar uygulamadan önce yakalandı.
 - **Alışkanlık:** çok kararlı bir belge yeniden yazımında önce karar listesini çıkar, her kararın hangi satıra gittiğini tabloyla göster, sonra yaz.
+
+## 2026-10-07 — Newfork Mert'in tekil oturumu (SCHEMA-SNAP): koruma kâğıt üstünde doğruydu, tetiklenince tutmadı
+- **Ne oldu:** inceleme "aynı anda iki `db:schema` birbirini bozar" dedi. İlk düzeltme başlamadan `supabase status` ile bakmaktı. Senaryo gerçekten koşulunca: `status` yalnız veritabanı açık projeyi "çalışmıyor" sayıyor, `db start` "already running"e başarı dönüyor, ikinci üretim birincinin yarım şemasını dosyaya yazdı. Kalıcı çözüm: her koşu benzersiz proje adı. Ayrıca `cmd1 && cd … && (…) &` zincirinin sonundaki `&` bütün zinciri (`cd` dahil) arka plana attı; deneme yanlış klasörde koştu, iki boş girdiyi "aynı" buldu — fazla düzgün sonuç bozuk ölçümdü, elle kontrol yakaladı.
+- **Maliyeti:** bir düzeltme yeniden yazıldı, iki ek deneme (~2 dk). Main'e yanlış bir şey girmedi.
+- **Alışkanlık:** bir koruma (kilit, "çalışıyor mu" kontrolü, ayırma) "bitti" denmeden önce koruduğu senaryo gerçekten tetiklenerek sınanır. Eşzamanlılık denemesi tek satırlık zincirle değil, betik dosyasıyla kurulur.
