@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 438, last: 20261007140000_lasting_conflicts_refuse_without_retry.sql
--- fingerprint: sha256:ceb500e297d7f3add91a962029e1da2c12ec0c37da08803868a8a7924ab8e75a
+-- migrations: 438, last: 20261007210000_lasting_conflicts_refuse_without_retry.sql
+-- fingerprint: sha256:a31cd6cd33ebfe94779bbd0557b5c059137f2166b3aa1c706e8c5d21fd5a1ca4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3282,7 +3282,7 @@ begin
     where workspace_id = item.workspace_id and id = (s ->> 'id')::uuid and employee_id = (s ->> 'employee_id')::uuid;
     if not found then
       raise exception 'A shift on this closed day changed. Review the shifts again.'
-        using errcode = '40001', hint = 'important_date.closure_changed';
+        using errcode = 'PT409', hint = 'important_date.closure_changed';
     end if;
   end loop;
 
@@ -5698,7 +5698,7 @@ begin
     insert into public.time_off_assignment_releases(workspace_id, request_id, decision_revision, published_shift_id, before_assignment, actor_user_id)
     values (w, rid, decision, (s ->> 'id')::uuid, s, who);
     update public.schedule_published_shifts set employee_id = null where workspace_id = w and id = (s ->> 'id')::uuid and employee_id = person;
-    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = '40001'; end if;
+    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = 'PT409'; end if;
     changes := changes || jsonb_build_array(s || jsonb_build_object('new_employee_id', null));
   end loop;
   if jsonb_array_length(changes) > 0 then

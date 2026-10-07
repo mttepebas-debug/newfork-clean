@@ -1,17 +1,19 @@
 -- BL-958 (ACIL-40001, KK-211): a lasting conflict was refused with SQLSTATE
 -- 40001 (an old revision, a reused request key, a closed request, a changed
--- list or time zone). PostgREST takes 40001 for a passing serialization
--- failure and runs the same request again without end, holding one of its
--- pooled connections; about ten such saves stopped the API for every
--- workspace (EKRAN-08-CEKMECE, 2026-10-07). These refusals now answer PT409,
--- which PostgREST hands back at once; the sentence and any hint stay, and a
--- stale employee save names itself (employee.revision_conflict). The API
--- answers both codes with 409 (apps/api/src/http-error.ts).
+-- list, picture of the shifts or time zone). PostgREST takes 40001 for a
+-- passing serialization failure and runs the same request again without end,
+-- holding one of its pooled connections; about ten such saves stopped the API
+-- for every workspace (EKRAN-08-CEKMECE, 2026-10-07). These refusals now
+-- answer PT409, which PostgREST hands back at once; the sentence and any hint
+-- stay, and a stale employee save names itself (employee.revision_conflict).
+-- The API answers both codes with 409 (apps/api/src/http-error.ts).
 --
--- Left as 40001 on purpose: a lost race inside one request that a retry
--- re-reads and settles (app_private.time_off_release_shifts,
--- app_private.important_date_close_shifts); the Schedule editing, template,
--- auto-fill and publishing services are EKRAN-01's.
+-- The two "a shift changed under us" refusals (time_off_release_shifts,
+-- important_date_close_shifts) answer PT409 too: they read the shift through
+-- shift_exchange_shift, which can hand back a moved copy, so the same request
+-- may fail the same way every time; a real lost race now asks the person to
+-- look again instead of being retried. Schedule's editing, template, auto-fill
+-- and publishing services are EKRAN-01's and stay as they are.
 -- Bodies are today's definitions from supabase/schema.sql; only the error
 -- codes (and that one hint) change.
 
@@ -207,6 +209,92 @@ begin
 end;
 $$;
 
+CREATE OR REPLACE FUNCTION "app_private"."important_date_close_shifts"("actor" "uuid", "item" "public"."important_dates", "impact" "jsonb", "keep" "uuid"[]) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  s jsonb;
+  opened jsonb := coalesce((select jsonb_agg(x) from jsonb_array_elements(impact -> 'shifts') x
+                            where not (x ->> 'id')::uuid = any (coalesce(keep, '{}'))), '[]'::jsonb);
+  drafts uuid[] := array(select value::uuid from jsonb_array_elements_text(impact -> 'draft_shift_ids'));
+  places uuid[];
+  other record;
+begin
+  places := array(
+    select distinct (x ->> 'location_id')::uuid from jsonb_array_elements(opened) x
+    union select draft_shift.location_id from public.schedule_draft_shifts draft_shift where draft_shift.id = any (drafts)
+    union select edit_shift.location_id from public.schedule_edit_session_shifts edit_shift
+          where edit_shift.workspace_id = item.workspace_id and edit_shift.id = any (drafts));
+  if cardinality(places) = 0 then
+    return '[]'::jsonb;
+  end if;
+  perform app_private.authorize(actor, item.workspace_id, 'schedule.edit', target_locations => places);
+
+  for s in select x from jsonb_array_elements(opened) x loop
+    insert into public.important_date_shift_releases (workspace_id, important_date_id, published_shift_id, source_shift_id,
+      before_assignment, actor_user_id)
+    values (item.workspace_id, item.id, (s ->> 'id')::uuid, (s ->> 'source_id')::uuid, s, actor);
+    update public.schedule_published_shifts set employee_id = null
+    where workspace_id = item.workspace_id and id = (s ->> 'id')::uuid and employee_id = (s ->> 'employee_id')::uuid;
+    if not found then
+      raise exception 'A shift on this closed day changed. Review the shifts again.'
+        using errcode = 'PT409', hint = 'important_date.closure_changed';
+    end if;
+  end loop;
+
+  with dropped as (
+    update public.schedule_draft_shifts draft_shift
+    set employee_id = null, revision = draft_shift.revision + 1, updated_at = now()
+    where draft_shift.id = any (drafts)
+      and (draft_shift.location_id, draft_shift.scheduled_date) in (
+        select (day ->> 'location_id')::uuid, (day ->> 'closed_date')::date from jsonb_array_elements(impact -> 'days') day)
+    returning draft_shift.draft_id
+  )
+  update public.schedule_drafts set revision = revision + 1, updated_at = now()
+  where id in (select draft_id from dropped);
+
+  -- BL-545: the same shift in an open edit drops too; the edit's revision moves
+  -- so the open screen reloads it (as shift_exchange_rebase_drafts does).
+  with dropped_edit as (
+    update public.schedule_edit_session_shifts edit_shift
+    set employee_id = null, revision = edit_shift.revision + 1, updated_at = now()
+    where edit_shift.workspace_id = item.workspace_id and edit_shift.id = any (drafts)
+      and edit_shift.employee_id is not null and edit_shift.source_published_shift_id is null
+      and edit_shift.pending_op_type is distinct from 'delete'
+      and (edit_shift.location_id, edit_shift.scheduled_date) in (
+        select (day ->> 'location_id')::uuid, (day ->> 'closed_date')::date from jsonb_array_elements(impact -> 'days') day)
+      and exists (select 1 from public.schedule_edit_sessions edit where edit.id = edit_shift.session_id and edit.status = 'active')
+    returning edit_shift.session_id
+  )
+  update public.schedule_edit_sessions set revision = revision + 1
+  where id in (select session_id from dropped_edit);
+  -- DB-1c: Undo does not take the closed day back.
+  perform app_private.schedule_edit_undo_barrier();
+
+  if jsonb_array_length(opened) > 0 then
+    perform public.shift_exchange_reconcile_batch(actor, item.workspace_id,
+      (select jsonb_agg(x || jsonb_build_object('new_employee_id', null)) from jsonb_array_elements(opened) x));
+    -- ponytail: the same steps approved time off takes (time_off_release_shifts).
+    for other in
+      select c.id from public.shift_exchange_cases c
+      where c.workspace_id = item.workspace_id and c.status = 'open'
+        and exists (select 1 from jsonb_array_elements(opened) x
+                    where (x ->> 'source_id')::uuid in (c.offered_source_id, c.requested_source_id))
+    loop
+      update public.shift_exchange_cases set status = 'invalidated', revision = revision + 1, updated_at = now() where id = other.id;
+      update public.shift_exchange_applications set status = 'invalidated', updated_at = now()
+      where case_id = other.id and status in ('invited', 'pending_manager');
+      perform public.shift_exchange_emit(actor, item.workspace_id, other.id, null, 'invalidated',
+        'An involved assignment was opened by a closed day. Review the current schedule.');
+    end loop;
+    perform realtime.send(jsonb_build_object('workspace_id', item.workspace_id, 'important_date_id', item.id),
+      'changed', 'shift-exchanges:' || item.workspace_id::text, true);
+  end if;
+  return opened;
+end;
+$$;
+
 CREATE OR REPLACE FUNCTION "app_private"."time_off_finalize"("w" "uuid", "rid" "uuid", "verdict" "text", "actor" "uuid", "note" "text", "alone" boolean, "expired" boolean DEFAULT false) RETURNS "public"."schedule_time_off_requests"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -267,6 +355,40 @@ begin
       jsonb_build_object('revision', parent.revision, 'cancellation_request_id', rid, 'cancelled_intervals', public.availability_ranges_json(given)));
   end if;
   return r;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION "app_private"."time_off_release_shifts"("w" "uuid", "rid" "uuid", "actor" "uuid", "decision" integer, "recorded_by" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  person uuid := (select r.employee_id from public.schedule_time_off_requests r where r.id = rid and r.workspace_id = w);
+  -- The records need a person; the job (no actor) names an approval that counts.
+  who uuid := coalesce(actor, recorded_by);
+  s jsonb;
+  changes jsonb := '[]';
+  other record;
+begin
+  for s in select x from jsonb_array_elements(app_private.time_off_impact(w, rid) -> 'shifts') x loop
+    insert into public.time_off_assignment_releases(workspace_id, request_id, decision_revision, published_shift_id, before_assignment, actor_user_id)
+    values (w, rid, decision, (s ->> 'id')::uuid, s, who);
+    update public.schedule_published_shifts set employee_id = null where workspace_id = w and id = (s ->> 'id')::uuid and employee_id = person;
+    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = 'PT409'; end if;
+    changes := changes || jsonb_build_array(s || jsonb_build_object('new_employee_id', null));
+  end loop;
+  if jsonb_array_length(changes) > 0 then
+    perform public.shift_exchange_reconcile_batch(who, w, changes);
+    for other in select c.id from public.shift_exchange_cases c where c.workspace_id = w and c.status = 'open'
+     and exists (select 1 from jsonb_array_elements(changes) x where (x ->> 'source_id')::uuid in (c.offered_source_id, c.requested_source_id)) loop
+      update public.shift_exchange_cases set status = 'invalidated', revision = revision + 1, updated_at = now() where id = other.id;
+      update public.shift_exchange_applications set status = 'invalidated', updated_at = now() where case_id = other.id and status in ('invited', 'pending_manager');
+      perform public.shift_exchange_emit(who, w, other.id, null, 'invalidated', 'An involved assignment was released with approved time off. Review the current schedule.');
+    end loop;
+    perform realtime.send(jsonb_build_object('workspace_id', w, 'request_id', rid), 'changed', 'shift-exchanges:' || w::text, true);
+    perform app_private.time_off_notify_shifts_opened(actor, w, rid, decision);
+  end if;
+  return changes;
 end;
 $$;
 

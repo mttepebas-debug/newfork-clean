@@ -330,17 +330,29 @@ select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, 
     pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.rev(tests.id('r:ann:rev')) - 1)),
   'PT409 ', 'KK-92 c: archiving an announcement on an old revision is refused too');
 
--- BL-958: none of these refusals is a 40001. PostgREST takes 40001 for a passing
--- conflict and runs the same request again, forever, holding one of its
--- connections; ten such saves stop the API for every workspace. A lasting
--- conflict answers PT409, keeping its hint.
+-- BL-958: no lasting conflict is refused with 40001. PostgREST takes 40001 for
+-- a passing conflict and runs the same request again, forever, holding one of
+-- its connections; ten such saves stop the API for every workspace. A lasting
+-- conflict answers PT409, keeping its hint. The list is every function moved
+-- off 40001 (ACIL-40001): a later migration that brings 40001 back to one of
+-- them turns this red. Schedule's editing services are EKRAN-01's.
 select is(array(
-  select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public'
-    and p.proname in ('save_important_date_service', 'set_important_date_state_service', 'publish_announcement_service',
-                      'save_announcement_audience_service', 'set_announcement_state_service')
+  select n.nspname || '.' || p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where (n.nspname, p.proname) in (
+      ('app_private', 'apply_owner_onboarding_update'), ('app_private', 'important_date_close_shifts'),
+      ('app_private', 'time_off_finalize'), ('app_private', 'time_off_release_shifts'),
+      ('public', 'create_employee_command_service'), ('public', 'decide_time_off_service'),
+      ('public', 'employee_request_action_service'), ('public', 'leave_employee_onboarding_service'),
+      ('public', 'publish_announcement_service'), ('public', 'request_time_off_cancellation_service'),
+      ('public', 'review_employee_onboarding_before_availability_service'), ('public', 'revoke_time_off_service'),
+      ('public', 'save_announcement_audience_service'), ('public', 'save_employee_onboarding_profile_service'),
+      ('public', 'save_employee_service'), ('public', 'save_important_date_service'),
+      ('public', 'save_notification_policy_service'), ('public', 'save_notification_user_preferences_service'),
+      ('public', 'set_announcement_state_service'), ('public', 'set_important_date_state_service'),
+      ('public', 'shorten_time_off_service'), ('public', 'submit_employee_onboarding_service'),
+      ('public', 'submit_time_off_service'), ('public', 'weekly_preference_settings_save_service'))
     and p.prosrc ~ 'errcode\s*=\s*''40001'''
-  order by 1), '{}'::text[], 'BL-958: no important date or announcement service refuses with 40001');
+  order by 1), '{}'::text[], 'BL-958: no lasting conflict in these 24 functions is refused with 40001');
 
 -- 11. Republishing an important date (K7) ---------------------------------------------------
 
