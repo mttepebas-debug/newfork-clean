@@ -3,6 +3,7 @@ import { CircleAlert } from "lucide-react";
 import { scheduleDefaultHoursInputSchema, type ScheduleDefaultHoursPreview, type ScheduleEditSession, type ScheduleReadModel } from "@newfork/shared/schedule";
 import { applyScheduleDefaultHours, previewScheduleDefaultHours } from "../schedule-data";
 import "./default-hours-review.css";
+import { requestErrorText } from "../../lib/request-error";
 
 export function DefaultHoursReviewDialog({ workspaceId, session, model, initialSelectedIds = [], onClose, onApplied }: {
   workspaceId: string; session: ScheduleEditSession; model: ScheduleReadModel; initialSelectedIds?: readonly string[];
@@ -44,7 +45,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
     try {
       const result = await previewScheduleDefaultHours(workspaceId, session.id, command);
       if (mounted.current && signature === currentSignature.current) { setReview(result); setReviewedSignature(signature); }
-    } catch (caught) { if (mounted.current) { setReviewedSignature(""); setError(caught instanceof Error ? caught.message : "Review unavailable"); } }
+    } catch (caught) { if (mounted.current) { setReviewedSignature(""); setError(requestErrorText(caught, "Review unavailable")); } }
     finally { if (mounted.current) setPending(null); }
   };
   const apply = async () => {
@@ -57,7 +58,7 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
     try {
       const result = await applyScheduleDefaultHours(workspaceId, session.id, { ...values, idempotency_key: retry.current.key });
       if (mounted.current) { onApplied(result); onClose(); }
-    } catch (caught) { if (mounted.current) setError(caught instanceof Error ? caught.message : "Unable to apply defaults"); }
+    } catch (caught) { if (mounted.current) setError(requestErrorText(caught, "Unable to apply defaults")); }
     finally { if (mounted.current) setPending(null); }
   };
   const hours = (s: ScheduleDefaultHoursPreview["shifts"][number]["before"]) => {

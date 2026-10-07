@@ -52,6 +52,7 @@ import { SCHEDULE_CONFLICT_QUESTION, ScheduleConflictSheet } from "./ScheduleCon
 import { ScheduleNoteConfirm } from "./ScheduleNoteConfirm";
 import { isShiftNoteOpen } from "./ShiftNoteCorner";
 import { getLastSegment, TimeInput } from "./TimeInput";
+import { requestErrorText } from "../../lib/request-error";
 
 const clockOffFallbackStartTime = "";
 const clockOffFallbackEndTime = "";
@@ -504,7 +505,7 @@ export function ShiftQuickEditor({
       } catch (error) {
         toast.error("Availability could not be checked", {
           dedupeKey: "schedule-quick-editor-availability-check-failed",
-          description: error instanceof Error ? error.message : "Please retry.",
+          description: requestErrorText(error, "Please retry."),
         });
         return;
       } finally {

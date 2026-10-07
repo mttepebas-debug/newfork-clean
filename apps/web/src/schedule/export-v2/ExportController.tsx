@@ -5,6 +5,8 @@ import { ExportPreview } from "./ExportPreview";
 import { downloadExportFile, exportAuthorizationScope, renderExportFiles, type ExportDownload } from "./files";
 import { defaultExportPreferences, exportPreferencesKey, loadExportPreferences, saveExportPreferences, type ExportPreferences } from "./preferences";
 import type { ScheduleExportSnapshot, SnapshotResult } from "./snapshot";
+import { requestErrorText } from "../../lib/request-error";
+import { ExportImageTooLargeError } from "./png";
 
 /** Mount keyed by user/workspace. All schedule data and blob URLs live only in memory. */
 export function ExportController({ userId, workspaceId, result, onClose, canManageLocations, sourceError }: {
@@ -79,7 +81,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
         publish({ key: inputKey, files: withUrls(rendered), error: null });
       })().catch((failure: unknown) => {
         if (!alive.current || request.signal.aborted) return;
-        publish({ key: inputKey, files: [], error: failure instanceof Error ? failure.message : "Could not prepare the preview" });
+        publish({ key: inputKey, files: [], error: exportFailureText(failure, "Could not prepare the preview") });
       }).finally(() => {
         requests.current.delete(request); rendering.current = false;
         if (rerender.current && alive.current) { rerender.current = false; setRenderTick(tick => tick + 1); }
@@ -117,7 +119,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
       setDownloads({ snapshot, files: ready });
       for (const file of ready) downloadExportFile(file);
     } catch (failure) {
-      if (alive.current && !request.signal.aborted) setError(failure instanceof Error ? failure.message : "Could not prepare this export");
+      if (alive.current && !request.signal.aborted) setError(exportFailureText(failure, "Could not prepare this export"));
     } finally {
       requests.current.delete(request); busyRef.current = false;
       if (alive.current) setBusy(false);
@@ -130,7 +132,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
       await authorizeScheduleExportV2(workspaceId, exportAuthorizationScope(downloads.snapshot), request.signal);
       if (alive.current && !request.signal.aborted) downloadExportFile(file);
     } catch (failure) {
-      if (alive.current && !request.signal.aborted) setError(failure instanceof Error ? failure.message : "Export access could not be verified");
+      if (alive.current && !request.signal.aborted) setError(requestErrorText(failure, "Export access could not be verified"));
     } finally { requests.current.delete(request); }
   };
   const currentPreview = preview;
@@ -152,4 +154,9 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
     {inlineTarget ? <ExportPreview target={inlineTarget} {...previewProps} thumbnail /> : null}
     {previewTarget ? <ExportPreview target={previewTarget} {...previewProps} /> : null}
   </>;
+}
+
+/** BL-395: the too-large image refusal is the app's own sentence; anything else reads plainly. */
+function exportFailureText(failure: unknown, fallback: string): string {
+  return failure instanceof ExportImageTooLargeError ? failure.message : requestErrorText(failure, fallback);
 }

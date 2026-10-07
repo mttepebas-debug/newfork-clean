@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ScheduleDraftSummary, ScheduleReadModel, ScheduleShift } from "@newfork/shared/schedule";
 import { fetchScheduleDraftShifts } from "../schedule-data";
 import type { ExportSource } from "./snapshot";
+import { requestErrorText } from "../../lib/request-error";
 
 /** Owns the same draft read used by the grid, so export cannot lag behind a second source. */
 export function usePreviewSource({ workspaceId, model, modelVersion, activeDraftId, editing, loading, drafts, onMissingDraft }: {
@@ -31,7 +32,7 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
       .then(result => { if (!cancelled) setResolved({ key, shifts: result.shifts, error: null }); })
       .catch((error: unknown) => {
         console.error(error);
-        if (!cancelled) setResolved({ key, shifts: [], error: error instanceof Error ? error.message : "Could not load the selected draft" });
+        if (!cancelled) setResolved({ key, shifts: [], error: requestErrorText(error, "Could not load the selected draft") });
       });
     return () => { cancelled = true; };
   }, [activeDraftId, draft, drafts, editing, key, loading, locationKey, onMissingDraft, week, workspaceId]);

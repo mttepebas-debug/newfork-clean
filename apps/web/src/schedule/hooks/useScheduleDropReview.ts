@@ -6,6 +6,7 @@ import { loadShiftAvailability } from "../../availability/availability-data";
 import { ScheduleRequestError } from "../schedule-data";
 import { assessmentAvailabilityWarnings, formatScheduleConflictMessage } from "../schedule-conflicts";
 import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../lib/closedDayAnswer";
+import { requestErrorText } from "../../lib/request-error";
 
 interface Drop {
   readonly input: ScheduleShiftMutationInput;
@@ -135,7 +136,7 @@ export function useScheduleDropReview(
         setOptimisticOps([]);
         toast.error("Shift change could not be completed", {
           dedupeKey: "schedule-drop-save-failed",
-          description: error instanceof Error ? formatScheduleConflictMessage(error.message) : "Reload and try again.",
+          description: formatScheduleConflictMessage(requestErrorText(error, "Reload and try again.")),
         });
       }
     } finally {

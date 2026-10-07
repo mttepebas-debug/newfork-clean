@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { LocationPublicationChipStatus } from "../lib/scheduleFilterModel";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { countLabel } from "./PublishPreflightPanel";
+import { requestErrorText } from "../../lib/request-error";
 
 export function UnpublishScheduleDialog({
   open,
@@ -67,7 +68,7 @@ export function UnpublishScheduleDialog({
     try {
       await onConfirm(selectedLocationIds);
     } catch (caught) {
-      setError((caught as Error).message);
+      setError(requestErrorText(caught));
     } finally {
       setPending(false);
     }

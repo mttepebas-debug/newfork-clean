@@ -44,3 +44,25 @@ export function requestFailure(
     status,
   );
 }
+
+/** D-O7: what a person reads when the request itself failed. */
+export const UNREACHABLE = "Newfork could not be reached. Check your connection and try again.";
+export const UNREADABLE = "Newfork could not finish that. Try again in a moment.";
+
+/**
+ * The sentence a screen shows for a failed request (G11, BL-395): the API's
+ * own sentence for a refusal (4xx), a plain one for anything else. A server
+ * failure, a dropped connection, a parser's or the browser's words never reach
+ * the screen. "From the API" is an error with a numeric status (RequestError,
+ * ScheduleRequestError), not a class check, so a test's module mock cannot
+ * change the answer. A refusal known by its machine key carries a sentence the
+ * app wrote (BL-218), so it is shown even when it came without a status.
+ */
+export function requestErrorText(error: unknown, fallback: string = UNREADABLE): string {
+  if (!(error instanceof Error)) return fallback;
+  const { status, reason } = error as { status?: unknown; reason?: unknown };
+  if (typeof status !== "number") return typeof reason === "string" ? error.message.trim() || fallback : fallback;
+  if (status === 0) return UNREACHABLE;
+  if (status >= 500) return UNREADABLE;
+  return error.message.trim() || fallback;
+}

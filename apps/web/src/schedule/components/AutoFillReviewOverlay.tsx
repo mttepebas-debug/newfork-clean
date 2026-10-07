@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { autoFillApplyLabel } from "../lib/autoFillText";
 import { formatWeekdayDate } from "../lib/scheduleDateTime";
+import { requestErrorText } from "../../lib/request-error";
 
 export function AutoFillReviewOverlay({
   preview,
@@ -60,7 +61,7 @@ export function AutoFillReviewOverlay({
           : [],
       });
     } catch (caught) {
-      setError((caught as Error).message);
+      setError(requestErrorText(caught));
     } finally {
       setPending(false);
     }

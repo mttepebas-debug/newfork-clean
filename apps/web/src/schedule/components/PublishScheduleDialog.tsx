@@ -39,6 +39,7 @@ import {
 } from "./PublishPreflightPanel";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
+import { requestErrorText } from "../../lib/request-error";
 
 export interface SchedulePublicationDepartmentScope {
   readonly departmentIds?: readonly string[];
@@ -377,7 +378,7 @@ export function PublishScheduleDialog({
       resumePreviewRef.current = false;
     } catch (caught) {
       if (requestId !== previewRequestIdRef.current) return;
-      setError((caught as Error).message);
+      setError(requestErrorText(caught));
     } finally {
       if (requestId === previewRequestIdRef.current) setPending(false);
     }
@@ -424,7 +425,7 @@ export function PublishScheduleDialog({
       })
       .catch((caught) => {
         if (requestId !== previewRequestIdRef.current) return;
-        setError((caught as Error).message);
+        setError(requestErrorText(caught));
       })
       .finally(() => {
         if (requestId === previewRequestIdRef.current) setPending(false);
@@ -508,7 +509,7 @@ export function PublishScheduleDialog({
               }
             } catch (refreshError) {
               if (requestId === previewRequestIdRef.current) {
-                setError((refreshError as Error).message);
+                setError(requestErrorText(refreshError));
               }
             }
           }
@@ -520,7 +521,7 @@ export function PublishScheduleDialog({
           setError(null);
         } else {
           // Say why publishing stopped, not that the preview failed.
-          setStaleNotice((caught as Error).message);
+          setStaleNotice(requestErrorText(caught));
           setError(null);
           setPreview(null);
           setStep(1);
@@ -782,7 +783,7 @@ export function PublishScheduleDialog({
                 void onReviewShift(finding, {
                   draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds,
                 }).catch((caught: unknown) => {
-                  setError(caught instanceof Error ? caught.message : "The shift could not be opened. Try again.");
+                  setError(requestErrorText(caught, "The shift could not be opened. Try again."));
                 }).finally(() => setReviewingShift(false));
               } : undefined}
             />

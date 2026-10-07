@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScheduleDefaultHoursPreview, ScheduleEditSession, ScheduleReadModel } from "@newfork/shared/schedule";
 import { DefaultHoursReviewDialog } from "./DefaultHoursReviewDialog";
 import { applyScheduleDefaultHours, previewScheduleDefaultHours } from "../schedule-data";
+import { RequestError, UNREACHABLE } from "../../lib/request-error";
 vi.mock("../schedule-data", () => ({ applyScheduleDefaultHours: vi.fn(), previewScheduleDefaultHours: vi.fn() }));
 const id = "afa70000-0000-4000-8000-000000000001", explicitId = "afa70000-0000-4000-8000-000000000002";
 const session = { id, revision: 3, week_start: "2035-01-15", shifts: [{ id, time_basis: "type_default", shift_type_id: id, scheduled_date: "2035-01-15", location_id: id },
@@ -81,9 +82,10 @@ describe("default-hours batch review", () => {
     expect(vi.mocked(applyScheduleDefaultHours).mock.calls[0]![2]).not.toHaveProperty("acknowledge_reference_overlaps");
   });
   it("keeps the same retry key after an uncertain apply response", async () => {
-    vi.mocked(applyScheduleDefaultHours).mockRejectedValueOnce(new Error("Connection lost"));
+    // A dropped connection, as the request layer reports it (D-O7).
+    vi.mocked(applyScheduleDefaultHours).mockRejectedValueOnce(new RequestError(UNREACHABLE, undefined, undefined, 0));
     setup(); await review(); fireEvent.click(screen.getByRole("button", { name: /Apply 1 change/ }));
-    await screen.findByText("Connection lost");
+    await screen.findByText(UNREACHABLE);
     fireEvent.click(screen.getByRole("button", { name: /Apply 1 change/ }));
     await waitFor(() => expect(applyScheduleDefaultHours).toHaveBeenCalledTimes(2));
     expect(vi.mocked(applyScheduleDefaultHours).mock.calls[0]![2].idempotency_key).toBe(vi.mocked(applyScheduleDefaultHours).mock.calls[1]![2].idempotency_key);
