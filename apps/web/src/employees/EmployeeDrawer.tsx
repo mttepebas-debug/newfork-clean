@@ -4,9 +4,15 @@ import {
 } from "../documents/EmployeeAssignmentDocumentPreview";
 import { EmployeeDocumentPanel } from "../documents/EmployeeDocumentPanel";
 import {
+  displayUsPhone,
   employeeInputSchema,
+  hasTurkishOnlyLetters,
   managerLocationRefusal,
   employeeSectionSchema,
+  toUsPhone,
+  usLettersMessage,
+  usPhoneDraft,
+  usPhoneMessage,
   type EmployeeDetail,
   type EmployeeInput,
   type EmployeeCreateCommand,
@@ -52,6 +58,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
+import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import "./employee-termination.css";
 import {
@@ -317,7 +324,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const contactBaseline: ContactDraft = {
     name: detail.data?.private_contact?.emergency_contact_name ?? "",
     relationship: detail.data?.private_contact?.emergency_contact_relationship ?? "",
-    phone: detail.data?.private_contact?.emergency_contact_phone ?? "",
+    phone: usPhoneDraft(detail.data?.private_contact?.emergency_contact_phone),
   };
   const [contactDraft, setContactDraft] = useState<ContactDraft | null>(null);
   const contactNow = contactDraft ?? contactBaseline;
@@ -325,9 +332,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     ownOwnerRecord &&
     contactDraft !== null &&
     JSON.stringify(contactDraft) !== JSON.stringify(contactBaseline);
-  // Both halves: a name with no number is not a contact (the server's rule).
+  // Both halves: a name with no number is not a contact (the server's rule);
+  // a whole US number, and names under the US letter rule (BL-503).
   const contactReady =
-    contactNow.name.trim().length > 0 && contactNow.phone.trim().length >= 7;
+    contactNow.name.trim().length > 0 &&
+    toUsPhone(contactNow.phone) !== null &&
+    !hasTurkishOnlyLetters(contactNow.name) &&
+    !hasTurkishOnlyLetters(contactNow.relationship);
   // What Save changes has to send; Terminate and Invite wait for it too.
   const anyDirty = dirty || roleDirty || contactDirty;
 
@@ -475,7 +486,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           await saveOwnEmploymentContact(workspaceId, savedId, {
             name: contactNow.name.trim(),
             relationship: contactNow.relationship.trim(),
-            phone: contactNow.phone.trim(),
+            phone: toUsPhone(contactNow.phone) ?? contactNow.phone.trim(),
             email: detail.data?.private_contact?.emergency_contact_email ?? "",
           });
         } catch {
@@ -3162,22 +3173,39 @@ function Field({
 }) {
   const [touched, setTouched] = useState(false);
   const id = useId();
+  const phoneBroken = type === "tel" && Boolean(value.trim()) && toUsPhone(value) === null;
   const invalid =
     touched &&
     ((required && !value.trim()) ||
+      phoneBroken ||
       (type === "email" &&
         Boolean(value.trim()) &&
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())));
   const validationMessage =
-    type === "email" ? "Enter a valid email address." : `${label} is required.`;
+    type === "email"
+      ? "Enter a valid email address."
+      : phoneBroken
+        ? usPhoneMessage
+        : `${label} is required.`;
+  // The US letter rule (BL-503), said as it is typed, not on leaving the field.
+  const lettersBroken =
+    type === "text" && !readOnly && !disabled && hasTurkishOnlyLetters(value);
   const describedBy = [
     invalid ? `${id}-error` : null,
+    lettersBroken ? `${id}-letters` : null,
     lockedReason ? `${id}-reason` : null,
     mark ? `${id}-mark` : null,
   ]
     .filter(Boolean)
     .join(" ");
   const MarkIcon = mark?.tone === "verified" ? CheckCircle2 : Clock3;
+  const markTouched = (event: React.FocusEvent<HTMLInputElement>) => {
+    if (
+      event.relatedTarget instanceof Element &&
+      event.relatedTarget.closest(".employee-drawer")
+    )
+      setTouched(true);
+  };
   return (
     <label
       className={`employee-field${type === "email" ? " employee-email-field" : ""}`}
@@ -3196,27 +3224,36 @@ function Field({
         ) : null}
       </span>
       <span className="employee-field-control" title={mark?.label}>
-        <input
-          ref={inputRef}
-          aria-label={label}
-          aria-required={required || undefined}
-          aria-invalid={invalid || undefined}
-          aria-describedby={describedBy || undefined}
-          onBlur={(event) => {
-            if (
-              event.relatedTarget instanceof Element &&
-              event.relatedTarget.closest(".employee-drawer")
-            )
-              setTouched(true);
-          }}
-          type={type}
-          value={value}
-          // A long address is cut by the mark at the field's end (BL-439).
-          title={type === "email" && value ? value : undefined}
-          disabled={disabled}
-          readOnly={readOnly}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        {type === "tel" ? (
+          // The one US phone field (BL-503): a fixed +1 and the mask.
+          <UsPhoneInput
+            aria-label={label}
+            aria-required={required || undefined}
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy || undefined}
+            onBlur={markTouched}
+            value={value}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={onChange}
+          />
+        ) : (
+          <input
+            ref={inputRef}
+            aria-label={label}
+            aria-required={required || undefined}
+            aria-invalid={invalid || lettersBroken || undefined}
+            aria-describedby={describedBy || undefined}
+            onBlur={markTouched}
+            type={type}
+            value={value}
+            // A long address is cut by the mark at the field's end (BL-439).
+            title={type === "email" && value ? value : undefined}
+            disabled={disabled}
+            readOnly={readOnly}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        )}
         {mark ? (
           <span
             id={`${id}-mark`}
@@ -3234,6 +3271,14 @@ function Field({
           className="employee-field-helper employee-field-error"
         >
           {validationMessage}
+        </small>
+      ) : null}
+      {lettersBroken ? (
+        <small
+          id={`${id}-letters`}
+          className="employee-field-helper employee-field-error"
+        >
+          {usLettersMessage}
         </small>
       ) : null}
       {lockedReason ? (
@@ -3510,18 +3555,6 @@ function CopyInvitationLinkButton({
   );
 }
 
-/**
- * A saved US number as "+1 (609) 551-8909", whatever way it was typed (P4,
- * KARARLAR "Form ve girdi kuralları"); anything else stays as saved.
- */
-function displayUsPhone(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const digits = value.replace(/\D/g, "");
-  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (local.length !== 10) return value;
-  return `+1 (${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
-}
-
 /** A zone in words, "Pacific Time (Los Angeles)", not its code (E3-37). */
 function zoneName(zone: string): string {
   try {
@@ -3654,6 +3687,7 @@ function OwnEmergencyContact({ control }: { readonly control: OwnContactControl 
       />
       <Field
         label="Emergency phone"
+        type="tel"
         optional={!required}
         required={required}
         value={value.phone}

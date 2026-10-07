@@ -16,6 +16,7 @@ import {
   defaultDocumentLifecycleSettings,
   emptyWeeklyPreference,
   managementAndOwnerRefusals,
+  usLettersMessage,
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
@@ -859,14 +860,97 @@ describe("EmployeeDrawer", () => {
       expect(saveOwnEmploymentContact).toHaveBeenCalledWith(
         workspaceId,
         employeeId,
+        // A US number in E.164 (BL-503).
         expect.objectContaining({
           name: "Morgan Tepebas",
-          phone: "3105550101",
+          phone: "+13105550101",
         }),
       ),
     );
     expect(saveEmployee).not.toHaveBeenCalled();
   });
+
+  // BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
+  it("draws the owner's emergency phone with a fixed +1 and the mask", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      private_contact: null,
+    });
+
+    const phone = await screen.findByLabelText("Emergency phone");
+    expect(phone.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
+    fireEvent.change(phone, { target: { value: "310555010199" } });
+    expect(phone).toHaveProperty("value", "(310) 555-0101");
+  });
+
+  it("opens the owner's saved non-US emergency phone empty", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      private_contact: {
+        phone: null,
+        street_address: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        country_code: null,
+        date_of_birth: null,
+        emergency_contact_name: "Morgan",
+        emergency_contact_relationship: null,
+        emergency_contact_phone: "+442079460958",
+        emergency_contact_email: "",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+    });
+
+    // Drawn into the mask, "+44 …" would read as a wrong US number.
+    expect(await screen.findByLabelText("Emergency phone")).toHaveProperty("value", "");
+  });
+
+  it("says under the owner's emergency contact that Turkish-only letters are not taken", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      private_contact: null,
+    });
+
+    const name = await screen.findByLabelText("Emergency contact");
+    fireEvent.change(name, { target: { value: "Ayşe Yılmaz" } });
+    fireEvent.change(screen.getByLabelText("Emergency phone"), {
+      target: { value: "3105550101" },
+    });
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(
+      (name.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent),
+    ).toContain(usLettersMessage);
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+  });
+
+  it.each([["First name"], ["Middle name"], ["Last name"]])(
+    "says under %s that Turkish-only letters are not taken, and keeps Save off",
+    async (label) => {
+      renderDrawer("profile");
+      const field = await screen.findByLabelText(label);
+      fireEvent.change(field, { target: { value: "Şule" } });
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      expect(
+        (field.getAttribute("aria-describedby") ?? "")
+          .split(" ")
+          .map((id) => document.getElementById(id)?.textContent),
+      ).toContain(usLettersMessage);
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+    },
+  );
 
   it("will not save half an emergency contact", async () => {
     renderDrawer("profile", {

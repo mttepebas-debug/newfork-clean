@@ -1,7 +1,14 @@
-import { employeeInputSchema, type EmployeeInput } from "@newfork/shared";
+import {
+  employeeInputSchema,
+  hasTurkishOnlyLetters,
+  type EmployeeInput,
+} from "@newfork/shared";
 
 export function employeeCreateReadiness(draft: EmployeeInput) {
-  const namesReady = Boolean(draft.first_name.trim() && draft.last_name.trim());
+  // The US letter rule (BL-503) holds Next too, not only Save.
+  const namesReady =
+    Boolean(draft.first_name.trim() && draft.last_name.trim()) &&
+    ![draft.first_name, draft.middle_name ?? "", draft.last_name].some(hasTurkishOnlyLetters);
   const assignmentsOptional = Boolean(
     draft.is_remote || draft.is_excluded_from_schedule || draft.is_owner_record,
   );
