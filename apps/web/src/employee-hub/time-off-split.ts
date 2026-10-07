@@ -44,6 +44,10 @@ export function timeOffZoneName(zone: string) {
 
 // The decision deadline, as a person in the request's zone reads it (FB-6.3.8d).
 export function formatTimeOffDeadline(value: string, zone: string, format: "12h" | "24h") {
-  const at = new Intl.DateTimeFormat("en-US", { timeZone: zone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: format === "12h" }).format(new Date(value));
-  return `${at} ${timeOffZoneName(zone)}`;
+  return `${timeOffDeadlineAt(value, zone, format)} ${timeOffZoneName(zone)}`;
+}
+
+/** "Oct 15, 4:00 PM": the deadline in its zone, the zone's name left to the caller. */
+export function timeOffDeadlineAt(value: string, zone: string, format: "12h" | "24h") {
+  return new Intl.DateTimeFormat("en-US", { timeZone: zone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit", hour12: format === "12h" }).format(new Date(value));
 }

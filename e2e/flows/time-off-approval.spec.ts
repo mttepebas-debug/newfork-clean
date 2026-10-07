@@ -172,8 +172,8 @@ test("the owner decides alone, then revokes with a reason", async ({ browser }) 
   // Neither location voted: the owner's word was enough.
   expect(statusOf(request)).toBe("approved");
 
-  // Approved requests sit under Closed; Revoke wants a reason before it acts.
-  await owner.goto("/app/schedule/requests?tab=closed");
+  // Approved requests stay in the one list, under the open ones; Revoke wants a reason before it acts.
+  await owner.goto("/app/schedule/requests");
   await owner.getByRole("row", { name: new RegExp(asker.name) }).click();
   await owner.getByRole("dialog", { name: "Review request" }).getByRole("button", { name: "Revoke", exact: true }).click();
   const revoke = owner.getByRole("alertdialog", { name: "Revoke time off?" });

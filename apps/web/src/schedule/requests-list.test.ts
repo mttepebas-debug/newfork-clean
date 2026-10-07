@@ -3,16 +3,17 @@ import { describe, expect, it } from "vitest";
 
 import { RequestError } from "../lib/request-error";
 import {
-  openRequestRows,
+  openCounts,
   pageOf,
   readRequestsParams,
   requestFailureKind,
+  requestRows,
   requestTypesFor,
-  tabOfRequest,
 } from "./requests-list";
 
-// EKRAN-02 B1 (K-S8, K-S9, K-S10): Requests is one table. Time off and shift
-// changes are read from their own two lists and joined here, in the open tabs.
+// EKRAN-02 (K-S8 – K-S10; KARARLAR Schedule → Requests, Ek 2026-10-07): Requests
+// is one list. Time off and shift changes are read from their own lists and
+// joined here: open requests first, then closed ones; the tabs are request types.
 
 const kadikoy = "22222222-2222-4222-8222-222222222222";
 const besiktas = "33333333-3333-4333-8333-333333333333";
@@ -38,12 +39,19 @@ function exchange(id: string, kind: ExchangeCase["kind"], stage: ExchangeCase["s
   } as ExchangeCase;
 }
 
-const everyType = ["time_off", "swap", "cover", "open_pickup"] as const;
-const all = { types: [...everyType], locationId: "", search: "" };
+function closedTimeOff(id: string, status: TimeOffRequest["status"], decidedAt: string): TimeOffRequest {
+  return {
+    ...timeOff(id, null, null),
+    status,
+    events: [{ id: "99999999-9999-4999-8999-999999999999", action: status, actor_name: "Ayse Person", note: "", created_at: decidedAt }],
+  } as TimeOffRequest;
+}
 
-describe("openRequestRows", () => {
-  it("puts what the reader decides in Needs review and what waits on somebody else in In progress", () => {
-    const rows = openRequestRows(
+const all = { type: "all" as const, locationId: "", search: "" };
+
+describe("requestRows", () => {
+  it("marks what the reader decides Needs review and what waits on somebody else In progress", () => {
+    const rows = requestRows(
       [
         timeOff("t-mine", "2026-10-10T12:00:00Z", { can_vote: true, my_vote: null }),
         timeOff("t-voted", "2026-10-11T12:00:00Z", { can_vote: false, my_vote: "approve" }),
@@ -53,11 +61,10 @@ describe("openRequestRows", () => {
         exchange("x-finding", "cover", "seeking_candidates", "2026-10-12T12:00:00Z"),
         exchange("x-peer", "swap", "awaiting_peer", "2026-10-13T12:00:00Z"),
         exchange("x-not-mine", "open_pickup", "ready_for_manager", "2026-10-14T12:00:00Z", { can_manage: false }),
-        exchange("x-closed", "cover", "closed", "2026-10-08T12:00:00Z"),
       ],
       all,
     );
-    expect(rows.map((row) => [row.id, row.tab])).toEqual([
+    expect(rows.map((row) => [row.id, row.state])).toEqual([
       ["x-ready", "needs_review"],
       ["t-mine", "needs_review"],
       ["t-voted", "in_progress"],
@@ -68,17 +75,13 @@ describe("openRequestRows", () => {
   });
 
   // An admin or owner who decides alone has nobody before them: the request is theirs now (EKRAN-02 C1).
-  it("puts a request the reader decides alone in Needs review", () => {
-    const rows = openRequestRows(
-      [timeOff("t-alone", "2026-10-10T12:00:00Z", { can_vote: false, can_decide_alone: true, my_vote: null })],
-      [],
-      all,
-    );
-    expect(rows.map((row) => [row.id, row.tab])).toEqual([["t-alone", "needs_review"]]);
+  it("marks a request the reader decides alone Needs review", () => {
+    const rows = requestRows([timeOff("t-alone", "2026-10-10T12:00:00Z", { can_vote: false, can_decide_alone: true, my_vote: null })], [], all);
+    expect(rows.map((row) => [row.id, row.state])).toEqual([["t-alone", "needs_review"]]);
   });
 
-  it("orders by Decide by, nearest first, with no deadline last", () => {
-    const rows = openRequestRows(
+  it("orders open requests by Decide by, nearest first, with no deadline last", () => {
+    const rows = requestRows(
       [timeOff("t-none", null, { can_vote: true }), timeOff("t-late", "2026-10-20T12:00:00Z", { can_vote: true })],
       [exchange("x-soon", "swap", "ready_for_manager", "2026-10-09T12:00:00Z")],
       all,
@@ -86,13 +89,40 @@ describe("openRequestRows", () => {
     expect(rows.map((row) => row.id)).toEqual(["x-soon", "t-late", "t-none"]);
   });
 
-  it("keeps only the chosen request types", () => {
-    const rows = openRequestRows(
-      [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true })],
-      [exchange("s", "swap", "ready_for_manager", "2026-10-10T12:00:00Z"), exchange("o", "open_pickup", "ready_for_manager", "2026-10-10T12:00:00Z")],
-      { ...all, types: ["swap", "open_pickup"] },
+  // KARARLAR Schedule → Requests, Ek 2026-10-07: one list, no status tabs.
+  it("lists closed requests under the open ones, the newest decision first", () => {
+    const rows = requestRows(
+      [
+        closedTimeOff("t-old", "approved", "2026-10-02T09:00:00Z"),
+        timeOff("t-open", "2026-10-30T12:00:00Z", { can_vote: true }),
+        closedTimeOff("t-new", "denied", "2026-10-05T09:00:00Z"),
+      ],
+      [
+        exchange("x-closed", "cover", "closed", "2026-10-08T12:00:00Z", {
+          history: [{ id: "88888888-8888-4888-8888-888888888888", action: "completed", created_at: "2026-10-04T09:00:00Z", message: "" }],
+        }),
+      ],
+      all,
     );
-    expect(rows.map((row) => row.type)).toEqual(["swap", "open_pickup"]);
+    expect(rows.map((row) => [row.id, row.state])).toEqual([
+      ["t-open", "needs_review"],
+      ["t-new", "closed"],
+      ["x-closed", "closed"],
+      ["t-old", "closed"],
+    ]);
+  });
+
+  it("keeps only the chosen request type, open and closed", () => {
+    const rows = requestRows(
+      [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true })],
+      [
+        exchange("s", "swap", "ready_for_manager", "2026-10-10T12:00:00Z"),
+        exchange("s-done", "swap", "closed", "2026-10-01T12:00:00Z"),
+        exchange("o", "open_pickup", "ready_for_manager", "2026-10-10T12:00:00Z"),
+      ],
+      { ...all, type: "swap" },
+    );
+    expect(rows.map((row) => row.id)).toEqual(["s", "s-done"]);
   });
 
   it("filters shift changes by location, either side of a swap, and by a name", () => {
@@ -107,8 +137,23 @@ describe("openRequestRows", () => {
         shift: { location_id: kadikoy, employee_name: "Emre Person" } as ExchangeCase["shift"],
       }),
     ];
-    expect(openRequestRows([], cases, { ...all, locationId: besiktas }).map((row) => row.id)).toEqual(["b"]);
-    expect(openRequestRows([], cases, { ...all, search: "  zEYNep " }).map((row) => row.id)).toEqual(["b"]);
+    expect(requestRows([], cases, { ...all, locationId: besiktas }).map((row) => row.id)).toEqual(["b"]);
+    expect(requestRows([], cases, { ...all, search: "  zEYNep " }).map((row) => row.id)).toEqual(["b"]);
+  });
+});
+
+describe("openCounts", () => {
+  it("counts the open requests of each type and of All; closed ones are not counted", () => {
+    const rows = requestRows(
+      [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true }), closedTimeOff("t-done", "approved", "2026-10-02T09:00:00Z")],
+      [
+        exchange("s", "swap", "awaiting_peer", "2026-10-10T12:00:00Z"),
+        exchange("c", "cover", "ready_for_manager", "2026-10-11T12:00:00Z"),
+        exchange("c-done", "cover", "closed", "2026-10-01T12:00:00Z"),
+      ],
+      all,
+    );
+    expect(openCounts(rows)).toEqual({ all: 3, time_off: 1, swap: 1, cover: 1, open_pickup: 0 });
   });
 });
 
@@ -122,18 +167,14 @@ describe("requestTypesFor", () => {
 describe("readRequestsParams", () => {
   const allowed = ["time_off", "swap", "cover", "open_pickup"] as const;
 
-  it("reads tab, types and page from the address, 50 rows a page by default", () => {
-    expect(readRequestsParams(new URLSearchParams("tab=in_progress&types=swap,cover&page=2&size=25"), [...allowed])).toEqual({
-      tab: "in_progress", types: ["swap", "cover"], page: 2, pageSize: 25,
-    });
-    expect(readRequestsParams(new URLSearchParams(""), [...allowed])).toEqual({
-      tab: "needs_review", types: [...allowed], page: 1, pageSize: 50,
-    });
+  it("reads the request type tab and the page from the address, All and 50 rows by default", () => {
+    expect(readRequestsParams(new URLSearchParams("type=swap&page=2&size=25"), [...allowed])).toEqual({ type: "swap", page: 2, pageSize: 25 });
+    expect(readRequestsParams(new URLSearchParams(""), [...allowed])).toEqual({ type: "all", page: 1, pageSize: 50 });
   });
 
   it("ignores what the address cannot ask for: a type the reader may not read, an odd page size", () => {
-    expect(readRequestsParams(new URLSearchParams("tab=x&types=time_off,bogus&page=-3&size=30"), ["swap", "cover", "open_pickup"])).toEqual({
-      tab: "needs_review", types: ["swap", "cover", "open_pickup"], page: 1, pageSize: 50,
+    expect(readRequestsParams(new URLSearchParams("type=time_off&page=-3&size=30"), ["swap", "cover", "open_pickup"])).toEqual({
+      type: "all", page: 1, pageSize: 50,
     });
   });
 });
@@ -148,14 +189,6 @@ describe("pageOf", () => {
 
   it("falls back to the last page when the list shrank under the address", () => {
     expect(pageOf(rows.slice(0, 10), 4, 50)).toEqual({ rows: rows.slice(0, 10), page: 1, pageCount: 1, total: 10 });
-  });
-});
-
-describe("tabOfRequest", () => {
-  it("opens a linked request in its tab, and in Closed once it is no longer open (R2-09)", () => {
-    const rows = openRequestRows([], [exchange("x", "cover", "seeking_candidates", "2026-10-10T12:00:00Z")], all);
-    expect(tabOfRequest("x", rows)).toBe("in_progress");
-    expect(tabOfRequest("gone", rows)).toBe("closed");
   });
 });
 

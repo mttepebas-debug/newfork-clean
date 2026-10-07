@@ -15,7 +15,7 @@ import {
   type TimeOffSubmitInput,
   type TimeOffVerdictInput,
 } from "@newfork/shared";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 /** The API's search limit; longer text is cut, never sent to fail (R2-10). */
 const searchLimit = 120;
@@ -47,18 +47,26 @@ export async function getScheduleRequests(
 }
 
 /**
- * Every open (pending) time off request the reader may read, for Needs review
- * and In progress (K-S8). The open queue is short; it is read whole.
+ * A whole time off queue, page after page: Needs review (pending) or Closed.
+ * Requests is one list (Ek 2026-10-07), so both are read whole until the one
+ * closed read (B3) pages Closed on the server. The first page brings the
+ * location list and the workspace's time format.
  */
-export async function getOpenTimeOffRequests(workspaceId: string, filters: { locationId: string; search: string }) {
-  const rows = [];
+export async function getTimeOffQueue(
+  workspaceId: string,
+  queue: "needs_review" | "closed",
+  filters: { locationId: string; search: string },
+) {
+  const requests = [];
+  let first: Awaited<ReturnType<typeof getScheduleRequests>> | undefined;
   let cursor: string | undefined;
   do {
-    const page = await getScheduleRequests(workspaceId, { ...filters, timeOffQueue: "needs_review", timeOffCursor: cursor, limit: 100 });
-    rows.push(...page.time_off_requests);
+    const page = await getScheduleRequests(workspaceId, { ...filters, timeOffQueue: queue, timeOffCursor: cursor, limit: 100 });
+    first ??= page;
+    requests.push(...page.time_off_requests);
     cursor = page.time_off_next_cursor ?? undefined;
   } while (cursor);
-  return rows;
+  return { requests, locations: first.locations, timeFormat: first.time_format ?? "12h" };
 }
 
 /** BL-127: a manager gives back hours of approved time off; the core decides who may. */
@@ -113,19 +121,6 @@ function useTimeOffMutation<Variables, Result>(workspaceId: string, run: (variab
   });
 }
 
-/** Requests > Time off, with the filters the page keys on. */
-export function useScheduleRequests(
-  workspaceId: string | undefined,
-  filters: { timeOffQueue: "needs_review" | "closed"; locationId: string; search: string; timeOffCursor?: string },
-) {
-  return useQuery({
-    queryKey: [...timeOffKeys.requests(workspaceId ?? ""), filters.timeOffQueue, filters.locationId, filters.search, filters.timeOffCursor],
-    queryFn: () => getScheduleRequests(workspaceId!, filters),
-    enabled: Boolean(workspaceId),
-    // R2-10: typing in search keeps the last rows on screen, and the box its focus.
-    placeholderData: keepPreviousData,
-  });
-}
 export function useSubmitTimeOff(workspaceId: string) {
   return useTimeOffMutation(workspaceId, (request: TimeOffSubmitInput) => submitTimeOff(workspaceId, request));
 }

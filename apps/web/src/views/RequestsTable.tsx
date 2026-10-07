@@ -3,28 +3,21 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   CalendarOff,
-  ChevronDown,
   ChevronRight,
   CircleDashed,
   UserRoundSearch,
   type LucideIcon,
 } from "lucide-react";
-import { formatTimeOffDeadline } from "../employee-hub/time-off-split";
-import {
-  requestTypeLabels,
-  type OpenRequestRow,
-  type RequestType,
-} from "../schedule/requests-list";
+import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { requestTypeLabels, type RequestRow, type RequestType } from "../schedule/requests-list";
 
 // EKRAN-02 C1 (KARARLAR Schedule → Requests, K-S8 – K-S10, KK-173): one table
 // for time off and every shift change. Employee carries a second line that
 // depends on the type; When is one date form, the year only when it is not
 // this year; an Open shift row has an empty-shift mark instead of a person.
+// Status tells an open request (Needs review, In progress) from a closed one.
 
-/** A row of the one table: open rows from B1a, closed time off from its own list. */
-export type RequestTableRow =
-  | OpenRequestRow
-  | { source: "time_off"; id: string; type: "time_off"; tab: "closed"; decideBy: null; request: TimeOffRequest };
+type RequestTableRow = RequestRow;
 
 const typeIcons: Record<RequestType, LucideIcon> = {
   time_off: CalendarOff,
@@ -119,7 +112,9 @@ function RequestTableRowView({
         </span>
       </td>
       <td>{rowWhen(row, timeFormat)}</td>
-      <td>{rowDecideBy(row, timeFormat)}</td>
+      <td>
+        <RowDecideBy row={row} timeFormat={timeFormat} />
+      </td>
       <td>
         <span className="list-chip" data-tone={statusTone(status)}>
           {statusText(status)}
@@ -215,20 +210,25 @@ function rowWhen(row: RequestTableRow, timeFormat: "12h" | "24h") {
   return `${shortDate(shift.scheduled_date, { weekday: true })}${hours}`;
 }
 
-function rowDecideBy(row: RequestTableRow, timeFormat: "12h" | "24h") {
-  if (!row.decideBy) return "";
+// KARARLAR:133 names the zone; it gets its own line so it is never cut.
+function RowDecideBy({ row, timeFormat }: { row: RequestTableRow; timeFormat: "12h" | "24h" }) {
   const zone = row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
-  return zone ? formatTimeOffDeadline(row.decideBy, zone, timeFormat) : "";
+  if (!row.decideBy || !zone) return null;
+  return (
+    <span className="request-deadline">
+      <span>{timeOffDeadlineAt(row.decideBy, zone, timeFormat)}</span>
+      <small>{timeOffZoneName(zone)}</small>
+    </span>
+  );
 }
 
 function rowStatus(row: RequestTableRow): string {
-  if (row.source === "time_off") return row.request.status;
-  const status = (row.request as ExchangeCase).status;
-  return status === "open" ? "pending" : status;
+  if (row.state !== "closed") return row.state;
+  return row.source === "time_off" ? row.request.status : (row.request as ExchangeCase).status;
 }
 
 function statusTone(status: string) {
-  if (status === "pending") return "amber";
+  if (status === "needs_review") return "amber";
   if (status === "approved" || status === "completed") return "green";
   if (status === "denied" || status === "invalidated") return "red";
   return "gray";
@@ -236,51 +236,4 @@ function statusTone(status: string) {
 
 function statusText(status: string) {
   return status.replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase());
-}
-
-/** Request type: a menu of checkboxes; the button names what is chosen. */
-export function RequestTypeFilter({
-  allowed,
-  chosen,
-  onChange,
-}: {
-  readonly allowed: readonly RequestType[];
-  readonly chosen: readonly RequestType[];
-  readonly onChange: (types: RequestType[]) => void;
-}) {
-  const summary =
-    chosen.length === allowed.length
-      ? "All request types"
-      : chosen.length === 1
-        ? requestTypeLabels[chosen[0]!]
-        : `${chosen.length} request types`;
-  return (
-    <details className="requests-type-filter">
-      <summary aria-label={`Request type: ${summary}`}>
-        <span>{summary}</span>
-        <ChevronDown size={14} aria-hidden />
-      </summary>
-      <fieldset>
-        <legend>Request type</legend>
-        {allowed.map((type) => (
-          <label key={type}>
-            <input
-              type="checkbox"
-              checked={chosen.includes(type)}
-              // Keep at least one type: an empty table with no way to say why helps nobody.
-              disabled={chosen.length === 1 && chosen.includes(type)}
-              onChange={(event) =>
-                onChange(
-                  event.target.checked
-                    ? allowed.filter((item) => item === type || chosen.includes(item))
-                    : chosen.filter((item) => item !== type),
-                )
-              }
-            />
-            {requestTypeLabels[type]}
-          </label>
-        ))}
-      </fieldset>
-    </details>
-  );
 }
