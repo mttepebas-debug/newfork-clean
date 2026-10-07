@@ -47,6 +47,10 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 - **Bugün:** Mert Settings → Documents'ta yayındaki "Alcohol server permit"i arşivler; garson Ali'den belge istenmeye devam eder, süresi geçtiyse Ali kısıtlı kalır ve Schedule'ı açamaz; ertesi gün gelen Bora'dan istenmez. Düzeltmek için Restore → Unpublish → Archive gerekiyor.
 - **(a) (Önerilen)** Archive, Unpublish'in yaptığını yapar: açık zorunluluklar kapanır, kısıt kalkar; önce etki satırı ("12 people are asked for this document. Archiving stops it."), iki tık kırmızı. Dayanak: KARARLAR:599 (Archive iki tık kırmızı), ILKELER P09. **(b)** Yayındaki tür arşivlenemez, önce Unpublish.
 
+### G12. Müdür olan vardiya sahibi, kendi vardiyasına yapılan başvurunun ret gerekçesini görsün mü? (EKRAN-02 veri paketi, BL-910)
+- **Bugün (paketle):** ret gerekçesi artık yalnız başvurana ve lokasyonun taleplerini okuyan müdüre gidiyor; vardiya sahibine genel cümle ("A request for your shift was declined. You are still responsible for this shift."). Vardiya sahibi aynı zamanda müdürse (Emre Kadıköy'de shift manager) gerekçeyi Requests'te görüyor, Shift Hub'da görmüyor.
+- **(a) (Önerilen)** Böyle kalsın: Emre rolü gereği lokasyonun bütün ret gerekçelerini zaten okuyor; kendi vardiyası için ayrı gizleme kuralı ikinci bir kural olur. Dayanak: ILKELER P08 (ayrıcalık bugünkü rolden gelir). **(b)** Kendi vardiyasının gerekçesi Requests'te de gizlensin (rolden bağımsız sahip kuralı).
+
 ---
 
 ## Tur 1 — hat durduranlar

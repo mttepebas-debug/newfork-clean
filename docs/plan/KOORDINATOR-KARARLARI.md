@@ -1824,3 +1824,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~12:35Z.
 - **Ne:** KK-207'deki gece adaylarını ("Mert kararı istemiyor") ölçmeden yazmıştım; GUVENLIK-A oturumu ikisinin de açık Mert sorusu olduğunu gösterdi (EKRAN-06 S2 / S7; `OZET.md:156`, `tasks/EKRAN-06-DOCUMENTS.md:32,37`) ve kod yazmadan durdu. BL-559 sabah G3 saat dilimi konuşmasına eklendi, BL-821 G11 oldu. Gece adayı seçerken önce maddenin "Neden bekliyor" satırına ve ekranın OZET sorularına bakılır.
 - **Dayanak:** CLAUDE.md §5.1–5.2; ILKELER P18.
+
+### KK-218 (2026-10-07 gece) Sabah gönderim sırası: önce ACIL-40001, sonra EKRAN-02 veri paketi
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~12:40Z. **Nerede:** `task/acil-40001` (EKRAN-08 oturumu), `task/ekran-02-data` @`d32c12f3` (17 commit, `nf-guvenlik` ONAY @`acfb0e9b`, BL-910 + ikinci sızıntı `history[].message` kapandı).
+- **Ne:** ikisi de sabah Mert'in kendi pencerelerindeki "evet"ini bekliyor (§5.3). Sıra: ACIL-40001 önce (küçük, kritik: API havuzu), sonra paket (R3, S1 cevabına bağlı); paket taşınırken izin fonksiyonlarındaki 8 `40001` satırı PT409'a çevrilir, önce kırmızı test. DB-4 (EKRAN-01) paketten sonra taşınır. Daha önce sızmış ret gerekçesi kayıtlarının silinmesi yapılmaz (canlı kullanıcı yok, P01; canlıda veri silme Mert onayı). Mert'e yeni soru G12.
+- **Dayanak:** CLAUDE.md §5.1, §5.3; KARARLAR OPS-03; ILKELER P01, P08.
