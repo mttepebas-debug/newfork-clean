@@ -361,3 +361,19 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
   - kapanışa ya da cron'a dokunan öbür dosyalar migration'lı ve migration'sız aynı: `authorization_coverage`, `employee_private_storage_contract`, `lifecycle_refusals_carry_keys`, `time_off_deadlines`, `workspace_lifecycle`, `workspace_rls` 0 hata; `authorization_matrix`'teki 26 satır iki durumda da aynı "TODO known".
 - **EKRAN-02 paketi** kapanış fonksiyonlarına dokunmuyor (diff'te tek eşleşme ilgisiz `schedule_closures`).
 - **Şema:** `schema.sql` yeniden üretildi (439 migration), `check-fast` yeşil.
+- **İnceleme:** `nf-guvenlik` **ONAY @e4ecc990** (Kritik/Yüksek yok). Uygulananlar:
+  - **O1 (Orta):** iş bütün workspace'leri tek işlemde dolaşıyordu; birinin hatası o koşudaki bütün kapanışları geri alır ve her 5 dakikada takılırdı. Artık her workspace kendi alt işleminde (`begin … exception when others`, `time_off_sweep` kalıbı); hata `WARNING` olarak yazılıyor, workspace sonraki koşuya kalıyor.
+    - Kırmızı: bilerek bozulan "Broken Close Co" bütün koşuyu düşürdü, "Close Later Co" kapanmadı (9 hücre).
+    - Yeşil: 68/68; uyarı yalnız "Broken Close Co"yu adlandırıyor.
+  - **D2:** iş testte oturumsuz koşuyor, cron'daki gibi.
+  - **D3:** cron hücresi zamanlamayla birlikte komutu da sabitliyor.
+  - **D1:** tarihten sonra ≤5 dk iptal penceresi kabul edildi, değişmedi.
+- **Dal CI:** `37604813162` @e4ecc990 (O1'den önce): check, db, e2e, db-budget yeşil. O1 commit'i için yeni koşu push'ta.
+
+### GA-1 gönderim şartı (koordinatör, 2026-10-07 ~11:35Z)
+- **Soru:** iki workspace'te yetkili admin, Meyhouse'taki bir işi Deniz Cafe'nin departmanına bağlayabilir mi (`jobs.department_id` hâlâ yazılabilir)?
+- **Cevap: bağlayamaz.**
+  - Bileşik yabancı anahtar `jobs_department_id_workspace_id_fkey` `(department_id, workspace_id)` çiftini `departments(id, workspace_id)`'e bağlıyor (`supabase/migrations/20260817153000_organization_basics.sql:53`; main `supabase/schema.sql:32074`).
+  - GA-1'den sonra işin `workspace_id`'si değişemiyor; başka workspace'in departmanı bu çiftle eşleşmez → 23503.
+  - Koruma hücresi: `organization_basics_rls.test.sql` "a job cannot be tied to another workspace's department" (`da24ad98`; GA-1 migration'ıyla 20/20).
+  - Yazılabilir kolonlar arasında başka `*_id` yok: departments, locations, shift_types, shift_labels'ta hiç yok. workspaces'te `logo_storage_path` var ama yabancı anahtar değil (YB-2).

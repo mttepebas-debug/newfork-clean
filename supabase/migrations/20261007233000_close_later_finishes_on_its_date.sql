@@ -9,7 +9,9 @@
 --   2. app_private.complete_due_workspace_closures() finishes every scheduled
 --      closure whose date has passed, closed at the date it promised, by the
 --      owner who scheduled it.
---   3. pg_cron runs it every five minutes, like the time-off sweep.
+--   3. pg_cron runs it every five minutes, like the time-off sweep. A closure
+--      that fails stays scheduled for the next run and does not hold the
+--      others back.
 
 create or replace function app_private.finish_workspace_closure(
   target_workspace_id uuid,
@@ -279,25 +281,31 @@ begin
     order by workspace.closure_effective_at
     for update skip locked
   loop
-    select * into scheduled_request
-    from public.workspace_closure_requests request
-    where request.workspace_id = due.id
-      and request.status = 'scheduled'
-    order by request.created_at desc
-    limit 1
-    for update;
+    -- One workspace's failure undoes only its own closure and stays scheduled
+    -- for the next run; the others still close (as time_off_sweep does).
+    begin
+      select * into scheduled_request
+      from public.workspace_closure_requests request
+      where request.workspace_id = due.id
+        and request.status = 'scheduled'
+      order by request.created_at desc
+      limit 1
+      for update;
 
-    update public.workspace_closure_requests
-    set status = 'completed',
-        completed_at = now(),
-        updated_at = now()
-    where id = scheduled_request.id;
+      update public.workspace_closure_requests
+      set status = 'completed',
+          completed_at = now(),
+          updated_at = now()
+      where id = scheduled_request.id;
 
-    perform app_private.finish_workspace_closure(
-      due.id, coalesce(scheduled_request.requested_by, due.created_by), scheduled_request.id,
-      due.closure_effective_at, 'scheduled'
-    );
-    completed := completed + 1;
+      perform app_private.finish_workspace_closure(
+        due.id, coalesce(scheduled_request.requested_by, due.created_by), scheduled_request.id,
+        due.closure_effective_at, 'scheduled'
+      );
+      completed := completed + 1;
+    exception when others then
+      raise warning 'workspace-closures: workspace % failed: % %', due.id, sqlstate, sqlerrm;
+    end;
   end loop;
 
   return completed;

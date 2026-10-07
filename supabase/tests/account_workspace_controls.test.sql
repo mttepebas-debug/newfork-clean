@@ -176,29 +176,51 @@ select lives_ok($q$select public.create_owner_workspace_service('a5500000-0000-4
 reset role;
 -- BL-906 (GUVENLIK-A GA-4): "Close later" finishes on its date. Close Later Co
 -- is past its date and Not Yet Co is not; the closure job closes only the first,
--- the way "Close now" closes a workspace.
+-- the way "Close now" closes a workspace. Broken Close Co is due earlier still
+-- and its closure fails here on purpose: it stays scheduled and does not hold
+-- the others back.
 insert into auth.users(id,email,email_confirmed_at) values
 ('a5500000-0000-4000-8000-000000000015','close-later-owner@example.test',now()),
 ('a5500000-0000-4000-8000-000000000016','close-later-admin@example.test',now()),
-('a5500000-0000-4000-8000-000000000017','not-yet-owner@example.test',now());
+('a5500000-0000-4000-8000-000000000017','not-yet-owner@example.test',now()),
+('a5500000-0000-4000-8000-000000000018','broken-close-owner@example.test',now());
 insert into public.workspaces(id,name,created_by) values
 ('a5500000-0000-4000-8000-000000000104','Close Later Co','a5500000-0000-4000-8000-000000000015'),
-('a5500000-0000-4000-8000-000000000105','Not Yet Co','a5500000-0000-4000-8000-000000000017');
+('a5500000-0000-4000-8000-000000000105','Not Yet Co','a5500000-0000-4000-8000-000000000017'),
+('a5500000-0000-4000-8000-000000000106','Broken Close Co','a5500000-0000-4000-8000-000000000018');
 insert into public.workspace_memberships(workspace_id,user_id,role,status) values
 ('a5500000-0000-4000-8000-000000000104','a5500000-0000-4000-8000-000000000015','owner','active'),
 ('a5500000-0000-4000-8000-000000000104','a5500000-0000-4000-8000-000000000016','admin','active'),
-('a5500000-0000-4000-8000-000000000105','a5500000-0000-4000-8000-000000000017','owner','active');
+('a5500000-0000-4000-8000-000000000105','a5500000-0000-4000-8000-000000000017','owner','active'),
+('a5500000-0000-4000-8000-000000000106','a5500000-0000-4000-8000-000000000018','owner','active');
 insert into public.locations(short_name,id,workspace_id,name,street_address,city,region,postal_code,timezone)
 values ('CLC1','a5500000-0000-4000-8000-000000000604','a5500000-0000-4000-8000-000000000104','Close Later Main','1 Main St','Los Angeles','CA','90001','America/Los_Angeles');
 set local role service_role;
 select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000015','a5500000-0000-4000-8000-000000000104','scheduled_end_period',null,true,now()+interval '3 days')$q$,'the owner of Close Later Co closes it later');
 select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000017','a5500000-0000-4000-8000-000000000105','scheduled_end_period',null,true,now()+interval '3 days')$q$,'the owner of Not Yet Co closes it later');
+select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000018','a5500000-0000-4000-8000-000000000106','scheduled_end_period',null,true,now()+interval '3 days')$q$,'the owner of Broken Close Co closes it later');
 reset role;
--- ponytail: now() is fixed inside the transaction, so Close Later Co's date is
--- moved into the past by hand.
+-- ponytail: now() is fixed inside the transaction, so the dates are moved into
+-- the past by hand; Broken Close Co comes first.
 update public.workspaces set closure_effective_at = now() - interval '1 minute' where id = 'a5500000-0000-4000-8000-000000000104';
 update public.workspace_closure_requests set effective_at = now() - interval '1 minute' where workspace_id = 'a5500000-0000-4000-8000-000000000104' and status = 'scheduled';
+update public.workspaces set closure_effective_at = now() - interval '2 minutes' where id = 'a5500000-0000-4000-8000-000000000106';
+update public.workspace_closure_requests set effective_at = now() - interval '2 minutes' where workspace_id = 'a5500000-0000-4000-8000-000000000106' and status = 'scheduled';
+create function public.awc_refuse_broken_close() returns trigger language plpgsql as $f$
+begin
+  if new.id = 'a5500000-0000-4000-8000-000000000106' and new.lifecycle_status = 'deleted' then
+    raise exception 'this closure fails on purpose';
+  end if;
+  return new;
+end
+$f$;
+create trigger awc_refuse_broken_close before update on public.workspaces
+for each row execute function public.awc_refuse_broken_close();
+-- The job runs as cron does: nobody signed in.
+select set_config('request.jwt.claim.sub','',true);
 select lives_ok($q$select app_private.complete_due_workspace_closures()$q$,'the closure job runs');
+select is((select lifecycle_status::text from public.workspaces where id='a5500000-0000-4000-8000-000000000106'),'closure_scheduled','a closure that fails stays scheduled for the next run');
+select is((select status::text from public.workspace_closure_requests where workspace_id='a5500000-0000-4000-8000-000000000106' order by created_at desc limit 1),'scheduled','its closure request is left as it was');
 select is((select lifecycle_status::text from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),'deleted','a workspace past its Close later date is closed');
 select is((select closed_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),(select closure_effective_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),'it closes at the date it promised');
 select is((select count(*)::int from public.workspace_memberships where workspace_id='a5500000-0000-4000-8000-000000000104' and status<>'suspended'),0,'its memberships are suspended');
@@ -215,6 +237,6 @@ update public.locations set name='After close' where id='a5500000-0000-4000-8000
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 select is((select name from public.locations where id='a5500000-0000-4000-8000-000000000604'),'Close Later Main','an admin of the closed workspace no longer edits its locations');
-select is((select schedule from cron.job where jobname='workspace-closures'),'*/5 * * * *','the closure job runs every five minutes');
+select is((select schedule || ' ' || command from cron.job where jobname='workspace-closures'),'*/5 * * * * select app_private.complete_due_workspace_closures()','the closure job runs every five minutes');
 select * from finish();
 rollback;
