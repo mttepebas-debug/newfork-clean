@@ -2327,7 +2327,7 @@ function ProfileSection({
           {canReadPrivate && (
             <ReadOnlyField
               label="Phone"
-              value={privateContact?.phone ?? null}
+              value={displayUsPhone(privateContact?.phone)}
             />
           )}
           {ownEmergencyContact ? (
@@ -2348,7 +2348,7 @@ function ProfileSection({
           {!creating && canReadPrivate && !ownEmergencyContact ? (
             <ReadOnlyField
               label="Emergency phone"
-              value={privateContact?.emergency_contact_phone ?? null}
+              value={displayUsPhone(privateContact?.emergency_contact_phone)}
             />
           ) : null}
           {!creating && canReadPrivate ? (
@@ -3505,6 +3505,18 @@ function CopyInvitationLinkButton({
             : "Copy link"}
     </Button>
   );
+}
+
+/**
+ * A saved US number as "+1 (609) 551-8909", whatever way it was typed (P4,
+ * KARARLAR "Form ve girdi kuralları"); anything else stays as saved.
+ */
+function displayUsPhone(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (local.length !== 10) return value;
+  return `+1 (${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
 }
 
 /** A zone in words, "Pacific Time (Los Angeles)", not its code (E3-37). */

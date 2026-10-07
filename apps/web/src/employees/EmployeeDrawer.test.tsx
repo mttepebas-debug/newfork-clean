@@ -1202,9 +1202,10 @@ describe("EmployeeDrawer", () => {
       "alex.account@example.test",
     );
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", true);
+    // Shown as a US number (P4), whatever way it was saved.
     expect(screen.getByLabelText("Phone")).toHaveProperty(
       "value",
-      "3105559999",
+      "+1 (310) 555-9999",
     );
     expect(screen.getByLabelText("Phone")).toHaveProperty("readOnly", true);
     expect(screen.getByLabelText("Date of birth")).toHaveProperty(
@@ -3192,5 +3193,35 @@ describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
         employeeId,
       ),
     );
+  });
+});
+
+// EKRAN-03 #21 (P4, BL-503 display half): a US number reads one way.
+describe("EmployeeDrawer phone numbers (EKRAN-03)", () => {
+  const withNumbers = {
+    phone: "+16095518909",
+    street_address: null,
+    city: null,
+    region: null,
+    postal_code: null,
+    country_code: null,
+    date_of_birth: null,
+    emergency_contact_name: "Morgan",
+    emergency_contact_relationship: null,
+    emergency_contact_phone: "609 551 8910",
+    emergency_contact_email: "",
+    share_phone_with_teammates: false,
+    share_email_with_teammates: false,
+  };
+
+  it("shows saved phone numbers as +1 (609) 551-8909", async () => {
+    renderDrawer("profile", { ...detail, private_contact: withNumbers });
+    expect(((await screen.findByLabelText("Phone")) as HTMLInputElement).value).toBe("+1 (609) 551-8909");
+    expect((screen.getByLabelText("Emergency phone") as HTMLInputElement).value).toBe("+1 (609) 551-8910");
+  });
+
+  it("leaves a number that is not ten US digits as it was saved", async () => {
+    renderDrawer("profile", { ...detail, private_contact: { ...withNumbers, phone: "+44 20 7946 0958" } });
+    expect(((await screen.findByLabelText("Phone")) as HTMLInputElement).value).toBe("+44 20 7946 0958");
   });
 });
