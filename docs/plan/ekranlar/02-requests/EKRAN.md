@@ -35,7 +35,7 @@ Ortak notlar:
 - `task/ekran-02-requests` (keşif dalı) zaten main'de (0 commit ileride); temizliği koordinatörün.
 
 ## 2. Kabul listesi
-107 madde. Sınıf: R3 23 · R2 42 · R1 35 · R0 6 · sınıfsız 1 (tam kapı). Durum: 1 ✅ · 44 "dalda hazır" · 2 "dalda kısmen" · 60 başlamamış ya da cevap bekliyor.
+108 madde (#108 eklendi 2026-10-07, BL-910). Sınıf: R3 24 · R2 42 · R1 35 · R0 6 · sınıfsız 1 (tam kapı). Durum: 1 ✅ · 44 "dalda hazır" · 2 "dalda kısmen" · 61 başlamamış ya da cevap bekliyor.
 
 ### 2.1 Veri, yetki ve bildirim (veritabanı)
 | # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt (test adı / ekran görüntüsü) | Durum |
@@ -73,6 +73,7 @@ Ortak notlar:
 | 31 | Ali'nin 9 hafta sonraki vardiyası için açtığı cover Ayşe'nin Requests'ine düşer: açık takaslar müdür görünümünde tarih penceresiyle süzülmez (BL-839 veri) | R2 | `requests_closed_unified_read` (BL-839 hücreleri), `shift_exchange_range_read` | ⏳ dalda hazır: a4 |
 | 32 | Closed'un eski yolu kalmaz: izin listesinin `closed` kuyruğu ve imleç parametresi silinir; onları okuyan pgTAP dosyaları yeni okumaya taşınır (ikiz yok; #49 ile aynı iş) | R2 | `retired_objects_stay_gone` + taşınan 5 dosya | ⏳ |
 | 33 | Requests okumasında iki kural teste kilitli: yalnız takas okuyabilen kişiye izin satırı dönmez; onayı bekleyen üye reddedilir (BL-820) | R0 | `schedule_requests` yeni hücreler | ⏳ |
+| 108 | Müdür bir başvuruyu gerekçe yazarak reddedince gerekçe yalnız başvurana gider; vardiyayı bırakan kişi gerekçesiz genel bir metin alır. Örnek: Ayşe vardiyasını bırakır, Ali başvurur, müdür "geç kalma uyarın var" yazarak reddeder; bu cümleyi Ali okur, Ayşe okumaz (`notification_inbox_items`, `public.notifications`). Bugün `shift_exchange_emit` gövdeyi `else msg` ile herkese aynı yazıyor, sahip de alıcı (`origin/main` `b63c5150` `supabase/schema.sql:23632-23637`, reddetme `:24196`); Shift Hub okuması gerekçeyi sahipten zaten gizliyor (`:24349`). `task/ekran-02-a4` fonksiyonu yeniden yazıyor ama aynı alıcı sorgusunu ve `else msg`'yi taşıyor: paket main'e taşınırken önce kırmızı pgTAP, sonra düzeltme (BL-910; bulan BILDIRIM oturumunun `nf-guvenlik`'i, koordinatör 2026-10-07) | R3 | pgTAP: reddetmede sahibin bildiriminde gerekçe yok, başvuranınkinde var; paketin `nf-guvenlik` yeniden bakışı | ⏳ veri paketiyle (§5 adım 1) |
 
 ### 2.2 API, shared ve web veri katmanı
 | # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt (test adı / ekran görüntüsü) | Durum |
@@ -118,7 +119,7 @@ Ortak notlar:
 | 64 | Requests ve izin çekmecesi CSS'inde ham renk yok; kısaltma ve iptal formunun kenarı ve odak halkası token'dan, mavi yok (R2-54 · BL-398) | R1 | ham hex grep 0 | ⏳ dalda hazır: c1 @`f9b9caa0` |
 | 65 | Shorten formu çekmeceyi kaplamaz: başlık görünür, düğmeler 36 px, vazgeç solda (R2-24 · BL-658 (1) · prototip R85) | R1 | görüntü | ⏳ |
 | 66 | Açılan vardiya listesi kelime kelime kırılmaz (R2-25 · BL-658 (3) · prototip R25) | R1 | görüntü | ⏳ |
-| 67 | Telefonda (390) "Decide by" görünür ve başlıklar sütunlarla eşleşir; sayfa düğmeleri 44 px dokunma hedefi (R2-35 · BL-513 · BL-840) | R1 | görüntü 390 | ⏳ |
+| 67 | Telefonda (390) tablo yerine talep başına kart (KARARLAR Genel "telefonda kart satırı", Employees G2 ölçüleri): türün simgesi, ad, sağda Status, altında When, açık talepte "By <saat> <bölge> time"; beş tür sekmesi kayar ve kenarı solar, seçili sekme görünüre gelir; sekmeler, kartlar ve sayfa düğmeleri 44 px; yatay sayfa kayması ve kesik metin yok (R2-35 · BL-513 · BL-840; Mert 2026-10-07 "önce telefon düzelsin") | R1 | `ListCards.test.tsx`, `ScheduleRequestsPage.test.tsx`; görüntü 390 (Ayşe, Zeynep; All, Swap) | ⏳ dalda hazır @`8a1581ca` |
 | 68 | Durum çipleri tek dilde: bekleyen amber, onaylı yeşil, reddedilen kırmızı; aynı durum listede ve çekmecede aynı renk; çip token'dan (R2-37 · BL-750 · BL-257 (2)) | R1 | görüntü | ⏳ (BL-257 (2) dalda: salt-hata @`a54e56aa`) |
 | 69 | Deny ve Revoke kırmızı tonlu (buton dili) (R2-38 · BL-256 · BL-399 · prototip R28) | R1 | görüntü | ⏳ |
 | 70 | İzin çekmecesinde saatler workspace'in 12 / 24 ayarıyla ve tek biçimde: Activity saniyesiz, onay saati aynı biçimde, Shorten'da "GMT+3" yok (R2-28 Time off · BL-674) | R1 | vitest | ⏳ |
@@ -203,7 +204,7 @@ Ortak notlar:
 - **Kapalı:** BL-724 ✅ `666ff634`; BL-508 bayat, kapandı (`9146ba6b`).
 
 ## 5. Uygulama sırası (öneri; liste onaylandıktan sonra)
-1. **Veri paketi (R3):** a1a2 → a3 → authz-dump → a4 commit'leri `task/ekran-02`'ye cherry-pick edilir; rol hafızası commit'leri (`2ee14550`, `c0a5e701`) ve hafıza dosyası değişiklikleri düşer. `supabase/schema.sql` yeniden üretilir. #8, #29, #33 eklenir. Tam kapı + `test:db`; `nf-guvenlik` yeni tabanda yeniden bakar; S1 cevabına göre ultrareview; "gönder" → main → canlı (OPS-03).
+1. **Veri paketi (R3):** a1a2 → a3 → authz-dump → a4 commit'leri `task/ekran-02`'ye cherry-pick edilir; rol hafızası commit'leri (`2ee14550`, `c0a5e701`) ve hafıza dosyası değişiklikleri düşer. `supabase/schema.sql` yeniden üretilir. #8, #29, #33 ve #108 (BL-910, red gerekçesi sızıntısı) eklenir. Tam kapı + `test:db`; `nf-guvenlik` yeni tabanda yeniden bakar; S1 cevabına göre ultrareview; "gönder" → main → canlı (OPS-03).
 2. **C3** (S2 onayıyla). Veri paketinden bağımsız; önce de gidebilir.
 3. **Web veri katmanı:** b1a + B1b (#34–#49).
 4. **Requests ekranı:** c1 + B2 + B3 (#50–#77). Hepsi `ScheduleRequestsPage.tsx`'e dokunuyor; tek oturumda sırayla.
