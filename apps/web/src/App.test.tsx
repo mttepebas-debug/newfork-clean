@@ -6166,12 +6166,12 @@ describe("App", () => {
     expect(screen.getByText("Primary job")).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", {
-        name: `Reject ${scheduleFixture.jobs[0]!.name} on ${scheduleFixture.week_start}`,
+        name: `Reject ${scheduleFixture.jobs[0]!.name} on Mon, Aug 17`,
       }),
     );
     expect(
       screen.getByRole("button", {
-        name: `Undo reject ${scheduleFixture.jobs[0]!.name} on ${scheduleFixture.week_start}`,
+        name: `Undo reject ${scheduleFixture.jobs[0]!.name} on Mon, Aug 17`,
       }),
     ).toBeTruthy();
     expect(
@@ -6179,7 +6179,7 @@ describe("App", () => {
     ).toHaveProperty("disabled", true);
     fireEvent.click(
       screen.getByRole("button", {
-        name: `Undo reject ${scheduleFixture.jobs[0]!.name} on ${scheduleFixture.week_start}`,
+        name: `Undo reject ${scheduleFixture.jobs[0]!.name} on Mon, Aug 17`,
       }),
     );
     fireEvent.click(

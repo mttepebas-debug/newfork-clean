@@ -6,6 +6,7 @@ import {
   formatHourTotalValue,
   type ScheduleHourTotalValue,
 } from "../lib/scheduleHourTotals";
+import { formatWeekdayDate } from "../lib/scheduleDateTime";
 
 type TotalLocation = ScheduleLocation & {
   readonly sourceIds: readonly string[];
@@ -55,7 +56,7 @@ export function ScheduleTotalsRow({
               data-location-boundary={
                 locationIndex > 0 && dayIndex === 0 ? "start" : undefined
               }
-              aria-label={`${location.name || "Selected locations"} ${day} total hours ${formatHourTotalValue(total)}`}
+              aria-label={`${location.name || "Selected locations"} ${formatWeekdayDate(day)} total hours ${formatHourTotalValue(total)}`}
             >
               <ScheduleTotalValue total={total} />
             </div>

@@ -89,7 +89,7 @@ describe("ScheduleTotalsRow", () => {
     expect(screen.getByRole("rowheader").textContent).toBe("Total");
     expect(
       screen.getByRole("gridcell", {
-        name: "Main Dining 2026-08-17 total hours 3h 30m / 5h 30m",
+        name: "Main Dining Mon, Aug 17 total hours 3h 30m / 5h 30m",
       }),
     ).toBeTruthy();
     expect(

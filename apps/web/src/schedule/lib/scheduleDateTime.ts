@@ -64,6 +64,17 @@ export function formatPeriod(
     : `${formatDateNumber(weekStart)} – ${new Date(`${addDays(weekStart, 6)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`;
 }
 
+/** "Tue, Oct 6": a day a person reads, never the stored ISO date (BL-611, S2.5, S3.11). */
+export function formatWeekdayDate(iso: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "this day";
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function formatTime(
   value: string,
   timeFormat: ScheduleTimeFormat = "12h",
