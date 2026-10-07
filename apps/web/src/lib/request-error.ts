@@ -45,6 +45,18 @@ export function requestFailure(
   );
 }
 
+/**
+ * A refusal the screen words itself, for the person (BL-395): "Past schedule
+ * weeks cannot be unpublished." A plain Error is a programmer's message and
+ * never reaches the screen; throw this when the sentence is meant to.
+ */
+export class ScreenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScreenError";
+  }
+}
+
 /** D-O7: what a person reads when the request itself failed. */
 export const UNREACHABLE = "Newfork could not be reached. Check your connection and try again.";
 export const UNREADABLE = "Newfork could not finish that. Try again in a moment.";
@@ -60,6 +72,7 @@ export const UNREADABLE = "Newfork could not finish that. Try again in a moment.
  */
 export function requestErrorText(error: unknown, fallback: string = UNREADABLE): string {
   if (!(error instanceof Error)) return fallback;
+  if (error instanceof ScreenError) return error.message.trim() || fallback;
   const { status, reason } = error as { status?: unknown; reason?: unknown };
   if (typeof status !== "number") return typeof reason === "string" ? error.message.trim() || fallback : fallback;
   if (status === 0) return UNREACHABLE;

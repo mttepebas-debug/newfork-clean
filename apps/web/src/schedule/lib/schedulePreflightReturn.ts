@@ -1,4 +1,5 @@
 import type { ScheduleEditSession, ScheduleShift } from "@newfork/shared/schedule";
+import { ScreenError } from "../../lib/request-error";
 
 export function preflightReturnSearch(search: URLSearchParams, shift: ScheduleShift, draftId: string): URLSearchParams {
   const next = new URLSearchParams(search);
@@ -17,9 +18,9 @@ export function preflightReturnSearch(search: URLSearchParams, shift: ScheduleSh
 
 export function preflightReturnShift(session: Pick<ScheduleEditSession, "source_draft_id" | "shifts">, draftId: string, shiftIds: readonly string[]) {
   if (session.source_draft_id !== draftId) {
-    throw new Error("Save or close your current draft before opening another draft.");
+    throw new ScreenError("Save or close your current draft before opening another draft.");
   }
   const shift = session.shifts.find((item) => shiftIds.includes(item.id));
-  if (!shift) throw new Error("This shift is no longer in the draft. Refresh the pre-flight check.");
+  if (!shift) throw new ScreenError("This shift is no longer in the draft. Refresh the pre-flight check.");
   return shift;
 }

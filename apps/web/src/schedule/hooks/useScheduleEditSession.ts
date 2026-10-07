@@ -14,7 +14,7 @@ import {
 } from "../schedule-data";
 import type { ScheduleMutationContext } from "../lib/scheduleMutationContext";
 import { EDIT_IDLE_TIMEOUT_MS, useEditIdleTimer } from "./useEditIdleTimer";
-import { requestErrorText } from "../../lib/request-error";
+import { requestErrorText, ScreenError } from "../../lib/request-error";
 
 export const EDIT_NOT_RECONNECTED =
   "Your edit could not be reconnected. Check your connection and try again.";
@@ -216,7 +216,7 @@ export function useScheduleEditSession({
     try {
       return await action();
     } catch (error) {
-      if (isEditLeaseExpired(error)) throw new Error(EDIT_NOT_RECONNECTED);
+      if (isEditLeaseExpired(error)) throw new ScreenError(EDIT_NOT_RECONNECTED);
       throw error;
     }
   }, [recoverLease]);

@@ -1,6 +1,7 @@
 import type { ScheduleExportRequest } from "@newfork/shared/schedule";
 
 import { ScheduleRequestError } from "../schedule-data";
+import { requestErrorText } from "../../lib/request-error";
 
 export function formatScheduleExportLabel(
   format: ScheduleExportRequest["settings"]["format"],
@@ -34,6 +35,5 @@ export function scheduleExportErrorMessage(error: unknown): string {
     return "PDF export is temporarily unavailable. Try again in a minute, or export CSV instead.";
   }
 
-  if (error instanceof Error && error.message.trim()) return error.message;
-  return "Export was not generated. Try again after refreshing the schedule.";
+  return requestErrorText(error, "Export was not generated. Try again after refreshing the schedule.");
 }

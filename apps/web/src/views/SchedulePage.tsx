@@ -40,7 +40,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
-import { requestErrorText } from "../lib/request-error";
+import { requestErrorText, ScreenError } from "../lib/request-error";
 import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { Tooltip } from "../shell/Tooltip";
@@ -1308,7 +1308,7 @@ export function SchedulePage({
       // D-Y3: the lock lapsed (sleep, lost network); pick the same edit back up and save once more.
       if (isEditLeaseExpired(error)) {
         const live = leaseRecovered ? null : await recoverLease();
-        if (!live) throw new Error(EDIT_NOT_RECONNECTED);
+        if (!live) throw new ScreenError(EDIT_NOT_RECONNECTED);
         return saveDraftWithRetroactivePrompt(name, target, acknowledgePastEdits, live, true);
       }
       const retroactiveError = parseRetroactiveEditError(error);
@@ -3224,10 +3224,10 @@ export function SchedulePage({
           }}
           onReviewShift={async (finding, choices) => {
             if (session && session.source_draft_id !== choices.draftId) {
-              throw new Error("Save or close your current draft before opening another draft.");
+              throw new ScreenError("Save or close your current draft before opening another draft.");
             }
             const editing = session ?? await acquire("draft", choices.draftId, true);
-            if (!editing) throw new Error("This draft could not be opened for editing. Check the edit lock and try again.");
+            if (!editing) throw new ScreenError("This draft could not be opened for editing. Check the edit lock and try again.");
             const shift = preflightReturnShift(editing, choices.draftId, finding.shift_ids);
             setPublishChoices(choices);
             setPublishOpen(false);
@@ -3259,7 +3259,7 @@ export function SchedulePage({
                 locationIds,
               );
               if (preview.status !== "unpublish_ready") {
-                throw new Error("Past schedule weeks cannot be unpublished.");
+                throw new ScreenError("Past schedule weeks cannot be unpublished.");
               }
               const result = await unpublishSchedule(
                 context.workspace.id,

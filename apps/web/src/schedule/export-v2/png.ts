@@ -1,4 +1,6 @@
-export class ExportImageTooLargeError extends Error {
+import { ScreenError } from "../../lib/request-error";
+
+export class ExportImageTooLargeError extends ScreenError {
   constructor() {
     super("This image exceeds safe browser limits. Choose PDF or turn off one long page to split the output. Nothing has been resized or split automatically.");
     this.name = "ExportImageTooLargeError";

@@ -64,7 +64,7 @@ import {
   getTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
-import { UNREACHABLE, UNREADABLE } from "../lib/request-error";
+import { UNREACHABLE, UNREADABLE, ScreenError } from "../lib/request-error";
 import { scheduleExportV2AuthorizationSchema, scheduleExportV2ScopeSchema, type ScheduleExportV2Scope } from "@newfork/shared";
 
 export async function authorizeScheduleExportV2(workspaceId: string, scope: ScheduleExportV2Scope, signal?: AbortSignal): Promise<void> {
@@ -399,7 +399,7 @@ export async function deleteScheduleDraft(
   } catch (error) {
     // D-O6: the server keeps a draft somebody is editing.
     if (requestReason(error) === "schedule.draft_being_edited") {
-      throw new Error("Someone is editing this draft. Try again when they finish.");
+      throw new ScreenError("Someone is editing this draft. Try again when they finish.");
     }
     throw error;
   }
