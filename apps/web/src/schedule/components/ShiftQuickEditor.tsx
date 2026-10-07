@@ -3,7 +3,7 @@ import type {
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
 import { scheduleShiftSchema } from "@newfork/shared/schedule";
-import { useToast } from "@newfork/ui";
+import { ConfirmButton, useToast } from "@newfork/ui";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../lib/closedDayAnswer";
@@ -1023,11 +1023,19 @@ export function ShiftQuickEditor({
           </section>
           <div className="schedule-dialog-actions schedule-quick-editor-actions">
             {state.mode === "edit" ? (
-              <button
-                type="button"
+              // BL-707 (UI-12): deleting asks twice here, as the strip's Delete does.
+              <ConfirmButton
+                unstyled
                 className="danger"
                 aria-label="Delete shift"
-                onClick={() =>
+                confirmLabel={
+                  <>
+                    <Trash2 size={14} aria-hidden />
+                    Confirm delete
+                  </>
+                }
+                confirmName="Confirm delete"
+                onConfirm={() =>
                   void onDelete(state.shift.id).then((result) => {
                     if (result === "stale") setStale(true);
                   })
@@ -1035,7 +1043,7 @@ export function ShiftQuickEditor({
               >
                 <Trash2 size={14} aria-hidden />
                 Delete
-              </button>
+              </ConfirmButton>
             ) : null}
             <button type="button" onClick={onClose}>
               Cancel
