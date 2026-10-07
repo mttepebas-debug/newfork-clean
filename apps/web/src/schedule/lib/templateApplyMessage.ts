@@ -20,15 +20,21 @@ function listNames(names: readonly string[]): string {
 }
 
 /**
- * The "Template applied" toast text. When the template carried labels that are
- * archived now, the shifts still came in without them, and the person is told
- * which labels and how many shifts (BL-197).
+ * The "Template applied" toast text. A shift whose person could not take it
+ * came in as an open shift, and the count says so (BL-699). When the template
+ * carried labels that are archived now, the shifts still came in without them,
+ * and the person is told which labels and how many shifts (BL-197).
  */
 export function templateAppliedDescription(
   templateName: string,
-  result: Pick<ScheduleTemplateApplyResult, "applied_shift_count" | "skipped">,
+  result: Pick<ScheduleTemplateApplyResult, "applied_shift_count" | "skipped"> &
+    Partial<Pick<ScheduleTemplateApplyResult, "converted_open_count">>,
 ): string {
-  const added = `${templateName}: ${plural(result.applied_shift_count, "shift", "shifts")} added.`;
+  const open = result.converted_open_count ?? 0;
+  const became = open === 0
+    ? ""
+    : `, ${open} became ${open === 1 ? "an open shift" : "open shifts"}`;
+  const added = `${templateName}: ${plural(result.applied_shift_count, "shift", "shifts")} added${became}.`;
   const labels = result.skipped.filter((item) => item.kind === "archived_label");
   if (labels.length === 0) return added;
   const names = listNames(labels.map((item) => shortName(item.name)));
