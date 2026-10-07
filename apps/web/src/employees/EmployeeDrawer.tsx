@@ -3593,12 +3593,16 @@ function mergeTypedOver(
   };
 }
 
-/** The record moved on under the form: the database's own conflict. */
+/**
+ * The record moved on under the form: the server's PT409 with the hint
+ * `employee.revision_conflict` (BL-958 / ACIL-40001, KK). Until that lands the
+ * database raises 40001 and this never fires; #25 waits on it.
+ */
 function isRevisionConflict(error: unknown): boolean {
   return (
     error instanceof RequestError &&
     error.status === 409 &&
-    error.message === "employee revision conflict"
+    error.reason === "employee.revision_conflict"
   );
 }
 

@@ -3238,7 +3238,7 @@ describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
     // The new revision is drawn before Save is pressed.
     await screen.findByText("Alex Reed");
     vi.mocked(saveEmployee).mockRejectedValueOnce(
-      new RequestError("employee revision conflict", undefined, undefined, 409),
+      new RequestError("Conflict", "employee.revision_conflict", undefined, 409),
     );
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     await screen.findByText("Someone else saved this employee meanwhile. Save again to apply your changes.");
@@ -3271,7 +3271,7 @@ describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
     await employeeLoaded();
     fireEvent.click(screen.getByLabelText("Busser"));
     vi.mocked(saveEmployee).mockRejectedValueOnce(
-      new RequestError("employee revision conflict", undefined, undefined, 409),
+      new RequestError("Conflict", "employee.revision_conflict", undefined, 409),
     );
     vi.mocked(getEmployeeDetail).mockResolvedValue({
       ...detail,
@@ -3293,7 +3293,7 @@ describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
     fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Alexandra" } });
     // Hande saved Ali's last name meanwhile; the record is at revision 2.
     vi.mocked(saveEmployee).mockRejectedValueOnce(
-      new RequestError("employee revision conflict", undefined, undefined, 409),
+      new RequestError("Conflict", "employee.revision_conflict", undefined, 409),
     );
     vi.mocked(getEmployeeDetail).mockResolvedValue({ ...detail, last_name: "Reed", revision: 2 });
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
