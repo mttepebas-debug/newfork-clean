@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 439, last: 20261007235000_today_on_the_dashboard_is_each_locations_own_day.sql
--- fingerprint: sha256:842555ce81c1f8ffe018ef4e3c898c73e8059fd0489f699ecc88c305e814ac37
+-- migrations: 440, last: 20261008001500_lasting_conflicts_refuse_without_retry.sql
+-- fingerprint: sha256:c40e688a643383ed77c3c01da673118c705910098c804a2e86d60eab46b9ee29
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1173,7 +1173,7 @@ begin
   end if;
 
   if expected_revision is not null and current_revision <> expected_revision then
-    raise exception 'owner onboarding revision conflict' using errcode = '40001';
+    raise exception 'owner onboarding revision conflict' using errcode = 'PT409';
   end if;
 
   if mark_complete and not exists (
@@ -3282,7 +3282,7 @@ begin
     where workspace_id = item.workspace_id and id = (s ->> 'id')::uuid and employee_id = (s ->> 'employee_id')::uuid;
     if not found then
       raise exception 'A shift on this closed day changed. Review the shifts again.'
-        using errcode = '40001', hint = 'important_date.closure_changed';
+        using errcode = 'PT409', hint = 'important_date.closure_changed';
     end if;
   end loop;
 
@@ -5388,14 +5388,14 @@ begin
   select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w for update;
   -- Whoever got here first closed it (a withdrawal, a last vote, the job).
   if r.status <> 'pending' then
-    raise exception 'This request is already closed' using errcode = '40001';
+    raise exception 'This request is already closed' using errcode = 'PT409';
   end if;
   if verdict = 'approve' and r.request_type = 'time_off_cancellation' then
     select p.* into parent from public.time_off_cancellation_links cl
     join public.schedule_time_off_requests p on p.id = cl.parent_request_id and p.workspace_id = cl.workspace_id
     where cl.request_id = rid and cl.workspace_id = w for update of p;
     if parent.status <> 'approved' then
-      raise exception 'The time off this cancellation is about has changed; refresh' using errcode = '40001';
+      raise exception 'The time off this cancellation is about has changed; refresh' using errcode = 'PT409';
     end if;
   end if;
   update public.schedule_time_off_segments
@@ -5698,7 +5698,7 @@ begin
     insert into public.time_off_assignment_releases(workspace_id, request_id, decision_revision, published_shift_id, before_assignment, actor_user_id)
     values (w, rid, decision, (s ->> 'id')::uuid, s, who);
     update public.schedule_published_shifts set employee_id = null where workspace_id = w and id = (s ->> 'id')::uuid and employee_id = person;
-    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = '40001'; end if;
+    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = 'PT409'; end if;
     changes := changes || jsonb_build_array(s || jsonb_build_object('new_employee_id', null));
   end loop;
   if jsonb_array_length(changes) > 0 then
@@ -8324,7 +8324,7 @@ begin
       and c.command_id = create_employee_command_service.command_id;
   if found then
     if stored.input_hash <> fingerprint then
-      raise exception 'idempotency key belongs to different employee details' using errcode = '40001';
+      raise exception 'idempotency key belongs to different employee details' using errcode = 'PT409';
     end if;
     -- A retry hands the token out again: only while the role is still theirs to give.
     if invite_role_id is not null
@@ -8862,11 +8862,11 @@ begin
   end if;
   if verdict is null or verdict not in ('approve', 'deny') then raise exception 'Choose approve or deny' using errcode = '22023'; end if;
   if char_length(btrim(coalesce(note, ''))) > 1000 then raise exception 'The note can be at most 1000 characters' using errcode = '22023'; end if;
-  if r.status <> 'pending' then raise exception 'This request is already closed' using errcode = '40001'; end if;
-  if r.decide_by is not null and r.decide_by <= now() then raise exception 'This request was not decided in time' using errcode = '40001'; end if;
+  if r.status <> 'pending' then raise exception 'This request is already closed' using errcode = 'PT409'; end if;
+  if r.decide_by is not null and r.decide_by <= now() then raise exception 'This request was not decided in time' using errcode = 'PT409'; end if;
   pictured := app_private.time_off_impact(w, rid);
   if expected_impact is distinct from pictured ->> 'fingerprint' then
-    raise exception 'The shifts this time off affects have changed. Review them again' using errcode = '40001';
+    raise exception 'The shifts this time off affects have changed. Review them again' using errcode = 'PT409';
   end if;
 
   if alone_why is null then
@@ -9539,7 +9539,7 @@ employee:=public.employee_hub_actor_service(actor_user_id,target_workspace_id);
   if target_kind='time_off' and target_action='cancel' then
     select * into time_request from public.schedule_time_off_requests where id=target_request_id and workspace_id=target_workspace_id and employee_id=employee.id for update;
     if time_request.id is null then raise exception 'time off request not found' using errcode='P0002'; end if;
-    if time_request.revision<>target_expected_revision or time_request.status<>'pending' then raise exception 'stale time off request' using errcode='40001'; end if;
+    if time_request.revision<>target_expected_revision or time_request.status<>'pending' then raise exception 'stale time off request' using errcode = 'PT409'; end if;
     update public.schedule_time_off_requests set status='revoked',revision=revision+1,updated_at=now() where id=time_request.id returning * into time_request;
     insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note) values(target_workspace_id,time_request.id,'revoked',actor_user_id,'Cancelled by employee');
     return jsonb_build_object('status','cancelled','request_id',time_request.id,'revision',time_request.revision);
@@ -12837,7 +12837,7 @@ begin
     raise exception 'onboarding unavailable' using errcode = 'P0002';
   end if;
   if target_case.revision <> expected_revision then
-    raise exception 'onboarding changed; refresh required' using errcode = '40001';
+    raise exception 'onboarding changed; refresh required' using errcode = 'PT409';
   end if;
 
   select membership.* into target_membership
@@ -17011,7 +17011,7 @@ begin
     item.created_by, app_private.announcement_places(item.id));
   if item.revision is distinct from target_expected_revision or item.archived_at is not null
      or item.status not in ('draft', 'scheduled', 'unpublished') then
-    raise exception 'stale announcement revision' using errcode = '40001';
+    raise exception 'stale announcement revision' using errcode = 'PT409';
   end if;
 
   if item.expires_at is not null and item.expires_at <= now() then
@@ -18980,11 +18980,11 @@ begin
   command := jsonb_build_object('kind', 'cancellation', 'parent', parent_id, 'revision', expected_revision, 'reason', btrim(coalesce(reason, '')), 'periods', periods);
   select * into prior from public.time_off_commands c where c.workspace_id = w and c.actor_user_id = actor and c.operation_id = request_time_off_cancellation_service.operation_id;
   if found then
-    if prior.input <> command then raise exception 'This request key was used for a different cancellation' using errcode = '40001'; end if;
+    if prior.input <> command then raise exception 'This request key was used for a different cancellation' using errcode = 'PT409'; end if;
     return prior.result;
   end if;
   if expected_revision is null or parent.revision <> expected_revision or parent.request_type <> 'time_off' or parent.status <> 'approved' then
-    raise exception 'stale approved leave; refresh before requesting cancellation' using errcode = '40001'; end if;
+    raise exception 'stale approved leave; refresh before requesting cancellation' using errcode = 'PT409'; end if;
   if exists (select 1 from public.time_off_cancellation_links cl join public.schedule_time_off_requests cr on cr.id = cl.request_id
     where cl.parent_request_id = parent.id and cr.status = 'pending') then
     raise exception 'A cancellation request is already pending for this leave' using errcode = '23514'; end if;
@@ -20228,7 +20228,7 @@ begin
   where onboarding.workspace_id = target_workspace_id
     and onboarding.employee_id = target_employee_id
   for update of onboarding;
-  if target_case.id is null or target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = '40001'; end if;
+  if target_case.id is null or target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = 'PT409'; end if;
   select employee.user_id into target_employee_user_id
   from public.employee_profiles employee
   where employee.id = target_employee_id
@@ -20431,7 +20431,7 @@ begin
   perform app_private.time_off_authorize(actor, w, 'time_off.revoke', r.employee_id);
   if said = '' or char_length(said) > 1000 then raise exception 'Say why the time off is revoked (at most 1000 characters)' using errcode = '22023'; end if;
   if expected_revision is null or r.revision <> expected_revision or r.status <> 'approved' then
-    raise exception 'This time off changed; refresh before revoking it' using errcode = '40001'; end if;
+    raise exception 'This time off changed; refresh before revoking it' using errcode = 'PT409'; end if;
 
   select coalesce(range_agg(s.span), '{}') into taken
   from (select unnest(public.time_off_effective_ranges(x.id)) * tstzrange(null, now(), '[)') span
@@ -20567,10 +20567,10 @@ begin
     returning * into item;
   else
     if before.revision is distinct from target_expected_revision then
-      raise exception 'stale announcement revision' using errcode = '40001';
+      raise exception 'stale announcement revision' using errcode = 'PT409';
     end if;
     if before.archived_at is not null then
-      raise exception 'announcement can no longer be edited' using errcode = '40001';
+      raise exception 'announcement can no longer be edited' using errcode = 'PT409';
     end if;
     content_changed := (before.title, before.body, before.category::text, before.action_url)
       is distinct from (btrim(target_title), btrim(target_body), target_category, target_action_url);
@@ -20870,7 +20870,7 @@ begin
   where onboarding.id = app_private.employee_onboarding_case_id(target_user_id, target_workspace_id)
   for update;
   if target_case.id is null then raise exception 'onboarding unavailable' using errcode = 'P0002'; end if;
-  if target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = '40001'; end if;
+  if target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = 'PT409'; end if;
   if target_case.status in ('submitted', 'approved', 'cancelled') then raise exception 'onboarding cannot be edited' using errcode = '22023'; end if;
 
   select * into employee
@@ -21108,7 +21108,7 @@ begin
     where id = saved_id and workspace_id = target_workspace_id and archived_at is null
     for update;
     if current_revision is null then raise exception 'employee not found' using errcode = 'P0002'; end if;
-    if expected_revision is null or expected_revision <> current_revision then raise exception 'employee revision conflict' using errcode = '40001'; end if;
+    if expected_revision is null or expected_revision <> current_revision then raise exception 'employee revision conflict' using errcode = 'PT409', hint = 'employee.revision_conflict'; end if;
     -- The preferred name is not the drawer's: it changes by request and answer.
     update public.employee_profiles set
       first_name = btrim(employee_first_name),
@@ -21201,10 +21201,10 @@ begin
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', before.location_ids, before.created_by, before.location_ids);
     perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, before.created_by, before.location_ids);
     if before.archived_at is not null then
-      raise exception 'Restore this date before you edit it' using errcode = '40001';
+      raise exception 'Restore this date before you edit it' using errcode = 'PT409';
     end if;
     if before.revision is distinct from target_expected_revision then
-      raise exception 'This date changed. Reload and try again.' using errcode = '40001';
+      raise exception 'This date changed. Reload and try again.' using errcode = 'PT409';
     end if;
     -- The same as an announcement's (KK-86).
     if cardinality(target_location_ids) = 0
@@ -21258,7 +21258,7 @@ begin
       target_ends_on, target_recurrence, target_location_ids);
     if jsonb_array_length(impact -> 'shifts') > 0
        and target_expected_fingerprint is distinct from impact ->> 'fingerprint' then
-      raise exception 'Review the shifts on this closed day again.' using errcode = '40001', hint = 'important_date.closure_changed';
+      raise exception 'Review the shifts on this closed day again.' using errcode = 'PT409', hint = 'important_date.closure_changed';
     end if;
   end if;
 
@@ -21439,7 +21439,7 @@ begin
   if (existing.id is null and target_expected_version is not null)
     or (existing.id is not null and target_expected_version is null)
     or (existing.id is not null and existing.version <> target_expected_version) then
-    raise exception 'notification policy stale version' using errcode = '40001';
+    raise exception 'notification policy stale version' using errcode = 'PT409';
   end if;
 
   if existing.id is null then
@@ -21645,7 +21645,7 @@ begin
 
     if existing.id is not null then
       if expected_version is null or existing.version <> expected_version then
-        raise exception 'stale notification preference version' using errcode = '40001';
+        raise exception 'stale notification preference version' using errcode = 'PT409';
       end if;
       update public.notification_user_preferences
       set channel_preferences = existing.channel_preferences || requested_channel_preferences,
@@ -23036,7 +23036,7 @@ begin
      or (target_action = 'unpublish' and (item.archived_at is not null or item.status not in ('scheduled', 'published')))
      or (target_action = 'archive' and item.archived_at is not null)
      or (target_action = 'restore' and item.archived_at is null) then
-    raise exception 'stale announcement revision' using errcode = '40001';
+    raise exception 'stale announcement revision' using errcode = 'PT409';
   end if;
 
   if target_action in ('unpublish', 'archive') then
@@ -23355,7 +23355,7 @@ begin
      or (target_action = 'republish' and (before.archived_at is not null or before.status <> 'unpublished'))
      or (target_action = 'archive' and before.archived_at is not null)
      or (target_action = 'restore' and before.archived_at is null) then
-    raise exception 'This date changed. Reload and try again.' using errcode = '40001';
+    raise exception 'This date changed. Reload and try again.' using errcode = 'PT409';
   end if;
 
   if target_action = 'republish' then
@@ -23363,7 +23363,7 @@ begin
       before.ends_on, before.recurrence::text, before.location_ids);
     if jsonb_array_length(impact -> 'shifts') > 0
        and target_expected_fingerprint is distinct from impact ->> 'fingerprint' then
-      raise exception 'Review the shifts on this closed day again.' using errcode = '40001', hint = 'important_date.closure_changed';
+      raise exception 'Review the shifts on this closed day again.' using errcode = 'PT409', hint = 'important_date.closure_changed';
     end if;
   end if;
 
@@ -24426,11 +24426,11 @@ begin
  command:=jsonb_build_object('kind','shorten','request_id',rid,'expected_revision',expected_revision,'periods',periods,'note',btrim(coalesce(note,'')));
  select * into prior from public.time_off_commands c where c.workspace_id=w and c.actor_user_id=actor and c.operation_id=shorten_time_off_service.operation_id;
  if found then
-  if prior.input<>command then raise exception 'This request key was used for a different change' using errcode='40001'; end if;
+  if prior.input<>command then raise exception 'This request key was used for a different change' using errcode = 'PT409'; end if;
   return prior.result;
  end if;
  if expected_revision is null or parent.revision<>expected_revision or parent.status <> 'approved' then
-  raise exception 'stale approved leave; refresh before shortening it' using errcode='40001'; end if;
+  raise exception 'stale approved leave; refresh before shortening it' using errcode = 'PT409'; end if;
  if jsonb_typeof(periods) is distinct from 'array' or jsonb_array_length(periods) not between 1 and 124 then
   raise exception 'Choose up to 124 periods of approved hours' using errcode='22023'; end if;
  if char_length(btrim(coalesce(note,'')))>1000 then raise exception 'The note can be at most 1000 characters' using errcode='22023'; end if;
@@ -24572,7 +24572,7 @@ begin
   for update;
 
   if target_case.id is null or target_case.revision <> expected_revision then
-    raise exception 'onboarding changed; refresh required' using errcode = '40001';
+    raise exception 'onboarding changed; refresh required' using errcode = 'PT409';
   end if;
   if exists(select 1 from public.employee_onboarding_requirements r where r.case_id=target_case.id and app_private.document_initial_action_missing(r)) then raise exception 'Submit conditional documents or give an initial reason' using errcode='23514'; end if;
   if exists (
@@ -24658,7 +24658,7 @@ begin
   command := jsonb_build_object('kind', 'request', 'periods', periods, 'reason', btrim(coalesce(reason, '')), 'expected_timezone', expected_timezone);
   select * into prior from public.time_off_commands c where c.workspace_id = w and c.actor_user_id = actor and c.operation_id = submit_time_off_service.operation_id;
   if found then
-    if prior.input <> command then raise exception 'This request key was used for different time-off hours' using errcode = '40001'; end if;
+    if prior.input <> command then raise exception 'This request key was used for different time-off hours' using errcode = 'PT409'; end if;
     return prior.result;
   end if;
   if jsonb_typeof(periods) is distinct from 'array' then raise exception 'Enter the requested time-off periods' using errcode = '22023'; end if;
@@ -24669,7 +24669,7 @@ begin
   if zone_name is null then
     zone_name := expected_timezone;
   elsif expected_timezone is distinct from zone_name then
-    raise exception 'The time zone of your location changed. Review the hours in the current time zone before sending' using errcode = '40001';
+    raise exception 'The time zone of your location changed. Review the hours in the current time zone before sending' using errcode = 'PT409';
   end if;
 
   for period in select value from jsonb_array_elements(periods) loop
@@ -26884,7 +26884,7 @@ begin
  perform 1 from public.workspace_scheduling_settings where workspace_id=w for update;
  model:=public.weekly_preference_settings_read_service(actor,w); prior:=model->'settings';
  if (command->>'expected_revision')::integer is distinct from (prior->>'revision')::integer then
-  raise exception 'Availability settings changed. Reload the latest settings before saving.' using errcode='40001'; end if;
+  raise exception 'Availability settings changed. Reload the latest settings before saving.' using errcode = 'PT409'; end if;
  if command->>'input_mode'='shift_type' and jsonb_array_length(model->'missing_shift_types')>0 then
   raise exception 'Complete default hours for all active shift types before using shift type availability' using errcode='22023',detail=(model->'missing_shift_types')::text; end if;
  if (command-'expected_revision') is distinct from (prior-'revision') then
