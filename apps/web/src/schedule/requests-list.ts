@@ -4,11 +4,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
-import { getOpenTimeOffRequests, timeOffKeys } from "./requests-data";
+import { getTimeOffQueue, timeOffKeys } from "./requests-data";
 
-// EKRAN-02 B1 (K-S8 – K-S10): Requests is one table. The open tabs join the
-// time off list and the shift changes list here, in the browser; Closed is
-// read from one server list (B3). The screen draws what this returns.
+// EKRAN-02 (K-S8 – K-S10; KARARLAR Schedule → Requests, Ek 2026-10-07): Requests
+// is one list. Open requests (Needs review, In progress) come first, nearest
+// Decide by on top; closed ones follow, the newest decision on top. The tabs are
+// request types and count what is still open. The screen draws what this returns.
 
 export const requestTypes = ["time_off", "swap", "cover", "open_pickup"] as const;
 export type RequestType = (typeof requestTypes)[number];
@@ -18,16 +19,17 @@ export const requestTypeLabels: Record<RequestType, string> = {
   cover: "Cover",
   open_pickup: "Open shift",
 };
-export type RequestTab = "needs_review" | "in_progress" | "closed";
+export type RequestTypeTab = "all" | RequestType;
+export type RequestState = "needs_review" | "in_progress" | "closed";
 export const requestPageSizes = [25, 50, 100] as const;
 export type RequestPageSize = (typeof requestPageSizes)[number];
 
-export type OpenRequestRow =
-  | { source: "time_off"; id: string; type: "time_off"; tab: Exclude<RequestTab, "closed">; decideBy: string | null; request: TimeOffRequest }
-  | { source: "exchange"; id: string; type: ExchangeCase["kind"]; tab: Exclude<RequestTab, "closed">; decideBy: string | null; request: ExchangeCase };
+export type RequestRow =
+  | { source: "time_off"; id: string; type: "time_off"; state: RequestState; decideBy: string | null; closedAt: string | null; request: TimeOffRequest }
+  | { source: "exchange"; id: string; type: ExchangeCase["kind"]; state: RequestState; decideBy: string | null; closedAt: string | null; request: ExchangeCase };
 
-export interface OpenRequestFilters {
-  types: readonly RequestType[];
+export interface RequestFilters {
+  type: RequestTypeTab;
   locationId: string;
   search: string;
 }
@@ -41,18 +43,20 @@ export function requestTypesFor(can: { timeOff: boolean; shiftChanges: boolean }
 // answers first (cover search, the other employee, the other manager).
 // ponytail: a swap that one manager already approved stays in Needs review
 // for that manager too; the read model does not say who voted (R2-18, A2).
-function exchangeTab(item: ExchangeCase): OpenRequestRow["tab"] {
+function exchangeState(item: ExchangeCase): RequestState {
+  if (item.status !== "open" || item.stage === "closed") return "closed";
   return item.can_manage && (item.stage === "ready_for_manager" || item.stage === "awaiting_other_manager")
     ? "needs_review"
     : "in_progress";
 }
 
-function timeOffTab(item: TimeOffRequest): OpenRequestRow["tab"] {
+function timeOffState(item: TimeOffRequest): RequestState {
+  if (item.status !== "pending") return "closed";
   const progress = item.progress;
   return progress && (progress.can_vote || progress.can_decide_alone) && !progress.my_vote ? "needs_review" : "in_progress";
 }
 
-function exchangeMatches(item: ExchangeCase, filters: OpenRequestFilters): boolean {
+function exchangeMatches(item: ExchangeCase, filters: RequestFilters): boolean {
   const sides = [item.shift, item.requested_shift].filter((side) => side !== null);
   if (filters.locationId && !sides.some((side) => side.location_id === filters.locationId)) return false;
   const search = filters.search.trim().toLowerCase();
@@ -61,47 +65,81 @@ function exchangeMatches(item: ExchangeCase, filters: OpenRequestFilters): boole
     .some((name) => name?.toLowerCase().includes(search));
 }
 
+// When a closed request was decided: its last event, else when it was asked.
+function lastAt(events: readonly { created_at: string }[], createdAt: string) {
+  return events.reduce((latest, event) => (event.created_at > latest ? event.created_at : latest), createdAt);
+}
+
+function compareRows(left: RequestRow, right: RequestRow) {
+  const leftOpen = left.state !== "closed";
+  if (leftOpen !== (right.state !== "closed")) return leftOpen ? -1 : 1;
+  if (leftOpen) {
+    if (left.decideBy === right.decideBy) return 0;
+    if (left.decideBy === null) return 1;
+    if (right.decideBy === null) return -1;
+    return left.decideBy < right.decideBy ? -1 : 1;
+  }
+  return left.closedAt === right.closedAt ? 0 : (left.closedAt ?? "") > (right.closedAt ?? "") ? -1 : 1;
+}
+
 /**
- * The open tabs' rows, nearest Decide by first. Time off arrives already
- * filtered by location and search (the server does it); shift changes are
- * filtered here.
+ * The one list. Time off arrives already filtered by location and search (the
+ * server does it); shift changes are filtered here.
  */
-export function openRequestRows(
+export function requestRows(
   timeOff: readonly TimeOffRequest[],
   exchanges: readonly ExchangeCase[],
-  filters: OpenRequestFilters,
-): OpenRequestRow[] {
-  const rows: OpenRequestRow[] = [];
-  if (filters.types.includes("time_off")) {
+  filters: RequestFilters,
+): RequestRow[] {
+  const rows: RequestRow[] = [];
+  if (filters.type === "all" || filters.type === "time_off") {
     for (const request of timeOff) {
-      if (request.status !== "pending") continue;
-      rows.push({ source: "time_off", id: request.id, type: "time_off", tab: timeOffTab(request), decideBy: request.decide_by ?? null, request });
+      const state = timeOffState(request);
+      rows.push({
+        source: "time_off",
+        id: request.id,
+        type: "time_off",
+        state,
+        decideBy: state === "closed" ? null : (request.decide_by ?? null),
+        closedAt: state === "closed" ? lastAt(request.events, request.created_at) : null,
+        request,
+      });
     }
   }
   for (const request of exchanges) {
-    if (request.status !== "open" || request.stage === "closed" || !filters.types.includes(request.kind)) continue;
-    if (!exchangeMatches(request, filters)) continue;
-    rows.push({ source: "exchange", id: request.id, type: request.kind, tab: exchangeTab(request), decideBy: request.expires_at, request });
+    if ((filters.type !== "all" && filters.type !== request.kind) || !exchangeMatches(request, filters)) continue;
+    const state = exchangeState(request);
+    rows.push({
+      source: "exchange",
+      id: request.id,
+      type: request.kind,
+      state,
+      decideBy: state === "closed" ? null : request.expires_at,
+      closedAt: state === "closed" ? lastAt(request.history, request.created_at) : null,
+      request,
+    });
   }
-  return rows.sort((left, right) =>
-    left.decideBy === right.decideBy ? 0 : left.decideBy === null ? 1 : right.decideBy === null ? -1 : left.decideBy < right.decideBy ? -1 : 1,
-  );
+  return rows.sort(compareRows);
 }
 
-/** Which tab a linked request (`?request=`) opens in: Closed once it is no longer open. */
-export function tabOfRequest(id: string, rows: readonly OpenRequestRow[]): RequestTab {
-  return rows.find((row) => row.id === id)?.tab ?? "closed";
+/** Each type tab's number, and All's: the requests still open. */
+export function openCounts(rows: readonly RequestRow[]): Record<RequestTypeTab, number> {
+  const counts: Record<RequestTypeTab, number> = { all: 0, time_off: 0, swap: 0, cover: 0, open_pickup: 0 };
+  for (const row of rows) {
+    if (row.state === "closed") continue;
+    counts.all += 1;
+    counts[row.type] += 1;
+  }
+  return counts;
 }
 
-/** Tab, request types and page as the address keeps them; anything else falls back. */
+/** Type tab and page as the address keeps them; anything else falls back. */
 export function readRequestsParams(params: URLSearchParams, allowed: readonly RequestType[]) {
-  const tab = params.get("tab");
-  const asked = (params.get("types") ?? "").split(",").filter((type): type is RequestType => allowed.includes(type as RequestType));
+  const type = params.get("type");
   const page = Number(params.get("page"));
   const size = Number(params.get("size"));
   return {
-    tab: (tab === "in_progress" || tab === "closed" ? tab : "needs_review") as RequestTab,
-    types: asked.length ? asked : [...allowed],
+    type: (allowed.includes(type as RequestType) ? type : "all") as RequestTypeTab,
     page: Number.isInteger(page) && page > 0 ? page : 1,
     pageSize: (requestPageSizes as readonly number[]).includes(size) ? (size as RequestPageSize) : 50,
   };
@@ -121,41 +159,55 @@ export function requestFailureKind(error: unknown): "no_access" | "connection" |
 }
 
 /**
- * Needs review and In progress, whole: every open time off request and shift
- * change the reader may read. A list the reader may not read, or whose types
- * are filtered out, is never asked for. Typing in search keeps the last rows
- * on screen until the new ones arrive (R2-10, R2-20).
+ * Every request the reader may read: open and closed time off, and the shift
+ * changes the manager view returns (open ones and the recently closed ones).
+ * A list the reader may not read is never asked for. Typing in search keeps
+ * the last rows on screen until the new ones arrive (R2-10, R2-20).
+ * ponytail: closed time off is read whole, page after page, until the one
+ * closed read (B3) pages the list on the server.
  */
-export function useOpenRequests(
+export function useRequests(
   workspaceId: string | undefined,
   can: { timeOff: boolean; shiftChanges: boolean },
-  filters: OpenRequestFilters,
+  filters: { locationId: string; search: string },
 ) {
-  const wantsTimeOff = can.timeOff && filters.types.includes("time_off");
-  const wantsShiftChanges = can.shiftChanges && filters.types.some((type) => type !== "time_off");
-  const timeOff = useQuery({
-    queryKey: [...timeOffKeys.requests(workspaceId ?? ""), "open", filters.locationId, filters.search.trim()],
-    queryFn: () => getOpenTimeOffRequests(workspaceId!, { locationId: filters.locationId, search: filters.search }),
-    enabled: Boolean(workspaceId) && wantsTimeOff,
+  const read = { locationId: filters.locationId, search: filters.search };
+  const enabled = Boolean(workspaceId);
+  const timeOffKey = [...timeOffKeys.requests(workspaceId ?? ""), filters.locationId, filters.search.trim()];
+  const openTimeOff = useQuery({
+    queryKey: [...timeOffKey, "needs_review"],
+    queryFn: () => getTimeOffQueue(workspaceId!, "needs_review", read),
+    enabled: enabled && can.timeOff,
+    placeholderData: keepPreviousData,
+  });
+  const closedTimeOff = useQuery({
+    queryKey: [...timeOffKey, "closed"],
+    queryFn: () => getTimeOffQueue(workspaceId!, "closed", read),
+    enabled: enabled && can.timeOff,
     placeholderData: keepPreviousData,
   });
   const exchanges = useQuery({
     // "shift-exchanges" + workspace: every exchange decision refreshes it (refreshExchangeSurfaces).
     queryKey: ["shift-exchanges", workspaceId ?? "", "requests-open"],
     queryFn: () => getExchanges(workspaceId!, true),
-    enabled: Boolean(workspaceId) && wantsShiftChanges,
+    enabled: enabled && can.shiftChanges,
     placeholderData: keepPreviousData,
   });
-  const error = (wantsTimeOff ? timeOff.error : null) ?? (wantsShiftChanges ? exchanges.error : null);
+  const error = (can.timeOff ? (openTimeOff.error ?? closedTimeOff.error) : null) ?? (can.shiftChanges ? exchanges.error : null);
   return {
-    rows: openRequestRows(
-      wantsTimeOff ? (timeOff.data ?? []) : [],
-      wantsShiftChanges ? (exchanges.data?.cases ?? []) : [],
-      filters,
-    ),
-    isLoading: (wantsTimeOff && timeOff.isLoading) || (wantsShiftChanges && exchanges.isLoading),
-    isFetching: timeOff.isFetching || exchanges.isFetching,
+    timeOff: can.timeOff ? [...(openTimeOff.data?.requests ?? []), ...(closedTimeOff.data?.requests ?? [])] : [],
+    exchanges: can.shiftChanges ? (exchanges.data?.cases ?? []) : [],
+    locations: openTimeOff.data?.locations ?? closedTimeOff.data?.locations ?? [],
+    timeFormat: openTimeOff.data?.timeFormat ?? closedTimeOff.data?.timeFormat ?? "12h",
+    isLoading: (can.timeOff && (openTimeOff.isLoading || closedTimeOff.isLoading)) || (can.shiftChanges && exchanges.isLoading),
     error,
     failure: error ? requestFailureKind(error) : null,
+    retry: () => {
+      if (can.timeOff) {
+        void openTimeOff.refetch();
+        void closedTimeOff.refetch();
+      }
+      if (can.shiftChanges) void exchanges.refetch();
+    },
   };
 }

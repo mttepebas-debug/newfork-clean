@@ -646,67 +646,6 @@
 }
 
 /* EKRAN-02 C1: Requests as one table in the shared list language (System 1). */
-.requests-catalog-page .requests-type-filter {
-  position: relative;
-  flex: 0 0 200px;
-}
-.requests-catalog-page .requests-type-filter > summary {
-  display: flex;
-  box-sizing: border-box;
-  height: 36px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px;
-  border: 1px solid var(--theme-border-control);
-  border-radius: 6px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font-size: 13px;
-  cursor: pointer;
-  list-style: none;
-}
-.requests-catalog-page .requests-type-filter > summary::-webkit-details-marker {
-  display: none;
-}
-.requests-catalog-page .requests-type-filter > fieldset {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  left: 0;
-  display: grid;
-  min-width: 100%;
-  box-sizing: border-box;
-  gap: 2px;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid var(--theme-border);
-  border-radius: 8px;
-  background: var(--theme-surface);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--theme-text) 14%, transparent);
-}
-.requests-catalog-page .requests-type-filter legend {
-  float: left;
-  width: 100%;
-  padding: 2px 4px 6px;
-  color: var(--theme-list-head-text);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.requests-catalog-page .requests-type-filter label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 4px;
-  border-radius: 5px;
-  font-size: 13px;
-  cursor: pointer;
-}
-.requests-catalog-page .requests-type-filter label:hover {
-  background: var(--theme-surface-soft);
-}
 .requests-table tbody tr {
   cursor: pointer;
 }
@@ -762,9 +701,13 @@
   color: var(--theme-muted);
   text-align: right;
 }
-/* On a phone the type menu is as wide as the other filters. */
-@media (max-width: 720px) {
-  .requests-catalog-page .requests-type-filter {
-    flex: 1 1 100%;
-  }
+/* Decide by: the time, then the zone's name on its own line (KARARLAR:133). */
+.request-deadline {
+  display: grid;
+  gap: 2px;
+}
+.request-deadline small {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
 }

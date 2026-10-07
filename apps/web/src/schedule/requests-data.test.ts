@@ -7,7 +7,7 @@ vi.mock("../lib/supabase", () => ({
   getTabWorkspaceId: () => null,
 }));
 
-import { getOpenTimeOffRequests, getScheduleRequests } from "./requests-data";
+import { getScheduleRequests, getTimeOffQueue } from "./requests-data";
 
 const workspaceId = "11111111-1111-4111-8111-111111111111";
 
@@ -43,15 +43,30 @@ describe("getScheduleRequests", () => {
   });
 });
 
-describe("getOpenTimeOffRequests", () => {
+describe("getTimeOffQueue", () => {
   it("reads every open time off request, page after page", async () => {
     apiRequest
       .mockResolvedValueOnce(page(["97200000-0000-4000-8000-000000000001"], "2026-10-01T09:00:00.000Z"))
       .mockResolvedValueOnce(page(["97200000-0000-4000-8000-000000000002"], null));
-    const rows = await getOpenTimeOffRequests(workspaceId, { locationId: "", search: "" });
-    expect(rows.map((row) => row.id)).toEqual(["97200000-0000-4000-8000-000000000001", "97200000-0000-4000-8000-000000000002"]);
+    const queue = await getTimeOffQueue(workspaceId, "needs_review", { locationId: "", search: "" });
+    expect(queue.requests.map((row) => row.id)).toEqual(["97200000-0000-4000-8000-000000000001", "97200000-0000-4000-8000-000000000002"]);
     const second = new URL((apiRequest.mock.calls[1] as [unknown, string])[1], "http://x").searchParams;
     expect(second.get("time_off_cursor")).toBe("2026-10-01T09:00:00.000Z");
     expect(second.get("limit")).toBe("100");
+  });
+
+  // Ek 2026-10-07: Requests is one list, so closed time off is read whole too
+  // until the one closed read (B3) pages it on the server.
+  it("reads every closed time off request and keeps the first page's locations and time format", async () => {
+    const kadikoy = { id: "22222222-2222-4222-8222-222222222222", name: "Kadikoy" };
+    apiRequest
+      .mockResolvedValueOnce({ ...page(["97200000-0000-4000-8000-000000000003"], "2026-09-01T09:00:00.000Z"), locations: [kadikoy], time_format: "24h" })
+      .mockResolvedValueOnce(page(["97200000-0000-4000-8000-000000000004"], null));
+    const queue = await getTimeOffQueue(workspaceId, "closed", { locationId: "", search: "" });
+    expect(queue.requests).toHaveLength(2);
+    expect(queue.locations).toEqual([kadikoy]);
+    expect(queue.timeFormat).toBe("24h");
+    const first = new URL((apiRequest.mock.calls[0] as [unknown, string])[1], "http://x").searchParams;
+    expect(first.get("time_off_queue")).toBe("closed");
   });
 });
