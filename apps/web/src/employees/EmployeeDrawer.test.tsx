@@ -2857,20 +2857,22 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
     });
     const zone = await within(dialog).findByDisplayValue("Pacific/Honolulu");
     expect(zone).toBeTruthy();
-    const honolulu = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Pacific/Honolulu",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      hourCycle: "h23",
-    }).format(new Date());
-    const [day, hour] = honolulu.split(", ");
-    await waitFor(() =>
+    // Worked out inside the wait, so an hour turning over cannot fail it.
+    await waitFor(() => {
+      const [day, hour] = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Pacific/Honolulu",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        hourCycle: "h23",
+      })
+        .format(new Date())
+        .split(", ");
       expect(
         (within(dialog).getByLabelText("Effective date and time") as HTMLInputElement).value.slice(0, 13),
-      ).toBe(`${day}T${hour}`),
-    );
+      ).toBe(`${day}T${hour}`);
+    });
   });
 
   it("keeps a time already typed when the zones arrive late", async () => {
