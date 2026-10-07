@@ -6,9 +6,13 @@ function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+// Counted in characters as a person sees them, so an emoji is never cut in half (BL-236).
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
 function shortName(name: string): string {
-  return name.length > longNameLimit
-    ? `${name.slice(0, longNameLimit - 1).trimEnd()}…`
+  const characters = Array.from(graphemes.segment(name), (part) => part.segment);
+  return characters.length > longNameLimit
+    ? `${characters.slice(0, longNameLimit - 1).join("").trimEnd()}…`
     : name;
 }
 
