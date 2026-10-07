@@ -1798,3 +1798,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~11:00Z. **Nerede:** EKRAN-01 oturumu; KARARLAR Important Dates çekmecesi (8)–(9); BACKLOG BL-959…963.
 - **Ne:** EKRAN-08 raporunun ikinci 🔴'ı (yayınlanmış kapalı günlü hafta Schedule'da 500) Schedule API'si olduğu için EKRAN-01'e, #18'den önce; R2 (API cevap şekli), `/code-review`. Mert'in çekmecede seçtiği L1 (satır başı onay kutusu, "All locations" başlık kutusu) ve "Note kalan boşluğu doldurur" KARARLAR'a eklendi (oturum iletti; Mert "L1 ONAY"). YENİ bulgular BL-959…963; D5 (yarım gün) A kararıyla çözülüyor, ayrı madde yok.
 - **Dayanak:** CLAUDE.md §4.3.5, §4.3.7; ILKELER P09, P19.
+
+### KK-213 (2026-10-07 gece) EKRAN-01 paket 1 gönder izni; dört soru
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~11:05Z. **Nerede:** `task/ekran-01` @`024a8c5c` (13 madde; `nf-guvenlik` ONAY @`fbd58c05`); KARARLAR:117.
+- **Ne:** R3 (#11 mola / saati gizle korunur, #18 export kuralını kapsamdaki herkes düzenler) ve canlı DDL (#20 sütun) için "gönder" — riskli diff okundu (`authorize` + `scope_set`, eklenen lokasyon kuranın kapsamında olmalı, 22023 + hint). Sıra: main yeşili → `test-db.mjs --load-only` ile ortak DB tazele (26 kırmızı matris hücresi büyük olasılıkla BL-897 kalıntısı) → tam kapı + test:db + e2e → canlı önce (yedek, MCP, doğrulama, `get_advisors`) → main. Sorular: (1) "kuranın dışa aktaramadığı lokasyon eklenemez" kalır; (2) port 5630/5631; (3) dışa aktarma açık vardiyaları göstermeye devam eder (Unassigned satırı yalnız düzenleme aracı); (4) KARARLAR:117 eskimiş cümlesi düzeltildi.
+- **Dayanak:** CLAUDE.md §4.2, §5.1; KARARLAR OPS-03; ILKELER P19, P25.
