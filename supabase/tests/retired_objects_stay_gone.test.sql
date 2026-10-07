@@ -195,6 +195,10 @@ insert into retired (kind, name, step) values
   ('function_signature', 'public.apply_schedule_template_service(uuid, uuid, uuid, integer, uuid, text)', 'FB-6.1.4');
 -- BL-186: every read shows today's marks; the publication snapshot's
 -- availability visibility and the reminder stamp that fed it are gone.
+-- BL-969: the account keeps its phone once, in E.164; the column kept for a
+-- backward-compatible move is gone.
+insert into retired (kind, name, step) values
+  ('column', 'user_profiles.phone', 'BL-969');
 insert into retired (kind, name, step) values
   ('function', 'weekly_published_availability_visible', 'BL-186'),
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
