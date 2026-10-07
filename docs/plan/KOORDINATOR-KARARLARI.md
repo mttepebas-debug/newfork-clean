@@ -1793,3 +1793,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Ne:** kalıcı koşulda 40001 atan fonksiyonlar PostgREST'in sonsuz yeniden denemesiyle API havuzunu dolduruyor (bütün kiracılar). Önemli tarih + duyuru tarafı ACIL-40001 olarak EKRAN-08 oturumuna (kodu bulan o, ekran onun; Mert'in sabah çekmece kararları için bağlamı korunur), Schedule düzenleme oturumu tarafı EKRAN-01'e (#18'den önce). Biçim tek: Schedule publish'teki `serialization_failure → PT409` + `hint`. R3: `nf-guvenlik`, tam kapı + `test:db`, "gönder" koordinatörde, canlı önce yedekle. Görev dosyası onayı beklenmez (acil).
 - **Neden Mert'e sorulmadı:** canlıda müşteri yok ama canlı API bütün kiracılar için ortak; düzeltme davranış değiştirmiyor (aynı ret, doğru kodla) — ürün kararı değil.
 - **Dayanak:** CLAUDE.md §2.A.2 ("hayır" tek biçim), §4.3.5, §4.5; ILKELER P09.
+
+### KK-212 (2026-10-07 gece) BL-959 (kapalı günlü hafta açılmıyor) EKRAN-01'e acil; Important Dates L1 + Note kayda
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~11:00Z. **Nerede:** EKRAN-01 oturumu; KARARLAR Important Dates çekmecesi (8)–(9); BACKLOG BL-959…963.
+- **Ne:** EKRAN-08 raporunun ikinci 🔴'ı (yayınlanmış kapalı günlü hafta Schedule'da 500) Schedule API'si olduğu için EKRAN-01'e, #18'den önce; R2 (API cevap şekli), `/code-review`. Mert'in çekmecede seçtiği L1 (satır başı onay kutusu, "All locations" başlık kutusu) ve "Note kalan boşluğu doldurur" KARARLAR'a eklendi (oturum iletti; Mert "L1 ONAY"). YENİ bulgular BL-959…963; D5 (yarım gün) A kararıyla çözülüyor, ayrı madde yok.
+- **Dayanak:** CLAUDE.md §4.3.5, §4.3.7; ILKELER P09, P19.
