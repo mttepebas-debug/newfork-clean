@@ -909,17 +909,23 @@ export const locationInputSchema = locationSchema.pick({
 });
 export type LocationInput = z.infer<typeof locationInputSchema>;
 
-export const departmentInputSchema = departmentSchema.pick({
+/** A department's editable values as saved, read without today's write rules. */
+export const departmentValuesSchema = departmentSchema.pick({
   name: true,
   color: true,
-}).extend({ name: usText(entityNameSchema) });
+});
+export const departmentInputSchema = departmentValuesSchema.extend({
+  name: usText(entityNameSchema),
+});
 export type DepartmentInput = z.infer<typeof departmentInputSchema>;
 
-export const jobInputSchema = jobSchema.pick({
+/** A job's editable values as saved, read without today's write rules. */
+export const jobValuesSchema = jobSchema.pick({
   name: true,
   color: true,
   department_id: true,
-}).extend({ name: usText(entityNameSchema) });
+});
+export const jobInputSchema = jobValuesSchema.extend({ name: usText(entityNameSchema) });
 export type JobInput = z.infer<typeof jobInputSchema>;
 
 export const departmentWithJobsInputSchema = z.object({
@@ -1015,7 +1021,8 @@ export const jobAssignmentResultSchema = z.object({
 export const jobDetailsChangesSchema = z
   .object({
     job: jobInputSchema.optional(),
-    expected_job: jobInputSchema.optional(),
+    // The values as saved, which may predate the US letter rule (BL-503).
+    expected_job: jobValuesSchema.optional(),
     changes: z.array(jobAssignmentChangeSchema).max(10000).default([]),
   })
   .superRefine((value, ctx) => {
@@ -2685,7 +2692,9 @@ export const employeeInputSchema = z
     first_name: usText(z.string().trim().min(1).max(80)),
     middle_name: usText(z.string().trim().max(80)).optional(),
     last_name: usText(z.string().trim().min(1).max(80)),
-    preferred_name: usText(z.string().trim().max(80)),
+    // Not written by this save: it changes by the employee's request (KK-205),
+    // where the US letter rule holds.
+    preferred_name: z.string().trim().max(80),
     invitation_email: z.string().trim().email().or(z.literal("")),
     start_date: z.string().date().or(z.literal("")),
     internal_note: z.string().trim().max(1000),

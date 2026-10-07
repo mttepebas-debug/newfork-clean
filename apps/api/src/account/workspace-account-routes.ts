@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
-import { ownerLegalNameSchema, usText } from "@newfork/shared";
+import { ownerLegalNameSchema, usText, workspaceNameInputSchema } from "@newfork/shared";
 import {
   bearerToken,
   resolveWorkspaceAuthorization,
@@ -10,7 +10,7 @@ import type { EmployeeInvitationService } from "../employees/invitation-service"
 import type { WorkspaceAccountService } from "./workspace-account-service";
 
 const createWorkspaceBody = z.object({
-  name: z.string().trim().min(1).max(120),
+  name: workspaceNameInputSchema,
 });
 const workspaceParams = z.object({
   workspaceId: z.string().uuid(),
@@ -54,7 +54,7 @@ const ownershipTransferResponseBody = z.object({
 });
 const ownerOnboardingBody = z.object({
   // The workspace and the owner's names follow the US letter rule (BL-503).
-  workspaceName: usText(z.string().trim().min(1).max(120)),
+  workspaceName: workspaceNameInputSchema,
   nextStep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   complete: z.boolean(),
   expectedRevision: z.number().int().positive().nullable().optional(),

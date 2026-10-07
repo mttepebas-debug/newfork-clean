@@ -23,10 +23,19 @@ export function usText<T extends z.ZodString>(schema: T) {
 
 export const usPhoneMessage = "Enter a 10-digit US phone number.";
 
-/** Up to ten US digits from whatever was typed or saved; a leading country 1 is dropped. */
+/**
+ * Up to ten US digits from whatever was typed or saved; a leading country 1 is
+ * dropped. A number from outside the US ("+44 …") gives none: cut to ten digits
+ * it would read as a wrong US number.
+ */
 export function usPhoneDigits(value: string): string {
-  return value.replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
+  const trimmed = value.trim();
+  if (/^\+\s*[02-9]/.test(trimmed)) return "";
+  return trimmed.replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
 }
+
+/** A workspace's name as owner setup and Create workspace take it. */
+export const workspaceNameInputSchema = usText(z.string().trim().min(1).max(120));
 
 /** "(415) 555-0100", built while typing; the "+1" stays outside the field. */
 export function formatUsPhone(value: string): string {

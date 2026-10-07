@@ -43,6 +43,14 @@ describe("the US phone rule", () => {
     expect(usPhoneDigits("41555501001234")).toBe("4155550100");
   });
 
+  it("takes nothing from a pasted number from outside the US", () => {
+    // Cut to ten digits, "+44 …" would become a wrong US number.
+    expect(usPhoneDigits("+44 20 7946 0958")).toBe("");
+    expect(formatUsPhone("+44 20 7946 0958")).toBe("");
+    expect(formatUsPhone("+1 415 555 0100")).toBe("(415) 555-0100");
+    expect(formatUsPhone("+")).toBe("");
+  });
+
   it("masks while typing", () => {
     expect(formatUsPhone("")).toBe("");
     expect(formatUsPhone("41")).toBe("(41");

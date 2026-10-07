@@ -9,6 +9,7 @@ import {
   canAccessWorkspace,
   departmentInputSchema,
   departmentSchema,
+  departmentValuesSchema,
   scheduleDepartmentSchema,
   scheduleJobSchema,
   scheduleShiftLabelSchema,
@@ -20,8 +21,10 @@ import {
   healthResponseSchema,
   importantDateHistorySchema,
   importantDateInputSchema,
+  jobDetailsChangesSchema,
   jobInputSchema,
   jobSchema,
+  jobValuesSchema,
   locationInputSchema,
   locationSchema,
   ownerLegalNameSchema,
@@ -47,6 +50,7 @@ import {
   scheduleTemplateDetailSchema,
   workspaceDashboardSchema,
   workspaceManualTodoInputSchema,
+  workspaceNameInputSchema,
   workspaceRoleInputSchema,
   workspaceTodoSchema,
   productBoundary,
@@ -1707,8 +1711,54 @@ describe("US form rules on the write schemas (BL-503)", () => {
       expect(locationInputSchema.safeParse({ ...location, [field]: "Kadıköy" }).success, field).toBe(false);
     }
     expect(locationInputSchema.safeParse({ ...location, name: "Beşiktaş" }).success).toBe(false);
-    expect(departmentInputSchema.safeParse({ name: "Mutfak Ağı", color: "green" }).success).toBe(false);
-    expect(jobInputSchema.safeParse({ name: "Garsonİ", color: "green", department_id: null }).success).toBe(false);
+    // The same valid colour both ways, so only the letters decide.
+    expect(departmentInputSchema.safeParse({ name: "Mutfak", color: "#4478A8" }).success).toBe(true);
+    expect(departmentInputSchema.safeParse({ name: "Mutfak Ağı", color: "#4478A8" }).success).toBe(false);
+    expect(jobInputSchema.safeParse({ name: "Garson", color: "#4478A8", department_id: null }).success).toBe(true);
+    expect(jobInputSchema.safeParse({ name: "Garsonİ", color: "#4478A8", department_id: null }).success).toBe(false);
+  });
+
+  it("refuses the letters in a workspace name, the one schema owner setup and Create workspace use", () => {
+    expect(workspaceNameInputSchema.safeParse("Rio Grill").success).toBe(true);
+    expect(workspaceNameInputSchema.safeParse("Kadıköy Cafe").success).toBe(false);
+  });
+
+  // The drawer never writes it: the database keeps it for the employee's own
+  // request (KK-205). A rule here only stopped every other change on the record.
+  it("leaves the preferred name out of the manager's write", () => {
+    const employee = {
+      first_name: "Taylor",
+      last_name: "Reed",
+      preferred_name: "Ayşe",
+      invitation_email: "",
+      start_date: "",
+      internal_note: "",
+      location_ids: [],
+      primary_location_id: null,
+      job_ids: [],
+      primary_job_id: null,
+      is_remote: true,
+      expected_revision: 1,
+    };
+    expect(employeeInputSchema.safeParse(employee).error?.issues).toBeUndefined();
+    expect(employeeInputSchema.safeParse({ ...employee, first_name: "Ayşe" }).success).toBe(false);
+  });
+
+  it("still reads a department and a job saved before the rule, and lets their name be fixed", () => {
+    expect(departmentValuesSchema.parse({ name: "Mutfak Ağı", color: "#4478A8" }).name).toBe("Mutfak Ağı");
+    expect(jobValuesSchema.parse({ name: "Aşçı", color: "#4478A8", department_id: null }).name).toBe("Aşçı");
+    expect(
+      jobDetailsChangesSchema.safeParse({
+        job: { name: "Cook", color: "#4478A8", department_id: null },
+        expected_job: { name: "Aşçı", color: "#4478A8", department_id: null },
+      }).success,
+    ).toBe(true);
+    expect(
+      jobDetailsChangesSchema.safeParse({
+        job: { name: "Aşçıbaşı", color: "#4478A8", department_id: null },
+        expected_job: { name: "Aşçı", color: "#4478A8", department_id: null },
+      }).success,
+    ).toBe(false);
   });
 
   it("still reads a location saved before the rule", () => {

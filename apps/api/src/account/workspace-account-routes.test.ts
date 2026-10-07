@@ -162,6 +162,26 @@ describe("workspace account routes", () => {
     expect(createWorkspace).toHaveBeenCalledWith(accessToken, "Meyhouse");
   });
 
+  // BL-503: Create workspace takes the name the way owner setup does.
+  it("refuses Turkish-only letters in a new workspace's name", async () => {
+    const createWorkspace = vi.fn(async () => workspaceId);
+    const app = buildApp({
+      workspaceAccountService: {
+        createWorkspace,
+      } as unknown as WorkspaceAccountService,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/account/workspaces",
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload: { name: "Kadıköy Cafe" },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(createWorkspace).not.toHaveBeenCalled();
+  });
+
   it("selects the active workspace from the path only", async () => {
     const selectWorkspace = vi.fn(async () => undefined);
     const app = buildApp({
