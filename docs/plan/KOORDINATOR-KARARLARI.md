@@ -1726,3 +1726,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** Mert'in seçimi (önerilen tutmadı), koordinatör uyguladı. **Ne zaman:** 2026-10-07 ~09:05Z. **Nerede:** EKRAN-02 `task/ekran-02` @`9891727d`; önce/sonra görüntüleri `newfork-wt/ekran-02/artifacts/ekran-02/tek-tablo/`.
 - **Ne:** masaüstü tek tablo (tür sekmeleri, arama Location'a kadar, Decide by iki satır) Mert'e önce/sonra ile gösterildi; öneri "Gönder, telefon sıradaki iş" idi, Mert "Önce telefon düzelsin" dedi. Oturum #67'yi aynı dala ekler: telefonda kart satırı (KARARLAR Genel "telefonda liste sayfaları kart satırıyla", Employees G2 ile aynı ölçüler), beş sekmenin hepsi ulaşılabilir, 44 px; sonra birlikte "gönder".
 - **Dayanak:** Mert'in seçimi; CLAUDE.md §2.C ödünleşim "işin çekirdeğinde tam çözüm > ucuz kestirme" (önerim bunu tartmadı, DERSLER 2026-10-07).
+
+### KK-200 (2026-10-07) Sekizinci hat: Settings → General incelemesi ve en az 6 tasarım (EKRAN-10)
+- **Kim:** Mert'in isteği, koordinatör uyguladı (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~09:10Z. **Nerede:** görev kartı "Inspect Settings General, 6+ designs (EKRAN-10 General)".
+- **Ne (Mert'in sözü):** "1 session daha başlat http://localhost:5555/app/settings/general a başlasın ve artifact varyasyon çıkarsın en az 6 tane". EKRAN-08 çekmece işiyle aynı biçim: gerçek uygulamada beş rolle (owner, admin, müdür, `settings.general.manage` verilmiş özel müdür, çalışan) test, BL-178'in bugünkü hâli (GUVENLIK-A'ya bağlanır), odaklı testler, UI/UX, ≥6 varyantlı artifact, `ekranlar/10-settings/GENERAL-INCELEME.md`. Kod, migration, test dosyası, ağır koşu yok; dev sunucusu yoksa 5632/5633.
+- **Not:** sekiz oturum açık; ağır koşu yapan yalnız üç ekran hattı ve PARALEL-1.
+- **Dayanak:** Mert'in açık isteği; ILKELER P04, P12, P20, P26.
