@@ -1,5 +1,5 @@
 # OTOMASYON-3 Ağır koşu kilidi, kayıt koruması, karar kancası, gece ve denetim skill'leri
-Status: approved (koordinatör ONAY 2026-10-07 ~06:40Z, iki düzeltmeyle; aşağıda "Onay düzeltmeleri")
+Status: dalda bitti, gönderim koordinatörün iznini bekliyor (görev ONAY 2026-10-07 ~06:40Z, iki düzeltmeyle; "Onay düzeltmeleri")
 Session: nf-backend/otomasyon-3 (`local_2f278959…`, posta `4c8021a8…`)   Branch: task/otomasyon-3   Worktree: ../newfork-wt/otomasyon-3   DB: -
 Risk: R2 (guard bütün oturumların Bash/PowerShell/Edit/Write çağrısında koşar; yetki, veri, canlı yok)
 Reviewer: tek bağımsız inceleme: `/code-review` (öneri; betik + test işi, nf-guvenlik'in tenant/RLS uzmanlığı burada boşa gider)
@@ -131,6 +131,79 @@ enjekte edilir):
 - Yeni oturumlar kancayı ancak dalları bu commit'i aldıktan sonra görür (settings.json oturum klasöründen okunur).
 
 ## Notes / Result
-(Rapor biçimi: CLAUDE.md §4.4)
-- 2026-10-07 açılış yükü (`get_usage`, oturumun ilk işi): 95.8 bin token (sistem araçları 30.7 bin, MCP araçları 17.3 bin,
-  hafıza/kural 11.9 bin, skill listesi 8.6 bin, sistem 4.9 bin, mesajlar 18.0 bin). Önceki ölçüm ~102 bin (2026-10-06).
+
+- **Karar:** dört otomasyon dalda bitti (`task/otomasyon-3` @ `d4ebd40e`); CLAUDE.md §4.9 silindi. Main'e gönderilmedi.
+- **İzin:** koordinatörün "gönder" izni isteniyor (§4.9 bu gönderime kadar geçerli; CLAUDE.md ve `.claude/settings.json` değişiyor).
+- **Risk:** 🟠 Kanca bütün oturumlarda koşar; 2026-10-14'e kadar yalnız uyarır, sonra ağır koşuda ve kayıt dosyasında reddeder (kaçışlar loglu).
+- **Soru:** yok. Koordinatörün bakması için: CLAUDE.md §4.8 ve §6'daki yeni cümleler (aşağıda "Kural metni"), `/code-review`'ün bağımsızlığı.
+- **Sonraki:** izin gelince `main` + `heavy` kilidi → rebase → tam kapı → push → kilitleri bırak → main CI.
+
+### Nerede duruyor
+Dal `task/otomasyon-3`, worktree `C:\Users\TheWe\Documents\Codex\newfork-wt\otomasyon-3`, üç commit: `f0c89bb3` (kilit, kanca,
+karar kancası, gece-modu), `7852e8ce` (KK-188 işçi ayrımı, `cd` izleme, haftalik-denetim, §4.9), `d4ebd40e` (inceleme düzeltmeleri).
+
+### Ne yapıldı (etkisi)
+| | Neydi | Ne oldu |
+|---|---|---|
+| Ağır koşu | "Aynı anda tek ağır koşu" yalnız yazılı; koordinatör "AĞIR İZİN" mesajıyla sıraya koyuyordu | `heavy.lock` (`scripts/lock.mjs:18`); `scripts/guard.mjs:284` kökten `test`/`build`, `test:db`, e2e'de kilit bu oturumda mı ve CI koşuyor mu bakar; `:317` CI başlatan push başka oturumun kilidiyle çakışıyor mu bakar |
+| Kilit sahipliği | Kilit yalnız "rol/oturum" yazısı taşıyordu | Kilit `CLAUDE_CODE_SESSION_ID` ve klasörü de yazar (`lock.mjs:87`); guard "bende mi" sorusunu oturum kimliğiyle cevaplar |
+| Kayıt dosyaları | "Yalnız koordinatör ve Mert'in oturumu yazar" yalnız yazılı | Edit/Write ve işçinin `git commit`'i 7 kayıt dosyasında uyarır (`guard.mjs:390`, `:415`); işçi = ilk mesajı `Görev:` (KK-188) |
+| Karar kaydı | `decision-log.mjs` 2026-09-30'dan beri bağlı değildi: `stats` son satırı 2026-09-28 haftası | `AskUserQuestion` öncesi/sonrası kancası bağlı (`.claude/settings.json`); kabul oranı yeniden ölçülür |
+| Gece / denetim | Yalnız yazılı | `/gece-modu` (keep-awake, `inbox wait`, ~10 dk `CronCreate` turu, 20 dk sessiz oturum, sabah raporu → soru turu), `/haftalik-denetim` (§4.6 listesi, dört sayı ve komutları) |
+| Kademe | — | `ENFORCE_DAY = "2026-10-14"` (`guard.mjs:27`): öncesi uyarı + `audit.log`, sonrası exit 2. Kaçış: ağır komutta `NF_OVERRIDE="<gerekçe>"`, kayıtta `node scripts/guard.mjs records-allow "<gerekçe>"`. Geri dönüş: tarihi ileri al |
+
+Yolda düzeltilen (işin önündeydi): kartla açılan oturum kart worktree'sinde başlar, işi `cd ../newfork-wt/<id>` ile yapar; kanca
+`cwd`'si başlangıç klasörü olduğu için commit'teki kayıt kontrolü ve "yalnız docs mu" push kontrolü yanlış klasöre bakıyordu →
+`cd` / `Set-Location` / `pushd` izlenir (`guard.mjs:133`). Betik yardım metinlerinde kilit kimliği "rol/oturum" → "oturum/iş".
+
+### Ölçümler ve kanıt
+- Açılış yükü (`get_usage`, oturumun ilk işi, 2026-10-07 ~06:22Z): **95,8 bin** token / 1M (önceki ~102 bin, 2026-10-06). Sistem
+  araçları 30,7 bin · mesajlar 18,0 bin (görev mesajı + ilk araç çağrıları) · MCP araçları 17,3 bin · hafıza/kural 11,9 bin ·
+  skill listesi **8,6 bin** (önceki 36,6 bin) · sistem 4,9 bin.
+- Kök `typecheck` soğuk (`pnpm.cmd typecheck --force`, yeni worktree, CI boş, 2026-10-07 ~06:47Z): 24 sn (turbo 22,5 sn, 7/7, önbellek 0)
+  → 60 sn eşiğinin altında, tek başına ağır sayılmaz.
+- İşçi ayrımı, 555 newfork oturum kaydı üzerinde (2026-10-07): `Görev:` kuralıyla bugün 11 işçi (14 Ekim sonrası 10), hepsi koordinatör
+  görev mesajı ya da EKRAN-02 kartı; Mert'in "# Görev:" istemiyle başlayan iki eski kayıt işçi sayılmadı; 39 kayıt okunamadı/boş
+  (37'si eski ajan takımı `nf-muhendislik`/`team-*`) → izin + `records-unknown`. En yavaş okuma 17 ms (yalnız kaydın başı).
+- `gh` Windows'ta kancadan çağrılabiliyor: 925 ms; kanca `cwd`'si Windows yolu (`.newfork-inbox/status/*.json`'da doğrulandı).
+- Testler: `node --test scripts/lock.test.mjs scripts/coord-hooks.test.mjs scripts/decision-log.test.mjs scripts/schema-snapshot.test.mjs`
+  → **72/72** @ `d4ebd40e` (başlangıç 42). Yeni testlerin hepsi önce kırmızı görüldü.
+- Tam kapı `heavy.lock` ile, CI boşken @ `7852e8ce`: lint 5/5 (11 sn) · typecheck 7/7 (18 sn) · test (betikler 69/69; shared 17,
+  ui 3, api 59, web 233 dosya) 1 dk 46 sn · build 4/4 (29 sn); toplam 172 sn, çıkış 0. `d4ebd40e` yalnız `scripts/` ve `.md`
+  değiştirdi (paketlerin lint/typecheck/build'ine girmez); rebase sonrası kapı gönderimde yeniden koşar.
+- Elle uçtan uca (geçici kilit/posta klasörü, gerçek `gh`, bu oturumun gerçek kaydı): Edit `BACKLOG.md` → uyarı JSON'u;
+  `pnpm.cmd test` kilitsiz → uyarı JSON'u, `audit.log`'da `records-warn`, `heavy-warn`.
+
+### İnceleme
+`/code-review` (high, `task/otomasyon-3` @ `7852e8ce`): 9 bulgu. 8'i düzeltildi (`d4ebd40e`): heredoc / here-string gövdesindeki satır
+ağır koşu sanılıyordu (14 Ekim'den sonra `git commit -F - <<'EOF'` reddedilirdi; doğrulandı), PowerShell `$env:NF_OVERRIDE` arada `cd`
+olunca görülmüyordu, `gh` ayrıştırması testsizdi, haftalık denetim `*-unknown` sayılarına bakmıyordu, §6 gönderim adımları
+`heavy.lock`'u anmıyordu, 4 MB tampon, çift `git diff`, `slug` tekrarı. 1'i değişiklik gerektirmedi (§4.8 cümlesi; aşağıda).
+**ONAY @ `d4ebd40e`.** Not: `/code-review` bu oturumun kendi bağlamında koştu (ayrı ajan değil); daha bağımsız bir göz istersen
+`nf-guvenlik` çağrılabilir.
+
+### Kural metni (koordinatör baksın; içerik onaylı kararları belgeliyor)
+- CLAUDE.md §4.8 (3): "(önce uyarı)" → "(2026-10-14'e kadar uyarı, sonra engel); Mert bir oturuma açıkça yazdırırsa o oturum
+  `node scripts/guard.mjs records-allow "<gerekçe>"` koşar, `audit.log`'a yazılır." Dayanak: KK-187 (1), görev dosyası "Kaçış".
+- CLAUDE.md §6: `heavy.lock` satırı (ne sayılır, e2e/test:db için önce db sonra heavy, uyarı → engel tarihi, kaçış); kilit yardımcısı
+  `<db|main|heavy>`; e2e satırı "`db.lock` ve `heavy.lock` ile"; gönderim adımı 2 "kod değiştiyse `heavy` de", adım 6 "Kilitler".
+- CLAUDE.md §4.9 bölümü ve §6 adım 1'deki "§4.9" atfı silindi; ILKELER P15'teki "(… §4.9)" parantezi silindi.
+
+### Açık kalan ve nedeni
+- `Görev:` satırıyla başlamayan işçi kayıt korumasından kaçar (KK-188'de kabul edilen zayıflık); bağlam taşınca yeni kayıtla devam
+  eden oturumun ilk mesajı özet olabilir, o da kaçar.
+- Başka kabuğa sarılmış komut (`bash -c "…"`, `pwsh -Command "…"`) görülmez (önceden de böyleydi).
+- Eski dallardaki oturumlar kancayı ancak dalları bu commit'i alınca görür (`settings.json` oturum klasöründen okunur).
+
+### Yolda bulunan (BACKLOG adayı, koordinatör yazar)
+- **Pano yanlış etiket ve dal gösteriyor** (`scripts/inbox.mjs`): etiket dosyası `slug(cwd)` ile adlanıyor ve `slug` 40 karakterde
+  kesiyor → `.claude/worktrees/*` altındaki bütün oturumlar tek etiketi (`c-users-thewe-documents-codex-newfork-cl`), `newfork-wt/*`
+  altındakiler tek etiketi (`…-newfork-wt`) paylaşıyor. Kanıt (2026-10-07 ~07:40Z, `inbox.mjs board`): bu oturumun satırında
+  "CLAUDE-INCE — main'de 3050021b…" etiketi ve kart worktree'sinin dalı `claude/objective-diffie-33fcc1 @ 90bbd9e8` görünüyor.
+  Takılma tespiti oturum kimliğine bağlı olduğu için çalışıyor; görev etiketi ve dal yanlış. (leave: medium / do: safe)
+- Koordinatör hafızasındaki "AĞIR İZİN" protokolü (`AGIR-ISTEK` → "AĞIR İZİN" → `AGIR-BITTI`) bu kilitle gereksizleşir.
+
+### Temizlik
+Kartın açtığı `.claude/worktrees/zealous-diffie-ec31cb` (dal `claude/objective-diffie-33fcc1` @ `90bbd9e8`, main'in eski ucu): takip edilen
+değişiklik ve commit yok; yalnız uygulamanın yazdığı yok sayılan `.claude/launch.json` ve `.claude/settings.local.json` var.
+Koordinatör temizleyebilir. Geçici kanıt dosyaları oturumun scratchpad'inde; `newfork-wt/otomasyon-3-*.log` kapı kayıtları.
