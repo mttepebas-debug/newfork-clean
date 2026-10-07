@@ -34,6 +34,9 @@
   - BL-964 kapandı (`a57f2a4c`); BL-841 kapandı, BL-497 kısmen (`3fec39b8`); BL-965 (belge bakım işi tarihsiz belgede çöküyor, bütün workspace'ler) PARALEL-1 oturumunda, canlı sabah. BL-966 (kapanış gözlenebilirliği) backlog.
   - **Sabah "evet" listesi (pencere pencere):** ACIL-40001 (EKRAN-08 oturumu), EKRAN-01 paket 1, GUVENLIK-A (GA-1 canlı + GA-4), BL-804 (EKRAN-16 oturumu), BL-965 (PARALEL-1 oturumu), EKRAN-02 veri paketi (S1'e bağlı). G10 cevabı (a) gelirse bunlar tek "gönder"le koordinatöre geçer.
   - Koordinatör bağlamı %79 (12:20Z); 5 saatlik limit %56 (12:50Z sıfırlanır), haftalık %23.
+  - ~14:20Z: EKRAN-01 web paketi + BL-959 main'de (`d017320c`, CI 37627942589 yeşil); veri maddeleri + Schedule 40001 payı dalda hazır. EKRAN-02 C2 (H2 penceresi) dalda (`task/ekran-02-c2`, ONAY @09cd161d, sabah G13). EKRAN-03 gece partisi main'de (`9ebdc113`…`bdf54974`), şimdi BL-503 (ABD form kuralları, R2). BL-804 dalda hazır (`task/bl-804`, migration `20261007235000`). BL-757 ölçüldü, düzeltme EKRAN-01 paket 1'den sonra. KK-220: migration'lar gönderim anında yeniden numaralanır.
+  - **Mert gece EKRAN-16 oturumunda giriş ve katılım için sıfırdan tasarım istedi:** tasarım kitabı https://claude.ai/artifact/BZkoou6GKHrEwcwoDZYqQu; ilk karar giriş modeli (kod — önerilen — ya da parola), seçim sayfanın kaydında. Sabah raporunda sor: bu iş Ekran 16 keşfinin (G4–G7) yerini mi alıyor, yanına mı.
+  - Sabah "evet" listesine ek: BL-804 (EKRAN-16 oturumu, hazır). Sabah sorularına ek: G10–G13.
 
 ## 000. GÜNCEL DURUM (2026-10-07 ~09:35Z) — ÖNCE BUNU OKU
 - **Mert'in uyarısı (09:30Z, üçüncü kez):** "hiç sorgulamıyorsun … ne tavsiye veriyorsun ne karşı çıkıyorsun ne fikrini sunuyorsun". Her yeni isteğe önce: ne anladım · artı/eksi + çakışan kural · önerim/itirazım (DERSLER 10-06 gece girişi). Kural önerisi olarak sorulan soru kapatıldı, cevap bekliyor.
