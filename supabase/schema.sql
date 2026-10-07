@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 444, last: 20261008022536_document_maintenance_keeps_going.sql
--- fingerprint: sha256:4ac14502d3143679f248b98c96e32641f872947d0411ce239d4d1a027fdf0dca
+-- fingerprint: sha256:e905ad75a15c8b6af21a482f8914cb0458a3fd8697cd4a8147d059cec85ebf73
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26248,6 +26248,7 @@ declare
   existing public.scheduled_schedule_exports%rowtype;
   updated public.scheduled_schedule_exports%rowtype;
   next_location_ids uuid[];
+  added_location_ids uuid[];
   next_preset_id uuid;
   preset_name text;
   reset_failure_state boolean := false;
@@ -26281,6 +26282,19 @@ begin
       select distinct requested.id from unnest(next_location_ids) requested(id)
       where requested.id = any (public.live_location_ids(target_workspace_id, next_location_ids))
          or not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[]))));
+  -- The rule sends as the person who set it up (the cron exports as them): a
+  -- location they cannot export would switch the rule off at its first send.
+  -- Whoever edits the rule may not reach past its owner with it.
+  added_location_ids := array(
+    select distinct requested.id from unnest(next_location_ids) requested(id)
+    where not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[])));
+  if actor_user_id is distinct from existing.created_by
+     and cardinality(added_location_ids) > 0
+     and app_private.authz_reason(existing.created_by, target_workspace_id, 'schedule.export',
+       target_locations => added_location_ids) is not null then
+    raise exception 'The person who set up this export cannot export a location you added.'
+      using errcode = '22023', hint = 'schedule.export_rule_beyond_its_owner';
+  end if;
 
   next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
   if not exists (
