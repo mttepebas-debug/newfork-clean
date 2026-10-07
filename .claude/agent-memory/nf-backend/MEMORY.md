@@ -6,6 +6,5 @@
 - [can() migration traps](can-migration-traps.md) — `permissions?.includes` hides from grep; App.test renders SchedulePage; key→action map; no-access card + home path
 - [Resend emails and e2e](resend-email-e2e.md) — API mail bypasses mailpit; e2e mints links via admin generate_link (top-level hashed_token)
 - [Fixture from real DB output](fixture-from-real-db-output.md) — never hand-write contract fixtures from SQL; rolled-back real call + zod parse (BL-198)
-- [Devir 2026-09-27](handoff-2026-09-27.md) — açık branch'ler (bl198-web, bl197-web), bekleyen incelemeler, fixture yöntemi
 - [Shared schema readers](shared-schema-readers.md) — Schedule schema also parses the Employee Hub board; list every parser before a required field; the drawer's main test mocks employee-data (BL-218)
 - [DB decides, client mirrors](db-decides-client-mirrors.md) — no client-supplied flag for a DB rule; the payload-only checks stay in the schema, the rest is a hinted DB refusal (BL-218); happened again in EMP-001 K4, read this BEFORE a form-side rule

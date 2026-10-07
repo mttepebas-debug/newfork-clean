@@ -5,12 +5,13 @@
 > düzeltildi (analiz: `docs/plan/research/KARAR-001-analiz.md`).
 > Sonradan eklenen ilke Mert onaylayana kadar "(taslak)" diye yazılır. Taslak ilkeye dayanarak
 > sorusuz ürün kararı verilmez.
-> Bu dosya CLAUDE.md'den her oturuma yüklenir; kısa tutulur (en çok ~20 KB). Uzun gerekçe ve
-> kanıt listesi analiz dosyasında kalır.
+> Bu dosya her oturuma yüklenmez (Mert, 2026-10-07): her ilkenin tek satırlık özeti `CLAUDE.md`
+> §2.C'de; tam metni koordinatör karar vermeden ve soru kurmadan önce okur. Bir ilke değişince özet
+> aynı işte güncellenir. Uzun gerekçe ve kanıt listesi analiz dosyasında kalır.
 
 ## Nasıl kullanılır
 - Soru sormadan, "(Önerilen)" koymadan ya da Mert yokken karar vermeden önce bu dosya ve
-  `docs/plan/KARARLAR.md` taranır (CLAUDE.md §13).
+  `docs/plan/KARARLAR.md` taranır (CLAUDE.md §5).
 - **Dayanak sırası:**
   1. Mert'in en güncel açık kararı (sohbette ya da KARARLAR'da kaynağı "kullanıcı").
   2. KARARLAR'daki kural.
@@ -28,7 +29,7 @@
 - **Ürün:**
   - ABD'deki restoranlar için çok kiracılı vardiya planlama.
   - Hedef self-serve, ücretli ABD lansmanı. Arayüz İngilizce.
-  - MVP sonucu: `ROADMAP.md` ilk paragraf.
+  - MVP sonucu: `CLAUDE.md` §1 (Vizyon).
   - Mert'in sözü: "uygulama bir kokpit".
 - **Müşteri** (Mert, 2026-10-01): ilk ödeyen müşteri 2-5 lokasyonlu, 20-100 kişilik restoran
   işletmesi. Ör. Kadıköy ve Beşiktaş şubeli bir zincir; her şubede bir müdür, owner merkezde. Çok
@@ -125,7 +126,7 @@
   Lansman öncesi yeni ücretli hesap açılmaz.
 - Ultrareview (Mert, 2026-10-01): riskli işte (yetki, satır erişimi, migration, veri silme) ve
   ücretsiz hak varken önerilir. Hak bitince yalnız en riskli işte (yetki çekirdeği gibi), dolar
-  tutarıyla önerilir (CLAUDE.md §5).
+  tutarıyla önerilir (eski CLAUDE.md §5; 2026-10-07'den beri işin sonunda rutin ultrareview önerilmiyor).
 - Kanıt (2026-10-01, ters seçim): FB-6.3.7 (veri silme) için ultrareview önerildi; Mert "hayır,
 - Kanıt (2026-10-02, ikinci ters seçim): FB-6.7 A (yetki çekirdeği, grant, nesne silme) için ultrareview önerildi; Mert "Hayır, iki inceleme yeter" dedi — yetki çekirdeği işinde de iki iç inceleme + yeniden inceleme (`nf-guvenlik` ONAY) yeterli görüldü.
   güvenlik onayı yeter" dedi — iki tur `nf-guvenlik` ONAY'ı olan işte gerekli görmedi.
@@ -205,12 +206,13 @@
   +1 dışında alan adı kullanılamaz".
 
 **P13. MVP sınırı kategori düzeyinde çizilir.**
-- Kural: compliance, payroll, time tracking, break ve Stripe billing MVP sonrasıdır. Sonradan
+- Kural: compliance, payroll, time tracking ve break MVP sonrasıdır; ödeme (Stripe) MVP'dedir. Sonradan
   sıfırdan tasarlanacak modüle (Line Up) bugün yatırım yapılmaz; ayrı plana alınır.
 - Koşul: bildirim sistemi sonra yeniden tasarlanacak, ama işin gerektirdiği bildirim bugün de
   kuruluyor.
 - Kanıt: 09-16 "compliance… payroll… time tracking ve break ile ilgili herşey mvp sonrası", "line
   up apayrı bir plan konusu olsun"; 09-21 "Stripe billing yok şuan için".
+- Kanıt (2026-10-07, ters seçim; CLAUDE.md yeniden yazımı): ROADMAP "Stripe ile satılabilir" ile bu ilke çelişiyordu; önerilen "Stripe MVP sonrası" (P13 + P22) idi, Mert "Stripe MVP'de" seçti. Ödeme MVP'ye girdi; ekran planındaki yeri sonra sorulacak.
 
 **P14. Program işinde kapsam geniştir; kod vizyonun kanıtı değildir.**
 - Kural: Mert bir temizlik, denetim ya da yeniden tasarım programı başlattıysa kapsam en geniş
@@ -221,14 +223,15 @@
   işleyelim"; 09-28 "Tüm repo denetimi".
 
 **P15. Kod ve git'te Claude hızlı ve özerktir.**
-- Kural: testler geçtiyse merge ve push yapar. Veri yazmayan gezinmeyi kendisi yapar. Kendi
+- Kural: main'e gönderim `CLAUDE.md` §4.2'ye göre yapılır: R0–R2 işte kilitler serbestse oturum beklemeden gönderir; R3 işte ve canlı veritabanında koordinatörün "gönder" izni gerekir (ağır koşu kilidi gelene kadar her gönderim izinle, §4.9). Veri yazmayan gezinmeyi kendisi yapar. Kendi
   yapabileceği bir operasyonu Mert'e devretmez.
 - Koşul: makine düzeyinde yeniden başlatma, oturum arşivi, başka oturumun dosyaları ve kalıcı yetki
   her seferinde tek tek sorulur. Mert çoğu zaman izin veriyor, ama yine sorulur.
 - Kanıt: 09-16 "İkisi de otomatik"; 09-30 "Hemen bağla", "Sen gönder, MCP ile".
-- Kanıt (2026-10-02, süreç kuralı; CLAUDE.md §5 adım 4 "Sormadan açılan skill'ler", main `da6874d6` + `a80f687a`): her oturum brainstorming, systematic-debugging, test-driven-development, supabase-postgres-best-practices, receiving-code-review ve verification-before-completion'ı kendi yargısıyla açar; ölçü §11.5 (sonucu değiştirecekse açılır; belli, kanıtlanmış ya da küçük işte açılmaz), raporda tek satır. Mert: "Overengineering yada gereksiz test/kanıtlanmış/obvious olan şeyler için zaman ve token waste etmesinler ama sadece senin onlara söylediğin dar senaryoları da beklemesinler." Reddedilen (koordinatör önermedi; süreçle çakışır): writing-plans, executing-plans, finishing-a-development-branch, gsd-*, frontend-design.
-- Kanıt (2026-10-02, sürekli yetki; CLAUDE.md §8, main `636b76ee`): koordinatör sormadan canlıya migration (MCP; ONAY + OPS-03 + yedek + doğrulama; gerçek veri silme hariç), oturum yönetimi, birleşmiş dal ve temiz worktree silme, yeni iş seçme yapar; `db reset`, canlıda gerçek veri silme, ücretli, gizli anahtar, yeni bağımlılık, force push yetki dışı. Mert: "…task bitiminde canlıya gönderme, migrationları uygulama, session'ı arşivleme/silme, yeni session başlatma vs gibi otomasyonunu durduracak şeyleri kendi başına yapabil." Koşuldaki "tek tek sorulur" bu listede kalktı.
+- Kanıt (2026-10-02, süreç kuralı; eski CLAUDE.md §5 adım 4, bugün §4.3 madde 4 "Skill'ler", main `da6874d6` + `a80f687a`): her oturum brainstorming, systematic-debugging, test-driven-development, supabase-postgres-best-practices, receiving-code-review ve verification-before-completion'ı kendi yargısıyla açar; ölçü §11.5 (sonucu değiştirecekse açılır; belli, kanıtlanmış ya da küçük işte açılmaz), raporda tek satır. Mert: "Overengineering yada gereksiz test/kanıtlanmış/obvious olan şeyler için zaman ve token waste etmesinler ama sadece senin onlara söylediğin dar senaryoları da beklemesinler." Reddedilen (koordinatör önermedi; süreçle çakışır): writing-plans, executing-plans, finishing-a-development-branch, gsd-*, frontend-design.
+- Kanıt (2026-10-02, sürekli yetki; CLAUDE.md §5, main `636b76ee`): koordinatör sormadan canlıya migration (MCP; ONAY + OPS-03 + yedek + doğrulama; gerçek veri silme hariç), oturum yönetimi, birleşmiş dal ve temiz worktree silme, yeni iş seçme yapar; `db reset`, canlıda gerçek veri silme, ücretli, gizli anahtar, yeni bağımlılık, force push yetki dışı. Mert: "…task bitiminde canlıya gönderme, migrationları uygulama, session'ı arşivleme/silme, yeni session başlatma vs gibi otomasyonunu durduracak şeyleri kendi başına yapabil." Koşuldaki "tek tek sorulur" bu listede kalktı.
 - Kanıt (2026-10-02, ~10:30Z, oturum yönetimi): Mert "Sessionlari silme, temizle ve kullan" dedi — işi biten oturum arşivlenmez, temizlenip havuza döner (KARARLAR OPS-07). Sürekli yetkideki "oturum yönetimi" arşiv değil temizleme demek.
+- Kanıt (2026-10-07, CLAUDE.md yeniden yazımı): Mert önce "her gönderim koordinatör izniyle" seçti (önerilen), aynı turdaki değerlendirmede Claude çift kapıyı (izin + ağır koşu kilidi) yanlış bulduğunu söyledi; Mert "R0–R2 kilitle, R3 ve canlı DB izinle" seçti. Havuzda 2'den fazla boş oturum varsa fazlası arşivlenir (OPS-07 eki).
 
 **P16. Geliştirici araç kuralları orta serttir.**
 - Kural: yeni lint, hook ya da denetim önce uyarı modunda gelir. Bypass edilirse ayrıntılı log

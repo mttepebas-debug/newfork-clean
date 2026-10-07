@@ -33,5 +33,5 @@ or `status` — `take`/`release` exit 1 on conflict instead of overwriting. Cove
 
 ## Plan
 
-Current plan, tasks and backlog live in [`docs/plan/`](docs/plan/ROADMAP.md).
+Working rules: [`CLAUDE.md`](CLAUDE.md). Current plan: [`docs/plan/EKRAN-PLANI.md`](docs/plan/EKRAN-PLANI.md); tasks and backlog live in `docs/plan/`.
 `docs/archive/rebuild/` is historical reference only.

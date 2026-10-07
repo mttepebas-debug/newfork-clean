@@ -5,7 +5,7 @@ metadata:
   type: feedback
 ---
 
-Bir diff kırmızı bir pgTAP testini yeşile çekmek için kurguyu (tarih, kişi, sıra) değiştiriyorsa, yalnız değişen satıra değil, aynı kurguya dayanan komşu kontrollere de bak. Kurgu değişince "X de geri alındı (sayı 0)" gibi bir kontrol, X hiç oluşmadığı için artık her durumda geçebilir. Metin aynı kalır, beklenti fiilen gevşer (CLAUDE.md §9).
+Bir diff kırmızı bir pgTAP testini yeşile çekmek için kurguyu (tarih, kişi, sıra) değiştiriyorsa, yalnız değişen satıra değil, aynı kurguya dayanan komşu kontrollere de bak. Kurgu değişince "X de geri alındı (sayı 0)" gibi bir kontrol, X hiç oluşmadığı için artık her durumda geçebilir. Metin aynı kalır, beklenti fiilen gevşer (CLAUDE.md §2.A).
 
 **Why:** FB-6.1.11 (2026-09-26, `9788fc3`): `weekly_schedule_batch` testinde çakışan aynı gün iki atama 23514 verdiği için ilk öğe çakışmasız bir güne (2035-01-16) taşındı. O gün kabul (override) oluşturmadığından "first acceptance also rolls back" (override sayısı 0) kontrolü boşa düştü. Dosyanın kendi sonraki kontrolü ("only the unavailable shift has acceptance" = 1) bunu kanıtlıyordu. Yazar "hiçbir beklenti gevşetilmedi" demişti.
 

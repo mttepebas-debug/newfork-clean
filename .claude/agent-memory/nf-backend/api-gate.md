@@ -7,7 +7,7 @@ metadata:
 
 `resolveActor(authorization, workspaceId | null, resolver)` and `authorize(ctx, action)` live in `apps/api/src/auth/workspace-context.ts` since FB-6.1 .3 (2026-09-25). resolveActor throws 404 `authz.not_member` (no token, no resolver, non-uuid id, null context, other workspace: same answer); authorize reads only `ctx.actions` (app_private.actor_actions) and throws 403 `authz.out_of_scope`, `detail` = action. Schedule routes were the first user; other areas still have route-local gates (33 definitions in the plan's count).
 
-**Why:** CLAUDE.md §9 forbids route-local gates; FOUNDATION-B 4c/Aşama 6 moves each area onto this pair in its own slice.
+**Why:** CLAUDE.md §2.A forbids route-local gates; FOUNDATION-B 4c/Aşama 6 moves each area onto this pair in its own slice.
 
 **How to apply:**
 - Gate is the handler's FIRST statement (before zod), so a non-member learns nothing about the schema and the per-route test needs no valid bodies. Pattern: `const context = authorize(await workspaceActor(request, options), "schedule.edit");`.

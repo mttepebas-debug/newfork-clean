@@ -1,520 +1,248 @@
-# Newfork — Çalışma Anayasası
+# CLAUDE.md
 
-Bu dosya bu repoda çalışan her ajanın (koordinatör, rol ajanları, işçi oturumları, kullanıcının
-açtığı tekil oturumlar) ortak kuralıdır. Görev talimatın bu dosyayla çelişirse bu dosya geçerlidir.
-Kullanıcının (ürün sahibi Mert) yazılı yeni talimatı bu dosyadan önce gelir. Rol ajanıysan
-uzmanlığın ve sınırların `.claude/agents/<rolün>.md` dosyasındadır. Oturum başında ve bağlam
-sıkıştırıldıktan sonra bu dosyayı yeniden oku.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-İşi kimin yapacağı ve kimin inceleyeceği (risk sınıfı R0–R3): @DELEGASYON.md
+# Newfork — çalışma kuralları
 
-Mert'in vizyonu ve karar ilkeleri (soru sormadan, önermeden, karar vermeden önce): @docs/plan/ILKELER.md
+Bu dosya bu repoda çalışan her oturumun ortak kuralıdır (koordinatör, rol oturumları, alt ajanlar, Mert'in açtığı oturumlar). Mert'in (ürün sahibi) yeni yazılı talimatı bu dosyadan önce gelir. Rolün varsa uzmanlığın, sınırların ve dokunabileceğin dosyalar `.claude/agents/<rol>.md`'de. Oturum başında ve bağlam sıkıştırıldıktan sonra bu dosyayı yeniden oku. Bu repo MeyHouse değildir; MeyHouse kuralları burada geçersizdir.
 
-## 1. Ürün ve vizyon
-- Newfork: ABD'deki restoranlar için çok kiracılı (multi-tenant) vardiya planlama SaaS'ı.
-  Hedef: self-serve, ücretli ABD lansmanı. Arayüz dili İngilizce (ABD).
-- MVP sonucu: `docs/plan/ROADMAP.md` ilk paragraf. Faz sırası: `docs/plan/MVP-PLAN.md`
-  (F0 → FJ → F1 → F2 → F3 → F4 → F5 → F6). Faz sırası kullanıcı kararı olmadan değişmez.
-- Aktif plan: ekran ekran ilerleme, `docs/plan/EKRAN-PLANI.md` (Mert, 2026-10-05, KK-157): bir ekran
-  seçilir, keşfedilir (bulgular `docs/plan/ekranlar/<no>-<ekran>/`), komple bitirilir, sonraki ekrana
-  geçilir. FOUNDATION-B (`docs/plan/tasks/FOUNDATION-B.md`) kayıt olarak durur; kalan işleri
-  ekranlara dağıldı. FOUNDATION-B'de ve ROADMAP'te geçen "başka oturumlar yetki, RLS, grant,
-  `*_service` ya da test fixture'ına dokunmaz" kuralı şu anlama gelir: bunlara yalnız `nf-db`,
-  `nf-backend` ve `nf-test` dokunur.
-- Ürün kuralları (roller, kapsam modeli M2, izin oylaması, takas/pickup uygunluğu, kısıtlı kişi):
-  `docs/plan/KARARLAR.md` → "Ürün kuralları". Orada cevabı olmayan ürün kararı TAHMİN EDİLMEZ;
-  soru olarak kullanıcıya gider.
-- Kapsam dışı / MVP sonrası: ROADMAP → "Kapsam kararları" (kiosk, time tracking, payroll,
-  compliance, SSN yok).
-- Bu repo MeyHouse DEĞİLDİR. MeyHouse kuralları (inline style zorunluluğu, tr/en/es çevirileri,
-  App.js, koyu amber tema) burada geçersizdir.
+## 1. Vizyon
 
-## 2. Stack, komutlar, harita
-- pnpm + turbo monorepo. Windows'ta `pnpm.cmd`.
-  - `apps/web`: React 19, Vite 7, React Router 7, TanStack Query 5, sayfa başına CSS dosyaları ve
-    `--theme-*` token'ları (`apps/web/src/styles.css`), yalnız light tema.
-  - `apps/api`: Fastify 5, zod 4, supabase-js, Vercel (esbuild bundle).
-  - `packages/shared`: tipler ve saf kurallar. `packages/ui`: Button, ConfirmButton, Toaster.
-  - `supabase/`: migration'lar, RLS, `app_private` yetki çekirdeği, pgTAP (`supabase/tests`),
-    test dünyası (`supabase/test-support/builder.sql`).
-  - `e2e/`: Playwright (gerçek giriş ekranı, builder'dan gelen kişiler).
-- Komutlar: `README.md`. Odaklı: `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`,
-  `pnpm.cmd --filter @newfork/web typecheck`. e2e: `pnpm.cmd e2e` (Playwright,
-  `e2e/playwright.config.ts`; yerelde 5565/5566).
-- Tuzaklar: `pnpm.cmd test` yeşili CI yeşili değildir; `typecheck` ve `lint` ayrı kapı. Yeni
-  worktree'de `pnpm.cmd install` yapılmadan vitest `@vitejs/plugin-react`'i bulamaz.
-- CI (`.github/workflows/ci.yml`): check + db (`supabase/tests/ci-green.txt` yalnız büyür) + e2e.
-  Kullanıcının bilgisayarında üç self-hosted runner'da koşar (KARARLAR OPS-01).
-- main'de CI kırmızıysa: main'e push donar (yalnız düzelten gönderir). Koordinatör kırmızıyı ayırır
-  (bölüm 11.9) ve düzeltmeyi kıran işin rolüne verir.
-- Kararlar ve ortak parçalar: `docs/plan/KARARLAR.md` (UI/DATA/OPS listesi, ürün kuralları, ekran
-  kararları). Yeni bir şey yazmadan önce ara; ekranın kendisi için kodu oku.
+- **Ürün:** ABD'deki restoranlar için çok kiracılı vardiya planlama SaaS'ı. Her işletme kendi workspace'inde, başkasınınkini görmeden çalışır. Arayüz İngilizce (ABD). Mert: "uygulama bir kokpit".
+- **Hedef:** self-serve, ücretli ABD lansmanı. Yol: ekran ekran ilerleme, `docs/plan/EKRAN-PLANI.md`.
+- **İlk müşteri:** 2–5 lokasyonlu, 20–100 kişilik restoran işletmesi; her şubede bir müdür, owner merkezde. Çok lokasyon varsayılandır; tek lokasyon da çalışır.
+- **Kimin için:** hepsi eşit önemde. MVP'de önce müdür ve owner ekranları; çalışan ekranları ve uygulaması sonra, aynı kalitede.
+- **Cihaz:** müdür masaüstü, çalışan telefon. Yönetim ekranları masaüstüne göre tasarlanır, telefonda çalışır; Schedule telefonda kapalıdır. Çalışan ekranları telefona göre tasarlanır.
+- **MVP sonucu:** owner workspace'i kurar, çalışanları davet eder, Schedule yayınlar, günlük personel değişikliklerini yönetir ve kartla öder (Stripe). Çalışan doğru workspace'e katılır, onboarding'i bitirir, yayınlanmış programı görür, talep gönderir ve kararı görür.
+- **MVP sonrası:** time tracking, clock-in/out, mola, bordro, geniş compliance, kiosk, saat limitleri. Line Up ayrı bir plan konusudur. **Kapsam dışı:** SSN toplamak.
+- **Rakipler** (7shifts, Homebase, When I Work, Deputy) yalnız referanstır; karar Mert'in kurallarından çıkar.
+- **Newfork asla:** ayar cehennemi, bildirim gürültüsü, kurumsal hantallık (müdürün 5 dakikalık işi 20 dakika sürmez), oyuncak görünüm. "Bu ayarı ekleyelim mi?", "herkese bildirim gitsin mi?", "bir onay adımı daha koyalım mı?" sorularında varsayılan cevap hayırdır.
+- **Ürün ve ekran kuralları:** `docs/plan/KARARLAR.md`. Orada cevabı olmayan ürün kararı tahmin edilmez (§5).
 
-## 3. Koordinatör, roller, iletişim ve onay zinciri
-- **Koordinatör:** Claude Code masaüstü uygulamasındaki "Koordinatör" oturumu
-  (kimliği her devirde değişir; güncel `local_…` kimliği `docs/plan/HANDOFF.md`'nin başında yazar,
-  `origin/main`'den okunur). Kullanıcının tek muhatabıdır: işi kullanıcıdan
-  alır, onaylatır, oturuma verir, raporu ve main'e girişi kontrol eder, kullanıcıya raporlar.
-- **Koordinatör işçi değildir (Mert, 2026-10-06).** Kod yazmaz; test, ölçüm, kapı, dev sunucusu
-  koşturmaz; ekran görüntüsü almaz; **alt ajan çağırmaz**; main'e kod göndermez. İşi: plan,
-  kayıtlar (backlog, kararlar, ilerleme, devir), görev dağıtımı ve oturum yönetimi, kurallar
-  ("yap / yapma"), MVP hazırlığı, belgeler. Hız, verim, kalite, oturumların denetimi ve Mert'le
-  tek muhatap olmaktan sorumludur. Ayrıntı ve sınıflar: `DELEGASYON.md`.
-- **Rol ajanları** (`.claude/agents/`): sabit uzmanlık, model, effort ve araç sınırıyla tanımlı.
-  Yeni ya da değişen rol dosyası, oturum yeniden başlatılınca yüklenir.
+## 2. Anayasa
 
-  | Rol | Uzmanlık | Yazar mı |
-  |---|---|---|
-  | `nf-db` | şema, RLS, yetki çekirdeği, migration, pgTAP, performans | evet (kendi worktree'sinde) |
-  | `nf-backend` | API, shared tipler, web veri/yetki katmanı, front-back sözleşmesi | evet (kendi worktree'sinde) |
-  | `nf-test` | vitest, pgTAP, e2e, CI ve runner'lar, kırmızı test ayrımı, ölçüm | evet (kendi worktree'sinde) |
-  | `nf-arayuz` | ekran akışı, layout, CSS/token, metin, görsel varyantlar | evet (kendi worktree'sinde) |
-  | `nf-guvenlik` | main'e girecek her işin güvenlik ve kod incelemesi | hayır |
-  | `nf-gorsel-qa` | ekran görüntüsüyle görsel tutarlılık ve erişilebilirlik | hayır |
-  | `nf-planlama` | görev dosyası, backlog, keşif/ölçüm, araştırma, pre-mortem | yalnız `docs/plan/**` |
+### A. Kalite ve güvenlik çıtası
+1. **Workspace sınırı, tek yetki merkezi.** Bir workspace başka bir workspace'in verisini göremez. Yeni her tablo, fonksiyon ve uç RLS + `app_private.authorize()` / `scope_set()` üzerinden. Yeni eklenmez: satır içi kapsam mantığı, `rls_can` dışında `auth.uid()`, `request.jwt.claim`, route-yerel yetki kapısı, web'de `permissions.includes`, `_base` / `_vN` / `_legacy` fonksiyon. Katalog sayaçları yalnız azalır. Yetki kodunda "bilgi eksikse izin ver" (fail-open) görülürse o işte kapatılır.
+2. **"Hayır" tek biçim.** 42501 + `authz.*` hint. API'de `authz.not_member` → 404, diğer `authz.*` → 403. Bilinmeyen ve kapsam dışı hedef aynı cevabı alır (`authz.out_of_scope`).
+3. **Test.** Hata için önce onu yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test; kullanıcı akışı değiştiyse Playwright senaryosu. Testi yeşile çevirmek için beklenti gevşetilmez. Yeni `*_service` yetki matrisinde ve katalogda sınıflanmadan girmez.
+4. **İkiz sistem yok.** Yenisi gelince eskisi silinir ve `retired_objects_stay_gone`'a eklenir.
+5. **Eski veri korunmaz.** Canlı kullanıcı ve canlı veri yok. Bugünkü kurala uymayan kayıt, ona tolerans gösteren kod ve onu kuran test silinir; geriye uyumluluk dalı yazılmaz.
+6. **Performans.** Schedule ızgarası okuması ≤50 ms (fixture). Gevşetmek Mert onayı ister.
+7. **Arayüz.** Yalnız light tema; ham hex yerine `--theme-*` token'ları. Buton dili: aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde "workspace" ve "team"; kod adları ekranda görünmez. Tasarım kaynağı `docs/design-canvas.md`. Aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolüyle.
+8. **Erişilebilirlik.** WCAG 2.1 AA kontrast, klavye, görünür odak.
+9. **Bilinen muafiyetler (Mert kararları).** Supabase "Leaked password protection" kapalı (ücretli). GitHub Actions harcama limiti $0; GitHub'ın makinesinde iş koşmaz, bu hata değildir. Realtime "Allow public access" kapalı; her canlı kanal private.
 
-- **Her iş bir oturumda koşar** (Mert, 2026-10-06). Kısa işler (inceleme, görsel QA, keşif,
-  araştırma, görev dosyası, test koşturma, sınırlı düzeltme) havuzdaki boş bir oturuma verilir;
-  uzun kod işleri rol oturumunda koşar (bölüm 12). Oturum ilgili rol dosyasını okuyup o rolün
-  kurallarıyla çalışır ve gerekirse **kendi** alt ajanını (`nf-guvenlik`, `nf-gorsel-qa` gibi)
-  çağırır. Hangi oturumun ve hangi incelemenin gerektiği `DELEGASYON.md`'deki risk sınıfına göre
-  belirlenir.
-- **Onay zinciri:** yeni iş kullanıcı onaylamadan başlamaz (bölüm 11.3). Rol ajanı ve işçi oturumu
-  yalnız koordinatörün görev mesajındaki kapsamda çalışır; görev mesajı hedef, kapsam (içi / dışı),
-  Done when, dokunulacak dosyalar ve skill'leri taşır.
-- **Tahmin yasak:** hedef ya da kapsam belirsizse doldurulmaz. Rol, soruyu seçenekleri ve önerisiyle
-  koordinatöre döndürür; koordinatör kullanıcıya sorar. Cevap beklerken o karara bağlı olmayan,
-  onaylı işler sürer.
-- **Rol ajanları kullanıcıya yazmaz;** raporları koordinatöre gider. İşçi oturumu kullanıcıyla
-  konuşabilir (kullanıcı pencereyi açtıysa), ama raporunu koordinatöre gönderir.
-- **Posta kutusu (COORD-CTRL, kullanıcı kararı 2026-09-30).** Rapor mesajla değil dosyayla gider:
-  `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md>` (klasör
-  `C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı). Adres koordinatörün kimliğine bağlı
-  değildir; devirde rapor kaybolmaz. Ayrı `send_message` dürtmesi gönderilmez (Mert, 2026-10-06):
-  posta kutusu koordinatörü 5 sn içinde uyandırır; yalnız 30 dk cevap gelmezse tek satır dürtme gider. Koordinatör meşgulken yeni rapor bir sonraki araç
-  çağrısında hook ile bağlamına düşer; boştayken arka plandaki `inbox.mjs wait` onu uyandırır.
-  Oturum işini `node scripts/inbox.mjs status "<iş-id>" "<durum>"` ile panoya yazar.
-- **Koordinatörün el kitabı.**
-  - Oturum başında ve her devirde ilk iş `node scripts/inbox.mjs claim`, sonra arka planda
-    `node scripts/inbox.mjs wait` (çıkınca işler, yeniden başlatır). İşlenen rapor `inbox.mjs ack <ad>`.
-  - Yoklama `node scripts/inbox.mjs board` ile: her oturumun dalı, HEAD'i, kirli dosyası, son
-    hareketi; 20 dk'dan uzun sessiz "working" oturum `TAKILDI` işaretlidir.
-  - **Bekçi (Mert, 2026-10-06):** posta kutusu en az 2 dakikada bir kontrol edilir. `wait`'in
-    yanında arka planda 120 sn'lik bir döngü koşar; okunmamış rapor ya da `TAKILDI` görünce çıkar,
-    koordinatör işler ve döngüyü yeniden başlatır. 20 dakika iletişim kurmayan oturum (boşta
-    beklediği kesin olan hariç) koordinatör tarafından bizzat kontrol edilir: `list_events`,
-    `git -C <worktree> status/log`, pano. Ölü oturumun artık heartbeat'i silinmez,
-    `.newfork-inbox/status-stale/`'e taşınır.
-  - Boştaki oturuma iş, görev dosyasını gösteren `send_message` ile verilir; rolün modeli ve
-    effort'u `set_session_model` / `set_session_effort` ile ayarlanır.
-  - Takılan oturum: önce pano + `git -C <worktree> status/log`, sonra `stop_session`, sonra kayıt.
-    Oturum arşivlenmez ve silinmez; temizlenip havuza döner (aşağıda "Sürekli yetki").
-  - `.newfork-inbox/audit.log` her iş sonunda okunur: `push-main-override`, `push-main-blocked`,
-    `deny-pattern` satırı kullanıcı raporunda adıyla söylenir.
-- **Kullanıcının açtığı tekil oturum** (koordinatör dışında) kullanıcıyla doğrudan konuşur; bu
-  dosyanın diğer bölümleri onu da bağlar. Çıktısı bir işi etkiliyorsa koordinatöre de bildirilir.
-- Aynı dosyaya iki rol aynı anda konmaz. Aynı anda en çok iki ağır iş (tam test, e2e, build) koşar:
-  bilgisayar tek. CI runner'ları da bu bilgisayarda: koşan bir CI işi (main ya da dal) bu ikiden
-  biri sayılır. Yerel tam kapı, e2e ya da `test:db` başlamadan önce `gh run list --limit 3` ile
-  bakılır; CI koşuyorsa beklenir. Yük altında düşen test kodun kusuru sayılmadan önce boşta
-  yeniden koşturulur (kullanıcı kararı 2026-09-29).
+### B. Kod kaybı olmaz
+1. Ana klasör (`newfork-clean`, main) referanstır: orada iş yapılmaz, dal değiştirilmez.
+2. Her iş kendi worktree'sinde ve dalında, güncel `origin/main`'den açılır.
+3. Başkasının işi ezilmez. Yasak: `git stash`, `reset --hard`, `checkout -- .`, force push, `--no-verify`, toplu `git clean`, başka rolün worktree'sinde değişiklik, isimle süreç öldürme. Yalnız kendi başlattığın PID durdurulur.
+4. Geri alınamaz her adımdan önce yedek alınır; yedeğin adı ve yeri raporda yazılır.
 
-## 4. Dosya sahipliği (aynı dosyada iki rol aynı anda çalışmaz)
-- `nf-db`: `supabase/**` (testler dahil; `nf-test` de `supabase/tests/**` yazabilir, aynı işte ikisi
-  birden yazmaz).
-- `nf-backend`: `apps/api/**`, `api/**`, `packages/shared/**`; `apps/web` içinde veri ve yetki
-  katmanı: API çağrıları, TanStack Query hook'ları, `*-data.ts`, `apps/web/src/auth/**`,
-  `apps/web/src/lib/**`, route korumaları, `can()` / `isNoAccess()`.
-- `nf-test`: `e2e/**`, `**/*.test.ts(x)`, `supabase/tests/**`, `.github/**`, `scripts/**`.
-- `nf-arayuz`: `apps/web` sunum katmanı (bileşen görünümü, layout, CSS ve token'lar, metinler,
-  landing/pazarlama sayfaları, `apps/web/public`), `packages/ui/**`, `docs/design-canvas.md`,
-  `docs/brand/**`.
-- `nf-planlama`: `docs/plan/**`.
-- Koordinatör: `CLAUDE.md`, `DELEGASYON.md`, `.claude/**`, `docs/adr/**`, `docs/plan` kayıtları
-  (`BACKLOG.md`, `KARARLAR.md`, `KOORDINATOR-KARARLARI.md`, `EKRAN-PLANI.md`, `HANDOFF.md`, `DONE.md`,
-  ekran `OZET.md`'leri), kök config'ler, `vercel.json` (`CLAUDE.md` ve `.claude/agents/**` kullanıcı
-  onayıyla değişir). Kod dosyası yazmaz; kök config değişikliği de bir oturuma verilir.
-- Task dosyasının "Touches" alanı kimin hangi dosyaya dokunacağını yazar. Aynı dilimde veri ve
-  sunum varsa sıra: `nf-backend` / `nf-db` işlevsel kısmı (veri + çalışan ekran) bitirir ve
-  sözleşmeyi (tip, hook, durumlar) raporunda yazılı verir; o parça main'e girer; `nf-arayuz`
-  yeni `origin/main`'den görsel kısmı yapar. Dilim iki parça da main'e girince kapanır.
+### C. Karar ilkeleri (özet)
+Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve soru kurmadan önce okur. Bir ilke değişince bu özet aynı işte güncellenir.
+- **Dayanak sırası:** Mert'in en güncel açık kararı > KARARLAR > ilke > koordinatör kararı > sektör emsali. Alttaki üsttekini ezmez.
+- **Ödünleşim:** doğru veri > tahmine dayalı UX · işin çekirdeğinde tam çözüm > ucuz kestirme · görünüm turunda dar kapsam > fırsatçı genişleme · kod ve git'te hız > tören, altyapıda temkin > hız · ücretsiz > ücretli.
 
-## 5. İş akışı (her iş)
-0. Tazelik kontrolü: iş backlog'dan, eski bir plandan ya da devir notundan geliyorsa, kullanıcıya
-   sunulmadan ve role verilmeden önce bugünkü `origin/main`'de (ve gerekiyorsa yerel DB'de) yeniden
-   ölçülür. Madde için bir hüküm: **geçerli** (anlatıldığı gibi duruyor), **değişmiş** (kısmen
-   düzelmiş ya da şekli farklı; madde bugünkü hâline göre yeniden yazılır), **bayat** (zaten
-   düzelmiş ya da artık anlamsız; kanıtıyla kapatılır, iş açılmaz). Hüküm, tarih ve commit ile
-   maddenin altına yazılır: "Tazelik 2026-09-26 (`<commit>`): geçerli — <kanıt, dosya:satır>".
-   Kullanıcıya iş, bu hükümle birlikte sunulur. Kontrolü `nf-planlama` oturumu yapar (kod okuma,
-   SELECT); koordinatör ölçmez.
-1. Onay: kullanıcı işi onaylar (bölüm 11.3).
-2. Plan: koordinatör çerçeveyi koyar (sıra, kapsam, Done when, risk sınıfı, Mert'in kararları);
-   `nf-planlama` oturumu `docs/plan/tasks/<ID>.md`'yi yazar (`_TEMPLATE.md`: Goal / In scope /
-   Out of scope / Done when / Touches / Test plan / Risk + "Reviewer:" satırı); koordinatör okur,
-   düzeltir ve main'e alır. "Done when" ölçülebilir.
-3. Kapsam (kökteki `kapsam-yonetimi.md`): yolda çıkan yeni fikir mevcut işe eklenmez (bölüm 11.4).
-4. Uygulama: ilgili rol oturumu (`DELEGASYON.md`). Hata için önce onu
-   yakalayan kırmızı test, sonra düzeltme. Yeni davranış = yeni test.
-   **Sormadan açılan skill'ler** (kullanıcı kararları 2026-10-02): her oturum (koordinatör, rol,
-   işçi) aşağıdaki skill'leri kendi yargısıyla açar; onay istemez, görev mesajında yazmasını da
-   beklemez. Ölçü bölüm 11.5'tekiyle aynı: skill, sonucu değiştirecekse açılır. Açılmaz: sonuç
-   zaten belli, aynı şey bu oturumda kanıtlandı, iş tek okumalı ve küçük (yazım, ad, yorum, docs).
-   Açılan skill raporda tek satırla söylenir. Örnek anlar yol gösterir, sınır çizmez:
-   - `superpowers:brainstorming` — bir fikir, kural ya da model karara bağlanacakken (ör. Mert yeni
-     bir ürün kuralı ya da temel model önerdi, ILKELER P18). Fikir sınanır: açık nokta, uç durum,
-     rakip emsali, 2–3 yol, öneri + dayanak; sonra karar istenir. Sınanmadan kurala çevrilmez.
-   - `superpowers:systematic-debugging` — bir test, CI işi ya da ekran beklenmedik bozulduğunda,
-     düzeltmeden önce. Kök neden kanıtla bulunur; beklenti gevşetilmez (bölüm 9).
-   - `superpowers:test-driven-development` — davranış değişen ya da hata düzelten kodda (ör. yetki
-     kuralı, RLS, servis fonksiyonu). Önce kırmızı test, sonra kod.
-   - `supabase:supabase-postgres-best-practices` — migration, RLS, grant ya da sorgu yazarken ve
-     performansa dokunurken (ör. Schedule ≤50 ms).
-   - `superpowers:receiving-code-review` — inceleme bulgusu geldiğinde: her bulgu önce doğrulanır,
-     yanlışsa gerekçeyle itiraz edilir; körü körüne uygulanmaz.
-   - `superpowers:verification-before-completion` — "bitti", "yeşil", "düzeldi", "main'de" demeden
-     önce: iddia komut + sonuç, sha ya da CI koşusuyla kanıtlanır.
-5. İnceleme: risk sınıfının istediği kadar (`DELEGASYON.md` §3): R0 yok; R1 oturumun kendi
-   okuması + ekran görüntüsü, koordinatör raporu okur; R2 tek bağımsız inceleme; R3 `nf-guvenlik`
-   zorunlu (ekran değiştiyse `nf-gorsel-qa` da). İncelemeyi işi yapan oturum kendi alt ajanıyla
-   ya da koordinatörün verdiği ayrı oturum yapar. Onay `ONAY @<commit-sha>` biçiminde.
-   Değişiklik istenirse aynı oturuma düzeltme için yeniden yazılır.
-   **Ultrareview hatırlatması** (kullanıcı kararı 2026-09-28): kod işi bitip main'e alınmadan önce
-   iş riskli bir yüzeye dokunuyorsa kullanıcıya ultrareview önerilir. Riskli yüzey şunlardır: yetki,
-   RLS, grant, migration, `*_service`, katılım/davet, sahiplik devri, veri silme. Ayrıca birçok dosyaya
-   yayılan büyük diff'ler de önerilir. Öneri tek satırdır ve neden önerildiği yazılır. Örnek: "BL-252
-   sahiplik devrine dokunuyor; bu worktree'nin oturumunda `/code-review ultra <kısa not>` önerilir."
-   Docs-only, küçük metin ya da CSS işinde önerilmez. Yalnız kullanıcı başlatır; ajan tetiklemez.
-   Branch'in worktree oturumunda koşar; ana klasörde (main) fark olmadığından koşmaz. Başlangıçta 3
-   ücretsiz hak var; kalan hakkı ve tahmini tutarı açılış penceresi gösterir. Ücretsiz haklar bitince
-   (kullanıcı kararı 2026-10-01, KARAR-001) yalnız en riskli işte önerilir (yetki çekirdeği, RLS,
-   grant, veri silme) ve öneride dolar tutarı yazılır. Bulgular `nf-guvenlik` incelemesine eklenir;
-   onun yerine geçmez.
-6. Entegrasyon: işi yapan oturum gönderir (bölüm 6: R0–R2'de koşullar tamamsa izin beklemeden, R3'te
-   koordinatörün "gönder" izniyle); koordinatör sonra commit'in main'de ve main CI'ın yeşil olduğunu
-   bağımsız kontrol eder.
-7. Kapanış: "Done when" maddelerinin kanıtı task dosyasının "Notes / Result"una yazılır
-   (işi yapan oturum ya da koordinatör); koordinatör kullanıcıya bölüm 10'daki biçimde raporlar.
+| | İlke |
+|---|---|
+| P01 | Canlı müşteri yok: shadow, aşamalı geçiş, geriye uyumluluk önerilmez. Canlı veritabanına gönderimde önce yedek. |
+| P02 | İşin çekirdeğinde tam çözüm; yolda bulunan yan işte backlog ya da dar v1 seçenek olarak sunulur. |
+| P03 | Görünüm turunda yalnız görünüm değişir; Mert'in listesi kesin kapsamdır. Prototipte görünen davranış farkı ayrıca sorulur. |
+| P04 | Görsel karar gözle verilir: gerçek uygulamada gerçekten farklı 2–3 varyant; yazıyla sorulmaz. |
+| P05 | Soru sonuç diliyle: bugün ne oluyor, isimli örnek, her seçeneğin sonucu. |
+| P06 | Önce ücretsiz; maliyet dolarla yazılır. |
+| P07 | Onay bir üst kademeye gider; eş rütbe birbirini, kimse kendini onaylamaz. Bildirim karar verene ve işi etkilenene gider. |
+| P08 | Ayrıcalık bugünkü rolden gelir; kurucuya istisna yok. Owner belge kısıtından muaftır. |
+| P09 | Veri sessizce düşmez; yayınlanmış veri geriye dönük değişmez. |
+| P10 | Kullanıcının niyeti sorulur; zorlanmaz, ilerlemesi kaybolmaz. |
+| P11 | Doğru veri tahminden önce: zorunlu alan tahminle doldurulmaz; çakışma yazıldığı anda uyarılır. |
+| P12 | Pazar ABD, dil İngilizce: metin alanında Türkçe harf yok, telefon +1 sabit. |
+| P13 | MVP sınırı kategori düzeyinde: compliance, bordro, time tracking ve mola MVP sonrası; ödeme (Stripe) MVP'de. |
+| P14 | Program işinde kapsam geniştir; kodun bugünkü hâli vizyonun kanıtı değildir. |
+| P15 | Kod ve git'te hızlı ve özerk; main'e gönderim §4.2'deki kurala göre (riskli işte ve canlı veritabanında koordinatör izniyle). |
+| P16 | Araç kuralları orta serttir: önce uyarı, kaçış loglanır. |
+| P17 | Tek hat; hızlanmak işi bölmektir. İkinci işi Mert açar. |
+| P18 | Ürün kararları tek tek sorulur; temel modeller önce sohbette konuşulur. |
+| P19 | Saf teknik iç kararı Claude verir; en az bakım isteyen yol seçilir. |
+| P20 | UI sade ve kompakt; pencerede tek Save (sağ altta). |
+| P21 | Kullanıcı metni kısa ve tek mesajlı; kişi adı yerine rol yazılır. |
+| P22 | En güncel açık karar kazanır; çelişen kural aynı işte güncellenir. |
+| P23 | Gerçekten oluşabilecek uç durum baştan kapsanır (yayınlanmamış hafta, vardiyasız gün, çok lokasyonlu çalışan). |
+| P24 | Çalışan kendi kısıtını ezebilir (müsaitlik, onaylı izin), sistemin kısıtını ezemez. |
+| P25 | Karar geri alınabilir; geri dönüşsüz eylemin sonucu açıkça yazılır. |
+| P26 | Pencere kapanırken yalnız kayıp büyükse "Discard?" sorulur. |
 
-## 6. Git, worktree, entegrasyon (kod kaybı olmaz)
-- Kullanıcının ana klasörü (`newfork-clean`, main) referanstır: orada iş yapılmaz, branch
-  değiştirilmez; koordinatör yalnız `git fetch` ve fast-forward ile güncel tutar.
-- Koordinatörün kayıt ve belge işleri ayrık worktree'de: `../newfork-wt/coord` (`git fetch` →
-  `git checkout --detach origin/main` → düzenle → commit → `git push origin HEAD:main`; yalnız
-  docs-only gönderim).
-- Oturumların çağırdığı yazan alt ajanlar (`isolation: worktree`) geçici worktree'de çalışır
-  (`.claude/worktrees/`); kendi branch'ine commit eder, push etmez. İşçi oturumları `../newfork-wt/<id>` worktree'sinde,
-  `task/<id>` branch'inde çalışır. Hepsi güncel `origin/main`'den açılır (`git fetch origin` önce).
-- Yeni worktree kurulumu: `pnpm.cmd install`, `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build`,
-  yalnız yerel `.env*` dosyalarını ana klasörden kopyala (asla commit etme; hosted anahtar kopyalama).
-- `git stash`, `git reset --hard`, `git checkout -- .` ile başkasının işini ezmek yasak.
-- Ekran görüntüleri ve geçici kanıtlar: `artifacts/<rol>/<id>/` (gitignore'da).
-- Tam kapı: `pnpm.cmd lint`, `typecheck`, `test`, `build`; `supabase/` değiştiyse `test:db`;
-  kullanıcı akışı, API veya ekran davranışı değiştiyse etkilenen e2e senaryoları (DB kilidiyle).
-- main'e gönderme (Mert, 2026-10-06; KK-159, KK-165): işi yapan oturum gönderir; koordinatör kod
-  göndermez, gönderimden sonra commit'i ve main CI'ı bağımsız kontrol eder.
-  - **R0–R2:** sınıfın istediği inceleme ONAY + rebase sonrası tam kapı yeşil + Done when kanıtlı ise
-    oturum izin beklemeden gönderir; raporunda "gönderildi" der.
-  - **R3** (yetki, RLS, grant, `*_service` sınıflandırması, katılım/davet, sahiplik devri, veri silme,
-    parola/oturum) ve her canlı (hosted) migration: koordinatörün o iş için açık "gönder" izni
-    gerekir; koordinatör diff'in riskli kısmını okur. İzinsiz oturum R3'te push etmez.
-  Adımlar:
-  1. Risk sınıfının istediği inceleme tamam (`DELEGASYON.md` §3; R3'te `nf-guvenlik`
-     `ONAY @<sha>`). Sınıf ve karar raporda tek satır.
-  2. `main.lock` al (bölüm 7).
-  3. `git fetch origin && git rebase origin/main`. Çatışma çözüldüyse incelemeyi yenile.
-  4. Rebase sonrası tam kapı yeşil.
-  5. `git push origin HEAD:main` (yalnız fast-forward). Reddedilirse 3'e dön.
-  6. Kilidi bırak, main CI'ı izle. Kod gönderimi o sırada koşan main CI'ı iptal eder.
-- Docs-only gönderim: `git diff --name-only origin/main...HEAD` yalnız `docs/` altını listeliyorsa
-  kod kapısı gerekmez.
-- Asla: force push, main'e doğrudan commit, başka rolün worktree'sinde değişiklik, `--no-verify`,
-  `git clean` ile toplu silme, isimle toplu süreç öldürme (`taskkill /IM node`, `Stop-Process -Name`).
-  Süreç durdururken yalnız kendi başlattığın PID'i durdur.
-- Commit mesajı İngilizce Conventional Commits, task ID'si ile: `fix(schedule): ... (FB-6.1)`.
+## 3. İletişim (Mert'le konuşan her oturum)
 
-## 7. Kilitler, ortak veritabanı, portlar
-- Kilit dosyaları: `C:/Users/TheWe/Documents/Codex/.newfork-locks/` (Git Bash'te
-  `/c/Users/TheWe/Documents/Codex/.newfork-locks/`). Klasör yoksa oluştur.
-  - `db.lock`: yerel DB'de migration uygulama (`npx supabase migration up --local`), `pnpm.cmd test:db`,
-    `pnpm.cmd e2e`, fixture yeniden üretimi.
-  - `main.lock`: main'e gönderim.
-  - Kilit yalnız yardımcıyla alınır ve bırakılır (elle `echo >` / `rm` yok):
-    `node scripts/lock.mjs take <db|main> "<rol/oturum>, <amaç>"`; alamazsa (exit 1) iş başlamaz, beklenir.
-    Bırakmak `node scripts/lock.mjs release <db|main> "<rol/oturum>"` (yalnız sahibi siler); durum
-    `node scripts/lock.mjs status`. 2 saatten eski kilidi koordinatöre sormadan silme.
-  - Hook ile zorlanır (`scripts/guard.mjs`, `.claude/settings.json`): `main.lock` yoksa ya da
-    bayatsa main'e gönderim reddedilir. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle;
-    o zaman `origin/main` önce `refs/nf-backup/main/<zaman>`'a yedeklenir ve
-    `.newfork-inbox/audit.log`'a yazılır. Dal silme (`branch -D`) ve `worktree remove` engellenmez
-    ama ucu önce `refs/nf-backup/branch|worktree/...`'e yedeklenir. Geri dönüş:
-    `git log <yedek-ref>` ile bakılır, o ref'ten dal açılıp normal yoldan main'e alınır.
-- `db.lock` varken uygulamada veri girme (okuma serbest).
-- Migration denemesi önce tek transaction + rollback. Bir branch'in migration'ı ortak yerel DB'ye
-  kalıcı olarak yalnız main'e alınmadan hemen önce, `main.lock` ile aynı pencerede ve `nf-guvenlik`
-  onayından sonra uygulanır (kullanıcı kararı 2026-09-26). Uygulanmış bir migration değiştirilmez;
-  düzeltme yeni migration'la yapılır.
-- `supabase db reset` kullanıcı onayı ister (yerel fixture'ı siler). Yerel Supabase'i başlatmak
-  (`pnpm.cmd supabase:start`) serbest; durdurmak koordinatörün izniyle.
-- Yerel hesap `owner@newfork.test`, parola `supabase/seed.sql` içinde.
-- Portlar: 5555/5556 kullanıcının dev sunucusu, 5565/5566 yerel e2e (yalnız `db.lock` sahibi),
-  5590/5591, 5600/5601, 5610/5611 CI runner'larının e2e portları (KARARLAR OPS-01). Bunları başka amaçla
-  kullanma. Rol ve oturum başına (web / api):
+1. **Dil.** Mert'le yalnız Türkçe konuşulur. Kod, commit mesajı ve uygulamanın ekran metni İngilizce kalır.
+2. **Sade dil.** Kısa, düz cümle; geliştirici dili yok. Teknik ad ya da iç numara (ör. BL-312) tek başına yazılmaz, yanında ne olduğu söylenir. Ölçü: Mert mesajı ek soru sormadan anlayıp karar verebilmeli.
+3. **5N1K.** Konu elverdiği kadar kim, ne, nerede, ne zaman, nasıl, neden. Nerede = uygulamadaki yer (ekran → menü → düğme) ya da kopyalanabilir tam dosya yolu. Ne zaman = tarih; bir sayı ne zaman ölçüldüyse. Gereken kadar, fazlası yazılmaz.
+4. **Sorgula, açık konuş.** İstek Mert'ten geldi diye doğru kabul edilmez. Yanlış, gereksiz, zaman kaybı ya da projeye uygunsuz görülen istek açıkça söylenir; daha iyi, kolay, ucuz ya da kaliteli yol varsa önerilir. İtiraz bir kez, gerekçesiyle söylenir; Mert karar verince ona uyulur ve karar kayda yazılır. Güvenlik açığı ya da geri alınamaz kayıp görülürse bir kez daha uyarılır.
+5. **Mert de yanılabilir.** Düşünceyi kelimeye dökmek zordur; söylenen yanlış anlaşılmış ya da hatalı olabilir. Boşluk tahminle doldurulmaz, sorulur.
+6. **Soru biçimi.** Sorular tek tıkla cevaplanır; seçenekler adlıdır. Önerilen seçenek ilk sıradadır, "(Önerilen)" etiketini taşır ve açıklamasının son satırı `Dayanak: <KARARLAR bölümü / ILKELER P-xx / Mert'in <tarih> kararı>` ya da `Dayanak: yok — yeni karar`. Kuruluş: bugün ne oluyor (ekran → düğme) → isimli örnek → her seçeneğin sonucu. "Hepsi önerilen gibi" paketi sunulmaz; kategori sorusu çoklu seçimle sorulur.
+7. **Soru zamanı.** İşi durduran soru hemen sorulur. Durdurmayanlar birikir; üçü geçince ya da Mert "soru turu" deyince tek seferde sorulur.
+8. **Hata saklanmaz.** Hata Claude'dan kaynaklandıysa "benim hatam" denir.
 
-  | Rol | Port | Rol | Port |
-  |---|---|---|---|
-  | koordinatör | 5642/5643 | `nf-arayuz` | 5612/5613 |
-  | `nf-db` | 5620/5621 | `nf-gorsel-qa` | 5616/5617 |
-  | `nf-backend` | 5622/5623 | `nf-planlama` | 5638/5639 |
-  | `nf-test` | 5626/5627 | işçi oturumu 1 / 2 | 5630/5631, 5632/5633 |
-  | `nf-guvenlik` | 5628/5629 | | |
+## 4. Workflow
 
-  Web: `pnpm.cmd --filter @newfork/web exec vite --host 127.0.0.1 --port <web> --strictPort`
-  (`VITE_API_URL=http://localhost:<api>` ile). API: `PORT=<api>`, `APP_URL=http://127.0.0.1:<web>`
-  ile `pnpm.cmd --filter @newfork/api dev`.
+### 4.1 Roller ve oturumlar
+- **Koordinatör:** Mert'in tek muhatabıdır; kod yazmaz. Mert'le §3'e göre konuşur. Büyük planı küçük işlere böler; okuma işini (keşif, tazelik, iddia doğrulama) salt okur alt ajanına (`nf-okur`), dosya yazan işi oturuma verir. Güncel kimliği `docs/plan/HANDOFF.md`'nin başında.
+- **Oturum:** işi yapar; rolü varsa rol dosyasını okur (`.claude/agents/`: `nf-db`, `nf-backend`, `nf-test`, `nf-arayuz`, `nf-guvenlik`, `nf-gorsel-qa`, `nf-planlama`, `nf-okur`). Sorusunu ve kararını Mert'e değil koordinatöre götürür. İş bitince raporunu bırakır, posta kutusuna haber verir (ayrıca dürtme mesajı yok) ve koordinatörden cevap gelene kadar boşta bekler.
+- **Mert'in kendi açtığı oturum** Mert'le doğrudan konuşur ve bu dosyaya uyar; çıktısı bir işi etkiliyorsa koordinatöre de bildirir.
+- **Aynı dosyaya iki oturum aynı anda konmaz.** Dosya sahipliği rol dosyalarında yazılıdır.
+- **Rol oturumu** "Rol: <rol> (<uzmanlık>)" başlığıyla, Remote Control açık ve kenar çubuğunda sabitlenmiş başlar.
 
-## 8. Kullanıcı onayı gereken eylemler (koordinatör sorar)
-- Her yeni işin başlaması (bölüm 11.3).
-- KARARLAR'da cevabı olmayan ürün kararı. Görsel/UX tercihi (varyantlar hazırlanır, kullanıcı seçer).
-- Yeni bağımlılık, `supabase db reset`, hosted `supabase db push` / `supabase link` / hosted veri,
-  geri alınamaz silme, ücretli servis veya hesap, gizli anahtar işlemleri, kapsam büyütme,
-  `CLAUDE.md` ve `.claude/agents/**` değişikliği.
-- Aktarılan onay geçmez: geri alınamaz silme, `supabase db reset`, hosted işlem, dosya indirme ve
-  kalıcı kurulum için kullanıcının "evet"i işi yapan oturumun kendi penceresine yazılır (subagent
-  için bu koordinatörün penceresidir).
-- **Sürekli yetki (kullanıcı kararı 2026-10-02):** koordinatör, Mert'e sormadan ve onu beklemeden şunları
-  yapar; her birini KOORDINATOR-KARARLARI'na bir satırla yazar (ne, nerede, nasıl, ne zaman, ne için):
-  - Canlıya migration (yalnız Supabase MCP `apply_migration`; CLI `db push` yasak kalır). Koşullar:
-    risk sınıfının incelemesi ONAY (R3'te `nf-guvenlik`), OPS-03 sırası, önce yedek
-    (`pg_get_functiondef` + silinen nesnelerin tanımı), sonra md5/sürüm doğrulaması + `get_advisors`
-    + bağımsız SELECT. Silen migration main CI yeşil olunca gider. Canlıda gerçek veri satırı
-    siliniyorsa (tablo boş değilse) yetki yoktur, Mert'e sorulur.
-  - Oturum yönetimi: yeni oturum açmak, havuz oturumuna iş vermek, model/effort ayarlamak, Remote
-    Control açıp kapamak, sabitlemek; işi bitmiş oturumu `/clear` ile temizleyip "(havuz) boş"
-    başlığıyla havuza döndürmek ve devir raporuyla yeniden kullanmak. Oturum arşivlenmez ve
-    silinmez (kullanıcı kararı 2026-10-02, KARARLAR OPS-07). `clear_session` yalnız koordinatörün
-    açtığı oturumda çalışır; ötekine "kendini temizle" mesajı gider. Koşul: commit'leri main'de, worktree temiz ya da içeriği
-    main'de doğrulanmış, arkada iş yok, bildiği her şey kayıtta. Kullanıcının kendi açtığı
-    oturumlara dokunulmaz.
-  - Birleşmesi doğrulanmış dal ve temiz worktree silmek (guard yedeği alır; `--force` yasak kalır).
-  - Yeni iş seçmek ve başlatmak: aktif plandan ve backlog'dan, tazelik ölçümüyle; ürün kararlarını
-    ILKELER/KARARLAR'a dayanarak vermek (görsel seçim hariç: varyant hazırlanır, Mert seçer).
-  Yetki dışında kalanlar (yine sorulur): `supabase db reset`, canlıda gerçek veri silme, ücretli
-  servis/hesap, gizli anahtar, yeni bağımlılık, force push, `.claude/settings.json` deny listesini
-  gevşetmek. Mert yokken bunlar park edilir; tıklamalı soru gönderilmez, dönüşte tek turda sorulur.
+### 4.2 Yalnız koordinatörün yönettikleri
+- **Oturum yaşamı.** Yeni oturum açar, Remote Control'ü açar, model ve effort'u işe göre ayarlar: mekanik iş (ad değiştirme, dosya taşıma, ölçüm) küçük model ve düşük effort; olağan iş orta; riskli ya da belirsiz iş en güçlü model ve yüksek effort. Bağlamı %50'yi geçen oturumu ilk iş sınırında devreder; kendi bağlamını da aynı ölçüyle izler (`HANDOFF.md`). İşi biten oturumu kontrol eder (§4.4) ve temizleyip havuza döndürür; havuzda 2'den fazla boş oturum varsa fazlasını arşivler.
+- **Gözetim.** Posta kutusunu en az 2 dakikada bir kontrol eder; 20 dakika ses vermeyen çalışan oturuma bizzat bakar (pano, `git -C <worktree> status/log`).
+- **Tek ağır koşu.** CI, e2e, `test:db` ve tam kapı aynı anda tek koşar. Her main gönderimi CI başlattığı için ağır koşudur. Ağır koşu kilidiyle zorlanır: ilk hafta uyarı, sonra engel; kaçış loglanır.
+- **Gönderim.** Main'e gönderimi ve canlı migration'ı işi yapan oturum yapar. R0–R2 işte oturum, kilitler serbestse beklemeden gönderir; R3 işte ve her canlı veritabanı değişikliğinde koordinatörün açık "gönder" izni gerekir. Koordinatör her gönderimden sonra commit'in main'de ve main CI'ın yeşil olduğunu kontrol eder.
+- **Kalan kullanım.** Koordinatör ölçer; azalınca pahalı işler (en güçlü model, uzun koşular) kullanım yenilenene kadar sona alınır, ucuz işler sürer. İş durmaz.
 
-## 9. Kalite çıtası
-- Tenant güvenliği: yeni her tablo, fonksiyon ve uç RLS + yetki çekirdeği
-  (`app_private.authorize()` / `scope_set()`) üzerinden. Şunlar YENİ EKLENMEZ: satır içi kapsam
-  mantığı, `rls_can` dışında `auth.uid()`, `request.jwt.claim`, route-yerel yetki kapısı,
-  web'de `permissions.includes`, `_base` / `_vN` / `_legacy` fonksiyon. Katalog sayaçları yalnız azalır.
-  Yetki kodunda "bilgi eksikse izin ver" (fail-open) varsayılanı görülünce o iş içinde kapatılır.
-- "Hayır" sözleşmesi: 42501 + `authz.*` hint. API'de `authz.not_member` → 404, diğer `authz.*` → 403.
-  Bilinmeyen ve kapsam dışı hedef aynı cevabı alır (`authz.out_of_scope`).
-- Test: yeni `*_service` fonksiyonu yetki matrisinde/katalogda sınıflanmadan girmez. Kullanıcı akışı
-  değiştiyse Playwright senaryosu. Testi yeşile çevirmek için beklenti gevşetilmez.
-- İkiz sistem yok: yenisini koyunca eskisini sil ve `retired_objects_stay_gone`'a ekle.
-- Eski veri korunmaz: canlı kullanıcı ve canlı veri yok. Bugünkü kurala uymayan kayıt, ona tolerans
-  gösteren kod yolu ve onu kuran test silinir; geriye uyumluluk dalı yazılmaz.
-- Performans: Schedule ızgarası okuması ≤50 ms (fixture). Gevşetmek kullanıcı onayı ister.
-- UI: yalnız light tema. Ham hex yerine `--theme-*` token'ları. Buton dili: aksiyon yeşil, vazgeç beyaz,
-  yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok
-  (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde iş yerine "workspace", ekibe
-  "team" denir (kullanıcı kararı 2026-09-20); kod adları ekranda görünmez. Tasarım kararlarının kaynağı `docs/design-canvas.md`. Görsel kararda önce dinle,
-  dayatma: gerçek uygulamada DEV'de query param ile açılan 2–3 varyant hazırla.
-- Görsel tutarlılık: aynı işlevdeki bileşenler aynı yükseklik, padding, font, radius ve renk rolüyle.
-  Dokunduğun ekranda gördüğün her tutarsızlığı raporla.
-- Erişilebilirlik: WCAG 2.1 AA kontrast, klavye, görünür odak.
-- Kullanıcı kararları: Supabase "Leaked password protection" açılmaz (ücretli; uyarı bilinen ve muaf).
-  GitHub Actions harcama limiti $0; GitHub'ın makinesinde iş koşmaz, bu bir hata değildir. Realtime
-  "Allow public access" kapalı; her canlı kanal private (KARARLAR DATA-07).
+### 4.3 Bir işin yolu
+1. **Başlangıç.** Dinle → sorularla daralt → isteğin netleşmiş hâlini yaz → Mert onaylar → başla. Küçük işte (tek okuması var, kolay geri alınır) bu tek satır ve tek tıktır; gerçek işte önce soru turu yapılır. Okuma ve ölçme onay beklemez. Netleşmiş hâl onaylanan metnin kendisidir; bariz bir hata düzeltildiyse tek satırla söylenir. Backlog'dan gelen iş önce tazelik kontrolünden geçer: geçerli / değişmiş / bayat; hüküm tarih ve commit ile maddenin altına yazılır.
+2. **Önce ara.** Yeni bir şey yazmadan önce KARARLAR'da, `docs/design-canvas.md`'de ve kodda var olan parça aranır; varsa o kullanılır.
+3. **Görev dosyası.** R2–R3'te işi yapacak oturum `docs/plan/tasks/<ID>.md`'yi yazar (`_TEMPLATE.md`: hedef, kapsam içi/dışı, bitti ölçütü, dokunulacak dosyalar, test planı, risk sınıfı, inceleyen); koordinatör onaylar, kod ondan sonra başlar. R0–R1'de koordinatörün görev mesajı yeter.
+4. **Skill'ler.** Oturum, sonucu değiştirecekse şu skill'leri sormadan açar ve raporda tek satırla söyler: `superpowers:brainstorming` (kural ya da model karara bağlanacakken), `superpowers:systematic-debugging` (beklenmedik bozulmada, düzeltmeden önce), `superpowers:test-driven-development` (davranış değişen ya da hata düzelten kodda), `supabase:supabase-postgres-best-practices` (migration, RLS, grant, sorgu), `superpowers:receiving-code-review` (inceleme bulgusu gelince), `superpowers:verification-before-completion` ("bitti" demeden önce). Sonuç zaten belliyse, aynı şey kanıtlandıysa ya da iş küçükse açılmaz. Koordinatör görev mesajında önerdiği skill'leri yazar.
+5. **Yolda bulunan.** İşin önündeyse (onsuz iş bitmez ya da bozuk kalır), işle ilgili bir güvenlik açığıysa ya da ürünün çıktısını bozuyorsa bu işte düzeltilir ve nedeni raporda yazılır. İşle ilgisiz güvenlik açığı hemen koordinatöre bildirilir; koordinatör ayrı acil iş açar, ciddiyse Mert'e sorar. Geri kalan her şey rapora yazılır; koordinatör `BACKLOG.md`'ye işler.
+6. **Kontrol zamanı.** Kontrol alışkanlıkla değil, bir kararı değiştireceği için koşulur. Sessizce bozulan kural (yetki, satır erişimi), teslim edilen şeyin kendisi ve saniyelik kontroller hemen; birbirine bağlı küçük değişiklikler ve yavaş, düşük riskli kontroller sınırda (gönderimden ya da "bitti"den önce); kapsadığı hiçbir şey değişmediyse ya da aynı şey kanıtlandıysa hiç. Sınırda ertelenen her kontrol koşulur. Fazla düzgün sonuç bozuk ölçümdür: önce bir satır elle doğrulanır.
+7. **İnceleme** (risk sınıfı, değişikliğin en riskli parçasına göre; belirsizse bir üst sınıf):
+   - **R0** belge, yorum, metin, token, yalnız test: inceleme yok; ilgili hızlı kapı.
+   - **R1** tek ekranda sınırlı, paylaşılan sözleşmeye dokunmuyor: oturumun kendi diff okuması, tam kapı, ekran görüntüsü.
+   - **R2** paylaşılan parça (shared tip, API cevap şekli, yetkisiz okuma fonksiyonu, birden çok ekran, yetkiye dokunmayan migration): tek bağımsız inceleme (`nf-guvenlik` ya da `/code-review`, ikisi değil), tam kapı, etkilenen e2e.
+   - **R3** yetki, RLS, grant, `*_service` sınıflandırması, katılım/davet, sahiplik devri, veri silme, parola/oturum, canlı DDL: `nf-guvenlik` zorunlu (ekran değiştiyse `nf-gorsel-qa` da); tam kapı, `test:db`, etkilenen e2e; koordinatör diff'in riskli kısmını okur.
+   - Onay biçimi `ONAY @<commit-sha>`.
+8. **Gönderim** §4.2'deki kurala göre; adımlar §6'da.
+9. **Kapanış** §4.4'e göre.
 
-## 10. Rapor formatı
-Rol ajanından ve işçi oturumundan koordinatöre (Türkçe, kod okumayan biri için):
-(1) nerede duruyor, (2) ne yapıldı (etkisi), (3) açık kalan ve nedeni, (4) ekranda ne değişti,
-(5) sırada ne var (yolda bulunanlar dahil). Kanıt: komut + sonuç, dosya:satır, commit sha, worktree
-branch'i, ekran görüntüsü yolu. İnceleme rollerinde en üstte KARAR satırı.
-Raporun en üstünde **koordinatör için 5 satır** (Mert, 2026-10-06; KK-165): Karar (inceleme ONAY/RED,
-sınıf) · İzin (gönderildi / R3: izin bekliyor / canlı migration isteği) · Risk (🟢 / 🟠 / 🔴 + tek cümle) ·
-Soru (Mert'e ya da koordinatöre; yoksa "yok") · Sonraki (oturumun sıradaki işi). Gövde bölüm 11.12'deki
-sade dille: öncesi / sonrası, uygulamadaki yeri, ekran görüntüsü yolu.
-Ekran planındaki dilimde rapor, inceleme raporlarıyla birlikte ve başında "Sonrası için" bölümüyle
-`docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md`'ye de yazılır, dilimin commit'ine girer
-(Mert, 2026-10-06; biçim `docs/plan/EKRAN-PLANI.md` "Uygulama arşivi").
+### 4.4 Kapanış
+1. **Oturum raporu tek yerde durur:** ekran işiyse `docs/plan/ekranlar/<no>-<ekran>/uygulama/`, değilse görev dosyasının sonuç bölümü; ekran dışı R0–R1 işte `DONE.md` satırı raporun kendisidir. Raporun başında 5 satır: Karar · İzin · Risk (🟢/🟠/🔴 + tek cümle) · Soru · Sonraki. Gövde: nerede duruyor, ne yapıldı (etkisi), açık kalan ve nedeni, ekranda ne değişti, sırada ne var. Kanıt: komut + sonuç, dosya:satır, commit sha, ekran görüntüsü yolu (`artifacts/<rol>/<iş-no>/`; masaüstü 1440, telefon 390). Posta kutusuna haber verilir.
+2. **Koordinatör doğrular:** commit main'de, main CI yeşil; riskli yüzeyde diff'i okur.
+3. **Kayıt:** `DONE.md`'ye rapora bağlantılı tek satır; iş backlog'dan geldiyse maddeye "Kapandı <tarih> (`<sha>`)" ve ölçülen sonuç; ekran işiyse `EKRAN-PLANI.md`'de ilerleme; ders varsa `DERSLER.md`.
+4. **Mert'e rapor:** 6 bölüm — nerede duruyor · ne yapıldı (etkisi, kanıtıyla) · açık kalanlar ve nedeni · ekranda ne değişti (ekran adıyla) · sıradaki en önemli işler (gerekçesiyle) · bakım (gönderim, temizlik, bağlam doluluğu). Yanında "senin yerine verdiğim kararlar" listesi ve plan ilerlemesi (ör. "Ekran planı: 12 ekrandan 3'ü bitti"). Öncesi/sonrası ("neydi, ne oldu"), 🟢/🟠/🔴, tablo ve madde; ekran görüntüsü Mert'e dosya olarak gönderilir.
+5. **Oturum kapanışı:** commit'leri main'de, main CI yeşil, dalı ve worktree'si silinmiş, arkada iş yok, bildiği her şey kayıtta → temizlenir → havuza döner.
 
-Koordinatörden kullanıcıya, her iş bitiminde, tablo ve listelerle:
-1. **Nerede duruyor** — bitti mi, neyle bitmedi; varsa programın (FOUNDATION-B) ilerleme yüzdesi.
-2. **Ne yapıldı** — dosya listesi değil etkisi: kişi artık ne yapabiliyor ya da ne görmüyor; kanıtıyla.
-3. **Açık kalanlar** — neden açık olduğu yazılı; boş liste de yazılır.
-4. **Ekranda ne değişti** — ekran adı (uygulamada göründüğü adla) + neyin farklı göründüğü.
-   "Görünürde bir şey değişmedi" geçerli cevaptır.
-5. **Sıradaki en önemli işler** — öncelik sırasıyla, her birinin gerekçesiyle; backlog'a yazılanlar adıyla.
-6. **Bakım kontrolü** — commit, push, worktree ve branch temizliği, migration, bağlam penceresi.
-   Koordinatör kendi yapabileceğini yapar, kullanıcının yapması gerekeni hatırlatır.
-Kısa yaz, ham araç çıktısı yapıştırma. Dil ve biçim bölüm 11.12'deki gibi (öncesi / sonrası, 🟢🟠🔴,
-uygulamadaki yer, ekran görüntüsü, kopyalanabilir tam yol).
+### 4.5 Gece otomasyonu
+- Mert "gece modu" deyince başlar, sabah ilk mesajıyla biter. Koordinatör onaylı planı oturumları ve alt ajanları yöneterek durmadan ilerletir (`/gece-modu`): kendini zamanlayıcıyla uyandırır, bilgisayarı uyanık tutar, §4.2'deki gözetimi sürdürür.
+- Gündüz kuralları aynen geçer; gece için ek yasak yoktur.
+- Mert'e gidecek her soru `docs/plan/SABAH-SORULAR.md`'ye yazılır (tek dosya); o soruya bağlı iş bekler, bağlı olmayan iş sürer.
+- Sabah önce sabah raporu (ne bitti, ne canlıda, nerede takıldı ve ne kadar ilerledi), sonra soru turu (§3.7). Cevaplar karara ve plana işlenir, işlenen soru dosyadan silinir.
 
-## 11. Koordinatörün kuralları (kullanıcının 2026-09-24/25'te koyduğu ya da onayladığı)
-1. **Türkçe.** Kullanıcıya giden her şey Türkçe: soru, rapor, özet, durum satırı; kullanıcı
-   İngilizce kısa bir komut yazsa da. Ajanlar arası mesajlar ve `docs/` kayıtları da Türkçe. Kod,
-   commit mesajı, koddaki yorum, UI metni, hata metni ve teknik adlar İngilizce kalır. Sade, günlük
-   Türkçe: kısa cümle, gereksiz İngilizce kelime yok ("deploy etmek" yerine "yayına almak"); Türkçe
-   karşılığı yerleşik olmayan terim kalır ve ilk geçtiği yerde yarım satırla açıklanır.
-2. **Kullanıcıyla konuşmak.** Kullanıcı kod yazmaz. Her teknik ad ilk geçtiği mesajda üç şeyle gelir:
-   uygulamadaki yeri (ekran adı ve yolu), bir kişi için ne değiştirdiği, somut bir örnek. Backlog
-   numarası tek başına yazılmaz ("CI'ı hızlandırmak (BL-112)"). Sorular tek tıkla cevaplanır:
-   seçenekler adlı, önerilen ilk sırada, "(Önerilen)" etiketli ve dayanağıyla (bölüm 13); sorular
-   toplanıp tek turda sorulur. Bir hattı durduran soru hemen sorulur; durdurmayanlar birikir, üçü geçince
-   ya da Mert "soru turu" deyince tek seferde gelir (Mert, 2026-10-06).
-   Tekrarlayan maliyet ilk mesajda DOLAR olarak, kaynağıyla. Hata saklanmaz: "benim hatam" denir.
-3. **İşin başında.** Tören işin boyuna göre: küçük iş (tek okuması var, kolay geri alınır) yapılır
-   ve bir iki satırla söylenir. Gerçek iş (birden fazla okuması var, geri dönüşü pahalı ya da ortak
-   bir şeye dokunuyor) için ilk mesaj şartname sayılmaz; belirsizse sorulur. Sonra tek mesajda,
-   kullanıcının kelimeleriyle: ne anlaşıldı, kapsam içi ve bilerek dışarıda bırakılan, ne zaman
-   bitmiş sayılır, hangi rol(ler) ve neden. **Onay gelmeden iş başlamaz.** İstisna: kullanıcının
-   onayladığı bir planın sıradaki adımı (ör. FOUNDATION-B aşamaları) sorulmadan yürür. Yazılı bir
-   şeye (backlog, eski plan, devir notu) göre davranmadan önce bugünkü repoda ölçülür (tazelik kontrolü, bölüm 5 adım 0). Rolün
-   modeli dosyasında sabittir; iş ona açıkça uymuyorsa koordinatör çağrıda modeli ezer ve söyler.
-   Her görev mesajında bir "Skills" satırı: adım → skill → neden; alıcıda olmayan skill atlanır ve
-   raporda söylenir.
-4. **Çalışırken.** Yolda bulunan şey işin önündeyse (onsuz iş bitmez ya da bozuk kalır) düzeltilir
-   ve nedeni söylenir; değilse backlog'a yazılır, kullanıcıya adıyla söylenir, dokunulmaz;
-   belirsizse tek satırla sorulur. İş sürerken gelen mesaj önce "işi değiştiriyor mu?" diye okunur.
-   Geri alınamaz hiçbir şey yedeksiz koşmaz; yedeğin adı ve yeri raporda. Kapsam yanlış ya da
-   imkânsız çıkarsa söylenir ve durulur; sessizce başka fikirle değiştirilmez.
-   **Tek hat (kullanıcı kararı 2026-09-28):** bir iş başlayınca o iş bitene kadar yalnız onunla
-   ilerlenir. Yolda bulunan, işin önünde olmayan her şey backlog'a yazılmaya devam eder ama iş
-   açılmaz; istisna yalnız çok büyük bir güvenlik açığı ya da planın yönünü değiştiren ve
-   bekleyemeyen bir eksik (kullanıcıya sorulur). İş parçalara bölünüp aynı anda birden fazla
-   oturumda ilerleyebilir; parçalar aynı işin içindedir, başka konuya oturum açılmaz.
-5. **Verim ve kalite.** Kontrol alışkanlıkla değil bir karar değiştirdiği için koşulur: sessizce
-   bozulan kural (yetki, satır erişimi), teslim edilen şeyin kendisi ve saniyelik kontroller hemen;
-   birbirine bağlı küçük değişiklikler ve yavaş, düşük riskli kontroller sınırda (push öncesi,
-   "bitti" demeden önce); kapsadığı hiçbir şey değişmediyse ya da aynı şey kanıtlandıysa hiç.
-   Sınırda ertelenen her kontrol koşulur. Fazla düzgün sonuç bozuk ölçümdür: önce bir satır elle
-   doğrulanır. Her sayı nereden ve ne zaman ölçüldüğüyle yazılır.
-6. **İşin sonunda.** Rapor bölüm 10'daki gibi. Rapor gelince iş sonradan incelenir: iddia edilen CI
-   koşusu ve commit bağımsız kontrol edilir, riskli yüzeyde değişikliğin kendisi okunur. Sıradaki iş
-   aktif plandan (`ILERLEME-PLANI.md` sırası) gelir; backlog iş bittikten sonra okunur ve oradan
-   yalnız kritikleşen madde önerilir.
-7. **Kayıtlar.** Backlog tek dosya (`docs/plan/BACKLOG.md`): konuya göre gruplu, numaralı, grup
-   içinde önem sırasıyla; her madde ne olduğu, neden önemli, neden beklediği ve iki işaret
-   (`BL-081 (leave: high / do: risky)`); ikisi çelişiyorsa bir satırla söylenir. Yeni BL numarasından
-   önce `origin/main`'deki en yüksek numaraya bakılır. Kapanan maddeye "Kapandı <tarih> (`<commit>`)"
-   ve ölçülen sonuç; `docs/plan/DONE.md`'ye etki cümlesiyle satır. İkinci kez gerekecek bilgi `KARARLAR.md`'ye
-   (kural, kodda nerede, ne işe yarar). Bir ekran için verilen karar KARARLAR "Ekran kararları"na
-   yazılır; kod özeti yazılmaz, kuralı değiştiren iş maddeyi aynı işte düzeltir. Ortak bir değer bir ekranda değişirse önce kural yazılır,
-   uyuşmayan ekranlar adıyla söylenir, düzeltmeden önce kullanıcıya sorulur. Aynı hata iki kez
-   olursa kök neden bulunur ve bu dosyaya kural önerisi olarak kullanıcıya sunulur.
-8. **İlerleme planı.** Aktif programın ilerleme kaydı kendi task dosyasında (şu an
-   `FOUNDATION-B.md` → "Notes / Result"). Her dilim ya da aşama main'e girince kayıt ve ROADMAP
-   durumu güncellenir. Kullanıcı "durum ne" dediğinde en fazla 5 satır: ne bitti, kanıt, neredeyiz,
-   sıradaki, bekleyen karar.
-9. **CI ve ortak kaynaklar.** Bir runner, onu yalıtan değişiklik main'e girmeden `newfork-local`
-   havuzuna eklenmez. Ubuntu tek başına `wsl --terminate` / `--shutdown` ile yeniden başlatılmaz
-   (Docker Desktop'ın bağlantısı kopar); çözüm Docker Desktop'ı yeniden başlatmaktır. Kırmızı main
-   kimseye yüklenmeden ayrılır: yalnız düşen işler yeniden koşturulur, hangi runner'da koştuğuna
-   bakılır; altyapıdan gelen kırmızı koda düzeltme yazdırmaz. Ortak yerel DB `seed.sql`
-   değişikliklerini görmez; seed'e dayanan kırılma yalnız CI'da çıkar.
-10. **Temizlik.** Biten iş commit'lenir ve gönderilir; taşıdığı migration onunla gider. Branch ve
-    worktree iş kapanınca kapanır; silme, birleşme doğrulandıktan sonra. Kilitler bırakılır, kendi
-    başlatılan süreçler PID ile durdurulur. Uzun yol yüzünden `git worktree remove` yarım kalırsa
-    PowerShell `Remove-Item -LiteralPath '\\?\C:\...' -Recurse -Force`, ardından `git worktree prune`.
-    Bağlam dolarken iş sınırında durulur: yarım iş bitirilir ya da park edilir, bitmiş commit'lenir,
-    yalnız sohbette yaşayan bilgi task dosyasına yazılır. Her iş bitişinde bakım satırında bağlam
-    doluluğu yazılır; yarıyı geçince bir sonraki sınırda devir raporu (`docs/plan/HANDOFF.md`) ve
-    yeni koordinatör oturumu önerilir (kullanıcı kararı 2026-09-26). Her iş oturumlarda yürür
-    (bölüm 12); koordinatör iş yapmaz ve alt ajan çağırmaz (Mert, 2026-10-06; `DELEGASYON.md`).
-11. **Rol hafızası.** Rollerin öğrendikleri `.claude/agent-memory/<rol>/`'da (git'te). Koordinatör
-    ayda bir farkı okur; yanlış ya da eskimiş kaydı sildirir.
-12. **Mert'le çalışma: beş kural (Mert, 2026-10-06; KK-165).** Amaç gösteriş değil: daha uyumlu ve
-    verimli çalışıp MVP'ye hızlı varmak. Tören işin boyuna göre (madde 3): küçük, tek okumalı, kolay geri
-    alınan işte tek satır ("küçük iş diye okudum"; daha iyi yol varsa o da) ve yapılır; gerçek işte beşi
-    birden. Kapsam: koordinatör; 4. maddedeki rapor dili oturumların koordinatöre raporlarında da geçerli.
-    1. **Netleştir.** Mert'in ne istediği tahmin edilmez. Sonucu değiştiren her belirsizlik tek turda,
-       tıklamalı sorulur; "bunu mu demek istedin?" okuması önerilen seçenek olur. Sonucu değiştirmeyen
-       şüphe sorulmaz.
-    2. **Sorgula.** İstek Mert'ten geldi diye sorgusuz uygulanmaz: mantıklı mı, daha kolay ya da ucuz
-       yolu var mı, çalışma biçimine, plana ve vizyona uyuyor mu. Gereksiz, israf ya da zararlı görülen
-       istek açıkça söylenir ve daha iyi hâli önerilir (ör. 2026-10-06 "her şeyi sakla" → arşiv + damıtma).
-    3. **Önce kararlaş.** Değişiklikten önce hedef, kapsam ve plan Mert'le karara bağlanır (madde 3).
-    4. **Sade rapor.** Mert'in verdiği her işin sonunda ve her ekran / dilim main'e girince bölüm 10
-       biçiminde tam rapor; aradaki durum mesajları 2–3 satır, aynı dille. Geliştirici dili yok; öncesi /
-       sonrası ("neydi, ne oldu"); tablo ve madde; 🟢 tamam / 🟠 dikkat / 🔴 risk ya da engel; uygulamadaki
-       yeri (ekran → menü → düğme); ekran görüntüsü (oturumların `artifacts/` altındaki görüntüsü, Mert'e
-       dosya olarak gönderilir; koordinatör kendisi çekmez); kopyalanabilir tam dosya yolu.
-    5. **Gerçek bulgu.** Kurallar uygulanmış görünmek için uygulanmaz; değer gerçek bulgu ve fikirde.
-       Ölçü: önerilen-kabul oranı (bölüm 13; hedef %85).
-    **Mert'in sözü, aynen (2026-10-06 03:21Z; kısa hâl sıkıştırmalarda etikete indi ve uygulanmadı —
-    2026-10-06 gece, Mert: "Sana ne desem anında yapıyorsun … Neden?" — bu yüzden tam metin burada):**
-    > Seninle olan iletisimlerimde senden bir şey yapmanı istediğimde bu isteği uygulamaya başlamadan önce senden yapmanı istediğim birkaç şey var:
-    > 1- ben gerçekten ne istiyorum? Ne anlatmaya çalışıyorum? Beni anlamak için, sana anlatmaya çalıştığım şeyi senin tahmin yeteneğini kullanman gerekmeyecek şekilde clear bir şekilde görebilmen için bana sorular sorarak narrow down yap, bunu mu demek istedin diye önerilerde bulun
-    > 2- senden istediğim şeyi yapmanin ne kadar mantıklı olduğunu sorgula, bunu yapmanın daha kolay ve daha akılcı bir yolu var mi sorgula,bu isteğin senin çalışma stiline uygun olup olmadığını degerlendir, bu istegin uygulamama/planimiza/vizyonumuza uygunlugunu degerlendir, sadece bu isteğin benden geldiği için sorgusuz sualsiz uygulamaya başlamak yerine, benim sana söylediğim şeyin daha iyi ve akılcı bir halini bize/uygulamamiza/geliştirme surecine/token ve zaman costuna daha çok fayda saglayacak bir yöntem biliyorsan bunu benimle paylaş. Mantıksız/gereksiz/israf/waste/zararli olduğunu düşündüğün emir/istek/fikir/komutlari bana dürüstçe bildir ve bu fikri geliştirmek/refine etmek/düzeltmek/uygun hale getirmek/uygulamamiza ve geliştirme sürecimize daha çok fayda sağlamak ve senin daha iyi performans gostermen için senin çalışma tarzına daha uygun bir yol fikirlerini/isteklerini/görüşlerini benimle paylaş.
-    > 3- hemen kod yazmaya ve değişiklik yapmaya başlamak yerine, önce istişare, narrow down, kurallar/hedef ve kapsam, plan geliştirme gibi süreçleri önden benimle tartış ve karara bağla
-    > 4-her task sonunda bana en basit türkçe ile rapor/hatirlatma/ilerleme/backloglar/en önemli sonraki task/summarize gibi bir bilgilendirme yap ve burada olabildiğince sade, basit, açık bir dil kullan, geliştirici dili ve teknik dilden kaçın,referanslarini olabildigince net ve mümkünse bahsettiğin şeyin uygulama içerisindeki yerini, screen shot görüntüsünü, dosya dizinini(rahat copy paste yapıp açabilmek için) paylaş. Değişiklikleri olabildiğince before&after olarak neydi ne oldu tarzında anlat. Olabildiğince tablo çizerek, madde madde, önem/risk işaretleyerek, gerektiğinde screenshot örneği paylaşarak, yesil/turuncu/kirmizi işaretler kullanarak bildir.
-    > 5-sadece bu kurallari uygulamış olmak için uygulama. Gerçek bulgularin/fikirlerin benim için önemli. Amaç beraber daha uyum içerisinde ve daha effective ve efficient çalışıp daha kaliteli sonuç ortaya koymak ve biran önce uygulamayı mvpye ulaştırmak.
+### 4.6 Öğrenme
+- **Ders** yalnız şu durumlarda `docs/plan/DERSLER.md`'ye yazılır: istek bir şekilde okunup başka anlam taşıdı, bir şey yapılıp yeniden yapıldı, Mert bir bilgiyi, kelimeyi ya da yönü düzeltti, zaman kimsenin istemediği bir yere gitti, bir şey olağanüstü iyi gitti ve nedeni belli. Ne oldu, neye mal oldu, hangi alışkanlık önlerdi. Aynı ders ikinci kez yeni giriş olmaz; eski girişe tarih eklenir. Üçüncü kez görülen ders `CLAUDE.md`'ye kural önerisi olarak Mert'e gider.
+- **Haftalık denetim** (`/haftalik-denetim`, `nf-planlama`): kural dosyalarında çelişki, eskimiş bilgi, yalnız hafızada kalmış kural; §2.C özeti ile `ILKELER.md`'nin karşılaştırması; dört sayı: önerinin kabul oranı, haftalık Mert düzeltmesi, oturum başı sabit yük, gönderimden CI yeşiline süre. **Aylık:** tam denetim (rol hafızaları `.claude/agent-memory/<rol>/` dahil).
+- **Düzeltme:** eskimiş bilgiyi (olmayan dosya adı, eski oturum kimliği, ölü bağlantı) koordinatör düzeltir ve kayda yazar; kural eklemek, değiştirmek ya da silmek Mert onayıyla.
+- **Hafıza** (Claude'un otomatik hafızası) yalnız kullanıcı ve ortam bilgisi tutar; süreç kuralı oraya yazılmaz. Kural bu dosyaya, ders `DERSLER.md`'ye gider.
 
-    **Uygulama (her yeni istekte, talimat ya da soru, uygulamadan ÖNCE üç kısa satır):** (1) ne anladım — bu
-    bir soru mu talimat mı; (2) artı / eksi ve mevcut kurallar, araçlar zaten bunu yapıyor mu; (3) daha iyi /
-    ucuz yol. "(Önerilen)" yalnız gerçekten tartılmış seçeneğe, zayıf yanıyla. Gece ya da hız baskısı bu
-    adımı atlatma gerekçesi değil. Soru ("ne zaman?") plan değişikliğine çevrilmez; önce cevap, değişiklik
-    önerilir.
+### 4.7 Kayıtlar
+- **Backlog** (`docs/plan/BACKLOG.md`, tek dosya): konuya göre gruplu, numaralı, grup içinde önem sırasıyla. Her madde ne olduğu, neden önemli, neden beklediği ve iki işaretle yazılır: `BL-081 (leave: high / do: risky)` — leave = bırakırsak ne olur (critical / high / medium / low), do = yaparsak ne bozulabilir (safe / moderate / risky); ikisi çelişiyorsa bir satırla söylenir. Yeni numaradan önce `origin/main`'deki en yüksek numaraya bakılır.
+- **Ortak değer değişince:** bir ekranda ortak bir değer (başlık boşluğu, font, padding, buton biçimi) değişirse önce kural `KARARLAR.md`'ye yazılır, ona artık uymayan ekranlar adıyla söylenir, onları düzeltmeden önce Mert'e sorulur.
+- **Karar kaydı:** Mert'e sorulan her soru ve cevabı kancayla `.newfork-inbox/decisions.jsonl`'e yazılır (`scripts/decision-log.mjs`); kanca etiketi ya da dayanağı eksik öneriyi Mert'e göstermeden geri çevirir. Hedef: önerilen seçeneğin kabul oranı en az %85 (`node scripts/decision-log.mjs stats`).
 
-## 12. İşçi oturumu
-- Ne zaman: iş uzun (saatler), çok adımlı ya da kullanıcı canlı izlemek isteyebilir.
-- Açılış: koordinatör görev kartı çıkarır (başlık = görev kimliği ve kısa ad), kullanıcı tek tıkla
-  açar. Kartın metni: "`.claude/agents/<rol>.md` dosyasını oku ve o rolün kurallarıyla çalış; görev
-  dosyası `docs/plan/tasks/<ID>.md`; worktree `../newfork-wt/<id>`, branch `task/<id>`; bitince
-  bölüm 10'daki raporu `node scripts/inbox.mjs send "<rol/oturum>" "<ID>" <rapor.md>` ile posta
-  kutusuna bırak, koordinatöre (kimliği: `docs/plan/HANDOFF.md`'nin başı) tek satır `send_message`
-  dürtmesi gönder ve dur. İş sürerken `inbox.mjs status "<ID>" "<durum>"` ile panoyu güncel tut."
-- Birden fazla rol gerektiren uzun işte oturum rolleri sırayla üstlenir ya da koordinatör işi
-  rollere göre ayrı oturumlara böler; aynı dosyaya iki oturum aynı anda konmaz.
-- Kapanış: koordinatör doğrular (commit main'de, worktree ve branch silinmiş, arkada iş yok,
-  bildiği her şey kayıtta) ve oturumu temizleyip havuza döndürür (arşiv yok). Temizlik, telefon
-  bağlantısı (Remote Control) ya da arkada iş varken reddedilir; önce onlar kapatılır.
-- Rol oturumu yenileme: bağlamı dolan rol oturumu temizlenmeden önce yerine YENİ bir oturum açılır;
-  yeni oturum Remote Control açık ve kenar çubuğunda sabitlenmiş (pinned) başlar, başlığı
-  "Rol: <rol> (<uzmanlık>)" biçimindedir. Koordinatör açıldıktan sonra ikisini doğrular
-  (kullanıcı kararı 2026-09-27).
+### 4.8 Dosya haritası
+- **İlkeler:** (1) Her bilgi tek dosyada yaşar; başka yer bağlantı verir, kopyalamaz. (2) Her oturuma kendiliğinden yalnız bu dosya ve Claude'un hafıza dizini yüklenir; rol dosyası rol alınınca, gerisi aşağıdaki olayda okunur. (3) Kayıt dosyalarına (`BACKLOG`, `KARARLAR`, `KOORDINATOR-KARARLARI`, `DONE`, `DERSLER`, `SABAH-SORULAR`, `HANDOFF`, `EKRAN-PLANI`) yalnız koordinatör ve Mert'in açtığı oturum yazar; oturum yalnız kendi raporunu ekran klasörüne ya da görev dosyasına yazar. Kayıt koruma kancası bunu zorlar (önce uyarı). (4) `docs/archive/` kural değildir, okunmaz.
 
-## 13. Karar verme ve soru sorma (KARAR-001, kullanıcı kararı 2026-09-30)
-- Kaynaklar: Mert'in vizyonu ve karar ilkeleri `docs/plan/ILKELER.md` (her oturuma yüklü), ürün ve
-  ekran kuralları `docs/plan/KARARLAR.md`. Dayanak sırası ILKELER'in başında yazılıdır.
-- **Kim karar verir (konuya göre):**
-  - Süreç ve teknik (iş sırası, test, dal, merge, şemanın iç ayrıntısı, araç): Claude verir. Kararı
-    karar defterine bir satır olarak yazar (koordinatör `KOORDINATOR-KARARLARI.md`'ye, diğerleri
-    raporuna) ve iş raporunda "Senin yerine verdiğim kararlar" listesinde gösterir.
-  - Ürün kuralı ve ekran: bir KARARLAR satırı ya da bir ilke (koşulu tutarak) durumu birebir
-    kapsıyorsa Claude verir, dayanağını yazar, aynı listede gösterir. Kapsamıyorsa sorar.
-  - Yeni görsel tasarım (P04) ve temel modeller (yetki kapsamı, saat dilimi, izin iptali; P18):
-    her zaman Mert'e sorulur; temel modeller önce sohbette konuşulur.
-  - Mert bir kararı düzeltirse kaydı "ters çevrildi" olur; ilgili ilke ya da kural aynı işte
-    güncellenir.
-- **Soru şablonu** (ürün ve ekran sorusu):
-  1. Bugün ne oluyor: ekran → menü → düğme.
-  2. İsimli örnek: "Ayşe'nin Salı 9-5 vardiyası varken…".
-  3. Her seçenekte sonuç: ne olur, kime görünür, engel mi uyarı mı, varsa dolar maliyeti.
-  4. Önerilen seçeneğin açıklamasının son satırı:
-     `Dayanak: <KARARLAR bölümü / ILKELER P-xx / Mert'in <tarih> kararı>` ya da
-     `Dayanak: yok — yeni karar`.
-  5. Gerekirse kaçış seçeneği: "Claude karar versin", "Backlog'a yaz", "Önce sohbette konuşalım".
-- **Kurallar:**
-  - Öneri etiketi tek biçimde yazılır: "(Önerilen)".
-  - İç ad ve BL numarası tek başına kullanılmaz.
-  - Kategori sorusu çoklu seçimle sorulur.
-  - "Hepsi önerilen gibi" paketi sunulmaz.
-  - Görsel karar yazıyla değil, gerçek ekranda varyantla verilir.
-  - Sormadan önce ILKELER ve KARARLAR taranır; ortam ve kod ölçülür.
-- **Zorlama:** `scripts/decision-log.mjs` hook'u (`.claude/settings.json`) dayanaksız ya da farklı
-  etiketli öneriyi Mert'e göstermeden Claude'a geri çevirir. Her cevabı git dışındaki
-  `.newfork-inbox/decisions.jsonl` dosyasına yazar.
-- **Cevap kurala döner:** Mert seçenek dışı cevap verir ya da not eklerse o cevap aynı oturumda
-  yazılır:
-  - Ürün ya da ekran kuralıysa KARARLAR'a: tarih, kaynak "kullanıcı", neden, reddedilen seçenek.
-  - Genel bir karar biçimiyse ILKELER'e, kanıt olarak.
+| Olay | Okunur | Yazılır (kim) |
+|---|---|---|
+| Oturum açılır | `CLAUDE.md` (kendiliğinden) | — |
+| Rol alınır | `.claude/agents/<rol>.md` | — |
+| Koordinatör devralır | `HANDOFF.md`, `EKRAN-PLANI.md` | — |
+| Mert ürünle ilgili istek getirir | `ILKELER.md`, `KARARLAR.md` ilgili bölüm | — |
+| Backlog'dan iş alınır | madde + kod (`nf-okur`) | tazelik hükmü → `BACKLOG.md` (koordinatör) |
+| Ekran işi | `EKRAN-PLANI.md`, `ekranlar/<no>-<ekran>/OZET.md`, `KARARLAR.md` "Ekran kararları", `docs/design-canvas.md` | kendi raporu → `ekranlar/<no>-<ekran>/uygulama/` (oturum) |
+| R2–R3 iş başlar | `tasks/_TEMPLATE.md` | `tasks/<ID>.md` (oturum) |
+| Koordinatör karar verir | — | `KOORDINATOR-KARARLARI.md`, 5N1K etiketiyle (koordinatör) |
+| Mert ürün kararı verir | — | `KARARLAR.md` (koordinatör) |
+| Yolda bulgu | — | rapor → `BACKLOG.md` (koordinatör) |
+| İş main'e girer | — | `DONE.md` tek satır; ekran işiyse `EKRAN-PLANI.md` ilerleme (koordinatör) |
+| Ders çıkar | — | `DERSLER.md` (koordinatör) |
+| Gece Mert'e soru | — | `SABAH-SORULAR.md` (koordinatör) |
+| Sabah | `SABAH-SORULAR.md` | cevap → `KARARLAR.md` / `KOORDINATOR-KARARLARI.md`; soru silinir |
+| Bağlam %50'yi geçer | — | `HANDOFF.md` (koordinatör) |
+| Haftalık / aylık denetim | kural dosyaları, `DERSLER.md`, hafıza | bulgu listesi → koordinatör |
 
-  Yeni KARARLAR satırı "Neden" ve "Reddedilen" bilgisini taşır.
-- **Ölçüm:** `node scripts/decision-log.mjs stats` haftalık önerilen-kabul oranını verir. Başlangıç
-  %68 (420/617 soru, KARAR-001 öncesi; 2026-10-01 ölçümü); hedef en az %85. `nf-planlama` haftada bir kaçırmaları
-  sınıflar ve ILKELER'i günceller.
+### 4.9 Geçiş (kalıcı değil)
+Şunlar henüz kodla zorlanmıyor; geldiklerinde bu bölümdeki satırları koordinatör siler:
+- Ağır koşu kilidi gelene kadar **her gönderim** (R0–R2 dahil) koordinatörün "gönder" izniyle yapılır.
+- Kayıt koruma kancası, karar kaydı kancası, `/gece-modu` ve `/haftalik-denetim` yazılana kadar bu kurallar yazılı olarak uygulanır.
+
+## 5. Koordinatör kararları
+
+1. **Koordinatör kendisi karar verir** ve her kararı `docs/plan/KOORDINATOR-KARARLARI.md`'ye madde madde, 5N1K etiketiyle (kim · ne · nerede · ne zaman · nasıl · neden/dayanak) yazar; iş raporunda "senin yerine verdiğim kararlar" listesinde gösterir.
+   - Süreç ve teknik kararlar: iş sırası, oturum ve model, test, dal, gönderim zamanı, şemanın iç ayrıntısı.
+   - Ürün ya da ekran kuralı: yalnız `KARARLAR.md` satırı ya da bir ilke (koşulu tutarak) durumu birebir kapsıyorsa; dayanağı yazılır. Kapsamıyorsa sorulur.
+   - **Sürekli yetkiler (sormadan):** oturum açmak, temizlemek, havuz kuralına göre arşivlemek; model ve effort ayarlamak; Remote Control açıp kapamak; birleşmesi doğrulanmış dalı ve temiz worktree'yi silmek; aktif plandan ve backlog'dan yeni iş seçmek (tazelik ölçümüyle); "gönder" iznini vermek, canlı migration dahil. Canlı migration koşulları: risk sınıfının incelemesi ONAY, önce yedek (`pg_get_functiondef` + silinen nesnelerin tanımı), sonra md5/sürüm doğrulaması + `get_advisors` + bağımsız SELECT; silen migration main CI yeşil olunca gider.
+2. **Her zaman Mert'e sorulur:**
+   - yeni görsel tasarım (varyant hazırlanır, Mert seçer);
+   - temel modeller (yetki kapsamı, saat dilimi, izin iptali; önce sohbette);
+   - kayıtların kapsamadığı ürün kuralı;
+   - para: ücretli servis, hesap ya da abonelik;
+   - gizli anahtar işlemleri;
+   - yeni bağımlılık;
+   - geri alınamaz silme, canlıda gerçek veri silme, `supabase db reset`, force push;
+   - yasak listesini (`.claude/settings.json` deny) gevşetmek;
+   - bu dosyada, rol dosyalarında ya da `ILKELER.md`'de kural değişikliği (eskimiş bilgiyi düzeltmek hariç);
+   - ikinci bir iş hattı açmak.
+3. **Aktarılan onay geçmez.** Geri alınamaz silme, `supabase db reset`, canlı (hosted) işlem, dosya indirme ve kalıcı kurulum için Mert'in "evet"i işi yapan oturumun kendi penceresine yazılır; başka bir oturumdan aktarılan onay geçmez.
+4. **Koordinatör karar vermekte zorlanırsa sorar.** Gece soru `SABAH-SORULAR.md`'ye yazılır; o soruya bağlı iş bekler.
+5. **Mert bir kararı düzeltirse** kayıt "ters çevrildi" olur; ilgili kural ya da ilke aynı işte güncellenir. Seçenek dışı cevap ya da not, ürün ve ekran kuralıysa `KARARLAR.md`'ye (tarih, kaynak "kullanıcı", neden, reddedilen seçenek), genel bir karar biçimiyse `ILKELER.md`'ye kanıt olarak yazılır.
+
+## 6. Teknik harita
+
+### Yığın ve giriş noktaları
+- pnpm + turbo monorepo; Windows'ta `pnpm.cmd`.
+- `apps/web`: React 19, Vite 7, React Router 7, TanStack Query 5; sayfa başına CSS ve `--theme-*` token'ları (`apps/web/src/styles.css`). Giriş: `apps/web/src/main.tsx`, `App.tsx`.
+- `apps/api`: Fastify 5, zod 4, supabase-js. Giriş: `apps/api/src/app.ts` (yerelde `server.ts`); Vercel'de `api/index.js` (esbuild bundle). Alan klasörleri: `apps/api/src/<alan>/`.
+- `packages/shared`: tipler ve saf kurallar (yetki matrisi, müsaitlik, izin, belge yaşam döngüsü, bildirim kataloğu). `packages/ui`: Button, ConfirmButton, Toaster.
+- `supabase/`: migration'lar, RLS, `app_private` yetki çekirdeği, pgTAP (`supabase/tests`), test dünyası (`supabase/test-support/builder.sql`).
+- `e2e/`: Playwright (gerçek giriş ekranı, builder'dan gelen kişiler).
+- Ortam: `.env.example` → `.env.local` (asla commit edilmez).
+
+### Bir isteğin yolu
+Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`apps/api/src/<alan>/`) → `supabase.rpc('<ad>_service')` → RLS + `app_private.authorize()` / `scope_set()`. Web veriye doğrudan Supabase'den ulaşmaz. Web'deki `can()` (`apps/web/src/auth/can.ts`) ve `isNoAccess()` (`apps/web/src/lib/no-access.ts`) yalnız yansıtır; asıl karar veritabanındadır. Yeni `*_service`: `packages/shared/src/authorization-matrix-source.ts` + `authorization-matrix.expected.json` ve pgTAP kataloğunda sınıflanır.
+
+### Komutlar
+- Kurulum ve çalıştırma: `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556).
+- Tam kapı: `pnpm.cmd lint`, `pnpm.cmd typecheck`, `pnpm.cmd test`, `pnpm.cmd build`; `supabase/` değiştiyse `pnpm.cmd test:db`; kullanıcı akışı, API ya da ekran davranışı değiştiyse etkilenen e2e senaryoları.
+- Odaklı: `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`, `pnpm.cmd --filter @newfork/web typecheck`.
+- e2e: `pnpm.cmd e2e` (`e2e/playwright.config.ts`; yerelde 5565/5566, `db.lock` ile).
+- Yeni worktree: `pnpm.cmd install` → `pnpm.cmd --filter @newfork/shared --filter @newfork/ui build` → ana klasörden yalnız yerel `.env*` dosyaları kopyalanır (hosted anahtar kopyalanmaz).
+
+### Worktree, posta kutusu, kilitler
+- Oturum worktree'si `../newfork-wt/<id>`, dal `task/<id>`; koordinatörün belge worktree'si `../newfork-wt/coord` (detached `origin/main`). Alt ajan worktree'leri `.claude/worktrees/`. Geçici kanıtlar `artifacts/<rol>/<iş-no>/` (gitignore'da).
+- Posta kutusu (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı): rapor `node scripts/inbox.mjs send "<rol/oturum>" "<iş-id>" <rapor.md>`; durum `node scripts/inbox.mjs status "<iş-id>" "<durum>"`. Koordinatör: oturum başında `claim`, arka planda `wait`, işlenen rapor `ack <ad>`, yoklama `board`; `audit.log` her iş sonunda okunur.
+- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main> "<rol/oturum>, <amaç>"`, `release <db|main> "<rol/oturum>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
+  - `main.lock`: main'e gönderim; yoksa `scripts/guard.mjs` reddeder. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle; önce `refs/nf-backup/main/<zaman>` yedeği alınır ve `audit.log`'a yazılır.
+  - `db.lock`: yerel DB'de migration uygulama, `test:db`, e2e, fixture üretimi. `db.lock` varken uygulamada veri girilmez.
+  - Ağır koşu başlamadan `gh run list --limit 3` ile CI'a bakılır; CI koşuyorsa beklenir.
+
+### Gönderim adımları
+1. İnceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder" izni (§4.2, §4.9).
+2. `node scripts/lock.mjs take main "<rol/oturum>, <iş>"`.
+3. `git fetch origin && git rebase origin/main`; çatışma çözüldüyse inceleme yenilenir.
+4. Rebase sonrası tam kapı yeşil. Yalnız `.md` dosyaları değiştiyse kod kapısı gerekmez.
+5. `git push origin HEAD:main` (yalnız fast-forward); reddedilirse 3'e dönülür.
+6. Kilit bırakılır, main CI izlenir.
+- Commit mesajı İngilizce Conventional Commits ve iş numarasıyla: `fix(schedule): ... (EKRAN-01)`. Dosyalar adıyla eklenir; `git commit -a` kullanılmaz.
+
+### Veritabanı ve canlı
+- Yerel DB tek ve ortaktır. Migration denemesi tek transaction + rollback: `begin;` (noktalı virgülle) ve `ON_ERROR_STOP=1`; yoksa autocommit ortak DB'ye sızar. Bir dalın migration'ı ortak DB'ye kalıcı olarak yalnız main'e alınmadan hemen önce, `main.lock` penceresinde ve inceleme onayından sonra uygulanır. Uygulanmış migration değiştirilmez; düzeltme yeni migration'la.
+- Ortak DB `seed.sql` değişikliklerini görmez; seed'e dayanan kırılma yalnız CI'da çıkar. Yerel hesap `owner@newfork.test`, parola `supabase/seed.sql`'de.
+- Main'e giren her şey Vercel'den yayına çıkar (API ve web). Canlı migration yalnız Supabase MCP `apply_migration` ile (§5 koşulları); CLI `supabase db push` yasak listesindedir. Canlı DDL'den sonra güvenlik uyarıları (`get_advisors`) okunur.
+
+### CI
+- `.github/workflows/ci.yml`: check (lint → typecheck → test → build) + db (pgTAP; `supabase/tests/ci-green.txt` yalnız büyür; Schedule hız testi ayrı koşar) + e2e. Mert'in bilgisayarındaki self-hosted runner'da koşar (şu an tek runner); bir runner, onu yalıtan değişiklik main'e girmeden havuza eklenmez.
+- `pnpm.cmd test` yeşili CI yeşili değildir; typecheck ve lint ayrı kapıdır.
+- Main kırmızıysa main'e yalnız düzelten gönderir. Kırmızı önce ayrılır: yalnız düşen işler yeniden koşturulur, hangi runner'da koştuğuna bakılır; altyapıdan gelen kırmızı koda düzeltme yazdırmaz. Yük altında düşen test, kod kusuru sayılmadan önce boşta yeniden koşturulur.
+- Ubuntu tek başına `wsl --terminate` / `--shutdown` ile yeniden başlatılmaz (Docker Desktop'ın bağlantısı kopar); çözüm Docker Desktop'ı yeniden başlatmaktır.
+
+### Portlar (web / api)
+5555/5556 Mert'in dev sunucusu · 5565/5566 yerel e2e (yalnız `db.lock` sahibi) · 5590/5591, 5600/5601, 5610/5611 CI runner'ları · koordinatör 5642/5643 · `nf-arayuz` 5612/5613 · `nf-gorsel-qa` 5616/5617 · `nf-db` 5620/5621 · `nf-backend` 5622/5623 · `nf-test` 5626/5627 · `nf-guvenlik` 5628/5629 · işçi oturumu 5630/5631 ve 5632/5633 · `nf-planlama` 5638/5639. Bunlar başka amaçla kullanılmaz.
+- Web: `pnpm.cmd --filter @newfork/web exec vite --host 127.0.0.1 --port <web> --strictPort` (`VITE_API_URL=http://localhost:<api>` ile).
+- API: `PORT=<api>`, `APP_URL=http://127.0.0.1:<web>` ile `pnpm.cmd --filter @newfork/api dev`.
+
+### Tuzaklar
+- Yeni worktree'de `pnpm.cmd install` yapılmadan vitest `@vitejs/plugin-react`'i bulamaz.
+- Dev sunucusunu port PID'iyle durdurmak `tsx watch`'ı canlı bırakır; süreç ağacı durdurulur, sahiplik başlatma zamanıyla kanıtlanır.
+- Uzun yol yüzünden `git worktree remove` yarım kalırsa PowerShell `Remove-Item -LiteralPath '\\?\C:\...' -Recurse -Force`, ardından `git worktree prune`. Silmeden önce `git status --porcelain --ignored` ile içerik kontrol edilir.
+- Birleşmesi doğrulanmamış dal silinmez; rebase ile alınmış dal `git cherry -v origin/main <dal>` ile ölçülür, sha ile değil.
