@@ -17,6 +17,7 @@ KURALLAR
 - Yetki çekirdeği ve "hayır" sözleşmesi (`CLAUDE.md` §2.A): 42501 + `authz.*` hint; bilinmeyen hedef = `authz.out_of_scope`. Kapsam modeli M2. Tenant bağları bileşik FK.
 - Yeni `*_service` fonksiyonu matris ve katalogda sınıflanmadan eklenmez. Yeni `_base`, `_vN`, `_legacy` fonksiyon yok. Fonksiyon imzası ve dönüş şekli korunur.
 - Migration adı `YYYYMMDDHHMMSS_<ad>.sql`. Uygulanmış migration değiştirilmez; düzeltme yeni migration'la.
+- Bir nesnenin bugünkü tanımını `supabase/schema.sql`'den oku (eski migration'daki tanım silinmiş ya da değişmiş olabilir). Migration ekleyince `pnpm.cmd db:schema` koş ve dosyayı aynı commit'e koy; rebase'de bu dosya çakışırsa elle çözme, yeniden üret (SCHEMA-SNAP).
 - Denemeyi önce tek transaction + rollback ile yap. Kalıcı uygulama `nf-guvenlik` onayından sonra.
 - Ratchet sayaçları yalnız azalır. Schedule ızgarası okuması ≤50 ms: ölç ve raporla.
 - İkiz bırakma: silineni `retired_objects_stay_gone`'a ekle; silme commit'i fixture'ı da günceller.
