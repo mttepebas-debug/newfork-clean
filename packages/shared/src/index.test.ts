@@ -266,6 +266,7 @@ describe("workspace communication schemas", () => {
           pending_shift_change_count: 0,
           unread_notification_count: 0,
         },
+        today_ends_at: null,
         announcements: [],
         notifications: [],
         todos: [todo],

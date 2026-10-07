@@ -355,6 +355,7 @@ describe("Phase 8 communication pages", () => {
         pending_time_off_count: 3,
         unread_notification_count: 4,
       },
+      today_ends_at: null,
       announcements: [],
       notifications: [],
       todos: [],

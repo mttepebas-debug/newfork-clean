@@ -777,6 +777,7 @@ vi.mock("./communications/communications-data", () => ({
       pending_time_off_count: 0,
       unread_notification_count: 0,
     },
+    today_ends_at: null,
     announcements: [],
     notifications: [],
     todos: [],

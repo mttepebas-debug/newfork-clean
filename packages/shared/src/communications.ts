@@ -296,6 +296,9 @@ export const workspaceDashboardSchema = z.object({
     pending_time_off_count: z.coerce.number().int().nonnegative(),
     unread_notification_count: z.coerce.number().int().nonnegative(),
   }),
+  // When the first location in view reaches midnight and "today" turns
+  // (BL-804); null with no location in view.
+  today_ends_at: z.string().datetime({ offset: true }).nullable(),
   announcements: z.array(announcementRecordSchema).max(5),
   notifications: z.array(notificationRecordSchema).max(5),
   todos: z.array(workspaceTodoSchema).max(5),

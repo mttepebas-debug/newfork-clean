@@ -85,6 +85,19 @@ export function WorkspacePage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // "Today" is each location's own day (BL-804): read again at the first
+  // location midnight instead of keeping yesterday's counts on an open page.
+  const todayEndsAt = query.data?.today_ends_at ?? null;
+  useEffect(() => {
+    if (!todayEndsAt) return;
+    const timer = window.setTimeout(() => {
+      void client.invalidateQueries({
+        queryKey: ["workspace-dashboard", workspaceId],
+      });
+    }, Math.max(0, Date.parse(todayEndsAt) - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [client, todayEndsAt, workspaceId]);
+
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))
     return (

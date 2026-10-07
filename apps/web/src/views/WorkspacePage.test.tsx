@@ -61,6 +61,7 @@ const dashboard = {
     pending_time_off_count: 0,
     unread_notification_count: 0,
   },
+  today_ends_at: null,
   announcements: [],
   notifications: [],
   todos: [],
@@ -173,6 +174,27 @@ describe("WorkspacePage setup checklist", () => {
       </QueryClientProvider>,
     );
   }
+
+  // BL-804: at the locations' midnight the counts move to the new day on
+  // their own, without a reload or a once-a-minute read.
+  it("reads the dashboard again when the locations' day ends, not before", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+        ...dashboard,
+        today_ends_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+      });
+      renderPage();
+      await screen.findByText("Scheduled today");
+      expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(4 * 60_000);
+      expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(61_000);
+      await waitFor(() => expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(2));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("shows the no-access card, not the raw error, when the API refuses this workspace (FB-6.1.9)", async () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
