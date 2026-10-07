@@ -50,6 +50,7 @@ import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import "./employee-termination.css";
@@ -477,7 +478,33 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       // A role saved alone leaves the reader on Access (K7 (ii)).
       else if (recordSent) props.onSectionChange("profile");
     },
-    onError: (cause) => setError(errorMessage(cause)),
+    onError: async (cause) => {
+      if (!isRevisionConflict(cause) || !props.employeeId) {
+        setError(errorMessage(cause));
+        return;
+      }
+      // Someone else saved first (BL-781): read the record again, keep what
+      // was typed over it, and let the next Save apply it. Fields left alone
+      // take what the other person saved.
+      const typed = draft;
+      const before = baseline;
+      const fresh = await queryClient.fetchQuery({
+        queryKey: ["employee-detail", workspaceId, props.employeeId],
+        queryFn: () => getEmployeeDetail(workspaceId, props.employeeId ?? ""),
+        staleTime: 0,
+      });
+      const merged: Record<string, unknown> = { ...toDraft(fresh) };
+      for (const key of Object.keys(typed) as (keyof EmployeeInput)[]) {
+        if (key === "expected_revision") continue;
+        if (JSON.stringify(typed[key]) !== JSON.stringify(before[key]))
+          merged[key] = typed[key];
+      }
+      draftEditedRef.current = true;
+      setDraft(merged as EmployeeInput);
+      setError(
+        "Someone else saved this employee meanwhile. Save again to apply your changes.",
+      );
+    },
   });
   const archiveMutation = useMutation({
     mutationFn: (nextArchived: boolean) =>
@@ -3469,6 +3496,15 @@ function formatDateTime(value: string): string {
     ? "on an unknown date"
     : // To the minute (BL-674, Employees half).
       date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+/** The record moved on under the form: the database's own conflict. */
+function isRevisionConflict(error: unknown): boolean {
+  return (
+    error instanceof RequestError &&
+    error.status === 409 &&
+    error.message === "employee revision conflict"
+  );
 }
 
 function errorMessage(error: unknown): string {

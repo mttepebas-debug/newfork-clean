@@ -3164,3 +3164,33 @@ describe("EmployeeDrawer when something is missing (EKRAN-03)", () => {
     expect(field.title).toBe(email);
   });
 });
+
+// EKRAN-03 #25 (BL-781): two people save the same record.
+describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
+  it("keeps what was typed, takes up what the other saved, and saves on the next press", async () => {
+    renderDrawer("profile");
+    fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Alexandra" } });
+    // Hande saved Ali's last name meanwhile; the record is at revision 2.
+    vi.mocked(saveEmployee).mockRejectedValueOnce(
+      new RequestError("employee revision conflict", undefined, undefined, 409),
+    );
+    vi.mocked(getEmployeeDetail).mockResolvedValue({ ...detail, last_name: "Reed", revision: 2 });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(
+      await screen.findByText("Someone else saved this employee meanwhile. Save again to apply your changes."),
+    ).toBeTruthy();
+    expect(screen.queryByText("employee revision conflict")).toBeNull();
+    expect((screen.getByLabelText("First name") as HTMLInputElement).value).toBe("Alexandra");
+    await waitFor(() => expect((screen.getByLabelText("Last name") as HTMLInputElement).value).toBe("Reed"));
+
+    vi.mocked(saveEmployee).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(saveEmployee).toHaveBeenCalledWith(
+        workspaceId,
+        expect.objectContaining({ first_name: "Alexandra", last_name: "Reed", expected_revision: 2 }),
+        employeeId,
+      ),
+    );
+  });
+});
