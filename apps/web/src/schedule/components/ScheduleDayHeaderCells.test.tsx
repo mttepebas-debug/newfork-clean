@@ -135,7 +135,7 @@ describe("ScheduleDayHeaderCells", () => {
     );
     expect(
       screen.getByLabelText(
-        "Important: event: Anniversary · event: Bar Buyout",
+        "Important: Event: Anniversary · Event: Bar Buyout",
       ),
     ).toBeTruthy();
 
