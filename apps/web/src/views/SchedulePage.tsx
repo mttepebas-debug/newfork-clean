@@ -1834,7 +1834,7 @@ export function SchedulePage({
     return (
       <ScheduleState
         title="Loading Schedule"
-        detail="Resolving the published week."
+        detail="Getting this week's shifts."
       />
     );
   if (query.isError)
