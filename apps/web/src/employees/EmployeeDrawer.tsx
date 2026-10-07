@@ -900,6 +900,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     changeSection("profile");
   };
 
+  // Out of reach: only the card, no nameless record beside it (BL-402).
+  const noAccess = isNoAccess(detail.error);
   return (
     <div className="employee-drawer-layer" role="presentation">
       <button
@@ -951,7 +953,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         }}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="employee-drawer-title"
+        aria-labelledby={noAccess ? undefined : "employee-drawer-title"}
+        aria-label={noAccess ? "Employee" : undefined}
         data-employee-drawer-panel="true"
       >
         <DrawerForm
@@ -962,78 +965,80 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           aria-busy={busy}
         >
           <div className="employee-drawer-main">
-            <nav
-              className="employee-summary-rail"
-              aria-label="Employee sections"
-            >
-              <div className="employee-identity">
-                <span className="employee-avatar" aria-hidden>
-                  {(draft.first_name || "N").slice(0, 1).toUpperCase()}
-                </span>
-                <strong id="employee-drawer-title">
-                  {props.creating
-                    ? "New employee"
-                    : (detail.data?.display_name ?? "Employee details")}
-                </strong>
-                {!props.creating ? (
-                  <span>
-                    {detail.data?.employee_code ?? "Code assigned on save"}
+            {noAccess ? null : (
+              <nav
+                className="employee-summary-rail"
+                aria-label="Employee sections"
+              >
+                <div className="employee-identity">
+                  <span className="employee-avatar" aria-hidden>
+                    {(draft.first_name || "N").slice(0, 1).toUpperCase()}
                   </span>
-                ) : null}
-                {detail.data ? (
-                  <span
-                    className={`employee-state state-${detail.data.display_status}`}
-                  >
-                    {statusLabel(detail.data.display_status)}
-                  </span>
-                ) : null}
-                {draft.is_remote || draft.is_excluded_from_schedule ? (
-                  <div
-                    className="employee-work-statuses"
-                    aria-label="Work status"
-                  >
-                    {draft.is_excluded_from_schedule ? (
-                      <span className="employee-work-status danger">
-                        Off schedule
-                      </span>
-                    ) : null}
-                    {draft.is_remote ? (
-                      <span className="employee-work-status warning">
-                        Remote
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-              <div className="employee-section-links">
-                {visibleSections.map(([key, label, Icon], index) => (
-                  <button
-                    type="button"
-                    key={key}
-                    className={activeSection === key ? "active" : ""}
-                    aria-current={
-                      activeSection === key
-                        ? props.creating
-                          ? "step"
-                          : "page"
-                        : undefined
-                    }
-                    disabled={
-                      busy ||
-                      uncertainCreate ||
-                      (props.creating &&
-                        key === "employment" &&
-                        !readiness.namesReady)
-                    }
-                    data-group-start={index === 3 || index === 4}
-                    onClick={() => changeSection(key)}
-                  >
-                    <Icon size={16} aria-hidden />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </div>
-            </nav>
+                  <strong id="employee-drawer-title">
+                    {props.creating
+                      ? "New employee"
+                      : (detail.data?.display_name ?? "Employee details")}
+                  </strong>
+                  {!props.creating ? (
+                    <span>
+                      {detail.data?.employee_code ?? "Code assigned on save"}
+                    </span>
+                  ) : null}
+                  {detail.data ? (
+                    <span
+                      className={`employee-state state-${detail.data.display_status}`}
+                    >
+                      {statusLabel(detail.data.display_status)}
+                    </span>
+                  ) : null}
+                  {draft.is_remote || draft.is_excluded_from_schedule ? (
+                    <div
+                      className="employee-work-statuses"
+                      aria-label="Work status"
+                    >
+                      {draft.is_excluded_from_schedule ? (
+                        <span className="employee-work-status danger">
+                          Off schedule
+                        </span>
+                      ) : null}
+                      {draft.is_remote ? (
+                        <span className="employee-work-status warning">
+                          Remote
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="employee-section-links">
+                  {visibleSections.map(([key, label, Icon], index) => (
+                    <button
+                      type="button"
+                      key={key}
+                      className={activeSection === key ? "active" : ""}
+                      aria-current={
+                        activeSection === key
+                          ? props.creating
+                            ? "step"
+                            : "page"
+                          : undefined
+                      }
+                      disabled={
+                        busy ||
+                        uncertainCreate ||
+                        (props.creating &&
+                          key === "employment" &&
+                          !readiness.namesReady)
+                      }
+                      data-group-start={index === 3 || index === 4}
+                      onClick={() => changeSection(key)}
+                    >
+                      <Icon size={16} aria-hidden />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </nav>
+            )}
 
             <div className="employee-drawer-content">
               <div className="employee-drawer-mobile-header">
@@ -1060,7 +1065,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       </button>
                     ))}
                   </nav>
-                ) : (
+                ) : noAccess ? null : (
                   <select
                     aria-label="Employee section"
                     value={props.section}
@@ -1093,7 +1098,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     ref={stepHeadingRef}
                     style={{ outline: "none" }}
                   >
-                    {sections.find(([key]) => key === activeSection)?.[1]}
+                    {noAccess
+                      ? null
+                      : sections.find(([key]) => key === activeSection)?.[1]}
                   </h2>
                 </div>
                 <button
@@ -1184,7 +1191,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 {props.creating && references.isLoading ? (
                   <p role="status">Loading locations, jobs and roles...</p>
                 ) : null}
-                {props.creating && references.isError ? (
+                {/* A saved person's pickers need them too: empty would read as
+                    no assignments (BL-244). */}
+                {(props.creating ||
+                  activeSection === "employment" ||
+                  activeSection === "access") &&
+                references.isError ? (
                   <p role="alert">
                     Couldn't load locations, jobs or roles.{" "}
                     <button
@@ -3115,6 +3127,8 @@ function Field({
           }}
           type={type}
           value={value}
+          // A long address is cut by the mark at the field's end (BL-439).
+          title={type === "email" && value ? value : undefined}
           disabled={disabled}
           readOnly={readOnly}
           onChange={(event) => onChange(event.target.value)}

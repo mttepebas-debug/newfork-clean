@@ -3102,3 +3102,32 @@ describe("EmployeeDrawer words (EKRAN-03)", () => {
     expect(zone.value).toBe("America/Los_Angeles");
   });
 });
+
+// EKRAN-03 #49: the drawer when something is missing.
+describe("EmployeeDrawer when something is missing (EKRAN-03)", () => {
+  // BL-244: an empty picker on a saved person looked like no assignments.
+  it("says the pick lists did not load on somebody already saved, with Retry", async () => {
+    vi.mocked(loadEmployeeReferenceData).mockRejectedValueOnce(new Error("down"));
+    renderDrawer("employment");
+    expect(await screen.findByText(/Couldn't load locations, jobs or roles\./)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+
+  // BL-402: out of reach, the drawer does not draw a nameless record beside the card.
+  it("draws only the no-access card for a person out of reach", async () => {
+    detailFailure = new RequestError("Not allowed", "authz.out_of_scope", "employee.read", 403);
+    renderDrawer("profile");
+    await screen.findByRole("heading", { name: "You don't have access to this employee" });
+    expect(screen.queryByText("Employee details")).toBeNull();
+    expect(screen.queryByText("Code assigned on save")).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Employee sections" })).toBeNull();
+  });
+
+  // BL-439: a long address is cut by the field's mark; the whole of it is a hover away.
+  it("shows the whole e-mail address on hover", async () => {
+    const email = "a.very.long.address.for.somebody@world.example.test";
+    renderDrawer("profile", { ...detail, invitation_email: email });
+    const field = (await screen.findByLabelText("E-mail")) as HTMLInputElement;
+    expect(field.title).toBe(email);
+  });
+});
