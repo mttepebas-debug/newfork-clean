@@ -1,4 +1,6 @@
 import { z } from "zod";
+export * from "./us-forms";
+import { toUsPhone, usPhoneSchema, usText } from "./us-forms";
 export * from "./document-lifecycle.js";
 import { documentLifecycleSettingsSchema } from "./document-lifecycle.js";
 export * from "./timezones.js";
@@ -248,30 +250,15 @@ export const personalDateFormatSchema = z.enum([
 ]);
 export type PersonalDateFormat = z.infer<typeof personalDateFormatSchema>;
 
-export const accountPhoneSchema = z
-  .string()
-  .trim()
-  .regex(/^\+[1-9]\d{7,14}$/, "International phone number required");
-
-export function normalizeAccountPhone(
-  value: string | null | undefined,
-  countryCallingCode = "1",
-): string | null {
+/**
+ * The account's phone as it is written: a US number in E.164 (KARARLAR "Form
+ * ve girdi kuralları"; no country picker, no international number). Empty is
+ * no phone.
+ */
+export function normalizeAccountPhone(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   if (!trimmed) return null;
-
-  const digits = trimmed.replace(/\D/g, "");
-  const callingCode = countryCallingCode.replace(/\D/g, "");
-  if (!callingCode || !/^[1-9]\d{0,2}$/.test(callingCode)) {
-    throw new Error("Valid country calling code required");
-  }
-
-  const normalized = trimmed.startsWith("+")
-    ? `+${digits}`
-    : digits.startsWith(callingCode) && digits.length > 10
-      ? `+${digits}`
-      : `+${callingCode}${digits.replace(/^0+/, "")}`;
-  return accountPhoneSchema.parse(normalized);
+  return usPhoneSchema.parse(toUsPhone(trimmed) ?? trimmed);
 }
 
 export const accountProfileSchema = z
@@ -279,7 +266,8 @@ export const accountProfileSchema = z
     userId: z.string().uuid(),
     email: z.string().email(),
     displayName: z.string().trim().min(1).max(100),
-    phone: accountPhoneSchema.nullable().default(null),
+    // Read as saved; a write goes through normalizeAccountPhone.
+    phone: z.string().trim().nullable().default(null),
     avatarObjectPath: z.string().trim().nullable().default(null),
     avatarUrl: z.string().url().nullable().default(null),
     theme: themePreferenceSchema,
@@ -413,16 +401,22 @@ export function employmentContactRecordFromRow(
  * signatures read. First and last are required; a middle name may be empty.
  * The limits are the database's (app_private.write_owner_legal_name).
  */
-export const ownerLegalNameSchema = z.object({
+const ownerLegalNameReadSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   middleName: z.string().trim().max(80),
   lastName: z.string().trim().min(1).max(80),
 });
+/** What is written: the US letter rule on each name (BL-503). */
+export const ownerLegalNameSchema = z.object({
+  firstName: usText(z.string().trim().min(1).max(80)),
+  middleName: usText(z.string().trim().max(80)),
+  lastName: usText(z.string().trim().min(1).max(80)),
+});
 export type OwnerLegalName = z.infer<typeof ownerLegalNameSchema>;
 
-/** What Account > Profile reads: null until a legal name is on file. */
+/** What Account > Profile reads: null until a legal name is on file; read as saved. */
 export const ownerLegalNameResponseSchema = z.object({
-  legalName: ownerLegalNameSchema.nullable(),
+  legalName: ownerLegalNameReadSchema.nullable(),
 });
 
 export const workspaceSummarySchema = z.object({
@@ -789,10 +783,6 @@ export const locationShortNameSchema = z.string().trim().toUpperCase().regex(
   /^[A-Z0-9-]{2,12}$/,
   "Use 2–12 characters: letters A–Z, numbers or hyphens. No spaces or other symbols.",
 );
-export const locationPhoneSchema = accountPhoneSchema.regex(
-  /^\+1[2-9]\d{9}$/,
-  "Enter a 10-digit US phone number",
-);
 
 function asciiLetters(value: string): string {
   return value.replace(/ı/g, "i").replace(/İ/g, "I").normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -818,7 +808,7 @@ export const locationSchema = z.object({
   workspace_id: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
   short_name: locationShortNameSchema,
-  phone: locationPhoneSchema.nullable().optional(),
+  phone: usPhoneSchema.nullable().optional(),
   street_address: z.string().trim().max(180),
   city: z.string().trim().max(100),
   region: z.string().trim().max(100),
@@ -907,20 +897,29 @@ export const locationInputSchema = locationSchema.pick({
   postal_code: true,
   country_code: true,
   timezone: true,
-}).extend({ short_name: locationShortNameSchema, phone: locationPhoneSchema.nullable().optional(), timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone") });
+}).extend({
+  short_name: locationShortNameSchema,
+  phone: usPhoneSchema.nullable().optional(),
+  timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone"),
+  // What is written follows the US letter rule; what was saved still reads (BL-503).
+  name: usText(z.string().trim().min(1).max(120)),
+  street_address: usText(z.string().trim().max(180)),
+  city: usText(z.string().trim().max(100)),
+  region: usText(z.string().trim().max(100)),
+});
 export type LocationInput = z.infer<typeof locationInputSchema>;
 
 export const departmentInputSchema = departmentSchema.pick({
   name: true,
   color: true,
-});
+}).extend({ name: usText(entityNameSchema) });
 export type DepartmentInput = z.infer<typeof departmentInputSchema>;
 
 export const jobInputSchema = jobSchema.pick({
   name: true,
   color: true,
   department_id: true,
-});
+}).extend({ name: usText(entityNameSchema) });
 export type JobInput = z.infer<typeof jobInputSchema>;
 
 export const departmentWithJobsInputSchema = z.object({
@@ -2682,10 +2681,11 @@ export type EmployeeLocationRemoval = z.infer<typeof employeeLocationRemovalSche
 
 export const employeeInputSchema = z
   .object({
-    first_name: z.string().trim().min(1).max(80),
-    middle_name: z.string().trim().max(80).optional(),
-    last_name: z.string().trim().min(1).max(80),
-    preferred_name: z.string().trim().max(80),
+    // The US letter rule on every name (BL-503).
+    first_name: usText(z.string().trim().min(1).max(80)),
+    middle_name: usText(z.string().trim().max(80)).optional(),
+    last_name: usText(z.string().trim().min(1).max(80)),
+    preferred_name: usText(z.string().trim().max(80)),
     invitation_email: z.string().trim().email().or(z.literal("")),
     start_date: z.string().date().or(z.literal("")),
     internal_note: z.string().trim().max(1000),
@@ -2832,7 +2832,8 @@ export type EmployeeOnboardingRequirement = z.infer<
   typeof employeeOnboardingRequirementSchema
 >;
 
-const employeeOnboardingProfileObjectSchema = z.object({
+/** The private profile as saved; reads take it as it is. */
+const employeeOnboardingProfileBaseSchema = z.object({
   legal_first_name: z.string().trim().min(1).max(80),
   legal_middle_name: z.string().trim().max(80).optional(),
   legal_last_name: z.string().trim().min(1).max(80),
@@ -2858,34 +2859,50 @@ const employeeOnboardingProfileObjectSchema = z.object({
   share_phone_with_teammates: z.boolean(),
   share_email_with_teammates: z.boolean(),
 });
+/**
+ * What onboarding writes: the US letter rule on names, addresses and the
+ * contact, and phones as a US number in E.164 (BL-503).
+ */
+const employeeOnboardingProfileObjectSchema = employeeOnboardingProfileBaseSchema.extend({
+  legal_first_name: usText(z.string().trim().min(1).max(80)),
+  legal_middle_name: usText(z.string().trim().max(80)).optional(),
+  legal_last_name: usText(z.string().trim().min(1).max(80)),
+  preferred_name: usText(z.string().trim().max(80)).optional(),
+  phone: usPhoneSchema,
+  street_address: usText(z.string().trim().min(1).max(180)),
+  city: usText(z.string().trim().min(1).max(100)),
+  region: usText(z.string().trim().min(1).max(100)),
+  emergency_contact_name: usText(z.string().trim().min(1).max(120)),
+  emergency_contact_relationship: usText(z.string().trim().min(1).max(80)),
+  emergency_contact_phone: usPhoneSchema,
+});
 
 const employeeOnboardingProfileReadSchema =
-  employeeOnboardingProfileObjectSchema.partial().extend({
-    street_address: employeeOnboardingProfileObjectSchema.shape.street_address
+  employeeOnboardingProfileBaseSchema.partial().extend({
+    street_address: employeeOnboardingProfileBaseSchema.shape.street_address
       .nullable()
       .optional(),
-    city: employeeOnboardingProfileObjectSchema.shape.city
+    city: employeeOnboardingProfileBaseSchema.shape.city
       .nullable()
       .optional(),
-    region: employeeOnboardingProfileObjectSchema.shape.region
+    region: employeeOnboardingProfileBaseSchema.shape.region
       .nullable()
       .optional(),
-    postal_code: employeeOnboardingProfileObjectSchema.shape.postal_code
+    postal_code: employeeOnboardingProfileBaseSchema.shape.postal_code
       .nullable()
       .optional(),
-    country_code: employeeOnboardingProfileObjectSchema.shape.country_code
+    country_code: employeeOnboardingProfileBaseSchema.shape.country_code
       .nullable()
       .optional(),
-    date_of_birth: employeeOnboardingProfileObjectSchema.shape.date_of_birth
+    date_of_birth: employeeOnboardingProfileBaseSchema.shape.date_of_birth
       .nullable()
       .optional(),
   });
 
 export const employeeOnboardingProfileSchema =
   employeeOnboardingProfileObjectSchema.superRefine((profile, context) => {
-    const employeePhone = normalizedUsPhone(profile.phone);
-    const emergencyPhone = normalizedUsPhone(profile.emergency_contact_phone);
-    if (employeePhone && employeePhone === emergencyPhone) {
+    // Both are E.164 by now: the same number is the same string.
+    if (profile.phone === profile.emergency_contact_phone) {
       context.addIssue({
         code: "custom",
         path: ["emergency_contact_phone"],
@@ -2894,12 +2911,6 @@ export const employeeOnboardingProfileSchema =
     }
   });
 
-function normalizedUsPhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  return digits.length === 11 && digits.startsWith("1")
-    ? digits.slice(1)
-    : digits;
-}
 export type EmployeeOnboardingProfile = z.infer<
   typeof employeeOnboardingProfileSchema
 >;

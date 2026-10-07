@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { locationInputSchema, locationPhoneSchema, locationSchema, locationShortNameSchema, scheduleLocationSchema, suggestLocationShortName } from "./index";
+import { locationInputSchema, locationSchema, locationShortNameSchema, scheduleLocationSchema, suggestLocationShortName } from "./index";
+import { usPhoneSchema } from "./us-forms";
 
 describe("location short name contract", () => {
   it.each(["MRK", "A-2", "123456789012"])("accepts %s", value => {
@@ -32,9 +33,9 @@ describe("location short name contract", () => {
 
 describe("location phone contract", () => {
   it("accepts only 10-digit US numbers in E.164", () => {
-    expect(locationPhoneSchema.parse("+14155550100")).toBe("+14155550100");
+    expect(usPhoneSchema.parse("+14155550100")).toBe("+14155550100");
     for (const value of ["+442071234567", "+1415555010", "4155550100", "+10155550100"]) {
-      expect(locationPhoneSchema.safeParse(value).success).toBe(false);
+      expect(usPhoneSchema.safeParse(value).success).toBe(false);
     }
   });
 });

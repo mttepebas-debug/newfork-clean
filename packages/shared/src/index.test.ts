@@ -23,6 +23,8 @@ import {
   jobInputSchema,
   jobSchema,
   locationInputSchema,
+  locationSchema,
+  ownerLegalNameSchema,
   managementAndOwnerRefusals,
   managementAndOwnerSentence,
   managerLocationRefusal,
@@ -59,13 +61,12 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 describe("account schemas", () => {
   it("normalizes optional account phone and defaults personal formats", () => {
-    expect(normalizeAccountPhone("(310) 555-0100", "1")).toBe(
+    expect(normalizeAccountPhone("(310) 555-0100")).toBe(
       "+13105550100",
     );
-    expect(normalizeAccountPhone("+44 20 7946 0958", "44")).toBe(
-      "+442079460958",
-    );
-    expect(normalizeAccountPhone("", "1")).toBeNull();
+    // A US product: one country, +1 (KARARLAR "Form ve girdi kuralları").
+    expect(() => normalizeAccountPhone("+44 20 7946 0958")).toThrow();
+    expect(normalizeAccountPhone("")).toBeNull();
     expect(
       accountProfileSchema.parse({
         userId,
@@ -89,7 +90,7 @@ describe("account schemas", () => {
         userId,
         email: "alex@example.test",
         displayName: "Alex Kim",
-        phone: "3105550100",
+        phone: "+13105550100",
         avatarObjectPath:
           "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg",
         theme: "system",
@@ -1340,7 +1341,7 @@ describe("employee onboarding schemas", () => {
       profile: {
         legal_first_name: "Taylor",
         legal_last_name: "Reed",
-        phone: "3105550100",
+        phone: "+13105550100",
         street_address: null,
         city: null,
         region: null,
@@ -1350,7 +1351,7 @@ describe("employee onboarding schemas", () => {
         emergency_contact_name: "Morgan Reed",
         emergency_contact_relationship: "Spouse",
         emergency_contact_email: "",
-        emergency_contact_phone: "3105550101",
+        emergency_contact_phone: "+13105550101",
         share_phone_with_teammates: false,
         share_email_with_teammates: false,
       },
@@ -1433,7 +1434,7 @@ describe("employee onboarding schemas", () => {
     const profile = employeeOnboardingProfileSchema.parse({
       legal_first_name: "Taylor",
       legal_last_name: "Reed",
-      phone: "3105550100",
+      phone: "+13105550100",
       street_address: "100 Main Street",
       city: "Los Angeles",
       region: "CA",
@@ -1443,7 +1444,7 @@ describe("employee onboarding schemas", () => {
       emergency_contact_name: "Morgan Reed",
       emergency_contact_relationship: "Spouse",
       emergency_contact_email: "",
-      emergency_contact_phone: "3105550101",
+      emergency_contact_phone: "+13105550101",
       share_phone_with_teammates: false,
       share_email_with_teammates: false,
       preferred_name: "Tay",
@@ -1458,7 +1459,7 @@ describe("employee onboarding schemas", () => {
       employeeOnboardingProfileSchema.parse({
         legal_first_name: "Taylor",
         legal_last_name: "Reed",
-        phone: "3105550100",
+        phone: "+13105550100",
         street_address: "100 Main Street",
         city: "Los Angeles",
         region: "CA",
@@ -1467,7 +1468,7 @@ describe("employee onboarding schemas", () => {
         emergency_contact_name: "Morgan Reed",
         emergency_contact_relationship: "Spouse",
         emergency_contact_email: "",
-        emergency_contact_phone: "3105550101",
+        emergency_contact_phone: "+13105550101",
         date_of_birth: "1990-01-01",
         share_phone_with_teammates: false,
         share_email_with_teammates: false,
@@ -1477,7 +1478,7 @@ describe("employee onboarding schemas", () => {
       employeeOnboardingProfileSchema.parse({
         legal_first_name: "Taylor",
         legal_last_name: "Reed",
-        phone: "3105550100",
+        phone: "+13105550100",
         street_address: "100 Main Street",
         city: "Los Angeles",
         region: "CA",
@@ -1486,7 +1487,7 @@ describe("employee onboarding schemas", () => {
         emergency_contact_name: "Morgan Reed",
         emergency_contact_relationship: "Spouse",
         emergency_contact_email: "",
-        emergency_contact_phone: "3105550101",
+        emergency_contact_phone: "+13105550101",
         date_of_birth: "01/01",
         share_phone_with_teammates: false,
         share_email_with_teammates: false,
@@ -1658,6 +1659,77 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
       const record = { ...managerOnly, location_ids: [], primary_location_id: null, job_ids: [], is_excluded_from_schedule: true };
       expect(employeeInputSchema.parse({ ...record, is_manager_record: true })).not.toHaveProperty("is_manager_record");
     });
+  });
+});
+
+// BL-503: the write schemas follow KARARLAR "Form ve girdi kuralları (ABD)";
+// what was saved before the rule still reads.
+describe("US form rules on the write schemas (BL-503)", () => {
+  const profile = {
+    legal_first_name: "Taylor",
+    legal_last_name: "Reed",
+    phone: "+13105550100",
+    street_address: "100 Main Street",
+    city: "Los Angeles",
+    region: "CA",
+    postal_code: "90012",
+    country_code: "US" as const,
+    date_of_birth: "1990-01-01",
+    emergency_contact_name: "Morgan Reed",
+    emergency_contact_relationship: "Spouse",
+    emergency_contact_email: "",
+    emergency_contact_phone: "+13105550101",
+    share_phone_with_teammates: false,
+    share_email_with_teammates: false,
+  };
+  const location = {
+    name: "Downtown",
+    short_name: "DT",
+    street_address: "1 Main St",
+    city: "Los Angeles",
+    region: "CA",
+    postal_code: "90001",
+    country_code: "US",
+    timezone: "America/Los_Angeles",
+  };
+
+  it("refuses Turkish-only letters in people's names", () => {
+    expect(ownerLegalNameSchema.safeParse({ firstName: "Mert", middleName: "", lastName: "Tepebaş" }).success).toBe(false);
+    expect(ownerLegalNameSchema.safeParse({ firstName: "José", middleName: "", lastName: "Peña" }).success).toBe(true);
+    for (const field of ["legal_first_name", "legal_middle_name", "legal_last_name", "preferred_name", "emergency_contact_name", "emergency_contact_relationship"]) {
+      expect(employeeOnboardingProfileSchema.safeParse({ ...profile, [field]: "Ayşe" }).success, field).toBe(false);
+    }
+  });
+
+  it("refuses Turkish-only letters in addresses and places", () => {
+    for (const field of ["street_address", "city", "region"]) {
+      expect(employeeOnboardingProfileSchema.safeParse({ ...profile, [field]: "Kadıköy" }).success, field).toBe(false);
+      expect(locationInputSchema.safeParse({ ...location, [field]: "Kadıköy" }).success, field).toBe(false);
+    }
+    expect(locationInputSchema.safeParse({ ...location, name: "Beşiktaş" }).success).toBe(false);
+    expect(departmentInputSchema.safeParse({ name: "Mutfak Ağı", color: "green" }).success).toBe(false);
+    expect(jobInputSchema.safeParse({ name: "Garsonİ", color: "green", department_id: null }).success).toBe(false);
+  });
+
+  it("still reads a location saved before the rule", () => {
+    expect(
+      locationSchema.safeParse({
+        ...location,
+        id: "11000000-0000-4000-8000-000000000001",
+        workspace_id: workspaceId,
+        name: "Kadıköy",
+        phone: null,
+        sort_order: 0,
+        archived_at: null,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("takes phone numbers as a US number in E.164 only", () => {
+    expect(employeeOnboardingProfileSchema.safeParse({ ...profile, phone: "3105550100" }).success).toBe(false);
+    expect(employeeOnboardingProfileSchema.safeParse({ ...profile, emergency_contact_phone: "+442079460958" }).success).toBe(false);
+    expect(normalizeAccountPhone("(310) 555-0100")).toBe("+13105550100");
+    expect(() => normalizeAccountPhone("555 0100")).toThrow();
   });
 });
 
