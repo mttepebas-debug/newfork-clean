@@ -2311,7 +2311,8 @@ describe("EmployeeDrawer EMP-001 look", () => {
   });
 
   it("puts the three names on one row, and preferred name beside date of birth", async () => {
-    renderDrawer("profile", { ...detail, private_contact: noPrivateRecord });
+    // The row exists only for a preferred name the employee asked for (KK-205).
+    renderDrawer("profile", { ...detail, preferred_name: "Lex", private_contact: noPrivateRecord });
     const names = (await screen.findByLabelText("First name")).closest<HTMLElement>(".employee-name-grid")!;
     expect(within(names).getByLabelText("Middle name")).toBeTruthy();
     expect(within(names).getByLabelText("Last name")).toBeTruthy();
@@ -2821,11 +2822,19 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Terminate employee" }));
   });
 
-  // #16 (BL-777, K2): typed here, it was dropped without a word.
-  it("keeps Preferred name read-only before the person is active", async () => {
+  // #16 (BL-777, K2 as changed by KK-205): typed here, it was dropped without
+  // a word. The drawer only shows one the employee asked for.
+  it("leaves Preferred name out when the person has none", async () => {
     renderDrawer("profile");
-    const preferred = await screen.findByLabelText("Preferred name");
-    expect((preferred as HTMLInputElement).disabled).toBe(true);
-    expect(lockReason(preferred)).toBe("Changed only by the employee's request");
+    await screen.findByLabelText("First name");
+    await waitFor(() => expect(screen.queryByText("Loading employee...")).toBeNull());
+    expect(screen.queryByLabelText("Preferred name")).toBeNull();
+  });
+
+  it("shows a preferred name as read-only text", async () => {
+    renderDrawer("profile", { ...detail, preferred_name: "Lex" });
+    const preferred = (await screen.findByLabelText("Preferred name")) as HTMLInputElement;
+    expect(preferred.readOnly).toBe(true);
+    expect(preferred.value).toBe("Lex");
   });
 });

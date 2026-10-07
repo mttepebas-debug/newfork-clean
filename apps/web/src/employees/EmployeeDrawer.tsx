@@ -2150,15 +2150,12 @@ function ProfileSection({
               }
             />
           </div>
-          {/* K2 (BL-777): a preferred name changes only by the employee's
-              request and an answer; the save never wrote what was typed here. */}
-          <Field
-            label="Preferred name"
-            value={draft.preferred_name}
-            disabled
-            lockedReason="Changed only by the employee's request"
-            onChange={() => undefined}
-          />
+          {/* K2 as changed by KK-205 (BL-777): a preferred name changes only
+              by the employee's request and an answer, and the save never wrote
+              what was typed here. Only one they asked for is shown. */}
+          {!creating && draft.preferred_name ? (
+            <ReadOnlyField label="Preferred name" value={draft.preferred_name} />
+          ) : null}
           {!creating && canReadPrivate ? (
             <ReadOnlyField
               label="Date of birth"

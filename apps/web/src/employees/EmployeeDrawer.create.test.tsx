@@ -98,11 +98,13 @@ describe("employee create flow", () => {
     expect(screen.queryByLabelText("Phone")).toBeNull();
   });
 
-  // K2 (BL-777): a preferred name typed here was dropped without a word; it
-  // changes only by the employee's request and an answer.
-  it("keeps Preferred name read-only on a new employee", () => {
+  // K2 as changed by KK-205 (BL-777): a preferred name typed here was dropped
+  // without a word. Nobody can fill it on a new employee, so it is not shown;
+  // the employee asks for it in onboarding or their profile.
+  it("does not show Preferred name on a new employee", () => {
     setup();
-    expect((screen.getByLabelText("Preferred name") as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByLabelText("First name")).toBeTruthy();
+    expect(screen.queryByLabelText("Preferred name")).toBeNull();
   });
 
   it.each(["Enter", "Escape", "outside"])(
