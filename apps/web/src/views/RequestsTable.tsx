@@ -17,8 +17,6 @@ import { requestTypeLabels, type RequestRow, type RequestType } from "../schedul
 // this year; an Open shift row has an empty-shift mark instead of a person.
 // Status tells an open request (Needs review, In progress) from a closed one.
 
-type RequestTableRow = RequestRow;
-
 const typeIcons: Record<RequestType, LucideIcon> = {
   time_off: CalendarOff,
   swap: ArrowLeftRight,
@@ -31,9 +29,9 @@ export function RequestsTable({
   timeFormat,
   onOpen,
 }: {
-  readonly rows: readonly RequestTableRow[];
+  readonly rows: readonly RequestRow[];
   readonly timeFormat: "12h" | "24h";
-  readonly onOpen: (row: RequestTableRow) => void;
+  readonly onOpen: (row: RequestRow) => void;
 }) {
   return (
     <table className="employee-table requests-table">
@@ -58,19 +56,19 @@ export function RequestsTable({
       </thead>
       <tbody>
         {rows.map((row) => (
-          <RequestTableRowView key={`${row.source}:${row.id}`} row={row} timeFormat={timeFormat} onOpen={() => onOpen(row)} />
+          <RequestRowView key={`${row.source}:${row.id}`} row={row} timeFormat={timeFormat} onOpen={() => onOpen(row)} />
         ))}
       </tbody>
     </table>
   );
 }
 
-function RequestTableRowView({
+function RequestRowView({
   row,
   timeFormat,
   onOpen,
 }: {
-  row: RequestTableRow;
+  row: RequestRow;
   timeFormat: "12h" | "24h";
   onOpen: () => void;
 }) {
@@ -135,7 +133,7 @@ function RequestTableRowView({
   );
 }
 
-function rowPerson(row: RequestTableRow): { name: string; detail: string } {
+function rowPerson(row: RequestRow): { name: string; detail: string } {
   if (row.source === "time_off") {
     const request = row.request;
     if (request.request_type === "time_off_cancellation") return { name: request.employee_name, detail: "Cancels approved time off" };
@@ -201,7 +199,7 @@ function toDate(value: string) {
   return new Date(value.length === 10 ? `${value}T12:00:00` : value);
 }
 
-function rowWhen(row: RequestTableRow, timeFormat: "12h" | "24h") {
+function rowWhen(row: RequestRow, timeFormat: "12h" | "24h") {
   if (row.source === "time_off") {
     const { start_date: start, end_date: end } = row.request;
     return dateRange(start, end);
@@ -212,7 +210,7 @@ function rowWhen(row: RequestTableRow, timeFormat: "12h" | "24h") {
 }
 
 // KARARLAR:133 names the zone; it gets its own line so it is never cut.
-function RowDecideBy({ row, timeFormat }: { row: RequestTableRow; timeFormat: "12h" | "24h" }) {
+function RowDecideBy({ row, timeFormat }: { row: RequestRow; timeFormat: "12h" | "24h" }) {
   const zone = row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
   if (!row.decideBy || !zone) return null;
   return (
@@ -223,7 +221,7 @@ function RowDecideBy({ row, timeFormat }: { row: RequestTableRow; timeFormat: "1
   );
 }
 
-function rowStatus(row: RequestTableRow): string {
+function rowStatus(row: RequestRow): string {
   if (row.state !== "closed") return row.state;
   return row.source === "time_off" ? row.request.status : (row.request as ExchangeCase).status;
 }

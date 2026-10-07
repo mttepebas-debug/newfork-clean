@@ -46,7 +46,6 @@ import {
   type RequestTypeTab,
 } from "../schedule/requests-list";
 
-import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
@@ -137,8 +136,16 @@ function ScheduleRequestsPageContent() {
   }
   function openRow(row: RequestRow) {
     // A shift change opens its review where it lives today (Shift Hub's
-    // manager view, ?case=); C2 gives it its own drawer here.
-    if (row.source === "exchange") setView({ case: row.id });
+    // manager view, ?case=); C2 gives it its own drawer here. It is a step
+    // the browser's Back undoes, so it is pushed, not replaced.
+    if (row.source === "exchange")
+      requestAvailabilityNavigation(() =>
+        setParams((previous) => {
+          const next = new URLSearchParams(previous);
+          next.set("case", row.id);
+          return next;
+        }),
+      );
     else selectRequest(row.id);
   }
   function startAct(request: TimeOffRequest, kind: Act["kind"]) {
@@ -209,7 +216,7 @@ function ScheduleRequestsPageContent() {
     />
   );
   // The API's "no" gets the one no-access card, never its raw sentence.
-  if (data.failure === "no_access" || isNoAccess(data.error))
+  if (data.failure === "no_access")
     return (
       <NoAccessState
         subject="requests"
@@ -217,7 +224,8 @@ function ScheduleRequestsPageContent() {
       />
     );
   // Shift Hub reads ?case= itself; manager notification links land here too.
-  if (params.has("case") && canReadShift && context)
+  // Its Renew swaps ?case= for ?offer=, whose form Shift Hub draws as well.
+  if ((params.has("case") || params.has("offer")) && canReadShift && context)
     return (
       <section
         className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
