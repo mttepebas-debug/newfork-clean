@@ -1,6 +1,6 @@
 # Koordinatör devri — 2026-10-06 gece planı (UTC ~13:25Z; Mert uyuyor)
 
-- **Oturum:** "Koordinatör" `local_9c7e674a-3796-486f-a7f7-613c4ce0c02e`. Mert bu pencerede `/compact` ya da `/clear` yazar; kimlik DEĞİŞMEZ. Bugün bir kez `/compact` yapıldı; gece kendiliğinden sıkışabilir — bu dosya sırayı taşır.
+- **Oturum (2026-10-07 06:08Z devir):** "Koordinatör" `local_70128f8f-5bc3-4776-92cf-1fe096aa4404` (posta kutusu `f2f4ad49-6b1b-4db6-a445-4198729b2a0f`, `inbox.mjs claim` yapıldı). Eski koordinatör `local_9c7e674a…` / `53bf53b1…` devredildi. Mert bu pencerede `/compact` ya da `/clear` yazar; kimlik DEĞİŞMEZ.
 - **Önce oku:** `CLAUDE.md` (2026-10-07'de yeniden yazıldı: §4 Workflow, §4.9 geçiş, §5 koordinatör kararları, §6 teknik harita), `docs/plan/EKRAN-PLANI.md` ("Uygulama düzeni: hatlar", "Uygulama arşivi"). `docs/plan/ILKELER.md` artık otomatik yüklenmiyor; karar vermeden önce okunur.
 
 ## 00. GÜNCEL DURUM (2026-10-06 ~17:05Z) — sıkıştırmadan sonra ÖNCE BUNU OKU
