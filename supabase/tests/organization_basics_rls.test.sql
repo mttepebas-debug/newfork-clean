@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -130,6 +130,15 @@ values ('61000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-0000000
 insert into public.shift_types (id, workspace_id, name, default_start_time, default_end_time)
 values ('81000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', 'Lunch', '11:00', '15:00');
 set local role authenticated;
+-- department_id is the one id the job form writes; the job's own workspace_id
+-- stays fixed, so the department has to be in that workspace
+-- (jobs_department_id_workspace_id_fkey).
+select throws_ok(
+  $$update public.jobs set department_id = '51000000-0000-4000-8000-000000000002' where id = '61000000-0000-4000-8000-000000000002'$$,
+  '23503',
+  null,
+  'a job cannot be tied to another workspace''s department'
+);
 select lives_ok(
   $$update public.shift_labels set name = 'On call', color = '#54736A', archived_at = now(), updated_at = now()
       where id = '71000000-0000-4000-8000-000000000001';
