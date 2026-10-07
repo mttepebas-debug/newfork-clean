@@ -1,5 +1,5 @@
 # SCHEMA-SNAP Şemanın bugünkü hâli tek dosyada (okuma kopyası)
-Status: in progress
+Status: done
 Session: Mert'in tekil oturumu (c69a6dcd…)   Branch: task/schema-snap   Worktree: newfork-wt/schema-snap   DB: geçici proje `newfork-schema-snap` (595xx), ortak DB'ye dokunmaz
 
 Kaynak: Mert'in tekil oturumu, 2026-10-07. Mert sordu: "migration'ları tek dosyada toplamak ne
@@ -84,7 +84,7 @@ Reviewer: `nf-guvenlik` (R2, tek göz).
      - Sahte migration → `check-fast` uyarı verdi, çıkış 0; `STRICT` iken çıkış 1.
      - Elle değiştirilmiş satır → `check` "first difference at line 20000" yazdı; `STRICT` iken
        çıkış 1.
-  4. `pnpm.cmd db:schema` ~40-48 sn. README, CLAUDE.md §2 ve `nf-db` rol dosyası birer satır
+  4. `pnpm.cmd db:schema` ~40-48 sn. README, CLAUDE.md §6 "Veritabanı ve canlı" ve `nf-db` rol dosyası birer satır
      aldı (Mert onayı 2026-10-07, bu oturumda, tıklamalı soru).
   5. CI `db` işi: setup-node 1 sn + kontrol adımı 2 sn.
 - İnceleme: `nf-guvenlik` ONAY @`9f392cd5` (R2). Üç düşük bulgu vardı, üçü de kapatıldı:
@@ -107,7 +107,14 @@ Reviewer: `nf-guvenlik` (R2, tek göz).
 - Kapı: dal CI'ı `9f392cd5` için tam yeşil (check, db, e2e, db-budget). Sonraki commit'ler yalnız
   betiği, testini, başlık satırını ve belgeleri değiştirdi. Bunları kapsayan kontroller yerelde
   yeşil: `pnpm.cmd lint` ve kök betik testleri 46/46. typecheck, build ve web testleri bu
-  dosyaları kapsamıyor, o yüzden yeniden koşulmadı (CLAUDE.md §11.5). main CI tam kapıyı yeniden
+  dosyaları kapsamıyor, o yüzden yeniden koşulmadı (CLAUDE.md §4.3 madde 6). main CI tam kapıyı yeniden
   koşar.
 - Yolda görülen: dal CI'ının `db` işi `actions-runner-3` üzerinde koştu. KK-176 2 ve 3 numaralı
   koşucuları durdurmuştu; koordinatöre bildirildi.
+- Gönderim: main bu sırada `020ed258`'e (CLAUDE.md'nin yeniden yazımı, CLAUDEMD-REWRITE) ilerledi. Dal
+  onun üstüne taşındı. CLAUDE.md çakışması, kural satırı yeni §6 "Veritabanı ve canlı"ya konarak
+  çözüldü; `nf-db` satırı kendiliğinden birleşti. Kod, incelenen ve test edilen ağaçla
+  (`29154142`) birebir aynı (`git diff` boş).
+- Gönderim izni: yeni §4.9 her gönderimde koordinatörün "gönder" iznini istiyor. Koordinatör ~11 saattir
+  boştaydı, posta kutusunda 5 okunmamış rapor vardı. İzni Mert bu oturumda verdi (tıklamalı soru,
+  "Gönder (Önerilen)").
