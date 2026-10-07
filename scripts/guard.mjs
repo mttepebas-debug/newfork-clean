@@ -108,11 +108,23 @@ export const segments = (cmd, shell) => chain(cmd, shell).map((c) => c.seg);
 // `bash -c "<script>"`, `sh -c '…'`, `pwsh [-NoProfile …] -Command "…"`, `cmd /c "…"`: the script and
 // the shell that runs it. Its outer quotes belong to the calling shell and are taken off with its rules.
 const WRAPPER =
-  /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)*(?:&\s*)?["']?(?:\S*[\\/])?(bash|sh|zsh|dash|pwsh|powershell|cmd)(?:\.exe)?["']?(?:\s+-[\w-]+)*?\s+(?:-[a-z]*c|-command|\/c)\s+/i;
+  /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)*(?:&\s*)?["']?(?:\S*[\\/])?(bash|sh|zsh|dash|pwsh|powershell|cmd)(?:\.exe)?["']?(?=\s)/i;
+// The flag that takes the script: bash -c / -lc / -ec, pwsh -Command or any prefix of it (-c, -com),
+// cmd /c. Other options in front (`-NoProfile`, `-ExecutionPolicy Bypass`, `-o pipefail`) are skipped.
+const SCRIPT_FLAG = { bash: /^-[a-z]*c$/, pwsh: /^-c(?:o(?:m(?:m(?:a(?:n(?:d)?)?)?)?)?)?$/i, cmd: /^\/c$/i };
 function wrapped(seg, outer) {
   const m = seg.match(WRAPPER);
   if (!m) return null;
-  let script = seg.slice(m[0].length).trim();
+  const kind = /^(pwsh|powershell)$/i.test(m[1]) ? "pwsh" : /^cmd$/i.test(m[1]) ? "cmd" : "bash";
+  let rest = seg.slice(m[0].length);
+  for (let k = 0; ; k++) {
+    const w = rest.match(/^\s+(\S+)/);
+    if (!w || k > 6) return null;
+    rest = rest.slice(w[0].length);
+    if (SCRIPT_FLAG[kind].test(w[1])) break;
+    if (/^-(f|file)$/i.test(w[1])) return null; // a script file, not a command line
+  }
+  let script = rest.trim();
   const q = script[0];
   if (q === "'" || q === '"') {
     let s = "";
@@ -127,7 +139,7 @@ function wrapped(seg, outer) {
     }
     script = s;
   }
-  return { script, shell: /^(pwsh|powershell)$/i.test(m[1]) ? "pwsh" : "bash" };
+  return { script, shell: kind === "pwsh" ? "pwsh" : "bash" };
 }
 
 // One pass over the command (BL-964): the pieces between top-level separators, with the separators between

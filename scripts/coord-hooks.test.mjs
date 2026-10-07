@@ -510,6 +510,10 @@ test("a command wrapped in another shell is read too: bash -c, sh -c, pwsh -Comm
   assert.equal(evaluate(ps('cmd /c "cd x && git push --dry-run origin HEAD:main"')).block, true);
   assert.equal(evaluate(bash("sh -c 'pnpm.cmd test'"), AFTER).block, true);
   assert.equal(evaluate(ps('pwsh -NoProfile -Command "Set-Location x; pnpm.cmd e2e"'), AFTER).block, true);
+  assert.equal(evaluate(ps('powershell -exec bypass -c "Set-Location x; pnpm.cmd e2e"'), AFTER).block, true); // -exec is not -c
+  assert.equal(evaluate(bash('bash -o pipefail -c "cd x && pnpm.cmd build"'), AFTER).block, true);
+  quiet(bash("bash -c 'echo \"pnpm.cmd test && done\"'"));
+  quiet(ps("pwsh -File scripts/x.ps1 -c 'pnpm.cmd test'")); // -File runs a script file; what follows are its arguments
   assert.equal(evaluate(bash('bash -c "echo \\"a && pnpm.cmd test\\""'), AFTER).block, false); // its own quotes count
 });
 
