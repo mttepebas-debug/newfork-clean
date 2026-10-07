@@ -402,6 +402,8 @@ export function SchedulePage({
     [],
   );
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  // BL-705: New Schedule ▾ → Save as template opens Templates on this draft.
+  const [templateDraftId, setTemplateDraftId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<
     readonly ScheduleTemplateSummary[]
   >([]);
@@ -1053,6 +1055,7 @@ export function SchedulePage({
 
   const closeTemplates = () => {
     setTemplatesOpen(false);
+    setTemplateDraftId(null);
     leaveScheduleDeepLink();
   };
 
@@ -2317,6 +2320,13 @@ export function SchedulePage({
             onStartBlankDraft={() => void startBlankDraftFromMenu()}
             onEditPublishedSchedule={() => void editDraftFromMenu(null)}
             onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
+            onSaveAsTemplate={() => {
+              setTemplateDraftId(activeDraftId);
+              openTemplatesDialog();
+            }}
+            saveAsTemplateDisabledReason={
+              activeDraftId ? null : "Open a saved draft to save it as a template."
+            }
             onUnpublishSchedule={
               canUnpublishSchedule(canPublishSchedule, hasPublishedSchedule)
                 ? () => {
@@ -3282,6 +3292,7 @@ export function SchedulePage({
         <ScheduleTemplatesDialog
           templates={templates}
           drafts={drafts}
+          initialDraftId={templateDraftId}
           session={gridEditSession}
           departments={model.departments}
           onClose={closeTemplates}

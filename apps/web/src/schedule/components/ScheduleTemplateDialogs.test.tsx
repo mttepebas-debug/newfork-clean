@@ -118,6 +118,15 @@ describe("ScheduleTemplatesDialog", () => {
     ).toBeTruthy();
   });
 
+  it("opens with the draft it was asked for already chosen (BL-705)", () => {
+    const second = { ...draft, id: "99999999-9999-4999-8999-999999999998", name: "Holiday week" };
+    renderDialog({ drafts: [draft, second], initialDraftId: second.id });
+
+    expect(
+      (screen.getByRole("combobox", { name: "Draft" }) as HTMLSelectElement).value,
+    ).toBe(second.id);
+  });
+
   it("closes on Escape even when a name field has focus (BL-329)", () => {
     const props = renderDialog();
 
