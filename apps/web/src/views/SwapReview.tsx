@@ -175,7 +175,7 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
             <textarea rows={3} maxLength={1000} autoFocus value={reason} onChange={(event) => setReason(event.target.value)} />
           </label>
           <footer className="swap-review-foot">
-            <button type="button" className="nf-button secondary" disabled={decide.isPending} onClick={() => setDeclining(false)}>
+            <button type="button" className="nf-button secondary-button" disabled={decide.isPending} onClick={() => setDeclining(false)}>
               Back
             </button>
             <ConfirmButton className="danger" confirmLabel="Confirm decline" disabled={!reason.trim() || decide.isPending} onConfirm={() => decide.mutate("reject")}>
@@ -188,7 +188,7 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
           <span className="swap-review-deadline">Decide by {decideBy}</span>
           {pending || !invited ? (
             <>
-              <button type="button" className="nf-button secondary" disabled={!decides || !pending || decide.isPending} onClick={() => setDeclining(true)}>
+              <button type="button" className="nf-button secondary-button" disabled={!decides || !pending || decide.isPending} onClick={() => setDeclining(true)}>
                 Decline
               </button>
               <button

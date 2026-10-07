@@ -132,7 +132,8 @@
   justify-content: center;
   justify-self: stretch;
   margin: 6px 0 0;
-  padding: 0 26px;
+  /* the icon ends at 24 (10 + 14): the text keeps clear of it on both sides */
+  padding: 0 24px;
   border-radius: 6px;
   background: var(--theme-warning-soft);
   line-height: 1.3;
@@ -193,7 +194,7 @@
 }
 .swap-review-foot {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
@@ -211,6 +212,13 @@
 }
 .swap-review-foot > .swap-review-note {
   flex: 0 1 auto;
+}
+.swap-review-foot .nf-button {
+  min-height: 34px;
+  flex: none;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
 }
 .swap-review-decline > label {
   display: grid;
@@ -231,7 +239,33 @@
   resize: vertical;
 }
 @media (max-width: 720px) {
+  .swap-review-foot {
+    flex-wrap: wrap;
+  }
+  .swap-review-deadline {
+    flex: 1 1 100%;
+  }
   .swap-review-foot .nf-button {
     min-height: 44px;
+    flex: 1 1 0;
   }
+}
+/* A phone has no room for two cards side by side with their boxes: the
+   cards stack and the swap mark turns upright between them. */
+@media (max-width: 480px) {
+  .swap-review-pair {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 32px auto;
+  }
+  .swap-review-swapicon svg {
+    transform: rotate(90deg);
+  }
+}
+/* The window sits outside the Requests page: its red button carries its own colour. */
+.swap-review .nf-button.danger {
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+}
+.swap-review .nf-button.danger:hover:not(:disabled) {
+  background: var(--theme-danger-strong);
 }
