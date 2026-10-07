@@ -141,16 +141,6 @@ describe("Location phone", () => {
     expect(phone.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
   });
 
-  it("opens a saved US number in the mask and a number from outside the US empty", async () => {
-    vi.mocked(listLocations).mockResolvedValue([legacy, current, { ...current, id: "uk", name: "Soho", phone: "+442079460958" }]);
-    page();
-    fireEvent.click(await screen.findByRole("button", { name: /^Deniz/ }));
-    expect(screen.getByLabelText("Phone number")).toHaveProperty("value", "(415) 555-0100");
-    fireEvent.click(screen.getByRole("button", { name: /^Soho/ }));
-    // Drawn into the mask, "+44 …" would read as a wrong US number.
-    expect(screen.getByLabelText("Phone number")).toHaveProperty("value", "");
-  });
-
   it("saves US numbers in E.164 and rejects incomplete ones", async () => {
     page();
     fireEvent.click(await screen.findByRole("button", { name: /^Deniz/ }));

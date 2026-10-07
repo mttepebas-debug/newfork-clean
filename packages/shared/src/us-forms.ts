@@ -59,21 +59,10 @@ export function toUsPhone(value: string): string | null {
   return /^[2-9]\d{9}$/.test(local) ? `+1${local}` : null;
 }
 
-/**
- * What a phone field starts from: a saved US number in the mask, any other
- * saved number left empty, since the mask would turn "+44 …" into a wrong US one.
- */
-export function usPhoneDraft(saved: string | null | undefined): string {
-  return saved && toUsPhone(saved) ? formatUsPhone(saved) : "";
-}
 
-/** A saved US number as "+1 (415) 555-0100"; anything else stays as it was saved. */
+/** A saved number, a US one in E.164 (BL-969), as "+1 (415) 555-0100". */
 export function displayUsPhone(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const digits = value.replace(/\D/g, "");
-  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
-  if (local.length !== 10) return value;
-  return `+1 ${formatUsPhone(local)}`;
+  return value ? `+1 ${formatUsPhone(value)}` : null;
 }
 
 /** The one stored shape: +1 and ten digits, the area code not starting with 0 or 1. */

@@ -1,7 +1,6 @@
 import {
   managementJobIds,
   suggestLocationShortName,
-  usPhoneDraft,
   type Department,
   type EmployeeInput,
   type Job,
@@ -351,7 +350,7 @@ export default function OwnerOnboardingPage() {
     setLocationDraft({
       name: location.name,
       short_name: location.short_name,
-      phone: usPhoneDraft(location.phone),
+      phone: location.phone ?? "",
       street_address: location.street_address,
       city: location.city,
       region: location.region,

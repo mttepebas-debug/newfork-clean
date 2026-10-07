@@ -22,7 +22,7 @@ import { errorText } from "./GeneralSettingsPage";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { JobColorInput } from "./JobCatalogEditor";
-import { jobInputSchema, jobValuesSchema } from "@newfork/shared";
+import { jobInputSchema } from "@newfork/shared";
 import { LetterRuleError, letterRuleProps } from "../shell/us-text";
 import { listJobs } from "./organization-data";
 
@@ -54,7 +54,7 @@ export function JobAssignmentsDrawer({
     context?.permissions.includes("employees.manage"),
   );
   const initial: JobInput = job
-    ? jobValuesSchema.parse(job)
+    ? jobInputSchema.parse(job)
     : (initialJob ?? {
         name: "",
         color: "#4478A8",
@@ -149,10 +149,8 @@ export function JobAssignmentsDrawer({
     mutationFn: async () => {
       setError(null);
       setNotice(null);
-      // The details are checked only when they are sent: a name saved before
-      // the US rule does not hold the people on the job (BL-503).
       const parsed = jobInputSchema.safeParse(jobDraft);
-      if ((createMode || detailsDirty) && !parsed.success)
+      if (!parsed.success)
         throw new Error(
           parsed.error.issues[0]?.message ?? "Enter valid job details.",
         );
@@ -163,20 +161,20 @@ export function JobAssignmentsDrawer({
       }));
       return createMode
         ? createJobWithAssignments(workspaceId, {
-            job: parsed.data!,
+            job: parsed.data,
             changes,
           })
         : saveJobDetails(workspaceId, job!.id, {
             ...(detailsDirty
-              ? { job: parsed.data!, expected_job: baseline }
+              ? { job: parsed.data, expected_job: baseline }
               : {}),
             changes,
           });
     },
     onSuccess: async (result) => {
       setPending(new Map());
-      setBaseline(jobValuesSchema.parse(result.job));
-      setJobDraft(jobValuesSchema.parse(result.job));
+      setBaseline(jobInputSchema.parse(result.job));
+      setJobDraft(jobInputSchema.parse(result.job));
       setNotice(
         result.changed_count
           ? `Job saved · ${result.changed_count} employee assignments updated.`
@@ -238,7 +236,7 @@ export function JobAssignmentsDrawer({
             "This job is no longer available. Your draft has been kept.",
           );
       if (latestJob) {
-        const latest = jobValuesSchema.parse(latestJob);
+        const latest = jobInputSchema.parse(latestJob);
         setJobDraft((current) => ({
           name:
             current.name.trim() !== baseline.name ? current.name : latest.name,
@@ -640,8 +638,7 @@ export function JobAssignmentsDrawer({
               disabled={
                 busy ||
                 (!createMode && !detailsDirty && !pending.size) ||
-                ((createMode || detailsDirty) &&
-                  !jobInputSchema.safeParse(jobDraft).success) ||
+                !jobInputSchema.safeParse(jobDraft).success ||
                 ((createMode || detailsDirty) && !canManageJob) ||
                 (pending.size > 0 && !canEdit)
               }

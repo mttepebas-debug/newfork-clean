@@ -1,7 +1,6 @@
 import {
   normalizeAccountPhone,
   toUsPhone,
-  usPhoneDraft,
   type EmploymentContactRecord,
   type OwnerLegalName,
 } from "@newfork/shared";
@@ -86,7 +85,7 @@ function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
   return {
     name: lead?.emergencyContactName ?? "",
     relationship: lead?.emergencyContactRelationship ?? "",
-    phone: usPhoneDraft(lead?.emergencyContactPhone),
+    phone: lead?.emergencyContactPhone ?? "",
   };
 }
 
@@ -123,7 +122,7 @@ export default function ProfilePage() {
   const [preferredSent, setPreferredSent] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const [phone, setPhone] = useState(usPhoneDraft(account?.phone));
+  const [phone, setPhone] = useState(account?.phone ?? "");
   const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
   const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
@@ -246,7 +245,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!account || dirty) return;
-    setPhone(usPhoneDraft(account.phone));
+    setPhone(account.phone ?? "");
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
   }, [account, dirty]);
@@ -276,7 +275,7 @@ export default function ProfilePage() {
     setPreferredDraft(null);
     setPreferredSent(new Set());
     setContactDraft(null);
-    setPhone(usPhoneDraft(account.phone));
+    setPhone(account.phone ?? "");
     setAvatarObjectPath(account.avatarObjectPath);
     setAvatarUrl(account.avatarUrl);
     for (const form of legalForms.current.values()) form.reset();
