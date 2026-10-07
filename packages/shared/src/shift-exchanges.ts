@@ -33,6 +33,26 @@ export const exchangeEligibilitySchema = z.object({
     })
     .nullable()
     .optional(),
+  // EKRAN-02 C2: what the approving manager is shown (travel, rest, availability
+  // set aside by consent, their own note) and, in the decision preview, what the
+  // core measured, so the H2 review can name the rule that holds too.
+  approval_flags: z
+    .array(
+      z.object({
+        code: z.string(),
+        gap_minutes: z.number().int().optional(),
+        rule_minutes: z.number().int().optional(),
+      }),
+    )
+    .optional(),
+  measures: z
+    .object({
+      rest_gap_minutes: z.number().int().nullable(),
+      travel_gap_minutes: z.number().int().nullable(),
+      rest_rule_minutes: z.number().int(),
+      travel_rule_minutes: z.number().int(),
+    })
+    .optional(),
 });
 export const exchangeShiftSchema = z.object({
   availability_warning: exchangeEligibilitySchema.shape.availability_warning,
