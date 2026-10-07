@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 440, last: 20261007200200_export_rule_is_changed_by_who_reaches_it.sql
--- fingerprint: sha256:f67e7f420dc2a6c268e65f5ceb3197b17b66b6daac5411e793a4b2b9bba777f0
+-- migrations: 441, last: 20261007230000_catalog_rows_stay_in_their_workspace.sql
+-- fingerprint: sha256:6cfaeb4ee9ec3176b559a7cbbfc31f5c351f9b64ab812e715686c824810bfb3c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26209,6 +26209,7 @@ declare
   existing public.scheduled_schedule_exports%rowtype;
   updated public.scheduled_schedule_exports%rowtype;
   next_location_ids uuid[];
+  added_location_ids uuid[];
   next_preset_id uuid;
   preset_name text;
   reset_failure_state boolean := false;
@@ -26242,6 +26243,19 @@ begin
       select distinct requested.id from unnest(next_location_ids) requested(id)
       where requested.id = any (public.live_location_ids(target_workspace_id, next_location_ids))
          or not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[]))));
+  -- The rule sends as the person who set it up (the cron exports as them): a
+  -- location they cannot export would switch the rule off at its first send.
+  -- Whoever edits the rule may not reach past its owner with it.
+  added_location_ids := array(
+    select distinct requested.id from unnest(next_location_ids) requested(id)
+    where not requested.id = any (coalesce(existing.location_ids, '{}'::uuid[])));
+  if actor_user_id is distinct from existing.created_by
+     and cardinality(added_location_ids) > 0
+     and app_private.authz_reason(existing.created_by, target_workspace_id, 'schedule.export',
+       target_locations => added_location_ids) is not null then
+    raise exception 'The person who set up this export cannot export a location you added.'
+      using errcode = '22023', hint = 'schedule.export_rule_beyond_its_owner';
+  end if;
 
   next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
   if not exists (
@@ -34145,7 +34159,7 @@ REVOKE ALL ON FUNCTION "app_private"."live_locations"("w" "uuid", "ids" "uuid"[]
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."locations" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."locations" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."locations" TO "service_role";
 
 
@@ -34158,15 +34172,50 @@ GRANT SELECT("workspace_id") ON TABLE "public"."locations" TO "service_role";
 
 
 
+GRANT UPDATE("name") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("street_address") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("city") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("region") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("postal_code") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("country_code") ON TABLE "public"."locations" TO "authenticated";
+
+
+
 GRANT SELECT("timezone") ON TABLE "public"."locations" TO "service_role";
+GRANT UPDATE("timezone") ON TABLE "public"."locations" TO "authenticated";
 
 
 
 GRANT SELECT("archived_at") ON TABLE "public"."locations" TO "service_role";
+GRANT UPDATE("archived_at") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."locations" TO "authenticated";
 
 
 
 GRANT SELECT("short_name") ON TABLE "public"."locations" TO "service_role";
+GRANT UPDATE("short_name") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("phone") ON TABLE "public"."locations" TO "authenticated";
 
 
 
@@ -36365,8 +36414,24 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."audit_events" TO "
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."departments" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."departments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."departments" TO "service_role";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."departments" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."departments" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."departments" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."departments" TO "authenticated";
 
 
 
@@ -36455,8 +36520,28 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."important_date_shi
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."jobs" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."jobs" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."jobs" TO "service_role";
+
+
+
+GRANT UPDATE("department_id") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."jobs" TO "authenticated";
 
 
 
@@ -36613,8 +36698,24 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_excha
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."shift_labels" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."shift_labels" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_labels" TO "service_role";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."shift_labels" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."shift_labels" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."shift_labels" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."shift_labels" TO "authenticated";
 
 
 
@@ -36622,8 +36723,32 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_type_
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."shift_types" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."shift_types" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_types" TO "service_role";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("default_start_time") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("default_end_time") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."shift_types" TO "authenticated";
 
 
 
