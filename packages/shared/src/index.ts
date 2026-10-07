@@ -1492,7 +1492,9 @@ export const scheduleShiftSchema = z.object({
 export type ScheduleShift = z.infer<typeof scheduleShiftSchema>;
 
 export const scheduleClosureSchema = z.object({
-  id: z.string().uuid(),
+  // public.schedule_closures names a closed day md5(...)::uuid: UUID-shaped,
+  // without an RFC version, so the strict uuid() rule refused it (BL-959).
+  id: z.guid(),
   location_id: z.string().uuid(),
   closed_date: z.string().date(),
   end_date: z.string().date().nullable().optional(),

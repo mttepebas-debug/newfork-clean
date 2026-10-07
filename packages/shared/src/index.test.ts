@@ -763,6 +763,36 @@ describe("shared contracts", () => {
     expect(parsed.closures[0]?.shift_type_ids).toEqual([shiftTypeId]);
   });
 
+  // BL-959: public.schedule_closures names each closed day md5(...)::uuid, which
+  // has no RFC version or variant; the week must still read.
+  it("reads a closed day whose id is an md5 made into a uuid", () => {
+    const parsed = scheduleReadModelSchema.parse({
+      workspace_id: workspaceId,
+      week_start: "2026-10-26",
+      week_start_day: "monday",
+      locations: [],
+      departments: [],
+      jobs: [],
+      shift_types: [],
+      employees: [],
+      shifts: [],
+      closures: [
+        {
+          id: "c6717f17-012c-8945-cc5c-fca50e875fae",
+          location_id: "10000000-0000-4000-8000-000000000001",
+          closed_date: "2026-10-28",
+          title: "Staff training",
+          is_all_day: true,
+          shift_type_ids: [],
+        },
+      ],
+      referenced_jobs: [],
+      referenced_shift_types: [],
+    });
+
+    expect(parsed.closures[0]?.id).toBe("c6717f17-012c-8945-cc5c-fca50e875fae");
+  });
+
   it("validates Schedule pending operation payload labels", () => {
     const parsed = schedulePendingOpPayloadSchema.parse({
       scheduled_date: "2026-08-17",
