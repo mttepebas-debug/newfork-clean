@@ -71,6 +71,14 @@ test("scopeToBuilder: the first begin; line also includes the builder, every lin
   assert.equal(out.replace("begin; \\ir builder.psql", "begin;"), sql);
 });
 
+test("scopeToBuilder: begin with a trailing comment or as begin transaction is still a test's own opening", () => {
+  for (const first of ["begin; -- schedule", "BEGIN TRANSACTION;", "begin work ;  "]) {
+    const out = scopeToBuilder(`${first}\nselect plan(1);\nrollback;\n`, "builder.psql", "x.test.sql");
+    assert.equal(out.split("\n").length, 4, first);
+    assert.match(out.split("\n")[0], /^begin( transaction| work)? ?; \\ir builder\.psql$/i, first);
+  }
+});
+
 test("scopeToBuilder: a file that does not open its own transaction is refused by name", () => {
   assert.throws(() => scopeToBuilder("select plan(1);\nbegin;\nrollback;\n", "builder.psql", "late.test.sql"), /late\.test\.sql/);
   assert.throws(() => scopeToBuilder("-- nothing\nselect 1;\n", "builder.psql", "none.test.sql"), /none\.test\.sql/);
@@ -107,6 +115,14 @@ test("prepareRun: named files only, and nothing outside supabase/tests", () => {
   assert.deepEqual(fs.readdirSync(path.join(dir, RUN_DIR)).sort(), ["b.test.sql", "builder.psql"]);
   assert.throws(() => prepareRun(dir, ["supabase/test-support/builder.sql"]), /supabase\/tests/);
   assert.throws(() => prepareRun(dir, ["supabase/tests/missing.test.sql"]), /missing\.test\.sql/);
+});
+
+test("prepareRun: a folder argument takes its test files, .pg ones included", () => {
+  const dir = worktree();
+  write(dir, "supabase/tests/more/c.test.pg", TEST("c"));
+  assert.deepEqual(prepareRun(dir, ["supabase/tests/more"]), [`${RUN_DIR}/more/c.test.pg`]);
+  const copy = fs.readFileSync(path.join(dir, RUN_DIR, "more/c.test.pg"), "utf8");
+  assert.match(copy, /^-- c\nbegin; \\ir \.\.\/builder\.psql\n/); // the include is relative to the copy
 });
 
 test("prepareRun: a builder that cannot run inside a transaction stops the run before any test", () => {
@@ -148,6 +164,30 @@ test("run: named files reach pgTAP as their scoped copies", () => {
   assert.equal(run({ root: dir, argv: ["supabase/tests/b.test.sql"], exec, log: quiet().log }), 0);
   assert.deepEqual(calls[1].args, ["test", "db", `${RUN_DIR}/b.test.sql`]);
   assert.deepEqual(calls[1].files, ["b.test.sql", "builder.psql"]);
+});
+
+test("run: options reach supabase test db as before, files still go through the copies", () => {
+  const dir = worktree();
+  const { calls, exec } = fakeExec();
+  assert.equal(run({ root: dir, argv: ["--debug", "supabase/tests/a.test.sql"], exec, log: quiet().log }), 0);
+  assert.deepEqual(calls[1].args, ["test", "db", "--debug", `${RUN_DIR}/a.test.sql`]);
+});
+
+test("run: --load-only with files is refused instead of silently running none", () => {
+  const dir = worktree();
+  const { calls, exec } = fakeExec();
+  const { lines, log } = quiet();
+  assert.equal(run({ root: dir, argv: ["--load-only", "supabase/tests/a.test.sql"], exec, log }), 1);
+  assert.deepEqual(calls, []);
+  assert.match(lines.join("\n"), /--load-only/);
+});
+
+test("run: --load-only without origin/main has nothing to load and fails", () => {
+  const dir = worktree();
+  git(dir, "update-ref", "-d", "refs/remotes/origin/main");
+  const { calls, exec } = fakeExec();
+  assert.equal(run({ root: dir, argv: ["--load-only"], exec, log: quiet().log }), 1);
+  assert.deepEqual(calls, []);
 });
 
 test("run: --load-only loads origin/main's builder and runs no test", () => {

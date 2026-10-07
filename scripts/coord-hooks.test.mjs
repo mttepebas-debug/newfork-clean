@@ -342,10 +342,13 @@ test("runStep: which commands are gate steps, test:db or e2e", () => {
     ["pnpm.cmd typecheck --force", "typecheck"],
     ["node scripts/test-db.mjs", "test:db"], // what `pnpm test:db` runs (PARALEL-1)
     ["node scripts/test-db.mjs supabase/tests/x.test.sql", "test:db"],
+    ["node --no-warnings scripts/test-db.mjs", "test:db"],
   ])
     assert.equal(runStep(cmd), step, cmd);
   for (const cmd of [
     "node scripts/test-db.mjs --load-only",
+    "pnpm.cmd test:db --load-only", // a builder reload of seconds, no pgTAP
+
     "node --test scripts/test-db.test.mjs",
     "pnpm.cmd --filter @newfork/web exec vitest run src/x.test.tsx",
     "pnpm.cmd --filter @newfork/web test",

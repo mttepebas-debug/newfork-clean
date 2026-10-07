@@ -253,11 +253,13 @@ export function runStep(seg) {
   const args = w.slice(1);
   if (p === "supabase") return args[0] === "test" && args[1] === "db" ? "test:db" : null;
   // what `pnpm test:db` runs (PARALEL-1); --load-only reloads origin/main's builder and runs no test
-  if (p === "node" && /(^|[\\/])test-db\.mjs$/.test(args[0] ?? "")) return args.includes("--load-only") ? null : "test:db";
+  const reloadOnly = args.includes("--load-only");
+  if (p === "node") return /(^|[\\/])test-db\.mjs$/.test(args.find((a) => !a.startsWith("-")) ?? "") && !reloadOnly ? "test:db" : null;
   if (p === "playwright") return args[0] === "test" ? "e2e" : null;
   if ((p !== "pnpm" && p !== "turbo") || args.some((a) => FOCUSED.test(a))) return null;
   const script = args.find((a) => !a.startsWith("-") && a !== "run");
-  if (p === "pnpm" && (script === "test:db" || script === "e2e")) return script;
+  if (p === "pnpm" && script === "test:db") return reloadOnly ? null : script;
+  if (p === "pnpm" && script === "e2e") return script;
   return GATE.has(script) ? script : null;
 }
 

@@ -36,14 +36,16 @@ const posix = (p) => p.split(path.sep).join("/");
 // TAP output; the reset hands the test its own setting back.
 const wrap = (builder) => `set client_min_messages = warning;\n${builder}\nreset client_min_messages;\n`;
 
-// The first statement must be a lone `begin;`: that line also includes the builder, so it joins the
-// test's transaction. Anything else is refused by name rather than run against the shared world.
+// The first statement must be a `begin;` on its own line (`begin transaction;`, a trailing `-- …`
+// comment allowed): that line also includes the builder, so it joins the test's transaction. Anything
+// else is refused by name rather than run against the shared world.
+const OPEN = /^(\s*begin(?:\s+(?:transaction|work))?\s*;)\s*(?:--.*)?\r?$/i;
 export function scopeToBuilder(sql, include, name) {
   const lines = sql.split("\n");
   const at = lines.findIndex((l) => !/^\s*(--.*)?\r?$/.test(l));
-  if (at < 0 || !/^\s*begin\s*;\s*\r?$/i.test(lines[at]))
-    throw new Error(`${name}: ilk deyim tek başına "begin;" değil; dalın builder'ı bu dosyanın işlemine bağlanamaz`);
-  lines[at] = lines[at].replace(/^(\s*begin\s*;)/i, `$1 \\ir ${include}`);
+  const open = at < 0 ? null : lines[at].match(OPEN);
+  if (!open) throw new Error(`${name}: ilk deyim kendi satırında "begin;" değil; dalın builder'ı bu dosyanın işlemine bağlanamaz`);
+  lines[at] = `${open[1]} \\ir ${include}`; // the comment, if any, goes: \ir takes the rest of the line
   return lines.join("\n");
 }
 
@@ -153,8 +155,11 @@ function realExec(cmd, args, { input, cwd } = {}) {
 
 export function run({ root, argv = [], exec = realExec, log = (s) => console.error(s) }) {
   const loadOnly = argv.includes("--load-only");
-  const files = argv.filter((a) => a !== "--load-only");
+  // ponytail: options go to `supabase test db` as before; one that takes a value needs --opt=value
+  const options = argv.filter((a) => a.startsWith("-") && a !== "--load-only");
+  const files = argv.filter((a) => !a.startsWith("-"));
   try {
+    if (loadOnly && (files.length || options.length)) throw new Error("--load-only test koşmaz, başka argüman almaz");
     const targets = loadOnly ? null : prepareRun(root, files); // refuses before the database is touched
     const db = container(root);
     const main = mainBuilder(root);
@@ -173,7 +178,7 @@ export function run({ root, argv = [], exec = realExec, log = (s) => console.err
         );
     }
     if (loadOnly) return loaded ? 0 : 1;
-    const r = exec("supabase", ["test", "db", ...targets], { cwd: root });
+    const r = exec("supabase", ["test", "db", ...options, ...targets], { cwd: root });
     if (r.error) log(`test-db: supabase test db başlatılamadı: ${r.error.message}`);
     return r.status ?? 1;
   } catch (err) {
