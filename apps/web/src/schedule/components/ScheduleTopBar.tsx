@@ -637,7 +637,7 @@ function SettingsMenuPanel({
       <SettingsToggleRow
         pressed={showRoleSeparators}
         icon={showRoleSeparators ? <Eye size={15} /> : <EyeOff size={15} />}
-        label={showHideLabel(showRoleSeparators, "Role Seperators")}
+        label={showHideLabel(showRoleSeparators, "Role Separators")}
         onClick={onToggleRoleSeparators}
         disabled={employeeSortMode !== "byJob"}
       />
