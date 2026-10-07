@@ -89,6 +89,16 @@ describe("requestRows", () => {
     expect(rows.map((row) => row.id)).toEqual(["x-soon", "t-late", "t-none"]);
   });
 
+  // Times are compared as instants, whatever offset the API writes them with.
+  it("orders Decide by as instants, not as text", () => {
+    const rows = requestRows(
+      [timeOff("t-istanbul", "2026-10-13T12:00:00+03:00", { can_vote: true })],
+      [exchange("x-utc", "swap", "ready_for_manager", "2026-10-13T10:00:00Z")],
+      all,
+    );
+    expect(rows.map((row) => row.id)).toEqual(["t-istanbul", "x-utc"]);
+  });
+
   // KARARLAR Schedule → Requests, Ek 2026-10-07: one list, no status tabs.
   it("lists closed requests under the open ones, the newest decision first", () => {
     const rows = requestRows(

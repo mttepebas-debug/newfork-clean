@@ -6,7 +6,7 @@ import type {
   TimeOffRequest,
 } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ScheduleRequestsPage } from "./ScheduleRequestsPage";
 import { PermissionRoute } from "../auth/PermissionRoute";
@@ -140,14 +140,24 @@ vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) 
   getExchanges: vi.fn(),
 }));
 
-function LocationProbe() { const location = useLocation(); return <output aria-label="Current URL">{location.pathname + location.search}</output>; }
+function LocationProbe() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  return (
+    <>
+      <output aria-label="Current URL">{location.pathname + location.search}</output>
+      <button type="button" onClick={() => navigate(-1)}>Browser back</button>
+    </>
+  );
+}
 function renderPage(
   initialPath = "/app/schedule/requests",
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  before: string[] = [],
 ) {
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[initialPath]}>
+      <MemoryRouter initialEntries={[...before, initialPath]}>
         <Routes>
           <Route path="/app/schedule/requests" element={<ScheduleRequestsPage />} />
           <Route path="/app/availability" element={
@@ -156,6 +166,7 @@ function renderPage(
             </PermissionRoute>
           } />
           <Route path="/app/workspace" element={<h1>Workspace</h1>} />
+          <Route path="/app/notifications" element={<h1>Notifications</h1>} />
           <Route path="/app/employee-hub" element={<h1>Employee Hub</h1>} />
         </Routes>
         <LocationProbe />
@@ -233,6 +244,41 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(within(closed).getByText("Approved")).toBeTruthy();
     expect(within(rows[0]!).getByText("Needs review")).toBeTruthy();
     expect(fetchRequests.mock.calls.some(([path]) => path.includes("time_off_queue=closed"))).toBe(true);
+  });
+  // P09: a closed swap stays in the one list with its outcome.
+  it("lists a closed shift change under the open requests with its outcome", async () => {
+    const closedSwap = {
+      id: "97500000-0000-4000-8000-000000000009", kind: "swap", audience: "eligible_pool", status: "completed", stage: "closed",
+      revision: 3, created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-05T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      shift, requested_shift: null, applications: [], candidate_count: 0, can_manage: true, is_owner: false,
+      history: [{ id: "97600000-0000-4000-8000-000000000001", action: "completed", created_at: "2035-01-04T09:00:00Z", message: "" }],
+    };
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [closedSwap], opportunities: [], own_shifts: [] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage();
+    const swap = await screen.findByRole("row", { name: /Emre Person, Swap/ });
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(rows.indexOf(swap)).toBe(1);
+    expect(within(swap).getByText("Completed")).toBeTruthy();
+  });
+  // Opening a shift change is a step the browser's Back undoes.
+  it("goes back from a shift change to the list with the browser's Back", async () => {
+    const caseId = "97500000-0000-4000-8000-000000000002";
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
+      id: caseId, kind: "cover", audience: "eligible_pool", status: "open", stage: "ready_for_manager", revision: 1,
+      created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+      shift, requested_shift: null, applications: [], candidate_count: 1, can_manage: true, is_owner: false, history: [],
+    }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(undefined, undefined, ["/app/notifications"]);
+    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${caseId}`);
+    fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
+    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+  });
+  // Shift Hub's Renew swaps ?case= for ?offer=; its offer form opens here.
+  it("keeps Shift Hub on screen for its offer form", async () => {
+    renderPage("/app/schedule/requests?offer=22000000-0000-4000-8000-000000000004");
+    await screen.findByRole("heading", { name: "Shift changes" });
+    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
   });
   it("lands a manager notification link on its Shift Hub case", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
