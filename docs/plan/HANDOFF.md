@@ -1,7 +1,29 @@
-# Koordinatör devri — 2026-10-07
+# Koordinatör devri — 2026-10-07 (gece modu açık)
 
 - **Oturum (2026-10-07 06:08Z devir):** "Koordinatör" `local_70128f8f-5bc3-4776-92cf-1fe096aa4404` (posta kutusu `f2f4ad49-6b1b-4db6-a445-4198729b2a0f`, `inbox.mjs claim` yapıldı). Eski koordinatör `local_9c7e674a…` / `53bf53b1…` devredildi. Mert bu pencerede `/compact` ya da `/clear` yazar; kimlik DEĞİŞMEZ.
 - **Önce oku:** `CLAUDE.md` (2026-10-07: tek tip oturum, rol oturumu yok; alt ajan yalnız `nf-guvenlik`, `nf-okur`; klasör kuralları `apps/api`, `apps/web`, `supabase`, `e2e` altındaki `CLAUDE.md`'lerde), `docs/plan/EKRAN-PLANI.md` ("Bir ekranın turu": ekran tek sahip oturumda uçtan uca, kabul listesi Mert onaylı). `docs/plan/ILKELER.md` karar vermeden önce okunur.
+
+## 0000. GECE MODU AÇIK (2026-10-07 ~10:00Z / yerel ~03:00) — sıkıştırmadan sonra ÖNCE BUNU OKU
+- **Mert'in talimatı (`/gece-modu` argümanı):** "artifactlara ben sabah gelince karar vereceğim. işi biten karar bekleyen sessionları güvenli bir şekilde durdur. bu sessionların hepsi karar beklediği için durursa, yeni sessionlara task delege etmeye devam et". Mert'e gece mesaj ve soru gitmez; sorular `SABAH-SORULAR.md`'ye.
+- **Araçlar:** cron `b06937c7` (`3-59/10 * * * *`, gece turu), `request_keep_awake` her turda yenilenir, posta kutusu `wait` arka planda. İzin modu bypass (Mert açtı).
+- **"Güvenli durdur":** oturum işini kayda geçirmiş (rapor posta kutusunda, commit dalda), sunucularını PID ağacıyla kapatmış, kilit tutmuyor → posta kutusuna `DURDURULABILIR` yazar → koordinatör dokunmaz, oturum boşta kalır (arşiv yok; sabah Mert'in kararıyla devam eder). Yarım tur varsa `stop_session` yalnız sorun çıkarsa.
+- **Yeni iş verme:** `start_session` aracı yok, kart (spawn_task) gece tıklanmaz. Yol: işini bitirmiş ve kaydını bırakmış boştaki oturuma yeni `Görev:` mesajı (önce PARALEL-1, sonra EKRAN-16 keşif); Mert kararını bekleyen oturumlar (EKRAN-08, EKRAN-10 ×3, BILDIRIM) yeniden kullanılmaz — sabah bağlamları gerekiyor. Yedek yol: Opus alt ajan, worktree yalıtımıyla.
+
+| Hat | Gece planı | Sabaha bekleyen (Mert) |
+|---|---|---|
+| EKRAN-02 Requests | telefon kartı (#67) + görüntüler; C2 (H2 penceresi, KARARLAR kesin) aynı dalda; veri paketi yeni main'e taşınır + BL-910 + `nf-guvenlik` yeniden + test:db | tek tablo "gönder" (Mert bakacak); veri paketi gönderimi S1 (ultrareview) cevabına bağlı |
+| EKRAN-01 Schedule | #11 → #9 → #20 → #18 (R3 gönder koordinatörde, gece de geçerli); R0–R2 kendisi | 3 varyant (#86–#88), S24, S25 |
+| EKRAN-03 Employees | [şimdi] grubu (R1, kendisi gönderir) | `styles.css` ve veri maddeleri EKRAN-02 dilimlerine bağlı → biterse DURDURULABILIR |
+| GUVENLIK-A | GA-1 (kiracılar arası taşıma kilidi; R3, `nf-guvenlik`, canlı migration yedekli, gönder koordinatörde) → GA-4 (BL-906 planlı kapanış; yeni pgTAP dosyası yok) | GA-2/GA-3 EKRAN-02 paketinden sonra |
+| PARALEL-1 | main'e gönderim + CI yeşil → ekran oturumlarına yeni test:db bildirimi → boşsa yeni iş | — |
+| EKRAN-16 keşif | rapor → DURDURULABILIR | ≤5 soru |
+| EKRAN-08 çekmece | davranış testi (db.lock boşalınca) + rapor → DURDURULABILIR | 2 varsayım teyidi |
+| EKRAN-10 General | rapor + ≥6 tasarım → DURDURULABILIR | tasarım seçimi |
+| EKRAN-10 Locations / Jobs | Mert'in değişikliklerini bekliyor → DURDURULABILIR | artifact ayarları |
+| BILDIRIM | söküm listesi + olay envanteri + plan + ≤6 soru + ≥3 varyant → DURDURULABILIR | temel model soruları |
+
+- **Gece yeni iş adayları (Mert kararı istemeyen, açık hatlarla çakışmayan; sırayla):** (1) BL-804 Workspace "Scheduled today / Open today" UTC gününe göre sayıyor (leave: high; Ekran 5; KARARLAR saat dilimi kuralı belli); (2) BL-559 sahibi birincil lokasyonu olmayan kişi son tarihli belgeyi gönderemiyor (high; Ekran 6); (3) BL-821 yayındaki belge türünü arşivlemek zorunlulukları kapatmıyor (high; Ekran 6). Yetki matrisi / `ci-green.txt` / `styles.css` gerektiren iş gece açılmaz.
+- **Gece notu (sabah raporu için, tur tur):** —
 
 ## 000. GÜNCEL DURUM (2026-10-07 ~09:35Z) — ÖNCE BUNU OKU
 - **Mert'in uyarısı (09:30Z, üçüncü kez):** "hiç sorgulamıyorsun … ne tavsiye veriyorsun ne karşı çıkıyorsun ne fikrini sunuyorsun". Her yeni isteğe önce: ne anladım · artı/eksi + çakışan kural · önerim/itirazım (DERSLER 10-06 gece girişi). Kural önerisi olarak sorulan soru kapatıldı, cevap bekliyor.
