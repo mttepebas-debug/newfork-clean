@@ -2,6 +2,8 @@ import {
   employeeInputSchema,
   employeeCreateCommandSchema,
   employeeRoleUpdateInputSchema,
+  usPhoneSchema,
+  usText,
 } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -13,14 +15,16 @@ import {
 import type { EmployeeDirectoryService } from "./employee-directory-service";
 import type { EmployeeCreateService } from "./employee-create-service";
 
+// The US form rules (BL-503): names follow the letter rule, phones are a US
+// number in E.164.
 const ownEmploymentContactBody = z.object({
-  name: z.string().trim().min(1).max(120),
-  relationship: z.string().trim().max(80).optional(),
-  phone: z.string().trim().min(7).max(30),
+  name: usText(z.string().trim().min(1).max(120)),
+  relationship: usText(z.string().trim().max(80)).optional(),
+  phone: usPhoneSchema,
   email: z.string().trim().email().or(z.literal("")).optional(),
   // The person's own number, which onboarding takes once and nothing gives
   // back. Left out means leave what is on file.
-  personalPhone: z.string().trim().min(7).max(30).or(z.literal("")).optional(),
+  personalPhone: usPhoneSchema.or(z.literal("")).optional(),
 });
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
@@ -338,7 +342,7 @@ export function registerEmployeeDirectoryRoutes(
     async (request, reply) => {
       const params = employeeParams.safeParse(request.params);
       const body = z
-        .object({ preferredName: z.string().trim().max(80) })
+        .object({ preferredName: usText(z.string().trim().max(80)) })
         .safeParse(request.body);
       if (!params.success || !body.success)
         return reply

@@ -11,7 +11,7 @@ const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const accessToken = "valid-token";
 const url = `/v1/account/workspaces/${workspaceId}/legal-name`;
 const headers = { authorization: `Bearer ${accessToken}` };
-const name = { firstName: "Ayşe", middleName: "", lastName: "Demir" };
+const name = { firstName: "Ayla", middleName: "", lastName: "Demir" };
 
 function appWith(service: Partial<WorkspaceAccountService>) {
   return buildApp({
@@ -46,7 +46,7 @@ describe("owner legal name routes (BL-080)", () => {
       method: "PUT",
       url,
       headers,
-      payload: { ...name, firstName: "  Ayşe ", workspaceId: "spoofed" },
+      payload: { ...name, firstName: "  Ayla ", workspaceId: "spoofed" },
     });
     expect(response.statusCode).toBe(204);
     expect(saveOwnLegalName).toHaveBeenCalledWith(accessToken, workspaceId, name);
@@ -54,9 +54,12 @@ describe("owner legal name routes (BL-080)", () => {
 
   it.each([
     [{ firstName: "", middleName: "", lastName: "Demir" }],
-    [{ firstName: "Ayşe", middleName: "", lastName: "   " }],
+    [{ firstName: "Ayla", middleName: "", lastName: "   " }],
+    // KARARLAR "Form ve girdi kuralları (ABD)" (BL-503).
+    [{ firstName: "Ayşe", middleName: "", lastName: "Demir" }],
+    [{ firstName: "Mert", middleName: "", lastName: "Tepebaş" }],
     [{ firstName: "A".repeat(81), middleName: "", lastName: "Demir" }],
-    [{ firstName: "Ayşe", lastName: "Demir" }],
+    [{ firstName: "Ayla", lastName: "Demir" }],
   ])("refuses an incomplete name before the database sees it: %j", async (payload) => {
     const saveOwnLegalName = vi.fn(async () => undefined);
     const response = await appWith({ saveOwnLegalName }).inject({
@@ -165,7 +168,7 @@ describe("owner legal name service (BL-080)", () => {
   it("reads through get_own_legal_name_service with the verified actor", async () => {
     const rpc = vi.fn(async () => ({
       data: [
-        { legal_first_name: "Ayşe", legal_middle_name: "", legal_last_name: "Demir" },
+        { legal_first_name: "Ayla", legal_middle_name: "", legal_last_name: "Demir" },
       ],
       error: null,
     }));
@@ -206,7 +209,7 @@ describe("owner legal name service (BL-080)", () => {
     expect(rpc).toHaveBeenCalledWith("save_owner_legal_name_service", {
       actor_user_id: userId,
       target_workspace_id: workspaceId,
-      legal_first_name: "Ayşe",
+      legal_first_name: "Ayla",
       legal_middle_name: "",
       legal_last_name: "Demir",
     });

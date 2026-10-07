@@ -722,8 +722,27 @@ describe("employee directory routes", () => {
       ["a preferred name's answer", "decide_employee_preferred_name_service", "POST", `/v1/workspaces/${workspaceId}/preferred-names/${requestId}/decision`, { approve: true }, null, 204],
       ["how preferred names are answered", "get_employee_name_settings_service", "GET", `/v1/workspaces/${workspaceId}/preferred-name-approval`, undefined, "manager", 200],
       ["a change to how preferred names are answered", "set_employee_name_settings_service", "PUT", `/v1/workspaces/${workspaceId}/preferred-name-approval`, { approval: "auto" }, null, 204],
-      ["their own emergency contact", "save_own_employment_contact_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", phone: "555 010 2030" }, null, 204],
+      ["their own emergency contact", "save_own_employment_contact_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", phone: "+15550102030" }, null, 204],
     ] as const;
+    // BL-503: the US form rules are the server's too, before the database is asked.
+    it.each([
+      ["a raw phone", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", phone: "555 010 2030" }],
+      ["a foreign phone", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", phone: "+442079460958" }],
+      ["a Turkish-only letter in the contact", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayşe Kim", phone: "+15550102030" }],
+      ["a Turkish-only letter in the relationship", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", relationship: "Eşi", phone: "+15550102030" }],
+      ["a Turkish-only letter in a preferred name", `/v1/workspaces/${workspaceId}/employees/${employeeId}/preferred-name`, { preferredName: "Ayşe" }],
+    ] as const)("refuses %s with 400", async (_name, url, payload) => {
+      const rpc = vi.fn(async () => ({ data: null, error: null }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => context },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const response = await app.inject({ method: "PUT", url, headers: { authorization: "Bearer valid-token" }, payload });
+      expect(response.statusCode, response.body).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
+      await app.close();
+    });
+
     // No permission at all: the old gates stopped this person before the database was asked.
     const noPermissions = { ...context, permissions: [] as ActiveWorkspaceContext["permissions"] };
 

@@ -218,6 +218,28 @@ describe("workspace account routes", () => {
     });
   });
 
+  // BL-503: the workspace and the owner's own names follow the US letter rule.
+  it.each([
+    [{ workspaceName: "Kadıköy Cafe", nextStep: 2, complete: false }],
+    [{ workspaceName: "Meyhouse", nextStep: 2, complete: false, ownerFirstName: "Mert", ownerLastName: "Tepebaş" }],
+  ])("refuses Turkish-only letters in owner onboarding: %j", async (payload) => {
+    const saveOwnerOnboarding = vi.fn(async () => undefined);
+    const app = buildApp({
+      contextResolver: { resolve: async () => context },
+      workspaceAccountService: {
+        saveOwnerOnboarding,
+      } as unknown as WorkspaceAccountService,
+    });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/workspaces/${workspaceId}/owner-onboarding`,
+      headers: { authorization: `Bearer ${accessToken}` },
+      payload,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(saveOwnerOnboarding).not.toHaveBeenCalled();
+  });
+
   it("returns conflict when owner onboarding revision is stale", async () => {
     const saveOwnerOnboarding = vi.fn(async () => {
       throw rpcFailure({ message: "owner onboarding revision conflict", code: "40001" });

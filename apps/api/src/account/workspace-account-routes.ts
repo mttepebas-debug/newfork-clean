@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
-import { ownerLegalNameSchema } from "@newfork/shared";
+import { ownerLegalNameSchema, usText } from "@newfork/shared";
 import {
   bearerToken,
   resolveWorkspaceAuthorization,
@@ -53,15 +53,16 @@ const ownershipTransferResponseBody = z.object({
   password: z.string().max(1024).optional(),
 });
 const ownerOnboardingBody = z.object({
-  workspaceName: z.string().trim().min(1).max(120),
+  // The workspace and the owner's names follow the US letter rule (BL-503).
+  workspaceName: usText(z.string().trim().min(1).max(120)),
   nextStep: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   complete: z.boolean(),
   expectedRevision: z.number().int().positive().nullable().optional(),
   // The owner's own employee record: the name the workspace files them under,
   // and whether they take shifts themselves.
-  ownerFirstName: z.string().trim().min(1).max(80).optional(),
-  ownerMiddleName: z.string().trim().max(80).optional(),
-  ownerLastName: z.string().trim().min(1).max(80).optional(),
+  ownerFirstName: usText(z.string().trim().min(1).max(80)).optional(),
+  ownerMiddleName: usText(z.string().trim().max(80)).optional(),
+  ownerLastName: usText(z.string().trim().min(1).max(80)).optional(),
 });
 const ownerOnboardingInvitationIntentBody = z.object({
   employeeId: z.string().uuid(),
