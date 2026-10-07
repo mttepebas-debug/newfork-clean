@@ -211,7 +211,10 @@ export function ScheduleGrid({
     showPresetShiftBadges,
     showRoleSeparators,
     showTotalHours,
-    showUnassignedShifts,
+    // KARARLAR Schedule 2026-10-05 (BL-681): the open shifts row is part of
+    // editing; view mode shows the published week plainly. Export keeps its
+    // own rule (it reads the model with the row allowed).
+    showUnassignedShifts: showUnassignedShifts && Boolean(session),
     hasEditSession: Boolean(session),
     addDays,
   });
