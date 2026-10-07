@@ -23,7 +23,10 @@
 | BILDIRIM | söküm listesi + olay envanteri + plan + ≤6 soru + ≥3 varyant → DURDURULABILIR | temel model soruları |
 
 - **Gece yeni iş adayları (Mert kararı istemeyen, açık hatlarla çakışmayan; sırayla):** (1) BL-804 Workspace "Scheduled today / Open today" UTC gününe göre sayıyor (leave: high; Ekran 5; KARARLAR saat dilimi kuralı belli); (2) BL-559 sahibi birincil lokasyonu olmayan kişi son tarihli belgeyi gönderemiyor (high; Ekran 6); (3) BL-821 yayındaki belge türünü arşivlemek zorunlulukları kapatmıyor (high; Ekran 6). Yetki matrisi / `ci-green.txt` / `styles.css` gerektiren iş gece açılmaz.
-- **Gece notu (sabah raporu için, tur tur):** —
+- **Gece notu (sabah raporu için, tur tur):**
+  - ~10:20Z: EKRAN-10 General bitti (artifact Kwz63F5JeddW5S7y2kSsAi, BL-911…916, KK-208, sabah G1–G3), durdu. Jobs durdu (BUJShpW3rXDGFVNyEygDZr v2). Locations durdu (5 tasarım UWTcHirMHXjrfa9TND2TLE + kopya Lru9WAg6HaSbdErLyMhU26; backlog adayı: ortak çekmecede `scrollbar-gutter` 15 px — EKRAN-16 BL'lerinden sonra numaralanacak). EKRAN-16 keşfi main'de `ca4326f6` (KK-209, sabah G4–G7, sunum PEYuSjGWXGN9dkb9LipikY); oturum BL-917'den başlayan metni hazırlıyor, sonra boş → gece işi adayı.
+  - EKRAN-02: telefon kartları hazır (`8a1581ca`, 390 görüntüleri `newfork-wt/ekran-02/artifacts/ekran-02/tek-tablo/*-390-after.png`, e2e 7/7); sabah Mert'e masaüstü + telefon önce/sonra → "gönder". Sonra C2 ve veri paketi hazırlığı.
+  - EKRAN-03: [şimdi] 1 main'de (`904a07ab`). Main CI 37598002511 kırmızı (yalnız check, ShiftQuickEditor süre aşımı, BL-757 yük); `--failed` yeniden koşu EKRAN-03'te, PARALEL-1 push'u main yeşilini bekliyor.
 
 ## 000. GÜNCEL DURUM (2026-10-07 ~09:35Z) — ÖNCE BUNU OKU
 - **Mert'in uyarısı (09:30Z, üçüncü kez):** "hiç sorgulamıyorsun … ne tavsiye veriyorsun ne karşı çıkıyorsun ne fikrini sunuyorsun". Her yeni isteğe önce: ne anladım · artı/eksi + çakışan kural · önerim/itirazım (DERSLER 10-06 gece girişi). Kural önerisi olarak sorulan soru kapatıldı, cevap bekliyor.
