@@ -31,7 +31,9 @@ export function reviewHours(start: string | null, end: string | null, timeFormat
 }
 
 /** A modal window: the browser keeps focus inside and Esc closes it; focus goes back where it was. */
-function ReviewWindow({ title, busy, onClose, children }: { title: string; busy: boolean; onClose: () => void; children: ReactNode }) {
+function ReviewWindow({ title, busy, onClose, onEscape, children }: {
+  title: string; busy: boolean; onClose: () => void; onEscape: () => void; children: ReactNode;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -50,7 +52,7 @@ function ReviewWindow({ title, busy, onClose, children }: { title: string; busy:
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
-        if (!busy) onClose();
+        if (!busy) onEscape();
       }}
     >
       <header className="swap-review-head">
@@ -123,9 +125,10 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
         action, case_id: item.id, application_id: pending!.id, expected_revision: item.revision,
         fingerprint: preview.data?.fingerprint, reason: action === "reject" ? reason.trim() : "", private_note: "",
       }, key.current),
-    onSuccess: async (_result, action) => {
+    onSuccess: async (result, action) => {
       await refreshExchangeSurfaces(client, workspace);
-      onDone(action === "approve" ? "Swap approved." : "Swap declined.");
+      // Two locations: the first approval is a vote; the shifts move on the last one.
+      onDone(action === "reject" ? "Swap declined." : result.status === "completed" ? "Swap approved." : "Your approval is recorded. The other location's manager decides next.");
     },
     onError: () => {
       key.current = crypto.randomUUID();
@@ -138,8 +141,10 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
   ]);
   const blocked = preview.data && !preview.data.allowed;
   const decideBy = timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat);
+  const places = [...new Set([item.shift.location_name, item.requested_shift?.location_name].filter(Boolean))].join(" or ");
   return (
-    <ReviewWindow title="Swap request" onClose={onClose} busy={decide.isPending}>
+    // Esc in the decline step goes back to the shifts and keeps the reason (P26).
+    <ReviewWindow title="Swap request" onClose={onClose} onEscape={() => (declining ? setDeclining(false) : onClose())} busy={decide.isPending}>
       <p className="swap-review-names">
         {item.owner_name ?? "Open shift"} ⇄ {applicant?.employee_name ?? item.requested_shift?.employee_name ?? "Teammate"}
       </p>
@@ -163,7 +168,7 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
         {!item.can_manage && item.status === "open" ? (
           <p className="swap-review-note swap-review-lock">
             <Lock size={14} aria-hidden />
-            Another {item.shift.location_name} manager, the owner or an admin decides this request.
+            Another {places} manager, the owner or an admin decides this request.
           </p>
         ) : null}
         {decide.error ? <p className="swap-review-error" role="alert">{decide.error.message}</p> : null}

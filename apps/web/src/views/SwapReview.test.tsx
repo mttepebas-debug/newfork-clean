@@ -106,6 +106,28 @@ describe("SwapReview", () => {
     });
   });
 
+  // Kadikoy and Besiktas: Ayse's approval is one of two; nothing moves yet.
+  it("says the approval is recorded when the other location's manager still decides", async () => {
+    vi.mocked(getExchangePreview).mockResolvedValue(preview({ requires_other_manager: true }));
+    vi.mocked(changeExchange).mockResolvedValue({ case_id: caseId, revision: 5, status: "open" } as never);
+    renderReview();
+    const approve = await screen.findByRole("button", { name: "Approve" });
+    await waitFor(() => expect((approve as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(approve);
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("Your approval is recorded. The other location's manager decides next."));
+  });
+
+  it("keeps the reason when Esc leaves the decline step, and stays open", async () => {
+    renderReview();
+    fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
+    fireEvent.change(screen.getByLabelText("Reason for Deniz"), { target: { value: "We need you on Friday" } });
+    fireEvent(screen.getByRole("dialog", { name: "Swap request" }), new Event("cancel", { cancelable: true }));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText("Reason for Deniz")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Decline" }));
+    expect((screen.getByLabelText("Reason for Deniz") as HTMLTextAreaElement).value).toBe("We need you on Friday");
+  });
+
   it("declines only with a reason for the employee, on a second click", async () => {
     renderReview();
     fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
@@ -126,7 +148,7 @@ describe("SwapReview", () => {
     const dialog = await screen.findByRole("dialog", { name: "Swap request" });
     expect((within(dialog).getByRole("button", { name: "Approve" }) as HTMLButtonElement).disabled).toBe(true);
     expect((within(dialog).getByRole("button", { name: "Decline" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(dialog.textContent).toContain("Another Kadikoy manager, the owner or an admin decides this request.");
+    expect(dialog.textContent).toContain("Another Kadikoy or Besiktas manager, the owner or an admin decides this request.");
     expect(getExchangePreview).not.toHaveBeenCalled();
   });
 
