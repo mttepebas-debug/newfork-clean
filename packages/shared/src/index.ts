@@ -357,10 +357,11 @@ export const employmentContactRecordSchema = z.object({
   workspaceName: z.string(),
   employeeId: z.string().uuid(),
   preferredName: z.string(),
-  phone: z.string().nullable(),
+  // A US number in E.164, as the data keeps it (BL-969); "" until a contact is given.
+  phone: usPhoneSchema.nullable(),
   emergencyContactName: z.string(),
   emergencyContactRelationship: z.string(),
-  emergencyContactPhone: z.string(),
+  emergencyContactPhone: usPhoneSchema.or(z.literal("")),
   emergencyContactEmail: z.string(),
 });
 export type EmploymentContactRecord = z.infer<
@@ -887,6 +888,8 @@ export function managementJobIds(
 
 export const locationInputSchema = locationSchema.pick({
   name: true,
+  short_name: true,
+  phone: true,
   street_address: true,
   city: true,
   region: true,
@@ -894,8 +897,6 @@ export const locationInputSchema = locationSchema.pick({
   country_code: true,
   timezone: true,
 }).extend({
-  short_name: locationShortNameSchema,
-  phone: usPhoneSchema.nullable().optional(),
   timezone: z.string().trim().max(80).refine(isValidIanaTimezone, "Select a valid IANA time zone"),
 });
 export type LocationInput = z.infer<typeof locationInputSchema>;
@@ -2568,25 +2569,27 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
   role_id: z.string().uuid().nullable().optional(),
   private_contact: z
     .object({
-      legal_first_name: z.string().trim().min(1).max(80).optional(),
-      legal_middle_name: z.string().trim().max(80).optional(),
-      legal_last_name: z.string().trim().min(1).max(80).optional(),
-      preferred_name: z.string().trim().max(80).optional(),
+      // Names, addresses and phones under the US form rules the data keeps
+      // (BL-503, BL-969).
+      legal_first_name: usText(z.string().trim().min(1).max(80)).optional(),
+      legal_middle_name: usText(z.string().trim().max(80)).optional(),
+      legal_last_name: usText(z.string().trim().min(1).max(80)).optional(),
+      preferred_name: usText(z.string().trim().max(80)).optional(),
       // Null for a person the workspace only knows an emergency contact for:
       // the owner, who never runs employee onboarding.
-      phone: z.string().trim().min(7).max(30).nullable(),
-      street_address: z.string().trim().max(180).nullable().optional(),
-      city: z.string().trim().max(100).nullable().optional(),
-      region: z.string().trim().max(100).nullable().optional(),
+      phone: usPhoneSchema.nullable(),
+      street_address: usText(z.string().trim().max(180)).nullable().optional(),
+      city: usText(z.string().trim().max(100)).nullable().optional(),
+      region: usText(z.string().trim().max(100)).nullable().optional(),
       postal_code: z.string().trim().max(20).nullable().optional(),
       country_code: z.string().trim().length(2).nullable().optional(),
       date_of_birth: z.string().date().nullable(),
       // Null together until a contact is given: the owner's record is opened
       // at setup with the legal name only (BL-080).
-      emergency_contact_name: z.string().trim().min(1).max(120).nullable(),
-      emergency_contact_relationship: z.string().trim().min(1).max(80).nullable(),
+      emergency_contact_name: usText(z.string().trim().min(1).max(120)).nullable(),
+      emergency_contact_relationship: usText(z.string().trim().min(1).max(80)).nullable(),
       emergency_contact_email: z.string().trim().email().or(z.literal("")),
-      emergency_contact_phone: z.string().trim().min(7).max(30).nullable(),
+      emergency_contact_phone: usPhoneSchema.nullable(),
       share_phone_with_teammates: z.boolean(),
       share_email_with_teammates: z.boolean(),
     })
