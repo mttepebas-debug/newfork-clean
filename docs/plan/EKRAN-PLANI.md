@@ -103,7 +103,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 | 13 | Employee view → Shift Hub | çalışan | P5 | sırada |
 | 14 | Employee view → My Availability | çalışan | P5 | sırada |
 | 15 | Account (Profile, Security, Inbox, Preferences, Notifications, Workspaces, Documents) | herkes | P5 | sırada |
-| 16 | Giriş ve katılım (Sign in, şifre sıfırlama, hesap kurtarma, davet kabulü, Workspaces, owner ve çalışan kurulumu) | herkes | Q1–Q4, PHONE-AUTH | sırada |
+| 16 | Giriş ve katılım (Sign in, şifre sıfırlama, hesap kurtarma, davet kabulü, Workspaces, owner ve çalışan kurulumu) | herkes | Q1–Q4, PHONE-AUTH | keşif (2026-10-07, KK-195; salt okur, dört ajan, `ekranlar/16-giris-katilim/`) |
 | 17 | Yasal sayfalar (Privacy, Terms, Accessibility, Contact, Your privacy choices) | herkes | Q5 | sırada |
 | 18 | Billing (plan, kart, fatura; deneme bitince ödeme) | owner | — (KARARLAR "MVP sınırı", Mert 2026-10-07) | sırada |
 
