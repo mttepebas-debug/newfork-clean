@@ -377,3 +377,20 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
   - GA-1'den sonra işin `workspace_id`'si değişemiyor; başka workspace'in departmanı bu çiftle eşleşmez → 23503.
   - Koruma hücresi: `organization_basics_rls.test.sql` "a job cannot be tied to another workspace's department" (`da24ad98`; GA-1 migration'ıyla 20/20).
   - Yazılabilir kolonlar arasında başka `*_id` yok: departments, locations, shift_types, shift_labels'ta hiç yok. workspaces'te `logo_storage_path` var ama yabancı anahtar değil (YB-2).
+- **İkinci inceleme:** `nf-guvenlik` **ONAY @e77aeb40** (O1 kalıbı, test tetikleyicisinin sızmaması, koruma hücresinin gerçekten bileşik anahtarı sınaması; Kritik/Yüksek/Orta yok). Rapora kalan düşük notlar:
+  - **Gözlenebilirlik:** başarısız kapanış artık `cron.job_run_details`'te "failed" değil, yalnız Postgres günlüğünde WARNING. Kalıcı iz önerisi backlog'a: tabloya ya da `audit_events`'e yazmak, ya da `closure_scheduled and closure_effective_at < now() - interval '10 minutes'` sorgusunu izlemeye eklemek.
+  - Test fonksiyonu `public` yerine `tests` şemasında durabilir (kural değil).
+  - `set_config('app.workspace_closure','on',true)`'yu okuyan yer yok (önceden de böyleydi; ölü kod adayı).
+
+### Gönderim durumu (2026-10-07 gece, güncel)
+- **GA-1 main'de:** `a79ff194` (migration), `08991cdc`, `fa6a9964` (testler), `a8a18304` (bu dosya).
+  - Koordinatörün "gönder"iyle; OPS-03'e göre daraltan migration önce main.
+  - Gönderim öncesi: migration ortak yerel DB'ye `supabase migration up --local` ile `main.lock` penceresinde uygulandı (438). `test-db --load-only` ve `test:db` koştu: GA-1'in iki dosyası ok. Öbür kırmızılar main'de bilinen hatalar:
+    - `bl052_document_lifecycle`, `bl052_document_notifications`, `document_types_rls`: ortak DB kayması (BL-497, BL-841);
+    - `scheduling_settings_shift_types_rls` 12-13, 23 ve `weekly_exchange_changed_terms`: `ci-not-green.txt`. İlki eski tablo grant'i geri verilince de aynı üç testte düşüyor (elle doğrulandı).
+    - `management_owner_job` "TODO passed 19-20" (BL-187) iki durumda da aynı.
+  - Tam kapı yeşil. Main CI `37615016851`.
+  - **Canlı** sabah, Mert'in bu oturuma yazacağı "evet"le.
+- **GA-4 gönderime hazır:** dal `task/guvenlik-a-ga4` (main + GA-4 iki commit + bu dosya).
+  - Sıra sabah: Mert'in "evet"i → yedek → canlıya GA-1 ve GA-4 → GA-4 main.
+  - Ekleyen migration (yeni fonksiyon + cron), OPS-03'e göre önce canlı.
