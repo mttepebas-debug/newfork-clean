@@ -4541,7 +4541,7 @@ describe("App", () => {
     });
   });
 
-  it("keeps the unassigned shifts row settings passive in view mode without hiding scheduled employees", async () => {
+  it("keeps the unassigned shifts row out of view mode and its settings passive, without hiding scheduled employees (BL-681)", async () => {
     const unassignedModel = {
       ...scheduleFixture,
       employees: [
@@ -4574,12 +4574,13 @@ describe("App", () => {
     testAuth.role = "owner";
     const { container } = render(<App />);
 
-    expect(await screen.findByText("Unassigned")).toBeTruthy();
-    expect(
-      container
-        .querySelector(".schedule-employee-cell[data-unassigned='true']")
-        ?.getAttribute("data-schedule-unassigned-label-mode"),
-    ).toBe("centered");
+    const unassignedRow = () =>
+      container.querySelector(".schedule-employee-cell[data-unassigned='true']");
+    // KARARLAR Schedule 2026-10-05: view mode shows no open shifts row, even
+    // with an open shift in the week; the row belongs to editing. Bailey is
+    // only in this week's model, so the week with the open shift is on screen.
+    expect((await screen.findAllByText("Bailey Chen")).length).toBeGreaterThan(0);
+    expect(unassignedRow()).toBeNull();
     const viewOnlyBadge = container.querySelector<HTMLElement>(
       `.schedule-shift-badge[data-shift-id="${scheduleFixture.shifts[0]!.id}"]`,
     );
@@ -4598,11 +4599,6 @@ describe("App", () => {
       expect(window.location.search).not.toContain("shiftTypes="),
     );
     expect(viewOnlyBadge!.getAttribute("data-focused")).toBe("false");
-    expect(
-      container.querySelector(
-        ".schedule-employee-cell[data-unassigned='true'][data-unassigned-frozen='true']",
-      ),
-    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Settings/ }));
     // KARARLAR > Schedule: the Unassigned Shifts Row settings only work while
     // editing (BL-332); in view mode they are passive and the row stays as is.
@@ -4614,11 +4610,7 @@ describe("App", () => {
       screen.getByRole("button", { name: "Hide Unassigned Shifts Row" }),
     ).toHaveProperty("disabled", true);
     fireEvent.click(unfreeze);
-    expect(
-      container.querySelector(
-        ".schedule-employee-cell[data-unassigned='true'][data-unassigned-frozen='true']",
-      ),
-    ).toBeTruthy();
+    expect(unassignedRow()).toBeNull();
     expect(screen.getAllByText("Alex Rivera").length).toBeGreaterThan(0);
     const employeeRowLabels = () =>
       Array.from(
@@ -4628,11 +4620,11 @@ describe("App", () => {
     expect(employeeRowLabels()).toContain("Bailey Chen");
     fireEvent.click(screen.getByRole("button", { name: "Hide Unscheduled" }));
 
-    expect(await screen.findByText("Unassigned")).toBeTruthy();
-    expect(employeeRowLabels()).not.toContain("Bailey Chen");
     expect(
-      screen.getByRole("button", { name: "Show Unscheduled" }),
+      await screen.findByRole("button", { name: "Show Unscheduled" }),
     ).toBeTruthy();
+    expect(employeeRowLabels()).not.toContain("Bailey Chen");
+    expect(unassignedRow()).toBeNull();
     expect(screen.getAllByText("Alex Rivera").length).toBeGreaterThan(0);
     readModelMock.mockResolvedValue(scheduleFixture);
   });
@@ -4669,8 +4661,10 @@ describe("App", () => {
     expect(window.location.search).toBe(searchBeforeClick);
   });
 
-  it("uses the reference-style unassigned row header mode for multiple open shifts", async () => {
-    vi.mocked(getScheduleReadModel).mockResolvedValueOnce({
+  // The row's header mode for several open shifts ("2 open shifts") is
+  // ScheduleEmployeeCard's; on the page the row is an editing row (BL-681).
+  it("shows a published week's open shifts in no Unassigned row in view mode (BL-681)", async () => {
+    vi.mocked(getScheduleReadModel).mockResolvedValue({
       ...scheduleFixture,
       shifts: [
         ...scheduleFixture.shifts,
@@ -4692,14 +4686,12 @@ describe("App", () => {
     const { container } = render(<App />);
     await signInAs("owner");
 
-    expect(await screen.findByText("Unassigned")).toBeTruthy();
-    const unassignedRow = container.querySelector(
-      ".schedule-employee-cell[data-unassigned='true']",
-    );
+    expect((await screen.findAllByText("Alex Rivera")).length).toBeGreaterThan(0);
     expect(
-      unassignedRow?.getAttribute("data-schedule-unassigned-label-mode"),
-    ).toBe("header");
-    expect(screen.getByText("2 open shifts")).toBeTruthy();
+      container.querySelector(".schedule-employee-cell[data-unassigned='true']"),
+    ).toBeNull();
+    expect(screen.queryByText("2 open shifts")).toBeNull();
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixture);
   });
 
   it("reviews soft publication findings and submits recorded confirmations", async () => {
