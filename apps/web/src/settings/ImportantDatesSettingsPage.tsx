@@ -26,12 +26,8 @@ import { isNoAccess } from "../lib/no-access";
 import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
-const typeLabels: Record<ImportantDateType, string> = {
-  holiday: "Holiday",
-  event: "Event",
-  blackout: "Blackout",
-  closed_day: "Closed day",
-};
+import { importantDateTypeLabels } from "../lib/importantDateTypes";
+const typeLabels = importantDateTypeLabels;
 
 const typeOptions = Object.entries(typeLabels) as readonly [
   ImportantDateType,

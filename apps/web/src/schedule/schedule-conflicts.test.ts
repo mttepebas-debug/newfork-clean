@@ -368,6 +368,14 @@ describe("availability warnings from the server's assessment", () => {
     expect(assessmentAvailabilityWarnings(null)).toEqual([]);
     expect(assessmentAvailabilityWarnings({ operation: "allowed", reasons: [] })).toEqual([]);
   });
+  it("words approved time off with a readable day and hours (BL-611)", () => {
+    expect(formatScheduleConflictMessage({ type: "time_off", date: "2026-10-06", full_day: true }))
+      .toBe("Approved time off on Tue, Oct 6.");
+    expect(formatScheduleConflictMessage({ type: "time_off", date: "2026-10-06", full_day: false, start_time: "09:00", end_time: "13:00" }))
+      .toBe("Approved time off on Tue, Oct 6, 9:00 AM – 1:00 PM.");
+    expect(formatScheduleConflictMessage({ type: "time_off", date: "2026-10-06", full_day: false }))
+      .toBe("Approved time off on Tue, Oct 6.");
+  });
   it("words a note with its text", () => {
     expect(formatScheduleConflictMessage({ type: "note", note: "School mornings" }))
       .toBe("A manager's note for this day: School mornings.");
