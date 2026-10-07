@@ -77,10 +77,9 @@ export function reviewBoxes([first, second]: [ReviewSide, ReviewSide]): [ReviewB
   for (const rule of order) {
     const failing = [fails(first, rule), fails(second, rule)];
     if (!failing[0] && !failing[1]) continue;
-    [first, second].forEach((side, index) => {
-      const other = index === 0 ? second : first;
-      if (failing[index]) cards[index].push(warnBox(side, rule));
-      else if (side.check) cards[index].push(okBox(side, other, rule));
+    ([[first, second, cards[0]], [second, first, cards[1]]] as const).forEach(([side, other, card], index) => {
+      if (failing[index]) card.push(warnBox(side, rule));
+      else if (side.check) card.push(okBox(side, other, rule));
     });
   }
   return cards;
