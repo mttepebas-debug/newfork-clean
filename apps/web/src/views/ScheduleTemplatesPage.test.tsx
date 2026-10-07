@@ -88,7 +88,8 @@ describe("ScheduleTemplatesPage", () => {
     renderPage();
 
     expect(await screen.findByText("Standard week")).toBeTruthy();
-    expect(screen.getByText("Revision 3")).toBeTruthy();
+    // BL-038 K5: no revision number on the row.
+    expect(screen.queryByText(/Revision/)).toBeNull();
     expect(screen.getByText("10")).toBeTruthy();
     expect(screen.getByText("2")).toBeTruthy();
     expect(screen.getByText("Manager")).toBeTruthy();

@@ -189,6 +189,12 @@ describe("PublishScheduleDialog", () => {
     expect(document.querySelector(".schedule-publication-footer-summary")?.textContent).toBe(summary);
   });
 
+  it("names each draft without its revision number (BL-038 K5)", () => {
+    render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(preview)} onPublish={vi.fn()} />);
+    expect(screen.getByRole("option", { name: "Service week" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /revision/i })).toBeNull();
+  });
+
   it("never labels another draft's counts with the newly chosen draft's name", async () => {
     const onPreview = vi.fn()
       .mockResolvedValueOnce(preview)
