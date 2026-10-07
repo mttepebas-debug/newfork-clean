@@ -6,6 +6,9 @@ import {
   type ScheduleConflictReason,
 } from "../schedule-conflicts";
 
+/** The one question a passable conflict asks, from the editor or a drag (BL-577). */
+export const SCHEDULE_CONFLICT_QUESTION = "Schedule this shift anyway?";
+
 export function ScheduleConflictSheet({
   open,
   messages,
