@@ -89,7 +89,7 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 | # | Ekran (uygulamadaki adı) | Kim | Prototip karşılaştırması | Durum |
 |---|---|---|---|---|
 | 1 | Schedule (+ Export, Templates) | owner, müdür | `research/PROTOTIP-SCHEDULE-2026-10-05.md` | uygulama — 12/19 dilim main'de (+11 ek dilim: BE-2b, TEL-KAPALI, CI-HIZ, VAR-UYG, UNDO-db-bulgu…); kalan DB-4, W-2, W-3, W-4, W-5, T-1, K-1, Z; 6 açık soru cevaplandı (KARARLAR Schedule 2026-10-06); kapanış ölçümü `ekranlar/01-schedule/KAPANIS-OLCUMU-2026-10-06.md` |
-| 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | karar — keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
+| 2 | Requests (izin, takas, devir) | owner, müdür | proto-audit P1 | **sıradaki (Mert 2026-10-07: "Önce Requests")** — tek sahip oturum açılıyor; önce dal envanteri + `EKRAN.md` kabul listesi, Mert onayıyla uygulama · keşif ve kararlar bitti (KK-158), görev dosyası yazıldı (`tasks/EKRAN-02-REQUESTS.md`, 2026-10-06), 2 açık soru |
 | 3 | Employees (+ Archive, kişi çekmecesi) | owner, müdür | P2 | karar — görev dosyası hazır (`tasks/EKRAN-03-EMPLOYEES.md`, 2026-10-06), 1 açık soru (Q1 Mert'e); G2 telefon konuşmasında |
 | 4 | Availability | owner, müdür | P2 | keşif — A, B, D raporları ve OZET yazıldı (2026-10-06, `ekranlar/04-availability/`); C (görsel QA) makine boşalınca; 3 Mert sorusu, 6 koordinatör önerisi · sayfalama (25 / 50 / 100) bu turda: Availability (Mert 2026-10-06, BL-787) |
 | 5 | Workspace (ana sayfa) | owner, müdür | P1 | karar — keşif ve koordinatör kararları bitti (KK-179), görev dosyası yazıldı (`tasks/EKRAN-05-WORKSPACE.md`, 2026-10-06; hat sırası EKRAN-04'ten sonra), BL-804…818; C (görsel QA) izinle; 6 Mert sorusu (S1–S6) |
