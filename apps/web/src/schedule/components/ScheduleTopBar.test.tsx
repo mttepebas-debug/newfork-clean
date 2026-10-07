@@ -227,7 +227,8 @@ describe("ScheduleTopBar", () => {
 
     const mainRow = document.querySelector("[data-schedule-top-bar-main-row]");
     const previousWeek = screen.getByRole("button", { name: "Previous week" });
-    const weeklyView = screen.getByRole("button", { name: "Weekly view" });
+    // BL-449: named by its dates; the title says what it does.
+    const weeklyView = screen.getByTitle("Jump to this week");
     const nextWeek = screen.getByRole("button", { name: "Next week" });
     const hideUnscheduled = screen.getByRole("button", {
       name: "Hide Unscheduled",

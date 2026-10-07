@@ -820,13 +820,11 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Draft selector: New Schedule" }),
     ).toBeTruthy();
+    // BL-449 (WCAG 2.5.3): the week button is called what it says.
     const weeklyViewButton = screen.getByRole("button", {
-      name: "Weekly view",
+      name: "Aug 17 – Aug 23, 2026",
     });
-    expect(weeklyViewButton).toHaveProperty(
-      "textContent",
-      "Aug 17 – Aug 23, 2026",
-    );
+    expect(weeklyViewButton.getAttribute("aria-label")).toBeNull();
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Hide Unscheduled" }),
@@ -5205,8 +5203,11 @@ describe("App", () => {
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Next week" })).toBeTruthy();
-    // The label comes from the address, not from the week that failed to load.
-    expect(screen.getByRole("button", { name: "Weekly view" }).textContent).toBe("Week of Sep 9, 2026");
+    // The label comes from the address, not from the week that failed to load:
+    // the week's first day, Monday while its settings are unread (BL-451); the
+    // button is called what it says (BL-449) and is amber off this week (BL-457).
+    const weekButton = screen.getByRole("button", { name: "Week of Sep 7, 2026" });
+    expect(weekButton.getAttribute("data-return-cue")).toBe("true");
     const reads = vi.mocked(getScheduleReadModel).mock.calls.length;
 
     fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
@@ -5234,7 +5235,7 @@ describe("App", () => {
     render(<App />);
     await screen.findByText("Schedule unavailable", {}, { timeout: 5000 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Weekly view" }));
+    fireEvent.click(screen.getByRole("button", { name: "Week of Sep 7, 2026" }));
 
     const today = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     await waitFor(() => expect(window.location.search).toContain(`date=${today}`));
