@@ -1,45 +1,47 @@
-# BILDIRIM Bildirim sistemi sıfırdan: motor, kurallar, arayüz
+# BILDIRIM Bildirim sistemi sıfırdan: söküm, motor, kurallar, arayüz
 Status: draft (plan; kod yok — Mert'in 6 temel model cevabı ve varyant seçimi bekleniyor)
 Session: oturum/bildirim   Branch: task/bildirim   Worktree: ../newfork-wt/bildirim   DB: -
 Risk: R3 (yetki, RLS, grant, tablo silme, canlı DDL)
-Reviewer: nf-guvenlik (her dilim ve paketin tamamı); ekran değişen dilimde masaüstü 1440 + telefon 390 görüntüsü
+Reviewer: nf-guvenlik (her dilim); ekran değişen dilimde masaüstü 1440 + telefon 390 görüntüsü
 Skills: brainstorming (mimari yol: model önerisi bu dosya, onay Mert'te) → supabase-postgres-best-practices (B1–B6) → test-driven-development (her dilim, önce kırmızı test) → receiving-code-review → verification-before-completion
 
 ## Mert için özet
 
-1. Bugünkü bildirim sistemi 18 tablo, 49 fonksiyon ve iki ayrı gelen kutusundan oluşuyor; Settings → Notifications'taki 267 kontrolün çoğu hiçbir şeyi değiştirmiyor. İnceleme: [`research/BILDIRIM-INCELEME.md`](../research/BILDIRIM-INCELEME.md).
-2. Öneri: **tek tablo, tek kural, tek kutu.** Bildirim olayla aynı anda yazılır (kuyruk ve zamanlayıcı yok), karar bekleyen bildirim karar verilince herkesin kutusunda kendiliğinden kapanır, aynı konu aynı kişiye tek satır olur.
-3. **Kime:** kararı verecek kişiye ve işi doğrudan etkilenene. Karar bildiriminde önce lokasyon müdürü, müdür yoksa admin/owner. Senin açık istisnaların (müsaitlik, tercih edilen ad, önemli tarih) korunur.
-4. **Kanal:** uygulama içi her zaman; e-posta kısa bir listede (Resend ücretsiz katman, $0); telefona anlık bildirim telefon uygulamasıyla, MVP sonrası.
-5. **Ayar:** workspace ayar sayfası kalkar (ya da salt okunur olur); kişi yalnız e-postayı kategori kategori açıp kapatır.
-6. Eski sistem tek seferde silinir (ikiz yok, eski bildirimler taşınmaz). Kod, EKRAN-02 paketi main'e girdikten sonra başlar.
-7. **Senden 6 karar** (§10): kanal, ayar, owner/admin ne alır, karar sonrası, program yayını, cover duyurusu. Görsel varyantlar: https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv (bildirim merkezi A/B/C, ayar sayfası A/B/C, telefon, bugünkü ekranlar).
-8. Dilimler B0–B8, hepsi tek paket olarak main'e (R3, her dilimde `nf-guvenlik`).
+1. Bugünkü bildirim sistemi değerlendirilmeden sökülür (Mert, 2026-10-07: "istersen direk söksün atsın"). Söküm listesi ve sökünce neyin kırılacağı: [`research/BILDIRIM-INCELEME.md`](../research/BILDIRIM-INCELEME.md) §1.
+2. **İlk dilim "eskiyi sök".** EKRAN-02 veri paketi main'e girdikten sonra yapılır; o dallar bugün eski bildirim fonksiyonlarına yazıyor.
+3. Öneri: **tek tablo, tek kural, tek kutu.** Bildirim olayla aynı anda yazılır. Karar bekleyen bildirim, biri karar verince herkesin kutusunda kendiliğinden kapanır. Aynı konu aynı kişiye tek satır olarak gider.
+4. **Kime:** kararı verecek kişiye ve işi doğrudan etkilenene. Karar bildiriminde önce lokasyon müdürü, müdür yoksa admin/owner. Senin açık istisnaların (müsaitlik, tercih edilen ad, önemli tarih) korunur.
+5. **Kanal:** uygulama içi her zaman; e-posta kısa bir listede (Resend ücretsiz katman, $0). Telefona anlık bildirim telefon uygulamasıyla, MVP sonrası.
+6. **Ayar:** workspace ayar sayfası kalkar (ya da salt okunur olur); kişi yalnız e-postayı kategori kategori açıp kapatır.
+7. **Senden 6 karar** (§10): kanal, ayar, owner/admin ne alır, karar sonrası, program yayını, cover duyurusu. Görsel varyantlar: https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv (bildirim merkezi A/B/C, ayar sayfası A/B/C, telefon).
+8. Dilimler B0–B8; her dilim sırayla main'e (R3, her dilimde `nf-guvenlik`).
 
-Goal: Newfork'un bildirim motorunu, kurallarını ve arayüzünü sıfırdan kurmak: doğru kişiye, tek kez, anlaşılır metinle, gürültüsüz; eski sistemin tamamını silmek.
+Goal: Newfork'un bildirim motorunu, kurallarını ve arayüzünü sıfırdan kurmak: doğru kişiye, tek kez, anlaşılır metinle, gürültüsüz. Eski sistem ilk dilimde tamamen silinir.
 
 In scope:
-- Uygulamadaki 162 olayın (inceleme §4) hepsine karar: bildirim üretir mi, kime, hangi kanaldan.
+- Envanterdeki 162 olayın (envanter §2) hepsine karar: bildirim üretir mi, kime, hangi kanaldan.
+- Eski sistemin sökümü (envanter §1) ve `retired_objects_stay_gone`; bildirim kodunun içinde yaşayan beş işin (envanter §1.1, K1–K5) taşınması.
 - Yeni veri modeli, alıcı kuralı, okundu / karar kapanışı, saklama, canlı güncelleme, e-posta kanalı (Soru 1'e bağlı).
 - API, bildirim merkezi, rozet, Settings → Notifications, Account → Notifications, telefon görünümü, Publish penceresindeki "Notify" adımı (Soru 5), Workspace ana sayfası kutucuğu.
-- Eski motorun söküm listesi (inceleme §6.1) ve `retired_objects_stay_gone`.
-- Bildirim olan backlog maddeleri (inceleme §9).
+- Bildirim olan backlog maddeleri (§13).
 
 Out of scope:
+- Bugünkü sistemin değerlendirilmesi (Mert, 2026-10-07).
 - Telefon uygulaması ve push, SMS, sessiz saat, özet (digest) e-postası: MVP sonrası (Soru 1'de anılır).
 - Duyuru ekranındaki "onaylar kalsın / sıfırlansın" penceresi ve Remind düğmesi (EKRAN-07 ekran işi; teslim kuralı burada).
 - Faturalama bildirimleri: tür kataloğuna yer açılır, üretici Stripe işiyle gelir.
-- Supabase Auth e-postaları (kayıt, e-posta değişikliği doğrulama): motor dışı; yalnız Resend SMTP önerisi (`mvp/RESEND.md` adım 6).
-- Vardiya hatırlatması ("shift starts in 2 hours"), "hafta yayınlanmadı" hatırlatması: MVP dışı önerisi (zaman takibi ve push ile birlikte).
+- Davet, parola sıfırlama, haftalık program ve hesap silme e-postaları: ayrı yol, dokunulmaz (envanter §1.2).
+- Vardiya hatırlatması ("shift starts in 2 hours"), "hafta yayınlanmadı" hatırlatması: MVP dışı önerisi.
 
 Done when:
-- §4'teki katalogdaki her tür için pgTAP'ta alıcı testi (kim alır, kim almaz) yeşil; inceleme §4.5'teki 18 eksik ve 10 gürültü maddesinin her biri ya kapandı ya da Mert kararıyla bilerek bırakıldı.
-- Eski 18 tablo, 49 fonksiyon, 3 tetikleyici, `notification-outbox` zamanlayıcısı ve 6 ölü izin yok; `retired_objects_stay_gone` bunları kapsıyor; `authz_catalog` sayaçları düştü (yasaklı ad 12 → 2, `service_actor_has_permission` 10 → 6, `auth.uid()` politikası 1 eksik).
+- Envanter §1.3–§1.5'teki eski nesnelerin hepsi yok; `retired_objects_stay_gone` onları kapsıyor; `authz_catalog` sayaçları düştü (yasaklı ad 12 → 2, `service_actor_has_permission` 10 → 6, `auth.uid()` politikası 1 eksik).
+- K1–K5 söküm sonrası çalışıyor (pgTAP: süresi geçen belge kişiyi kısıtlar, süresi dolan takas kapanır, takas geçmişi yazılır, hesap güvenliği denetimi yazılır, Workspace belge işleri üretilir).
+- §4 katalogdaki her tür için pgTAP'ta alıcı testi (kim alır, kim almaz) yeşil; envanter §2.5'teki 18 eksik ve 10 gürültü maddesinin her biri ya kapandı ya da Mert kararıyla bilerek bırakıldı.
 - Bildirim merkezi, rozet, Account → Notifications ve Settings → Notifications Mert'in seçtiği varyantta; masaüstü 1440 ve telefon 390 görüntüleri `artifacts/BILDIRIM/` altında.
 - e2e: izin talebi → karar → tek bildirim; yayında vardiyası alınan kişi bildirim alır; ret gerekçesi sahibe gitmez; çalışan telefonda bildirimden programına gider.
 - Tam kapı, `test:db`, etkilenen e2e yeşil; canlı migration koordinatörün "gönder" izniyle, yedekle; main CI yeşil.
 
-Touches: inceleme §6 (SİL / DÜZENLE listesi). Yeni dosyalar §3–§5'te.
+Touches: envanter §1.3–§1.4 (SİL / DÜZENLE). Yeni nesneler §3–§5'te.
 
 Test plan: §7. Risk notes: §9.
 
@@ -51,7 +53,7 @@ Test plan: §7. Risk notes: §9.
 2. **Karar veren tek kural:** önce olayın lokasyonunda karar yetkisi olan müdür(ler); o lokasyonda karar verebilen yoksa admin ve owner (KK-158; izindeki yedek kuralı K:125; EKRAN-02 a1a2'nin `exchange_decision_reason`'ı). Rütbe kuralı korunur: müdürün talebine admin/owner, admin'inkine owner. Mert'in açık istisnaları korunur: müsaitlik güncellemesi (K:72), tercih edilen ad (K5, 2026-10-06), önemli tarih teslimi (K5).
 3. **Tek konu tek satır:** aynı konu (talep, vaka, hafta, belge) için bir kişinin kutusunda en çok bir satır olur; yeni gelişme o satırı günceller ve okunmamış yapar, yeni satır açmaz (K:131, K14, EKRAN-02 R2-13'ün genel hâli).
 4. **Karar bekleyen satır kendiliğinden kapanır:** biri karar verince (ya da talep geri çekilince, süresi dolunca) bütün karar vericilerin satırı "kapandı" olur, sonucu aynı satıra yazılır ("Approved by Can · 2 shifts open"); ayrıca bildirim gitmez (Soru 4).
-5. **Bilgi eksikse kimseye:** lokasyonu ya da kişisi bilinmeyen olay geniş kitleye düşmez (fail-closed); alıcı yalnız yetki çekirdeğinden seçilir (`authz_reason` / `scope_set`), geçmiş onay ya da rol adıyla değil (`nf-guvenlik` G3).
+5. **Bilgi eksikse kimseye:** lokasyonu ya da kişisi bilinmeyen olay geniş kitleye düşmez (fail-closed); alıcı yalnız yetki çekirdeğinden seçilir (`authz_reason` / `scope_set`), geçmiş onay ya da rol adıyla değil.
 6. **Serbest metin yalnız yazıldığı kişiye:** ret gerekçesi, özel not, belge içeriği bildirim metnine yalnız muhatabına girer; başkasına genel metin (BL-910).
 
 ### 1.2 Kanal (Soru 1)
@@ -76,7 +78,7 @@ Test plan: §7. Risk notes: §9.
 - Okundu: satıra tıklamak ya da çoklu seçim + "Mark as read" (tek istek; BL-597).
 - Saklama: okunmuş bilgi satırı ve kapanmış karar satırı 90 gün sonra silinir (günlük iş). Hesap güvenliği satırı 1 yıl.
 - Geri çekme: duyuru yayından kalkınca / süresi dolunca (K8, K12) satır silinir; vardiya düşmesi bildirimi (K14) kapalı gün geri alınsa da **kalır** (P09; BL-883).
-- Yetki kaybında: okuma, satırın kaydettiği yetkiyi (eylem + lokasyon + kişi) bugünkü yetkiyle yeniden sınar; lokasyondan alınan müdür eski satırı görmez (`nf-guvenlik` G2).
+- Yetki kaybında: okuma, satırın kaydettiği yetkiyi (eylem + lokasyon + kişi) bugünkü yetkiyle yeniden sınar; lokasyondan alınan müdür eski satırı görmez.
 
 ### 1.5 Canlı güncelleme
 
@@ -84,11 +86,11 @@ Kişiye özel private kanal `notifications:<user>`; yalnız "yenile" sinyali ta�
 
 ## 2. Üç yaklaşım
 
-| | Y1 Senkron tek tablo (önerilen) | Y2 Kuyruk + işçi (bugünkünün sadeleşmişi) | Y3 Okurken hesapla |
+| | Y1 Senkron tek tablo (önerilen) | Y2 Kuyruk + işçi | Y3 Okurken hesapla |
 |---|---|---|---|
 | Nasıl | Domain işlemi aynı veritabanı işleminde `notify()` çağırır, satır o an yazılır. Yalnız e-posta kuyruktan gider. | Olay kuyruğa, dakikada bir işçi alıcıyı hesaplayıp satır yazar. | Bildirim satırı yok; "ne bekliyor" domain tablolarından okunurken hesaplanır. |
-| Artı | Anında; zamanlayıcıya bağlı değil (bugün yerelde 1.537 satır bekliyor); olayla bildirim tutarlı; tablo sayısı 18 → 3-4 | Domain işlemi hafif; dış kanala doğal | Hiç bayatlamaz; yayılım yok |
-| Eksi | Domain işleminde ~100 kişiye kadar satır yazılır (ölçülecek; hedef ≤20 ms) | Gecikme, zamanlayıcı bağımlılığı, iki durum (bekleyen / işlenmiş), bugünkü sorunların kaynağı | Okundu ve geçmiş tutulamaz; "bilgi" bildirimi olmaz; her açılışta ağır okuma |
+| Artı | Anında; zamanlayıcıya bağlı değil; olayla bildirim aynı işlemde, tutarlı; 3-4 tablo | Domain işlemi hafif; dış kanala doğal | Hiç bayatlamaz; yayılım yok |
+| Eksi | Domain işleminde ~100 kişiye kadar satır yazılır (ölçülecek; hedef ≤20 ms) | Gecikme, zamanlayıcı bağımlılığı, iki durum (bekleyen / işlenmiş) | Okundu ve geçmiş tutulamaz; "bilgi" bildirimi olmaz; her açılışta ağır okuma |
 | Karar | ✅ | ✗ (e-posta için yalnız küçük bir kuyruk) | ✗ (ama Requests ekranındaki sayaçlar zaten böyle; dokunulmaz) |
 
 ## 3. Veri modeli ve yetki
@@ -97,7 +99,7 @@ Kişiye özel private kanal `notifications:<user>`; yalnız "yenile" sinyali ta�
 
 | Tablo | Sütunlar (özet) | Not |
 |---|---|---|
-| `notification_kinds` | `key` PK, `category` (schedule / requests / people / communications / account / billing / platform), `needs_action`, `email` (never / eligible / always), `mandatory`, `label`, `description` | Migration ile tohumlanır; tek kaynak. `packages/shared`'de katalog kopyası olmaz; ekran etiketi API'den gelir (bugünkü 10 ↔ 35 kayması biter). |
+| `notification_kinds` | `key` PK, `category` (schedule / requests / people / communications / account / billing / platform), `needs_action`, `email` (never / eligible / always), `mandatory`, `label`, `description` | Migration ile tohumlanır; tek kaynak. `packages/shared`'de katalog kopyası olmaz; ekran etiketi API'den gelir (iki katalog arasında kayma olmaz). |
 | `notifications` (yeni şekil) | `id`, `workspace_id` (hesap satırında null), `recipient_user_id` (silinince CASCADE), `kind`, `group_key`, `subject_type`, `subject_id`, `title`, `body`, `action_url` (`^/(app\|account)(/\|$)`), `needs_action`, `scope_action`, `scope_location_ids`, `scope_person`, `resolved_at`, `resolved_text`, `read_at`, `created_at`, `updated_at`; UNIQUE (`recipient_user_id`, `group_key`) | Tek kutu. İndeks: (`recipient_user_id`, `workspace_id`) `where read_at is null`; (`recipient_user_id`, `workspace_id`, `needs_action`) `where resolved_at is null`. |
 | `notification_emails` | `id`, `notification_id` (CASCADE), `recipient_user_id`, `send_after`, `status` (pending / sent / failed / dead / not_configured), `attempts`, `last_error`, `sent_at` | Yalnız Soru 1 e-posta derse. Adres teslim anında `auth.users`'tan okunur, saklanmaz. |
 | `notification_email_preferences` | (`user_id`, `workspace_id`, `category`) PK, `email_enabled` | Yalnız e-posta. |
@@ -125,7 +127,7 @@ Bildirim durumu taşıyan domain sütunları sadeleşir: `announcements.delivere
 
 "Karar" = karar bekleyen satır, kapanır. "E-posta" = Soru 1-a'daki kısa liste. Alıcıdan işi yapan her zaman çıkar.
 
-| Tür | Olaylar (inceleme §4) | Alıcı | Karar | E-posta |
+| Tür | Olaylar (envanter §2) | Alıcı | Karar | E-posta |
 |---|---|---|---|---|
 | `time_off.needs_decision` | T01, T11, T12, T13, T14 | karar verenler (kural 2); 12 saat kala aynı satır güncellenir; "admin bekliyor" admin/owner'a satır açar | ✓ | 24 saat açıksa tek |
 | `time_off.decided` | T04, T06, T07, T08, T09, T10, T15 | çalışan, sonuç başlıkta ("Time off approved · Oct 14") | | ✓ |
@@ -162,7 +164,7 @@ Bildirim durumu taşıyan domain sütunları sadeleşir: `announcements.delivere
 | `export.disabled` | M03 | kural sahibi | | ✓ |
 | `workspace.closing` | M01 | bütün üyeler | | ✓ |
 
-Motor dışında, bugünkü gibi doğrudan e-posta kalanlar: J01–J02 davet (K:375 "Send reminder / Resend" ayrımı B4'te), SCH-22 zamanlanmış program e-postası, H11–H12 ve J08 Supabase / parola e-postaları.
+Motor dışında, bugünkü gibi doğrudan e-posta kalanlar: J01–J02 davet (K:375 "Send reminder / Resend" ayrımı B5'te), SCH-22 zamanlanmış program e-postası, H11–H12 ve J08 Supabase / parola e-postaları.
 
 Bildirim üretmeyecekler (bilerek): SCH-01…08, SCH-15, SCH-16, SCH-19, T03, A02, A04…A08, J03, J05…J07, O01, O03, O07, N04…N08, N11, N13, N17, D04, D06, D14, D15, C05, C07, C09, C10, C11, C13, I05, I07, I08, W02…W04, W06, W07, H09, M02. Faturalama (B01…B08): `billing.*` türleri Stripe işinde, owner'a (kilitlenince herkese).
 
@@ -184,55 +186,63 @@ Silinenler: `/v1/workspaces/:w/communications/notifications` (+ `/action`), `/v1
 
 | Yer | Öneri | Varyant |
 |---|---|---|
-| Bildirim merkezi (`/app/notifications`) | "To decide" ve "Updates" ayrı; karar satırı kapanınca sonucu gösterir; satır tıklanınca ilgili ekranın tam kaydını açar | artifact: **A** bugünkü DOC-TABLE kararı + yeni içerik, **B** iki şerit sayfa, **C** zil paneli + geçmiş sayfası |
+| Bildirim merkezi (`/app/notifications`) | "To decide" ve "Updates" ayrı; karar satırı kapanınca sonucu gösterir; satır tıklanınca ilgili ekranın tam kaydını açar | artifact: **A** DOC-TABLE kararı (KARARLAR:575) + yeni içerik, **B** iki şerit sayfa, **C** zil paneli + geçmiş sayfası |
 | Rozet | Sol menüde tek sayı (okunmamış + açık karar), canlı | hepsinde aynı |
 | Settings → Notifications | Soru 2 | artifact: **A** sayfa kalkar, **B** salt okunur "kim neyi alır", **C** 3 anahtarlı küçük sayfa |
 | Account → Notifications | e-posta kategori başına, uygulama içi açıklama, tek Save | her ayar varyantında |
 | Telefon (çalışan) | Notifications alt çubuğa çıkar (bugün "More" altında); "To do" üstte, kart satırları (KARARLAR telefon liste kararı) | artifact: telefon görünümleri |
 | Schedule → Publish | "Notify" adımı kalkar; pencerede "Ali, Bob and 3 others will be told about their changes" satırı (Soru 5) | — |
-| Workspace ana sayfası | bildirim kutucuğu yeni okuma ucundan (BL-533, BL-816) | — |
+| Workspace ana sayfası | söküm kutucuğu kaldırır; B7 yeni uçtan geri koyar | — |
 
 Metin kuralları: başlık tek cümle, sonuç başta ("Time off approved", "Your Tue shift was removed"); kişi adı yerine rol yalnız erişim yönlendirmesinde (P21); tarih ve saat workspace biçiminde (BL-055); ham kod ekranda yok.
 
 ## 7. Test planı
 
-- **Önce kırmızı:** her dilim, kapattığı her bulgu için kırmızı testle başlar (BL-910 gerekçe sızıntısı, SCH-11 vardiyası alınan kişi, KK-174 işten çıkarma, BL-730 çift bildirim, G2 lokasyondan alınan müdür).
+- **Önce kırmızı:** her dilim, kapattığı her madde için kırmızı testle başlar (BL-910 gerekçe sızıntısı, SCH-11 vardiyası alınan kişi, KK-174 işten çıkarma, BL-730 çift bildirim, lokasyondan alınan müdürün eski satırı görmesi).
+- **pgTAP — söküm (B1):** `retired_objects_stay_gone` (envanter §1.5); `authz_catalog` sayaçları; K1–K5 korunur: süresi geçen belge `document_suspended_at` alır, süresi dolan takas kapanır, `shift_exchange_events` satırı yazılır, `security_audit_events` satırı yazılır, Workspace belge işleri üretilir. Ayrı e-posta yolları (envanter §1.2) için var olan API testleri yeşil kalır.
 - **pgTAP — alıcı testi (tür başına):** kim alır; kim almaz: işi yapan, öteki lokasyonun müdürü, lokasyondan alınan müdür, rütbesi düşen müdür, arşivli kişi, müdür varken admin/owner, lokasyonu bilinmeyen olayda herkes (fail-closed).
 - **pgTAP — tek satır:** izin onayı (vardiya açan) her kişiye tam bir satır; karar vericilerin satırı kapanır; yeniden yayın aynı satırı günceller; takas başvuruları tek "N candidates" satırı.
 - **pgTAP — gizlilik:** ret gerekçesi yalnız başvurana; okuma süzgeci yetki kaybında satırı gizler; Realtime yayınında başlık / metin yok.
-- **pgTAP — sökülenler:** `retired_objects_stay_gone` (inceleme §6.1); `authz_catalog` sayaçları; yetki matrisi her yeni servis için gerçek imzayla.
-- **API (vitest):** her uç için yetki sözleşmesi (404 `authz.not_member`, 403 `authz.*`), toplu okundu tek istek, tercih doğrulaması, işçi sırrı.
+- **Yetki:** yetki matrisi her yeni servis için gerçek imzayla; katalogda sınıflama.
+- **API (vitest):** her uç için yetki sözleşmesi (404 `authz.not_member`, 403 `authz.*`), toplu okundu tek istek, tercih doğrulaması, işçi sırrı (`timingSafeEqual`).
 - **Web (vitest):** merkez sekmeleri / süzgeç / çoklu seçim, kapanmış karar satırı, rozet sinyalle yenilenir, Account sayfası tek Save.
-- **e2e (Playwright):** (1) Ali izin ister → Ayşe (Downtown müdürü) "To decide"da görür → onaylar → Ali tek "Time off approved", Zeynep (admin) hiçbir şey; (2) Ayşe Ali'nin Salı vardiyasını Emre'ye verip yayınlar → Ali "removed", Emre "added", ötekiler hiçbir şey; (3) gerekçeli ret sahibe görünmez; (4) telefonda çalışan bildirimden programına gider; (5) Settings / Account Soru 2'nin cevabına göre.
+- **e2e (Playwright):** (1) Ali izin ister → Ayşe (Downtown müdürü) "To decide"da görür → onaylar → Ali tek "Time off approved", Zeynep (admin) hiçbir şey; (2) Ayşe Ali'nin Salı vardiyasını Emre'ye verip yayınlar → Ali "removed", Emre "added", ötekiler hiçbir şey; (3) gerekçeli ret sahibe görünmez; (4) telefonda çalışan bildirimden programına gider; (5) Settings / Account Soru 2'nin cevabına göre; (6) B1 sonrası Shift Hub canlı yenilenmeye devam eder.
 - **Ölçüm:** liste ≤50 ms, sayaç ≤10 ms (10.000 satırlık fixture); `notify()` 100 alıcıda ≤20 ms (Schedule ızgarası ≤50 ms kuralı bozulmaz).
 
 ## 8. Dilimler
 
-Hepsi `task/bildirim` dalında; her dilimin sonunda `nf-guvenlik` ONAY @sha; main'e **tek paket** (ikiz sistem yok: yeni motor ile eski motor main'de hiç yan yana durmaz).
+İlk dilim eskiyi söker; ayrı ve erken bir söküm yok. **Söküm ile yeni sistem arasında uygulamada bildirim olmayabilir; canlı müşteri yok (P01), kabul.** Her dilim kendi `nf-guvenlik` ONAY'ıyla sırayla main'e girer; eski ve yeni motor main'de hiç yan yana durmaz (§2.A.4).
 
 | Dilim | İçerik | Risk | Önkoşul |
 |---|---|---|---|
 | B0 | Mert'in 6 cevabı + varyant seçimi; KARARLAR'a işlenir (koordinatör) | R0 | — |
-| B1 | Çekirdek: 4 tablo, `notify` / `resolve` / `withdraw` / `notification_deciders`, servisler, RLS, Realtime politikası, matris + katalog, pgTAP | R3 | B0; EKRAN-02 paketi main'de |
-| B2 | Requests + Availability üreticileri (izin, takas, müsaitlik); EKRAN-02 a1a2/a3 kuralları genel kurala; BL-910 (açıksa), BL-200, BL-736, BL-738, BL-740, BL-790, BL-793 | R3 | B1 |
-| B3 | Schedule + duyuru + önemli tarih üreticileri (yayın farkı, K14, K21, K23, K24, K27 teslimi, K12); BL-614, BL-858 (teslim), BL-864, BL-867, BL-883, BL-890 | R3 | B1; EKRAN-07 / EKRAN-08 ile dosya sırası |
-| B4 | People + Documents üreticileri, günlük belge işi, onboarding, işten çıkarma (KK-174), Restore (S1); BL-768, BL-776, BL-806, BL-807, BL-822, BL-823 | R3 | B1; EKRAN-03 / EKRAN-06 ile dosya sırası |
-| B5 | Hesap güvenliği + e-posta kuyruğu, işçi, Resend şablonları, tercihler (Soru 1-2) | R3 | B1; canlı doğrulama için Resend (Mert) |
-| B6 | Söküm: eski 18 tablo, 49 fonksiyon, 3 tetikleyici, zamanlayıcı, izinler, eski API uçları, `packages/shared` dosyaları; `retired_objects_stay_gone` | R3 | B2–B5 |
-| B7 | Arayüz: merkez, rozet, telefon, Account / Settings → Notifications, Publish penceresi, Workspace kutucuğu; BL-258, BL-348, BL-596, BL-597, BL-601, BL-651, BL-533, BL-816 | R2 | B1, B0 varyant seçimi |
-| B8 | e2e senaryoları, tam kapı, `test:db`, canlı migration (yedek + "gönder") | R3 | B1–B7 |
+| B1 | **Söküm:** envanter §1.3–§1.5'in hepsi; 21 domain fonksiyonundan bildirim çağrısı çıkar; K1–K5 taşınır (bakım işi `/api/internal/cron/maintenance` zamanlayıcısına, takas geçmişi `shift_exchange_emit`'e, denetim kaydı doğrudan); eski API uçları, web sayfaları, rozet, Publish "Notify" adımı, `packages/shared` dosyaları, eski testler silinir; `retired_objects_stay_gone` | R3 | B0; **EKRAN-02 veri paketi main'de** (a1a2 / a3 eski bildirim fonksiyonlarına yazıyor); GUVENLIK-A GA-3 ile `authz_catalog` sırası |
+| B2 | Çekirdek: 4 tablo, `notify` / `resolve` / `withdraw` / `notification_deciders`, servisler, RLS, Realtime politikası, matris + katalog, pgTAP; yeni API uçları | R3 | B1 |
+| B3 | Requests + Availability üreticileri (izin, takas, müsaitlik); EKRAN-02 a1a2 / a3 kuralları genel kurala; BL-910 (EKRAN-02'de kapanmadıysa), BL-736, BL-738, BL-740, BL-790, BL-793 | R3 | B2 |
+| B4 | Schedule + duyuru + önemli tarih üreticileri (yayın farkı, K14, K21, K23, K24, K27 teslimi, K12); BL-614, BL-858 (teslim), BL-864, BL-867, BL-883, BL-890 | R3 | B2; EKRAN-07 / EKRAN-08 ile dosya sırası |
+| B5 | People + Documents üreticileri (B1'de taşınan bakım işine bildirim geri bağlanır), onboarding, işten çıkarma (KK-174), Restore (S1), davet "Send reminder / Resend" ayrımı (K:375); BL-768, BL-776, BL-806, BL-807, BL-822, BL-823 | R3 | B2; EKRAN-03 / EKRAN-06 ile dosya sırası |
+| B6 | Hesap güvenliği satırları + e-posta kuyruğu, işçi, Resend şablonları, tercihler (Soru 1–2) | R3 | B2; canlı doğrulama için Resend (Mert) |
+| B7 | Arayüz: merkez, rozet, telefon, Account / Settings → Notifications, Publish penceresi satırı, Workspace kutucuğu; BL-258, BL-348, BL-596, BL-597, BL-601, BL-651, BL-533, BL-816 | R2 | B2, B0 varyant seçimi |
+| B8 | e2e senaryoları, tam kapı, `test:db`, canlı migration'ların yedekle ve "gönder" izniyle doğrulaması | R3 | B1–B7 |
 
-Sıra önerisi: B1 → (B2, B3, B4, B5 aynı oturumda sırayla; P17 tek sahip) → B6 → B7 → B8.
+Sıra: B1 → B2 → (B3, B4, B5, B6 aynı sahip oturumda sırayla; P17) → B7 → B8.
 
-## 9. Bağımlılıklar ve riskler
+## 9. Bağımlılıklar, paralel işler, riskler
 
-- **EKRAN-02 veri paketi önce** (KK-203): takas alıcı kuralı ve "tek karar tek bildirim" orada main'e girer; B2 onları genelleştirir. Dosya çakışması: `shift_exchange_emit_notification_base`, `notify_schedule_request_event_service`, `time_off_*`.
-- **GUVENLIK-A** (KK-206): GA-3 bildirim ayarı rotasını ve 4 fonksiyonu BILDIRIM'e bıraktı; Roles ekranındaki "Notifications: Edit" (GA-2) Soru 2-a ile tamamen kalkar. `authz_catalog` sayaçlarına iki iş birden dokunur; sıra koordinatörde.
-- **EKRAN-07 / EKRAN-08 / EKRAN-03 / EKRAN-06 / EKRAN-10:** üretici fonksiyonları ve Settings menüsü aynı dosyalarda; koordinatör sırayı "aynı dosyaya iki oturum yok" kuralıyla verir.
-- **Resend canlıda yok** (`mvp/RESEND.md`): e-posta kodu canlıya anahtarsız girerse satırlar `not_configured` kalır, kullanıcıya hata çıkmaz; gerçek teslim Mert'in 7 adımından sonra. Maliyet: ücretsiz katman $0 (günde 100, ayda 3.000); 100 kişilik ekipte günlük yayın + kararlar sınıra yaklaşırsa Pro $20/ay.
-- **Büyük yüzey:** ~30 domain fonksiyonu düzenlenir; her dilimde alıcı testi ve `nf-guvenlik`.
-- **Canlı:** canlıdaki eski bildirimler taşınmaz (P01, §2.A.5); migration öncesi yedek (`pg_get_functiondef` + silinen tabloların tanımı), koordinatörün "gönder" izni.
-- **Ölçülmedi:** canlı kuyrukta bekleyen / ölü satır sayısı (söküm bunları zaten siler).
+| İş | Bağ | Plan nasıl karşılıyor |
+|---|---|---|
+| **EKRAN-02 veri paketi** `task/ekran-02-a1a2` (ONAY @`945d8df7`), `-a3` (ONAY @`4b6a6369`), `-a4` | a1a2: takas karar kitlesi lokasyon başına `app_private.exchange_decision_reason` ile (KK-158), tekrar onayda bildirim yok (R2-18), çakışan kabul düşer (K:170). a3: "tek karar tek bildirim" (R2-13), sonuç başlıkta (R2-45), kısaltmada bütün onaylayanlar (R2-23). İki dal `shift_exchange_emit_notification_base`, `shift_exchange_notification_allowed`, `notify_schedule_request_event_service`, `notify_time_off_shortened`, `time_off_notify_shifts_opened`'ı yeniden yazıyor; a4 bildirim koduna dokunmuyor ama BL-910'u taşıyor | B1 bu paket main'e girdikten sonra başlar (KK-203). Dalların karar kuralı `exchange_decision_reason` yetki için de kullanıldığı için kalır ve `notification_deciders`'ın özel hâli olur; "tek karar tek bildirim" B3'te genel kural olur. |
+| **GUVENLIK-A** (KK-206) | GA-3 bildirim ayarı rotasını ve 4 fonksiyonunu BILDIRIM'e bıraktı; GA-2 müdür rolüne "Notifications: Edit" verilmesini kapatıyor | B1 bu 4 fonksiyonu ve iki izni siler; Roles ekranındaki "Notifications" satırı kalkar. `authz_catalog` sayaçlarına iki iş birden dokunur; sıra koordinatörde. |
+| EKRAN-07 Announcements | K21, K23, K24, K27, K12 eki (BL-858, 861, 864, 867) | B1 teslimi söker; B4 kuralla geri bağlar; onay penceresi ve Remind düğmesi EKRAN-07'nin. |
+| EKRAN-08 Important Dates | K14 bildiriminin geri çekilmesi (BL-883), değiştirenin kendi bildirimi (BL-890) | B4. EKRAN-08 çekmece işi `save_important_date_service` / `set_important_date_state_service`'e dokunuyorsa sıra koordinatörde. |
+| EKRAN-03 / 04 / 05 / 06 | KK-174 (BL-768), Restore S1, BL-790 / 793, ana sayfa kutucuğu (BL-533, 816), belge bakımı (BL-806, 807, 822, 823) | B3, B5, B7; K1 ve K5 B1'de korunur. |
+| EKRAN-10 Settings | Settings menüsünde Notifications, `SettingsLayout.tsx`, `SettingsHomeRedirect.tsx` | B1 menü öğesini kaldırır; Soru 2-b / 2-c seçilirse B7 geri koyar. |
+
+Riskler:
+- **Sessiz kırılma (K1–K5):** bakım ve denetim işleri bildirim kodunun içinde; B1 önce taşır, sonra siler; pgTAP ile kanıtlanır.
+- **Resend canlıda yok** (`mvp/RESEND.md`): e-posta kodu canlıya anahtarsız girerse satırlar `not_configured` kalır, kullanıcıya hata çıkmaz; gerçek teslim Mert'in 7 adımından sonra. Maliyet: ücretsiz katman $0 (günde 100, ayda 3.000); aşılırsa Pro $20/ay.
+- **Büyük yüzey:** 21 domain fonksiyonu iki kez düzenlenir (B1'de bildirim çıkar, B3–B6'da `notify()` girer); her seferinde alıcı testi ve `nf-guvenlik`.
+- **Canlı:** eski bildirimler taşınmaz (P01, §2.A.5); her canlı migration öncesi yedek (`pg_get_functiondef` + silinen tabloların tanımı), koordinatörün "gönder" izni.
 
 ## 10. Mert'e 6 temel soru
 
@@ -248,7 +258,7 @@ Bugün: bütün bildirimler yalnız uygulamanın içinde (sol menü → Notifica
 - **Uygulama içi + tarayıcıdan anlık bildirim (web push):** telefonda ana ekrana eklenmiş uygulamaya bildirim; iPhone'da yalnız ana ekrana eklenince çalışır, kurulum adımı ister.
 
 **Soru 2 — Bildirim ayarı kimde olsun?**
-Bugün: Settings → Notifications'ta owner ve admin 29 türün her birine Enabled, 3 kanal, sıklık, gerekçe, Reset, Save ve "Safe test" görüyor (267 kontrol); kanal ve sıklık hiçbir şeyi değiştirmiyor, 19 türün adı ham kod. Account → Notifications'ta herkes 5 kategoride "In app" kutusunu kapatabiliyor.
+Bugün: Settings → Notifications'ta owner ve admin her bildirim türü için ayrı kural yazıyor; Account → Notifications'ta herkes 5 kategoride uygulama içi bildirimi kapatabiliyor. Söküm ikisini de kaldırır; soru, yeni sistemde ayarın kimde olacağı.
 Örnek: Zeynep (admin) "Time-off requests to review"ı kapatırsa Ayşe izin taleplerini artık hiç görmez; ikisi de bunu fark etmez.
 - **Workspace ayarı yok, kişisel yalnız e-posta (Önerilen):** Settings → Notifications sayfası kalkar. Uygulama içi bildirim kapatılamaz; kişi Account → Notifications'ta yalnız e-postayı kategori kategori açar / kapatır, tek Save. Varyant A.
   Dayanak: ILKELER A anti-hedef "ayar cehennemi", P20, P07.
@@ -288,52 +298,64 @@ Bugün: çalışan vardiyasını devretmek için cover açınca uygun her çalı
 - **Bildirim yok:** çalışan Shift Hub'da görür.
 - **Bugünkü gibi:** her cover isteğinde her uygun kişiye ayrı bildirim; açık vardiyaya da.
 
-## 11. Bu planda verdiğim teknik kararlar (koordinatör onayına)
+## 11. Rakipler (yalnız referans; okuma 2026-10-07)
+
+| | 7shifts | Homebase | When I Work | Deputy |
+|---|---|---|---|---|
+| Kanal | push > e-posta > SMS (kısa liste); uygulama içi merkez | e-posta, push, SMS | e-posta ya da "Mobile" (uygulama açıksa push, değilse SMS) | zil her zaman; uygulamada değilse push yerine e-posta; SMS ücretli, kapalı gelir |
+| Ayar | kişi başına tür × kanal matrisi (~40 tür) | herkes kendi ayarını yapar | kişi başına uyarı × {Email, Mobile} | çoğu kurum / lokasyon ayarı; "Shift notifications recipient" |
+| Karar bildirimi | izin doğrudan müdüre; müdür yoksa admin | — | yöneticiye istek, çalışana karar | en alttaki yetkili müdür; üstlere gitmez |
+| Yayın | — | yayınlayan seçer | "Notify users with changes" / "Notify all users" | "Publish updates" / "Publish all" / "Mark as published" |
+| Özet / sessiz saat | haftalık özet e-postası (yalnız admin); sessiz saat yok | yok | yok | yok |
+| Merkez | zil; 3 ay geçmiş | doğrulanmadı | "Things Needing Your Action" / "Awaiting others" / "Notifications" | zil + "Me" ekranı |
+
+Kaynaklar: kb.7shifts.com/hc/en-us/articles/29771113662099, 4417519530771, 4417519795347, 38259689187603, 4417513581971 · support.joinhomebase.com/s/article/Editing-Alerts-and-Notifications (2025-08-01), Editing-Notification-Preferences (2025-07-24), Step-3-Adding-Editing-Shifts-in-the-Schedule · help.wheniwork.com/articles/setting-your-alert-preferences/ (2025-08-06), publishing-the-schedule-computer/, viewing-notifications-computer/ · help.deputy.com/hc/en-au/articles/9368598155919, 4692803698063, 4688746992399. Not: `help.homebase.ai` başka bir şirket.
+
+Çıkarım: karar bildirimi tek kişiye, yoksa yedeğe (7shifts, Deputy; P07 ile aynı); yayında "yalnız değişenlere" varsayılanı (When I Work, Deputy); "karar bekleyenler" akıştan ayrı (When I Work); tür × kanal matrisi ve bölünmüş akışlar ayar yükü ve gürültü; şikâyetlerin yarısı güvenilirlik (kaçan bildirim, silinmeyen rozet).
+
+## 12. Bu planda verdiğim teknik kararlar (koordinatör onayına)
 
 | Karar | Neden |
 |---|---|
-| Y1 senkron tek tablo; kuyruk yalnız e-posta için | §2; bugünkü bekleyen 1.537 satır; P19 en az bakım |
-| Katalog yalnız veritabanında; `packages/shared`'de kopya yok | 10 ↔ 35 kayması; tek kaynak |
-| `notification_deciders` tek alıcı kaynağı; EKRAN-02'nin fonksiyonu onun hâli | §2.A.1 yetki tek merkezde |
-| Saklama 90 gün (hesap güvenliği 1 yıl) | `nf-guvenlik` G9; rakip 7shifts 3 ay |
+| Y1 senkron tek tablo; kuyruk yalnız e-posta için | §2; P19 en az bakım |
+| Katalog yalnız veritabanında; `packages/shared`'de kopya yok | tek kaynak |
+| `notification_deciders` tek alıcı kaynağı; EKRAN-02'nin `exchange_decision_reason`'ı onun özel hâli | §2.A.1 yetki tek merkezde |
+| B1'de bakım işi yeni zamanlayıcıya (`/api/internal/cron/maintenance`) | K1–K2 sessiz kırılmasın |
+| Saklama 90 gün (hesap güvenliği 1 yıl) | silinen hesabın bildirimleri süresiz kalmasın; rakip 7shifts 3 ay |
 | Sessiz saat ve özet MVP'de yok | push yok; e-posta listesi kısa (A anti-hedef) |
-| Hesap satırları ayrı; workspace'te "hepsini okundu yap" onlara dokunmaz | G7 |
-| Canlı kanal yalnız sinyal; 5 dk yedek yoklama | G8; DATA-07 |
-| Eski bildirim verisi taşınmaz | P01, §2.A.5 |
-| Paket tek seferde main'e | §2.A.4 ikiz yok |
+| Hesap satırları ayrı; workspace'te "hepsini okundu yap" onlara dokunmaz | hesap güvenliği bildirimi kaybolmasın |
+| Canlı kanal yalnız sinyal; 5 dk yedek yoklama | DATA-07 |
+| Eski bildirim verisi taşınmaz; söküm ilk dilim, sonra dilim dilim main'e | P01, §2.A.4, §2.A.5; koordinatör 2026-10-07 |
+
+## 13. Backlog bağı
+
+Plan şu açık maddeleri kapatır ya da yerini alır: BL-045, BL-046, BL-055 (bildirimde tarih biçimi), BL-200, BL-258, BL-348, BL-396, BL-533, BL-539, BL-556, BL-596, BL-597, BL-601, BL-614, BL-651, BL-730, BL-731, BL-736, BL-738, BL-740, BL-768, BL-776, BL-790, BL-793, BL-806, BL-807, BL-816, BL-822, BL-823, BL-858 (teslim kısmı), BL-864 (yazar bildirimi), BL-867, BL-883, BL-890, BL-910 (EKRAN-02'de kapanmazsa). Kısmen: BL-599 (telefon liste), BL-661, BL-787 (sayfalama), BL-898 (bildirim rotaları).
 
 ## Notes / Result
 
-### Aşama 1 — inceleme ve plan (2026-10-07, oturum/bildirim)
+### Aşama 1 — söküm listesi, envanter ve plan (2026-10-07, oturum/bildirim)
 
 - **Karar:** aşama 1 bitti; kod, migration, test dosyası ve ağır koşu yok. Yerel DB'de yalnız SELECT.
-- **İzin:** yok gerekmedi (yalnız `.md`; `main.lock` ile gönderildi).
-- **Risk:** 🟠 bildirim motoru iki kutulu ve gürültülü; bir gizlilik açığı (BL-910) açık, düzeltmesi EKRAN-02'de ya da B2'de.
+- **İzin:** gerekmedi (yalnız `.md`; `main.lock` ile gönderildi).
+- **Risk:** 🟠 söküm, bildirim kodunun içinde yaşayan 5 işi (K1–K5) taşımadan yapılırsa sessiz kırılma; plan B1'de önce taşır.
 - **Soru:** Mert'e 6 temel model sorusu (§10) + iki görsel seçim (merkez A/B/C, ayar A/B/C).
-- **Sonraki:** koordinatör soruları sohbete taşır; cevaplar KARARLAR'a işlenince B1, EKRAN-02 paketi main'e girdikten sonra (KK-203).
+- **Sonraki:** DURDURULABILIR, sabah Mert'in cevapları.
+
+**Kapsam değişikliği:** ilk teslim (`e49ec3e3`) bugünkü sistemin değerlendirmesini de içeriyordu (ayar sayfasının rol rol incelemesi, motor haritası, ekran görüntüleri). Koordinatörün daraltması (Mert, ~09:25Z: "bugünkü bildirimi araştırmasın incelemesin bile") o teslimden sonra geldi; değerlendirme belgelerden çıkarıldı, yerine çağıran ölçümüyle söküm listesi kondu. Eski hâl git geçmişinde.
 
 **Ne yapıldı:**
-- Settings → Notifications dört rolde gezildi ve her kontrolün gönderime etkisi koddan satır satır izlendi; 267 kontrolün yalnız "Enabled" ve kişisel "In app" kutusu bir şeyi değiştiriyor (inceleme §1).
-- Motor haritası (Mermaid + tablo), 18 tablo, 49 fonksiyon, ikiz ve ölü yollar (inceleme §3).
-- 162 olayın envanteri: 77'si bugün mesaj üretiyor, 18 eksik, 10 yüksek gürültü (inceleme §4).
-- Dokunan kod listesi SİL / DÜZENLE ve `retired_objects_stay_gone` adayları (inceleme §6).
-- Paralel işlerle bağ: EKRAN-02 a1a2 / a3 / a4, GUVENLIK-A, EKRAN-07 / 08 / 03 / 04 / 05 / 06 / 10 (inceleme §7).
-- Rakipler, kaynak ve tarihle (inceleme §8). Plan ve 6 soru (bu dosya).
-- Görsel: https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv — bildirim merkezi A (bugünkü DOC-TABLE kararı) / B (iki şerit) / C (panel), telefon A/B/C, ayar A (sayfa yok) / B (salt okunur) / C (üç anahtar), bugünkü ekranlar. Kaynak `artifacts/BILDIRIM/bildirim-varyantlari.html`.
-
-**Açık kalan ve nedeni:**
-- "Ayarı değiştir → olayı tetikle → ne gitti" uygulamada uçtan uca ölçülemedi: `db.lock` bütün oturum boyunca başka oturumlardaydı ve yerel kuyruk zaten işlenmiyor (1.537 bekleyen). Etki koddan ve kayıtlı karar satırlarından ölçüldü (inceleme §1.4).
-- Canlı kuyruk durumu ölçülmedi (canlıya dokunulmadı).
+- Söküm listesi, çağıranlarıyla (envanter §1): 18 tablo, 50 fonksiyon, 3 tetikleyici, 1 zamanlayıcı, 10 API yolu; düzenlenecek 21 domain fonksiyonu; SİL / DÜZENLE dosyaları; `retired_objects_stay_gone` listesi. Ölçüm: `pg_proc.prosrc`, `pg_trigger`, `cron.job` ve kod `grep`.
+- Korunacak 5 iş (K1–K5) ve dokunulmayacak e-posta yolları (davet, parola sıfırlama, haftalık program, hesap silme: bildirim koduna 0 referans).
+- Olay envanteri: 162 olay, tetikleyen / etkilenen / karar veren, P07'ye göre alıcı, gürültü (envanter §2).
+- Plan: model, veri, yetki, API, arayüz, test, dilimler (ilk dilim söküm), bağımlılıklar, rakipler, 6 soru (bu dosya).
+- Görsel: https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv — bildirim merkezi A (DOC-TABLE kararı) / B (iki şerit) / C (panel), telefon A/B/C, ayar A (sayfa yok) / B (salt okunur) / C (üç anahtar). Kaynak `artifacts/BILDIRIM/bildirim-varyantlari.html`.
 
 **Ekranda ne değişti:** hiçbir şey (salt okur).
 
 **Yolda bulunanlar (numarayı koordinatör verir):**
-1. 🔴 Başvuru reddinin gerekçesi vardiya sahibine gidiyor — koordinatöre 2026-10-07 08:46Z bildirildi, **BL-910** oldu.
-2. Yayın toast'ı "N employees notified" hiç görünmüyor: web `notification_count`, DB `notification_enqueued_count` (`schema.sql:17262-17264`, `apps/web/src/views/SchedulePage.tsx:3173-3176`). B7'ye.
-3. "Onboarding complete" bildirimi hiç üretilmiyor: tetikleyici `onboarding_events`'te `employee.activated` bekliyor, o tabloya yazılmıyor (`schema.sql:4174-4177`, `:20289-20297`). B4'e.
-4. Bildirim satırları `auth.users`'a RESTRICT bağlı (`schema.sql:32234, 32269`); hesap silme kullanıcıyı anonimleştirdiği için bugün kırılmıyor, ama silinen hesabın bildirimleri süresiz kalıyor. B1 (CASCADE + saklama).
-5. `test.admin@meyhouse.test` sihirli bağlantıyla oturum açamıyor (sign-in'de kalıyor); nedeni ölçülmedi. Düşük.
-
-**Kanıt:** `artifacts/BILDIRIM/` (ana klasör): dört rolün 1440 ve 390 görüntüleri ve metin dökümleri, `owner-tall-app_settings_notifications-1440.png`, varyant ön izlemeleri `look-*.png`. Alt ajan raporları bu oturumda okundu; kilit iddialar ✓ ile işaretli.
+1. 🔴 Başvuru reddinin gerekçesi vardiya sahibine gidiyor — 2026-10-07 08:46Z bildirildi, **BL-910**.
+2. Yayın toast'ı "N employees notified" hiç görünmüyor (web `notification_count`, DB `notification_enqueued_count`). Söküm zaten kaldırır; B7'de yeniden.
+3. "Onboarding complete" bildirimi hiç üretilmiyor (tetikleyici yanlış tabloyu dinliyor, `schema.sql:4174-4177`). B5'te yeni üretici.
+4. `test.admin@meyhouse.test` sihirli bağlantıyla oturum açamıyor; nedeni ölçülmedi. Düşük.
 
 **Skill:** brainstorming (mimari yol; tasarım bu dosya, onay Mert'te), artifact-design.
