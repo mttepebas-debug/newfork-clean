@@ -1,5 +1,5 @@
 # PARALEL-1 Paralel oturumlar için üç araç açığı: test:db builder'ı, pano etiketi, push kancası
-Status: dalda bitti, ONAY @ `82a9f376` = `a9bdd2c5` (/code-review); gönderim sırada. Görev ONAY (koordinatör, 2026-10-07 ~08:35Z) bir şartla: izlenen pgTAP dosyalarına (`supabase/tests/*.sql`) dokunulmaz.
+Status: dalda bitti, ONAY @ `82a9f376` = `22336bed` (/code-review); gönderim sırada. Görev ONAY (koordinatör, 2026-10-07 ~08:35Z) bir şartla: izlenen pgTAP dosyalarına (`supabase/tests/*.sql`) dokunulmaz.
 Şart tasarımda zaten karşılanıyor: kopyalar koşu anında gitignore'lu `supabase/tests/.builder-run/` altında üretilir, izlenen dosya
 değişmez; sonradan eklenen test dosyası da kopyalandığı için kendiliğinden kapsanır. Soru: (a) kabul (e2e kapsam dışı, rapora BACKLOG
 önerisi). Gönderimden önce koordinatöre tek satır; ekran oturumlarına yeni davranışı koordinatör bildirir.
@@ -120,7 +120,7 @@ yazıyor; test:db artık etkilenmez); bu §6 "dalın değişikliği ortak DB'ye 
 
 ## Notes / Result
 
-- **Karar:** üç açık dalda kapandı (`task/paralel-1` @ `a9bdd2c5`): test:db dalın test dünyasını artık ortak DB'ye bırakmıyor, pano
+- **Karar:** üç açık dalda kapandı (`task/paralel-1`, kod `22336bed`): test:db dalın test dünyasını artık ortak DB'ye bırakmıyor, pano
   etiketi oturuma bağlı, push kancası gönderilen ref'i okuyor.
 - **İzin:** yok (R2; inceleme ONAY, kilitler serbest). Gönderimden önce koordinatöre tek satır haber verildi.
 - **Risk:** 🟠 bütün oturumların `pnpm test:db`'si değişiyor; tam koşuda sonuç eskisiyle birebir aynı, süre farkı ölçülemedi (aşağıda).
@@ -129,8 +129,9 @@ yazıyor; test:db artık etkilenmez); bu §6 "dalın değişikliği ortak DB'ye 
 
 ### Nerede duruyor
 Dal `task/paralel-1`, worktree `C:\Users\TheWe\Documents\Codex\newfork-wt\paralel-1`, üç commit: `11e053fb` (görev dosyası),
-`7664e8a9` (üç düzeltme), `82a9f376` (inceleme düzeltmeleri). Gönderimden önce `origin/main` `9eabff12` üstüne rebase: `70574f46`,
-`bae8ddec`, `a9bdd2c5` ve rapor commit'i; `git range-diff` dördünde de içerik aynı (`=`). Aşağıdaki ölçümler rebase öncesi kodla.
+`7664e8a9` (üç düzeltme), `82a9f376` (inceleme düzeltmeleri). Main kırmızı olduğu için gönderim bekledi (37598002511, yeniden
+koşu yeşil); son rebase `origin/main` `46271c72` üstüne: kod commit'leri `10bcfca5` ve `22336bed` (= `7664e8a9`, `82a9f376`; arada
+`scripts/`, `package.json`, `supabase/tests`, `supabase/test-support` değişmedi). Aşağıdaki ölçümler rebase öncesi kodla.
 
 ### Ne yapıldı (etkisi)
 | | Neydi | Ne oldu |
@@ -181,7 +182,7 @@ silmek de iş görür, ama geri dönüyor (2026-09-30'da silinmişti, bugün 90 
 `/code-review` (high, `origin/main...task/paralel-1` @ `7664e8a9`): 6 bulgu. 5'i düzeltildi (`82a9f376`): `supabase test db` bayrakları
 artık geçiyor (`pnpm test:db --debug` tüm koşuyu reddediyordu); `begin; -- yorum` / `begin transaction;` ile açılan yeni bir dosya
 bütün oturumların test:db'sini durduruyordu; `pnpm test:db --load-only` ağır sayılıyor, `node --no-warnings scripts/test-db.mjs` sayılmıyordu;
-`--load-only` dosya argümanını sessizce yutuyordu; üç eksik test. 1'i bu dalın işi değil (aşağıda, koordinatöre). **ONAY @ `82a9f376`** (rebase sonrası `a9bdd2c5`, içerik aynı).
+`--load-only` dosya argümanını sessizce yutuyordu; üç eksik test. 1'i bu dalın işi değil (aşağıda, koordinatöre). **ONAY @ `82a9f376`** (rebase sonrası `22336bed`, içerik aynı).
 Not: `/code-review` bu oturumun kendi bağlamında koştu.
 
 ### Kapanış hükmü (BACKLOG kaydı koordinatörde)
