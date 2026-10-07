@@ -222,17 +222,20 @@ export function dateRange(start: string, end: string, now = new Date()) {
 }
 
 /** "3:30–11:00 PM", "11:00 AM–3:00 PM", "15:30–23:00" (artifact, Version 2). */
-export function clockRange(start: string, end: string, timeFormat: "12h" | "24h") {
+export function clockRange(start: string, end: string, timeFormat: "12h" | "24h", options: { bothHalves?: boolean } = {}) {
   const parts = (value: string) => {
     const [hour = 0, minute = 0] = value.split(":").map(Number);
     return { hour, minute: String(minute).padStart(2, "0") };
   };
   const from = parts(start);
   const to = parts(end);
+  // The swap review (H2): both ends name their half, thin spaces around the dash.
+  const dash = options.bothHalves ? " – " : "–";
   if (timeFormat === "24h")
-    return `${String(from.hour).padStart(2, "0")}:${from.minute}–${String(to.hour).padStart(2, "0")}:${to.minute}`;
+    return `${String(from.hour).padStart(2, "0")}:${from.minute}${dash}${String(to.hour).padStart(2, "0")}:${to.minute}`;
   const half = (hour: number) => (hour % 24 < 12 ? "AM" : "PM");
   const clock = (time: { hour: number; minute: string }) => `${time.hour % 12 || 12}:${time.minute}`;
+  if (options.bothHalves) return `${clock(from)} ${half(from.hour)}${dash}${clock(to)} ${half(to.hour)}`;
   return half(from.hour) === half(to.hour)
     ? `${clock(from)}–${clock(to)} ${half(to.hour)}`
     : `${clock(from)} ${half(from.hour)}–${clock(to)} ${half(to.hour)}`;
