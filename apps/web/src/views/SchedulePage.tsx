@@ -3186,6 +3186,11 @@ export function SchedulePage({
                   result,
                 );
               }
+              // BL-614: "changes" are what the preview showed added, updated or
+              // removed at the published locations, not every published shift.
+              const changeCount = preview.locations
+                .filter((location) => result.location_ids.includes(location.location_id))
+                .reduce((sum, location) => sum + location.added + location.updated + location.removed, 0);
               toast.success(
                 "Schedule published",
                 result.notification_warning
@@ -3196,11 +3201,11 @@ export function SchedulePage({
                   : result.notification_count
                     ? {
                         dedupeKey: "schedule-published",
-                        description: `${countLabel(result.location_ids.length, "location", "locations")}, ${countLabel(result.published_shift_count, "change", "changes")}, ${countLabel(result.notification_count, "employee", "employees")} notified.`,
+                        description: `${countLabel(result.location_ids.length, "location", "locations")}, ${countLabel(changeCount, "change", "changes")}, ${countLabel(result.notification_count, "employee", "employees")} notified.`,
                       }
                     : {
                         dedupeKey: "schedule-published",
-                        description: `${countLabel(result.location_ids.length, "location", "locations")} and ${countLabel(result.published_shift_count, "change", "changes")} published.`,
+                        description: `${countLabel(result.location_ids.length, "location", "locations")} and ${countLabel(changeCount, "change", "changes")} published.`,
                       },
               );
               setPublishOpen(false);
