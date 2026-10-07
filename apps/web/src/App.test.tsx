@@ -4995,7 +4995,8 @@ describe("App", () => {
       draft_revision: draft.revision,
       location_ids: [scheduleFixture.locations[0]!.id],
       publication_ids: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbc"],
-      published_shift_count: 0,
+      // BL-614: the server counts every published shift; the toast counts changes.
+      published_shift_count: 12,
       published_at: "2026-08-17T12:05:00Z",
       notification_count: notificationCount,
     });
