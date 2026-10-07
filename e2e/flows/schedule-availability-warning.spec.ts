@@ -25,6 +25,13 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
+// The screen reads a day as "Tue, Oct 24", never the stored date (BL-611).
+function weekdayDate(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric", timeZone: "UTC",
+  });
+}
+
 async function openPage(browser: Browser, who: Person | { readonly email: string }, path: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
   if (typeof who === "string") await signIn(page, who);
@@ -108,7 +115,7 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
   const editor = await openAddShift(ayse, "Ali Person", tuesday, "6:00 PM", "10:00 PM");
   const ruleBox = ayse.getByRole("dialog", { name: "Shift conflict", exact: true });
   await expect(ruleBox).toBeVisible();
-  await expect(ruleBox).toContainText("Do you want to assign this shift anyway?");
+  await expect(ruleBox).toContainText("Schedule this shift anyway?");
   await expect(ruleBox).toContainText("unavailable");
   await expect(ruleBox.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
   // Escape is Cancel: the box closes, the editor and what was typed stay.
@@ -247,13 +254,13 @@ test("M8, D3: Auto-fill leaves Ali out of his marked evening, and no write is re
   // D3: the marked employee is never a candidate for the open shift.
   await ayse.getByRole("button", { name: "Auto-fill", exact: true }).click();
   const review = ayse.getByRole("dialog", { name: "Review auto-fill", exact: true });
-  const choice = review.getByLabel(`Assignment for Cook on ${tuesday}`, { exact: true });
+  const choice = review.getByLabel(`Assignment for Cook on ${weekdayDate(tuesday)}`, { exact: true });
   await expect(choice).toBeVisible();
   const candidates = (await choice.locator("option").allTextContents()).filter((text) => text !== "Leave open");
   expect(candidates.length).toBeGreaterThan(0);
   expect(candidates.join(" | ")).not.toContain("Ali Person");
   // Its write goes through.
-  await review.getByRole("button", { name: "Apply 1 assignments", exact: true }).click();
+  await review.getByRole("button", { name: "Apply 1 assignment", exact: true }).click();
   await expect(review.getByRole("status")).toHaveText("Applied 1 shift.");
   await review.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(review).toHaveCount(0);

@@ -75,7 +75,8 @@ test("a location-scoped manager cannot reach the other location, and only the ad
   // What the card shows, not every text under it: the pin's tooltip keeps the
   // location in a hidden description for screen readers (G14).
   await expect(ghost).not.toContainText("Besiktas", { useInnerText: true });
-  await ghost.getByRole("button", { name: "Location", exact: true }).click();
+  // BL-723 (4): the pin's name says the location; the card's text still does not.
+  await ghost.getByRole("button", { name: "Location: Besiktas", exact: true }).click();
   await expect(ayse.getByRole("tooltip")).toContainText("Besiktas");
 
   // A draft is needed before "Publish" is even enabled; an empty one is enough
