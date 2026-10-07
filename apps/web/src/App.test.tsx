@@ -6178,7 +6178,7 @@ describe("App", () => {
       }),
     );
     fireEvent.click(
-      screen.getByRole("button", { name: "Apply 1 assignments" }),
+      screen.getByRole("button", { name: "Apply 1 assignment" }),
     );
 
     await waitFor(() =>

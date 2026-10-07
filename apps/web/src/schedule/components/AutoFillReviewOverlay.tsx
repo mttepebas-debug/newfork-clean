@@ -5,6 +5,7 @@ import type {
 } from "@newfork/shared/schedule";
 import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { autoFillApplyLabel } from "../lib/autoFillText";
 
 export function AutoFillReviewOverlay({
   preview,
@@ -177,7 +178,7 @@ export function AutoFillReviewOverlay({
             disabled={pending || !assignments.length}
             onClick={() => void apply()}
           >
-            {pending ? "Applying…" : `Apply ${assignments.length} assignments`}
+            {pending ? "Applying…" : autoFillApplyLabel(assignments.length)}
           </button>
         </div>
       </div>
