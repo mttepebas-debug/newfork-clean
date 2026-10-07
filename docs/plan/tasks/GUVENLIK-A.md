@@ -394,3 +394,43 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
 - **GA-4 gönderime hazır:** dal `task/guvenlik-a-ga4` (main + GA-4 iki commit + bu dosya).
   - Sıra sabah: Mert'in "evet"i → yedek → canlıya GA-1 ve GA-4 → GA-4 main.
   - Ekleyen migration (yeni fonksiyon + cron), OPS-03'e göre önce canlı.
+
+### Sabah canlı adımları (Mert'in bu oturuma yazacağı "evet"ten sonra)
+Sıra: yedek (yalnız SELECT, çıktılar `artifacts/guvenlik-a/`) → GA-1 `apply_migration` → doğrulama → GA-4 `apply_migration` → doğrulama → `get_advisors` → GA-4 main gönderimi (rebase, tam kapı, push) → main CI.
+
+```sql
+
+-- 1a. Beş katalog tablosunun ve workspaces'in bugünkü grant'leri (GA-1 geri alma yedeği)
+select c.relname, c.relacl::text,
+       (select json_agg(json_build_object('col', a.attname, 'acl', a.attacl::text))
+          from pg_attribute a where a.attrelid = c.oid and a.attacl is not null) as column_acl
+from pg_class c
+where c.relnamespace = 'public'::regnamespace
+  and c.relname in ('departments', 'jobs', 'locations', 'shift_types', 'shift_labels', 'workspaces');
+
+-- 1b. GA-4'ün yeniden tanımladığı servis (geri alma yedeği)
+select pg_get_functiondef('public.request_workspace_closure_service(uuid, uuid, text, text, boolean, timestamptz)'::regprocedure);
+
+-- 1c. cron işleri ve planlı kapanışlar (GA-4 canlıya girerken sürpriz kapanış olmasın)
+select jobname, schedule, command, username from cron.job order by jobname;
+select lifecycle_status, count(*), min(closure_effective_at) from public.workspaces group by 1;
+
+-- 1d. Son uygulanmış sürüm
+select version, name from supabase_migrations.schema_migrations order by version desc limit 3;
+
+-- 3. GA-1 doğrulama: beklenen false / true / false
+select has_column_privilege('authenticated', 'public.shift_labels', 'workspace_id', 'UPDATE') as label_move,
+       has_column_privilege('authenticated', 'public.locations', 'timezone', 'UPDATE') as location_form,
+       has_table_privilege('authenticated', 'public.jobs', 'UPDATE') as jobs_table_update;
+
+-- 5. GA-4 doğrulama: fonksiyonlar var, tarayıcıya kapalı, cron işi kurulu
+select p.proname, has_function_privilege('authenticated', p.oid, 'EXECUTE') as browser_can_run
+from pg_proc p
+where p.pronamespace = 'app_private'::regnamespace
+  and p.proname in ('finish_workspace_closure', 'complete_due_workspace_closures');
+select jobname, schedule, command from cron.job where jobname = 'workspace-closures';
+
+-- 2/4 sonrası (supabase/CLAUDE.md "Canlı"): sürüme sunucu damgası yazılır, repo sürümüne çevrilir
+-- update supabase_migrations.schema_migrations set version = '<repo>' where name = '<ad>' and version = '<damga>';
+-- Kanıt: md5(statements[1]) = dosya md5'i.
+```
