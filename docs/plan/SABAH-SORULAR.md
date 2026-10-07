@@ -217,7 +217,7 @@ Veri hattının sırası: Requests A3 → A4 → Employees A1–A4 → Availabil
   `Dayanak: ILKELER A anti-hedef "oyuncak görünüm" (işe yaramayan adım yok) — yok — yeni karar`
 - (b) Kalır, yanında "Coming soon".
 - (c) Kısa bir tur yapılır (yeni iş; backlog'a).
-- Not: aynı listedeki "Billing" adımı soru değil, kalkar (KARARLAR MVP sınırı: Stripe billing şimdilik yok).
+- Not (2026-10-07 düzeltildi): aynı listedeki "Billing" adımının dayanağı değişti; ödeme artık MVP'de ve 18. ekran (KARARLAR "MVP sınırı"). Adımın kalıp kalmayacağı o ekranın turunda ele alınır.
 
 ### S16. Admin de Setup checklist'i görsün mü?
 - **Bugün:** admin Deniz checklist'i görüyor ve gizleyebiliyor. Yetki kataloğu ise kurulum işini owner'a özel sayıyor; ekran kataloğa uymuyor.

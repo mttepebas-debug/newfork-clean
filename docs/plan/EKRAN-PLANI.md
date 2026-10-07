@@ -105,8 +105,9 @@ Durum değerleri: sırada / keşif / karar / uygulama / bitti.
 | 15 | Account (Profile, Security, Inbox, Preferences, Notifications, Workspaces, Documents) | herkes | P5 | sırada |
 | 16 | Giriş ve katılım (Sign in, şifre sıfırlama, hesap kurtarma, davet kabulü, Workspaces, owner ve çalışan kurulumu) | herkes | Q1–Q4, PHONE-AUTH | sırada |
 | 17 | Yasal sayfalar (Privacy, Terms, Accessibility, Contact, Your privacy choices) | herkes | Q5 | sırada |
+| 18 | Billing (plan, kart, fatura; deneme bitince ödeme) | owner | — (KARARLAR "MVP sınırı", Mert 2026-10-07) | sırada |
 
-**Sıranın gerekçesi:** önce müdür ve owner ekranları (ILKELER A, MVP önceliği), sonra çalışan, sonra hesap ve giriş.
+**Sıranın gerekçesi:** önce müdür ve owner ekranları (ILKELER A, MVP önceliği), sonra çalışan, sonra hesap ve giriş, en son ödeme (Stripe canlı hesap için yasal sayfalar önce hazır olmalı; Mert 2026-10-07).
 - Prototip denetim dosyaları (P1–P5, Q1–Q5, PHONE-*, EMP-SCHED) repo dışında: `C:\Users\TheWe\Documents\Codex\newfork-prototype\proto-audit\`.
 - Prototipe yazılmaz, yalnız kaynak olarak okunur (KK-156).
 

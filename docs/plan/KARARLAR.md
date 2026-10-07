@@ -278,7 +278,8 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001); 
 Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001). Neden: self-serve ücretli ABD lansmanı önce (ILKELER P13).
 
 - Compliance, payroll, time tracking ve break ile ilgili her şey MVP sonrasıdır.
-- Ödeme (Stripe) MVP'dedir (Mert, 2026-10-07; önceki "Stripe billing şimdilik yok" ters çevrildi). Ekran planındaki yeri ayrıca sorulacak.
+- Ödeme (Stripe) MVP'dedir (Mert, 2026-10-07; önceki "Stripe billing şimdilik yok" ters çevrildi). Ekran planında 18. ekran, en sonda (Mert, 2026-10-07): yasal sayfalardan sonra gelir, çünkü Stripe canlı hesap için sitede şartlar ve iade politikası ister. Reddedilen: Giriş ve katılım (16) ile birlikte; Settings (10) içinde.
+- Stripe hesabı (Mert, 2026-10-07): oturumlar Stripe test moduyla sormadan çalışır (ücretsiz). Hesabı şirket ve banka bilgisiyle Mert açar. Canlı moda geçiş ve fiyat değişikliği Mert'e sorulur. Reddedilen: her Stripe adımı sorulsun.
 - Abonelik (2026-10-07'de ROADMAP'ten taşındı): bir workspace ayrı bir company ve ayrı bir abonelik demektir. Aynı company'nin şubeleri aynı workspace içinde location olarak tutulur. Daha önce trial kullanmış bir owner yeni workspace açınca tekrar trial alamaz.
 - Sonradan sıfırdan tasarlanacak modüle (Line Up) bugün yatırım yapılmaz.
 
