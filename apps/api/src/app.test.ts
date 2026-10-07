@@ -1810,7 +1810,7 @@ describe("api app", () => {
 
   it.each([
     ["Review the current availability assessment before saving", "PT409", 409, "availability_review_required"],
-    ["Edit session revision is stale", "40001", 409, undefined],
+    ["Edit session revision is stale", "PT409", 409, undefined],
     ["Employee already has an overlapping shift", "23514", 400, undefined],
     ["Schedule location access denied", "42501", 403, undefined],
   ])("classifies fast-save rejection: %s", async (message, code, statusCode, status) => {
@@ -1924,7 +1924,7 @@ describe("api app", () => {
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         saveSession: async () => {
-          throw rpcFailure({ message: "session revision stale", code: "40001" });
+          throw rpcFailure({ message: "session revision stale", code: "PT409", hint: "schedule.edit_session_stale" });
         },
       }),
     });
@@ -1946,15 +1946,17 @@ describe("api app", () => {
   });
 
   it.each([
-    ["edit lease expired", "edit_lease_expired"],
-    ["shift revision stale", "edit_session_stale"],
-    ["draft revision stale", "edit_session_stale"],
-    ["stale publication preview", undefined],
-  ])("names a Schedule edit conflict by code: %s", async (message, code) => {
+    ["edit lease expired", "schedule.edit_lease_expired", "edit_lease_expired"],
+    ["shift revision stale", "schedule.edit_session_stale", "edit_session_stale"],
+    ["draft revision stale", "schedule.edit_session_stale", "edit_session_stale"],
+    // BL-958: the key is in the hint; the sentence alone names nothing.
+    ["session revision stale", null, undefined],
+    ["stale publication preview", null, undefined],
+  ])("names a Schedule edit conflict by code: %s", async (message, hint, code) => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
-        saveSession: async () => { throw rpcFailure({ message, code: "40001" }); },
+        saveSession: async () => { throw rpcFailure({ message, code: "PT409", hint }); },
       }),
     });
     const response = await app.inject({

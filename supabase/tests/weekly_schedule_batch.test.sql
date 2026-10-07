@@ -74,8 +74,8 @@ select is((select count(*) from public.schedule_edit_session_shifts where worksp
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),1::bigint,'only the shift on the closed day has acceptance');
 select lives_ok($$select pg_temp.create_batch()$$,'exact retry succeeds despite original stale session revision');
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),2::bigint,'retry creates no duplicate');
-select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'40001',null,'same key with changed body is rejected');
-select throws_ok($$select pg_temp.create_batch(null,gen_random_uuid())$$,'40001',null,'new command cannot reuse a stale revision');
+select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'PT409',null,'same key with changed body is rejected');
+select throws_ok($$select pg_temp.create_batch(null,gen_random_uuid())$$,'PT409',null,'new command cannot reuse a stale revision');
 select public.mutate_schedule_edit_shift_service(s.manager,s.w,s.session,e.revision,'create',gen_random_uuid(),null,s.payload||'{"scheduled_date":"2035-01-17"}',gen_random_uuid())->>'revision'
  from ws s join public.schedule_edit_sessions e on e.id=s.session;
 select is((pg_temp.create_batch()->>'revision')::integer,(select revision from public.schedule_edit_sessions where id=(select session from ws)),'retry returns current state instead of overwriting later edits');
