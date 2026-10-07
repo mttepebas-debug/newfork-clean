@@ -1716,3 +1716,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** Mert'in isteği, koordinatör uyguladı (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~08:50Z. **Nerede:** görev kartı "Test the Important Dates drawer, 5 designs (EKRAN-08)"; Billing kartı geri çekildi (başlatılmamıştı).
 - **Ne (Mert'in sözü):** "stripe değil de yeni sessiona http://localhost:5555/app/important-dates drawerini incelemesini söyle. kodu da test etsin açık kapalı gün yarım açık gün shift opena düşmesi kapalı güne shift yazma manager admin employee owner görünümü, drawerin ui ux'i artifact oluştursun 5 tane design seçeyim arasından". Oturum dünkü EKRAN-08 keşfinin üstüne kurar: gerçek uygulamada dört rolle davranış testi, var olan testleri odaklı koşturma, çekmece UI/UX incelemesi, 5 varyantlı artifact; kod / migration / test dosyası / ağır koşu yok (Schedule oturumunun DB-4 yayın kuralları çakışmasın diye). Rapor `ekranlar/08-important-dates/CEKMECE-INCELEME.md`. KK-196'nın Billing kısmı ters çevrildi.
 - **Dayanak:** Mert'in açık isteği (CLAUDE.md §2.C dayanak sırası); ILKELER P04, P20, P23.
+
+### KK-198 (2026-10-07) Proje kuralı: alt ajanlar en az Opus 5.5 medium
+- **Kim:** Mert (kural), koordinatör (kayıt ve uygulama). **Ne zaman:** 2026-10-07 ~08:55Z. **Nerede:** `CLAUDE.md` §4.1 "Alt ajanlar"; `.claude/agents/nf-okur.md` `model: sonnet` → `opus` (effort medium aynen); `nf-guvenlik` zaten opus / high.
+- **Ne:** Mert: "proje kuralı: subagentlar en aşağı opus 5.5 medium olabilir". KK-184 (13)'teki "`nf-okur` sonnet modeliyle" ters çevrildi. Koordinatörün bu sabah `nf-okur`'u sonnet'le çağırması (BL-897…903 doğrulaması) kuraldan önceydi. Açık yedi oturuma bildirildi.
+- **Dayanak:** Mert'in açık kararı (CLAUDE.md §5.2 kural değişikliği Mert'te).

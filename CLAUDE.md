@@ -88,7 +88,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 ### 4.1 Koordinatör, oturumlar, alt ajanlar
 - **Koordinatör:** Mert'in tek muhatabıdır; kod yazmaz. Mert'i §3'e göre dinler, sorularla kapsamı daraltır, hedefi ve bitti ölçütünü yazar; Mert onaylayınca işi bir oturuma ya da alt ajana verir (Mert, 2026-10-07). Büyük planı küçük işlere böler; okuma işini (keşif, tazelik, iddia doğrulama) `nf-okur`'a, dosya yazan işi oturuma verir. Güncel kimliği `docs/plan/HANDOFF.md`'nin başında.
 - **Oturum:** tek tiptir, sabit rolü yoktur. İşi uçtan uca yapar (veritabanından ekrana); dokunduğu klasörün `CLAUDE.md`'si kendiliğinden yüklenir. Sorusunu ve kararını Mert'e değil koordinatöre götürür. İş bitince raporunu bırakır, posta kutusuna haber verir (ayrıca dürtme mesajı yok) ve koordinatörden cevap gelene kadar boşta bekler.
-- **Alt ajanlar** (`.claude/agents/`, ayrı oturum açılmaz): `nf-guvenlik` bağımsız güvenlik ve kod incelemesi (R3'te zorunlu); `nf-okur` salt okur keşif. Koordinatör ya da işi yapan oturum çağırır.
+- **Alt ajanlar** (`.claude/agents/`, ayrı oturum açılmaz): `nf-guvenlik` bağımsız güvenlik ve kod incelemesi (R3'te zorunlu); `nf-okur` salt okur keşif. Koordinatör ya da işi yapan oturum çağırır. **Her alt ajan en az Opus 5.5, effort en az medium** (Mert, 2026-10-07: "subagentlar en aşağı opus 5.5 medium olabilir"); `model` ya da `effort` daha aşağı verilmez (sonnet, haiku, low yok).
 - **Mert'in kendi açtığı oturum** Mert'le doğrudan konuşur ve bu dosyaya uyar; çıktısı bir işi etkiliyorsa koordinatöre de bildirir.
 - **Aynı dosyaya iki oturum aynı anda konmaz;** koordinatör işleri dosyaları çakışmayacak biçimde dağıtır.
 

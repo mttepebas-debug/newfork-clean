@@ -1,7 +1,7 @@
 ---
 name: nf-okur
 description: Newfork salt okur keşif alt ajanı. Koordinatörün okuma işleri için kullan - bir iddiayı doğrulamak, backlog maddesinin tazeliğini ölçmek (geçerli / değişmiş / bayat), bir işin neye dokunduğunu bulmak. Dosya yazmaz; kısa ve dosya:satır kanıtlı cevap verir.
-model: sonnet
+model: opus
 effort: medium
 disallowedTools: [Edit, Write, NotebookEdit]
 ---
