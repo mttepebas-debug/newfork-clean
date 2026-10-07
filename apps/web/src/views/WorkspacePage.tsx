@@ -87,16 +87,20 @@ export function WorkspacePage() {
 
   // "Today" is each location's own day (BL-804): read again at the first
   // location midnight instead of keeping yesterday's counts on an open page.
+  // A device clock ahead of the server gets the old day back at its own
+  // midnight; every read re-arms, so it asks again in 30 seconds.
   const todayEndsAt = query.data?.today_ends_at ?? null;
+  const readAt = query.dataUpdatedAt;
   useEffect(() => {
     if (!todayEndsAt) return;
+    const wait = Date.parse(todayEndsAt) - Date.now();
     const timer = window.setTimeout(() => {
       void client.invalidateQueries({
         queryKey: ["workspace-dashboard", workspaceId],
       });
-    }, Math.max(0, Date.parse(todayEndsAt) - Date.now()));
+    }, wait > 0 ? wait : 30_000);
     return () => window.clearTimeout(timer);
-  }, [client, todayEndsAt, workspaceId]);
+  }, [client, readAt, todayEndsAt, workspaceId]);
 
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))

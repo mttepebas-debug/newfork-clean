@@ -195,28 +195,26 @@ create temp table today_before as select
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,status,published_by) values
  ('a9800000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000001',date '2000-01-03',1,'current','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5'),
  ('a9800000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','11000000-0000-4000-8000-000000000002',date '2000-01-03',1,'current','d9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
--- Each location: one assigned and one open shift on its own today, plus one
--- assigned shift on UTC's date when that is another day there.
-insert into public.schedule_published_shifts(workspace_id,location_id,publication_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone,source_shift_id)
-select location.workspace_id, location.id, publication.id, slot.employee_id, '13000000-0000-4000-8000-000000000001',
+-- Each location: two open shifts on its own today, plus one on UTC's date
+-- when that is another day there. (Open shifts: an assignment would ask the
+-- availability guard about the seed person, which is not this test.)
+insert into public.schedule_published_shifts(workspace_id,location_id,publication_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone,source_shift_id)
+select location.workspace_id, location.id, publication.id, '13000000-0000-4000-8000-000000000001',
   case slot.kind when 'utc' then current_date else (now() at time zone location.timezone)::date end,
   slot.starts, slot.ends, 'explicit', location.timezone, gen_random_uuid()
 from public.locations location
 join public.schedule_location_publications publication on publication.location_id=location.id and publication.week_start=date '2000-01-03'
-cross join lateral (values
-  ('today', '15000000-0000-4000-8000-000000000001'::uuid),
-  ('today', null::uuid),
-  ('utc', '15000000-0000-4000-8000-000000000001'::uuid)
-) slot_kind(kind, employee_id)
-cross join lateral (select slot_kind.kind, slot_kind.employee_id,
-  case location.id when '11000000-0000-4000-8000-000000000001' then time '09:00' else time '13:00' end starts,
-  case location.id when '11000000-0000-4000-8000-000000000001' then time '12:00' else time '16:00' end ends) slot
+cross join (values
+  ('today', time '09:00', time '12:00'),
+  ('today', time '13:00', time '16:00'),
+  ('utc', time '17:00', time '20:00')
+) slot(kind, starts, ends)
 where location.id in ('11000000-0000-4000-8000-000000000001','11000000-0000-4000-8000-000000000002')
   and (slot.kind='today' or current_date <> (now() at time zone location.timezone)::date);
 select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics'->>'today_shift_count')::integer - (select (manager->>'today_shift_count')::integer from today_before),2,'Workspace counts a location''s shifts on that location''s own today, not UTC''s (BL-804)');
-select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics'->>'today_open_shift_count')::integer - (select (manager->>'today_open_shift_count')::integer from today_before),1,'Workspace counts open shifts on the location''s own today (BL-804)');
+select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics'->>'today_open_shift_count')::integer - (select (manager->>'today_open_shift_count')::integer from today_before),2,'Workspace counts open shifts on the location''s own today (BL-804)');
 select is((public.get_workspace_dashboard_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics'->>'today_shift_count')::integer - (select (owner->>'today_shift_count')::integer from today_before),4,'two locations in two zones: the total adds each location''s own today (KK-179)');
-select is((public.get_workspace_dashboard_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics'->>'today_open_shift_count')::integer - (select (owner->>'today_open_shift_count')::integer from today_before),2,'two locations in two zones: open shifts add each location''s own today (KK-179)');
+select is((public.get_workspace_dashboard_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics'->>'today_open_shift_count')::integer - (select (owner->>'today_open_shift_count')::integer from today_before),4,'two locations in two zones: open shifts add each location''s own today (KK-179)');
 select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->>'today_ends_at')::timestamptz,((now() at time zone 'Pacific/Pago_Pago')::date + 1)::timestamp at time zone 'Pacific/Pago_Pago','today ends at the next midnight of the locations in view, so the page can turn the day (BL-804)');
 select is(public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000005','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'today_ends_at','null'::jsonb,'with no location in view there is no day to turn');
 set local role postgres;

@@ -36,6 +36,8 @@ begin
           on publication.id = shift.publication_id and publication.status = 'current'
         join public.locations location on location.id = shift.location_id
         where shift.workspace_id = target_workspace_id
+          -- Every zone's date is within a day of UTC's: keeps the date index range.
+          and shift.scheduled_date between (now() at time zone 'UTC')::date - 1 and (now() at time zone 'UTC')::date + 1
           and shift.location_id = any(schedule_places)
           and shift.scheduled_date = (now() at time zone location.timezone)::date
       ),
@@ -46,6 +48,8 @@ begin
           on publication.id = shift.publication_id and publication.status = 'current'
         join public.locations location on location.id = shift.location_id
         where shift.workspace_id = target_workspace_id
+          -- Every zone's date is within a day of UTC's: keeps the date index range.
+          and shift.scheduled_date between (now() at time zone 'UTC')::date - 1 and (now() at time zone 'UTC')::date + 1
           and shift.location_id = any(schedule_places)
           and shift.employee_id is null
           and shift.scheduled_date = (now() at time zone location.timezone)::date

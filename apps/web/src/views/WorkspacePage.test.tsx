@@ -196,6 +196,29 @@ describe("WorkspacePage setup checklist", () => {
     }
   });
 
+  // A device clock ahead of the server gets yesterday's answer back at its
+  // midnight; the page keeps asking, calmly, until the server's day turns.
+  it("keeps reading every 30 seconds while the server still answers the old day", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+        ...dashboard,
+        today_ends_at: new Date(Date.now() - 1_000).toISOString(),
+      });
+      renderPage();
+      await screen.findByText("Scheduled today");
+      expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(29_000);
+      expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(2_000);
+      await waitFor(() => expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(2));
+      await vi.advanceTimersByTimeAsync(31_000);
+      await waitFor(() => expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(3));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows the no-access card, not the raw error, when the API refuses this workspace (FB-6.1.9)", async () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
