@@ -175,3 +175,4 @@ supabase/tests/shift_exchange_decided_one_rank_up.test.sql
 supabase/tests/time_off_rules_and_reads.test.sql
 supabase/tests/requests_closed_unified_read.test.sql
 supabase/tests/shift_exchange_rejection_reason_stays_with_the_applicant.test.sql
+supabase/tests/swap_review_preview_measures.test.sql
