@@ -155,7 +155,7 @@ export function UnpublishScheduleDialog({
           <div className="schedule-unpublish-effects">
             <UnpublishEffect
               icon={<EyeOff size={15} aria-hidden />}
-              text="Employee visibility for unworked shifts stops immediately."
+              text="Employees stop seeing these shifts right away."
               destructive
             />
             <UnpublishEffect
@@ -166,10 +166,10 @@ export function UnpublishScheduleDialog({
               icon={<Info size={15} aria-hidden />}
               text="No schedule-change notification is sent."
             />
+            {/* C-D15: the draft stays, so publishing again brings the shifts back. */}
             <UnpublishEffect
-              icon={<AlertTriangle size={15} aria-hidden />}
-              text="This cannot be undone. Republish to restore."
-              destructive
+              icon={<Info size={15} aria-hidden />}
+              text="Publish again to bring these shifts back."
             />
           </div>
           {error ? (
