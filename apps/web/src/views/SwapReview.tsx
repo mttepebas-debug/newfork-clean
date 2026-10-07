@@ -6,7 +6,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { changeExchange, getExchangePreview, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { timeOffDeadlineAt } from "../employee-hub/time-off-split";
-import { shortDate } from "./RequestsTable";
+import { clockRange, shortDate } from "./RequestsTable";
 import { reviewBoxes, type ReviewBox } from "./swap-review";
 import "./swap-review.css";
 
@@ -26,17 +26,6 @@ const outcomes: Partial<Record<ExchangeCase["status"], string>> = {
   expired: "The decision deadline passed. No shifts changed.",
   invalidated: "Shift details changed, so the swap ended. No shifts changed.",
 };
-
-/** "3:30 PM – 11:00 PM": both ends name their half of the day, thin spaces around the dash. */
-export function reviewHours(start: string | null, end: string | null, timeFormat: "12h" | "24h") {
-  if (!start || !end) return "Hours not set";
-  const clock = (value: string) => {
-    const [hour = 0, minute = 0] = value.split(":").map(Number);
-    const minutes = String(minute).padStart(2, "0");
-    return timeFormat === "24h" ? `${String(hour).padStart(2, "0")}:${minutes}` : `${hour % 12 || 12}:${minutes} ${hour % 24 < 12 ? "AM" : "PM"}`;
-  };
-  return `${clock(start)} – ${clock(end)}`;
-}
 
 /** A modal window: the browser keeps focus inside and Esc closes it; focus goes back where it was. */
 function ReviewWindow({ title, busy, onClose, onEscape, children }: {
@@ -86,7 +75,7 @@ function ShiftCard({ shift, from, to, boxes, timeFormat }: {
         <MapPin size={12} aria-hidden />
         {shift.location_name}
       </span>
-      <span>{reviewHours(shift.start_time, shift.end_time, timeFormat)}</span>
+      <span>{shift.start_time && shift.end_time ? clockRange(shift.start_time, shift.end_time, timeFormat, { bothHalves: true }) : "Hours not set"}</span>
       <span className="swap-review-hand">
         {from} <i aria-hidden>→</i> {to}
       </span>

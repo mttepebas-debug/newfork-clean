@@ -23,4 +23,10 @@ describe("Requests dates", () => {
     expect(clockRange("00:30", "08:00", "12h")).toBe("12:30–8:00 AM");
     expect(clockRange("15:30", "23:00", "24h")).toBe("15:30–23:00");
   });
+  // H2 swap review (KARARLAR 2026-10-07): both ends name their half, thin spaces around the dash.
+  it("writes both halves and a spaced dash when asked, as the swap review does", () => {
+    expect(clockRange("15:30", "23:00", "12h", { bothHalves: true })).toBe("3:30 PM – 11:00 PM");
+    expect(clockRange("07:30", "15:00", "12h", { bothHalves: true })).toBe("7:30 AM – 3:00 PM");
+    expect(clockRange("15:30", "23:00", "24h", { bothHalves: true })).toBe("15:30 – 23:00");
+  });
 });
