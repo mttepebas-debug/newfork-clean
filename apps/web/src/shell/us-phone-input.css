@@ -16,7 +16,9 @@
   line-height: 1;
   pointer-events: none;
 }
-/* Room for the prefix, whatever padding the screen gives its fields. */
+/* Room for the prefix, whatever padding the screen gives its fields: the same
+   11px before the +1 and after it, the +1 being about 1em wide in the field's
+   own type. */
 .us-phone-field > input.us-phone-input {
-  padding-left: 36px;
+  padding-left: calc(22px + 1em);
 }
