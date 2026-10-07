@@ -38,11 +38,10 @@ insert into auth.users (
   ('71000000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'avatar-one@example.test', '', '{}', '{}', now(), now()),
   ('71000000-0000-4000-8000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'avatar-two@example.test', '', '{}', '{}', now(), now());
 
-insert into public.user_profiles (user_id, display_name, phone, phone_e164)
+insert into public.user_profiles (user_id, display_name, phone_e164)
 values (
   '71000000-0000-4000-8000-000000000001',
   'Avatar One',
-  '+14155550101',
   '+14155550101'
 );
 insert into public.user_preferences (user_id)

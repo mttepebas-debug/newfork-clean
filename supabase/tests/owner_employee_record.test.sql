@@ -185,7 +185,7 @@ select is(
   (select emergency_contact_name || ' / ' || emergency_contact_phone
    from public.employee_private_profiles
    where employee_id = (select id from owner_employee limit 1)),
-  'Morgan Tepebas / 3105550101',
+  'Morgan Tepebas / +13105550101',
   'the owner can record an emergency contact by hand'
 );
 select ok(

@@ -74,7 +74,7 @@ insert into public.employee_private_profiles (
 ) values (
   '1b000000-0000-4000-8000-000000000001',
   (select workspace_id from own_record_target),
-  'Samuel', 'Okafor', 'Old Contact', 'Friend', '4155550100'
+  'Samuel', 'Okafor', 'Old Contact', 'Friend', '+14155550100'
 );
 
 select public.save_own_employment_contact_service(
@@ -96,7 +96,7 @@ select is(
   (select emergency_contact_name || ' / ' || emergency_contact_phone || ' / ' || phone
    from public.employee_private_profiles
    where employee_id = '1b000000-0000-4000-8000-000000000001'),
-  'Ada Okafor / 4155550144 / +14155550143',
+  'Ada Okafor / +14155550144 / +14155550143',
   'an employee who does not own anything can still correct their own record'
 );
 

@@ -134,11 +134,11 @@ insert into public.employee_private_profiles (
   '26000000-0000-4000-8000-000000000001',
   'Ada',
   'Lovelace',
-  '3105559999',
+  '+13105559999',
   '1990-02-14',
   'Jamie Kim',
   'Sibling',
-  '3105550001',
+  '+13105550001',
   'jamie@example.test',
   '100 Main Street',
   'Los Angeles',
@@ -155,7 +155,7 @@ select is(
     '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'downtown')
   )->'private_contact'->>'phone'),
-  '3105559999',
+  '+13105559999',
   'owner sees employee private contact in the drawer detail projection'
 );
 select is(
@@ -830,11 +830,11 @@ insert into public.employee_private_profiles (
   '26000000-0000-4000-8000-000000000001',
   'Archive',
   'Linked',
-  '3105550100',
+  '+13105550100',
   '1991-03-10',
   'Morgan Linked',
   'Friend',
-  '3105550101',
+  '+13105550101',
   'morgan@example.test',
   true,
   true
