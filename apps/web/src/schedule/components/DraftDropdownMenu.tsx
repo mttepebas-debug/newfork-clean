@@ -358,26 +358,30 @@ export function DraftDropdownMenu({
               </p>
             )}
           </div>
-          {templates.length > 0 || onSaveAsTemplate ? (
+          {templates.length > 0 ||
+          onManageTemplates ||
+          (onSaveAsTemplate && canManageDrafts) ? (
             <>
               <div className="schedule-draft-menu-separator" role="separator" />
-              <div className="schedule-draft-menu-heading">
-                <span>Templates</span>
-                <span className="schedule-draft-menu-template-meta">
-                  {onManageTemplates ? (
-                    <button
-                      type="button"
-                      onClick={() => closeAfter(onManageTemplates)}
-                    >
-                      Manage
-                    </button>
-                  ) : null}
-                  <small>
-                    {templates.length}{" "}
-                    {templates.length === 1 ? "template" : "templates"}
-                  </small>
-                </span>
-              </div>
+              {templates.length > 0 || onManageTemplates ? (
+                <div className="schedule-draft-menu-heading">
+                  <span>Templates</span>
+                  <span className="schedule-draft-menu-template-meta">
+                    {onManageTemplates ? (
+                      <button
+                        type="button"
+                        onClick={() => closeAfter(onManageTemplates)}
+                      >
+                        Manage
+                      </button>
+                    ) : null}
+                    <small>
+                      {templates.length}{" "}
+                      {templates.length === 1 ? "template" : "templates"}
+                    </small>
+                  </span>
+                </div>
+              ) : null}
               {templates.length ? (
                 <div className="schedule-draft-menu-template-list">
                   {templates.map((template) => {
@@ -459,7 +463,7 @@ export function DraftDropdownMenu({
                   onClick={() => closeAfter(onSaveAsTemplate)}
                 >
                   <Layers size={14} />
-                  Save current schedule as template
+                  Save as template
                 </button>
               ) : null}
             </>
