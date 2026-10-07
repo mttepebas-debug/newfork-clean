@@ -116,6 +116,8 @@ describe("ScheduleTemplatesDialog", () => {
     expect(
       dialog.closest("[data-schedule-quiet-dialog]"),
     ).toBeTruthy();
+    // BL-038 K5: a template or a draft is never shown with its revision number.
+    expect(dialog.textContent).not.toMatch(/revision/i);
   });
 
   it("opens with the draft it was asked for already chosen (BL-705)", () => {
