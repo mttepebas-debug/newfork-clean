@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(23);
 
 -- BL-218 (T2 a). A person excluded from Schedule gets no new shift in an
 -- edit: not by hand, not as a pending change, not from a template (the
@@ -192,6 +192,36 @@ select public.mutate_schedule_edit_shift_service(
 );
 select is(pg_temp.publish(pg_temp.save(tests.id('ex:edit:w3c'))), 'allowed',
   'once the manager deletes it, the week publishes');
+
+-- 4. BL-761: archived, or off the job, after the draft was written -----------------------
+-- The publish check reads the person again; a shift written while they still
+-- worked here (by hand, or brought back by Undo) never reaches the published week.
+
+select tests.person('ex', 'hakan', 'employee', array['K'], array['cook']);
+select tests.person('ex', 'irem', 'employee', array['K'], array['cook']);
+select tests.remember('ex:edit:w4', pg_temp.open_edit(4, 'blank'));
+select tests.add_shift(tests.user('ex:owner'), 'ex', tests.id('ex:edit:w4'), 4,
+  '{"person": "hakan", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "13:00"}');
+select tests.add_shift(tests.user('ex:owner'), 'ex', tests.id('ex:edit:w4'), 4,
+  '{"person": "irem", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}');
+select tests.remember('ex:draft:w4', pg_temp.save(tests.id('ex:edit:w4')));
+
+update public.employee_profiles set archived_at = now() where id = tests.id('ex:hakan');
+select is(pg_temp.publish(tests.id('ex:draft:w4')), '23514',
+  'a draft shift for a person archived since does not publish');
+select is(pg_temp.published_for('hakan', 4), 0, 'and Hakan is not on the published week');
+
+update public.employee_profiles set archived_at = null where id = tests.id('ex:hakan');
+update public.employee_job_assignments set ended_at = clock_timestamp()
+where employee_id = tests.id('ex:irem') and ended_at is null;
+select is(pg_temp.publish(tests.id('ex:draft:w4')), '23514',
+  'a draft shift for a person taken off the job since does not publish');
+select is(pg_temp.published_for('irem', 4), 0, 'and İrem is not on the published week');
+
+-- Back on the job, the same draft publishes: the person was the reason.
+update public.employee_job_assignments set ended_at = null where employee_id = tests.id('ex:irem');
+select is(pg_temp.publish(tests.id('ex:draft:w4')), 'allowed',
+  'with İrem back on the job the same draft publishes');
 
 select * from finish();
 rollback;
