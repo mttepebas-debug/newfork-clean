@@ -97,7 +97,8 @@ Reviewer: `nf-guvenlik` (R2, tek göz).
 
     İlk düzeltme denemesi (`supabase status` ile önce bakmak) tutmadı: yalnız veritabanı açık
     olan projeyi "çalışmıyor" sayıyor. Kalıcı düzeltme: her üretim kendi proje adını kullanıyor
-    (`newfork-schema-snap-<pid>`). Yeni denemede ikincisi "port is already allocated" ile durdu ve
+    (`newfork-schema-snap-<rastgele 8 hane>`; pid değil: Windows pid'i yeniden verir ve
+    Ctrl+C'den kalan bir veritabanı "taze" diye dökülebilirdi, `nf-guvenlik` ikinci okuma Düşük 4). Yeni denemede ikincisi "port is already allocated" ile durdu ve
     hiçbir şey yazmadı. Birincinin dosyası doğru dökümle birebir aynı çıktı; geride konteyner
     kalmadı.
   - Durdurma üç kez başarısız olursa sessiz kalıyordu: artık uyarı ve kurtarma komutu yazıyor.

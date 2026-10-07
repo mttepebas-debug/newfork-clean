@@ -106,7 +106,9 @@ function write() {
   for (const p of ["migrations", "seed.sql", "test-support"]) {
     fs.cpSync(path.join(ROOT, "supabase", p), path.join(sb, p), { recursive: true });
   }
-  const project = `${SNAP_PROJECT}-${process.pid}`;
+  // Random, not the pid: Windows reuses pids, and a reused name would find a
+  // killed run's database still up and dump it as if it were fresh.
+  const project = `${SNAP_PROJECT}-${crypto.randomUUID().slice(0, 8)}`;
   fs.writeFileSync(
     path.join(sb, "config.toml"),
     apartConfig(fs.readFileSync(path.join(ROOT, "supabase", "config.toml"), "utf8"), project),
