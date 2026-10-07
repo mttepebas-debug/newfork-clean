@@ -1849,3 +1849,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~14:50Z. **Nerede:** main `9e7abc62` (CI 37636794750 yeşil); BACKLOG BL-969…971.
 - **Ne:** ABD form kuralları tek kaynakla uygulama geneline yayıldı (önce/sonra `artifacts/BL-503/BL-503-once-sonra.png`, sabah Mert'e). Oturum eski veriyi okumak için tolerans bıraktı; §2.A.5 bunu yasaklıyor (canlı kullanıcı yok, eski veri korunmaz). Karar: veriyi düzelten tek migration + CHECK kısıtları + toleransların ve onları kuran testlerin silinmesi, EKRAN-03 oturumuna (R3, canlı veri; canlı sabah §5.3). Oturumun 1, 2, 3, 5, 6. kararları kabul. BL-970 e-posta benzersizliği ve BL-971 gri hata satırı ayrı maddeler.
 - **Dayanak:** CLAUDE.md §2.A.4, §2.A.5; ILKELER P01, P11, P12.
+
+### KK-223 (2026-10-07 gece) BL-969 görev dosyası onayı; sabah gönderim sırası
+- **Kim:** koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-07 ~14:55Z. **Nerede:** `task/bl-969` görev dosyası (EKRAN-03 oturumu).
+- **Ne:** dört öneri kabul: eski ikiz `user_profiles.phone` silinir (§2.A.4); zorunlu alanda ABD dışı numara ya da harf çevirisinde ad çakışması varsa migration sayıyla durur (P09: sessiz düşmez); ek CHECK'ler. Yerel ölçüm: Türkçe harf 0; telefonların çoğu +1'siz ABD numarası (fixture / builder kaynaklı). Sabah gönderim sırası: ACIL-40001 → EKRAN-02 veri paketi → EKRAN-01 paket 1 → GA-4 / BL-804 / BL-965 → BL-969 (fixture, `builder.sql`, `retired_objects_stay_gone` dokunduğu için en son); her biri öncekinin üstüne rebase + yeniden numara (KK-220). Yeni pgTAP dosyası yok.
+- **Dayanak:** CLAUDE.md §2.A.4–5, §4.1; ILKELER P09, P11.
