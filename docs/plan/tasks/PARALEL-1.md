@@ -150,8 +150,8 @@ Dal `task/paralel-1`, worktree `C:\Users\TheWe\Documents\Codex\newfork-wt\parale
     sorgu `24 · 3a62d8bee9a2… · 1` gösterdi; rollback'ten sonra yine `23 · 0`.
   - Yan bulgu: ölçüm öncesi ortak DB zaten main'in builder'ını taşıyordu (bugün sızıntı yoktu); etkin ekran dallarının (EKRAN-01/02/03)
     builder'ı main'le aynı. Main'den farklı builder taşıyan 15 worktree var, hepsi 3–11 günlük eski dallar.
-  - Yedek: `newfork-wt/paralel-1/artifacts/paralel-1/tests-functions-before.sql` (ölçüm öncesi `tests.*` fonksiyon tanımları, 23 790 bayt).
-- **Tam pgTAP, eski akış ve yeni akış** (`artifacts/paralel-1/full-old.log`, `full-new.log`): ikisinde de 172 dosya, 15 448 test, `not ok`
+  - Yedek: `C:/Users/TheWe/Documents/Codex/newfork-wt/paralel-1-artifacts/tests-functions-before.sql` (ölçüm öncesi `tests.*` fonksiyon tanımları, 23 790 bayt).
+- **Tam pgTAP, eski akış ve yeni akış** (`C:/Users/TheWe/Documents/Codex/newfork-wt/paralel-1-artifacts/full-old.log`, `full-new.log`; iki dal ölçümü `paralel-1-two-branches.log`, dönüşümlü ölçüm `paralel-1-sub-*.log` aynı klasörde): ikisinde de 172 dosya, 15 448 test, `not ok`
   (TODO hariç) 0, `Looks like you planned` 0, `ERROR:` 4. Hata veren dosyalar aynı: `bl052_document_lifecycle`, `bl052_document_notifications`,
   `document_types_rls` (üçü CI'ın yeşil listesinde, yerel DB'nin kaymasından), `weekly_exchange_changed_terms` (yeşil listede değil). Eski
   akış `origin/main` `560555f4`'te koştu (`d57be38c`'den sonra yalnız belge commit'leri; `supabase/`, `scripts/`, `package.json` aynı).
