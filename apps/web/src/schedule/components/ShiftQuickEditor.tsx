@@ -48,7 +48,7 @@ import {
   unpaidBreakMinuteOptions,
 } from "../lib/shiftEditorView";
 import { ScheduleConflictNotice } from "./ScheduleConflictNotice";
-import { ScheduleConflictSheet } from "./ScheduleConflictSheet";
+import { SCHEDULE_CONFLICT_QUESTION, ScheduleConflictSheet } from "./ScheduleConflictSheet";
 import { ScheduleNoteConfirm } from "./ScheduleNoteConfirm";
 import { isShiftNoteOpen } from "./ShiftNoteCorner";
 import { getLastSegment, TimeInput } from "./TimeInput";
@@ -1071,7 +1071,7 @@ export function ShiftQuickEditor({
         tone={conflictCanContinue ? "warning" : "blocker"}
         description={
           conflictCanContinue
-            ? "Do you want to assign this shift anyway?"
+            ? SCHEDULE_CONFLICT_QUESTION
             : assessment?.warning_policy ? "Resolve this conflict before saving." : undefined
         }
         submitLabel={
