@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(29);
 
 -- BL-237: this file used to open an edit session from the real seeded
 -- Meyhouse workspace's PUBLISHED week and expect its real data's seven
@@ -105,7 +105,7 @@ select throws_ok(
     %L, %L, %L, 1, 'delete', %L, 1, null, null)$$,
     (select owner_id from ses_ids), (select w from ses_ids),
     (select session_id from edit_test_state), (select shift_id from edit_test_state)),
-  '40001', 'session revision stale', 'stale session revision is rejected'
+  'PT409', 'session revision stale', 'stale session revision is rejected'
 );
 select throws_ok(
   format($$select public.mutate_schedule_edit_shift_service(
@@ -249,6 +249,36 @@ select throws_ok(
     (select mgr2 from ses_ids), (select w from ses_ids)),
   'P0002', 'edit session not found', 'non-holder cannot mutate an arbitrary session'
 );
+
+-- BL-958: a lasting conflict answers PT409 with its key; a 40001 would be run
+-- again by PostgREST without end. The API names the conflict from the hint.
+select is(pg_temp.said(
+  format($$select public.save_schedule_edit_session_service(
+    %L, %L, %L, %s, 'Opening plan', null, null)$$,
+    (select owner_id from ses_ids), (select w from ses_ids),
+    (select session_id from edit_test_state), (select session_revision from edit_test_state))),
+  'PT409 schedule.edit_lease_expired', 'a closed edit is refused with its key');
+with acquired as (
+  select public.acquire_schedule_edit_session_service(owner_id, w, week1, 'blank', null) result from ses_ids
+)
+update edit_test_state set session_id = (select (result->'session'->>'id')::uuid from acquired),
+  session_revision = (select (result->'session'->>'revision')::integer from acquired);
+select is(pg_temp.said(
+  format($$select public.mutate_schedule_edit_shift_service(
+    %L, %L, %L, %s, 'delete', gen_random_uuid(), 1, null, null)$$,
+    (select owner_id from ses_ids), (select w from ses_ids),
+    (select session_id from edit_test_state), (select session_revision - 1 from edit_test_state))),
+  'PT409 schedule.edit_session_stale', 'a stale edit is refused with its key');
+
+set local role postgres;
+-- A Schedule function may raise 40001 only where it turns it into PT409
+-- before it leaves (publish, unpublish, save keep that catch).
+select is((select array_agg(p.proname::text order by p.proname)
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname in ('public', 'app_private') and p.proname ~ 'schedule'
+    and p.prosrc ~* 'errcode\s*=\s*''40001'''
+    and p.prosrc !~* 'exception\s+when\s+serialization_failure\s+then\s+raise\s+exception\s+''%''\s*,\s*sqlerrm\s+using\s+errcode\s*=\s*''PT409'''),
+  null, 'no Schedule refusal is a 40001 that PostgREST would retry without end');
 
 select * from finish();
 rollback;

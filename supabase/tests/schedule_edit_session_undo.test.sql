@@ -210,7 +210,7 @@ select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ali', tests.id(
   'P0002 edit session not found', 'nor can Ali');
 select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',
   tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'), pg_temp.rev(tests.id('ud:e1')) - 1)),
-  '40001 session revision stale', 'a screen behind the edit is told to reload');
+  'PT409 session revision stale', 'a screen behind the edit is told to reload');
 select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e1'))), 'allowed', 'Ayşe can');
 
 -- Can no longer works at Beşiktaş: his edit there is not his to undo.
@@ -264,7 +264,7 @@ select pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 2));
 select public.save_schedule_edit_session_service(tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e3'),
   pg_temp.rev(tests.id('ud:e3')), 'Week 3 plan');
 select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e3'))),
-  '40001 edit lease expired', 'Undo after Save draft is refused');
+  'PT409 edit lease expired', 'Undo after Save draft is refused');
 select is((select count(*)::integer from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e3')), 0,
   'the closed edit keeps no Undo history');
 
