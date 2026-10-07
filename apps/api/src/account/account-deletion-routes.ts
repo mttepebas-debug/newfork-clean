@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { AccountDeletionWorker } from "./account-deletion-worker";
+import { hasCronSecret } from "../cron-secret";
 
 export function registerAccountDeletionRoutes(
   app: FastifyInstance,
@@ -13,24 +14,11 @@ export function registerAccountDeletionRoutes(
       return reply.status(503).send({ error: "Account deletion worker is not configured" });
     if (!options.cronSecret)
       return reply.status(503).send({ error: "Account deletion cron is not configured" });
-    if (cronSecretFromRequest(request) !== options.cronSecret)
+    if (!hasCronSecret(request, options.cronSecret))
       return reply.status(401).send({ error: "Invalid cron secret" });
     return reply.send(await options.worker.runBatch());
   };
 
   app.get("/internal/cron/account-deletion", handler);
   app.post("/internal/cron/account-deletion", handler);
-}
-
-function cronSecretFromRequest(request: {
-  headers: Record<string, string | string[] | undefined>;
-}): string | null {
-  const authorization = headerValue(request.headers.authorization);
-  if (authorization?.startsWith("Bearer ")) return authorization.slice(7);
-  return headerValue(request.headers["x-cron-secret"]);
-}
-
-function headerValue(value: string | string[] | undefined): string | null {
-  if (Array.isArray(value)) return value[0] ?? null;
-  return value ?? null;
 }
