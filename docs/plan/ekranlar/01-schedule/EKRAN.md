@@ -13,7 +13,7 @@
 
 ---
 
-- **Durum: ikinci aşama (2026-10-07 gece).** Veritabanına dokunmayan 17 madde ve BL-959 main'de. Veri maddeleri #9, #11, #18, #20 ve ACIL-40001 (#99–#100) `task/ekran-01` / `task/ekran-01-40001` dallarında, gönderime hazır; canlı göç Mert'in o oturumun penceresine yazacağı "evet"i bekliyor (CLAUDE.md §5.3, KK-214). Liste Mert'e liste olarak gitmez (DERSLER 2026-10-07); Mert'in kararı yalnız yukarıdaki üç görsel madde ve S24 / S25 için gerekir.
+- **Durum: ikinci aşama (2026-10-07 gece).** Veritabanına dokunmayan 17 madde, BL-959 ve paket 2 (#22, #30, #35, #44, #45) main'de. Veri maddeleri #9, #11, #18, #20 ve ACIL-40001 (#99–#100) `task/ekran-01` / `task/ekran-01-40001` dallarında, gönderime hazır; canlı göç Mert'in o oturumun penceresine yazacağı "evet"i bekliyor (CLAUDE.md §5.3, KK-214). Liste Mert'e liste olarak gitmez (DERSLER 2026-10-07); Mert'in kararı yalnız yukarıdaki üç görsel madde ve S24 / S25 için gerekir.
 - **Yazan:** Schedule'ın tek sahip oturumu (`oturum/ekran-01`), 2026-10-07. Taban `origin/main` `d57be38c` (ölçüm `6468fe6e`; arası yalnız belge). Dal `task/ekran-01`, worktree `newfork-wt/ekran-01`.
 - **Kaynaklar:** `OZET.md`, `KAPANIS-OLCUMU-2026-10-06.md`, `tasks/EKRAN-01-SCHEDULE.md` (dilimler; kayıt olarak kalır, iş yalnız bu listeden izlenir), KARARLAR "Schedule", dilim arşivleri `uygulama/*.md`, `task/ekran-01-db4` dalı, SABAH-SORULAR S24 / S25.
 - **Tazelik:** 119 BL (görev dosyasındaki 114 + dilim incelemelerinden gelen BL-758, BL-759, BL-761, BL-762 + sınırdaki BL-795) `origin/main`'e karşı yeniden ölçüldü: 5 okuma ajanı + öncelikli 7 madde elle. Hükümler maddelerin içinde; kapanmışlar §3'te.
@@ -32,7 +32,7 @@
 | `task/ekran-01-undo-db-bulgu` | — | Yok (silinmiş). Uzakta `task/ekran-01*` dal yok |
 
 ## 2. Kabul listesi
-100 madde (#99, #100 gece eklendi). Sınıf: R3 17 · R2 16 · R1 57 · R0 7 · sınıfsız 3 (kapanış). Durum (2026-10-07 gece): 17 ✅ · 2 kısmen ✅ · 10 dalda hazır · 71 açık. Açıkların 5'i Mert'i (S24, S25, üç varyant), 2'si Requests'in veri paketini bekliyor; 12'si önce ölçülecek (#9, #50, #59, #60, #72, #73, #77, #78, #79, #83, #84, #93).
+100 madde (#99, #100 gece eklendi). Sınıf: R3 17 · R2 16 · R1 57 · R0 7 · sınıfsız 3 (kapanış). Durum (2026-10-07 gece): 22 ✅ · 2 kısmen ✅ · 10 dalda hazır · 66 açık. Açıkların 5'i Mert'i (S24, S25, üç varyant), 2'si Requests'in veri paketini bekliyor; 12'si önce ölçülecek (#9, #50, #59, #60, #72, #73, #77, #78, #79, #83, #84, #93).
 
 ### 2.1 Yanlış veri ve yayın kuralları (veritabanı)
 | # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt (test / görüntü) | Durum |
@@ -64,7 +64,7 @@
 | 19 | Schedule → Export panelinde haftalık e-posta bölümü: kural kurulur, listelenir, düzenlenir (BL-437). Eski Export bileşenleri (~9 dosya, ~1.700 satır) ve `App.test.tsx:1375` yokluk kilidi silinir. Hangi haftanın gittiği bugünkü gibi kalır (Mert, Soru 6) | R2 | vitest + e2e Export + önce/sonra | ⏳ |
 | 20 | E-posta servisi 15 dakika yanıt vermezse aynı saatin tekrar denemeleri tek hata sayılır; kural üç denemede kapanmaz (BL-795; `schedule-export-cron.ts:16,135-140,285-297`) | R2 | `scheduled_export_partial_delivery` +3 hücre | ⏳ dalda hazır: @`2cbe9a5a` (R2, canlı DDL) |
 | 21 | Canlıda haftalık e-posta tetiklenir ve gider (BL-101 kalanı: kod kusurları kapandı; canlı Vault ayarı ve Resend anahtarı ölçülmedi, BACKLOG'daki iki not çelişiyor) | R0 | canlıda bir test e-postası | ⏳ canlı ölçüm; anahtar işlemi Mert'in |
-| 22 | Zamanlanmış e-posta tetiğinin sırrı sabit sürede karşılaştırılır (BL-282'nin Schedule kalemi; `schedule-export-cron-routes.ts:29`, 4 kopya) | R2 | API testi | ⏳ |
+| 22 | Zamanlanmış e-posta tetiğinin sırrı sabit sürede karşılaştırılır (BL-282'nin Schedule kalemi; `schedule-export-cron-routes.ts:29`, 4 kopya) | R2 | API testi | ✅ `2ab336f0` (tek yardımcı `apps/api/src/cron-secret.ts`, dört kopya silindi) |
 | 23 | Eski Export API uçları silinir: `/schedule/export/preview`, `/schedule/export/preview-html`, `/schedule/export` (`schedule-routes.ts:682,707,740`; BE-2 artığı) | R2 | rota 404 testi | ⏳ |
 | 24 | Pazar 18:00'de 12 kişiye giden e-postanın 3'ü hız sınırına takılırsa o 3 kişiye aynı koşuda bir kez daha gönderilir (BE-2b-O1, KARARLAR Schedule 2026-10-06) | R2 | `schedule-export-cron.test.ts:127` | ✅ `0003da6e` (+`c42c2c0e`, arşiv `38b7f801`) |
 
@@ -76,12 +76,12 @@
 | 27 | Templates'te "Add to current shifts" / "Replace current shifts"; Replace'in ilk tıkı "24 shifts will be removed. Draft only, not published." yazar, ikinci tık "Confirm replace" (BL-694, BL-038 K2, KK-162). Veri hazır (DB-3); API önizleme ucu ve mod adı (`overwrite` → `replace`) eksik; ekran tek tık (`ScheduleTemplateDialogs.tsx:227-242`) | R2 | vitest + API testi + e2e + önce/sonra | ⏳ |
 | 28 | Şablon kaydederken çalışan adları varsayılan korunur; "Remove employee names" seçilirse vardiyalar açık vardiya olur (BL-038 K3; bugün tersi: "Save shifts as open slots" varsayılan açık, `ScheduleTemplateDialogs.tsx:51,303-306`) | R1 | vitest | ⏳ kayıt: K3–K6 Mert'in 2026-09-16 kararı, `tasks/BL-038.md`'de; KARARLAR'da yok |
 | 29 | Şablonun departman süzgeci "Only some departments" altında katlı durur (BL-038 K4) | R1 | vitest | ⏳ |
-| 30 | Şablon satırında "Revision N" görünmez (BL-038 K5; `ScheduleTemplateDialogs.tsx:143,286`, `ScheduleTemplatesPage.tsx:183`) | R1 | vitest | ⏳ |
+| 30 | Şablon satırında "Revision N" görünmez (BL-038 K5; `ScheduleTemplateDialogs.tsx:143,286`, `ScheduleTemplatesPage.tsx:183`) | R1 | vitest | ✅ `53b6c81f` (Publish ve Save-as-template taslak listeleri de; önce/sonra `artifacts/EKRAN-01/30-publish-draft-name-{before,after}-1440.png`) |
 | 31 | Şablonu olmayan Templates yüzeyi ilk şablonu kaydetme yolunu gösterir; o yol ekranda çalışır (BL-038 K6) | R1 | vitest | ⏳ #26 ve #88'den sonra |
 | 32 | Şablon uygulanınca mesaj açık vardiyaya düşen sayıyı söyler: "Standard week: 24 shifts added, 2 became open shifts." (BL-699; sunucu `converted_open_count` veriyor, kullanılmıyor) | R1 | `templateApplyMessage.test` BL-699 | ✅ `3783d909` |
 | 33 | Başkasının kilidi düşünce taslağı açan Zeynep düzenleme şeridinde "Ayşe's unsaved changes were saved as a separate draft." satırını görür; Ayşe bir dahaki açılışta aynı satırı görür (KK-162, BL-698 kalanı). Bugün yalnız kısa bildirim (`SchedulePage.tsx:299-307`) | R2 (Ayşe'nin sonradan görmesi sunucuda iz isterse R3) | vitest + e2e | ⏳ |
 | 34 | Schedule'ın kendi pencereleri stil B'de: Export, Unpublish, Save draft, Review auto-fill, Review default hours, Keep editing?, Retroactive edit, Edit locked. "Keep editing?" sonucu söyler (süre dolunca işin "Auto-save" taslağına gideceğini) (BL-318, BL-715, BL-719). Ortak `ConfirmDialog` bu maddede yok (Requests C3'ün) | R1 | önce/sonra 1440 | ⏳ `styles.css` gerekirse önce koordinatör |
-| 35 | Publish → Pre-flight sayımı yalnız üstte: "1 shift needs a fix before you can publish. 1 more to review."; alttaki "N blocker · N risk" kalkar (BL-441; `PublishScheduleDialog.tsx:888-904`) | R1 | vitest + önce/sonra | ⏳ |
+| 35 | Publish → Pre-flight sayımı yalnız üstte: "1 shift needs a fix before you can publish. 1 more to review."; alttaki "N blocker · N risk" kalkar (BL-441; `PublishScheduleDialog.tsx:888-904`) | R1 | vitest + önce/sonra | ✅ `ea85e60e` (KK-221; önce/sonra `artifacts/EKRAN-01/35-preflight-count-{before,after}-1440.png`) |
 | 36 | Publish penceresinde haftalık saat özeti ve "40+ scheduled hours" listesi (BL-121, KK-9) | R2 | vitest + önce/sonra | ⏳ yerleşim gözle (bkz. §5) |
 | 37 | Save draft penceresinde başka taslağın üstüne kaydetme iki tık, menüdeki gibi (BL-708; `SaveDraftDialog.tsx:44-74`) | R1 | `SaveDraftDialog.test` | ✅ `53d7b603` (+ Enter odağı Overwrite'a taşır) |
 | 38 | Onaylı izin üstündeki yayınlanmış vardiya (yalnız rızayla alınabilir) hücrede ne kırmızı ne "!" taşır (BL-579, S6; `ShiftCard.tsx:122,125`) | R1 | vitest | ⏳ |
@@ -90,9 +90,8 @@
 | 41 | Auto-fill mesajında tekil / çoğul doğru (BL-710; `SchedulePage.tsx:3397`) | R0 | `autoFillText.test`, `App.test` auto-fill | ✅ `7d887aca` (penceredeki "Apply 1 assignments" de düzeldi) |
 | 42 | Şablon mesajı emojili etiket adını yarım karakterle kesmez (BL-236; `templateApplyMessage.ts:11`) | R0 | `templateApplyMessage.test` BL-236 | ✅ `59ce9ac0` |
 | 43 | Varsayılan saat penceresi arşivli vardiya tipini kendi adıyla gösterir, "Saved shift type" değil (BL-499; `DefaultHoursReviewDialog.tsx:92`) | R1 | `DefaultHoursReviewDialog.test` BL-499 | ✅ `0ba59d34` — "<ad> (archived)" |
-| 44 | Ekrana ham hata metni çıkmaz; 502 HTML cevabında da tek sade cümle (BL-395; bugün ≥19 yer: `SchedulePage.tsx` 905, 927, 968, 982, 1193, 1269-1270, 1410, 1575, 3414 + 10 dosya) | R1 | vitest + `rg` | ⏳ |
-| 45 | Unpublish penceresinin metni kendi içinde çelişmez ("This cannot be undone. Republish to restore.") ve "unworked shifts" jargonu yok. YENİ (C-D15) | R1 | vitest | ⏳ |
-
+| 44 | Ekrana ham hata metni çıkmaz; 502 HTML cevabında da tek sade cümle (BL-395; bugün ≥19 yer: `SchedulePage.tsx` 905, 927, 968, 982, 1193, 1269-1270, 1410, 1575, 3414 + 10 dosya) | R1 | vitest + `rg` | ✅ `5c3a6992` (`requestErrorText` + `ScreenError`, `lib/request-error.ts`; 28 yer) |
+| 45 | Unpublish penceresinin metni kendi içinde çelişmez ("This cannot be undone. Republish to restore.") ve "unworked shifts" jargonu yok. YENİ (C-D15) | R1 | vitest | ✅ `e6b1684c` (önce/sonra `artifacts/EKRAN-01/45-unpublish-{before,after}-1440.png`; talepler satırı BL-968'e kadar aynı) |
 ### 2.4 Erişilebilirlik ve klavye
 | # | Davranış | Sınıf | Kanıt | Durum |
 |---|---|---|---|---|
