@@ -133,8 +133,8 @@ Ortak notlar:
 ### 2.5 Takas incelemesi ve Shift Hub
 | # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt (test adı / ekran görüntüsü) | Durum |
 |---|---|---|---|---|
-| 78 | Ayşe takasın Review'unda "IF APPROVED" bölümünde yol ve dinlenme işaretini G2 seçimine göre görür; Approve açık (R2-02 ekran · BL-725 · FB-6.4 B.1) | R2 | görüntü 1440 + 390; vitest | ⏳ soru G2 (Mert) |
-| 79 | Onayda "kendi rızasıyla müsait değil" amber rıza satırı (S5-B) ve müdür notu (M12, yalnız gösterilir) (R2-17 ekran · FB-6.4 B.1, B.4) | R2 | görüntü | ⏳ |
+| 78 | Ayşe takasın Review'unu H2 penceresinde görür (KARARLAR "Takas inceleme penceresi H2", 2026-10-07; G2'nin yerine geçer): ~380 px, ortalı "SWAP REQUEST / Ali Person ⇄ Deniz Person"; iki ortalı vardiya kartı (tarih · konum simgesi + lokasyon · "3:30 PM – 11:00 PM" · "Ali → Deniz", iki isim aynı kalınlıkta), arada koyu ⇄; altta solda "Decide by …", sağda Decline + Approve. Kural tutmazsa etkilenen kartta turuncu kutu ("30 min to travel / 45 min needed", "8 h of rest / 10 h needed"), öteki kartta aynı kural tutuyorsa yeşil kutu ("Travel time OK / 45 min needed", "12 h of rest / 10 h needed"); ihlal yoksa kutu yok. Kutu sabit (kart iç genişliği × 44 px), yazı ortada, simge solda sabit; değerler gerçek veriden (P11). Approve açık (R2-02 ekran · BL-725 · FB-6.4 B.1) | R2 | görüntü 1440 + 390 (ihlalsiz, tek ihlal, iki ihlal); vitest | ⏳ (tasarım kesin: artifact KwshRJ1SygGaDgyKJuuHT3 V16) |
+| 79 | Onayda rıza hâlleri #78'in kutusuyla: turuncu "Unavailable / chose to take it", "On time off / chose to work"; öteki kartta yeşil "Available / on <gün>", "No time off / on <gün>" (S5-B'nin amber satırının yerine, H2); müdür notu (M12) yalnız gösterilir (R2-17 ekran · FB-6.4 B.1, B.4) | R2 | görüntü; vitest | ⏳ |
 | 80 | Cover ve takas aday listesinde müsait olmayan kişi "Unavailable" etiketli; onaylı izinli kişi yok (FB-6.4 B.2) | R2 | vitest + görüntü | ⏳ |
 | 81 | Ali bir takası kabul ederken kendi müsaitliği ya da onaylı izniyle çakışıyorsa günün çizelgesiyle "emin misin?" görür (S4-E; Shift Hub, ekran 13 ile ortak) (FB-6.4 B.4) | R2 | görüntü 390 | ⏳ |
 | 82 | Kararı veremeyen müdür (eş rütbe, kendi vakası, belgesi eksik) Approve / Decline'ı soluk ve kapalı görür; altında kilit simgesiyle "Another Kadikoy manager, the owner or an admin decides this request." (G1, KARARLAR 2026-10-06) | R2 | vitest + görüntü | ⏳ |
@@ -174,7 +174,7 @@ Ortak notlar:
 | 104 | Canlı veritabanı: dört migration (`20261007140000`…`170000`) ve #32'nin silen migration'ı OPS-03 sırasıyla (silen önce main); yedek, md5, `get_advisors`, bağımsız SELECT; A3'ün yalnız-"View" rol satırları önce sayılır | R3 | MCP `list_migrations`, advisors çıktısı | ⏳ (koordinatörün "gönder" izniyle) |
 | 105 | Tam kapı (lint, typecheck, test, build, `test:db`, etkilenen e2e) ve main CI (check, db, e2e) yeşil | — | CI koşu numarası | ⏳ |
 | 106 | Kapanış görüntüleri 1440 + 390: owner, Kadıköy müdürü, belgesi eksik müdür; `nf-gorsel-qa` ONAY; Mert'in kapanış turu | R2 | `artifacts/ekran-02/kapanis/` | ⏳ |
-| 107 | G2 ve G3 seçimi KARARLAR'da; seçilmeyen varyantlar hiçbir dalda main'e girmez; şemsiye madde BL-041 ("Requests > Shift Changes baştan sona") ve iki eski görev dosyası (`EKRAN-02-REQUESTS.md`, `FB-6.4.md`) kayıt olarak kapanır | R0 | — | ⏳ |
+| 107 | H2 (G2'nin yerine, ✅ `6468fe6e`) ve G3 seçimi KARARLAR'da; seçilmeyen varyantlar hiçbir dalda main'e girmez; şemsiye madde BL-041 ("Requests > Shift Changes baştan sona") ve iki eski görev dosyası (`EKRAN-02-REQUESTS.md`, `FB-6.4.md`) kayıt olarak kapanır | R0 | — | ⏳ |
 
 ## 3. Açık sorular
 ### Mert'e
@@ -182,18 +182,19 @@ Ortak notlar:
 |---|---|---|
 | S1 — Takas yetkisi paketi main'e giderken ultrareview koşsun mu? Paket artık A1A2 + A3 + AUTHZ-DUMP + A4 (dördü birlikte gider) | #2–#31, #18 | `SABAH-SORULAR.md` S1 |
 | S2 — Gece hazır kalan ekran dalları gitsin mi: dal 1 = C3 (#62, #92–#98; sıralama oku yeni ortak kural), dal 3 = `task/arayuz-salt-hata` (ortak, Requests'in değil) | #62, #92–#98; C1 bunun üstünde | S2 |
-| S3 — G2: takas onayında yol / dinlenme uyarısının görünümü (5 varyant) | #78 | S3. Varyant sayfası "Requests Warnings Lab" bölüm 1. Artifact bağlantısı (UvHbxipPcLVHmMW1ZVE4Xh) özel yayınlandığı için Mert'te açılmıyor; yerel kopya: `artifacts/ekran-02/varyant/requests-warnings-lab.html` (git dışı) |
+| ~~S3 — G2: takas onayında yol / dinlenme uyarısının görünümü~~ ✅ cevaplandı 2026-10-07: H2 ve uyarı kutuları (KARARLAR `6468fe6e`) | #78, #79 | artifact KwshRJ1SygGaDgyKJuuHT3 V16; yerel kopya `artifacts/ekran-02/varyant/requests-warnings-lab.html` (git dışı) |
 | S4 — G3: müdürün izni kısalttığı satır (5 varyant) | #73 | S4; aynı sayfa, bölüm 2 |
 | S5 — Eş müdür, öteki müdürün cover aramasını kapatabilsin mi? | Cevap (a) gelirse listeye yeni madde girer (veri, R3) | S5 |
 | S6 — Takastan sonra müdürün açık düzenlemesindeki notu kalsın mı? | #17 | S6 |
 | Yeni — BL-506 (süre işi tek turda 500 talep) bu turda değil, ayrı backlog maddesi olsun mu (⏭)? | #28 | A3 arşivi; inceleme O1 |
+| Yeni — A4 (c) "sahibi görür": KARARLAR "İzin" (yalnız ona karar verebilenler ve sahibi görür) nerede gördüğünü söylemiyor. Bugün Ali kendi kapanmış iznini Requests'te değil Employee Hub'da görüyor (`time_off_seen_by_who_decides`); Requests'te de görsün mü? (KK-190 madde 1) | A4 Done when (c), #30 | KARARLAR "İzin" S1 eki |
 | Yeni — BL-255 beyaz düğme kenarı 16 ekranı değiştirir; karar var (KK-10 (a), UI-09), ortak değer kuralı gereği ekranlar adıyla sorulur | #99 | C3 raporu soru 1 |
 
 ### Koordinatöre (süreç ve teknik)
-- **A4 Done when (c) "sahibi görür":** talep sahibi kendi kapanmış iznini Requests'te değil Employee Hub'da görüyor (kilitli kural, `time_off_seen_by_who_decides`; KARARLAR "İzin" S1 eki). Veri hattı böyle yazdı; teyit ya da tek satır düzeltme.
-- **C3'te "soluk yazı" rengi:** kenar token'ı koyulaşınca soluk yazı eski `#aeb9b4`'te bırakıldı (beyazda metin için düşük kontrast). Bu turda mı, ayrı BL mi?
-- **Liste sınırı:** BL-801 (S7 öteki ekranlara ulaşmadı), BL-802, BL-803 (ortak onay penceresi ve toast), BL-900 (yıkıcı düğme ham hex), BL-334 (salt-hata dalı) Requests listesine girmedi; ortak bileşen ya da başka ekranın işi.
-- **Gönderim sırası:** aşağıdaki öneri.
+- ~~A4 Done when (c) "sahibi görür"~~ → Mert sorusu (yukarıda; KK-190 madde 1).
+- ~~C3'te "soluk yazı" rengi~~ → BL-905 (koordinatör, KK-190).
+- ~~Liste sınırı~~ ✅ kabul (KK-190): BL-801, BL-802, BL-803, BL-900, BL-334 dışarıda; BL-840 içeride (#67).
+- ~~Gönderim sırası~~ ✅ §5 kabul (KK-190); C3 önce gidebilir. `schedule_time_off_events` indeksi → BL-904.
 
 ## 4. Dışarıda (adıyla)
 - **Başka ekranı bekleyen:** BL-652, BL-057 (Shift Hub, ekran 13); çalışanın Shift Hub'ında 6 haftadan ileri açık talebin görünmemesi (A4'te yolda bulundu, BL-839'un çalışan yarısı; ekran 13'ün kararı); BL-410, BL-809, BL-812 (Workspace, ekran 5); BL-362 (Schedule; SABAH S18), BL-544, BL-523, BL-519'un Schedule testleri (ekran 1); BL-771 (işten çıkarılanın bekleyen izni Requests'te bekliyor; Employees, ekran 3); BL-512 (2)(4)(5) (Employee Hub); canlı kanal `shift-exchanges:<workspace>` (EKRAN-01 B-2); BL-176 ve BL-898'in Requests dışı kısımları.
@@ -206,5 +207,5 @@ Ortak notlar:
 2. **C3** (S2 onayıyla). Veri paketinden bağımsız; önce de gidebilir.
 3. **Web veri katmanı:** b1a + B1b (#34–#49).
 4. **Requests ekranı:** c1 + B2 + B3 (#50–#77). Hepsi `ScheduleRequestsPage.tsx`'e dokunuyor; tek oturumda sırayla.
-5. **Takas incelemesi:** c2-css + C2 (#78–#91), G1 ve G2 seçimiyle.
+5. **Takas incelemesi:** c2-css + C2 (#78–#91), G1 ve H2 (G2'nin yerine) ile.
 6. **e2e** (#100–#102), sonra kapanış (#103–#107).
