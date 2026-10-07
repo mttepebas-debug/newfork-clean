@@ -9,6 +9,7 @@ import { Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
+import { requestErrorText } from "../../lib/request-error";
 
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
 
@@ -96,7 +97,7 @@ export function ScheduleTemplatesDialog({
     try {
       await action();
     } catch (caught) {
-      setError((caught as Error).message);
+      setError(requestErrorText(caught));
     } finally {
       setPending(false);
     }

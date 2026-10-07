@@ -40,6 +40,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
+import { requestErrorText } from "../lib/request-error";
 import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { Tooltip } from "../shell/Tooltip";
@@ -909,7 +910,7 @@ export function SchedulePage({
         description: draft.name,
       });
     } catch (error) {
-      setOperationError((error as Error).message);
+      setOperationError(requestErrorText(error));
     }
   };
 
@@ -931,7 +932,7 @@ export function SchedulePage({
       }
       setPublishOpen(true);
     } catch (error) {
-      setOperationError((error as Error).message);
+      setOperationError(requestErrorText(error));
     }
   };
 
@@ -972,7 +973,7 @@ export function SchedulePage({
       updateDraftCache(draftResult.drafts);
       setTemplatesOpen(true);
     } catch (error) {
-      setOperationError((error as Error).message);
+      setOperationError(requestErrorText(error));
     }
   };
 
@@ -986,7 +987,7 @@ export function SchedulePage({
     try {
       setAutoFill(await previewScheduleAutoFill(workspaceId, session.id));
     } catch (error) {
-      setOperationError((error as Error).message);
+      setOperationError(requestErrorText(error));
     }
   };
 
@@ -1196,10 +1197,9 @@ export function SchedulePage({
         invalidateScheduleCaches(discardedSession.source_draft_id);
         void query.refetch();
       })
-      .catch((error: Error) => {
+      .catch((error: unknown) => {
         setOperationError(
-          error.message ||
-            "Discard cleanup failed. Refresh before editing this schedule again.",
+          requestErrorText(error, "Discard cleanup failed. Refresh before editing this schedule again."),
         );
       })
       .finally(() => setIsDiscardingEditSession(false));
@@ -1271,11 +1271,12 @@ export function SchedulePage({
         );
         return null;
       }
+      // BL-395: the save's own sentences for a refusal; a plain one for anything else.
       const message =
-        error instanceof ScheduleRequestError
-          ? getSaveDraftFailureMessage(error.body, error.message)
-          : (error as Error).message;
-      setOperationError(message ?? (error as Error).message);
+        error instanceof ScheduleRequestError && error.status > 0 && error.status < 500
+          ? (getSaveDraftFailureMessage(error.body, error.message) ?? requestErrorText(error))
+          : requestErrorText(error);
+      setOperationError(message);
       setPublishMenuDismissSignal((value) => value + 1);
       setSaveRecovery({
         intent: { kind: recoveryKind, name, force, targetDraftId },
@@ -1413,12 +1414,12 @@ export function SchedulePage({
       if (throwOnError && mutationContext !== currentMutationContext.current) return null;
       if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
       if (throwOnError) throw error;
-      const caught = error as Error;
-      onError?.(caught);
-      setOperationError(caught.message);
+      onError?.(error as Error);
+      const text = requestErrorText(error);
+      setOperationError(text);
       toast.error("Schedule change could not be saved", {
         dedupeKey: "schedule-change-save-failed",
-        description: formatScheduleConflictMessage(caught.message),
+        description: formatScheduleConflictMessage(text),
       });
       return null;
     }
@@ -1580,7 +1581,7 @@ export function SchedulePage({
       const message =
         error instanceof ScheduleRequestError && error.status >= 400 && error.status < 500
           ? "This step can no longer be undone."
-          : (error as Error).message;
+          : requestErrorText(error);
       setOperationError(message);
       toast.error("Last edit could not be undone", {
         dedupeKey: "schedule-undo-failed",
@@ -3438,7 +3439,7 @@ export function SchedulePage({
 }
 
 function scheduleLogoErrorText(error: unknown): string {
-  return error instanceof Error ? error.message : "Logo could not be saved.";
+  return requestErrorText(error, "Logo could not be saved.");
 }
 
 function scheduleShiftFromPasteInput(

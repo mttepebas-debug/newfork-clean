@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ScheduleDraftSummary, ScheduleReadModel, ScheduleShift } from "@newfork/shared/schedule";
 import { fetchScheduleDraftShifts } from "../schedule-data";
+import { RequestError, UNREADABLE } from "../../lib/request-error";
 import { usePreviewSource } from "./usePreviewSource";
 
 vi.mock("../schedule-data", () => ({ fetchScheduleDraftShifts: vi.fn() }));
@@ -42,7 +43,7 @@ describe("live preview source resolution", () => {
     expect(result.current.source?.kind).toBe("published"); expect(result.current.shifts).toBeNull();
   });
   it("does not authorize a failed draft read or a changed model revision", async () => {
-    vi.mocked(fetchScheduleDraftShifts).mockRejectedValue(new Error("No access"));
+    vi.mocked(fetchScheduleDraftShifts).mockRejectedValue(new RequestError("No access", "authz.out_of_scope", undefined, 403));
     const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: base });
     await waitFor(() => expect(result.current.error).toBe("No access")); expect(result.current.resolvedKey).toBeNull();
     const pending = deferred<{ shifts: ScheduleShift[] }>(); vi.mocked(fetchScheduleDraftShifts).mockReturnValue(pending.promise);
@@ -61,10 +62,10 @@ describe("live preview source resolution", () => {
   });
   it("reads the draft again on retry after a failed read (BL-324)", async () => {
     vi.mocked(fetchScheduleDraftShifts)
-      .mockRejectedValueOnce(new Error("Server error"))
+      .mockRejectedValueOnce(new RequestError("Internal server error", undefined, undefined, 500))
       .mockResolvedValueOnce({ shifts: shifts("a-again") });
     const { result } = renderHook(props => usePreviewSource(props), { initialProps: base });
-    await waitFor(() => expect(result.current.error).toBe("Server error"));
+    await waitFor(() => expect(result.current.error).toBe(UNREADABLE));
     act(() => result.current.retry());
     expect(result.current.error).toBeNull();
     await waitFor(() => expect(result.current.shifts?.[0]?.id).toBe("a-again"));

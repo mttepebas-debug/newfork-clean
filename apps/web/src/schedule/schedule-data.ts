@@ -64,6 +64,7 @@ import {
   getTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
+import { UNREACHABLE, UNREADABLE } from "../lib/request-error";
 import { scheduleExportV2AuthorizationSchema, scheduleExportV2ScopeSchema, type ScheduleExportV2Scope } from "@newfork/shared";
 
 export async function authorizeScheduleExportV2(workspaceId: string, scope: ScheduleExportV2Scope, signal?: AbortSignal): Promise<void> {
@@ -119,9 +120,6 @@ export function isEditSessionStale(error: unknown): boolean {
   return editConflictCode(error) === "edit_session_stale";
 }
 
-// D-O7: what a person reads when the request itself failed, never a parser or browser message.
-const UNREACHABLE = "Newfork could not be reached. Check your connection and try again.";
-const UNREADABLE = "Newfork could not finish that. Try again in a moment.";
 
 export function pendingOpsKey(
   workspaceId: string | null,
@@ -787,10 +785,13 @@ async function activeScheduleRequest(
     throw new ScheduleRequestError(UNREADABLE, response.status, null);
   }
   if (!response.ok) {
+    // BL-395: the API says nothing a person can use above 499 ("Internal server error").
     const message =
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Schedule operation failed";
+      response.status >= 500
+        ? UNREADABLE
+        : typeof body === "object" && body && "error" in body
+          ? String(body.error)
+          : "Schedule operation failed";
     throw new ScheduleRequestError(message, response.status, body);
   }
   return body;

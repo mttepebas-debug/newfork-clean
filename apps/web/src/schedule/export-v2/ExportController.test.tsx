@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import type { ExportSettingsPanel } from "./ExportSettingsPanel";
 import { ExportController } from "./ExportController";
 import { authorizeScheduleExportV2 } from "../schedule-data";
+import { RequestError } from "../../lib/request-error";
 import { downloadExportFile, renderExportFiles } from "./files";
 import type { ScheduleExportSnapshot, SnapshotResult } from "./snapshot";
 
@@ -37,13 +38,13 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Export v2 delivery lifecycle", () => {
   it("does not render or download when initial authorization fails", async () => {
-    vi.mocked(authorizeScheduleExportV2).mockRejectedValueOnce(new Error("Access denied"));
+    vi.mocked(authorizeScheduleExportV2).mockRejectedValueOnce(new RequestError("Access denied", "authz.out_of_scope", undefined, 403));
     render(<ExportController {...props} result={source()} />); fireEvent.click(screen.getByText("Export"));
     await screen.findByText("Access denied");
     expect(renderExportFiles).not.toHaveBeenCalled(); expect(downloadExportFile).not.toHaveBeenCalled();
   });
   it("rechecks authority after generation and never exposes a revoked result", async () => {
-    vi.mocked(authorizeScheduleExportV2).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("Revoked"));
+    vi.mocked(authorizeScheduleExportV2).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new RequestError("Revoked", "authz.out_of_scope", undefined, 403));
     render(<ExportController {...props} result={source()} />); fireEvent.click(screen.getByText("Export"));
     await screen.findByText("Revoked"); expect(renderExportFiles).toHaveBeenCalledOnce();
     expect(URL.createObjectURL).not.toHaveBeenCalled(); expect(downloadExportFile).not.toHaveBeenCalled();

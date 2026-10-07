@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleRequestError } from "../schedule-data";
+import { UNREACHABLE } from "../../lib/request-error";
 import { PublishScheduleDialog, type SchedulePublicationChoices } from "./PublishScheduleDialog";
 const toast = vi.hoisted(() => ({ warning: vi.fn() }));
 vi.mock("@newfork/ui", () => ({ useToast: () => toast }));
@@ -236,8 +237,8 @@ describe("PublishScheduleDialog", () => {
     for (const cancel of screen.queryAllByRole("button", { name: "Cancel" })) fireEvent.click(cancel);
     expect(onClose).not.toHaveBeenCalled();
 
-    await act(async () => { reject(new Error("Connection lost")); });
-    expect(await screen.findByText(/Connection lost/)).toBeTruthy();
+    await act(async () => { reject(new ScheduleRequestError(UNREACHABLE, 0, null)); });
+    expect(await screen.findByText(UNREACHABLE)).toBeTruthy();
   });
 
   // BL-108: a live location with no shifts is still published.
@@ -338,7 +339,7 @@ describe("PublishScheduleDialog", () => {
 
   it("keeps preflight open and retryable when the target draft cannot be opened", async () => {
     const next = { ...preview, findings: [publishFinding({ availability_state: "new", warning_policy: "warn", tier: "note" })] };
-    const onReview = vi.fn().mockRejectedValue(new Error("The draft is locked by another manager."));
+    const onReview = vi.fn().mockRejectedValue(new ScheduleRequestError("The draft is locked by another manager.", 409, {}));
     render(<PublishScheduleDialog drafts={[draft]} locations={[location]} employees={[employee]} onClose={vi.fn()} onPreview={vi.fn().mockResolvedValue(next)} onPublish={vi.fn()} onReviewShift={onReview} />);
     await clickReadyNext();
     fireEvent.click(await screen.findByRole("button", { name: "Show Alex Rivera's shift on 2026-08-17" }));

@@ -14,6 +14,7 @@ import {
 } from "../schedule-data";
 import type { ScheduleMutationContext } from "../lib/scheduleMutationContext";
 import { EDIT_IDLE_TIMEOUT_MS, useEditIdleTimer } from "./useEditIdleTimer";
+import { requestErrorText } from "../../lib/request-error";
 
 export const EDIT_NOT_RECONNECTED =
   "Your edit could not be reconnected. Check your connection and try again.";
@@ -84,7 +85,7 @@ export function useScheduleEditSession({
         if (result.status === "saved") callbacks.current.onAutoSaved?.(result.draft_name);
       })
       .catch((error: Error) => callbacks.current.onError(
-        isScheduleAccessRefused(error) ? EDIT_REFUSED : error.message,
+        isScheduleAccessRefused(error) ? EDIT_REFUSED : requestErrorText(error),
       ))
       .finally(() => {
         setSession(null);
@@ -145,7 +146,7 @@ export function useScheduleEditSession({
           callbacks.current.onError(
             source === "draft" && isScheduleAccessRefused(error)
               ? "This draft is no longer available to you."
-              : (error as Error).message,
+              : requestErrorText(error),
           );
         }
         return null;
@@ -241,7 +242,7 @@ export function useScheduleEditSession({
             callbacks.current.onError(EDIT_REFUSED);
             setSession(null);
             callbacks.current.onEnded();
-          } else callbacks.current.onError(error.message);
+          } else callbacks.current.onError(requestErrorText(error));
         });
     }, 60_000);
     return () => window.clearInterval(heartbeat);
