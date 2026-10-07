@@ -119,12 +119,29 @@ select throws_ok(
   null,
   'a catalog row keeps its id'
 );
+
+-- One more row of each kind for the forms below, added here so the counts above
+-- stay as they were.
+reset role;
+insert into public.departments (id, workspace_id, name)
+values ('51000000-0000-4000-8000-000000000004', '21000000-0000-4000-8000-000000000001', 'Bar');
+insert into public.jobs (id, workspace_id, department_id, name)
+values ('61000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000001', '51000000-0000-4000-8000-000000000003', 'Server');
+insert into public.shift_types (id, workspace_id, name, default_start_time, default_end_time)
+values ('81000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', 'Lunch', '11:00', '15:00');
+set local role authenticated;
 select lives_ok(
   $$update public.shift_labels set name = 'On call', color = '#54736A', archived_at = now(), updated_at = now()
       where id = '71000000-0000-4000-8000-000000000001';
     update public.locations set name = 'Downtown LA', short_name = 'DTLA', street_address = '10 Main St', city = 'Los Angeles',
       region = 'CA', postal_code = '90001', country_code = 'US', timezone = 'America/Los_Angeles', phone = '+12135550100', updated_at = now()
-      where id = '41000000-0000-4000-8000-000000000001'$$,
+      where id = '41000000-0000-4000-8000-000000000001';
+    update public.departments set name = 'Front of house', color = '#54736A', updated_at = now()
+      where id = '51000000-0000-4000-8000-000000000003';
+    update public.jobs set name = 'Bartender', color = '#54736A', department_id = '51000000-0000-4000-8000-000000000004', updated_at = now()
+      where id = '61000000-0000-4000-8000-000000000002';
+    update public.shift_types set name = 'Long lunch', color = '#54736A', default_start_time = '10:30', default_end_time = '15:30', updated_at = now()
+      where id = '81000000-0000-4000-8000-000000000001'$$,
   'the Settings forms still rename, edit and archive catalog rows'
 );
 
