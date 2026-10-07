@@ -10,7 +10,7 @@ import {
   type OwnerLegalName,
   accountProfileSchema,
   activeWorkspaceContextSchema,
-  normalizeAccountPhone,
+  toUsPhone,
   workspaceSummarySchema,
   type AccountProfile,
   type ActiveWorkspaceContext,
@@ -207,7 +207,9 @@ export async function loadAccountProfile(
     userId: user.id,
     email: user.email,
     displayName: profileResult.data?.display_name ?? metadataName,
-    phone: normalizeAccountPhone(storedPhone),
+    // A US number in E.164; one saved before the US rule loads as saved, and
+    // Profile asks for a US one (BL-503).
+    phone: (storedPhone && toUsPhone(storedPhone)) ?? storedPhone,
     avatarObjectPath,
     avatarUrl,
     theme: preferenceResult.data?.theme ?? "system",

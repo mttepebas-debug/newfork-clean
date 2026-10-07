@@ -237,6 +237,32 @@ describe("account profile persistence", () => {
     expect(createSignedUrl).toHaveBeenCalledWith(avatarPath, 3600);
   });
 
+  // BL-503: the US phone rule is for a number being typed. A number saved
+  // before it still loads, so the account opens and Profile asks for a US one.
+  it("loads a saved number from outside the US as it was saved", async () => {
+    const results = {
+      user_profiles: {
+        data: { display_name: "Alex Kim", phone: null, phone_e164: "+442079460958", avatar_object_path: null },
+        error: null,
+      },
+      user_preferences: { data: null, error: null },
+    } as const;
+    const from = vi.fn((table: keyof typeof results) => {
+      const chain = {
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        maybeSingle: vi.fn(async () => results[table]),
+      };
+      return chain;
+    });
+    const profile = await loadAccountProfile(
+      { from, storage: { from: vi.fn() } } as unknown as SupabaseClient,
+      { id: workspaceId, email: "alex@example.test", user_metadata: {} } as never,
+    );
+
+    expect(profile.phone).toBe("+442079460958");
+  });
+
   it("writes the canonical phone, private avatar path and display preferences", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const from = vi.fn(() => ({ upsert }));

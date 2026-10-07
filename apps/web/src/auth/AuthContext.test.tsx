@@ -123,6 +123,52 @@ describe("AuthProvider", () => {
     expect(supabaseMock.signOut).not.toHaveBeenCalled();
   });
 
+  // BL-503: the US phone rule is for a number being typed. A number saved
+  // before it stays, so a theme or a name still saves around it.
+  describe("a saved number from outside the US", () => {
+    async function signedInWith(phone: string) {
+      supabaseMock.getSession.mockResolvedValue({
+        data: { session: { user: { id: "new-user", email: "new-user@example.test", user_metadata: {} } } },
+        error: null,
+      } as never);
+      supabaseMock.resolveWorkspaceContext.mockRejectedValue(new Error("Invalid session or membership"));
+      supabaseMock.loadAccountProfile.mockResolvedValue({
+        userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+        email: "new-user@example.test",
+        displayName: "New User",
+        phone,
+        theme: "system",
+      });
+      supabaseMock.saveAccountProfile.mockResolvedValue(undefined);
+      const auth: { update: ReturnType<typeof useAuth>["updateAccount"] | null } = { update: null };
+      function Probe() {
+        const { account, updateAccount } = useAuth();
+        auth.update = account ? updateAccount : null;
+        return null;
+      }
+      render(<AuthProvider><Probe /></AuthProvider>);
+      await waitFor(() => expect(auth.update).not.toBeNull());
+      return auth.update!;
+    }
+
+    it("stays when another part of the account changes", async () => {
+      const update = await signedInWith("+442079460958");
+      await act(async () => {
+        await update("New User", "dark");
+      });
+      expect(supabaseMock.saveAccountProfile).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ theme: "dark", phone: "+442079460958" }),
+      );
+    });
+
+    it("is refused when typed as a new number", async () => {
+      const update = await signedInWith("+13105550100");
+      await expect(update("New User", "system", "+44 20 7946 0958")).rejects.toThrow();
+      expect(supabaseMock.saveAccountProfile).not.toHaveBeenCalled();
+    });
+  });
+
   it("does not treat a session the server ended as an account without a workspace", async () => {
     window.localStorage.clear();
     supabaseMock.getSession.mockResolvedValue({
