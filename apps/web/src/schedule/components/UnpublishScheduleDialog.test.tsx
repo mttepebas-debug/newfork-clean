@@ -79,16 +79,17 @@ describe("UnpublishScheduleDialog", () => {
     expect(screen.queryByText("Patio")).toBeNull();
     expect(screen.queryByText("Chef Counter")).toBeNull();
     expect(screen.queryByText("Private Dining")).toBeNull();
-    expect(
-      screen.getByText("Employee visibility for unworked shifts stops immediately."),
-    ).toBeTruthy();
+    // C-D15: plain words, and no line that contradicts another: publishing
+    // again brings the shifts back, so nothing says it cannot be undone.
+    expect(screen.getByText("Employees stop seeing these shifts right away.")).toBeTruthy();
     expect(
       screen.getByText(
         "Active cover and swap requests for removed shifts will be closed.",
       ),
     ).toBeTruthy();
     expect(screen.getByText("No schedule-change notification is sent.")).toBeTruthy();
-    expect(screen.getByText("This cannot be undone. Republish to restore.")).toBeTruthy();
+    expect(screen.getByText("Publish again to bring these shifts back.")).toBeTruthy();
+    expect(screen.queryByText(/cannot be undone|unworked/)).toBeNull();
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty(
@@ -273,10 +274,15 @@ describe("UnpublishScheduleDialog", () => {
 
     const effects = container.querySelector(".schedule-unpublish-effects")!;
     expect(effects.querySelector(".lucide-circle-check")).toBeNull();
-    const undo = screen
-      .getByText("This cannot be undone. Republish to restore.")
+    const hidden = screen.getByText("Employees stop seeing these shifts right away.").closest("div")!;
+    expect(hidden.getAttribute("data-destructive")).toBe("true");
+    const requests = screen
+      .getByText("Active cover and swap requests for removed shifts will be closed.")
       .closest("div")!;
-    expect(undo.getAttribute("data-destructive")).toBe("true");
-    expect(undo.querySelector(".lucide-triangle-alert")).toBeTruthy();
+    expect(requests.querySelector(".lucide-triangle-alert")).toBeTruthy();
+    // C-D15: publishing again is how it is undone, a note rather than a warning.
+    const again = screen.getByText("Publish again to bring these shifts back.").closest("div")!;
+    expect(again.getAttribute("data-destructive")).not.toBe("true");
+    expect(again.querySelector(".lucide-triangle-alert")).toBeNull();
   });
 });
