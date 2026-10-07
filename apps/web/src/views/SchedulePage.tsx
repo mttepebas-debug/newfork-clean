@@ -1849,10 +1849,18 @@ export function SchedulePage({
             <ScheduleViewModeControls
               viewModeLabel={view === "day" ? "Daily view" : "Weekly view"}
               viewModeTitle={view === "day" ? "Jump to today" : "Jump to this week"}
+              // The week's first day and the "not this week" cue use the
+              // page's own default start day while the settings are unread
+              // (BL-451, BL-457).
               periodLabel={
                 view === "day"
                   ? formatPeriod(selectedDate, selectedDate, "day")
-                  : `Week of ${new Date(`${selectedDate}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
+                  : `Week of ${new Date(`${currentWeekStart(selectedDate, "monday")}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`
+              }
+              returnCue={
+                view === "day"
+                  ? selectedDate !== today
+                  : currentWeekStart(selectedDate, "monday") !== currentWeek
               }
               onToggleViewMode={jumpToCurrentPeriod}
               onPrevious={() => changePeriod(view === "day" ? -1 : -7)}

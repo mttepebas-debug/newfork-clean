@@ -475,10 +475,10 @@ export function ScheduleViewModeControls({
               <CalendarDays size={15} aria-hidden />
             </button>
           ) : null}
+          {/* BL-449 (WCAG 2.5.3): named by what it shows, the dates; the title says what it does. */}
           <button
             type="button"
             className="schedule-view-mode"
-            aria-label={viewModeLabel}
             title={viewModeTitle}
             data-return-cue={returnCue}
             onClick={(event) => {
