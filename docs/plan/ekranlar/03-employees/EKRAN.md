@@ -12,7 +12,7 @@
 
 ---
 
-- **Durum: uygulamada** — 4 / 59 ✅ (2026-10-07; inceleme `nf-guvenlik` ONAY @`79532ef0` ve @`dbb71766`, R2: çekmece Schedule ve Availability'de de açılıyor). (`EKRAN-PLANI.md` "Bir ekranın turu" madde 4). Hata düzeltmeleri KARARLAR'da doğru davranışı yazılı olduğu için Mert onayı beklemez (koordinatörün görev mesajı, 2026-10-07); görsel maddeler önce/sonra görüntüsüyle gider.
+- **Durum: uygulamada** — 7 / 59 ✅, 7 kısmen (2026-10-07 gece; inceleme `nf-guvenlik` ONAY @`79532ef0`, @`dbb71766`, @`c995bcdc`; R2: çekmece Schedule ve Availability'de de açılıyor). Main `bdf54974`. (`EKRAN-PLANI.md` "Bir ekranın turu" madde 4). Hata düzeltmeleri KARARLAR'da doğru davranışı yazılı olduğu için Mert onayı beklemez (koordinatörün görev mesajı, 2026-10-07); görsel maddeler önce/sonra görüntüsüyle gider.
 - **Yazan:** Employees'in tek sahip oturumu (`oturum/ekran-03`), 2026-10-07. Taban `origin/main` `d57be38c`. Dal `task/ekran-03`, worktree `newfork-wt/ekran-03`.
 - **Kaynaklar:** `OZET.md` (E3-01…E3-38, prototip taşı listesi, K1–K12, S1–S5) · `S1-restore.md` · `tasks/EKRAN-03-EMPLOYEES.md` (dilimler; bu dosya onun yerini alır, kayıt olarak kalır) · KARARLAR "Employees" ve Genel → "Liste sayfalarının ortak dili" · BACKLOG "Employees ekranı keşfi" (BL-765…786) ve eski Employees maddeleri.
 - **Örnek kişiler:** owner Mert, admin Zeynep, Kadıköy müdürleri Ayşe ve Hande (eş rütbe), garson Ali, davetli Emre.
@@ -74,12 +74,12 @@ Keşif tabanı `31649359`'dan bu yana Employees'e dokunan değişiklik yalnız i
 | 18 | Admin olarak davet edilmiş ama kabul etmemiş Emre'nin kaydını Ayşe düzenleyemez: rütbe davetteki rolle (E3-31 · BL-773 · K12) [veri] | R3 | `employees_on_the_core` | ⏳ |
 | 19 | Hande hakkındaki internal note'u yalnız owner ve admin görür; eş müdür Ayşe görmez (S3) [veri] | R3 | `employee_directory_rls` | ⏳ |
 | 20 | Özel bilgi (adres, doğum tarihi, acil durum kişisi) yalnız alt rütbe için okunur; Ayşe'ye rolünde izin verilse de Hande'ninkini ve owner'ınkini görmez; kapı çekirdekte (S4 · E3-32 · BL-774) [veri] | R3 | `employee_directory_rls`, `authz_catalog` | ⏳ |
-| 21 | Ad alanlarında Türkçe harf kabul edilmez; telefon "+1 (609) 551-8909" maskesiyle, +1 sabit; owner'ın acil durum telefonu +1 ve 10 hane, hata alanın altında (E3-08 · BL-503 · P4, P5) [şimdi] | R1 | web vitest | ⏳ |
+| 21 | Ad alanlarında Türkçe harf kabul edilmez; telefon "+1 (609) 551-8909" maskesiyle, +1 sabit; owner'ın acil durum telefonu +1 ve 10 hane, hata alanın altında (E3-08 · BL-503 · P4, P5) [şimdi] | R1 | web vitest | ⏳ kısmen: kayıtlı telefon "+1 (609) 551-8909" ✅ `a2a51b5f`; yazarken maske, sabit "+1" ve harf kuralı uygulama geneli (Account, kurulum) → koordinatöre soru (2026-10-07 gece raporu) |
 | 22 | Aynı workspace'te aynı e-postayla ikinci kişi açılamaz; Ayşe yazarken uyarılır (E3-08 · BL-503 · P8; yerelde 2 yinelenen çift önce temizlenir) [veri] | R3 | pgTAP tekillik + web vitest | ⏳ |
-| 23 | Owner'ın acil durum kişisi çekmecenin tek "Save changes"ine bağlı; ayrı "Save emergency contact" yok (K3 · P5) [şimdi] | R1 | web vitest | ⏳ |
+| 23 | Owner'ın acil durum kişisi çekmecenin tek "Save changes"ine bağlı; ayrı "Save emergency contact" yok (K3 · P5) [şimdi] | R1 | web vitest | ✅ `6789854d` |
 | 24 | Ali "Alex" adını isteyince owner, admin'ler ve Ali'nin lokasyon müdürü Ayşe bildirim alır; ilk onay talebi kapatır (E3-36 · BL-776 · K5) [veri] | R0 | pgTAP alıcı sayımı (kod zaten böyle görünüyor; yeşilse kod değişmez) | ⏳ |
-| 25 | İki yönetici aynı anda Ali'yi düzenlerse ikincisinin yazdığı kaybolmaz; tek satır açıklama ve yeniden yükle (E3-19 · BL-781) [şimdi] | R1 | web vitest | ⏳ |
-| 26 | Lokasyondan çıkarma Schedule'ı, ad onayı listeyi yeniler; arama her harfte listeyi boşaltmaz (E3-34 · BL-785) [şimdi] | R1 | web vitest | ⏳ |
+| 25 | İki yönetici aynı anda Ali'yi düzenlerse ikincisinin yazdığı kaybolmaz; tek satır açıklama ve yeniden yükle (E3-19 · BL-781) [şimdi] | R1 | web vitest | ⏳ web yarısı main'de (`ca9d7242`, `bbfdd13e`, `4d44ae82`, `bdf54974`); sunucu yarısı BL-958 / ACIL-40001 (PT409 + `employee.revision_conflict`, KK) |
+| 26 | Lokasyondan çıkarma Schedule'ı, ad onayı listeyi yeniler; arama her harfte listeyi boşaltmaz (E3-34 · BL-785) [şimdi] | R1 | web vitest | ⏳ kısmen: Schedule ve liste yenilemesi ✅ `6da72d14`; aramanın listeyi boşaltması `EmployeesPage.tsx`'te, c1a ile |
 | 27 | Ekrana ham teknik metin çıkmaz ("employee revision conflict", "Failed to fetch", zod JSON); liste yüklenemezse "Retry" (E3-18 · BL-620, BL-621 Employees yarısı · BL-488) | R2 | API + web vitest | ⏳ |
 
 ### 2.3 Davet
@@ -106,16 +106,16 @@ Keşif tabanı `31649359`'dan bu yana Employees'e dokunan değişiklik yalnız i
 | # | Davranış | Sınıf | Kanıt | Durum |
 |---|---|---|---|---|
 | 40 | Telefonda (390) "Terminate employee" ve arşivli kişide "Restore employee" görünür; kırmızı iki tık; müdürde kilitli-soluk (E3-15 · BL-407) [css] | R1 | görüntü 390 | ⏳ |
-| 41 | Çekmece açılınca odak çekmecede; Tab arkadaki listeye ve sol menüye kaçmaz; lokasyondan çıkarıp çekmece kapanınca odak listeye döner (E3-07 · BL-478 · BL-479) [şimdi] | R1 | web vitest | ⏳ |
+| 41 | Çekmece açılınca odak çekmecede; Tab arkadaki listeye ve sol menüye kaçmaz; lokasyondan çıkarıp çekmece kapanınca odak listeye döner (E3-07 · BL-478 · BL-479) [şimdi] | R1 | web vitest | ✅ `9ebdc113` (+ inceleme O1/D1 `bbfdd13e`) |
 | 42 | Alan altındaki doğrulama hatası kırmızı, hatalı alanın kenarı kırmızı; alan kenarı kontrastı AA (E3-22 · BL-782 · BL-259) [css] | R1 | görüntü + kontrast ölçümü | ⏳ |
 | 43 | Telefonda çekmecenin başında kişinin adı ve durumu (E3-25 · BL-783) [css] | R1 | görüntü 390 | ⏳ |
 | 44 | Kutucuk ve radyolar ortak görünümde (tarayıcının mavisi değil); Access düğmeleri aynı ölçüde (E3-26 · BL-784 · BL-483 · BL-484) [css] | R1 | görüntü | ⏳ |
 | 45 | History'de kim ve hangi lokasyon yazar; "shift(s)" yok; 50 kayıttan fazlası kesilmez (E3-35 · BL-786) [veri] | R2 | pgTAP + web vitest | ⏳ |
-| 46 | Kilitli "Terminate employee" ve kilitli kutucukların nedeni klavyeyle ve dokunarak da okunur (BL-429, BL-485) [şimdi] | R1 | web vitest | ⏳ |
-| 47 | Metinler: arşivli ama hesabı bağlı kişinin Access'i arşiv durumunu söyler (K9 · AC8); salt okunur çekmecede tek düğme "Close" ve fotoğraf satırı yok (K10 · BL-408); süresi dolmuş davet listede ve çekmecede aynı adla; saat dilimi okunur adla ("Eastern Time", "Europe/Istanbul" değil); saniyesiz zaman (BL-674 Employees yarısı); tek seçenekli rol seçici kilitli (BL-430); fotoğraf grubunda tek metin, fotoğrafsızda düğme yok (BL-472, BL-473); müdür lokasyon cümlesi Locations'ın altında (BL-459); owner'da Jobs "Required" yok (BL-482) (E3-37) [şimdi] | R1 | web vitest + görüntü | ⏳ |
-| 48 | Yeni kişide atama uyarısı yalnız Employment'tan sonra (E10 · BL-669-3); iki rol seçicisinde aynı sıra (AC4 · BL-669-2) [şimdi] | R1 | web vitest | ⏳ |
-| 49 | Var olan kişi düzenlenirken lokasyon / iş / rol listesi yüklenemezse "Couldn't load … Retry" (BL-244); form ilk karede dolu, hızlı tıklama atamaları silmez (BL-366); erişim-yok kartında sol sütun ve sekmeler yok (BL-402); uzun e-posta kesilmez (BL-439); telefonda davet alt çubuğu sığar (BL-425) [şimdi] | R1 | web vitest | ⏳ |
-| 50 | Rol kaydedilip yeniden okuma düşerse çekmece rolün kaydolduğunu söyler; yalnız rol kaydında ekran okuyucu duyar (BL-463, BL-477); yeni kişi isteği cevapsız kalırsa çekmece sonsuza dek kilitlenmez (BL-465) [şimdi] | R1 | web vitest | ⏳ |
+| 46 | Kilitli "Terminate employee" ve kilitli kutucukların nedeni klavyeyle ve dokunarak da okunur (BL-429, BL-485) [şimdi] | R1 | web vitest | ⏳ kısmen: kilitli Terminate (BL-429) ✅ `0a620124` (+ D2 `bbfdd13e`); kilitli kutucuklar (BL-485) KK-62 ile çelişiyor → koordinatöre soru |
+| 47 | Metinler: arşivli ama hesabı bağlı kişinin Access'i arşiv durumunu söyler (K9 · AC8); salt okunur çekmecede tek düğme "Close" ve fotoğraf satırı yok (K10 · BL-408); süresi dolmuş davet listede ve çekmecede aynı adla; saat dilimi okunur adla ("Eastern Time", "Europe/Istanbul" değil); saniyesiz zaman (BL-674 Employees yarısı); tek seçenekli rol seçici kilitli (BL-430); fotoğraf grubunda tek metin, fotoğrafsızda düğme yok (BL-472, BL-473); müdür lokasyon cümlesi Locations'ın altında (BL-459); owner'da Jobs "Required" yok (BL-482) (E3-37) [şimdi] | R1 | web vitest + görüntü | ⏳ kısmen: K9, K10, BL-408, BL-473, BL-430, BL-482, saniyesiz zaman, saat dilimi adı ✅ `f14ee734`; kalan: süresi dolmuş davetin listede "Not Invited" yazması (sunucu durumu, [veri]), BL-459 (hata yeri, [css] ile), BL-472 (üç metin) |
+| 48 | Yeni kişide atama uyarısı yalnız Employment'tan sonra (E10 · BL-669-3); iki rol seçicisinde aynı sıra (AC4 · BL-669-2) [şimdi] | R1 | web vitest | ✅ `5047c558` |
+| 49 | Var olan kişi düzenlenirken lokasyon / iş / rol listesi yüklenemezse "Couldn't load … Retry" (BL-244); form ilk karede dolu, hızlı tıklama atamaları silmez (BL-366); erişim-yok kartında sol sütun ve sekmeler yok (BL-402); uzun e-posta kesilmez (BL-439); telefonda davet alt çubuğu sığar (BL-425) [şimdi] | R1 | web vitest | ⏳ kısmen: BL-244, BL-402, BL-439 ✅ `1651852d`; BL-366 (tek kare, insan hızında tetiklenemiyor, kırmızı test kurulamadı), BL-425 ([css]) |
+| 50 | Rol kaydedilip yeniden okuma düşerse çekmece rolün kaydolduğunu söyler; yalnız rol kaydında ekran okuyucu duyar (BL-463, BL-477); yeni kişi isteği cevapsız kalırsa çekmece sonsuza dek kilitlenmez (BL-465) [şimdi] | R1 | web vitest | ⏳ kısmen: BL-463, BL-477 ✅ `3145f20e`; BL-465 (zaman aşımı) → koordinatöre soru |
 
 ### 2.6 Sunucu temizliği ve test
 | # | Davranış | Sınıf | Kanıt | Durum |
