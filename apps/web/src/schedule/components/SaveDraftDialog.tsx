@@ -1,4 +1,5 @@
 import type { ScheduleDraftSummary } from "@newfork/shared/schedule";
+import { ConfirmButton } from "@newfork/ui";
 import { X } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
@@ -27,7 +28,8 @@ export function SaveDraftDialog({
         className="schedule-save-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!busy) onSave(name, target);
+          // Overwriting another draft is the button's second click, never Enter (BL-708).
+          if (!busy && !target) onSave(name, null);
         }}
       >
         <label>
@@ -70,9 +72,22 @@ export function SaveDraftDialog({
           <button type="button" disabled={busy} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="primary" disabled={busy}>
-            {busy ? "Saving…" : target ? "Overwrite draft" : "Save draft"}
-          </button>
+          {target ? (
+            // UI-12: overwriting another draft asks twice, as Publish ▾ does.
+            <ConfirmButton
+              unstyled
+              className="danger"
+              disabled={busy}
+              confirmLabel={busy ? "Saving…" : "Confirm overwrite"}
+              onConfirm={() => onSave(name, target)}
+            >
+              {busy ? "Saving…" : "Overwrite draft"}
+            </ConfirmButton>
+          ) : (
+            <button type="submit" className="primary" disabled={busy}>
+              {busy ? "Saving…" : "Save draft"}
+            </button>
+          )}
         </div>
       </form>
     </Dialog>
