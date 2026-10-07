@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 443, last: 20261008022536_document_maintenance_keeps_going.sql
--- fingerprint: sha256:c0d4592206211663389a27ef10e01ca18e7115b8aa8aa59e4ebf30e3984d13c7
+-- migrations: 444, last: 20261008022536_document_maintenance_keeps_going.sql
+-- fingerprint: sha256:4ac14502d3143679f248b98c96e32641f872947d0411ce239d4d1a027fdf0dca
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -9191,18 +9191,28 @@ CREATE OR REPLACE FUNCTION "public"."delete_schedule_export_schedule_service"("a
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  existing public.scheduled_schedule_exports%rowtype;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
     target_locations => app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.export'));
 
-  delete from public.scheduled_schedule_exports
-   where id = target_schedule_id
-     and workspace_id = target_workspace_id
-     and created_by = actor_user_id;
+  select * into existing
+    from public.scheduled_schedule_exports s
+   where s.id = target_schedule_id
+     and s.workspace_id = target_workspace_id
+   for update;
 
-  if not found then
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
+    target_locations => public.live_location_ids(target_workspace_id, existing.location_ids));
+
+  if existing.id is null then
     raise exception 'scheduled export not found' using errcode='P0002';
   end if;
+
+  delete from public.scheduled_schedule_exports
+   where id = target_schedule_id
+     and workspace_id = target_workspace_id;
 
   return jsonb_build_object('status', 'deleted', 'schedule_id', target_schedule_id);
 end;
@@ -26249,10 +26259,12 @@ begin
     from public.scheduled_schedule_exports s
    where s.id = target_schedule_id
      and s.workspace_id = target_workspace_id
-     and s.created_by = actor_user_id
    for update;
 
-  if not found then
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
+    target_locations => public.live_location_ids(target_workspace_id, existing.location_ids));
+
+  if existing.id is null then
     raise exception 'scheduled export not found' using errcode='P0002';
   end if;
 
@@ -26276,7 +26288,7 @@ begin
       from public.schedule_export_presets p
      where p.id = next_preset_id
        and p.workspace_id = target_workspace_id
-       and p.created_by = actor_user_id
+       and (p.id = existing.preset_id or p.created_by = actor_user_id)
   ) then
     raise exception 'schedule export preset not found' using errcode='P0002';
   end if;
