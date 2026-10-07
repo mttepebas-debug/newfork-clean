@@ -144,7 +144,7 @@ export function ScheduleTemplatesDialog({
                 <small>
                   {template.shift_count}{" "}
                   {template.shift_count === 1 ? "shift" : "shifts"} ·{" "}
-                  {template.open_slot_count} open · Revision {template.revision}
+                  {template.open_slot_count} open
                 </small>
               </button>
             ))}
@@ -287,7 +287,7 @@ export function ScheduleTemplatesDialog({
               <option value="">Select draft</option>
               {drafts.map((draft) => (
                 <option key={draft.id} value={draft.id}>
-                  {draft.name} · revision {draft.revision}
+                  {draft.name}
                 </option>
               ))}
             </select>

@@ -587,7 +587,7 @@ export function PublishScheduleDialog({
                 >
                   {drafts.map((draft) => (
                     <option key={draft.id} value={draft.id}>
-                      {draft.name} · revision {draft.revision}
+                      {draft.name}
                     </option>
                   ))}
                 </select>

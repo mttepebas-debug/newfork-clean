@@ -180,7 +180,6 @@ export default function ScheduleTemplatesPage() {
                   <tr key={template.id} data-template-row>
                     <td>
                       <strong>{template.name}</strong>
-                      <small>Revision {template.revision}</small>
                     </td>
                     <td>{template.shift_count}</td>
                     <td>{template.open_slot_count}</td>
