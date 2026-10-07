@@ -844,6 +844,8 @@
   .workspace-actions-popover { max-width: calc(100vw - 48px); }
 }
 .account-create-workspace-form label { width: 100%; }
+/* The US letter rule's line, on its own row under the name (BL-503). */
+.account-create-workspace-form small.form-error { width: 100%; margin: -6px 0 0; }
 
 /* The account beside the record each workspace keeps: two columns so the pair
    reads as a pair, stacked once there is no room for two. */

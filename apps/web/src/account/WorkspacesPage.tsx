@@ -9,6 +9,7 @@ import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-ca
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
 import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
+import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 import { RequestError } from "../lib/request-error";
 import { AccountPageHeader, unfinishedSetup } from "./components";
 import { accountWorkspacesKey } from "./legal-name-data";
@@ -1002,10 +1003,16 @@ export default function WorkspacesPage() {
             onChange={(event) => setWorkspaceName(event.target.value)}
             placeholder="Restaurant group name"
             required
+            {...letterRuleProps(workspaceName, "new-workspace-name-error")}
           />
+          <LetterRuleError value={workspaceName} id="new-workspace-name-error" />
           <Button
             type="submit"
-            disabled={creating || workspaceName.trim().length === 0}
+            disabled={
+              creating ||
+              workspaceName.trim().length === 0 ||
+              breaksLetterRule(workspaceName)
+            }
           >
             <Plus size={16} aria-hidden /> {creating ? "Creating" : "Create"}
           </Button>

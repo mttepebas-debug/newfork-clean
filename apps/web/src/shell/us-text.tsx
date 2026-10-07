@@ -1,4 +1,5 @@
 import { hasTurkishOnlyLetters, usLettersMessage } from "@newfork/shared";
+import "./us-text.css";
 
 /*
  * The US letter rule on a typed field (BL-503; KARARLAR "Form ve girdi

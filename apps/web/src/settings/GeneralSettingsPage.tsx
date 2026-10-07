@@ -24,6 +24,7 @@ import {
 } from "../schedule/components/ScheduleLogoUploadDialog";
 import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
+import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
@@ -151,14 +152,22 @@ export default function GeneralSettingsPage() {
               access.
             </p>
           </div>
-          <input
-            id="organization-name"
-            disabled={!canEdit}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={120}
-            required
-          />
+          <div>
+            <input
+              id="organization-name"
+              disabled={!canEdit}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={120}
+              required
+              {...letterRuleProps(name, "organization-name-error")}
+            />
+            <LetterRuleError
+              value={name}
+              id="organization-name-error"
+              className="form-error us-letters-line"
+            />
+          </div>
         </div>
         {error ? (
           <p className="form-error" role="alert">
@@ -182,6 +191,7 @@ export default function GeneralSettingsPage() {
               !canEdit ||
               saving ||
               name.trim().length === 0 ||
+              breaksLetterRule(name) ||
               name.trim() === context.workspace.name
             }
           >

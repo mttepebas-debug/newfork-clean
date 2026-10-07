@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
+import { usLettersMessage } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -90,6 +91,20 @@ describe("GeneralSettingsPage setup checklist controls", () => {
       </QueryClientProvider>,
     );
   }
+
+  // BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
+  it("says under Organization name that Turkish-only letters are not taken, and holds Save", async () => {
+    renderPage();
+    const name = screen.getByLabelText("Organization name");
+    fireEvent.change(name, { target: { value: "Beşiktaş Grill" } });
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(name.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      usLettersMessage,
+    );
+    expect(screen.getByRole("button", { name: /save changes/i })).toHaveProperty("disabled", true);
+    fireEvent.change(name, { target: { value: "Besiktas Grill" } });
+    expect(screen.getByRole("button", { name: /save changes/i })).toHaveProperty("disabled", false);
+  });
 
   it("hides the Workspace setup checklist from General settings", async () => {
     renderPage();

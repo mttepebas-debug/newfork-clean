@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
+import { usLettersMessage } from "@newfork/shared";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -241,6 +242,20 @@ describe("WorkspacesPage", () => {
     expect(document.querySelectorAll("#create-workspace-trigger")).toHaveLength(1);
     fireEvent.click(buttons[1]!);
     expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
+  });
+
+  // BL-503: Create workspace takes the name the way owner setup does.
+  it("says under Workspace name that Turkish-only letters are not taken, and holds Create", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
+    renderPage({ pathname: "/account/workspaces", state: { openCreate: true } });
+    await screen.findByRole("dialog", { name: "Create workspace" });
+    const name = screen.getByRole("textbox", { name: "Workspace name" });
+    fireEvent.change(name, { target: { value: "Kadıköy Cafe" } });
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(name.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      usLettersMessage,
+    );
+    expect(screen.getByRole("button", { name: "Create" })).toHaveProperty("disabled", true);
   });
 
   it("opens the create dialog when navigation requests it", async () => {
