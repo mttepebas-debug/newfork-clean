@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 437, last: 20261007130000_restoring_a_swap_is_not_an_undo_step.sql
--- fingerprint: sha256:d1197f9953eb00e06865cfca87d2221e8f8d0eb37e02026803390cc996ccc7e6
+-- migrations: 438, last: 20261007230000_catalog_rows_stay_in_their_workspace.sql
+-- fingerprint: sha256:7266a6e0ca8ad79c093e02e78a2b3a1db7527150c9973e3e056a27d1d3667c4b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -34111,7 +34111,7 @@ REVOKE ALL ON FUNCTION "app_private"."live_locations"("w" "uuid", "ids" "uuid"[]
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."locations" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."locations" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."locations" TO "service_role";
 
 
@@ -34124,15 +34124,50 @@ GRANT SELECT("workspace_id") ON TABLE "public"."locations" TO "service_role";
 
 
 
+GRANT UPDATE("name") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("street_address") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("city") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("region") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("postal_code") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("country_code") ON TABLE "public"."locations" TO "authenticated";
+
+
+
 GRANT SELECT("timezone") ON TABLE "public"."locations" TO "service_role";
+GRANT UPDATE("timezone") ON TABLE "public"."locations" TO "authenticated";
 
 
 
 GRANT SELECT("archived_at") ON TABLE "public"."locations" TO "service_role";
+GRANT UPDATE("archived_at") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."locations" TO "authenticated";
 
 
 
 GRANT SELECT("short_name") ON TABLE "public"."locations" TO "service_role";
+GRANT UPDATE("short_name") ON TABLE "public"."locations" TO "authenticated";
+
+
+
+GRANT UPDATE("phone") ON TABLE "public"."locations" TO "authenticated";
 
 
 
@@ -36331,8 +36366,24 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."audit_events" TO "
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."departments" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."departments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."departments" TO "service_role";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."departments" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."departments" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."departments" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."departments" TO "authenticated";
 
 
 
@@ -36421,8 +36472,28 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."important_date_shi
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."jobs" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."jobs" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."jobs" TO "service_role";
+
+
+
+GRANT UPDATE("department_id") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."jobs" TO "authenticated";
 
 
 
@@ -36579,8 +36650,24 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_excha
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."shift_labels" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."shift_labels" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_labels" TO "service_role";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."shift_labels" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."shift_labels" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."shift_labels" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."shift_labels" TO "authenticated";
 
 
 
@@ -36588,8 +36675,32 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_type_
 
 
 
-GRANT SELECT,INSERT,UPDATE ON TABLE "public"."shift_types" TO "authenticated";
+GRANT SELECT,INSERT ON TABLE "public"."shift_types" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_types" TO "service_role";
+
+
+
+GRANT UPDATE("name") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("color") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("default_start_time") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("default_end_time") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("archived_at") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("updated_at") ON TABLE "public"."shift_types" TO "authenticated";
 
 
 

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(19);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -37,6 +37,9 @@ values
 
 insert into public.jobs (id, workspace_id, department_id, name)
 values ('61000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '51000000-0000-4000-8000-000000000001', 'Line Cook');
+
+insert into public.shift_labels (id, workspace_id, name)
+values ('71000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', 'Training');
 
 select tests.works_at('31000000-0000-4000-8000-000000000004', '41000000-0000-4000-8000-000000000001');
 
@@ -94,6 +97,35 @@ select lives_ok(
   $$update public.jobs set archived_at = now() where id = '61000000-0000-4000-8000-000000000001';
     update public.departments set archived_at = now() where id = '51000000-0000-4000-8000-000000000001'$$,
   'department can be archived after its jobs'
+);
+
+-- A catalog row stays in its workspace (GUVENLIK-A GA-1): even the owner of
+-- both organizations cannot move a row from one to the other.
+select throws_ok(
+  $$update public.shift_labels set workspace_id = '21000000-0000-4000-8000-000000000002' where id = '71000000-0000-4000-8000-000000000001'$$,
+  '42501',
+  null,
+  'a shift label cannot move to another workspace, even for the owner of both'
+);
+select throws_ok(
+  $$update public.departments set workspace_id = '21000000-0000-4000-8000-000000000001' where id = '51000000-0000-4000-8000-000000000002'$$,
+  '42501',
+  null,
+  'an empty department cannot move to another workspace'
+);
+select throws_ok(
+  $$update public.shift_labels set id = '71000000-0000-4000-8000-000000000002' where id = '71000000-0000-4000-8000-000000000001'$$,
+  '42501',
+  null,
+  'a catalog row keeps its id'
+);
+select lives_ok(
+  $$update public.shift_labels set name = 'On call', color = '#54736A', archived_at = now(), updated_at = now()
+      where id = '71000000-0000-4000-8000-000000000001';
+    update public.locations set name = 'Downtown LA', short_name = 'DTLA', street_address = '10 Main St', city = 'Los Angeles',
+      region = 'CA', postal_code = '90001', country_code = 'US', timezone = 'America/Los_Angeles', phone = '+12135550100', updated_at = now()
+      where id = '41000000-0000-4000-8000-000000000001'$$,
+  'the Settings forms still rename, edit and archive catalog rows'
 );
 
 select * from finish();

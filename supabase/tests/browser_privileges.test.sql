@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(10);
 
 -- What a browser session (anon or authenticated) may do directly, read from the
 -- live catalog. Every other call goes through the API as service_role. A new
@@ -52,12 +52,12 @@ select set_eq(
       and privilege_type <> 'SELECT'
   $$,
   array[
-    -- Settings > Organization
-    'authenticated departments INSERT', 'authenticated departments UPDATE',
-    'authenticated jobs INSERT', 'authenticated jobs UPDATE',
-    'authenticated locations INSERT', 'authenticated locations UPDATE',
-    'authenticated shift_labels INSERT', 'authenticated shift_labels UPDATE',
-    'authenticated shift_types INSERT', 'authenticated shift_types UPDATE',
+    -- Settings > Organization (updates are column grants, checked below)
+    'authenticated departments INSERT',
+    'authenticated jobs INSERT',
+    'authenticated locations INSERT',
+    'authenticated shift_labels INSERT',
+    'authenticated shift_types INSERT',
     -- the signed-in person's own account
     'authenticated user_preferences INSERT', 'authenticated user_preferences UPDATE',
     'authenticated user_profiles INSERT', 'authenticated user_profiles UPDATE'
@@ -79,6 +79,30 @@ select set_eq(
     'schedule_logo_scale', 'schedule_logo_offset_x', 'schedule_logo_offset_y', 'updated_at'
   ],
   'the browser updates only the workspace name and logo columns'
+);
+
+-- A catalog row stays in its workspace: the browser updates only the columns
+-- the Settings forms send, never workspace_id, id or created_at (GUVENLIK-A GA-1).
+select set_eq(
+  $$
+    select table_name || '.' || column_name
+    from information_schema.column_privileges
+    where table_schema = 'public'
+      and table_name in ('departments', 'jobs', 'locations', 'shift_labels', 'shift_types')
+      and grantee = 'authenticated'
+      and privilege_type = 'UPDATE'
+  $$,
+  array[
+    'departments.name', 'departments.color', 'departments.archived_at', 'departments.updated_at',
+    'jobs.name', 'jobs.color', 'jobs.department_id', 'jobs.archived_at', 'jobs.updated_at',
+    'locations.name', 'locations.short_name', 'locations.street_address', 'locations.city',
+    'locations.region', 'locations.postal_code', 'locations.country_code', 'locations.timezone',
+    'locations.phone', 'locations.archived_at', 'locations.updated_at',
+    'shift_labels.name', 'shift_labels.color', 'shift_labels.archived_at', 'shift_labels.updated_at',
+    'shift_types.name', 'shift_types.color', 'shift_types.default_start_time',
+    'shift_types.default_end_time', 'shift_types.archived_at', 'shift_types.updated_at'
+  ],
+  'the browser updates only the catalog columns the Settings forms send'
 );
 
 -- ponytail: the web reads only the catalog tables, the account's own rows and
