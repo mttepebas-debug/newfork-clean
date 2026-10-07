@@ -9,6 +9,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, useLocation } from "react-router";
 import type { Department, Job, JobAssignmentEmployee } from "@newfork/shared";
+import { usLettersMessage } from "@newfork/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JobCatalogEditor } from "./JobCatalogEditor";
 import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
@@ -297,6 +298,85 @@ describe("department job entry", () => {
       "already exists",
     );
     expect(api.createDepartmentJobs).not.toHaveBeenCalled();
+  });
+});
+
+// BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
+describe("department and job names under the US letter rule", () => {
+  const saysUnder = (field: HTMLElement) => {
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(field.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      usLettersMessage,
+    );
+  };
+
+  it("opens a department saved before the rule, says it under the name and saves once it is fixed", async () => {
+    editor({ item: { ...department, name: "Mutfak Ağı" } });
+    const name = screen.getByLabelText("Department name");
+    expect(name).toHaveProperty("value", "Mutfak Ağı");
+    saysUnder(name);
+    expect(screen.getByRole("button", { name: "Save department" })).toHaveProperty("disabled", true);
+    fireEvent.change(name, { target: { value: "Kitchen" } });
+    expect(name.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save department" })).toHaveProperty("disabled", false);
+  });
+
+  it("says it under a new job row and holds Save", () => {
+    editor({ item: department });
+    const row = screen.getByLabelText("Job name 1");
+    fireEvent.change(row, { target: { value: "Aşçı" } });
+    saysUnder(row);
+    expect(screen.getByRole("button", { name: "Save department" })).toHaveProperty("disabled", true);
+  });
+
+  it("opens a job saved before the rule, says it under the name and still saves its assignments", async () => {
+    wrap(
+      <JobAssignmentsDrawer
+        workspaceId="workspace"
+        job={{ ...job, name: "Aşçı" }}
+        departments={[department]}
+        onClose={vi.fn()}
+      />,
+    );
+    const name = screen.getByLabelText("Job name");
+    expect(name).toHaveProperty("value", "Aşçı");
+    saysUnder(name);
+    // The name is not sent until it changes, so the people on it still save.
+    fireEvent.click(await screen.findByLabelText("Assign Employee 1"));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(api.saveJobDetails).toHaveBeenCalledWith("workspace", jobId, {
+        changes: [{ employee_id: "employee-1", assigned: true, expected_revision: 1 }],
+      }),
+    );
+  });
+
+  it("sends the saved name as it was when a job's name is fixed", async () => {
+    vi.mocked(api.saveJobDetails).mockResolvedValue({
+      changed_count: 0,
+      unchanged_count: 0,
+      job: { ...job, name: "Cook" },
+    });
+    wrap(
+      <JobAssignmentsDrawer
+        workspaceId="workspace"
+        job={{ ...job, name: "Aşçı" }}
+        departments={[department]}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Job name"), { target: { value: "Cook" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(api.saveJobDetails).toHaveBeenCalledWith(
+        "workspace",
+        jobId,
+        expect.objectContaining({
+          job: expect.objectContaining({ name: "Cook" }),
+          expected_job: expect.objectContaining({ name: "Aşçı" }),
+        }),
+      ),
+    );
   });
 });
 

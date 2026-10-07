@@ -1,14 +1,17 @@
 import { useAuth } from "../auth/AuthContext";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import {
   departmentInputSchema,
+  departmentValuesSchema,
   jobInputSchema,
+  jobValuesSchema,
   type Department,
   type Job,
 } from "@newfork/shared";
+import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 import {
   createDepartmentWithJobs,
   createDepartmentJobs,
@@ -99,8 +102,8 @@ export function JobCatalogEditor({
   const initialEntity =
     editor.item && !existingDepartment
       ? isJob
-        ? jobInputSchema.parse(editor.item)
-        : departmentInputSchema.parse(editor.item)
+        ? jobValuesSchema.parse(editor.item)
+        : departmentValuesSchema.parse(editor.item)
       : null;
   const rowDrafts = rows
     .filter((row, index) => index < rows.length - 1 || row.name.trim())
@@ -108,7 +111,9 @@ export function JobCatalogEditor({
       name: jobName,
       color: jobColor,
     }));
-  const rowsReady = rowDrafts.every((row) => Boolean(row.name.trim()));
+  const rowsReady = rowDrafts.every(
+    (row) => Boolean(row.name.trim()) && !breaksLetterRule(row.name),
+  );
   const entityReady = existingDepartment
     ? true
     : isJob
@@ -303,6 +308,7 @@ export function JobCatalogEditor({
                     value={name}
                     placeholder={isJob ? "e.g. Server" : "e.g. Front of house"}
                     onChange={(event) => setName(event.target.value)}
+                    {...letterRuleProps(name, "catalog-entity-name-error")}
                     onKeyDown={(event) => {
                       if (
                         bundled &&
@@ -320,6 +326,7 @@ export function JobCatalogEditor({
                     onChange={setColor}
                   />
                 </div>
+                <LetterRuleError value={name} id="catalog-entity-name-error" />
               </div>
             )}
             {isJob && !existingDepartment && (
@@ -352,13 +359,15 @@ export function JobCatalogEditor({
                   </span>
                 </div>
                 {rows.map((row, index) => (
-                  <div className="job-draft-row" key={row.key}>
+                  <Fragment key={row.key}>
+                  <div className="job-draft-row">
                     <input
                       ref={(element) => {
                         if (element) inputs.current.set(row.key, element);
                         else inputs.current.delete(row.key);
                       }}
                       aria-label={`Job name ${index + 1}`}
+                      {...letterRuleProps(row.name, `job-row-${row.key}-error`)}
                       placeholder="Add a job…"
                       maxLength={100}
                       value={row.name}
@@ -425,6 +434,8 @@ export function JobCatalogEditor({
                       </button>
                     )}
                   </div>
+                  <LetterRuleError value={row.name} id={`job-row-${row.key}-error`} />
+                  </Fragment>
                 ))}
                 <p className="job-hint">
                   Press Enter for the next job. Jobs can also be added later.
