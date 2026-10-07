@@ -1,115 +1,103 @@
-# Settings → Locations: artifact ve tasarım seçimi (EKRAN-10-LOCATIONS)
+# Settings → Locations: onaylanan tasarım (EKRAN-10-LOCATIONS)
 
-**Durum: ARA HÂL.** Mert A'yı seçti (2026-10-07); ince ayarlar ve "tamam" bekleniyor. Son hâl değil.
+**Durum: SON HÂL (2026-10-07).** Mert A tasarımını seçti ve ince ayarsız onayladı ("Tamam").
 
-- **Karar:** Mert A'yı seçti (2026-10-07, bu oturumun penceresinde, cevabı: "a"). A "ortak liste dili", önerilendi.
-- **İzin:** gerekmiyor. Yalnız belge değişti; kod, migration ve veri değişmedi.
-- **Risk:** 🟢 Uygulamaya dokunulmadı. Artifact'lar özel, yalnız Mert'in hesabında.
-- **Soru:** yok. Mert'in ince ayarları ya da "tamam" bekleniyor.
-- **Sonraki:** Mert'in ayarları tıklanabilir A kopyasına işlenir. "Tamam" gelince bu dosya son hâle çevrilir. Koda uygulama ayrı iş olur ve onu koordinatör açar.
+- **Karar:** Locations, A tasarımına (ortak liste dili) geçer. Ek ince ayar yok. Mert, 2026-10-07, bu oturumun penceresinde: önce "a", sonra "Tamam".
+- **İzin:** gerekmiyor. Bu iş yalnız belge; kod, migration ve veri değişmedi.
+- **Risk:** 🟢 Uygulamaya dokunulmadı. Koda uygulama ayrı iş; aşağıdaki "Koda uygulanırken" listesi onun girdisi.
+- **Soru:** yok. Ortak çekmece düzeltmesinin öteki ekranlara yayılması koda uygulama işinde Mert'e sorulur (§4.7).
+- **Sonraki:** Koordinatör "Locations → A" kod işini açar.
 
 ## Artifact'lar
 
 | Ne | Bağlantı | Sürüm |
 |---|---|---|
-| Tıklanabilir kopya. İnce ayarlar burada yapılır. | https://claude.ai/artifact/Lru9WAg6HaSbdErLyMhU26 | 2 (`1791369506-cc9d`) A tasarımı · 1 (`1791362235-ed21`) bugünkü sayfanın birebir kopyası |
-| Beş tasarım (Mert'in isteği: "5 tane artifact örneği sun. drawer dahil. mobil görüntü dahil") | https://claude.ai/artifact/UWTcHirMHXjrfa9TND2TLE | 2 (`1791369509-55ab`) A "Seçildi" işaretli · 1 (`1791364478-45ed`) |
+| Onaylanan A tasarımı (tıklanabilir kopya) | https://claude.ai/artifact/Lru9WAg6HaSbdErLyMhU26 | **2 (`1791369506-cc9d`)**, onaylanan sürüm. Sürüm 1 (`1791362235-ed21`): bugünkü sayfanın birebir kopyası. |
+| Beş tasarım (Mert'in isteği: "5 tane artifact örneği sun. drawer dahil. mobil görüntü dahil") | https://claude.ai/artifact/UWTcHirMHXjrfa9TND2TLE | 2 (`1791369509-55ab`), A "Seçildi" işaretli. Sürüm 1: `1791364478-45ed`. |
 
-**A kopyası (sürüm 2):** Bugünkü sayfanın gerçek DOM'u, gerçek CSS'i (`list-page.css` dahil) ve A'nın küçük CSS'i (`a.css`) ile kuruldu.
+## Onaylanan son hâl: bugün → A
 
-Kopyada çalışanlar:
-- Active / Archived sekmeleri; Archived boş hâlde "No archived locations".
-- New location çekmecesi; iki satırın Edit çekmecesi ve iki tıkla Delete.
-- ⋯ menüsü, Esc ve arama.
+| Öğe | Bugün | A (onaylı) | Kaynak |
+|---|---|---|---|
+| Sayfa sınıfı | `settings-page jobs-settings-page locations-catalog-settings-page` | + `list-page` | ortak dil |
+| Başlık | `SettingsHeader`: ikon kutusu, başlık, açıklama; sağ üstte yeşil "Add location" | `catalog-page-header`: 142 px sabit blok; üst yazı SETTINGS, başlık "Locations" ve yeşil nokta, açıklama aynı; başlıkta düğme yok | `list-page.css` (ortak) |
+| Arşiv süzgeci | "Show archived" onay kutusu (açıkken arşivliler de listede) | Sekmeler "Active" (varsayılan) / "Archived" (yalnız arşivliler); 40 px, altında 1 px `--theme-border` | `list-page.css` (ortak) |
+| Ekleme düğmesi | Başlıkta "Add location" | Filtre satırının sağ ucunda yeşil "New location": 36 px, 0 × 14 iç boşluk, köşe 7, 13/600, 14 px artı | `list-page.css` (ortak) |
+| Arama | 360 px kutu | Filtre satırında kalan bütün genişlik, 36 px | `list-page.css` (ortak) |
+| Tablo çerçevesi ve başlık satırı | Eski katalog tablosu | Ortak dil: çerçeve 1 px `--theme-list-frame`, köşe 7; başlık satırı 40 px, 11 px büyük harf, zemin `--theme-list-head`; sıralanabilir başlık | `list-page.css` (ortak) |
+| Sütunlar | `1fr 1.4fr 130px 140px 32px` | Location 24 · Address 40 · Phone number 16 · Time zone 16 (fr) · menü 32 px; aralık 12 | `a.css` (yalnız Locations) |
+| Satır | 64 px; ad başında raptiye ikonu; adres ve saat 12 px `--job-muted` | En az 52 px; ikon yok; hücre 13 px `--theme-list-cell-text`; ad 600 `--theme-text`; boş telefon "—" `--theme-text-faint` | `a.css` + `list-page.css` |
+| Archived boş hâli | "No archived locations" + "Add the first restaurant location…" | Başlık satırı durur; açık yeşil daire içinde raptiye; "No archived locations" / "Archived locations will appear here."; düğme yok | `list-page.css` + yeni metin |
+| Çekmece | 640 px, iki sütunlu form; alanlar X ve Save'den 15 px içeride | Aynı form; kaydırma boşluğu yalnız kayarken ayrılır, alan, X ve Save aynı sağ kenarda (1424) | `jobs-settings.css` (ortak) → A'da yalnız Locations'a sınırlı |
+| Telefon listesi | Tek kutu içinde satırlar | Her lokasyon ayrı kart: 1 px `--theme-list-frame`, köşe 8, iç boşluk 14 / 4 / 14 / 14, kartlar arası 8; ad 15/600, adres 13 `--theme-list-cell-text`, saat dilimi 12 `--theme-muted`; ⋯ 40 × 40 | `a.css` (yalnız Locations) |
+| Telefon başlığı | İkon kutusu + tam genişlik "Add location" | Ortak dilin telefon başlığı (başlık 28); "New location" aramanın altında | `list-page.css` (ortak) |
 
-Pencere 720 px'in altına inince telefon düzenine geçer. Telefonun alt çubuğu gerçek telefon DOM'undan alındı; telefonda Schedule kapalı olduğu için çubukta yok.
+**Mert'in ince ayarları:** yok. Mert A'yı olduğu gibi onayladı.
 
-Karşılaştırma: kopyanın görüntüleri, A'nın gerçek CSS ile çizimiyle kıyaslandı (2026-10-07).
-- Masaüstü ve telefon listesi 0 piksel farkla aynı.
-- Çekmecelerde tek fark, ilk alanın odak çerçevesi; çekmece açılınca gerçek uygulama da oraya odaklanıyor.
+**Değişmeyenler:**
+- Satır menüsü: Edit location / Archive.
+- Çekmecedeki alanlar ve metinleri.
+- İki tıkla Delete ("Confirm delete").
+- Cancel ve Save location.
 
-**Birebir kopya:** Masaüstü 1440'ta gerçek DOM ve gerçek CSS kullanıldı. Kopya uygulama gibi tıklanıyor: liste, satır menüsü, Show archived, Add location çekmecesi, iki satırın Edit çekmecesi ve "Confirm delete" hâli.
+## Koda uygulanırken (koordinatörün açacağı iş için)
 
-Gerçek ekran görüntüsüyle piksel karşılaştırması (2026-10-07):
-- Liste, ekle, iki düzenle ve iki silme onayı ekranında 0 piksel fark var.
-- Satır menüsünde ve Show archived kutusunda küçük fark çıktı. Nedeni yalnız fare üstündeyken çıkan renk.
+1. **Ortak dile katılım.** Bölüme `list-page` sınıfı eklenir. Başlık ve araç çubuğu Settings → Documents'takiyle aynı bileşenlerden gelir (`catalog-page-header`, `catalog-toolbar`, `list-add-button list-add-action`). Locations'a özel CSS yalnız sütunlar ve telefon kartıdır. Bu taslağın CSS'i: `artifacts/EKRAN-10-LOCATIONS/src/a.css`.
+2. **Davranış farkı.** "Show archived" kutusu arşivlileri aktiflerin yanına ekliyordu; "Archived" sekmesi yalnız arşivlileri gösterir. Dayanak: Important Dates'te Mert'in aynı geçişi seçmesi (2026-10-05) ve bu turda A'yı onaylaması.
+3. **Metin değişiklikleri.** e2e'de ikizleri aranır (`apps/web/CLAUDE.md` → Metin):
+   - "Add location" → "New location".
+   - Yeni: "Active", "Archived", "Archived locations will appear here.".
+   - "Show archived" kalkar.
+4. **Ortak değer (CLAUDE.md §4.7).** Çekmecedeki 15 px sağ kayma `jobs-settings.css`'teki `.catalog-drawer-body { scrollbar-gutter: stable }`'dan geliyor.
+   - Kural ortak çekmecede düzeltilirse şu ekranlar da değişir: Jobs, Shift catalog, Settings → Documents, Acknowledgements, Important Dates.
+   - Onaylanan A'da düzeltme yalnız Locations'a sınırlı. Yayılması Mert'e sorulur.
+5. **Kanıt.** Gerçek uygulamada 1440 ve 390 ekran görüntüsü, bu dosyadaki ölçülerle karşılaştırılır. Ölçüm betikleri `artifacts/EKRAN-10-LOCATIONS/src/` altında; `render.mjs` `MEASURE=1` ile çalıştırılır.
 
-**Beş tasarım:** Her tasarımda dört görüntü var: masaüstü liste, masaüstü Edit location çekmecesi, telefon (390) liste ve telefon çekmece. Hepsi gerçek uygulamanın CSS'i, kenar menüleri ve telefon alt çubuğuyla çizildi; veri Meyhouse'un iki lokasyonu.
-
-Kontrol: bugünkü sayfa aynı yolla yeniden çizildi.
-- Liste gerçek ekranla 0 piksel farkla aynı.
-- Çekmecede tek fark, ilk alanın odak çerçevesi.
-
-## Mert'in ayarları (A üzerinde)
-
-Henüz yok. Her ayar şu biçimde yazılacak: öğe, özellik, eski değer → yeni değer, etkilenen `--theme-*` token'ı ya da ortak bileşen.
-
-A'nın başlangıç değerleri (ayarların "eski değer"i bunlar):
-
-| Öğe | Değer | Kaynak |
-|---|---|---|
-| Sayfa başlığı | 142 px sabit blok; üst yazı SETTINGS, başlık ve yeşil nokta; düğme yok | `list-page.css` (ortak) |
-| Sekme satırı | Active / Archived; 40 px yükseklik, altında 1 px `--theme-border` | `list-page.css` (ortak) |
-| Filtre satırı | 36 px; arama kalan genişliği doldurur; yeşil "New location" 36 px, 0 × 14 iç boşluk, köşe 7 | `list-page.css` (ortak) |
-| Tablo sütunları | Location 24 · Address 40 · Phone number 16 · Time zone 16 · menü 32 px; aralık 12 | `a.css` (yalnız Locations) |
-| Satır | en az 52 px; hücre 13 px `--theme-list-cell-text`; boş telefon "—" `--theme-text-faint` | `a.css` + `list-page.css` |
-| Başlık satırı | 40 px, 11 px büyük harf, zemin `--theme-list-head` | `list-page.css` (ortak) |
-| Çekmece | 640 px; iki sütunlu form; alanlar 36 px; kaydırma boşluğu yalnız kayarken (alan, X ve Save 1424'te) | `jobs-settings.css` (ortak) + `a.css` |
-| Telefon kartı | 1 px `--theme-list-frame`, köşe 8, iç boşluk 14 / 4 / 14 / 14; ad 15/600, adres 13, saat dilimi 12; kartlar arası 8 | `a.css` |
-
-## Beş tasarım (Mert A'yı seçti)
-
-Beşinde de aynı olanlar:
-- Başlık ortak liste dilinde: SETTINGS, başlık ve yeşil nokta; başlıkta düğme yok.
-- Active / Archived sekmeleri "Show archived" kutusunun yerine geçer.
-- Arama satırın kalanını doldurur; sağ uçta yeşil "New location".
-- Çekmecede tek Save sağ altta; Delete iki tıkla kırmızı.
-
-| | Liste | Çekmece | Telefon | Not |
-|---|---|---|---|---|
-| A · Ortak liste dili (önerilen) | Settings → Documents tablosu; sütunlar Location, Address, Phone number, Time zone; raptiye ikonu kalkar | Bugünkü iki sütunlu form | Her lokasyon ayrı kart | Dayanak: KARARLAR Genel → "Liste sayfalarının ortak dili" (Mert, 2026-10-05; yeşil düğme 2026-10-06) ve "Telefonda liste sayfaları kart satırıyla" (Mert, 2026-10-05) |
-| B · Kısa ad sütunu | Short name sütunu (MAIN, GARDEN); adres ve saat dilimi iki satır | Üç bölüm: Name · Address · Contact and time | Kartın üstünde kısa ad | — |
-| C · Kartlar | Kart ızgarası | 440 px, tek sütun, başlıkta lokasyon adı | Kartlar alt alta | Ortak liste dilinin tablo kuralından ayrılır |
-| D · Yan panel | Panel açıkken sayfa kararmaz, seçili satır yeşil | Saat dilimi altı ABD kutusundan seçilir + "Other time zone" | Panel ayrı sayfa, "← Locations" | Davranış değişir (arka plan tıklanabilir, saat dilimi seçimi); seçilirse ayrıca sorulur (ILKELER P03) |
-| E · Sade satırlar | Çerçeve ve sütun başlığı yok; sağda saat dilimi, telefon, Edit | 680 px, etiketler solda | Çekmece alttan açılır | Ortak liste dilinden en uzak |
-
-## Ölçümler ve bulgular
-
-**Bugünkü çekmecede kayma.** Alanların sağ kenarı X ve Save düğmesinin sağ kenarından 15 px içeride (ölçüm: alan 1409, Save 1424). Nedeni, `.catalog-drawer-body`'deki `scrollbar-gutter: stable`: kaydırılacak bir şey yokken de kaydırma çubuğuna yer ayırıyor. Beş tasarımda `scrollbar-gutter: auto` ile düzeltildi; ölçüm sonrası alan, X ve Save'in hepsi 1424'te.
-
-**Ortak değer (CLAUDE.md §4.7).** Çekmece ortak parça: `apps/web/src/settings/CatalogDrawer.tsx` + `jobs-settings.css`. Düzeltme ya da çekmece düzeni orada değişirse şu ekranların çekmeceleri de değişir: Jobs, Shift catalog (shift types, labels), Settings → Documents, Acknowledgements, Important Dates. Yalnız Locations'a sınırlanırsa öteki ekranlar değişmez.
-
-**Hizalama (beş tasarım, 2026-10-07):**
+## Ölçümler (2026-10-07)
 
 | Ne ölçüldü | Sonuç |
 |---|---|
-| Tablo sütun başlığı ↔ hücre yazısı başlangıcı | 0 px fark. B'nin kısa ad etiketinde kutu kenarı başlıkla aynı çizgide, yazı etiketin iç boşluğu kadar (8 px) içeride. |
-| Satır içi dikey ortalama | Bütün hücreler aynı merkezde. Satırın 1 px alt çizgisi yüzünden kenarlık kutusuna göre 0,5 px yukarıda; içerik alanına göre 0. |
-| Çekmece sol kenarı | Başlık, etiketler, alanlar ve Delete aynı x'te: A ve B 816, C 1016, D 997, E 776; telefonda 16. |
-| Çekmece sağ kenarı | Alan, X ve Save 1424'te; telefonda 374'te. |
-| Kartlar (C) | İki kart eşit yükseklikte: masaüstünde 191, telefonda 199. Kart başlığındaki ikon, ad, kısa ad ve ⋯ aynı merkezde. |
+| Birebir kopya ↔ gerçek ekran (sürüm 1, masaüstünde 6 durum) | 0 piksel fark. Satır menüsünde ve Show archived'da yalnız fare üstündeyken çıkan renk farkı var. |
+| A kopyası ↔ A'nın gerçek CSS'le çizimi (sürüm 2) | Masaüstü ve telefon listesi 0 piksel fark. Çekmecede tek fark ilk alanın odak çerçevesi. |
+| Sütun başlığı ↔ hücre yazısı başlangıcı | 0 px |
+| Satır içi dikey ortalama | Bütün hücreler aynı merkezde. Satırın 1 px alt çizgisi yüzünden kenarlık kutusuna göre 0,5 px; içerik alanına göre 0. |
+| Çekmece sol kenarı | Başlık, etiket, alan ve Delete aynı x'te: masaüstünde 816, telefonda 16. |
+| Çekmece sağ kenarı | Alan, X ve Save aynı x'te: masaüstünde 1424, telefonda 374. Bugün alanlar 1409'da. |
+
+## Beş tasarım (kayıt için)
+
+Beşinde de ortak olanlar:
+- Başlık ve filtre satırı ortak liste dilinde.
+- Active / Archived sekmeleri ve yeşil "New location".
+- Çekmecede tek Save; iki tıkla Delete.
+
+| | Liste | Çekmece | Telefon | Sonuç |
+|---|---|---|---|---|
+| A · Ortak liste dili | Settings → Documents tablosu | Bugünkü form | Ayrı kartlar | **Seçildi** (önerilendi) |
+| B · Kısa ad sütunu | Short name sütunu; adres ve saat dilimi iki satır | Name · Address · Contact and time bölümleri | Kartta kısa ad | Seçilmedi |
+| C · Kartlar | Kart ızgarası | 440 px, tek sütun | Kartlar alt alta | Seçilmedi |
+| D · Yan panel | Sayfa kararmaz, seçili satır yeşil | Saat dilimi altı kutudan seçilir | Panel ayrı sayfa | Seçilmedi |
+| E · Sade satırlar | Çerçeve ve başlık yok | 680 px, etiketler solda | Alttan açılan çekmece | Seçilmedi |
 
 ## Senin yerine verdiğim kararlar
 
 - "5 tane artifact örneği" isteğini tek artifact'ta beş tasarım olarak yorumladım. Her tasarımda masaüstü liste, çekmece ve telefonun ikisi var. Dayanak: EKRAN-08'deki "5 design" turunun biçimi (KK-197).
 - Başlık ve filtre satırı beş tasarımda da ortak liste dilinde sabit. Dayanak: KARARLAR Genel; Requests satırında "Settings → Locations kendi ekran turunda geçer" (KK-158).
-- "Show archived" kutusu yerine Active / Archived sekmesi koydum. Dayanak: Important Dates'te Mert'in aynı değişikliği seçmesi (2026-10-05).
-- Bugünkü çekmecedeki 15 px sağ kaymayı beş tasarımda da düzelttim. Dayanak: Mert'in hizalama hassasiyeti; bu bir görünüm düzeltmesi.
-- A'yı önerilen yaptım. Dayanak: yukarıdaki iki KARARLAR maddesi.
+- "Show archived" yerine Active / Archived sekmesi koydum. Dayanak: Important Dates'te Mert'in aynı seçimi (2026-10-05).
+- Bugünkü çekmecedeki 15 px sağ kaymayı düzelttim; A'da yalnız Locations'a sınırlı. Dayanak: Mert'in hizalama hassasiyeti; görünüm düzeltmesi.
+- Archived sekmesinin boş hâl metnini yazdım: "Archived locations will appear here.". Dayanak: ILKELER P21 (kısa, tek mesaj); KK-139 (süzgeçle boş hâlde düğme yok).
+- A'yı önerilen yaptım; Mert seçti. Dayanak: KARARLAR Genel → "Liste sayfalarının ortak dili" (2026-10-05; yeşil düğme 2026-10-06) ve "Telefonda liste sayfaları kart satırıyla" (2026-10-05).
 
 ## Kaynaklar ve yeniden üretme
 
-Gerçek ve kopya ekran görüntüleri ile beş tasarımın PNG'leri şu klasörde: `C:\Users\TheWe\Documents\Codex\newfork-clean\artifacts\EKRAN-10-LOCATIONS\` (gitignore'da).
-
-Dosya adları:
+Görüntüler `C:\Users\TheWe\Documents\Codex\newfork-clean\artifacts\EKRAN-10-LOCATIONS\` klasöründe (gitignore'da). Dosya adları:
 - Gerçek ekran: `real-*.png`
 - Birebir kopya: `copy-*.png`
 - Tasarımlar: `v-<today|A..E>-<desk|phone>-<list|drawer>.png`
+- A kopyası: `a-*.png`
 
 Betikler ve yakalanan DOM/CSS `src/` altında; Playwright 1.61.1 npx önbelleğinden kullanıldı. Sıra:
 1. `capture.mjs`, `capture2.mjs`, `capture3.mjs` sayfayı yakalar. Seed owner ile girilir; parola betikte değil, ortam değişkeninden gelir.
-2. `build.mjs` birebir kopyayı kurar, `compare.mjs` gerçek ekranla piksel karşılaştırmasını yapar.
-3. `icons.mjs` ve `render.mjs` tasarımları çizer. `MEASURE=1` verilirse hizalama ölçümleri de yazılır.
-4. `gallery-build.mjs` beş tasarım sayfasını kurar.
-
-Tasarımların kendisi `variants.js` ve `variants.css`'te.
+2. `build.mjs` + `compare.mjs`: sürüm 1 (birebir kopya).
+3. `icons.mjs`, `render.mjs` (`MEASURE=1`) ve `gallery-build.mjs`: beş tasarım.
+4. `a-states.mjs`, `build-a.mjs` ve `check-a.mjs`: sürüm 2 (A kopyası ve tıklama denemesi).
