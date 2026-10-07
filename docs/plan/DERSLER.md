@@ -744,3 +744,8 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Ne oldu:** Requests'in sahip oturumu EKRAN-PLANI "Bir ekranın turu" 4'e uyup 107 maddelik `EKRAN.md` yazdı; ben dosyayı gönderip "onaylıyor musun" diye sordum. Mert soruları kapattı: "107 maddeyi okumam mümkün değil. bana before after göndermen lazım", sonra "kararlar.md'de yazan ui değişikliklerini uygulamak istiyorum". Görünüm kararları zaten KARARLAR'daydı; onay gereken yeni bir şey yoktu.
 - **Maliyeti:** bir soru turu ve oturumun yarım saatlik envanter + önce/sonra sayfası hazırlığının bir kısmı (sayfa yarıda bırakıldı).
 - **Alışkanlık:** Mert'e liste değil, ekran götür: görünen değişiklik önce/sonra görüntüsüyle, görünmeyen en çok birkaç cümlelik isimli örnekle. KARARLAR'da zaten kararı olan şeyi yeniden onaya sunma; onay yalnız yeni karara. Kural metniyle ("Mert listeyi tek turda onaylar") Mert'in okuyabileceği şey çelişirse kuralı uygulamadan önce biçimini sor.
+
+## 2026-10-07 — Newfork koordinatör: görünür değişikliği "telefon sonra" diye göndermeyi önerdim, Mert önce telefonu istedi
+- **Ne oldu:** Requests tek tablonun masaüstü hâli hazırdı, telefonda tablo yana taşıyordu ve bir sekme ekran dışındaydı. "Gönder, telefon sıradaki iş (Önerilen)" dedim (dayanak P01, P15). Mert "Önce telefon düzelsin"i seçti.
+- **Maliyeti:** bir soru turu; önerinin tutmaması (kabul oranı).
+- **Alışkanlık:** Mert'in gördüğü bir ekran değişikliği yarım (bir cihazda bozuk) gitmez; §2.C "işin çekirdeğinde tam çözüm > ucuz kestirme" hız ilkelerinden önce gelir. Önce/sonra görüntüsünü göndermeden telefon görüntüsüne de bak; bozuksa soruyu sormadan düzelttir, sonra götür.

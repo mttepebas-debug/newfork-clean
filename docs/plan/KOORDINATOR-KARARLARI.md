@@ -1721,3 +1721,8 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Kim:** Mert (kural), koordinatör (kayıt ve uygulama). **Ne zaman:** 2026-10-07 ~08:55Z. **Nerede:** `CLAUDE.md` §4.1 "Alt ajanlar"; `.claude/agents/nf-okur.md` `model: sonnet` → `opus` (effort medium aynen); `nf-guvenlik` zaten opus / high.
 - **Ne:** Mert: "proje kuralı: subagentlar en aşağı opus 5.5 medium olabilir". KK-184 (13)'teki "`nf-okur` sonnet modeliyle" ters çevrildi. Koordinatörün bu sabah `nf-okur`'u sonnet'le çağırması (BL-897…903 doğrulaması) kuraldan önceydi. Açık yedi oturuma bildirildi.
 - **Dayanak:** Mert'in açık kararı (CLAUDE.md §5.2 kural değişikliği Mert'te).
+
+### KK-199 (2026-10-07) Requests tek tablo: telefon düzelmeden gönderilmez
+- **Kim:** Mert'in seçimi (önerilen tutmadı), koordinatör uyguladı. **Ne zaman:** 2026-10-07 ~09:05Z. **Nerede:** EKRAN-02 `task/ekran-02` @`9891727d`; önce/sonra görüntüleri `newfork-wt/ekran-02/artifacts/ekran-02/tek-tablo/`.
+- **Ne:** masaüstü tek tablo (tür sekmeleri, arama Location'a kadar, Decide by iki satır) Mert'e önce/sonra ile gösterildi; öneri "Gönder, telefon sıradaki iş" idi, Mert "Önce telefon düzelsin" dedi. Oturum #67'yi aynı dala ekler: telefonda kart satırı (KARARLAR Genel "telefonda liste sayfaları kart satırıyla", Employees G2 ile aynı ölçüler), beş sekmenin hepsi ulaşılabilir, 44 px; sonra birlikte "gönder".
+- **Dayanak:** Mert'in seçimi; CLAUDE.md §2.C ödünleşim "işin çekirdeğinde tam çözüm > ucuz kestirme" (önerim bunu tartmadı, DERSLER 2026-10-07).
