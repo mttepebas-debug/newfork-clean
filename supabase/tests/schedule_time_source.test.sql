@@ -21,7 +21,7 @@ update time_source_state set result=public.normalize_schedule_time_source(w,json
 select is(result->>'start_time','12:00','name-only resolves from selected type') from time_source_state;
 select is(result->'time_snapshot'->>'default_revision','1','snapshot records type revision') from time_source_state;
 select is(public.normalize_schedule_time_source(w,result||'{"time_basis":"explicit","start_time":"10:00","end_time":"17:00","hide_time_on_badge":true}')->>'start_time','10:00','explicit hours win even when badge hides them') from time_source_state;
-select throws_ok($$select public.normalize_schedule_time_source(w,jsonb_set(result,'{time_snapshot,start_time}','"11:00"')) from time_source_state$$,'40001',null,'forged default interval rejected');
+select throws_ok($$select public.normalize_schedule_time_source(w,jsonb_set(result,'{time_snapshot,start_time}','"11:00"')) from time_source_state$$,'PT409',null,'forged default interval rejected');
 
 update time_source_state set session=(public.acquire_schedule_edit_session_service(actor,w,week,'blank',null)->'session'->>'id')::uuid;
 select lives_ok($$select public.mutate_schedule_edit_shift_service(s.actor,s.w,s.session,e.revision,'create',s.shift,null,
@@ -46,9 +46,9 @@ select is((select default_revision from public.shift_types where id=s.typ),2,'ch
 select is((select start_time::text from public.schedule_edit_session_shifts where id=s.shift and session_id=s.session),'12:00:00','existing shift does not change with type settings') from time_source_state s;
 select is(public.normalize_schedule_time_source(w,result)->'time_snapshot'->>'default_revision','1','copy keeps the historical default snapshot') from time_source_state;
 select is(public.normalize_schedule_time_source(w,(result-'time_snapshot'))->>'start_time','13:00','new use of defaults resolves the current revision') from time_source_state;
-select throws_ok($$select public.normalize_schedule_time_source(w,(result-'time_basis')||'{"start_time":"14:00"}',result) from time_source_state$$,'40001',null,'old client cannot silently rewrite reference hours');
+select throws_ok($$select public.normalize_schedule_time_source(w,(result-'time_basis')||'{"start_time":"14:00"}',result) from time_source_state$$,'PT409',null,'old client cannot silently rewrite reference hours');
 select lives_ok($$select public.add_schedule_pending_op_service(s.actor,s.w,s.session,'update',s.shift,'{"note":"Keep snapshot"}') from time_source_state s$$,'partial pending update preserves snapshot');
-select throws_ok($$select public.add_schedule_pending_op_service(s.actor,s.w,s.session,'update',s.shift,'{"start_time":"14:00"}') from time_source_state s$$,'40001',null,'legacy pending update cannot discard time source');
+select throws_ok($$select public.add_schedule_pending_op_service(s.actor,s.w,s.session,'update',s.shift,'{"start_time":"14:00"}') from time_source_state s$$,'PT409',null,'legacy pending update cannot discard time source');
 
 -- A stored timezone is part of the interval evidence, not the current setting.
 update public.locations set timezone='America/New_York' where id=(select loc from time_source_state);

@@ -35,7 +35,7 @@ describe("default-hours review routes", () => {
   it("requires fingerprint and retry key and preserves stale database errors", async () => {
     const { app, applyDefaultHours } = setup();
     expect((await app.inject({ method: "POST", url: url("apply"), headers: { authorization: "Bearer test" }, payload: body })).statusCode).toBe(400);
-    applyDefaultHours.mockRejectedValueOnce(rpcFailure({ message: "Review changed", code: "40001" }));
+    applyDefaultHours.mockRejectedValueOnce(rpcFailure({ message: "Review changed", code: "PT409" }));
     const command = { ...body, fingerprint: "a".repeat(64), idempotency_key: actor, confirm_availability: true };
     const response = await app.inject({ method: "POST", url: url("apply"), headers: { authorization: "Bearer test" }, payload: command });
     expect(response.statusCode).toBe(409);
