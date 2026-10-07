@@ -61,7 +61,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 | P14 | Program işinde kapsam geniştir; kodun bugünkü hâli vizyonun kanıtı değildir. |
 | P15 | Kod ve git'te hızlı ve özerk; main'e gönderim §4.2'deki kurala göre (riskli işte ve canlı veritabanında koordinatör izniyle). |
 | P16 | Araç kuralları orta serttir: önce uyarı, kaçış loglanır. |
-| P17 | Tek hat; hızlanmak işi bölmektir. İkinci işi Mert açar. |
+| P17 | Tek hat; ekran işi tek sahip oturumda uçtan uca biter, rol ya da dilim diye bölünmez. İkinci işi Mert açar. |
 | P18 | Ürün kararları tek tek sorulur; temel modeller önce sohbette konuşulur. |
 | P19 | Saf teknik iç kararı Claude verir; en az bakım isteyen yol seçilir. |
 | P20 | UI sade ve kompakt; pencerede tek Save (sağ altta). |
@@ -102,7 +102,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 ### 4.3 Bir işin yolu
 1. **Başlangıç.** Dinle → sorularla daralt → isteğin netleşmiş hâlini yaz → Mert onaylar → başla. Küçük işte (tek okuması var, kolay geri alınır) bu tek satır ve tek tıktır; gerçek işte önce soru turu yapılır. Okuma ve ölçme onay beklemez. Netleşmiş hâl onaylanan metnin kendisidir; bariz bir hata düzeltildiyse tek satırla söylenir. Backlog'dan gelen iş önce tazelik kontrolünden geçer: geçerli / değişmiş / bayat; hüküm tarih ve commit ile maddenin altına yazılır.
 2. **Önce ara.** Yeni bir şey yazmadan önce KARARLAR'da, `docs/design-canvas.md`'de ve kodda var olan parça aranır; varsa o kullanılır.
-3. **Görev dosyası.** R2–R3'te işi yapacak oturum `docs/plan/tasks/<ID>.md`'yi yazar (`_TEMPLATE.md`: hedef, kapsam içi/dışı, bitti ölçütü, dokunulacak dosyalar, test planı, risk sınıfı, inceleyen); koordinatör onaylar, kod ondan sonra başlar. R0–R1'de koordinatörün görev mesajı yeter.
+3. **Görev dosyası.** R2–R3'te işi yapacak oturum `docs/plan/tasks/<ID>.md`'yi yazar (`_TEMPLATE.md`: hedef, kapsam içi/dışı, bitti ölçütü, dokunulacak dosyalar, test planı, risk sınıfı, inceleyen); koordinatör onaylar, kod ondan sonra başlar. R0–R1'de koordinatörün görev mesajı yeter. Ekran işinde görev dosyası açılmaz; yerine Mert'in onayladığı ekran dosyası (`ekranlar/<no>-<ekran>/EKRAN.md`, `EKRAN-PLANI.md` "Bir ekranın turu" 4–6).
 4. **Skill'ler.** Oturum, sonucu değiştirecekse şu skill'leri sormadan açar ve raporda tek satırla söyler: `superpowers:brainstorming` (kural ya da model karara bağlanacakken), `superpowers:systematic-debugging` (beklenmedik bozulmada, düzeltmeden önce), `superpowers:test-driven-development` (davranış değişen ya da hata düzelten kodda), `supabase:supabase-postgres-best-practices` (migration, RLS, grant, sorgu), `superpowers:receiving-code-review` (inceleme bulgusu gelince), `superpowers:verification-before-completion` ("bitti" demeden önce). Sonuç zaten belliyse, aynı şey kanıtlandıysa ya da iş küçükse açılmaz. Koordinatör görev mesajında önerdiği skill'leri yazar.
 5. **Yolda bulunan.** İşin önündeyse (onsuz iş bitmez ya da bozuk kalır), işle ilgili bir güvenlik açığıysa ya da ürünün çıktısını bozuyorsa bu işte düzeltilir ve nedeni raporda yazılır. İşle ilgisiz güvenlik açığı hemen koordinatöre bildirilir; koordinatör ayrı acil iş açar, ciddiyse Mert'e sorar. Geri kalan her şey rapora yazılır; koordinatör `BACKLOG.md`'ye işler.
 6. **Kontrol zamanı.** Kontrol alışkanlıkla değil, bir kararı değiştireceği için koşulur. Sessizce bozulan kural (yetki, satır erişimi), teslim edilen şeyin kendisi ve saniyelik kontroller hemen; birbirine bağlı küçük değişiklikler ve yavaş, düşük riskli kontroller sınırda (gönderimden ya da "bitti"den önce); kapsadığı hiçbir şey değişmediyse ya da aynı şey kanıtlandıysa hiç. Sınırda ertelenen her kontrol koşulur. Fazla düzgün sonuç bozuk ölçümdür: önce bir satır elle doğrulanır.
@@ -149,7 +149,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 | Koordinatör devralır | `HANDOFF.md`, `EKRAN-PLANI.md` | — |
 | Mert ürünle ilgili istek getirir | `ILKELER.md`, `KARARLAR.md` ilgili bölüm | — |
 | Backlog'dan iş alınır | madde + kod (`nf-okur`) | tazelik hükmü → `BACKLOG.md` (koordinatör) |
-| Ekran işi | `EKRAN-PLANI.md`, `ekranlar/<no>-<ekran>/OZET.md`, `KARARLAR.md` "Ekran kararları", `docs/design-canvas.md` | kendi raporu → `ekranlar/<no>-<ekran>/uygulama/` (oturum) |
+| Ekran işi | `EKRAN-PLANI.md`, `ekranlar/<no>-<ekran>/EKRAN.md` ve `OZET.md`, `KARARLAR.md` "Ekran kararları", `docs/design-canvas.md` | listede ✅ + sha (sahip oturum); kendi raporu → `ekranlar/<no>-<ekran>/uygulama/` (oturum) |
 | R2–R3 iş başlar | `tasks/_TEMPLATE.md` | `tasks/<ID>.md` (oturum) |
 | Koordinatör karar verir | — | `KOORDINATOR-KARARLARI.md`, 5N1K etiketiyle (koordinatör) |
 | Mert ürün kararı verir | — | `KARARLAR.md` (koordinatör) |

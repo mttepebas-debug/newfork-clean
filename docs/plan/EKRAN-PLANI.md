@@ -22,9 +22,17 @@ FOUNDATION-B ve `ILERLEME-PLANI.md` (artık `docs/archive/`) kayıt olarak durur
    - açık backlog maddeleri, tazelik ölçümüyle, ve prototip farkları, "taşı / bırak" önerisiyle (`nf-planlama`).
 2. **Kayıt.** Raporlar olduğu gibi repoya girer: `docs/plan/ekranlar/<no>-<ekran>/` klasörüne, her ajan için bir dosya (`A-backlog-prototip.md`, `B-guvenlik.md`, `C-gorsel.md`, `D-kod-davranis.md`) ve bir `OZET.md`. Özet, bulguları tek listede toplar; Mert'in seçimleri ve kapanış durumu da oraya yazılır.
 3. **Konuşma.** Mert'e özet gider: bulgular ve taşı / bırak listesi. Seçimler tıklamalı yapılır. Görsel kararlar gerçek ekranda varyantla verilir (P04). Davranış kuralları önce sohbette konuşulur (P18).
-4. **Görev dosyası.** `docs/plan/tasks/EKRAN-<ad>.md` açılır; ne zaman bitmiş sayılacağı ölçülebilir yazılır, risk sınıfı belirtilir (`CLAUDE.md` §4.3); görev dosyasını işi yapacak oturum yazar, koordinatör onaylar.
-5. **Uygulama ve inceleme.** İşi rol oturumları yapar, risk sınıfına göre incelenir, tam kapıdan geçer, main'e alınır. Her dilimin raporu ve incelemesi repoda arşivlenir (aşağıda "Uygulama arşivi").
-6. **Kapanış.** Ekran "bitti" diye işaretlenir; kanıtlar görev dosyasına ve `OZET.md`'ye yazılır; arşivin "Sonrası için" maddeleri damıtılır (aşağıda); kısa rapor gider; sonraki ekrana geçilir.
+4. **Ekran dosyası ve kabul listesi** (Mert, 2026-10-07; ILKELER P17). `docs/plan/ekranlar/<no>-<ekran>/EKRAN.md` açılır: keşiften, `OZET.md`'den ve KARARLAR'dan çıkan **tek** kabul listesi. Görev dosyası açılmaz; risk sınıfı madde başına yazılır.
+   - **Tek defter:** ekranın açık backlog maddeleri listeye taşınır ve `BACKLOG.md`'den çıkar (maddenin altına "EKRAN-<no> listesine taşındı <tarih>"). İş yalnız listede izlenir.
+   - **Onay:** Mert listeyi başlamadan tek turda onaylar; liste sonradan yalnız Mert'in kararıyla değişir.
+   - **Biçim:** `| # | Davranış (kim, ne yapar, ne görür) | Sınıf | Kanıt (test adı / ekran görüntüsü) | Durum |`. Durum: ⏳ açık · ✅ `<sha>` · ⏭ BL-xxx (Mert'in onayı, tarih).
+5. **Uygulama: tek sahip oturum.** Listeyi bir oturum veritabanından ekrana uçtan uca işler; bir katmana girerken o rolün dosyasını (`.claude/agents/<rol>.md`) okur.
+   - **Madde döngüsü:** önce kırmızı test → kod → yeşil → listede ✅ ve commit sha.
+   - **Durum dosyada yaşar:** bağlam dolarsa oturum temizlenir ve listeden devam eder.
+   - **İkinci oturum** yalnız birbirinden bağımsız maddeler için, sahip isterse açılır.
+   - **İnceleme** madde başına değil iş sınırında, listedeki en yüksek sınıfa göre (`CLAUDE.md` §4.3; R3 madde varsa `nf-guvenlik` zorunlu).
+   - Yolda bulunan, listede olmayan şey listeye eklenmez, rapora yazılır (`CLAUDE.md` §4.3 madde 5).
+6. **Kapanış.** Ekran, listede ⏳ kalmayınca biter. Her madde ya ✅ (kanıt + sha) ya ⏭ (Mert'in onayıyla backlog'a, BL numarasıyla). "Başka dilime ya da oturuma bırakıldı" hâli yoktur. Görsel maddeler ekran görüntüsüyle kanıtlanır; kapanışta Mert bir tur bakar, itiraz ettiği madde ⏳'e döner. Ardından tam kapı ve main CI yeşil, "Sonrası için" maddeleri damıtılır (aşağıda), kısa rapor gider, sonraki ekrana geçilir.
 
 ### Uygulama arşivi ve damıtma (Mert, 2026-10-06: "token ve zaman harcamışken bulgular unutulacağına dokümante edilip saklansın"; format koordinatörün, KK-163)
 - **Arşiv (değişmez):** `docs/plan/ekranlar/<no>-<ekran>/uygulama/<dilim>.md` (ör. `01-schedule/uygulama/W-1a.md`, `02-requests/uygulama/A0.md`). Varyant ve ölçüm raporları da (`VAR.md`, `DRAG-olcum.md`). İşi yapan oturum dosyayı **kendi dilim commit'ine** ekler; ek gönderim yok. Sonradan düzeltilmez: tarihli, sha'lı "o anki fotoğraf".
@@ -61,14 +69,10 @@ Dört görev:
 - prototipten taşı / bırak listesi;
 - daha sonra Mert'in seçimleri ve kapanış durumu.
 
-**Bir ekran ne zaman bitmiş sayılır:**
-- keşif bulguları kapandı ya da adıyla ertelendi;
-- Mert'in "taşı" dediği prototip maddeleri gerçek uygulamada;
-- ekranın açık backlog maddeleri kapandı ya da adıyla dışarıda (yukarıdaki 2. seçim);
-- tam kapı yeşil, main CI yeşil;
-- masaüstü ve telefon ekran görüntüsü alındı.
+**Bir ekran ne zaman bitmiş sayılır:** `EKRAN.md` listesinde ⏳ kalmadığında ("Bir ekranın turu" 6). Keşif bulguları, Mert'in "taşı" dediği prototip maddeleri ve ekranın açık backlog maddeleri listeye madde olarak girdiği için ayrıca sayılmaz.
 
 ## Uygulama düzeni: hatlar (koordinatör kararı 2026-10-06, KK-161; Mert "en doğru kararı sen ver")
+**Yerini aldı (Mert, 2026-10-07; ILKELER P17):** ekran işi tek sahip oturumla yürür ("Bir ekranın turu" 5). Aşağıdaki hat düzeni yalnız şu an sürmekte olan dilimler bitene kadar geçerlidir; hatta yeni dilim açılmaz. Bir ekranın kalan işi, o ekranın `EKRAN.md` listesine taşınır.
 Schedule ve Requests paralel yürür, ama işler ekrana göre değil **hatta** göre dağılır. Bilgisayar tek (aynı anda tek ağır koşu, `CLAUDE.md` §4.2) ve iki ekranın veri işi aynı yetki ve test dosyalarına dokunuyor.
 - **Veri hattı** (tek `nf-db` oturumu): iki ekranın veri ve güvenlik dilimleri önem sırasıyla — EKRAN-02 A0 (talep kaybı) → EKRAN-01 DB-1a → DB-1b → DB-2 → DB-3 → EKRAN-02 A1 → A2 → A3 → EKRAN-01 DB-4 → DB-1c (W-1b gerektirirse).
 - **Web hattı** (tek `nf-backend` oturumu): EKRAN-01 W-1a → BE-1 → BE-2 → W-1b (DB-1b + DB-2 bitince) → EKRAN-02 B1 (A1–A3 bitince) → B2.

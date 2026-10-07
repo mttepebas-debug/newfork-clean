@@ -242,10 +242,11 @@
   "Kur, uyarı olarak"; 09-24 "Uyar/soft engel/hard engel".
 - Kanıt (2026-10-02, ürün tarafında üçüncü kademe): kapalı güne sonradan vardiya yazma için Mert seçenek dışı yazdı: "3 derece olsun. 1-asla shift yazılmaz 2-her celle shift yazılınca onay ister 3-bir kere onay verince o edit kapanana kadar bir daha uyarı vermez." İki dereceli öneri (ayar belirlesin) reddedildi (KARARLAR K17). Koşuldaki "ürün iş kurallarında kesin engel" eğilimi sürüyor ama kademe sayısı ürün ayarında da üçe çıktı.
 
-**P17. Tek hat; hızlanmak işi bölmektir.**
-- Kural: başlanan iş bitene kadar sürer; yolda bulunanlar backlog'a yazılır. "Hızlanmak", tek
-  işi parçalayıp birden çok oturumda yürütmek demektir. Paralel başka bir iş yalnız seçenek
-  olarak sunulur.
+**P17. Tek hat; ekran tek sahiple biter.**
+- Kural: başlanan iş bitene kadar sürer; yolda bulunanlar backlog'a yazılır. Ekran işi tek sahip
+  oturumda uçtan uca (veritabanından ekrana) yürür; rol ya da dilim diye oturumlara bölünmez.
+  İkinci oturum yalnız birbirinden bağımsız maddeler için, sahip isterse açılır. Paralel başka
+  bir iş yalnız seçenek olarak sunulur.
 - Koşul: aynı işle doğrudan ilgili küçük bulgular, güvenlik hataları ve görsel hatalar mevcut işe
   eklenir.
 - İkinci iş (Mert, 2026-10-01): yalnız Mert isterse açılır. Bağımsız bir iş bulunursa Claude onu
@@ -253,6 +254,7 @@
 - Kanıt: 09-28 "Tek hat. Bir taske başlayınca o task bitene kadar ilerleyelim", "1 taski küçük
   parçalara bölüp aynı anda birden fazla sessionda ilerletme".
 - Kanıt (2026-10-04, ters seçim): Settings → Documents tablosu (tek ekran, yalnız görünüm, R1) için "AVAIL-002 bitince" önerildi; Mert "Hemen, paralel" seçti. Mert'in kendi istediği küçük ve dosyaları çakışmayan ekran işi, tek hat sürerken de paralel açılabiliyor; ikinci işi Mert açar kuralı geçerli (KARARLAR Ekran kararları → Settings → Documents).
+- Kanıt (2026-10-07, ters çevrildi): Schedule kapanış ölçümü (`ekranlar/01-schedule/KAPANIS-OLCUMU-2026-10-06.md`) 19 dilimden 7'sinin hiç başlamadığını, "başka dilime bırakıldı" maddelerinin açılmadığını, kapsamdaki 114 BL'nin 113'ünün kayıtta açık kaldığını gösterdi. Mert dört seçimin dördünde önerileni seçti: tek sahip oturum, kabul listesini başlamadan Mert onaylar, ekrana alınan BL listeye taşınır, görsel madde ekran görüntüsü + Mert'in turu (`EKRAN-PLANI.md` "Bir ekranın turu" 4–6). 09-28'deki "hızlanmak = işi parçalayıp birden çok oturumda yürütmek" ekran işinde geçersiz: bölmek ek yerlerinde boşluk üretti.
 
 **P18. Ürün kararları tek tek sorulur; temel modeller önce sohbette konuşulur.**
 - Kural: "hepsi önerilen gibi" paketi ya da açıklamasız evet/hayır listesi sunulmaz. Temel
