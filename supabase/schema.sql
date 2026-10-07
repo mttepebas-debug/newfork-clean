@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 437, last: 20261007130000_restoring_a_swap_is_not_an_undo_step.sql
--- fingerprint: sha256:d1197f9953eb00e06865cfca87d2221e8f8d0eb37e02026803390cc996ccc7e6
+-- migrations: 438, last: 20261007140000_important_dates_and_announcements_refuse_without_retry.sql
+-- fingerprint: sha256:8b7e823a4cc9d62b5b507fab0e29f6346432b02522a82fe1d128882f8cecf982
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17011,6 +17011,16 @@ begin
     jsonb_build_object('status', item.status, 'recipient_count', cardinality(told)));
   return jsonb_build_object('status', item.status, 'announcement_id', item.id, 'revision', item.revision,
     'recipient_count', cardinality(told), 'notification_enqueued_count', cardinality(told));
+exception when serialization_failure then
+  -- BL-958: a conflict that is still there on the next try answers PT409, which
+  -- PostgREST does not run again; 40001 it retries forever. Same refusal, same
+  -- sentence and reason (hint), as publish_schedule_draft_service does.
+  declare
+    why text;
+  begin
+    get stacked diagnostics why = pg_exception_hint;
+    raise exception '%', sqlerrm using errcode = 'PT409', hint = why;
+  end;
 end;
 $$;
 
@@ -20599,6 +20609,16 @@ begin
     'announcement', item.id::text, jsonb_build_object('content_changed', content_changed));
   return jsonb_build_object('status', item.status, 'announcement_id', item.id, 'revision', item.revision,
     'recipient_count', cardinality(item.delivered_to));
+exception when serialization_failure then
+  -- BL-958: a conflict that is still there on the next try answers PT409, which
+  -- PostgREST does not run again; 40001 it retries forever. Same refusal, same
+  -- sentence and reason (hint), as publish_schedule_draft_service does.
+  declare
+    why text;
+  begin
+    get stacked diagnostics why = pg_exception_hint;
+    raise exception '%', sqlerrm using errcode = 'PT409', hint = why;
+  end;
 end;
 $_$;
 
@@ -21306,6 +21326,16 @@ begin
     'shifts_opened', jsonb_array_length(opened),
     'draft_shifts_opened', coalesce(jsonb_array_length(impact -> 'draft_shift_ids'), 0),
     'shifts_stay_open', case when before.id is null then 0 else app_private.important_date_stay_open(item) end);
+exception when serialization_failure then
+  -- BL-958: a conflict that is still there on the next try answers PT409, which
+  -- PostgREST does not run again; 40001 it retries forever. Same refusal, same
+  -- sentence and reason (hint), as publish_schedule_draft_service does.
+  declare
+    why text;
+  begin
+    get stacked diagnostics why = pg_exception_hint;
+    raise exception '%', sqlerrm using errcode = 'PT409', hint = why;
+  end;
 end;
 $$;
 
@@ -23029,6 +23059,16 @@ begin
     'announcement', item.id::text);
   return jsonb_build_object('status', item.status, 'announcement_id', item.id, 'revision', item.revision,
     'archived_at', item.archived_at, 'recipient_count', 0);
+exception when serialization_failure then
+  -- BL-958: a conflict that is still there on the next try answers PT409, which
+  -- PostgREST does not run again; 40001 it retries forever. Same refusal, same
+  -- sentence and reason (hint), as publish_schedule_draft_service does.
+  declare
+    why text;
+  begin
+    get stacked diagnostics why = pg_exception_hint;
+    raise exception '%', sqlerrm using errcode = 'PT409', hint = why;
+  end;
 end;
 $$;
 
@@ -23385,6 +23425,16 @@ begin
     'shifts_opened', jsonb_array_length(opened),
     'draft_shifts_opened', coalesce(jsonb_array_length(impact -> 'draft_shift_ids'), 0),
     'shifts_stay_open', app_private.important_date_stay_open(item));
+exception when serialization_failure then
+  -- BL-958: a conflict that is still there on the next try answers PT409, which
+  -- PostgREST does not run again; 40001 it retries forever. Same refusal, same
+  -- sentence and reason (hint), as publish_schedule_draft_service does.
+  declare
+    why text;
+  begin
+    get stacked diagnostics why = pg_exception_hint;
+    raise exception '%', sqlerrm using errcode = 'PT409', hint = why;
+  end;
 end;
 $$;
 

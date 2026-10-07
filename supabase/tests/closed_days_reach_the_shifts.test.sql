@@ -110,10 +110,12 @@ select is(pg_temp.try($$select pg_temp.close_day('dina', array['K'], 'Dina close
   '42501 authz.missing_permission', 'D4: she cannot drop them: closing over shifts needs schedule.edit there');
 select is(pg_temp.holder('ali_mon'), tests.id('c:ali'), 'D4: Ali keeps his shift');
 
+-- BL-958: the refusal answers PT409, never 40001: PostgREST takes 40001 for a
+-- passing conflict and runs the same request again forever, holding a connection.
 select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0))$$),
-  '40001 important_date.closure_changed', 'K13: closing it without having seen the shifts is refused');
+  'PT409 important_date.closure_changed', 'K13: closing it without having seen the shifts is refused');
 select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0), fingerprint => 'stale')$$),
-  '40001 important_date.closure_changed', 'K13: so is closing it on a list that changed since');
+  'PT409 important_date.closure_changed', 'K13: so is closing it on a list that changed since');
 
 select tests.remember('c:date:monday', (pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0),
   keep => array[tests.id('c:shift:can_mon')],
@@ -167,7 +169,7 @@ select is(pg_temp.holder('ali_mon'), null, 'K15: Ali''s Monday shift does not co
 -- Republishing a closed day lands on the shifts again: they are listed first.
 select public.set_important_date_state_service(pg_temp.u('ayse'), tests.id('c'), tests.id('c:date:monday'), 'restore');
 select is(pg_temp.try(format($$select public.set_important_date_state_service(pg_temp.u('ayse'), tests.id('c'), %L, 'republish')$$,
-  tests.id('c:date:monday'))), '40001 important_date.closure_changed',
+  tests.id('c:date:monday'))), 'PT409 important_date.closure_changed',
   'K13: republishing a closed day over published shifts asks for the list first');
 select is(pg_temp.try(format($$select public.set_important_date_state_service(pg_temp.u('ayse'), tests.id('c'), %L, 'republish',
   array[%L]::uuid[], %L)$$, tests.id('c:date:monday'), tests.id('c:shift:can_mon'),

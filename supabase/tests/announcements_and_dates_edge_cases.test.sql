@@ -312,20 +312,35 @@ select is((select count(*)::integer from jsonb_array_elements(public.read_import
 select tests.remember('r:ann:rev', pg_temp.save_ann('owner', array['K'], 'Revisioned'));
 select is(pg_temp.try(format($$select public.save_announcement_audience_service(%L, %L, %L, null, 'Changed', 'Body', 'general',
     array['employee'], %L::uuid[], null, null, null, '{}', '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.locs(array['K']))),
-  '40001 ', 'KK-92 c: an announcement change that names no revision is refused');
+  'PT409 ', 'KK-92 c: an announcement change that names no revision is refused');
 select is(pg_temp.try(format($$select public.save_announcement_audience_service(%L, %L, %L, %s, 'Changed', 'Body', 'general',
     array['employee'], %L::uuid[], null, null, null, '{}', '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'),
     pg_temp.rev(tests.id('r:ann:rev')) - 1, pg_temp.locs(array['K']))),
-  '40001 ', 'KK-92 c: so is one made on an old revision');
+  'PT409 ', 'KK-92 c: so is one made on an old revision');
 select tests.remember('r:date:rev', pg_temp.save_date('owner', array['K'], 'Revisioned date'));
 select pg_temp.save_date('owner', array['K'], 'Revisioned date, saved once', id => tests.id('r:date:rev'));
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
     'none', '', true, %L::uuid[], %s)$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']),
     coalesce(pg_temp.date_rev(tests.id('r:date:rev')) - 1, 1))),
-  '40001 ', 'KK-92 c: an important date saved on an old revision is refused, not lost');
+  'PT409 ', 'KK-92 c: an important date saved on an old revision is refused, not lost');
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
     'none', '', true, %L::uuid[], null)$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']))),
-  '40001 ', 'KK-92 c: so is one that names no revision');
+  'PT409 ', 'KK-92 c: so is one that names no revision');
+select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, %L, %L, %s, 'archive')$$,
+    pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.rev(tests.id('r:ann:rev')) - 1)),
+  'PT409 ', 'KK-92 c: archiving an announcement on an old revision is refused too');
+
+-- BL-958: none of these refusals is a 40001. PostgREST takes 40001 for a passing
+-- conflict and runs the same request again, forever, holding one of its
+-- connections; ten such saves stop the API for every workspace. Each service
+-- turns a 40001 from its own body or a helper into PT409, keeping the hint.
+select is(array(
+  select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname in ('save_important_date_service', 'set_important_date_state_service', 'publish_announcement_service',
+                      'save_announcement_audience_service', 'set_announcement_state_service')
+    and pg_get_functiondef(p.oid) !~ 'exception\s+when\s+serialization_failure\s+then'
+  order by 1), '{}'::text[], 'BL-958: every important date and announcement service turns a 40001 into PT409');
 
 -- 11. Republishing an important date (K7) ---------------------------------------------------
 
