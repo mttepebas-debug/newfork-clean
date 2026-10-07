@@ -4,7 +4,7 @@ import { ListPagination } from "./ListPagination";
 import { RequestCards, RequestsTable } from "./RequestsTable";
 import { SwapReview } from "./SwapReview";
 import "./requests-catalog.css";
-import { timeOffOpenedShiftCount, type TimeOffRequest } from "@newfork/shared";
+import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -87,8 +87,10 @@ function ScheduleRequestsPageContent() {
   const [locationId, setLocationId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(params.get("request") ?? "");
-  // EKRAN-02 C2 (H2): the swap whose review window is open over the list.
-  const [swapId, setSwapId] = useState("");
+  // EKRAN-02 C2 (H2): the swap whose review window is open over the list. The
+  // window reads the list's latest copy and keeps the last one it saw, so a
+  // refresh that no longer lists the swap does not pull it away (P26).
+  const [openSwap, setOpenSwap] = useState<ExchangeCase | null>(null);
   const [act, setAct] = useState<Act | null>(null);
   const [actText, setActText] = useState("");
   const [actError, setActError] = useState("");
@@ -105,6 +107,7 @@ function ScheduleRequestsPageContent() {
   );
   const counts = openCounts(allRows);
   const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => row.type === view.type), view.page, view.pageSize);
+  const swap = openSwap ? (data.exchanges.find((item) => item.id === openSwap.id) ?? openSwap) : null;
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
   const selected = timeOffById.get(selectedId) ?? null;
@@ -141,7 +144,7 @@ function ScheduleRequestsPageContent() {
     // A swap opens its review window over the list (H2). A cover or open
     // shift opens its review where it lives today (Shift Hub's manager view,
     // ?case=); that is a step the browser's Back undoes, so it is pushed.
-    if (row.source === "exchange" && row.type === "swap") setSwapId(row.id);
+    if (row.source === "exchange" && row.type === "swap") setOpenSwap(row.request);
     else if (row.source === "exchange")
       requestAvailabilityNavigation(() =>
         setParams((previous) => {
@@ -391,23 +394,20 @@ function ScheduleRequestsPageContent() {
           />
         </CatalogDrawer>
       )}
-      {(() => {
-        const swap = data.exchanges.find((item) => item.id === swapId && item.kind === "swap");
-        return swap ? (
-          <SwapReview
-            // One window per swap: a refresh keeps a reason being typed (P26).
-            key={swap.id}
-            item={swap}
-            workspace={workspaceId}
-            timeFormat={timeFormat}
-            onClose={() => setSwapId("")}
-            onDone={(message) => {
-              setSwapId("");
-              toast.success(message);
-            }}
-          />
-        ) : null;
-      })()}
+      {swap ? (
+        <SwapReview
+          // One window per swap: a refresh keeps a reason being typed (P26).
+          key={swap.id}
+          item={swap}
+          workspace={workspaceId}
+          timeFormat={timeFormat}
+          onClose={() => setOpenSwap(null)}
+          onDone={(message) => {
+            setOpenSwap(null);
+            toast.success(message);
+          }}
+        />
+      ) : null}
       {act ? (
         <ActDialog
           act={act}
