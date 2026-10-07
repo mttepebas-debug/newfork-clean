@@ -332,15 +332,15 @@ select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, 
 
 -- BL-958: none of these refusals is a 40001. PostgREST takes 40001 for a passing
 -- conflict and runs the same request again, forever, holding one of its
--- connections; ten such saves stop the API for every workspace. Each service
--- turns a 40001 from its own body or a helper into PT409, keeping the hint.
+-- connections; ten such saves stop the API for every workspace. A lasting
+-- conflict answers PT409, keeping its hint.
 select is(array(
   select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public'
     and p.proname in ('save_important_date_service', 'set_important_date_state_service', 'publish_announcement_service',
                       'save_announcement_audience_service', 'set_announcement_state_service')
-    and pg_get_functiondef(p.oid) !~ 'exception\s+when\s+serialization_failure\s+then'
-  order by 1), '{}'::text[], 'BL-958: every important date and announcement service turns a 40001 into PT409');
+    and p.prosrc ~ 'errcode\s*=\s*''40001'''
+  order by 1), '{}'::text[], 'BL-958: no important date or announcement service refuses with 40001');
 
 -- 11. Republishing an important date (K7) ---------------------------------------------------
 

@@ -40,7 +40,7 @@ select is(
   'pending', 'and the send expects the same one');
 select throws_ok(format($$select public.submit_time_off_service(%L, %L, %L, 'old zone', 'America/Chicago', gen_random_uuid())$$,
     tests.user('th:ali'), tests.id('th'), jsonb_build_array(jsonb_build_object('segment_date', tests.week(3) + 2))),
-  '40001', null, 'a time zone other than the hub''s is turned back');
+  'PT409', null, 'a time zone other than the hub''s is turned back');
 
 select * from finish();
 rollback;

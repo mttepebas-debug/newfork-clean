@@ -42,7 +42,7 @@ select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period(
 select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','09:00','12:00'),pg_temp.tp_period('2035-01-15','11:00','13:00')))$$,'22023',null,'overlapping original pieces are rejected');
 select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15'),pg_temp.tp_period('2035-01-15')))$$,'22023',null,'duplicate full days are rejected');
 select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period(current_date-2)))$$,'22023',null,'past dates are checked in the location time zone');
-select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15')),gen_random_uuid(),'UTC')$$,'40001',null,'hours shown in another time zone than the primary location''s are refused');
+select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15')),gen_random_uuid(),'UTC')$$,'PT409',null,'hours shown in another time zone than the primary location''s are refused');
 
 update tp_state set result=pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','09:00','12:00')),op);
 update tp_state set request=(result->>'request_id')::uuid;
@@ -53,7 +53,7 @@ select is((select ends_at from public.schedule_time_off_segments where id=(selec
 select is((select time_timezone from public.schedule_time_off_segments where id=(select segment from tp_state)),'America/New_York','the primary location''s time zone is snapshotted');
 select is(pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','09:00','12:00')),op),result,'uncertain network retries return the same result') from tp_state;
 select is((select count(*)::int from public.schedule_time_off_events where request_id=(select request from tp_state)),1,'retry emits no duplicate request event');
-select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','09:00','13:00')),op) from tp_state$$,'40001',null,'a request key cannot be reused for changed hours');
+select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','09:00','13:00')),op) from tp_state$$,'PT409',null,'a request key cannot be reused for changed hours');
 select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','11:00','12:00'))) from tp_state$$,'23514','overlapping time off request exists','overlapping a waiting request is refused');
 select lives_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','12:00','13:00'))) from tp_state$$,'23514 is not raised for touching half-open boundaries');
 select throws_ok($$update public.schedule_time_off_segments set start_time='10:00' where id=(select segment from tp_state)$$,'55000',null,'a decision cannot rewrite original requested clocks');
@@ -63,7 +63,7 @@ select throws_ok($$update public.schedule_time_off_segments set starts_at='2035-
 
 select lives_ok($$select pg_temp.tp_decide(request,'approve') from tp_state$$,'approving the request keeps the original snapshot');
 update public.locations set timezone='UTC' where id=(select loc from tp_state);
-select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-16','09:00','12:00')),gen_random_uuid(),'America/New_York') from tp_state$$,'40001',null,'a changed location time zone cannot silently reinterpret a new request');
+select throws_ok($$select pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-16','09:00','12:00')),gen_random_uuid(),'America/New_York') from tp_state$$,'PT409',null,'a changed location time zone cannot silently reinterpret a new request');
 select is(pg_temp.tp_submit(jsonb_build_array(pg_temp.tp_period('2035-01-15','09:00','12:00')),op,'America/New_York'),result,'replaying an accepted command remains safe after a location edit') from tp_state;
 select is(public.time_off_period_span(segment),tstzrange('2035-01-15 14:00Z','2035-01-15 17:00Z','[)'),'later location edits cannot move saved leave') from tp_state;
 select is(public.assess_weekly_shift_availability(w,emp,jsonb_build_object('location_id',other_loc,'scheduled_date','2035-01-15','time_basis','explicit','time_timezone','UTC','start_time','15:00','end_time','16:00'))->>'operation','blocked','canonical assessment blocks the snapshotted interval across locations') from tp_state;

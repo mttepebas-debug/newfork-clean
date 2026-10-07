@@ -99,7 +99,7 @@ select is(pg_temp.refusal(format($$select public.submit_time_off_service(%L, %L,
 select is(pg_temp.refusal(format($$select public.submit_time_off_service(%L, %L,
     jsonb_build_array(jsonb_build_object('segment_date', %L::date)), '', 'America/New_York', gen_random_uuid())$$,
     tests.user('tv:ali'), tests.id('tv'), tests.week(2) + 2)),
-  '40001', 'hours are asked in the primary location''s time zone');
+  'PT409', 'hours are asked in the primary location''s time zone');
 select is(pg_temp.refusal(format($$select public.submit_time_off_service(%L, %L,
     jsonb_build_array(jsonb_build_object('segment_date', %L::date)), '', 'Europe/Istanbul', gen_random_uuid())$$,
     tests.user('tv:ali'), tests.id('tv'), tests.week(1) + 2)),
@@ -163,7 +163,7 @@ select pg_temp.decide('ayse', tests.id('tv:ali:4'), 'approve');
 select is((pg_temp.decide('ayse', tests.id('tv:ali:4'), 'deny') ->> 'status'), 'denied',
   'a vote may change while the request is open; turning to a denial closes it');
 select is(pg_temp.refusal(format($$select pg_temp.decide('mehmet', %L, 'approve')$$, tests.id('tv:ali:4'))),
-  '40001', 'a closed request takes no more votes');
+  'PT409', 'a closed request takes no more votes');
 
 select tests.remember('tv:ali:5', tests.leave('tv', 'ali', 5));
 select is(pg_temp.decide('zeynep', tests.id('tv:ali:5'), 'approve') - 'revision' - 'request_id',
@@ -218,7 +218,7 @@ select is(
   '{"KDK": 1, "BJK": 1}'::jsonb, 'the request shows the published shift it would open at each location');
 select is(pg_temp.refusal(format($$select public.decide_time_off_service(%L, %L, %L, 'approve', '', 'stale')$$,
     tests.user('tv:ayse'), tests.id('tv'), tests.id('tv:ali:10'))),
-  '40001', 'an approval given on another picture of the shifts is refused');
+  'PT409', 'an approval given on another picture of the shifts is refused');
 select pg_temp.decide('ayse', tests.id('tv:ali:10'), 'approve');
 -- The same week published again, unchanged.
 select tests.publish_week('tv', 10, '[
@@ -362,7 +362,7 @@ select is((select x ->> 'display_status' from jsonb_array_elements(public.get_em
   'Withdrawn', 'Emre reads it as withdrawn, not revoked by a manager');
 select throws_ok(format($$select public.decide_time_off_service(%L, %L, %L, 'approve', '', %L)$$, tests.user('tv:ayse'), tests.id('tv'),
     tests.id('tv:emre:5'), pg_temp.fingerprint(tests.id('tv:emre:5'))),
-  '40001', null, 'a vote arriving after the withdrawal is turned back');
+  'PT409', null, 'a vote arriving after the withdrawal is turned back');
 
 -- 7. What each side reads ------------------------------------------------------
 

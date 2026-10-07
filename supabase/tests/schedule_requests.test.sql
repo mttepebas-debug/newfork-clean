@@ -52,7 +52,7 @@ update phase6b_state set result=public.decide_time_off_service(tests.user('sr:mg
   app_private.time_off_impact(tests.id('sr'),tests.id('sr:request:alex'))->>'fingerprint');
 select is(result->>'status','approved','the manager of the only location decides the request') from phase6b_state;
 select is((public.get_schedule_requests_service(tests.user('sr:mgr'),tests.id('sr'))->>'time_off_pending_count')::integer,0,'a decided request leaves the pending count');
-select throws_ok(format($$select public.decide_time_off_service(%L,%L,%L,'deny','',null)$$,tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex')),'40001',null,'a closed request takes no further vote');
+select throws_ok(format($$select public.decide_time_off_service(%L,%L,%L,'deny','',null)$$,tests.user('sr:mgr'),tests.id('sr'),tests.id('sr:request:alex')),'PT409',null,'a closed request takes no further vote');
 
 select * from finish();
 rollback;

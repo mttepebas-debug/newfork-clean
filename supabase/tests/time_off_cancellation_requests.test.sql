@@ -46,14 +46,14 @@ $$;
 update tc set parent=pg_temp.tc_new('2035-01-15','09:00','17:00');
 update tc set segment=(select id from public.schedule_time_off_segments where request_id=tc.parent);
 update tc set original=(select to_jsonb(s) from public.schedule_time_off_segments s where id=tc.segment),periods=jsonb_build_array(jsonb_build_object('segment_id',segment,'starts_at','2035-01-15T15:00:00Z','ends_at','2035-01-15T19:00:00Z'));
-select throws_ok($$select public.employee_request_action_service(actor,w,parent,'time_off','cancel',2) from tc$$,'40001',null,'old cancel action cannot remove approved leave');
+select throws_ok($$select public.employee_request_action_service(actor,w,parent,'time_off','cancel',2) from tc$$,'PT409',null,'old cancel action cannot remove approved leave');
 -- The seeded owner is filed as an employee (BL-080), so this call now reaches the
 -- request lookup and answers P0002 like any employee naming somebody else's
 -- leave; the no-contract answer for that is 42501 + authz.out_of_scope.
 select throws_ok($$select public.request_time_off_cancellation_service(manager,w,parent,2,periods,'',op) from tc$$,'42501',null,'manager cannot submit a cancellation as another employee');
 select is(pg_temp.refusal($$select public.request_time_off_cancellation_service('af9c0000-0000-4000-8000-000000000004',w,parent,2,periods,'',op) from tc$$),'42501 authz.out_of_scope','another employee cannot cancel somebody else''s leave');
 select throws_ok($$select public.request_time_off_cancellation_service(actor,gen_random_uuid(),parent,2,periods,'',op) from tc$$,'42501',null,'workspace ownership is enforced');
-select throws_ok($$select public.request_time_off_cancellation_service(actor,w,parent,1,periods,'',op) from tc$$,'40001',null,'cancellation requires current parent revision');
+select throws_ok($$select public.request_time_off_cancellation_service(actor,w,parent,1,periods,'',op) from tc$$,'PT409',null,'cancellation requires current parent revision');
 select throws_ok($$select pg_temp.tc_cancel('[]')$$,'22023',null,'empty cancellation rejected');
 select throws_ok($$select pg_temp.tc_cancel(jsonb_build_array(jsonb_build_object('segment_id',gen_random_uuid(),'starts_at','2035-01-15T15:00:00Z','ends_at','2035-01-15T19:00:00Z')))$$,'22023',null,'unrelated parent segment rejected');
 select throws_ok($$select pg_temp.tc_cancel(jsonb_set(periods,'{0,ends_at}','"2035-01-15T23:00:00Z"')) from tc$$,'22023',null,'cancellation cannot include unapproved hours');
@@ -66,7 +66,7 @@ select is((select payload->>'title' from public.notification_outbox where subjec
 select is(public.time_off_effective_ranges(segment),'{["2035-01-15 14:00Z","2035-01-15 22:00Z")}'::tstzmultirange,'pending cancellation leaves all approved leave effective') from tc;
 select is((select revision from public.schedule_time_off_requests where id=(select parent from tc)),2,'requesting cancellation does not revise the approved decision');
 select is(pg_temp.tc_cancel(periods,op),result,'identical submit retry returns original cancellation') from tc;
-select throws_ok($$select pg_temp.tc_cancel(jsonb_set(periods,'{0,ends_at}','"2035-01-15T18:00:00Z"'),op) from tc$$,'40001',null,'operation key cannot change requested cancellation');
+select throws_ok($$select pg_temp.tc_cancel(jsonb_set(periods,'{0,ends_at}','"2035-01-15T18:00:00Z"'),op) from tc$$,'PT409',null,'operation key cannot change requested cancellation');
 select throws_ok($$select pg_temp.tc_cancel()$$,'23514',null,'only one cancellation can be pending for a leave request');
 select is(public.time_off_cancellation_context(w,parent)->>'pending_request_id',cancellation::text,'read model links parent to its pending cancellation') from tc;
 select is(public.time_off_cancellation_context(w,cancellation)->>'parent_request_id',parent::text,'read model identifies original approved leave') from tc;
@@ -86,7 +86,7 @@ rollback to savepoint denied;
 savepoint revoked_parent;
 select lives_ok($$select public.revoke_time_off_service(manager,w,parent,2,'Leave revoked') from tc$$,'manager can revoke original leave while cancellation is pending');
 select is((select status::text from public.schedule_time_off_requests where id=(select cancellation from tc)),'revoked','parent revoke closes obsolete pending cancellation');
-select throws_ok($$select pg_temp.tc_decide('approve')$$,'40001',null,'obsolete cancellation cannot apply after original leave changes');
+select throws_ok($$select pg_temp.tc_decide('approve')$$,'PT409',null,'obsolete cancellation cannot apply after original leave changes');
 rollback to savepoint revoked_parent;
 -- Location settings changing later cannot reinterpret the snapshotted hours.
 update public.locations set timezone='UTC' where id=(select loc from tc);
@@ -105,7 +105,7 @@ savepoint later_request;
 select lives_ok($$select public.submit_time_off_service(actor,w,'[{"segment_date":"2035-01-15","start_time":"16:00","end_time":"18:00"}]','New request after cancellation','UTC',gen_random_uuid()) from tc$$,'cancelled hours can be requested again without resurrecting the old leave');
 rollback to savepoint later_request;
 select is(pg_temp.refusal($$select public.revoke_time_off_service(manager,w,cancellation,2,'Reverse it') from tc$$),'42501 authz.out_of_scope','a completed cancellation is not leave that can be revoked');
-select throws_ok($$select public.revoke_time_off_service(manager,w,parent,2,'Stale screen') from tc$$,'40001',null,'stale parent manager decision rejected');
+select throws_ok($$select public.revoke_time_off_service(manager,w,parent,2,'Stale screen') from tc$$,'PT409',null,'stale parent manager decision rejected');
 select throws_ok($$update public.time_off_cancellation_links set parent_revision=1 where request_id=(select cancellation from tc)$$,'55000',null,'cancellation origin cannot be changed');
 select throws_ok($$delete from public.time_off_cancellation_periods where request_id=(select cancellation from tc)$$,'55000',null,'cancellation period history cannot be erased');
 select is((select jsonb_agg(to_jsonb(ps) order by ps.id) from public.schedule_published_shifts ps),published,'cancellation does not reassign any published shift') from tc;
