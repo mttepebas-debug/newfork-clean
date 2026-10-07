@@ -174,5 +174,47 @@ select throws_ok($q$select public.create_owner_workspace_service('a5500000-0000-
 select lives_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000013','Expired invitee business')$q$,'expired invitation does not block creation');
 select lives_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000014','Owner second business')$q$,'active owner can create while an invitation is pending');
 reset role;
+-- BL-906 (GUVENLIK-A GA-4): "Close later" finishes on its date. Close Later Co
+-- is past its date and Not Yet Co is not; the closure job closes only the first,
+-- the way "Close now" closes a workspace.
+insert into auth.users(id,email,email_confirmed_at) values
+('a5500000-0000-4000-8000-000000000015','close-later-owner@example.test',now()),
+('a5500000-0000-4000-8000-000000000016','close-later-admin@example.test',now()),
+('a5500000-0000-4000-8000-000000000017','not-yet-owner@example.test',now());
+insert into public.workspaces(id,name,created_by) values
+('a5500000-0000-4000-8000-000000000104','Close Later Co','a5500000-0000-4000-8000-000000000015'),
+('a5500000-0000-4000-8000-000000000105','Not Yet Co','a5500000-0000-4000-8000-000000000017');
+insert into public.workspace_memberships(workspace_id,user_id,role,status) values
+('a5500000-0000-4000-8000-000000000104','a5500000-0000-4000-8000-000000000015','owner','active'),
+('a5500000-0000-4000-8000-000000000104','a5500000-0000-4000-8000-000000000016','admin','active'),
+('a5500000-0000-4000-8000-000000000105','a5500000-0000-4000-8000-000000000017','owner','active');
+insert into public.locations(short_name,id,workspace_id,name,street_address,city,region,postal_code,timezone)
+values ('CLC1','a5500000-0000-4000-8000-000000000604','a5500000-0000-4000-8000-000000000104','Close Later Main','1 Main St','Los Angeles','CA','90001','America/Los_Angeles');
+set local role service_role;
+select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000015','a5500000-0000-4000-8000-000000000104','scheduled_end_period',null,true,now()+interval '3 days')$q$,'the owner of Close Later Co closes it later');
+select lives_ok($q$select public.request_workspace_closure_service('a5500000-0000-4000-8000-000000000017','a5500000-0000-4000-8000-000000000105','scheduled_end_period',null,true,now()+interval '3 days')$q$,'the owner of Not Yet Co closes it later');
+reset role;
+-- ponytail: now() is fixed inside the transaction, so Close Later Co's date is
+-- moved into the past by hand.
+update public.workspaces set closure_effective_at = now() - interval '1 minute' where id = 'a5500000-0000-4000-8000-000000000104';
+update public.workspace_closure_requests set effective_at = now() - interval '1 minute' where workspace_id = 'a5500000-0000-4000-8000-000000000104' and status = 'scheduled';
+select lives_ok($q$select app_private.complete_due_workspace_closures()$q$,'the closure job runs');
+select is((select lifecycle_status::text from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),'deleted','a workspace past its Close later date is closed');
+select is((select closed_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),(select closure_effective_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),'it closes at the date it promised');
+select is((select count(*)::int from public.workspace_memberships where workspace_id='a5500000-0000-4000-8000-000000000104' and status<>'suspended'),0,'its memberships are suspended');
+select is((select status::text from public.workspace_closure_requests where workspace_id='a5500000-0000-4000-8000-000000000104' order by created_at desc limit 1),'completed','its closure request is completed');
+select ok(exists(select 1 from public.workspace_retention_purge_jobs where workspace_id='a5500000-0000-4000-8000-000000000104'),'its data is queued for removal');
+select ok(exists(select 1 from public.audit_events where workspace_id='a5500000-0000-4000-8000-000000000104' and action='workspace.closure.completed_scheduled'),'the scheduled closure is audited');
+select is((select lifecycle_status::text from public.workspaces where id='a5500000-0000-4000-8000-000000000105'),'closure_scheduled','a workspace before its date stays scheduled');
+select set_config('request.jwt.claim.sub','a5500000-0000-4000-8000-000000000016',true);
+set local role authenticated;
+-- Most catalog updates already stop at the date (their read policy hides a
+-- closed workspace); adding rows and editing locations went on until now.
+select throws_ok($q$insert into public.departments(workspace_id,name) values ('a5500000-0000-4000-8000-000000000104','After close')$q$,'42501',null,'an admin of the closed workspace no longer adds to its settings');
+update public.locations set name='After close' where id='a5500000-0000-4000-8000-000000000604';
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+select is((select name from public.locations where id='a5500000-0000-4000-8000-000000000604'),'Close Later Main','an admin of the closed workspace no longer edits its locations');
+select is((select schedule from cron.job where jobname='workspace-closures'),'*/5 * * * *','the closure job runs every five minutes');
 select * from finish();
 rollback;
