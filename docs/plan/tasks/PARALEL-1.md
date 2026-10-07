@@ -124,7 +124,7 @@ yazıyor; test:db artık etkilenmez); bu §6 "dalın değişikliği ortak DB'ye 
   etiketi oturuma bağlı, push kancası gönderilen ref'i okuyor.
 - **İzin:** yok (R2; inceleme ONAY, kilitler serbest). Gönderimden önce koordinatöre tek satır haber verildi.
 - **Risk:** 🟠 bütün oturumların `pnpm test:db`'si değişiyor; tam koşuda sonuç eskisiyle birebir aynı, süre farkı ölçülemedi (aşağıda).
-- **Soru:** yok.
+- **Soru:** yok. Koordinatörün sorusu ("aynı 4 ERROR ne") aşağıda "Dört ERROR ne"de cevaplandı: üçü yerel DB kayması (BL-497, BL-841), biri gerçek kırmızı ama CI dışında (BL-227).
 - **Sonraki:** gönderim → main CI; koordinatör ekran oturumlarına yeni test:db davranışını bildirir (dallarını rebase edince geçer).
 
 ### Nerede duruyor
@@ -163,6 +163,19 @@ Dal `task/paralel-1`, worktree `C:\Users\TheWe\Documents\Codex\newfork-wt\parale
   Bir pano testi bugünkü kodda yanlış sebeple geçiyordu (geçici klasör yolu da 40 karakterlik öneki paylaşıyordu); öneki paylaşmayan yola çevrildi, kırmızısı görüldü.
 - **Tam kapı** (`heavy.lock` ile, CI boş, @ `82a9f376`): lint 5/5, typecheck 7/7, test (betikler 95/95 + paketler 6/6), build 4/4; hepsi
   çıkış 0. Paket görevleri turbo önbelleğinden geldi: bu değişiklik paketlere dokunmuyor.
+
+### Dört ERROR ne (koordinatörün sorusu, 2026-10-07)
+Üçü ortak yerel DB'nin kaymasından: test, tablonun tamamını kendi dünyasıymış gibi okuyor ve DB'de başka dünyaların artığı var.
+Biri gerçek kırmızı, ama CI onu hiç koşmuyor. Main CI `db` işi yeşil listeyi her koşuda temiz DB'de koşar, bu yüzden üçü orada yeşil;
+dördüncü yeşil listede değil. Sayımlar 2026-10-07 ~09:00Z'de, yerel DB'de salt `select` ile.
+| Dosya:satır | Hata | Neden | Madde |
+|---|---|---|---|
+| `bl052_document_lifecycle.test.sql:37` (hata `:39`'da raporlanır) | `decide every file exactly once` (`schema.sql:20138`) | Onay kararını `from public.employee_document_submission_files` ile **bütün tablodan** topluyor; ortak DB'de 19 workspace'te 90 dosya satırı var, servis "her dosyaya tam bir karar" diye reddediyor | **BL-497** (BL-590 bu dosyayı "null notification_key" hatasıyla katmıştı; bugünkü hata metni farklı, kök aynı aile: kapsamsız tablo okuması). Not olarak eklenmeli: kök satır `:37` |
+| `bl052_document_notifications.test.sql:44` | `null value in column "notification_key" of relation "document_notification_dedup"` | `documents_maintain_service(100, t)` bütün workspace'leri işliyor; başka dünyaların artığı dedup satırına boş anahtarla düşüyor | **BL-497** (BL-590 birleşmesi, aynı hata metni) |
+| `document_types_rls.test.sql:56` | `duplicate key … "document_type_ids_pkey"` | Belge türünü başlıkla bütün DB'de arıyor; ortak DB'de 1 workspace'te aynı başlıklı tür var | **BL-841** (birebir) |
+| `weekly_exchange_changed_terms.test.sql:113` | `column "location_id" of relation "schedule_time_off_requests" does not exist` | Gerçek kırmızı: test kaldırılmış bir kolonu kullanıyor (kolon yok, ölçüldü). `ci-not-green.txt`'te, CI koşmuyor | **BL-227** |
+Yeni madde gerekmiyor; BL-497'ye `:37` notu yeter. Kalıcı çare aynı: testler kendi workspace kimliğiyle süzsün. Ortak DB'deki artığı
+silmek de iş görür, ama geri dönüyor (2026-09-30'da silinmişti, bugün 90 satır).
 
 ### İnceleme
 `/code-review` (high, `origin/main...task/paralel-1` @ `7664e8a9`): 6 bulgu. 5'i düzeltildi (`82a9f376`): `supabase test db` bayrakları
