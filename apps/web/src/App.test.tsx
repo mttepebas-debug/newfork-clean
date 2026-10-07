@@ -4878,6 +4878,39 @@ describe("App", () => {
     readModelMock.mockResolvedValue(scheduleFixture);
   });
 
+  // BL-705 (KARARLAR Schedule: "Save as template" is on the draft screen too).
+  it("opens Templates on the open draft from New Schedule ▾ → Save as template", async () => {
+    const draft = {
+      id: "99999999-9999-4999-8999-999999999990",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: "2026-10-26",
+      name: "Holiday week",
+      revision: 1,
+      created_by: "88888888-8888-4888-8888-888888888888",
+      updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    const other = { ...draft, id: "99999999-9999-4999-8999-999999999991", name: "Plan B" };
+    const readModelMock = vi.mocked(getScheduleReadModel);
+    readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-10-26"));
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [other, draft] });
+    window.history.pushState({}, "", `/app/schedule?date=2026-10-26&draft=${draft.id}`);
+    render(<App />);
+    await signInAs("owner");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: Holiday week" }, { timeout: 5000 }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save as template" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
+    expect(
+      (within(dialog).getByRole("combobox", { name: "Draft" }) as HTMLSelectElement).value,
+    ).toBe(draft.id);
+    readModelMock.mockResolvedValue(scheduleFixture);
+  });
+
   // BL-311: both toasts count in the singular ("1 location", "1 employee").
   it.each([
     [0, "1 location and 0 changes published."],

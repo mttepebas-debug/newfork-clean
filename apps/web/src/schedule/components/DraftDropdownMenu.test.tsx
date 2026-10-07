@@ -530,10 +530,34 @@ describe("DraftDropdownMenu", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Save current schedule as template",
+        name: "Save as template",
       }),
     );
     expect(onSaveAsTemplate).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Save as template on its own when no template list is passed (BL-705)", () => {
+    const onSaveAsTemplate = vi.fn();
+    render(
+      <DraftDropdownMenu
+        drafts={[draftA]}
+        activeDraftId={draftA.id}
+        triggerLabel="New Schedule"
+        onPreviewDraft={vi.fn()}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+        onSaveAsTemplate={onSaveAsTemplate}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Draft selector: New Schedule" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save as template" }));
+
+    expect(onSaveAsTemplate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Templates")).toBeNull();
+    expect(screen.queryByText(/0 templates/)).toBeNull();
   });
 
   it("disables starting and saving as a template when requested", () => {
@@ -563,7 +587,7 @@ describe("DraftDropdownMenu", () => {
       name: "New Schedule (blank)",
     });
     const saveTemplateButton = screen.getByRole("button", {
-      name: "Save current schedule as template",
+      name: "Save as template",
     });
     expect(startButton).toHaveProperty("disabled", true);
     expect(saveTemplateButton).toHaveProperty("disabled", true);
