@@ -22,6 +22,7 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 - skip ya da todo eklemek de beklenti gevşetmektir.
 
 ## CI ve runner
+- `.github/workflows/ci.yml`: check (lint → typecheck → test → build) + db (pgTAP; `supabase/tests/ci-green.txt` yalnız büyür; Schedule hız testi ayrı koşar) + e2e. Mert'in bilgisayarındaki self-hosted runner'da koşar (şu an tek runner); bir runner, onu yalıtan değişiklik main'e girmeden havuza eklenmez.
 - `docs/**` ve `*.md` push'u CI başlatmaz; dalda yeni push eskisini iptal eder, main'de sıraya girer.
 - Runner yalıtımı (`scripts/ci-supabase-apart.sh`) ve "forwards/expose … 500" port tuzağı: KARARLAR OPS-01.
 - Yerelde geçen e2e, `apps packages e2e supabase` temizse `.newfork-inbox/e2e-pass.jsonl`'a damga basar; `scripts/guard.mjs` main push'unda bakar. Önce commit, sonra e2e.

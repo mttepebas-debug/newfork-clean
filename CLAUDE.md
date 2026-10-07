@@ -226,13 +226,11 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 - Commit mesajı İngilizce Conventional Commits ve iş numarasıyla: `fix(schedule): ... (EKRAN-01)`. Dosyalar adıyla eklenir; `git commit -a` kullanılmaz.
 
 ### Veritabanı ve canlı
-- Yerel DB tek ve ortaktır. Migration denemesi tek transaction + rollback: `begin;` (noktalı virgülle) ve `ON_ERROR_STOP=1`; yoksa autocommit ortak DB'ye sızar. Bir dalın migration'ı ortak DB'ye kalıcı olarak yalnız main'e alınmadan hemen önce, `main.lock` penceresinde ve inceleme onayından sonra uygulanır. Uygulanmış migration değiştirilmez; düzeltme yeni migration'la.
-- Bugünkü şema `supabase/schema.sql`'dedir (migration'ların boş veritabanında kurduğu `public` + `app_private`; yalnız okunur, hiçbir yere uygulanmaz). Bir fonksiyonun, politikanın ya da tablonun son hâli migration'larda değil orada aranır. Migration ekleyen oturum `pnpm.cmd db:schema` koşar (~1 dk, ayrı geçici veritabanı) ve dosyayı migration'la aynı commit'e koyar; rebase'de çakışırsa elle çözmez, yeniden üretir. `pnpm.cmd lint` ve CI `db` işi bayat dosyayı yakalar, şimdilik uyarıyla (Mert, 2026-10-07; SCHEMA-SNAP).
-- Ortak DB `seed.sql` değişikliklerini görmez; seed'e dayanan kırılma yalnız CI'da çıkar. Yerel hesap `owner@newfork.test`, parola `supabase/seed.sql`'de.
+- Yerel veritabanı, migration denemesi ve şema dosyası: `supabase/CLAUDE.md`.
 - Main'e giren her şey Vercel'den yayına çıkar (API ve web). Canlı migration yalnız Supabase MCP `apply_migration` ile (§5 koşulları); CLI `supabase db push` yasak listesindedir. Canlı DDL'den sonra güvenlik uyarıları (`get_advisors`) okunur.
 
 ### CI
-- `.github/workflows/ci.yml`: check (lint → typecheck → test → build) + db (pgTAP; `supabase/tests/ci-green.txt` yalnız büyür; Schedule hız testi ayrı koşar) + e2e. Mert'in bilgisayarındaki self-hosted runner'da koşar (şu an tek runner); bir runner, onu yalıtan değişiklik main'e girmeden havuza eklenmez.
+- İşlerin dökümü ve runner kuralları: `e2e/CLAUDE.md`.
 - `pnpm.cmd test` yeşili CI yeşili değildir; typecheck ve lint ayrı kapıdır.
 - Main kırmızıysa main'e yalnız düzelten gönderir. Kırmızı önce ayrılır: yalnız düşen işler yeniden koşturulur, hangi runner'da koştuğuna bakılır; altyapıdan gelen kırmızı koda düzeltme yazdırmaz. Yük altında düşen test, kod kusuru sayılmadan önce boşta yeniden koşturulur.
 - Ubuntu tek başına `wsl --terminate` / `--shutdown` ile yeniden başlatılmaz (Docker Desktop'ın bağlantısı kopar); çözüm Docker Desktop'ı yeniden başlatmaktır.
