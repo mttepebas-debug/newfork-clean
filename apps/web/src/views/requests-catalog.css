@@ -701,10 +701,10 @@
   color: var(--theme-muted);
   text-align: right;
 }
-/* Decide by: the time, then the zone's name on its own line (KARARLAR:133). */
+/* Decide by: the time, then the zone's name on its own line (KARARLAR:133),
+   set like Employee's two lines so every row keeps one height. */
 .request-deadline {
   display: grid;
-  gap: 2px;
 }
 .request-deadline small {
   color: var(--theme-text-secondary);
