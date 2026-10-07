@@ -1,7 +1,14 @@
-# Koordinatör devri — 2026-10-06 gece planı (UTC ~13:25Z; Mert uyuyor)
+# Koordinatör devri — 2026-10-07
 
 - **Oturum (2026-10-07 06:08Z devir):** "Koordinatör" `local_70128f8f-5bc3-4776-92cf-1fe096aa4404` (posta kutusu `f2f4ad49-6b1b-4db6-a445-4198729b2a0f`, `inbox.mjs claim` yapıldı). Eski koordinatör `local_9c7e674a…` / `53bf53b1…` devredildi. Mert bu pencerede `/compact` ya da `/clear` yazar; kimlik DEĞİŞMEZ.
-- **Önce oku:** `CLAUDE.md` (2026-10-07'de yeniden yazıldı: §4 Workflow, §4.9 geçiş, §5 koordinatör kararları, §6 teknik harita), `docs/plan/EKRAN-PLANI.md` ("Uygulama düzeni: hatlar", "Uygulama arşivi"). `docs/plan/ILKELER.md` artık otomatik yüklenmiyor; karar vermeden önce okunur.
+- **Önce oku:** `CLAUDE.md` (2026-10-07: tek tip oturum, rol oturumu yok; alt ajan yalnız `nf-guvenlik`, `nf-okur`; klasör kuralları `apps/api`, `apps/web`, `supabase`, `e2e` altındaki `CLAUDE.md`'lerde), `docs/plan/EKRAN-PLANI.md` ("Bir ekranın turu": ekran tek sahip oturumda uçtan uca, kabul listesi Mert onaylı). `docs/plan/ILKELER.md` karar vermeden önce okunur.
+
+## 000. GÜNCEL DURUM (2026-10-07 ~07:00Z) — ÖNCE BUNU OKU
+- **Görev mesajı biçimi (KK-188):** koordinatörün oturuma verdiği her görev mesajı `Görev: <İŞ-ID>` satırıyla başlar. OTOMASYON-3'ün kayıt koruması işçi oturumunu bununla tanır (geçişte `Rol:` da işçi sayılır, 14 Ekim'e kadar).
+- **Açık işler:** OTOMASYON-3 (`local_2f278959…`, `../newfork-wt/otomasyon-3`, R2, `/code-review`; gönderimden önce koordinatörün "gönder" izni). Mert'in kendi oturumları: "Repo genişlik büyüklüğü", "CI/E2E/typecheck hızlandırma", "Knowledge graph", "New session".
+- **CI:** tek koşucu (`newfork-local-pc`); 2 ve 3 açılışta kalkmaz (KK-187, OPS-01).
+- **Dün geceden sahipsiz kalan yerel dallar (push edilmedi, hat oturumları artık yok):** EKRAN-02 A1A2 / A3 / AUTHZ-DUMP (R3, veri), A4, B1a, B1b, C1, C2-css, C3; EKRAN-03 C1a; EKRAN-01 DB-4; `task/arayuz-salt-hata`; BL-435; VAR-EKRAN-03 (`task/var-ekran-12`). Raporları posta kutusu `done/` ve ekran klasörlerinde; görüntü yolları eski koordinatörün `sabah-raporu.md`'sinde (aşağıda). Yeni modelde her ekranın kalanı o ekranın sahip oturumuna, EKRAN.md kabul listesine taşınır (EKRAN-DOSYASI); hangi ekranla başlanacağını Mert seçer.
+- **Aşağıdaki §00–§6 2026-10-06 gecesinin kaydıdır;** hat oturumları ve "AĞIR İZİN" protokolü artık geçerli değil (ağır koşu kilidi OTOMASYON-3 ile geliyor).
 
 ## 00. GÜNCEL DURUM (2026-10-06 ~17:05Z) — sıkıştırmadan sonra ÖNCE BUNU OKU
 - **Gece durum dosyaları (koordinatörün scratchpad'i, bu oturum):** sabah raporu notları `C:/Users/TheWe/AppData/Local/Temp/claude/C--Users-TheWe-Documents-Codex-newfork-clean/53bf53b1-53ab-488d-9ec7-a96202015189/scratchpad/sabah-raporu.md`; ağır iş izin sırası `.../scratchpad/agir-kuyruk.md`. İkisi de güncel tutulur.
