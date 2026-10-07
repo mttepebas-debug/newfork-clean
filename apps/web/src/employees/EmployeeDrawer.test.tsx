@@ -952,6 +952,14 @@ describe("EmployeeDrawer", () => {
     },
   );
 
+  // The drawer never writes the preferred name (KK-205), so one saved before
+  // the US rule does not hold the rest of the record (BL-503 review).
+  it("saves a record whose preferred name predates the US letter rule", async () => {
+    renderDrawer("profile", { ...detail, preferred_name: "Ayşe" });
+    fireEvent.change(await screen.findByLabelText("Middle name"), { target: { value: "Jo" } });
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
+  });
+
   it("will not save half an emergency contact", async () => {
     renderDrawer("profile", {
       ...detail,

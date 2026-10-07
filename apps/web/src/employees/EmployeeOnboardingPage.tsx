@@ -599,7 +599,12 @@ function ProfileStep({
             personalFields.has(String(item.path[0])) === (page === "personal"),
         );
     if (issue || (page === "emergency" && !parsed.success)) {
-      setValidationError(issue?.message ?? "Complete all required fields.");
+      // The account's number shows here read-only, so say where it changes.
+      setValidationError(
+        phoneOnAccount && issue?.path[0] === "phone"
+          ? "Your account phone is not a US number. Change it in Account › Profile."
+          : (issue?.message ?? "Complete all required fields."),
+      );
       return;
     }
     setValidationError(null);

@@ -33,6 +33,18 @@ describe("UsPhoneInput", () => {
     expect(field.value).toBe("(415) 555-0100");
   });
 
+  it("takes nothing from a pasted number from outside the US", () => {
+    function Harness() {
+      const [value, setValue] = useState("");
+      return <UsPhoneInput aria-label="Phone" value={value} onChange={setValue} />;
+    }
+    render(<Harness />);
+    const field = screen.getByLabelText("Phone") as HTMLInputElement;
+    // Cut to ten digits, it would read as a wrong US number.
+    fireEvent.change(field, { target: { value: "+44 20 7946 0958" } });
+    expect(field.value).toBe("");
+  });
+
   it("keeps the screen's own class and attributes", () => {
     render(
       <UsPhoneInput id="contact-phone" className="account-input" aria-invalid required value="" onChange={vi.fn()} />,

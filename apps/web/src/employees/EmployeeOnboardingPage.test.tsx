@@ -615,6 +615,17 @@ describe("EmployeeOnboardingPage", () => {
     expect(contact).toHaveProperty("value", "(310) 555-0101");
   });
 
+  it("says where to change an account phone from outside the US", async () => {
+    authMock.phone = "+442079460958";
+    renderProfileStep();
+    expect(await screen.findByLabelText(/^Phone/)).toHaveProperty("value", "");
+    await fillPersonal();
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Your account phone is not a US number. Change it in Account › Profile.",
+    );
+  });
+
   it("leaves a saved number from outside the US empty", async () => {
     authMock.phone = null;
     vi.mocked(getMyOnboarding).mockResolvedValue({
