@@ -1,7 +1,7 @@
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import { ListPagination } from "./ListPagination";
-import { RequestsTable } from "./RequestsTable";
+import { RequestCards, RequestsTable } from "./RequestsTable";
 import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
@@ -14,7 +14,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
@@ -255,7 +255,7 @@ function ScheduleRequestsPageContent() {
 
       <div className="requests-toolbar catalog-toolbar">
         {tabs.length ? (
-        <div className="catalog-toolbar-status-row">
+        <TabRow chosen={view.type}>
           <div
             className="catalog-status-tabs"
             role="group"
@@ -286,7 +286,7 @@ function ScheduleRequestsPageContent() {
               </button>
             ))}
           </div>
-        </div>
+        </TabRow>
         ) : null}
         <div className="catalog-toolbar-filter-row">
           <select
@@ -322,7 +322,9 @@ function ScheduleRequestsPageContent() {
       </div>
 
       <div className="employee-table-wrap requests-table-wrap">
-        <RequestsTable rows={page.rows} timeFormat={timeFormat} onOpen={openRow} />
+        {/* Three reads make one list: it is drawn once all of them answered. */}
+        <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
+        <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
         {loading ? <p className="settings-state">Loading requests...</p> : null}
         {!loading && failed ? (
           <div className="catalog-table-empty" role="alert">
@@ -397,6 +399,33 @@ function ScheduleRequestsPageContent() {
         />
       ) : null}
     </section>
+  );
+}
+
+/**
+ * The type tabs' row. Five tabs do not fit a phone: the row scrolls, its edge
+ * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
+ */
+function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
+  const row = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState<"left" | "right" | "both" | null>(null);
+  const measure = useCallback(() => {
+    const element = row.current;
+    if (!element) return;
+    const left = element.scrollLeft > 1;
+    const right = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
+    setMore(left && right ? "both" : left ? "left" : right ? "right" : null);
+  }, []);
+  useEffect(() => {
+    row.current?.querySelector<HTMLElement>("button.active")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [chosen, measure]);
+  return (
+    <div ref={row} className="catalog-toolbar-status-row" data-more={more ?? undefined} onScroll={measure}>
+      {children}
+    </div>
   );
 }
 

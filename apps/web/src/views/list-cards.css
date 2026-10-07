@@ -1,0 +1,97 @@
+/* Phone list cards (KARARLAR Genel "telefonda liste sayfaları kart satırıyla",
+   2026-10-05; Employees G2, 2026-10-07): 8 apart, 11 / 12 inside, 10 round,
+   a 34 px mark, 14 px title, 12 px lines; every card is at least 44 high.
+   The status sits at the title's right; the lines run under both. */
+.list-cards {
+  display: none;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 720px) {
+  .list-cards {
+    display: grid;
+    gap: 8px;
+  }
+}
+.list-card {
+  display: grid;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 11px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .list-card:hover {
+    background: var(--theme-surface-soft);
+  }
+}
+.list-card:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.list-card-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  place-items: center;
+  align-self: center;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.list-card-mark--dashed {
+  border-style: dashed;
+  background: var(--theme-surface);
+}
+.list-card-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.list-card-title > :first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-card-title svg {
+  flex: none;
+  color: var(--theme-text-secondary);
+}
+.list-card-status {
+  display: flex;
+  justify-self: end;
+}
+.list-card-line {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The chip is as tall as the title line (20), so the space above the text
+   equals the space below it. */
+.list-card-status .list-chip {
+  line-height: 16px;
+}
