@@ -108,6 +108,25 @@ describe("createScheduleReadService read model", () => {
       ["eq", "workspace_id", workspaceId], ["lte", "closed_date", "2026-09-20"], ["gte", "closed_date", "2026-09-14"],
     ]);
   });
+  it("opens a week with a published closed day, whose id is an md5 made into a uuid (BL-959)", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-10-26", week_start_day: "monday",
+      locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
+      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+    }, error: null });
+    // The id public.schedule_closures gave Oct 28 on the local database (EKRAN-08 D4).
+    const closedDay = { id: "c6717f17-012c-8945-cc5c-fca50e875fae", location_id: locationId, closed_date: "2026-10-28",
+      end_date: null, title: "Staff training", is_all_day: true, shift_type_ids: [] };
+    mocks.from.mockImplementation((table: string) => {
+      const chain = {
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain, or: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
+        then: (resolve: (value: unknown) => unknown) => resolve({ data: table === "schedule_closures" ? [closedDay] : [], error: null }),
+      }; return chain;
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+    const result = await service.getReadModel(actorUserId, workspaceId, "2026-10-26");
+    expect(result.closures.map((closure) => closure.id)).toEqual([closedDay.id]);
+  });
   it("keeps a yearly 29 February date in a week with 28 February only, as the Schedule closes that day (KK-92 d)", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2027-02-22", week_start_day: "monday",
       locations: [], departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
