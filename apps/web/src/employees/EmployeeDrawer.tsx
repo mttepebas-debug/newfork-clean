@@ -736,8 +736,26 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   closeRef.current = requestClose;
   useEffect(() => {
     openingFocusRef.current = document.activeElement as HTMLElement | null;
-    dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
-    return () => openingFocusRef.current?.focus();
+    const panel = dialogRef.current;
+    // Somebody already saved is read first: until the form is up the focus
+    // waits in the drawer, not on the row behind it (BL-478).
+    (
+      panel?.querySelector<HTMLInputElement>("input") ??
+      panel?.querySelector<HTMLElement>("button:not(:disabled)")
+    )?.focus();
+    return () => {
+      const opener = openingFocusRef.current;
+      // The row that opened it can leave the list (removed from the
+      // location): the focus goes to the page, not the document's top (BL-479).
+      if (opener?.isConnected) opener.focus();
+      else
+        document
+          .querySelector("main")
+          ?.querySelector<HTMLElement>(
+            "input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), a[href], [tabindex]:not([tabindex='-1'])",
+          )
+          ?.focus();
+    };
   }, []);
   useEffect(() => {
     if (!props.creating && props.employeeId === createdIdRef.current) {
@@ -910,7 +928,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             if (!event.repeat) submit(event);
             return;
           }
-          if (!props.creating || event.key !== "Tab") return;
+          // Tab stays in the drawer (BL-478); the termination window keeps its own.
+          if (event.key !== "Tab" || terminationOpen) return;
           const items = Array.from(
             dialogRef.current?.querySelectorAll<HTMLElement>(
               "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",

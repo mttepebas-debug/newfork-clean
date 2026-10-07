@@ -2918,3 +2918,55 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
     expect(preferred.value).toBe("Lex");
   });
 });
+
+// EKRAN-03 #41 (BL-478, BL-479): the drawer keeps the keyboard.
+describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
+  const panel = () => document.querySelector<HTMLElement>("[data-employee-drawer-panel]")!;
+
+  it("takes the focus when it opens on somebody already saved", async () => {
+    renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    expect(panel().contains(document.activeElement)).toBe(true);
+  });
+
+  it("keeps Tab inside the drawer of somebody already saved", async () => {
+    // jsdom lays nothing out; the trap skips what is not drawn.
+    const rects = vi
+      .spyOn(HTMLElement.prototype, "getClientRects")
+      .mockReturnValue([{}] as unknown as DOMRectList);
+    onTestFinished(() => rects.mockRestore());
+    renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    const items = Array.from(
+      panel().querySelectorAll<HTMLElement>(
+        "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
+      ),
+    );
+    const first = items[0]!,
+      last = items[items.length - 1]!;
+    last.focus();
+    fireEvent.keyDown(last, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  // The row that opened it can leave the list (removed from the location):
+  // the focus goes to the page, not to the top of the document.
+  it("hands the focus to the page when the row that opened it is gone", async () => {
+    const page = document.createElement("main");
+    const row = document.createElement("button");
+    row.textContent = "Emre";
+    const search = document.createElement("input");
+    search.setAttribute("aria-label", "Search employees");
+    page.append(search, row);
+    document.body.append(page);
+    onTestFinished(() => page.remove());
+    row.focus();
+    const { unmount } = renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    row.remove();
+    unmount();
+    expect(document.activeElement).toBe(search);
+  });
+});
