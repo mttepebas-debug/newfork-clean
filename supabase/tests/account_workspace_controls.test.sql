@@ -222,7 +222,7 @@ select lives_ok($q$select app_private.complete_due_workspace_closures()$q$,'the 
 select is((select lifecycle_status::text from public.workspaces where id='a5500000-0000-4000-8000-000000000106'),'closure_scheduled','a closure that fails stays scheduled for the next run');
 select is((select status::text from public.workspace_closure_requests where workspace_id='a5500000-0000-4000-8000-000000000106' order by created_at desc limit 1),'scheduled','its closure request is left as it was');
 select is((select lifecycle_status::text from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),'deleted','a workspace past its Close later date is closed');
-select is((select closed_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),(select closure_effective_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),'it closes at the date it promised');
+select is((select closed_at from public.workspaces where id='a5500000-0000-4000-8000-000000000104'),now() - interval '1 minute','it closes at the date it promised');
 select is((select count(*)::int from public.workspace_memberships where workspace_id='a5500000-0000-4000-8000-000000000104' and status<>'suspended'),0,'its memberships are suspended');
 select is((select status::text from public.workspace_closure_requests where workspace_id='a5500000-0000-4000-8000-000000000104' order by created_at desc limit 1),'completed','its closure request is completed');
 select ok(exists(select 1 from public.workspace_retention_purge_jobs where workspace_id='a5500000-0000-4000-8000-000000000104'),'its data is queued for removal');
