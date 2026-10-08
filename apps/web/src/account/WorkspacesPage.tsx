@@ -604,7 +604,9 @@ export default function WorkspacesPage() {
                   {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
                   {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}
                   {lifecycleStatus === "closure_scheduled"
-                    ? <StatusBadge>Closes {formatDate(workspace.closureEffectiveAt ?? null, "on its scheduled date")}</StatusBadge>
+                    ? <StatusBadge>{workspace.closureEffectiveAt
+                        ? `Scheduled closure · ${formatDate(workspace.closureEffectiveAt, "")}`
+                        : "Closes on its scheduled date"}</StatusBadge>
                     : null}
                   {pendingTransfer
                     ? <StatusBadge tone="progress">Ownership transfer {pendingTransfer.role === "target" ? "needs response" : "pending"}</StatusBadge>
@@ -687,12 +689,12 @@ export default function WorkspacesPage() {
                             </button>
                             <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
                               onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "scheduled_end_period"); }}>
-                              <CalendarClock size={15} aria-hidden /> Close later
+                              <CalendarClock size={15} aria-hidden /> Schedule closure
                             </button>
                             <div className="workspace-actions-separator" role="separator" />
                             <button role="menuitem" type="button" className="workspace-actions-danger" disabled={closingWorkspaceId === workspace.id}
                               onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "immediate"); }}>
-                              <Trash2 size={15} aria-hidden /> Close now
+                              <Trash2 size={15} aria-hidden /> Close immediately
                             </button>
                           </>
                           ) : null
@@ -700,7 +702,7 @@ export default function WorkspacesPage() {
                         {hasOwnerActions && lifecycleStatus === "closure_scheduled" && !pendingTransfer ? (
                           <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
                             onClick={() => { closeActionsMenu(workspace.id); void cancelClosure(workspace); }}>
-                            <X size={15} aria-hidden /> Cancel close
+                            <X size={15} aria-hidden /> Cancel closure
                           </button>
                         ) : null}
                         {hasOwnerActions && pendingTransfer?.role === "initiator" ? (
@@ -817,8 +819,8 @@ export default function WorkspacesPage() {
           <div>
             <strong id="workspace-closure-title">
               {closureTarget.mode === "immediate"
-                ? `Close ${closureTarget.workspace.name} now`
-                : `Schedule ${closureTarget.workspace.name} to close`}
+                ? `Close ${closureTarget.workspace.name} immediately`
+                : `Schedule closure for ${closureTarget.workspace.name}`}
             </strong>
             {/* One sentence for the whole rule: what happens to everyone at
                 once, not a line per person it happens to. The count says how
@@ -828,9 +830,9 @@ export default function WorkspacesPage() {
               {whoIsInIt(closureTarget.workspace)}{" "}
               {closureTarget.mode === "immediate"
                 ? "Everyone loses access to this workspace the moment you close it, and invitations that are still waiting stop working. Nobody, including support, can bring it back."
-                : closesOn(closureTarget.workspace)
-                  ? `Everyone keeps access until ${closesOn(closureTarget.workspace)}, and you can cancel the closure any time before it.`
-                  : "Everyone keeps access until the closure date, and you can cancel the closure any time before it."}
+                : `${closesOn(closureTarget.workspace)
+                    ? `Everyone keeps access until ${closesOn(closureTarget.workspace)}, and you can cancel the closure any time before it.`
+                    : "Everyone keeps access until the closure date, and you can cancel the closure any time before it."} Then the workspace and its data are permanently deleted.`}
             </p>
           </div>
           {closureTarget.mode === "immediate" ? (
@@ -891,8 +893,8 @@ export default function WorkspacesPage() {
               {closingWorkspaceId === closureTarget.workspace.id
                 ? "Closing"
                 : closureTarget.mode === "immediate"
-                  ? "Close now"
-                  : "Schedule close"}
+                  ? "Close immediately"
+                  : "Schedule closure"}
             </Button>
             <Button
               className="secondary-button"

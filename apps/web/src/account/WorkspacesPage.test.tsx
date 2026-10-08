@@ -362,11 +362,11 @@ describe("WorkspacesPage", () => {
     refreshedContext = another ? { ...context, workspace: { ...context.workspace, id: secondWorkspaceId }, membership: { ...context.membership, role: "employee", workspaceId: secondWorkspaceId } } : null;
     renderPage();
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close immediately" }));
     fireEvent.change(screen.getByLabelText("Type the workspace name"), { target: { value: "Meyhouse" } });
     fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "fresh-password" } });
     fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
-    fireEvent.click(screen.getByRole("button", { name: "Close now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close immediately" }));
     await waitFor(() => expect(screen.getByLabelText("Current path").textContent).toBe(another ? "/app/employee-hub" : "/organization-switcher"));
     expect(clearTabWorkspaceId).toHaveBeenCalled();
     if (another) expect(selectActiveWorkspace).toHaveBeenCalledWith(supabaseClientMock, secondWorkspaceId);
@@ -434,13 +434,13 @@ describe("WorkspacesPage", () => {
     await waitFor(() => expect(document.activeElement).toBe(item("Transfer ownership")));
 
     fireEvent.keyDown(menu, { key: "ArrowDown" });
-    expect(document.activeElement).toBe(item("Close later"));
+    expect(document.activeElement).toBe(item("Schedule closure"));
     fireEvent.keyDown(menu, { key: "End" });
-    expect(document.activeElement).toBe(item("Close now"));
+    expect(document.activeElement).toBe(item("Close immediately"));
     fireEvent.keyDown(menu, { key: "ArrowDown" });
     expect(document.activeElement).toBe(item("Transfer ownership"));
     fireEvent.keyDown(menu, { key: "ArrowUp" });
-    expect(document.activeElement).toBe(item("Close now"));
+    expect(document.activeElement).toBe(item("Close immediately"));
   });
 
   it("keeps owner actions in one accessible menu and returns focus on Escape", async () => {
@@ -453,11 +453,11 @@ describe("WorkspacesPage", () => {
     expect(screen.getAllByRole("menuitem").map(item => item.textContent?.trim())).toEqual([
       "Default workspace",
       "Transfer ownership",
-      "Close later",
-      "Close now",
+      "Schedule closure",
+      "Close immediately",
     ]);
     expect(menu.querySelector('[role="separator"]')).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Close now" }).className).toContain("workspace-actions-danger");
+    expect(screen.getByRole("menuitem", { name: "Close immediately" }).className).toContain("workspace-actions-danger");
 
     trigger.focus();
     fireEvent.keyDown(document, { key: "Escape" });
@@ -511,7 +511,7 @@ describe("WorkspacesPage", () => {
     await openWorkspaceActions();
     expect(screen.getAllByRole("menuitem")).toHaveLength(2);
     expect(screen.getByRole("menuitem", { name: "Default workspace" })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Cancel close" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Cancel closure" })).toBeTruthy();
   });
 
   it("selects an inactive workspace before opening its role landing", async () => {
@@ -591,15 +591,15 @@ describe("WorkspacesPage", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Schedule closure" }));
     expect(
-      screen.getByRole("region", { name: "Schedule Meyhouse to close" }),
+      screen.getByRole("region", { name: "Schedule closure for Meyhouse" }),
     ).toBeTruthy();
     fireEvent.click(
       screen.getByLabelText(/I understand everyone loses access/),
     );
     // SEC-003: scheduling is not a lesser thing than closing now.
-    const scheduleButton = screen.getByRole("button", { name: "Schedule close" });
+    const scheduleButton = screen.getByRole("button", { name: "Schedule closure" });
     expect(scheduleButton).toHaveProperty("disabled", true);
     fireEvent.change(screen.getByLabelText("Account password"), {
       target: { value: "fresh-password" },
@@ -618,7 +618,7 @@ describe("WorkspacesPage", () => {
       ),
     );
     expect(
-      await screen.findByText(`Closes ${scheduledClosureLabel}`),
+      await screen.findByText(`Scheduled closure · ${scheduledClosureLabel}`),
     ).toBeTruthy();
   });
 
@@ -627,9 +627,9 @@ describe("WorkspacesPage", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close immediately" }));
     const closureRegion = screen.getByRole("region", {
-      name: "Close Meyhouse now",
+      name: "Close Meyhouse immediately",
     });
     expect(closureRegion).toBeTruthy();
     expect(closureRegion.getAttribute("aria-describedby")).toBe(
@@ -643,7 +643,7 @@ describe("WorkspacesPage", () => {
     );
 
     const submitButton = screen.getByRole("button", {
-      name: "Close now",
+      name: "Close immediately",
     });
     expect(submitButton).toHaveProperty("disabled", true);
     fireEvent.change(screen.getByLabelText("Type the workspace name"), {
@@ -682,7 +682,7 @@ describe("WorkspacesPage", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close immediately" }));
     fireEvent.click(
       screen.getByLabelText(/I understand everyone loses access/),
     );
@@ -692,7 +692,7 @@ describe("WorkspacesPage", () => {
     fireEvent.change(screen.getByLabelText("Account password"), {
       target: { value: "wrong-password" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Close now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close immediately" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
       "That password did not match. Type it again.",
@@ -915,19 +915,19 @@ describe("WorkspacesPage", () => {
 
   async function openScheduledClosure() {
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Schedule closure" }));
     fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
     fireEvent.change(screen.getByLabelText("Account password"), {
       target: { value: "fresh-password" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Schedule close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Schedule closure" }));
   }
 
   // A setup its owner never finished holds nothing worth a password; the
   // server does not ask for one, so neither does the screen.
   it.each([
-    ["Close later", "Schedule close", "scheduled_end_period"],
-    ["Close now", "Close now", "immediate"],
+    ["Schedule closure", "Schedule closure", "scheduled_end_period"],
+    ["Close immediately", "Close immediately", "immediate"],
   ] as const)("closes an unfinished setup without a password: %s", async (item, button, mode) => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
       { ...ownerWorkspace, onboarding: { status: "incomplete", currentStep: 2 } },
@@ -1077,7 +1077,7 @@ describe("WorkspacesPage", () => {
 
     await openScheduledClosure();
 
-    const region = screen.getByRole("region", { name: "Schedule Meyhouse to close" });
+    const region = screen.getByRole("region", { name: "Schedule closure for Meyhouse" });
     expect((await within(region).findByRole("alert")).textContent).toBe(
       "Only the owner of this workspace can do that, and you are not the owner any more. Reload the page to see where you stand.",
     );
@@ -1123,9 +1123,9 @@ describe("WorkspacesPage", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close now" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Close immediately" }));
     expect(
-      screen.getByRole("region", { name: "Close Meyhouse now" }).textContent,
+      screen.getByRole("region", { name: "Close Meyhouse immediately" }).textContent,
     ).not.toMatch(/organi[sz]ation|business|tenant/i);
   });
 
@@ -1193,7 +1193,7 @@ describe("WorkspacesPage", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel close" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Cancel closure" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
       "This workspace has no closure scheduled any more. Reload the page to see its current state.",
@@ -1238,7 +1238,7 @@ describe("closing later", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Schedule closure" }));
 
     // The instant is formatted where the reader is, so the expected text is
     // built the same way rather than pinned to one zone.
@@ -1252,6 +1252,11 @@ describe("closing later", () => {
         new RegExp(`Everyone keeps access until ${localDate},`),
       ),
     ).toBeTruthy();
+    // KARARLAR "Workspace kapatma düğmeleri" (Mert, 2026-10-08): the owner is
+    // told the closure deletes the data, in these words.
+    expect(
+      document.getElementById("workspace-closure-description")?.textContent,
+    ).toMatch(/Then the workspace and its data are permanently deleted\.$/);
   });
 
   // Rather than work the rule out again and risk a different answer from the
@@ -1261,11 +1266,14 @@ describe("closing later", () => {
     renderPage();
 
     await openWorkspaceActions();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Close later" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Schedule closure" }));
 
     expect(
       await screen.findByText(/Everyone keeps access until the closure date/),
     ).toBeTruthy();
+    expect(
+      document.getElementById("workspace-closure-description")?.textContent,
+    ).toMatch(/Then the workspace and its data are permanently deleted\.$/);
   });
 });
 
