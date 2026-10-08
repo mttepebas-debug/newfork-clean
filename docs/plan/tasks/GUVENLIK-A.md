@@ -450,3 +450,21 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
   - **Açık ürün sorusu:** "Close later" tamamlanınca veri, "Close now"daki gibi bir sonraki 03:30 temizliğinde kalıcı olarak siliniyor. Onay metni ise yalnız "I understand everyone loses access on the closure date." diyor (`apps/web/src/account/WorkspacesPage.tsx:869`); "cannot be undone" yalnız "Close now"da var (ILKELER P25). Seçenekler: (a) onay metni silmeyi açıkça söyler; (b) planlı kapanışa silmeden önce bir bekleme süresi. Mert'te.
   - Owner'ın tarihten sonra ≤5 dk iptal penceresi bilinen ve kabul edilen not olarak duruyor.
 - **Kilit ihlali (benim hatam):** v2 denemeleri `db.lock` başkasındayken koştu; ret çıkış koduna bakılmadı. Rollback'liydi, kalıcı iz yok (440, cron işi yok). Koordinatöre bildirildi.
+
+### GA-4 ekran metni (KK-225, Mert 2026-10-08)
+- **Değişen metinler** (`apps/web/src/account/WorkspacesPage.tsx`):
+  - ⋯ menüsü "Schedule closure" / kırmızı "Close immediately";
+  - panel başlıkları "Schedule closure for <ad>" / "Close <ad> immediately";
+  - onay düğmeleri menüyle aynı ad (yükleniyor hâli "Closing");
+  - rozet "Scheduled closure · <tarih>" (tarih yoksa eski cümle "Closes on its scheduled date");
+  - "Cancel closure";
+  - zamanlanmış açıklamanın sonu "Then the workspace and its data are permanently deleted.";
+  - hemen kapatma açıklaması aynı.
+- **Test:** `WorkspacesPage.test.tsx` yeni adlara çevrildi, beklenti gevşetilmedi. Tarihli ve tarihsiz iki duruma "permanently deleted." cümlesi beklentisi eklendi. Önce 21 kırmızı, sonra 59/59. e2e'de bu adlar geçmiyor.
+- **Kapı:** lint, typecheck, web testi (239 dosya, 2335 geçti / 1 atlandı), web build yeşil.
+- **Ekran görüntüleri** (masaüstü 1440, yerel seed owner'ı, okuma; veri yazılmadı):
+  - `newfork-clean/artifacts/guvenlik-a/ga4-menu-1440.png`;
+  - `ga4-schedule-closure-panel-1440.png`;
+  - ölçüler `ga4-measures.json`.
+- **Simetri:** menünün dört öğesi 178×36, ikon x=978 ve dikeyde ortada, 12px, tek satır, ayraç boşlukları eşit (9px). Panelde parola alanı iki yandan 19px, iki düğme 42px ve sağ kenardan 19px, aralarında 8px.
+- **Önceden olan, bu işte değişmeyen:** seçili satırın yeşil zemini listenin sağ kenarını 12px aşıyor (1164 / 1152).
