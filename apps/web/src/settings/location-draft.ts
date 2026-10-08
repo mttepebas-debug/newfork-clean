@@ -3,11 +3,28 @@ import {
   suggestLocationShortName,
   toUsPhone,
   usLettersMessage,
+  type Location,
   type LocationInput,
 } from "@newfork/shared";
 
-// Phone is kept as the masked text shown in the input until save.
+// Phone starts as the saved E.164 number and becomes the masked text once
+// typed in; the save turns either into E.164.
 export type LocationDraft = Omit<LocationInput, "phone"> & { phone: string };
+
+/** A saved location as the form edits it, in Settings › Locations and in setup. */
+export function locationDraft(location: Location): LocationDraft {
+  return {
+    name: location.name,
+    short_name: location.short_name,
+    phone: location.phone ?? "",
+    street_address: location.street_address,
+    city: location.city,
+    region: location.region,
+    postal_code: location.postal_code,
+    country_code: location.country_code,
+    timezone: location.timezone,
+  };
+}
 export type LocationFieldErrors = Partial<
   Record<"name" | "short_name" | "phone" | "street_address" | "city" | "region", string>
 >;

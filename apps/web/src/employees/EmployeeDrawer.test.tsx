@@ -886,6 +886,39 @@ describe("EmployeeDrawer", () => {
     expect(phone).toHaveProperty("value", "(310) 555-0101");
   });
 
+  // BL-969 code review: the saved number is E.164 and the field hands back
+  // the mask; typed back to the same number, nothing has changed.
+  it("does not count the owner's emergency phone as changed when it is typed back", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      private_contact: {
+        phone: "+13105559999",
+        street_address: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        country_code: null,
+        date_of_birth: null,
+        emergency_contact_name: "Morgan",
+        emergency_contact_relationship: "Spouse",
+        emergency_contact_phone: "+14155550100",
+        emergency_contact_email: "",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+    });
+
+    const phone = await screen.findByLabelText("Emergency phone");
+    expect(phone).toHaveProperty("value", "(415) 555-0100");
+    fireEvent.change(phone, { target: { value: "(415) 555-0101" } });
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
+    fireEvent.change(phone, { target: { value: "(415) 555-0100" } });
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+  });
+
   it("says under the owner's emergency contact that Turkish-only letters are not taken", async () => {
     renderDrawer("profile", {
       ...detail,
@@ -1233,7 +1266,7 @@ describe("EmployeeDrawer", () => {
         legal_first_name: "Alex",
         legal_last_name: "Kim",
         preferred_name: "",
-        phone: "3105559999",
+        phone: "+13105559999",
         street_address: "100 Main Street",
         city: "Los Angeles",
         region: "CA",
@@ -1242,7 +1275,7 @@ describe("EmployeeDrawer", () => {
         date_of_birth: "1990-02-14",
         emergency_contact_name: "Jamie Kim",
         emergency_contact_relationship: "Sibling",
-        emergency_contact_phone: "3105550001",
+        emergency_contact_phone: "+13105550001",
         emergency_contact_email: "jamie@example.test",
         share_phone_with_teammates: true,
         share_email_with_teammates: true,
@@ -1259,7 +1292,7 @@ describe("EmployeeDrawer", () => {
       "alex.account@example.test",
     );
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", true);
-    // Shown as a US number (P4), whatever way it was saved.
+    // Shown as a US number (P4).
     expect(screen.getByLabelText("Phone")).toHaveProperty(
       "value",
       "+1 (310) 555-9999",
