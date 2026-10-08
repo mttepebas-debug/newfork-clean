@@ -211,6 +211,10 @@ select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ali', tests.id(
 select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',
   tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'), pg_temp.rev(tests.id('ud:e1')) - 1)),
   'PT409 session revision stale', 'a screen behind the edit is told to reload');
+-- BL-958: the screen knows it by the key in the hint, not by the sentence.
+select is(pg_temp.refusal_hint(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',
+  tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'), pg_temp.rev(tests.id('ud:e1')) - 1)),
+  'PT409 schedule.edit_session_stale', 'and the refusal carries the stale key');
 select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e1'))), 'allowed', 'Ayşe can');
 
 -- Can no longer works at Beşiktaş: his edit there is not his to undo.
@@ -264,7 +268,14 @@ select pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 2));
 select public.save_schedule_edit_session_service(tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e3'),
   pg_temp.rev(tests.id('ud:e3')), 'Week 3 plan');
 select is(pg_temp.refusal(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e3'))),
-  'PT409 edit lease expired', 'Undo after Save draft is refused');
+  'PT409 edit session closed', 'Undo after Save draft is refused');
+-- EKRAN-01 B3: a closed edit is told apart from a lapsed lock, so the screen
+-- does not pick the edit back up (and close the person's other tab) for it.
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e3'))),
+  'PT409 schedule.edit_session_closed', 'and it carries the closed key');
+select is(pg_temp.refusal_hint(format('select public.heartbeat_schedule_edit_session_service(%L, %L, %L)',
+  tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e3'))),
+  'PT409 schedule.edit_session_closed', 'a heartbeat on the saved edit is told it is closed');
 select is((select count(*)::integer from app_private.schedule_edit_undo_steps where session_id = tests.id('ud:e3')), 0,
   'the closed edit keeps no Undo history');
 
@@ -387,6 +398,17 @@ select is((select count(*)::integer from pg_proc where
     or (proname in ('shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service', 'important_date_close_shifts')
       and prosrc like '%schedule_edit_undo_barrier()%')),
   4, 'and each one that is not a step clears itself out of the history');
+
+-- EKRAN-01 B3: an edit whose lock ran out while it stayed open (a laptop that
+-- slept) is a lapsed lease, which the screen may pick back up.
+select is((select status::text from public.schedule_edit_sessions where id = tests.id('ud:e1')),
+  'active', 'Ayşe''s first edit is still open');
+update public.schedule_edit_sessions set expires_at = now() - interval '1 minute' where id = tests.id('ud:e1');
+select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e1'))),
+  'PT409 schedule.edit_lease_expired', 'once its lock runs out, Undo reads as a lapsed lease');
+select is(pg_temp.refusal_hint(format('select public.heartbeat_schedule_edit_session_service(%L, %L, %L)',
+  tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'))),
+  'PT409 schedule.edit_lease_expired', 'and so does its heartbeat');
 
 select * from finish();
 rollback;

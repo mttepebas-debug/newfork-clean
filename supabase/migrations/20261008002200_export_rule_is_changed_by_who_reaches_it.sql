@@ -1,4 +1,4 @@
--- EKRAN-01 #18 (BL-494; KARARLAR Schedule, kullanıcı kararı 2026-10-01): a
+-- EKRAN-01 #18 (BL-494; KARARLAR Schedule, user decision 2026-10-01): a
 -- weekly export rule is changed and deleted by whoever reaches its locations,
 -- whoever set it up. The owner and admins reach every rule; a manager reaches
 -- a rule whose live locations they all manage (the rule the list shows them
@@ -10,11 +10,19 @@
 -- locations go to the authorization core. An unknown rule has none and asks
 -- like a workspace-wide one, so a manager hears the same out_of_scope for a
 -- rule that does not exist as for one out of reach.
--- Keeping the rule's own preset is always allowed; switching to another takes
--- one of the editor's own presets, as before. The rule still sends as the
--- person who set it up, so a location added by someone else must be one that
--- person can export (review O1): the owner cannot add Beşiktaş to Ayşe's
--- Kadıköy rule; changing its address or hour is free.
+-- Where the rule goes and what it is called stay with the person who set it
+-- up and with the owner and admins (KK-224): Can, who manages Kadıköy too,
+-- changes the day, hour, on/off and locations of Ayşe's Kadıköy rule, not who
+-- reads it, and cannot probe the names of rules he did not make (a rename to a
+-- taken name answered 409). The owner still changes the address on her rule
+-- while she is away. The check goes to the authorization core as a
+-- workspace-wide ask, which only the owner and admins reach.
+-- Keeping the rule's own preset is always allowed; switching it takes one of
+-- its maker's presets and only its maker does that: her email does not go out
+-- with Can's settings, nor does her rule keep Can from deleting his preset
+-- (B9). The rule still sends as the person who set it up, so a location added
+-- by someone else must be one that person can export (review O1): the owner
+-- cannot add Beşiktaş to Ayşe's Kadıköy rule; changing its hour is free.
 
 create or replace function public.update_schedule_export_schedule_service(actor_user_id uuid, target_workspace_id uuid, target_schedule_id uuid, target_payload jsonb)
 returns jsonb
@@ -74,13 +82,22 @@ begin
       using errcode = '22023', hint = 'schedule.export_rule_beyond_its_owner';
   end if;
 
+  -- The address list and the name: its maker, the owner and admins (KK-224).
+  if actor_user_id is distinct from existing.created_by
+     and ((target_payload ? 'recipients' and target_payload->'recipients' is distinct from existing.recipients)
+       or (target_payload ? 'name' and btrim(target_payload->>'name') is distinct from existing.name)) then
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
+      target_locations => '{}'::uuid[]);
+  end if;
+
   next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
   if not exists (
     select 1
       from public.schedule_export_presets p
      where p.id = next_preset_id
        and p.workspace_id = target_workspace_id
-       and (p.id = existing.preset_id or p.created_by = actor_user_id)
+       and (p.id = existing.preset_id
+         or (actor_user_id = existing.created_by and p.created_by = actor_user_id))
   ) then
     raise exception 'schedule export preset not found' using errcode='P0002';
   end if;

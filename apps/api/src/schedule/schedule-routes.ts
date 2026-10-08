@@ -1427,6 +1427,7 @@ function pastEditPayload(error: unknown): Record<string, unknown> | null {
 // BL-958: the database names them in the hint of a PT409 (a 40001 is retried by PostgREST without end).
 const EDIT_CONFLICT_CODES: Readonly<Record<string, string>> = {
   "schedule.edit_lease_expired": "edit_lease_expired",
+  "schedule.edit_session_closed": "edit_session_closed",
   "schedule.edit_session_stale": "edit_session_stale",
 };
 

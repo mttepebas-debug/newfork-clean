@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 445, last: 20261008022536_document_maintenance_keeps_going.sql
--- fingerprint: sha256:748919eac6fd9e896ba6982c10bef78215222b082f870d0b0dfadb81c68f8768
+-- fingerprint: sha256:04dd795674f90a73df66c87029315ebf6e322b98cbab3f9ca932f6545695b4e4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6635,8 +6635,10 @@ begin
   if target_session.id is null or target_session.holder_user_id <> actor_user_id then
     raise exception 'edit session not found' using errcode='P0002';
   end if;
-  if target_session.status <> 'active' or target_session.expires_at <= now() then
-    raise exception 'edit lease expired' using errcode='PT409', hint = 'schedule.edit_lease_expired';
+  if target_session.status <> 'active' then
+    raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+  elsif target_session.expires_at <= now() then
+    raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
   end if;
   -- The edit's locations are still the person's to edit (B-3).
   perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.edit', target_locations => target_session.location_ids);
@@ -6747,9 +6749,9 @@ begin
   if jsonb_typeof(assignments)<>'array' then raise exception 'auto-fill assignments must be an array' using errcode='22023'; end if;
   select * into target_session from public.schedule_edit_sessions s where s.id=target_session_id and s.workspace_id=target_workspace_id for update;
   if target_session.id is null or target_session.holder_user_id<>actor_user_id then raise exception 'edit session not found' using errcode='P0002'; end if;
-  if target_session.revision<>expected_session_revision then raise exception 'stale auto-fill preview' using errcode='PT409'; end if;
+  if target_session.revision<>expected_session_revision then raise exception 'stale auto-fill preview' using errcode = 'PT409'; end if;
   preview:=public.preview_schedule_auto_fill_service(actor_user_id,target_workspace_id,target_session_id);
-  if preview->>'fingerprint'<>expected_fingerprint then raise exception 'stale auto-fill preview' using errcode='PT409'; end if;
+  if preview->>'fingerprint'<>expected_fingerprint then raise exception 'stale auto-fill preview' using errcode = 'PT409'; end if;
   for assignment in select value from jsonb_array_elements(assignments) loop
     select value into proposal from jsonb_array_elements(preview->'proposals') where value->>'shift_id'=assignment->>'shift_id';
     employee:=(assignment->>'employee_id')::uuid;
@@ -6783,14 +6785,14 @@ begin
  perform public.get_schedule_edit_session_service(actor,w,sid);
  select * into prior from public.schedule_default_hours_reviews where workspace_id=w and actor_id=actor and operation_id=key;
  if found then
-  if prior.session_id<>sid or prior.command<>command then raise exception 'Retry key was already used for a different review' using errcode='PT409'; end if;
+  if prior.session_id<>sid or prior.command<>command then raise exception 'Retry key was already used for a different review' using errcode = 'PT409'; end if;
   return public.get_schedule_edit_session_service(actor,w,sid);
  end if;
  -- Settings uses atomic row updates. Hold these source rows while reviewing and
  -- applying so a changed default cannot slip between the two operations.
  perform 1 from public.shift_types t where t.workspace_id=w and t.id in(select s.shift_type_id from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id in(select value::uuid from jsonb_array_elements_text(command->'shift_ids'))) order by t.id for share;
  review:=public.preview_schedule_default_hours_service(actor,w,sid,command);
- if review->>'fingerprint' is distinct from command->>'fingerprint' then raise exception 'Defaults, shifts or conflicts changed; review again' using errcode='PT409'; end if;
+ if review->>'fingerprint' is distinct from command->>'fingerprint' then raise exception 'Defaults, shifts or conflicts changed; review again' using errcode = 'PT409'; end if;
  if (review->>'blocked_count')::integer>0 or (review->>'changed_count')::integer=0 then raise exception 'Resolve blocked shifts or choose changed defaults before applying' using errcode='23514'; end if;
  if exists(select 1 from jsonb_array_elements(review->'shifts') x where (x->>'can_apply')::boolean
   and x->'after_assessment'->>'operation'='warning_requires_override'
@@ -6859,7 +6861,9 @@ begin
     raise exception 'edit session not found' using errcode = 'P0002';
   end if;
 
-  if target_session.status <> 'active' or target_session.expires_at <= now() then
+  if target_session.status <> 'active' then
+    raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+  elsif target_session.expires_at <= now() then
     raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
   end if;
 
@@ -8668,17 +8672,19 @@ begin
  perform app_private.authorize(actor, w, 'schedule.edit', target_locations => session.location_ids);
  perform app_private.authorize(actor, w, 'schedule.edit', target_locations => array(
   select distinct nullif(v->>'location_id','')::uuid from jsonb_array_elements(shifts) v));
- if session.status<>'active' or session.expires_at<=now() then
-  raise exception 'Schedule editing expired; reopen the schedule' using errcode='PT409'; end if;
+ if session.status <> 'active' then
+  raise exception 'Schedule editing closed; reopen the schedule' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+ elsif session.expires_at <= now() then
+  raise exception 'Schedule editing expired; reopen the schedule' using errcode = 'PT409', hint = 'schedule.edit_lease_expired'; end if;
  select * into receipt from public.schedule_shift_batch_commands c
   where c.workspace_id=w and c.actor_user_id=actor and c.idempotency_key=request_key;
  if found then
   if receipt.session_id is distinct from sid or receipt.expected_revision is distinct from expected_revision or receipt.shifts is distinct from shifts then
-   raise exception 'Request key already used for a different batch' using errcode='PT409'; end if;
+   raise exception 'Request key already used for a different batch' using errcode = 'PT409'; end if;
   return public.get_schedule_edit_session_service(actor,w,sid);
  end if;
  if session.revision is distinct from expected_revision then
-  raise exception 'Schedule editing changed; reload before pasting' using errcode='PT409'; end if;
+  raise exception 'Schedule editing changed; reload before pasting' using errcode = 'PT409', hint = 'schedule.edit_session_stale'; end if;
  next_revision:=session.revision;
  for item in select value from jsonb_array_elements(shifts) loop
   result:=public.mutate_schedule_edit_shift_service(actor,w,sid,next_revision,'create',gen_random_uuid(),null,item,gen_random_uuid());
@@ -9234,7 +9240,7 @@ begin
      where s.template_id = target_template_id and s.workspace_id = target_workspace_id))
  end);
  delete from public.schedule_templates where id=target_template_id and workspace_id=target_workspace_id and revision=expected_revision returning name into old_name;
- if old_name is null then raise exception 'schedule template revision stale' using errcode='PT409'; end if;
+ if old_name is null then raise exception 'schedule template revision stale' using errcode = 'PT409'; end if;
  insert into public.schedule_template_events(workspace_id,template_id,template_name,action,actor_user_id) values(target_workspace_id,target_template_id,old_name,'deleted',actor_user_id);
  return jsonb_build_object('status','deleted','template_id',target_template_id);
 end;
@@ -12517,6 +12523,11 @@ begin
     and session.holder_user_id = actor_user_id and session.status = 'active'
     and session.expires_at > now();
   if not found then
+    if exists (select 1 from public.schedule_edit_sessions s
+        where s.id = target_session_id and s.workspace_id = target_workspace_id
+          and s.holder_user_id = actor_user_id and s.status <> 'active') then
+      raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+    end if;
     raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
   end if;
   return public.get_schedule_edit_session_service(actor_user_id, target_workspace_id, target_session_id);
@@ -13664,6 +13675,7 @@ CREATE OR REPLACE FUNCTION "public"."list_schedule_export_cron_candidates_servic
   left join public.workspace_scheduling_settings settings
     on settings.workspace_id = s.workspace_id
   where s.enabled
+    and (s.last_failed_at is null or s.last_failed_at <= target_now - interval '15 minutes')
     and s.auto_disabled_at is null
     and cardinality(s.location_ids) > 0
     and app_private.workspace_allows_interactive_access(s.workspace_id)
@@ -14620,7 +14632,9 @@ begin
     if target_session.id is null or target_session.holder_user_id <> actor_user_id then
       raise exception 'edit session not found' using errcode = 'P0002';
     end if;
-    if target_session.status <> 'active' or target_session.expires_at <= now() then
+    if target_session.status <> 'active' then
+      raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+    elsif target_session.expires_at <= now() then
       raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
     end if;
     if target_session.revision <> expected_session_revision then
@@ -14708,7 +14722,9 @@ begin
       if target_session.id is null or target_session.holder_user_id <> actor_user_id then
         raise exception 'edit session not found' using errcode = 'P0002';
       end if;
-      if target_session.status <> 'active' or target_session.expires_at <= now() then
+      if target_session.status <> 'active' then
+        raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+      elsif target_session.expires_at <= now() then
         raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
       end if;
       if target_session.revision <> expected_session_revision then
@@ -14825,7 +14841,9 @@ begin
 
   -- c. Labels: the catalog's name for an active label of this workspace, the
   -- shift's own copy for a label it already carries; anything else is refused.
-  if operation in ('create', 'update') and shift_payload is not null then
+  -- A payload without label_ids keeps the shift's labels; an empty list clears
+  -- them (EKRAN-01 B7, as for the note).
+  if operation in ('create', 'update') and shift_payload ? 'label_ids' then
     <<labels>>
     declare
       tag_ids uuid[];
@@ -14972,7 +14990,7 @@ begin
     if previous->>'time_basis'='type_default' and
       (nullif(payload->>'start_time','')::time,nullif(payload->>'end_time','')::time) is distinct from
       (nullif(previous->>'start_time','')::time,nullif(previous->>'end_time','')::time) then
-      raise exception 'Refresh the schedule before changing reference hours' using errcode='PT409';
+      raise exception 'Refresh the schedule before changing reference hours' using errcode = 'PT409';
     end if;
     basis:=previous->>'time_basis'; snap:=previous->'time_snapshot';
   else snap:=payload->'time_snapshot'; end if;
@@ -14991,7 +15009,7 @@ begin
     end if;
     if snap is not null and snap<>'null'::jsonb and
       ((snap->>'start_time')::time,(snap->>'end_time')::time) is distinct from (ver.start_time,ver.end_time) then
-      raise exception 'Shift default hours changed; refresh the reference before saving' using errcode='PT409';
+      raise exception 'Shift default hours changed; refresh the reference before saving' using errcode = 'PT409';
     end if;
     if previous is not null and payload->>'location_id'=previous->>'location_id' then
       tz:=coalesce(nullif(previous->>'time_timezone',''),tz);
@@ -15981,7 +15999,8 @@ begin
   select * into target_session from public.schedule_edit_sessions s where s.id=target_session_id and s.workspace_id=target_workspace_id;
   if target_session.id is null or target_session.holder_user_id<>actor_user_id then raise exception 'edit session not found' using errcode='P0002'; end if;
   perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.edit', target_locations => target_session.location_ids);
-  if target_session.status<>'active' or target_session.expires_at<=now() then raise exception 'edit lease expired' using errcode='PT409', hint = 'schedule.edit_lease_expired'; end if;
+  if target_session.status <> 'active' then raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+  elsif target_session.expires_at <= now() then raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired'; end if;
   for open_shift in select s.*,l.name location_name,j.name job_name from public.schedule_edit_session_shifts s
     join public.locations l on l.id=s.location_id join public.jobs j on j.id=s.job_id
     where s.session_id=target_session.id and s.employee_id is null order by s.scheduled_date,s.start_time,s.id loop
@@ -16036,14 +16055,18 @@ begin
  if cardinality(ids)<>(select count(distinct x) from unnest(ids) x) then raise exception 'Choose each shift once' using errcode='22023'; end if;
  select * into session from public.schedule_edit_sessions where workspace_id=w and id=sid;
  if session.id is null or session.holder_user_id is distinct from actor then raise exception 'Edit session not found' using errcode='42501'; end if;
- if session.status<>'active' or session.expires_at<=now() or session.revision is distinct from (command->>'expected_session_revision')::integer then
-  raise exception 'Schedule editing changed; reopen the review' using errcode='PT409'; end if;
+ if session.status <> 'active' then
+  raise exception 'Schedule editing closed; reopen the review' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+ elsif session.expires_at <= now() then
+  raise exception 'Schedule editing expired; reopen the review' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
+ elsif session.revision is distinct from (command->>'expected_session_revision')::integer then
+  raise exception 'Schedule editing changed; reopen the review' using errcode = 'PT409', hint = 'schedule.edit_session_stale'; end if;
  starts:=(command->>'starts_on')::date; ends:=(command->>'ends_on')::date;
  if starts is null or ends is null or starts<session.week_start or ends>session.week_start+6 or ends<starts then
   raise exception 'Choose dates within this schedule week' using errcode='22023'; end if;
  if (select count(*) from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id=any(ids)
   and s.scheduled_date between starts and ends and coalesce(s.pending_op_type,'')<>'delete')<>cardinality(ids) then
-  raise exception 'Selected shifts changed or are outside these dates' using errcode='PT409'; end if;
+  raise exception 'Selected shifts changed or are outside these dates' using errcode = 'PT409'; end if;
  perform app_private.authorize(actor, w, 'schedule.edit', target_locations => array(
   select distinct s.location_id from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id=any(ids)));
  edit_scope:=app_private.scope_set(actor, w, 'schedule.edit');
@@ -18528,7 +18551,7 @@ begin
  end);
  update public.schedule_templates set name=btrim(target_name),revision=revision+1,updated_by=actor_user_id,updated_at=now()
  where id=target_template_id and workspace_id=target_workspace_id and revision=expected_revision;
- if not found then raise exception 'schedule template revision stale' using errcode='PT409'; end if;
+ if not found then raise exception 'schedule template revision stale' using errcode = 'PT409'; end if;
  insert into public.schedule_template_events(workspace_id,template_id,template_name,action,actor_user_id,detail)
  values(target_workspace_id,target_template_id,btrim(target_name),'renamed',actor_user_id,jsonb_build_object('previous_name',old_name));
  return public.get_schedule_template_service(actor_user_id,target_workspace_id,target_template_id);
@@ -21939,7 +21962,9 @@ begin
   if target_session.id is null or target_session.holder_user_id <> actor_user_id then
     raise exception 'edit session not found' using errcode = 'P0002';
   end if;
-  if target_session.status <> 'active' or target_session.expires_at <= now() then
+  if target_session.status <> 'active' then
+    raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+  elsif target_session.expires_at <= now() then
     raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
   end if;
   if target_session.revision <> expected_session_revision then
@@ -22100,7 +22125,9 @@ begin
     if target_session.id is null or target_session.holder_user_id <> actor_user_id then
       raise exception 'edit session not found' using errcode = 'P0002';
     end if;
-    if target_session.status <> 'active' or target_session.expires_at <= now() then
+    if target_session.status <> 'active' then
+      raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+    elsif target_session.expires_at <= now() then
       raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
     end if;
     if target_session.revision <> expected_session_revision then
@@ -25671,7 +25698,9 @@ begin
   end if;
   -- The edit's locations are still the person's to edit (B-3).
   perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.edit', target_locations => edit.location_ids);
-  if edit.status <> 'active' or edit.expires_at <= now() then
+  if edit.status <> 'active' then
+    raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+  elsif edit.expires_at <= now() then
     raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
   end if;
   if edit.revision is distinct from expected_session_revision then
@@ -26296,13 +26325,22 @@ begin
       using errcode = '22023', hint = 'schedule.export_rule_beyond_its_owner';
   end if;
 
+  -- The address list and the name: its maker, the owner and admins (KK-224).
+  if actor_user_id is distinct from existing.created_by
+     and ((target_payload ? 'recipients' and target_payload->'recipients' is distinct from existing.recipients)
+       or (target_payload ? 'name' and btrim(target_payload->>'name') is distinct from existing.name)) then
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.export',
+      target_locations => '{}'::uuid[]);
+  end if;
+
   next_preset_id := coalesce((target_payload->>'preset_id')::uuid, existing.preset_id);
   if not exists (
     select 1
       from public.schedule_export_presets p
      where p.id = next_preset_id
        and p.workspace_id = target_workspace_id
-       and (p.id = existing.preset_id or p.created_by = actor_user_id)
+       and (p.id = existing.preset_id
+         or (actor_user_id = existing.created_by and p.created_by = actor_user_id))
   ) then
     raise exception 'schedule export preset not found' using errcode='P0002';
   end if;
