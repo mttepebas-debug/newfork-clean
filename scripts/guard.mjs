@@ -355,6 +355,9 @@ function pushCall(seg, cwd) {
   const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
   const current = () => tryGit(dir, ["branch", "--show-current"]);
   if (!refspecs.length) return { dir, refs: [{ src: "HEAD", dst: current() }] };
+  // a refspec built by $( … ) or `…` (`git push -u origin "$(git branch --show-current)"`) cannot be
+  // read before it runs; it is resolved like a bare push, to the current branch
+  if (refspecs.some((spec) => SUBST.test(spec))) return { dir, refs: [{ src: "HEAD", dst: current() }] };
   return {
     dir,
     refs: refspecs.map((spec) => {
@@ -527,4 +530,4 @@ async function main() {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

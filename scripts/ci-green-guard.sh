@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The pgTAP green list only grows (CLAUDE.md §2, BL-281).
+# The pgTAP green list only grows (CLAUDE.md §3.A, BL-281).
 #
 # Without a base: every supabase/tests/*.test.sql is in exactly one of
 # ci-green.txt (runs in CI) or ci-not-green.txt (known not green, with a

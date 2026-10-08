@@ -352,3 +352,53 @@ test("ciWait: asks for ci.yml runs only, logs a failing gh's stderr, and names t
   assert.ok(lists.length >= 2 && lists.every((a) => a.join(" ").includes("--workflow ci.yml")), JSON.stringify(lists));
   assert.match(fs.readFileSync(log, "utf8"), /HTTP 502: bad gateway/);
 });
+
+// ---- integration fixes (WORKFLOW-V2) ----
+
+test("apply-local: with NF_OVERRIDE a held db.lock is not waited for: one try, then the override path", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  take("db", "oturum/ekran-01, test:db");
+  let sleeps = 0;
+  const sleep = () => {
+    sleeps++;
+    throw new Error("waited in the queue");
+  };
+  const r = applyLocal({ ...w.ctx, override: "acil", lockWaitMin: 30, sleep });
+  assert.equal(r.code, 0, text(r));
+  assert.equal(sleeps, 0);
+  assert.match(text(r), /AŞILDI \(NF_OVERRIDE\): db\.lock başka kimlikte: oturum\/ekran-01 \(test:db\)/);
+  assert.equal(lock("db").identity, "oturum/ekran-01"); // the holder's lock stays
+});
+
+test("apply-local: a wait that runs out names what kept it: the holder, or a ticket ahead in the queue", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  take("db", "oturum/ekran-01, test:db");
+  const held = applyLocal(w.ctx);
+  assert.equal(held.code, 1);
+  assert.match(text(held), /DUR: db\.lock için [\d.]+ dk beklendi; alınamadı: db\.lock başka kimlikte: oturum\/ekran-01 \(test:db\)/);
+  release("db", "oturum/ekran-01");
+  const queue = path.join(process.env.NEWFORK_LOCK_DIR, "queue-db");
+  fs.mkdirSync(queue, { recursive: true });
+  const ticket = { identity: "run/ekran-02-1", command: "pnpm test:db", pid: process.pid, startedAt: new Date().toISOString() };
+  fs.writeFileSync(path.join(queue, "000000000000001-1-aaaaaa.json"), JSON.stringify(ticket));
+  const queued = applyLocal(w.ctx);
+  assert.equal(queued.code, 1);
+  assert.match(text(queued), /DUR: db\.lock için [\d.]+ dk beklendi; alınamadı: db\.lock sırasında önde: run\/ekran-02-1 \(pnpm test:db\)/);
+  assert.equal(lock("db").free, true);
+});
+
+test("run: fetches origin first, so a coord/kayit another clone pushed since the last fetch rides along", () => {
+  const other = path.join(w.dir, "other");
+  git(w.dir, "clone", "-q", w.origin, other);
+  git(other, "checkout", "-q", "-b", "coord/kayit");
+  write(other, "DURUM.md", "# Durum\n");
+  git(other, "add", "DURUM.md");
+  git(other, "-c", "user.email=o@test", "-c", "user.name=O", "commit", "-q", "-m", "records");
+  git(other, "push", "-q", "origin", "coord/kayit");
+  assert.equal(git(w.repo, "branch", "-a", "--list", "*coord/kayit*"), ""); // not fetched yet
+  const r = run(w.ctx, []);
+  assert.equal(r.code, 0, text(r));
+  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit"]);
+});

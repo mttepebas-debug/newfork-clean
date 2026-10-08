@@ -86,6 +86,17 @@ test("bare `git push` on main counts as a push to main", () => {
   assert.equal(evaluate(bash("git push")).block, true);
 });
 
+test("a push whose refspec is built by $( ) or a backtick goes where the current branch points", () => {
+  const forms = ['git push -u origin "$(git branch --show-current)"', "git push origin `git branch --show-current`"];
+  const onMain = cloneRepo("repo-subst-main");
+  assert.equal(git(onMain, "branch", "--show-current"), "main");
+  for (const cmd of forms) assert.equal(evaluate(bash(cmd, { cwd: onMain })).block, true, cmd);
+  assert.equal(auditLines().at(-1).event, "push-main-blocked");
+  const onTask = cloneRepo("repo-subst-task");
+  git(onTask, "checkout", "-q", "-b", "task/x");
+  for (const cmd of forms) assert.equal(evaluate(bash(cmd, { cwd: onTask })).block, false, cmd);
+});
+
 test("NF_OVERRIDE passes, backs up origin/main and logs the reason", () => {
   const r = evaluate(bash('NF_OVERRIDE="lock tool down" git push origin HEAD:main'));
   assert.equal(r.block, false);

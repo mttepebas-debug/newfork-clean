@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// TREN-ARACI (KARARLAR OPS-08, CLAUDE.md §6 "Gönderim adımları (tren)"): only the coordinator's train goes to main.
+// TREN-ARACI (KARARLAR OPS-08, CLAUDE.md §5 tren): only the coordinator's train goes to main.
 // Each step is its own command with its own exit code; long output goes to a log file, the screen gets a summary.
 // State: <train>/artifacts/train/state.json; logs: <train>/artifacts/train/<stamp>/<step>.log (artifacts/ is ignored).
 //   plan <branch[@sha]…>   order, blockers, warnings and a dry run of build; changes nothing but `git fetch`
@@ -218,15 +218,27 @@ const mine = (s, name) => {
 };
 // The train holds `name` (already, or takes it now). A dead holder is cleared first, also one under the train's
 // own identity left by an earlier train process. A live one is waited for in the lock's queue, in arrival order
-// (spec §7.4), up to ctx.lockWaitMin; past that it is a check NF_OVERRIDE can pass.
+// (spec §7.4), up to ctx.lockWaitMin; past that it is a check NF_OVERRIDE can pass. With NF_OVERRIDE the train
+// does not wait: it tries once, then takes the override path. Waiting lines also go to the screen as they come.
 function hold(ctx, s, name, step, lines, beforeOverride) {
   const cleared = clearDead(name);
   if (cleared) lines.push(cleared);
   if (mine(s, name)) return true;
-  const got = acquire(name, `${s.identity}, tren ${step}`, { maxWaitMin: ctx.lockWaitMin ?? 30, sleep: ctx.sleep, say: (l) => lines.push(l) });
+  const say = (l) => {
+    lines.push(l);
+    console.log(l);
+  };
+  const got = acquire(name, `${s.identity}, tren ${step}`, { maxWaitMin: ctx.override ? 0 : (ctx.lockWaitMin ?? 30), sleep: ctx.sleep, say });
   if (got.ok) return true;
+  // what kept it: the holder, or a ticket ahead in the queue (ours is gone by now)
   const l = lockOf(name);
-  const blocker = l.free ? got.message : `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`;
+  const ahead = l.queue?.[0];
+  const why = !l.free
+    ? `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`
+    : ahead
+      ? `${name}.lock sırasında önde: ${ahead.identity ?? "?"}${ahead.command ? ` (${ahead.command})` : ""}`
+      : null;
+  const blocker = ctx.override ? (why ?? got.message) : why ? `${got.message}: ${why}` : got.message;
   return pass(ctx, s, step, blocker, lines, beforeOverride);
 }
 const letGo = (s, name) => {
@@ -523,6 +535,7 @@ function coordBranch(repo) {
 
 export function run(ctx, args) {
   const names = [...args];
+  tryGit(ctx.repo, ["fetch", "-q", "origin"]); // coord/kayit as origin has it now
   const coord = coordBranch(ctx.repo);
   if (coord && !names.some((n) => n.split("@")[0] === COORD_BRANCH)) names.push(coord);
   if (!names.length) return { code: 1, lines: ["trene girecek dal yok"] };
@@ -616,6 +629,7 @@ const USAGE = [
   "       node scripts/train.mjs plan|build <dal[@sha]…>",
   "       node scripts/train.mjs ci|push|apply-local",
   '       NF_OVERRIDE="<gerekçe>" önüne: kilit ya da CI kontrolünü aşar (origin/main önce yedeklenir, audit.log); fast-forward olmayan push asla',
+  "       NF_OVERRIDE ile kilit sırası beklenmez: bir kez denenir, alınamazsa aşılır",
 ];
 
 function main(argv) {
