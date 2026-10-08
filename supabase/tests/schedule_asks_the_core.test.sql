@@ -33,8 +33,13 @@ select tests.role('sc', 'rules lead', 'manager', array(
   from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('sc') and r.system_key = 'manager'
-  union select 'schedule.conflict_rules.manage' union select 'settings.schedule_rules.read'
+  union select 'settings.schedule_rules.read'
 ));
+-- Settings > Roles no longer puts schedule.conflict_rules.manage on a
+-- manager-type role (GUVENLIK-A GA-2); written straight into the table, the
+-- conflict rules check below proves the core still says no.
+insert into public.workspace_role_permissions (workspace_id, role_id, permission_key)
+values (tests.id('sc'), tests.id('sc:role:rules lead'), 'schedule.conflict_rules.manage');
 select tests.person('sc', 'rita', 'rules lead', array['K'], array['cook']);
 -- A manager-type role without template access.
 select tests.role('sc', 'no templates', 'manager', array(

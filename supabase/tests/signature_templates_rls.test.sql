@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(48);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -228,17 +228,30 @@ select r.workspace_id, r.id, 'roles.manage' from public.workspace_roles r
 where r.workspace_id='25000000-0000-4000-8000-000000000001' and r.system_key='admin'
 on conflict do nothing;
 set local role service_role;
+-- documents.manage is the owner's and admin's (GUVENLIK-A GA-2).
+select throws_ok(
+  $$select public.save_workspace_role_service(
+    '15000000-0000-4000-8000-000000000002',
+    '25000000-0000-4000-8000-000000000001', null, 'Policy editor', '', 'manager',
+    array['workspace.read', 'documents.read', 'documents.manage']::text[])$$,
+  '42501', 'Permission is not eligible for a lower role',
+  'Settings > Roles cannot put documents.manage on a manager-type role'
+);
 insert into signature_role_state
 select public.save_workspace_role_service(
   '15000000-0000-4000-8000-000000000002',
   '25000000-0000-4000-8000-000000000001', null, 'Policy coordinator', '', 'manager',
-  array['workspace.read', 'documents.read', 'documents.manage']::text[]
+  array['workspace.read', 'documents.read']::text[]
 );
 set local role postgres;
+-- documents.manage written straight into the table: the write check below
+-- proves the core still says no to a manager-type role that holds it.
+insert into public.workspace_role_permissions (workspace_id, role_id, permission_key)
+select '25000000-0000-4000-8000-000000000001', role_id, 'documents.manage' from signature_role_state;
 select is((select count(*)::integer from signature_role_state), 1, 'admin can create a custom acknowledgement role');
 select is(
   (select count(*)::integer from public.workspace_role_permissions where role_id = (select role_id from signature_role_state) and permission_key like 'documents.%'),
-  2, 'custom role stores both documents permissions, which open acknowledgements too'
+  2, 'the custom role holds documents.read from Settings > Roles and documents.manage written for the next check'
 );
 select lives_ok(
   $$update public.workspace_memberships set role_id = (select role_id from signature_role_state)

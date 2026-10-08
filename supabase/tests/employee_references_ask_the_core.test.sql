@@ -14,13 +14,18 @@ select tests.person('r', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('r', 'zeynep', 'admin', array['K'], array['cook']);
 select tests.person('r', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('r', 'nur', 'manager', null, null);
--- A manager-type role that may also grant access (Settings > Roles).
+-- A manager-type role that may also grant access. Settings > Roles no longer
+-- puts employee_access.manage or roles.read on a manager-type role (GUVENLIK-A
+-- GA-2), so they are written straight into the table: the checks below prove
+-- the core still keeps such a manager to employees.
 select tests.role('r', 'lead', 'manager', array(
   select rp.permission_key
   from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('r') and r.system_key = 'manager'
-) || array['employee_access.manage', 'employee_access.read', 'roles.read']);
+) || array['employee_access.read']);
+insert into public.workspace_role_permissions (workspace_id, role_id, permission_key)
+select tests.id('r'), tests.id('r:role:lead'), k from unnest(array['employee_access.manage', 'roles.read']) k;
 select tests.person('r', 'lale', 'lead', array['B'], array['cook']);
 
 -- An archived and a deleted location and job.
