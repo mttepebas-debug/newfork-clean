@@ -300,8 +300,8 @@ begin
       user_id,
       jsonb_build_object(
         'legal_first_name', initcap(person_label), 'legal_last_name', 'Person',
-        'phone', '4155550123', 'emergency_contact_name', 'Contact',
-        'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'
+        'phone', '+14155550123', 'emergency_contact_name', 'Contact',
+        'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'
       ),
       (select c.revision from public.employee_onboarding_cases c where c.employee_id = employee),
       workspace

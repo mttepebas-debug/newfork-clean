@@ -193,12 +193,17 @@ insert into retired (kind, name, step) values
   ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], uuid[], boolean, integer, text, jsonb)', 'FB-6.1.4'),
   ('function_signature', 'public.preview_schedule_publication_service(uuid, uuid, uuid, uuid[])', 'FB-6.1.4'),
   ('function_signature', 'public.apply_schedule_template_service(uuid, uuid, uuid, integer, uuid, text)', 'FB-6.1.4');
+-- BL-969: the account keeps its phone once, in E.164; the column kept for a
+-- backward-compatible move is gone, and so are the phone checks of the 7-30
+-- character and international era (the *_us_phone checks took their place).
+insert into retired (kind, name, step) values
+  ('column', 'user_profiles.phone', 'BL-969'),
+  ('constraint', 'user_profiles_phone_check', 'BL-969'),
+  ('constraint', 'user_profiles_phone_e164_check', 'BL-969'),
+  ('constraint', 'employee_private_profiles_phone_check', 'BL-969'),
+  ('constraint', 'employee_private_profiles_emergency_contact_phone_check', 'BL-969');
 -- BL-186: every read shows today's marks; the publication snapshot's
 -- availability visibility and the reminder stamp that fed it are gone.
--- BL-969: the account keeps its phone once, in E.164; the column kept for a
--- backward-compatible move is gone.
-insert into retired (kind, name, step) values
-  ('column', 'user_profiles.phone', 'BL-969');
 insert into retired (kind, name, step) values
   ('function', 'weekly_published_availability_visible', 'BL-186'),
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),

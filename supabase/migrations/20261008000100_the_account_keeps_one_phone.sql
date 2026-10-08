@@ -1,7 +1,7 @@
 -- BL-969: the account keeps one phone. The column kept for a backward-compatible
--- move is gone; its US numbers were taken over by 20261008000000. It goes on
+-- move is gone; 20261008000000 made it say what phone_e164 says. It goes on
 -- its own, after the web that no longer reads it is live (live order: the
--- previous migration, main, Vercel live, then this one).
+-- previous migration, main, Vercel live, a backup of the column, then this one).
 
 set local lock_timeout = '5s';
 
