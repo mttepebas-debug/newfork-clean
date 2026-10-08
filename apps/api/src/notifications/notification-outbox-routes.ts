@@ -35,7 +35,12 @@ export function registerNotificationOutboxRoutes(
     const documents = result.documentMaintenance;
     if (documents && "failed_cases" in documents && documents.failed_cases > 0)
       request.log.warn({ failedCases: documents.failed_cases }, "document maintenance skipped cases after errors");
-    return reply.send(result);
+    // The message stays in the log: internals never reach an answer (app.ts), whose shape is unchanged.
+    return reply.send({
+      ...result,
+      ...(result.maintenance && "failed" in result.maintenance ? { maintenance: { failed: true } } : {}),
+      ...(documents && "failed" in documents ? { documentMaintenance: { failed: true } } : {}),
+    });
   };
 
   app.get("/internal/cron/notification-outbox", handler);

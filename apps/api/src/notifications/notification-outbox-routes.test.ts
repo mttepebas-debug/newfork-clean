@@ -25,6 +25,8 @@ describe("notification cron route", () => {
     expect(response.statusCode).toBe(200);
     expect(logged).toHaveLength(1);
     expect(logged[0]).toMatchObject({ level: 50, step: "document maintenance", error: 'null value in column "notification_key"' });
+    // The message is for the log; the answer keeps its old shape and no internals (app.ts error policy).
+    expect(response.json().documentMaintenance).toEqual({ failed: true });
   });
 
   it("warns when document maintenance skipped cases after errors", async () => {
