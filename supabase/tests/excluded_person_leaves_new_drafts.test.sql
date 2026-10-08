@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(26);
 
 -- BL-218 (T2 a). A person excluded from Schedule gets no new shift in an
 -- edit: not by hand, not as a pending change, not from a template (the
@@ -205,6 +205,11 @@ select tests.add_shift(tests.user('ex:owner'), 'ex', tests.id('ex:edit:w4'), 4,
 select tests.add_shift(tests.user('ex:owner'), 'ex', tests.id('ex:edit:w4'), 4,
   '{"person": "irem", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}');
 select tests.remember('ex:draft:w4', pg_temp.save(tests.id('ex:edit:w4')));
+-- Both shifts are in the draft, so a 0 on the published week below is the
+-- publish check's doing, not a shift that was never written (EKRAN-01 B17).
+select is((select count(*)::integer from public.schedule_draft_shifts d
+  where d.draft_id = tests.id('ex:draft:w4') and d.employee_id in (tests.id('ex:hakan'), tests.id('ex:irem'))),
+  2, 'the saved draft holds Hakan''s and İrem''s shifts');
 
 update public.employee_profiles set archived_at = now() where id = tests.id('ex:hakan');
 select is(pg_temp.publish(tests.id('ex:draft:w4')), '23514',
@@ -222,6 +227,8 @@ select is(pg_temp.published_for('irem', 4), 0, 'and İrem is not on the publishe
 update public.employee_job_assignments set ended_at = null where employee_id = tests.id('ex:irem');
 select is(pg_temp.publish(tests.id('ex:draft:w4')), 'allowed',
   'with İrem back on the job the same draft publishes');
+select is(pg_temp.published_for('irem', 4), 1, 'and İrem is on the published week');
+select is(pg_temp.published_for('hakan', 4), 1, 'and so is Hakan, no longer archived');
 
 select * from finish();
 rollback;
