@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 452, last: 20261008111800_retire_what_the_package_replaced.sql
--- fingerprint: sha256:dc180fdc420f1bc2945c782ee421bd52365d1b12897108e43fc5b7fc1a964d77
+-- migrations: 454, last: 20261008111800_retire_what_the_package_replaced.sql
+-- fingerprint: sha256:bb530ab797eb10cb2581b8d01daec2f8dcbf73a13ae90c5909afdd0710683d6b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -600,23 +600,25 @@ CREATE OR REPLACE FUNCTION "app_private"."account_phone_e164"("raw_phone" "text"
     SET "search_path" TO ''
     AS $_$
 declare
-  trimmed text := btrim(coalesce(raw_phone, ''));
+  typed text := normalize(coalesce(raw_phone, ''), NFKC);
   digits text;
-  normalized text;
+  local_digits text;
 begin
-  if trimmed = '' then
+  if typed !~ '[^[:space:]]' then
     return null;
   end if;
-  digits := regexp_replace(trimmed, '\D', '', 'g');
-  normalized := case
-    when left(trimmed, 1) = '+' then '+' || digits
-    when digits like '1%' and char_length(digits) > 10 then '+' || digits
-    else '+1' || ltrim(digits, '0')
-  end;
-  if normalized !~ '^\+[1-9][0-9]{7,14}$' then
+  if typed ~ '\+[[:space:]().-]*[02-9]' then
     raise exception 'that phone number cannot be dialled' using errcode = '22023';
   end if;
-  return normalized;
+  digits := regexp_replace(typed, '[^0-9]', '', 'g');
+  local_digits := case
+    when char_length(digits) = 11 and digits like '1%' then substr(digits, 2)
+    else digits
+  end;
+  if local_digits !~ '^[2-9][0-9]{9}$' then
+    raise exception 'that phone number cannot be dialled' using errcode = '22023';
+  end if;
+  return '+1' || local_digits;
 end;
 $_$;
 
@@ -4393,14 +4395,18 @@ CREATE TABLE IF NOT EXISTS "public"."locations" (
     "short_name" "text" NOT NULL,
     "phone" "text",
     CONSTRAINT "locations_city_check" CHECK (("char_length"("btrim"("city")) <= 100)),
+    CONSTRAINT "locations_city_us_letters" CHECK ((NORMALIZE("city", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "locations_country_code_check" CHECK (("country_code" ~ '^[A-Z]{2}$'::"text")),
     CONSTRAINT "locations_name_check" CHECK ((("char_length"("btrim"("name")) >= 1) AND ("char_length"("btrim"("name")) <= 120))),
+    CONSTRAINT "locations_name_us_letters" CHECK ((NORMALIZE("name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "locations_phone_format" CHECK ((("phone" IS NULL) OR ("phone" ~ '^\+1[2-9][0-9]{9}$'::"text"))),
     CONSTRAINT "locations_postal_code_check" CHECK (("char_length"("btrim"("postal_code")) <= 20)),
     CONSTRAINT "locations_region_check" CHECK (("char_length"("btrim"("region")) <= 100)),
+    CONSTRAINT "locations_region_us_letters" CHECK ((NORMALIZE("region", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "locations_short_name_format" CHECK (("short_name" ~ '^[A-Z0-9-]{2,12}$'::"text")),
     CONSTRAINT "locations_sort_order_check" CHECK (("sort_order" >= 0)),
     CONSTRAINT "locations_street_address_check" CHECK (("char_length"("btrim"("street_address")) <= 180)),
+    CONSTRAINT "locations_street_address_us_letters" CHECK ((NORMALIZE("street_address", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "locations_timezone_check" CHECK ((("char_length"("btrim"("timezone")) >= 1) AND ("char_length"("btrim"("timezone")) <= 80)))
 );
 
@@ -9863,11 +9869,15 @@ CREATE TABLE IF NOT EXISTS "public"."employee_profiles" (
     "middle_name" "text" DEFAULT ''::"text" NOT NULL,
     CONSTRAINT "employee_profiles_employee_code_check" CHECK (("employee_code" ~ '^E-[0-9]{4,}$'::"text")),
     CONSTRAINT "employee_profiles_first_name_check" CHECK ((("char_length"("btrim"("first_name")) >= 1) AND ("char_length"("btrim"("first_name")) <= 80))),
+    CONSTRAINT "employee_profiles_first_name_us_letters" CHECK ((NORMALIZE("first_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_profiles_internal_note_check" CHECK (("char_length"("internal_note") <= 1000)),
     CONSTRAINT "employee_profiles_invitation_email_check" CHECK ((("invitation_email" IS NULL) OR ("invitation_email" = "lower"("btrim"("invitation_email"))))),
     CONSTRAINT "employee_profiles_last_name_check" CHECK ((("char_length"("btrim"("last_name")) >= 1) AND ("char_length"("btrim"("last_name")) <= 80))),
+    CONSTRAINT "employee_profiles_last_name_us_letters" CHECK ((NORMALIZE("last_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_profiles_middle_name_check" CHECK (("char_length"("middle_name") <= 80)),
+    CONSTRAINT "employee_profiles_middle_name_us_letters" CHECK ((NORMALIZE("middle_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_profiles_preferred_name_check" CHECK (("char_length"("preferred_name") <= 80)),
+    CONSTRAINT "employee_profiles_preferred_name_us_letters" CHECK ((NORMALIZE("preferred_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_profiles_revision_check" CHECK (("revision" > 0))
 );
 
@@ -28073,6 +28083,7 @@ CREATE TABLE IF NOT EXISTS "public"."departments" (
     "system_key" "text",
     CONSTRAINT "departments_color_check" CHECK (("color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
     CONSTRAINT "departments_name_check" CHECK ((("char_length"("btrim"("name")) >= 1) AND ("char_length"("btrim"("name")) <= 100))),
+    CONSTRAINT "departments_name_us_letters" CHECK ((NORMALIZE("name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "departments_system_key_check" CHECK (("system_key" = 'management'::"text"))
 );
 
@@ -28419,6 +28430,7 @@ CREATE TABLE IF NOT EXISTS "public"."employee_preferred_name_requests" (
     "decided_by" "uuid",
     "decided_at" timestamp with time zone,
     CONSTRAINT "employee_preferred_name_requests_requested_name_check" CHECK ((("char_length"("btrim"("requested_name")) >= 1) AND ("char_length"("btrim"("requested_name")) <= 80))),
+    CONSTRAINT "employee_preferred_name_requests_requested_name_us_letters" CHECK ((NORMALIZE("requested_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_preferred_name_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'rejected'::"text"])))
 );
 
@@ -28455,20 +28467,29 @@ CREATE TABLE IF NOT EXISTS "public"."employee_private_profiles" (
     "legal_middle_name" "text" DEFAULT ''::"text" NOT NULL,
     CONSTRAINT "employee_private_profiles_avatar_path_check" CHECK ((("avatar_object_path" IS NULL) OR ("avatar_object_path" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'::"text"))),
     CONSTRAINT "employee_private_profiles_city_check" CHECK ((("char_length"("btrim"("city")) >= 1) AND ("char_length"("btrim"("city")) <= 100))),
+    CONSTRAINT "employee_private_profiles_city_us_letters" CHECK ((NORMALIZE("city", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_country_code_check" CHECK (("country_code" ~ '^[A-Z]{2}$'::"text")),
     CONSTRAINT "employee_private_profiles_emergency_contact_name_check" CHECK ((("char_length"("btrim"("emergency_contact_name")) >= 1) AND ("char_length"("btrim"("emergency_contact_name")) <= 120))),
-    CONSTRAINT "employee_private_profiles_emergency_contact_phone_check" CHECK ((("char_length"("btrim"("emergency_contact_phone")) >= 7) AND ("char_length"("btrim"("emergency_contact_phone")) <= 30))),
+    CONSTRAINT "employee_private_profiles_emergency_contact_name_us_letters" CHECK ((NORMALIZE("emergency_contact_name", NFC) !~ '[şŞğĞıİ]'::"text")),
+    CONSTRAINT "employee_private_profiles_emergency_contact_phone_us_phone" CHECK (("emergency_contact_phone" ~ '^\+1[2-9][0-9]{9}$'::"text")),
     CONSTRAINT "employee_private_profiles_emergency_contact_whole" CHECK (((("emergency_contact_name" IS NULL) = ("emergency_contact_phone" IS NULL)) AND (("emergency_contact_name" IS NOT NULL) OR ("emergency_contact_relationship" IS NULL)))),
     CONSTRAINT "employee_private_profiles_emergency_email_check" CHECK ((("emergency_contact_email" = ''::"text") OR ("emergency_contact_email" ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'::"text"))),
     CONSTRAINT "employee_private_profiles_emergency_relationship_check" CHECK ((("char_length"("btrim"("emergency_contact_relationship")) >= 1) AND ("char_length"("btrim"("emergency_contact_relationship")) <= 80))),
+    CONSTRAINT "employee_private_profiles_emergency_relationship_us_letters" CHECK ((NORMALIZE("emergency_contact_relationship", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_legal_first_name_check" CHECK ((("char_length"("btrim"("legal_first_name")) >= 1) AND ("char_length"("btrim"("legal_first_name")) <= 80))),
+    CONSTRAINT "employee_private_profiles_legal_first_name_us_letters" CHECK ((NORMALIZE("legal_first_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_legal_last_name_check" CHECK ((("char_length"("btrim"("legal_last_name")) >= 1) AND ("char_length"("btrim"("legal_last_name")) <= 80))),
+    CONSTRAINT "employee_private_profiles_legal_last_name_us_letters" CHECK ((NORMALIZE("legal_last_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_legal_middle_name_check" CHECK (("char_length"("legal_middle_name") <= 80)),
-    CONSTRAINT "employee_private_profiles_phone_check" CHECK ((("char_length"("btrim"("phone")) >= 7) AND ("char_length"("btrim"("phone")) <= 30))),
+    CONSTRAINT "employee_private_profiles_legal_middle_name_us_letters" CHECK ((NORMALIZE("legal_middle_name", NFC) !~ '[şŞğĞıİ]'::"text")),
+    CONSTRAINT "employee_private_profiles_phone_us_phone" CHECK (("phone" ~ '^\+1[2-9][0-9]{9}$'::"text")),
     CONSTRAINT "employee_private_profiles_postal_code_check" CHECK ((("char_length"("btrim"("postal_code")) >= 1) AND ("char_length"("btrim"("postal_code")) <= 20))),
     CONSTRAINT "employee_private_profiles_preferred_name_check" CHECK (("char_length"("preferred_name") <= 80)),
+    CONSTRAINT "employee_private_profiles_preferred_name_us_letters" CHECK ((NORMALIZE("preferred_name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_region_check" CHECK ((("char_length"("btrim"("region")) >= 1) AND ("char_length"("btrim"("region")) <= 100))),
-    CONSTRAINT "employee_private_profiles_street_address_check" CHECK ((("char_length"("btrim"("street_address")) >= 1) AND ("char_length"("btrim"("street_address")) <= 180)))
+    CONSTRAINT "employee_private_profiles_region_us_letters" CHECK ((NORMALIZE("region", NFC) !~ '[şŞğĞıİ]'::"text")),
+    CONSTRAINT "employee_private_profiles_street_address_check" CHECK ((("char_length"("btrim"("street_address")) >= 1) AND ("char_length"("btrim"("street_address")) <= 180))),
+    CONSTRAINT "employee_private_profiles_street_address_us_letters" CHECK ((NORMALIZE("street_address", NFC) !~ '[şŞğĞıİ]'::"text"))
 );
 
 
@@ -28586,6 +28607,7 @@ CREATE TABLE IF NOT EXISTS "public"."jobs" (
     CONSTRAINT "jobs_color_check" CHECK (("color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
     CONSTRAINT "jobs_deleted_remain_archived" CHECK ((("deleted_at" IS NULL) OR ("archived_at" IS NOT NULL))),
     CONSTRAINT "jobs_name_check" CHECK ((("char_length"("btrim"("name")) >= 1) AND ("char_length"("btrim"("name")) <= 100))),
+    CONSTRAINT "jobs_name_us_letters" CHECK ((NORMALIZE("name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "jobs_system_key_check" CHECK (("system_key" = 'owner'::"text"))
 );
 
@@ -29683,20 +29705,18 @@ CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
     "display_name" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "phone" "text",
     "phone_e164" "text",
     "avatar_object_path" "text",
     CONSTRAINT "user_profiles_avatar_object_path_check" CHECK ((("avatar_object_path" IS NULL) OR ("avatar_object_path" ~* (('^'::"text" || ("user_id")::"text") || '/profile/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'::"text")))),
     CONSTRAINT "user_profiles_display_name_check" CHECK ((("char_length"("btrim"("display_name")) >= 1) AND ("char_length"("btrim"("display_name")) <= 100))),
-    CONSTRAINT "user_profiles_phone_check" CHECK ((("phone" IS NULL) OR (("char_length"("btrim"("phone")) >= 7) AND ("char_length"("btrim"("phone")) <= 30)))),
-    CONSTRAINT "user_profiles_phone_e164_check" CHECK ((("phone_e164" IS NULL) OR ("phone_e164" ~ '^\+[1-9][0-9]{7,14}$'::"text")))
+    CONSTRAINT "user_profiles_phone_e164_us_phone" CHECK (("phone_e164" ~ '^\+1[2-9][0-9]{9}$'::"text"))
 );
 
 
 ALTER TABLE "public"."user_profiles" OWNER TO "postgres";
 
 
-COMMENT ON COLUMN "public"."user_profiles"."phone_e164" IS 'Normalized international account phone. The legacy phone column remains readable during backward-compatible migration.';
+COMMENT ON COLUMN "public"."user_profiles"."phone_e164" IS 'The account phone, a US number in E.164. The one phone: every live employee record copies it (KK-7).';
 
 
 
@@ -29980,6 +30000,7 @@ CREATE TABLE IF NOT EXISTS "public"."workspaces" (
     CONSTRAINT "workspaces_logo_metadata_check" CHECK (((("logo_storage_path" IS NULL) AND ("logo_file_name" IS NULL) AND ("logo_updated_at" IS NULL)) OR (("logo_storage_path" IS NOT NULL) AND ("logo_file_name" IS NOT NULL) AND ("logo_updated_at" IS NOT NULL)))),
     CONSTRAINT "workspaces_logo_storage_path_check" CHECK ((("logo_storage_path" IS NULL) OR ("logo_storage_path" ~* '^[a-f0-9-]+/logo/[a-f0-9-]+\.(jpg|png|webp|svg)$'::"text"))),
     CONSTRAINT "workspaces_name_check" CHECK ((("char_length"("btrim"("name")) >= 1) AND ("char_length"("btrim"("name")) <= 120))),
+    CONSTRAINT "workspaces_name_us_letters" CHECK ((NORMALIZE("name", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "workspaces_schedule_logo_offset_x_check" CHECK ((("schedule_logo_offset_x" >= ('-100'::integer)::numeric) AND ("schedule_logo_offset_x" <= (100)::numeric))),
     CONSTRAINT "workspaces_schedule_logo_offset_y_check" CHECK ((("schedule_logo_offset_y" >= ('-100'::integer)::numeric) AND ("schedule_logo_offset_y" <= (100)::numeric))),
     CONSTRAINT "workspaces_schedule_logo_scale_check" CHECK ((("schedule_logo_scale" >= 0.25) AND ("schedule_logo_scale" <= (4)::numeric)))

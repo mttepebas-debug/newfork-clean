@@ -217,7 +217,7 @@ select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_
 select tests.person('m', 'can', 'employee', array['K'], array['cook'], 'onboarding');
 select public.save_employee_onboarding_profile_service(pg_temp.usr('can'),
   jsonb_build_object('legal_first_name', 'Can Emre', 'legal_last_name', 'Person', 'phone', '4155550123',
-    'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'),
+    'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
   (select c.revision from public.employee_onboarding_cases c where c.employee_id = pg_temp.emp('can')), tests.id('m'));
 create function pg_temp.legal_name(actor text) returns text language sql as $$
   select pg_temp.attempt(format(

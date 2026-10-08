@@ -81,7 +81,7 @@ select public.save_own_employment_contact_service(
   '1a000000-0000-4000-8000-000000000002',
   (select workspace_id from own_record_target),
   '1b000000-0000-4000-8000-000000000001',
-  'Ada Okafor', 'Sister', '4155550144', '', '4155550143'
+  'Ada Okafor', 'Sister', '+14155550144', '', '4155550143'
 );
 
 select is(
@@ -108,7 +108,7 @@ select throws_ok(
     '1a000000-0000-4000-8000-000000000001',
     (select workspace_id from own_record_target),
     '1b000000-0000-4000-8000-000000000001',
-    'Ada Okafor', 'Sister', '4155550144', ''
+    'Ada Okafor', 'Sister', '+14155550144', ''
   )$$,
   '42501',
   'Not allowed',
@@ -120,7 +120,7 @@ select throws_ok(
     '1a000000-0000-4000-8000-000000000002',
     (select workspace_id from own_record_target),
     '1b000000-0000-4000-8000-000000000001',
-    '', 'Sister', '4155550144', ''
+    '', 'Sister', '+14155550144', ''
   )$$,
   '22023',
   'an emergency contact needs a name and a phone number',

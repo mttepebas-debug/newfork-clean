@@ -40,7 +40,7 @@ select is(pg_temp.step('ayse'), null, 'an invited manager has no Availability st
 -- Ayşe fills in her profile and submits; nothing waits on a week she cannot keep.
 select public.save_employee_onboarding_profile_service(tests.user('ao:ayse'), jsonb_build_object(
     'legal_first_name', 'Ayse', 'legal_last_name', 'Person', 'phone', '4155550123', 'emergency_contact_name', 'Contact',
-    'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'),
+    'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
   pg_temp.revision('ayse'), tests.id('ao'));
 select lives_ok($$select public.submit_employee_onboarding_service(tests.user('ao:ayse'), pg_temp.revision('ayse'), tests.id('ao'))$$,
   'the invited manager submits onboarding');

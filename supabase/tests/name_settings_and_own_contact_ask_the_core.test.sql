@@ -50,7 +50,7 @@ end;
 $$;
 create function pg_temp.contact(actor text, record uuid) returns text language sql as $$
   select pg_temp.refusal(format(
-    'select public.save_own_employment_contact_service(%L, %L, %L, ''Deniz'', ''Sibling'', ''4155550100'')',
+    'select public.save_own_employment_contact_service(%L, %L, %L, ''Deniz'', ''Sibling'', ''+14155550100'')',
     tests.user(actor), tests.id('n'), record))
 $$;
 

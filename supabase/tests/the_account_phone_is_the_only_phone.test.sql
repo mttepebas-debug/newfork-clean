@@ -138,7 +138,7 @@ select is(
 -- The contact form takes a personal phone only into an empty account. The
 -- owner's account has none yet.
 select throws_ok(
-  format($$select public.save_own_employment_contact_service(%L, %L, %L, 'Morgan', 'Spouse', '3105550101', '', 'call me maybe')$$,
+  format($$select public.save_own_employment_contact_service(%L, %L, %L, 'Morgan', 'Spouse', '+13105550101', '', 'call me maybe')$$,
     (select owner from ph), (select workspace from ph), (select owner_here from ph)),
   '22023',
   'that phone number cannot be dialled',
@@ -146,7 +146,7 @@ select throws_ok(
 );
 select public.save_own_employment_contact_service(
   (select owner from ph), (select workspace from ph), (select owner_here from ph),
-  'Morgan', 'Spouse', '3105550101', '', '(312) 555-0177'
+  'Morgan', 'Spouse', '+13105550101', '', '(312) 555-0177'
 );
 select is(
   (select phone_e164 from public.user_profiles where user_id = (select owner from ph)),
@@ -158,7 +158,7 @@ select is(pg_temp.phone_of((select owner_here from ph)), '+13125550177',
 
 select public.save_own_employment_contact_service(
   (select owner from ph), (select workspace from ph), (select owner_here from ph),
-  'Morgan', 'Spouse', '3105550101', '', '3125550999'
+  'Morgan', 'Spouse', '+13105550101', '', '3125550999'
 );
 select is(
   (select phone_e164 from public.user_profiles where user_id = (select owner from ph)),

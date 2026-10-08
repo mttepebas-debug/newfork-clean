@@ -178,7 +178,7 @@ select public.save_own_employment_contact_service(
   '14000000-0000-4000-8000-000000000001',
   (select workspace_id from owner_record_target),
   (select id from owner_employee limit 1),
-  'Morgan Tepebas', 'Spouse', '3105550101', ''
+  'Morgan Tepebas', 'Spouse', '+13105550101', ''
 );
 
 select is(
@@ -200,7 +200,7 @@ select public.save_own_employment_contact_service(
   '14000000-0000-4000-8000-000000000001',
   (select workspace_id from owner_record_target),
   (select id from owner_employee limit 1),
-  'Morgan Tepebas', 'Spouse', '3105550101', '', '3105550102'
+  'Morgan Tepebas', 'Spouse', '+13105550101', '', '3105550102'
 );
 select is(
   (select phone from public.employee_private_profiles
@@ -213,7 +213,7 @@ select throws_ok(
     '14000000-0000-4000-8000-000000000001',
     (select workspace_id from owner_record_target),
     (select id from owner_employee limit 1),
-    'Morgan Tepebas', 'Spouse', '3105550101', '', '311'
+    'Morgan Tepebas', 'Spouse', '+13105550101', '', '311'
   )$$,
   '22023',
   'a personal phone number is too short to reach anybody',
@@ -228,7 +228,7 @@ select public.save_own_employment_contact_service(
   '14000000-0000-4000-8000-000000000001',
   (select workspace_id from owner_record_target),
   (select id from owner_employee limit 1),
-  'Morgan Tepebas', 'Spouse', '3105550101', '', '3105550102'
+  'Morgan Tepebas', 'Spouse', '+13105550101', '', '3105550102'
 );
 select isnt(
   (select legal_first_name from public.employee_private_profiles
@@ -246,7 +246,7 @@ select throws_ok(
     '14000000-0000-4000-8000-000000000001',
     (select workspace_id from owner_record_target),
     '17000000-0000-4000-8000-000000000009',
-    'Morgan', 'Spouse', '3105550101', ''
+    'Morgan', 'Spouse', '+13105550101', ''
   )$$,
   '42501',
   'Not allowed',

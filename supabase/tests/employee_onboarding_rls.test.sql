@@ -130,7 +130,7 @@ select is(public.save_employee_onboarding_profile_service(
     'emergency_contact_name', 'Casey Reed',
     'emergency_contact_relationship', 'Partner',
     'emergency_contact_email', '',
-    'emergency_contact_phone', '3105550201', 'share_phone_with_teammates', false,
+    'emergency_contact_phone', '+13105550201', 'share_phone_with_teammates', false,
     'share_email_with_teammates', false
   ), 1), 2, 'changed legal name profile save advances revision');
 select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000002' and kind = 'profile'), 'awaiting_review', 'changed legal name waits for owner or admin review');
@@ -250,7 +250,7 @@ select is(public.save_employee_onboarding_profile_service(
     'emergency_contact_name', 'Morgan Reed',
     'emergency_contact_relationship', 'Sibling',
     'emergency_contact_email', 'morgan@example.test',
-    'emergency_contact_phone', '3105550101', 'share_phone_with_teammates', false,
+    'emergency_contact_phone', '+13105550101', 'share_phone_with_teammates', false,
     'share_email_with_teammates', false
   ), 1), 2, 'private profile save advances revision');
 select is((select status::text from public.employee_onboarding_requirements where employee_id = '47000000-0000-4000-8000-000000000001' and kind = 'profile'), 'completed', 'profile requirement completes');
@@ -346,7 +346,7 @@ select is(public.save_employee_onboarding_profile_service(
     'emergency_contact_name', 'Riley Stone',
     'emergency_contact_relationship', 'Spouse',
     'emergency_contact_email', '',
-    'emergency_contact_phone', '3105550301', 'share_phone_with_teammates', false,
+    'emergency_contact_phone', '+13105550301', 'share_phone_with_teammates', false,
     'share_email_with_teammates', false
   ), 1), 2, 'final approval profile save advances revision');
 select is(public.submit_employee_onboarding_service('17000000-0000-4000-8000-000000000006', 2), 3, 'final approval setting keeps completed onboarding submitted');
@@ -388,7 +388,7 @@ select is(public.save_employee_onboarding_profile_service(
     'emergency_contact_name', 'Casey Porter',
     'emergency_contact_relationship', 'Parent',
     'emergency_contact_email', '',
-    'emergency_contact_phone', '3105550401', 'share_phone_with_teammates', false,
+    'emergency_contact_phone', '+13105550401', 'share_phone_with_teammates', false,
     'share_email_with_teammates', false
   ), 1), 2, 'review-gated profile save advances revision');
 select is(public.submit_employee_onboarding_service('17000000-0000-4000-8000-000000000007', 2), 3, 'review-gated onboarding submits while waiting for review');
