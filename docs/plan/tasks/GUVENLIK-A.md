@@ -348,7 +348,7 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
 - **Geri alma:** `revoke update (<kolonlar>) on <5 tablo> from authenticated; grant update on public.departments, public.jobs, public.locations, public.shift_types, public.shift_labels to authenticated;` (eski tablo düzeyi grant; yalnız acil durumda, kiracılar arası taşımayı geri açar).
 
 ### GA-4 uygulama (2026-10-07, gece, BL-906)
-- **Migration:** `supabase/migrations/20261007233000_close_later_finishes_on_its_date.sql`.
+- **Migration:** `supabase/migrations/20261008002400_close_later_finishes_on_its_date.sql`.
   - `app_private.finish_workspace_closure` ("Close now"un bitirişi, tek yer);
   - `request_workspace_closure_service` "immediate" dalı onu çağırıyor (dönüş ve denetim kaydı aynı);
   - `app_private.complete_due_workspace_closures()`;
@@ -397,7 +397,7 @@ Matris dökümü: `pnpm.cmd --filter @newfork/shared dump:authz-matrix`.
 
 ### Sabah canlı adımları (Mert'in bu oturuma yazacağı "evet"ten sonra)
 Sıra: yedek (yalnız SELECT, çıktılar `artifacts/guvenlik-a/`) → GA-1 `apply_migration` → doğrulama → GA-4 `apply_migration` → doğrulama → `get_advisors` → GA-4 main gönderimi (rebase, tam kapı, push) → main CI.
-**Yeniden numara (KK-220, KARARLAR OPS-05 eki):** gönderim anında GA-4 migration'ı (`20261007233000_close_later_finishes_on_its_date.sql`) main'in o anki son migration'ının arkasına yeniden adlandırılır. İçerik aynı kalır, `pnpm.cmd db:schema` yeniden koşulur. Canlıya bu yeni adla uygulanır; md5 aynı kalır.
+**Yeniden numara (KK-220, KARARLAR OPS-05 eki):** GA-4 migration'ı main'in o anki son migration'ının arkasına yeniden adlandırılır (2026-10-08: `20261007233000` → `20261008002400`; gönderim anında main daha ilerideyse yeniden). İçerik aynı kalır, `pnpm.cmd db:schema` yeniden koşulur. Canlıya bu yeni adla uygulanır; md5 aynı kalır.
 
 ```sql
 
@@ -435,3 +435,18 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
 -- update supabase_migrations.schema_migrations set version = '<repo>' where name = '<ad>' and version = '<damga>';
 -- Kanıt: md5(statements[1]) = dosya md5'i.
 ```
+
+### 2026-10-08: GA-1 canlıda; GA-4 v2
+- **Kural:** Mert 2026-10-08 ~00:52Z "Canlı veritabanı izni kimde olsun?" sorusuna "Koordinatörün 'gönder'i yeter" dedi (`decisions.jsonl`; CLAUDE.md §5.3, main `5de09eac`, KK-224).
+- **GA-1 canlıda (koordinatörün "gönder"iyle):**
+  - Yedek: beş tablonun ve workspaces'in grant'leri, yerel `artifacts/guvenlik-a/ga1-hosted-backup-2026-10-08.json` (gitignore'da). Önceki hâl: beş tabloda tablo düzeyi `authenticated=arw`; `locations`'ta yalnız `service_role` için 5 kolonda okuma.
+  - `apply_migration` `catalog_rows_stay_in_their_workspace`; `md5(statements[1])` = dosya md5 `0f748063664b1beca67fa3f9cc6ea6ef`. Sunucu sürümü `20261008005632` → `20261007230000`.
+  - Canlıda uygulama sırası `20261007235000` ve `20261008001500`'den sonra; sürüm listesinde üçüncü sırada; toplam 440.
+  - Doğrulama: `authenticated`'in güncelleyebildiği kolonlar yereldekiyle birebir; tablo düzeyi UPDATE yok (`ar`). Bağımsız SELECT: etiket taşıma false, `jobs.id` false, lokasyon formu true, ekleme true, `service_role` okuması korunuyor.
+  - `get_advisors` (security): yeni bulgu yok. Önceden olan: RLS'i politikasız 98 tablo (bilgi), `pg_net` public şemada, sızmış parola koruması kapalı (§2.A.9 muafiyeti).
+- **GA-4 v2:** dal `task/guvenlik-a-ga4-v2`, güncel main üstünde. Migration `20261008002400` (içerik aynı; EKRAN-01 paketinin bekleyen `002000`–`002300`'ünden sonra). `schema.sql` yeniden üretildi.
+- **Kod incelemesi (`/code-review`):**
+  - Kapanış tarihi hücresi tautolojikti (aynı argümandan yazılan iki alanı karşılaştırıyordu). Artık testin kurduğu tarihle karşılaştırıyor. Mutasyon denemesi: bitirişe tarih yerine `now()` verilince yalnız bu hücre düşüyor.
+  - **Açık ürün sorusu:** "Close later" tamamlanınca veri, "Close now"daki gibi bir sonraki 03:30 temizliğinde kalıcı olarak siliniyor. Onay metni ise yalnız "I understand everyone loses access on the closure date." diyor (`apps/web/src/account/WorkspacesPage.tsx:869`); "cannot be undone" yalnız "Close now"da var (ILKELER P25). Seçenekler: (a) onay metni silmeyi açıkça söyler; (b) planlı kapanışa silmeden önce bir bekleme süresi. Mert'te.
+  - Owner'ın tarihten sonra ≤5 dk iptal penceresi bilinen ve kabul edilen not olarak duruyor.
+- **Kilit ihlali (benim hatam):** v2 denemeleri `db.lock` başkasındayken koştu; ret çıkış koduna bakılmadı. Rollback'liydi, kalıcı iz yok (440, cron işi yok). Koordinatöre bildirildi.
