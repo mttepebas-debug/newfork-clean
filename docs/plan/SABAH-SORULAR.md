@@ -60,18 +60,6 @@ Okuma notu: her soruda "Hat" satırı neyin beklediğini söyler. Önerilen her 
 
 ## Tur 1 — hat durduranlar
 
-### S1. Takas yetkisi işi main'e giderken ultrareview koşturalım mı?
-- **Hat:** veri hattı (A1+A2 dalda bitti) ve web hattı (B1b, A1–A3 main'e girmeden başlamaz) bekliyor.
-- **Bugün:** Schedule → Requests → Shift changes'te takası onaylama yetkisi yeni kurala geçti, ama yalnız dalda. Kadıköy müdürü Can, eş müdürü Ayşe'nin cover talebini artık onaylayamıyor; owner Mert'in kendi vardiya devrini o lokasyonun müdürü ya da admin onaylıyor; takas bildirimleri yalnız karar verecek müdüre gidiyor. Değişiklik büyük: yetki çekirdeğine yeni bir sütun, 6 eski fonksiyon siliniyor.
-- **İnceleme:** güvenlik incelemesi (`nf-guvenlik`) iki tur yaptı. İlk tur yalnız eksik test için "değiştir" dedi, ikinci tur ONAY verdi. Kod tarafında kritik ya da yüksek bulgu yok.
-- **Gönderim:** koordinatör kendi yetkisiyle yapar (CLAUDE.md §8). Ultrareview'u (bulutta çok ajanlı derin inceleme) yalnız sen başlatırsın.
-- **(a) Hayır; iki tur güvenlik incelemesi yeter, iş bu sabah main'e ve canlıya gider. (Önerilen)**
-  Zayıf yanı: bu, bugüne kadarki en büyük yetki değişikliği (yetki tablosu 10.508 hücre). Ultrareview'un bulabileceği bir şey canlıda ortaya çıkar. Ücretsiz hak kaldı mı ölçülmedi; tutar açılış penceresinde görünür.
-  `Dayanak: ILKELER P06 kanıtları — 2026-10-01 (veri silme işi) ve 2026-10-02 (yetki çekirdeği işi) "iki inceleme yeter" dedin`
-- **(b) Evet; dalın oturumunda `/code-review ultra` koşar, bulgular güvenlik incelemesine eklenir, gönderim sonuca kadar bekler.** Hak bittiyse tutarı pencere söyler.
-- (c) Önce sohbette konuşalım.
-- Kaynak: `.newfork-inbox/done/20261006T153610-nf-db-veri-ekran-02-a1a2.md`; görev dosyası EKRAN-02 "Ultrareview".
-
 ### S2. Gece dalda bekleyen üç ekran işi main'e gitsin mi?
 - **Hat:** arayüz hattı bekliyor. Requests'in tek tablosu (C1) ve inceleme çekmecesi (C2) ilk dalın üstüne kuruluyor.
 - **Bugün:** gece kuralın gereği (KK-175) ekranda görünen hiçbir şey main'e girmedi. Üç dal hazır; tam kapı ve görsel QA geçti.
