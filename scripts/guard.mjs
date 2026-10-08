@@ -764,32 +764,34 @@ export function evaluate(input, now = Date.now()) {
       const lock = lockStatus().find((l) => l.name === "main");
       const lockInfo = lock.free ? "boş" : `${lock.identity}, ${lock.ageMinutes ?? "?"} dk${lock.stale ? " (stale)" : ""}`;
       const reason = overrideReason(segs, i);
+      const chained = takesLockBefore(links, i, "main");
       if (reason) {
         const b = backupMain(push.dir);
-        audit({ ...base, event: "push-main-override", reason, lock: lockInfo, backup: b.ref, sha: b.sha, fetched: b.fetched });
+        audit({ ...base, event: "push-main-override", reason, lock: lockInfo, chained, backup: b.ref, sha: b.sha, fetched: b.fetched });
         continue;
-      }
-      if (takesLockBefore(links, i, "main")) audit({ ...base, event: "push-main-take-chained" });
-      else if (!lock.free && !lock.stale) audit({ ...base, event: "push-main-locked", lock: lockInfo });
-      else {
-        audit({ ...base, event: "push-main-blocked", lock: lockInfo });
-        return {
-          block: true,
-          message:
-            `main'e gönderim reddedildi: main.lock ${lock.free ? "alınmamış" : `bayat (${lockInfo})`}. ` +
-            `Önce: node scripts/lock.mjs take main "<oturum/iş>, <amaç>" (CLAUDE.md §6). ` +
-            `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
-        };
       }
       // BL-987 (KARARLAR OPS-08): main gets only the coordinator's train, whose push runs inside scripts/train.mjs
       // and never reaches this hook; a session's own push to main is off the train, main.lock or not.
-      const off = flag(
-        "push-main-off-train",
+      const OFF_TRAIN =
         "main'e yalnız koordinatörün treni gider (CLAUDE.md §6): dalı uzağa gönder ve `TREN-HAZIR <dal> @<sha>` yaz; " +
-          "trenin push'u `node scripts/train.mjs push`. Bilinçli aşmak için push'un başına NF_OVERRIDE=\"<gerekçe>\" koy; " +
-          "origin/main yedeklenir ve kayda düşer.",
-        { lock: lockInfo },
-      );
+        "trenin push'u `node scripts/train.mjs push`. Bilinçli aşmak için push'un başına NF_OVERRIDE=\"<gerekçe>\" koy; " +
+        "origin/main yedeklenir ve kayda düşer.";
+      if (chained) audit({ ...base, event: "push-main-take-chained" });
+      else if (!lock.free && !lock.stale) audit({ ...base, event: "push-main-locked", lock: lockInfo });
+      else {
+        audit({ ...base, event: "push-main-blocked", lock: lockInfo });
+        const why = `main'e gönderim reddedildi: main.lock ${lock.free ? "alınmamış" : `bayat (${lockInfo})`}. `;
+        return {
+          block: true,
+          // once the off-train rule refuses, taking the lock is no way through: point to the train instead
+          message:
+            now >= ENFORCE_FROM
+              ? `${why}${OFF_TRAIN}`
+              : `${why}Önce: node scripts/lock.mjs take main "<oturum/iş>, <amaç>" (CLAUDE.md §6). ` +
+                `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
+        };
+      }
+      const off = flag("push-main-off-train", OFF_TRAIN, { lock: lockInfo });
       if (off) return off;
     }
     return done(warns);

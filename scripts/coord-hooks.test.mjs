@@ -22,6 +22,8 @@ const { evaluate, runStep, recordsAllow, ENFORCE_FROM } = await import("./guard.
 // OTOMASYON-3: warnings until ENFORCE_FROM, refusals after it.
 const BEFORE = ENFORCE_FROM - 24 * 3600 * 1000;
 const AFTER = ENFORCE_FROM + 24 * 3600 * 1000;
+// BL-987: the whole warning is the one off-train line, nothing else beside it
+const OFF_TRAIN_ONLY = /^Uyarı \(\d{4}-\d{2}-\d{2}'ten sonra engel\): main'e yalnız koordinatörün treni gider \(CLAUDE\.md §6\)[^\n]*$/;
 const takeAs = (session, name, arg) => {
   process.env.CLAUDE_CODE_SESSION_ID = session;
   try {
@@ -104,6 +106,21 @@ const edit = (file, extra = {}) => ({
 });
 
 after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+test("without main.lock, after ENFORCE_FROM the refusal points to the train, not to taking the lock (BL-987)", () => {
+  const r = evaluate(bash("git push --dry-run origin HEAD:main"), AFTER);
+  assert.equal(r.block, true);
+  assert.match(r.message, /TREN-HAZIR/);
+  assert.doesNotMatch(r.message, /lock\.mjs take main/);
+  assert.match(evaluate(bash("git push --dry-run origin HEAD:main"), BEFORE).message, /lock\.mjs take main/);
+});
+
+test("NF_OVERRIDE on a push chained after taking main.lock logs the chain too (BL-987)", () => {
+  evaluate(bash('node scripts/lock.mjs take main "k, p" && NF_OVERRIDE="hand fix" git push origin HEAD:main'), AFTER);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "push-main-override");
+  assert.equal(e.chained, true);
+});
 
 test("push to main without main.lock is refused and logged", () => {
   const r = evaluate(bash("git push --dry-run origin HEAD:main"));
@@ -359,9 +376,10 @@ test("push to main reads the pushed source: HEAD's screen code does not warn for
   commitFile(work, "apps/web/src/Variant.preview.tsx"); // HEAD: a variant branch full of screen code
   take("main", "oturum/test, push");
   takeAs("s-other", "heavy", "oturum/other, e2e"); // a code push would overlap it; a docs push starts no CI
-  const r = evaluate(bash("git push --dry-run origin docs-only:main", { cwd: work }));
+  // BEFORE: a session's push to main is off the train (BL-987) and refused after ENFORCE_FROM
+  const r = evaluate(bash("git push --dry-run origin docs-only:main", { cwd: work }), BEFORE);
   assert.equal(r.block, false);
-  assert.doesNotMatch(r.warn ?? "", /e2e|heavy/); // only the off-train note (BL-987) is left
+  assert.match(r.warn, OFF_TRAIN_ONLY); // no e2e or heavy warning, only the off-train note
   assert.equal(auditLines().some((l) => l.event === "push-main-e2e-missing" || l.event === "heavy-warn"), false);
 });
 
@@ -371,13 +389,13 @@ test("push to main reads the pushed source: screen code on it warns while HEAD i
   commitFile(work, "apps/web/src/Feature.tsx");
   git(work, "checkout", "-q", "main"); // HEAD equals origin/main
   take("main", "oturum/test, push");
-  const r = evaluate(bash("git push --dry-run origin feature:main", { cwd: work }));
+  const r = evaluate(bash("git push --dry-run origin feature:main", { cwd: work }), BEFORE);
   assert.equal(r.block, false);
   assert.match(r.warn ?? "", /Feature\.tsx/);
 
   // a passing e2e run on the source's content clears it, whatever HEAD is
   fs.appendFileSync(path.join(process.env.NEWFORK_INBOX_DIR, "e2e-pass.jsonl"), `${JSON.stringify({ sha: git(work, "rev-parse", "feature") })}\n`);
-  assert.doesNotMatch(evaluate(bash("git push --dry-run origin feature:main", { cwd: work })).warn ?? "", /Feature\.tsx/);
+  assert.match(evaluate(bash("git push --dry-run origin feature:main", { cwd: work }), BEFORE).warn, OFF_TRAIN_ONLY);
 });
 
 // ---- OTOMASYON-3: heavy-run lock -------------------------------------------------------------
