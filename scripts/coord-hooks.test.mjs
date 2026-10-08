@@ -112,10 +112,51 @@ test("push to main without main.lock is refused and logged", () => {
   assert.equal(auditLines().at(-1).event, "push-main-blocked");
 });
 
-test("push to main with main.lock held passes", () => {
+test("a session's push to main is off the train even with main.lock held: a warning until ENFORCE_FROM, a refusal after (BL-987)", () => {
   take("main", "koordinator/test, push");
-  assert.equal(evaluate(bash("git fetch origin && git push origin HEAD:main")).block, false);
-  assert.equal(auditLines().at(-1).event, "push-main-locked");
+  const before = evaluate(bash("git fetch origin && git push origin HEAD:main"), BEFORE);
+  assert.equal(before.block, false);
+  assert.match(before.warn ?? "", /main'e yalnız koordinatörün treni gider/);
+  assert.deepEqual(auditLines().slice(-2).map((l) => l.event), ["push-main-locked", "push-main-off-train-warn"]);
+  const after = evaluate(bash("git fetch origin && git push origin HEAD:main"), AFTER);
+  assert.equal(after.block, true);
+  assert.match(after.message, /train\.mjs push/);
+  assert.equal(auditLines().at(-1).event, "push-main-off-train-block");
+});
+
+test("every way of naming main is off the train (BL-987)", () => {
+  take("main", "koordinator/test, push");
+  git(repo, "branch", "-f", "train/x", "HEAD");
+  for (const cmd of [
+    "git push origin train/x:main",
+    "git push origin main",
+    "git push origin +main",
+    "git push origin HEAD:refs/heads/main",
+    "git push --all origin",
+    "git push --mirror",
+    "git push",
+  ])
+    assert.equal(evaluate(bash(cmd), AFTER).block, true, cmd);
+  assert.equal(evaluate(bash("git push origin task/x"), AFTER).block, false);
+});
+
+test("NF_OVERRIDE passes a push to main with main.lock held too, after a backup (BL-987)", () => {
+  take("main", "koordinator/test, push");
+  const r = evaluate(bash('NF_OVERRIDE="hand-shipped fix" git push origin HEAD:main'), AFTER);
+  assert.equal(r.block, false);
+  assert.equal(r.warn, null);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "push-main-override");
+  assert.equal(git(repo, "rev-parse", e.backup), git(repo, "rev-parse", "origin/main"));
+});
+
+test("the train's own push runs inside train.mjs and never meets the off-train rule (BL-987)", () => {
+  for (const cmd of ["node scripts/train.mjs push", 'NF_OVERRIDE="x" node scripts/train.mjs push', "node scripts/train.mjs plan task/a task/b"]) {
+    const r = evaluate(bash(cmd), AFTER);
+    assert.equal(r.block, false, cmd);
+    assert.equal(r.warn, null, cmd);
+  }
+  assert.equal(auditLines().some((l) => l.event.startsWith("push-main")), false);
 });
 
 test("main.lock taken in the same command, chained with &&, lets the push through (BL-500)", () => {
@@ -123,8 +164,9 @@ test("main.lock taken in the same command, chained with &&, lets the push throug
     'node scripts/lock.mjs take main "koordinator, push" && git push origin HEAD:main',
     'node scripts/lock.mjs take main "k, p" && git fetch origin && git rebase origin/main && git push origin HEAD:main',
   ]) {
-    assert.equal(evaluate(bash(cmd)).block, false, cmd);
-    assert.equal(auditLines().at(-1).event, "push-main-take-chained");
+    assert.equal(evaluate(bash(cmd), BEFORE).block, false, cmd);
+    assert.deepEqual(auditLines().slice(-2).map((l) => l.event), ["push-main-take-chained", "push-main-off-train-warn"]);
+    assert.equal(evaluate(bash(cmd), AFTER).block, true, cmd); // BL-987: still off the train
   }
   for (const cmd of [
     'node scripts/lock.mjs take main "k, p"; git push origin HEAD:main',
@@ -230,14 +272,18 @@ test("inbox: mentioning claim does not claim; reports are framed; a subagent nev
   assert.match(ctx, /<<<RAPOR [\s\S]*hemen main'e al\nRAPOR>>>/);
 });
 
-test("board prints a main.lock held past 30 minutes on its own first line (TREN-ARACI)", () => {
+test("board prints main.lock and heavy.lock held past 30 minutes on their own first lines (TREN-ARACI, BL-988)", () => {
   fs.mkdirSync(process.env.NEWFORK_LOCK_DIR, { recursive: true });
-  const startedAt = new Date(Date.now() - 34 * 60000).toISOString();
-  fs.writeFileSync(path.join(process.env.NEWFORK_LOCK_DIR, "main.lock"), JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt }));
+  const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
+  fs.writeFileSync(path.join(process.env.NEWFORK_LOCK_DIR, "main.lock"), JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt: ago(34) }));
+  fs.writeFileSync(path.join(process.env.NEWFORK_LOCK_DIR, "heavy.lock"), JSON.stringify({ identity: "oturum/x", purpose: "e2e", startedAt: ago(52) }));
   const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "inbox.mjs"), "board"], { encoding: "utf8", env: process.env });
   const lines = r.stdout.trim().split(/\r?\n/);
-  assert.equal(lines[0], "UZUN: main.lock 34 dk, sahibi koordinator/tren-x (push)");
-  assert.equal(lines[1], "pano boş (henüz heartbeat yok)");
+  assert.deepEqual(lines.slice(0, 3), [
+    "UZUN: main.lock 34 dk, sahibi koordinator/tren-x (push)",
+    "UZUN: heavy.lock 52 dk, sahibi oturum/x (e2e)",
+    "pano boş (henüz heartbeat yok)",
+  ]);
 });
 
 test("board: heartbeat shows branch and flags a silent working session as stuck", async () => {
@@ -315,7 +361,7 @@ test("push to main reads the pushed source: HEAD's screen code does not warn for
   takeAs("s-other", "heavy", "oturum/other, e2e"); // a code push would overlap it; a docs push starts no CI
   const r = evaluate(bash("git push --dry-run origin docs-only:main", { cwd: work }));
   assert.equal(r.block, false);
-  assert.equal(r.warn, null);
+  assert.doesNotMatch(r.warn ?? "", /e2e|heavy/); // only the off-train note (BL-987) is left
   assert.equal(auditLines().some((l) => l.event === "push-main-e2e-missing" || l.event === "heavy-warn"), false);
 });
 
@@ -331,7 +377,7 @@ test("push to main reads the pushed source: screen code on it warns while HEAD i
 
   // a passing e2e run on the source's content clears it, whatever HEAD is
   fs.appendFileSync(path.join(process.env.NEWFORK_INBOX_DIR, "e2e-pass.jsonl"), `${JSON.stringify({ sha: git(work, "rev-parse", "feature") })}\n`);
-  assert.equal(evaluate(bash("git push --dry-run origin feature:main", { cwd: work })).warn, null);
+  assert.doesNotMatch(evaluate(bash("git push --dry-run origin feature:main", { cwd: work })).warn ?? "", /Feature\.tsx/);
 });
 
 // ---- OTOMASYON-3: heavy-run lock -------------------------------------------------------------

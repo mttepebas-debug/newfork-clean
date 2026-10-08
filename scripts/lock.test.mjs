@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-lock-test-"));
 process.env.NEWFORK_LOCK_DIR = tmpDir;
 
-const { take, release, status, longMainLine } = await import("./lock.mjs");
+const { take, release, status, longLockLines } = await import("./lock.mjs");
 
 const dbLock = path.join(tmpDir, "db.lock");
 const mainLock = path.join(tmpDir, "main.lock");
@@ -176,32 +176,39 @@ test("a plain-text lock's age comes from the file mtime and turns stale after 2h
   assert.equal(fs.existsSync(dbLock), true);
 });
 
-// TREN-ARACI: main.lock is held only for the push moment (CLAUDE.md §6); past 30 minutes it is an alarm.
+// TREN-ARACI, BL-988: main.lock is held for the push moment only and heavy.lock for one heavy run (CLAUDE.md §6);
+// past 30 minutes either gets an alarm line, from one function for `status` and the board.
 const minutesAgo = (min) => new Date(Date.now() - min * 60000).toISOString();
-const holdMain = (min, extra = {}) =>
-  fs.writeFileSync(mainLock, JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt: minutesAgo(min), pid: 1, ...extra }));
+const hold = (file, min, extra = {}) =>
+  fs.writeFileSync(file, JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt: minutesAgo(min), pid: 1, ...extra }));
 
-test("main.lock held past 30 minutes gets its own UZUN line, 29 minutes does not (TREN-ARACI)", () => {
-  holdMain(29);
-  assert.equal(longMainLine(), null);
-  holdMain(31);
-  assert.equal(longMainLine(), "UZUN: main.lock 31 dk, sahibi koordinator/tren-x (push)");
+test("main.lock or heavy.lock held past 30 minutes gets its own UZUN line, 29 minutes does not (TREN-ARACI, BL-988)", () => {
+  hold(mainLock, 29);
+  hold(heavyLock, 29, { purpose: "gate" });
+  assert.deepEqual(longLockLines(), []);
+  hold(mainLock, 31);
+  hold(heavyLock, 31, { purpose: "gate" });
+  assert.deepEqual(longLockLines(), [
+    "UZUN: main.lock 31 dk, sahibi koordinator/tren-x (push)",
+    "UZUN: heavy.lock 31 dk, sahibi koordinator/tren-x (gate)",
+  ]);
 });
 
-test("a free main.lock, or another lock held long, gives no UZUN line (TREN-ARACI)", () => {
-  assert.equal(longMainLine(), null);
-  fs.writeFileSync(dbLock, JSON.stringify({ identity: "nf-db/x", purpose: "", startedAt: minutesAgo(90), pid: 1 }));
-  assert.equal(longMainLine(), null);
+test("free locks, or a db.lock held long, give no UZUN line (TREN-ARACI, BL-988)", () => {
+  assert.deepEqual(longLockLines(), []);
+  hold(dbLock, 90);
+  assert.deepEqual(longLockLines(), []);
 });
 
-test("lock.mjs status prints the UZUN line after the lock lines (TREN-ARACI)", () => {
-  holdMain(45, { purpose: "" });
+test("lock.mjs status prints the UZUN lines after the lock lines (TREN-ARACI, BL-988)", () => {
+  hold(mainLock, 45, { purpose: "" });
+  hold(heavyLock, 40, { purpose: "" });
   const r = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), "lock.mjs"), "status"], {
     encoding: "utf8",
     env: { ...process.env, NEWFORK_LOCK_DIR: tmpDir },
   });
   const lines = r.stdout.trim().split(/\r?\n/);
-  assert.equal(lines.length, 4);
+  assert.equal(lines.length, 5);
   assert.match(lines[1], /^main\.lock: koordinator\/tren-x, 45 dk$/);
-  assert.equal(lines[3], "UZUN: main.lock 45 dk, sahibi koordinator/tren-x");
+  assert.deepEqual(lines.slice(3), ["UZUN: main.lock 45 dk, sahibi koordinator/tren-x", "UZUN: heavy.lock 40 dk, sahibi koordinator/tren-x"]);
 });

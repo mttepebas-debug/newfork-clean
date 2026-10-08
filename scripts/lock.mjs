@@ -15,7 +15,9 @@ import { pathToFileURL } from "node:url";
 const LOCK_DIR =
   process.env.NEWFORK_LOCK_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-locks";
 const STALE_MS = 2 * 60 * 60 * 1000; // CLAUDE.md §6: flag as stale, never auto-delete
-const LONG_MAIN_MIN = 30; // TREN-ARACI: main.lock is held for the push moment only; longer is an alarm
+// TREN-ARACI, BL-988: main.lock is held for the push moment only and heavy.lock for one heavy run; longer is an alarm
+const LONG_MIN = 30;
+const LONG_LOCKS = ["main", "heavy"];
 const LOCKS = ["db", "main", "heavy"];
 
 function lockPath(name) {
@@ -143,11 +145,11 @@ export function status() {
   });
 }
 
-// The alarm line `status` and the inbox board print, or null.
-export function longMainLine() {
-  const main = status().find((l) => l.name === "main");
-  if (main.free || main.ageMinutes == null || main.ageMinutes <= LONG_MAIN_MIN) return null;
-  return `UZUN: main.lock ${main.ageMinutes} dk, sahibi ${main.identity}${main.purpose ? ` (${main.purpose})` : ""}`;
+// The alarm lines `status` and the inbox board print (none when nothing is held long).
+export function longLockLines() {
+  return status()
+    .filter((l) => LONG_LOCKS.includes(l.name) && !l.free && l.ageMinutes != null && l.ageMinutes > LONG_MIN)
+    .map((l) => `UZUN: ${l.name}.lock ${l.ageMinutes} dk, sahibi ${l.identity}${l.purpose ? ` (${l.purpose})` : ""}`);
 }
 
 function main() {
@@ -160,8 +162,7 @@ function main() {
           : `${lock.name}.lock: ${lock.identity}, ${lock.ageMinutes ?? "?"} dk${lock.stale ? " (stale, silinmedi)" : ""}`,
       );
     }
-    const long = longMainLine();
-    if (long) console.log(long);
+    for (const line of longLockLines()) console.log(line);
     return;
   }
   const result =
