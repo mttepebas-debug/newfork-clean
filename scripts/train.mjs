@@ -2,7 +2,8 @@
 // TREN-ARACI (KARARLAR OPS-08, CLAUDE.md §6 "Gönderim adımları (tren)"): only the coordinator's train goes to main.
 // Each step is its own command with its own exit code; long output goes to a log file, the screen gets a summary.
 // State: <train>/artifacts/train/state.json; logs: <train>/artifacts/train/<stamp>/<step>.log (artifacts/ is ignored).
-//   plan <branch[@sha]…>   order, blockers, warnings and a dry run of build; changes nothing but `git fetch`
+//   plan <branch[@sha]…>   order, blockers, warnings and a dry run of build; changes nothing but `git fetch`;
+//                          exit 1 = a blocker, 2 = a branch would be left out, 0 = all go (warnings or not)
 //   build <branch[@sha]…>  train/<stamp> from origin/main in the train folder; exit 2 = a branch was left out
 //   apply-local            the train's new migrations into the shared local database; db.lock stays for the gate
 //   gate [--e2e <spec…>]   install, lint, typecheck, test, build, test:db, e2e; db.lock goes, heavy.lock stays if green
@@ -14,9 +15,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { take, release, status as lockStatus } from "./lock.mjs";
-import { audit, ciState } from "./guard.mjs";
+import { audit, backupMain, ciState } from "./guard.mjs";
 import { fingerprint, headerHash } from "./schema-snapshot.mjs";
 import { container, nonTransactional } from "./test-db.mjs";
 
@@ -62,6 +64,29 @@ const sqlFiles = (out) => listed(out).filter((f) => f.endsWith(".sql")).map((f) 
 const mainMigrations = (repo, ref) => sqlFiles(git(repo, ["ls-tree", "--name-only", ref, `${MIGRATIONS}/`]));
 // Added files only, renames as delete + add: a renamed migration is a new one (supabase/CLAUDE.md "Canlı").
 const addedMigrations = (repo, range) => sqlFiles(git(repo, ["diff", "--name-only", "--no-renames", "--diff-filter=A", ...range, "--", `${MIGRATIONS}/`]));
+const MIGRATION_NAME = /^\d{14}_[\w-]+\.sql$/; // supabase/CLAUDE.md: YYYYMMDDHHMMSS_<ad>.sql
+
+// What a branch's own commits (those main lacks) do to supabase/migrations: files it adds, and migrations already
+// on main it edits or deletes. Counted from those commits, not from the merge base, so a migration a train already
+// carried is not counted again on a branch that was not rebased since.
+function migrationChanges(repo, commits, onMain) {
+  const seen = new Map(); // file -> statuses in commit order
+  for (const c of commits)
+    for (const line of listed(git(repo, ["diff-tree", "--no-commit-id", "--name-status", "-r", "--no-renames", `${c}^`, c, "--", `${MIGRATIONS}/`]))) {
+      const [status, file] = line.split("\t");
+      if (file.endsWith(".sql")) seen.set(path.posix.basename(file), [...(seen.get(path.posix.basename(file)) ?? []), status[0]]);
+    }
+  const main = new Set(onMain);
+  const added = [];
+  const edited = [];
+  const deleted = [];
+  for (const [file, statuses] of seen) {
+    const gone = statuses.at(-1) === "D";
+    if (main.has(file)) (gone ? deleted : edited).push(file);
+    else if (!gone) added.push(file);
+  }
+  return { added: added.sort(), edited: edited.sort(), deleted: deleted.sort() };
+}
 
 // Commits whose change main does not have yet, oldest first (`git cherry` matches rebased copies by patch).
 const ahead = (repo, ref) => listed(git(repo, ["cherry", BASE, ref])).filter((l) => l.startsWith("+ ")).map((l) => l.slice(2));
@@ -166,30 +191,40 @@ const auditBase = (ctx, step) => ({
 });
 
 // A check that failed: passes with NF_OVERRIDE (logged as train-override), else stops (train-blocked).
-function pass(ctx, s, step, blocker, lines) {
+// `beforeOverride` runs only when the check is passed and adds its result to the log entry (the main backup).
+function pass(ctx, s, step, blocker, lines, beforeOverride = () => ({})) {
   const entry = { ...auditBase(ctx, step), step, blocker, train: s.branch };
   if (ctx.override) {
-    audit({ ...entry, event: "train-override", reason: ctx.override });
-    lines.push(`AŞILDI (NF_OVERRIDE): ${blocker}`);
+    const extra = beforeOverride();
+    audit({ ...entry, event: "train-override", reason: ctx.override, ...extra });
+    lines.push(`AŞILDI (NF_OVERRIDE): ${blocker}${extra.backup ? `; origin/main önce ${extra.backup} olarak yedeklendi` : ""}`);
     return true;
   }
   audit({ ...entry, event: "train-blocked" });
   lines.push(`DUR: ${blocker}`);
   return false;
 }
+// A check NF_OVERRIDE never passes.
+function refuse(ctx, s, step, blocker, lines, extra = {}) {
+  audit({ ...auditBase(ctx, step), step, blocker, train: s.branch, event: "train-blocked", ...extra });
+  lines.push(`DUR: ${blocker}`);
+  return false;
+}
 
 const lockOf = (name) => lockStatus().find((l) => l.name === name);
-// The train holds `name` (already, or takes it now); another identity's lock is a check NF_OVERRIDE can pass.
-function hold(ctx, s, name, step, lines) {
-  const before = lockOf(name);
-  if (!before.free && before.identity === s.identity) return true;
-  if (before.free && take(name, `${s.identity}, tren ${step}`).ok) return true;
+const mine = (s, name) => {
   const l = lockOf(name);
-  return pass(ctx, s, step, `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`, lines);
+  return !l.free && l.identity === s.identity;
+};
+// The train holds `name` (already, or takes it now); another identity's lock is a check NF_OVERRIDE can pass.
+function hold(ctx, s, name, step, lines, beforeOverride) {
+  if (mine(s, name)) return true;
+  if (lockOf(name).free && take(name, `${s.identity}, tren ${step}`).ok) return true;
+  const l = lockOf(name);
+  return pass(ctx, s, step, `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`, lines, beforeOverride);
 }
 const letGo = (s, name) => {
-  const l = lockOf(name);
-  if (!l.free && l.identity === s.identity) release(name, s.identity);
+  if (mine(s, name)) release(name, s.identity);
 };
 
 function ciCheck(ctx, s, step, cwd, lines) {
@@ -230,7 +265,11 @@ export function plan(ctx, args) {
     const merges = listed(git(repo, ["rev-list", "--merges", `${BASE}..${b.ref}`]));
     if (merges.length) blockers.push(`${b.name}: birleştirme commit'i var (${short(merges[0])}); dalı rebase et`);
     if (b.moved) warnings.push(`${b.name}: dal @${short(b.moved)}'a ilerlemiş; tren @${short(b.ref)}'yı alıyor`);
-    branches.push({ ...b, commits, migrations: addedMigrations(repo, [`${BASE}...${b.ref}`]) });
+    const changes = migrationChanges(repo, commits, onMain);
+    for (const f of changes.added.filter((f) => !MIGRATION_NAME.test(f))) blockers.push(`${b.name}: göç adı geçersiz: ${f} (YYYYMMDDHHMMSS_<ad>.sql)`);
+    for (const f of changes.edited) blockers.push(`${b.name}: main'deki göç değişiyor: ${f} (uygulanmış göç değişmez; düzeltme yeni göçle)`);
+    for (const f of changes.deleted) warnings.push(`${b.name}: main'deki göç siliniyor: ${f} (canlı numarasına yeniden adlandırma mı? kontrol et)`);
+    branches.push({ ...b, commits, migrations: changes.added });
   }
   const owner = new Map(onMain.map((f) => [version(f), "main"]));
   for (const b of branches)
@@ -258,6 +297,13 @@ export function plan(ctx, args) {
   for (const b of blockers) lines.push(`ENGEL: ${b}`);
   const code = blockers.length ? 1 : sim?.results.some((r) => r.skipped) ? 2 : 0;
   return { code, lines, base, order: ordered.map((b) => b.name), sim };
+}
+
+function stray(repo, base, previous) {
+  if (!previous) return [];
+  const onMain = new Set(mainMigrations(repo, base));
+  const left = [...(previous.strayInSharedDb ?? []), ...(previous.pushed ? [] : (previous.applied ?? []))];
+  return [...new Set(left)].filter((f) => !onMain.has(f)).sort();
 }
 
 export function build(ctx, args) {
@@ -304,12 +350,13 @@ export function build(ctx, args) {
     skipped: p.sim.results.filter((r) => r.skipped).map((r) => ({ name: r.name, files: r.files })),
     newMigrations: addedMigrations(repo, [p.base, head]),
     applied: [],
+    // what earlier trains applied to the shared database and main still lacks, carried until main has it
+    strayInSharedDb: stray(repo, p.base, previous),
     gate: null,
     pushed: null,
   };
   writeState(ctx, state);
-  if (previous?.applied?.length && !previous.pushed)
-    lines.push(`UYARI: önceki tren (${previous.branch}) main'e girmedi; ortak DB'de main'de olmayan göç: ${previous.applied.join(", ")}`);
+  if (state.strayInSharedDb.length) lines.push(`UYARI: ortak DB'de main'de olmayan göç: ${state.strayInSharedDb.join(", ")} (önceki tren main'e girmedi)`);
   lines.push(`tren: ${branch} @${short(head)}, ${state.included.length} dal, klasör ${trainDir}`);
   for (const s of state.skipped) lines.push(`atlandı: ${s.name} (${s.files.join(", ")}); dal rebase edilip sonraki trene`);
   return { code, lines, state };
@@ -341,19 +388,34 @@ export function applyLocal(ctx) {
     letGo(s, "db");
     return { code: 1, lines };
   };
-  const q = ctx.exec.psql("select version from supabase_migrations.schema_migrations order by 1;", { query: true });
+  // version, md5(statements[1]) and the statement count: psql -1 and apply_migration store the file as one
+  // statement, so its md5 is the file's; the CLI splits it, and then the content cannot be compared
+  const q = ctx.exec.psql(
+    "select version || ' ' || coalesce(md5(statements[1]), '-') || ' ' || coalesce(array_length(statements, 1), 0) from supabase_migrations.schema_migrations order by version;",
+    { query: true },
+  );
   if (q.status !== 0) return stop(`ortak DB okunamadı: ${tailOf(q.stderr, 3).join(" | ")}`);
-  const ledger = new Set(listed(q.stdout));
+  const ledger = new Map(listed(q.stdout).map((l) => l.split(" ")).map(([v, md5, n]) => [v, { md5, n: Number(n) }]));
   const behind = mainMigrations(ctx.repo, s.base).map(version).filter((v) => !ledger.has(v));
   if (behind.length) return stop(`DUR: ortak DB main'in gerisinde: ${behind.slice(0, 5).join(", ")}${behind.length > 5 ? ` (+${behind.length - 5})` : ""}`);
   const now = [];
   let failed = false;
   for (const f of s.newMigrations) {
-    if (ledger.has(version(f))) {
-      lines.push(`${f}: ledger'da var, atlandı`);
+    const sql = execFileSync("git", ["-C", ctx.repo, "show", `${s.head}:${MIGRATIONS}/${f}`], { encoding: "utf8" });
+    const row = ledger.get(version(f));
+    if (row && row.n !== 1) {
+      lines.push(`UYARI: ${f} ledger'da ${row.n} deyim olarak var (CLI); içerik karşılaştırılamadı, atlandı`);
       continue;
     }
-    const sql = execFileSync("git", ["-C", ctx.repo, "show", `${s.head}:${MIGRATIONS}/${f}`], { encoding: "utf8" });
+    if (row && row.md5 === createHash("md5").update(sql).digest("hex")) {
+      lines.push(`${f}: ledger'da aynı içerikle var, atlandı`);
+      continue;
+    }
+    if (row) {
+      refuse(ctx, s, "apply-local", `${f} ortak DB'de başka içerikle uygulanmış (ledger md5 ${row.md5.slice(0, 8)}); uygulanmış göç değişmez, düzeltme yeni göçle`, lines);
+      failed = true;
+      break;
+    }
     const outside = nonTransactional(sql);
     if (outside.length) {
       lines.push(`${f}: işlem içinde koşamayan deyim (${outside[0]}); elle uygula`);
@@ -374,7 +436,7 @@ export function applyLocal(ctx) {
   if (now.length) audit({ ...auditBase(ctx, "apply-local"), event: "train-apply-local", applied: now, train: s.branch });
   if (s.applied.length) lines.push(`ortak DB'de main'de olmayan göç: ${s.applied.join(", ")} (tren main'e girene kadar)`);
   if (failed) return stop("ilk hatada durdu; kalan göçler uygulanmadı, uygulanan geri alınmaz (düzeltme yeni göçle)");
-  lines.push("db.lock trende kaldı: sıradaki adım gate");
+  lines.push(mine(s, "db") ? "db.lock trende kaldı: sıradaki adım gate" : "db.lock trende değil (NF_OVERRIDE ile aşıldı); gate kendisi alır");
   return { code: 0, lines };
 }
 
@@ -387,6 +449,13 @@ export function gate(ctx, { e2e = [] } = {}) {
     if (code !== 0) letGo(s, "heavy");
     return { code, lines };
   };
+  // what is tested is what is pushed: the train folder clean and on the train's branch, before and after
+  const where = () => ({ head: git(ctx.trainDir, ["rev-parse", "HEAD"]), dirty: listed(git(ctx.trainDir, ["status", "--porcelain"])) });
+  const start = where();
+  const tip = tryGit(ctx.repo, ["rev-parse", `refs/heads/${s.branch}`]);
+  if (start.dirty.length) refuse(ctx, s, "gate", `tren klasörü temiz değil (${start.dirty.slice(0, 3).join("; ")}); commit'le ya da elle bak`, lines);
+  else if (start.head !== tip) refuse(ctx, s, "gate", `tren klasörü ${s.branch} ucunda değil (@${short(start.head)})`, lines);
+  if (lines.length) return done(1);
   if (!hold(ctx, s, "db", "gate", lines) || !hold(ctx, s, "heavy", "gate", lines) || !ciCheck(ctx, s, "gate", ctx.trainDir, lines)) return done(1);
   const steps = [
     ["install", ["install", "--frozen-lockfile"]],
@@ -398,7 +467,7 @@ export function gate(ctx, { e2e = [] } = {}) {
     ["test:db", ["test:db"]],
     ...(e2e.length ? [["e2e", ["e2e", ...e2e]]] : []),
   ];
-  const head = git(ctx.trainDir, ["rev-parse", "HEAD"]);
+  const { head } = start;
   let failedStep = null;
   for (const [step, args] of steps) {
     const log = logFile(ctx, s.stamp, `gate-${step}`);
@@ -413,6 +482,11 @@ export function gate(ctx, { e2e = [] } = {}) {
     lines.push(`${step}: yeşil (${Math.round((Date.now() - t0) / 1000)} sn)`);
   }
   if (!e2e.length) lines.push("e2e: liste verilmedi, koşmadı");
+  const end = where();
+  if (!failedStep && (end.head !== head || end.dirty.length)) {
+    failedStep = "temizlik";
+    lines.push(`kapı bitti ama tren klasörü değişti (@${short(end.head)}${end.dirty.length ? `; ${end.dirty.slice(0, 3).join("; ")}` : ""}): kırmızı sayıldı`);
+  }
   s.gate = { ok: !failedStep, head, failedStep, at: new Date().toISOString() };
   writeState(ctx, s);
   lines.push(failedStep ? "kapı kırmızı: db.lock ve heavy.lock bırakıldı" : "kapı yeşil: db.lock bırakıldı, heavy.lock push'a kadar trende");
@@ -426,12 +500,16 @@ export function push(ctx) {
   const lines = [];
   tryGit(repo, ["fetch", "-q", "origin"]);
   const tip = git(repo, ["rev-parse", `refs/heads/${s.branch}`]);
-  if (!hold(ctx, s, "main", "push", lines)) return { code: 1, lines };
+  // passing another identity's main.lock first saves origin/main, as the guard does (CLAUDE.md §6)
+  const backup = () => {
+    const b = backupMain(repo);
+    return { backup: b.ref, sha: b.sha, fetched: b.fetched };
+  };
+  if (!hold(ctx, s, "main", "push", lines, backup)) return { code: 1, lines };
   try {
     const before = git(repo, ["rev-parse", BASE]);
     if (!isAncestor(repo, before, tip)) {
-      audit({ ...auditBase(ctx, "push"), event: "train-blocked", step: "push", blocker: "not a fast-forward", before, after: tip, train: s.branch });
-      lines.push(`DUR: main ilerledi, yeniden build (origin/main @${short(before)} trenin atası değil; force push yok)`);
+      refuse(ctx, s, "push", `main ilerledi, yeniden build (origin/main @${short(before)} trenin atası değil; force push yok)`, lines, { before, after: tip });
       return { code: 1, lines };
     }
     if (!(s.gate?.ok && s.gate.head === tip) && !pass(ctx, s, "push", `kapı bu sha'da koşmadı (@${short(tip)})`, lines)) return { code: 1, lines };
