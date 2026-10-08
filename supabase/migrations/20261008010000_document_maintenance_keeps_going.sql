@@ -11,6 +11,10 @@
 --    key is per milestone, as before), but only if the document was approved before that milestone, so
 --    nothing new is sent on a normal day and no late 30-day note follows an approval with 20 days left.
 -- The enqueue sits behind CASE: evaluation order is guaranteed there, not for AND.
+-- ponytail: one subtransaction (with its own xid: document_notify_access locks the case row) per case;
+-- above 64 in one call PostgreSQL's per-session subxid cache overflows and other sessions consult
+-- pg_subtrans while the call runs. The worker asks for 100 cases a minute and a run is short: accepted at
+-- this scale; lower the batch below 64 if it ever shows.
 
 CREATE OR REPLACE FUNCTION "public"."documents_maintain_service"("target_batch_size" integer DEFAULT 100, "at_time" timestamp with time zone DEFAULT "now"()) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
