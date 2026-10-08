@@ -4,7 +4,7 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 
 ## e2e
 - `global-setup.ts` her koşuda builder'la yeni workspace kurup ortak yerel DB'ye commit'ler (`.world.json`): ayse, emre (Kadikoy), mehmet (Besiktas), zeynep (admin), ali, deniz (ikisi). Ek kişi ve rol: `fixtures/documents.ts`; kişi sayan spec kendi dünyasını kurar.
-- Tek dosya: `e2e` klasöründe `npx playwright test flows/<dosya>` (`pnpm.cmd e2e -- <dosya>` bütün paketi koşturur). DB'siz hızlı kapı: `pnpm.cmd --filter @newfork/e2e typecheck` ve `lint`.
+- Tek dosya: `e2e` klasöründe `npx playwright test flows/<dosya>` (`pnpm.cmd e2e -- <dosya>` bütün paketi koşturur). Ortak DB'ye dokunduğu için `node scripts/lock.mjs run db --e2e -- "npx playwright test flows/<dosya>"` ile. DB'siz hızlı kapı: `pnpm.cmd --filter @newfork/e2e typecheck` ve `lint`.
 - `--repeat-each` yalnız spec `fixtures/world.ts`'teki `roundWeek`, `roundLabel`, `draftName`'i kullanırsa çalışır; sabit ad ikinci turda çakışır.
 - Config `npx supabase status -o env` okur: "did not print …" yerel Supabase kapalı demektir.
 - `signIn` girişi beklemez: ardından `expect(page).not.toHaveURL(/\/sign-in/)` ya da `signInAs`.
@@ -23,9 +23,8 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 
 ## CI ve runner
 - `.github/workflows/ci.yml`: check (lint → typecheck → test → build) + db (pgTAP; `supabase/tests/ci-green.txt` yalnız büyür; Schedule hız testi ayrı koşar) + e2e. Mert'in bilgisayarındaki self-hosted runner'da koşar (şu an tek runner); bir runner, onu yalıtan değişiklik main'e girmeden havuza eklenmez.
-- `docs/**` ve `*.md` push'u CI başlatmaz; dalda yeni push eskisini iptal eder, main'de sıraya girer.
+- CI yalnız trende (`train/**`), PR'da ve elle koşar; `docs/**` ve `*.md` değişikliği koşturmaz.
 - Runner yalıtımı (`scripts/ci-supabase-apart.sh`) ve "forwards/expose … 500" port tuzağı: KARARLAR OPS-01.
-- Yerelde geçen e2e, `apps packages e2e supabase` temizse `.newfork-inbox/e2e-pass.jsonl`'a damga basar; `scripts/guard.mjs` main push'unda bakar. Önce commit, sonra e2e.
 
 ## Tuzaklar
 - `scripts/*.test.mjs` kökteki `pnpm.cmd test` içinde `node --test` ile koşar.

@@ -1,6 +1,6 @@
 # apps/web — web uygulamasına özgü bilgi
 
-Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packages/ui` için de geçerli. Arayüz çıtası, komutlar, portlar: kök `CLAUDE.md` §2.A, §6.
+Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packages/ui` için de geçerli. Arayüz çıtası, komutlar, portlar: kök `CLAUDE.md` §3.A, §7.
 
 ## Veri ve yetki katmanı
 - İstek `apiRequest` (`src/lib/supabase.ts`) ile gider; hata `RequestError` (`src/lib/request-error.ts`). Ekran `reason`'a bakar, status'a değil: DB'nin 23514/22023/P0001'i API'de hep 400'dür.
@@ -20,7 +20,7 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - Özgüllük: `.request-detail-inner p` ve `.app-confirm p` her `p`'yi griler; telefonda `jobs-settings.css`'teki `.job-column-headings` her Settings başlığına ızgara dayatır (üç sınıfla ez).
 
 ## Metin
-- Metin değişince `e2e/`'de ikizini ara (`toContainText`, `getByText`, `getByRole(…, { name })`); onu yalnız dal CI'ı koşar. `toContainText` gizli çocukları da sayar: `aria-describedby` hedefi `not.toContainText`'i kırar.
+- Metin değişince `e2e/`'de ikizini ara (`toContainText`, `getByText`, `getByRole(…, { name })`); onu trenin CI'ı koşar; akış değiştiyse etkilenen e2e'yi `node scripts/lock.mjs run db --e2e -- …` ile sen de koş. `toContainText` gizli çocukları da sayar: `aria-describedby` hedefi `not.toContainText`'i kırar.
 
 ## Görsel kontrol ve erişilebilirlik
 - Görsel kararı Mert gözle verir: gerçek uygulamada yalnız DEV'de query param'la açılan 2–3 gerçekten farklı varyant; seçimden sonra ötekiler silinir.
