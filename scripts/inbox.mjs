@@ -18,7 +18,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { longMainLine } from "./lock.mjs";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
@@ -290,8 +289,6 @@ async function main() {
       return;
     }
     case "board": {
-      const long = longMainLine();
-      if (long) console.log(long);
       const rows = board();
       if (!rows.length) return console.log("pano boş (henüz heartbeat yok)");
       for (const r of rows) {

@@ -8,13 +8,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-lock-test-"));
 process.env.NEWFORK_LOCK_DIR = tmpDir;
 
-const { take, release, status, longMainLine } = await import("./lock.mjs");
+const { take, release, status, run, isDead, clearDead } = await import("./lock.mjs");
 
 const dbLock = path.join(tmpDir, "db.lock");
 const mainLock = path.join(tmpDir, "main.lock");
@@ -22,6 +20,8 @@ const heavyLock = path.join(tmpDir, "heavy.lock");
 
 beforeEach(() => {
   for (const f of [dbLock, mainLock, heavyLock]) fs.rmSync(f, { force: true });
+  for (const d of ["queue-db", "dead"]) fs.rmSync(path.join(tmpDir, d), { recursive: true, force: true });
+  delete process.env.NEWFORK_CI_STATE;
 });
 
 after(() => {
@@ -131,31 +131,23 @@ test("take rejects an identity whose role or session half is empty (BL-196)", ()
   }
 });
 
-test("heavy.lock takes, reports and releases like the others (OTOMASYON-3)", () => {
-  assert.equal(take("heavy", "nf-test/gate, tam kapı").ok, true);
-  assert.equal(take("heavy", "nf-db/other, e2e").ok, false);
-  const held = status().find((l) => l.name === "heavy");
-  assert.equal(held.identity, "nf-test/gate");
-  assert.equal(release("heavy", "nf-test/gate").ok, true);
-  assert.equal(status().find((l) => l.name === "heavy").free, true);
-});
-
 test("a lock records the Claude session and folder that took it, so the guard can tell whose it is", () => {
   const prev = process.env.CLAUDE_CODE_SESSION_ID;
   process.env.CLAUDE_CODE_SESSION_ID = "sess-123";
   try {
-    take("heavy", "nf-test/owner, e2e");
+    take("db", "nf-test/owner, e2e");
   } finally {
     if (prev === undefined) delete process.env.CLAUDE_CODE_SESSION_ID;
     else process.env.CLAUDE_CODE_SESSION_ID = prev;
   }
-  const held = status().find((l) => l.name === "heavy");
+  const held = status().find((l) => l.name === "db");
   assert.equal(held.session, "sess-123");
   assert.equal(held.cwd, process.cwd());
 });
 
-test("an unknown lock name is refused and the message lists the three names", () => {
-  assert.throws(() => take("ci", "nf-test/x, y"), /db\|main\|heavy/);
+test("only db is a lock now: main and heavy are refused by name", () => {
+  assert.throws(() => take("main", "koordinator/x, push"), /unknown lock "main" \(expected db\)/);
+  assert.throws(() => take("heavy", "oturum/x, gate"), /unknown lock "heavy" \(expected db\)/);
 });
 
 test("a plain-text lock's age comes from the file mtime and turns stale after 2h (BL-196)", () => {
@@ -176,32 +168,97 @@ test("a plain-text lock's age comes from the file mtime and turns stale after 2h
   assert.equal(fs.existsSync(dbLock), true);
 });
 
-// TREN-ARACI: main.lock is held only for the push moment (CLAUDE.md §6); past 30 minutes it is an alarm.
-const minutesAgo = (min) => new Date(Date.now() - min * 60000).toISOString();
-const holdMain = (min, extra = {}) =>
-  fs.writeFileSync(mainLock, JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt: minutesAgo(min), pid: 1, ...extra }));
+const node = `"${process.execPath}"`;
+const marker = path.join(tmpDir, "marker.mjs");
+fs.writeFileSync(
+  marker,
+  'import fs from "node:fs";\nconst [file, tag, ms, code] = process.argv.slice(2);\nfs.appendFileSync(file, tag + "+");\nawait new Promise((r) => setTimeout(r, Number(ms)));\nfs.appendFileSync(file, tag + "-");\nprocess.exit(Number(code ?? 0));\n',
+);
+const quiet = { say: () => {}, pollMs: 20 };
+const queueFiles = () => {
+  try {
+    return fs.readdirSync(path.join(tmpDir, "queue-db"));
+  } catch {
+    return [];
+  }
+};
 
-test("main.lock held past 30 minutes gets its own UZUN line, 29 minutes does not (TREN-ARACI)", () => {
-  holdMain(29);
-  assert.equal(longMainLine(), null);
-  holdMain(31);
-  assert.equal(longMainLine(), "UZUN: main.lock 31 dk, sahibi koordinator/tren-x (push)");
+test("run: holds db only while the command runs, returns its exit code, lets go after a failure too", async () => {
+  const out = path.join(tmpDir, "one.txt");
+  const code = await run("db", `${node} "${marker}" "${out}" a 10 7`, { ...quiet, as: "t" });
+  assert.equal(code, 7);
+  assert.equal(fs.readFileSync(out, "utf8"), "a+a-");
+  assert.equal(status()[0].free, true);
+  assert.deepEqual(queueFiles(), []);
 });
 
-test("a free main.lock, or another lock held long, gives no UZUN line (TREN-ARACI)", () => {
-  assert.equal(longMainLine(), null);
-  fs.writeFileSync(dbLock, JSON.stringify({ identity: "nf-db/x", purpose: "", startedAt: minutesAgo(90), pid: 1 }));
-  assert.equal(longMainLine(), null);
+test("run: two commands never overlap and go in arrival order", async () => {
+  const out = path.join(tmpDir, "two.txt");
+  const a = run("db", `${node} "${marker}" "${out}" a 300`, { ...quiet, as: "a" });
+  await new Promise((r) => setTimeout(r, 30));
+  const b = run("db", `${node} "${marker}" "${out}" b 10`, { ...quiet, as: "b" });
+  assert.deepEqual(await Promise.all([a, b]), [0, 0]);
+  assert.equal(fs.readFileSync(out, "utf8"), "a+a-b+b-");
 });
 
-test("lock.mjs status prints the UZUN line after the lock lines (TREN-ARACI)", () => {
-  holdMain(45, { purpose: "" });
-  const r = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), "lock.mjs"), "status"], {
-    encoding: "utf8",
-    env: { ...process.env, NEWFORK_LOCK_DIR: tmpDir },
-  });
-  const lines = r.stdout.trim().split(/\r?\n/);
-  assert.equal(lines.length, 4);
-  assert.match(lines[1], /^main\.lock: koordinator\/tren-x, 45 dk$/);
-  assert.equal(lines[3], "UZUN: main.lock 45 dk, sahibi koordinator/tren-x");
+test("run: a dead holder (taken before this boot) is moved to dead/ and the waiter goes on", async () => {
+  fs.writeFileSync(dbLock, JSON.stringify({ identity: "oturum/eski", purpose: "test:db", startedAt: "2000-01-01T00:00:00Z", pid: process.pid }));
+  const lines = [];
+  const code = await run("db", `${node} -e "process.exit(0)"`, { pollMs: 20, as: "yeni", say: (l) => lines.push(l) });
+  assert.equal(code, 0);
+  assert.match(lines.join("\n"), /ölü sahibinden temizlendi: oturum\/eski/);
+  assert.equal(fs.readdirSync(path.join(tmpDir, "dead")).length, 1);
+});
+
+test("run: a dead waiter's ticket ahead in the queue is dropped, not waited for", async () => {
+  fs.mkdirSync(path.join(tmpDir, "queue-db"), { recursive: true });
+  fs.writeFileSync(
+    path.join(tmpDir, "queue-db", "000000000000001-1-dead.json"),
+    JSON.stringify({ identity: "run/eski-1", command: "x", pid: 1, startedAt: "2000-01-01T00:00:00Z" }),
+  );
+  const code = await run("db", `${node} -e "process.exit(0)"`, { ...quiet, as: "sonraki" });
+  assert.equal(code, 0);
+  assert.deepEqual(queueFiles(), []);
+});
+
+test("isDead: gone process or taken before boot is dead; a live one and a hand-written one are not", () => {
+  const now = new Date().toISOString();
+  assert.equal(isDead({ pid: 999999, startedAt: now }, { alive: () => false }), true);
+  assert.equal(isDead({ pid: process.pid, startedAt: "2000-01-01T00:00:00Z" }), true);
+  assert.equal(isDead({ pid: process.pid, startedAt: now }), false);
+  assert.equal(isDead({ identity: "elle/yazilmis" }), false);
+  assert.equal(clearDead("db"), null);
+});
+
+test("run: a live holder makes it wait; --max-wait gives up with 3 and leaves no ticket", async () => {
+  take("db", "oturum/canli, test:db");
+  const code = await run("db", `${node} -e "process.exit(0)"`, { ...quiet, as: "bekleyen", maxWaitMin: 0.002 });
+  assert.equal(code, 3);
+  assert.equal(status()[0].identity, "oturum/canli");
+  assert.deepEqual(queueFiles(), []);
+});
+
+test("run --e2e: waits while CI runs, goes once it is idle", async () => {
+  process.env.NEWFORK_CI_STATE = "running";
+  setTimeout(() => (process.env.NEWFORK_CI_STATE = "idle"), 150);
+  const t0 = Date.now();
+  const code = await run("db", `${node} -e "process.exit(0)"`, { ...quiet, as: "e2e", e2e: true, ciPollMs: 20 });
+  assert.equal(code, 0);
+  assert.ok(Date.now() - t0 >= 150);
+});
+
+test("status: over 30 minutes is long, taken before boot is dead, waiting tickets are listed", () => {
+  const old = new Date(Date.now() - 31 * 60000).toISOString();
+  fs.writeFileSync(dbLock, JSON.stringify({ identity: "run/uzun-1", purpose: "x", startedAt: old, pid: process.pid }));
+  fs.mkdirSync(path.join(tmpDir, "queue-db"), { recursive: true });
+  fs.writeFileSync(
+    path.join(tmpDir, "queue-db", "000000000000009-9-w.json"),
+    JSON.stringify({ identity: "run/bekleyen-9", command: "pnpm.cmd test:db", pid: process.pid, startedAt: new Date().toISOString() }),
+  );
+  const s = status()[0];
+  assert.equal(s.long, true);
+  assert.equal(s.dead, false);
+  assert.deepEqual(s.queue, [{ identity: "run/bekleyen-9", command: "pnpm.cmd test:db", dead: false }]);
+  fs.writeFileSync(dbLock, JSON.stringify({ identity: "run/eski-1", purpose: "x", startedAt: "2000-01-01T00:00:00Z", pid: process.pid }));
+  assert.equal(status()[0].dead, true);
 });

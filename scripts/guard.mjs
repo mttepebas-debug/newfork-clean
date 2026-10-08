@@ -22,6 +22,8 @@ import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { status as lockStatus } from "./lock.mjs";
 import { INBOX_DIR, isCoordinator, slug } from "./inbox.mjs";
+import { ciState } from "./ops.mjs";
+export { ciState, runningRuns } from "./ops.mjs";
 
 // The first week only warns; rollback = move this day forward.
 const ENFORCE_DAY = "2026-10-14";
@@ -466,25 +468,6 @@ function heavyLock(input, dir) {
   const mine = l.session ? l.session === input.session_id : samePath(l.cwd, dir);
   const info = `${l.identity}, ${l.ageMinutes ?? "?"} dk${l.stale ? ", bayat: 2 saatten eski, koordinatöre sor" : ""}`;
   return { free: false, mine, info };
-}
-
-// GitHub Actions runs not yet completed (queued counts: the single runner is the user's PC).
-export const runningRuns = (ghJson) => JSON.parse(ghJson).filter((r) => String(r.status).toLowerCase() !== "completed");
-export function ciState(cwd) {
-  const forced = process.env.NEWFORK_CI_STATE; // tests only: idle | running | unknown
-  if (forced) return { state: forced, runs: [] };
-  try {
-    const out = execFileSync("gh", ["run", "list", "--limit", "5", "--json", "status,name,headBranch"], {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: 10000,
-    });
-    const runs = runningRuns(out);
-    return { state: runs.length ? "running" : "idle", runs };
-  } catch {
-    return { state: "unknown", runs: [] };
-  }
 }
 
 function heavyRun(input, links, i, dir, base, flag) {
