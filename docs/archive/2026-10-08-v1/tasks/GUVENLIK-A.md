@@ -485,3 +485,37 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
   - `get_advisors`: yeni bulgu yok.
 - **Canlı ledger sırası:** EKRAN-01'in `20261008052513`–`052645`'inden sonra.
 - **Main sırası:** EKRAN-01'den hemen sonra, EKRAN-02 paketinden önce (KK-226).
+
+### GA-2 uygulama (2026-10-08, KK-229)
+- **Yeniden ölçüm** (main `9f287986`, yerel 452 migration, salt okuma):
+  - 9 izin (`settings.{general,locations,jobs,shift_catalog,schedule_rules}.manage`, `documents.manage`, `notifications.settings.write`, `schedule.conflict_rules.manage`, `roles.read`) hepsi `custom_grantable = true`.
+  - Müdür ya da çalışan sınıfı rollerde bu izin 0 (hazır Manager 501, özel 69).
+  - Owner rolü düzenlenemiyor (`can_edit_role`: hedef owner olamaz), yani `custom_grantable = false` owner'ı etkilemez.
+  - Varsayılan Manager izinlerinde ayar okuma yok: bilinen BL-680, karar bekliyor, bu işin dışında.
+- **Canlı** (salt okunur SELECT, koordinatör izni, ~13:20Z): müdür/çalışan rolünde 9 iznin satırı **0**. 3 workspace, yalnız 4'er hazır rol, özel rol yok. Canlıda silme yok.
+- **Kırmızı → yeşil:**
+  - `organization_settings_stay_with_owner_and_admin.test.sql`: migration'sız 9 hücreden 5'i düşüyor (verilemezlik, owner, admin, eski izin, kalan satır); migration'la 9/9.
+  - `roles_permissions_rls.test.sql`: ters blok (izinli müdür workspace adını ve atanmadığı lokasyonu değiştirir) silindi. Yerine owner'ın müdür rolüne General/Locations Edit verememesi ve okuma izni olan müdürün ikisini de değiştirememesi geldi. Migration'sız 3 hücre düşüyor; migration'la 51/51.
+  - Rollback'li yeşil: `authz_catalog` 11, `authorization_matrix` 10508, `bl064_conflict_severity` 43, `document_publication` 58.
+  - İpucusuz 42501 sayacı 83 → 82, tavan aynı commit'te indirildi; migration'sız tavan testi düşüyor.
+- **Bozma denemesi:** eski izin istisnası geri konunca yalnız hücre 5 düştü; `custom_grantable` güncellemesi silinince 5 hücre düştü.
+- **Migration** `20261008133000_organization_settings_stay_with_owner_and_admin.sql`:
+  - müdür/çalışan rollerinden 9 iznin ve bağımlılığı kalmayan izinlerin silinmesi (döngü);
+  - `custom_grantable = false`;
+  - `save_workspace_role_service` şemadan birebir, yalnız bir satır farklı: "rolde zaten varsa geç" istisnası (CLAUDE.md §2.A.5) kalktı, ret `hint='authz.rank'` aldı. API her 42501'i 403'e çeviriyor, mesaj değişmiyor (`apps/api/src/http-error.ts`).
+- **Ekran:** `permissionGroupsForRole(accessClass, permissions)` artık API'nin kataloğunu (`custom_grantable`, veritabanından) alıyor.
+  - Müdür ve çalışan rolüne yalnız verilebilir izinleri ve bunlara bağımlı izinleri gösteriyor.
+  - Katalogda olmayan izni göstermiyor (kapalı varsayılan). `adminOnly` bayrağı kalktı (ikiz kural).
+  - Sonuç: müdür rolünde organizasyon alanları yalnız Read, "Invitations & access" Edit yok (`roles.read`'e bağlı), "Manage conflict rules" yok, Roles yok. Owner ve admin'de değişiklik yok.
+- **Plandan iki sapma (gerekçeli):**
+  1. Plan "Organization settings grubu görünmez" diyordu; grup yalnız Read'le görünüyor. Dayanak: KARARLAR K14 S1 ve `KARARLAR.md:86` (müdür katalogu salt okunur görür; okuma izinleri verilebilir kalıyor).
+  2. Veritabanına "müdür rolü bu izni taşıyamaz" tetikleyicisi konmadı. GA-3'ün onaylı kırmızı testleri ("izin olsa da çekirdek reddeder") izni doğrudan yazıyor; bl064 ve belge yayınlama testleri de bugün öyle.
+- **Testler:**
+  - shared vitest 9/9; yeni 4 test eski modelle düşüyor.
+  - Roles sayfası 11/11. Yeni sayfa testi main'in `role-permissions.ts`'iyle düşüyor (kanıtlandı). 4 eski testte grup düğmesi özetle aranıyordu ("Schedule Custom"); müdür Schedule'da artık "Full edit" olduğu için adla aranıyor.
+  - Shared ve web typecheck temiz. `ci-green.txt`'e yeni dosya eklendi, guard temiz.
+- **Ekran görüntüleri** `newfork-clean/artifacts/guvenlik-a/`: `ga2-roles-{manager,admin}-{1440,390}.png`, ölçüler `ga2-measures.json`.
+  - Müdür: 7 Read, 0 Edit, Invitations Edit yok. Admin: 8 Read, 8 Edit, Invitations Edit var.
+  - İki genişlikte yatay kayma yok.
+  - Branch migration'ı ortak yerel DB'de olmadığı için Playwright, API'nin roller cevabında yalnız bu 9 iznin `custom_grantable`'ını `false`'a çevirdi; migration sonrası veritabanının cevabı budur.
+- **e2e:** Settings → Roles için senaryo yok. Yeni senaryo, ortak DB'ye migration ancak trenle girdiği için dalda yeşil olamaz; davranışı pgTAP ve sayfa testi kapsıyor.
