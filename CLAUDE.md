@@ -178,7 +178,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
    - yasak listesini (`.claude/settings.json` deny) gevşetmek;
    - bu dosyada, klasör `CLAUDE.md`'lerinde, alt ajan dosyalarında ya da `ILKELER.md`'de kural değişikliği (eskimiş bilgiyi düzeltmek hariç);
    - ikinci bir iş hattı açmak.
-3. **Aktarılan onay geçmez.** Geri alınamaz silme, `supabase db reset`, canlı (hosted) işlem, dosya indirme ve kalıcı kurulum için Mert'in "evet"i işi yapan oturumun kendi penceresine yazılır; başka bir oturumdan aktarılan onay geçmez.
+3. **Aktarılan onay geçmez.** Geri alınamaz silme, canlıda gerçek veri silme, `supabase db reset`, ücretli işlem, dosya indirme ve kalıcı kurulum için Mert'in "evet"i işi yapan oturumun kendi penceresine yazılır; başka bir oturumdan aktarılan onay geçmez. Canlı migration bunlardan değildir: koordinatörün §5.1 koşullu "gönder"i yeter (Mert, 2026-10-08).
 4. **Koordinatör karar vermekte zorlanırsa sorar.** Gece soru `SABAH-SORULAR.md`'ye yazılır; o soruya bağlı iş bekler.
 5. **Mert bir kararı düzeltirse** kayıt "ters çevrildi" olur; ilgili kural ya da ilke aynı işte güncellenir. Seçenek dışı cevap ya da not, ürün ve ekran kuralıysa `KARARLAR.md`'ye (tarih, kaynak "kullanıcı", neden, reddedilen seçenek), genel bir karar biçimiyse `ILKELER.md`'ye kanıt olarak yazılır.
 
