@@ -31,7 +31,7 @@ set constraints public.document_assignment_changed immediate;
 -- app_private.account_phone_e164 below.
 create function pg_temp.us_phone(saved text) returns text
 language sql immutable as $us$
-  select (case when normalize(coalesce(saved, ''), NFKC) ~ '\+[[:space:]().-]*[02-9]' then null else (select case when parts.local_digits ~ '^[2-9][0-9]{9}$' then '+1' || parts.local_digits end from (select case when char_length(d.digits) = 11 and d.digits like '1%' then substr(d.digits, 2) else d.digits end as local_digits from (select regexp_replace(normalize(coalesce(saved, ''), NFKC), '[^0-9]', '', 'g') as digits) d) parts) end)
+  select (case when normalize(coalesce(saved, ''), NFKC) ~ '\+[ \t\n\v\f\r().-]*[02-9]' then null else (select case when parts.local_digits ~ '^[2-9][0-9]{9}$' then '+1' || parts.local_digits end from (select case when char_length(d.digits) = 11 and d.digits like '1%' then substr(d.digits, 2) else d.digits end as local_digits from (select regexp_replace(normalize(coalesce(saved, ''), NFKC), '[^0-9]', '', 'g') as digits) d) parts) end)
 $us$;
 
 do $check$
@@ -218,10 +218,10 @@ declare
   digits text;
   local_digits text;
 begin
-  if typed !~ '[^[:space:]]' then
+  if typed !~ '[^ \t\n\v\f\r]' then
     return null;
   end if;
-  if typed ~ '\+[[:space:]().-]*[02-9]' then
+  if typed ~ '\+[ \t\n\v\f\r().-]*[02-9]' then
     raise exception 'that phone number cannot be dialled' using errcode = '22023';
   end if;
   digits := regexp_replace(typed, '[^0-9]', '', 'g');

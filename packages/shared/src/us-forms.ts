@@ -30,10 +30,11 @@ export const usPhoneMessage = "Enter a 10-digit US phone number.";
 
 /**
  * A country code other than 1, wherever the "+" stands: "+44 …", "(+44) …",
- * "+(44) …", "tel:+44…". The database's app_private.account_phone_e164 reads
- * a number the same way (BL-969).
+ * "+(44) …", "tel:+44…". The separators are named, not a locale's idea of a
+ * space, so the database's app_private.account_phone_e164 reads a number the
+ * same way (BL-969).
  */
-const otherCountryCode = /\+[\s().-]*[02-9]/;
+const otherCountryCode = /\+[ \t\n\v\f\r().-]*[02-9]/;
 
 /** Fullwidth "＋" and digits, and a no-break space, read as the plain ones. */
 function plainPhone(value: string): string {
@@ -62,7 +63,7 @@ export const workspaceNameInputSchema = usText(z.string().trim().min(1).max(120)
 export function formatUsPhone(value: string): string {
   // Kept as typed, the space before the next group too.
   const text = plainPhone(value).trimStart();
-  if (otherCountryCode.test(text) || /^\+[\s().-]*$/.test(text)) return text;
+  if (otherCountryCode.test(text) || /^\+[ \t\n\v\f\r().-]*$/.test(text)) return text;
   const digits = usPhoneDigits(text);
   if (!digits) return "";
   if (digits.length <= 3) return `(${digits}`;

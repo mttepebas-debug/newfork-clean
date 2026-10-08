@@ -97,6 +97,8 @@ describe("the US phone rule", () => {
       ["(015) 555-0100", null],
       ["555-0100", null],
       ["4155550100 ext 12", null],
+      // A line separator is no separator in either reading (BL-969 review D-1).
+      ["+\u20282 415 555 010", "+12415555010"],
       ["", null],
     ];
     for (const [typed, stored] of table) expect(toUsPhone(typed), JSON.stringify(typed)).toBe(stored);
