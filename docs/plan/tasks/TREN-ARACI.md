@@ -26,7 +26,9 @@ In scope:
      - Önce `plan` yapılır, engel varsa durur.
      - Güncel `origin/main`'den `train/<zaman>` kurulur. Tren çalışma klasörü `../newfork-wt/train`: yoksa açılır, kirliyse durulur.
      - Dalların main'de olmayan commit'leri sırayla, yazar ve mesajıyla alınır.
-     - Yalnız `schema.sql` çatışırsa trenin hâli tutulur; dallar bitince `pnpm.cmd db:schema` bir kez koşar ve ayrı commit'lenir.
+     - Yalnız `schema.sql` çatışırsa trenin hâli tutulur; dallar bitince `pnpm.cmd db:schema` bir kez koşar ve ayrı commit'lenir. Tren-1'de elle
+       "theirs" alınıp sonda bir kez yeniden üretmek yetti (koordinatörün notu b). Hangi taraf tutulursa tutulsun dosya sonda baştan üretildiği için
+       sonuç aynı. Çatışma olmasa da başlıktaki parmak izi göçlere uymuyorsa yine üretilir.
      - Başka çatışmada o dalın commit'lerinin hiçbiri trene girmez, dal atlanır ve raporlanır. Atlama geri sarmayla değil yapılır: dalın commit'leri önce
        `git merge-tree` + `git commit-tree` ile bellekte kurulur, hepsi temizse trene eklenir. `reset --hard`, `stash`, `checkout -- .` yok (CLAUDE.md §2.B.3).
      - Çıkış: 0 hepsi girdi; 2 en az biri atlandı; 1 hata.
@@ -38,6 +40,14 @@ In scope:
        göç dosyası + aynı işlemde `supabase_migrations.schema_migrations(version, name, statements)` satırı. Ledger'da zaten olan sürüm atlanır.
      - İlk hatada durur, kalanlar uygulanmaz; uygulanan liste ve hata ekrana. Uygulanmış göç geri alınmaz, düzeltme yeni göçle.
      - Uygulananlar `audit.log`'a (`train-apply-local`).
+     - **Neden psql, `supabase migration up --local` değil** (koordinatörün tren-1 notu a; ikisi de çalışır, 2026-10-08):
+       1. Canlıyla aynı biçim. MCP `apply_migration` dosyayı tek sorgu olarak gönderir. CLI ise deyim deyim koşar: üst düzey `LOCK TABLE` düşer, `SET LOCAL`
+          yalnız uyarır. Yerelde geçip canlıda farklı davranan göç olmasın.
+       2. Ledger satırı canlıdakiyle aynı: `statements` = dosyanın tamamı. `md5(statements[1])` = dosya md5'i kontrolü yerelde de aynı çalışır.
+       3. Yalnız trenin dosyaları uygulanır, numara sırasıyla, ilk hatada durarak; ortak DB main'in gerisindeyse hiç başlamaz. `migration up` klasörde
+          ledger'da olmayan her dosyayı uygular. Main'in son göçünden küçük numaralı dosyaları (bugün BL-969'un ikisi) `--include-all` olmadan almaz;
+          `--include-all` ile de klasörde kalmış başka dosyaları alır.
+       Bedeli ~40 satır kod.
    - **`gate [--e2e <spec…>]`**:
      - Aynı kimlikle `db.lock` (apply-local'dan kalan; yoksa alır) → `heavy.lock` (push'a kadar trende kalır, push CI başlatır).
      - CI koşuyorsa (`gh run list`) başlamaz.

@@ -321,6 +321,8 @@ const literal = (sql) => {
   return `${tag}${sql}${tag}`;
 };
 // One transaction (psql -1): the migration and its ledger row together, as `apply_migration` records it.
+// Not `supabase migration up --local`: the CLI runs a file statement by statement (live gets it as one query),
+// applies every file the ledger lacks, and needs --include-all for out-of-order ones (TREN-ARACI.md).
 const applySql = (file, sql) => {
   const name = file.replace(/^\d+_/, "").replace(/\.sql$/, "").replace(/'/g, "''");
   return (
