@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(47);
 
 -- G8a / BL-132 (KK-13). An archived location counts in the authorization core
 -- as a deleted one does: nobody's scope holds it, no target on it is reached,
@@ -144,6 +144,14 @@ select tests.remember('ar:export:B', (select e.id from public.scheduled_schedule
 select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)',
     tests.user('ar:ayse'), tests.id('ar'), tests.id('ar:export:B'), '{"send_hour": 10}')),
   '42501', 'Ayse, whose Besiktas is archived, cannot change her Besiktas rule');
+-- Kaan still manages a live Kadikoy, so he gets past the first gate; the rule's
+-- own check is the one that stops him (EKRAN-01 B14).
+select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)',
+    tests.user('ar:kaan'), tests.id('ar'), tests.id('ar:export:B'), '{"send_hour": 10}')),
+  '42501', 'nor can Kaan, who manages only the live Kadikoy');
+select is(pg_temp.refusal(format('select public.delete_schedule_export_schedule_service(%L, %L, %L)',
+    tests.user('ar:kaan'), tests.id('ar'), tests.id('ar:export:B'))),
+  '42501', 'nor delete it');
 select is(pg_temp.refusal(format('select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)',
     tests.user('ar:zeynep'), tests.id('ar'), tests.id('ar:export:B'), '{"send_hour": 10}')),
   'allowed', 'the admin can');
