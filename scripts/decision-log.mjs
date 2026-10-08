@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// KARAR-001: Mert's decision log (CLAUDE.md §3.6 / §4.7, docs/plan/ILKELER.md).
+// KARAR-001: Mert's decision log (CLAUDE.md §2.8, docs/plan/KARARLAR.md).
 // Every AskUserQuestion answer is appended to decisions.jsonl next to the coordinator
 // inbox (git-free), so recommendation accuracy is measured and free-text answers become
 // written rules instead of living only in a transcript.
@@ -15,7 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { INBOX_DIR } from "./inbox.mjs";
+import { OPS_DIR as INBOX_DIR } from "./ops.mjs";
 
 export const LOG = path.join(INBOX_DIR, "decisions.jsonl");
 const LABEL = "(Önerilen)";
@@ -150,14 +150,13 @@ export function reminder(rows) {
     for (const r of loose)
       out.push(`- Soru: ${clip(r.question, 200)}\n  Cevap: ${clip(r.answer ?? "", 600)}${r.notes ? `\n  Not: ${clip(r.notes, 400)}` : ""}`);
     out.push(
-      "Bu oturumda kurala çevir: ürün ya da ekran kuralıysa docs/plan/KARARLAR.md'ye (tarih, kaynak \"kullanıcı\", neden, reddedilen seçenek); " +
-        "genel bir karar biçimiyse docs/plan/ILKELER.md'deki ilgili ilkeye kanıt olarak. Yalnız bu işe özelse ya da TBD ise raporda öyle söyle.",
+      "Bu oturumda kurala çevir: docs/plan/KARARLAR.md'ye (tarih, kaynak \"Mert\", neden, reddedilen seçenek). Yalnız bu işe özelse ya da TBD ise raporda öyle söyle.",
     );
   }
   for (const r of missed)
     out.push(
       `KARAR-001: önerin tutmadı. Soru: ${clip(r.question, 160)} → Mert "${clip(r.answer, 120)}" seçti ` +
-        `(önerin "${clip(r.rec, 80)}", dayanak: ${r.dayanak ?? "yok"}). Dayanak yanlış ya da eksikse ILKELER/KARARLAR'da düzelt.`,
+        `(önerin "${clip(r.rec, 80)}", dayanak: ${r.dayanak ?? "yok"}). Dayanak yanlış ya da eksikse KARARLAR.md'de düzelt.`,
     );
   return out.join("\n");
 }
@@ -174,7 +173,7 @@ export function runHook(kind, input, now = new Date()) {
       const reason =
         `Soru Mert'e gitmedi (KARAR-001, CLAUDE.md §3.6 / §4.7):\n- ${problems.join("\n- ")}\n` +
         `Düzeltip yeniden sor. Önerilen seçeneğin etiketi tam "${LABEL}"; açıklamasının sonunda tek satır: ` +
-        `"Dayanak: <KARARLAR bölümü / ILKELER P-xx / Mert'in <tarih> kararı>" ya da "Dayanak: yok — yeni karar".`;
+        `"Dayanak: <KARARLAR madde kimliği / Mert'in <tarih> kararı>" ya da "Dayanak: yok — yeni karar".`;
       return JSON.stringify({
         hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason },
       });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // WORKFLOW-V2: what several scripts share. OPS_DIR is the git-free folder that keeps audit.log and
-// decisions.jsonl (formerly inbox.mjs's INBOX_DIR; NEWFORK_INBOX_DIR overrides it, tests only).
+// decisions.jsonl (formerly the inbox's INBOX_DIR; NEWFORK_INBOX_DIR overrides it, tests only).
 // ciState() asks GitHub Actions through `gh`; NEWFORK_CI_STATE=idle|running|unknown forces it (tests only).
 import { execFileSync } from "node:child_process";
 

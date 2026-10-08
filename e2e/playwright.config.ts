@@ -72,8 +72,7 @@ export default defineConfig({
   workers: 1,
   // A forgotten test.only would quietly skip every other spec in CI (BL-281).
   forbidOnly: Boolean(process.env.CI),
-  // Locally a passing run is stamped for the push guard (scripts/guard.mjs).
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"], ["./e2e-pass-reporter.mjs"]],
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: webUrl,
     // CI installs Playwright's own Chromium; locally the installed Chrome is used
