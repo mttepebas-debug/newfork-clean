@@ -152,6 +152,35 @@ describe("ScheduleTemplatesDialog", () => {
     confirm.mockRestore();
   });
 
+  // BL-038 K3 (EKRAN-01 #28): a template keeps who works each shift unless the
+  // manager asks to remove the names.
+  it("saves a template with its employee names unless asked to remove them", async () => {
+    const props = renderDialog();
+    const removeNames = screen.getByRole("checkbox", { name: "Remove employee names (save as open shifts)" });
+    expect((removeNames as HTMLInputElement).checked).toBe(false);
+    const names = screen.getAllByLabelText("Template name");
+    fireEvent.change(names[names.length - 1], { target: { value: "Busy week" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create template" }));
+    await waitFor(() => expect(props.onCreate).toHaveBeenCalledWith(draft.id, "Busy week", false));
+
+    // The name field empties after a template is made; the next one is named again.
+    await waitFor(() => expect((names[names.length - 1] as HTMLInputElement).value).toBe(""));
+    fireEvent.change(names[names.length - 1], { target: { value: "Open week" } });
+    fireEvent.click(removeNames);
+    fireEvent.click(screen.getByRole("button", { name: "Create template" }));
+    await waitFor(() => expect(props.onCreate).toHaveBeenLastCalledWith(draft.id, "Open week", true));
+  });
+
+  // BL-038 K4 (EKRAN-01 #29): every department applies unless the manager opens
+  // "Only some departments" and narrows it.
+  it("keeps the department filter folded under Only some departments", () => {
+    renderDialog();
+    const folded = screen.getByText("Only some departments").closest("details");
+    expect(folded).not.toBeNull();
+    expect((folded as HTMLDetailsElement).open).toBe(false);
+    expect(folded?.contains(screen.getByRole("checkbox", { name: "Back of house" }))).toBe(true);
+  });
+
   it("applies every department as an unfiltered template merge", async () => {
     const props = renderDialog();
 
