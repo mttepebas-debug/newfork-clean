@@ -82,6 +82,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 6. **Soru biçimi.** Sorular tek tıkla cevaplanır; seçenekler adlıdır. Önerilen seçenek ilk sıradadır, "(Önerilen)" etiketini taşır ve açıklamasının son satırı `Dayanak: <KARARLAR bölümü / ILKELER P-xx / Mert'in <tarih> kararı>` ya da `Dayanak: yok — yeni karar`. Kuruluş: bugün ne oluyor (ekran → düğme) → isimli örnek → her seçeneğin sonucu. "Hepsi önerilen gibi" paketi sunulmaz; kategori sorusu çoklu seçimle sorulur.
 7. **Soru zamanı.** İşi durduran soru hemen sorulur. Durdurmayanlar birikir; üçü geçince ya da Mert "soru turu" deyince tek seferde sorulur.
 8. **Hata saklanmaz.** Hata Claude'dan kaynaklandıysa "benim hatam" denir.
+9. **Komut Mert'e Run düğmesiyle verilir** (Mert, 2026-10-08). Mert komutu yalnız Claude uygulamasının sağdaki Terminal panelinde, kod bloğunun ▶ düğmesiyle çalıştırır; ayrı PowerShell/cmd penceresi açtırılmaz. Panel PowerShell 7'dir ve `newfork-clean`'de açılır. Her komut ayrı, `bash` etiketli blokta, tek satır ve PowerShell 7'de geçerli (`pnpm.cmd`, `$env:X='y'; ...`; `export`, `VAR=x cmd`, `/c/...` yok); başka klasörde çalışacaksa tam Windows yolu yazılır. Claude'un kendisi çalıştırabileceği komut Mert'e verilmez.
 
 ## 4. Workflow
 
