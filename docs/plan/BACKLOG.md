@@ -2164,6 +2164,7 @@ Kaynak `ekranlar/16-giris-katilim/` (main `ca4326f6`); metni EKRAN-16 oturumu ha
 - **BL-971 (leave: low / do: safe) Employees çekmecesinde alan hata satırı kırmızı yerine gri.** `styles.css` `.employee-field small` (0,1,1) `.employee-field-error`'ı (0,1,0) eziyor; zorunlu alan hatası dahil. Neden bekliyor: `styles.css` EKRAN-02 görünüm diliminden sonra açılıyor. Bulan: EKRAN-03, 2026-10-07.
 
 - **BL-972 (leave: low / do: safe) Liste süzgeç genişliği kayıtla kod arasında farklı.** KARARLAR:302 "en az 200 (Requirement, Category) ya da 180 (Location, Document type)" diyor; ortak CSS `.list-page.list-page .catalog-toolbar-filter-row .toolbar-filter-select` bugün herkese 200 (Employees Location da 200). Ortak değer (§4.7): hangisinin kalacağı Settings turunda Mert'e ekranlarıyla sorulur; simetri tercihi tek ölçüyü destekler. Bulan: EKRAN-10-JOBS, 2026-10-07.
+- **BL-973 (leave: low / do: safe) Account → Workspaces: seçili (tonlu) satırın zemini listeyi sağda 12 px aşıyor.** Meyhouse satırının arka planı 1164 px'e uzanıyor, öteki satırlar ve "Create workspace" düğmesi 1152 px'te bitiyor (`artifacts/guvenlik-a/ga4-menu-1440.png`, 2026-10-08). Simetri bozuk (Mert hizalamaya bakar). Önceden de böyleydi; GA-4 metin işi dokunmadı. Account ekran turunda düzeltilir. Bulan: GUVENLIK-A GA-4, 2026-10-08.
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
