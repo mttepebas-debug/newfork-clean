@@ -851,7 +851,4 @@ AS $function$
   and (emp.user_id=actor or app_private.authz_reason(actor,w,'schedule.read',array[(item->>'location_id')::uuid]) is null);
 $function$;
 
--- BL-179, BL-189: nothing asks the three Schedule helpers any more (FB-6.1 K-1).
-drop function public.schedule_actor_can_manage_service(uuid,uuid,uuid);
-drop function public.schedule_actor_can_publish_service(uuid,uuid,uuid);
-drop function public.schedule_actor_has_capability_service(uuid,uuid,text,uuid);
+-- The three Schedule helpers retire in 20261008020500 (they go live once main CI is green).

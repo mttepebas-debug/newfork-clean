@@ -1052,7 +1052,4 @@ begin
   'changed','shift-exchanges:'||w::text,true);
 end; $function$;
 
--- The five candidate checks are one engine now (CLAUDE.md §9: no twin system).
-drop function public.weekly_exchange_candidate_check(uuid,uuid,jsonb,uuid[]);
-drop function public.weekly_assignment_candidate_check(uuid,uuid,jsonb,uuid[],integer);
-drop function public.weekly_assignment_candidate_base(uuid,uuid,jsonb,uuid[],integer);
+-- The old candidate checks retire in 20261008020500 (they go live once main CI is green).
