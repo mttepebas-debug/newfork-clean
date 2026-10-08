@@ -25,7 +25,7 @@
 -- another job before this migration or already live, keeps all of its own
 -- changes. CREATE OR REPLACE keeps the signature, SECURITY DEFINER,
 -- search_path, grants and comments. mutate_schedule_edit_shift_service
--- already answers this way (20261008002000); it is on the list so the checks
+-- already answers this way (20261008052513); it is on the list so the checks
 -- below cover it too.
 do $migration$
 declare
