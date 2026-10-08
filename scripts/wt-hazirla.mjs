@@ -20,19 +20,60 @@ export function branchOf(id) {
   return `task/${String(id).toLowerCase()}`;
 }
 
-export function prepare(id, { cwd, mainDir = MAIN_DIR, pnpm = realPnpm }) {
+class GitStepError extends Error {}
+// A git step that fails becomes { code: 1 } with git's own text, never an exception out of prepare().
+function step(cwd, args) {
+  try {
+    return git(cwd, args);
+  } catch (err) {
+    const text = String(err?.stderr || err?.message || err).trim();
+    throw new GitStepError(`git ${args.join(" ")} kırmızı: ${text}`);
+  }
+}
+const samePath = (a, b) => {
+  const n = (p) => path.resolve(p).replace(/[\\/]+$/, "");
+  return process.platform === "win32" ? n(a).toLowerCase() === n(b).toLowerCase() : n(a) === n(b);
+};
+// The worktree (other than this one) that has refs/heads/<branch> checked out, or null.
+function heldElsewhere(cwd, branch) {
+  const self = step(cwd, ["rev-parse", "--show-toplevel"]);
+  let wt = null;
+  for (const line of step(cwd, ["worktree", "list", "--porcelain"]).split(/\r?\n/)) {
+    if (line.startsWith("worktree ")) wt = line.slice("worktree ".length);
+    else if (line === `branch refs/heads/${branch}` && wt && !samePath(wt, self)) return wt;
+  }
+  return null;
+}
+
+export function prepare(id, opts) {
+  try {
+    return prepareSteps(id, opts);
+  } catch (err) {
+    // A failed git step (GitStepError carries git's text) or a bad id: the contract is { code, message }.
+    return { code: 1, message: String(err?.message ?? err) };
+  }
+}
+
+function prepareSteps(id, { cwd, mainDir = MAIN_DIR, pnpm = realPnpm }) {
   const branch = branchOf(id);
-  if (git(cwd, ["status", "--porcelain"])) return { code: 1, message: `worktree temiz değil: ${cwd}` };
-  git(cwd, ["fetch", "-q", "origin"]);
+  if (step(cwd, ["status", "--porcelain"])) return { code: 1, message: `worktree temiz değil: ${cwd}` };
+  step(cwd, ["fetch", "-q", "origin"]);
   let from;
   if (has(cwd, `refs/heads/${branch}`)) {
-    git(cwd, ["switch", "-q", branch]);
+    const other = heldElsewhere(cwd, branch);
+    if (other)
+      return {
+        code: 1,
+        branch,
+        message: `${branch} başka worktree'de açık: ${other} — işçi orada devam etmeli ya da o worktree kaldırılmalı`,
+      };
+    step(cwd, ["switch", "-q", branch]);
     from = `yerel ${branch} (devam)`;
   } else if (has(cwd, `refs/remotes/origin/${branch}`)) {
-    git(cwd, ["switch", "-q", "-c", branch, "--track", `origin/${branch}`]);
+    step(cwd, ["switch", "-q", "-c", branch, "--track", `origin/${branch}`]);
     from = `origin/${branch} (devam)`;
   } else {
-    git(cwd, ["switch", "-q", "-c", branch, "origin/main"]);
+    step(cwd, ["switch", "-q", "-c", branch, "--no-track", "origin/main"]);
     from = "origin/main";
   }
   for (const args of [["install", "--frozen-lockfile"], ["--filter", "@newfork/shared", "--filter", "@newfork/ui", "build"]]) {
@@ -49,7 +90,7 @@ export function prepare(id, { cwd, mainDir = MAIN_DIR, pnpm = realPnpm }) {
       copied.push(rel);
     }
   }
-  const sha = git(cwd, ["rev-parse", "--short", "HEAD"]);
+  const sha = step(cwd, ["rev-parse", "--short", "HEAD"]);
   return { code: 0, branch, message: `hazır: ${branch} @${sha} (${from}); env: ${copied.join(", ") || "kopyalanacak yok"}` };
 }
 
