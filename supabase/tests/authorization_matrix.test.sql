@@ -64,7 +64,7 @@ select public.save_employee_onboarding_profile_service(
   jsonb_build_object(
     'legal_first_name', 'Aydan', 'legal_last_name', 'Person',
     'phone', '4155550123', 'emergency_contact_name', 'Contact',
-    'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'),
+    'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
   (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:aydan')),
   tests.id('m'));
 -- Time off waiting for a decision (Wednesday of week 0), and approved time off
@@ -534,7 +534,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   -- one's own emergency contact, on one's own record only (BL-443, BL-444)
   ('employee.save_own_contact', 'person', null, false, false,
    $$select true from (select public.save_own_employment_contact_service($1, $2, $3,
-       'Probe Contact', 'Friend', '4155550100') offset 0) done$$, true, true);
+       'Probe Contact', 'Friend', '+14155550100') offset 0) done$$, true, true);
 
 -- The same actions as the core names them. blank: how a blank location reaches
 -- the core, as the entry point receives it: 'null' ({NULL}, no location) or

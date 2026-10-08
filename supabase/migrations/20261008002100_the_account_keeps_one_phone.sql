@@ -1,5 +1,5 @@
 -- BL-969: the account keeps one phone. The column kept for a backward-compatible
--- move is gone; 20261008000000 made it say what phone_e164 says. It goes on
+-- move is gone; 20261008002000 made it say what phone_e164 says. It goes on
 -- its own, after the web that no longer reads it is live (live order: the
 -- previous migration, main, Vercel live, a backup of the column, then this one).
 
