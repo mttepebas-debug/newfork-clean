@@ -1984,9 +1984,10 @@ describe("employee assignment document impact", () => {
       ],
     } satisfies EmployeeDetail;
     renderDrawer("employment", fixture);
-    fireEvent.click(
-      await screen.findByRole("checkbox", { name: "Secondary Branch" }),
-    );
+    // A click before the record reaches the form lands on an empty one and
+    // saves Secondary Branch alone (seen on a slow CI runner, BL-969).
+    await employeeLoaded();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Secondary Branch" }));
     await waitFor(() =>
       expect(previewEmployeeDocumentAssignments).toHaveBeenCalledTimes(1),
     );
