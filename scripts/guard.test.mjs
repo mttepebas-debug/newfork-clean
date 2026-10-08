@@ -55,7 +55,7 @@ after(() => fs.rmSync(root, { recursive: true, force: true }));
 // The probe of the parser tests: a command the guard refuses when it is read as a command.
 const PUSH = "git push origin HEAD:main";
 
-test("push to main without main.lock is refused and logged", () => {
+test("push to main from a session is refused and logged", () => {
   const r = evaluate(bash("git push --dry-run origin HEAD:main"));
   assert.equal(r.block, true);
   assert.match(r.message, /yalnız tren gider/);
@@ -181,7 +181,62 @@ test("a worker's git commit carrying a record file is refused", () => {
   git(dir, "add", "docs/plan/KARARLAR.md");
   const r = evaluate({ ...bash('git commit -m "x"'), cwd: dir, agent_id: "a9" });
   assert.equal(r.block, true);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "record-by-worker-blocked");
+  assert.deepEqual(e.files, ["docs/plan/KARARLAR.md"]);
   assert.equal(evaluate({ ...bash('git commit -m "x"'), cwd: dir }).block, false);
+});
+
+test("a worker's commit naming a record file on the command line is refused", () => {
+  assert.equal(evaluate(bash("git commit -m x -- docs/plan/KARARLAR.md", { agent_id: "a9" })).block, true);
+  assert.deepEqual(auditLines().at(-1).files, ["docs/plan/KARARLAR.md"]);
+  assert.equal(evaluate(bash("git commit -m x -- docs/plan/tasks/X.md", { agent_id: "a9" })).block, false);
+});
+
+test("a worker in an agent tree cannot edit the coordinator's record file by absolute path, even without agent_id", () => {
+  const r = evaluate({
+    tool_name: "Edit",
+    session_id: "s",
+    cwd: "C:/c/coord/.claude/worktrees/agent-a1",
+    tool_input: { file_path: "C:/c/coord/DURUM.md" },
+  });
+  assert.equal(r.block, true);
+  assert.match(r.message, /yalnız koordinatör yazar/);
+});
+
+test("MultiEdit and NotebookEdit on a record file by a worker are refused", () => {
+  const multi = { tool_name: "MultiEdit", session_id: "s", cwd: repo, agent_id: "a2", tool_input: { file_path: path.join(repo, "docs/plan/BACKLOG.md"), edits: [] } };
+  assert.equal(evaluate(multi).block, true);
+  const nb = { tool_name: "NotebookEdit", session_id: "s", cwd: repo, agent_id: "a2", tool_input: { notebook_path: path.join(repo, "docs/plan/gunluk/x.ipynb") } };
+  assert.equal(evaluate(nb).block, true);
+  assert.equal(evaluate({ ...nb, tool_input: { notebook_path: path.join(repo, "notebooks/x.ipynb") } }).block, false);
+});
+
+test("guard CLI refuses a worker's record edit: exit 2, the refusal on stderr", () => {
+  const input = {
+    tool_name: "Edit",
+    session_id: "s",
+    cwd: "C:/c/coord/.claude/worktrees/agent-a1",
+    tool_input: { file_path: "C:/c/coord/.claude/worktrees/agent-a1/docs/plan/SORULAR.md", old_string: "a", new_string: "b" },
+  };
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "guard.mjs")], { input: JSON.stringify(input), encoding: "utf8" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /yalnız koordinatör yazar/);
+});
+
+test("a push hidden in command substitution is refused; NF_OVERRIDE still passes", () => {
+  for (const cmd of ["echo $(git push origin HEAD:main)", "echo `git push origin HEAD:main`", "x=$(git push origin HEAD:main)"]) {
+    const r = evaluate(bash(cmd));
+    assert.equal(r.block, true, cmd);
+    assert.match(r.message, /yalnız tren gider/);
+    assert.equal(auditLines().at(-1).event, "push-main-blocked");
+  }
+  assert.equal(evaluate(bash("echo $(git log -1)")).block, false);
+  assert.equal(evaluate(bash("x=$(git push origin HEAD:task/x)")).block, false);
+  assert.equal(evaluate(bash('NF_OVERRIDE="acil" echo $(git push origin HEAD:main)')).block, false);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "push-main-override");
+  assert.equal(git(repo, "rev-parse", e.backup), git(repo, "rev-parse", "origin/main"));
 });
 
 // ---- inbox (deleted in Task 3) ------------------------------------------------------------------
@@ -338,7 +393,9 @@ test("scanner edges: block comments, CRLF, two heredocs, <<<, a ) inside quotes 
   quiet(ps(`<# ${PUSH}; git push #> git status`));
   quiet(bash(`git commit -q -F - <<'EOF'\r\nfix: x && ${PUSH}\r\nEOF\r\ngit log -1`));
   quiet(bash(`cat <<A <<B > x\n${PUSH}\nA\n${PUSH}\nB`));
-  quiet(bash(`git commit -m "$(echo ')' ; echo "a && ${PUSH}")"`));
+  // one command for the scanner; the guard still refuses it (a push to main inside $( ) is the substitution fail-safe)
+  oneCommand(`git commit -m "$(echo ')' ; echo "a && ${PUSH}")"`, "bash");
+  assert.equal(evaluate(bash(`git commit -m "$(echo ')' ; echo "a && ${PUSH}")"`)).block, true);
   quiet(bash(`echo \\$'a\\' && echo "x; ${PUSH}"`)); // \$ is a plain $, so 'a\' is a plain '…' and closes
   assert.equal(evaluate(bash(`cat <<< 'x'\n${PUSH}`)).block, true); // a here-string word, not a heredoc
 });

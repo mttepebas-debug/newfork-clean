@@ -447,10 +447,15 @@ function backupBranches(seg, cwd, base) {
   return out;
 }
 
+// Command substitution: $( … ) or a backtick.
+const SUBST = /\$\(|`/;
+const SUBST_PUSH_MAIN = /\bgit\b[^;&|\n]*\bpush\b[^;&|\n]*\bmain\b/;
+
 const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
 function evaluateEdit(input) {
   const file = String(input.tool_input?.file_path ?? input.tool_input?.notebook_path ?? "");
-  if (!isRecordFile(file) || !byWorker(input, file)) return { block: false };
+  // the session's own folder decides, so a worker cannot reach the coordinator's file by absolute path
+  if (!isRecordFile(file) || !(byWorker(input, input.cwd) || inWorkerTree(file))) return { block: false };
   audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "record-by-worker-blocked" });
   return { block: true, message: RECORD_REFUSAL };
 }
@@ -470,15 +475,18 @@ export function evaluate(input) {
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i];
       for (const entry of backupBranches(seg, dirs[i], base)) audit(entry);
-      if (byWorker(input, dirs[i]) && commitRecords(seg, dirs[i]).length) {
-        audit({ ...base, event: "record-by-worker-blocked" });
+      const recs = byWorker(input, dirs[i]) ? commitRecords(seg, dirs[i]) : [];
+      if (recs.length) {
+        audit({ ...base, event: "record-by-worker-blocked", files: recs });
         return { block: true, message: RECORD_REFUSAL };
       }
       const push = pushCall(seg, dirs[i]);
-      if (!push || !push.refs.some(toMain)) continue;
+      // fail-safe: a push inside $( … ) or `…` is not a word gitCall can see, so the text decides
+      const hidden = SUBST.test(seg) && SUBST_PUSH_MAIN.test(seg);
+      if (!hidden && (!push || !push.refs.some(toMain))) continue;
       const reason = overrideReason(segs, i);
       if (reason) {
-        const b = backupMain(push.dir);
+        const b = backupMain(push?.dir ?? dirs[i]);
         audit({ ...base, event: "push-main-override", reason, backup: b.ref, sha: b.sha, fetched: b.fetched });
         continue;
       }
