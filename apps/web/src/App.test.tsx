@@ -576,6 +576,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   ScheduleRequestError: actual.ScheduleRequestError,
   isNothingToUndo: actual.isNothingToUndo,
   isEditLeaseExpired: actual.isEditLeaseExpired,
+  isEditSessionClosed: actual.isEditSessionClosed,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
   authorizeScheduleExportV2: vi.fn().mockResolvedValue(undefined),
   listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [] }),
@@ -2096,6 +2097,38 @@ describe("App", () => {
     expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
     expect(screen.queryByText(/edit lease expired/i)).toBeNull();
     await waitFor(() => expect(screen.queryByText("Editing draft")).toBeNull());
+  });
+
+  // EKRAN-01 B3 (review O1): Ayşe's edit in this tab was set aside when she
+  // opened the week in another; Save here does not open it again (that would
+  // set the other aside in turn) and shows no raw "edit session closed".
+  it("ends an edit closed elsewhere when Save finds it closed", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("edit session closed", 409, { error: "edit session closed", code: "edit_session_closed" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    vi.mocked(acquireScheduleEditSession).mockClear();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Closed elsewhere" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+
+    expect(
+      await screen.findByText("Your edit ended while you were away. Open the schedule again to keep editing."),
+    ).toBeTruthy();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByText(/edit session closed/i)).toBeNull();
+    await waitFor(() => expect(window.location.search).not.toContain("mode=edit"));
   });
 
   it("picks the edit back up after a page reload instead of showing an empty draft (D-Y4)", async () => {
