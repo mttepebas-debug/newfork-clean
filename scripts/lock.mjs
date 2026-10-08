@@ -6,9 +6,9 @@
 // lets go when it ends, success or not. --e2e also waits while a GitHub Actions run is going: two e2e
 // runs on the one PC time each other out. A holder whose process is gone, or that took the lock before
 // this machine last started, is dead: the first waiter moves it to dead/ and goes on. A hand-written
-// lock (no pid) is never cleared. take()/release() stay for scripts/train.mjs, which also holds the
-// lock inside one command. The lock file only ever appears fully formed (scratch file + fs.linkSync),
-// so EEXIST = held. Directory is overridable via NEWFORK_LOCK_DIR (tests only; never the real folder).
+// lock (no pid) is never cleared. scripts/train.mjs holds the lock inside its own step through acquire(),
+// which waits in the same queue, synchronously. The lock file only ever appears fully formed (scratch
+// file + fs.linkSync), so EEXIST = held. Directory is overridable via NEWFORK_LOCK_DIR (tests only; never the real folder).
 // Ctrl+C stops the command and lets go. A force-killed lock.mjs (Task Manager, taskkill /f) cannot:
 // its command may keep running while the next waiter clears the dead lock and starts -- the two then
 // overlap. Stop such a command with Ctrl+C rather than killing lock.mjs (no process-tree tracking).
@@ -246,54 +246,101 @@ function spawnCommand(command) {
   });
 }
 
+// ---- the queue: run() and acquire() wait in the same line of tickets ----
+
+// A ticket in queue-<name>/, written under a name tickets() skips and renamed, so a reader never sees half a one.
+function enqueue(name, identity, command) {
+  fs.mkdirSync(queueDir(name), { recursive: true });
+  const ticket = `${String(Date.now()).padStart(15, "0")}-${process.pid}-${Math.random().toString(36).slice(2, 8)}.json`;
+  const file = path.join(queueDir(name), ticket);
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify({ identity, command, pid: process.pid, startedAt: new Date().toISOString() }));
+  fs.renameSync(`${file}.tmp`, file);
+  return { ticket, file };
+}
+
+// One look at the line: dead or long-unreadable tickets of others go; when `ticket` is first, a dead holder
+// is cleared and, if `ready()`, take() is tried. Returns { taken, queue }.
+function turn(name, ticket, arg, { deadOpts, say, ready = () => true }) {
+  for (const f of tickets(name)) {
+    if (f === ticket) continue;
+    const t = readTicket(name, f);
+    if (t ? isDead(t, deadOpts) : unreadableTooLong(name, f)) fs.rmSync(path.join(queueDir(name), f), { force: true });
+  }
+  const queue = tickets(name);
+  if (queue[0] === ticket) {
+    const cleared = clearDead(name, deadOpts);
+    if (cleared) say(cleared);
+    if (ready() && take(name, arg).ok) return { taken: true, queue };
+  }
+  return { taken: false, queue };
+}
+
+function waiting(name, ticket, queue, deadOpts, extra = "") {
+  const held = status(deadOpts).find((l) => l.name === name);
+  return `bekliyor: sırada ${queue.indexOf(ticket) + 1}/${queue.length}${held.free ? "" : `; kilit ${held.identity} elinde (${held.ageMinutes ?? "?"} dk)`}${extra}`;
+}
+
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Math.max(0, ms));
+
+// The synchronous turn-taking for scripts/train.mjs, which holds db inside its own step: the same queue as
+// run(), in arrival order. `arg` is take()'s "who/what, purpose". { ok: false } after maxWaitMin, ticket gone.
+export function acquire(name, arg, { maxWaitMin = 30, pollMs = 2000, deadOpts, sleep = sleepSync, say = () => {} } = {}) {
+  lockPath(name);
+  const { identity, purpose } = splitIdentity(arg);
+  const [who, what] = identity.split("/").map((part) => part.trim());
+  if (!who || !what) return { ok: false, message: `kimlik "${identity}" geçersiz: "kim/iş" biçiminde olmalı` };
+  const { ticket, file } = enqueue(name, identity, purpose);
+  const deadline = Date.now() + maxWaitMin * 60000;
+  let lastSay = Date.now();
+  try {
+    for (;;) {
+      const { taken, queue } = turn(name, ticket, arg, { deadOpts, say });
+      if (taken) return { ok: true, message: `${name}.lock alındı: ${identity}` };
+      if (Date.now() >= deadline) return { ok: false, message: `${name}.lock için ${maxWaitMin} dk beklendi; alınamadı` };
+      if (Date.now() - lastSay >= 60000) {
+        say(waiting(name, ticket, queue, deadOpts));
+        lastSay = Date.now();
+      }
+      sleep(Math.min(pollMs, deadline - Date.now() + 1));
+    }
+  } finally {
+    fs.rmSync(file, { force: true });
+  }
+}
+
 export async function run(name, command, { as, e2e = false, maxWaitMin = 60, pollMs = 2000, ciPollMs = 30000, say = (l) => console.log(l), exec = spawnCommand, deadOpts } = {}) {
   lockPath(name);
   const who = String(as ?? path.basename(process.cwd())).replace(/[^\w.-]+/g, "-").slice(0, 40) || "x";
   const identity = `run/${who}-${process.pid}`;
-  fs.mkdirSync(queueDir(name), { recursive: true });
-  const ticket = `${String(Date.now()).padStart(15, "0")}-${process.pid}-${Math.random().toString(36).slice(2, 8)}.json`;
-  const ticketFile = path.join(queueDir(name), ticket);
-  // atomic: written under a name tickets() skips, then renamed, so a reader never sees half a ticket
-  const ticketTmp = `${ticketFile}.tmp`;
-  fs.writeFileSync(ticketTmp, JSON.stringify({ identity, command, pid: process.pid, startedAt: new Date().toISOString() }));
-  fs.renameSync(ticketTmp, ticketFile);
+  const { ticket, file } = enqueue(name, identity, command);
   const started = Date.now();
   let lastSay = 0;
   let lastCi = -Infinity;
   let ciBusy = false;
+  const ready = () => {
+    if (!e2e) return true;
+    if (Date.now() - lastCi >= ciPollMs) {
+      ciBusy = ciState(process.cwd()).state === "running";
+      lastCi = Date.now();
+    }
+    return !ciBusy;
+  };
   try {
     for (;;) {
-      for (const f of tickets(name)) {
-        if (f === ticket) continue;
-        const t = readTicket(name, f);
-        if (t ? isDead(t, deadOpts) : unreadableTooLong(name, f)) fs.rmSync(path.join(queueDir(name), f), { force: true });
-      }
-      const queue = tickets(name);
-      if (queue[0] === ticket) {
-        const cleared = clearDead(name, deadOpts);
-        if (cleared) say(cleared);
-        if (e2e && Date.now() - lastCi >= ciPollMs) {
-          ciBusy = ciState(process.cwd()).state === "running";
-          lastCi = Date.now();
-        }
-        if (!(e2e && ciBusy) && take(name, `${identity}, ${command}`).ok) break;
-      }
+      const { taken, queue } = turn(name, ticket, `${identity}, ${command}`, { deadOpts, say, ready });
+      if (taken) break;
       if (Date.now() - started > maxWaitMin * 60000) {
         say(`${name}.lock için ${maxWaitMin} dk beklendi; komut koşmadı: ${command}`);
         return 3;
       }
       if (Date.now() - lastSay >= 60000) {
-        const held = status(deadOpts).find((l) => l.name === name);
-        say(
-          `bekliyor: sırada ${queue.indexOf(ticket) + 1}/${queue.length}` +
-            `${held.free ? "" : `; kilit ${held.identity} elinde (${held.ageMinutes ?? "?"} dk)`}${e2e && ciBusy ? "; CI koşuyor" : ""}`,
-        );
+        say(waiting(name, ticket, queue, deadOpts, e2e && ciBusy ? "; CI koşuyor" : ""));
         lastSay = Date.now();
       }
       await sleep(pollMs);
     }
   } finally {
-    fs.rmSync(ticketFile, { force: true });
+    fs.rmSync(file, { force: true });
   }
   say(`${name}.lock alındı (${identity}): ${command}`);
   try {

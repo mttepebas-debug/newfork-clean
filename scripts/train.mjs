@@ -17,7 +17,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import { take, release, status as lockStatus, clearDead } from "./lock.mjs";
+import { acquire, release, status as lockStatus, clearDead } from "./lock.mjs";
 import { audit, backupMain } from "./guard.mjs";
 import { fingerprint, headerHash } from "./schema-snapshot.mjs";
 import { container, nonTransactional } from "./test-db.mjs";
@@ -216,15 +216,18 @@ const mine = (s, name) => {
   const l = lockOf(name);
   return !l.free && l.identity === s.identity;
 };
-// The train holds `name` (already, or takes it now); a dead holder is cleared first; another live identity's lock
-// is a check NF_OVERRIDE can pass.
+// The train holds `name` (already, or takes it now). A dead holder is cleared first, also one under the train's
+// own identity left by an earlier train process. A live one is waited for in the lock's queue, in arrival order
+// (spec §7.4), up to ctx.lockWaitMin; past that it is a check NF_OVERRIDE can pass.
 function hold(ctx, s, name, step, lines, beforeOverride) {
-  if (mine(s, name)) return true;
   const cleared = clearDead(name);
   if (cleared) lines.push(cleared);
-  if (lockOf(name).free && take(name, `${s.identity}, tren ${step}`).ok) return true;
+  if (mine(s, name)) return true;
+  const got = acquire(name, `${s.identity}, tren ${step}`, { maxWaitMin: ctx.lockWaitMin ?? 30, sleep: ctx.sleep, say: (l) => lines.push(l) });
+  if (got.ok) return true;
   const l = lockOf(name);
-  return pass(ctx, s, step, `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`, lines, beforeOverride);
+  const blocker = l.free ? got.message : `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`;
+  return pass(ctx, s, step, blocker, lines, beforeOverride);
 }
 const letGo = (s, name) => {
   if (mine(s, name)) release(name, s.identity);
@@ -307,6 +310,8 @@ export function build(ctx, args) {
   const lines = [...p.lines];
   if (p.code === 1) return { code: 1, lines: [...lines, "build yapılmadı: önce engeller"] };
   if (!p.sim) return { code: 1, lines: [...lines, "trene girecek dal yok"] };
+  const treeOf = (c) => git(repo, ["rev-parse", `${c}^{tree}`]);
+  if (treeOf(p.sim.head) === treeOf(p.base)) return { code: 1, lines: [...lines, "trene girecek değişiklik yok"] };
   let stamp = stampOf(ctx.now());
   for (let k = 0; tryGit(repo, ["rev-parse", "--verify", "-q", `refs/heads/train/${stamp}`]); k++) stamp = `${stampOf(ctx.now())}${"bcdefghij"[k]}`;
   const branch = `train/${stamp}`;
@@ -429,7 +434,8 @@ export function applyLocal(ctx) {
   s.applied = [...new Set([...s.applied, ...now])];
   writeState(ctx, s);
   if (now.length) audit({ ...auditBase(ctx, "apply-local"), event: "train-apply-local", applied: now, train: s.branch });
-  if (s.applied.length) lines.push(`ortak DB'de main'de olmayan göç: ${s.applied.join(", ")} (tren main'e girene kadar)`);
+  // after the push main has them; before it (apply-local alone, or a train that stopped) the shared DB is ahead
+  if (s.applied.length && !s.pushed) lines.push(`ortak DB'de main'de olmayan göç: ${s.applied.join(", ")} (tren main'e girene kadar)`);
   if (failed) return stop("ilk hatada durdu; kalan göçler uygulanmadı, uygulanan geri alınmaz (düzeltme yeni göçle)");
   const held = mine(s, "db");
   letGo(s, "db");
@@ -450,7 +456,8 @@ export function ci(ctx, { timeoutMin = 90 } = {}) {
   else if (head !== tip) refuse(ctx, s, "ci", `tren klasörü ${s.branch} ucunda değil (@${short(head)})`, lines);
   if (lines.length) return { code: 1, lines };
   const at = () => ctx.now().toISOString();
-  const files = listed(git(ctx.repo, ["diff", "--name-only", `${s.base}..${tip}`]));
+  // --no-renames: a code file renamed into docs/ lists its old path too, so it is not docs-only
+  const files = listed(git(ctx.repo, ["-c", "core.quotePath=false", "diff", "--name-only", "--no-renames", `${s.base}..${tip}`]));
   if (files.every((f) => DOCS_ONLY.test(f))) {
     s.ci = { ok: true, head: tip, run: null, conclusion: "docs-only", docsOnly: true, failedJobs: [], at: at() };
     writeState(ctx, s);
@@ -510,8 +517,8 @@ export function push(ctx) {
 
 const COORD_BRANCH = "coord/kayit"; // the coordinator's records (spec §7.3)
 function coordBranch(repo) {
-  const ref = tryGit(repo, ["rev-parse", "--verify", "-q", `refs/heads/${COORD_BRANCH}`]);
-  return ref && ahead(repo, ref).length ? COORD_BRANCH : null;
+  const b = resolve(repo, COORD_BRANCH); // origin's first, as build reads it
+  return b && ahead(repo, b.ref).length ? COORD_BRANCH : null;
 }
 
 export function run(ctx, args) {
@@ -543,23 +550,30 @@ function toLog(cmd, args, cwd, log, shell = false) {
 }
 
 const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-const ghJson = (args, cwd) => {
-  const r = spawnSync("gh", args, { cwd, encoding: "utf8", timeout: 60000 });
-  try {
-    return r.status === 0 ? JSON.parse(r.stdout) : null;
-  } catch {
-    return null;
-  }
-};
-// The GitHub Actions run of `sha` on `branch`: up to 5 minutes for it to show up, then until it completes or
-// timeoutMin passes. Progress goes to the log.
-function ciWait({ cwd, branch, sha, log, timeoutMin }) {
+const ghRun = (args, cwd) => spawnSync("gh", args, { cwd, encoding: "utf8", timeout: 60000 });
+// The GitHub Actions ci.yml run of `sha` on `branch`: up to 5 minutes for it to show up, then until it completes
+// or timeoutMin passes. Progress, and a failing gh's stderr, go to the log. `gh` and `sleep` are test seams.
+export function ciWait({ cwd, branch, sha, log, timeoutMin, gh = ghRun, sleep = sleepSync }) {
   const note = (l) => fs.appendFileSync(log, `${new Date().toISOString()} ${l}\n`);
+  const ghJson = (args) => {
+    const r = gh(args, cwd);
+    if (r.status !== 0) {
+      note(`gh ${args.slice(0, 2).join(" ")} başarısız (çıkış ${r.status ?? "-"}): ${tailOf(r.stderr || String(r.error ?? ""), 5).join(" | ")}`);
+      return null;
+    }
+    try {
+      return JSON.parse(r.stdout);
+    } catch {
+      note(`gh ${args.slice(0, 2).join(" ")}: JSON okunamadı`);
+      return null;
+    }
+  };
   let run = null;
   const seen = Date.now() + 5 * 60000;
   while (!run && Date.now() < seen) {
-    run = (ghJson(["run", "list", "--branch", branch, "--limit", "5", "--json", "databaseId,headSha"], cwd) ?? []).find((r) => r.headSha === sha)?.databaseId ?? null;
-    if (!run) sleepSync(10000);
+    const runs = ghJson(["run", "list", "--workflow", "ci.yml", "--branch", branch, "--limit", "5", "--json", "databaseId,headSha"]);
+    run = (Array.isArray(runs) ? runs : []).find((r) => r.headSha === sha)?.databaseId ?? null;
+    if (!run) sleep(10000);
   }
   if (!run) {
     note("koşu 5 dakikada görünmedi");
@@ -568,7 +582,7 @@ function ciWait({ cwd, branch, sha, log, timeoutMin }) {
   note(`koşu ${run}`);
   const end = Date.now() + timeoutMin * 60000;
   while (Date.now() < end) {
-    const v = ghJson(["run", "view", String(run), "--json", "status,conclusion,jobs"], cwd);
+    const v = ghJson(["run", "view", String(run), "--json", "status,conclusion,jobs"]);
     if (v) {
       note(`${v.status}${v.conclusion ? ` ${v.conclusion}` : ""}`);
       if (String(v.status).toLowerCase() === "completed")
@@ -578,7 +592,7 @@ function ciWait({ cwd, branch, sha, log, timeoutMin }) {
           failedJobs: (v.jobs ?? []).filter((j) => !["success", "skipped"].includes(String(j.conclusion))).map((j) => j.name),
         };
     }
-    sleepSync(30000);
+    sleep(30000);
   }
   note("süre doldu");
   return { conclusion: "timeout", run, failedJobs: [] };

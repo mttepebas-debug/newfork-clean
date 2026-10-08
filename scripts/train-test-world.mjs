@@ -16,7 +16,7 @@ process.env.NEWFORK_INBOX_DIR = path.join(root, "inbox");
 process.env.NEWFORK_CI_STATE = "idle"; // never ask the real `gh`
 
 export const { plan, build, applyLocal, ci, push, run } = await import("./train.mjs");
-export const { take, status } = await import("./lock.mjs");
+export const { take, release, status } = await import("./lock.mjs");
 export const { fingerprint, render, headerHash } = await import("./schema-snapshot.mjs");
 
 export const md5 = (s) => createHash("md5").update(s).digest("hex");
@@ -100,7 +100,7 @@ function world() {
       return w.ciResult ?? { conclusion: "success", run: 101, failedJobs: [] };
     },
   };
-  const ctx = { repo, trainDir: path.join(dir, "train"), exec, now };
+  const ctx = { repo, trainDir: path.join(dir, "train"), exec, now, lockWaitMin: 0.002 }; // a busy db.lock: ~0.1 s in the queue
   // A local task branch from origin/main, one commit per [message, files] entry (train.mjs reads origin's branch
   // first and falls back to the local one; the first plan test publishes its branches to cover origin's).
   const branch = (name, ...commits) => {

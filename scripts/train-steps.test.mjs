@@ -5,7 +5,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { build, applyLocal, ci, run, push, take, git, write, commit, auditLines, lock, md5, STAMP, ID, text, state, built, greened, w } from "./train-test-world.mjs";
+import { build, applyLocal, ci, run, push, take, release, git, write, commit, auditLines, lock, md5, STAMP, ID, text, state, built, greened, w } from "./train-test-world.mjs";
+import { ciWait } from "./train.mjs";
 
 // ---- apply-local ----
 
@@ -234,6 +235,7 @@ test("run: build, ci, push and apply-local in one command; main ends at the trai
   assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), state().head);
   assert.deepEqual(state().applied, ["20261008020000_m1.sql"]);
   assert.equal(lock("db").free, true);
+  assert.doesNotMatch(text(r), /tren main'e girene kadar/); // pushed first: main has it
 });
 
 test("run: a red CI stops before push; main does not move", () => {
@@ -254,4 +256,99 @@ test("run: coord/kayit rides along while it holds commits main lacks, and not af
   const again = run({ ...w.ctx, now: () => new Date("2026-10-08T11:00:00Z") }, []);
   assert.equal(again.code, 1);
   assert.match(text(again), /trene girecek dal yok/);
+});
+
+// ---- review round 1 ----
+
+test("ci: a code file renamed into docs/ is not a docs-only train", () => {
+  write(w.repo, "apps/web/src/x.ts", "export const x = 1;\n");
+  commit(w.repo, "x");
+  git(w.repo, "push", "-q", "origin", "HEAD:main");
+  git(w.repo, "checkout", "-q", "-b", "task/r", "origin/main");
+  fs.mkdirSync(path.join(w.repo, "docs"), { recursive: true });
+  git(w.repo, "mv", "apps/web/src/x.ts", "docs/x.md");
+  commit(w.repo, "x to docs");
+  git(w.repo, "checkout", "-q", "main");
+  built("task/r");
+  const r = ci(w.ctx);
+  assert.equal(r.code, 0, text(r));
+  assert.equal(w.calls.ci.length, 1);
+  assert.equal(state().ci.docsOnly, false);
+});
+
+test("apply-local: a dead db.lock under the train's own identity (an earlier train process) is moved to dead/ and taken anew", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  fs.mkdirSync(process.env.NEWFORK_LOCK_DIR, { recursive: true });
+  fs.writeFileSync(
+    path.join(process.env.NEWFORK_LOCK_DIR, "db.lock"),
+    JSON.stringify({ identity: ID, purpose: "tren apply-local", startedAt: "2000-01-01T00:00:00Z", pid: 4242 }),
+  );
+  const seen = [];
+  const psql = w.ctx.exec.psql;
+  const exec = { ...w.ctx.exec, psql: (sql, o) => (seen.push(lock("db")), psql(sql, o)) };
+  const r = applyLocal({ ...w.ctx, exec });
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /ölü sahibinden temizlendi: koordinator\/tren-/);
+  assert.equal(fs.readdirSync(path.join(process.env.NEWFORK_LOCK_DIR, "dead")).length, 1);
+  assert.deepEqual({ identity: seen[0].identity, pid: seen[0].pid }, { identity: ID, pid: process.pid });
+});
+
+test("apply-local: waits its turn while another session holds db, then applies once it is let go", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  take("db", "oturum/ekran-01, test:db");
+  let sleeps = 0;
+  const sleep = () => {
+    if (++sleeps === 1) release("db", "oturum/ekran-01");
+  };
+  const r = applyLocal({ ...w.ctx, lockWaitMin: 1, sleep });
+  assert.equal(r.code, 0, text(r));
+  assert.equal(sleeps, 1);
+  assert.doesNotMatch(text(r), /DUR/);
+  assert.deepEqual(state().applied, ["20261008020000_m1.sql"]);
+  assert.equal(lock("db").free, true);
+});
+
+test("run: coord/kayit only on origin (no local branch) still rides along", () => {
+  w.branch("coord/kayit", ["records", { "DURUM.md": "# Durum\n" }]);
+  git(w.repo, "push", "-q", "origin", "coord/kayit");
+  git(w.repo, "branch", "-q", "-D", "coord/kayit");
+  const r = run(w.ctx, []);
+  assert.equal(r.code, 0, text(r));
+  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit"]);
+});
+
+test("build: branches that change nothing in the end make no train", () => {
+  git(w.repo, "checkout", "-q", "-b", "task/z", "origin/main");
+  write(w.repo, "docs/z.md", "z\n");
+  commit(w.repo, "z");
+  fs.rmSync(path.join(w.repo, "docs/z.md"));
+  commit(w.repo, "z gone");
+  git(w.repo, "checkout", "-q", "main");
+  const r = build(w.ctx, ["task/z"]);
+  assert.equal(r.code, 1);
+  assert.match(text(r), /trene girecek değişiklik yok/);
+  assert.equal(fs.existsSync(w.ctx.trainDir), false);
+});
+
+test("ciWait: asks for ci.yml runs only, logs a failing gh's stderr, and names the failed jobs", () => {
+  const log = path.join(w.dir, "ci.log");
+  fs.writeFileSync(log, "");
+  const asked = [];
+  const gh = (args) => {
+    asked.push(args);
+    if (asked.length === 1) return { status: 1, stdout: "", stderr: "HTTP 502: bad gateway\n" };
+    if (args[1] === "list") return { status: 0, stdout: JSON.stringify([{ databaseId: 7, headSha: "abc" }]), stderr: "" };
+    const jobs = [
+      { name: "check", conclusion: "success" },
+      { name: "e2e", conclusion: "failure" },
+    ];
+    return { status: 0, stdout: JSON.stringify({ status: "completed", conclusion: "failure", jobs }), stderr: "" };
+  };
+  const r = ciWait({ cwd: w.repo, branch: "train/x", sha: "abc", log, timeoutMin: 1, gh, sleep: () => {} });
+  assert.deepEqual(r, { conclusion: "failure", run: 7, failedJobs: ["e2e"] });
+  const lists = asked.filter((a) => a[1] === "list");
+  assert.ok(lists.length >= 2 && lists.every((a) => a.join(" ").includes("--workflow ci.yml")), JSON.stringify(lists));
+  assert.match(fs.readFileSync(log, "utf8"), /HTTP 502: bad gateway/);
 });

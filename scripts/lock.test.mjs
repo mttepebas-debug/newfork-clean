@@ -13,7 +13,7 @@ import path from "node:path";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-lock-test-"));
 process.env.NEWFORK_LOCK_DIR = tmpDir;
 
-const { take, release, status, run, isDead, clearDead, parseMaxWait } = await import("./lock.mjs");
+const { take, release, status, run, acquire, isDead, clearDead, parseMaxWait } = await import("./lock.mjs");
 
 const dbLock = path.join(tmpDir, "db.lock");
 
@@ -310,4 +310,34 @@ test("run: when release fails (the lock changed hands), its message is said, not
   const last = lines.at(-1);
   assert.match(last, /sahibi "baska\/sahip"/);
   assert.doesNotMatch(last, /bırakıldı \(/);
+});
+
+test("acquire: waits behind a live run() ticket even with db free, then goes in order", () => {
+  fs.mkdirSync(path.join(tmpDir, "queue-db"), { recursive: true });
+  const ahead = path.join(tmpDir, "queue-db", "000000000000001-1-live.json");
+  fs.writeFileSync(ahead, JSON.stringify({ identity: "run/onde-1", command: "pnpm test:db", pid: process.pid, startedAt: new Date().toISOString() }));
+  let sleeps = 0;
+  const r = acquire("db", "koordinator/tren-x, apply-local", {
+    pollMs: 1,
+    maxWaitMin: 1,
+    sleep: () => {
+      sleeps++;
+      assert.equal(status()[0].free, true); // free, yet not taken: the earlier ticket goes first
+      if (sleeps === 3) fs.rmSync(ahead); // that run() got its turn and left the queue
+    },
+  });
+  assert.equal(r.ok, true, r.message);
+  assert.equal(sleeps, 3);
+  assert.equal(status()[0].identity, "koordinator/tren-x");
+  assert.deepEqual(queueFiles(), []);
+  release("db", "koordinator/tren-x");
+});
+
+test("acquire: a live holder past maxWait gives up, leaves no ticket and the holder's lock", () => {
+  take("db", "oturum/canli, test:db");
+  const r = acquire("db", "koordinator/tren-x, apply-local", { maxWaitMin: 0.002, pollMs: 20 });
+  assert.equal(r.ok, false);
+  assert.match(r.message, /beklendi/);
+  assert.equal(status()[0].identity, "oturum/canli");
+  assert.deepEqual(queueFiles(), []);
 });
