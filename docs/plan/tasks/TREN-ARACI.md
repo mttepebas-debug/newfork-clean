@@ -130,4 +130,34 @@ Risk notes:
 - Windows yolu: tren klasörü `../newfork-wt/train`; uzun yol tuzağı için worktree tekrar açılmaz, yeniden kullanılır.
 
 ## Notes / Result
-(Rapor biçimi: CLAUDE.md §4.4)
+- **Karar:** araç hazır. `scripts/train.mjs` beş adım; ilk gerçek kullanım tren-2 (koordinatör). `nf-guvenlik` ONAY @`a1d24446`.
+- **İzin:** koordinatör ONAY (~09:45Z, üç düzeltmeyle) ve DEVAM (~10:25Z). R2, tek inceleme.
+- **Risk:** 🟢 canlıya dokunmaz. Push yalnız fast-forward; NF_OVERRIDE ne fast-forward olmayan push'u ne kirli kapıyı aşar. Testler gerçek kilit, inbox,
+  tren klasörü, ortak DB ve GitHub'a dokunmaz.
+- **Soru:** yok.
+- **Sonraki:** tam kapının `test` + `build` adımı heavy'de (bakım ve sıra yüzünden bekliyor), sonra dal push + `TREN-HAZIR`.
+
+### Ne yapıldı
+| | Neydi | Ne oldu |
+|---|---|---|
+| Tren | elle: sıra, cherry-pick, `schema.sql`, göç, kapı, push | `node scripts/train.mjs plan / build / apply-local / gate / push`; her adım ayrı çıkış kodu, log `artifacts/train/<zaman>/` |
+| `plan` | — | sıra, engeller (aynı numara, geçersiz ad, main'deki göçü değiştiren dal, birleştirme commit'i), uyarılar (sırasız, silinen göç), build'in kuru koşusu |
+| `build` | — | bellekte kurar (merge-tree + commit-tree); başka çatışmalı dal bütün olarak atlanır, geri sarma yok; `schema.sql` sonda bir kez |
+| `apply-local` | elle `supabase migration up` | psql -1, göç + ledger satırı tek işlemde; aynı numarada içerik md5'i; `db.lock` kapıya kalır, `main.lock` yok |
+| `gate` / `push` | elle | temizlik ve dal ucu kontrolü; kırmızıda kilitler gider; push `main.lock`'u yalnız o an tutar, aşımda `refs/nf-backup/main/` yedeği |
+| Kilit uyarısı | 2 saatlik "stale" | + `UZUN: main.lock <n> dk` satırı `lock.mjs status` ve panoda (30 dk üstü) |
+
+### Kanıt (2026-10-08)
+- Betik testleri: 141/141 yeşil, 44 sn. Yedi dosya birlikte; trenin iki dosyası 35/35, ~32 sn. Bu testler trenden önce 13 sn sürüyordu.
+- Testler önce kırmızı görüldü. Ayrıca her kilit, içerik ve engel satırı silinerek sınandı: ilk 4, inceleme düzeltmelerinde 5 deneme; hepsinde test düştü.
+- `node scripts/train.mjs plan` gerçek depoda, beş gerçek dalla: 13 sn; ref'ler değişmedi, `../train` dokunulmadı. BL-969'un iki göçünü "sırasız" diye işaretledi.
+- Lint (0 hata) ve typecheck yeşil (`0a5de382`'den önce; sonrası yalnız betik değişti).
+- `nf-guvenlik`:
+  - tur 1 @`0a5de382`: DÜZELT (3 orta, 7 düşük), hepsi düzeltildi `a1d24446`;
+  - tur 2: ONAY @`a1d24446`;
+  - kalan iki düşük not (dal ucu hücresi; yeniden adlandırılıp gönderilen göçün uyarı listesinden düşmesi) `deb20074`'te kapandı.
+
+### Açık kalan
+- Guard'ın oturumun main push'unu reddetmesi (OPS-08 sonrası): backlog, koordinatör numaralar.
+- heavy.lock için de UZUN uyarısı (inceleme önerisi): yeşil kapıdan sonra push'u yapılmamış tren heavy'yi tutar. Kapsam dışı, backlog adayı.
+- Yerelde betik testleri ~31 sn uzadı (Windows'ta git süreç başlatma yavaş; CI'da Linux daha hızlı).
