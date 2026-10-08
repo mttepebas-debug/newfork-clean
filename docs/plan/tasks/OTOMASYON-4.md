@@ -56,3 +56,34 @@ Risk notes:
 
 ## Notes / Result
 (Rapor biçimi: CLAUDE.md §4.4)
+
+### Koordinatör onayı (2026-10-08 ~12:40Z, `98f9b235`), şartlarıyla
+1. `inbox.mjs`, `lock.mjs`, `guard.mjs` ve `package.json` değişiklikleri TREN-ARACI (PARALEL-1) main'e girdikten sonra, güncel main'e taşınarak. Şimdilik yalnız yeni dosyalar.
+2. Guard ikiz koruması ILKELER P16 kalıbıyla: 2026-10-14'e kadar uyarı + `audit.log`, sonra engel.
+3. Bakım: Docker/WSL kapalı; push yok, kilit yok.
+
+### Deneme: öbür hesabın sohbetini açmak (2026-10-08 ~11:45Z)
+- Terminaldeki `claude` (2.1.292) düz bir istekte bile "You've hit your weekly limit · resets Oct 11, 1pm (America/Los_Angeles)" dedi.
+  - Bu hesabın (masaüstü) haftalık sayacı %51 ve 2026-10-11T08:00Z'de yenileniyor; yani iki ayrı sayaç.
+  - `claude auth status` bu hesabı gösterse de terminal büyük ihtimalle öbür hesabın girişini kullanıyor.
+- Ölçülemedi: istek hiç gönderilmedi (0 token), eski kayıt değişmedi (`c38761fb…`, 520377 bayt önce ve sonra).
+- **Tasarıma etkisi:** devir listesi eski sohbeti açmak için terminal komutu değil, masaüstünde yeni oturumda `/resume <kimlik>` gösterecek. Hesaplar arası çalıştığı Mert'le gerçek hesap değişiminde bir kez denenecek.
+
+### Yapılan: sayfa galerisi (TDD)
+- `scripts/pages.mjs` + `scripts/pages.test.mjs`.
+  - Kırmızı: modül yok, sonra boş iskelette 11/13 düştü.
+  - Yeşil: 13/13 (`node --test scripts/pages.test.mjs`).
+  - Bulunan hata: başlıkta `<` olunca başlık okunamıyordu; düzeltildi.
+- Bozma denemesi: başlık kaçışı kaldırılınca test 4, sıralama ters çevrilince test 3 düştü.
+- Gerçek klasör `C:/Users/TheWe/Documents/Codex/newfork-pages/`:
+  - `README.md` → `pages.json`'a çevrildi ve silindi.
+  - Dosya saatleri yayın sürümü zamanlarına çekildi.
+  - `index.html` 12 satır üretti: 11 dosya + yalnız linki olan 1 sayfa (Hesap 2'nin "Newfork — Pre-business & Settings").
+- Ölçüm (Playwright, Chrome):
+  - 1440 ve 390'da yatay kayma yok.
+  - Satır yüksekliği masaüstünde hep 74 px; telefonda dosyalı 11 satır 133 px, dosyasız satır 113 px.
+  - Hesap düğmeleri 30 px.
+  - Ada tıklayınca yerel dosya açılıyor.
+  - Ekran görüntüleri: `artifacts/OTOMASYON-4/galeri-1440.png`, `galeri-390.png` (ana klasör).
+- Eslint yalnız `**/*.{ts,tsx}` tarıyor; `.mjs` kapsam dışı, `node --check` temiz.
+- `package.json` test listesine `pages.test.mjs` eklemek, TREN-ARACI'dan sonra (1. şart).
