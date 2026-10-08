@@ -18,6 +18,7 @@ import { LocationTimezoneField } from "./LocationTimezoneField";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
   checkLocationDraft,
+  locationDraft,
   type LocationDraft,
   type LocationFieldErrors as FieldErrors,
 } from "./location-draft";
@@ -53,20 +54,6 @@ const timezones = [
 
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function locationDraft(location: Location): LocationDraft {
-  return {
-    name: location.name,
-    short_name: location.short_name,
-    phone: location.phone ?? "",
-    street_address: location.street_address,
-    city: location.city,
-    region: location.region,
-    postal_code: location.postal_code,
-    country_code: location.country_code,
-    timezone: location.timezone,
-  };
 }
 
 export default function LocationsSettingsPage() {

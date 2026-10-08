@@ -576,7 +576,7 @@ describe("EmployeeOnboardingPage", () => {
       profile: {
         legal_first_name: "Taylor",
         legal_last_name: "Reed",
-        phone: "4155550123",
+        phone: "+14155550123",
       },
     });
     render(

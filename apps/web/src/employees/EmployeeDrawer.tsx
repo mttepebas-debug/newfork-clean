@@ -327,10 +327,17 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   };
   const [contactDraft, setContactDraft] = useState<ContactDraft | null>(null);
   const contactNow = contactDraft ?? contactBaseline;
+  // The saved number is E.164 and the field hands back the mask: compared the
+  // way they are stored, a number typed back to the saved one is no change.
+  const storedContact = (contact: ContactDraft) => ({
+    ...contact,
+    phone: toUsPhone(contact.phone) ?? contact.phone,
+  });
   const contactDirty =
     ownOwnerRecord &&
     contactDraft !== null &&
-    JSON.stringify(contactDraft) !== JSON.stringify(contactBaseline);
+    JSON.stringify(storedContact(contactDraft)) !==
+      JSON.stringify(storedContact(contactBaseline));
   // Both halves: a name with no number is not a contact (the server's rule);
   // a whole US number, and names under the US letter rule (BL-503).
   const contactReady =

@@ -123,7 +123,8 @@ describe("AuthProvider", () => {
     expect(supabaseMock.signOut).not.toHaveBeenCalled();
   });
 
-  // BL-503: a number from outside the US is refused when typed.
+  // BL-503: a number from outside the US is refused when typed; BL-969: the
+  // saved one, a US number in E.164, stays when another part changes.
   describe("an account phone", () => {
     async function signedInWith(phone: string) {
       supabaseMock.getSession.mockResolvedValue({
@@ -153,7 +154,19 @@ describe("AuthProvider", () => {
     it("is refused when typed as a new number", async () => {
       const update = await signedInWith("+13105550100");
       await expect(update("New User", "system", "+44 20 7946 0958")).rejects.toThrow();
+      await expect(update("New User", "system", "(+44) 20 7946 0958")).rejects.toThrow();
       expect(supabaseMock.saveAccountProfile).not.toHaveBeenCalled();
+    });
+
+    it("stays when another part of the account changes", async () => {
+      const update = await signedInWith("+13105550100");
+      await act(async () => {
+        await update("New User", "dark");
+      });
+      expect(supabaseMock.saveAccountProfile).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ theme: "dark", phone: "+13105550100" }),
+      );
     });
   });
 

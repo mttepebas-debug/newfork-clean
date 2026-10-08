@@ -370,7 +370,7 @@ describe("ProfilePage", () => {
       contactRecord(ownedWorkspaceId, {
         emergencyContactName: "Morgan",
         emergencyContactRelationship: "Spouse",
-        emergencyContactPhone: "4155550199",
+        emergencyContactPhone: "+14155550199",
       }),
     ]);
     renderProfile();
@@ -411,7 +411,7 @@ describe("ProfilePage", () => {
       contactRecord(ownedWorkspaceId, {
         emergencyContactName: "Morgan",
         emergencyContactRelationship: "Spouse",
-        emergencyContactPhone: "4155550199",
+        emergencyContactPhone: "+14155550199",
       }),
       contactRecord(second, { workspaceName: "Ridgeline" }),
     ]);
@@ -446,13 +446,13 @@ describe("ProfilePage", () => {
       contactRecord(ownedWorkspaceId, {
         emergencyContactName: "Morgan",
         emergencyContactRelationship: "Spouse",
-        emergencyContactPhone: "4155550199",
+        emergencyContactPhone: "+14155550199",
       }),
       contactRecord(second, {
         workspaceName: "Ridgeline",
         emergencyContactName: "Morgan",
         emergencyContactRelationship: "Spouse",
-        emergencyContactPhone: "4155550199",
+        emergencyContactPhone: "+14155550199",
       }),
     ];
     vi.mocked(listOwnEmploymentRecords).mockResolvedValue(before);
@@ -469,8 +469,7 @@ describe("ProfilePage", () => {
 
     fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ay" } });
     fireEvent.change(screen.getByLabelText("Contact name"), { target: { value: "Sam" } });
-    // After the Save, Meyhouse holds the new values, the phone now in E.164
-    // (BL-503), and Ridgeline the old ones.
+    // After the Save, Meyhouse holds the new values and Ridgeline the old ones.
     vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
       {
         ...before[0]!,
@@ -527,7 +526,7 @@ describe("ProfilePage", () => {
         contactRecord(ownedWorkspaceId, {
           emergencyContactName: "Morgan",
           emergencyContactRelationship: "Spouse",
-          emergencyContactPhone: "4155550199",
+          emergencyContactPhone: "+14155550199",
         }),
         contactRecord(second, { workspaceName: "Ridgeline" }),
       ]);
@@ -579,7 +578,7 @@ describe("ProfilePage", () => {
       contactRecord(ownedWorkspaceId, {
         emergencyContactName: "Morgan",
         emergencyContactRelationship: "Spouse",
-        emergencyContactPhone: "4155550199",
+        emergencyContactPhone: "+14155550199",
       }),
     ]);
     renderProfile();

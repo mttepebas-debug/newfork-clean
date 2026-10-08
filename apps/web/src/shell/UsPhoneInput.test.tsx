@@ -33,16 +33,31 @@ describe("UsPhoneInput", () => {
     expect(field.value).toBe("(415) 555-0100");
   });
 
-  it("takes nothing from a pasted number from outside the US", () => {
+  // BL-969 code review: cut to ten digits, "+44 …" read as a wrong US number.
+  // It stays as typed, key by key too, and the form refuses it on save.
+  it("keeps a number from outside the US as typed, key by key too", () => {
     function Harness() {
       const [value, setValue] = useState("");
       return <UsPhoneInput aria-label="Phone" value={value} onChange={setValue} />;
     }
     render(<Harness />);
     const field = screen.getByLabelText("Phone") as HTMLInputElement;
-    // Cut to ten digits, it would read as a wrong US number.
-    fireEvent.change(field, { target: { value: "+44 20 7946 0958" } });
-    expect(field.value).toBe("");
+    let typed = "";
+    for (const key of "+44 20 7946 0958") {
+      typed = field.value + key;
+      fireEvent.change(field, { target: { value: typed } });
+    }
+    expect(field.value).toBe("+44 20 7946 0958");
+    fireEvent.change(field, { target: { value: "(+44) 20 7946 0958" } });
+    expect(field.value).toBe("(+44) 20 7946 0958");
+  });
+
+  // The browser cuts a paste to maxLength before the mask sees it: the app's
+  // own "+1 (415) 555-0100" (17 characters) must fit.
+  it("takes a paste of the number as the app shows it", () => {
+    render(<UsPhoneInput aria-label="Phone" value="" onChange={vi.fn()} />);
+    const field = screen.getByLabelText("Phone") as HTMLInputElement;
+    expect(field.maxLength).toBeGreaterThanOrEqual("tel:+1-415-555-0100".length);
   });
 
   it("keeps the screen's own class and attributes", () => {
