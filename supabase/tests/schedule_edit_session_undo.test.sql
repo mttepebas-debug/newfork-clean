@@ -408,6 +408,14 @@ select is((select count(*)::integer from public.schedule_edit_session_shifts
     where session_id = tests.id('ud:e11') and location_id = tests.id('ud:K')), 1,
   'opening Kadıköy brings its published shift into the edit');
 select is(pg_temp.depth('can', tests.id('ud:e11')), 25, 'and Undo can still take back all 25 of his steps');
+-- Undo takes back his last Beşiktaş shift, not the Kadıköy one opening brought in.
+select pg_temp.undo('can', tests.id('ud:e11'));
+select is((select count(*)::integer from public.schedule_edit_session_shifts
+    where session_id = tests.id('ud:e11') and location_id = tests.id('ud:K')), 1,
+  'his next Undo leaves the Kadıköy shift where it is');
+select is((select count(*)::integer from public.schedule_edit_session_shifts
+    where session_id = tests.id('ud:e11') and location_id = tests.id('ud:B')), 25,
+  'and takes back one of his 25 Beşiktaş shifts');
 
 -- 8c. The step written last goes back first (EKRAN-01 #12, BL-762) -------------------
 -- Two of Ayşe's tabs send at once; the later one began a moment earlier but
@@ -457,7 +465,8 @@ $$, array[
 -- clear the history after they write.
 select is((select count(*)::integer from pg_proc where
     (proname = 'acquire_schedule_edit_session_service'
-      and prosrc like '%set_config(''app.schedule_edit_widening'', ''on'', true)%')
+      and prosrc like '%set_config(''app.schedule_edit_widening'', ''on'', true)%'
+      and prosrc like '%set_config(''app.schedule_edit_widening'', '''', true)%')
     or (proname in ('shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service', 'important_date_close_shifts')
       and prosrc like '%schedule_edit_undo_barrier()%')),
   4, 'and each one that is not a step clears itself out of the history');
