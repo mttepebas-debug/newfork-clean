@@ -499,7 +499,7 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
   - Rollback'li yeşil: `authz_catalog` 11, `authorization_matrix` 10508, `bl064_conflict_severity` 43, `document_publication` 58.
   - İpucusuz 42501 sayacı 83 → 82, tavan aynı commit'te indirildi; migration'sız tavan testi düşüyor.
 - **Bozma denemesi:** eski izin istisnası geri konunca yalnız hücre 5 düştü; `custom_grantable` güncellemesi silinince 5 hücre düştü.
-- **Migration** `20261008133000_organization_settings_stay_with_owner_and_admin.sql`:
+- **Migration** `20261008133054_organization_settings_stay_with_owner_and_admin.sql (önceki adı `20261008133000`)`:
   - müdür/çalışan rollerinden 9 iznin ve bağımlılığı kalmayan izinlerin silinmesi (döngü);
   - `custom_grantable = false`;
   - `save_workspace_role_service` şemadan birebir, yalnız bir satır farklı: "rolde zaten varsa geç" istisnası (CLAUDE.md §2.A.5) kalktı, ret `hint='authz.rank'` aldı. API her 42501'i 403'e çeviriyor, mesaj değişmiyor (`apps/api/src/http-error.ts`).
@@ -526,3 +526,24 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
   - Bulgu 3 (kabul): temizlik döngüsünün testi yok, çünkü yerel ve canlı satır 0.
   - Bulgu 4: varsayılan Manager rolünde katalog okuma yok; bu BL-680, karar bekliyor, iş dışı.
   - Düzeltmeden sonra: yeni dosya migration'sız 5/9 düşüyor, migration'la 9/9. Öbür beş dosya yeşil; shared 9/9, Roles sayfası 11/11.
+
+### GA-2 kapı ve canlı (2026-10-08, koordinatörün "gönder"i, KK-229 koşulları)
+- **Kapı** (`db.lock` + `heavy.lock`, CI boştu): lint 0, typecheck 0, test 0, build 0.
+  - `test:db` dal migration'ıyla koşuldu: migration her test dosyasının işleminde, `prepareRun` + `builder.psql` başında, rollback; ortak DB'ye kalıcı bir şey yazılmadı.
+  - İlk koşuda dört dosya GA-2 yüzünden kırmızıydı: müdür sınıfı role artık verilemeyen izni Settings > Roles yolundan veriyorlardı; önceki taramam bunları kaçırmıştı (benim hatam).
+  - `5c6275f7` ile uyarlandı. Rol verilebilir izinlerle kuruluyor; verilemeyen izin tabloya doğrudan yazılıyor ve "izin olsa da çekirdek reddeder" sürüyor. İki belge dosyasına ret hücresi eklendi.
+  - Son tam koşu: 178 dosya, 15478 test. Tek kırmızı `scheduling_settings_shift_types_rls` (3 hücre); migration'sız da aynı, bilinen yerel ortak DB kırmızısı, main CI db yeşil. Koordinatör (a): durdurmaz.
+- **Canlı yeniden sayım** (13:28Z): silinecek satır 0, bağımlılığı düşecek satır 0.
+- **Yedek:** `newfork-clean/artifacts/guvenlik-a/ga2-hosted-backup-2026-10-08.json`.
+  - İçerik: 10 iznin önceki satırları, fonksiyonun ACL'i, geri dönüş adımı.
+  - Fonksiyon `prosrc` md5 `42ed6430…`, main'deki yerel tanımla aynı. Yani tanım main `9f287986`'nın `schema.sql`'inde birebir.
+- **Uygulama:** `apply_migration` `organization_settings_stay_with_owner_and_admin`.
+  - Ledger sürümü `20261008133054`; dosya bu adı aldı (KK-226).
+  - `md5(statements[1])` = dosya md5 `3b20788cbbc36eb98af8a3761386d357`. Canlıda 452 migration.
+- **Doğrulama (bağımsız SELECT):**
+  - Fonksiyon `prosrc` md5 `406fc2599e99ff5b92c11336374137a0`, yerel rollback'li denemenin beklediğiyle aynı.
+  - SECURITY DEFINER ve `search_path=""`; ACL değişmedi (`postgres`, `service_role`).
+  - `custom_grantable = false` olan 16 izin: önceki 6 + bu işin 10'u.
+  - Müdür/çalışan rollerinde 10 iznin satırı 0. Owner ve admin rolleri koruyor (örnek 3 izin, 18 satır).
+  - `get_advisors` (security): yeni bulgu yok. "RLS açık, politika yok" bilgi notu 99 tablo (GA-1'de 98; aradaki tablo GA-2'den değil, GA-2 tablo eklemiyor). `pg_net` public'te ve sızmış parola koruması kapalı (§2.A.9) önceden vardı.
+- **Canlı ledger sırası:** Requests paketinin `20261008111751`'inden sonra. Paketin silen `20261008111800`'ü canlıda henüz yok; main CI yeşil olunca koordinatörün (OPS-03). GA-2 ona bağlı değil.
