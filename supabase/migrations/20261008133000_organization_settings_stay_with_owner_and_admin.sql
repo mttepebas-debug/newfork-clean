@@ -5,19 +5,21 @@
 -- (packages/shared/src/role-permissions.ts).
 
 -- A manager or employee role that holds one loses it, and so does any grant left
--- without the read it needs (employee_access.manage needs roles.read). Measured
--- 2026-10-08: 0 rows locally and hosted.
-delete from public.workspace_role_permissions rp
-using public.workspace_roles r
-where r.id = rp.role_id
-  and r.access_class in ('manager', 'employee')
-  and rp.permission_key in (
-    'settings.general.manage', 'settings.locations.manage', 'settings.jobs.manage',
-    'settings.shift_catalog.manage', 'settings.schedule_rules.manage', 'documents.manage',
-    'notifications.settings.write', 'schedule.conflict_rules.manage', 'roles.read');
-
+-- without the read it needs. employee_access.manage needs roles.read, so it goes
+-- with it and is marked the same way below. Measured 2026-10-08: 0 rows locally
+-- and hosted. One block: the Supabase CLI runs each statement in its own
+-- transaction, and the deferred dependency check must not run between the deletes.
 do $$
 begin
+  delete from public.workspace_role_permissions rp
+  using public.workspace_roles r
+  where r.id = rp.role_id
+    and r.access_class in ('manager', 'employee')
+    and rp.permission_key in (
+      'settings.general.manage', 'settings.locations.manage', 'settings.jobs.manage',
+      'settings.shift_catalog.manage', 'settings.schedule_rules.manage', 'documents.manage',
+      'notifications.settings.write', 'schedule.conflict_rules.manage', 'roles.read',
+      'employee_access.manage');
   loop
     delete from public.workspace_role_permissions rp
     using public.workspace_roles r, app_private.role_permission_dependencies d
@@ -36,7 +38,8 @@ set custom_grantable = false
 where key in (
   'settings.general.manage', 'settings.locations.manage', 'settings.jobs.manage',
   'settings.shift_catalog.manage', 'settings.schedule_rules.manage', 'documents.manage',
-  'notifications.settings.write', 'schedule.conflict_rules.manage', 'roles.read');
+  'notifications.settings.write', 'schedule.conflict_rules.manage', 'roles.read',
+  'employee_access.manage');
 
 -- The save no longer lets a role keep a permission it already carries
 -- (CLAUDE.md §2.A.5), and the refusal names its reason (authz.rank).

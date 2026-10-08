@@ -82,6 +82,7 @@ const admin = {
 // to a custom role (permissions.custom_grantable = false; GUVENLIK-A GA-2).
 const ownerAndAdminOnly: readonly Permission[] = [
   "documents.manage",
+  "employee_access.manage",
   "notifications.broadcast.approve",
   "notifications.delivery_audit.read",
   "notifications.dlq.replay",
