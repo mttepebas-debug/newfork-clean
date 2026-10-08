@@ -1414,6 +1414,10 @@ export const scheduleWeeklyLocationSchema = z
         date: z.string().date(),
         has_unavailable: z.boolean(),
         all_day: z.boolean(),
+        // The employee gave up some of this day's approved leave to take a
+        // shift with their own consent (swap or pickup): the day reads as an
+        // ordinary working day (KARARLAR Schedule 2026-10-05, EKRAN-01 #38).
+        leave_given_for_shift: z.boolean().optional(),
       }),
     ),
   })

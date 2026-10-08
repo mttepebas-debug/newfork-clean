@@ -76,6 +76,24 @@ describe("scheduleAvailabilityMarks", () => {
     expect(marks.get("2026-10-24")).toEqual({ kind: "time_off", ranges: [{ from: 540, to: 780 }] });
   });
 
+  // EKRAN-01 #38 (KARARLAR 2026-10-05, BL-579): Ali took a 10:00-14:00 shift on
+  // his approved day off with his own consent; the rest of the day is still
+  // leave, yet the cell reads as an ordinary shift: no red, no "!".
+  it("leaves a day whose leave the employee gave up for a shift unmarked", () => {
+    const marks = scheduleAvailabilityMarks(projection({
+      unavailable_intervals: [{ start_at: "2026-10-24T13:00:00Z", end_at: "2026-10-24T15:00:00Z" }],
+      leave_intervals: [
+        { start_at: "2026-10-24T04:00:00Z", end_at: "2026-10-24T14:00:00Z" },
+        { start_at: "2026-10-24T18:00:00Z", end_at: "2026-10-25T04:00:00Z" },
+      ],
+      days: week.map((date) => ({
+        date, has_unavailable: date === "2026-10-24", all_day: false,
+        leave_given_for_shift: date === "2026-10-24",
+      })),
+    }));
+    expect(marks.has("2026-10-24")).toBe(false);
+  });
+
   it("reads nothing from a projection that is not ready", () => {
     expect(scheduleAvailabilityMarks(projection({ status: "unknown", days: [] })).size).toBe(0);
   });

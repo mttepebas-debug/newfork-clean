@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 453, last: 20261008133054_organization_settings_stay_with_owner_and_admin.sql
--- fingerprint: sha256:004f638776ce0be617d87f641ddf77c264505d49c835ade8e0e8a88c6ec77c0e
+-- migrations: 454, last: 20261009050000_a_day_off_given_up_for_a_shift_reads_as_work.sql
+-- fingerprint: sha256:171a99fc908d755e533788f7939f4b9b55b6dbddd65e9ad6ffdc04d77f1b5797
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5204,6 +5204,21 @@ with location_zone as (
   cross join lateral unnest(public.time_off_effective_ranges(seg.id)) piece(span)
   where piece.span && lt.span
   group by req.employee_id, lt.zone_name
+), given_for_shift as (
+  -- Leave the employee gave back to take a shift with their own consent.
+  select req.employee_id, lt.zone_name, range_agg(tstzrange(seg.starts_at, seg.ends_at, '[)') * lt.span) as spans
+  from leave_target lt
+  join public.schedule_time_off_requests req
+    on req.workspace_id = target_workspace_id and req.employee_id = any(target_employee_ids)
+   and req.request_type = 'time_off_cancellation' and req.status = 'approved'
+  join public.schedule_time_off_segments seg
+    on seg.request_id = req.id and seg.workspace_id = req.workspace_id and seg.status = 'approved'
+   and seg.segment_date between target_week_start - 4 and target_week_start + 12
+  where tstzrange(seg.starts_at, seg.ends_at, '[)') && lt.span
+    and exists (select 1 from public.schedule_time_off_events ev
+      where ev.request_id = req.id and ev.workspace_id = req.workspace_id
+        and ev.metadata -> 'source' ->> 'source' = 'shift_exchange')
+  group by req.employee_id, lt.zone_name
 ), clock_segments as (
   select s.zone_name,
     jsonb_agg(jsonb_build_object('start_at', lower(s.utc_span), 'end_at', upper(s.utc_span), 'offset_seconds', s.offset_seconds)
@@ -5232,12 +5247,14 @@ with location_zone as (
       'days', (select jsonb_agg(jsonb_build_object(
                  'date', ds.work_date,
                  'has_unavailable', coalesce(u.spans, '{}'::tstzmultirange) && ds.span,
-                 'all_day', coalesce(u.spans, '{}'::tstzmultirange) @> ds.span) order by ds.work_date)
+                 'all_day', coalesce(u.spans, '{}'::tstzmultirange) @> ds.span,
+                 'leave_given_for_shift', coalesce(g.spans, '{}'::tstzmultirange) && ds.span) order by ds.work_date)
                from day_span ds where ds.zone_name = z.zone_name)) as body
   from unnest(target_employee_ids) e(employee_id)
   cross join zone z
   left join unavailable u on u.employee_id = e.employee_id and u.zone_name = z.zone_name
   left join leave lv on lv.employee_id = e.employee_id and lv.zone_name = z.zone_name
+  left join given_for_shift g on g.employee_id = e.employee_id and g.zone_name = z.zone_name
   left join clock_segments cs on cs.zone_name = z.zone_name
   where not exists (select 1 from broken b where b.employee_id = e.employee_id)
 )

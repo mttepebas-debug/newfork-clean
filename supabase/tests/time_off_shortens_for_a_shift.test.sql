@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(35);
 
 -- BL-182 + BL-127 (KARARLAR "Takas ... uygunluk", KK-19): approved time off
 -- is a hard stop for a manager's own scheduling, but its hours can be given
@@ -47,6 +47,13 @@ create function pg_temp.opportunity(label text) returns jsonb language sql as $$
 $$;
 create function pg_temp.command(person text, command jsonb) returns jsonb language sql as $$
   select public.shift_exchanges_command_service(tests.user('sto:' || person), tests.id('sto'), command, gen_random_uuid())
+$$;
+-- Ali's Wednesday as the manager's Schedule reads it (EKRAN-01 #38).
+create function pg_temp.wednesday() returns jsonb language sql as $$
+  select d from app_private.schedule_week_availability(tests.id('sto'), tests.week(1), array[tests.id('sto:ali')],
+    array[tests.id('sto:K')]) a
+  cross join lateral jsonb_array_elements(a.projection -> 'days') d
+  where d ->> 'date' = (tests.week(1) + 2)::text
 $$;
 create function pg_temp.outbox(request uuid, type_key text) returns setof public.notification_outbox language sql as $$
   select * from public.notification_outbox o
@@ -108,6 +115,8 @@ select tests.settle();
 select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'), 'a rejected application burns no time off');
 select is((select count(*)::integer from public.time_off_cancellation_links l where l.parent_request_id = tests.id('sto:ali:time_off')), 0,
   'and writes no cancellation');
+select is(pg_temp.wednesday() ->> 'leave_given_for_shift', 'false',
+  'EKRAN-01 #38: a day off nobody gave up reads as time off in the Schedule');
 
 -- 5. Ali applies again; Ayse approves; the leave shortens at that moment.
 select pg_temp.command('ali', jsonb_build_object('action', 'apply', 'shift_id', tests.id('sto:shift:emre-wed'), 'case_id', tests.id('sto:case'),
@@ -128,6 +137,12 @@ select is((select employee_id from public.schedule_published_shifts where id = t
   'Ali works the shift');
 select ok(not (pg_temp.leave(tests.id('sto:ali:time_off')) && pg_temp.span('emre-wed')), 'his time off no longer covers those hours');
 select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed-late'), 'the rest of his day off stays');
+-- KARARLAR Schedule 2026-10-05: the Schedule cell reads as an ordinary shift.
+select is(pg_temp.wednesday() ->> 'leave_given_for_shift', 'true',
+  'EKRAN-01 #38: the day he gave up for the shift says so, for the Schedule to draw no red');
+select ok(exists (select 1 from app_private.schedule_week_availability(tests.id('sto'), tests.week(1), array[tests.id('sto:ali')],
+    array[tests.id('sto:K')]) a where jsonb_array_length(a.projection -> 'leave_intervals') > 0),
+  'EKRAN-01 #38: the rest of his leave is still there for the warnings');
 select is((select status::text from public.schedule_time_off_requests where id = tests.id('sto:ali:time_off')), 'approved',
   'the leave stays approved; the hours given back read off it (FB-6.3)');
 select ok(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),

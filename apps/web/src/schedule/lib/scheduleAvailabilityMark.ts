@@ -43,7 +43,10 @@ function rangeOnDay(interval: Interval, day: string, projection: Projection): Av
 export function scheduleAvailabilityMarks(projection: Projection): Map<string, ScheduleAvailabilityMark> {
   const marks = new Map<string, ScheduleAvailabilityMark>();
   if (projection.status !== "ready") return marks;
-  for (const { date, has_unavailable } of projection.days) {
+  for (const { date, has_unavailable, leave_given_for_shift } of projection.days) {
+    // A day whose leave the employee gave up for a shift reads as an ordinary
+    // working day: no red, no "!" (KARARLAR Schedule 2026-10-05, EKRAN-01 #38).
+    if (leave_given_for_shift) continue;
     const ranges = projection.leave_intervals.flatMap((interval) => rangeOnDay(interval, date, projection) ?? []);
     if (ranges.length) {
       marks.set(date, { kind: "time_off", ranges });
