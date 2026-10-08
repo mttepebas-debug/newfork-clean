@@ -1867,3 +1867,9 @@ Kaynak: `nf-guvenlik` T5b-3 incelemesi ONAY @`45ce6f53` §3 ve D1–D4 (`busy-is
 - **Neden / dayanak:** CLAUDE.md §4.2, §5.1, §5.3; ILKELER P08, P09; KK-220 (numara), KK-223 (sıra).
 - **Gönderim sırası (main.lock tek):** BL-965 (canlıya uygulandı, doğrulaması Mert'in izninde; main.lock onda) → EKRAN-01 → EKRAN-02 veri paketi → GA-4 → BL-969.
 
+
+### KK-226 (2026-10-08) GA-4 canlıya şimdi; main sırası BL-965 → EKRAN-01 → GA-4 → EKRAN-02 → BL-969; dosya adı = canlı ledger sürümü
+- **Kim:** Mert ("GUVENLIK-A'yı kontrol et; bayat değil, sorunsuz, bitmiş ve canlıda değilse onayla, canlıya alınsın"), koordinatör (`f2f4ad49…`). **Ne zaman:** 2026-10-08 ~06:40Z. **Nerede:** `task/guvenlik-a-ga4-v2` @`c626e52b`; canlı `hvyvyisrqyathtliyyyv`.
+- **Ne:** (1) Kontrol: dal güncel main'in (`5de09eac`) üstünde; ONAY @`e4ecc990` + @`e77aeb40`; dal CI yeşil (`37712223652`); dokunduğu `request_workspace_closure_service`, `app_private.finish_workspace_closure`, `app_private.complete_due_workspace_closures` ve `workspace-closures` cron'una başka bekleyen dal dokunmuyor (EKRAN-01, EKRAN-02 paketi, BL-965, BL-969 tarandı); canlıda GA-4 yok, `closure_scheduled` 0 ve süresi geçmiş 0 (uygulama hiçbir gerçek veriyi silmez, §5.3 "evet"i gerekmez); canlı closure servis md5 `68d050d0…`. Tek eksik KK-225 metin değişikliği (yalnız web, canlıyı etkilemez). (2) GA-4'e canlı "gönder"i, metin bitmeden. (3) Main sırası değişti: GA-4 EKRAN-02 paketinin önüne alındı, çünkü canlı ledger sırası main dosya sırasıyla aynı kalmalı. (4) Canlıya `apply_migration` ile giren migration'ın dosya adı canlı ledger sürümüyle eşlenir (EKRAN-01 örneği `20261008052513`…); ledger elle damgalanmaz.
+- **Nasıl:** canlıda salt-okur SELECT (koordinatör); oturumlara `send_message`.
+- **Neden / dayanak:** CLAUDE.md §5.1 (canlı migration koşulları), §5.3 (2026-10-08); OPS-03 (ekleyen önce canlı); KK-220, KK-225.
