@@ -53,6 +53,48 @@ test("plan: a missing branch stops the train", () => {
   assert.match(text(r), /ENGEL: task\/nope bulunamadı/);
 });
 
+test("plan: a branch that edits a migration already on main stops the train; one that deletes it is a warning", () => {
+  w.branch("task/edit", ["edit base", { "supabase/migrations/20260101000000_base.sql": "create table base(id int, x int);\n" }]);
+  git(w.repo, "checkout", "-q", "-b", "task/rename", "origin/main");
+  git(w.repo, "rm", "-q", "supabase/migrations/20260101000000_base.sql");
+  write(w.repo, "supabase/migrations/20260101000001_base.sql", "create table base(id int);\n");
+  commit(w.repo, "base takes its live number");
+  git(w.repo, "checkout", "-q", "main");
+  const r = plan(w.ctx, ["task/edit", "task/rename"]);
+  assert.equal(r.code, 1);
+  assert.match(text(r), /ENGEL: task\/edit: main'deki göç değişiyor: 20260101000000_base\.sql \(uygulanmış göç değişmez; düzeltme yeni göçle\)/);
+  assert.match(text(r), /UYARI: task\/rename: main'deki göç siliniyor: 20260101000000_base\.sql \(canlı numarasına yeniden adlandırma mı\? kontrol et\)/);
+  assert.doesNotMatch(text(r), /ENGEL: task\/rename/);
+});
+
+test("plan: a migration file name that is not <14 digits>_<name>.sql stops the train", () => {
+  w.branch("task/bad", ["bad name", { "supabase/migrations/2026_oops.sql": "select 1;\n" }]);
+  const r = plan(w.ctx, ["task/bad"]);
+  assert.equal(r.code, 1);
+  assert.match(text(r), /ENGEL: task\/bad: göç adı geçersiz: 2026_oops\.sql/);
+});
+
+test("plan: a merge commit on a branch stops the train (it would be dropped without a word)", () => {
+  w.branch("task/side", ["side", { "docs/side.md": "s\n" }]);
+  w.branch("task/merged", ["own", { "docs/own.md": "o\n" }]);
+  git(w.repo, "checkout", "-q", "task/merged");
+  git(w.repo, "merge", "-q", "--no-ff", "-m", "merge side", "task/side");
+  git(w.repo, "checkout", "-q", "main");
+  const r = plan(w.ctx, ["task/merged"]);
+  assert.equal(r.code, 1);
+  assert.match(text(r), /ENGEL: task\/merged: birleştirme commit'i var/);
+});
+
+test("plan: a migration whose commit already shipped (a branch not rebased since) is not counted twice", () => {
+  const sha = w.branch("task/half", ["m1", { "supabase/migrations/20261008020000_m1.sql": "select 1;\n" }], ["docs", { "docs/half.md": "h\n" }]);
+  git(w.repo, "cherry-pick", `${sha}~1`); // the first train carried m1
+  git(w.repo, "push", "-q", "origin", "HEAD:main");
+  const r = plan(w.ctx, ["task/half"]);
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /task\/half: girer, 1 commit/);
+  assert.doesNotMatch(text(r), /iki kez/);
+});
+
 test("plan: a migration below main's last one is a warning, not a stop", () => {
   w.branch("task/late", ["late", { "supabase/migrations/20251231000000_late.sql": "select 1;\n" }]);
   const r = plan(w.ctx, ["task/late"]);

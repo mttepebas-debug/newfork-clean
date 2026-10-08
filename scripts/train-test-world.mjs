@@ -8,6 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-train-test-"));
 process.env.NEWFORK_LOCK_DIR = path.join(root, "locks");
@@ -18,6 +19,7 @@ export const { plan, build, applyLocal, gate, push } = await import("./train.mjs
 export const { take, status } = await import("./lock.mjs");
 export const { fingerprint, render, headerHash } = await import("./schema-snapshot.mjs");
 
+export const md5 = (s) => createHash("md5").update(s).digest("hex");
 export const git = (cwd, ...args) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
 export const write = (dir, rel, text) => {
   fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
@@ -69,14 +71,16 @@ function world() {
   const repo = path.join(dir, "repo");
   git(repo, "remote", "set-url", "origin", origin);
   const calls = { psql: [], pnpm: [], dbSchema: [] };
-  const ledger = new Set(["20260101000000"]);
+  // version -> { md5: md5(statements[1]), n: how many statements } (the CLI splits a file, psql -1 keeps it whole)
+  const ledger = new Map([["20260101000000", { md5: md5("create table base(id int);\n"), n: 1 }]]);
   const exec = {
     psql(sql, { query = false } = {}) {
       calls.psql.push(sql);
-      if (query) return { status: 0, stdout: [...ledger].join("\n"), stderr: "" };
+      if (query) return { status: 0, stdout: [...ledger].map(([v, r]) => `${v} ${r.md5} ${r.n}`).join("\n"), stderr: "" };
       const v = sql.match(/schema_migrations\(version, name, statements\) values \('(\d+)'/)?.[1];
       if (w.failOn && sql.includes(w.failOn)) return { status: 3, stdout: "", stderr: `ERROR: stand-in failure in ${w.failOn}` };
-      if (v) ledger.add(v);
+      const body = sql.match(/array\[\$(nf_train\d*)\$([\s\S]*)\$\1\$\]\);\n$/)?.[2];
+      if (v) ledger.set(v, { md5: md5(body), n: 1 });
       return { status: 0, stdout: "", stderr: "" };
     },
     pnpm(args, { cwd, log }) {

@@ -643,7 +643,7 @@ export function audit(entry) {
   fs.appendFileSync(AUDIT(), `${JSON.stringify(line)}\n`);
 }
 
-function backupMain(cwd) {
+export function backupMain(cwd) {
   let fetched = true;
   try {
     git(cwd, ["fetch", "-q", "origin", "main"], 30000);

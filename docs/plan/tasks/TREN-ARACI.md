@@ -16,15 +16,19 @@ In scope:
    Kilit kimliği `koordinator/tren-<zaman>`.
    - **`plan <dal…>`** (salt okur, hiçbir şeye dokunmaz):
      - Her dalın main'de olmayan commit'leri `git cherry origin/main <dal>` ile bulunur (rebase'li dal da doğru sayılır). Hiç yoksa "zaten main'de".
-     - Her dalın yeni göçleri `supabase/migrations/` altında main'de olmayan dosyalardır.
+     - Her dalın göç değişiklikleri o commit'lerden sayılır (birleşme tabanından değil): ilk trenin taşıdığı ama dalın rebase edilmediği göç iki kez sayılmaz.
      - Sıra: göçsüz dallar verildiği sırayla önce, sonra göçlü dallar en küçük göç numarasına göre.
-     - Engel (çıkış 1): dal yok; iki dalda aynı göç numarası.
-     - Uyarı (çıkış 0):
+     - Engel (çıkış 1): dal yok; iki dalda (ya da dal ve main'de) aynı göç numarası; göç adı `YYYYMMDDHHMMSS_<ad>.sql` değil; main'deki bir göçü
+       değiştiren dal (uygulanmış göç değişmez, supabase/CLAUDE.md); birleştirme commit'i (`git cherry` onu sessizce düşürürdü).
+     - Uyarı (çıkışı değiştirmez):
        - göç numarası main'in son göçünden küçük: `sırasız: canlıya bu sırayla mı girdi? kontrol et` (dosya canlı ledger numarasını alır, supabase/CLAUDE.md "Canlı").
+       - main'deki bir göçü silen dal: `canlı numarasına yeniden adlandırma mı? kontrol et` (silen göç main'e kendi adıyla girer; yeniden adlandırma meşru).
        - `git merge-tree --write-tree` ile önceden görülen çakışma: dal ↔ main ve dal ↔ dal, dosya adıyla. `supabase/schema.sql` ayrı satırda: "build yeniden üretir".
+     - Çıkış: 1 engel; 2 en az bir dal atlanacak; 0 hepsi girer (uyarı olsa da).
    - **`build <dal…>`**:
      - Önce `plan` yapılır, engel varsa durur.
      - Güncel `origin/main`'den `train/<zaman>` kurulur. Tren çalışma klasörü `../newfork-wt/train`: yoksa açılır, kirliyse durulur.
+     - Önceki trenlerin ortak DB'ye uygulayıp main'e götürmediği göçler `state.json`'da (`strayInSharedDb`) main'e girene kadar taşınır ve her build'de uyarılır.
      - Dalların main'de olmayan commit'leri sırayla, yazar ve mesajıyla alınır.
      - Yalnız `schema.sql` çatışırsa trenin hâli tutulur; dallar bitince `pnpm.cmd db:schema` bir kez koşar ve ayrı commit'lenir. Tren-1'de elle
        "theirs" alınıp sonda bir kez yeniden üretmek yetti (koordinatörün notu b). Hangi taraf tutulursa tutulsun dosya sonda baştan üretildiği için
@@ -37,7 +41,9 @@ In scope:
        `db.lock` ile (supabase/CLAUDE.md, Mert ~09:20Z); `main.lock` yalnız push anında tutulur (CLAUDE.md §6).
      - Ortak DB ledger'ında main'in her göçü yoksa durur: "ortak DB main'in gerisinde".
      - Trenin yeni göçlerini numara sırasıyla uygular. Her biri ayrı tek işlem: `docker exec -i supabase_db_newfork-clean psql -X -q -1 -v ON_ERROR_STOP=1`,
-       göç dosyası + aynı işlemde `supabase_migrations.schema_migrations(version, name, statements)` satırı. Ledger'da zaten olan sürüm atlanır.
+       göç dosyası + aynı işlemde `supabase_migrations.schema_migrations(version, name, statements)` satırı.
+     - Ledger'da aynı numara varsa içerik karşılaştırılır: tek deyimli satırda `md5(statements[1])` dosyanın md5'iyle aynıysa atlanır, farklıysa DUR
+       (adını koruyarak düzeltilen göç; uygulanmış göç değişmez). CLI'nin deyim deyim yazdığı satır karşılaştırılamaz: uyarı ve atlanır.
      - İlk hatada durur, kalanlar uygulanmaz; uygulanan liste ve hata ekrana. Uygulanmış göç geri alınmaz, düzeltme yeni göçle.
      - Uygulananlar `audit.log`'a (`train-apply-local`).
      - **Neden psql, `supabase migration up --local` değil** (koordinatörün tren-1 notu a; ikisi de çalışır, 2026-10-08):
@@ -49,13 +55,16 @@ In scope:
           `--include-all` ile de klasörde kalmış başka dosyaları alır.
        Bedeli ~40 satır kod.
    - **`gate [--e2e <spec…>]`**:
+     - Kapı test edileni gönderilenle aynı tutar: tren klasörü kirliyse ya da trenin dal ucunda değilse başlamaz (NF_OVERRIDE geçmez); adımlar
+       klasörü değiştirirse kapı kırmızı sayılır.
      - Aynı kimlikle `db.lock` (apply-local'dan kalan; yoksa alır) → `heavy.lock` (push'a kadar trende kalır, push CI başlatır).
      - CI koşuyorsa (`gh run list`) başlamaz.
      - `pnpm.cmd install --frozen-lockfile` ve `@newfork/shared`, `@newfork/ui` build; ardından `lint`, `typecheck`, `test`, `build`, `test:db`, verilen e2e'ler.
      - İlk kırmızıda durur; ekranda adım, çıkış kodu, log yolu ve logun son 20 satırı.
      - Bitince `db.lock`'u bırakır. `heavy.lock` yalnız kapı yeşilse push'a kadar kalır; kırmızıda ya da başlamadan durursa o da bırakılır.
    - **`push`**:
-     - `main.lock`'u alır. `origin/main` trenin atası değilse durur ("main ilerledi, yeniden build").
+     - `main.lock`'u alır. Başka kimliğin `main.lock`'u NF_OVERRIDE ile aşılırsa önce `origin/main` guard'daki gibi `refs/nf-backup/main/<zaman>`'a
+       yedeklenir (yedek `audit.log`'da); o kilit silinmez. `origin/main` trenin atası değilse durur ("main ilerledi, yeniden build"; NF_OVERRIDE geçmez).
      - Başka bir CI koşuyorsa durur. `heavy.lock` trenin değilse durur.
      - `git push origin train/<zaman>:main` (yalnız fast-forward, force yok). Sonra `main` ve `heavy` bırakılır; yeni sha ve CI koşusu yazılır.
    - **Kayıt:** guard'ın biçimiyle `<inbox>/audit.log`'a satır başına bir JSON (`at`, `session_id`, `cwd`, `tool: "train"`, `command`, `event`).
@@ -70,7 +79,7 @@ In scope:
    - `docker`/`psql`, `pnpm` ve `gh` çağrıları enjekte edilir; gerçek ortak DB'ye, gerçek kilitlere ve GitHub'a dokunulmaz.
    - `lock.test.mjs` ve `coord-hooks.test.mjs`'e UZUN satırı hücreleri.
    - Kök `package.json` `test` listesine iki dosya.
-5. Yeniden kullanım için iki dışa açma (davranış aynı): `guard.mjs` `audit`, `test-db.mjs` `container`.
+5. Yeniden kullanım için dışa açma (davranış aynı): `guard.mjs` `audit` ve `backupMain`, `test-db.mjs` `container`.
 
 Out of scope:
 - Canlı (hosted) göç: tren canlıya dokunmaz, `apply_migration` koordinatörün ayrı adımı (CLAUDE.md §5.1).
@@ -91,7 +100,11 @@ Done when:
   - başka kimlikteki heavy'de push reddi;
   - `apply-local` main.lock almaz, db.lock'u gate'e bırakır; gate bitince db.lock gider, heavy kalır; push main.lock'u alıp bırakır;
   - push ve `NF_OVERRIDE` aşımı audit.log'a guard biçiminde düşer;
-  - UZUN satırı (29 dk yok, 31 dk var).
+  - UZUN satırı (29 dk yok, 31 dk var);
+  - nf-guvenlik turu 1'den (2026-10-08): başka kimliğin main.lock'unda push reddi; kırmızı kapıda heavy.lock'un bırakılması; ledger'da aynı
+    numara ve başka içerik → DUR; main'deki göçü değiştiren dal → ENGEL, silen → UYARI; geçersiz göç adı; birleştirme commit'i; gönderilmiş
+    commit'in göçü iki kez sayılmaz; kirli tren klasöründe kapı başlamaz ve adım klasörü değiştirirse kırmızı; main.lock aşımında yedek;
+    önceki trenin ortak DB'ye bıraktığı göç listesi taşınır. Her biri ilgili satır silinerek sınandı (satır silinince test düşüyor).
 - `node scripts/train.mjs plan <bugünkü gerçek task dalları>` gerçek depoda salt okur koşar, çıktısı rapora.
 - Tam kapı (`lint`, `typecheck`, `test`, `build`) yeşil. `test:db` ve e2e gerekmiyor: `supabase/`, ekran ve API değişmiyor.
 - nf-guvenlik ONAY @<sha>.
