@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 453, last: 20261008133054_organization_settings_stay_with_owner_and_admin.sql
--- fingerprint: sha256:004f638776ce0be617d87f641ddf77c264505d49c835ade8e0e8a88c6ec77c0e
+-- migrations: 454, last: 20261008133054_organization_settings_stay_with_owner_and_admin.sql
+-- fingerprint: sha256:33affb3ee46e32bf3465073bd4661e506fc470333931378b53bb9606be1953d5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4762,23 +4762,32 @@ declare
   edit uuid := coalesce(new.session_id, old.session_id);
   call_at timestamptz := statement_timestamp();
   call_xact xid8 := pg_current_xact_id();
+  this_step bigint;
 begin
   -- A closed edit keeps no history, nor does one being deleted.
   if not exists (select 1 from public.schedule_edit_sessions session where session.id = edit and session.status = 'active') then
     return null;
   end if;
-  -- A new step: only the 24 before it are kept.
-  if not exists (select 1 from app_private.schedule_edit_undo_steps step
-      where step.session_id = edit and step.step_at = call_at and step.step_xact = call_xact) then
-    delete from app_private.schedule_edit_undo_steps step
-    where step.session_id = edit and (step.step_at, step.step_xact) <= (
-      select kept.step_at, kept.step_xact
-      from (select distinct older.step_at, older.step_xact from app_private.schedule_edit_undo_steps older
-            where older.session_id = edit) kept
-      order by kept.step_at desc, kept.step_xact desc offset 24 limit 1);
+  -- The shifts an edit is opened or widened with are not a step of it.
+  if current_setting('app.schedule_edit_widening', true) = 'on' then
+    return null;
   end if;
-  insert into app_private.schedule_edit_undo_steps (workspace_id, session_id, step_at, step_xact, shift_id, before)
-  values (coalesce(new.workspace_id, old.workspace_id), edit, call_at, call_xact, coalesce(new.id, old.id),
+  select step.step_no into this_step
+  from app_private.schedule_edit_undo_steps step
+  where step.session_id = edit and step.step_at = call_at and step.step_xact = call_xact
+  limit 1;
+  -- A new step: only the 24 before it are kept, and it is numbered after them.
+  if this_step is null then
+    delete from app_private.schedule_edit_undo_steps step
+    where step.session_id = edit and step.step_no <= (
+      select kept.step_no
+      from (select distinct older.step_no from app_private.schedule_edit_undo_steps older
+            where older.session_id = edit) kept
+      order by kept.step_no desc offset 24 limit 1);
+    this_step := nextval('app_private.schedule_edit_undo_step_no');
+  end if;
+  insert into app_private.schedule_edit_undo_steps (workspace_id, session_id, step_at, step_xact, step_no, shift_id, before)
+  values (coalesce(new.workspace_id, old.workspace_id), edit, call_at, call_xact, this_step, coalesce(new.id, old.id),
     case when tg_op = 'INSERT' then null else to_jsonb(old) end)
   -- The first change in a step is how the row was before it.
   on conflict (session_id, shift_id, step_at, step_xact) do nothing;
@@ -6864,6 +6873,9 @@ begin
     session_draft_id := source_draft.id;
   end if;
 
+  -- The shifts the edit is opened or widened with are not a step of it, and
+  -- do not push its oldest step out (EKRAN-01 #12).
+  perform set_config('app.schedule_edit_widening', 'on', true);
   if session_source = 'published' then
     insert into public.schedule_edit_session_shifts (id, workspace_id, session_id, location_id, employee_id, job_id, shift_type_id, scheduled_date, start_time, end_time, time_basis, time_snapshot, time_timezone, unpaid_break_minutes, hide_time_on_badge, note, label_ids, label_names)
     select shift.source_shift_id, shift.workspace_id, edit_session_id, shift.location_id, shift.employee_id, shift.job_id, shift.shift_type_id, shift.scheduled_date, shift.start_time, shift.end_time, shift.time_basis, shift.time_snapshot, shift.time_timezone, shift.unpaid_break_minutes, shift.hide_time_on_badge, shift.note, shift.label_ids, shift.label_names
@@ -6881,10 +6893,7 @@ begin
       and shift.location_id = any(adding);
   end if;
 
-  -- DB-1c: the shifts the edit is opened or widened with are not a step of it.
-  delete from app_private.schedule_edit_undo_steps step
-  where step.session_id = edit_session_id and step.step_at = statement_timestamp()
-    and step.step_xact = pg_current_xact_id();
+  perform set_config('app.schedule_edit_widening', '', true);
 
   return jsonb_build_object(
     'status', case
@@ -26153,7 +26162,8 @@ begin
   select step.step_at, step.step_xact into last_at, last_xact
   from app_private.schedule_edit_undo_steps step
   where step.session_id = edit.id
-  order by step.step_at desc, step.step_xact desc
+  -- The step written last, by its number (EKRAN-01 #12).
+  order by step.step_no desc
   limit 1;
   if last_at is null then
     raise exception 'nothing to undo' using errcode = 'PT409', hint = 'schedule.nothing_to_undo';
@@ -27896,11 +27906,27 @@ CREATE TABLE IF NOT EXISTS "app_private"."schedule_edit_undo_steps" (
     "step_at" timestamp with time zone NOT NULL,
     "step_xact" "xid8" NOT NULL,
     "shift_id" "uuid" NOT NULL,
-    "before" "jsonb"
+    "before" "jsonb",
+    "step_no" bigint NOT NULL
 );
 
 
 ALTER TABLE "app_private"."schedule_edit_undo_steps" OWNER TO "postgres";
+
+
+CREATE SEQUENCE IF NOT EXISTS "app_private"."schedule_edit_undo_step_no"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE "app_private"."schedule_edit_undo_step_no" OWNER TO "postgres";
+
+
+ALTER SEQUENCE "app_private"."schedule_edit_undo_step_no" OWNED BY "app_private"."schedule_edit_undo_steps"."step_no";
+
 
 
 CREATE TABLE IF NOT EXISTS "app_private"."security_audit_events" (
@@ -31068,6 +31094,10 @@ CREATE INDEX "account_throttle_events_lookup" ON "app_private"."account_throttle
 
 
 CREATE INDEX "schedule_edit_undo_steps_step_idx" ON "app_private"."schedule_edit_undo_steps" USING "btree" ("session_id", "step_at", "step_xact");
+
+
+
+CREATE INDEX "schedule_edit_undo_steps_step_no_idx" ON "app_private"."schedule_edit_undo_steps" USING "btree" ("session_id", "step_no");
 
 
 

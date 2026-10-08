@@ -368,6 +368,66 @@ select is((select (v ->> 'undo_depth')::integer from ud_restored), 0, 'after res
 select is(pg_temp.refusal_hint(format('select pg_temp.undo(%L, %L)', 'owner', tests.id('ud:e9'))),
   'PT409 schedule.nothing_to_undo', 'and Undo says so');
 
+-- 8b. Widening a full history keeps it whole (EKRAN-01 #12, BL-762) ------------------
+-- Can's edit of the published week 11 at Beşiktaş holds 25 steps. Opening
+-- Kadıköy too brings its published shift into the edit; that is not a step,
+-- and it does not push his oldest step out either.
+select tests.publish_week('ud', 11, '[
+  {"label": "p11k", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"},
+  {"label": "p11b", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"}
+]');
+select tests.remember('ud:e11', pg_temp.open('can', 11, 'published', array['B']));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 1, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 2, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 3, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 4, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 5, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 6, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 0, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 1, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 2, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 3, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 4, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 5, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 6, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 0, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 1, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 2, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 3, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 4, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 5, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 6, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 0, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 1, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 2, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 3, 'B'));
+select pg_temp.add('can', tests.id('ud:e11'), pg_temp.shift(null, 11, 4, 'B'));
+select is(pg_temp.depth('can', tests.id('ud:e11')), 25, 'Can''s edit holds 25 steps');
+select pg_temp.open('can', 11, 'published', array['K']);
+select is((select count(*)::integer from public.schedule_edit_session_shifts
+    where session_id = tests.id('ud:e11') and location_id = tests.id('ud:K')), 1,
+  'opening Kadıköy brings its published shift into the edit');
+select is(pg_temp.depth('can', tests.id('ud:e11')), 25, 'and Undo can still take back all 25 of his steps');
+
+-- 8c. The step written last goes back first (EKRAN-01 #12, BL-762) -------------------
+-- Two of Ayşe's tabs send at once; the later one began a moment earlier but
+-- waited for the edit and wrote last. Undo takes back the step that was
+-- written last, whatever the clock said when its request began.
+select tests.remember('ud:e12', pg_temp.open('ayse', 12, 'blank'));
+select tests.remember('ud:e12:first', pg_temp.add('ayse', tests.id('ud:e12'), pg_temp.shift(null, 12, 1)));
+select tests.remember('ud:e12:last', pg_temp.add('ayse', tests.id('ud:e12'), pg_temp.shift(null, 12, 2)));
+-- ponytail: one test transaction cannot race two requests; the last step's
+-- start is moved before the first one's, as the waiting request's was.
+update app_private.schedule_edit_undo_steps set step_at = step_at - interval '1 minute'
+where session_id = tests.id('ud:e12') and shift_id = tests.id('ud:e12:last');
+select pg_temp.undo('ayse', tests.id('ud:e12'));
+select is((select count(*)::integer from public.schedule_edit_session_shifts
+    where session_id = tests.id('ud:e12') and id = tests.id('ud:e12:last')), 0,
+  'Undo takes back the shift written last');
+select is((select count(*)::integer from public.schedule_edit_session_shifts
+    where session_id = tests.id('ud:e12') and id = tests.id('ud:e12:first')), 1,
+  'and leaves the one written before it');
+
 -- 9. Nobody in the browser reads or calls it -----------------------------------------
 
 select is(has_function_privilege('authenticated',
@@ -393,8 +453,11 @@ $$, array[
   -- Undo itself
   'undo_schedule_edit_session_step_service'
 ], 'every writer of an open edit''s shifts is a step or says it is not');
+-- Opening records nothing while it brings shifts in (EKRAN-01 #12); the others
+-- clear the history after they write.
 select is((select count(*)::integer from pg_proc where
-    (proname = 'acquire_schedule_edit_session_service' and prosrc like '%app_private.schedule_edit_undo_steps%')
+    (proname = 'acquire_schedule_edit_session_service'
+      and prosrc like '%set_config(''app.schedule_edit_widening'', ''on'', true)%')
     or (proname in ('shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service', 'important_date_close_shifts')
       and prosrc like '%schedule_edit_undo_barrier()%')),
   4, 'and each one that is not a step clears itself out of the history');

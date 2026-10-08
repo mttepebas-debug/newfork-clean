@@ -236,6 +236,18 @@ select is((select employee_id from public.schedule_edit_session_shifts s
   'BL-545: its Thursday did not');
 select cmp_ok((select revision from public.schedule_edit_sessions where id = tests.id('c:open-edit')), '>',
   (select revision from open_edit_before), 'BL-545: the edit''s revision moves, so the open screen reloads it');
+-- EKRAN-01 #12 (BL-762): the closing is nobody's step in the edit, and the
+-- owner's steps before it go with it: Undo cannot put Can back on the closed
+-- Wednesday, through the closing or through an older step.
+select is((public.get_schedule_edit_session_service(pg_temp.u('owner'), tests.id('c'), tests.id('c:open-edit'))
+    ->> 'undo_depth')::integer, 0, 'BL-762: after the closing the owner''s edit has nothing to take back');
+select is(pg_temp.try(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',
+    pg_temp.u('owner'), tests.id('c'), tests.id('c:open-edit'),
+    (select revision from public.schedule_edit_sessions where id = tests.id('c:open-edit')))),
+  'PT409 schedule.nothing_to_undo', 'BL-762: and Undo says so');
+select is((select employee_id from public.schedule_edit_session_shifts s
+           where s.session_id = tests.id('c:open-edit') and s.scheduled_date = tests.week(2) + 2), null::uuid,
+  'BL-762: Can stays off the closed Wednesday');
 
 -- BL-545, review round 1: a draft saved from the published week and opened
 -- again carries the published shift's id without the copy mark. Ayse keeps
