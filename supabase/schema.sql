@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 458, last: 20261009101500_swap_review_measures_the_rule_that_holds.sql
--- fingerprint: sha256:726c3b7dfffbab6730a038d754e2bb390c50024bf4e30a1f04005482b9133d1d
+-- fingerprint: sha256:b95e4043ede5f1ba7d3d70223e9770f89a36da11e2fd066c2fb89125db7e66eb
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -604,10 +604,10 @@ declare
   digits text;
   local_digits text;
 begin
-  if typed !~ '[^[:space:]]' then
+  if typed !~ '[^ \t\n\v\f\r]' then
     return null;
   end if;
-  if typed ~ '\+[[:space:]().-]*[02-9]' then
+  if typed ~ '\+[ \t\n\v\f\r().-]*[02-9]' then
     raise exception 'that phone number cannot be dialled' using errcode = '22023';
   end if;
   digits := regexp_replace(typed, '[^0-9]', '', 'g');

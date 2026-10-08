@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(34);
+select plan(35);
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values ('75000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','avatar-self@example.test','','{}','{}',now(),now()),
  ('75000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','avatar-other@example.test','','{}','{}',now(),now());
@@ -29,6 +29,7 @@ select is(app_private.account_phone_e164('415.555.0100'), '+14155550100', 'reads
 select is(app_private.account_phone_e164(E'\t+1 415 555 0100'), '+14155550100', 'reads ' || E'\t+1 415 555 0100' || ' as a US number');
 select is(app_private.account_phone_e164(U&'\FF0B1 415 555 0100'), '+14155550100', 'reads ' || U&'\FF0B1 415 555 0100' || ' as a US number');
 select is(app_private.account_phone_e164(U&'\FF14\FF11\FF15\FF15\FF15\FF15\FF10\FF11\FF10\FF10'), '+14155550100', 'reads ' || U&'\FF14\FF11\FF15\FF15\FF15\FF15\FF10\FF11\FF10\FF10' || ' as a US number');
+select is(app_private.account_phone_e164(U&'+\20282 415 555 010'), '+12415555010', 'reads a + before a line separator (U+2028) the way the app does: not a country code');
 select throws_ok(format('select app_private.account_phone_e164(%L)', '+44 20 7946 0958'), '22023', 'that phone number cannot be dialled', 'refuses ' || '+44 20 7946 0958');
 select throws_ok(format('select app_private.account_phone_e164(%L)', '(+44) 20 7946 0958'), '22023', 'that phone number cannot be dialled', 'refuses ' || '(+44) 20 7946 0958');
 select throws_ok(format('select app_private.account_phone_e164(%L)', '+(44) 2079 4609'), '22023', 'that phone number cannot be dialled', 'refuses ' || '+(44) 2079 4609');
