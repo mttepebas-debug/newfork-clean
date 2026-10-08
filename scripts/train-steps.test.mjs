@@ -56,6 +56,20 @@ test("build: migrations an unpushed train left in the shared database stay liste
   }
 });
 
+test("build: a stray migration leaves the list once main has it, also under its live number", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  assert.equal(applyLocal(w.ctx).code, 0);
+  // the branch shipped later with the file renamed to the live ledger number (supabase/CLAUDE.md "Canlı")
+  write(w.repo, "supabase/migrations/20261008052513_m1.sql", "create table m1(id int);\n");
+  commit(w.repo, "m1 under its live number");
+  git(w.repo, "push", "-q", "origin", "HEAD:main");
+  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+  const r = build({ ...w.ctx, now: () => new Date("2026-10-08T11:00:00Z") }, ["task/a"]);
+  assert.notEqual(r.code, 1, text(r));
+  assert.deepEqual(state().strayInSharedDb, []);
+});
+
 test("apply-local: a shared database missing one of main's migrations stops before applying", () => {
   w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
   built("task/m1");
@@ -151,6 +165,16 @@ test("gate: an uncommitted change in the train folder stops it before any step, 
   assert.match(text(r), /DUR: tren klasörü temiz değil/);
   assert.equal(w.calls.pnpm.length, 0);
   assert.equal(lock("heavy").free, true);
+});
+
+test("gate: a train folder that is not on the train's tip stops it before any step", () => {
+  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+  built("task/a");
+  git(w.ctx.trainDir, "switch", "-q", "--detach", "HEAD~1");
+  const r = gate({ ...w.ctx, override: "an override does not pass this" }, {});
+  assert.equal(r.code, 1);
+  assert.match(text(r), /DUR: tren klasörü train\/\S+ ucunda değil/);
+  assert.equal(w.calls.pnpm.length, 0);
 });
 
 test("gate: a step that leaves the train folder changed turns the gate red", () => {
