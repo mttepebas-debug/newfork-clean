@@ -198,9 +198,9 @@ Arşive giden: `ILKELER.md`, `KOORDINATOR-KARARLARI.md`, `DERSLER.md`, `HANDOFF.
 - **Her zaman Mert'e:** §6.3'teki "her zaman SOR" listesi ve `.claude/settings.json` yasak listesini gevşetmek.
 - **Geri alınamaz işler** (canlıda gerçek veri silme, `supabase db reset`, force push, ücretli işlem, dosya indirme, kalıcı kurulum): Mert'in "evet"i koordinatörün penceresine yazılır ve işi koordinatör kendisi yapar. Ajana aktarılmaz.
 
-## 10. Kalkanlar ve yerlerine gelenler
+## 10. Kaldırılanlar ve yerlerine gelenler
 
-| Kalkan | Yerine |
+| Kaldırılan | Yerine |
 |---|---|
 | Ayrı çalışan oturumlar, `send_message` | Koordinatörün içinde alt ajanlar |
 | `scripts/inbox.mjs` (posta kutusu, nabız, pano, `claim`) | Ajan bildirimi + `SubagentStop` kancası + `DURUM.md`. `.newfork-inbox/` içinde yalnız `decisions.jsonl` ve `audit.log` kullanılmaya devam eder; `new/`, `done/`, `status/`, `label/` arşive |
