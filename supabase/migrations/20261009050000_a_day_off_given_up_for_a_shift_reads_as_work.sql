@@ -4,7 +4,9 @@
 -- leave, so the Schedule painted the whole cell time-off red. The cell now
 -- reads as an ordinary shift: the week's availability says, day by day,
 -- whether the employee gave up some of that day's leave for a shift
--- (leave_given_for_shift), and the screen draws no mark there. The leave hours
+-- (leave_given_for_shift), and the screen draws no mark in the cell that holds
+-- the shift (the flag is about the day: a closing shift's next morning or a
+-- shift given away since keeps the red). The leave hours
 -- themselves stay in leave_intervals for every warning that reads them.
 --
 -- The hours given back are the approved time_off_cancellation an approved
@@ -12,6 +14,13 @@
 -- 'shift_exchange'); a manager who shortens leave by hand is not consent and
 -- keeps the red. Changed on the definition the database holds
 -- (pg_get_functiondef); each anchor must be found exactly once.
+--
+-- Every Schedule read now asks the events of those cancellations for their
+-- source; the events had no index but their primary key, so that look-up
+-- would read the whole table, every workspace's (review #38 O3).
+create index if not exists schedule_time_off_events_request_idx
+  on public.schedule_time_off_events (request_id);
+
 do $migration$
 declare
   fn constant regprocedure :=

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(36);
 
 -- BL-182 + BL-127 (KARARLAR "Takas ... uygunluk", KK-19): approved time off
 -- is a hard stop for a manager's own scheduling, but its hours can be given
@@ -48,12 +48,12 @@ $$;
 create function pg_temp.command(person text, command jsonb) returns jsonb language sql as $$
   select public.shift_exchanges_command_service(tests.user('sto:' || person), tests.id('sto'), command, gen_random_uuid())
 $$;
--- Ali's Wednesday as the manager's Schedule reads it (EKRAN-01 #38).
-create function pg_temp.wednesday() returns jsonb language sql as $$
-  select d from app_private.schedule_week_availability(tests.id('sto'), tests.week(1), array[tests.id('sto:ali')],
+-- Ali's Wednesday of week n as the manager's Schedule reads it (EKRAN-01 #38).
+create function pg_temp.wednesday(n integer default 1) returns jsonb language sql as $$
+  select d from app_private.schedule_week_availability(tests.id('sto'), tests.week(n), array[tests.id('sto:ali')],
     array[tests.id('sto:K')]) a
   cross join lateral jsonb_array_elements(a.projection -> 'days') d
-  where d ->> 'date' = (tests.week(1) + 2)::text
+  where d ->> 'date' = (tests.week(n) + 2)::text
 $$;
 create function pg_temp.outbox(request uuid, type_key text) returns setof public.notification_outbox language sql as $$
   select * from public.notification_outbox o
@@ -202,6 +202,8 @@ select ok(pg_temp.leave(tests.id('sto:ali:time_off:2')) @> (select span from cut
 select pg_temp.shorten('ayse', (select periods from cut), (select key from cut));
 select tests.settle();
 select ok(not (pg_temp.leave(tests.id('sto:ali:time_off:2')) && (select span from cut)), 'Ayse gives back 10:00-14:00 of Ali''s leave');
+select is(pg_temp.wednesday(2) ->> 'leave_given_for_shift', 'false',
+  'EKRAN-01 #38: leave a manager gives back is not Ali''s consent; that day still reads as time off');
 select is(pg_temp.shorten('ayse', (select periods from cut), (select key from cut)) ->> 'request_id', tests.id('sto:ali:time_off:2')::text,
   'a retry of the same command answers the same');
 select is(pg_temp.recipients(tests.id('sto:ali:time_off:2')), array(select x from unnest(array[tests.user('sto:ali'), tests.user('sto:mert')]) x order by 1),

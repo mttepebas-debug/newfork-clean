@@ -39,14 +39,21 @@ function rangeOnDay(interval: Interval, day: string, projection: Projection): Av
   return { from: Math.round((from - dayStart) / MINUTE_MS), to: Math.round((to - dayStart) / MINUTE_MS) };
 }
 
-/** The week's marks for one person at one location, by local date. */
-export function scheduleAvailabilityMarks(projection: Projection): Map<string, ScheduleAvailabilityMark> {
+/**
+ * The week's marks for one person at one location, by local date. worksOn says
+ * whether the person has a shift in that cell; without it a day keeps its mark.
+ */
+export function scheduleAvailabilityMarks(
+  projection: Projection,
+  worksOn: (date: string) => boolean = () => false,
+): Map<string, ScheduleAvailabilityMark> {
   const marks = new Map<string, ScheduleAvailabilityMark>();
   if (projection.status !== "ready") return marks;
   for (const { date, has_unavailable, leave_given_for_shift } of projection.days) {
-    // A day whose leave the employee gave up for a shift reads as an ordinary
-    // working day: no red, no "!" (KARARLAR Schedule 2026-10-05, EKRAN-01 #38).
-    if (leave_given_for_shift) continue;
+    // The cell of a shift the employee took on their own day off reads as an
+    // ordinary working day: no red, no "!" (KARARLAR Schedule 2026-10-05,
+    // EKRAN-01 #38). The flag is about the day, so the cell needs the shift too.
+    if (leave_given_for_shift && worksOn(date)) continue;
     const ranges = projection.leave_intervals.flatMap((interval) => rangeOnDay(interval, date, projection) ?? []);
     if (ranges.length) {
       marks.set(date, { kind: "time_off", ranges });

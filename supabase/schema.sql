@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 454, last: 20261009050000_a_day_off_given_up_for_a_shift_reads_as_work.sql
--- fingerprint: sha256:171a99fc908d755e533788f7939f4b9b55b6dbddd65e9ad6ffdc04d77f1b5797
+-- fingerprint: sha256:0484ba3d6d20dcfb4cae8cafd75234f968e941d845528bfbfb85196568d11802
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -31409,6 +31409,10 @@ CREATE INDEX "schedule_published_shifts_period_idx" ON "public"."schedule_publis
 
 
 CREATE UNIQUE INDEX "schedule_templates_name_idx" ON "public"."schedule_templates" USING "btree" ("workspace_id", "lower"("btrim"("name")));
+
+
+
+CREATE INDEX "schedule_time_off_events_request_idx" ON "public"."schedule_time_off_events" USING "btree" ("request_id");
 
 
 

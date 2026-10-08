@@ -38,7 +38,8 @@ function availabilityHours(
   const projection = employees
     .find((employee) => employee.id === finding.employee_id)
     ?.weekly_availability?.find((item) => item.location_id === finding.location_id);
-  const mark = projection ? scheduleAvailabilityMarks(projection).get(finding.scheduled_date) : undefined;
+  // A finding is about a shift in this very cell.
+  const mark = projection ? scheduleAvailabilityMarks(projection, () => true).get(finding.scheduled_date) : undefined;
   if (mark?.kind !== "unavailable") return null;
   return mark.windows.map((window) => formatAvailabilityRange("unavailable", window, "12h")).join("; ");
 }

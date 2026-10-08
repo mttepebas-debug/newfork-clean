@@ -79,8 +79,8 @@ describe("scheduleAvailabilityMarks", () => {
   // EKRAN-01 #38 (KARARLAR 2026-10-05, BL-579): Ali took a 10:00-14:00 shift on
   // his approved day off with his own consent; the rest of the day is still
   // leave, yet the cell reads as an ordinary shift: no red, no "!".
-  it("leaves a day whose leave the employee gave up for a shift unmarked", () => {
-    const marks = scheduleAvailabilityMarks(projection({
+  it("leaves a day whose leave the employee gave up for a shift unmarked where the shift is", () => {
+    const gaveUp = projection({
       unavailable_intervals: [{ start_at: "2026-10-24T13:00:00Z", end_at: "2026-10-24T15:00:00Z" }],
       leave_intervals: [
         { start_at: "2026-10-24T04:00:00Z", end_at: "2026-10-24T14:00:00Z" },
@@ -90,8 +90,13 @@ describe("scheduleAvailabilityMarks", () => {
         date, has_unavailable: date === "2026-10-24", all_day: false,
         leave_given_for_shift: date === "2026-10-24",
       })),
-    }));
-    expect(marks.has("2026-10-24")).toBe(false);
+    });
+    expect(scheduleAvailabilityMarks(gaveUp, (date) => date === "2026-10-24").has("2026-10-24")).toBe(false);
+    // Review #38 O1: the flag is about the day; without his shift in this cell
+    // (a closing shift's next morning, another location, a shift given away
+    // since) the leave left that day still reads red.
+    expect(scheduleAvailabilityMarks(gaveUp).get("2026-10-24")?.kind).toBe("time_off");
+    expect(scheduleAvailabilityMarks(gaveUp, () => false).get("2026-10-24")?.kind).toBe("time_off");
   });
 
   it("reads nothing from a projection that is not ready", () => {

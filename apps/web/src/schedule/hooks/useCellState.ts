@@ -53,9 +53,12 @@ export function orderScheduleCellShifts(
 
 export function buildScheduleCellState(model: ScheduleReadModel, hideAvailability = false): ScheduleCellStateMap {
   const cells = new Map<string, MutableScheduleCellState>();
+  const worked = new Set(model.shifts.flatMap((shift) =>
+    shift.employee_id ? [scheduleCellStateKey(shift.location_id, shift.scheduled_date, shift.employee_id)] : []));
   for (const employee of model.employees) {
     for (const location of employee.weekly_availability ?? []) {
-      for (const [date, mark] of scheduleAvailabilityMarks(location)) {
+      const worksOn = (date: string) => worked.has(scheduleCellStateKey(location.location_id, date, employee.id));
+      for (const [date, mark] of scheduleAvailabilityMarks(location, worksOn)) {
         if (hideAvailability && mark.kind === "unavailable") continue;
         ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id)).availabilityMark = mark;
       }
