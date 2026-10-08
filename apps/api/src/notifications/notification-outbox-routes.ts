@@ -35,7 +35,8 @@ export function registerNotificationOutboxRoutes(
     const documents = result.documentMaintenance;
     if (documents && "failed_cases" in documents && documents.failed_cases > 0)
       request.log.warn({ failedCases: documents.failed_cases }, "document maintenance skipped cases after errors");
-    // The message stays in the log: internals never reach an answer (app.ts), whose shape is unchanged.
+    // The message stays in the log: internals never reach an answer (app.ts). A failed step answers
+    // { failed: true } as before; a successful document step now also carries failed_cases.
     return reply.send({
       ...result,
       ...(result.maintenance && "failed" in result.maintenance ? { maintenance: { failed: true } } : {}),

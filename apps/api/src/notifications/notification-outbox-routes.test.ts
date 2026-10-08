@@ -19,13 +19,15 @@ describe("notification cron route", () => {
   it("logs a maintenance step that failed, with its message, and still answers 200", async () => {
     const { response, logged } = await runCron({
       ...delivery,
-      maintenance: { expired: 0, invalidated: 0, skipped_busy: 0 },
+      maintenance: { failed: true, error: "shift maintenance unavailable" },
       documentMaintenance: { failed: true, error: 'null value in column "notification_key"' },
     });
     expect(response.statusCode).toBe(200);
-    expect(logged).toHaveLength(1);
-    expect(logged[0]).toMatchObject({ level: 50, step: "document maintenance", error: 'null value in column "notification_key"' });
-    // The message is for the log; the answer keeps its old shape and no internals (app.ts error policy).
+    expect(logged).toHaveLength(2);
+    expect(logged[0]).toMatchObject({ level: 50, step: "shift exchange maintenance", error: "shift maintenance unavailable" });
+    expect(logged[1]).toMatchObject({ level: 50, step: "document maintenance", error: 'null value in column "notification_key"' });
+    // The messages are for the log; the answer says { failed: true } as before, no internals (app.ts error policy).
+    expect(response.json().maintenance).toEqual({ failed: true });
     expect(response.json().documentMaintenance).toEqual({ failed: true });
   });
 
