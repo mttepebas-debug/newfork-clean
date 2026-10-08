@@ -519,3 +519,10 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
   - İki genişlikte yatay kayma yok.
   - Branch migration'ı ortak yerel DB'de olmadığı için Playwright, API'nin roller cevabında yalnız bu 9 iznin `custom_grantable`'ını `false`'a çevirdi; migration sonrası veritabanının cevabı budur.
 - **e2e:** Settings → Roles için senaryo yok. Yeni senaryo, ortak DB'ye migration ancak trenle girdiği için dalda yeşil olamaz; davranışı pgTAP ve sayfa testi kapsıyor.
+- **İnceleme (`nf-guvenlik`): ONAY @64a7fab7, düzeltmelerden sonra ONAY @e455efa9.**
+  - Kritik ya da yüksek bulgu yok.
+  - Bulgu 1 (düşük): CLI migration'ı cümle cümle uyguluyor; iki silme tek `do` bloğuna alındı, ertelenmiş bağımlılık kontrolü aralarında çalışamaz.
+  - Bulgu 2 (düşük): `employee_access.manage` (Invitations & access Edit) `roles.read`'e bağlı olduğu için zaten verilemiyordu; artık katalogda da `custom_grantable = false`. GA-2 böylece **10 izin**.
+  - Bulgu 3 (kabul): temizlik döngüsünün testi yok, çünkü yerel ve canlı satır 0.
+  - Bulgu 4: varsayılan Manager rolünde katalog okuma yok; bu BL-680, karar bekliyor, iş dışı.
+  - Düzeltmeden sonra: yeni dosya migration'sız 5/9 düşüyor, migration'la 9/9. Öbür beş dosya yeşil; shared 9/9, Roles sayfası 11/11.
