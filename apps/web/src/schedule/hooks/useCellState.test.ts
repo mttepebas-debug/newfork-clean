@@ -93,6 +93,29 @@ describe("buildScheduleCellState", () => {
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.availabilityMark).toBeUndefined();
   });
+  // EKRAN-01 #38 (review): Ali gave up Tuesday 10:00-14:00 of his leave to take
+  // that shift at Main. Only that cell reads as an ordinary shift; Patio's row
+  // that day and his shift-less Wednesday (a closing shift's next morning, say)
+  // keep the time-off red.
+  it("drops the time-off mark only in the cell that holds the shift taken on a day off", () => {
+    const base = model([shift({ id: "taken", location_id: mainLocationId, scheduled_date: "2026-08-18", start_time: "10:00", end_time: "14:00" })]);
+    const week = (locationId: string, locationName: string) => ({
+      location_id: locationId, location_name: locationName, timezone: "America/Los_Angeles", week_start: base.week_start,
+      status: "ready" as const, unavailable_intervals: [],
+      leave_intervals: [
+        { start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-18T17:00:00Z" },
+        { start_at: "2026-08-18T21:00:00Z", end_at: "2026-08-20T07:00:00Z" },
+      ],
+      clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+      days: ["2026-08-18", "2026-08-19"].map((date) => ({ date, has_unavailable: false, all_day: false, leave_given_for_shift: true })),
+    });
+    const cells = buildScheduleCellState({ ...base, employees: [{ ...base.employees[0]!,
+      weekly_availability: [week(mainLocationId, "Main"), week(patioLocationId, "Patio")] }] });
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
+    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark?.kind).toBe("time_off");
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-19", employeeId))?.availabilityMark?.kind).toBe("time_off");
+  });
+
   it("marks every cell in a multi-day all-day closure range", () => {
     const closedModel = {
       ...model([]),
