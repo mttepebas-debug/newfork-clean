@@ -8,11 +8,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-lock-test-"));
 process.env.NEWFORK_LOCK_DIR = tmpDir;
 
-const { take, release, status } = await import("./lock.mjs");
+const { take, release, status, longMainLine } = await import("./lock.mjs");
 
 const dbLock = path.join(tmpDir, "db.lock");
 const mainLock = path.join(tmpDir, "main.lock");
@@ -172,4 +174,34 @@ test("a plain-text lock's age comes from the file mtime and turns stale after 2h
   assert.equal(recent.ageMinutes, 30);
   assert.equal(recent.stale, false);
   assert.equal(fs.existsSync(dbLock), true);
+});
+
+// TREN-ARACI: main.lock is held only for the push moment (CLAUDE.md §6); past 30 minutes it is an alarm.
+const minutesAgo = (min) => new Date(Date.now() - min * 60000).toISOString();
+const holdMain = (min, extra = {}) =>
+  fs.writeFileSync(mainLock, JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt: minutesAgo(min), pid: 1, ...extra }));
+
+test("main.lock held past 30 minutes gets its own UZUN line, 29 minutes does not (TREN-ARACI)", () => {
+  holdMain(29);
+  assert.equal(longMainLine(), null);
+  holdMain(31);
+  assert.equal(longMainLine(), "UZUN: main.lock 31 dk, sahibi koordinator/tren-x (push)");
+});
+
+test("a free main.lock, or another lock held long, gives no UZUN line (TREN-ARACI)", () => {
+  assert.equal(longMainLine(), null);
+  fs.writeFileSync(dbLock, JSON.stringify({ identity: "nf-db/x", purpose: "", startedAt: minutesAgo(90), pid: 1 }));
+  assert.equal(longMainLine(), null);
+});
+
+test("lock.mjs status prints the UZUN line after the lock lines (TREN-ARACI)", () => {
+  holdMain(45, { purpose: "" });
+  const r = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), "lock.mjs"), "status"], {
+    encoding: "utf8",
+    env: { ...process.env, NEWFORK_LOCK_DIR: tmpDir },
+  });
+  const lines = r.stdout.trim().split(/\r?\n/);
+  assert.equal(lines.length, 4);
+  assert.match(lines[1], /^main\.lock: koordinator\/tren-x, 45 dk$/);
+  assert.equal(lines[3], "UZUN: main.lock 45 dk, sahibi koordinator/tren-x");
 });
