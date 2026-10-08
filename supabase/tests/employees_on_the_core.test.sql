@@ -255,7 +255,7 @@ $$;
 select tests.person('m', 'oya', 'employee', array['K'], array['cook'], 'onboarding');
 select is(pg_temp.as_api(format($$select public.save_employee_onboarding_profile_service(%L, jsonb_build_object(
       'legal_first_name', 'Oya', 'legal_last_name', 'Person', 'phone', '4155550123', 'emergency_contact_name', 'Contact',
-      'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '4155550100'), %s, %L)$$,
+      'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'), %s, %L)$$,
     tests.user('m:oya'), (select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('m:oya')), tests.id('m'))),
   'allowed', 'as the API: an invited employee fills in their profile');
 select is(pg_temp.as_api(format('select public.submit_employee_onboarding_service(%L, %s, %L)',

@@ -115,7 +115,7 @@ select tests.person('ln', 'aydan', 'employee', array['K'], array['cook'], 'onboa
 select is(
   pg_temp.refusal(format(
     'select public.save_own_employment_contact_service(%L, %L, %L, %L, %L, %L)',
-    tests.user('ln:aydan'), tests.id('ln'), tests.id('ln:aydan'), 'Deniz', 'Sibling', '4155550100'
+    tests.user('ln:aydan'), tests.id('ln'), tests.id('ln:aydan'), 'Deniz', 'Sibling', '+14155550100'
   )),
   '23514',
   'an emergency contact cannot be saved before there is a legal name on file'
@@ -131,7 +131,7 @@ update public.employee_profiles set first_name = 'Renamed' where id = tests.id('
 select is(
   pg_temp.refusal(format(
     'select public.save_own_employment_contact_service(%L, %L, %L, %L, %L, %L)',
-    tests.user('ln:owner'), tests.id('ln'), tests.id('ln:owner'), 'Morgan Owner', 'Spouse', '4155550101'
+    tests.user('ln:owner'), tests.id('ln'), tests.id('ln:owner'), 'Morgan Owner', 'Spouse', '+14155550101'
   )),
   'allowed',
   'the owner saves an emergency contact onto the record setup opened'
