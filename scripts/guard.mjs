@@ -636,7 +636,7 @@ function commitRecords(seg, cwd) {
   return [...new Set([...staged, ...named])].filter(isRecordFile);
 }
 
-function audit(entry) {
+export function audit(entry) {
   fs.mkdirSync(INBOX_DIR, { recursive: true });
   const line = { at: new Date().toISOString(), ...entry };
   if (line.command) line.command = redact(line.command);
