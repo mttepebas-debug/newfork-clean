@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 458, last: 20261009101500_swap_review_measures_the_rule_that_holds.sql
--- fingerprint: sha256:b95e4043ede5f1ba7d3d70223e9770f89a36da11e2fd066c2fb89125db7e66eb
+-- fingerprint: sha256:8bf73c80f91b761be579e16013b13c90bf81d626194ec6a592f154cb2398b817
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
