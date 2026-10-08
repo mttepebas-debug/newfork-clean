@@ -223,7 +223,7 @@
   işleyelim"; 09-28 "Tüm repo denetimi".
 
 **P15. Kod ve git'te Claude hızlı ve özerktir.**
-- Kural: main'e gönderim `CLAUDE.md` §4.2'ye göre yapılır: R0–R2 işte kilitler serbestse oturum beklemeden gönderir; R3 işte ve canlı veritabanında koordinatörün "gönder" izni gerekir. Veri yazmayan gezinmeyi kendisi yapar. Kendi
+- Kural: main'e gönderim `CLAUDE.md` §4.2'ye göre yapılır: oturum dalını hazırlayıp `TREN-HAZIR` der ve beklemez; koordinatör hazır dalları tek trende tek kapıyla gönderir; R3 işte ve canlı veritabanında koordinatörün "gönder" izni gerekir. Veri yazmayan gezinmeyi kendisi yapar. Kendi
   yapabileceği bir operasyonu Mert'e devretmez.
 - Koşul: makine düzeyinde yeniden başlatma, oturum arşivi, başka oturumun dosyaları ve kalıcı yetki
   her seferinde tek tek sorulur. Mert çoğu zaman izin veriyor, ama yine sorulur.
@@ -232,6 +232,7 @@
 - Kanıt (2026-10-02, sürekli yetki; CLAUDE.md §5, main `636b76ee`): koordinatör sormadan canlıya migration (MCP; ONAY + OPS-03 + yedek + doğrulama; gerçek veri silme hariç), oturum yönetimi, birleşmiş dal ve temiz worktree silme, yeni iş seçme yapar; `db reset`, canlıda gerçek veri silme, ücretli, gizli anahtar, yeni bağımlılık, force push yetki dışı. Mert: "…task bitiminde canlıya gönderme, migrationları uygulama, session'ı arşivleme/silme, yeni session başlatma vs gibi otomasyonunu durduracak şeyleri kendi başına yapabil." Koşuldaki "tek tek sorulur" bu listede kalktı.
 - Kanıt (2026-10-02, ~10:30Z, oturum yönetimi): Mert "Sessionlari silme, temizle ve kullan" dedi — işi biten oturum arşivlenmez, temizlenip havuza döner (KARARLAR OPS-07). Sürekli yetkideki "oturum yönetimi" arşiv değil temizleme demek.
 - Kanıt (2026-10-07, CLAUDE.md yeniden yazımı): Mert önce "her gönderim koordinatör izniyle" seçti (önerilen), aynı turdaki değerlendirmede Claude çift kapıyı (izin + ağır koşu kilidi) yanlış bulduğunu söyledi; Mert "R0–R2 kilitle, R3 ve canlı DB izinle" seçti. Havuzda 2'den fazla boş oturum varsa fazlası arşivlenir (OPS-07 eki).
+- Kanıt (2026-10-08, ~09:05Z, koordinatörün penceresinde, çoktan seçmeli, önerilen): BL-965 main kilidini 6,5 saat tuttu, hazır Schedule paketi bekledi. Mert "sessionlar main kilidi bekliyor diye saatlerce duruyorlar; sen devralsan?" diye sordu; Claude salt devralmanın kuyruğu kısaltmadığını (tek makine, sıralı tam kapı) ve tek nokta riskini büyüttüğünü söyleyip treni önerdi; Mert "Tren + kısa kilit" seçti (KARARLAR OPS-08). Reddedilenler: yalnız kısa kilit + alarm; gönderimi tamamen koordinatör yapar.
 
 **P16. Geliştirici araç kuralları orta serttir.**
 - Kural: yeni lint, hook ya da denetim önce uyarı modunda gelir. Bypass edilirse ayrıntılı log

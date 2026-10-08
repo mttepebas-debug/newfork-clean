@@ -96,7 +96,7 @@ Tam metin ve kanıtlar `docs/plan/ILKELER.md`'de; koordinatör karar vermeden ve
 - **Oturum yaşamı.** Yeni oturum açar, Remote Control'ü açar, model ve effort'u işe göre ayarlar: mekanik iş (ad değiştirme, dosya taşıma, ölçüm) küçük model ve düşük effort; olağan iş orta; riskli ya da belirsiz iş en güçlü model ve yüksek effort. Bağlamı %50'yi geçen oturumu ilk iş sınırında devreder; kendi bağlamını da aynı ölçüyle izler (`HANDOFF.md`). İşi biten oturumu kontrol eder (§4.4) ve temizleyip havuza döndürür; havuzda 2'den fazla boş oturum varsa fazlasını arşivler. Yalnız bu reponun (`newfork-clean`) oturumlarını yönetir; başka klasördeki oturumlara dokunmaz.
 - **Gözetim.** Posta kutusunu en az 2 dakikada bir kontrol eder; 20 dakika ses vermeyen çalışan oturuma bizzat bakar (pano, `git -C <worktree> status/log`).
 - **Tek ağır koşu.** CI, e2e, `test:db` ve tam kapı aynı anda tek koşar. Her main gönderimi CI başlattığı için ağır koşudur. Ağır koşu kilidiyle zorlanır: ilk hafta uyarı, sonra engel; kaçış loglanır.
-- **Gönderim.** Main'e gönderimi ve canlı migration'ı işi yapan oturum yapar. R0–R2 işte oturum, kilitler serbestse beklemeden gönderir; R3 işte ve her canlı veritabanı değişikliğinde koordinatörün açık "gönder" izni gerekir. Koordinatör her gönderimden sonra commit'in main'de ve main CI'ın yeşil olduğunu kontrol eder.
+- **Gönderim (tren; Mert, 2026-10-08).** Canlı migration'ı işi yapan oturum uygular; main'e yalnız koordinatörün treni gider. Oturum dalını hazırlar, `TREN-HAZIR` der ve sıradaki işine geçer; main kilidini almaz, beklemez. Koordinatör hazır dalları tek trende birleştirir, tam kapıyı bir kez koşar, tek push'la gönderir; çakışan ya da treni kıran dal sahibine döner (adımlar §6). R3 işte ve her canlı veritabanı değişikliğinde koordinatörün açık "gönder" izni gerekir. Koordinatör her trenden sonra main CI'ın yeşil olduğunu kontrol eder.
 - **Kalan kullanım.** Koordinatör ölçer; azalınca pahalı işler (en güçlü model, uzun koşular) kullanım yenilenene kadar sona alınır, ucuz işler sürer. İş durmaz.
 
 ### 4.3 Bir işin yolu
@@ -206,19 +206,19 @@ Ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`a
 ### Worktree, posta kutusu, kilitler
 - Oturum worktree'si `../newfork-wt/<id>`, dal `task/<id>`; koordinatörün belge worktree'si `../newfork-wt/coord` (detached `origin/main`). Alt ajan worktree'leri `.claude/worktrees/`. Geçici kanıtlar `artifacts/<iş-no>/` (gitignore'da).
 - Posta kutusu (`C:/Users/TheWe/Documents/Codex/.newfork-inbox/`, git dışı): rapor `node scripts/inbox.mjs send "<oturum/iş>" "<iş-id>" <rapor.md>`; durum `node scripts/inbox.mjs status "<iş-id>" "<durum>"`. Koordinatör: oturum başında `claim`, arka planda `wait`, işlenen rapor `ack <ad>`, yoklama `board`; `audit.log` her iş sonunda okunur.
-- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main|heavy> "<oturum/iş>, <amaç>"`, `release <db|main|heavy> "<oturum/iş>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez.
-  - `main.lock`: main'e gönderim; yoksa `scripts/guard.mjs` reddeder. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle; önce `refs/nf-backup/main/<zaman>` yedeği alınır ve `audit.log`'a yazılır.
+- Kilitler (`C:/Users/TheWe/Documents/Codex/.newfork-locks/`) yalnız yardımcıyla: `node scripts/lock.mjs take <db|main|heavy> "<oturum/iş>, <amaç>"`, `release <db|main|heavy> "<oturum/iş>"`, `status`. Alamazsan iş başlamaz, beklenir; 2 saatten eski kilit koordinatöre sormadan silinmez. `main.lock` yalnız push anında, birkaç dakika tutulur; 30 dakikayı geçen `main.lock`'un sahibine koordinatör o turda bakar.
+  - `main.lock`: main'e gönderim (trenin push'u; koordinatör); yoksa `scripts/guard.mjs` reddeder. Bilinçli aşma yalnız `NF_OVERRIDE="<gerekçe>"` önekiyle; önce `refs/nf-backup/main/<zaman>` yedeği alınır ve `audit.log`'a yazılır.
   - `db.lock`: yerel DB'de migration uygulama, `test:db`, e2e, fixture üretimi. `db.lock` varken uygulamada veri girilmez.
   - `heavy.lock`: aynı anda tek ağır koşu (§4.2). Ağır koşu: kökten `test` ya da `build` (tam kapı), `test:db`, e2e ve CI başlatan push (main ya da `task/**`, yalnız `docs/**` / `*.md` değilse). Tek başına `lint`, `typecheck` ve `--filter`'lı odaklı koşu sayılmaz. e2e ve `test:db` için önce `db.lock`, sonra `heavy.lock`. Kilit sende değilse ya da CI koşuyorsa `scripts/guard.mjs` 2026-10-14'e kadar uyarır, sonra reddeder; kaçış ağır komutun başına `NF_OVERRIDE="<gerekçe>"`, `audit.log`'a yazılır.
   - Ağır koşu başlamadan `gh run list --limit 3` ile CI'a bakılır; CI koşuyorsa beklenir.
 
-### Gönderim adımları
-1. İnceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder" izni (§4.2).
-2. `node scripts/lock.mjs take main "<oturum/iş>, <iş>"`; kod değiştiyse `heavy` de (tam kapı ve CI başlatan push ağır koşudur).
-3. `git fetch origin && git rebase origin/main`; çatışma çözüldüyse inceleme yenilenir.
-4. Rebase sonrası tam kapı yeşil. Yalnız `.md` dosyaları değiştiyse kod kapısı gerekmez.
-5. `git push origin HEAD:main` (yalnız fast-forward); reddedilirse 3'e dönülür.
-6. Kilitler bırakılır, main CI izlenir.
+### Gönderim adımları (tren)
+1. **Oturum hazırlar:** inceleme ONAY (§4.3) ve gerekiyorsa koordinatörün "gönder"i; `git fetch origin && git rebase origin/main` (çatışma çözüldüyse inceleme yenilenir); tam kapı, `supabase/` değiştiyse `test:db`, etkilenen e2e dalda yeşil (`heavy.lock` ile); ekleyen canlı migration uygulanmış ve dosya adı canlı ledger sürümüyle aynı (KARARLAR OPS-05); dal uzakta. Sonra `node scripts/inbox.mjs status "<iş-id>" "TREN-HAZIR <dal> @<sha>"` ve sıradaki işe geçer. Main kilidini almaz.
+2. **Koordinatör treni kurar:** güncel `origin/main`'den `train/<zaman>`; hazır dallar migration sırasıyla (canlı ledger sırası) alınır. `supabase/schema.sql` çatışması mekaniktir, `pnpm.cmd db:schema` ile yeniden üretilir; başka çatışmada dal trenden çıkar, sahibine döner.
+3. **Tek kapı:** `db.lock` + `heavy.lock` ile trenin migration'ları ortak yerel DB'ye uygulanır; tam kapı, `test:db` ve trendeki işlerin etkilediği e2e bir kez koşar. Kırmızıysa bozan dal çıkar, sahibine döner, kapı yeniden koşar.
+4. **Push:** `main.lock` (yalnız bu adım) → `git push origin train/<zaman>:main` (yalnız fast-forward) → kilitler bırakılır, main CI izlenir; trendeki her işin sahibine haber verilir.
+5. Silen migration main CI yeşil olunca canlıya gider (oturum, koordinatörün "gönder"iyle).
+- Tren beklemez: hazır tek dal da tren olur. Main kırmızıysa ilk tren yalnız düzelteni taşır.
 - Commit mesajı İngilizce Conventional Commits ve iş numarasıyla: `fix(schedule): ... (EKRAN-01)`. Dosyalar adıyla eklenir; `git commit -a` kullanılmaz.
 
 ### Veritabanı ve canlı
