@@ -4,7 +4,7 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 
 ## e2e
 - `global-setup.ts` her koşuda builder'la yeni workspace kurup ortak yerel DB'ye commit'ler (`.world.json`): ayse, emre (Kadikoy), mehmet (Besiktas), zeynep (admin), ali, deniz (ikisi). Ek kişi ve rol: `fixtures/documents.ts`; kişi sayan spec kendi dünyasını kurar.
-- Tek dosya: `e2e` klasöründe `npx playwright test flows/<dosya>` (`pnpm.cmd e2e -- <dosya>` bütün paketi koşturur). Ortak DB'ye dokunduğu için `node scripts/lock.mjs run db --e2e -- "npx playwright test flows/<dosya>"` ile. DB'siz hızlı kapı: `pnpm.cmd --filter @newfork/e2e typecheck` ve `lint`.
+- Tek dosya: `e2e` klasöründe `npx playwright test flows/<dosya>` (`pnpm.cmd e2e -- <dosya>` bütün paketi koşturur). Ortak DB'ye dokunduğu için `e2e` klasöründen `node ../scripts/lock.mjs run db --e2e -- npx playwright test flows/<dosya>` ile. DB'siz hızlı kapı: `pnpm.cmd --filter @newfork/e2e typecheck` ve `lint`.
 - `--repeat-each` yalnız spec `fixtures/world.ts`'teki `roundWeek`, `roundLabel`, `draftName`'i kullanırsa çalışır; sabit ad ikinci turda çakışır.
 - Config `npx supabase status -o env` okur: "did not print …" yerel Supabase kapalı demektir.
 - `signIn` girişi beklemez: ardından `expect(page).not.toHaveURL(/\/sign-in/)` ya da `signInAs`.

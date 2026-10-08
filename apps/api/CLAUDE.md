@@ -23,7 +23,7 @@ Fastify API'nin yerel kuralları; `packages/shared`'i de kapsar (ayrı dosyası 
 - Okunur cümleli hint'ler `managementAndOwnerRefusals`'ta; `rpcFailure` kendisi kullanır. Settings (`organization-data.ts`) ve profil yazmaları web'den RLS'e gider; oradaki ret API'ye uğramaz.
 
 ## Yetki ikizi
-- `expected()` (`authorization.ts`), `supabase/tests/authorization_matrix.test.sql`'in ikizi. Bölüm 2-5 değişince `pnpm.cmd --filter @newfork/shared dump:authz-matrix`; sha256 bayat dökümü reddeder. Ortak DB'de olmayan migration: `AUTHZ_MATRIX_PRELUDE="supabase/migrations/<dosya>.sql"`, `node scripts/lock.mjs run db -- …` ile.
+- `expected()` (`authorization.ts`), `supabase/tests/authorization_matrix.test.sql`'in ikizi. Bölüm 2-5 değişince `node scripts/lock.mjs run db -- pnpm.cmd --filter @newfork/shared dump:authz-matrix`; sha256 bayat dökümü reddeder. Ortak DB'de olmayan migration: önce dış kabukta `$env:AUTHZ_MATRIX_PRELUDE='supabase/migrations/<dosya>.sql'`, sonra aynı kilitli komut.
 - Her dalın hücresi yok: ikizin yeşili kapsanmayan dalı kanıtlamaz.
 
 ## Test
