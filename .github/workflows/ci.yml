@@ -1,18 +1,19 @@
 name: CI
 
 on:
+  # WORKFLOW-V2 (spec §7.2): the full check runs once per train, on its train/<stamp> branch; main only ever
+  # receives that same green commit (scripts/train.mjs push), so a push to main or task/** starts nothing.
   push:
-    branches: [main, "task/**"]
-    # Docs-only pushes used to cancel a running code check (concurrency below).
+    branches: ["train/**"]
     paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
     paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
 
-# BL-756: a newer push cancels a branch's running check, never main's: a
-# cancelled main run left a code push unproven. On main the newer run waits.
+# A newer push to the same ref (a PR) cancels the running check; every train branch is new.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 jobs:
   check:
