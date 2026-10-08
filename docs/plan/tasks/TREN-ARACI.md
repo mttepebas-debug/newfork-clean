@@ -43,7 +43,7 @@ In scope:
      - CI koşuyorsa (`gh run list`) başlamaz.
      - `pnpm.cmd install --frozen-lockfile` ve `@newfork/shared`, `@newfork/ui` build; ardından `lint`, `typecheck`, `test`, `build`, `test:db`, verilen e2e'ler.
      - İlk kırmızıda durur; ekranda adım, çıkış kodu, log yolu ve logun son 20 satırı.
-     - Bitince (yeşil ya da kırmızı) `db.lock`'u bırakır; `heavy.lock` kalır.
+     - Bitince `db.lock`'u bırakır. `heavy.lock` yalnız kapı yeşilse push'a kadar kalır; kırmızıda ya da başlamadan durursa o da bırakılır.
    - **`push`**:
      - `main.lock`'u alır. `origin/main` trenin atası değilse durur ("main ilerledi, yeniden build").
      - Başka bir CI koşuyorsa durur. `heavy.lock` trenin değilse durur.
@@ -54,10 +54,13 @@ In scope:
 2. **`scripts/lock.mjs`:** `main.lock` 30 dakikayı geçince `status` ayrı satır basar: `UZUN: main.lock 34 dk, sahibi <kimlik> (<amaç>)`. Mevcut 2 saatlik "stale" aynen kalır.
 3. **`scripts/inbox.mjs board`:** aynı UZUN satırını panonun en üstüne basar. Tek yerden gelir: `lock.mjs`'den dışa açılan bir fonksiyon.
 4. Testler (`scripts/*.test.mjs` kalıbı, `node --test`):
-   - `scripts/train.test.mjs` geçici bir git deposunda koşar: geçici çalışma deposu + yerel çıplak `origin` + geçici `NEWFORK_LOCK_DIR`.
+   - `scripts/train-plan.test.mjs` (plan, build) ve `scripts/train-steps.test.mjs` (apply-local, gate, push), ortak dünya
+     `scripts/train-test-world.mjs`. İki dosya, çünkü `node --test` dosyaları yan yana koşar (Windows'ta git yavaş: tek dosya 49 sn, iki dosya 27 sn).
+     Geçici çalışma deposu + yerel çıplak `origin` + geçici `NEWFORK_LOCK_DIR` / `NEWFORK_INBOX_DIR`.
    - `docker`/`psql`, `pnpm` ve `gh` çağrıları enjekte edilir; gerçek ortak DB'ye, gerçek kilitlere ve GitHub'a dokunulmaz.
    - `lock.test.mjs` ve `coord-hooks.test.mjs`'e UZUN satırı hücreleri.
-   - Kök `package.json` `test` listesine `scripts/train.test.mjs`.
+   - Kök `package.json` `test` listesine iki dosya.
+5. Yeniden kullanım için iki dışa açma (davranış aynı): `guard.mjs` `audit`, `test-db.mjs` `container`.
 
 Out of scope:
 - Canlı (hosted) göç: tren canlıya dokunmaz, `apply_migration` koordinatörün ayrı adımı (CLAUDE.md §5.1).
@@ -84,8 +87,9 @@ Done when:
 - nf-guvenlik ONAY @<sha>.
 - Rapor (bu dosyanın sonu) + `TREN-HAZIR task/tren-araci @<sha>`.
 
-Touches: `scripts/train.mjs` (yeni), `scripts/train.test.mjs` (yeni), `scripts/lock.mjs`, `scripts/lock.test.mjs`, `scripts/inbox.mjs`,
-`scripts/coord-hooks.test.mjs`, `package.json` (yalnız `test` listesi), bu dosya.
+Touches: `scripts/train.mjs`, `scripts/train-test-world.mjs`, `scripts/train-plan.test.mjs`, `scripts/train-steps.test.mjs` (yeni);
+`scripts/lock.mjs`, `scripts/lock.test.mjs`, `scripts/inbox.mjs`, `scripts/coord-hooks.test.mjs`, `scripts/guard.mjs` ve `scripts/test-db.mjs`
+(yalnız `export`), `package.json` (yalnız `test` listesi), bu dosya.
 
 Test plan:
 - Kırmızı → yeşil: her alt komut ve yukarıdaki hücreler, geçici depoda.

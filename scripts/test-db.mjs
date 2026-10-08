@@ -140,7 +140,7 @@ export function mainBuilder(root, ref = "origin/main") {
   }
 }
 
-function container(root) {
+export function container(root) {
   const id = fs.readFileSync(path.join(root, "supabase/config.toml"), "utf8").match(/^project_id\s*=\s*"([^"]+)"/m)?.[1];
   if (!id) throw new Error("supabase/config.toml'da project_id okunamadı");
   return `supabase_db_${id}`;

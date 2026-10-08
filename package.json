@@ -7,7 +7,7 @@
     "dev:turbo": "turbo dev",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
-    "test": "node --test scripts/lock.test.mjs scripts/coord-hooks.test.mjs scripts/decision-log.test.mjs scripts/schema-snapshot.test.mjs scripts/test-db.test.mjs && turbo test",
+    "test": "node --test scripts/lock.test.mjs scripts/coord-hooks.test.mjs scripts/decision-log.test.mjs scripts/schema-snapshot.test.mjs scripts/test-db.test.mjs scripts/train-plan.test.mjs scripts/train-steps.test.mjs && turbo test",
     "test:db": "node scripts/test-db.mjs",
     "db:schema": "node scripts/schema-snapshot.mjs write",
     "e2e": "playwright test -c e2e/playwright.config.ts",
