@@ -9,6 +9,9 @@
 // lock (no pid) is never cleared. take()/release() stay for scripts/train.mjs, which also holds the
 // lock inside one command. The lock file only ever appears fully formed (scratch file + fs.linkSync),
 // so EEXIST = held. Directory is overridable via NEWFORK_LOCK_DIR (tests only; never the real folder).
+// Ctrl+C stops the command and lets go. A force-killed lock.mjs (Task Manager, taskkill /f) cannot:
+// its command may keep running while the next waiter clears the dead lock and starts -- the two then
+// overlap. Stop such a command with Ctrl+C rather than killing lock.mjs (no process-tree tracking).
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -128,19 +131,42 @@ export function release(name, arg) {
   return { ok: true, message: `${name}.lock bırakıldı: ${identity}` };
 }
 
-// A dead holder's lock goes to dead/ (kept for the record). Only the first waiter in the queue and the
-// train call this, so two processes rarely race for it; a lost race is a rename that fails, not a harm.
-export function clearDead(name, opts) {
+// A dead holder's lock goes to dead/ (kept for the record). The first waiter in the queue and the train
+// both call this, so two clearers can race: between our read and our rename another one may move the
+// dead lock and take() a fresh, live one. So the rename goes to a unique path and the moved file is read
+// back; if it is not the dead entry we checked, it is linked back as the lock (EEXIST: someone took a
+// new one meanwhile -- the copy then stays in dead/) and nothing counts as cleared.
+// opts.beforeMove is a test seam that runs between the check and the rename.
+export function clearDead(name, opts = {}) {
   const file = lockPath(name);
   if (!fs.existsSync(file)) return null;
-  const held = readLock(file);
+  let held;
+  try {
+    held = readLock(file);
+  } catch {
+    return null; // gone between the check and the read
+  }
   if (!isDead(held, opts)) return null;
+  opts.beforeMove?.();
   const dir = path.join(LOCK_DIR, "dead");
   fs.mkdirSync(dir, { recursive: true });
-  const to = path.join(dir, `${name}.${Date.now()}.lock`);
+  const to = path.join(dir, `${name}.${Date.now()}.${process.pid}.${Math.random().toString(36).slice(2, 8)}.lock`);
   try {
     fs.renameSync(file, to);
   } catch {
+    return null;
+  }
+  let moved = null;
+  try {
+    moved = readLock(to);
+  } catch {}
+  if (!moved || moved.pid !== held.pid || moved.startedAt !== held.startedAt || moved.identity !== held.identity) {
+    try {
+      fs.linkSync(to, file);
+      fs.rmSync(to, { force: true });
+    } catch {
+      // EEXIST: a newer lock is already in place; keep the moved copy in dead/ for the record
+    }
     return null;
   }
   return `${name}.lock ölü sahibinden temizlendi: ${held.identity} (pid ${held.pid}) → ${to}`;
@@ -160,6 +186,17 @@ const readTicket = (name, f) => {
     return null;
   }
 };
+
+// A ticket that does not parse (an older writer killed mid-write, a hand edit) would block the queue
+// forever if first; once it is older than this it is dropped.
+const UNREADABLE_TICKET_MS = 10000;
+function unreadableTooLong(name, f) {
+  try {
+    return Date.now() - fs.statSync(path.join(queueDir(name), f)).mtimeMs > UNREADABLE_TICKET_MS;
+  } catch {
+    return false;
+  }
+}
 
 export function status(opts) {
   return LOCKS.map((name) => {
@@ -216,7 +253,10 @@ export async function run(name, command, { as, e2e = false, maxWaitMin = 60, pol
   fs.mkdirSync(queueDir(name), { recursive: true });
   const ticket = `${String(Date.now()).padStart(15, "0")}-${process.pid}-${Math.random().toString(36).slice(2, 8)}.json`;
   const ticketFile = path.join(queueDir(name), ticket);
-  fs.writeFileSync(ticketFile, JSON.stringify({ identity, command, pid: process.pid, startedAt: new Date().toISOString() }));
+  // atomic: written under a name tickets() skips, then renamed, so a reader never sees half a ticket
+  const ticketTmp = `${ticketFile}.tmp`;
+  fs.writeFileSync(ticketTmp, JSON.stringify({ identity, command, pid: process.pid, startedAt: new Date().toISOString() }));
+  fs.renameSync(ticketTmp, ticketFile);
   const started = Date.now();
   let lastSay = 0;
   let lastCi = -Infinity;
@@ -224,8 +264,9 @@ export async function run(name, command, { as, e2e = false, maxWaitMin = 60, pol
   try {
     for (;;) {
       for (const f of tickets(name)) {
+        if (f === ticket) continue;
         const t = readTicket(name, f);
-        if (f !== ticket && t && isDead(t, deadOpts)) fs.rmSync(path.join(queueDir(name), f), { force: true });
+        if (t ? isDead(t, deadOpts) : unreadableTooLong(name, f)) fs.rmSync(path.join(queueDir(name), f), { force: true });
       }
       const queue = tickets(name);
       if (queue[0] === ticket) {
@@ -258,8 +299,8 @@ export async function run(name, command, { as, e2e = false, maxWaitMin = 60, pol
   try {
     return await exec(command);
   } finally {
-    release(name, identity);
-    say(`${name}.lock bırakıldı (${identity})`);
+    const r = release(name, identity);
+    say(r.ok ? `${name}.lock bırakıldı (${identity})` : r.message);
   }
 }
 
@@ -282,6 +323,12 @@ const USAGE = [
   "  Tırnak isteyen komutu tek argüman ver: -- 'psql -c \"select 1\"'",
 ].join("\n");
 
+// --max-wait <min>: a finite positive number, else the default 60 (NaN would mean "wait forever").
+export function parseMaxWait(v) {
+  const n = Number(v);
+  return v !== undefined && v !== "" && Number.isFinite(n) && n > 0 ? n : 60;
+}
+
 async function main(argv) {
   const [cmd, ...rest] = argv;
   if (cmd === "status") return printStatus();
@@ -294,7 +341,7 @@ async function main(argv) {
       return i >= 0 ? opts[i + 1] : undefined;
     };
     if (rest[0] && command) {
-      process.exitCode = await run(rest[0], command, { e2e: opts.includes("--e2e"), as: val("--as"), maxWaitMin: Number(val("--max-wait") ?? 60) });
+      process.exitCode = await run(rest[0], command, { e2e: opts.includes("--e2e"), as: val("--as"), maxWaitMin: parseMaxWait(val("--max-wait")) });
       return;
     }
   }

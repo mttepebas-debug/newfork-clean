@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// TEAM-001: red/green coverage for lock.mjs's atomicity, ownership, and
-// legacy-lock-compatibility rules. Runs against a throwaway temp directory
-// (NEWFORK_LOCK_DIR) -- never the real .newfork-locks folder.
+// WORKFLOW-V2: coverage for lock.mjs's single db lock -- take/release atomicity and ownership,
+// hand-written (plain-text) locks, status (long, stale, dead, queue), dead-holder clearing, and
+// run(): arrival-order queue, exit codes, --max-wait, --e2e waiting for CI. Runs against a throwaway
+// temp directory (NEWFORK_LOCK_DIR) -- never the real .newfork-locks folder.
 // Run: node --test scripts/lock.test.mjs
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
@@ -12,14 +13,12 @@ import path from "node:path";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-lock-test-"));
 process.env.NEWFORK_LOCK_DIR = tmpDir;
 
-const { take, release, status, run, isDead, clearDead } = await import("./lock.mjs");
+const { take, release, status, run, isDead, clearDead, parseMaxWait } = await import("./lock.mjs");
 
 const dbLock = path.join(tmpDir, "db.lock");
-const mainLock = path.join(tmpDir, "main.lock");
-const heavyLock = path.join(tmpDir, "heavy.lock");
 
 beforeEach(() => {
-  for (const f of [dbLock, mainLock, heavyLock]) fs.rmSync(f, { force: true });
+  fs.rmSync(dbLock, { force: true });
   for (const d of ["queue-db", "dead"]) fs.rmSync(path.join(tmpDir, d), { recursive: true, force: true });
   delete process.env.NEWFORK_CI_STATE;
 });
@@ -261,4 +260,54 @@ test("status: over 30 minutes is long, taken before boot is dead, waiting ticket
   assert.deepEqual(s.queue, [{ identity: "run/bekleyen-9", command: "pnpm.cmd test:db", dead: false }]);
   fs.writeFileSync(dbLock, JSON.stringify({ identity: "run/eski-1", purpose: "x", startedAt: "2000-01-01T00:00:00Z", pid: process.pid }));
   assert.equal(status()[0].dead, true);
+});
+
+// ---- fix round 1 ----------------------------------------------------------------------------------
+test("clearDead: a live lock that replaced the dead one before the move is put back, not moved to dead/", () => {
+  const dead = { identity: "oturum/eski", purpose: "x", startedAt: "2000-01-01T00:00:00Z", pid: process.pid };
+  const live = { identity: "koordinator/tren-yeni", purpose: "apply-local", startedAt: new Date().toISOString(), pid: process.pid };
+  fs.writeFileSync(dbLock, JSON.stringify(dead));
+  // another clearer moves the dead lock and takes a fresh one between our read and our rename
+  const result = clearDead("db", { beforeMove: () => fs.writeFileSync(dbLock, JSON.stringify(live)) });
+  assert.equal(result, null);
+  assert.equal(JSON.parse(fs.readFileSync(dbLock, "utf8")).identity, "koordinator/tren-yeni");
+  let inDead = [];
+  try {
+    inDead = fs.readdirSync(path.join(tmpDir, "dead"));
+  } catch {}
+  assert.deepEqual(inDead, []);
+});
+
+test("run: an unreadable ticket older than 10 s ahead in the queue is dropped and run goes on", async () => {
+  fs.mkdirSync(path.join(tmpDir, "queue-db"), { recursive: true });
+  const bad = path.join(tmpDir, "queue-db", "000000000000001-1-bad.json");
+  fs.writeFileSync(bad, "");
+  const old = new Date(Date.now() - 60000);
+  fs.utimesSync(bad, old, old);
+  const code = await run("db", `${node} -e "process.exit(0)"`, { ...quiet, as: "bozuk", maxWaitMin: 0.05 });
+  assert.equal(code, 0);
+  assert.deepEqual(queueFiles(), []);
+});
+
+test("parseMaxWait: a finite positive number is kept, anything else falls back to 60", () => {
+  assert.equal(parseMaxWait("5"), 5);
+  assert.equal(parseMaxWait("0.5"), 0.5);
+  for (const v of [undefined, "abc", "", "0", "-3", "Infinity"]) assert.equal(parseMaxWait(v), 60, String(v));
+});
+
+test("run: when release fails (the lock changed hands), its message is said, not 'bırakıldı'", async () => {
+  const lines = [];
+  const code = await run("db", "unused", {
+    ...quiet,
+    as: "devir",
+    say: (l) => lines.push(l),
+    exec: async () => {
+      fs.writeFileSync(dbLock, JSON.stringify({ identity: "baska/sahip", purpose: "x", startedAt: new Date().toISOString(), pid: process.pid }));
+      return 0;
+    },
+  });
+  assert.equal(code, 0);
+  const last = lines.at(-1);
+  assert.match(last, /sahibi "baska\/sahip"/);
+  assert.doesNotMatch(last, /bırakıldı \(/);
 });
