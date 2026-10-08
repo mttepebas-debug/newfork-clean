@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createNotificationOutboxWorkerWithClient } from "./notification-outbox-worker";
+import { createNotificationOutboxWorkerWithClient, readDocumentMaintenance } from "./notification-outbox-worker";
 
 describe("notification outbox worker", () => {
   it("leases a bounded batch and processes each item", async () => {
@@ -227,6 +227,29 @@ describe("notification outbox worker", () => {
       "lease_notification_outbox_service",
       expect.anything(),
     );
+  });
+  // BL-965: the failure used to leave only { failed: true }; the message is what the cron route logs.
+  it("keeps each maintenance failure's message", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
+    const worker = createNotificationOutboxWorkerWithClient(
+      { rpc },
+      {
+        prepareBatch: async () => {
+          throw new Error("shift maintenance unavailable");
+        },
+        prepareDocuments: async () => {
+          throw new Error('null value in column "notification_key"');
+        },
+      },
+    );
+    await expect(worker.runBatch()).resolves.toMatchObject({
+      maintenance: { failed: true, error: "shift maintenance unavailable" },
+      documentMaintenance: { failed: true, error: 'null value in column "notification_key"' },
+    });
+  });
+  it("reads the cases document maintenance skipped after an error, 0 when the database does not say", () => {
+    expect(readDocumentMaintenance({ checked: 3, enqueued: 1, failed_cases: 1 })).toEqual({ checked: 3, enqueued: 1, failed_cases: 1 });
+    expect(readDocumentMaintenance({ checked: 3, enqueued: 1 })).toEqual({ checked: 3, enqueued: 1, failed_cases: 0 });
   });
   it("runs document maintenance even when shift maintenance fails", async () => {
     const rpc = vi.fn().mockResolvedValue({ data: [], error: null });

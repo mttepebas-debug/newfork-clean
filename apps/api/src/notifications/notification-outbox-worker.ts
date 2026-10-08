@@ -34,12 +34,25 @@ type MaintenanceResult = z.infer<typeof maintenanceSchema>;
 const documentMaintenanceSchema = z.object({
   checked: z.number().int().nonnegative(),
   enqueued: z.number().int().nonnegative(),
+  // BL-965: cases the database skipped after an error; a database without the field skipped none
+  failed_cases: z.number().int().nonnegative().default(0),
 });
 type DocumentMaintenanceResult = z.infer<typeof documentMaintenanceSchema>;
+export const readDocumentMaintenance = (data: unknown): DocumentMaintenanceResult => documentMaintenanceSchema.parse(data);
+
+/** A maintenance step that threw; the cron route logs the message (BL-965). */
+export interface MaintenanceFailure {
+  readonly failed: true;
+  readonly error: string;
+}
+const maintenanceFailure = (error: unknown): MaintenanceFailure => ({
+  failed: true,
+  error: error instanceof Error ? error.message : String(error),
+});
 
 export interface NotificationOutboxBatchResult {
-  documentMaintenance?: DocumentMaintenanceResult | { failed: true };
-  maintenance?: MaintenanceResult | { failed: true };
+  documentMaintenance?: DocumentMaintenanceResult | MaintenanceFailure;
+  maintenance?: MaintenanceResult | MaintenanceFailure;
   leased: number;
   processed: number;
   skipped: number;
@@ -71,7 +84,7 @@ export function createNotificationOutboxWorker(options: {
         target_batch_size: 100,
       });
       if (result.error) throw new Error(result.error.message);
-      return documentMaintenanceSchema.parse(result.data);
+      return readDocumentMaintenance(result.data);
     },
     prepareBatch: async () => {
       const result = await client.rpc("shift_exchanges_maintain_service", {
@@ -110,16 +123,16 @@ export function createNotificationOutboxWorkerWithClient(
       if (options.prepareBatch) {
         try {
           maintenance = await options.prepareBatch();
-        } catch {
-          maintenance = { failed: true };
+        } catch (error) {
+          maintenance = maintenanceFailure(error);
         }
       }
       let documentMaintenance: NotificationOutboxBatchResult["documentMaintenance"];
       if (options.prepareDocuments) {
         try {
           documentMaintenance = await options.prepareDocuments();
-        } catch {
-          documentMaintenance = { failed: true };
+        } catch (error) {
+          documentMaintenance = maintenanceFailure(error);
         }
       }
       const leaseResponse = await client.rpc(
