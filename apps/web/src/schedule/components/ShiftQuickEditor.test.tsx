@@ -149,7 +149,9 @@ describe("ShiftQuickEditor", () => {
         onClose={vi.fn()} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={onSubmit} />);
       fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
       await waitFor(() => expect(loadShiftAvailability).toHaveBeenCalled());
-      const asked = await screen.findByRole("button", { name: "Place shift" }).then(() => true, () => false);
+      // Asked or saved, whichever comes first: waiting for the question to time out cost 5 s per unasked cell (BL-757).
+      await waitFor(() => expect(onSubmit.mock.calls.length > 0 || screen.queryByRole("button", { name: "Place shift" }) !== null).toBe(true));
+      const asked = screen.queryByRole("button", { name: "Place shift" }) !== null;
       if (asked) fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
       await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
       view.unmount();
