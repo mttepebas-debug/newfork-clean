@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(65);
+select plan(67);
 
 -- BL-080. An owner gives their legal name at the first step of setup: the
 -- three name fields there are the legal name as well as the account's and the
@@ -378,6 +378,12 @@ select is(
     'update public.employee_private_profiles set emergency_contact_name = %L, emergency_contact_relationship = %L, emergency_contact_phone = %L where employee_id = %L',
     'Ayse', 'Kardeş', '+14155550100', tests.id('ln:owner'))),
   '23514', 'an emergency contact''s relationship refuses them');
+-- Pasted from macOS or a PDF, the letter can arrive as a base letter and a
+-- combining mark: the same letter, refused the same way (BL-969 code review).
+select is(pg_temp.letters('workspaces', 'name', tests.id('ln'), U&'S\0327is\0327li Grill'), '23514',
+  'a workspace name refuses a decomposed ş');
+select is(pg_temp.letters('employee_private_profiles', 'legal_last_name', tests.id('ln:owner'), U&'I\0307nce', 'employee_id'),
+  '23514', 'a legal last name refuses a decomposed İ');
 select is(
   pg_temp.refusal(format(
     'insert into public.employee_preferred_name_requests (workspace_id, employee_id, requested_name, status, requested_by) values (%L, %L, %L, %L, %L)',
