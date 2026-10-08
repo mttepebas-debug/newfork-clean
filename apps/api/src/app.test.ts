@@ -1948,6 +1948,8 @@ describe("api app", () => {
 
   it.each([
     ["edit lease expired", "schedule.edit_lease_expired", "edit_lease_expired"],
+    // EKRAN-01 B3: an edit closed by another opening is not a lapsed lock.
+    ["edit session closed", "schedule.edit_session_closed", "edit_session_closed"],
     ["shift revision stale", "schedule.edit_session_stale", "edit_session_stale"],
     ["draft revision stale", "schedule.edit_session_stale", "edit_session_stale"],
     // BL-958: the key is in the hint; the sentence alone names nothing.

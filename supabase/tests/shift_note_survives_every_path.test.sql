@@ -1,12 +1,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(23);
 
 -- BL-199: a manager's note on a shift ("Bring the catering order list") goes
 -- wherever the shift goes. Saving the week, making a template of it and
 -- applying that template, and publishing all carry the note along. An edit
--- whose payload leaves the note (or the break, or "hide the time") out keeps
--- it (BL-292, EKRAN-01 #11). Two decisions (user, 2026-09-28) are
+-- whose payload leaves the note (or the break, "hide the time" or the labels)
+-- out keeps it (BL-292, EKRAN-01 #11 and B7). Two decisions (user, 2026-09-28) are
 -- locked too: S4 (a) a change to the note alone makes its owner an affected
 -- employee at the next publish, who hears about it with everyone else;
 -- S5 (a) after an approved swap or pickup the note stays with the shift, and
@@ -162,6 +162,24 @@ select is(
   (select s.hide_time_on_badge from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
   false,
   '"hide the time" sent as false turns it off');
+
+-- EKRAN-01 B7: the labels stay put the same way; an empty list clears them.
+insert into public.shift_labels (id, workspace_id, name) values (tests.remember('np:label:catering', gen_random_uuid()), tests.id('np'), 'Catering');
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'),
+  jsonb_build_object('label_ids', jsonb_build_array(tests.id('np:label:catering'))));
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'), '{}', array['label_ids', 'label_names']);
+
+select is(
+  (select s.label_names from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  array['Catering'],
+  'an edit whose payload leaves the labels out keeps the Catering label');
+
+select pg_temp.rewrite(tests.id('np:session:w2'), tests.id('np:shift:w2-tue'), '{"label_ids": []}');
+
+select is(
+  (select s.label_names from public.schedule_edit_session_shifts s where s.id = tests.id('np:shift:w2-tue')),
+  array[]::text[],
+  'an empty label list sent on purpose clears them');
 
 -- 5. S4 (a): a change to the note alone is a change for its owner ---------------------
 

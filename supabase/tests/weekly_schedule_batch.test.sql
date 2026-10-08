@@ -76,6 +76,18 @@ select lives_ok($$select pg_temp.create_batch()$$,'exact retry succeeds despite 
 select is((select count(*) from public.schedule_edit_session_shifts where workspace_id=(select w from ws)),2::bigint,'retry creates no duplicate');
 select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'PT409',null,'same key with changed body is rejected');
 select throws_ok($$select pg_temp.create_batch(null,gen_random_uuid())$$,'PT409',null,'new command cannot reuse a stale revision');
+-- EKRAN-01 B4: the screen tells a changed edit from a lapsed lock or a closed
+-- edit by the key in the hint, so each batch refusal carries its own.
+create function pg_temp.refusal_hint(statement text) returns text language plpgsql as $f$
+declare code text; reason text;
+begin
+ execute statement;
+ return 'allowed';
+exception when others then
+ get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+ return concat_ws(' ', code, nullif(reason, ''));
+end; $f$;
+select is(pg_temp.refusal_hint($$select pg_temp.create_batch(null,gen_random_uuid())$$),'PT409 schedule.edit_session_stale','a batch on an old revision names the changed edit');
 select public.mutate_schedule_edit_shift_service(s.manager,s.w,s.session,e.revision,'create',gen_random_uuid(),null,s.payload||'{"scheduled_date":"2035-01-17"}',gen_random_uuid())->>'revision'
  from ws s join public.schedule_edit_sessions e on e.id=s.session;
 select is((pg_temp.create_batch()->>'revision')::integer,(select revision from public.schedule_edit_sessions where id=(select session from ws)),'retry returns current state instead of overwriting later edits');
@@ -87,6 +99,12 @@ update ws set payload=payload||jsonb_build_object('availability_assessment_finge
 update ws set batch=jsonb_build_array(payload);
 select lives_ok($$select pg_temp.create_batch()$$,'fresh confirmed assignment needs no written reason');
 select is((select reason from public.schedule_availability_overrides where workspace_id=(select w from ws) and assessment->>'warning_policy'='confirm' limit 1),'Schedule conflict confirmed by manager.','batch retains the canonical acceptance audit');
+update public.schedule_edit_sessions set expires_at=now()-interval '1 minute' where id=(select session from ws);
+select is(pg_temp.refusal_hint($$select public.create_schedule_shifts_batch_service(s.manager,s.w,s.session,e.revision,s.batch,gen_random_uuid())
+ from ws s join public.schedule_edit_sessions e on e.id=s.session$$),'PT409 schedule.edit_lease_expired','a batch after the lock ran out names the lapsed lock');
+update public.schedule_edit_sessions set status='expired' where id=(select session from ws);
+select is(pg_temp.refusal_hint($$select public.create_schedule_shifts_batch_service(s.manager,s.w,s.session,e.revision,s.batch,gen_random_uuid())
+ from ws s join public.schedule_edit_sessions e on e.id=s.session$$),'PT409 schedule.edit_session_closed','a batch on a closed edit names the closed edit');
 select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
 select throws_ok($$select pg_temp.create_batch()$$,'42501',null,'retry rechecks current location scope');
 select ok(not has_function_privilege('authenticated','public.create_schedule_shifts_batch_service(uuid,uuid,uuid,integer,jsonb,uuid)','EXECUTE'),'browser role cannot execute privileged batch directly');

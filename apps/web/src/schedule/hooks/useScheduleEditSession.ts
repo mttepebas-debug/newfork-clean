@@ -10,6 +10,7 @@ import {
   discardScheduleEditSession,
   heartbeatScheduleEditSession,
   isEditLeaseExpired,
+  isEditSessionClosed,
   isScheduleAccessRefused,
 } from "../schedule-data";
 import type { ScheduleMutationContext } from "../lib/scheduleMutationContext";
@@ -20,6 +21,7 @@ export const EDIT_NOT_RECONNECTED =
   "Your edit could not be reconnected. Check your connection and try again.";
 
 const EDIT_REFUSED = "You can no longer edit this schedule, so your edit closed.";
+const EDIT_ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
 
 export interface ScheduleLockConflict {
   readonly sessionId?: string;
@@ -196,12 +198,22 @@ export function useScheduleEditSession({
       });
     } else {
       void discardScheduleEditSession(workspaceId, result.session.id).catch(() => undefined);
-      callbacks.current.onError("Your edit ended while you were away. Open the schedule again to keep editing.");
+      callbacks.current.onError(EDIT_ENDED_AWAY);
     }
     setSession(null);
     callbacks.current.onEnded();
     return null;
   }, [workspaceId]);
+
+  /**
+   * EKRAN-01 B3: an edit closed elsewhere (saved, discarded, or set aside when
+   * the same person opened another) ends here. Opening it again would set the
+   * other edit aside in turn, so it is never "recovered".
+   */
+  const endClosedEdit = useCallback(() => {
+    setSession(null);
+    callbacks.current.onEnded();
+  }, []);
 
   /**
    * Runs a change; if its lock lapsed, picks the edit back up and tries once
@@ -211,15 +223,23 @@ export function useScheduleEditSession({
     try {
       return await action();
     } catch (error) {
+      if (isEditSessionClosed(error)) {
+        endClosedEdit();
+        throw new ScreenError(EDIT_ENDED_AWAY);
+      }
       if (!isEditLeaseExpired(error) || !(await recoverLease())) throw error;
     }
     try {
       return await action();
     } catch (error) {
       if (isEditLeaseExpired(error)) throw new ScreenError(EDIT_NOT_RECONNECTED);
+      if (isEditSessionClosed(error)) {
+        endClosedEdit();
+        throw new ScreenError(EDIT_ENDED_AWAY);
+      }
       throw error;
     }
-  }, [recoverLease]);
+  }, [recoverLease, endClosedEdit]);
 
   // The lock lives as long as the idle countdown: it may not lapse while
   // Keep editing? still offers to keep the work.
@@ -237,7 +257,10 @@ export function useScheduleEditSession({
         .catch((error: Error) => {
           if (sessionRef.current?.id !== sessionId) return;
           if (isEditLeaseExpired(error)) void recoverLease();
-          else if (isScheduleAccessRefused(error)) {
+          else if (isEditSessionClosed(error)) {
+            callbacks.current.onError(EDIT_ENDED_AWAY);
+            endClosedEdit();
+          } else if (isScheduleAccessRefused(error)) {
             // DB-1a: the person's scope shrank; the edit cannot go on.
             callbacks.current.onError(EDIT_REFUSED);
             setSession(null);
@@ -246,7 +269,7 @@ export function useScheduleEditSession({
         });
     }, 60_000);
     return () => window.clearInterval(heartbeat);
-  }, [workspaceId, sessionId, recoverLease]);
+  }, [workspaceId, sessionId, recoverLease, endClosedEdit]);
 
   return {
     session,

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(14);
 
 -- EKRAN-01 BE-2b (KK-166, KARARLAR Schedule "Haftalık e-postada kısmi teslim
 -- kuralı kapatmaz"): the weekly export email goes to 10 people; Ali's address
@@ -80,6 +80,21 @@ select pg_temp.failed();
 select public.record_schedule_export_schedule_failure_service(tests.id('pd'), tests.id('pd:rule'),
   'Every location in this export was deleted.', 1);
 select ok(not (pg_temp.rule()).enabled, 'a failure that cannot pass next week switches the rule off at once');
+
+-- EKRAN-01 B8: a send that reached nobody is not tried again on the cron's
+-- next five-minute round; the rule waits 15 minutes, so a broken one does not
+-- hold up other workspaces' sends for the whole hour.
+create function pg_temp.a_candidate() returns boolean language sql as $$
+  select exists (select 1 from jsonb_array_elements(public.list_schedule_export_cron_candidates_service(now())->'schedules') c
+    where (c->>'id')::uuid = tests.id('pd:rule'))
+$$;
+update public.scheduled_schedule_exports
+   set enabled = true, auto_disabled_at = null, consecutive_failures = 0, last_sent_at = null
+ where id = tests.id('pd:rule');
+select pg_temp.failed();
+select ok(not pg_temp.a_candidate(), 'a rule whose send failed minutes ago is not tried on the next round');
+update public.scheduled_schedule_exports set last_failed_at = now() - interval '16 minutes' where id = tests.id('pd:rule');
+select ok(pg_temp.a_candidate(), 'and is tried again 15 minutes later');
 
 select * from finish();
 rollback;

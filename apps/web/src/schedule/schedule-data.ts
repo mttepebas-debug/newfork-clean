@@ -115,6 +115,11 @@ export function isEditLeaseExpired(error: unknown): boolean {
   return editConflictCode(error) === "edit_lease_expired";
 }
 
+/** The edit was closed elsewhere (saved, discarded, or set aside by another opening): it is not picked up again. */
+export function isEditSessionClosed(error: unknown): boolean {
+  return editConflictCode(error) === "edit_session_closed";
+}
+
 /** The edit moved on under this screen (another save landed first); reload before the next change. */
 export function isEditSessionStale(error: unknown): boolean {
   return editConflictCode(error) === "edit_session_stale";

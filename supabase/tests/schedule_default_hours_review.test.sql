@@ -148,6 +148,25 @@ update dhr_pair set preview=public.preview_schedule_default_hours_service(actor,
 select is((preview->>'blocked_count')::integer,2,'both shifts are blocked when their new hours overlap each other') from dhr_pair;
 select is((select x->>'reason' from jsonb_array_elements(preview->'shifts') x where x->>'shift_id'=shift_a::text),'Overlaps Pair closer 2:00 PM–4:00 PM','the block names the other shift at its new hours') from dhr_pair;
 select throws_ok($$select public.apply_schedule_default_hours_service(actor,w,session,command||jsonb_build_object('fingerprint',preview->>'fingerprint','idempotency_key',gen_random_uuid())) from dhr_pair$$,'23514',null,'apply refuses the overlapping pair');
+-- EKRAN-01 B4: the review used to answer one sentence for a changed, lapsed
+-- or closed edit; the screen tells them apart by the key in the hint.
+create function pg_temp.refusal_hint(statement text) returns text language plpgsql as $f$
+declare code text; reason text;
+begin
+ execute statement;
+ return 'allowed';
+exception when others then
+ get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint;
+ return concat_ws(' ', code, nullif(reason, ''));
+end; $f$;
+select is(pg_temp.refusal_hint($$select public.preview_schedule_default_hours_service(actor,w,session,command||'{"expected_session_revision":0}') from dhr_pair$$),
+ 'PT409 schedule.edit_session_stale','a review on an old revision names the changed edit');
+update public.schedule_edit_sessions set expires_at=now()-interval '1 minute' where id=(select session from dhr_pair);
+select is(pg_temp.refusal_hint($$select public.preview_schedule_default_hours_service(actor,w,session,command) from dhr_pair$$),
+ 'PT409 schedule.edit_lease_expired','a review after the lock ran out names the lapsed lock');
+update public.schedule_edit_sessions set status='expired' where id=(select session from dhr_pair);
+select is(pg_temp.refusal_hint($$select public.preview_schedule_default_hours_service(actor,w,session,command) from dhr_pair$$),
+ 'PT409 schedule.edit_session_closed','a review on a closed edit names the closed edit');
 set local role authenticated;
 select throws_ok($$select public.preview_schedule_default_hours_service(null,null,null,'{}')$$,'42501',null,'preview is service-only');
 select throws_ok($$select public.apply_schedule_default_hours_service(null,null,null,'{}')$$,'42501',null,'apply is service-only');
