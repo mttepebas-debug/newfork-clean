@@ -5,6 +5,7 @@ import {
   toggleRolePermissions,
   workspaceRoleInputSchema,
   type Permission,
+  type PermissionDefinition,
   type WorkspaceRoleInput,
   type WorkspaceRoleRecord,
 } from "@newfork/shared";
@@ -239,6 +240,7 @@ export default function RolesSettingsPage() {
                 creating={creating}
                 canManage={canManage}
                 roles={roles}
+                permissions={query.data?.permissions ?? []}
                 workspaceId={workspaceId}
                 navigationRef={navigationRef}
                 onCopy={(draft) => go("new", draft)}
@@ -268,6 +270,7 @@ function RoleEditor({
   creating,
   canManage,
   roles,
+  permissions,
   workspaceId,
   navigationRef,
   onCopy,
@@ -278,6 +281,7 @@ function RoleEditor({
   readonly creating: boolean;
   readonly canManage: boolean;
   readonly roles: WorkspaceRoleRecord[];
+  readonly permissions: readonly PermissionDefinition[];
   readonly workspaceId: string;
   readonly navigationRef: AvailabilityNavigationRef;
   readonly onCopy: (draft: WorkspaceRoleInput) => void;
@@ -369,6 +373,7 @@ function RoleEditor({
   };
   const groups = permissionGroupsForRole(
     role?.access_class ?? draft.access_class,
+    permissions,
   );
   const submit = (event: FormEvent) => {
     event.preventDefault();

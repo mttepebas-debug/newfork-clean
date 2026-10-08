@@ -8,7 +8,12 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { permissionsForRole, workspaceRoleRecordSchema } from "@newfork/shared";
+import {
+  type Permission,
+  permissionSchema,
+  permissionsForRole,
+  workspaceRoleRecordSchema,
+} from "@newfork/shared";
 import RolesSettingsPage from "./RolesSettingsPage";
 import {
   deleteWorkspaceRole,
@@ -65,6 +70,41 @@ const employee = {
   access_class: "employee" as const,
   permission_keys: [...permissionsForRole("employee")],
 };
+const admin = {
+  ...manager,
+  id: "b1051009-0000-4000-8000-000000000002",
+  name: "Admin",
+  system_key: "admin" as const,
+  access_class: "admin" as const,
+  permission_keys: [...permissionsForRole("admin")],
+};
+// The API's catalog: what the database keeps for owner and admin is not grantable
+// to a custom role (permissions.custom_grantable = false; GUVENLIK-A GA-2).
+const ownerAndAdminOnly: readonly Permission[] = [
+  "documents.manage",
+  "notifications.broadcast.approve",
+  "notifications.delivery_audit.read",
+  "notifications.dlq.replay",
+  "notifications.settings.write",
+  "notifications.test_send",
+  "roles.manage",
+  "roles.read",
+  "schedule.conflict_rules.manage",
+  "settings.general.manage",
+  "settings.jobs.manage",
+  "settings.locations.manage",
+  "settings.schedule_rules.manage",
+  "settings.shift_catalog.manage",
+  "workspace.manage",
+];
+const catalog = permissionSchema.options.map((key) => ({
+  key,
+  label: key,
+  category: "Test",
+  description: "Test",
+  custom_grantable: !ownerAndAdminOnly.includes(key),
+  sort_order: 0,
+}));
 function mount(path = "/app/settings/roles") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -85,11 +125,47 @@ function mount(path = "/app/settings/roles") {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(loadRoleWorkspace).mockResolvedValue({
-    permissions: [],
-    roles: [owner, manager, employee],
+    permissions: catalog,
+    roles: [owner, admin, manager, employee],
   });
 });
 describe("RolesSettingsPage", () => {
+  it("offers a manager role the organization reads only; the admin role keeps their Edit (GUVENLIK-A GA-2)", async () => {
+    const view = mount(`/app/settings/roles/${manager.id}`);
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Organization settings/ }),
+    );
+    expect(screen.getByRole("checkbox", { name: "Locations Read" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Locations Edit" })).toBeNull();
+    expect(
+      screen.queryByRole("checkbox", { name: "Notification settings Edit" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("checkbox", { name: "Roles & permissions Read" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Employees/ }));
+    expect(
+      screen.getByRole("checkbox", { name: "Invitations & access Read" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("checkbox", { name: "Invitations & access Edit" }),
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /^Schedule/ }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Manage conflict rules Edit" }),
+    ).toBeNull();
+    view.unmount();
+
+    mount(`/app/settings/roles/${admin.id}`);
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Organization settings/ }),
+    );
+    expect(screen.getByRole("checkbox", { name: "Locations Edit" })).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", { name: "Roles & permissions Read" }),
+    ).toBeTruthy();
+  });
+
   it("uses the shared primary Settings header action", async () => {
     mount();
     const action = await screen.findByRole("button", { name: "New role" });
@@ -108,7 +184,7 @@ describe("RolesSettingsPage", () => {
     expect(
       screen.queryByRole("checkbox", { name: "Schedule Edit" }),
     ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Schedule Custom" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Schedule\s/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Schedule Edit" }));
     expect(
       screen.getByRole("checkbox", { name: "Publishing Edit" }),
@@ -126,7 +202,7 @@ describe("RolesSettingsPage", () => {
     );
     mount();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Schedule Custom" }),
+      await screen.findByRole("button", { name: /^Schedule\s/ }),
     );
     fireEvent.click(
       screen.getByRole("checkbox", {
@@ -151,7 +227,7 @@ describe("RolesSettingsPage", () => {
   it("guards role switching", async () => {
     mount();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Schedule Custom" }),
+      await screen.findByRole("button", { name: /^Schedule\s/ }),
     );
     fireEvent.click(
       screen.getByRole("checkbox", {
@@ -203,7 +279,7 @@ describe("RolesSettingsPage", () => {
       deletable: false,
     };
     vi.mocked(loadRoleWorkspace).mockResolvedValue({
-      permissions: [],
+      permissions: catalog,
       roles: [custom],
     });
     mount(`/app/settings/roles/${custom.id}`);
@@ -227,7 +303,7 @@ describe("RolesSettingsPage", () => {
       deletable: true,
     };
     vi.mocked(loadRoleWorkspace).mockResolvedValue({
-      permissions: [],
+      permissions: catalog,
       roles: [custom],
     });
     vi.mocked(deleteWorkspaceRole).mockResolvedValue(undefined);
@@ -255,7 +331,7 @@ describe("RolesSettingsPage", () => {
       access_class: "manager" as const,
     }));
     vi.mocked(loadRoleWorkspace).mockResolvedValue({
-      permissions: [],
+      permissions: catalog,
       roles: [owner, manager, employee, ...customRoles],
     });
     mount(`/app/settings/roles/${customRoles[0]!.id}`);
@@ -278,7 +354,7 @@ describe("RolesSettingsPage", () => {
   it("refreshes permissions and adopts the saved server version", async () => {
     vi.mocked(saveWorkspaceRole).mockImplementation(async () => {
       vi.mocked(loadRoleWorkspace).mockResolvedValue({
-        permissions: [],
+        permissions: catalog,
         roles: [
           owner,
           {
@@ -300,7 +376,7 @@ describe("RolesSettingsPage", () => {
     });
     mount();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Schedule Custom" }),
+      await screen.findByRole("button", { name: /^Schedule\s/ }),
     );
     fireEvent.click(
       screen.getByRole("checkbox", {

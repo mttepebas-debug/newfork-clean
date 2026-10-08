@@ -130,19 +130,25 @@ select set_config('request.jwt.claim.sub','',true);
 set local role service_role;
 select lives_ok($$select public.terminate_employee_service('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003',(now() at time zone 'America/Los_Angeles'),'America/Los_Angeles','Local test termination','b1051008-0000-4000-8000-000000000001')$$,'Admin ends employment across locations');
 set local role postgres;
--- Granular settings grants are independent from global scope and other settings.
+-- GUVENLIK-A GA-2 (BL-178; KARARLAR K14 S1/S2): a manager role may read the
+-- organization settings but never gets their Edit. Settings > Roles refuses
+-- General Edit and Locations Edit for the manager role, and a manager who
+-- reads them still cannot rename the workspace or change a location that is
+-- not theirs. (A grant written straight into the table is GA-3's test: the
+-- core says no even then.)
+select throws_ok($$select public.save_workspace_role_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001',(select manager_role from role_test_state),'Manager','','manager',array(select permission_key from public.workspace_role_permissions where role_id=(select manager_role from role_test_state))||array['settings.general.read','settings.general.manage','settings.locations.read','settings.locations.manage'],(select updated_at from public.workspace_roles where id=(select manager_role from role_test_state)))$$,'42501',null,'Owner cannot give the manager role General Edit or Locations Edit');
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
-select 'b1051002-0000-4000-8000-000000000001',manager_role,key from role_test_state cross join unnest(array['settings.general.read','settings.general.manage','settings.locations.read','settings.locations.manage']) key;
+select 'b1051002-0000-4000-8000-000000000001',manager_role,key from role_test_state cross join unnest(array['settings.general.read','settings.locations.read']) key
+on conflict do nothing;
 select set_config('request.jwt.claim.sub','b1051001-0000-4000-8000-000000000003',true);
 set local role authenticated;
-select lives_ok($$update public.workspaces set name='General permission test' where id='b1051002-0000-4000-8000-000000000001'$$,'Explicit General Edit can update organization name');
-select is((select name from public.workspaces where id='b1051002-0000-4000-8000-000000000001'),'General permission test','General update actually changed the row');
-select is((select count(*)::integer from public.locations where workspace_id='b1051002-0000-4000-8000-000000000001'),2,'Explicit Locations Read covers all organization locations');
-select lives_ok($$update public.locations set name='Updated outside location' where id='b1051006-0000-4000-8000-000000000002'$$,'Explicit Locations Edit can update outside assigned location');
-select is((select name from public.locations where id='b1051006-0000-4000-8000-000000000002'),'Updated outside location','Outside location update actually changed the row');
-select throws_ok($$insert into public.jobs(workspace_id,name) values('b1051002-0000-4000-8000-000000000001','Still unauthorized')$$,'42501',null,'General and Locations grants do not grant Jobs Edit');
+update public.workspaces set name='General permission test' where id='b1051002-0000-4000-8000-000000000001';
+update public.locations set name='Updated outside location' where id='b1051006-0000-4000-8000-000000000002';
+select throws_ok($$insert into public.jobs(workspace_id,name) values('b1051002-0000-4000-8000-000000000001','Still unauthorized')$$,'42501',null,'Settings reads do not grant Jobs Edit');
 set local role postgres;
 select set_config('request.jwt.claim.sub','',true);
+select isnt((select name from public.workspaces where id='b1051002-0000-4000-8000-000000000001'),'General permission test','A manager who reads General cannot rename the workspace');
+select isnt((select name from public.locations where id='b1051006-0000-4000-8000-000000000002'),'Updated outside location','A manager who reads Locations cannot change a location that is not theirs');
 select public.initialize_workspace_roles('b1051002-0000-4000-8000-000000000001');
 select is((select array_agg(permission_key order by permission_key) from public.workspace_role_permissions where role_id=(select custom_role from role_test_state)),array['schedule.read','workspace.read'],'Repeated initialization never seeds built-in grants into custom roles');
 select ok(public.service_actor_has_permission('b1051001-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','notifications.preferences.write_own'),'Personal preferences remain independent');

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 452, last: 20261008111800_retire_what_the_package_replaced.sql
--- fingerprint: sha256:dc180fdc420f1bc2945c782ee421bd52365d1b12897108e43fc5b7fc1a964d77
+-- migrations: 453, last: 20261008133000_organization_settings_stay_with_owner_and_admin.sql
+-- fingerprint: sha256:dd67f9d023a9dcfca85d0a99eba78c22d3f0676c9f61080e047d628b3e26f4b8
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22934,7 +22934,7 @@ begin
  select coalesce(array_agg(distinct key order by key),'{}'::text[]) into normalized from unnest(coalesce(permission_keys,'{}'::text[])) key;
  if not 'workspace.read'=any(normalized) then raise exception 'Basic account access required' using errcode='22023'; end if;
  if exists(select 1 from unnest(normalized) k left join public.permissions p on p.key=k where p.key is null) then raise exception 'Unknown permission' using errcode='22023'; end if;
- if role_access_class<>'admin' and exists(select 1 from public.permissions p where p.key=any(normalized) and not p.custom_grantable and not exists(select 1 from public.workspace_role_permissions old_grant where old_grant.role_id=target_role_id and old_grant.permission_key=p.key)) then raise exception 'Permission is not eligible for a lower role' using errcode='42501'; end if;
+ if role_access_class<>'admin' and exists(select 1 from public.permissions p where p.key=any(normalized) and not p.custom_grantable) then raise exception 'Permission is not eligible for a lower role' using errcode='42501', hint='authz.rank'; end if;
  if role_access_class<>'admin' and normalized && array['roles.manage','workspace.manage'] then raise exception 'Protected management access denied' using errcode='42501'; end if;
  if role_access_class='employee' and exists(select 1 from unnest(normalized) k where k not in (select p.key from public.permissions p where p.employee_eligible)) then raise exception 'Employee roles are limited to personal access' using errcode='42501'; end if;
  -- Admin delegation cannot manufacture permissions it does not itself hold.

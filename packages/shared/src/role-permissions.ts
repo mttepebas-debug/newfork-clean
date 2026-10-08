@@ -1,4 +1,4 @@
-import type { Permission, WorkspaceRole } from "./index";
+import type { Permission, PermissionDefinition, WorkspaceRole } from "./index";
 
 export interface RolePermissionArea {
   readonly id: string;
@@ -7,7 +7,6 @@ export interface RolePermissionArea {
   readonly read: readonly Permission[];
   readonly edit: readonly Permission[];
   readonly employee?: boolean;
-  readonly adminOnly?: boolean;
 }
 
 export const rolePermissionGroups: readonly {
@@ -181,7 +180,6 @@ export const rolePermissionGroups: readonly {
           "Only the Owner can authorize Admin to manage lower roles.",
         read: ["roles.read"],
         edit: ["roles.manage"],
-        adminOnly: true,
       },
     ],
   },
@@ -258,18 +256,31 @@ export const employeeEligiblePermissions: readonly Permission[] = [
   "announcements.read",
 ];
 
-export function permissionGroupsForRole(accessClass: WorkspaceRole) {
+/**
+ * The boxes Settings > Roles shows for a kind of role. Owner and admin roles get
+ * every one. A manager or employee role gets only what the database lets a custom
+ * role hold (`permissions` is the API's catalog, `custom_grantable` from the
+ * database; GUVENLIK-A GA-2, KARARLAR K14) and nothing that needs one it can't
+ * hold: Invitations & access Edit needs roles.read, which stays with owner and admin.
+ */
+export function permissionGroupsForRole(
+  accessClass: WorkspaceRole,
+  permissions: readonly PermissionDefinition[],
+) {
+  const grantable = new Set(
+    permissions.filter((definition) => definition.custom_grantable).map((definition) => definition.key),
+  );
+  const offered = (key: Permission): boolean =>
+    accessClass === "owner" ||
+    accessClass === "admin" ||
+    (grantable.has(key) && (rolePermissionDependencies[key] ?? []).every(offered));
   return rolePermissionGroups
     .map((group) => ({
       ...group,
-      areas: group.areas.filter((area) =>
-        accessClass === "employee"
-          ? area.employee
-          : !area.employee &&
-            (!area.adminOnly ||
-              accessClass === "owner" ||
-              accessClass === "admin"),
-      ),
+      areas: group.areas
+        .filter((area) => (accessClass === "employee" ? area.employee : !area.employee))
+        .map((area) => ({ ...area, read: area.read.filter(offered), edit: area.edit.filter(offered) }))
+        .filter((area) => area.read.length > 0 || area.edit.length > 0),
     }))
     .filter((group) => group.areas.length > 0);
 }
