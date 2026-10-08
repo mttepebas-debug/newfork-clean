@@ -149,4 +149,49 @@ select lives_ok($$select pg_temp.maintain(((current_date+5)::text||' 10:00:00'):
 select is((select count(*)::integer from public.notification_outbox where workspace_id='25200000-0000-4000-8000-000000000001' and type_key='people.documents.expiry' and subject_id='45200000-0000-4000-8000-000000000002'),0,'a document without an expiry date gets no expiry reminder');
 select ok((select document_suspended_at is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000003'),'the same batch still suspends access for another employee''s overdue requirement');
 select is((select count(*)::integer from public.notification_outbox where workspace_id='25200000-0000-4000-8000-000000000001' and type_key='people.documents.missing' and subject_id='45200000-0000-4000-8000-000000000003'),1,'the same batch still sends the missing-documents reminder');
+
+-- BL-965 (review): an expiry reminder whose day the batch missed is sent the next run, once, but only for a
+-- milestone (30, 7, 1 days) the document reached after it was approved. The second employee's document gets
+-- an expiry date 40 days ahead; runs happen 20 days ahead (20 days left: past the 30-day mark) and later.
+-- ponytail: dates are shaped by hand on the accepted version; the product sets them on review.
+create function pg_temp.at(day integer) returns timestamptz language sql as $$
+  select ((current_date + day)::text || ' 10:00:00')::timestamp at time zone 'America/Los_Angeles'
+$$;
+create function pg_temp.expiry_reminders() returns integer language sql as $$
+  select count(*)::integer from public.notification_outbox where workspace_id = '25200000-0000-4000-8000-000000000001'
+    and type_key = 'people.documents.expiry' and subject_id = '45200000-0000-4000-8000-000000000002'
+$$;
+update public.employee_document_submissions set expiry_date=current_date+40, reviewed_at=pg_temp.at(15)
+where id=(select approved_document_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002');
+select pg_temp.maintain(pg_temp.at(20));
+select is(pg_temp.expiry_reminders(),0,'a document approved after its 30-day mark gets no late 30-day reminder');
+update public.employee_document_submissions set reviewed_at=pg_temp.at(-30)
+where id=(select approved_document_id from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000002');
+select pg_temp.maintain(pg_temp.at(21));
+select is(pg_temp.expiry_reminders(),1,'a 30-day reminder whose day was missed goes out on the next run');
+select pg_temp.maintain(pg_temp.at(22));
+select is(pg_temp.expiry_reminders(),1,'and only once');
+select pg_temp.maintain(pg_temp.at(33));
+select is(pg_temp.expiry_reminders(),2,'the 7-day reminder still goes out on its day');
+
+-- BL-965 (review): a case that fails must not stop the others, nor keep its place at the head of the queue
+-- (rolled back, its checked mark stayed empty and it failed first on every run, for every workspace).
+-- A trigger stands in for any error a case can meet: it refuses the second employee's suspension.
+insert into public.employee_onboarding_requirements(id,workspace_id,employee_id,case_id,kind,title,required,blocks_activation,requires_review,sort_order,source_snapshot,lifecycle_user_id,lifecycle_settings,deadline_at)
+values('65200000-0000-4000-8000-000000000004','25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000002','55200000-0000-4000-8000-000000000002','acknowledgement','Handbook',true,false,false,2,
+  '{"timezone":"America/Los_Angeles"}','15200000-0000-4000-8000-000000000003',
+  '{"mode":"conditional","target":{"location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"assignment_scope":"all_active","period_days":7,"suspend_on_overdue":true,"extra_fields":[]}',now()+interval '7 days');
+-- ponytail: overdue by hand, as above; the third employee's requirement is made due for suspension again.
+update public.employee_onboarding_requirements set deadline_at=now()-interval '1 day' where id='65200000-0000-4000-8000-000000000004';
+update public.employee_onboarding_requirements set document_suspended_at=null where id='65200000-0000-4000-8000-000000000003';
+create function public.bl965_stand_in_failure() returns trigger language plpgsql as $$
+begin raise exception 'stand-in for any error a case can meet'; end $$;
+create trigger bl965_stand_in_failure before update on public.employee_onboarding_requirements
+  for each row when (old.id = '65200000-0000-4000-8000-000000000004') execute function public.bl965_stand_in_failure();
+create temp table poisoned_run (result jsonb);
+select lives_ok($$insert into poisoned_run select pg_temp.maintain(pg_temp.at(40))$$,'one failing case does not stop the batch');
+select is((select (result->>'failed_cases')::integer from poisoned_run),1,'the batch counts the case it skipped');
+select ok((select document_suspended_at is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000003'),'the next case in the batch is still handled');
+select is((select document_notification_checked_at from public.employee_onboarding_cases where id='55200000-0000-4000-8000-000000000002'),pg_temp.at(40),'the failing case moves to the back of the queue');
+select is((select document_suspended_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000004'),null,'the failing case''s own work is undone');
 select * from finish();rollback;
