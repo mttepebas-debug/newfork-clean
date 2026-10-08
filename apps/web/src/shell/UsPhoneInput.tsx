@@ -30,7 +30,9 @@ export function UsPhoneInput({
         type="tel"
         inputMode="numeric"
         autoComplete={attributes.autoComplete ?? "tel-national"}
-        maxLength={14}
+        // The browser cuts a paste to this before the mask reads it: room for
+        // the app's own "+1 (415) 555-0100" and a "tel:" link (BL-969 review).
+        maxLength={24}
         placeholder={placeholder}
         value={formatUsPhone(value)}
         onChange={(event) => onChange(formatUsPhone(event.target.value))}

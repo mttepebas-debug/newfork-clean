@@ -8,6 +8,7 @@ import {
 } from "@newfork/shared";
 import {
   checkLocationDraft,
+  locationDraft as locationDraftOf,
   type LocationDraft,
   type LocationFieldErrors,
 } from "../settings/location-draft";
@@ -347,17 +348,7 @@ export default function OwnerOnboardingPage() {
 
   const editLocation = (location: Location): void => {
     setEditingLocationId(location.id);
-    setLocationDraft({
-      name: location.name,
-      short_name: location.short_name,
-      phone: location.phone ?? "",
-      street_address: location.street_address,
-      city: location.city,
-      region: location.region,
-      postal_code: location.postal_code,
-      country_code: location.country_code,
-      timezone: location.timezone,
-    });
+    setLocationDraft(locationDraftOf(location));
     setLocationErrors({});
     setLocationDraftEpoch((value) => value + 1);
     setSuccess(null);
