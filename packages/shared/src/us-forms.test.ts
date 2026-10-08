@@ -62,6 +62,8 @@ describe("the US phone rule", () => {
     expect(formatUsPhone("\uFF0B44 2079")).toBe("+44 2079");
     expect(formatUsPhone("+")).toBe("+");
     expect(formatUsPhone("+4")).toBe("+4");
+    // Typed key by key, the space before the next group stays.
+    expect(formatUsPhone("+44 ")).toBe("+44 ");
     expect(formatUsPhone("+1")).toBe("");
     expect(formatUsPhone("+1 415 555 0100")).toBe("(415) 555-0100");
   });

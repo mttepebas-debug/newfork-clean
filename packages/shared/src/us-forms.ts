@@ -60,7 +60,8 @@ export const workspaceNameInputSchema = usText(z.string().trim().min(1).max(120)
  * and is refused on save, and a "+" typed on its own waits for the next key.
  */
 export function formatUsPhone(value: string): string {
-  const text = plainPhone(value).trim();
+  // Kept as typed, the space before the next group too.
+  const text = plainPhone(value).trimStart();
   if (otherCountryCode.test(text) || /^\+[\s().-]*$/.test(text)) return text;
   const digits = usPhoneDigits(text);
   if (!digits) return "";
