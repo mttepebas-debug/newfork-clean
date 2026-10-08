@@ -27,12 +27,12 @@ Uyandıran: ajan bildirimi · tren komutunun bitişi · yedek saat · Mert'in me
    - `0` → main'de. Kayıtları commit'le (aynı biçim), `git rebase origin/main` (coord/kayit). İşler "Bugün biten"e (sha). Backlog maddeleri kapanır. İşçi worktree'leri ve dalları silinir: önce `git cherry -v origin/main <dal>` boş olmalı.
    - `2` → main ilerledi, bir dal dışarıda kaldı (`atlandı: <dal> …`). Girenler için `0` adımları; atlanan dalın işçisine "rebase et, push et, HAZIR yaz".
    - `1` → hata öncesi son `— <adım>` satırına bak:
-     - `—` satırı yok (derleme) → engelleri oku, listeyi düzelt, yeniden `run`.
+     - `—` satırı yok (derleme) → "Tren" satırı `son — · derleme engeli · dallar …`; engelleri oku, listeyi düzelt, yeniden `run`.
      - `ci` failure → `nf-okur` ile ayır. Altyapı → `gh run rerun <run> --failed`, bitmesini bekle, `node scripts/train.mjs ci`; yeşilse `push`, `apply-local`, `0` adımları. Kod → bozan dalı çıkar, işçisine geri ver, kalanlarla yeniden `run`. Main kırmızıysa ilk tren yalnız düzelteni taşır.
      - `ci` cancelled → önce `gh run rerun <run>` (yalnız `ci` yine cancelled yazar), sonra `node scripts/train.mjs ci`.
      - `ci` timeout → yeniden `node scripts/train.mjs ci` (yeniden bekler).
      - `ci` no-run → `gh run list --branch train/<stamp>`; birkaç dakika sonra hâlâ koşu yoksa `gh workflow run ci.yml --ref train/<stamp>`, sonra `node scripts/train.mjs ci`.
-     - Üçünde de `ci` yeşil yazınca: `node scripts/train.mjs push`, `node scripts/train.mjs apply-local`, `0` adımları.
+     - Üçünde de `ci` yeşil yazınca: `node scripts/train.mjs push`, `node scripts/train.mjs apply-local`, `0` adımları. Rerun ya da yeniden `ci` sonrası hâlâ kırmızıysa `ci` failure dalıyla devam (`nf-okur` ile ayır).
      - `push` (main ilerledi) → aynı dallarla yeniden `run`.
      - `apply-local` → main zaten ilerledi: `0` adımları, sonra `node scripts/lock.mjs status` ve yeniden `node scripts/train.mjs apply-local`.
 3. **Yeni iş.** Koşan işçi 3'ten azsa ve sırada iş varsa: dosyaları koşanlarla çakışmayan ilk işi ver. `Agent(subagent_type: "nf-isci", isolation: "worktree", run_in_background: true, model: "opus")`; incelemeli işte `effort: "high"`. Görev metni şablonu `CLAUDE.md` §5. Backlog'dan gelen iş önce `nf-okur` tazelik kontrolünden geçer. Port: boştaki ilk çift 5612/5613, 5620/5621, 5622/5623.
@@ -40,7 +40,11 @@ Uyandıran: ajan bildirimi · tren komutunun bitişi · yedek saat · Mert'in me
 5. **Pano.** `DURUM.md`'yi aşağıdaki şablonla yeniden yaz; `request_keep_awake`'i yenile. Değişiklik yoksa tur tek satırla biter.
 
 ## Yeniden başlatmadan sonra
-Önce `CronCreate` (aynı prompt) ve `request_keep_awake`; yeni cron kimliğini "Sağlık"a yaz. Sonra `DURUM.md` "Koşuyor"daki her iş için önce yerel dal (`git rev-parse --verify task/<id>`), sonra uzak (`git ls-remote origin task/<id>`): biri varsa yeni işçi "devam: task/<id>@<sha>"; yoksa iş baştan. İkisi de var ve sha'lar farklıysa öndekini al (`git merge-base --is-ancestor`); ayrışmışlarsa yereldekinden devam et ve günlüğe yaz.
+Önce `CronCreate` (aynı prompt) ve `request_keep_awake`; yeni cron kimliğini "Sağlık"a yaz.
+
+Yeniden başlatma arka plandaki tren komutunu, rerun beklemesini ve `ci` kontrolünü öldürür; uyandırma gelmez. `DURUM.md` "Tren" satırı `koşuyor` ise: tren klasöründeki durum dosyasını oku (`C:/Users/TheWe/Documents/Codex/newfork-wt/train/artifacts/train/state.json`: stamp, ci, pushed) ve `git ls-remote origin 'refs/heads/train/*'`. Tren dalı varsa ve push olmadıysa `node scripts/train.mjs ci` (yeniden bekler), sonra sonuç kurallarıyla devam. Push olduysa `apply-local` ve `0` adımları. Tren dalı hiç yoksa satırı `son — · iptal (yeniden başlatma)` yap ve `run`'ı yeniden başlat.
+
+Sonra `DURUM.md` "Koşuyor"daki her iş için önce yerel dal (`git rev-parse --verify task/<id>`), sonra uzak (`git ls-remote origin task/<id>`): biri varsa yeni işçi "devam: task/<id>@<sha>"; yoksa iş baştan. İkisi de var ve sha'lar farklıysa öndekini al (`git merge-base --is-ancestor`); ayrışmışlarsa yereldekinden devam et; uzaktaki fazla commit sha'larını (`git log --format=%H task/<id>..origin/task/<id>`) günlüğe yaz, geri alınabilsin.
 
 ## Bitiş
 Sıra boş, tren yok, koşan ajan yok → `DURUM.md` başına "Bitti", `CronDelete`. Mert dönünce `/durum`.
