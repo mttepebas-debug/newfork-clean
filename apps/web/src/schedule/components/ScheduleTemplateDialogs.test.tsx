@@ -158,14 +158,15 @@ describe("ScheduleTemplatesDialog", () => {
     const props = renderDialog();
     const removeNames = screen.getByRole("checkbox", { name: "Remove employee names (save as open shifts)" });
     expect((removeNames as HTMLInputElement).checked).toBe(false);
-    const names = screen.getAllByLabelText("Template name");
-    fireEvent.change(names[names.length - 1], { target: { value: "Busy week" } });
+    // The create form's name field comes after the selected template's rename field.
+    const createName = screen.getAllByLabelText("Template name").at(-1) as HTMLInputElement;
+    fireEvent.change(createName, { target: { value: "Busy week" } });
     fireEvent.click(screen.getByRole("button", { name: "Create template" }));
     await waitFor(() => expect(props.onCreate).toHaveBeenCalledWith(draft.id, "Busy week", false));
 
     // The name field empties after a template is made; the next one is named again.
-    await waitFor(() => expect((names[names.length - 1] as HTMLInputElement).value).toBe(""));
-    fireEvent.change(names[names.length - 1], { target: { value: "Open week" } });
+    await waitFor(() => expect(createName.value).toBe(""));
+    fireEvent.change(createName, { target: { value: "Open week" } });
     fireEvent.click(removeNames);
     fireEvent.click(screen.getByRole("button", { name: "Create template" }));
     await waitFor(() => expect(props.onCreate).toHaveBeenLastCalledWith(draft.id, "Open week", true));
