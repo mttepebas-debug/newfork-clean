@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 446, last: 20261008064103_close_later_finishes_on_its_date.sql
--- fingerprint: sha256:dec7b25969808a6ed56988841635da8c265ff9d1853f7593344d89e179b56244
+-- migrations: 452, last: 20261008111800_retire_what_the_package_replaced.sql
+-- fingerprint: sha256:dc180fdc420f1bc2945c782ee421bd52365d1b12897108e43fc5b7fc1a964d77
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1480,6 +1480,8 @@ CREATE TABLE IF NOT EXISTS "app_private"."authz_actions" (
     "rank_below" boolean DEFAULT false NOT NULL,
     "employee_target" boolean DEFAULT false NOT NULL,
     "outranked_no" boolean DEFAULT false NOT NULL,
+    "owner_target_ok" boolean DEFAULT false NOT NULL,
+    "documents_ok" boolean DEFAULT false NOT NULL,
     CONSTRAINT "authz_actions_check" CHECK ((("effect" <> 'cross'::"text") OR ("scope_class" = 'person'::"text"))),
     CONSTRAINT "authz_actions_effect_check" CHECK (("effect" = ANY (ARRAY['read'::"text", 'write'::"text", 'cross'::"text"]))),
     CONSTRAINT "authz_actions_scope_class_check" CHECK (("scope_class" = ANY (ARRAY['account'::"text", 'own'::"text", 'org'::"text", 'place'::"text", 'set'::"text", 'person'::"text"])))
@@ -1494,6 +1496,14 @@ COMMENT ON TABLE "app_private"."authz_actions" IS 'Every action app_private.auth
 
 
 COMMENT ON COLUMN "app_private"."authz_actions"."outranked_no" IS 'No when target_user (the record''s author) outranks the actor today (FB-6.7 K2, KK-87).';
+
+
+
+COMMENT ON COLUMN "app_private"."authz_actions"."owner_target_ok" IS 'With rank_below: a request of the owner''s own is decided like a lower rank''s, by whoever may decide the place; never by the owner (EKRAN-02 K-S1).';
+
+
+
+COMMENT ON COLUMN "app_private"."authz_actions"."documents_ok" IS 'A missing document does not close it; unfinished onboarding still does (restricted_ok opens both). Requests are read, not decided (EKRAN-02 K-S2).';
 
 
 
@@ -1567,7 +1577,7 @@ begin
     end if;
   elsif state.status <> 'active' then
     return 'not_active';
-  elsif state.document_blocked and not rule_row.restricted_ok then
+  elsif state.document_blocked and not (rule_row.restricted_ok or rule_row.documents_ok) then
     return 'document_blocked';
   end if;
 
@@ -1612,7 +1622,8 @@ begin
     where membership.workspace_id = state.workspace_id and membership.user_id = whose;
     -- ponytail: somebody without a membership yet ranks as an employee; use the
     -- invitation's role if a manager ever invites into a higher one.
-    if app_private.authz_rank(coalesce(target_access, 'employee')) >= app_private.authz_rank(state.class) then
+    if app_private.authz_rank(coalesce(target_access, 'employee')) >= app_private.authz_rank(state.class)
+       and not (rule_row.owner_target_ok and target_access = 'owner') then
       return 'rank';
     end if;
   end if;
@@ -2867,6 +2878,107 @@ $$;
 ALTER FUNCTION "app_private"."draft_starts_from_its_publication"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."eligibility"("w" "uuid", "emp" "uuid", "shift" "jsonb", "ctx" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+ op text:=ctx->>'operation';
+ excluded uuid[]:=array(select value::uuid from jsonb_array_elements_text(
+  case when jsonb_typeof(ctx->'excluded')='array' then ctx->'excluded' else '[]'::jsonb end) where value is not null);
+ consent jsonb:=ctx->'consent';
+ loc uuid:=(shift->>'location_id')::uuid; d date:=(shift->>'date')::date;
+ tz text; span tstzrange; a jsonb; leave jsonb; settings public.workspace_scheduling_settings%rowtype;
+ blockers jsonb:='[]'; acks jsonb:='[]'; flags jsonb:='[]'; shortens boolean:=false; r jsonb;
+ travel numeric; rest numeric; gap numeric; n record;
+begin
+ if op is null or op not in ('swap','release_pickup','open_pickup','cover_accept') then
+  raise exception 'Unknown exchange operation' using errcode='22023'; end if;
+ if nullif(shift->>'start_time','') is null or nullif(shift->>'end_time','') is null then
+  return jsonb_build_object('employee_id',emp,'operation',op,'eligible',false,'status','verification_required',
+   'blockers',jsonb_build_array(jsonb_build_object('code','hours_unconfirmed','message','A manager must confirm the shift hours before a full-shift exchange')),
+   'acknowledgements','[]'::jsonb,'approval_flags','[]'::jsonb,'approvals_required',jsonb_build_array(loc),'shortens_time_off',false,
+   'reasons',jsonb_build_array('A manager must confirm the shift hours before a full-shift exchange'));
+ end if;
+ select coalesce(nullif(shift->>'time_timezone',''),nullif(shift->'time_snapshot'->>'timezone',''),l.timezone) into tz
+  from public.locations l where l.id=loc and l.workspace_id=w and l.archived_at is null;
+ if tz is null then raise exception 'location not found'; end if;
+ select * into settings from public.workspace_scheduling_settings where workspace_id=w;
+ span:=app_private.shift_time_range(d,(shift->>'start_time')::time,(shift->>'end_time')::time,tz);
+
+ if not exists(select 1 from public.employee_profiles e join public.workspace_memberships m
+  on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status='active' where e.workspace_id=w and e.id=emp) then
+  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','workspace_access','message','Active workspace access is required')); end if;
+ if not exists(select 1 from public.employee_location_assignments x where x.workspace_id=w and x.employee_id=emp and x.location_id=loc
+  and x.assigned_at<=lower(span) and (x.ended_at is null or x.ended_at>=upper(span))) then
+  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','location_assignment','message','Not assigned to this location')); end if;
+ if not exists(select 1 from public.employee_job_assignments x where x.workspace_id=w and x.employee_id=emp and x.job_id=(shift->>'job_id')::uuid
+  and x.assigned_at<=lower(span) and (x.ended_at is null or x.ended_at>=upper(span))) then
+  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','job_assignment','message','Not eligible for this position')); end if;
+ -- Documents stay as they are today (out of scope 2): an expired blocking document,
+ -- and any document rule the conflict settings raise, below.
+ if public.employee_has_hard_document_schedule_conflict_service(w,emp,d) then
+  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','document_expired','message','Required document is expired')); end if;
+
+ -- The assessment reads the shift the way Schedule does; '_shift_exchange'
+ -- keeps travel and rest out of it, they are flags here (D7).
+ a:=public.assess_weekly_shift_availability(w,emp,shift||jsonb_build_object('scheduled_date',d,
+  '_exclude_shift_ids',to_jsonb(excluded),'_shift_exchange',true));
+ for r in select value from jsonb_array_elements(a->'reasons') loop
+  if r->>'code' not in ('availability','note','approved_time_off') and not blockers @> jsonb_build_array(jsonb_build_object('code',r->>'code')) then
+   blockers:=blockers||jsonb_build_array(jsonb_build_object('code',r->>'code','message',r->>'message')); end if;
+ end loop;
+ -- Approved time off: only the person's own consent sets it aside (BL-182), and
+ -- only for the hours they agreed to; a cover search never passes consent (D1).
+ leave:=public.time_off_leave_intervals(a);
+ if jsonb_array_length(leave)>0 then
+  if consent='true'::jsonb or (jsonb_typeof(consent)='array'
+   and public.availability_json_ranges(consent) @> public.availability_json_ranges(leave)) then
+   shortens:=true;
+   acks:=acks||jsonb_build_array(jsonb_build_object('code','approved_time_off','intervals',leave));
+  else
+   blockers:=blockers||jsonb_build_array(jsonb_build_object('code','approved_time_off','message',
+    (select x->>'message' from jsonb_array_elements(a->'reasons') x where x->>'code'='approved_time_off' limit 1)));
+  end if;
+ end if;
+ if coalesce((a->>'has_availability_conflict')::boolean,false) and jsonb_array_length(coalesce(a->'employee_intervals','[]'))>0 then
+  acks:=acks||jsonb_build_array(jsonb_build_object('code','availability','intervals',a->'employee_intervals'));
+  flags:=flags||jsonb_build_array(jsonb_build_object('code','availability_consent'));
+ end if;
+ if jsonb_array_length(coalesce(a->'manager_intervals','[]'))>0 then
+  flags:=flags||jsonb_build_array(jsonb_build_object('code','manager_note')); end if;
+
+ -- Travel and rest, measured against the person's other published shifts (D7).
+ for n in select p.location_id,app_private.shift_time_range(p.scheduled_date,p.start_time,p.end_time,coalesce(p.time_timezone,l.timezone)) r
+  from public.schedule_published_shifts p join public.schedule_location_publications pub on pub.id=p.publication_id and pub.status='current'
+  join public.locations l on l.id=p.location_id
+  where p.workspace_id=w and p.employee_id=emp and p.scheduled_date between d-2 and d+2
+   and not p.id=any(excluded) and not coalesce(p.source_shift_id,p.id)=any(excluded)
+ loop
+  if n.r && span then continue; end if;
+  gap:=extract(epoch from greatest(lower(span)-upper(n.r),lower(n.r)-upper(span)))/60;
+  if n.location_id<>loc and gap<settings.minimum_travel_minutes then travel:=least(coalesce(travel,gap),gap); end if;
+  if gap<settings.minimum_rest_minutes then rest:=least(coalesce(rest,gap),gap); end if;
+ end loop;
+ if travel is not null then flags:=flags||jsonb_build_array(jsonb_build_object('code','minimum_travel',
+  'gap_minutes',travel::integer,'rule_minutes',settings.minimum_travel_minutes)); end if;
+ if rest is not null then flags:=flags||jsonb_build_array(jsonb_build_object('code','minimum_rest',
+  'gap_minutes',rest::integer,'rule_minutes',settings.minimum_rest_minutes)); end if;
+
+ return jsonb_build_object('employee_id',emp,'operation',op,'eligible',jsonb_array_length(blockers)=0,
+  'status',case when jsonb_array_length(blockers)=0 then 'eligible' else 'ineligible' end,
+  'blockers',blockers,'acknowledgements',acks,'approval_flags',flags,'approvals_required',jsonb_build_array(loc),
+  'shortens_time_off',shortens,
+  'reasons',case when jsonb_array_length(blockers)=0 then '["Position and location match","No assignment blockers"]'::jsonb
+   else (select jsonb_agg(b->>'message') from jsonb_array_elements(blockers) b) end)
+  ||case when coalesce((ctx->>'with_assessment')::boolean,false) then jsonb_build_object('assessment',a) else '{}'::jsonb end;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."eligibility"("w" "uuid", "emp" "uuid", "shift" "jsonb", "ctx" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."employee_onboarding_case_id"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -3127,6 +3239,20 @@ $_$;
 
 
 ALTER FUNCTION "app_private"."ensure_owner_employee_profile"("target_workspace_id" "uuid", "owner_user_id" "uuid", "owner_first_name" "text", "owner_middle_name" "text", "owner_last_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(
+    case when giver is not null then app_private.authz_reason(actor, w, 'exchange.approve', array[loc], giver) end,
+    case when receiver is not null then app_private.authz_reason(actor, w, 'exchange.approve', array[loc], receiver) end,
+    case when giver is null and receiver is null then app_private.authz_reason(actor, w, 'exchange.approve', array[loc]) end);
+$$;
+
+
+ALTER FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."finish_workspace_closure"("target_workspace_id" "uuid", "closing_actor" "uuid", "closure_request" "uuid", "closed_at_time" timestamp with time zone, "closure_mode" "text") RETURNS "jsonb"
@@ -4711,6 +4837,17 @@ $$;
 ALTER FUNCTION "app_private"."record_security_audit_event_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "event_type" "text", "surface" "text", "resource_type" "text", "raw_resource_id" "text", "metadata" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."request_date_text"("d" "date") RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+ select concat_ws(' ', to_char(d, 'Dy, Mon FMDD'), to_char(d, 'Mon FMDD, YYYY'), to_char(d, 'YYYY-MM-DD'))
+$$;
+
+
+ALTER FUNCTION "app_private"."request_date_text"("d" "date") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."reset_employee_onboarding_for_rehire"("target_workspace_id" "uuid", "target_employee_id" "uuid", "target_membership_id" "uuid", "actor_user_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5199,6 +5336,82 @@ $$;
 
 
 ALTER FUNCTION "app_private"."settings_locations"("w" "uuid", "ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."shift_exchange_cases" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "kind" "text" NOT NULL,
+    "audience" "text" DEFAULT 'eligible_pool'::"text" NOT NULL,
+    "status" "text" DEFAULT 'open'::"text" NOT NULL,
+    "offered_source_id" "uuid" NOT NULL,
+    "requested_source_id" "uuid",
+    "owner_id" "uuid",
+    "offered_snapshot" "jsonb" NOT NULL,
+    "requested_snapshot" "jsonb",
+    "consent_fingerprint" "text" NOT NULL,
+    "revision" integer DEFAULT 1 NOT NULL,
+    "expires_at" timestamp with time zone NOT NULL,
+    "private_note" "text" DEFAULT ''::"text" NOT NULL,
+    "created_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "owner_time_off_consent" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    CONSTRAINT "shift_exchange_cases_audience_check" CHECK (("audience" = ANY (ARRAY['eligible_pool'::"text", 'direct'::"text"]))),
+    CONSTRAINT "shift_exchange_cases_check" CHECK ((("kind" = 'swap'::"text") = ("requested_source_id" IS NOT NULL))),
+    CONSTRAINT "shift_exchange_cases_check1" CHECK ((("kind" = 'open_pickup'::"text") = ("owner_id" IS NULL))),
+    CONSTRAINT "shift_exchange_cases_kind_check" CHECK (("kind" = ANY (ARRAY['cover'::"text", 'open_pickup'::"text", 'swap'::"text"]))),
+    CONSTRAINT "shift_exchange_cases_owner_time_off_consent_check" CHECK (("jsonb_typeof"("owner_time_off_consent") = 'array'::"text")),
+    CONSTRAINT "shift_exchange_cases_private_note_check" CHECK (("length"("private_note") <= 1000)),
+    CONSTRAINT "shift_exchange_cases_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'completed'::"text", 'cancelled'::"text", 'expired'::"text", 'invalidated'::"text"])))
+);
+
+
+ALTER TABLE "public"."shift_exchange_cases" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare s jsonb := coalesce(published_offered, c.offered_snapshot); t jsonb := coalesce(published_requested, c.requested_snapshot);
+ current_published boolean := published_offered is not null; requested_published boolean := published_requested is not null;
+ decides boolean; mine boolean := coalesce(c.owner_id = emp_id, false); apps jsonb; hist jsonb; stage text;
+begin
+  -- Who decides the case (D3, K-S1) gets its buttons and its private notes (K-S5).
+  decides:=allowed and exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+   where app_private.exchange_decision_reason(actor,w,c.owner_id,null,x) is null);
+  select coalesce(jsonb_agg(jsonb_build_object('id',a.id,'employee_id',a.employee_id,'employee_name',coalesce(nullif(e.preferred_name,''),concat_ws(' ',e.first_name,e.last_name)),
+   'status',case when live_status in('expired','invalidated') and a.status in('invited','pending_manager') then live_status else a.status end,'created_at',a.created_at,'reason',case when allowed or a.employee_id=emp_id then a.reason else '' end,
+   'eligibility',case when (allowed or a.employee_id=emp_id) and live_status='open' then (app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',case when a.employee_id=emp_id and a.status='invited' then 'true'::jsonb else a.time_off_consent end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))-case when allowed then '{}'::text[] else array['approval_flags'] end) || case when a.employee_id=emp_id and a.status='invited' then jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp_id,s)) else '{}'::jsonb end end) order by a.created_at),'[]'::jsonb)
+  into apps from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id where a.case_id=c.id and (allowed or mine or a.employee_id=emp_id);
+  select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'action',e.action,'created_at',e.created_at,
+   -- BL-910: a declined application's reason is read by the applicant and by who reads the
+   -- location's requests (allowed), as applications[].reason already is.
+   'message',case when e.action='application_rejected' and not allowed and not exists(select 1 from public.shift_exchange_applications a
+    where a.id=e.application_id and a.employee_id=emp_id) then 'A request for your shift was declined. You are still responsible for this shift.' else e.message end,
+   -- K-S5: the note goes to who decides this case for this application too.
+   'private_note',case when decides and exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+    where app_private.exchange_decision_reason(actor,w,c.owner_id,(select a.employee_id from public.shift_exchange_applications a where a.id=e.application_id),x) is null)
+    then nullif(e.private_note,'') end) order by e.created_at),'[]'::jsonb)
+  into hist from public.shift_exchange_events e where e.case_id=c.id and (allowed or mine or e.application_id is null or exists(select 1 from public.shift_exchange_applications a where a.id=e.application_id and a.employee_id=emp_id));
+  stage:=case when live_status<>'open' then 'closed'
+   when exists(select 1 from public.shift_exchange_votes where case_id=c.id) then 'awaiting_other_manager'
+   when exists(select 1 from public.shift_exchange_applications where case_id=c.id and status='pending_manager') then 'ready_for_manager'
+   when exists(select 1 from public.shift_exchange_applications where case_id=c.id and status='invited') then 'awaiting_peer' else 'seeking_candidates' end;
+ return jsonb_build_object('id',c.id,'kind',c.kind,'audience',c.audience,'status',live_status,'current_published',current_published,'requested_current_published',case when c.kind='swap' then requested_published else null end,
+   'stage',stage,'revision',c.revision,'created_at',c.created_at,'expires_at',c.expires_at,'owner_id',c.owner_id,'owner_name',c.offered_snapshot->'employee_name',
+   'shift',s,'requested_shift',t,'applications',apps,'candidate_count',(select count(*) from public.shift_exchange_applications where case_id=c.id and status in('invited','pending_manager') and live_status='open'),
+   'can_manage',decides,
+   'is_owner',mine,'private_note',case when allowed or mine then c.private_note else '' end,'history',hist);
+end; $$;
+
+
+ALTER FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") IS 'One shift change as the Requests lists draw it; the reader decides who may see it (EKRAN-02 A4).';
+
 
 
 CREATE OR REPLACE FUNCTION "app_private"."shift_time_range"("d" "date", "s" time without time zone, "e" time without time zone, "tz" "text") RETURNS "tstzrange"
@@ -5710,20 +5923,8 @@ begin
   from public.schedule_time_off_requests r join public.employee_profiles e on e.id = r.employee_id and e.workspace_id = r.workspace_id
   where r.id = rid and r.workspace_id = w;
  for g in
-  with opened as (
-   select p.location_id, l.name location_name, p.scheduled_date, p.start_time, p.end_time
-   from public.time_off_assignment_releases rel
-   join public.schedule_published_shifts p on p.id = rel.published_shift_id and p.workspace_id = w
-   join public.locations l on l.id = p.location_id and l.workspace_id = w
-   where rel.workspace_id = w and rel.request_id = rid and rel.decision_revision = decision
-  ), managers as (
-   select m.user_id from public.workspace_memberships m
-   where m.workspace_id = w and m.status = 'active' and m.user_id is distinct from actor
-    -- A manager: deciding alone is not theirs anywhere (the core, no role reading).
-    and app_private.authz_reason(m.user_id, w, 'time_off.decide_alone') is not null
-  ), told as (
-   select mg.user_id, o.* from managers mg join opened o
-    on app_private.authz_reason(mg.user_id, w, 'schedule.edit', array[o.location_id]) is null
+  with told as (
+   select * from app_private.time_off_opened_shifts_told(actor, w, rid, decision)
   ), per_person as (
    select t.user_id, count(*)::integer n, min(t.scheduled_date) first_day,
     array_agg(to_char(t.scheduled_date, 'Dy, Mon FMDD') || ', ' || to_char(t.start_time, fmt) || '–' || to_char(t.end_time, fmt)
@@ -5753,6 +5954,31 @@ $$;
 
 
 ALTER FUNCTION "app_private"."time_off_notify_shifts_opened"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."time_off_opened_shifts_told"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) RETURNS TABLE("user_id" "uuid", "location_name" "text", "scheduled_date" "date", "start_time" time without time zone, "end_time" time without time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  with opened as (
+   select p.location_id, l.name location_name, p.scheduled_date, p.start_time, p.end_time
+   from public.time_off_assignment_releases rel
+   join public.schedule_published_shifts p on p.id = rel.published_shift_id and p.workspace_id = w
+   join public.locations l on l.id = p.location_id and l.workspace_id = w
+   where rel.workspace_id = w and rel.request_id = rid and rel.decision_revision = decision
+  ), managers as (
+   select m.user_id from public.workspace_memberships m
+   where m.workspace_id = w and m.status = 'active' and m.user_id is distinct from actor
+    -- A manager: deciding alone is not theirs anywhere (the core, no role reading).
+    and app_private.authz_reason(m.user_id, w, 'time_off.decide_alone') is not null
+  )
+  select mg.user_id, o.location_name, o.scheduled_date, o.start_time, o.end_time
+  from managers mg join opened o
+   on app_private.authz_reason(mg.user_id, w, 'schedule.edit', array[o.location_id]) is null;
+$$;
+
+
+ALTER FUNCTION "app_private"."time_off_opened_shifts_told"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."time_off_progress"("actor" "uuid", "w" "uuid", "rid" "uuid") RETURNS "jsonb"
@@ -5861,6 +6087,40 @@ $$;
 ALTER FUNCTION "app_private"."time_off_release_shifts"("w" "uuid", "rid" "uuid", "actor" "uuid", "decision" integer, "recorded_by" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."time_off_request_item"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+ select jsonb_build_object('id', r.id, 'employee_id', r.employee_id,
+   'employee_name', concat_ws(' ', coalesce(nullif(e.preferred_name, ''), e.first_name), e.last_name),
+   'request_type', r.request_type, 'reason', r.reason,
+   'cancellation', public.time_off_cancellation_context(target_workspace_id, r.id), 'status', r.status,
+   'start_date', (select min(s.segment_date) from public.schedule_time_off_segments s where s.request_id = r.id),
+   'end_date', (select max(s.segment_date) from public.schedule_time_off_segments s where s.request_id = r.id),
+   'revision', r.revision, 'created_at', r.created_at, 'decide_by', r.decide_by,
+   -- Withdrawn by the employee (R2-42); hours the system gave back (R2-52).
+   'withdrawn', app_private.time_off_display_status(target_workspace_id, r.id) = 'Withdrawn',
+   'shortened', public.time_off_event_is_shortening(target_workspace_id, r.id, '{}'),
+   'conflict_count', public.time_off_request_assignment_count(target_workspace_id, r.id),
+   'segments', public.time_off_request_periods(r.id, target_workspace_id),
+   'progress', case when r.status = 'pending' then app_private.time_off_progress(time_off_request_item.actor_user_id, target_workspace_id, r.id) end,
+   'events', coalesce((select jsonb_agg(jsonb_build_object('id', ev.id, 'action', ev.action,
+       'actor_name', case when ev.actor_user_id is null then 'System' else coalesce(nullif(up.display_name, ''), 'Team member') end,
+       'note', ev.note, 'created_at', ev.created_at,
+       'released_assignments', public.time_off_event_released_assignments(time_off_request_item.actor_user_id, target_workspace_id, ev.id)) order by ev.created_at)
+     from public.schedule_time_off_events ev left join public.user_profiles up on up.user_id = ev.actor_user_id where ev.request_id = r.id), '[]'))
+ from public.schedule_time_off_requests r join public.employee_profiles e on e.id = r.employee_id
+ where r.id = target_request_id and r.workspace_id = target_workspace_id
+$$;
+
+
+ALTER FUNCTION "app_private"."time_off_request_item"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "app_private"."time_off_request_item"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid") IS 'One time-off request as the Requests lists draw it; the reader decides who may see it (EKRAN-02 A4).';
+
+
+
 CREATE OR REPLACE FUNCTION "app_private"."time_off_shifts_fingerprint"("shifts" "jsonb") RETURNS "text"
     LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
@@ -5934,7 +6194,7 @@ $$;
 ALTER FUNCTION "app_private"."time_off_state"("w" "uuid", "rid" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."time_off_sweep"() RETURNS integer
+CREATE OR REPLACE FUNCTION "app_private"."time_off_sweep"("pass_limit" integer DEFAULT 500) RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -5948,10 +6208,14 @@ declare
   reminder_due boolean;
   done integer := 0;
 begin
+  -- ponytail: every workspace lock is held to the end of the pass (BL-506), and
+  -- the second loop always takes the earliest deadlines of every workspace, so
+  -- request 501 waits behind 500 with nothing due. Fix both together: commit per
+  -- request in a procedure and take loop two in a fair turn.
   -- Not decided in time: the system declines it.
   for r in select q.id, q.workspace_id from public.schedule_time_off_requests q
     where q.status = 'pending' and q.decide_by is not null and q.decide_by <= now()
-    order by q.decide_by, q.id limit 500 loop
+    order by q.decide_by, q.id limit pass_limit loop
     -- Each request on its own: one that fails is rolled back alone and named,
     -- the rest of the pass and every other workspace go on.
     begin
@@ -5962,13 +6226,17 @@ begin
         done := done + 1;
       end if;
     exception when others then
+      insert into app_private.time_off_sweep_failures (request_id, workspace_id, sqlstate, message)
+      values (r.id, r.workspace_id, sqlstate, sqlerrm)
+      on conflict (request_id) do update set last_failed_at = now(), attempts = app_private.time_off_sweep_failures.attempts + 1,
+        sqlstate = excluded.sqlstate, message = excluded.message;
       raise warning 'time-off-deadlines: request % of workspace % failed: % %', r.id, r.workspace_id, sqlstate, sqlerrm;
     end;
   end loop;
 
   for r in select q.* from public.schedule_time_off_requests q
     where q.status = 'pending' and q.decide_by > now()
-    order by q.decide_by, q.id limit 500 loop
+    order by q.decide_by, q.id limit pass_limit loop
     begin
     perform public.availability_lock_workspace(r.workspace_id);
     -- Read again under the lock: a withdrawal or a last vote may have closed it.
@@ -6036,6 +6304,10 @@ begin
       done := done + 1;
     end if;
     exception when others then
+      insert into app_private.time_off_sweep_failures (request_id, workspace_id, sqlstate, message)
+      values (r.id, r.workspace_id, sqlstate, sqlerrm)
+      on conflict (request_id) do update set last_failed_at = now(), attempts = app_private.time_off_sweep_failures.attempts + 1,
+        sqlstate = excluded.sqlstate, message = excluded.message;
       raise warning 'time-off-deadlines: request % of workspace % failed: % %', r.id, r.workspace_id, sqlstate, sqlerrm;
     end;
   end loop;
@@ -6044,7 +6316,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "app_private"."time_off_sweep"() OWNER TO "postgres";
+ALTER FUNCTION "app_private"."time_off_sweep"("pass_limit" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."time_off_timezone"("w" "uuid", "person" "uuid") RETURNS "text"
@@ -7471,8 +7743,8 @@ begin
    when 'approved_time_off' then settings.conflict_rules->>'approved_time_off'
    -- K17: "confirm once" asks like "confirm"; its answer holds for the editing session.
    when 'closed_location' then case settings.conflict_rules->>'closed_location' when 'confirm_once' then 'confirm' else settings.conflict_rules->>'closed_location' end
-   when 'minimum_travel' then settings.conflict_rules->>'minimum_travel'
-   when 'minimum_rest' then settings.conflict_rules->>'minimum_rest' when 'document_required' then settings.conflict_rules->>'document_required' when 'document_conditional_grace' then settings.conflict_rules->>'document_conditional_grace' when 'document_conditional_overdue' then settings.conflict_rules->>'document_conditional_overdue'
+   when 'minimum_travel' then case when shift ? '_shift_exchange' then 'allow' else settings.conflict_rules->>'minimum_travel' end
+   when 'minimum_rest' then case when shift ? '_shift_exchange' then 'allow' else settings.conflict_rules->>'minimum_rest' end when 'document_required' then settings.conflict_rules->>'document_required' when 'document_conditional_grace' then settings.conflict_rules->>'document_conditional_grace' when 'document_conditional_overdue' then settings.conflict_rules->>'document_conditional_overdue'
    when 'time_source_unresolved' then 'confirm'
    else 'block' end;
   if rule->>'code' not in ('availability','note') and array_position(array['allow','warn','confirm','block'],rule_severity)>array_position(array['allow','warn','confirm','block'],conflict_severity) then conflict_severity:=rule_severity; end if;
@@ -8991,6 +9263,10 @@ declare
   settled public.schedule_time_off_requests%rowtype;
 begin
   perform public.availability_lock_workspace(w);
+  -- Who may not decide here at all hears so before the request is looked up (BL-411).
+  if app_private.time_off_reason(actor, w, 'time_off.decide') is distinct from 'out_of_scope' then
+    perform app_private.time_off_authorize(actor, w, 'time_off.decide');
+  end if;
   select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w for update;
   if r.id is null then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'time_off.decide';
@@ -12149,6 +12425,113 @@ $$;
 ALTER FUNCTION "public"."get_schedule_read_model_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_schedule_requests_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kinds" "text"[] DEFAULT NULL::"text"[], "target_location_id" "uuid" DEFAULT NULL::"uuid", "target_search" "text" DEFAULT ''::"text", "target_page" integer DEFAULT 1, "target_page_size" integer DEFAULT 50) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare time_scope uuid[]; shift_scope uuid[]; reached uuid[]; time_here boolean; shift_here boolean;
+ emp_id uuid; needle text := btrim(coalesce(target_search, '')); total integer; picked jsonb;
+begin
+ if target_page is null or target_page < 1 or target_page_size is null or target_page_size not in (25, 50, 100) then
+  raise exception 'invalid closed request query' using errcode = '22023'; end if;
+ time_scope := app_private.scope_set(actor_user_id, target_workspace_id, 'requests.read');
+ shift_scope := app_private.scope_set(actor_user_id, target_workspace_id, 'exchange.read');
+ -- The people whose time off the actor reads (requests.read; K-S2 lets a manager missing a document in).
+ -- ponytail: one core call per person of the workspace, as the open list does; ask per page past a few hundred people.
+ reached := coalesce((select array_agg(e.id) from public.employee_profiles e where e.workspace_id = target_workspace_id
+   and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', e.id) is null), '{}');
+ time_here := cardinality(reached) > 0;
+ shift_here := cardinality(shift_scope) > 0;
+ -- Neither list anywhere: say why not.
+ if not time_here and not shift_here then
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'requests.read', target_locations => time_scope);
+ end if;
+ -- A location narrows each list it is in; one in neither is refused.
+ if target_location_id is not null then
+  time_here := time_here and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', null, target_location_id) is null;
+  shift_here := shift_here and target_location_id = any (shift_scope);
+  if not time_here and not shift_here then
+   if cardinality(reached) > 0 then
+    raise exception 'Not allowed' using errcode = '42501', detail = 'requests.read',
+      hint = 'authz.' || app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', null, target_location_id);
+   end if;
+   perform app_private.authorize(actor_user_id, target_workspace_id, 'exchange.read', array[target_location_id]);
+  end if;
+ end if;
+ select e.id into emp_id from public.employee_profiles e
+ where e.workspace_id = target_workspace_id and e.user_id = actor_user_id and e.archived_at is null;
+
+ -- ponytail: every closed request the actor reads is ranked to cut one page; key the order
+ -- (closed_at, kind, id) with a cursor index if one workspace holds tens of thousands.
+ with listed as (
+  -- Closed time off: what the open list's "closed" queue holds. Every decision on a
+  -- request (a verdict, the deadline, a revoke, a shortening) stamps its updated_at.
+  select 'time_off'::text as kind, r.id, r.updated_at as closed_at
+  from public.schedule_time_off_requests r join public.employee_profiles e on e.id = r.employee_id
+  where time_here and r.workspace_id = target_workspace_id and r.status <> 'pending' and r.employee_id = any (reached)
+   and (target_kinds is null or 'time_off' = any (target_kinds))
+   and (target_location_id is null
+        or exists (select 1 from public.time_off_required_locations x where x.request_id = r.id and x.location_id = target_location_id))
+   and (needle = '' or concat_ws(' ', e.first_name, e.last_name, e.preferred_name, r.reason,
+         (select concat_ws(' ', app_private.request_date_text(min(s.segment_date)), app_private.request_date_text(max(s.segment_date)))
+          from public.schedule_time_off_segments s where s.request_id = r.id)) ilike '%' || needle || '%')
+  union all
+  -- Closed shift changes: every case no longer open, as its live status says; who sees one is who
+  -- sees it in the shift changes list (exchange.read at a side's location, its owner, an applicant).
+  select c.kind, c.id,
+    greatest(c.updated_at, (select max(ev.created_at) from public.shift_exchange_events ev where ev.workspace_id = c.workspace_id and ev.case_id = c.id),
+      case when c.status = 'open' and c.expires_at <= now() then c.expires_at end)
+  from public.shift_exchange_cases c
+  where shift_here and c.workspace_id = target_workspace_id
+   and (target_kinds is null or c.kind = any (target_kinds))
+   and (c.status <> 'open' or public.shift_exchange_live_status(target_workspace_id, c.id) <> 'open')
+   and ((c.offered_snapshot ->> 'location_id')::uuid = any (shift_scope)
+        or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope))
+        or c.owner_id = emp_id
+        or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id))
+   and (target_location_id is null or target_location_id in
+        ((c.offered_snapshot ->> 'location_id')::uuid, (c.requested_snapshot ->> 'location_id')::uuid))
+   and (needle = '' or concat_ws(' ', c.offered_snapshot ->> 'employee_name', c.requested_snapshot ->> 'employee_name',
+         app_private.request_date_text((c.offered_snapshot ->> 'date')::date),
+         app_private.request_date_text((c.requested_snapshot ->> 'date')::date),
+         -- Only the applications the row shows: a reader who only applied finds no one else's.
+         (select string_agg(concat_ws(' ', ae.first_name, ae.last_name, ae.preferred_name), ' ')
+          from public.shift_exchange_applications a join public.employee_profiles ae on ae.id = a.employee_id
+          where a.case_id = c.id and (a.employee_id = emp_id or c.owner_id = emp_id
+           or (c.offered_snapshot ->> 'location_id')::uuid = any (shift_scope)
+           or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope))))) ilike '%' || needle || '%')
+ ), page as (
+  select l.* from listed l order by l.closed_at desc, l.kind, l.id
+  offset (target_page - 1) * target_page_size limit target_page_size
+ )
+ select (select count(*)::integer from listed),
+   coalesce((select jsonb_agg(jsonb_build_object('kind', p.kind, 'id', p.id, 'closed_at', p.closed_at,
+     'time_off', case when p.kind = 'time_off' then app_private.time_off_request_item(actor_user_id, target_workspace_id, p.id) end,
+     'exchange', case when p.kind <> 'time_off' then (
+       select app_private.shift_exchange_case_item(actor_user_id, target_workspace_id, c, coalesce(
+           (c.offered_snapshot ->> 'location_id')::uuid = any (shift_scope)
+           or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope)), false),
+         emp_id, public.shift_exchange_shift(target_workspace_id, c.offered_source_id),
+         public.shift_exchange_shift(target_workspace_id, c.requested_source_id),
+         public.shift_exchange_live_status(target_workspace_id, c.id))
+       from public.shift_exchange_cases c where c.id = p.id) end)
+     order by p.closed_at desc, p.kind, p.id) from page p), '[]')
+ into total, picked;
+
+ return jsonb_build_object('workspace_id', target_workspace_id,
+   'time_format', (select time_format from public.workspace_scheduling_settings where workspace_id = target_workspace_id),
+   'total', total, 'page', target_page, 'page_size', target_page_size, 'rows', picked);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_schedule_requests_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kinds" "text"[], "target_location_id" "uuid", "target_search" "text", "target_page" integer, "target_page_size" integer) OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."get_schedule_requests_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kinds" "text"[], "target_location_id" "uuid", "target_search" "text", "target_page" integer, "target_page_size" integer) IS 'Requests -> Closed: closed time off (requests.read) and closed shift changes (exchange.read) in one order, newest decision first, a page at a time (EKRAN-02 A4).';
+
+
+
 CREATE OR REPLACE FUNCTION "public"."get_schedule_requests_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_time_off_queue" "text" DEFAULT 'needs_review'::"text", "target_location_id" "uuid" DEFAULT NULL::"uuid", "target_search" "text" DEFAULT ''::"text", "target_time_off_cursor" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_limit" integer DEFAULT 50) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -12196,21 +12579,7 @@ begin
   -- A page takes every request sent at its edge's time, so "Older" starts right after it.
   select f.* from filtered f where not exists (select 1 from edge) or f.created_at >= (select edge.created_at from edge)
  )
- select coalesce(jsonb_agg(jsonb_build_object('id', r.id, 'employee_id', r.employee_id,
-   'employee_name', concat_ws(' ', coalesce(nullif(e.preferred_name, ''), e.first_name), e.last_name),
-   'request_type', r.request_type, 'reason', r.reason,
-   'cancellation', public.time_off_cancellation_context(target_workspace_id, r.id), 'status', r.status,
-   'start_date', (select min(s.segment_date) from public.schedule_time_off_segments s where s.request_id = r.id),
-   'end_date', (select max(s.segment_date) from public.schedule_time_off_segments s where s.request_id = r.id),
-   'revision', r.revision, 'created_at', r.created_at, 'decide_by', r.decide_by,
-   'conflict_count', public.time_off_request_assignment_count(target_workspace_id, r.id),
-   'segments', public.time_off_request_periods(r.id, target_workspace_id),
-   'progress', case when r.status = 'pending' then app_private.time_off_progress(get_schedule_requests_service.actor_user_id, target_workspace_id, r.id) end,
-   'events', coalesce((select jsonb_agg(jsonb_build_object('id', ev.id, 'action', ev.action,
-       'actor_name', case when ev.actor_user_id is null then 'System' else coalesce(nullif(up.display_name, ''), 'Team member') end,
-       'note', ev.note, 'created_at', ev.created_at,
-       'released_assignments', public.time_off_event_released_assignments(get_schedule_requests_service.actor_user_id, target_workspace_id, ev.id)) order by ev.created_at)
-     from public.schedule_time_off_events ev left join public.user_profiles up on up.user_id = ev.actor_user_id where ev.request_id = r.id), '[]'))
+ select coalesce(jsonb_agg(app_private.time_off_request_item(get_schedule_requests_service.actor_user_id, target_workspace_id, r.id)
    order by r.created_at desc, r.id), '[]'),
    -- "Older" only while something was sent before the edge.
    (select edge.created_at from edge where exists (select 1 from filtered f where f.created_at < edge.created_at))
@@ -12440,7 +12809,7 @@ begin
  if exchange_scope is not null
   and (exchange_scope->>'workspace_id')::uuid=new.workspace_id
   and exchange_scope->'shift_ids' ? logical_id::text then
-  s:=s||jsonb_build_object('_exclude_shift_ids',exchange_scope->'shift_ids');
+  s:=s||jsonb_build_object('_exclude_shift_ids',exchange_scope->'shift_ids','_shift_exchange',true);
  end if;
  a:=public.assess_weekly_shift_availability(new.workspace_id,new.employee_id,s);
  evidence:=public.schedule_availability_override(new.workspace_id,s,a);
@@ -15391,6 +15760,12 @@ begin
   if public.time_off_event_is_shortening(new.workspace_id, new.request_id, new.metadata) then
     return new;
   end if;
+  -- One decision tells each person once (R2-13): approving a cancellation
+  -- also writes on the leave it shortens, and revoking or giving back the leave
+  -- closes a cancellation waiting on it; the decision's own notice says it.
+  if new.metadata ? 'cancelled_intervals' or (new.action = 'revoked' and new.metadata ? 'parent_request_id') then
+    return new;
+  end if;
   is_cancel := r.request_type = 'time_off_cancellation';
   select e.user_id into requester from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
 
@@ -15416,12 +15791,23 @@ begin
   end if;
 
   -- The person who asked, unless they did it themselves.
-  title := case when is_cancel then 'Leave cancellation updated' else 'Time-off request updated' end;
+  -- The notice says how it was decided (R2-45).
+  title := case
+    when is_cancel then case new.action when 'approved' then 'Leave cancellation approved' when 'denied' then 'Leave cancellation declined'
+      when 'expired' then 'Leave cancellation not decided in time' else 'Leave cancellation closed' end
+    else case new.action when 'approved' then 'Time off approved' when 'denied' then 'Time off declined'
+      when 'expired' then 'Time off not decided in time'
+      when 'revoked' then case when new.actor_user_id is not distinct from requester then 'Time off withdrawn' else 'Time off revoked' end
+      else 'Time-off request updated' end end;
   body := case
     when new.action = 'expired' then 'Your request was not decided in time and was declined.'
+    when is_cancel and new.action = 'approved' then 'Your leave cancellation was approved. Shifts opened earlier stay open.'
     when is_cancel and new.action = 'denied' then 'Your cancellation was declined. The approved leave remains in effect.'
     when is_cancel and new.action = 'revoked' then 'Your cancellation request was closed. Review the original leave for its current status.'
     when is_cancel then 'Your leave cancellation was reviewed. Shifts opened earlier stay open.'
+    when new.action = 'approved' then 'Your time-off request was approved.'
+    when new.action = 'denied' then 'Your time-off request was declined.'
+    when new.action = 'revoked' then 'Your approved time off was revoked.'
     else 'Your time-off request status changed.' end;
   preview := case when is_cancel then 'A leave cancellation was updated.' else 'A schedule request was updated.' end;
   url := case when is_cancel then '/app/employee-hub/my-availability#request-' || new.request_id::text else '/app/employee-hub/my-availability' end;
@@ -15441,13 +15827,17 @@ begin
      and not coalesce(public.time_off_is_the_owners_own(new.actor_user_id, new.workspace_id, new.request_id), false) then
     select coalesce(array_agg(u order by u), '{}') into recipients
     from unnest(app_private.time_off_deciders(new.workspace_id, r.id, false)) u where u is distinct from new.actor_user_id;
+    -- Who heard which shifts the approval opened has heard of it (R2-13).
+    if new.action = 'approved' and not is_cancel then
+      recipients := array(select u from unnest(recipients) u where u not in (
+        select t.user_id from app_private.time_off_opened_shifts_told(new.actor_user_id, new.workspace_id, r.id, (new.metadata ->> 'revision')::integer) t));
+    end if;
     if cardinality(recipients) > 0 then
       perform public.enqueue_notification_outbox_service(new.workspace_id, gen_random_uuid(), 'requests.time_off.decided', 1, new.actor_user_id,
         tg_table_name, new.request_id::text,
         jsonb_build_object('correlation_id', new.id, 'request_id', new.request_id, 'request_event_id', new.id, 'request_action', new.action,
           'recipient_user_ids', to_jsonb(recipients), 'audience_contract', 'time_off_deciders', 'category', 'request',
-          'title', case new.action when 'approved' then 'Time off approved' when 'denied' then 'Time off declined'
-            when 'expired' then 'Time off not decided in time' else 'Time off withdrawn or revoked' end,
+          'title', title,
           'body', case when is_cancel then 'A leave cancellation you could decide was closed.' else 'A time-off request you could decide was closed.' end,
           'safe_preview', 'A time-off request was closed.',
           'action_url', '/app/schedule/requests?tab=time-off&request=' || new.request_id::text,
@@ -15479,20 +15869,28 @@ begin
  select string_agg(to_char(lower(p) at time zone zone_name, 'Dy, Mon FMDD') || ', ' || to_char(lower(p) at time zone zone_name, fmt)
    || '–' || to_char(upper(p) at time zone zone_name, fmt), '; ' order by lower(p))
   into lines from unnest(cut) p;
- -- Whoever approved the leave (its decisions), but not the one shortening it
- -- and not the employee: the owner's own leave is approved by themselves.
- select coalesce(array_agg(distinct ev.actor_user_id order by ev.actor_user_id), '{}') into deciders
-  from public.schedule_time_off_events ev
-  join public.workspace_memberships m on m.workspace_id = w and m.user_id = ev.actor_user_id and m.status = 'active'
-  where ev.workspace_id = w and ev.request_id = parent_id and ev.action = 'approved'
-   and ev.metadata ? 'segments' and ev.actor_user_id <> actor and ev.actor_user_id is distinct from employee_user;
+ -- Whoever approved the leave: its last approval and every vote for it (R2-23);
+ -- approved by the system, the managers who could decide it. Not the one
+ -- shortening it and not the employee: the owner's own leave is approved by themselves.
+ select coalesce(array_agg(distinct x.u order by x.u), '{}') into deciders
+  from (select ev.actor_user_id u from public.schedule_time_off_events ev
+        where ev.workspace_id = w and ev.request_id = parent_id and ev.action = 'approved' and ev.metadata ? 'segments'
+        union all
+        select v.voter_user_id from public.time_off_votes v
+        where v.workspace_id = w and v.request_id = parent_id and v.verdict = 'approve'
+        union all
+        select d from unnest(app_private.time_off_deciders(w, parent_id, false)) d
+        where exists (select 1 from public.schedule_time_off_events ev where ev.workspace_id = w and ev.request_id = parent_id
+                      and ev.action = 'approved' and ev.metadata ? 'segments' and ev.actor_user_id is null)) x
+  join public.workspace_memberships m on m.workspace_id = w and m.user_id = x.u and m.status = 'active'
+  where x.u <> actor and x.u is distinct from employee_user;
  if cardinality(deciders) > 0 then
   perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'requests.time_off.shortened', 1, actor,
    'schedule_time_off_requests', parent_id::text,
    jsonb_build_object('request_id', parent_id, 'recipient_user_ids', to_jsonb(deciders),
     'audience_contract', 'time_off_deciders', 'category', 'requests',
     'title', left(coalesce(employee_name, 'An employee') || '''s time off was shortened', 160),
-    'body', left(lines || case when by_manager then ' is back on the schedule.' else ' — they took a shift in these hours.' end, 500),
+    'body', left(lines || case when by_manager then ' is no longer time off.' else ' — they took a shift in these hours.' end, 500),
     'safe_preview', 'Approved time off was shortened.',
     'action_url', '/app/schedule/requests?tab=time-off&request=' || parent_id::text,
     'group_key', 'schedule_time_off_requests:' || parent_id::text),
@@ -18260,7 +18658,7 @@ CREATE OR REPLACE FUNCTION "public"."record_weekly_exchange_acceptance"("w" "uui
     SET "search_path" TO ''
     AS $$
 declare c public.shift_exchange_cases%rowtype; app public.shift_exchange_applications%rowtype;
- s jsonb; t jsonb; item record; a jsonb; actor uuid; normalized jsonb;
+ s jsonb; t jsonb; item record; a jsonb; e jsonb; actor uuid; normalized jsonb;
 begin
  select * into c from public.shift_exchange_cases where workspace_id=w and id=cid;
  select * into app from public.shift_exchange_applications where workspace_id=w and case_id=cid and id=aid;
@@ -18270,13 +18668,14 @@ begin
   or app.consent_fingerprint is distinct from c.consent_fingerprint then
   raise exception 'Current employee acceptance is required' using errcode='PT409'; end if;
  for item in select s target,app.employee_id emp union all select t,c.owner_id where c.kind='swap' loop
-  normalized:=item.target||jsonb_build_object('id',item.target->>'source_id','employee_id',item.emp,
-   '_exclude_shift_ids',to_jsonb(array_remove(array[(s->>'source_id')::uuid,(t->>'source_id')::uuid],null)));
-  a:=public.assess_weekly_shift_availability(w,item.emp,normalized);
-  if a->>'operation' in ('blocked','verification_required') then
+  normalized:=item.target||jsonb_build_object('id',item.target->>'source_id','employee_id',item.emp);
+  e:=app_private.eligibility(w,item.emp,normalized,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,
+   'excluded',to_jsonb(array_remove(array[(s->>'source_id')::uuid,(t->>'source_id')::uuid],null)),'with_assessment',true));
+  a:=e->'assessment';
+  if not (e->>'eligible')::boolean then
    raise exception 'Resolve shift hours or approved time off before transfer' using errcode='23514'; end if;
   select user_id into actor from public.employee_profiles where workspace_id=w and id=item.emp;
-  if actor is null then raise exception 'Employee acceptance identity unavailable' using errcode='42501'; end if;
+  if actor is null then raise exception 'Employee acceptance identity unavailable' using errcode='42501',hint='authz.out_of_scope'; end if;
   if a->>'operation'='warning_requires_override' then
    update public.schedule_availability_overrides set revoked_at=now()
     where workspace_id=w and shift_id=(item.target->>'source_id')::uuid and revoked_at is null;
@@ -18297,7 +18696,7 @@ CREATE OR REPLACE FUNCTION "public"."refresh_weekly_exchange_terms"("w" "uuid", 
     SET "search_path" TO ''
     AS $$
 declare c public.shift_exchange_cases%rowtype; s jsonb; t jsonb; fp text; deadline timestamptz;
- event_action text; message text; prior_details jsonb;
+ event_action text; message text; prior_details jsonb; given_up jsonb; dropped uuid[]:='{}'; ended uuid;
 begin
  perform pg_advisory_xact_lock(hashtextextended(w::text,921));
  select * into c from public.shift_exchange_cases where workspace_id=w and id=cid for update;
@@ -18312,20 +18711,36 @@ begin
  if fp=c.consent_fingerprint then return; end if;
  deadline:=coalesce(least((s->>'starts_at')::timestamptz,(t->>'starts_at')::timestamptz),c.expires_at);
  event_action:=case when deadline<=clock_timestamp() then 'expired' else 'terms_changed' end;
+ if event_action='terms_changed' then
+  given_up:=to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null));
+  if c.kind='swap' and t is not null and app_private.eligibility(w,c.owner_id,t,
+   jsonb_build_object('operation','swap','excluded',given_up))->'blockers' @> '[{"code":"time_overlap"}]' then
+   event_action:='invalidated';
+  else
+   select coalesce(array_agg(a.id order by a.id),'{}') into dropped from public.shift_exchange_applications a
+    where a.case_id=cid and a.workspace_id=w and a.status='pending_manager'
+     and app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',
+      case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,
+      'excluded',given_up))->'blockers' @> '[{"code":"time_overlap"}]';
+   if c.audience='direct' and cardinality(dropped)>0 then event_action:='invalidated'; dropped:='{}'; end if;
+  end if;
+ end if;
  prior_details:=jsonb_build_object('before',jsonb_build_object('offered',c.offered_snapshot,'requested',c.requested_snapshot,
   'consent_fingerprint',c.consent_fingerprint,'revision',c.revision),
   'after',jsonb_build_object('offered',s,'requested',t,'consent_fingerprint',fp,'revision',c.revision+1),
-  'acceptance_retained',event_action='terms_changed','cause','published_assignment_changed');
+  'acceptance_retained',event_action='terms_changed','acceptances_ended',to_jsonb(dropped),'cause','published_assignment_changed');
  update public.shift_exchange_cases set offered_snapshot=s,requested_snapshot=t,consent_fingerprint=fp,
-  expires_at=deadline,status=case when event_action='expired' then 'expired' else status end,
+  expires_at=deadline,status=case when event_action in ('expired','invalidated') then event_action else status end,
   revision=revision+1,updated_at=now() where id=cid;
  update public.shift_exchange_applications set consent_fingerprint=fp,
-  status=case when event_action='expired' then 'expired' else status end,updated_at=now()
+  status=case when event_action in ('expired','invalidated') then event_action when id=any(dropped) then 'invalidated' else status end,updated_at=now()
   where case_id=cid and workspace_id=w and status in ('invited','pending_manager');
  -- Employee consent survives; a manager's old scoped review does not.
  delete from public.shift_exchange_votes where workspace_id=w and case_id=cid;
  message:=case when event_action='expired' then
   'The updated shift has already started. This request closed without a transfer. Check your current schedule.'
+ when event_action='invalidated' then
+  'The new shift hours overlap another shift. This request ended without a transfer. Start a new request from the current schedule.'
  else format('Shift details changed: %s, %s, %s-%s (%s).%s Existing acceptances remain valid; pending invitations still need a response. Final manager approval is required.',
   s->>'location_name',s->>'date',s->>'start_time',s->>'end_time',coalesce(s->>'time_timezone',s->>'timezone'),
   case when t is null then '' else format(' Swap shift: %s, %s, %s-%s (%s).',t->>'location_name',t->>'date',t->>'start_time',t->>'end_time',coalesce(t->>'time_timezone',t->>'timezone')) end) end;
@@ -18333,6 +18748,10 @@ begin
  -- emit is synchronous under the workspace lock; its newest event is ours.
  update public.shift_exchange_events set details=prior_details where id=(select id from public.shift_exchange_events
   where workspace_id=w and case_id=cid and action=event_action order by notification_sequence desc limit 1);
+ foreach ended in array dropped loop
+  perform public.shift_exchange_emit(null,w,cid,ended,'invalidated',
+   'The new shift hours overlap another shift of the teammate who accepted. That acceptance ended; no assignment changed.');
+ end loop;
  perform realtime.send(jsonb_build_object('workspace_id',w,'case_id',cid,'revision',c.revision+1),
   'changed','shift-exchanges:'||w::text,true);
 end; $$;
@@ -19201,6 +19620,9 @@ begin
   values (rid, w, parent.employee_id, 'time_off_cancellation', btrim(coalesce(reason, '')), actor);
   insert into public.time_off_cancellation_links values (rid, w, parent.id, parent.revision);
   for p in select value from jsonb_array_elements(periods) loop
+    -- A malformed id is a bad request, not a server error (R2-55).
+    if coalesce(p ->> 'segment_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+      raise exception 'Choose an approved period from this leave' using errcode = '22023'; end if;
     select * into original from public.schedule_time_off_segments where id = (p ->> 'segment_id')::uuid and workspace_id = w and request_id = parent.id;
     if original.id is null then raise exception 'Choose an approved period from this leave' using errcode = '22023'; end if;
     if coalesce(p ->> 'starts_at', '') !~ '(Z|[+-][0-9]{2}:[0-9]{2})$' or coalesce(p ->> 'ends_at', '') !~ '(Z|[+-][0-9]{2}:[0-9]{2})$' then
@@ -19412,7 +19834,7 @@ begin
  if not exists(select 1 from public.employee_profiles e join public.workspace_memberships m
   on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status='active'
   where e.workspace_id=w and e.id=emp and e.user_id=actor and e.archived_at is null) then
-  raise exception 'Employee acceptance access denied' using errcode='42501'; end if;
+  raise exception 'Employee acceptance access denied' using errcode='42501',hint='authz.out_of_scope'; end if;
  warning:=public.weekly_exchange_employee_warning(w,emp,target);
  if warning is not null and command->>'availability_fingerprint' is distinct from warning->>'fingerprint' then
   raise exception 'Your availability conflicts with this shift. Refresh the request and choose to continue anyway.' using errcode='PT409'; end if;
@@ -20562,6 +20984,10 @@ declare
   other record;
 begin
   perform public.availability_lock_workspace(w);
+  -- Who may not revoke here at all hears so before the request is looked up (BL-411).
+  if app_private.time_off_reason(actor, w, 'time_off.revoke') is distinct from 'out_of_scope' then
+    perform app_private.time_off_authorize(actor, w, 'time_off.revoke');
+  end if;
   select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w and request_type = 'time_off' for update;
   if r.id is null then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'time_off.revoke';
@@ -22530,92 +22956,6 @@ end; $$;
 ALTER FUNCTION "public"."save_workspace_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_role_id" "uuid", "role_name" "text", "role_description" "text", "role_access_class" "public"."workspace_role", "permission_keys" "text"[], "expected_updated_at" timestamp with time zone) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."schedule_actor_can_manage_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select exists (
-    select 1
-    from public.workspace_memberships membership
-    join public.workspace_roles role
-      on role.id = membership.role_id and role.workspace_id = membership.workspace_id
-    join public.workspace_role_permissions permission
-      on permission.role_id = role.id and permission.workspace_id = role.workspace_id
-    where membership.workspace_id = target_workspace_id
-      and membership.user_id = actor_user_id
-      and membership.status = 'active'
-      and role.access_class in ('owner', 'admin', 'manager')
-      and permission.permission_key = 'schedule.manage'
-      and (
-        target_location_id is null
-        or (membership.all_locations and exists (
-          select 1 from public.locations location
-          where location.id = target_location_id and location.workspace_id = target_workspace_id))
-        or exists (
-          select 1 from public.membership_location_scopes scope
-          where scope.membership_id = membership.id
-            and scope.workspace_id = target_workspace_id
-            and scope.location_id = target_location_id
-        )
-      )
-  );
-$$;
-
-
-ALTER FUNCTION "public"."schedule_actor_can_manage_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."schedule_actor_can_publish_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select exists (
-    select 1
-    from public.workspace_memberships membership
-    join public.workspace_roles role
-      on role.id = membership.role_id and role.workspace_id = membership.workspace_id
-    join public.workspace_role_permissions permission
-      on permission.role_id = role.id and permission.workspace_id = role.workspace_id
-    where membership.workspace_id = target_workspace_id
-      and membership.user_id = actor_user_id
-      and membership.status = 'active'
-      and role.access_class in ('owner', 'admin', 'manager')
-      and permission.permission_key = 'schedule.publish'
-      and (
-        target_location_id is null
-        or (membership.all_locations and exists (
-          select 1 from public.locations location
-          where location.id = target_location_id and location.workspace_id = target_workspace_id))
-        or exists (
-          select 1 from public.membership_location_scopes scope
-          where scope.membership_id = membership.id
-            and scope.workspace_id = target_workspace_id
-            and scope.location_id = target_location_id
-        )
-      )
-  );
-$$;
-
-
-ALTER FUNCTION "public"."schedule_actor_can_publish_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."schedule_actor_has_capability_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "capability" "text", "target_location_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
- select exists(select 1 from public.workspace_memberships m join public.workspace_roles r on r.id=m.role_id and r.workspace_id=m.workspace_id
- join public.workspace_role_permissions p on p.role_id=r.id and p.workspace_id=r.workspace_id
- where m.workspace_id=target_workspace_id and m.user_id=actor_user_id and m.status='active' and r.access_class in ('owner','admin','manager')
- and p.permission_key=capability and (target_location_id is null
-   or (m.all_locations and exists(select 1 from public.locations l where l.id=target_location_id and l.workspace_id=target_workspace_id))
-   or exists(select 1 from public.membership_location_scopes s where s.membership_id=m.id and s.workspace_id=target_workspace_id and s.location_id=target_location_id)));
-$$;
-
-
-ALTER FUNCTION "public"."schedule_actor_has_capability_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "capability" "text", "target_location_id" "uuid") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."schedule_availability_enrich_read"("actor" "uuid", "w" "uuid", "model" "jsonb", "draft" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -23744,9 +24084,7 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchange_draft_undoes"("w" "uuid", "d
     or (d.location_id,d.job_id,d.scheduled_date,d.start_time,d.end_time) is not distinct from (p.location_id,p.job_id,p.scheduled_date,p.start_time,p.end_time))
    order by d.id in (p.id,p.source_shift_id) desc,d.id limit 1
   ) own on true
-  -- ponytail: transaction start times. An approval that began before a
-  -- publish but waited for the workspace lock (both take it first thing)
-  -- reads as earlier; the window is the few statements before the lock.
+  -- c.updated_at is when the change was decided (BL-228).
   where c.workspace_id=w and c.status='completed' and c.updated_at>pub.published_at
    and p.location_id=any(locations)
    and p.scheduled_date between dr.week_start and dr.week_start+6
@@ -23807,7 +24145,11 @@ begin
   body:=case when act='transfer_completed' then
    case when c.kind='swap' then 'Your swap is approved. Your updated shifts are now your responsibility. Open your schedule to review both changes.'
     when exists(select 1 from public.employee_profiles e where e.id=c.owner_id and e.user_id=recipient) then 'Your cover is approved. You are no longer responsible for this shift.'
-    else 'Your pickup is approved. This shift is now assigned to you and is your responsibility.' end else msg end;
+    else 'Your pickup is approved. This shift is now assigned to you and is your responsibility.' end
+   -- BL-910: a declined application's reason is written for the applicant alone.
+   when act='application_rejected' and not exists(select 1 from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id
+    where a.id=aid and e.user_id=recipient) then 'A request for your shift was declined. You are still responsible for this shift.'
+   else msg end;
   perform public.enqueue_notification_outbox_service(w,gen_random_uuid(),'requests.shift_change.status_changed',1,actor,'shift_exchange_cases',cid::text,
    jsonb_build_object('correlation_id',eid,'request_id',cid,'request_event_id',eid,'request_action',act,'location_id',loc,'location_ids',jsonb_build_array(loc),'recipient_user_ids',jsonb_build_array(recipient),
    'audience_contract','shift_change_participants','category','request','title',case when act='transfer_completed' then 'Shift change approved' when act='other_selected' then 'Another teammate was selected' when act='peer_invited' then 'A teammate needs your response' else 'Shift request updated' end,
@@ -23817,7 +24159,7 @@ begin
   offered:=public.shift_exchange_shift(w,c.offered_source_id);
   select coalesce(array_agg(e.user_id),'{}'::uuid[]) into recipients from public.employee_profiles e
    join public.workspace_memberships m on m.workspace_id=w and m.user_id=e.user_id and m.status='active'
-   where e.workspace_id=w and e.archived_at is null and e.id<>c.owner_id and public.weekly_exchange_candidate_check(w,e.id,offered)->>'status'='eligible';
+   where e.workspace_id=w and e.archived_at is null and e.id<>c.owner_id and app_private.eligibility(w,e.id,offered,'{"operation":"release_pickup"}')->>'status'='eligible';
   if cardinality(recipients)>0 then
    perform public.enqueue_notification_outbox_service(w,gen_random_uuid(),'requests.shift_change.status_changed',1,actor,'shift_exchange_cases',cid::text,
     jsonb_build_object('correlation_id',eid,'request_id',cid,'request_event_id',eid,'request_action',act,'location_id',loc,'location_ids',jsonb_build_array(loc),'recipient_user_ids',to_jsonb(recipients),
@@ -23827,9 +24169,21 @@ begin
  end if;
  if act in('application_submitted','peer_accepted','scope_approved') or
   (act='terms_changed' and exists(select 1 from public.shift_exchange_applications where case_id=cid and status='pending_manager')) then
- select coalesce(array_agg(m.user_id),'{}'::uuid[]) into reviewers from public.workspace_memberships m where m.workspace_id=w and m.status='active'
- and (public.schedule_actor_has_capability_service(m.user_id,w,'schedule.shift_change_requests.manage',loc) or (c.kind='swap' and public.schedule_actor_has_capability_service(m.user_id,w,'schedule.shift_change_requests.manage',(c.requested_snapshot->>'location_id')::uuid)))
- and m.user_id is distinct from actor and not exists(select 1 from public.employee_profiles e where e.workspace_id=w and e.user_id=m.user_id and (e.id=c.owner_id or exists(select 1 from public.shift_exchange_applications a where a.case_id=cid and (a.id=aid or (act='terms_changed' and a.status='pending_manager')) and a.employee_id=e.id)));
+ -- K-S4: the people who decide the case at each location, its managers when
+ -- it has any who may; else the admins and the owner who may (D3, K-S1).
+ with place as (
+  select distinct x loc from unnest(array_remove(array[loc,(c.requested_snapshot->>'location_id')::uuid],null)) x
+ ), decider as (
+  select m.user_id,place.loc,(app_private.actor(m.user_id,w)).class cls
+  from public.workspace_memberships m cross join place
+  where m.workspace_id=w and m.status='active' and m.user_id is distinct from actor
+   and not exists(select 1 from public.shift_exchange_applications a where a.case_id=cid
+    and (a.id=aid or (act='terms_changed' and a.status='pending_manager'))
+    and app_private.exchange_decision_reason(m.user_id,w,c.owner_id,a.employee_id,place.loc) is not null)
+   and app_private.exchange_decision_reason(m.user_id,w,c.owner_id,null,place.loc) is null
+ )
+ select coalesce(array_agg(distinct d.user_id),'{}'::uuid[]) into reviewers from decider d
+ where d.cls='manager' or not exists(select 1 from decider x where x.loc=d.loc and x.cls='manager');
  if cardinality(reviewers)>0 then
  perform public.enqueue_notification_outbox_service(w,gen_random_uuid(),'requests.shift_change.submitted',1,actor,'shift_exchange_cases',cid::text,
  jsonb_build_object('correlation_id',eid,'request_id',cid,'request_event_id',eid,'request_action',act,'location_ids',to_jsonb(array_remove(array[loc,(c.requested_snapshot->>'location_id')::uuid],null)),'recipient_user_ids',to_jsonb(reviewers),
@@ -23931,13 +24285,15 @@ begin
  if audience='schedule_request_reviewers' then
   return public.shift_exchange_live_status(o.workspace_id,c.id)='open'
    and exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.status='pending_manager')
-   and (public.schedule_actor_has_capability_service(recipient,o.workspace_id,'schedule.shift_change_requests.manage',(c.offered_snapshot->>'location_id')::uuid)
-    or (c.kind='swap' and public.schedule_actor_has_capability_service(recipient,o.workspace_id,'schedule.shift_change_requests.manage',(c.requested_snapshot->>'location_id')::uuid)))
+   -- Still somebody who decides it (D3, K-S1).
+   and exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+    where app_private.exchange_decision_reason(recipient,o.workspace_id,c.owner_id,
+     (select a.employee_id from public.shift_exchange_applications a where a.id=e.application_id),x) is null)
    and (person is null or (person is distinct from c.owner_id and not exists(select 1 from public.shift_exchange_applications a where a.id=e.application_id and a.employee_id=person)));
  elsif audience='eligible_shift_cover_candidates' then
   if public.shift_exchange_live_status(o.workspace_id,c.id)<>'open' or person is null or person=c.owner_id then return false; end if;
   offered:=public.shift_exchange_shift(o.workspace_id,c.offered_source_id);
-  return coalesce(public.weekly_exchange_candidate_check(o.workspace_id,person,offered)->>'status'='eligible',false);
+  return coalesce(app_private.eligibility(o.workspace_id,person,offered,'{"operation":"release_pickup"}')->>'status'='eligible',false);
  elsif audience='shift_change_participants' then
   if person is null or not (person is not distinct from c.owner_id or exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=person and (e.application_id is null or a.id=e.application_id))) then return false; end if;
 
@@ -23984,9 +24340,9 @@ begin
  if c.id is null then raise exception 'Request not found' using errcode='P0002'; end if;
  s:=public.shift_exchange_shift(w,c.offered_source_id); t:=public.shift_exchange_shift(w,c.requested_source_id);
  for loc in select distinct x from unnest(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid]) x where x is not null loop
-  scoped:=scoped or public.schedule_actor_has_capability_service(actor,w,'schedule.shift_change_requests.manage',loc);
+  scoped:=scoped or app_private.authz_reason(actor,w,'exchange.approve',array[loc]) is null;
  end loop;
- if not scoped then raise exception 'Manager scope required' using errcode='42501'; end if;
+ if not scoped then perform app_private.authorize(actor,w,'exchange.approve',array[(c.offered_snapshot->>'location_id')::uuid]); end if;
  select * into a from public.shift_exchange_applications where workspace_id=w and case_id=cid and id=aid;
  if a.id is null then raise exception 'Application not found' using errcode='P0002'; end if;
  if c.status<>'open' or a.status<>'pending_manager' then problems:=array_append(problems,'This request is no longer ready for approval'); end if;
@@ -23994,18 +24350,22 @@ begin
  fp:=public.shift_exchange_fingerprint(w,s,t);
  if fp is distinct from c.consent_fingerprint or fp is distinct from a.consent_fingerprint then problems:=array_append(problems,'Shift conditions changed. New employee consent is required'); end if;
  if c.expires_at<=clock_timestamp() or (s->>'starts_at')::timestamptz<=clock_timestamp() or (t->>'starts_at')::timestamptz<=clock_timestamp() then problems:=array_append(problems,'This shift has already started'); end if;
- if exists(select 1 from public.employee_profiles where workspace_id=w and user_id=actor and id in(c.owner_id,a.employee_id)) then problems:=array_append(problems,'A separate manager must approve your own exchange'); end if;
- if s is not null then r:=public.weekly_exchange_candidate_check(w,a.employee_id,s||jsonb_build_object('_time_off_consent',a.time_off_consent),array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)); end if;
+ if exists(select 1 from public.employee_profiles where workspace_id=w and user_id=actor and id in(c.owner_id,a.employee_id)) then problems:=array_append(problems,'A separate manager must approve your own exchange');
+ -- D3: a peer manager reads the case and cannot decide it.
+ elsif not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+  where app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) is null) then
+  problems:=array_append(problems,'Someone with a higher role must approve this exchange'); end if;
+ if s is not null then r:=app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',a.time_off_consent,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)))); end if;
  if r is null then r:='{"status":"ineligible","reasons":["Published shift unavailable"]}'; end if;
  if r->>'status'<>'eligible' then problems:=array_append(problems,'The receiving employee is not eligible for the full shift'); end if;
  if c.kind='swap' and t is not null then
-  g:=public.weekly_exchange_candidate_check(w,c.owner_id,t||jsonb_build_object('_time_off_consent',c.owner_time_off_consent),array[(s->>'id')::uuid,(t->>'id')::uuid]::uuid[]);
+  g:=app_private.eligibility(w,c.owner_id,t,jsonb_build_object('operation','swap','consent',c.owner_time_off_consent,'excluded',jsonb_build_array(s->>'id',t->>'id')));
   if g->>'status'<>'eligible' then problems:=array_append(problems,'The other employee is not eligible for the exchanged shift'); end if;
  end if;
  for loc in select distinct x from unnest(array[(s->>'location_id')::uuid,(t->>'location_id')::uuid]) x where x is not null loop
-  if not public.schedule_actor_has_capability_service(actor,w,'schedule.shift_change_requests.manage',loc)
+  if app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,loc) is not null
    and not exists(select 1 from public.shift_exchange_votes v where v.case_id=cid and v.application_id=aid and v.location_id=loc and v.fingerprint=fp
-   and public.schedule_actor_has_capability_service(v.actor_user_id,w,'schedule.shift_change_requests.manage',loc)
+   and app_private.exchange_decision_reason(v.actor_user_id,w,c.owner_id,a.employee_id,loc) is null
    and not exists(select 1 from public.employee_profiles e where e.workspace_id=w and e.user_id=v.actor_user_id and e.id in(c.owner_id,a.employee_id))) then missing:=true; end if;
  end loop;
  return jsonb_build_object('allowed',cardinality(problems)=0,'fingerprint',fp,'reasons',to_jsonb(problems),'receiver',r,'giver',g,'requires_other_manager',missing,
@@ -24064,11 +24424,10 @@ declare sess public.schedule_edit_sessions%rowtype; ps record; draft public.sche
 begin
  perform pg_advisory_xact_lock(hashtextextended(w::text,921));
  select * into sess from public.schedule_edit_sessions where workspace_id=w and id=sid for update;
- if sess.id is null or sess.holder_user_id<>actor then raise exception 'Your edit session was not found' using errcode='42501'; end if;
+ if sess.id is null or sess.holder_user_id<>actor then raise exception 'Your edit session was not found' using errcode='42501',hint='authz.out_of_scope'; end if;
  if sess.expires_at<=now() then raise exception 'This edit session expired. Reopen it before reviewing assignments' using errcode='PT409'; end if;
- if exists(select 1 from public.schedule_edit_session_shifts d where d.session_id=sid and not public.schedule_actor_can_manage_service(actor,w,d.location_id)) then
-  raise exception 'Schedule edit scope required' using errcode='42501';
- end if;
+ -- BL-189: the edit's locations, asked of the core.
+ perform app_private.authorize(actor,w,'schedule.edit',array(select distinct d.location_id from public.schedule_edit_session_shifts d where d.session_id=sid));
  command:=jsonb_build_object('action','recover_schedule','session_id',sid,'fingerprint',expected_fingerprint);
  if expected_fingerprint is not null then
   if idempotency_key is null then raise exception 'Idempotency key required' using errcode='22023'; end if;
@@ -24087,7 +24446,7 @@ begin
    and exists(select 1 from public.schedule_edit_session_shifts scope where scope.session_id=sid and scope.location_id=p.location_id)
   order by p.id
  loop
-  if not public.schedule_actor_can_manage_service(actor,w,ps.location_id) then raise exception 'Schedule edit scope required' using errcode='42501'; end if;
+  perform app_private.authorize(actor,w,'schedule.edit',array[ps.location_id]);
   select * into draft from public.schedule_edit_session_shifts d where d.workspace_id=w and d.session_id=sid
    and (d.id in(ps.id,ps.source_shift_id) or d.source_published_shift_id=ps.id) order by d.id limit 1;
   if draft.id is not null and draft.pending_op_type is distinct from 'delete' and public.shift_exchange_edit_matches(to_jsonb(draft),to_jsonb(ps)) then continue; end if;
@@ -24223,16 +24582,19 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchanges_candidates_service"("actor"
 declare emp public.employee_profiles%rowtype; s jsonb; t jsonb; e record; p record; checked jsonb; employees jsonb:='[]'; shifts jsonb:='[]';
 begin
  emp:=public.employee_hub_actor_service(actor,w); s:=public.shift_exchange_shift(w,shift_id);
- if s is null or (s->>'employee_id')::uuid is distinct from emp.id then raise exception 'Only the owner can search for a replacement' using errcode='42501'; end if;
+ if s is null or (s->>'employee_id')::uuid is distinct from emp.id then raise exception 'Only the owner can search for a replacement' using errcode='42501',hint='authz.out_of_scope'; end if;
  for e in select id,coalesce(nullif(preferred_name,''),concat_ws(' ',first_name,last_name)) name from public.employee_profiles where workspace_id=w and archived_at is null and id<>emp.id order by first_name loop
-  checked:=public.weekly_exchange_candidate_check(w,e.id,s);
+  checked:=app_private.eligibility(w,e.id,s,'{"operation":"cover_accept"}')-'approval_flags';
+  -- A teammate's own marks stay theirs: the owner sees what they set aside, not when.
+  checked:=jsonb_set(checked,'{acknowledgements}',coalesce((select jsonb_agg(jsonb_build_object('code',k->>'code'))
+   from jsonb_array_elements(checked->'acknowledgements') k),'[]'::jsonb));
   if checked->>'status'='eligible' then employees:=employees||jsonb_build_array(jsonb_build_object('id',e.id,'name',e.name,'eligibility',checked)); end if;
  end loop;
  for p in select x.id from public.schedule_published_shifts x join public.schedule_location_publications pub on pub.id=x.publication_id and pub.status='current'
   where x.workspace_id=w and x.employee_id is not null and x.employee_id<>emp.id and x.scheduled_date between current_date-1 and current_date+62 order by x.scheduled_date,x.start_time loop
   t:=public.shift_exchange_shift(w,p.id);
-  if (t->>'starts_at')::timestamptz>clock_timestamp() and public.weekly_exchange_candidate_check(w,emp.id,t||'{"_time_off_consent":true}'::jsonb,array[(s->>'id')::uuid,(t->>'id')::uuid])->>'status'='eligible'
-   and public.weekly_exchange_candidate_check(w,(t->>'employee_id')::uuid,s,array[(s->>'id')::uuid,(t->>'id')::uuid])->>'status'='eligible' then shifts:=shifts||jsonb_build_array(t||jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,t))); end if;
+  if (t->>'starts_at')::timestamptz>clock_timestamp() and app_private.eligibility(w,emp.id,t,jsonb_build_object('operation','swap','consent',true,'excluded',jsonb_build_array(s->>'id',t->>'id')))->>'status'='eligible'
+   and app_private.eligibility(w,(t->>'employee_id')::uuid,s,jsonb_build_object('operation','swap','excluded',jsonb_build_array(s->>'id',t->>'id')))->>'status'='eligible' then shifts:=shifts||jsonb_build_array(t||jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,t))); end if;
  end loop;
  return jsonb_build_object('employees',employees,'shifts',shifts);
 end; $$;
@@ -24249,9 +24611,12 @@ declare emp public.employee_profiles%rowtype; c public.shift_exchange_cases%rowt
  old_cmd public.shift_exchange_commands%rowtype; s jsonb; t jsonb; checked jsonb; result jsonb; fp text;
  action text:=command->>'action'; cid uuid:=(command->>'case_id')::uuid; aid uuid:=(command->>'application_id')::uuid;
  candidate uuid; loc uuid; other record; expires timestamptz; owns boolean; manager boolean; consent jsonb:='[]';
+ decides uuid[]:='{}'; fresh boolean:=false;
 begin
  if idempotency_key is null then raise exception 'Idempotency key required'; end if;
- if not exists(select 1 from public.workspace_memberships where workspace_id=w and user_id=actor and status='active') then raise exception 'Active workspace access required' using errcode='42501'; end if;
+ -- The core says who may act (FB-6.4 A2): one's own offer and application,
+ -- never while restricted (D4); a decision on a case is asked below, per case.
+ perform app_private.authorize(actor,w,case when action in('apply','accept','decline','withdraw') then 'exchange.apply_own' else 'exchange.offer_own' end);
  perform pg_advisory_xact_lock(hashtextextended(w::text,921));
  select * into old_cmd from public.shift_exchange_commands q where q.workspace_id=w and q.actor_user_id=actor and q.idempotency_key=shift_exchanges_command_service.idempotency_key;
  if old_cmd.idempotency_key is not null then
@@ -24260,11 +24625,11 @@ begin
  end if;
  select * into emp from public.employee_profiles where workspace_id=w and user_id=actor and archived_at is null;
  if action in('create','apply') then
-  if emp.id is null then raise exception 'Employee profile required' using errcode='42501'; end if;
+  if emp.id is null then raise exception 'Employee profile required' using errcode='42501',hint='authz.out_of_scope'; end if;
   s:=public.shift_exchange_shift(w,(command->>'shift_id')::uuid);
   if s is null or (s->>'starts_at')::timestamptz<=clock_timestamp() then raise exception 'Choose an upcoming published shift' using errcode='PT409'; end if;
   if action='create' then
-   if (s->>'employee_id')::uuid is distinct from emp.id then raise exception 'Only the current owner can offer this shift' using errcode='42501'; end if;
+   if (s->>'employee_id')::uuid is distinct from emp.id then raise exception 'Only the current owner can offer this shift' using errcode='42501',hint='authz.out_of_scope'; end if;
    if command->>'kind' not in('cover','swap') then raise exception 'Invalid exchange kind'; end if;
    if command->>'kind'='swap' then
     t:=public.shift_exchange_shift(w,(command->>'requested_shift_id')::uuid);
@@ -24272,10 +24637,10 @@ begin
     candidate:=(t->>'employee_id')::uuid;
     perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,t,command);
     consent:=public.weekly_exchange_time_off_consent(w,emp.id,t);
-    if public.weekly_exchange_candidate_check(w,emp.id,t||jsonb_build_object('_time_off_consent',consent),array[(s->>'id')::uuid,(t->>'id')::uuid])->>'status'<>'eligible' then raise exception 'You are not eligible for the teammate shift'; end if;
+    if app_private.eligibility(w,emp.id,t,jsonb_build_object('operation','swap','consent',consent,'excluded',jsonb_build_array(s->>'id',t->>'id')))->>'status'<>'eligible' then raise exception 'You are not eligible for the teammate shift'; end if;
    else candidate:=(command->>'employee_id')::uuid; end if;
    if candidate=emp.id then raise exception 'Choose a different teammate'; end if;
-   if candidate is not null and public.weekly_exchange_candidate_check(w,candidate,s,array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))->>'status'<>'eligible' then raise exception 'This teammate is not eligible for the full shift'; end if;
+   if candidate is not null and app_private.eligibility(w,candidate,s,jsonb_build_object('operation',case when t is null then 'cover_accept' else 'swap' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))->>'status'<>'eligible' then raise exception 'This teammate is not eligible for the full shift'; end if;
    for other in select x.id,public.shift_exchange_live_status(w,x.id) live_status from public.shift_exchange_cases x
     where x.workspace_id=w and x.status='open' and x.offered_source_id=(s->>'source_id')::uuid loop
     if other.live_status<>'open' then
@@ -24303,11 +24668,11 @@ begin
     insert into public.shift_exchange_cases(workspace_id,kind,offered_source_id,offered_snapshot,consent_fingerprint,expires_at,created_by)
     values(w,'open_pickup',(s->>'source_id')::uuid,s,fp,(s->>'starts_at')::timestamptz,actor) returning * into c;
    end if;
-   if c.audience<>'eligible_pool' or c.kind='swap' or (cid is not null and cid<>c.id) then raise exception 'This offer is not available' using errcode='42501'; end if;
+   if c.audience<>'eligible_pool' or c.kind='swap' or (cid is not null and cid<>c.id) then raise exception 'This offer is not available' using errcode='42501',hint='authz.out_of_scope'; end if;
    if public.shift_exchange_fingerprint(w,s,null)<>c.consent_fingerprint then raise exception 'Shift conditions changed. The owner must renew this offer' using errcode='PT409'; end if;
    perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
    consent:=public.weekly_exchange_time_off_consent(w,emp.id,s);
-   if public.weekly_exchange_candidate_check(w,emp.id,s||jsonb_build_object('_time_off_consent',consent))->>'status'<>'eligible' then raise exception 'You are not eligible for the full shift'; end if;
+   if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind='open_pickup' then 'open_pickup' else 'release_pickup' end,'consent',consent))->>'status'<>'eligible' then raise exception 'You are not eligible for the full shift'; end if;
    cid:=c.id;
    if exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='pending_manager') then raise exception 'You already have an active application'; end if;
    insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint,time_off_consent) values(w,cid,emp.id,'pending_manager',c.consent_fingerprint,consent) returning id into aid;
@@ -24319,9 +24684,9 @@ begin
   if c.id is null then raise exception 'Request not found' using errcode='P0002'; end if;
   s:=public.shift_exchange_shift(w,c.offered_source_id); t:=public.shift_exchange_shift(w,c.requested_source_id);
   owns:=c.owner_id=emp.id;
-  manager:=public.schedule_actor_has_capability_service(actor,w,'schedule.shift_change_requests.manage',(c.offered_snapshot->>'location_id')::uuid)
-   or (c.kind='swap' and public.schedule_actor_has_capability_service(actor,w,'schedule.shift_change_requests.manage',(c.requested_snapshot->>'location_id')::uuid));
-  if not coalesce(owns,false) and not coalesce(manager,false) and not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id) then raise exception 'Request access denied' using errcode='42501'; end if;
+  manager:=app_private.authz_reason(actor,w,'exchange.approve',array[(c.offered_snapshot->>'location_id')::uuid]) is null
+   or (c.kind='swap' and app_private.authz_reason(actor,w,'exchange.approve',array[(c.requested_snapshot->>'location_id')::uuid]) is null);
+  if not coalesce(owns,false) and not coalesce(manager,false) and not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id) then raise exception 'Request access denied' using errcode='42501',hint='authz.out_of_scope'; end if;
   if c.status<>'open' or c.revision is distinct from (command->>'expected_revision')::integer then raise exception 'This request changed. Review the latest details' using errcode='PT409'; end if;
   if c.expires_at<=clock_timestamp() then
    update public.shift_exchange_cases set status='expired',revision=revision+1,updated_at=now() where id=cid returning * into c;
@@ -24334,7 +24699,7 @@ begin
    delete from public.shift_exchange_votes where case_id=cid;
    perform public.shift_exchange_emit(actor,w,cid,null,'invalidated','Shift details changed. This offer ended without a transfer. Start a new request from the current schedule.');
   elsif action='close' then
-   if not coalesce(owns,false) and not coalesce(manager,false) then raise exception 'Only the owner or a manager can close this search' using errcode='42501'; end if;
+   if not coalesce(owns,false) and not coalesce(manager,false) then raise exception 'Only the owner or a manager can close this search' using errcode='42501',hint='authz.out_of_scope'; end if;
    if coalesce(length(trim(command->>'reason')),0)=0 then raise exception 'Choose a reason for closing this search'; end if;
    update public.shift_exchange_cases set status='cancelled',revision=revision+1,updated_at=now() where id=cid returning * into c;
    update public.shift_exchange_applications set status='closed_case_cancelled',reason=command->>'reason',updated_at=now() where case_id=cid and status in('invited','pending_manager');
@@ -24343,14 +24708,14 @@ begin
    select * into a from public.shift_exchange_applications where id=aid and case_id=cid and workspace_id=w for update;
    if a.id is null or a.status not in('invited','pending_manager') then raise exception 'This application is no longer active' using errcode='PT409'; end if;
    if action in('accept','decline','withdraw') then
-    if a.employee_id is distinct from emp.id then raise exception 'Only the invited employee can respond' using errcode='42501'; end if;
+    if a.employee_id is distinct from emp.id then raise exception 'Only the invited employee can respond' using errcode='42501',hint='authz.out_of_scope'; end if;
     if action in('accept','decline') and a.status<>'invited' then raise exception 'This invitation already has a response'; end if;
     if action='accept' then
      if public.shift_exchange_fingerprint(w,s,t) is distinct from c.consent_fingerprint then raise exception 'Shift conditions changed. Ask for a new offer' using errcode='PT409'; end if;
      perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
      consent:=public.weekly_exchange_time_off_consent(w,emp.id,s);
-     if public.weekly_exchange_candidate_check(w,emp.id,s||jsonb_build_object('_time_off_consent',consent),array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))->>'status'<>'eligible'
-      or (c.kind='swap' and public.weekly_exchange_candidate_check(w,c.owner_id,t||jsonb_build_object('_time_off_consent',c.owner_time_off_consent),array[(s->>'id')::uuid,(t->>'id')::uuid])->>'status'<>'eligible') then raise exception 'Both employees must be eligible for the full exchange'; end if;
+     if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',consent,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))->>'status'<>'eligible'
+      or (c.kind='swap' and app_private.eligibility(w,c.owner_id,t,jsonb_build_object('operation','swap','consent',c.owner_time_off_consent,'excluded',jsonb_build_array(s->>'id',t->>'id')))->>'status'<>'eligible') then raise exception 'Both employees must be eligible for the full exchange'; end if;
     end if;
     update public.shift_exchange_applications set status=case action when 'accept' then 'pending_manager' when 'decline' then 'declined_by_employee' else 'withdrawn' end,
      time_off_consent=case when action='accept' then consent else time_off_consent end,updated_at=now() where id=aid;
@@ -24359,7 +24724,15 @@ begin
     perform public.shift_exchange_emit(actor,w,cid,aid,case action when 'accept' then 'peer_accepted' when 'decline' then 'peer_declined' else 'application_withdrawn' end,
      case action when 'accept' then 'Accepted. Awaiting manager approval; the original owner remains responsible.' when 'decline' then 'The teammate declined. No assignment changed.' else case when c.audience='direct' then 'The employee withdrew consent. This request ended without a transfer.' else 'The application was withdrawn. Other candidates remain available.' end end);
    elsif action in('reject','approve') then
-    if not coalesce(manager,false) then raise exception 'Manager scope required' using errcode='42501'; end if;
+    -- D3, K-S1, P07: a manager decides, approve or reject, where they outrank
+    -- both people who change shifts; nobody decides their own.
+    decides:=array(select x from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+     where app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) is null);
+    if cardinality(decides)=0 then
+     raise exception 'Not allowed' using errcode='42501',detail='exchange.approve',hint='authz.'||coalesce((select r from
+      unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x,
+      app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) r where r<>'out_of_scope' limit 1),'out_of_scope');
+    end if;
     if action='reject' then
      if coalesce(length(trim(command->>'reason')),0)=0 then raise exception 'Provide a reason visible to this employee'; end if;
      update public.shift_exchange_applications set status='rejected_by_manager',reason=command->>'reason',updated_at=now() where id=aid;
@@ -24372,13 +24745,18 @@ begin
      if command->>'fingerprint' is distinct from checked->>'fingerprint' then raise exception 'This approval preview changed. Review the latest details' using errcode='PT409'; end if;
      fp:=checked->>'fingerprint';
      for loc in select distinct x from unnest(array[(s->>'location_id')::uuid,(t->>'location_id')::uuid]) x where x is not null loop
-      if public.schedule_actor_has_capability_service(actor,w,'schedule.shift_change_requests.manage',loc) then
+      if loc=any(decides) then
+       fresh:=fresh or not exists(select 1 from public.shift_exchange_votes v where v.case_id=cid and v.location_id=loc
+        and v.application_id=aid and v.actor_user_id=actor and v.fingerprint=fp);
        insert into public.shift_exchange_votes(case_id,workspace_id,application_id,location_id,actor_user_id,fingerprint) values(cid,w,aid,loc,actor,fp)
        on conflict(case_id,location_id) do update set application_id=excluded.application_id,actor_user_id=excluded.actor_user_id,fingerprint=excluded.fingerprint,created_at=now();
       end if;
      end loop;
      if (checked->>'requires_other_manager')::boolean then
-      perform public.shift_exchange_emit(actor,w,cid,aid,'scope_approved','One location approved. Awaiting the other manager; assignments are unchanged.');
+      -- R2-18: the same manager approving again tells nobody again.
+      if fresh then
+       perform public.shift_exchange_emit(actor,w,cid,aid,'scope_approved','One location approved. Awaiting the other manager; assignments are unchanged.');
+      end if;
      else
       perform 1 from public.schedule_published_shifts where id in((s->>'id')::uuid,(t->>'id')::uuid) order by id for update;
       -- Recheck after row locks as external Schedule writers may predate the shared workspace lock.
@@ -24419,7 +24797,9 @@ begin
      end if;
     end if;
    else raise exception 'Unknown exchange action'; end if;
-   update public.shift_exchange_cases set revision=revision+1,updated_at=now() where id=cid returning * into c;
+   -- BL-228: when it was decided, not when its transaction began; an approval
+   -- that waited for the workspace lock behind a publish is newer than it.
+   update public.shift_exchange_cases set revision=revision+1,updated_at=clock_timestamp() where id=cid returning * into c;
   end if;
  end if;
  perform realtime.send(jsonb_build_object('workspace_id',w,'case_id',cid,'revision',c.revision),'changed','shift-exchanges:'||w::text,true);
@@ -24470,13 +24850,13 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchanges_read_service"("actor" "uuid
     SET "search_path" TO ''
     AS $$
 declare emp public.employee_profiles%rowtype; c public.shift_exchange_cases%rowtype; s jsonb; t jsonb; allowed boolean; mine boolean;
- case_items jsonb[]:='{}'; opportunities jsonb:='[]'; own_shifts jsonb:='[]'; apps jsonb; hist jsonb; chk jsonb; shift_row record; stage text; live_status text; current_published boolean; requested_published boolean; published_cache jsonb:='{}'; source_key text;
- read_scope uuid[]:='{}'; manage_scope uuid[]:='{}';
+ case_items jsonb[]:='{}'; opportunities jsonb:='[]'; own_shifts jsonb:='[]'; chk jsonb; shift_row record; live_status text; published_cache jsonb:='{}'; source_key text;
+ read_scope uuid[]:='{}';
 begin
  if to_date<from_date or to_date>from_date+62 then raise exception 'Choose a date range up to 62 days'; end if;
- if not exists(select 1 from public.workspace_memberships where workspace_id=w and user_id=actor and status='active') then raise exception 'Active workspace access required' using errcode='42501'; end if;
+ if not manager_view then perform app_private.authorize(actor,w,'employee_hub.read'); end if;
  select * into emp from public.employee_profiles where workspace_id=w and user_id=actor and archived_at is null;
- if not manager_view and emp.id is null then raise exception 'Employee profile required' using errcode='42501'; end if;
+ if not manager_view and emp.id is null then raise exception 'Employee profile required' using errcode='42501',hint='authz.out_of_scope'; end if;
  if manager_view then
   read_scope:=app_private.scope_set(actor,w,'exchange.read');
   -- Nowhere to read requests: asked with no location, the core says why; with
@@ -24485,7 +24865,6 @@ begin
    or exists(select 1 from public.locations l where l.workspace_id=w and l.deleted_at is null)) then
    perform app_private.authorize(actor,w,'exchange.read');
   end if;
-  manage_scope:=app_private.scope_set(actor,w,'exchange.approve');
  end if;
  for c in select * from public.shift_exchange_cases x where x.workspace_id=w and (x.status='open' or x.id=focused_case_id
   or (x.offered_snapshot->>'date')::date between from_date and to_date
@@ -24506,32 +24885,15 @@ begin
   end loop;
   s:=nullif(published_cache->c.offered_source_id::text,'null'::jsonb);
   t:=nullif(published_cache->c.requested_source_id::text,'null'::jsonb);
-  current_published:=s is not null;
-  requested_published:=t is not null;
-  s:=coalesce(s,c.offered_snapshot);
-  t:=coalesce(t,c.requested_snapshot);
-  -- The list follows the displayed dates on either side. A focused deep link
-  -- bypasses only the range, never the actor checks above.
-  if c.id is distinct from focused_case_id and not (
-   coalesce((s->>'date')::date between from_date and to_date,false)
-   or coalesce((t->>'date')::date between from_date and to_date,false)
-  ) then continue; end if;
   live_status:=public.shift_exchange_live_status(w,c.id);
-  select coalesce(jsonb_agg(jsonb_build_object('id',a.id,'employee_id',a.employee_id,'employee_name',coalesce(nullif(e.preferred_name,''),concat_ws(' ',e.first_name,e.last_name)),
-   'status',case when live_status in('expired','invalidated') and a.status in('invited','pending_manager') then live_status else a.status end,'created_at',a.created_at,'reason',case when allowed or a.employee_id=emp.id then a.reason else '' end,
-   'eligibility',case when (allowed or a.employee_id=emp.id) and live_status='open' then public.weekly_exchange_candidate_check(w,a.employee_id,s||jsonb_build_object('_time_off_consent',case when a.employee_id=emp.id and a.status='invited' then 'true'::jsonb else a.time_off_consent end),array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)) || case when a.employee_id=emp.id and a.status='invited' then jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,s)) else '{}'::jsonb end end) order by a.created_at),'[]'::jsonb)
-  into apps from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id where a.case_id=c.id and (allowed or mine or a.employee_id=emp.id);
-  select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'action',e.action,'created_at',e.created_at,'message',e.message) order by e.created_at),'[]'::jsonb)
-  into hist from public.shift_exchange_events e where e.case_id=c.id and (allowed or mine or e.application_id is null or exists(select 1 from public.shift_exchange_applications a where a.id=e.application_id and a.employee_id=emp.id));
-  stage:=case when live_status<>'open' then 'closed'
-   when exists(select 1 from public.shift_exchange_votes where case_id=c.id) then 'awaiting_other_manager'
-   when exists(select 1 from public.shift_exchange_applications where case_id=c.id and status='pending_manager') then 'ready_for_manager'
-   when exists(select 1 from public.shift_exchange_applications where case_id=c.id and status='invited') then 'awaiting_peer' else 'seeking_candidates' end;
-  case_items:=array_append(case_items,jsonb_build_object('id',c.id,'kind',c.kind,'audience',c.audience,'status',live_status,'current_published',current_published,'requested_current_published',case when c.kind='swap' then requested_published else null end,
-   'stage',stage,'revision',c.revision,'created_at',c.created_at,'expires_at',c.expires_at,'owner_id',c.owner_id,'owner_name',c.offered_snapshot->'employee_name',
-   'shift',s,'requested_shift',t,'applications',apps,'candidate_count',(select count(*) from public.shift_exchange_applications where case_id=c.id and status in('invited','pending_manager') and live_status='open'),
-   'can_manage',allowed and coalesce((c.offered_snapshot->>'location_id')::uuid=any(manage_scope) or (c.kind='swap' and (c.requested_snapshot->>'location_id')::uuid=any(manage_scope)),false),
-   'is_owner',mine,'private_note',case when allowed or mine then c.private_note else '' end,'history',hist));
+  -- The list follows the displayed dates on either side; in Requests an open
+  -- request is listed whatever its date (BL-839). A focused deep link bypasses
+  -- only the range, never the actor checks above.
+  if c.id is distinct from focused_case_id and not (manager_view and live_status='open') and not (
+   coalesce((coalesce(s,c.offered_snapshot)->>'date')::date between from_date and to_date,false)
+   or coalesce((coalesce(t,c.requested_snapshot)->>'date')::date between from_date and to_date,false)
+  ) then continue; end if;
+  case_items:=array_append(case_items,app_private.shift_exchange_case_item(actor,w,c,allowed,emp.id,s,t,live_status));
  end loop;
  if not manager_view then
   for shift_row in select p.id from public.schedule_published_shifts p join public.schedule_location_publications pub on pub.id=p.publication_id and pub.status='current'
@@ -24541,7 +24903,7 @@ begin
    if (s->>'employee_id')::uuid=emp.id then own_shifts:=own_shifts||jsonb_build_array(s); continue; end if;
    select * into c from public.shift_exchange_cases where workspace_id=w and offered_source_id=(s->>'source_id')::uuid and status='open' and expires_at>clock_timestamp() and audience='eligible_pool' and kind<>'swap';
    if s->>'employee_id' is not null and c.id is null then continue; end if;
-   chk:=public.weekly_exchange_candidate_check(w,emp.id,s||'{"_time_off_consent":true}'::jsonb)||jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,s));
+   chk:=(app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.id is null then 'open_pickup' else 'release_pickup' end,'consent',true))-'approval_flags')||jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,s));
    if chk->>'status'='eligible' and (c.id is null or c.consent_fingerprint=public.shift_exchange_fingerprint(w,s,null)) then
     opportunities:=opportunities||jsonb_build_array(jsonb_build_object('case_id',c.id,'shift',s,'eligibility',chk));
    end if;
@@ -24562,6 +24924,10 @@ declare parent public.schedule_time_off_requests%rowtype; prior public.time_off_
  p jsonb; a timestamptz; b timestamptz; span tstzrange; cut tstzmultirange:='{}';
 begin
  perform public.availability_lock_workspace(w);
+ -- Who may not shorten time off here at all hears so before the request is looked up (BL-411).
+ if app_private.time_off_reason(actor, w, 'time_off.revoke') is distinct from 'out_of_scope' then
+   perform app_private.time_off_authorize(actor, w, 'time_off.revoke');
+ end if;
  select * into parent from public.schedule_time_off_requests where id=rid and workspace_id=w and request_type='time_off' for update;
  if parent.id is null then raise exception 'Not allowed' using errcode='42501', hint='authz.out_of_scope', detail='time_off.revoke'; end if;
  perform app_private.time_off_authorize(actor,w,'time_off.revoke',parent.employee_id);
@@ -24583,6 +24949,9 @@ begin
   a:=(p->>'starts_at')::timestamptz; b:=(p->>'ends_at')::timestamptz;
   if not isfinite(a) or not isfinite(b) or a>=b or a<=now() then raise exception 'Only future approved hours can be given back' using errcode='22023'; end if;
   span:=tstzrange(a,b,'[)');
+  -- A malformed id is a bad request, not a server error (R2-55).
+  if coalesce(p->>'segment_id','') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+   raise exception 'Choose approved hours of this time off, without overlap' using errcode='22023'; end if;
   if cut && span or not exists(select 1 from public.schedule_time_off_segments s where s.id=(p->>'segment_id')::uuid and s.workspace_id=w
    and s.request_id=parent.id and public.time_off_effective_ranges(s.id) @> span) then
    raise exception 'Choose approved hours of this time off, without overlap' using errcode='22023'; end if;
@@ -25565,7 +25934,7 @@ CREATE OR REPLACE FUNCTION "public"."time_off_event_released_assignments"("actor
  join public.employee_profiles emp on emp.id=r.employee_id and emp.workspace_id=r.workspace_id
  cross join lateral jsonb_array_elements(coalesce(ev.metadata->'released_assignments','[]')) with ordinality changes(item,ord)
  where ev.id=event_id and ev.workspace_id=w
-  and (emp.user_id=actor or public.schedule_actor_has_capability_service(actor,w,'schedule.read',(item->>'location_id')::uuid));
+  and (emp.user_id=actor or app_private.authz_reason(actor,w,'schedule.read',array[(item->>'location_id')::uuid]) is null);
 $$;
 
 
@@ -26674,133 +27043,13 @@ end; $$;
 ALTER FUNCTION "public"."version_weekly_preference_settings"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."weekly_assignment_candidate_base"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[] DEFAULT '{}'::"uuid"[], "travel_minutes" integer DEFAULT 0) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare loc uuid:=(target->>'location_id')::uuid; job uuid:=(target->>'job_id')::uuid;
-  d date:=(target->>'date')::date; tz text; span tstzrange; assessment jsonb;
-  available tstzmultirange; overlap tstzmultirange; free tstzmultirange; reasons text[]:=array[]::text[]; state text:='eligible';
-  consent jsonb:=target->'_time_off_consent'; leave tstzmultirange; waived boolean:=false; op text;
-begin
-  travel_minutes:=greatest(coalesce(travel_minutes,0),coalesce((select minimum_travel_minutes
-    from public.workspace_scheduling_settings where workspace_id=w),0));
-  select coalesce(nullif(target->>'time_timezone',''),nullif(target->'time_snapshot'->>'timezone',''),timezone) into tz from public.locations where id=loc and workspace_id=w and archived_at is null;
-  if tz is null then raise exception 'location not found'; end if;
-  span:=app_private.shift_time_range(d,(target->>'start_time')::time,(target->>'end_time')::time,tz);
-  if not exists(select 1 from public.employee_profiles p where p.id=emp and p.workspace_id=w and p.archived_at is null and not p.is_excluded_from_schedule
-    and (p.start_date is null or p.start_date<=d)) then reasons:=array_append(reasons,'Employee is not active in Schedule'); end if;
-  if not exists(select 1 from public.employee_location_assignments where employee_id=emp and workspace_id=w and location_id=loc and assigned_at<=lower(span) and (ended_at is null or ended_at>=upper(span))) then reasons:=array_append(reasons,'Not assigned to this location'); end if;
-  if not exists(select 1 from public.employee_job_assignments where employee_id=emp and workspace_id=w and job_id=job and assigned_at<=lower(span) and (ended_at is null or ended_at>=upper(span))) then reasons:=array_append(reasons,'Not eligible for this position'); end if;
-  if exists(select 1 from public.schedule_closures c where c.workspace_id=w and c.location_id=loc and c.closed_date=d and (c.is_all_day or (target->>'shift_type_id')::uuid=any(c.shift_type_ids))) then reasons:=array_append(reasons,'Location or service is closed'); end if;
-  if public.employee_has_hard_document_schedule_conflict_service(w,emp,d) then reasons:=array_append(reasons,'Required document is expired'); end if;
-
-
-  if exists(select 1 from public.employee_profiles where workspace_id=w and id=emp) then
-    -- A candidate target names its day as date; the assessment reads scheduled_date.
-    assessment:=public.assess_weekly_shift_availability(w,emp,target||jsonb_build_object('scheduled_date',d,'_exclude_shift_ids',to_jsonb(excluded)));
-    -- BL-182: approved time off is the one blocker its own employee may set
-    -- aside, and only for hours they agreed to: consent is true while they act
-    -- themselves, else the intervals kept with their application. Nobody else
-    -- (a cover search, a manager's Schedule) passes consent.
-    leave:=public.availability_json_ranges(public.time_off_leave_intervals(assessment));
-    waived:=coalesce(assessment->>'operation'='blocked' and not isempty(leave)
-      and not exists(select 1 from jsonb_array_elements(assessment->'reasons') r
-        where r->>'severity'='block' and r->>'code'<>'approved_time_off')
-      and (consent='true'::jsonb or (jsonb_typeof(consent)='array' and public.availability_json_ranges(consent) @> leave)),false);
-    op:=case when waived then 'warning_requires_override' else assessment->>'operation' end;
-    -- Preferences never shorten the requested assignment. Hard blockers remain
-    -- in status/reasons; the private assessment carries the separate warning.
-    if op in ('allowed','warning_requires_override') then
-      select coalesce(range_agg(tstzrange((r->>'start_at')::timestamptz,(r->>'end_at')::timestamptz,'[)')),'{}'::tstzmultirange)
-        into free from jsonb_array_elements(assessment->'intervals') r;
-    end if;
-    state:=case op
-      when 'blocked' then 'ineligible'
-      when 'verification_required' then 'verification_required'
-      else 'eligible' end;
-    reasons:=reasons||array(select r->>'message' from jsonb_array_elements(assessment->'reasons') r
-      where r->>'code' not in ('availability','note') and not (waived and r->>'code'='approved_time_off'));
-  end if;
-  select coalesce(range_agg(r),'{}'::tstzmultirange) into overlap from (
-    select app_private.shift_time_range(s.scheduled_date,s.start_time,s.end_time,coalesce(s.time_timezone,l.timezone)) r
-    from public.schedule_published_shifts s join public.schedule_location_publications p on p.id=s.publication_id and p.status='current'
-    join public.locations l on l.id=s.location_id
-    where s.workspace_id=w and s.employee_id=emp and not s.id=any(excluded)
-      and s.scheduled_date between d-2 and d+2
-  ) busy where r && span;
-  if overlap && span then state:='ineligible'; reasons:=array_append(reasons,'Overlaps a published shift or approved time off'); end if;
-  if travel_minutes>0 and exists(select 1 from (
-    select app_private.shift_time_range(s.scheduled_date,s.start_time,s.end_time,coalesce(s.time_timezone,l.timezone)) r
-    from public.schedule_published_shifts s
-    join public.schedule_location_publications p on p.id=s.publication_id and p.status='current'
-    join public.locations l on l.id=s.location_id
-    where s.workspace_id=w and s.employee_id=emp and s.location_id<>loc
-      and not s.id=any(excluded) and s.scheduled_date between d-2 and d+2
-   ) busy where tstzrange(lower(r)-make_interval(mins=>travel_minutes),upper(r)+make_interval(mins=>travel_minutes),'[)') && span) then
-    state:='ineligible';reasons:=array_append(reasons,format('At least %s minutes are required between locations',travel_minutes));
-  end if;
-  if cardinality(reasons)>0 and state='eligible' then state:='ineligible'; end if;
-  if exists(select 1 from unnest(reasons) r where r in('Employee is not active in Schedule','Not assigned to this location','Not eligible for this position','Required document is expired','Location or service is closed')) then state:='ineligible'; end if;
-
-  if cardinality(reasons)=0 then
-    reasons:=case when coalesce((assessment->>'has_availability_conflict')::boolean,false)
-      then array['Position and location match','No assignment blockers']
-      else array['Position and location match','Available for the full interval','No conflicts'] end;
-  end if;
-
-  return jsonb_build_object('employee_id',emp,'status',state,'shortens_time_off',waived,'reasons',to_jsonb(reasons),'availability',assessment,
-    'available_start',case when free is not null and not isempty(free) then (select lower(r)::text from unnest(free) r order by lower(r) limit 1) end,
-    'available_end',case when free is not null and not isempty(free) then (select upper(r)::text from unnest(free) r order by lower(r) limit 1) end);
-end; $$;
-
-
-ALTER FUNCTION "public"."weekly_assignment_candidate_base"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[], "travel_minutes" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."weekly_assignment_candidate_check"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[] DEFAULT '{}'::"uuid"[], "travel_minutes" integer DEFAULT 0) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare result jsonb; starts timestamptz; ends timestamptz; problems jsonb:='[]';
-begin
- if nullif(target->>'start_time','') is null or nullif(target->>'end_time','') is null then
-  return jsonb_build_object('employee_id',emp,'status','verification_required','reasons',jsonb_build_array('A manager must confirm the shift hours before a full-shift exchange'));
- end if;
- result:=public.weekly_assignment_candidate_base(w,emp,target,excluded,travel_minutes);
- select lower(r),upper(r) into starts,ends from (select app_private.shift_time_range((target->>'date')::date,(target->>'start_time')::time,(target->>'end_time')::time,coalesce(nullif(target->>'time_timezone',''),nullif(target->'time_snapshot'->>'timezone',''),l.timezone)) r from public.locations l where l.id=(target->>'location_id')::uuid and l.workspace_id=w) q;
- if coalesce((target->>'requires_employee_access')::boolean,false) and not exists(select 1 from public.employee_profiles e join public.workspace_memberships m on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status='active' where e.workspace_id=w and e.id=emp) then problems:=problems||'"Active workspace access is required"'::jsonb; end if;
- if not exists(select 1 from public.employee_location_assignments a where a.workspace_id=w and a.employee_id=emp and a.location_id=(target->>'location_id')::uuid and a.assigned_at<=starts and (a.ended_at is null or a.ended_at>=ends)) then problems:=problems||'"Location assignment must cover the full shift"'::jsonb; end if;
- if not exists(select 1 from public.employee_job_assignments a where a.workspace_id=w and a.employee_id=emp and a.job_id=(target->>'job_id')::uuid and a.assigned_at<=starts and (a.ended_at is null or a.ended_at>=ends)) then problems:=problems||'"Position assignment must cover the full shift"'::jsonb; end if;
- if jsonb_array_length(problems)>0 then result:=result||jsonb_build_object('status','ineligible','reasons',case when result->>'status'='eligible' then problems else result->'reasons'||problems end); end if;
- return result;
-end; $$;
-
-
-ALTER FUNCTION "public"."weekly_assignment_candidate_check"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[], "travel_minutes" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."weekly_exchange_candidate_check"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS "jsonb"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
- select jsonb_build_object('status',r->>'status','reasons',case when r->>'status'='eligible'
-  then '["Position and location match","No assignment blockers"]'::jsonb else r->'reasons' end,
-  'shortens_time_off',coalesce((r->>'shortens_time_off')::boolean,false))
- from (select public.weekly_assignment_candidate_check(w,emp,target,excluded) r) q;
-$$;
-
-
-ALTER FUNCTION "public"."weekly_exchange_candidate_check"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[]) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."weekly_exchange_employee_warning"("w" "uuid", "emp" "uuid", "target" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare a jsonb; leave jsonb;
 begin
- a:=public.assess_weekly_shift_availability(w,emp,target||jsonb_build_object('scheduled_date',target->>'date'));
+ a:=public.assess_weekly_shift_availability(w,emp,target||jsonb_build_object('scheduled_date',target->>'date','_shift_exchange',true));
  leave:=public.time_off_leave_intervals(a);
  -- Their own approved time off is asked about only when it is the one thing
  -- in the way (BL-182); anything else that blocks is not theirs to set aside.
@@ -27673,6 +27922,24 @@ CREATE TABLE IF NOT EXISTS "app_private"."security_audit_events" (
 
 
 ALTER TABLE "app_private"."security_audit_events" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "app_private"."time_off_sweep_failures" (
+    "request_id" "uuid" NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "first_failed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "last_failed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "attempts" integer DEFAULT 1 NOT NULL,
+    "sqlstate" "text" NOT NULL,
+    "message" "text" NOT NULL
+);
+
+
+ALTER TABLE "app_private"."time_off_sweep_failures" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "app_private"."time_off_sweep_failures" IS 'A request the time-off deadline job could not close or remind, kept so it is seen and not only logged (BL-507).';
+
 
 
 CREATE TABLE IF NOT EXISTS "app_private"."timezone_names" (
@@ -29167,38 +29434,6 @@ CREATE TABLE IF NOT EXISTS "public"."shift_exchange_applications" (
 ALTER TABLE "public"."shift_exchange_applications" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."shift_exchange_cases" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "kind" "text" NOT NULL,
-    "audience" "text" DEFAULT 'eligible_pool'::"text" NOT NULL,
-    "status" "text" DEFAULT 'open'::"text" NOT NULL,
-    "offered_source_id" "uuid" NOT NULL,
-    "requested_source_id" "uuid",
-    "owner_id" "uuid",
-    "offered_snapshot" "jsonb" NOT NULL,
-    "requested_snapshot" "jsonb",
-    "consent_fingerprint" "text" NOT NULL,
-    "revision" integer DEFAULT 1 NOT NULL,
-    "expires_at" timestamp with time zone NOT NULL,
-    "private_note" "text" DEFAULT ''::"text" NOT NULL,
-    "created_by" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "owner_time_off_consent" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
-    CONSTRAINT "shift_exchange_cases_audience_check" CHECK (("audience" = ANY (ARRAY['eligible_pool'::"text", 'direct'::"text"]))),
-    CONSTRAINT "shift_exchange_cases_check" CHECK ((("kind" = 'swap'::"text") = ("requested_source_id" IS NOT NULL))),
-    CONSTRAINT "shift_exchange_cases_check1" CHECK ((("kind" = 'open_pickup'::"text") = ("owner_id" IS NULL))),
-    CONSTRAINT "shift_exchange_cases_kind_check" CHECK (("kind" = ANY (ARRAY['cover'::"text", 'open_pickup'::"text", 'swap'::"text"]))),
-    CONSTRAINT "shift_exchange_cases_owner_time_off_consent_check" CHECK (("jsonb_typeof"("owner_time_off_consent") = 'array'::"text")),
-    CONSTRAINT "shift_exchange_cases_private_note_check" CHECK (("length"("private_note") <= 1000)),
-    CONSTRAINT "shift_exchange_cases_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'completed'::"text", 'cancelled'::"text", 'expired'::"text", 'invalidated'::"text"])))
-);
-
-
-ALTER TABLE "public"."shift_exchange_cases" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."shift_exchange_commands" (
     "workspace_id" "uuid" NOT NULL,
     "actor_user_id" "uuid" NOT NULL,
@@ -29796,6 +30031,11 @@ ALTER TABLE ONLY "app_private"."schedule_edit_undo_steps"
 
 ALTER TABLE ONLY "app_private"."security_audit_events"
     ADD CONSTRAINT "security_audit_events_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "app_private"."time_off_sweep_failures"
+    ADD CONSTRAINT "time_off_sweep_failures_pkey" PRIMARY KEY ("request_id");
 
 
 
@@ -31769,6 +32009,11 @@ ALTER TABLE ONLY "app_private"."security_audit_events"
 
 
 
+ALTER TABLE ONLY "app_private"."time_off_sweep_failures"
+    ADD CONSTRAINT "time_off_sweep_failures_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "public"."schedule_time_off_requests"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."account_deletion_deliveries"
     ADD CONSTRAINT "account_deletion_deliveries_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "public"."account_deletion_requests"("id") ON DELETE CASCADE;
 
@@ -33334,6 +33579,9 @@ ALTER TABLE "app_private"."schedule_edit_undo_steps" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "app_private"."security_audit_events" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "app_private"."time_off_sweep_failures" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."account_deletion_deliveries" ENABLE ROW LEVEL SECURITY;
 
 
@@ -34143,6 +34391,10 @@ REVOKE ALL ON FUNCTION "app_private"."draft_starts_from_its_publication"() FROM 
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."eligibility"("w" "uuid", "emp" "uuid", "shift" "jsonb", "ctx" "jsonb") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."employee_onboarding_case_id"("target_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 
 
@@ -34168,6 +34420,10 @@ REVOKE ALL ON FUNCTION "app_private"."ensure_management_and_owner"("target_works
 
 
 REVOKE ALL ON FUNCTION "app_private"."ensure_owner_employee_profile"("target_workspace_id" "uuid", "owner_user_id" "uuid", "owner_first_name" "text", "owner_middle_name" "text", "owner_last_name" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") FROM PUBLIC;
 
 
 
@@ -34443,6 +34699,10 @@ GRANT ALL ON FUNCTION "app_private"."record_security_audit_event_service"("actor
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."request_date_text"("d" "date") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."reset_employee_onboarding_for_rehire"("target_workspace_id" "uuid", "target_employee_id" "uuid", "target_membership_id" "uuid", "actor_user_id" "uuid") FROM PUBLIC;
 
 
@@ -34497,6 +34757,14 @@ REVOKE ALL ON FUNCTION "app_private"."set_document_exemption"("r" "public"."empl
 
 
 REVOKE ALL ON FUNCTION "app_private"."settings_locations"("w" "uuid", "ids" "uuid"[]) FROM PUBLIC;
+
+
+
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_exchange_cases" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") FROM PUBLIC;
 
 
 
@@ -34588,6 +34856,10 @@ REVOKE ALL ON FUNCTION "app_private"."time_off_notify_shifts_opened"("actor" "uu
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."time_off_opened_shifts_told"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."time_off_progress"("actor" "uuid", "w" "uuid", "rid" "uuid") FROM PUBLIC;
 
 
@@ -34600,6 +34872,10 @@ REVOKE ALL ON FUNCTION "app_private"."time_off_release_shifts"("w" "uuid", "rid"
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."time_off_request_item"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."time_off_shifts_fingerprint"("shifts" "jsonb") FROM PUBLIC;
 
 
@@ -34608,7 +34884,7 @@ REVOKE ALL ON FUNCTION "app_private"."time_off_state"("w" "uuid", "rid" "uuid") 
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."time_off_sweep"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."time_off_sweep"("pass_limit" integer) FROM PUBLIC;
 
 
 
@@ -35201,6 +35477,11 @@ GRANT ALL ON FUNCTION "public"."get_schedule_publication_status_service"("actor_
 
 REVOKE ALL ON FUNCTION "public"."get_schedule_read_model_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_schedule_read_model_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_schedule_requests_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kinds" "text"[], "target_location_id" "uuid", "target_search" "text", "target_page" integer, "target_page_size" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_schedule_requests_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kinds" "text"[], "target_location_id" "uuid", "target_search" "text", "target_page" integer, "target_page_size" integer) TO "service_role";
 
 
 
@@ -35988,21 +36269,6 @@ GRANT ALL ON FUNCTION "public"."save_workspace_role_service"("actor_user_id" "uu
 
 
 
-REVOKE ALL ON FUNCTION "public"."schedule_actor_can_manage_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."schedule_actor_can_manage_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."schedule_actor_can_publish_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."schedule_actor_can_publish_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_location_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."schedule_actor_has_capability_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "capability" "text", "target_location_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."schedule_actor_has_capability_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "capability" "text", "target_location_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."schedule_availability_enrich_read"("actor" "uuid", "w" "uuid", "model" "jsonb", "draft" "uuid") FROM PUBLIC;
 
 
@@ -36440,18 +36706,6 @@ REVOKE ALL ON FUNCTION "public"."version_weekly_preference_settings"() FROM PUBL
 
 
 
-REVOKE ALL ON FUNCTION "public"."weekly_assignment_candidate_base"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[], "travel_minutes" integer) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."weekly_assignment_candidate_check"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[], "travel_minutes" integer) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."weekly_exchange_candidate_check"("w" "uuid", "emp" "uuid", "target" "jsonb", "excluded" "uuid"[]) FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."weekly_exchange_employee_warning"("w" "uuid", "emp" "uuid", "target" "jsonb") FROM PUBLIC;
 
 
@@ -36834,10 +37088,6 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."schedule_ti
 
 
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_exchange_applications" TO "service_role";
-
-
-
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_exchange_cases" TO "service_role";
 
 
 

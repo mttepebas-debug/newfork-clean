@@ -25,6 +25,36 @@
 - **Gönderim adımları:** S1 cevabı → koordinatörün "gönder"i → `main.lock` → yerel DB'ye kalıcı uygulama → Requests e2e (`time-off-approval`, `shift-hub-swap`, `shift-hub-time-off`, `schedule-publish-approved-exchange`) → canlı `apply_migration` (önce yedek, sonra md5, `get_advisors`, bağımsız SELECT) → push.
 - **Koordinatöre not** (paketin değil, incelemenin bulgusu): `task/bl-969` ile `task/ekran-01-40001-v2` aynı migration numaralarını tutuyor (`20261008002000`, `002100`). İkisi de main'e girerse çakışır.
 
+## Ek 2026-10-08 öğle: ekleyen beş migration canlıda, tren hazır
+- **Karar:** paketin beş ekleyen migration'ı canlı veritabanında (`hvyvyisrqyathtliyyyv`), 11:05–11:18 UTC. Dosyalar canlı ledger numaralarıyla yeniden adlandırıldı; dal trene hazır.
+- **İzin:** koordinatörün §5.1 koşullu "gönder"i (tren modeli, OPS-08). `main.lock` alınmadı, push yok; main'e tren götürür.
+- **Risk:** 🟠 R3, canlıda. Her adım beklenen md5'le birebir tuttu; silen migration canlıya henüz gitmedi.
+- **Soru:** yok.
+- **Sonraki:** koordinatör trende yerel DB'ye kalıcı uygular + Requests e2e; main CI yeşil olunca emekli migration'ı (`111800`) canlıya.
+- **Yedek** (uygulamadan önce, `newfork-wt/ekran-02-pkg/artifacts/ekran-02/pkg/live-backup/`): `functions-before.sql` (38 fonksiyonun tam tanımı, 157 KB), `live-md5.txt` (31 fonksiyon; yerel main'le aynı), `live-data-backup-2026-10-08T105759Z.md` (silinecek rol izni 0, zamanlanmış iş `time-off-deadlines`, bağımlılık ve yetki satırları). 11:01'de yeniden ölçüldü: canlı yedekten beri değişmemiş (31 fonksiyonun birleşik md5'i `4c85727b…`).
+- **Uygulama** (`apply_migration`, sırayla; beklenen md5'ler yerelde geri alınan işlemde hesaplandı, `expected-md5.txt`):
+
+| Adım | Dosya (yeni ad) | Ledger | Dosya md5 = ledger | Fonksiyon md5 |
+|---|---|---|---|---|
+| 1 | `20261008110559_one_eligibility_engine` | 11:05:59 | `f843cb71…` ✓ | 13/13 ✓ |
+| 2 | `20261008111049_shift_exchanges_ask_the_core` | 11:10:49 | `f476ef30…` ✓ | 12/12 ✓ |
+| 3 | `20261008111454_time_off_rules_and_reads` | 11:14:54 | `f91f2394…` ✓ | 11/11 ✓ |
+| 4 | `20261008111650_requests_closed_reads_one_list` | 11:16:50 | `15ad49bf…` ✓ | 6/6 ✓ |
+| 5 | `20261008111751_rejection_reason_reaches_only_the_applicant` | 11:17:51 | `343407f9…` ✓ | 2/2 ✓ |
+
+- **Adım 3'ten önce** silinecek rol izni satırları yeniden sayıldı: **0**. Silme bloğu hiçbir satıra dokunmadı.
+- **Güvenlik uyarıları** (`get_advisors`, her adımdan sonra): önce 98 bilgi + 2 uyarı (pg_net, ücretli parola koruması; ikisi bilinen). Adım 3'ten sonra 99: tek yeni satır `app_private.time_off_sweep_failures` "RLS açık, politika yok", yani herkese kapalı; diğer `app_private` tabloları gibi bilerek. Başka yeni uyarı yok.
+- **Bağımsız okumalar:**
+  - `app_private.eligibility`, `exchange_decision_reason`, `shift_exchange_case_item`: `anon`, `authenticated` ve `service_role` çağıramıyor. `get_schedule_requests_closed_service` yalnız `service_role`'e açık.
+  - Çekirdek canlı bir vardiyada çalışıyor; vardiya sahibi hesapsız olduğu için "workspace_access" engeli dönüyor (canlıda yayınlanmış vardiyası olan herkes hesapsız).
+  - Owner hesabıyla Requests okumaları hatasız: açık liste (2 lokasyon, 0 izin), takas listesi (0), Closed listesi (toplam 0).
+  - `exchange.approve` → `owner_target_ok`; `requests.read` ve `exchange.read` → `documents_ok`; `requests.read` artık `schedule.time_off_requests.manage` istiyor; bağımlılık satırı eklendi.
+  - İzin süre dolumu işi (`time-off-deadlines`, 5 dakikada bir, `select app_private.time_off_sweep()`): yeni sürüm uygulandıktan 6 saniye sonra 11:15:00'te başarıyla koştu; hata kaydı 0.
+- **Yeniden adlandırma:** beş dosya `git mv` ile ledger numarasına; içerikleri değişmedi (md5 aynı). Emekli migration `20261008020500` → **`20261008111800`** (beşinin arkasına düşsün diye); yalnız başlık yorumu yeni numaraları söylüyor. Canlıya main CI yeşil olunca gider; ledger satırı dosya adına (`111800`) eşlenir (OPS-05 ek).
+  - Bilinen iz: uygulanan iki dosyanın son satırı emekli dosyayı eski numarasıyla (`020500`) anıyor. Değiştirmek ledger md5'ini bozardı; emekli dosyanın başlığı bunu açıklıyor.
+- **`supabase/schema.sql`:** `pnpm.cmd db:schema` ile yeniden üretildi (452 migration, son `111800`); `check-fast` 0.
+- **Requests e2e (trende koşulacak):** `time-off-approval`, `shift-hub-swap`, `shift-hub-time-off`, `schedule-publish-approved-exchange`. C2'nin `requests-swap-review` senaryosu bu paket uygulanınca yeşile döner, C2 ile gelir.
+
 ## Nerede duruyor
 - Worktree `newfork-wt/ekran-02-pkg`, dal `task/ekran-02-data`.
 - Paket `origin/main`'in üstüne kuruldu, ekran dalının (`task/ekran-02`) üstüne değil. Böylece Mert'in bakışını bekleyen ekran işinden bağımsız gidebilir. Paketin web koduna bağı yok; B1a zaten A1–A3'e bağlı olmayan kısım.

@@ -1,7 +1,8 @@
 -- EKRAN-02 veri paketi: what the package replaced retires here, apart from what
 -- it adds, so the live database takes it only after main's CI is green
 -- (CLAUDE.md §5.1: a migration that removes goes once main CI is green).
--- Nothing calls these any more once 20261008020000-020400 are in.
+-- Nothing calls these any more once 20261008110559-111751 are in (live 2026-10-08;
+-- their closing comments still name this file by its first number, 020500).
 
 -- A1: the five candidate checks are one engine now (CLAUDE.md §9: no twin system).
 drop function public.weekly_exchange_candidate_check(uuid,uuid,jsonb,uuid[]);
