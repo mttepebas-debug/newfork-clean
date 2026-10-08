@@ -15,7 +15,7 @@ process.env.NEWFORK_LOCK_DIR = path.join(root, "locks");
 process.env.NEWFORK_INBOX_DIR = path.join(root, "inbox");
 process.env.NEWFORK_CI_STATE = "idle"; // never ask the real `gh`
 
-export const { plan, build, applyLocal, gate, push } = await import("./train.mjs");
+export const { plan, build, applyLocal, ci, push, run } = await import("./train.mjs");
 export const { take, status } = await import("./lock.mjs");
 export const { fingerprint, render, headerHash } = await import("./schema-snapshot.mjs");
 
@@ -70,7 +70,7 @@ function world() {
   const origin = path.join(dir, "origin.git");
   const repo = path.join(dir, "repo");
   git(repo, "remote", "set-url", "origin", origin);
-  const calls = { psql: [], pnpm: [], dbSchema: [] };
+  const calls = { psql: [], pnpm: [], dbSchema: [], ci: [] };
   // version -> { md5: md5(statements[1]), n: how many statements } (the CLI splits a file, psql -1 keeps it whole)
   const ledger = new Map([["20260101000000", { md5: md5("create table base(id int);\n"), n: 1 }]]);
   const exec = {
@@ -94,6 +94,11 @@ function world() {
       snapshot(cwd, "-- dump: regenerated\n");
       return 0;
     },
+    ciWait({ branch, sha, log }) {
+      calls.ci.push({ branch, sha });
+      fs.appendFileSync(log, `ci ${branch} ${sha}\n`);
+      return w.ciResult ?? { conclusion: "success", run: 101, failedJobs: [] };
+    },
   };
   const ctx = { repo, trainDir: path.join(dir, "train"), exec, now };
   // A local task branch from origin/main, one commit per [message, files] entry (train.mjs reads origin's branch
@@ -108,7 +113,7 @@ function world() {
     git(repo, "checkout", "-q", "main");
     return git(repo, "rev-parse", name);
   };
-  return { dir, origin, repo, ctx, calls, ledger, branch, failOn: null, redStep: null };
+  return { dir, origin, repo, ctx, calls, ledger, branch, failOn: null, redStep: null, ciResult: null };
 }
 export const text = (r) => r.lines.join("\n");
 export const refs = (repo) => git(repo, "for-each-ref", "--format=%(refname) %(objectname)");
@@ -129,8 +134,8 @@ export function built(...branches) {
   assert.notEqual(r.code, 1, text(r));
 }
 
-export function gated(...branches) {
+export function greened(...branches) {
   built(...branches);
-  const r = gate(w.ctx, {});
+  const r = ci(w.ctx);
   assert.equal(r.code, 0, text(r));
 }

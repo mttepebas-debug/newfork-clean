@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// TREN-ARACI: scripts/train.mjs apply-local, gate and push, in the throwaway world of train-test-world.mjs.
+// TREN-ARACI: scripts/train.mjs apply-local, ci, push and run, in the throwaway world of train-test-world.mjs.
 // Run: node --test scripts/train-steps.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { build, applyLocal, gate, push, take, git, write, commit, auditLines, lock, md5, STAMP, ID, text, state, built, gated, w } from "./train-test-world.mjs";
+import { build, applyLocal, ci, run, push, take, git, write, commit, auditLines, lock, md5, STAMP, ID, text, state, built, greened, w } from "./train-test-world.mjs";
 
 // ---- apply-local ----
 
-test("apply-local: takes and keeps db.lock (never main.lock), applies new migrations in number order with their ledger rows", () => {
+test("apply-local: applies new migrations in number order with their ledger rows and lets db.lock go", () => {
   w.branch("task/m2", ["m2", { "supabase/migrations/20261008030000_m2.sql": "create table m2(id int);\n" }]);
   w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
   w.branch("task/m0", ["m0", { "supabase/migrations/20261008010000_m0.sql": "create table m0(id int);\n" }]);
@@ -21,8 +21,7 @@ test("apply-local: takes and keeps db.lock (never main.lock), applies new migrat
   assert.equal(applies.length, 2);
   assert.match(applies[0], /create table m1[\s\S]*values \('20261008020000', 'm1', array\[/);
   assert.match(applies[1], /create table m2[\s\S]*values \('20261008030000', 'm2', array\[/);
-  assert.equal(lock("db").identity, ID);
-  assert.equal(lock("main").free, true);
+  assert.equal(lock("db").free, true);
   assert.deepEqual(state().applied, ["20261008020000_m1.sql", "20261008030000_m2.sql"]);
   const a = auditLines().find((l) => l.event === "train-apply-local");
   assert.deepEqual(a.applied, ["20261008020000_m1.sql", "20261008030000_m2.sql"]);
@@ -117,183 +116,142 @@ test("apply-local: a ledger row the CLI split into statements cannot be compared
   assert.match(text(r), /UYARI: 20261008020000_m1\.sql ledger'da 3 deyim olarak var \(CLI\); içerik karşılaştırılamadı, atlandı/);
 });
 
-// ---- gate ----
-
-test("gate: runs every step in the train folder, keeps heavy.lock for the push, lets db.lock go", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  built("task/a");
-  const r = gate(w.ctx, { e2e: ["e2e/a.spec.ts", "e2e/b.spec.ts"] });
-  assert.equal(r.code, 0, text(r));
-  assert.deepEqual(
-    w.calls.pnpm.map((c) => c.args.join(" ")),
-    [
-      "install --frozen-lockfile",
-      "--filter @newfork/shared --filter @newfork/ui build",
-      "lint",
-      "typecheck",
-      "test",
-      "build",
-      "test:db",
-      "e2e e2e/a.spec.ts e2e/b.spec.ts",
-    ],
+test("apply-local: a db.lock whose holder died (taken before this boot) is cleared, not waited for", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  fs.mkdirSync(process.env.NEWFORK_LOCK_DIR, { recursive: true });
+  fs.writeFileSync(
+    path.join(process.env.NEWFORK_LOCK_DIR, "db.lock"),
+    JSON.stringify({ identity: "oturum/eski", purpose: "test:db", startedAt: "2000-01-01T00:00:00Z", pid: 4242 }),
   );
-  assert.ok(w.calls.pnpm.every((c) => c.cwd === w.ctx.trainDir));
-  assert.equal(lock("db").free, true);
-  assert.equal(lock("heavy").identity, ID);
-  assert.deepEqual({ ok: state().gate.ok, head: state().gate.head }, { ok: true, head: state().head });
+  const r = applyLocal(w.ctx);
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /ölü sahibinden temizlendi: oturum\/eski/);
 });
 
-test("gate: stops at the first red step, names its log, and lets db.lock and heavy.lock go", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+// ---- ci ----
+
+const code = (name) => ["code", { [`apps/web/src/${name}.ts`]: `export const ${name} = 1;\n` }];
+
+test("ci: pushes train/<stamp>, waits for that sha's run and records it green", () => {
+  w.branch("task/a", code("a"));
   built("task/a");
-  w.redStep = "typecheck";
-  const r = gate(w.ctx, {});
-  assert.equal(r.code, 1);
-  assert.deepEqual(w.calls.pnpm.map((c) => c.args[0]).slice(-1), ["typecheck"]);
-  assert.match(text(r), /typecheck: kırmızı \(çıkış 1\), log: .*gate-typecheck\.log/);
-  assert.equal(lock("db").free, true);
-  assert.equal(lock("heavy").free, true);
-  assert.equal(state().gate.ok, false);
+  const r = ci(w.ctx);
+  assert.equal(r.code, 0, text(r));
+  const head = git(w.repo, "rev-parse", `train/${STAMP}`);
+  assert.equal(git(w.origin, "rev-parse", `refs/heads/train/${STAMP}`), head);
+  assert.deepEqual(w.calls.ci, [{ branch: `train/${STAMP}`, sha: head }]);
+  assert.deepEqual({ ok: state().ci.ok, head: state().ci.head, run: state().ci.run }, { ok: true, head, run: 101 });
+  assert.equal(auditLines().at(-1).event, "train-ci-green");
 });
 
-test("gate: an uncommitted change in the train folder stops it before any step, override or not", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+test("ci: a red run names its failed jobs, and push then refuses that head", () => {
+  w.branch("task/a", code("a"));
   built("task/a");
-  write(w.ctx.trainDir, "docs/a.md", "edited, not committed\n");
-  const r = gate({ ...w.ctx, override: "an override does not pass this" }, {});
+  w.ciResult = { conclusion: "failure", run: 202, failedJobs: ["e2e"] };
+  const r = ci(w.ctx);
   assert.equal(r.code, 1);
-  assert.match(text(r), /DUR: tren klasörü temiz değil/);
-  assert.equal(w.calls.pnpm.length, 0);
-  assert.equal(lock("heavy").free, true);
+  assert.match(text(r), /CI failure: run 202; düşen işler: e2e/);
+  const before = git(w.origin, "rev-parse", "refs/heads/main");
+  const p = push(w.ctx);
+  assert.equal(p.code, 1);
+  assert.match(text(p), /CI bu sha'da yeşil değil/);
+  assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), before);
 });
 
-test("gate: a train folder that is not on the train's tip stops it before any step", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+test("ci: no run showing up for the sha (Actions down) is a stop, not an endless wait", () => {
+  w.branch("task/a", code("a"));
   built("task/a");
-  git(w.ctx.trainDir, "switch", "-q", "--detach", "HEAD~1");
-  const r = gate({ ...w.ctx, override: "an override does not pass this" }, {});
+  w.ciResult = { conclusion: "no-run", run: null, failedJobs: [] };
+  const r = ci(w.ctx);
   assert.equal(r.code, 1);
-  assert.match(text(r), /DUR: tren klasörü train\/\S+ ucunda değil/);
-  assert.equal(w.calls.pnpm.length, 0);
+  assert.match(text(r), /CI no-run/);
+  assert.equal(state().ci.ok, false);
 });
 
-test("gate: a step that leaves the train folder changed turns the gate red", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  built("task/a");
-  const pnpm = w.ctx.exec.pnpm;
-  const exec = {
-    ...w.ctx.exec,
-    pnpm(args, o) {
-      if (args[0] === "build") write(w.ctx.trainDir, "docs/a.md", "rewritten by a step\n");
-      return pnpm(args, o);
-    },
-  };
-  const r = gate({ ...w.ctx, exec }, {});
-  assert.equal(r.code, 1);
-  assert.match(text(r), /kapı bitti ama tren klasörü değişti/);
-  assert.equal(state().gate.ok, false);
+test("ci: a docs-only train needs no CI run", () => {
+  w.branch("task/d", ["d", { "docs/plan/x.md": "x\n" }]);
+  built("task/d");
+  const r = ci(w.ctx);
+  assert.equal(r.code, 0, text(r));
+  assert.equal(w.calls.ci.length, 0);
+  assert.equal(state().ci.docsOnly, true);
 });
 
-test("gate: a running CI stops it before any step; NF_OVERRIDE runs it and is logged", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+test("ci: an uncommitted change in the train folder stops it before anything is pushed", () => {
+  w.branch("task/a", code("a"));
   built("task/a");
-  process.env.NEWFORK_CI_STATE = "running";
-  const r = gate(w.ctx, {});
+  write(w.ctx.trainDir, "stray.txt", "x");
+  const r = ci(w.ctx);
   assert.equal(r.code, 1);
-  assert.match(text(r), /CI koşuyor/);
-  assert.equal(w.calls.pnpm.length, 0);
-  const o = gate({ ...w.ctx, override: "CI is the docs-only run" }, {});
-  assert.equal(o.code, 0, text(o));
-  assert.equal(auditLines().find((l) => l.event === "train-override").step, "gate");
-});
-
-test("gate: another session's heavy.lock stops it", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  built("task/a");
-  take("heavy", "oturum/ekran-02, e2e");
-  const r = gate(w.ctx, {});
-  assert.equal(r.code, 1);
-  assert.match(text(r), /heavy\.lock başka kimlikte: oturum\/ekran-02/);
-  assert.equal(w.calls.pnpm.length, 0);
+  assert.match(text(r), /tren klasörü temiz değil/);
+  assert.equal(w.calls.ci.length, 0);
+  assert.throws(() => git(w.origin, "rev-parse", "--verify", `refs/heads/train/${STAMP}`));
 });
 
 // ---- push ----
 
-test("push: takes main.lock, fast-forwards origin main to the train, lets main and heavy go, logs the push", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  gated("task/a");
-  const before = git(w.repo, "rev-parse", "origin/main");
+test("push: fast-forwards origin main to a train CI passed, takes no lock, logs the push", () => {
+  w.branch("task/a", code("a"));
+  greened("task/a");
+  const head = state().ci.head;
   const r = push(w.ctx);
   assert.equal(r.code, 0, text(r));
-  assert.equal(git(w.origin, "rev-parse", "main"), state().head);
-  assert.equal(lock("main").free, true);
-  assert.equal(lock("heavy").free, true);
-  const p = auditLines().find((l) => l.event === "train-push");
-  assert.deepEqual({ before: p.before, after: p.after, branch: p.branch, tool: p.tool }, { before, after: state().head, branch: `train/${STAMP}`, tool: "train" });
+  assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), head);
+  assert.equal(lock("db").free, true);
+  assert.equal(auditLines().at(-1).event, "train-push");
 });
 
-test("push: main moved since the build is refused (no force), main.lock let go", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  gated("task/a");
-  write(w.repo, "docs/elsewhere.md", "x\n");
-  commit(w.repo, "someone else on main");
+test("push: main moved since the build is refused (no force)", () => {
+  w.branch("task/a", code("a"));
+  greened("task/a");
+  write(w.repo, "README.md", "moved\n");
+  commit(w.repo, "moved");
   git(w.repo, "push", "-q", "origin", "HEAD:main");
-  const moved = git(w.origin, "rev-parse", "main");
-  const r = push({ ...w.ctx, override: "even with an override" });
+  const r = push(w.ctx);
   assert.equal(r.code, 1);
   assert.match(text(r), /main ilerledi, yeniden build/);
-  assert.equal(git(w.origin, "rev-parse", "main"), moved);
-  assert.equal(lock("main").free, true);
 });
 
-test("push: another identity's main.lock is refused; origin main and that lock stay", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  gated("task/a");
-  take("main", "oturum/eski, elle push");
-  const before = git(w.origin, "rev-parse", "main");
-  const r = push(w.ctx);
-  assert.equal(r.code, 1);
-  assert.match(text(r), /main\.lock başka kimlikte: oturum\/eski/);
-  assert.equal(git(w.origin, "rev-parse", "main"), before);
-  assert.equal(lock("main").identity, "oturum/eski");
-});
-
-test("push: passing another identity's main.lock with NF_OVERRIDE first saves origin main under refs/nf-backup/main/", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  gated("task/a");
-  take("main", "oturum/eski, elle push");
-  const before = git(w.origin, "rev-parse", "main");
-  const r = push({ ...w.ctx, override: "the old lock is from a dead session" });
-  assert.equal(r.code, 0, text(r));
-  const [ref, sha] = git(w.repo, "for-each-ref", "--format=%(refname) %(objectname)", "refs/nf-backup/main/").split(" ");
-  assert.match(ref, /^refs\/nf-backup\/main\//);
-  assert.equal(sha, before);
-  const o = auditLines().find((l) => l.event === "train-override" && l.step === "push");
-  assert.equal(o.backup, ref);
-  assert.equal(lock("main").identity, "oturum/eski"); // never someone else's lock to delete
-});
-
-test("push: heavy.lock held by another identity is refused", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+test("push: NF_OVERRIDE passes a head CI did not pass, after saving origin main under refs/nf-backup/main/", () => {
+  w.branch("task/a", code("a"));
   built("task/a");
-  gate(w.ctx, {});
-  fs.rmSync(path.join(process.env.NEWFORK_LOCK_DIR, "heavy.lock"));
-  take("heavy", "oturum/ekran-02, e2e");
-  const before = git(w.origin, "rev-parse", "main");
-  const r = push(w.ctx);
-  assert.equal(r.code, 1);
-  assert.match(text(r), /heavy\.lock başka kimlikte: oturum\/ekran-02/);
-  assert.equal(git(w.origin, "rev-parse", "main"), before);
+  const before = git(w.origin, "rev-parse", "refs/heads/main");
+  const r = push({ ...w.ctx, override: "acil düzeltme" });
+  assert.equal(r.code, 0, text(r));
+  assert.match(git(w.repo, "for-each-ref", "--format=%(refname)", "refs/nf-backup/main/"), /refs\/nf-backup\/main\//);
+  const o = auditLines().find((l) => l.event === "train-override");
+  assert.equal(o.reason, "acil düzeltme");
+  assert.equal(o.sha, before);
 });
 
-test("push: a train head the gate did not run on is refused", () => {
-  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
-  gated("task/a");
-  write(w.ctx.trainDir, "docs/late.md", "late\n");
-  commit(w.ctx.trainDir, "a fix after the gate");
-  const before = git(w.origin, "rev-parse", "main");
-  const r = push(w.ctx);
+// ---- run ----
+
+test("run: build, ci, push and apply-local in one command; main ends at the train, db.lock is free", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  const r = run(w.ctx, ["task/m1"]);
+  assert.equal(r.code, 0, text(r));
+  assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), state().head);
+  assert.deepEqual(state().applied, ["20261008020000_m1.sql"]);
+  assert.equal(lock("db").free, true);
+});
+
+test("run: a red CI stops before push; main does not move", () => {
+  w.branch("task/a", code("a"));
+  w.ciResult = { conclusion: "failure", run: 303, failedJobs: ["check"] };
+  const before = git(w.origin, "rev-parse", "refs/heads/main");
+  const r = run(w.ctx, ["task/a"]);
   assert.equal(r.code, 1);
-  assert.match(text(r), /kapı bu sha'da koşmadı/);
-  assert.equal(git(w.origin, "rev-parse", "main"), before);
+  assert.equal(r.failedStep, "ci");
+  assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), before);
+});
+
+test("run: coord/kayit rides along while it holds commits main lacks, and not after", () => {
+  w.branch("coord/kayit", ["records", { "DURUM.md": "# Durum\n" }]);
+  const r = run(w.ctx, []);
+  assert.equal(r.code, 0, text(r));
+  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit"]);
+  const again = run({ ...w.ctx, now: () => new Date("2026-10-08T11:00:00Z") }, []);
+  assert.equal(again.code, 1);
+  assert.match(text(again), /trene girecek dal yok/);
 });

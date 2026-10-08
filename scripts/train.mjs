@@ -2,23 +2,23 @@
 // TREN-ARACI (KARARLAR OPS-08, CLAUDE.md §6 "Gönderim adımları (tren)"): only the coordinator's train goes to main.
 // Each step is its own command with its own exit code; long output goes to a log file, the screen gets a summary.
 // State: <train>/artifacts/train/state.json; logs: <train>/artifacts/train/<stamp>/<step>.log (artifacts/ is ignored).
-//   plan <branch[@sha]…>   order, blockers, warnings and a dry run of build; changes nothing but `git fetch`;
-//                          exit 1 = a blocker, 2 = a branch would be left out, 0 = all go (warnings or not)
+//   plan <branch[@sha]…>   order, blockers, warnings and a dry run of build; changes nothing but `git fetch`
 //   build <branch[@sha]…>  train/<stamp> from origin/main in the train folder; exit 2 = a branch was left out
-//   apply-local            the train's new migrations into the shared local database; db.lock stays for the gate
-//   gate [--e2e <spec…>]   install, lint, typecheck, test, build, test:db, e2e; db.lock goes, heavy.lock stays if green
-//   push                   main.lock for the push moment, origin main fast-forwarded to the train, locks let go
-// The push runs inside this script, so scripts/guard.mjs never sees it: the same rules (main.lock, heavy.lock, CI,
-// fast-forward only) hold here and land in the guard's audit.log. NF_OVERRIDE="<reason>" in front of a step passes a
-// lock, CI or gate check (never a non-fast-forward push) and is logged. The train folder is NEWFORK_TRAIN_DIR (tests).
+//   ci                     pushes train/<stamp> and waits for its GitHub Actions run: the full check, once (WORKFLOW-V2)
+//   push                   origin main fast-forwarded to the train, only when ci was green for that very sha
+//   apply-local            the train's new migrations into the shared local database, holding db for this step only
+//   run <branch[@sha]…>    build → ci → push → apply-local; coord/kayit rides along when main lacks its commits
+// The push runs inside this script, so scripts/guard.mjs never sees it; the same rules (fast-forward only, a green
+// CI) hold here and land in the guard's audit.log. NF_OVERRIDE="<reason>" in front of a step passes a lock or CI
+// check (origin/main saved first; never a non-fast-forward push) and is logged.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
-import { take, release, status as lockStatus } from "./lock.mjs";
-import { audit, backupMain, ciState } from "./guard.mjs";
+import { take, release, status as lockStatus, clearDead } from "./lock.mjs";
+import { audit, backupMain } from "./guard.mjs";
 import { fingerprint, headerHash } from "./schema-snapshot.mjs";
 import { container, nonTransactional } from "./test-db.mjs";
 
@@ -216,9 +216,12 @@ const mine = (s, name) => {
   const l = lockOf(name);
   return !l.free && l.identity === s.identity;
 };
-// The train holds `name` (already, or takes it now); another identity's lock is a check NF_OVERRIDE can pass.
+// The train holds `name` (already, or takes it now); a dead holder is cleared first; another live identity's lock
+// is a check NF_OVERRIDE can pass.
 function hold(ctx, s, name, step, lines, beforeOverride) {
   if (mine(s, name)) return true;
+  const cleared = clearDead(name);
+  if (cleared) lines.push(cleared);
   if (lockOf(name).free && take(name, `${s.identity}, tren ${step}`).ok) return true;
   const l = lockOf(name);
   return pass(ctx, s, step, `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`, lines, beforeOverride);
@@ -226,17 +229,6 @@ function hold(ctx, s, name, step, lines, beforeOverride) {
 const letGo = (s, name) => {
   if (mine(s, name)) release(name, s.identity);
 };
-
-function ciCheck(ctx, s, step, cwd, lines) {
-  const ci = ciState(cwd);
-  if (ci.state === "unknown") {
-    audit({ ...auditBase(ctx, step), event: "train-ci-unknown", step, train: s.branch });
-    lines.push("CI durumu okunamadı (gh); sürüyor");
-  }
-  if (ci.state !== "running") return true;
-  const runs = ci.runs.map((r) => `${r.name} / ${r.headBranch}: ${r.status}`).join("; ");
-  return pass(ctx, s, step, `CI koşuyor${runs ? ` (${runs})` : ""}`, lines);
-}
 
 // ---- steps ----
 
@@ -355,7 +347,7 @@ export function build(ctx, args) {
     applied: [],
     // what earlier trains applied to the shared database and main still lacks, carried until main has it
     strayInSharedDb: stray(repo, p.base, previous),
-    gate: null,
+    ci: null,
     pushed: null,
   };
   writeState(ctx, state);
@@ -439,61 +431,50 @@ export function applyLocal(ctx) {
   if (now.length) audit({ ...auditBase(ctx, "apply-local"), event: "train-apply-local", applied: now, train: s.branch });
   if (s.applied.length) lines.push(`ortak DB'de main'de olmayan göç: ${s.applied.join(", ")} (tren main'e girene kadar)`);
   if (failed) return stop("ilk hatada durdu; kalan göçler uygulanmadı, uygulanan geri alınmaz (düzeltme yeni göçle)");
-  lines.push(mine(s, "db") ? "db.lock trende kaldı: sıradaki adım gate" : "db.lock trende değil (NF_OVERRIDE ile aşıldı); gate kendisi alır");
+  const held = mine(s, "db");
+  letGo(s, "db");
+  lines.push(held ? "db.lock bırakıldı" : "db.lock trende değil (NF_OVERRIDE ile aşıldı)");
   return { code: 0, lines };
 }
 
-export function gate(ctx, { e2e = [] } = {}) {
+const DOCS_ONLY = /^docs\/|\.md$/; // ci.yml's paths-ignore: such a train starts no run
+
+export function ci(ctx, { timeoutMin = 90 } = {}) {
   const s = readState(ctx);
   if (!s) return NO_STATE;
   const lines = [];
-  const done = (code) => {
-    letGo(s, "db");
-    if (code !== 0) letGo(s, "heavy");
-    return { code, lines };
-  };
-  // what is tested is what is pushed: the train folder clean and on the train's branch, before and after
-  const where = () => ({ head: git(ctx.trainDir, ["rev-parse", "HEAD"]), dirty: listed(git(ctx.trainDir, ["status", "--porcelain"])) });
-  const start = where();
   const tip = tryGit(ctx.repo, ["rev-parse", `refs/heads/${s.branch}`]);
-  if (start.dirty.length) refuse(ctx, s, "gate", `tren klasörü temiz değil (${start.dirty.slice(0, 3).join("; ")}); commit'le ya da elle bak`, lines);
-  else if (start.head !== tip) refuse(ctx, s, "gate", `tren klasörü ${s.branch} ucunda değil (@${short(start.head)})`, lines);
-  if (lines.length) return done(1);
-  if (!hold(ctx, s, "db", "gate", lines) || !hold(ctx, s, "heavy", "gate", lines) || !ciCheck(ctx, s, "gate", ctx.trainDir, lines)) return done(1);
-  const steps = [
-    ["install", ["install", "--frozen-lockfile"]],
-    ["libs", ["--filter", "@newfork/shared", "--filter", "@newfork/ui", "build"]],
-    ["lint", ["lint"]],
-    ["typecheck", ["typecheck"]],
-    ["test", ["test"]],
-    ["build", ["build"]],
-    ["test:db", ["test:db"]],
-    ...(e2e.length ? [["e2e", ["e2e", ...e2e]]] : []),
-  ];
-  const { head } = start;
-  let failedStep = null;
-  for (const [step, args] of steps) {
-    const log = logFile(ctx, s.stamp, `gate-${step}`);
-    const t0 = Date.now();
-    const st = ctx.exec.pnpm(args, { cwd: ctx.trainDir, log });
-    if (st !== 0) {
-      failedStep = step;
-      lines.push(`${step}: kırmızı (çıkış ${st}), log: ${log}`);
-      lines.push(...tailOf(fs.readFileSync(log, "utf8"), 20).map((l) => `  | ${l}`));
-      break;
-    }
-    lines.push(`${step}: yeşil (${Math.round((Date.now() - t0) / 1000)} sn)`);
+  const head = git(ctx.trainDir, ["rev-parse", "HEAD"]);
+  const dirty = listed(git(ctx.trainDir, ["status", "--porcelain"]));
+  if (dirty.length) refuse(ctx, s, "ci", `tren klasörü temiz değil (${dirty.slice(0, 3).join("; ")}); commit'le ya da elle bak`, lines);
+  else if (head !== tip) refuse(ctx, s, "ci", `tren klasörü ${s.branch} ucunda değil (@${short(head)})`, lines);
+  if (lines.length) return { code: 1, lines };
+  const at = () => ctx.now().toISOString();
+  const files = listed(git(ctx.repo, ["diff", "--name-only", `${s.base}..${tip}`]));
+  if (files.every((f) => DOCS_ONLY.test(f))) {
+    s.ci = { ok: true, head: tip, run: null, conclusion: "docs-only", docsOnly: true, failedJobs: [], at: at() };
+    writeState(ctx, s);
+    lines.push("yalnız belge değişti: CI koşmaz, gerekmez");
+    return { code: 0, lines };
   }
-  if (!e2e.length) lines.push("e2e: liste verilmedi, koşmadı");
-  const end = where();
-  if (!failedStep && (end.head !== head || end.dirty.length)) {
-    failedStep = "temizlik";
-    lines.push(`kapı bitti ama tren klasörü değişti (@${short(end.head)}${end.dirty.length ? `; ${end.dirty.slice(0, 3).join("; ")}` : ""}): kırmızı sayıldı`);
+  const p = spawnSync("git", ["-C", ctx.repo, "push", "-q", "origin", `${tip}:refs/heads/${s.branch}`], { encoding: "utf8" });
+  if (p.status !== 0) {
+    lines.push(`${s.branch} push edilemedi: ${tailOf(p.stderr, 3).join(" | ")}`);
+    return { code: 1, lines };
   }
-  s.gate = { ok: !failedStep, head, failedStep, at: new Date().toISOString() };
+  const log = logFile(ctx, s.stamp, "ci");
+  const r = ctx.exec.ciWait({ branch: s.branch, sha: tip, log, timeoutMin });
+  const ok = r.conclusion === "success";
+  s.ci = { ok, head: tip, run: r.run, conclusion: r.conclusion, docsOnly: false, failedJobs: r.failedJobs ?? [], at: at() };
   writeState(ctx, s);
-  lines.push(failedStep ? "kapı kırmızı: db.lock ve heavy.lock bırakıldı" : "kapı yeşil: db.lock bırakıldı, heavy.lock push'a kadar trende");
-  return done(failedStep ? 1 : 0);
+  audit({ ...auditBase(ctx, "ci"), event: ok ? "train-ci-green" : "train-ci-red", train: s.branch, run: r.run, conclusion: r.conclusion });
+  if (ok) {
+    lines.push(`CI yeşil: run ${r.run} (${s.branch} @${short(tip)})`);
+    return { code: 0, lines };
+  }
+  lines.push(`CI ${r.conclusion}: run ${r.run ?? "-"}; düşen işler: ${s.ci.failedJobs.join(", ") || "-"}; log: ${log}`);
+  if (r.run) lines.push(`ayrıntı: gh run view ${r.run} --log-failed`);
+  return { code: 1, lines };
 }
 
 export function push(ctx) {
@@ -503,35 +484,50 @@ export function push(ctx) {
   const lines = [];
   tryGit(repo, ["fetch", "-q", "origin"]);
   const tip = git(repo, ["rev-parse", `refs/heads/${s.branch}`]);
-  // passing another identity's main.lock first saves origin/main, as the guard does (CLAUDE.md §6)
+  const before = git(repo, ["rev-parse", BASE]);
+  if (!isAncestor(repo, before, tip)) {
+    refuse(ctx, s, "push", `main ilerledi, yeniden build (origin/main @${short(before)} trenin atası değil; force push yok)`, lines, { before, after: tip });
+    return { code: 1, lines };
+  }
+  // passing a missing green CI with NF_OVERRIDE first saves origin/main, as the guard does
   const backup = () => {
     const b = backupMain(repo);
     return { backup: b.ref, sha: b.sha, fetched: b.fetched };
   };
-  if (!hold(ctx, s, "main", "push", lines, backup)) return { code: 1, lines };
-  try {
-    const before = git(repo, ["rev-parse", BASE]);
-    if (!isAncestor(repo, before, tip)) {
-      refuse(ctx, s, "push", `main ilerledi, yeniden build (origin/main @${short(before)} trenin atası değil; force push yok)`, lines, { before, after: tip });
-      return { code: 1, lines };
-    }
-    if (!(s.gate?.ok && s.gate.head === tip) && !pass(ctx, s, "push", `kapı bu sha'da koşmadı (@${short(tip)})`, lines)) return { code: 1, lines };
-    if (!hold(ctx, s, "heavy", "push", lines) || !ciCheck(ctx, s, "push", repo, lines)) return { code: 1, lines };
-    const r = spawnSync("git", ["-C", repo, "push", "origin", `${tip}:refs/heads/main`], { encoding: "utf8" });
-    if (r.status !== 0) {
-      audit({ ...auditBase(ctx, "push"), event: "train-push-failed", before, after: tip, branch: s.branch });
-      lines.push(`push reddedildi: ${tailOf(r.stderr, 3).join(" | ")}`);
-      return { code: 1, lines };
-    }
-    audit({ ...auditBase(ctx, "push"), event: "train-push", before, after: tip, branch: s.branch });
-    s.pushed = { at: new Date().toISOString(), before, after: tip };
-    writeState(ctx, s);
-    lines.push(`main: ${short(before)}..${short(tip)} (${s.branch}); CI: gh run list --branch main --limit 1`);
-    return { code: 0, lines };
-  } finally {
-    letGo(s, "main");
-    letGo(s, "heavy");
+  if (!(s.ci?.ok && s.ci.head === tip) && !pass(ctx, s, "push", `CI bu sha'da yeşil değil (@${short(tip)})`, lines, backup)) return { code: 1, lines };
+  const r = spawnSync("git", ["-C", repo, "push", "origin", `${tip}:refs/heads/main`], { encoding: "utf8" });
+  if (r.status !== 0) {
+    audit({ ...auditBase(ctx, "push"), event: "train-push-failed", before, after: tip, branch: s.branch });
+    lines.push(`push reddedildi: ${tailOf(r.stderr, 3).join(" | ")}`);
+    return { code: 1, lines };
   }
+  audit({ ...auditBase(ctx, "push"), event: "train-push", before, after: tip, branch: s.branch });
+  s.pushed = { at: new Date().toISOString(), before, after: tip };
+  writeState(ctx, s);
+  lines.push(`main: ${short(before)}..${short(tip)} (${s.branch})`);
+  return { code: 0, lines };
+}
+
+const COORD_BRANCH = "coord/kayit"; // the coordinator's records (spec §7.3)
+function coordBranch(repo) {
+  const ref = tryGit(repo, ["rev-parse", "--verify", "-q", `refs/heads/${COORD_BRANCH}`]);
+  return ref && ahead(repo, ref).length ? COORD_BRANCH : null;
+}
+
+export function run(ctx, args) {
+  const names = [...args];
+  const coord = coordBranch(ctx.repo);
+  if (coord && !names.some((n) => n.split("@")[0] === COORD_BRANCH)) names.push(coord);
+  if (!names.length) return { code: 1, lines: ["trene girecek dal yok"] };
+  const b = build(ctx, names);
+  const lines = [...b.lines];
+  if (b.code === 1) return { code: 1, lines, failedStep: "build" };
+  for (const [step, fn] of [["ci", ci], ["push", push], ["apply-local", applyLocal]]) {
+    const r = fn(ctx);
+    lines.push(`— ${step}`, ...r.lines);
+    if (r.code !== 0) return { code: 1, lines, failedStep: step };
+  }
+  return { code: b.code, lines };
 }
 
 // ---- command line ----
@@ -546,6 +542,48 @@ function toLog(cmd, args, cwd, log, shell = false) {
   }
 }
 
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const ghJson = (args, cwd) => {
+  const r = spawnSync("gh", args, { cwd, encoding: "utf8", timeout: 60000 });
+  try {
+    return r.status === 0 ? JSON.parse(r.stdout) : null;
+  } catch {
+    return null;
+  }
+};
+// The GitHub Actions run of `sha` on `branch`: up to 5 minutes for it to show up, then until it completes or
+// timeoutMin passes. Progress goes to the log.
+function ciWait({ cwd, branch, sha, log, timeoutMin }) {
+  const note = (l) => fs.appendFileSync(log, `${new Date().toISOString()} ${l}\n`);
+  let run = null;
+  const seen = Date.now() + 5 * 60000;
+  while (!run && Date.now() < seen) {
+    run = (ghJson(["run", "list", "--branch", branch, "--limit", "5", "--json", "databaseId,headSha"], cwd) ?? []).find((r) => r.headSha === sha)?.databaseId ?? null;
+    if (!run) sleepSync(10000);
+  }
+  if (!run) {
+    note("koşu 5 dakikada görünmedi");
+    return { conclusion: "no-run", run: null, failedJobs: [] };
+  }
+  note(`koşu ${run}`);
+  const end = Date.now() + timeoutMin * 60000;
+  while (Date.now() < end) {
+    const v = ghJson(["run", "view", String(run), "--json", "status,conclusion,jobs"], cwd);
+    if (v) {
+      note(`${v.status}${v.conclusion ? ` ${v.conclusion}` : ""}`);
+      if (String(v.status).toLowerCase() === "completed")
+        return {
+          conclusion: v.conclusion || "unknown",
+          run,
+          failedJobs: (v.jobs ?? []).filter((j) => !["success", "skipped"].includes(String(j.conclusion))).map((j) => j.name),
+        };
+    }
+    sleepSync(30000);
+  }
+  note("süre doldu");
+  return { conclusion: "timeout", run, failedJobs: [] };
+}
+
 const realExec = (trainDir) => ({
   // supabase/CLAUDE.md: psql -X -v ON_ERROR_STOP=1 in the shared container; -1 = one transaction per migration
   psql(sql, { query = false } = {}) {
@@ -556,34 +594,34 @@ const realExec = (trainDir) => ({
   // pnpm is a .cmd shim on Windows, which only a shell starts
   pnpm: (args, { cwd, log }) => (process.platform === "win32" ? toLog("pnpm.cmd", args, cwd, log, true) : toLog("pnpm", args, cwd, log)),
   dbSchema: (cwd, log) => toLog(process.execPath, ["scripts/schema-snapshot.mjs", "write"], cwd, log),
+  ciWait: (o) => ciWait({ cwd: trainDir, ...o }),
 });
 
 const USAGE = [
-  "usage: node scripts/train.mjs plan <dal[@sha]…>",
-  "       node scripts/train.mjs build <dal[@sha]…>",
-  "       node scripts/train.mjs apply-local",
-  "       node scripts/train.mjs gate [--e2e <spec…>]",
-  "       node scripts/train.mjs push",
-  '       NF_OVERRIDE="<gerekçe>" önüne: kilit, CI ya da kapı kontrolünü aşar (audit.log); fast-forward olmayan push asla',
+  "usage: node scripts/train.mjs run <dal[@sha]…>   (build → ci → push → apply-local; coord/kayit kendiliğinden)",
+  "       node scripts/train.mjs plan|build <dal[@sha]…>",
+  "       node scripts/train.mjs ci|push|apply-local",
+  '       NF_OVERRIDE="<gerekçe>" önüne: kilit ya da CI kontrolünü aşar (origin/main önce yedeklenir, audit.log); fast-forward olmayan push asla',
 ];
 
 function main(argv) {
   const [cmd, ...rest] = argv;
   const repo = git(process.cwd(), ["rev-parse", "--show-toplevel"]);
   const ctx = { repo, trainDir: TRAIN_DIR, exec: realExec(TRAIN_DIR), now: () => new Date(), override: process.env.NF_OVERRIDE?.trim() || null };
-  const e2eAt = rest.indexOf("--e2e");
   const r =
     cmd === "plan" && rest.length
       ? plan(ctx, rest)
       : cmd === "build" && rest.length
         ? build(ctx, rest)
-        : cmd === "apply-local"
-          ? applyLocal(ctx)
-          : cmd === "gate"
-            ? gate(ctx, { e2e: e2eAt >= 0 ? rest.slice(e2eAt + 1) : [] })
-            : cmd === "push"
-              ? push(ctx)
-              : { code: 1, lines: USAGE };
+        : cmd === "ci"
+          ? ci(ctx)
+          : cmd === "push"
+            ? push(ctx)
+            : cmd === "apply-local"
+              ? applyLocal(ctx)
+              : cmd === "run"
+                ? run(ctx, rest)
+                : { code: 1, lines: USAGE };
   for (const l of r.lines) console.log(l);
   process.exitCode = r.code;
 }
