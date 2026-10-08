@@ -468,3 +468,20 @@ select jobname, schedule, command from cron.job where jobname = 'workspace-closu
   - ölçüler `ga4-measures.json`.
 - **Simetri:** menünün dört öğesi 178×36, ikon x=978 ve dikeyde ortada, 12px, tek satır, ayraç boşlukları eşit (9px). Panelde parola alanı iki yandan 19px, iki düğme 42px ve sağ kenardan 19px, aralarında 8px.
 - **Önceden olan, bu işte değişmeyen:** seçili satırın yeşil zemini listenin sağ kenarını 12px aşıyor (1164 / 1152).
+
+### GA-4 canlıda (KK-226, 2026-10-08 ~06:41Z)
+- **Yedek** (uygulamadan önce, yalnız SELECT): `newfork-clean/artifacts/guvenlik-a/ga4-hosted-backup-2026-10-08.json`.
+  - `request_workspace_closure_service` `functiondef` md5 `68d050d02bfc2a8638710a942cef8cd8` (koordinatörün ölçümüyle aynı);
+  - GA-4 fonksiyonları 0; 6 cron işi, `workspace-closures` yok;
+  - 3 workspace `active`, süresi geçmiş kapanış 0.
+- **Uygulama:** `apply_migration` `close_later_finishes_on_its_date`.
+  - Ledger sürümü `20261008064103`, elle damgalanmadı (KK-226). Dosya da bu adı aldı.
+  - `md5(statements[1])` = dosya md5 `73c32561c009c342fac7c1fb34043c7c`.
+- **Doğrulama:**
+  - `prosrc` md5'leri dosyayla aynı: `finish_workspace_closure` `d3c4f823…`, `request_workspace_closure_service` `1b04cc97…`, `complete_due_workspace_closures` `7f6a1d07…`.
+  - Üçü de SECURITY DEFINER, `search_path=""`. İki iç fonksiyonu `authenticated`, `anon` ve `service_role` çalıştıramıyor; servis `service_role`'de açık.
+  - cron `workspace-closures` `*/5 * * * *`, kullanıcı `postgres`, aktif; toplam 7 iş.
+  - Workspace'ler 3 `active`, kapanış tetiklenmedi.
+  - `get_advisors`: yeni bulgu yok.
+- **Canlı ledger sırası:** EKRAN-01'in `20261008052513`–`052645`'inden sonra.
+- **Main sırası:** EKRAN-01'den hemen sonra, EKRAN-02 paketinden önce (KK-226).
