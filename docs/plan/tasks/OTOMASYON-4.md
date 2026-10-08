@@ -98,3 +98,18 @@ Risk notes:
   - Ekran görüntüleri: `artifacts/OTOMASYON-4/galeri-1440.png`, `galeri-390.png` (ana klasör).
 - Eslint yalnız `**/*.{ts,tsx}` tarıyor; `.mjs` kapsam dışı, `node --check` temiz.
 - `package.json` test listesine `pages.test.mjs` eklemek, TREN-ARACI'dan sonra (1. şart).
+
+### Yapılan: devir mantığı ayrı dosyada (2026-10-08, teknik karar, P19)
+- Plandaki `inbox.mjs devir/handoff`, `lock.mjs adopt` ve `hook start` tek yeni dosyada: `scripts/devir.mjs` (`liste`, `devret`, `kilit-al`, `hook start`). Nedeni: TREN-ARACI ile aynı dosyalara girmemek ve ortak betiklere yalnız bağlantı satırı eklemek. `lock.mjs`'e hiç dokunulmuyor; kilit dosyası biçimi (JSON: identity, purpose, startedAt, session, cwd) aynen korunuyor, `adoptedFrom` ve `adoptedAt` ekleniyor.
+- Durum kaydı `<inbox>/durum/<oturum>.json`:
+  - Hesap, transkriptteki `credential_org` satırından alınıyor. `.claude.json` yalnız açılış satırında o anki hesabı bulmak için okunuyor; yalnız `organizationUuid` okunuyor.
+  - Hesap adları `<inbox>/hesaplar.json`'da.
+- Testler:
+  - `scripts/devir.test.mjs` 18/18 yeşil.
+  - Bozma denemesi 4/4 yakalandı: beceri metni "Mert" sayıldı, bitmiş oturum listede kaldı, canlı sahibin kilidi alındı, hesap ayrımı yok sayıldı.
+- Gerçek veri: bu oturumun 11,4 MB transkripti 103 ms (3 git çağrısı ve kilit durumu dahil). Mert'in son mesajı doğru yakalandı.
+- Bağlananlar: `.claude/settings.json` SessionStart → `devir.mjs hook start`, CLAUDE.md §4.2 "Hesap değişimi", `/devral` yeni komutlara uyarlandı.
+- **TREN-ARACI sonrasına kalan:**
+  - `inbox.mjs` `heartbeat()` yazdığında `writeDurum` (bağlantı satırı);
+  - `guard.mjs` `evaluate` devredilmiş oturum için P16 kalıbıyla uyarı/engel; kırmızı testi hazır: `scripts/guard-devir.test.mjs` 3/5 düşüyor;
+  - `package.json` test listesine `pages`, `devir` ve `guard-devir` testleri.
