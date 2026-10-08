@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { deleteScheduleDraft, isEditLeaseExpired, isEditSessionStale, listScheduleTemplates, ScheduleRequestError } from "./schedule-data";
+import {
+  deleteScheduleDraft, isEditLeaseExpired, isEditSessionClosed, isEditSessionStale, listScheduleTemplates, ScheduleRequestError,
+} from "./schedule-data";
 import { requestErrorText } from "../lib/request-error";
 
 vi.mock("../lib/supabase", () => ({
@@ -55,12 +57,15 @@ describe("Schedule request failures read as plain sentences (D-O7)", () => {
     expect((error as Error).message).toBe("Newfork could not be reached. Check your connection and try again.");
   });
 
-  it("knows a lapsed lock and a stale edit by the API's code, whatever the sentence says", async () => {
+  it("knows a lapsed lock, a closed edit and a stale edit by the API's code, whatever the sentence says", async () => {
     const lapsed = await failure(Response.json({ error: "anything", code: "edit_lease_expired" }, { status: 409 }));
+    const closed = await failure(Response.json({ error: "anything", code: "edit_session_closed" }, { status: 409 }));
     const stale = await failure(Response.json({ error: "anything", code: "edit_session_stale" }, { status: 409 }));
     const other = await failure(Response.json({ error: "edit lease expired" }, { status: 409 }));
-    expect([isEditLeaseExpired(lapsed), isEditSessionStale(lapsed)]).toEqual([true, false]);
-    expect([isEditLeaseExpired(stale), isEditSessionStale(stale)]).toEqual([false, true]);
-    expect([isEditLeaseExpired(other), isEditSessionStale(other)]).toEqual([false, false]);
+    const read = (error: unknown) => [isEditLeaseExpired(error), isEditSessionClosed(error), isEditSessionStale(error)];
+    expect(read(lapsed)).toEqual([true, false, false]);
+    expect(read(closed)).toEqual([false, true, false]);
+    expect(read(stale)).toEqual([false, false, true]);
+    expect(read(other)).toEqual([false, false, false]);
   });
 });

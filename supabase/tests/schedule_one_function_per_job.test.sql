@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(53);
 
 -- FB-6.1 step .4: every Schedule job is one function, and the rules that name
 -- several locations at once ask the authorization core for each of them
@@ -217,6 +217,26 @@ select is(pg_temp.said(format($$select public.update_schedule_export_schedule_se
   tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'),
   jsonb_build_object('location_ids', jsonb_build_array(tests.id('fj:K'), tests.id('fj:B'))))),
   '22023 schedule.export_rule_beyond_its_owner', 'nor can Can, who manages both');
+-- Where the rule goes and what it is called stay with the person who set it
+-- up and with the owner and admins (KK-224): Can changes when it runs, not who
+-- reads Ayşe's schedule, and cannot probe the names of rules he did not make.
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('recipients', '["can@example.test"]'::jsonb))),
+  '42501 authz.out_of_scope schedule.export', 'Can does not send Ayşe''s rule to his own address');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'), jsonb_build_object('name', 'Moda weekly'))),
+  '42501 authz.out_of_scope schedule.export', 'nor renames it');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('name', ' Weekly K ', 'recipients', '["chef@example.test"]'::jsonb, 'send_hour', 9))),
+  'allowed', 'the whole rule sent back with its name and address unchanged still saves');
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:zeynep'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('recipients', '["books@example.test"]'::jsonb))),
+  'allowed', 'Zeynep, an admin, changes the address');
+select is((select s.recipients from public.scheduled_schedule_exports s where s.id = tests.id('fj:export:K')),
+  '["books@example.test"]'::jsonb, 'and the rule goes where Zeynep set it');
 -- A rule keeps its own preset; switching it takes one of the editor's own.
 select public.create_schedule_export_preset_service(tests.user('fj:owner'), tests.id('fj'), 'Owner weekly', '{}'::jsonb);
 select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
@@ -224,6 +244,14 @@ select is(pg_temp.said(format($$select public.update_schedule_export_schedule_se
   jsonb_build_object('preset_id', (select p.id from public.schedule_export_presets p
     where p.workspace_id = tests.id('fj') and p.name = 'Owner weekly')))),
   'P0002', 'Can cannot switch Ayşe''s rule to the owner''s preset');
+-- Nor to his own: her mail would go out with his settings, and he could not
+-- delete his preset while her rule used it (EKRAN-01 B9).
+select public.create_schedule_export_preset_service(tests.user('fj:can'), tests.id('fj'), 'Can weekly', '{}'::jsonb);
+select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,
+  tests.user('fj:can'), tests.id('fj'), tests.id('fj:export:K'),
+  jsonb_build_object('preset_id', (select p.id from public.schedule_export_presets p
+    where p.workspace_id = tests.id('fj') and p.name = 'Can weekly')))),
+  'P0002', 'nor to his own preset');
 -- Another workspace's owner reaches nothing here, whatever the rule id.
 select tests.world('fk');
 select is(pg_temp.said(format($$select public.update_schedule_export_schedule_service(%L, %L, %L, %L::jsonb)$$,

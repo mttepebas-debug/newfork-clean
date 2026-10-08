@@ -1,7 +1,17 @@
 -- EKRAN-01 #11: an edit whose payload leaves the unpaid break or "hide the
--- time" out keeps the shift's value, as BL-292 made it for the note. Today the
--- API and the server's own callers send every field, so nothing reaches this
--- yet; a new path that forgets one cannot quietly reset a 30-minute break to 0.
+-- time" out keeps the shift's value, as BL-292 made it for the note; the
+-- labels too (B7): a payload without label_ids used to clear them. This holds
+-- for the database's own callers (default hours, pasted batches). The API's
+-- update schema still fills a missing break with 0 and "hide the time" with
+-- false before it gets here (packages/shared, its zod defaults), so a PATCH
+-- that leaves them out still resets them; that is its own job (B6).
+--
+-- A lasting conflict answers PT409 with its key in the hint, not 40001, which
+-- PostgREST would run again without end (BL-958); this body carries them
+-- itself, so it does not hang on a later migration to rewrite it (B2). A
+-- session closed elsewhere (saved, discarded, set aside by another opening)
+-- answers schedule.edit_session_closed, apart from a lock that ran out
+-- (schedule.edit_lease_expired), which the screen picks back up (B3).
 
 CREATE OR REPLACE FUNCTION public.mutate_schedule_edit_shift_service(actor_user_id uuid, target_workspace_id uuid, target_session_id uuid, expected_session_revision integer, operation text, target_shift_id uuid, expected_shift_revision integer DEFAULT NULL::integer, shift_payload jsonb DEFAULT NULL::jsonb, request_idempotency_key uuid DEFAULT NULL::uuid)
  RETURNS jsonb
@@ -38,11 +48,13 @@ begin
     if target_session.id is null or target_session.holder_user_id <> actor_user_id then
       raise exception 'edit session not found' using errcode = 'P0002';
     end if;
-    if target_session.status <> 'active' or target_session.expires_at <= now() then
-      raise exception 'edit lease expired' using errcode = '40001';
+    if target_session.status <> 'active' then
+      raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+    elsif target_session.expires_at <= now() then
+      raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
     end if;
     if target_session.revision <> expected_session_revision then
-      raise exception 'session revision stale' using errcode = '40001';
+      raise exception 'session revision stale' using errcode = 'PT409', hint = 'schedule.edit_session_stale';
     end if;
 
     select * into target_shift
@@ -54,7 +66,7 @@ begin
     for update;
 
     if target_shift.id is null then
-      raise exception 'shift revision stale' using errcode = '40001';
+      raise exception 'shift revision stale' using errcode = 'PT409', hint = 'schedule.edit_session_stale';
     end if;
 
     if operation = 'restore' then
@@ -126,11 +138,13 @@ begin
       if target_session.id is null or target_session.holder_user_id <> actor_user_id then
         raise exception 'edit session not found' using errcode = 'P0002';
       end if;
-      if target_session.status <> 'active' or target_session.expires_at <= now() then
-        raise exception 'edit lease expired' using errcode = '40001';
+      if target_session.status <> 'active' then
+        raise exception 'edit session closed' using errcode = 'PT409', hint = 'schedule.edit_session_closed';
+      elsif target_session.expires_at <= now() then
+        raise exception 'edit lease expired' using errcode = 'PT409', hint = 'schedule.edit_lease_expired';
       end if;
       if target_session.revision <> expected_session_revision then
-        raise exception 'session revision stale' using errcode = '40001';
+        raise exception 'session revision stale' using errcode = 'PT409', hint = 'schedule.edit_session_stale';
       end if;
 
       if operation in ('create', 'update') then
@@ -201,7 +215,7 @@ begin
           and shift.revision = expected_shift_revision
           and shift.location_id = any(reach);
         if not found then
-          raise exception 'shift revision stale' using errcode = '40001';
+          raise exception 'shift revision stale' using errcode = 'PT409', hint = 'schedule.edit_session_stale';
         end if;
       else
         update public.schedule_availability_overrides set revoked_at=now() where workspace_id=target_workspace_id and shift_id=row_shift_id and revoked_at is null;
@@ -210,7 +224,7 @@ begin
           and shift.revision = expected_shift_revision
           and shift.location_id = any(reach);
         if not found then
-          raise exception 'shift revision stale' using errcode = '40001';
+          raise exception 'shift revision stale' using errcode = 'PT409', hint = 'schedule.edit_session_stale';
         end if;
       end if;
 
@@ -243,7 +257,9 @@ begin
 
   -- c. Labels: the catalog's name for an active label of this workspace, the
   -- shift's own copy for a label it already carries; anything else is refused.
-  if operation in ('create', 'update') and shift_payload is not null then
+  -- A payload without label_ids keeps the shift's labels; an empty list clears
+  -- them (EKRAN-01 B7, as for the note).
+  if operation in ('create', 'update') and shift_payload ? 'label_ids' then
     <<labels>>
     declare
       tag_ids uuid[];

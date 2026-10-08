@@ -57,3 +57,21 @@ begin
   );
 end;
 $function$;
+
+-- B8: a send that reached nobody is not tried again on the cron's next
+-- five-minute round; the rule waits 15 minutes, so a broken one is tried a few
+-- times in its send hour instead of twelve and does not hold up other
+-- workspaces' sends. Changed on the definition the database holds
+-- (pg_get_functiondef), so a newer version keeps its own changes.
+do $migration$
+declare
+  anchor constant text := 'where s.enabled';
+  definition text := pg_get_functiondef('public.list_schedule_export_cron_candidates_service(timestamptz)'::regprocedure);
+begin
+  if (length(definition) - length(replace(definition, anchor, ''))) / length(anchor) <> 1 then
+    raise exception 'EKRAN-01 B8: list_schedule_export_cron_candidates_service no longer reads as this expects';
+  end if;
+  execute replace(definition, anchor,
+    anchor || E'\n    and (s.last_failed_at is null or s.last_failed_at <= target_now - interval ''15 minutes'')');
+end
+$migration$;

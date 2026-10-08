@@ -38,6 +38,9 @@ const session: ScheduleEditSession = {
 };
 const leaseExpired = () =>
   new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired", code: "edit_lease_expired" });
+const sessionClosed = () =>
+  new ScheduleRequestError("edit session closed", 409, { error: "edit session closed", code: "edit_session_closed" });
+const ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
 
 function renderEditSession() {
   const onError = vi.fn();
@@ -249,6 +252,39 @@ describe("useScheduleEditSession", () => {
     );
     expect(hook.result.current.session).toEqual(resumed);
     expect(hook.onError).not.toHaveBeenCalled();
+  });
+
+  // EKRAN-01 B3: an edit closed elsewhere (Ayşe opened the week's published
+  // schedule in another tab, which set this draft edit aside) is not picked up
+  // again: opening it again would set the other tab's edit aside in turn.
+  it("ends an edit closed elsewhere without opening it again", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(heartbeatScheduleEditSession).mockRejectedValueOnce(sessionClosed());
+    vi.mocked(acquireScheduleEditSession).mockClear();
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+    expect(hook.onError).toHaveBeenCalledWith(ENDED_AWAY);
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("does not retry a change on an edit closed elsewhere; it ends the edit and says so", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockClear();
+    const action = vi.fn().mockRejectedValue(sessionClosed());
+
+    let failure: unknown;
+    await act(async () => { failure = await hook.result.current.runWithLease(action).catch((error: unknown) => error); });
+
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+    expect((failure as Error).message).toBe(ENDED_AWAY);
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
   });
 
   it("recoverLease resumes the open edit and hands back the live session", async () => {

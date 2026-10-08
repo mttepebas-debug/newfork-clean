@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(31);
 
 -- BL-237: this file used to open an edit session from the real seeded
 -- Meyhouse workspace's PUBLISHED week and expect its real data's seven
@@ -196,7 +196,7 @@ select throws_ok(
     %L, %L, %L, %s, 'Opening plan', null, null)$$,
     (select owner_id from ses_ids), (select w from ses_ids),
     (select session_id from edit_test_state), (select session_revision from edit_test_state)),
-  'PT409', 'edit lease expired', 'closed session cannot save again'
+  'PT409', 'edit session closed', 'closed session cannot save again'
 );
 
 -- A publish never archives its draft (BL-253), so the week lists two: the
@@ -257,7 +257,7 @@ select is(pg_temp.said(
     %L, %L, %L, %s, 'Opening plan', null, null)$$,
     (select owner_id from ses_ids), (select w from ses_ids),
     (select session_id from edit_test_state), (select session_revision from edit_test_state))),
-  'PT409 schedule.edit_lease_expired', 'a closed edit is refused with its key');
+  'PT409 schedule.edit_session_closed', 'a closed edit is refused with the closed key, not the lapsed-lock one');
 with acquired as (
   select public.acquire_schedule_edit_session_service(owner_id, w, week1, 'blank', null) result from ses_ids
 )
@@ -271,12 +271,29 @@ select is(pg_temp.said(
   'PT409 schedule.edit_session_stale', 'a stale edit is refused with its key');
 
 set local role postgres;
+-- A session still open whose lock ran out (a laptop that slept) answers
+-- "lease expired", which the screen recovers from by opening it again; a
+-- closed one above answers "closed", which it must not (EKRAN-01 B3).
+update public.schedule_edit_sessions set expires_at = now() - interval '1 minute'
+where id = (select session_id from edit_test_state);
+select is(pg_temp.said(
+  format($$select public.mutate_schedule_edit_shift_service(
+    %L, %L, %L, %s, 'delete', gen_random_uuid(), 1, null, null)$$,
+    (select owner_id from ses_ids), (select w from ses_ids),
+    (select session_id from edit_test_state), (select session_revision from edit_test_state))),
+  'PT409 schedule.edit_lease_expired', 'an edit whose lock ran out is refused as a lapsed lock');
+select is(pg_temp.said(
+  format($$select public.heartbeat_schedule_edit_session_service(%L, %L, %L)$$,
+    (select owner_id from ses_ids), (select w from ses_ids), (select session_id from edit_test_state))),
+  'PT409 schedule.edit_lease_expired', 'and so is its heartbeat');
+
 -- A Schedule function may raise 40001 only where it turns it into PT409
--- before it leaves (publish, unpublish, save keep that catch).
+-- before it leaves (publish and unpublish keep that catch). Every way a body
+-- can raise 40001 counts, the same pattern ACIL-40001 checks (EKRAN-01 B10).
 select is((select array_agg(p.proname::text order by p.proname)
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname in ('public', 'app_private') and p.proname ~ 'schedule'
-    and p.prosrc ~* 'errcode\s*=\s*''40001'''
+    and p.prosrc ~* $re$(errcode\s*:?=\s*'(40001|serialization_failure)'|raise\s+(exception\s+)?sqlstate\s+'40001'|raise\s+serialization_failure)$re$
     and p.prosrc !~* 'exception\s+when\s+serialization_failure\s+then\s+raise\s+exception\s+''%''\s*,\s*sqlerrm\s+using\s+errcode\s*=\s*''PT409'''),
   null, 'no Schedule refusal is a 40001 that PostgREST would retry without end');
 
