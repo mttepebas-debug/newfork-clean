@@ -299,11 +299,14 @@ export function plan(ctx, args) {
   return { code, lines, base, order: ordered.map((b) => b.name), sim };
 }
 
+// A file leaves the list once main has its name, under any number: it may ship renamed to its live ledger number
+// (supabase/CLAUDE.md "Canlı"), and then apply-local's "behind main" check names the old number in the ledger.
 function stray(repo, base, previous) {
   if (!previous) return [];
-  const onMain = new Set(mainMigrations(repo, base));
+  const named = (f) => f.replace(/^\d+_/, "");
+  const onMain = new Set(mainMigrations(repo, base).map(named));
   const left = [...(previous.strayInSharedDb ?? []), ...(previous.pushed ? [] : (previous.applied ?? []))];
-  return [...new Set(left)].filter((f) => !onMain.has(f)).sort();
+  return [...new Set(left)].filter((f) => !onMain.has(named(f))).sort();
 }
 
 export function build(ctx, args) {
