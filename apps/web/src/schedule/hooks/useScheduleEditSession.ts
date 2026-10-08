@@ -21,7 +21,7 @@ export const EDIT_NOT_RECONNECTED =
   "Your edit could not be reconnected. Check your connection and try again.";
 
 const EDIT_REFUSED = "You can no longer edit this schedule, so your edit closed.";
-const EDIT_ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
+export const EDIT_ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
 
 export interface ScheduleLockConflict {
   readonly sessionId?: string;
@@ -281,6 +281,7 @@ export function useScheduleEditSession({
     acquire,
     recoverLease,
     runWithLease,
+    endClosedEdit,
     idleSeconds,
     keepEditing,
   };

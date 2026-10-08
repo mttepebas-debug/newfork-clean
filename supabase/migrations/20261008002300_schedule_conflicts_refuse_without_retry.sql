@@ -107,12 +107,13 @@ begin
   end if;
   if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace
              and p.proname = any (targets)
-             and p.prosrc ~* $re$(\w+)\.status\s*<>\s*'active'\s+or\s+\1\.expires_at$re$) then
+             and (p.prosrc ~* $re$(\w+)\.status\s*<>\s*'active'\s+or\s+\1\.expires_at$re$
+               or p.prosrc ~* $re$(\w+)\.expires_at\s*<=\s*now\(\)\s+or\s+\1\.status\s*<>\s*'active'$re$)) then
     raise exception 'EKRAN-01 B3: a listed function still answers a closed edit as a lapsed lock';
   end if;
   if exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace
              and p.proname = any (targets)
-             and p.prosrc ~* $re$'(edit lease expired|edit session closed|(session|shift|draft) revision stale|Schedule editing [^']*)'\s+using\s+errcode\s*=\s*'PT409'\s*;$re$) then
+             and p.prosrc ~* $re$'(edit lease expired|edit session closed|(session|shift|draft) revision stale|Schedule editing [^']*)'\s+using\s+errcode\s*=\s*'PT409'(?!\s*,\s*hint\s*=)$re$) then
     raise exception 'EKRAN-01 B4: a listed function refuses an edit conflict without its key';
   end if;
   if not exists (select 1 from pg_proc p where p.oid = 'public.heartbeat_schedule_edit_session_service(uuid,uuid,uuid)'::regprocedure

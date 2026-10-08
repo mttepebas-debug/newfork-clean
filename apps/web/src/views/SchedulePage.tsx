@@ -71,6 +71,7 @@ import {
   isNothingToUndo,
   deleteScheduleTemplate,
   isEditLeaseExpired,
+  isEditSessionClosed,
   draftsKey,
   listScheduleDrafts,
   listScheduleTemplates,
@@ -120,7 +121,7 @@ import {
   EDIT_IDLE_TIMEOUT_MS,
   EDIT_IDLE_WARNING_MS,
 } from "../schedule/hooks/useEditIdleTimer";
-import { EDIT_NOT_RECONNECTED, useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
+import { EDIT_ENDED_AWAY, EDIT_NOT_RECONNECTED, useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
@@ -281,6 +282,7 @@ export function SchedulePage({
     acquire: acquireEditSession,
     recoverLease,
     runWithLease,
+    endClosedEdit,
     idleSeconds,
     keepEditing,
   } = useScheduleEditSession({
@@ -1306,6 +1308,13 @@ export function SchedulePage({
     } catch (error) {
       if (currentMutationContext.current !== savingContext) return null;
       // D-Y3: the lock lapsed (sleep, lost network); pick the same edit back up and save once more.
+      // EKRAN-01 B3: an edit closed elsewhere ends here; opening it again would
+      // set the other edit aside in turn, and saving it again cannot succeed.
+      if (isEditSessionClosed(error)) {
+        setOperationError(EDIT_ENDED_AWAY);
+        endClosedEdit();
+        return null;
+      }
       if (isEditLeaseExpired(error)) {
         const live = leaseRecovered ? null : await recoverLease();
         if (!live) throw new ScreenError(EDIT_NOT_RECONNECTED);
