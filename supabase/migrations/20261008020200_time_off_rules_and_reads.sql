@@ -1,4 +1,6 @@
 -- Time-off rules of Requests and what its list reads (EKRAN-02 A3).
+--   BL-958 a lasting conflict (closed request, old revision, changed shifts,
+--          reused key) answers PT409, not a retried 40001 (ACIL-40001).
 --   K-S2   a manager missing a document reads Requests (time off and shift
 --          changes) and decides nothing: authz_actions.documents_ok.
 --   K-S3   Time off has no "View" level: reading comes with deciding.
@@ -739,11 +741,11 @@ begin
   end if;
   if verdict is null or verdict not in ('approve', 'deny') then raise exception 'Choose approve or deny' using errcode = '22023'; end if;
   if char_length(btrim(coalesce(note, ''))) > 1000 then raise exception 'The note can be at most 1000 characters' using errcode = '22023'; end if;
-  if r.status <> 'pending' then raise exception 'This request is already closed' using errcode = '40001'; end if;
-  if r.decide_by is not null and r.decide_by <= now() then raise exception 'This request was not decided in time' using errcode = '40001'; end if;
+  if r.status <> 'pending' then raise exception 'This request is already closed' using errcode = 'PT409'; end if;
+  if r.decide_by is not null and r.decide_by <= now() then raise exception 'This request was not decided in time' using errcode = 'PT409'; end if;
   pictured := app_private.time_off_impact(w, rid);
   if expected_impact is distinct from pictured ->> 'fingerprint' then
-    raise exception 'The shifts this time off affects have changed. Review them again' using errcode = '40001';
+    raise exception 'The shifts this time off affects have changed. Review them again' using errcode = 'PT409';
   end if;
 
   if alone_why is null then
@@ -804,7 +806,7 @@ begin
   perform app_private.time_off_authorize(actor, w, 'time_off.revoke', r.employee_id);
   if said = '' or char_length(said) > 1000 then raise exception 'Say why the time off is revoked (at most 1000 characters)' using errcode = '22023'; end if;
   if expected_revision is null or r.revision <> expected_revision or r.status <> 'approved' then
-    raise exception 'This time off changed; refresh before revoking it' using errcode = '40001'; end if;
+    raise exception 'This time off changed; refresh before revoking it' using errcode = 'PT409'; end if;
 
   select coalesce(range_agg(s.span), '{}') into taken
   from (select unnest(public.time_off_effective_ranges(x.id)) * tstzrange(null, now(), '[)') span
@@ -883,11 +885,11 @@ begin
  command:=jsonb_build_object('kind','shorten','request_id',rid,'expected_revision',expected_revision,'periods',periods,'note',btrim(coalesce(note,'')));
  select * into prior from public.time_off_commands c where c.workspace_id=w and c.actor_user_id=actor and c.operation_id=shorten_time_off_service.operation_id;
  if found then
-  if prior.input<>command then raise exception 'This request key was used for a different change' using errcode='40001'; end if;
+  if prior.input<>command then raise exception 'This request key was used for a different change' using errcode = 'PT409'; end if;
   return prior.result;
  end if;
  if expected_revision is null or parent.revision<>expected_revision or parent.status <> 'approved' then
-  raise exception 'stale approved leave; refresh before shortening it' using errcode='40001'; end if;
+  raise exception 'stale approved leave; refresh before shortening it' using errcode = 'PT409'; end if;
  if jsonb_typeof(periods) is distinct from 'array' or jsonb_array_length(periods) not between 1 and 124 then
   raise exception 'Choose up to 124 periods of approved hours' using errcode='22023'; end if;
  if char_length(btrim(coalesce(note,'')))>1000 then raise exception 'The note can be at most 1000 characters' using errcode='22023'; end if;
@@ -948,11 +950,11 @@ begin
   command := jsonb_build_object('kind', 'cancellation', 'parent', parent_id, 'revision', expected_revision, 'reason', btrim(coalesce(reason, '')), 'periods', periods);
   select * into prior from public.time_off_commands c where c.workspace_id = w and c.actor_user_id = actor and c.operation_id = request_time_off_cancellation_service.operation_id;
   if found then
-    if prior.input <> command then raise exception 'This request key was used for a different cancellation' using errcode = '40001'; end if;
+    if prior.input <> command then raise exception 'This request key was used for a different cancellation' using errcode = 'PT409'; end if;
     return prior.result;
   end if;
   if expected_revision is null or parent.revision <> expected_revision or parent.request_type <> 'time_off' or parent.status <> 'approved' then
-    raise exception 'stale approved leave; refresh before requesting cancellation' using errcode = '40001'; end if;
+    raise exception 'stale approved leave; refresh before requesting cancellation' using errcode = 'PT409'; end if;
   if exists (select 1 from public.time_off_cancellation_links cl join public.schedule_time_off_requests cr on cr.id = cl.request_id
     where cl.parent_request_id = parent.id and cr.status = 'pending') then
     raise exception 'A cancellation request is already pending for this leave' using errcode = '23514'; end if;
