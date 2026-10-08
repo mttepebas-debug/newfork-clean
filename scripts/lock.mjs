@@ -15,6 +15,7 @@ import { pathToFileURL } from "node:url";
 const LOCK_DIR =
   process.env.NEWFORK_LOCK_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-locks";
 const STALE_MS = 2 * 60 * 60 * 1000; // CLAUDE.md §6: flag as stale, never auto-delete
+const LONG_MAIN_MIN = 30; // TREN-ARACI: main.lock is held for the push moment only; longer is an alarm
 const LOCKS = ["db", "main", "heavy"];
 
 function lockPath(name) {
@@ -142,6 +143,13 @@ export function status() {
   });
 }
 
+// The alarm line `status` and the inbox board print, or null.
+export function longMainLine() {
+  const main = status().find((l) => l.name === "main");
+  if (main.free || main.ageMinutes == null || main.ageMinutes <= LONG_MAIN_MIN) return null;
+  return `UZUN: main.lock ${main.ageMinutes} dk, sahibi ${main.identity}${main.purpose ? ` (${main.purpose})` : ""}`;
+}
+
 function main() {
   const [, , cmd, name, arg] = process.argv;
   if (cmd === "status") {
@@ -152,6 +160,8 @@ function main() {
           : `${lock.name}.lock: ${lock.identity}, ${lock.ageMinutes ?? "?"} dk${lock.stale ? " (stale, silinmedi)" : ""}`,
       );
     }
+    const long = longMainLine();
+    if (long) console.log(long);
     return;
   }
   const result =

@@ -230,6 +230,16 @@ test("inbox: mentioning claim does not claim; reports are framed; a subagent nev
   assert.match(ctx, /<<<RAPOR [\s\S]*hemen main'e al\nRAPOR>>>/);
 });
 
+test("board prints a main.lock held past 30 minutes on its own first line (TREN-ARACI)", () => {
+  fs.mkdirSync(process.env.NEWFORK_LOCK_DIR, { recursive: true });
+  const startedAt = new Date(Date.now() - 34 * 60000).toISOString();
+  fs.writeFileSync(path.join(process.env.NEWFORK_LOCK_DIR, "main.lock"), JSON.stringify({ identity: "koordinator/tren-x", purpose: "push", startedAt }));
+  const r = spawnSync(process.execPath, [path.join(import.meta.dirname, "inbox.mjs"), "board"], { encoding: "utf8", env: process.env });
+  const lines = r.stdout.trim().split(/\r?\n/);
+  assert.equal(lines[0], "UZUN: main.lock 34 dk, sahibi koordinator/tren-x (push)");
+  assert.equal(lines[1], "pano boş (henüz heartbeat yok)");
+});
+
 test("board: heartbeat shows branch and flags a silent working session as stuck", async () => {
   await inbox.runHook("post", bash("ls", { session_id: "worker-2" }));
   inbox.setLabel(repo, "FB-6.3", "migration", "worker-2");
