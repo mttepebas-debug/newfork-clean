@@ -5,7 +5,7 @@ description: Newfork haftalık kural denetimi (CLAUDE.md §6); ayın ilkinde ayl
 
 # Haftalık denetim
 
-Koordinatörün verdiği bir oturum yapar, haftada bir. Ayın ilk denetimi **aylık**tır (aşağıdaki ek maddelerle). Denetim salt okurdur: tek yazdığı rapor dosyasıdır. Düzeltme yapmaz; eskimiş bilgiyi koordinatör düzeltir, kural eklemek, değiştirmek ya da silmek Mert onayıyla (§6).
+Koordinatörün verdiği bir oturum yapar, haftada bir. Ayın ilk denetimi **aylık**tır (aşağıdaki ek maddelerle). Denetim salt okurdur: tek yazdığı rapor dosyasıdır. Düzeltme yapmaz; eskimiş bilgiyi koordinatör düzeltir, kural eklemek, değiştirmek ya da silmek Mert onayıyla (§4).
 
 Başlarken ilk iş `get_usage` (session `self`): `context.tokensUsed` 3. sayının bu haftaki ölçümüdür.
 
@@ -26,7 +26,7 @@ Başlarken ilk iş `get_usage` (session `self`): `context.tokensUsed` 3. sayın�
 ## Dört sayı
 | # | Sayı | Komut / kaynak | Tanım |
 |---|---|---|---|
-| 1 | Önerinin kabul oranı | `node scripts/decision-log.mjs stats 4` | Son haftanın "kabul%" sütunu (önerili tek seçimli sorularda önerilenin seçilme oranı). Hedef ≥ %85 (§4.7). "geri dönen soru" da yazılır. |
+| 1 | Önerinin kabul oranı | `node scripts/decision-log.mjs stats 4` | Son haftanın "kabul%" sütunu (önerili tek seçimli sorularda önerilenin seçilme oranı). Hedef ≥ %85. "geri dönen soru" da yazılır. |
 | 2 | Haftalık Mert düzeltmesi | aynı çıktının "başka" + "serbest" sütunları; `docs/plan/KARARLAR.md`'de "ters çevrildi" (o haftanın tarihleri) + `DURUM.md` "Sağlık" ters çevirme sayısı | Toplam ve kırılım. |
 | 3 | Oturum başı sabit yük | denetim oturumunun ilk `get_usage`'ı | `tokensUsed` ve en büyük üç kategori. Önceki ölçümler: ~102 bin (2026-10-06), 95,8 bin (2026-10-07). |
 | 4 | Hazır → main | docs/plan/gunluk/ (HAZIR satırı) ve "train-push" olayları (.newfork-inbox/audit.log) | Her işin HAZIR anından main'e girişine süre: medyan ve en uzun. |
