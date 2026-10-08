@@ -755,6 +755,7 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Ne oldu:** gece modunda dört oturuma "canlı migration için gönder bende, gece de geçerli" dedim (§5.1). §5.3 canlı (hosted) işlem için Mert'in "evet"inin işi yapan oturumun penceresine yazılmasını istiyor; ACIL-40001 oturumu fark etti ve gece canlıya dokunmadı.
 - **Maliyeti:** dört oturuma düzeltme mesajı; canlı işlemler sabaha kaldı. Oturum fark etmeseydi kural ihlaliyle canlıya değişiklik çıkacaktı.
 - **Alışkanlık:** bir yetkiyi kullanmadan önce kural dosyasında o yetkiyi sınırlayan başka bir madde var mı ara (`grep -n "canlı"`); iki madde çelişiyorsa katı olanla yürü ve Mert'e sor.
+- **Tekrar 2026-10-08:** KK-226'da migration dosya adı kuralını verdim, `supabase/CLAUDE.md` "Canlı" satırı tersini diyordu; üç dal benim kuralımla ilerledi. Mert kuralımı onayladı, ama sorulmadan klasör kuralı fiilen değişmişti. Klasör `CLAUDE.md`'leri de aranır (`grep -rn <konu> CLAUDE.md */CLAUDE.md apps/*/CLAUDE.md`).
 
 ## 2026-10-08 — Newfork koordinatör: kilidi tutan oturum takıldı, 6,5 saat kimse fark etmedi
 - **Ne oldu:** BL-965 oturumu `main.lock`'u aldı, canlı doğrulamada izin engeline takıldı. Mert'e "devam et yaz" dedim, sonrasını izlemedim. Oturum bir sonraki adımda (git okuması) yine takıldı. Uygulama yeniden başlayınca benim bekleyicim de durdu; EKRAN-01'in uyarı mesajı bana ulaşmadı.

@@ -39,4 +39,4 @@
 - `schedule_grid_read_budget` yükte 50–60 ms'e sıçrar: ölçümü sırayla tekrarla.
 
 ## Canlı
-- MCP `apply_migration` sürüme sunucu damgasını yazar: `update supabase_migrations.schema_migrations set version = '<repo>' where name = '<ad>' and version = '<damga>'`. Kanıt: `md5(statements[1])` = dosya md5'i.
+- MCP `apply_migration` sürüme sunucu damgasını yazar (uygulama anı). Ekleyen migration'ın dosyası bu damgayla yeniden adlandırılır (`20261008052513_<ad>.sql`), canlı ledger'a dokunulmaz; main'deki sıra canlıya uygulanma sırasıdır (Mert, 2026-10-08; KARARLAR OPS-05 eki). Silen migration main'e kendi adıyla girer; canlıya uygulanınca ledger satırı dosya adına eşlenir: `update supabase_migrations.schema_migrations set version = '<repo>' where name = '<ad>' and version = '<damga>'` (önce satırın yedeği). Kanıt: `md5(statements[1])` = dosya md5'i.
