@@ -1,5 +1,5 @@
 import { AlertTriangle, X } from "lucide-react";
-import { useEffect, useRef, type MouseEvent, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, type MouseEvent, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import {
   formatScheduleConflictMessages,
@@ -49,8 +49,9 @@ export function ScheduleConflictSheet({
     };
   }, [isDecision, open]);
 
-  // Escape is Cancel.
-  useEffect(() => {
+  // Escape is Cancel, from the moment the box is drawn: a layout effect runs with
+  // the drawing, a passive one later, and an Escape pressed in between was lost (BL-757).
+  useLayoutEffect(() => {
     if (!open || !isDecision) return undefined;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;

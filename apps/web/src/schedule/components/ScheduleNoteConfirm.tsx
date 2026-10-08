@@ -1,5 +1,5 @@
 import { NotebookPen } from "lucide-react";
-import { useEffect, useRef, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
 export interface ScheduleNoteCell {
@@ -52,7 +52,8 @@ export function ScheduleNoteConfirm({ cell, when, by = null, employeeName, text,
       if (previous?.isConnected) previous.focus();
     };
   }, []);
-  useEffect(() => {
+  // From the moment the card is drawn, as the rule box (BL-757).
+  useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // Caught on window's capture pass and spent here, like an open shift
