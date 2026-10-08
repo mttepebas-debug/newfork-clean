@@ -222,6 +222,11 @@ export function filterScheduleModel(
   const locations = locationIds.length
     ? model.locations.filter((item) => locationIds.includes(item.id))
     : model.locations;
+  // BL-974: by role builds its groups from these, so a job left out of the
+  // filter brings no group (and a person who holds a chosen job sits under it).
+  const jobs = jobIds.length
+    ? model.jobs.filter((item) => jobIds.includes(item.id))
+    : model.jobs;
   const shifts = model.shifts.filter(
     (shift) =>
       locations.some((location) => location.id === shift.location_id) &&
@@ -242,7 +247,7 @@ export function filterScheduleModel(
         jobIds,
       }),
   );
-  return { ...model, locations, employees, shifts };
+  return { ...model, locations, jobs, employees, shifts };
 }
 
 export function parseIds(value: string | null): string[] {

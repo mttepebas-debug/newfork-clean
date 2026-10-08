@@ -24,6 +24,12 @@ function jobPositionOrder(jobs: Jobs, departments: Departments): (Jobs[number] |
   ];
 }
 
+// Name order, then id so two people with one name keep one order.
+function byName(a: ScheduleEmployee, b: ScheduleEmployee): number {
+  const name = (employee: ScheduleEmployee) => employee.display_name.trim().toLocaleLowerCase();
+  return name(a).localeCompare(name(b)) || a.id.localeCompare(b.id);
+}
+
 export function sortScheduleEmployees(
   employees: readonly ScheduleEmployee[],
   jobs: Jobs,
@@ -39,17 +45,13 @@ export function sortScheduleEmployees(
       jobRank.get(primaryScheduleJobId(employee, jobs))!,
     ]),
   );
-  const employeeName = (employee: ScheduleEmployee) =>
-    employee.display_name.trim().toLocaleLowerCase();
   return [...employees].sort((a, b) => {
     if (mode === "byJob") {
       const aJobRank = rank.get(a.id)!;
       const bJobRank = rank.get(b.id)!;
       if (aJobRank !== bJobRank) return aJobRank - bJobRank;
     }
-    return (
-      employeeName(a).localeCompare(employeeName(b)) || a.id.localeCompare(b.id)
-    );
+    return byName(a, b);
   });
 }
 
@@ -79,8 +81,10 @@ export function groupScheduleEmployeesByJob(
     if (bucket) bucket.push(employee);
     else groups.set(jobId, [employee]);
   }
+  // In name order within the group: a filtered Jobs list can put a person under
+  // a job other than the one their row was ranked by (BL-974).
   return jobPositionOrder(jobs, departments)
-    .map((job) => ({ job, employees: groups.get(job?.id ?? null) ?? [] }))
+    .map((job) => ({ job, employees: [...(groups.get(job?.id ?? null) ?? [])].sort(byName) }))
     .filter((group) => group.employees.length > 0);
 }
 

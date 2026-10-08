@@ -6,6 +6,7 @@ import type {
 import { describe, expect, it } from "vitest";
 
 import { addDays } from "./scheduleDateTime";
+import { filterScheduleModel } from "./scheduleFilterModel";
 import { createScheduleGridViewModel } from "./scheduleGridViewModel";
 
 const jobs = [
@@ -229,6 +230,41 @@ describe("createScheduleGridViewModel", () => {
     expect(view.employeeRowGroups.map((group) => group.job?.id)).toEqual([
       "11111111-1111-4111-8111-111111111111",
       "22222222-2222-4222-8222-222222222222",
+    ]);
+  });
+
+  // BL-974: by role with Jobs = Server shows the Server group only. Aaron works
+  // Bar mainly but holds Server too: he sits under Server, in name order.
+  it("shows only the selected jobs' groups when the Jobs filter is on (BL-974)", () => {
+    const server = "11111111-1111-4111-8111-111111111111";
+    const bar = "22222222-2222-4222-8222-222222222222";
+    const filtered = filterScheduleModel(
+      model({
+        employees: [
+          employee("44444444-4444-4444-8444-444444444444", "Alex Morgan"),
+          employee("88888888-8888-4888-8888-888888888888", "Jamie Stone", { primary_job_id: bar, job_ids: [bar] }),
+          employee("99999999-9999-4999-8999-999999999999", "Aaron Lee", { primary_job_id: bar, job_ids: [server, bar] }),
+        ],
+      }),
+      new URLSearchParams({ jobs: server }),
+    );
+    const view = createScheduleGridViewModel({
+      filtered,
+      employeeSortMode: "byJob",
+      hideUnscheduled: false,
+      layout: "unified",
+      showPresetShiftBadges: false,
+      showRoleSeparators: true,
+      showTotalHours: false,
+      showUnassignedShifts: false,
+      hasEditSession: false,
+      addDays,
+    });
+
+    expect(view.employeeRowGroups.map((group) => group.job?.name)).toEqual(["Server"]);
+    expect(view.employeeRowGroups[0]?.employees.map((person) => person.display_name)).toEqual([
+      "Aaron Lee",
+      "Alex Morgan",
     ]);
   });
 });
