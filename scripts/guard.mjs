@@ -1,35 +1,22 @@
 #!/usr/bin/env node
-// COORD-CTRL + OTOMASYON-3: PreToolUse guard (CLAUDE.md §4.2, §4.8, §6).
-// Bash/PowerShell:
-// - A push to main needs a live main.lock (scripts/lock.mjs). Without one it is
-//   refused, unless the push itself is prefixed with NF_OVERRIDE="<reason>": then
-//   origin/main is first saved as refs/nf-backup/main/<stamp> and the bypass is logged.
-// - One heavy run at a time: a gate test/build, test:db or e2e needs this session's
-//   heavy.lock and no CI run in progress; a push that starts CI must not overlap another
-//   session's heavy.lock. NF_OVERRIDE in front of the command passes and is logged.
-// - Deleting a branch or removing a worktree is allowed, but the tip is saved
-//   under refs/nf-backup/... first.
-// Edit/Write, and a worker session's git commit: the record files of CLAUDE.md §4.8 are
-// written only by the coordinator and by Mert's own sessions. `guard.mjs records-allow`
-// is the logged way out for one session.
-// Heavy-run and record problems warn until ENFORCE_FROM and are refused after it (ILKELER P16).
-// Every decision lands in <inbox>/audit.log (one JSON object per line, secrets masked).
-// Fail-closed only for a push to main: if evaluate() itself breaks, that push
-// is refused (NF_OVERRIDE still passes). Everything else fails open.
+// WORKFLOW-V2 (spec §7.2, §10): PreToolUse guard for Bash, PowerShell, Edit and Write.
+// - A push to main is refused: only scripts/train.mjs sends main (its own process, not seen here), and
+//   only a train CI passed. Emergency: NF_OVERRIDE="<reason>" in front of the push saves origin/main
+//   as refs/nf-backup/main/<stamp> first and is logged.
+// - A worker agent (a hook input with agent_id, or a folder under .claude/worktrees/agent-*) never writes
+//   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log), by edit or by commit.
+// - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
+// - Commands the settings deny list refuses are logged when tried.
+// Every decision lands in <OPS_DIR>/audit.log (one JSON object per line, secrets masked).
+// Fail-closed only for a push to main: if evaluate() itself breaks, that push is refused.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { status as lockStatus } from "./lock.mjs";
-import { INBOX_DIR, isCoordinator, slug } from "./inbox.mjs";
-import { ciState } from "./ops.mjs";
+import { OPS_DIR } from "./ops.mjs";
 export { ciState, runningRuns } from "./ops.mjs";
 
-// The first week only warns; rollback = move this day forward.
-const ENFORCE_DAY = "2026-10-14";
-export const ENFORCE_FROM = Date.parse(`${ENFORCE_DAY}T00:00:00+03:00`);
-
-const AUDIT = () => path.join(INBOX_DIR, "audit.log");
+const AUDIT = () => path.join(OPS_DIR, "audit.log");
 // Commands already refused by .claude/settings.json deny rules; attempts are logged.
 const DENIED = [
   /\bgit\b[^;&|\n]*\bpush\b[^;&|\n]*(--force|\s-f\b|\s\+\S)/,
@@ -338,22 +325,6 @@ export function folders(segs, cwd) {
   });
 }
 
-// BL-500: `node scripts/lock.mjs take main "…" && … && git push …` takes the lock only
-// when the command runs, after this hook. Joined by && alone, the guarded step runs only if
-// the take succeeded, so the chain counts as holding the lock. Same for heavy.lock.
-const takesLock = (seg, name) => {
-  const w = words(seg);
-  const n = w.findIndex((x) => /(^|[\\/])node(\.exe)?$/.test(x));
-  return n >= 0 && /(^|[\\/])lock\.mjs$/.test(w[n + 1] ?? "") && w[n + 2] === "take" && w[n + 3] === name;
-};
-export function takesLockBefore(links, i, name) {
-  for (let j = i; j > 0; j--) {
-    if (links[j].sep !== "&&") return false;
-    if (takesLock(links[j - 1].seg, name)) return true;
-  }
-  return false;
-}
-
 // Arguments after the git subcommand, and the -C directory if one was given.
 function gitCall(seg, sub) {
   const w = words(seg);
@@ -370,234 +341,40 @@ function gitCall(seg, sub) {
   return { cwd, args: w.slice(i + 1) };
 }
 
-// Files a pushed source changes against origin/main (what that refspec brings).
-const aheadFiles = (dir, src = "HEAD") =>
-  src ? tryGit(dir, ["diff", "--name-only", `origin/main...${src}`]).split("\n").filter(Boolean) : [];
-
-// Where a push goes: its directory and, per refspec, what it sends (src), where (dst; "*" for
-// --all/--mirror) and the files that brings. BL-760: `git push origin task/x:main` sends task/x
-// whatever HEAD is. src is null for a delete (`:main`), which brings no content.
+// Where a push goes: its directory and, per refspec, what it sends (src) and where (dst; "*" for
+// --all/--mirror). BL-760: `git push origin task/x:main` sends task/x whatever HEAD is.
+// src is null for a delete (`:main`).
 function pushCall(seg, cwd) {
   const call = gitCall(seg, "push");
   if (!call) return null;
   const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
-  const withAhead = (refs) => ({ dir, refs: refs.map((r) => ({ ...r, ahead: aheadFiles(dir, r.src) })) });
   // ponytail: --all/--mirror send every branch; HEAD stands in for them, as before
-  if (call.args.some((a) => a === "--all" || a === "--mirror")) return withAhead([{ src: "HEAD", dst: "*" }]);
+  if (call.args.some((a) => a === "--all" || a === "--mirror")) return { dir, refs: [{ src: "HEAD", dst: "*" }] };
   const plain = call.args.filter((a) => !a.startsWith("-"));
   // --repo=<remote> names the remote as an option, so every plain arg is a refspec
   const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
   const current = () => tryGit(dir, ["branch", "--show-current"]);
-  if (!refspecs.length) return withAhead([{ src: "HEAD", dst: current() }]);
-  return withAhead(
-    refspecs.map((spec) => {
+  if (!refspecs.length) return { dir, refs: [{ src: "HEAD", dst: current() }] };
+  return {
+    dir,
+    refs: refspecs.map((spec) => {
       const s = spec.replace(/^\+/, "");
       const [src, dst] = s.includes(":") ? s.split(":") : [s, s === "HEAD" ? current() : s];
       return { src: src || null, dst: dst.replace(/^refs\/heads\//, "") };
     }),
-  );
+  };
 }
 const toMain = (r) => r.dst === "main" || r.dst === "*";
 
-// ci.yml runs on pushes to main and task/**, unless only docs/** and *.md changed.
-const DOCS_ONLY = /^docs\/|\.md$/;
-const startsCI = (push) =>
-  push.refs.some((r) => (r.dst === "*" || r.dst === "main" || r.dst.startsWith("task/")) && r.ahead.some((f) => !DOCS_ONLY.test(f)));
-
-// e2e before a push (CLAUDE.md §6, Mert 2026-10-01 "warning mode", ILKELER P16):
-// e2e/e2e-pass-reporter.mjs appends a line here after a local run that passed on
-// a clean tree. A push to main that changes screen, API or e2e code and has no
-// such run on the same content gets a warning and an audit line; never a block.
-const E2E_PASS = () => path.join(INBOX_DIR, "e2e-pass.jsonl");
-const E2E_CODE = /^(apps\/web\/src|apps\/api\/src|packages\/(shared|ui)\/src|e2e)\//;
-const sameContent = (dir, sha, src) => {
-  try {
-    git(dir, ["diff", "--quiet", sha, src, "--", "apps", "packages", "e2e", "supabase"]);
-    return true;
-  } catch {
-    return false;
-  }
-};
-export function e2eGap(dir, src = "HEAD", ahead = aheadFiles(dir, src)) {
-  const files = ahead.filter((f) => E2E_CODE.test(f) && !/\.test\.tsx?$/.test(f));
-  if (!files.length) return [];
-  let shas = [];
-  try {
-    shas = fs.readFileSync(E2E_PASS(), "utf8").trim().split("\n").slice(-30).map((l) => JSON.parse(l).sha);
-  } catch {}
-  return shas.some((sha) => sameContent(dir, sha, src)) ? [] : files;
-}
-
-// ---- heavy runs (CLAUDE.md §4.2: CI, e2e, test:db and the gate run one at a time) ----
-
-const GATE = new Set(["lint", "typecheck", "test", "build"]);
-// A lone lint or typecheck takes seconds (root typecheck 24 s cold, 2026-10-07); a gate of more
-// than two steps always holds test or build, so those two carry the rule.
-const HEAVY = new Set(["test", "build", "test:db", "e2e"]);
-const FOCUSED = /^(--filter|-F|-C|--dir)(=|$)/;
-const prog = (x) => path.basename(String(x ?? "")).toLowerCase().replace(/\.(cmd|exe|ps1)$/, "");
-
-// The gate step, "test:db" or "e2e" a segment runs, else null. A filtered run is focused, not heavy.
-// ponytail: a bare `pnpm test` started inside apps/web runs that package only; it still counts.
-export function runStep(seg) {
-  // drop `VAR=value ` prefixes first: a quoted value may hold spaces (NF_OVERRIDE="two words")
-  let w = words(seg.replace(/^(?:&\s*)?(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/, ""));
-  if (w[0] === "&") w = w.slice(1);
-  if (["npx", "pnpx"].includes(prog(w[0]))) w = w.slice(1);
-  else if (prog(w[0]) === "pnpm" && ["exec", "dlx"].includes(w[1])) w = w.slice(2);
-  while (w.length && w[0].startsWith("-")) w = w.slice(1);
-  const p = prog(w[0]);
-  const args = w.slice(1);
-  if (p === "supabase") return args[0] === "test" && args[1] === "db" ? "test:db" : null;
-  // what `pnpm test:db` runs (PARALEL-1); --load-only reloads origin/main's builder and runs no test
-  const reloadOnly = args.includes("--load-only");
-  if (p === "node") return /(^|[\\/])test-db\.mjs$/.test(args.find((a) => !a.startsWith("-")) ?? "") && !reloadOnly ? "test:db" : null;
-  if (p === "playwright") return args[0] === "test" ? "e2e" : null;
-  if ((p !== "pnpm" && p !== "turbo") || args.some((a) => FOCUSED.test(a))) return null;
-  const script = args.find((a) => !a.startsWith("-") && a !== "run");
-  if (p === "pnpm" && script === "test:db") return reloadOnly ? null : script;
-  if (p === "pnpm" && script === "e2e") return script;
-  return GATE.has(script) ? script : null;
-}
-
-const samePath = (a, b) => !!a && !!b && path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
-function heavyLock(input, dir) {
-  const l = lockStatus().find((x) => x.name === "heavy");
-  if (l.free) return { free: true };
-  // lock.mjs records CLAUDE_CODE_SESSION_ID, the same id the hook gets; a terminal has only cwd
-  const mine = l.session ? l.session === input.session_id : samePath(l.cwd, dir);
-  const info = `${l.identity}, ${l.ageMinutes ?? "?"} dk${l.stale ? ", bayat: 2 saatten eski, koordinatöre sor" : ""}`;
-  return { free: false, mine, info };
-}
-
-function heavyRun(input, links, i, dir, base, flag) {
-  const segs = links.map((l) => l.seg);
-  const step = runStep(segs[i]);
-  const reason = overrideReason(segs, i);
-  if (reason) {
-    audit({ ...base, event: "heavy-override", step, reason });
-    return null;
-  }
-  const problems = [];
-  const lock = heavyLock(input, dir);
-  if (!lock.mine && !takesLockBefore(links, i, "heavy"))
-    problems.push(lock.free ? "heavy.lock alınmamış" : `heavy.lock başka oturumda (${lock.info})`);
-  const ci = ciState(dir);
-  if (ci.state === "unknown") audit({ ...base, event: "heavy-ci-unknown", step });
-  if (ci.state === "running")
-    problems.push(`CI koşuyor${ci.runs.length ? ` (${ci.runs.map((r) => `${r.name} / ${r.headBranch}: ${r.status}`).join("; ")})` : ""}`);
-  if (!problems.length) {
-    audit({ ...base, event: "heavy-ok", step });
-    return null;
-  }
-  const take =
-    step === "e2e" || step === "test:db"
-      ? `önce db.lock, sonra heavy.lock: node scripts/lock.mjs take db "<oturum/iş>, <amaç>" && node scripts/lock.mjs take heavy "<oturum/iş>, <amaç>"`
-      : `node scripts/lock.mjs take heavy "<oturum/iş>, <amaç>"`;
-  return flag(
-    "heavy",
-    `ağır koşu (${step}): ${problems.join("; ")}. Aynı anda tek ağır koşu (CLAUDE.md §4.2). ` +
-      `Kilit: ${take}${ci.state === "running" ? "; CI bitene kadar bekle (gh run list --limit 3)" : ""}. ` +
-      `Bilinçli aşmak için ağır komutun başına NF_OVERRIDE="<gerekçe>" koy; kayda düşer.`,
-    { step, problems },
-  );
-}
-
-function heavyPush(input, links, i, dir, base, flag) {
-  if (takesLockBefore(links, i, "heavy")) return null;
-  const lock = heavyLock(input, dir);
-  if (lock.free || lock.mine) return null;
-  const reason = overrideReason(links.map((l) => l.seg), i);
-  if (reason) {
-    audit({ ...base, event: "heavy-override", step: "push", reason });
-    return null;
-  }
-  return flag(
-    "heavy",
-    `bu push CI'ı başlatır ama heavy.lock başka oturumda (${lock.info}); aynı anda tek ağır koşu (CLAUDE.md §4.2). ` +
-      `Kilit bırakılınca gönder. Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; kayda düşer.`,
-    { step: "push", lock: lock.info },
-  );
-}
-
-// ---- record files (CLAUDE.md §4.8: written by the coordinator and Mert's own sessions) ----
-
-const RECORDS = /(^|\/)docs\/plan\/(BACKLOG|KARARLAR|KOORDINATOR-KARARLARI|DERSLER|SABAH-SORULAR|HANDOFF|EKRAN-PLANI)\.md$/i;
+// ---- record files (spec §6.1): the coordinator's; a worker agent never writes them ----
+const RECORDS = /(^|\/)(DURUM\.md|docs\/plan\/(BACKLOG|KARARLAR|SORULAR|EKRAN-PLANI)\.md|docs\/plan\/gunluk\/.+)$/i;
 export const isRecordFile = (f) => RECORDS.test(String(f ?? "").replaceAll("\\", "/"));
-const ALLOW = (sid) => path.join(INBOX_DIR, "records-allow", `${slug(sid)}.json`);
-
-// A user message's own text: no tool results, no injected reminders, no wrapper tags.
-const userText = (o) => {
-  if (o?.type !== "user" || o.isMeta) return "";
-  const c = o.message?.content;
-  return (typeof c === "string" ? c : Array.isArray(c) ? c.filter((b) => b?.type === "text").map((b) => b.text).join("\n") : "")
-    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
-    .replace(/<\/?[A-Za-z][\w-]*(\s[^>]*)?>/g, "");
-};
-
-// KK-188: the coordinator's task message starts with "Görev: <İŞ-ID>", so a worker session is one
-// whose first real user message starts with it (a card, or the message a cleared pool session
-// gets). The old "Rol:" header counts during the warning week only. true = worker, false = not
-// (Mert's own session), null = no readable first message.
-// ponytail: a worker whose first message lacks the line passes as Mert's session.
-const HEAD_BYTES = 4 * 1024 * 1024; // the first user message sits after a few hook attachments
-export function workerSession(transcriptPath, now = Date.now()) {
-  let head;
-  try {
-    const fd = fs.openSync(transcriptPath, "r");
-    try {
-      const buf = Buffer.allocUnsafe(Math.min(fs.fstatSync(fd).size, HEAD_BYTES));
-      head = buf.subarray(0, fs.readSync(fd, buf, 0, buf.length, 0)).toString("utf8");
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch {
-    return null;
-  }
-  // plain line start: "# Görev: …" is a prompt Mert pasted, not the coordinator's task message
-  const marker = now < ENFORCE_FROM ? /^(Görev|Rol)\s*:/i : /^Görev\s*:/i;
-  for (const line of head.split("\n")) {
-    if (!line.includes('"type":"user"')) continue;
-    let first = "";
-    try {
-      first = userText(JSON.parse(line)).split("\n").map((l) => l.trim()).find(Boolean) ?? "";
-    } catch {}
-    if (first) return marker.test(first);
-  }
-  return null;
-}
-
-export function recordsAllow(sessionId, reason) {
-  if (!sessionId) return { ok: false, message: "oturum kimliği yok (CLAUDE_CODE_SESSION_ID); izin yazılmadı" };
-  const why = String(reason ?? "").trim() || "(gerekçe yok)";
-  fs.mkdirSync(path.dirname(ALLOW(sessionId)), { recursive: true });
-  fs.writeFileSync(ALLOW(sessionId), JSON.stringify({ session_id: sessionId, reason: why, at: new Date().toISOString() }));
-  audit({ session_id: sessionId, cwd: process.cwd(), event: "records-allow", reason: why });
-  return { ok: true, message: `kayıt dosyası izni bu oturum için yazıldı (${why}); audit.log'a düştü` };
-}
-
-function records(input, files, base, flag, now) {
-  if (isCoordinator(input.session_id)) return null;
-  const names = files.map((f) => path.basename(String(f).replaceAll("\\", "/")));
-  const worker = workerSession(input.transcript_path, now);
-  if (worker === null) {
-    audit({ ...base, event: "records-unknown", files: names });
-    return null;
-  }
-  if (!worker) return null;
-  if (fs.existsSync(ALLOW(input.session_id))) {
-    audit({ ...base, event: "records-allowed", files: names });
-    return null;
-  }
-  return flag(
-    "records",
-    `kayıt dosyası (${names.join(", ")}): bu dosyalara yalnız koordinatör ve Mert'in açtığı oturum yazar (CLAUDE.md §4.8). ` +
-      `Raporunu görev dosyasına (docs/plan/tasks/<ID>.md) ya da ekran klasörüne (ekranlar/<no>-<ekran>/uygulama/) yaz; ` +
-      `kayda geçecek bilgiyi raporla koordinatöre bildir. Mert bu oturumda açıkça istediyse: ` +
-      `node scripts/guard.mjs records-allow "<gerekçe>" (kayda düşer).`,
-    { files: names },
-  );
-}
+// Worker agents run in <project>/.claude/worktrees/agent-*/ (Agent tool, isolation: worktree).
+const AGENT_TREE = /\/\.claude\/worktrees\/agent-[^/]+\//i;
+export const inWorkerTree = (p) => AGENT_TREE.test(`${String(p ?? "").replaceAll("\\", "/")}/`);
+const byWorker = (input, where) => Boolean(input.agent_id) || inWorkerTree(where);
+const RECORD_REFUSAL =
+  "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §5).";
 
 // A git commit's record files: the staged ones plus any named on the command line.
 const COMMIT_VALUE = new Set(["-m", "-F", "-C", "-c", "-t", "--author", "--date", "--file", "--message", "--template", "--cleanup", "--fixup", "--squash", "--trailer", "--reuse-message", "--reedit-message"]);
@@ -620,7 +397,7 @@ function commitRecords(seg, cwd) {
 }
 
 export function audit(entry) {
-  fs.mkdirSync(INBOX_DIR, { recursive: true });
+  fs.mkdirSync(OPS_DIR, { recursive: true });
   const line = { at: new Date().toISOString(), ...entry };
   if (line.command) line.command = redact(line.command);
   fs.appendFileSync(AUDIT(), `${JSON.stringify(line)}\n`);
@@ -670,106 +447,50 @@ function backupBranches(seg, cwd, base) {
   return out;
 }
 
-// A problem is a warning until ENFORCE_FROM and a refusal after it; both are logged.
-function flagger(base, now, warns) {
-  return (kind, text, extra = {}) => {
-    const block = now >= ENFORCE_FROM;
-    audit({ ...base, event: `${kind}-${block ? "block" : "warn"}`, ...extra });
-    if (block) return { block: true, message: `Reddedildi: ${text}` };
-    warns.push(`Uyarı (${ENFORCE_DAY}'ten sonra engel): ${text}`);
-    return null;
-  };
-}
-const done = (warns) => ({ block: false, warn: warns.length ? warns.join("\n") : null });
-
 const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
-function evaluateEdit(input, now) {
+function evaluateEdit(input) {
   const file = String(input.tool_input?.file_path ?? input.tool_input?.notebook_path ?? "");
-  if (!isRecordFile(file)) return done([]);
-  const base = { session_id: input.session_id ?? "", cwd: input.cwd ?? process.cwd(), tool: input.tool_name, file };
-  const warns = [];
-  try {
-    return records(input, [file], base, flagger(base, now, warns), now) ?? done(warns);
-  } catch (err) {
-    try {
-      audit({ ...base, event: "guard-error", error: String(err?.message ?? err), blocked: false });
-    } catch {}
-    return done([]);
-  }
+  if (!isRecordFile(file) || !byWorker(input, file)) return { block: false };
+  audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "record-by-worker-blocked" });
+  return { block: true, message: RECORD_REFUSAL };
 }
 
-// Returns { block, message } or { block: false, warn }; performs backups and writes the audit log.
-export function evaluate(input, now = Date.now()) {
-  if (EDIT_TOOLS.test(input.tool_name ?? "")) return evaluateEdit(input, now);
+// Returns { block, message? }; performs backups and writes the audit log.
+export function evaluate(input) {
+  if (EDIT_TOOLS.test(input.tool_name ?? "")) return evaluateEdit(input);
   const cmd = input.tool_input?.command ?? "";
   const cwd = input.cwd ?? process.cwd();
-  const base = { session_id: input.session_id ?? "", cwd, tool: input.tool_name ?? "", command: cmd };
+  const base = { session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd, tool: input.tool_name ?? "", command: cmd };
   let segs = [];
-  const warns = [];
-  const flag = flagger(base, now, warns);
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
-
     const links = chain(cmd, input.tool_name === "PowerShell" ? "pwsh" : "bash");
     segs = links.map((l) => l.seg);
     const dirs = folders(segs, cwd);
-    const heavyAt = segs.findIndex((s) => HEAVY.has(runStep(s)));
-    if (heavyAt >= 0) {
-      const r = heavyRun(input, links, heavyAt, dirs[heavyAt], base, flag);
-      if (r) return r;
-    }
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i];
       for (const entry of backupBranches(seg, dirs[i], base)) audit(entry);
-
-      const recs = commitRecords(seg, dirs[i]);
-      if (recs.length) {
-        const r = records(input, recs, base, flag, now);
-        if (r) return r;
+      if (byWorker(input, dirs[i]) && commitRecords(seg, dirs[i]).length) {
+        audit({ ...base, event: "record-by-worker-blocked" });
+        return { block: true, message: RECORD_REFUSAL };
       }
-
       const push = pushCall(seg, dirs[i]);
-      if (!push) continue;
-      if (startsCI(push)) {
-        const r = heavyPush(input, links, i, push.dir, base, flag);
-        if (r) return r;
-      }
-      const mainRefs = push.refs.filter(toMain);
-      if (!mainRefs.length) continue;
-      const gap = [...new Set(mainRefs.flatMap((r) => e2eGap(push.dir, r.src, r.ahead)))];
-      if (gap.length) {
-        audit({ ...base, event: "push-main-e2e-missing", files: gap.slice(0, 10) });
-        warns.push(
-          `Uyarı: bu push ekran/API/e2e kodu değiştiriyor (${gap.length} dosya, ör. ${gap[0]}) ama aynı içerikte ` +
-            `geçen yerel e2e koşusu yok (CLAUDE.md §6). Commit'ten sonra etkilenen e2e'yi db.lock ile koştur. Push engellenmedi.`,
-        );
-      }
-      if (takesLockBefore(links, i, "main")) {
-        audit({ ...base, event: "push-main-take-chained" });
-        continue;
-      }
-      const lock = lockStatus().find((l) => l.name === "main");
-      const lockInfo = lock.free ? "boş" : `${lock.identity}, ${lock.ageMinutes ?? "?"} dk${lock.stale ? " (stale)" : ""}`;
-      if (!lock.free && !lock.stale) {
-        audit({ ...base, event: "push-main-locked", lock: lockInfo });
-        continue;
-      }
+      if (!push || !push.refs.some(toMain)) continue;
       const reason = overrideReason(segs, i);
       if (reason) {
         const b = backupMain(push.dir);
-        audit({ ...base, event: "push-main-override", reason, lock: lockInfo, backup: b.ref, sha: b.sha, fetched: b.fetched });
+        audit({ ...base, event: "push-main-override", reason, backup: b.ref, sha: b.sha, fetched: b.fetched });
         continue;
       }
-      audit({ ...base, event: "push-main-blocked", lock: lockInfo });
+      audit({ ...base, event: "push-main-blocked" });
       return {
         block: true,
         message:
-          `main'e gönderim reddedildi: main.lock ${lock.free ? "alınmamış" : `bayat (${lockInfo})`}. ` +
-          `Önce: node scripts/lock.mjs take main "<oturum/iş>, <amaç>" (CLAUDE.md §6). ` +
-          `Bilinçli aşmak için push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main yedeklenir ve kayda düşer.`,
+          "main'e gönderim reddedildi: main'e yalnız tren gider (`node scripts/train.mjs run <dal…>`, koordinatör; CLAUDE.md §5). " +
+          'Acil durumda push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main önce yedeklenir ve kayda düşer.',
       };
     }
-    return done(warns);
+    return { block: false };
   } catch (err) {
     const overridden = segs.some((_, i) => overrideReason(segs, i));
     const risky = /\bpush\b/.test(cmd) && /\bmain\b/.test(cmd) && !overridden;
@@ -783,18 +504,6 @@ export function evaluate(input, now = Date.now()) {
 }
 
 async function main() {
-  const [, , cmd, ...rest] = process.argv;
-  if (cmd === "records-allow") {
-    const r = recordsAllow(process.env.CLAUDE_CODE_SESSION_ID, rest.join(" "));
-    console.log(r.message);
-    if (!r.ok) process.exitCode = 1;
-    return;
-  }
-  if (cmd) {
-    console.error('usage: node scripts/guard.mjs records-allow "<gerekçe>"   (kanca olarak argümansız koşar)');
-    process.exitCode = 1;
-    return;
-  }
   let raw = "";
   for await (const chunk of process.stdin) raw += chunk;
   let input = {};
@@ -807,13 +516,6 @@ async function main() {
   if (r.block) {
     process.stderr.write(r.message);
     process.exitCode = 2; // PreToolUse: exit 2 = refuse, stderr goes back to the model
-  } else if (r.warn) {
-    process.stdout.write(
-      JSON.stringify({
-        systemMessage: r.warn,
-        hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: r.warn },
-      }),
-    );
   }
 }
 
