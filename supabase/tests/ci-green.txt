@@ -53,6 +53,7 @@ supabase/tests/notification_user_preferences.test.sql
 supabase/tests/onboarding_composite_tenant_constraints.test.sql
 supabase/tests/one_workspace_cannot_see_another.test.sql
 supabase/tests/organization_basics_rls.test.sql
+supabase/tests/organization_settings_stay_with_owner_and_admin.test.sql
 supabase/tests/own_employment_record.test.sql
 supabase/tests/owner_employee_record.test.sql
 supabase/tests/time_off_opens_shifts.test.sql
