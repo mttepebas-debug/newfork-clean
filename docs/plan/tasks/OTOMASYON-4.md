@@ -68,6 +68,17 @@ Risk notes:
   - `claude auth status` bu hesabı gösterse de terminal büyük ihtimalle öbür hesabın girişini kullanıyor.
 - Ölçülemedi: istek hiç gönderilmedi (0 token), eski kayıt değişmedi (`c38761fb…`, 520377 bayt önce ve sonra).
 - **Tasarıma etkisi:** devir listesi eski sohbeti açmak için terminal komutu değil, masaüstünde yeni oturumda `/resume <kimlik>` gösterecek. Hesaplar arası çalıştığı Mert'le gerçek hesap değişiminde bir kez denenecek.
+- **Doğrulandı (Mert, 2026-10-08):** Hesap 2'nin haftalık limiti dolu (claude.ai → Settings → Usage); terminaldeki `claude` Hesap 2 girişiyle çalışıyor. Hesap 2, 2026-10-11 13:00 PT'de (20:00Z) açılıyor. Uçtan uca hesap değişimi testi bu tarihten sonra.
+
+### Ara çözüm: `/devral` komutu (2026-10-08)
+- Mert'in isteğiyle kullanıcı düzeyinde komut: `C:/Users/TheWe/.claude/commands/devral.md`. İki hesap için ortak; repoya girmesi tren gerektirdiği için şimdilik orada.
+- Bugünkü parçalarla çalışıyor:
+  - `inbox.mjs board`, `lock.mjs status`, HANDOFF;
+  - kirli worktree'ler;
+  - eski sohbet kaydının son ~300 satırı (Claude'un ve Mert'in son mesajları).
+- `devir` ve `lock adopt` gelince onları kullanacak biçimde yazıldı.
+- Test planı (Hesap 2 açılınca): Hesap 1'de bir oturuma uydurma bir "şifre" bırak → çıkış → Hesap 2'de `/devral şifre testi` → yeni oturum şifreyi söylemeli.
+- Aşama 1 bitince bu komut repoya taşınmalı mı (tek kaynak), karar koordinatörde.
 
 ### Yapılan: sayfa galerisi (TDD)
 - `scripts/pages.mjs` + `scripts/pages.test.mjs`.
