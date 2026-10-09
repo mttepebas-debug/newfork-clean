@@ -288,3 +288,8 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
 - (d) Önce sohbette konuşalım (bu soru için varsayılan yol).
 - Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 1); BL-238, KK-6.
 - **Aynı sohbette (KK-182):** duyurunun "Publish at / Expires at" saati de bu modele bağlı — bugün yazanın tarayıcısının saati: New York'taki owner Palo Alto için 09:00 seçer, duyuru Palo Alto'da 06:00'da çıkar (BL-878, EKRAN-07 S2). Ayrı soru açılmaz; Soru-25'in cevabı ikisine birden uygulanır.
+
+## Hatırlatmalar (eski koordinatörden)
+Mert'in kendi yapacağı, zamanı kendisine bırakılmış işler; soru değil. Tam metin `docs/archive/2026-10-08-v1/HATIRLATMALAR.md` ve `docs/plan/devir-2026-10-08/`. Mert "yaptım" deyince koordinatör sonraki adımı yapar ve satırı siler.
+- **2026-10-08 — Codex klasörünü sil:** `C:\Users\TheWe\.codex` (14 GB, kaldırılan Codex uygulamasının verisi; kaydedilmemiş 13 dosya önce yedeklendi: `C:\Users\TheWe\Documents\Codex\.newfork-backups\codex-worktree-da4e-2026-10-08\`). Mert "sildim" deyince koordinatör `git -C C:\Users\TheWe\newfork worktree prune` koşar. (Mert, 2026-10-08: "Hatirlatmalar diye bir md oluştur")
+- **2026-10-11 18:00 PT — hesap değişimi gerçek testi (OTOMASYON-4):** Hesap 1'de uydurma bir kelime bırak → Hesap 2'de `/devral şifre testi` → bir kez `/resume <id>` dene → sonucu `OTOMASYON-4.md`'ye yaz; zamanlanmış görev `hesap-2-devir-testi-hatirlatma` Mert'e hatırlatır. (GUVENLIK-A devir notu §5.8, `docs/plan/devir-2026-10-08/GUVENLIK-A.md`)

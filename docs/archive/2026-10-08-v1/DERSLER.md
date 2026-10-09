@@ -762,3 +762,8 @@ Ne oldu: "Newfork geçici" öğrenilince iki tur (40+ ad) aday üretildi; Mert i
 - **Maliyeti:** main 8 saat yeni commit almadı; canlıda 6 değişiklik main'in önünde kaldı; hazır Schedule paketi saatlerce bekledi.
 - **Alışkanlık:** kilit tutan oturumu iş bitene kadar her turda `lock.mjs status` + `list_events` ile kontrol et; izin engelinin kökünü (izin modu) ilk seferde çöz, kullanıcıya "devam et" yazdırıp bırakma. Kalıcı çözüm: tren (OPS-08), kilit yalnız push anında.
 
+## 2026-10-08 — Newfork koordinatör: kısa iş, ağır koşu kilidini üç kez kaçırdı
+- **Ne oldu:** PARALEL-1'in TREN-ARACI işinde yalnız 3–5 dakikalık test+build kalmıştı. `heavy.lock` her boşaldığında başka bir oturum ondan önce aldı: önce EKRAN-03 BL-969, sonra makine bakımı, sonra GA-2. Kilidin sırası yok, ilk alan kazanıyor; sırayı ben tutmuyordum. Oturum ~13:15Z'de bana yazınca fark ettim.
+- **Maliyeti:** TREN-ARACI saatlerdir "kapıya 5 dk kala" bekliyor. OTOMASYON-4 de ona bağlı.
+- **Alışkanlık:** birden çok oturum `heavy.lock` beklerken sırayı koordinatör yazar ve hepsine gönderir. Kısa iş ve main düzeltmesi öne alınır. Her turda `lock.mjs status` ile sıranın tuttuğuna bakılır.
+
