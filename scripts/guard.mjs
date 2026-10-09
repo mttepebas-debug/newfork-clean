@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // WORKFLOW-V2 (spec §7.2, §10): PreToolUse guard for Bash, PowerShell, Edit and Write.
 // - A push to main is refused: only scripts/train.mjs sends main (its own process, not seen here), and
-//   only a train CI passed. `gh pr merge` and a `gh api` call on refs/heads/main count as a push to main.
+//   only a train CI passed. `gh pr merge` and a `gh api` write to a merge, contents or git/refs endpoint (or a
+//   graphql merge/ref mutation) count as a push to main.
 //   Emergency: NF_OVERRIDE="<reason>" in front of the push saves origin/main as refs/nf-backup/main/<stamp>
 //   first and is logged; when that backup cannot be taken the push is refused.
 // ponytail: a client-side guard reads words, not what git will run: `git -c alias.p=push p ...`, `eval`,
 //   `iex`, `node -e "...execSync('git push ...')"` stay invisible. Server-side protection of main is the real fix.
 // - A worker agent (a hook input with agent_id, or a folder under .claude/worktrees/agent-*) never writes
-//   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log), by edit or by commit.
+//   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log), by edit or by commit,
+//   and never pushes to the coordinator's branch coord/kayit.
 // - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
 // - Commands the settings deny list refuses are logged when tried.
 // Every decision lands in <OPS_DIR>/audit.log (one JSON object per line, secrets masked).
@@ -325,7 +327,7 @@ export function folders(segs, cwd) {
 // Arguments after the git subcommand, and the -C directory if one was given.
 // Global options that take the next word as their value: -c key=value, --git-dir, --work-tree, --namespace
 // (the `--opt=value` spelling is one word and needs no skipping).
-const GIT_VALUE = new Set(["-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--exec-path", "--super-prefix"]);
+const GIT_VALUE = new Set(["-c", "--git-dir", "--work-tree", "--namespace", "--attr-source", "--config-env", "--exec-path", "--super-prefix"]);
 function gitCall(seg, sub) {
   const w = words(seg);
   const g = w.findIndex((x) => /(^|[\\/])git(\.exe)?$/.test(x));
@@ -363,7 +365,8 @@ function pushCall(seg, cwd) {
     dir,
     refs: refspecs.map((spec) => {
       const s = spec.replace(/^\+/, "");
-      if (s.includes("*")) return { src: s, dst: "*" };
+      // `:` alone is the matching refspec: every branch both sides have, main among them
+      if (s.includes("*") || s === ":") return { src: s, dst: "*" };
       const [src, to] = s.includes(":") ? s.split(":") : [s, s];
       const dst = to === "HEAD" || to === "@" ? current() : to;
       return { src: src || null, dst: dst.replace(/^(refs\/)?heads\//, "") };
@@ -372,21 +375,42 @@ function pushCall(seg, cwd) {
 }
 const toMain = (r) => r.dst === "main" || r.dst === "*";
 
-// `gh pr merge ...` (a PR lands on its base, main here) and `gh api ...` naming refs/heads/main (moving the ref
-// through the REST API) reach main without a git push.
-const MAIN_REF = /(^|[^\w.-])refs\/heads\/main(?![\w./-])/;
+// Ways to reach main without a git push: `gh [-R x] pr merge …` (a PR lands on its base, main here), and a
+// `gh api` write to a merge, contents or git/refs endpoint, or a graphql merge/ref mutation. A `gh api` call
+// writes when -X/--method says so or when it sends fields (-f/-F/--field/--raw-field/--input imply POST).
+// A GET passes: reading refs/heads/main is harmless (`git ls-remote origin main` reads it without the API).
+const GH_WRITE_ENDPOINT = /(^|\/)(pulls\/[^/\s]+\/merge|merges|contents|git\/refs)(\/|$|\?)/;
+const GH_MUTATION = /\b(mergePullRequest|updateRef|updateRefs|createCommitOnBranch|enablePullRequestAutoMerge)\b/;
 function ghToMain(seg) {
   const w = words(seg);
   const g = w.findIndex((x) => /(^|[\\/])gh(\.exe)?$/i.test(x));
   if (g < 0) return false;
-  if (w[g + 1] === "pr" && w[g + 2] === "merge") return true;
-  return w[g + 1] === "api" && w.slice(g + 2).some((a) => MAIN_REF.test(a));
+  let k = g + 1;
+  while (k < w.length && w[k].startsWith("-")) k += w[k] === "-R" || w[k] === "--repo" ? 2 : 1; // gh's own -R/--repo <repo>
+  if (w[k] === "pr" && w[k + 1] === "merge") return true;
+  if (w[k] !== "api") return false;
+  const args = w.slice(k + 1);
+  let method = null;
+  let fields = false;
+  for (let j = 0; j < args.length; j++) {
+    const a = args[j];
+    const m = a.match(/^(?:-X|--method)(?:=?(.+))?$/i);
+    if (m) method = (m[1] ?? args[++j] ?? "").toUpperCase();
+    else if (/^(-f|-F|--field|--raw-field|--input)(=|$)/.test(a) || /^-[fF]\S/.test(a)) fields = true;
+  }
+  const writes = (method ?? (fields ? "POST" : "GET")) !== "GET";
+  if (!writes) return false;
+  if (args.includes("graphql")) return args.some((a) => GH_MUTATION.test(a));
+  return args.some((a) => !a.startsWith("-") && GH_WRITE_ENDPOINT.test(a.replace(/^\/?repos\/[^/]+\/[^/]+/, "")));
 }
 
 // ---- record files (spec §6.1): the coordinator's; a worker agent never writes them ----
 const RECORDS = /(^|\/)(DURUM\.md|docs\/plan\/(BACKLOG|KARARLAR|SORULAR|EKRAN-PLANI)\.md|docs\/plan\/gunluk\/.+)$/i;
 // `docs/plan/./KARARLAR.md`, `docs/plan/x/../SORULAR.md`, backslashes: a path is normalized before it is read.
-const posix = (f) => path.posix.normalize(String(f ?? "").replaceAll("\\", "/"));
+// Windows also opens `KARARLAR.md.`, `KARARLAR.md ` and `DURUM.md::$DATA` (an NTFS stream) as the file itself, so
+// each name loses its stream suffix and its trailing dots and spaces first (a drive's `C:` is kept).
+const winName = (seg) => (seg === "." || seg === ".." || /^[A-Za-z]:$/.test(seg) ? seg : seg.replace(/:.*$/, "").replace(/[. ]+$/, ""));
+const posix = (f) => path.posix.normalize(String(f ?? "").replaceAll("\\", "/").split("/").map(winName).join("/"));
 export const isRecordFile = (f) => RECORDS.test(posix(f));
 // Worker agents run in <project>/.claude/worktrees/agent-*/ (Agent tool, isolation: worktree).
 const AGENT_TREE = /\/\.claude\/worktrees\/agent-[^/]+\//i;
@@ -394,6 +418,9 @@ export const inWorkerTree = (p) => AGENT_TREE.test(`${posix(p)}/`);
 const byWorker = (input, where) => Boolean(input.agent_id) || inWorkerTree(where);
 const RECORD_REFUSAL =
   "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §6).";
+// The coordinator's record branch (spec §7.3): a worker never pushes to it.
+const COORD_BRANCH = "coord/kayit";
+const COORD_REFUSAL = `Reddedildi: ${COORD_BRANCH} koordinatörün kayıt dalıdır, işçi oraya gönderemez; kendi task/<iş> dalına gönder (CLAUDE.md §6).`;
 
 // A git commit's record files: the staged ones plus any named on the command line.
 const COMMIT_VALUE = new Set(["-m", "-F", "-C", "-c", "-t", "--author", "--date", "--file", "--message", "--template", "--cleanup", "--fixup", "--squash", "--trailer", "--reuse-message", "--reedit-message"]);
@@ -500,6 +527,10 @@ export function evaluate(input) {
         return { block: true, message: RECORD_REFUSAL };
       }
       const push = pushCall(seg, dirs[i]);
+      if (push && byWorker(input, dirs[i]) && push.refs.some((r) => r.dst === COORD_BRANCH)) {
+        audit({ ...base, event: "coord-push-by-worker-blocked" });
+        return { block: true, message: COORD_REFUSAL };
+      }
       // fail-safe: a push inside $( … ) or `…` is not a word gitCall can see, so the text decides
       const hidden = SUBST.test(seg) && SUBST_PUSH_MAIN.test(seg);
       const gh = ghToMain(seg);

@@ -450,6 +450,74 @@ test("when the guard itself breaks, an overridden push to main is refused; other
   assert.equal(evaluate(bash("git branch -D doomed-2")).block, false); // its audit throws too, but it is no main push
 });
 
+test("gh api: a write method on merge, contents or git/refs is refused, graphql merge/ref mutations too; a GET passes", () => {
+  for (const cmd of [
+    "gh api -X PUT repos/o/r/pulls/12/merge",
+    "gh api --method PUT repos/o/r/pulls/12/merge -f merge_method=squash",
+    "gh api --method=POST repos/o/r/merges -f base=main -f head=task/x",
+    "gh api repos/o/r/merges -f base=main -f head=task/x", // -f implies POST
+    "gh api -XPUT repos/o/r/contents/README.md -f message=x -f content=eA==",
+    "gh api repos/o/r/contents/a.md --input body.json",
+    "gh api -X DELETE repos/o/r/git/refs/heads/task-x",
+    "gh api repos/o/r/git/refs -F ref=refs/heads/x -F sha=abc",
+    "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+    "gh api graphql -F query='mutation { updateRef(input: {}) { clientMutationId } }'",
+    "gh api graphql --raw-field query='mutation { createCommitOnBranch(input: {}) { clientMutationId } }'",
+    "gh -R o/r pr merge 12",
+    "gh --repo o/r pr merge 12 --squash",
+    "gh --repo=o/r pr merge 12",
+  ]) {
+    const r = evaluate(bash(cmd));
+    assert.equal(r.block, true, cmd);
+    assert.match(r.message, /yalnız tren gider/);
+  }
+  for (const cmd of [
+    "gh api repos/o/r/git/refs/heads/main", // read-only; `git ls-remote origin main` reads it without the API
+    "gh api -X GET repos/o/r/git/refs/heads/main",
+    "gh api repos/o/r/contents/README.md",
+    "gh api repos/o/r/pulls/12/merge", // GET: is it merged?
+    "gh api graphql -f query='query { viewer { login } }'",
+    "gh -R o/r pr view 12",
+  ])
+    assert.equal(evaluate(bash(cmd)).block, false, cmd);
+});
+
+test("`git push origin :` (the matching refspec) counts as every branch, main included", () => {
+  const onTask = cloneRepo("repo-matching");
+  git(onTask, "checkout", "-q", "-b", "task/x");
+  for (const cmd of ["git push origin :", "git push origin task/x :", "git push origin +:"]) assert.equal(evaluate(bash(cmd, { cwd: onTask })).block, true, cmd);
+  assert.equal(evaluate(bash("git push origin :task/old", { cwd: onTask })).block, false); // deleting a task branch
+});
+
+test("--attr-source takes a value; a record path hides behind no trailing dot, space or stream suffix", () => {
+  const onTask = cloneRepo("repo-attr");
+  git(onTask, "checkout", "-q", "-b", "task/x");
+  assert.equal(evaluate(bash("git --attr-source HEAD push origin HEAD:main", { cwd: onTask })).block, true);
+  for (const f of ["docs/plan/KARARLAR.md.", "docs/plan/KARARLAR.md . ", "DURUM.md::$DATA", "docs/plan/SORULAR.md:x:$DATA", "docs/plan./BACKLOG.md", "C:/c/coord/DURUM.md:Zone.Identifier"])
+    assert.equal(isRecordFile(f), true, f);
+  for (const f of ["docs/plan/KARARLAR.md.bak", "C:/c/coord/README.md"]) assert.equal(isRecordFile(f), false, f);
+});
+
+test("a worker cannot push to coord/kayit, by any refspec; the coordinator can", () => {
+  const coord = cloneRepo("repo-coord");
+  git(coord, "checkout", "-q", "-b", "coord/kayit");
+  const worker = (cmd, cwd = repo) => evaluate(bash(cmd, { cwd, agent_id: "a5" }));
+  for (const [cmd, cwd] of [
+    ["git push origin HEAD:coord/kayit", repo],
+    ["git push origin task/x:refs/heads/coord/kayit", repo],
+    ["git push -f origin coord/kayit", repo],
+    ["git push", coord],
+  ]) {
+    const r = worker(cmd, cwd);
+    assert.equal(r.block, true, cmd);
+    assert.match(r.message, /coord\/kayit/);
+    assert.equal(auditLines().at(-1).event, "coord-push-by-worker-blocked");
+  }
+  assert.equal(evaluate(bash("git push origin HEAD:coord/kayit", { cwd: "C:/c/coord/.claude/worktrees/agent-a1" })).block, true); // an agent tree, no agent_id
+  assert.equal(evaluate(bash("git push", { cwd: coord })).block, false);
+  assert.equal(worker("git push origin HEAD:task/x").block, false);
+});
+
 test("a record path is normalized first: ./ and ../ do not hide it", () => {
   for (const f of ["docs/plan/./KARARLAR.md", "docs\\plan\\.\\SORULAR.md", "docs/plan/x/../BACKLOG.md", "./DURUM.md", "docs//plan/EKRAN-PLANI.md"])
     assert.equal(isRecordFile(f), true, f);
