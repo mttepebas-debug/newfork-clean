@@ -130,7 +130,7 @@ S1–S6 ve CLAUDE.md'deki aktif program satırı 2026-10-05'te soruldu. Cevaplar
 - **S3 Overwrite (D-O4, B-4):** yalnız şablonun lokasyonları (önerilen); başlamış vardiyaya dokunmaz, iki tık.
 - **S4 menü dışı tık (BL-617):** ilk tık yalnız menüyü kapatır (önerilen).
 - **S5 karartılmış alan (BL-458):** Esc gibi pencereyi kapatır (önerilen; Mert önce ayrıntılı anlatım istedi).
-- **S6 izinli gün (BL-579) — seçenek dışı:** çalışan vardiyayı kendi rızasıyla aldıysa hücrede hiçbir işaret yok (ne kırmızı ne "!"). Mert önce "ihtimal sıfır" dedi; ölçüldü: tek yol takas / devralmadaki rıza kuralı.
+- **S6 izinli gün (BL-579) — seçenek dışı:** çalışan vardiyayı kendi rızasıyla aldıysa hücrede hiçbir işaret yok (ne kırmızı ne "!"). Mert önce "ihtimal sıfır" dedi; ölçüldü: tek yol takas / devralmadaki rıza kuralı. **Ters çevrildi 2026-10-09 (Mert):** onaylı izinle çakışan vardiya hiç alınamaz; hücre kırmızı ve "Time off" yazar (BL-995).
 - **CLAUDE.md:** aktif plan satırı ekran planını gösterir (önerilen).
 - **Kendi kararım (P19):** BL-450 kenar kontrastı 3:1'e koyulaştırılır.
 
