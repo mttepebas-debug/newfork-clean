@@ -52,7 +52,8 @@ export function ScheduleTemplatesDialog({
   const selected = templates.find((item) => item.id === selectedId) ?? null;
   const [draftId, setDraftId] = useState(initialDraftId ?? drafts[0]?.id ?? "");
   const [name, setName] = useState("");
-  const [stripAssignments, setStripAssignments] = useState(true);
+  // BL-038 K3: a template keeps who works each shift unless asked not to.
+  const [stripAssignments, setStripAssignments] = useState(false);
   const [rename, setRename] = useState(selected?.name ?? "");
   const departmentOptions = useMemo(
     () => [
@@ -196,26 +197,27 @@ export function ScheduleTemplatesDialog({
                       className="schedule-template-departments"
                       data-apply-template-departments
                     >
-                      <div>
-                        <strong>Departments</strong>
+                      {/* BL-038 K4: every department applies unless narrowed here. */}
+                      <details>
+                        <summary>Only some departments</summary>
                         <span>Only selected department shifts are applied.</span>
-                      </div>
-                      <div>
-                        {departmentOptions.map((department) => (
-                          <label key={department.key}>
-                            <input
-                              type="checkbox"
-                              checked={selectedDepartmentKeys.includes(
-                                department.key,
-                              )}
-                              onChange={() =>
-                                toggleDepartmentKey(department.key)
-                              }
-                            />
-                            {department.label}
-                          </label>
-                        ))}
-                      </div>
+                        <div>
+                          {departmentOptions.map((department) => (
+                            <label key={department.key}>
+                              <input
+                                type="checkbox"
+                                checked={selectedDepartmentKeys.includes(
+                                  department.key,
+                                )}
+                                onChange={() =>
+                                  toggleDepartmentKey(department.key)
+                                }
+                              />
+                              {department.label}
+                            </label>
+                          ))}
+                        </div>
+                      </details>
                       {!hasDepartmentSelection ? (
                         <p>Select at least one department to apply.</p>
                       ) : null}
@@ -307,7 +309,7 @@ export function ScheduleTemplatesDialog({
               checked={stripAssignments}
               onChange={(event) => setStripAssignments(event.target.checked)}
             />{" "}
-            Save shifts as open slots
+            Remove employee names (save as open shifts)
           </label>
           <button
             type="submit"

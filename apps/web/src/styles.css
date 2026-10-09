@@ -9871,24 +9871,30 @@ button.workspace-switcher-item:hover:not(:disabled) {
   display: grid;
   gap: 6px;
 }
-.schedule-template-departments > div:first-child {
-  display: grid;
-  gap: 2px;
+/* BL-038 K4: the department filter stays folded until the manager narrows it. */
+.schedule-template-departments summary {
+  width: fit-content;
+  border-radius: 4px;
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
 }
-.schedule-template-departments > div:last-of-type {
+.schedule-template-departments summary:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.schedule-template-departments details > span {
+  display: block;
+  margin: 6px 0 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.schedule-template-departments details > div {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-.schedule-template-departments strong {
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-template-departments span {
-  margin: 0;
-  color: var(--theme-muted);
-  font-size: 12px;
+  margin-top: 6px;
 }
 .schedule-template-departments p {
   margin: 0;
