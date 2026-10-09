@@ -2191,6 +2191,7 @@ Paket 1 main'de (tren-1). Aşağıdakiler incelemenin paket dışı bıraktığ�
 
 ## 2026-10-09 S9 (Schedule şablon penceresi) sırasında bulunanlar
 - **BL-993 (leave: medium / do: risky) Şablon kaydında API ve DB varsayılanı hâlâ "adları kaldır".** Ekran artık adları varsayılan korur (EKRAN-01 #28, BL-038 K3), ama `apps/api/src/schedule/schedule-routes.ts:178` `strip_assignments: z.boolean().default(true)`: bayrağı göndermeyen bir çağıran şablondaki çalışan adlarını sessizce siler. Varsayılanı `false` yapmak ya da alanı zorunlu kılmak API cevap/istek şeklini ve canlı DB fonksiyonunu etkiler; ayrı, incelemeli iş. (S9 thread, 2026-10-09)
+- **BL-994 (leave: medium / do: moderate) Ortak yerel DB'de `scheduling_settings_shift_types_rls` testleri 12, 13 ve 23 kırmızı.** `guard_weekly_preference_type_hours()` tetikleyicisi (göç `20260909042000`) testlerin beklediği 23514 / 23505 / 42501 yerine 22023 "Set valid default start and end times" fırlatıyor. Main `a1c0ce64`'te CI yeşil; büyük ihtimalle ortak yerel DB kayması, araştırılmalı. Aynı koşuda `management_owner_job` testinin 19–20 numaralı TODO'ları artık geçiyor (TODO kaldırılmalı mı bakılmalı). Görüldüğü yer: S5 `test:db`, `task/ekran-01-38@f6f27fd7`. (S9 thread, 2026-10-09)
 
 ## Kapanan maddeler (2026-09-26'dan itibaren buraya ayrılır)
 Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yalnız açık maddeleri görür.
