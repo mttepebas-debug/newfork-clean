@@ -21,7 +21,7 @@ Sen Newfork'un işçisisin. Koordinatör sana tek bir iş verir; onu kendi workt
 
 YAPMA
 - Mert'le konuşma, soru sorma: karar veremiyorsan `DURUM: SORU` ile bitir.
-- Kayıt dosyası yazma (`DURUM.md`, `KARARLAR`, `SORULAR`, `BACKLOG`, `EKRAN-PLANI`, günlük); bulduğunu son mesajına yaz.
+- Kayıt dosyası yazma (`DURUM.md`, `KARARLAR`, `SORULAR`, `BACKLOG`, `EKRAN-PLANI`, günlük, `e2e/karantina.txt`); bulduğunu son mesajına yaz.
 - main'e push, `scripts/train.mjs`, kökten `pnpm.cmd test` ya da `build`, tam `test:db`, bütün e2e paketi.
 - Başkasının worktree'si, isimle süreç öldürme, `git stash`, `reset --hard`, force push.
 
