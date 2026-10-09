@@ -1,0 +1,97 @@
+{
+  "results": [
+    {
+      "view": "employee",
+      "mode": "shift_type",
+      "width": 1440,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [
+        "Availability",
+        "Time Off Requests"
+      ],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "employee",
+      "mode": "shift_type",
+      "width": 390,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [
+        "Availability",
+        "Time Off Requests"
+      ],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "employee",
+      "mode": "time_range",
+      "width": 1440,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [
+        "Availability",
+        "Time Off Requests"
+      ],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "employee",
+      "mode": "time_range",
+      "width": 390,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [
+        "Availability",
+        "Time Off Requests"
+      ],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "settings",
+      "mode": "shift_type",
+      "width": 1440,
+      "overflow": false,
+      "rows": 0,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "settings",
+      "mode": "shift_type",
+      "width": 390,
+      "overflow": false,
+      "rows": 0,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "settings",
+      "mode": "time_range",
+      "width": 1440,
+      "overflow": false,
+      "rows": 0,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "settings",
+      "mode": "time_range",
+      "width": 390,
+      "overflow": false,
+      "rows": 0,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    }
+  ],
+  "errors": []
+}

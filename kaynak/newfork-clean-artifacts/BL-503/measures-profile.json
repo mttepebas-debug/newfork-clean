@@ -1,0 +1,128 @@
+{
+  "profile-1440-before": [
+    {
+      "label": "Phone number",
+      "value": "+14155550123",
+      "input": {
+        "x": 677,
+        "y": 325,
+        "w": 475,
+        "h": 40
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "11px",
+      "textStartX": 689
+    }
+  ],
+  "profile-390-before": [
+    {
+      "label": "Phone number",
+      "value": "+14155550123",
+      "input": {
+        "x": 16,
+        "y": 564,
+        "w": 343,
+        "h": 44
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "11px",
+      "textStartX": 28
+    }
+  ],
+  "profile-1440-after": [
+    {
+      "label": "Phone number",
+      "value": "(415) 555-0123",
+      "input": {
+        "x": 677,
+        "y": 325,
+        "w": 475,
+        "h": 40
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "35px",
+      "textStartX": 713,
+      "prefix": {
+        "x": 688,
+        "right": 702,
+        "centerY": 345
+      },
+      "prefixFont": "13px/400",
+      "prefixColor": "rgb(95, 107, 102)",
+      "inputCenterY": 345,
+      "gapPrefixToText": 11,
+      "prefixInset": 11
+    },
+    {
+      "label": "Contact phone",
+      "value": "(415) 555-0100",
+      "input": {
+        "x": 923,
+        "y": 505,
+        "w": 229,
+        "h": 40
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "35px",
+      "textStartX": 959,
+      "prefix": {
+        "x": 934,
+        "right": 948,
+        "centerY": 525
+      },
+      "prefixFont": "13px/400",
+      "prefixColor": "rgb(95, 107, 102)",
+      "inputCenterY": 525,
+      "gapPrefixToText": 11,
+      "prefixInset": 11
+    }
+  ],
+  "profile-390-after": [
+    {
+      "label": "Phone number",
+      "value": "(415) 555-0123",
+      "input": {
+        "x": 16,
+        "y": 564,
+        "w": 343,
+        "h": 44
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "35px",
+      "textStartX": 52,
+      "prefix": {
+        "x": 27,
+        "right": 41,
+        "centerY": 586
+      },
+      "prefixFont": "13px/400",
+      "prefixColor": "rgb(95, 107, 102)",
+      "inputCenterY": 586,
+      "gapPrefixToText": 11,
+      "prefixInset": 11
+    },
+    {
+      "label": "Contact phone",
+      "value": "(415) 555-0100",
+      "input": {
+        "x": 16,
+        "y": 897,
+        "w": 343,
+        "h": 44
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "35px",
+      "textStartX": 52,
+      "prefix": {
+        "x": 27,
+        "right": 41,
+        "centerY": 919
+      },
+      "prefixFont": "13px/400",
+      "prefixColor": "rgb(95, 107, 102)",
+      "inputCenterY": 919,
+      "gapPrefixToText": 11,
+      "prefixInset": 11
+    }
+  ]
+}

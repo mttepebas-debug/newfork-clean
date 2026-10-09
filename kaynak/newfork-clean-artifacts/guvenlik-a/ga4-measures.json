@@ -1,0 +1,111 @@
+{
+  "menuMeasures": [
+    {
+      "text": "Default workspace",
+      "x": 968,
+      "y": 207.9,
+      "w": 178,
+      "h": 36,
+      "iconX": 978,
+      "iconW": 15,
+      "iconCenterY": 225.9,
+      "rowCenterY": 225.9,
+      "pl": "10px",
+      "pr": "10px",
+      "fs": "12px",
+      "fw": "400",
+      "whiteSpace": "normal",
+      "lines": null
+    },
+    {
+      "text": "Transfer ownership",
+      "x": 968,
+      "y": 252.9,
+      "w": 178,
+      "h": 36,
+      "iconX": 978,
+      "iconW": 15,
+      "iconCenterY": 270.9,
+      "rowCenterY": 270.9,
+      "pl": "10px",
+      "pr": "10px",
+      "fs": "12px",
+      "fw": "400",
+      "whiteSpace": "normal",
+      "lines": null
+    },
+    {
+      "text": "Schedule closure",
+      "x": 968,
+      "y": 288.9,
+      "w": 178,
+      "h": 36,
+      "iconX": 978,
+      "iconW": 15,
+      "iconCenterY": 306.9,
+      "rowCenterY": 306.9,
+      "pl": "10px",
+      "pr": "10px",
+      "fs": "12px",
+      "fw": "400",
+      "whiteSpace": "normal",
+      "lines": null
+    },
+    {
+      "text": "Close immediately",
+      "x": 968,
+      "y": 333.9,
+      "w": 178,
+      "h": 36,
+      "iconX": 978,
+      "iconW": 15,
+      "iconCenterY": 351.9,
+      "rowCenterY": 351.9,
+      "pl": "10px",
+      "pr": "10px",
+      "fs": "12px",
+      "fw": "400",
+      "whiteSpace": "normal",
+      "lines": null
+    }
+  ],
+  "panelBox": {
+    "x": 432,
+    "y": 375.4,
+    "w": 720,
+    "h": 265.7
+  },
+  "description": "2 other people have access here. Everyone keeps access until Oct 21, 2026, and you can cancel the closure any time before it. Then the workspace and its data are permanently deleted.",
+  "buttonMeasures": [
+    {
+      "text": "Schedule closure",
+      "x": 758.3,
+      "y": 580.1,
+      "w": 168.2,
+      "h": 42
+    },
+    {
+      "text": "Keep this workspace",
+      "x": 934.4,
+      "y": 580.1,
+      "w": 198.6,
+      "h": 42
+    }
+  ],
+  "fieldMeasures": [
+    {
+      "type": "password",
+      "x": 451,
+      "y": 493.1,
+      "w": 682,
+      "h": 40
+    },
+    {
+      "type": "checkbox",
+      "x": 455,
+      "y": 550.1,
+      "w": 13,
+      "h": 13
+    }
+  ]
+}

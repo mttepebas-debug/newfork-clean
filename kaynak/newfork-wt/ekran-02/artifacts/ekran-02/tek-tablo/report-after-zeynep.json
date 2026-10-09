@@ -1,0 +1,93 @@
+{
+  "zeynep-all-390": {
+    "rows": [
+      "Ali Person In progress Tue, Oct 13 · 9:00 AM–3:00 PM By Oct 13, 9:00 AM Istanbul time",
+      "Emre Person Needs review Thu, Oct 15 · 4:00–11:00 PM By Oct 15, 4:00 PM Istanbul time",
+      "Ali Person Needs review Apr 4, 2029 By Apr 3, 12:00 AM Istanbul time",
+      "Emre Person Needs review Apr 25 – Apr 27, 2029 By Apr 24, 12:00 AM Istanbul time",
+      "Solor9lca Person Revoked Nov 7 – Nov 8, 2028",
+      "Adminnqeud Person Approved Nov 7 – Nov 8, 2028",
+      "Deny6zkd3 Person Denied Nov 7 – Nov 8, 2028",
+      "Bothvdtg9 Person Approved Oct 31 – Nov 1, 2028",
+      "Ali Person Approved Oct 18, 2028",
+      "Ali Person Approved Oct 18, 2028"
+    ],
+    "tabs": [
+      "All 4",
+      "Time off 2",
+      "Swap 1",
+      "Cover 1",
+      "Open shift"
+    ],
+    "overflowX": false,
+    "deadline": [
+      {
+        "w": 0,
+        "cell": 0,
+        "text": "Oct 13, 9:00 AMIstanbul time",
+        "cut": false
+      },
+      {
+        "w": 0,
+        "cell": 0,
+        "text": "Oct 15, 4:00 PMIstanbul time",
+        "cut": false
+      }
+    ]
+  },
+  "zeynep-time_off-390": {
+    "rows": [
+      "Ali Person Needs review Apr 4, 2029 By Apr 3, 12:00 AM Istanbul time",
+      "Emre Person Needs review Apr 25 – Apr 27, 2029 By Apr 24, 12:00 AM Istanbul time",
+      "Solor9lca Person Revoked Nov 7 – Nov 8, 2028",
+      "Adminnqeud Person Approved Nov 7 – Nov 8, 2028",
+      "Deny6zkd3 Person Denied Nov 7 – Nov 8, 2028",
+      "Bothvdtg9 Person Approved Oct 31 – Nov 1, 2028",
+      "Ali Person Approved Oct 18, 2028",
+      "Ali Person Approved Oct 18, 2028"
+    ],
+    "tabs": [
+      "All 4",
+      "Time off 2",
+      "Swap 1",
+      "Cover 1",
+      "Open shift"
+    ],
+    "overflowX": false,
+    "deadline": [
+      {
+        "w": 0,
+        "cell": 0,
+        "text": "Apr 3, 12:00 AMIstanbul time",
+        "cut": false
+      },
+      {
+        "w": 0,
+        "cell": 0,
+        "text": "Apr 24, 12:00 AMIstanbul time",
+        "cut": false
+      }
+    ]
+  },
+  "zeynep-swap-390": {
+    "rows": [
+      "Ali Person In progress Tue, Oct 13 · 9:00 AM–3:00 PM By Oct 13, 9:00 AM Istanbul time"
+    ],
+    "tabs": [
+      "All 4",
+      "Time off 2",
+      "Swap 1",
+      "Cover 1",
+      "Open shift"
+    ],
+    "overflowX": false,
+    "deadline": [
+      {
+        "w": 0,
+        "cell": 0,
+        "text": "Oct 13, 9:00 AMIstanbul time",
+        "cut": false
+      }
+    ]
+  }
+}

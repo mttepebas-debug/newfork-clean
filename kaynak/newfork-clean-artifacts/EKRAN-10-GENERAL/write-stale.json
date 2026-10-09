@@ -1,0 +1,36 @@
+{
+  "url": "/app/settings/general",
+  "disabled": false,
+  "nameMessages": [
+    "Organization settings saved.",
+    "Setup checklist visibility could not be saved."
+  ],
+  "toggleMessages": [
+    "Organization settings saved.",
+    "Setup checklist visibility could not be saved.",
+    "That setting could not be saved."
+  ],
+  "net": [
+    {
+      "m": "PATCH",
+      "s": 204,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b",
+      "range": "*/*",
+      "body": ""
+    },
+    {
+      "m": "PATCH",
+      "s": 403,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "range": null,
+      "body": "{\"error\":\"Workspace management required\"}"
+    },
+    {
+      "m": "PUT",
+      "s": 403,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/preferred-name-approval",
+      "range": null,
+      "body": "{\"error\":\"Not allowed\",\"reason\":\"authz.missing_permission\",\"detail\":\"settings.people\",\"requestId\":\"req-1yp\"}"
+    }
+  ]
+}

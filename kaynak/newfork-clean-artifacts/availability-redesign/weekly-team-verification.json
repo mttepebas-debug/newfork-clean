@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "mode": "shift_type",
+      "width": 1440,
+      "overflow": false,
+      "sticky": true,
+      "horizontal": false,
+      "rows": 3,
+      "clippedText": false,
+      "privateNoteVisible": false,
+      "drawerCopySaved": true,
+      "filtersRetained": true
+    },
+    {
+      "mode": "shift_type",
+      "width": 390,
+      "overflow": false,
+      "sticky": true,
+      "horizontal": true,
+      "rows": 3,
+      "clippedText": false,
+      "privateNoteVisible": false,
+      "drawerCopySaved": true,
+      "filtersRetained": true
+    },
+    {
+      "mode": "time_range",
+      "width": 1440,
+      "overflow": false,
+      "sticky": true,
+      "horizontal": false,
+      "rows": 3,
+      "clippedText": false,
+      "privateNoteVisible": false,
+      "drawerCopySaved": true,
+      "filtersRetained": true
+    },
+    {
+      "mode": "time_range",
+      "width": 390,
+      "overflow": false,
+      "sticky": true,
+      "horizontal": true,
+      "rows": 3,
+      "clippedText": false,
+      "privateNoteVisible": false,
+      "drawerCopySaved": true,
+      "filtersRetained": true
+    }
+  ],
+  "errors": []
+}

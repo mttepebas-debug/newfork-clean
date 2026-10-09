@@ -1,0 +1,101 @@
+[
+ {
+  "kind": "constraint",
+  "name": "workspace_scheduling_settings.scheduling_conflict_rules_valid",
+  "md5": "e2cc8b40006601fea08280e581a1f8a7",
+  "md5_check": "e2cc8b40006601fea08280e581a1f8a7",
+  "acl": "",
+  "file": "constraint__workspace_scheduling_settings.scheduling_conflict_rules_valid.sql",
+  "bytes": 1534
+ },
+ {
+  "kind": "data",
+  "name": "counts",
+  "md5": null,
+  "md5_check": null,
+  "acl": "",
+  "file": "data__counts.json",
+  "bytes": 1176
+ },
+ {
+  "kind": "function",
+  "name": "app_private.announcement_release(uuid)",
+  "md5": "2be3f4ce0034f8cb770b273f4a6ff749",
+  "md5_check": "2be3f4ce0034f8cb770b273f4a6ff749",
+  "acl": "postgres=X/postgres",
+  "file": "function__app_private.announcement_release_uuid_.sql",
+  "bytes": 1487
+ },
+ {
+  "kind": "function",
+  "name": "assess_weekly_shift_availability(uuid,uuid,jsonb)",
+  "md5": "5a406940569e11e436e369866c0eeea2",
+  "md5_check": "5a406940569e11e436e369866c0eeea2",
+  "acl": "postgres=X/postgres",
+  "file": "function__assess_weekly_shift_availability_uuid_uuid_jsonb_.sql",
+  "bytes": 19436
+ },
+ {
+  "kind": "function",
+  "name": "get_announcements_service(uuid,uuid)",
+  "md5": "9bc57fb7aa50b6535146102de854ce80",
+  "md5_check": "9bc57fb7aa50b6535146102de854ce80",
+  "acl": "postgres=X/postgres,service_role=X/postgres",
+  "file": "function__get_announcements_service_uuid_uuid_.sql",
+  "bytes": 5395
+ },
+ {
+  "kind": "function",
+  "name": "get_schedule_read_model_service(uuid,uuid,date)",
+  "md5": "2573efa99287361336fb8510a613bf62",
+  "md5_check": "2573efa99287361336fb8510a613bf62",
+  "acl": "postgres=X/postgres,service_role=X/postgres",
+  "file": "function__get_schedule_read_model_service_uuid_uuid_date_.sql",
+  "bytes": 13404
+ },
+ {
+  "kind": "function",
+  "name": "read_settings_important_dates_service(uuid,uuid)",
+  "md5": "8f7e6ec813d04e003d4a5ab457762d31",
+  "md5_check": "8f7e6ec813d04e003d4a5ab457762d31",
+  "acl": "postgres=X/postgres,service_role=X/postgres",
+  "file": "function__read_settings_important_dates_service_uuid_uuid_.sql",
+  "bytes": 3096
+ },
+ {
+  "kind": "function",
+  "name": "save_announcement_audience_service(uuid,uuid,uuid,integer,text,text,text,text[],uuid[],timestamp with time zone,timestamp with time zone,text,uuid[],uuid[])",
+  "md5": "5ac39b128e9494c1a60998de1015fd76",
+  "md5_check": "5ac39b128e9494c1a60998de1015fd76",
+  "acl": "postgres=X/postgres,service_role=X/postgres",
+  "file": "function__save_announcement_audience_service_uuid_uuid_uuid_integer_text_text_text_text_uuid_timestamp_with_time_zone_ti.sql",
+  "bytes": 8534
+ },
+ {
+  "kind": "function",
+  "name": "save_important_date_service(uuid,uuid,uuid,text,text,date,date,text,text,boolean,uuid[],integer)",
+  "md5": "c414ebe2fa15e6b5f8a4d9e03e43529c",
+  "md5_check": "c414ebe2fa15e6b5f8a4d9e03e43529c",
+  "acl": "postgres=X/postgres,service_role=X/postgres",
+  "file": "function__save_important_date_service_uuid_uuid_uuid_text_text_date_date_text_text_boolean_uuid_integer_.sql",
+  "bytes": 6683
+ },
+ {
+  "kind": "function",
+  "name": "set_important_date_state_service(uuid,uuid,uuid,text)",
+  "md5": "30b57f7a7c7f5b97cb38423f34eaba01",
+  "md5_check": "30b57f7a7c7f5b97cb38423f34eaba01",
+  "acl": "postgres=X/postgres,service_role=X/postgres",
+  "file": "function__set_important_date_state_service_uuid_uuid_uuid_text_.sql",
+  "bytes": 4156
+ },
+ {
+  "kind": "view",
+  "name": "public.schedule_closures",
+  "md5": "1f567870f3dfb759e3d0e46f77827318",
+  "md5_check": "1f567870f3dfb759e3d0e46f77827318",
+  "acl": "postgres=arwdDxtm/postgres,service_role=rDxtm/postgres",
+  "file": "view__public.schedule_closures.sql",
+  "bytes": 1374
+ }
+]

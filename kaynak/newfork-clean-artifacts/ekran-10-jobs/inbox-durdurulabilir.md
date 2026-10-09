@@ -1,0 +1,1 @@
+DURDURULABILIR: https://claude.ai/artifact/BUJShpW3rXDGFVNyEygDZr sürüm 2 (14 hâllik birebir kopya + 6 varyasyon), sabah Mert'i bekliyor. Ara hâl: task/ekran-10-jobs 6090a8ed (docs/plan/ekranlar/10-settings/JOBS-TWEAKS.md, push yok). Dev sunucusu açmadım, kilit tutmuyorum.

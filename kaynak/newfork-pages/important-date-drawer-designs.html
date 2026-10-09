@@ -1,0 +1,694 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Important Date Drawer Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+<style>
+/* Layout: five ways to pick locations inside the Locations rows of drawer A.
+   Each shows the drawer on a 1440 × 900 desktop stage (scaled to fit) beside a
+   390 × 844 phone. Light only, like the app (CLAUDE.md §2.A.7); values are the
+   app's --theme-* tokens. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --soft: #f7f9f8;
+  --soft2: #f0f3f1;
+  --text: #17221e;
+  --body: #1d2525;
+  --muted: #66716c;
+  --muted-strong: #5f6b66;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --control: #7f8c86;
+  --accent: #176954;
+  --accent-strong: #12624f;
+  --selected: #e7f1ed;
+  --focus: #177a64;
+  --danger: #b84234;
+  --danger-strong: #a43830;
+  --danger-soft: #fff0ee;
+  --danger-border: #ad3f36;
+  --danger-text: #653b36;
+  --warn: #8a5a00;
+  --warn-soft: #fff7e2;
+  --warn-border: #bf872d;
+  --warn-text: #5f491f;
+  --amber: #c98a1b;
+  --scrim: #14251b50;
+  --bezel: #1d2525;
+  --list-head: #e6ece8;
+  --list-head-text: #4f5d57;
+  --save-off: #a9c9bd;
+  --on-dark: #ffffff;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: 14px; }
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.wrap { max-width: 1560px; margin: 0 auto; padding-inline: 24px; padding-block: 28px 72px; display: grid; gap: 24px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.top { display: grid; gap: 12px; }
+.top h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+.top .lede { margin: 0; color: var(--body); line-height: 1.6; max-width: 84ch; }
+.facts { margin: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: grid; gap: 6px; max-width: 120ch; }
+.facts p { margin: 0; line-height: 1.55; color: var(--body); font-size: 13.5px; }
+.facts b { font-weight: 650; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl-label { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+.pills { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; }
+.pills button { height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted-strong); cursor: pointer; }
+.pills button[aria-pressed="true"] { background: var(--text); color: var(--on-dark); }
+.jump { display: flex; gap: 8px; flex-wrap: wrap; }
+.jump a { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; }
+.jump a span { width: 28px; height: 24px; border-radius: 6px; background: var(--text); color: var(--on-dark); display: grid; place-items: center; font-size: 11.5px; }
+
+section.variant { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: grid; gap: 14px; min-width: 0; scroll-margin-top: 16px; }
+@media (max-width: 600px) { section.variant { padding: 14px; } }
+.vhead { display: flex; align-items: center; gap: 12px; }
+.vletter { min-width: 40px; height: 32px; padding: 0 8px; border-radius: 8px; background: var(--text); color: var(--on-dark); display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+.vhead h2 { font-size: 18px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+.vhead .vw { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vcap { margin: 0; color: var(--body); line-height: 1.6; max-width: 120ch; font-size: 13.5px; }
+.vcap b { font-weight: 650; }
+.frames { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; min-width: 0; }
+.fcol { display: grid; gap: 8px; min-width: 0; }
+.fcol.desk-col { flex: 1 1 640px; max-width: 1120px; }
+.fcol.phone-col { flex: 0 1 410px; }
+.flabel { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+.fit { width: 100%; overflow: hidden; }
+.fit > .stage { transform-origin: 0 0; }
+
+.desk { position: relative; width: 1120px; height: 900px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--page); }
+.mock { position: absolute; inset: 0; display: grid; grid-template-columns: 216px 1fr; }
+.mnav { background: var(--surface); border-right: 1px solid var(--border); padding: 18px 14px; display: grid; gap: 6px; align-content: start; }
+.mnav .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; margin-bottom: 14px; }
+.mnav .logo i { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); display: block; }
+.mnav span { height: 32px; border-radius: 6px; display: flex; align-items: center; padding: 0 10px; font-size: 13px; color: var(--muted-strong); }
+.mnav span.on { background: var(--selected); color: var(--accent-strong); font-weight: 600; }
+.mmain { padding: 28px 32px; display: grid; gap: 14px; align-content: start; }
+.m-eye { font-size: 11px; letter-spacing: 0.08em; font-weight: 650; color: var(--muted); }
+.m-h1 { font-size: 26px; font-weight: 700; margin-top: -8px; }
+.m-tabs { display: flex; gap: 22px; font-size: 13px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); }
+.m-tabs span { padding-bottom: 9px; }
+.m-tabs span.on { color: var(--text); border-bottom: 2px solid var(--accent); }
+.m-tool { display: flex; gap: 10px; }
+.m-tool i { height: 36px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); display: block; }
+.m-tool i:nth-child(1) { width: 150px; } .m-tool i:nth-child(2) { flex: 1; }
+.m-tool b { height: 36px; padding: 0 14px; border-radius: 7px; background: var(--accent); color: var(--on-dark); font-size: 13px; font-weight: 600; display: flex; align-items: center; }
+.m-table { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.m-row { display: grid; grid-template-columns: 28fr 18fr 16fr 20fr 18fr; gap: 12px; padding: 0 14px; height: 52px; align-items: center; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted-strong); }
+.m-row:first-child { border-top: 0; height: 38px; background: var(--list-head); font-size: 11px; font-weight: 650; color: var(--list-head-text); }
+.m-row b { color: var(--text); font-weight: 600; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.dock { position: absolute; top: 0; right: 0; bottom: 0; width: 640px; background: var(--surface); box-shadow: -12px 0 40px #10221a18; }
+
+.phone { width: 410px; height: 864px; padding: 10px; border-radius: 44px; background: var(--bezel); }
+.screen { width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
+.sbar { flex: 0 0 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; font-size: 13px; font-weight: 650; color: var(--text); }
+.sbar i { width: 64px; height: 12px; border-radius: 6px; background: var(--soft2); display: block; }
+.screen > .dr { flex: 1 1 auto; min-height: 0; }
+
+/* ——— The drawer ——— */
+.dr { position: relative; display: flex; flex-direction: column; height: 100%; background: var(--surface); color: var(--text); font-size: 13px; line-height: 1.5; min-width: 0; }
+.dr button { cursor: pointer; }
+.dr-head { flex: 0 0 auto; padding: 12px 16px 0; border-bottom: 1px solid var(--border); }
+.dr-hrow { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+.dr-h { font-size: 16px; font-weight: 650; margin: 0; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dr-sub { font-size: 12px; color: var(--muted); line-height: 18px; }
+.iconbtn { margin-left: auto; width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-strong); }
+.iconbtn:hover { background: var(--soft2); }
+.chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11px; font-weight: 650; white-space: nowrap; flex: 0 0 auto; }
+.chip-green { background: var(--selected); color: var(--accent-strong); }
+.dr-tabs { display: flex; gap: 20px; margin-top: 6px; }
+.dr-tab { height: 38px; padding: 0; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted-strong); font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.dr-tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.dr-tab .n { min-width: 20px; height: 18px; padding: 0 6px; border-radius: 999px; background: var(--soft2); color: var(--muted-strong); font-size: 11px; font-weight: 700; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.dr-tab .n.w { background: var(--warn-soft); color: var(--warn-text); }
+.dr-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px; display: grid; gap: 10px; align-content: start; grid-auto-rows: max-content; }
+.fld { display: grid; gap: 6px; min-width: 0; }
+.fld > span, .lbl { font-size: 12px; font-weight: 600; color: var(--text); line-height: 16px; }
+.lblrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 16px; }
+.inp { height: 36px; width: 100%; min-width: 0; padding: 0 10px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; }
+.inp:disabled { background: var(--soft2); border-color: var(--border-strong); color: var(--muted); }
+textarea.inp { height: 44px; padding: 6px 10px; resize: none; line-height: 1.45; }
+.dr-body.details { display: flex; flex-direction: column; }
+.dr-body.details > * { flex: 0 0 auto; }
+.dr-body.details > .note-fld { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 84px; max-height: 200px; }
+.note-fld textarea.inp { flex: 1 1 auto; height: auto; min-height: 62px; }
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.when { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text); cursor: pointer; width: max-content; }
+.check input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); }
+.hint { font-size: 12px; color: var(--muted); margin: 0; display: flex; gap: 6px; align-items: center; line-height: 1.45; }
+.hint.err { color: var(--danger); font-weight: 600; }
+.hint svg { flex: 0 0 14px; }
+.textbtn { border: 0; background: none; padding: 0; height: 20px; color: var(--accent-strong); font-size: 12px; font-weight: 650; }
+.textbtn:hover { text-decoration: underline; }
+
+/* Status segments. */
+.seg { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 2px; padding: 2px; border: 1px solid var(--control); border-radius: 8px; background: var(--soft2); min-width: 0; }
+.seg button { height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-strong); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; padding: 0 4px; min-width: 0; }
+.seg button[aria-checked="true"] { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border-strong), 0 1px 2px #10221a14; }
+.seg button:disabled { cursor: default; color: var(--muted); opacity: 0.6; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.dot-open { background: var(--accent); } .dot-short { background: var(--amber); } .dot-closed { background: var(--danger); } .dot-off { background: transparent; border: 1.5px solid var(--control); }
+
+/* Locations table (shared by the five). */
+.ltab { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.lrow { display: grid; grid-template-columns: var(--cols); column-gap: 12px; row-gap: 6px; align-items: center; padding: 6px 12px; min-height: 44px; border-top: 1px solid var(--border); }
+.lrow:first-child { border-top: 0; }
+.lrow.lh { min-height: 36px; padding-block: 4px; background: var(--list-head); font-size: 11px; font-weight: 650; color: var(--list-head-text); }
+.lrow.off { background: var(--soft); }
+.lrow.slim { min-height: 40px; padding-block: 4px; }
+.lname { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrow.off .lname { color: var(--muted-strong); font-weight: 500; }
+.limp { font-size: 12px; font-weight: 650; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.limp.r { color: var(--danger); } .limp.w { color: var(--warn); } .limp.q { color: var(--muted); font-weight: 500; }
+.lhours { grid-column: var(--hcol, 2 / -1); display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: center; font-size: 12px; color: var(--muted-strong); font-weight: 600; }
+.lhours .inp { height: 32px; font-size: 12.5px; }
+.offtext { font-size: 12px; color: var(--muted); }
+.lcheck { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.lcheck-lbl { display: flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer; }
+.sw { position: relative; width: 32px; height: 18px; border-radius: 999px; border: 0; padding: 0; background: var(--control); flex: 0 0 32px; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); transition: left 120ms; }
+.sw[aria-checked="true"] { background: var(--accent); }
+.sw[aria-checked="true"]::after { left: 16px; }
+.swlbl { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.npill { height: 30px; max-width: 100%; padding: 0 12px; border-radius: 999px; border: 1px solid var(--control); background: var(--surface); color: var(--text); font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; justify-self: start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dr:not(.ph) .lrow .npill { width: 100%; }
+.npill[aria-pressed="true"] { background: var(--selected); border-color: var(--accent); color: var(--accent-strong); }
+.npill .tick { width: 14px; height: 14px; display: none; }
+.npill[aria-pressed="true"] .tick { display: block; }
+.summary-line { display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; }
+.summary-line .who { display: grid; gap: 2px; min-width: 0; }
+.summary-line .who b { font-size: 13px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary-line .who span { font-size: 12px; color: var(--muted); }
+.mixed { height: 32px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--control); border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--muted-strong); }
+.ph .lrow { grid-template-columns: var(--pcols, minmax(0, 1fr) auto); }
+.ph .lrow .seg { grid-column: 1 / -1; grid-row: 2; }
+.ph .lrow .lhours { grid-column: 1 / -1; grid-row: 3; }
+.ph .lrow .limp, .ph .lrow .offtext { grid-column: -2 / -1; grid-row: 1; text-align: right; }
+.ph .lrow.off .limp { display: none; }
+.ph .lrow.lh .seg { grid-row: 2; }
+.ph .lrow.lh .lh-mid { display: none; }
+.ph .summary-line { grid-template-columns: minmax(0, 1fr); }
+
+/* Shifts tab. */
+.sl { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.sl-loc { display: flex; justify-content: space-between; align-items: center; height: 32px; padding: 0 12px; background: var(--soft); font-size: 11.5px; font-weight: 650; color: var(--muted-strong); border-bottom: 1px solid var(--border); }
+.sl-loc:not(:first-child) { border-top: 1px solid var(--border); }
+.sr { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; min-height: 52px; border-bottom: 1px solid var(--border); }
+.sr:last-child { border-bottom: 0; }
+.av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--soft2); color: var(--muted-strong); }
+.sr-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 18px; }
+.sr-meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 16px; font-variant-numeric: tabular-nums; }
+.sr-tag { color: var(--warn); font-weight: 600; }
+.pick { display: grid; grid-template-columns: repeat(3, 76px); gap: 2px; padding: 2px; border: 1px solid var(--control); border-radius: 7px; background: var(--soft2); }
+.pick button { height: 28px; border: 0; border-radius: 5px; background: transparent; font-size: 12px; font-weight: 600; color: var(--muted-strong); padding: 0; white-space: nowrap; }
+.pick button[aria-pressed="true"][data-c="remove"] { background: var(--danger-soft); color: var(--danger-text); box-shadow: 0 0 0 1px var(--danger-border); }
+.pick button[aria-pressed="true"][data-c="open"] { background: var(--warn-soft); color: var(--warn-text); box-shadow: 0 0 0 1px var(--warn-border); }
+.pick button[aria-pressed="true"][data-c="keep"] { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--border-strong); }
+.ph .sr { grid-template-columns: 32px minmax(0, 1fr); }
+.ph .pick { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.legend3 { display: grid; gap: 4px; font-size: 12px; color: var(--muted-strong); line-height: 1.45; }
+.legend3 b { color: var(--text); font-weight: 650; }
+.calm { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--muted-strong); font-size: 12.5px; line-height: 1.5; }
+.calm svg { flex: 0 0 16px; margin-top: 1px; }
+
+.dr-foot { flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--surface); }
+.impact { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 16px; font-size: 12.5px; font-weight: 600; border-bottom: 1px solid var(--border); line-height: 1.4; }
+.impact svg { flex: 0 0 16px; }
+.impact > span { flex: 1 1 auto; min-width: 0; }
+.impact .link { flex: 0 0 auto; height: 28px; padding: 0 10px; border: 1px solid currentColor; border-radius: 6px; background: transparent; color: inherit; font-size: 12px; font-weight: 650; }
+.impact.warn { background: var(--warn-soft); color: var(--warn-text); }
+.impact.calm2 { background: var(--soft); color: var(--muted-strong); }
+.impact.ok { background: var(--selected); color: var(--accent-strong); }
+.dr-act { display: flex; align-items: center; gap: 8px; padding: 12px 16px; }
+.dr-right { margin-left: auto; display: flex; gap: 8px; }
+.btn { height: 36px; min-width: 76px; padding: 0 14px; border-radius: 6px; font-size: 12.5px; font-weight: 650; border: 1px solid transparent; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn-sec { background: var(--surface); border-color: var(--border-strong); color: var(--text); }
+.btn-sec:hover { background: var(--soft2); }
+.btn-pri { background: var(--accent); border-color: var(--accent); color: var(--on-dark); }
+.btn-pri:hover:not(:disabled) { background: var(--accent-strong); }
+.btn-pri:disabled { background: var(--save-off); border-color: var(--save-off); color: var(--on-dark); cursor: default; }
+.btn-dtext { background: transparent; color: var(--danger); padding: 0 10px; min-width: 0; }
+.btn-dtext:hover { background: var(--danger-soft); }
+.btn-danger { background: var(--danger-strong); border-color: var(--danger-strong); color: var(--on-dark); }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; }
+.hist li { display: grid; gap: 2px; padding: 12px 0 12px 20px; border-left: 2px solid var(--border); margin-left: 6px; position: relative; }
+.hist li::before { content: ""; position: absolute; left: -6px; top: 16px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface); border: 2px solid var(--control); }
+.h-a { font-weight: 600; font-size: 13px; }
+.h-w { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.h-d { font-size: 12.5px; color: var(--body); margin-top: 4px; }
+.h-d s { color: var(--muted); }
+.hist li.h-hidden .h-a { color: var(--muted-strong); font-style: italic; font-weight: 500; }
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <h1>Important Date drawer · A with location checkboxes</h1>
+    <p class="lede">Mert'in 2026-10-07 seçimi: A çekmecesi, lokasyonlar satırlardaki onay kutusuyla seçilir (L1). Note alanı Details sekmesinde kalan boşluğu doldurur. Masaüstü sahnesi 1440 × 900 ekranın kendisi: Details sekmesi kaydırmadan sığıyor, kaydırma çubuğu yok. Önceki seçenekler artifact'ın 1–3. sürümlerinde.</p>
+    <div class="facts">
+      <p><b>İçerik:</b> üç lokasyon (Kadıköy, Beşiktaş, Nişantaşı), her satırda o günün durumu (Open / Short hours / Closed), Short seçilince saat kutuları, satır sonunda vardiya etkisi; Shifts sekmesinde Remove / Open shift / Keep; Save değişiklik olunca açılır. Hiç lokasyon seçili değilse Save kapanır ve satırın altında "Choose at least one location." yazar.</p>
+      <p><b>Kadıköy manager</b> seçince müdürün gördüğü hâl çıkar: yalnız kendi lokasyonu, seçimi kilitli.</p>
+    </div>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Örnek gün</span>
+        <div class="pills">
+          <button type="button" data-g="scenario" data-k="jul4">Jul 4 · All closed</button>
+          <button type="button" data-g="scenario" data-k="nov26">Nov 26 · One closed</button>
+          <button type="button" data-g="scenario" data-k="dec24">Dec 24 · Short hours</button>
+          <button type="button" data-g="scenario" data-k="oct14">Oct 14 · One location</button>
+        </div>
+      </div>
+      <div class="ctl"><span class="ctl-label">Kim açıyor</span>
+        <div class="pills">
+          <button type="button" data-g="role" data-k="owner">Owner / admin</button>
+          <button type="button" data-g="role" data-k="manager">Kadıköy manager</button>
+        </div>
+      </div>
+      <nav class="jump" aria-label="Variations" id="jump"></nav>
+    </div>
+  </header>
+  <div id="variants" style="display:grid;gap:24px"></div>
+</main>
+
+<script>
+(() => {
+  const ic = {
+    x: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    alert: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+    tick: '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+    lock: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+  };
+  const PEOPLE = {
+    ali: { name: "Ali Kaya", ini: "AK", job: "Cook" }, emre: { name: "Emre Yilmaz", ini: "EY", job: "Cook" },
+    can: { name: "Can Demir", ini: "CD", job: "Server" }, deniz: { name: "Deniz Aksoy", ini: "DA", job: "Cook" },
+    selin: { name: "Selin Arslan", ini: "SA", job: "Server" }, burak: { name: "Burak Sahin", ini: "BS", job: "Server" },
+    elif: { name: "Elif Koc", ini: "EK", job: "Cook" },
+  };
+  const LOC = { K: "Kadıköy", B: "Beşiktaş", N: "Nişantaşı" };
+  const ALL = ["K", "B", "N"];
+  const day = (status, opens = 600, closes = 900) => ({ status, opens, closes });
+  const shiftsOf = (p) => [
+    { id: p + "1", p: "ali", loc: "K", s: 540, e: 1020 }, { id: p + "2", p: "emre", loc: "K", s: 600, e: 900 },
+    { id: p + "3", p: "can", loc: "K", s: 960, e: 1380 }, { id: p + "4", p: "deniz", loc: "B", s: 600, e: 1080 },
+    { id: p + "5", p: "selin", loc: "B", s: 1020, e: 1380 }, { id: p + "6", p: "elif", loc: "N", s: 420, e: 900 },
+    { id: p + "7", p: "burak", loc: "N", s: 660, e: 1140 } ];
+  const SCEN = {
+    jul4: { title: "Independence Day", type: "Holiday", iso: "2027-07-04", day: "Sun, Jul 4", date: "Sun, Jul 4, 2027", repeats: true, locs: ALL,
+      per: { K: day("closed"), B: day("closed"), N: day("closed") }, note: "All kitchens closed. Prep crew only if needed.", shifts: shiftsOf("j") },
+    nov26: { title: "Thanksgiving", type: "Holiday", iso: "2026-11-26", day: "Thu, Nov 26", date: "Thu, Nov 26, 2026", repeats: true, locs: ALL,
+      per: { K: day("open"), B: day("closed"), N: day("open") }, note: "Kadıköy and Nişantaşı serve the holiday menu. Beşiktaş is closed.", shifts: shiftsOf("n") },
+    dec24: { title: "Christmas Eve", type: "Holiday", iso: "2026-12-24", day: "Thu, Dec 24", date: "Thu, Dec 24, 2026", repeats: true, locs: ALL,
+      per: { K: day("short"), B: day("short"), N: day("short") }, note: "We close at 3 PM. Last seating 2:15 PM.", shifts: shiftsOf("d") },
+    oct14: { title: "Health inspection", type: "Event", iso: "2026-10-14", day: "Wed, Oct 14", date: "Wed, Oct 14, 2026", repeats: false, locs: ["K"],
+      per: { K: day("open"), B: day("open"), N: day("open") }, note: "Inspector arrives at 9 AM. Keep the walk-in logs ready.", shifts: shiftsOf("o") },
+  };
+
+  const VARIANTS = [
+    { id: "L1", name: "Checkbox column (chosen)", cols: "16px 112px minmax(0, 1fr) 104px", pcols: "16px minmax(0, 1fr) auto", hcol: "3 / -1",
+      cap: "<b>Nasıl seçilir:</b> her satırın başında onay kutusu, başlık satırında \"All locations\" kutusu (bir kısmı seçiliyse yarım işaret); seçilmeyen satır gri ve \"Not included\" yazar; <b>artısı:</b> tabloların bilinen dili, kaç lokasyon olursa olsun aynı çalışır; <b>eksisi:</b> seçim ile durum iki ayrı kontrol, satır başına bir tık fazla." },
+  ];
+
+  const G = { scenario: "jul4", role: "owner" };
+  const S = {};
+  const timers = {};
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const fmt = (m) => { const h = Math.floor(m / 60) % 24, mm = m % 60; return `${h % 12 || 12}:${String(mm).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`; };
+  const short = (m) => { const h = Math.floor(m / 60) % 24; return `${h % 12 || 12}${m % 60 ? ":" + String(m % 60).padStart(2, "0") : ""} ${h >= 12 ? "PM" : "AM"}`; };
+  const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const fromHHMM = (v) => { const [h, m] = v.split(":").map(Number); return h * 60 + (m || 0); };
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+  function fresh() {
+    const sc = SCEN[G.scenario];
+    const f = {
+      title: sc.title, type: sc.type, repeats: sc.repeats, starts: sc.iso, ends: sc.iso,
+      allDay: true, startTime: "09:00", endTime: "17:00", note: sc.note,
+      locs: G.role === "owner" ? sc.locs.slice() : ["K"],
+      per: Object.fromEntries(ALL.map((l) => [l, { ...sc.per[l] }])),
+      choice: {},
+    };
+    const mixed = new Set(ALL.map((l) => f.per[l].status)).size > 1 || f.locs.length < ALL.length;
+    return { f, init: JSON.stringify(f), tab: "details", armed: false, flash: null, expand: mixed };
+  }
+  const canPick = () => G.role === "owner";
+  const allLocs = () => (canPick() ? ALL : ["K"]);
+  const dirty = (s) => JSON.stringify(s.f) !== s.init;
+  const affected = (sh, st) => st.status === "closed" || (st.status === "short" && !(sh.s >= st.opens && sh.e <= st.closes));
+  const outside = (sh, st) => sh.e <= st.opens || sh.s >= st.closes;
+  const defChoice = (sh, st) => (st.status === "closed" || outside(sh, st) ? "remove" : "keep");
+  function rows(s) {
+    return SCEN[G.scenario].shifts.filter((sh) => s.f.locs.includes(sh.loc)).map((sh) => {
+      const st = s.f.per[sh.loc];
+      const a = affected(sh, st);
+      return { ...sh, st, affected: a, def: a ? defChoice(sh, st) : null, choice: a ? s.f.choice[sh.id] || defChoice(sh, st) : null };
+    });
+  }
+  const tally = (list) => ({ remove: list.filter((x) => x.choice === "remove").length, open: list.filter((x) => x.choice === "open").length, keep: list.filter((x) => x.choice === "keep").length, affected: list.filter((x) => x.affected).length });
+  function phrase(t) {
+    const parts = [];
+    if (t.remove) parts.push(`${plural(t.remove, "shift")} will be removed`);
+    if (t.open) parts.push(!parts.length ? `${plural(t.open, "shift")} will become ${t.open === 1 ? "an open shift" : "open shifts"}` : `${t.open} become${t.open === 1 ? "s" : ""} open`);
+    if (t.keep) parts.push(!parts.length ? `${plural(t.keep, "shift")} kept` : `${t.keep} kept`);
+    return parts.join(" · ");
+  }
+  function tag(sh, st) {
+    if (st.status !== "short") return "";
+    if (sh.e <= st.opens) return "Before opening";
+    if (sh.s >= st.closes) return "After closing";
+    if (sh.s < st.opens && sh.e > st.closes) return `Outside ${short(st.opens)}–${short(st.closes)}`;
+    if (sh.s < st.opens) return `Starts before ${short(st.opens)}`;
+    return `Ends after ${short(st.closes)}`;
+  }
+  function impact(s) {
+    if (!s.f.locs.length) return { tone: "calm2", icon: ic.info, text: "Choose at least one location.", review: false };
+    const t = tally(rows(s));
+    if (!s.f.locs.some((l) => s.f.per[l].status !== "open")) return { tone: "calm2", icon: ic.check, text: "Shifts stay as scheduled.", review: false };
+    if (!t.affected) return { tone: "ok", icon: ic.check, text: "All shifts fit the new hours.", review: false };
+    if (!t.remove && !t.open) return { tone: "ok", icon: ic.check, text: `No shift changes · ${t.keep} kept`, review: true };
+    return { tone: "warn", icon: ic.alert, text: phrase(t), review: true };
+  }
+
+  // ——— Locations block: the part that differs ———
+  const STATES = [["open", "Open"], ["short", "Short hours"], ["closed", "Closed"]];
+  function seg(vid, loc, cur, { withOff = false, disabled = false, label } = {}) {
+    const opts = withOff ? [["off", "Off"], ...STATES] : STATES;
+    return `<div class="seg" style="--n:${opts.length}" role="radiogroup" aria-label="${label ?? LOC[loc] + " that day"}">${opts.map(([k, l]) =>
+      `<button type="button" role="radio" aria-checked="${cur === k}" ${disabled ? "disabled" : ""} data-act="status" data-v="${vid}" data-l="${loc}" data-k="${k}" data-fk="st-${loc}-${k}"><span class="dot dot-${k}"></span>${l}</button>`).join("")}</div>`;
+  }
+  function locImpact(s, l) {
+    if (!s.f.locs.includes(l)) return `<span class="limp q">—</span>`;
+    const st = s.f.per[l];
+    const t = tally(rows(s).filter((x) => x.loc === l));
+    if (st.status === "open") return `<span class="limp q">Usual hours</span>`;
+    if (!t.affected) return `<span class="limp q">All fit</span>`;
+    const bits = [t.remove ? `${t.remove} removed` : "", t.open ? `${t.open} open` : "", t.keep ? `${t.keep} kept` : ""].filter(Boolean).join(" · ");
+    return `<span class="limp ${t.remove ? "r" : t.open ? "w" : "q"}">${bits}</span>`;
+  }
+  function hoursLine(vid, s, l) {
+    const st = s.f.per[l];
+    if (!s.f.locs.includes(l) || st.status !== "short") return "";
+    return `<div class="lhours"><span>Opens</span><input class="inp" type="time" step="900" aria-label="${LOC[l]} opens" value="${hhmm(st.opens)}" data-act="hours" data-v="${vid}" data-k="opens" data-l="${l}" data-fk="opens-${l}"><span>Closes</span><input class="inp" type="time" step="900" aria-label="${LOC[l]} closes" value="${hhmm(st.closes)}" data-act="hours" data-v="${vid}" data-k="closes" data-l="${l}" data-fk="closes-${l}"></div>`;
+  }
+  const allOn = (s) => allLocs().every((l) => s.f.locs.includes(l));
+  const noneMsg = (s) => (s.f.locs.length ? "" : `<p class="hint err">Choose at least one location.</p>`);
+  const managerHint = () => (canPick() ? "" : `<p class="hint">${ic.lock}Dates for more than one location are set by an admin or owner.</p>`);
+  const head3 = (first, mid = "That day") => `<div class="lrow lh">${first}<span class="lh-mid">${mid}</span><span style="text-align:right">Shifts</span></div>`;
+
+  const LOCBLOCK = {
+    L1(v, s) {
+      const all = allOn(s), some = s.f.locs.length > 0 && !all;
+      const headChk = canPick()
+        ? `<label class="lcheck-lbl" style="grid-column: 1 / 3"><input type="checkbox" class="lcheck" ${all ? "checked" : ""} data-indet="${some}" data-act="allbox" data-v="L1" data-fk="all">All locations</label>`
+        : `<span style="grid-column: 1 / 3">Location</span>`;
+      const row = (l) => {
+        const on = s.f.locs.includes(l);
+        return `<div class="lrow${on ? "" : " off"}"><input type="checkbox" class="lcheck" aria-label="${LOC[l]}" ${on ? "checked" : ""} ${canPick() ? `data-act="loc" data-v="L1" data-l="${l}"` : "disabled"} data-fk="chk-${l}"><span class="lname">${LOC[l]}</span>${on ? seg("L1", l, s.f.per[l].status) : `<span class="offtext">Not included</span>`}${locImpact(s, l)}${hoursLine("L1", s, l)}</div>`;
+      };
+      return `<div class="ltab">${head3(headChk)}${allLocs().map(row).join("")}</div>${noneMsg(s)}${managerHint()}`;
+    },
+    L2(v, s) {
+      const shared = (() => { const st = new Set(allLocs().map((l) => (s.f.locs.includes(l) ? s.f.per[l].status : "off"))); return st.size === 1 ? [...st][0] : null; })();
+      const allRow = canPick() ? `<div class="lrow lh"><span>All locations</span>${seg("L2", "ALL", shared, { withOff: true, label: "All locations that day" })}<span style="text-align:right">${shared ? "Shifts" : "Mixed"}</span></div>` : head3("<span>Location</span>");
+      const row = (l) => {
+        const on = s.f.locs.includes(l);
+        return `<div class="lrow${on ? "" : " off"}"><span class="lname">${LOC[l]}</span>${seg("L2", l, on ? s.f.per[l].status : "off", { withOff: canPick() })}${locImpact(s, l)}${hoursLine("L2", s, l)}</div>`;
+      };
+      return `<div class="ltab">${allRow}${allLocs().map(row).join("")}</div>${noneMsg(s)}${managerHint()}`;
+    },
+    L3(v, s) {
+      const all = allOn(s);
+      const headSw = canPick()
+        ? `<span class="swlbl" style="grid-column: 1 / 3"><button type="button" class="sw" role="switch" aria-checked="${all}" aria-label="All locations" data-act="allsw" data-v="L3" data-fk="all"></button>All locations</span>`
+        : `<span style="grid-column: 1 / 3">Location</span>`;
+      const row = (l) => {
+        const on = s.f.locs.includes(l);
+        const sw = `<button type="button" class="sw" role="switch" aria-checked="${on}" aria-label="${LOC[l]}" ${canPick() ? `data-act="loc" data-v="L3" data-l="${l}"` : "disabled"} data-fk="sw-${l}"></button>`;
+        if (!on) return `<div class="lrow off slim">${sw}<span class="lname">${LOC[l]}</span><span class="offtext">Not included</span><span></span></div>`;
+        return `<div class="lrow">${sw}<span class="lname">${LOC[l]}</span>${seg("L3", l, s.f.per[l].status)}${locImpact(s, l)}${hoursLine("L3", s, l)}</div>`;
+      };
+      return `<div class="ltab">${head3(headSw)}${allLocs().map(row).join("")}</div>${noneMsg(s)}${managerHint()}`;
+    },
+    L4(v, s) {
+      const all = allOn(s);
+      const headPill = canPick()
+        ? `<button type="button" class="npill" aria-pressed="${all}" data-act="allpill" data-v="L4" data-fk="all">${ic.tick}All locations</button>`
+        : `<span>Location</span>`;
+      const row = (l) => {
+        const on = s.f.locs.includes(l);
+        const pill = `<button type="button" class="npill" aria-pressed="${on}" ${canPick() ? `data-act="pillpick" data-v="L4" data-l="${l}"` : "disabled"} data-fk="pill-${l}">${ic.tick}${LOC[l]}</button>`;
+        return `<div class="lrow${on ? "" : " off"}">${pill}${on ? seg("L4", l, s.f.per[l].status) : `<span class="offtext">Not included</span>`}${locImpact(s, l)}${hoursLine("L4", s, l)}</div>`;
+      };
+      return `<div class="ltab">${head3(headPill)}${allLocs().map(row).join("")}</div>${noneMsg(s)}${managerHint()}`;
+    },
+    L5(v, s, mode) {
+      if (!s.expand) {
+        const sel = s.f.locs;
+        const states = new Set(sel.map((l) => s.f.per[l].status));
+        const st = states.size === 1 ? [...states][0] : null;
+        const who = canPick() ? (allOn(s) ? `All locations · ${sel.length}` : sel.map((l) => LOC[l]).join(", ") || "No location") : "Kadıköy";
+        const t = tally(rows(s));
+        const sub = !st ? "Mixed: set per location" : st === "open" ? "Usual hours" : !t.affected ? "All shifts fit" : [t.remove ? `${t.remove} removed` : "", t.open ? `${t.open} open` : "", t.keep ? `${t.keep} kept` : ""].filter(Boolean).join(" · ");
+        const first = s.f.per[sel[0] ?? "K"];
+        const hours = st === "short"
+          ? `<div class="ltab"><div class="lrow"><div class="lhours" style="grid-column: 1 / -1"><span>Opens</span><input class="inp" type="time" step="900" aria-label="Opens" value="${hhmm(first.opens)}" data-act="hours" data-v="L5" data-k="opens" data-l="SEL" data-fk="opens-SEL"><span>Closes</span><input class="inp" type="time" step="900" aria-label="Closes" value="${hhmm(first.closes)}" data-act="hours" data-v="L5" data-k="closes" data-l="SEL" data-fk="closes-SEL"></div></div></div>`
+          : "";
+        return `<div class="summary-line"><div class="who"><b>${who}</b><span>${sub}</span></div>${seg("L5", "SEL", st, { label: "Selected locations that day" })}</div>${hours}${noneMsg(s)}${managerHint()}`;
+      }
+      return LOCBLOCK.L1(v, s).replaceAll('data-v="L1"', 'data-v="L5"');
+    },
+  };
+  function locSection(v, s, mode) {
+    const toggle = v.id === "L5" && canPick()
+      ? `<button type="button" class="textbtn" data-act="expand" data-v="L5" data-fk="expand">${s.expand ? "Same for all" : "Set per location"}</button>` : "";
+    return `<div class="fld" style="--cols:${v.cols};--pcols:${v.pcols};--hcol:${v.hcol}"><div class="lblrow"><span class="lbl">Locations</span>${toggle}</div>${LOCBLOCK[v.id](v, s, mode)}</div>`;
+  }
+
+  // ——— The rest of the drawer, the same in all five ———
+  const field = (label, inner) => `<label class="fld"><span>${label}</span>${inner}</label>`;
+  const sel = (vid, key, opts, cur) => `<select class="inp" data-act="field" data-v="${vid}" data-k="${key}" data-fk="${key}">${opts.map(([val, l]) => `<option value="${val}"${String(val) === String(cur) ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
+  function details(v, s, mode) {
+    const f = s.f, id = v.id;
+    return `<div class="dr-body details" data-scroll="body">
+      ${field("Title", `<input class="inp" value="${esc(f.title)}" data-act="text" data-v="${id}" data-k="title" data-fk="title">`)}
+      <div class="row2">${field("Type", sel(id, "type", [["Holiday", "Holiday"], ["Event", "Event"]], f.type))}${field("Repeats", sel(id, "repeats", [["false", "Does not repeat"], ["true", "Every year"]], f.repeats))}</div>
+      <div class="when">
+        ${field("Starts", `<input class="inp" type="date" value="${f.starts}" data-act="field" data-v="${id}" data-k="starts" data-fk="starts">`)}
+        <div class="fld"><div class="lblrow"><label class="lbl" for="ends-${id}">Ends</label><label class="check"><input type="checkbox" ${f.allDay ? "checked" : ""} data-act="allday" data-v="${id}" data-fk="allday">All day</label></div><input class="inp" id="ends-${id}" type="date" value="${f.ends}" data-act="field" data-v="${id}" data-k="ends" data-fk="ends"></div>
+        <input class="inp" type="time" step="900" aria-label="Start time" value="${f.startTime}" ${f.allDay ? "disabled" : ""} data-act="field" data-v="${id}" data-k="startTime" data-fk="startTime">
+        <input class="inp" type="time" step="900" aria-label="End time" value="${f.endTime}" ${f.allDay ? "disabled" : ""} data-act="field" data-v="${id}" data-k="endTime" data-fk="endTime">
+      </div>
+      ${locSection(v, s, mode)}
+      <label class="fld note-fld"><span>Note</span><textarea class="inp" data-act="text" data-v="${id}" data-k="note" data-fk="note">${esc(f.note)}</textarea></label>
+    </div>`;
+  }
+  function shiftsTab(v, s) {
+    const r = rows(s);
+    const sc = SCEN[G.scenario];
+    const groups = s.f.locs.map((l) => ({ l, items: r.filter((x) => x.loc === l && x.affected) })).filter((g) => g.items.length);
+    if (!groups.length) {
+      const t = impact(s);
+      return `<div class="dr-body" data-scroll="body"><div class="calm">${ic.info}<span>${t.tone === "ok" ? `All published shifts on ${sc.day} fit the new hours.` : `No location closes or shortens its hours on ${sc.day}. Nothing changes on the Schedule.`}</span></div></div>`;
+    }
+    const pick = (x) => `<div class="pick" role="group" aria-label="${esc(PEOPLE[x.p].name)}'s shift">${[["remove", "Remove"], ["open", "Open shift"], ["keep", "Keep"]].map(([c, l]) =>
+      `<button type="button" data-act="pick" data-v="${v.id}" data-id="${x.id}" data-c="${c}" aria-pressed="${x.choice === c}" data-fk="pk-${x.id}-${c}">${l}</button>`).join("")}</div>`;
+    const item = (x) => { const p = PEOPLE[x.p], t = tag(x, x.st); return `<div class="sr"><span class="av" aria-hidden="true">${p.ini}</span><div style="min-width:0"><div class="sr-name">${esc(p.name)}</div><div class="sr-meta">${fmt(x.s)} – ${fmt(x.e)} · ${p.job}${t ? ` · <span class="sr-tag">${t}</span>` : ""}</div></div>${pick(x)}</div>`; };
+    return `<div class="dr-body" data-scroll="body">
+      <div class="legend3"><span><b>Remove</b> deletes the shift; the person is told.</span><span><b>Open shift</b> keeps the shift without a person; anyone at the location can pick it up.</span><span><b>Keep</b> leaves it as it is.</span></div>
+      <div class="sl">${groups.map((g) => `<div class="sl-loc"><span>${LOC[g.l]} · ${sc.day}</span><span>${plural(g.items.length, "shift")}</span></div>${g.items.map(item).join("")}`).join("")}</div></div>`;
+  }
+  function history() {
+    const mgr = !canPick();
+    return `<div class="dr-body" data-scroll="body"><ol class="hist">
+      <li><div class="h-a">Changed by Zeynep Aydin</div><div class="h-w">Oct 6, 2026 · 9:20 AM</div><div class="h-d">Beşiktaş: <s>Open</s> → Closed</div></li>
+      ${mgr ? `<li class="h-hidden"><div class="h-a">Hidden change</div><div class="h-w">At a location you don't manage</div></li>`
+        : `<li><div class="h-a">Changed by Olcay Owner</div><div class="h-w">Oct 2, 2026 · 4:12 PM</div><div class="h-d">Locations: <s>Kadıköy</s> → All locations</div></li>`}
+      <li><div class="h-a">Created by Ayşe Demir</div><div class="h-w">Sep 30, 2026 · 10:05 AM</div></li></ol></div>`;
+  }
+  function drawer(v, s, mode) {
+    const sc = SCEN[G.scenario];
+    const t = tally(rows(s));
+    const tabs = [["details", "Details"], ["shifts", "Shifts"], ["history", "History"]];
+    const head = `<div class="dr-head">
+      <div class="dr-hrow"><h3 class="dr-h">${esc(s.f.title || "Untitled date")}</h3><span class="chip chip-green">Published</span>
+        <button type="button" class="iconbtn" data-act="cancel" data-v="${v.id}" aria-label="Close" title="Close" data-fk="x">${ic.x}</button></div>
+      <div class="dr-sub">${s.f.type} · ${sc.date}${s.f.repeats ? " · Every year" : ""}</div>
+      <div class="dr-tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="dr-tab" aria-selected="${s.tab === k}" data-act="tab" data-v="${v.id}" data-t="${k}" data-fk="tab-${k}">${l}${k === "shifts" ? `<span class="n${t.remove || t.open ? " w" : ""}">${t.affected}</span>` : ""}</button>`).join("")}</div></div>`;
+    const body = s.tab === "shifts" ? shiftsTab(v, s) : s.tab === "history" ? history() : details(v, s, mode);
+    const im = impact(s);
+    const line = s.flash
+      ? `<div class="impact ok" role="status">${ic.check}<span>${esc(s.flash)}</span></div>`
+      : `<div class="impact ${im.tone}">${im.icon}<span>${im.text}</span>${im.review && s.tab !== "shifts" ? `<button type="button" class="link" data-act="tab" data-v="${v.id}" data-t="shifts" data-fk="review">Review shifts</button>` : ""}</div>`;
+    const archive = s.armed
+      ? `<button type="button" class="btn btn-danger" data-act="archive" data-v="${v.id}" data-fk="arch">Confirm archive</button>`
+      : `<button type="button" class="btn btn-dtext" data-act="archive" data-v="${v.id}" data-fk="arch">Archive</button>`;
+    const canSave = dirty(s) && s.f.locs.length > 0;
+    return head + body + `<div class="dr-foot">${line}<div class="dr-act">${archive}<div class="dr-right">
+      <button type="button" class="btn btn-sec" data-act="cancel" data-v="${v.id}" data-fk="cancel">Cancel</button>
+      <button type="button" class="btn btn-pri" data-act="save" data-v="${v.id}" data-fk="save" ${canSave ? "" : "disabled"}>Save</button></div></div></div>`;
+  }
+
+  function mockPage() {
+    return `<div class="mock" aria-hidden="true"><div class="mnav"><div class="logo"><i></i>Newfork</div>
+      <span>Home</span><span>Schedule</span><span>Requests</span><span>Employees</span><span>Announcements</span><span class="on">Important Dates</span><span>Settings</span></div>
+      <div class="mmain"><div class="m-eye">EVERY DATE. ACCOUNTED FOR.</div><div class="m-h1">Important Dates</div>
+      <div class="m-tabs"><span class="on">Upcoming</span><span>Past</span><span>Archived</span></div>
+      <div class="m-tool"><i></i><i></i><b>New date</b></div>
+      <div class="m-table"><div class="m-row"><span>Important date</span><span>Date</span><span>Type</span><span>Locations</span><span>Impact</span></div>
+      <div class="m-row"><b>Health inspection</b><span>Oct 14, 2026</span><span>Event</span><span>Kadıköy</span><span>None</span></div>
+      <div class="m-row"><b>Thanksgiving</b><span>Nov 26, 2026</span><span>Holiday</span><span>All locations</span><span>1 closed</span></div>
+      <div class="m-row"><b>Christmas Eve</b><span>Dec 24, 2026</span><span>Holiday</span><span>All locations</span><span>Short hours</span></div>
+      <div class="m-row"><b>Independence Day</b><span>Jul 4, 2027</span><span>Holiday</span><span>All locations</span><span>Closed</span></div></div></div></div><div class="scrim"></div>`;
+  }
+
+  function build() {
+    document.getElementById("jump").innerHTML = VARIANTS.map((v) => `<a href="#${v.id}"><span>${v.id}</span>${v.name}</a>`).join("");
+    document.getElementById("variants").innerHTML = VARIANTS.map((v) => `
+      <section class="variant" id="${v.id}" aria-labelledby="h-${v.id}">
+        <div class="vhead"><span class="vletter">${v.id}</span><h2 id="h-${v.id}">${v.name}</h2><span class="vw" data-fitnote="${v.id}"></span></div>
+        <p class="vcap">${v.cap}</p>
+        <div class="frames">
+          <div class="fcol desk-col"><span class="flabel">Desktop · 1440 × 900</span>
+            <div class="fit" data-w="1120" data-h="900"><div class="stage desk">${mockPage()}<div class="dock"><div class="dr" id="dr-${v.id}-desk" role="dialog" aria-label="Edit important date, ${v.name}"></div></div></div></div></div>
+          <div class="fcol phone-col"><span class="flabel">Phone · 390 × 844</span>
+            <div class="fit" data-w="410" data-h="864"><div class="stage phone"><div class="screen"><div class="sbar"><span>9:41</span><i></i></div><div class="dr ph" id="dr-${v.id}-phone" role="dialog" aria-label="Edit important date on phone, ${v.name}"></div></div></div></div></div>
+        </div>
+      </section>`).join("");
+    VARIANTS.forEach((v) => { S[v.id] = fresh(); render(v.id); });
+    fit();
+  }
+  const hosts = (vid) => [document.getElementById(`dr-${vid}-desk`), document.getElementById(`dr-${vid}-phone`)];
+  function render(vid) {
+    const v = VARIANTS.find((x) => x.id === vid);
+    for (const el of hosts(vid)) {
+      const scrolls = {};
+      el.querySelectorAll("[data-scroll]").forEach((n) => (scrolls[n.dataset.scroll] = n.scrollTop));
+      const a = document.activeElement;
+      const fk = a && el.contains(a) ? a.dataset.fk : null;
+      el.innerHTML = drawer(v, S[vid], el.classList.contains("ph") ? "phone" : "desk");
+      el.querySelectorAll('[data-indet="true"]').forEach((c) => (c.indeterminate = true));
+      el.querySelectorAll("[data-scroll]").forEach((n) => { if (scrolls[n.dataset.scroll] != null) n.scrollTop = scrolls[n.dataset.scroll]; });
+      if (fk) el.querySelector(`[data-fk="${fk}"]`)?.focus({ preventScroll: true });
+    }
+    const body = document.querySelector(`#dr-${vid}-desk .dr-body`);
+    const note = document.querySelector(`[data-fitnote="${vid}"]`);
+    if (body && note && S[vid].tab === "details") note.textContent = body.scrollHeight > body.clientHeight + 1 ? "Desktop: needs scrolling" : "Desktop: fits without scrolling";
+  }
+  function softUpdate(vid, source) {
+    const s = S[vid];
+    for (const el of hosts(vid)) {
+      if (!el.contains(source)) { const twin = el.querySelector(`[data-fk="${source.dataset.fk}"]`); if (twin) twin.value = source.value; }
+      el.querySelector('[data-act="save"]').disabled = !(dirty(s) && s.f.locs.length);
+      el.querySelector(".dr-h").textContent = s.f.title || "Untitled date";
+    }
+  }
+  function flash(vid, text) {
+    const s = S[vid];
+    s.flash = text; s.armed = false;
+    clearTimeout(timers[vid]);
+    timers[vid] = setTimeout(() => { S[vid] = fresh(); render(vid); }, 2600);
+  }
+  const clearChoices = (s, l) => { for (const sh of SCEN[G.scenario].shifts) if (!l || sh.loc === l) delete s.f.choice[sh.id]; };
+
+  document.addEventListener("click", (e) => {
+    const g = e.target.closest("[data-g]");
+    if (g) { G[g.dataset.g] = g.dataset.k; syncPills(); VARIANTS.forEach((v) => { clearTimeout(timers[v.id]); S[v.id] = fresh(); render(v.id); }); return; }
+    const b = e.target.closest("[data-act]");
+    if (!b || !b.closest(".dr")) return;
+    const act = b.dataset.act, vid = b.dataset.v, s = S[vid];
+    if (!s || ["field", "text", "hours", "allday"].includes(act)) return;
+    if (act !== "archive") s.armed = false;
+    const f = s.f;
+    if (act === "tab") s.tab = b.dataset.t;
+    else if (act === "expand") s.expand = !s.expand;
+    else if (act === "loc") {
+      // Checkboxes and switches: a plain on / off per row.
+      const l = b.dataset.l;
+      f.locs = f.locs.includes(l) ? f.locs.filter((x) => x !== l) : ALL.filter((x) => f.locs.includes(x) || x === l);
+    } else if (act === "allbox" || act === "allsw") {
+      f.locs = allOn(s) ? [] : ALL.slice();
+    } else if (act === "allpill") {
+      f.locs = ALL.slice();
+    } else if (act === "pillpick") {
+      // Mert's rule: from All, a name picks only itself; then names add; all names light All.
+      const l = b.dataset.l;
+      if (allOn(s)) f.locs = [l];
+      else if (f.locs.includes(l)) { if (f.locs.length > 1) f.locs = f.locs.filter((x) => x !== l); }
+      else f.locs = ALL.filter((x) => f.locs.includes(x) || x === l);
+    } else if (act === "status") {
+      const l = b.dataset.l, k = b.dataset.k;
+      const targets = l === "ALL" ? allLocs() : l === "SEL" ? s.f.locs.slice() : [l];
+      for (const t of targets) {
+        if (k === "off") f.locs = f.locs.filter((x) => x !== t);
+        else { if (!f.locs.includes(t)) f.locs = ALL.filter((x) => f.locs.includes(x) || x === t); f.per[t].status = k; }
+        clearChoices(s, t);
+      }
+    } else if (act === "pick") {
+      const r = rows(s).find((x) => x.id === b.dataset.id);
+      if (b.dataset.c === r.def) delete f.choice[r.id]; else f.choice[r.id] = b.dataset.c;
+    } else if (act === "archive") {
+      if (!s.armed) s.armed = true;
+      else { const t = tally(rows(s)); flash(vid, t.open ? `Archived. ${plural(t.open, "open shift")} stay${t.open === 1 ? "s" : ""} open.` : "Archived."); }
+    } else if (act === "save") {
+      if (!dirty(s) || !f.locs.length) return;
+      const t = tally(rows(s));
+      const done = [t.remove ? `${plural(t.remove, "shift")} removed` : "", t.open ? `${plural(t.open, "shift")} moved to open shifts` : ""].filter(Boolean).join(" · ");
+      flash(vid, done ? `Saved. ${done}.` : "Saved.");
+    } else if (act === "cancel") { clearTimeout(timers[vid]); S[vid] = fresh(); }
+    render(vid);
+  });
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.dataset.act !== "text" || !t.closest(".dr")) return;
+    const s = S[t.dataset.v];
+    s.f[t.dataset.k] = t.value;
+    softUpdate(t.dataset.v, t);
+  });
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (!t.closest(".dr")) return;
+    const vid = t.dataset.v, s = S[vid];
+    if (!s) return;
+    const f = s.f;
+    if (t.dataset.act === "allday") f.allDay = t.checked;
+    else if (t.dataset.act === "field") {
+      const k = t.dataset.k;
+      f[k] = k === "repeats" ? t.value === "true" : t.value;
+      if (k === "starts" && f.ends < f.starts) f.ends = f.starts;
+    } else if (t.dataset.act === "hours" && t.value) {
+      const targets = ["ALL", "SEL"].includes(t.dataset.l) ? f.locs.slice() : [t.dataset.l];
+      for (const l of targets) {
+        const st = f.per[l];
+        st[t.dataset.k] = fromHHMM(t.value);
+        if (st.closes <= st.opens) st.closes = Math.min(st.opens + 60, 1440);
+        clearChoices(s, l);
+      }
+    } else return;
+    render(vid);
+  });
+
+  function syncPills() { document.querySelectorAll("[data-g]").forEach((b) => b.setAttribute("aria-pressed", String(G[b.dataset.g] === b.dataset.k))); }
+  function fit() {
+    document.querySelectorAll(".fit").forEach((w) => {
+      const W = +w.dataset.w, H = +w.dataset.h;
+      const sc = Math.min(1, w.clientWidth / W);
+      w.firstElementChild.style.transform = sc < 1 ? `scale(${sc})` : "";
+      w.style.height = `${Math.ceil(H * sc)}px`;
+    });
+  }
+  syncPills();
+  build();
+  try { new ResizeObserver(fit).observe(document.querySelector(".wrap")); } catch { window.addEventListener("resize", fit); }
+})();
+</script>
+
+</body></html>

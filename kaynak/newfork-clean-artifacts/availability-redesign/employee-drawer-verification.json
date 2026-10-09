@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "width": 1440,
+      "mode": "shift_type",
+      "overflow": false,
+      "rows": 7,
+      "footerVisible": true,
+      "bodyAboveFooter": true,
+      "source": "manager",
+      "copyRevision": 1,
+      "allDay": true,
+      "scrollingOptions": true
+    },
+    {
+      "width": 390,
+      "mode": "shift_type",
+      "overflow": false,
+      "rows": 7,
+      "footerVisible": true,
+      "bodyAboveFooter": true,
+      "source": "manager",
+      "copyRevision": 1,
+      "allDay": true,
+      "scrollingOptions": true
+    },
+    {
+      "width": 1440,
+      "mode": "time_range",
+      "overflow": false,
+      "rows": 7,
+      "footerVisible": true,
+      "bodyAboveFooter": true,
+      "source": "manager",
+      "copyRevision": 1,
+      "allDay": true,
+      "scrollingOptions": false
+    },
+    {
+      "width": 390,
+      "mode": "time_range",
+      "overflow": false,
+      "rows": 7,
+      "footerVisible": true,
+      "bodyAboveFooter": true,
+      "source": "manager",
+      "copyRevision": 1,
+      "allDay": true,
+      "scrollingOptions": false
+    }
+  ],
+  "errors": []
+}

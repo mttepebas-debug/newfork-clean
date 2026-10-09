@@ -1,0 +1,28 @@
+/* Locations, design A (Mert, 2026-10-07): the shared list language of Settings → Documents.
+   Everything else comes from the app's own CSS, list-page.css included. */
+
+/* Table: Location 24 · Address 40 · Phone number 16 · Time zone 16 · menu 32 px. */
+.lv.lv-A.list-page .location-catalog-row { grid-template-columns: minmax(0, 24fr) minmax(0, 40fr) minmax(0, 16fr) minmax(0, 16fr) 32px; gap: 12px; }
+.lv.list-page .job-catalog-row { min-height: 52px; }
+.lv .lv-cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--theme-list-cell-text); font-size: 13px; }
+.lv .lv-faint { color: var(--theme-text-faint); }
+.lv .lv-card-line, .lv .lv-card-meta { display: none; }
+
+/* Drawer: reserve the scrollbar gutter only when the body scrolls, so the fields end on
+   the same line as the close button and Save (today they stop 15 px short). */
+.lv-drawer .catalog-drawer-body { scrollbar-gutter: auto; }
+
+/* Phone (UI-14, 720 px): one card per location. */
+@media (max-width: 720px) {
+  .lv.lv-A.list-page .job-catalog { display: grid; gap: 8px; overflow: visible; border: 0; background: none; }
+  .lv.lv-A.list-page .job-column-headings { display: none; }
+  .lv.lv-A .lv-cell { display: none; }
+  .lv.lv-A.list-page .job-catalog-row { grid-template-columns: minmax(0, 1fr) 44px; align-items: start; min-height: 0; padding: 14px 4px 14px 14px; border: 1px solid var(--theme-list-frame); border-radius: 8px; }
+  .lv.lv-A.list-page .job-row-identity { min-height: 0; }
+  .lv.lv-A.list-page .job-row-name { font-size: 15px; line-height: 22px; }
+  .lv.lv-A .lv-card-line { display: block; margin-top: 2px; color: var(--theme-list-cell-text); font-size: 13px; line-height: 18px; }
+  .lv.lv-A .lv-card-meta { display: block; margin-top: 4px; color: var(--theme-muted); font-size: 12px; line-height: 16px; }
+  .lv.lv-A.list-page .job-row-menu > summary { width: 40px; height: 40px; }
+  /* The Archived tab's empty state keeps the card stack's look: one framed box. */
+  .lv.lv-A.list-page .job-catalog:has(> .catalog-table-empty) { display: block; overflow: hidden; border: 1px solid var(--theme-list-frame); border-radius: 8px; }
+}

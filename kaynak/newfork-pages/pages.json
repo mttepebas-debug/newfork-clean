@@ -1,0 +1,92 @@
+{
+  "accounts": {
+    "hesap1": "Hesap 1 (mt.tepebas)",
+    "hesap2": "Hesap 2"
+  },
+  "pages": [
+    {
+      "file": "giris-tasarim-kitabi.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/BZkoou6GKHrEwcwoDZYqQu"
+      }
+    },
+    {
+      "file": "employees-list-lab.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/U4QsNASs9qycRg1UUMNApA"
+      }
+    },
+    {
+      "file": "giris-ve-katilim-kesfi/",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/PEYuSjGWXGN9dkb9LipikY"
+      }
+    },
+    {
+      "file": "important-date-drawer-designs.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/Pt7K2NVLwFx6TPS9ZuXNKX"
+      }
+    },
+    {
+      "file": "newfork-locations.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/Lru9WAg6HaSbdErLyMhU26"
+      }
+    },
+    {
+      "file": "takas-penceresi-dugmeleri.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/PYbKyq7WaoWmZ7yRoCzT22"
+      }
+    },
+    {
+      "file": "jobs-settings-replica.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/BUJShpW3rXDGFVNyEygDZr"
+      }
+    },
+    {
+      "file": "bildirim-varyantlari.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv"
+      }
+    },
+    {
+      "file": "locations-designs.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/UWTcHirMHXjrfa9TND2TLE"
+      }
+    },
+    {
+      "file": "settings-general-varyantlari.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/Kwz63F5JeddW5S7y2kSsAi"
+      }
+    },
+    {
+      "file": "requests-warnings-lab.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/KwshRJ1SygGaDgyKJuuHT3"
+      }
+    },
+    {
+      "title": "Newfork — Pre-business & Settings",
+      "links": {
+        "hesap2": "https://claude.ai/artifact/KctKCoGjfEDgKSCh7HtLmD"
+      }
+    },
+    {
+      "file": "schedule-templates-s9.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/WkMV2TeZZX9qfwAKVixCg4"
+      }
+    },
+    {
+      "file": "schedule-38-izin-isareti.html",
+      "links": {
+        "hesap1": "https://claude.ai/artifact/2NW3C6EDQVYJiyGqpKvna7"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{"taken_at":"2026-10-08 ~06:45Z, before GA-4 apply_migration","project":"hvyvyisrqyathtliyyyv",
+"request_workspace_closure_service":{"functiondef_md5":"68d050d02bfc2a8638710a942cef8cd8","prosrc_md5":"22ea8d4dbc581051e730c2a280fb392d","note":"full pg_get_functiondef text = main schema.sql definition before 20261008002400 (ga4 v2 branch base 5de09eac)"},
+"ga4_functions_present":0,
+"cron_jobs":["account-deletion 15 3 * * *","announcements-due * * * * *","notification-outbox * * * * *","scheduled-exports */5 * * * *","time-off-deadlines */5 * * * *","workspace-retention 30 3 * * *"],
+"workspaces_by_lifecycle":{"active":3,"due_closures":0},
+"top_versions":["20261008052645 schedule_conflicts_refuse_without_retry","20261008052609 export_rule_is_changed_by_who_reaches_it","20261008052534 a_failed_send_hour_counts_once","20261008052513 shift_edit_keeps_break_and_hidden_time"],
+"migrations":445,
+"rollback":"recreate public.request_workspace_closure_service from origin/main@5de09eac supabase/schema.sql; drop function app_private.complete_due_workspace_closures(); drop function app_private.finish_workspace_closure(uuid,uuid,uuid,timestamptz,text); select cron.unschedule('workspace-closures');"}

@@ -1,0 +1,1023 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Giriş Tasarım Kitabı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the brand's own design book. Quiet mist page, white sheets, one green.
+   Product screens are drawn live at true size (1440 / 390) and scaled into frames;
+   they keep the product's light palette in every theme, like printed proofs. */
+:root {
+  --bg: #f4f5f3; --sheet: #ffffff; --sheet-2: #f7f9f8; --ink: #17221e; --ink-2: #46524d; --muted: #5f6b66;
+  --line: #dce3df; --line-2: #c3cdc8; --green: #176954; --green-ink: #ffffff; --mint: #e7f1ed;
+  --amber: #8a5a00; --amber-wash: #fff4d9; --brick: #b84234; --focus: #177a64;
+  --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1311; --sheet: #151c19; --sheet-2: #1a2320; --ink: #e5ece9; --ink-2: #bfcbc6; --muted: #98a6a0;
+    --line: #2a3531; --line-2: #3c4944; --green: #5cc29d; --green-ink: #0b1a14; --mint: #183329;
+    --amber: #e6bd66; --amber-wash: #33290f; --brick: #f29a8d; --focus: #7fd8b6; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1311; --sheet: #151c19; --sheet-2: #1a2320; --ink: #e5ece9; --ink-2: #bfcbc6; --muted: #98a6a0;
+  --line: #2a3531; --line-2: #3c4944; --green: #5cc29d; --green-ink: #0b1a14; --mint: #183329;
+  --amber: #e6bd66; --amber-wash: #33290f; --brick: #f29a8d; --focus: #7fd8b6; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
+p { margin: 0; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+.mono { font-family: var(--mono); font-size: 0.84em; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; }
+
+.mast { background: var(--sheet); border-bottom: 1px solid var(--line); }
+.mast .wrap { padding-block: 32px 28px; display: grid; gap: 14px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); }
+.mast h1 { font-size: clamp(28px, 4.4vw, 42px); font-weight: 700; }
+.lead { color: var(--ink-2); max-width: 76ch; }
+.choices-line { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 13px; color: var(--muted); }
+.dbstate { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--sheet-2); border: 1px solid var(--line); color: var(--muted); }
+.dbstate.ok { background: var(--mint); color: var(--green); border-color: transparent; }
+.dbstate.warn { background: var(--amber-wash); color: var(--amber); border-color: transparent; }
+
+.nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; gap: 4px; overflow-x: auto; padding-block: 10px; }
+.nav a { flex: 0 0 auto; text-decoration: none; color: var(--ink-2); font-size: 13.5px; font-weight: 500; padding: 6px 12px; border-radius: 8px; }
+.nav a:hover { background: var(--sheet); color: var(--ink); }
+
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 72px; padding-block: 48px 80px; }
+main > section { min-width: 0; scroll-margin-top: 72px; }
+.sec-head { display: grid; gap: 8px; margin-bottom: 24px; max-width: 80ch; }
+.sec-head .num { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.sec-head h2 { font-size: 26px; font-weight: 700; }
+.sec-head p { color: var(--ink-2); }
+.sub-h { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 32px 0 12px; }
+
+.grid3 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.card { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.card h3 { font-size: 16px; font-weight: 650; }
+.card p, .card li { color: var(--ink-2); font-size: 14px; }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.card .rec { font-size: 11.5px; font-weight: 600; color: var(--green); letter-spacing: 0.02em; }
+.tag { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+.pick { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font: inherit; font-size: 13px; font-weight: 500; min-height: 34px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--sheet); color: var(--ink); cursor: pointer; }
+.chip:hover:not(:disabled) { border-color: var(--ink-2); }
+.chip:disabled { opacity: 0.55; cursor: default; }
+.chip[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: var(--green-ink); }
+.chip.soft[aria-pressed="true"] { background: var(--amber-wash); border-color: var(--amber); color: var(--amber); }
+.note-btn { font: inherit; font-size: 13px; background: none; border: 0; color: var(--green); cursor: pointer; padding: 6px 4px; }
+.note { width: 100%; min-height: 60px; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--sheet); color: var(--ink); resize: vertical; }
+.saved { font-size: 12px; color: var(--muted); }
+
+.tile { background: #ffffff; border-radius: 12px; border: 1px solid var(--line); display: grid; place-items: center; aspect-ratio: 16 / 10; position: relative; overflow: hidden; }
+.tile.mint { background: #e7f1ed; }
+.sizes { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.sizes span { display: grid; place-items: center; background: #ffffff; border: 1px solid var(--line); border-radius: 8px; width: 46px; height: 46px; }
+.lockup { display: flex; align-items: center; gap: 10px; }
+.wordmark { font-family: var(--font); font-weight: 650; letter-spacing: -0.03em; color: #17221e; }
+.replay { position: absolute; right: 10px; bottom: 10px; font: inherit; font-size: 12px; border-radius: 7px; border: 1px solid #dce3df; background: #ffffffcc; color: #17221e; padding: 4px 10px; cursor: pointer; }
+.motto-tile { aspect-ratio: auto; min-height: 190px; padding: 28px; place-items: start; align-content: space-between; }
+.motto-tile .m { font-size: 26px; line-height: 1.15; font-weight: 650; letter-spacing: -0.025em; color: #17221e; text-wrap: balance; }
+
+.swatches { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.sw { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--sheet); }
+.sw i { display: block; height: 52px; }
+.sw div { padding: 8px 10px; display: grid; gap: 2px; font-size: 12.5px; }
+.sw b { font-weight: 600; }
+.typescale { display: grid; gap: 10px; }
+.typescale .row { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.typescale .row span:first-child { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); font-size: 14px; max-width: 86ch; }
+
+.flowmap { background: var(--sheet); border: 1px solid var(--line); border-radius: 14px; padding: 20px; overflow-x: auto; }
+.flowmap pre.mermaid { margin: 0; min-width: 760px; background: transparent; }
+
+.proof { background: #ffffff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.dev { display: grid; gap: 8px; min-width: 0; }
+.dev.desk { flex: 1 1 520px; }
+.dev.phone { flex: 0 0 auto; width: min(100%, 248px); }
+.dev .cap { font-size: 12px; color: #5f6b66; display: flex; justify-content: space-between; gap: 8px; }
+.viewport { position: relative; width: 100%; overflow: hidden; border-radius: 10px; border: 1px solid #cbd4d0; background: #f4f5f3; }
+.viewport > .canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.dev.phone .viewport { border-radius: 26px; border: 6px solid #17221e; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tab { font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--sheet); color: var(--ink-2); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.explorer { display: grid; gap: 20px; }
+@media (min-width: 1060px) { .explorer { grid-template-columns: 220px minmax(0, 1fr); } }
+.flows { display: flex; gap: 6px; overflow-x: auto; }
+@media (min-width: 1060px) { .flows { flex-direction: column; overflow: visible; position: sticky; top: 72px; align-self: start; } }
+.flow-btn { flex: 0 0 auto; text-align: left; font: inherit; font-size: 14px; padding: 8px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--ink-2); cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+.flow-btn:hover { background: var(--sheet); }
+.flow-btn[aria-current="true"] { background: var(--sheet); border-color: var(--line); color: var(--ink); font-weight: 600; }
+.flow-btn small { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.state-notes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-top: 16px; }
+.state-notes .card { gap: 8px; }
+.k { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; }
+.sec-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 820px; }
+.sec-table th, .sec-table td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.sec-table th { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); background: var(--sheet-2); }
+.sec-table td:first-child { font-weight: 600; white-space: nowrap; }
+
+.mk { display: grid; gap: 16px; }
+@media (min-width: 900px) { .mk { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.decisions { display: grid; gap: 8px; }
+.decisions div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.decisions b { font-weight: 600; text-align: right; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-block: 20px 40px; }
+
+/* ===================== PRODUCT (fixed light palette) ===================== */
+.app { --p-bg: #f4f5f3; --p-soft: #f7f9f8; --p-ink: #17221e; --p-ink2: #50605a; --p-muted: #5f6b66;
+  --p-line: #dce3df; --p-line2: #cbd4d0; --p-input: #aeb9b4; --p-green: #176954; --p-mint: #dbece5; --p-sel: #e7f1ed;
+  --p-focus: #177a64; --p-halo: #c9eadf; --p-danger: #b84234; --p-danger-w: #fff0ee; --p-warn: #8a5a00; --p-warn-w: #fff7e2; --p-pine: #14201b;
+  font-family: "Inter", system-ui, sans-serif; color: var(--p-ink); background: var(--p-bg); font-size: 15px; line-height: 24px; position: relative; overflow: hidden; }
+.app * { box-sizing: border-box; }
+.app .title { font-size: 32px; line-height: 40px; font-weight: 650; letter-spacing: -0.02em; margin: 0; }
+.app.ph .title { font-size: 26px; line-height: 32px; }
+.app .subtitle { color: var(--p-ink2); margin: 8px 0 0; }
+.app .subtitle b { color: var(--p-ink); font-weight: 600; }
+.app .form { display: grid; gap: 20px; }
+.app .field { display: grid; gap: 6px; }
+.app .label { font-size: 13px; line-height: 20px; font-weight: 550; display: flex; justify-content: space-between; }
+.app .label a { color: var(--p-green); font-weight: 500; }
+.app .input { height: 44px; border: 1px solid var(--p-input); border-radius: 8px; background: #fff; padding: 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 15px; }
+.app.ph .input { font-size: 16px; }
+.app .input .ph { color: #8a958f; }
+.app .input.focus { border-color: var(--p-focus); box-shadow: 0 0 0 3px var(--p-halo); }
+.app .input.error { border-color: var(--p-danger); }
+.app .input.locked { background: var(--p-soft); color: var(--p-ink2); }
+.app .input .eye { font-size: 13px; font-weight: 550; color: var(--p-ink2); }
+.app .ferr { font-size: 13px; line-height: 20px; color: var(--p-danger); display: flex; gap: 6px; align-items: flex-start; }
+.app .hint { font-size: 13px; line-height: 20px; color: var(--p-muted); }
+.app .rules { display: grid; gap: 4px; font-size: 13px; color: var(--p-muted); }
+.app .rules .on { color: var(--p-green); }
+.app .btn { height: 44px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; padding: 0 18px; border: 1px solid transparent; white-space: nowrap; }
+.app .btn.w { width: 100%; }
+.app .btn.primary { background: var(--p-green); color: #fff; }
+.app .btn.primary.dis { background: #9cbfb3; }
+.app .btn.secondary { background: #fff; color: var(--p-ink); border-color: var(--p-line2); }
+.app .btn.danger { background: var(--p-danger); color: #fff; }
+.app .btn.ghost { background: transparent; color: var(--p-green); padding: 0 4px; height: auto; font-weight: 550; }
+.app .spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ffffff66; border-top-color: #fff; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.app .banner { border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 21px; display: flex; gap: 10px; align-items: flex-start; border: 1px solid; }
+.app .banner.info { background: var(--p-sel); border-color: #cfe3da; color: #244c3d; }
+.app .banner.warn { background: var(--p-warn-w); border-color: #ecd9a8; color: #5f491f; }
+.app .banner.danger { background: var(--p-danger-w); border-color: #f0cdc7; color: #653b36; }
+.app .ctx { display: flex; gap: 14px; align-items: center; background: #fff; border: 1px solid var(--p-line); border-radius: 12px; padding: 16px; }
+.app .ctx .av { width: 44px; height: 44px; border-radius: 10px; background: var(--p-green); color: #fff; display: grid; place-items: center; font-weight: 650; font-size: 18px; flex: 0 0 auto; }
+.app .ctx b { display: block; font-weight: 600; font-size: 15px; line-height: 22px; }
+.app .ctx span { font-size: 13px; color: var(--p-ink2); line-height: 19px; }
+.app .legal { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--p-muted); }
+.app .center-icon { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center; background: var(--p-sel); color: var(--p-green); }
+.app .center-icon.warn { background: var(--p-warn-w); color: var(--p-warn); }
+.app .center-icon.danger { background: var(--p-danger-w); color: var(--p-danger); }
+.app .meta { font-size: 13px; color: var(--p-muted); }
+.app .meta a, .app .after a { color: var(--p-green); font-weight: 550; }
+.app .after { font-size: 13.5px; color: var(--p-ink2); text-align: center; }
+.app .skel { background: linear-gradient(90deg, #eef1ef 25%, #f6f8f7 37%, #eef1ef 63%); background-size: 400% 100%; animation: sk 1.4s ease infinite; border-radius: 8px; }
+@keyframes sk { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+.app .otp { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.app .otp i { height: 56px; border: 1px solid var(--p-input); border-radius: 10px; background: #fff; display: grid; place-items: center; font-style: normal; font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.app .otp i.f { border-color: var(--p-focus); box-shadow: 0 0 0 3px var(--p-halo); }
+.app .otp i.f::after { content: ""; width: 2px; height: 24px; background: var(--p-ink); animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+.app .otp.err i { border-color: var(--p-danger); }
+.app .otp.ok i { border-color: var(--p-green); background: var(--p-sel); }
+.app .options { display: grid; gap: 12px; }
+.app .option { display: flex; gap: 14px; align-items: flex-start; padding: 18px; background: #fff; border: 1px solid var(--p-line2); border-radius: 12px; }
+.app .option.sel { border-color: var(--p-green); box-shadow: 0 0 0 1px var(--p-green); }
+.app .option .oi { width: 40px; height: 40px; border-radius: 10px; background: var(--p-sel); color: var(--p-green); display: grid; place-items: center; flex: 0 0 auto; }
+.app .option b { display: block; font-weight: 600; }
+.app .option span { font-size: 14px; color: var(--p-ink2); }
+.app .option .radio { margin-left: auto; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--p-line2); flex: 0 0 auto; margin-top: 2px; }
+.app .option.sel .radio { border: 6px solid var(--p-green); }
+
+.app .split { display: grid; grid-template-columns: 45% 55%; height: 100%; }
+.app .formcol { background: #fff; display: grid; grid-template-rows: auto 1fr auto; padding: 40px 64px; }
+.app .formcol .inner { width: 400px; max-width: 100%; margin: 0 auto; align-self: center; display: grid; gap: 28px; }
+.app .topline { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--p-ink2); min-height: 24px; }
+.app .topline a { color: var(--p-green); font-weight: 600; }
+.app .brandpanel { position: relative; padding: 48px 56px; display: grid; grid-template-rows: auto 1fr auto; gap: 32px; overflow: hidden; }
+.app .brandpanel.mint { background: #e7f1ed; }
+.app .brandpanel.pine { background: var(--p-pine); color: #e9f2ee; }
+.app .bp-motto { font-size: 44px; line-height: 50px; font-weight: 650; letter-spacing: -0.03em; max-width: 480px; text-wrap: balance; }
+.app .bp-values { display: grid; gap: 12px; font-size: 15px; color: #2c3d36; }
+.app .brandpanel.pine .bp-values { color: #b9cbc3; }
+.app .bp-values div { display: flex; gap: 10px; align-items: flex-start; }
+.app .bp-values i { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px; background: #17695422; display: grid; place-items: center; margin-top: 2px; }
+.app .brandpanel.pine .bp-values i { background: #5cc29d26; }
+.app .gridcanvas { height: 100%; display: grid; place-items: center; background-color: #f4f5f3;
+  background-image: linear-gradient(#e3e8e5 1px, transparent 1px), linear-gradient(90deg, #e3e8e5 1px, transparent 1px); background-size: 56px 56px; background-position: center; }
+.app .cardshell { width: 456px; background: #fff; border: 1px solid var(--p-line); border-radius: 16px; padding: 36px 28px; display: grid; gap: 28px; box-shadow: 0 1px 2px #17221e0d, 0 12px 32px #17221e0f; }
+.app .centerstack { display: grid; gap: 24px; justify-items: center; }
+.app .under-motto { font-size: 14px; color: var(--p-ink2); }
+.app.ph .phone-head { padding: 20px 20px 24px; display: grid; gap: 14px; }
+.app.ph .phone-head.mint { background: #e7f1ed; }
+.app.ph .phone-head.pine { background: var(--p-pine); color: #e9f2ee; }
+.app.ph .phone-head .ph-motto { font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -0.015em; }
+.app.ph .phone-body { background: #fff; padding: 28px 20px 24px; display: grid; gap: 24px; align-content: start; }
+.app.ph .strip { display: flex; gap: 4px; height: 8px; }
+.app.ph .strip i { flex: 1; border-radius: 4px; background: #17695433; animation: stripfill 3.2s ease-in-out infinite; }
+.app.ph .strip i:nth-child(odd) { animation-delay: 0.4s; }
+.app.ph .phone-head.pine .strip i { background: #5cc29d40; }
+@keyframes stripfill { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+.app .topbar { height: 64px; background: #fff; border-bottom: 1px solid var(--p-line); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; }
+.app.ph .topbar { height: 56px; padding: 0 16px; }
+.app .who { display: flex; align-items: center; gap: 14px; }
+.app .who .id { text-align: right; font-size: 13px; line-height: 18px; }
+.app .who .id b { display: block; font-weight: 600; }
+.app .who .id span { color: var(--p-muted); }
+.app .col560 { width: 560px; max-width: calc(100% - 40px); margin: 0 auto; padding: 56px 0; display: grid; gap: 32px; }
+.app.ph .col560 { width: auto; max-width: none; margin: 0 20px; padding: 28px 0; gap: 24px; }
+.app .group { display: grid; gap: 10px; }
+.app .group > .gl { font-size: 12px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--p-muted); }
+.app .list { background: #fff; border: 1px solid var(--p-line); border-radius: 12px; overflow: hidden; }
+.app .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; padding: 14px 16px; border-top: 1px solid var(--p-line); }
+.app .row:first-child { border-top: 0; }
+.app .row.sel { background: var(--p-sel); }
+.app .row .rt b { display: block; font-weight: 600; font-size: 15px; line-height: 22px; }
+.app .row .rt span { font-size: 13px; color: #50605a; display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.app .row .acts { display: flex; gap: 8px; }
+.app .row .why { grid-column: 1 / -1; background: var(--p-soft); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; line-height: 20px; color: #3b4a44; }
+.app.ph .row { grid-template-columns: 1fr; }
+.app.ph .row .acts > .btn { flex: 1; }
+.app .pill { font-size: 12px; line-height: 18px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
+.app .pill.warn { background: var(--p-warn-w); color: #6d4a00; }
+.app .pill.ok { background: var(--p-sel); color: #1d5b48; }
+.app .pill.grey { background: #eef1ef; color: #4f5d57; }
+.app .star { color: var(--p-green); font-size: 13px; font-weight: 600; }
+
+.app .wizard { display: grid; grid-template-columns: 280px 1fr; height: calc(100% - 64px); }
+.app .rail { background: #fff; border-right: 1px solid var(--p-line); padding: 32px 24px; display: grid; gap: 4px; align-content: start; }
+.app .step { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 8px; font-size: 14px; color: var(--p-ink2); }
+.app .step i { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--p-line2); display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 600; flex: 0 0 auto; }
+.app .step.done i { background: var(--p-green); border-color: var(--p-green); color: #fff; }
+.app .step.now { background: var(--p-sel); color: var(--p-ink); font-weight: 600; }
+.app .step.now i { border-color: var(--p-green); color: var(--p-green); }
+.app .stage { position: relative; overflow: hidden; }
+.app .stage .col560 { padding-bottom: 120px; }
+.app .footbar { position: absolute; left: 0; right: 0; bottom: 0; height: 76px; background: #fff; border-top: 1px solid var(--p-line); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; gap: 10px; }
+.app.ph .footbar { padding: 0 16px; height: 72px; }
+.app.ph .footbar .btn { flex: 1; }
+.app .progress { height: 4px; border-radius: 2px; background: #e3e8e5; overflow: hidden; }
+.app .progress b { display: block; height: 100%; background: var(--p-green); }
+.app .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.app.ph .twocol { grid-template-columns: 1fr; }
+.app .phone-prefix { display: flex; align-items: center; gap: 10px; }
+.app .phone-prefix .pre { color: var(--p-muted); border-right: 1px solid var(--p-line); padding-right: 10px; }
+.app .badge-step { font-size: 12px; font-weight: 600; color: var(--p-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+.glimpse { width: 520px; background: #fff; border-radius: 14px; border: 1px solid #d3e3dc; box-shadow: 0 18px 48px #1769541f; padding: 18px; font-family: "Inter", sans-serif; color: #17221e; position: relative; }
+.glimpse .gh { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 650; }
+.glimpse .gtabs { display: flex; gap: 6px; margin: 12px 0; }
+.glimpse .gtabs span { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: #eef1ef; color: #50605a; }
+.glimpse .gtabs span.on { background: #17221e; color: #fff; }
+.glimpse .gg { display: grid; grid-template-columns: 92px repeat(7, 1fr); gap: 6px; font-size: 11px; }
+.glimpse .gg .d { color: #5f6b66; font-weight: 600; text-align: center; padding-bottom: 2px; }
+.glimpse .gg .n { display: flex; align-items: center; gap: 6px; font-weight: 550; color: #2c3d36; font-size: 12px; }
+.glimpse .gg .n i { width: 20px; height: 20px; border-radius: 50%; background: #e3e8e5; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 650; }
+.glimpse .s { height: 30px; border-radius: 6px; padding: 3px 6px; font-size: 10.5px; line-height: 12px; font-weight: 600; opacity: 0; transform: translateY(6px); animation: settle 0.6s cubic-bezier(.2,.7,.2,1) forwards; }
+.glimpse .s small { display: block; font-weight: 500; opacity: 0.8; }
+.glimpse .s.srv { background: #dbece5; color: #1d5b48; }
+.glimpse .s.kit { background: #f6ead2; color: #6d4a00; }
+.glimpse .s.open { background: #fff; border: 1.5px dashed #9cbfb3; color: #176954; animation: settle 0.6s cubic-bezier(.2,.7,.2,1) forwards, claim 6s 2.4s ease-in-out infinite; }
+.glimpse .e { height: 30px; }
+@keyframes settle { to { opacity: 1; transform: none; } }
+@keyframes claim { 0%, 30% { background: #fff; border-style: dashed; } 40%, 85% { background: #dbece5; border-style: solid; border-color: #dbece5; } 100% { background: #fff; border-style: dashed; } }
+.glimpse .toast { position: absolute; right: -28px; bottom: -22px; background: #17221e; color: #fff; border-radius: 12px; padding: 10px 14px; font-size: 12px; line-height: 16px; box-shadow: 0 10px 28px #17221e33; display: flex; gap: 10px; align-items: center; animation: toast 6s 2.4s ease-in-out infinite; opacity: 0; }
+.glimpse .toast b { display: block; font-weight: 600; }
+@keyframes toast { 0%, 32% { opacity: 0; transform: translateY(8px); } 42%, 82% { opacity: 1; transform: none; } 92%, 100% { opacity: 0; transform: translateY(4px); } }
+.rail-ill .tk { animation: tk 0.7s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes tk { from { transform: translateX(-40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.sym-bars rect { transform-box: fill-box; transform-origin: 50% 100%; }
+.anim .sym-bars rect { animation: rise 0.9s cubic-bezier(.2,.8,.2,1) both; }
+.anim .sym-bars rect:nth-child(2) { animation-delay: 0.12s; }
+.anim .sym-bars rect:nth-child(3) { animation-delay: 0.24s; }
+@keyframes rise { from { transform: scaleY(0.15); } 60% { transform: scaleY(1.08); } to { transform: scaleY(1); } }
+.sym-grid rect { transform-box: fill-box; transform-origin: center; }
+.anim .sym-grid rect { animation: pop 0.5s cubic-bezier(.2,.8,.2,1) both; }
+.anim .sym-grid rect:nth-child(2) { animation-delay: 0.06s; } .anim .sym-grid rect:nth-child(3) { animation-delay: 0.12s; }
+.anim .sym-grid rect:nth-child(4) { animation-delay: 0.18s; } .anim .sym-grid rect:nth-child(5) { animation-delay: 0.24s; }
+.anim .sym-grid rect:nth-child(6) { animation-delay: 0.42s; }
+@keyframes pop { from { transform: scale(0.2); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } to { transform: scale(1); } }
+.sym-dial .hand { transform-box: view-box; transform-origin: 16px 16px; }
+.anim .sym-dial .hand { animation: sweep 1s cubic-bezier(.3,.7,.2,1) both; }
+.anim .sym-dial .seg { animation: segin 0.5s 0.7s both; }
+@keyframes sweep { from { transform: rotate(-200deg); } to { transform: rotate(0deg); } }
+@keyframes segin { from { opacity: 0; } to { opacity: 1; } }
+.md-week { display: grid; grid-template-columns: repeat(7, 22px); gap: 6px; }
+.md-week i { height: 22px; border-radius: 5px; background: #e3e8e5; }
+.anim .md-week i.f { animation: fillin 0.55s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes fillin { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
+.md-eq { display: flex; gap: 6px; align-items: flex-end; height: 64px; }
+.md-eq i { width: 14px; border-radius: 4px; background: #176954; transform-origin: bottom; }
+.anim .md-eq i { animation: eq 1.6s ease-in-out both; }
+@keyframes eq { 0% { transform: scaleY(0.2); } 30% { transform: scaleY(1.2); } 55% { transform: scaleY(0.6); } 80% { transform: scaleY(1.05); } 100% { transform: scaleY(1); } }
+
+.story-frames { position: relative; }
+.story-frames > .fr { position: absolute; inset: 0; opacity: 0; transition: opacity 0.6s; }
+.story-frames > .fr.on { opacity: 1; }
+.dots { display: flex; gap: 6px; justify-content: center; }
+.dots i { width: 6px; height: 6px; border-radius: 3px; transition: width 0.3s; }
+.dots i.on { width: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  .glimpse .s, .glimpse .toast { opacity: 1 !important; transform: none !important; }
+}
+</style>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="eyebrow">Ekran 16 · Sıfırdan tasarım · 7 Ekim 2026</div>
+    <h1>Giriş ve katılım, sıfırdan</h1>
+    <p class="lead">Bugünkü ekranların düzeltilmiş hâli değil: kapıdan uygulamaya kadar akış baştan kuruldu. Önce marka, sonra tek tasarım dili, sonra akış haritası ve her ekranın her hâli, gerçek ölçüde (1440 ve 390) çizildi. Her bölümde seç ya da not bırak; seçimler bu sayfada kalır, sonra kurala ve koda dönüşür. Kodda da eski ekranlar yamanmaz: yeni ekranlar yeni bileşenlerle yazılır, eskileri silinir.</p>
+    <div class="choices-line"><span id="pick-count">0 seçim yapıldı</span><span id="db-state" class="dbstate">Seçimler yükleniyor…</span></div>
+  </div>
+</header>
+<nav class="nav" aria-label="Bölümler"><div class="wrap">
+  <a href="#model">1 Giriş modeli</a><a href="#marka">2 Marka</a><a href="#dil">3 Tasarım dili</a><a href="#harita">4 Akış haritası</a><a href="#duzen">5 Giriş düzeni</a><a href="#ekranlar">6 Ekranlar</a><a href="#guvenlik">7 Güvenlik</a><a href="#pazarlama">8 Pazarlama</a><a href="#kararlar">9 Kararların</a>
+</div></nav>
+
+<main class="wrap">
+  <section id="model" aria-labelledby="model-h">
+    <div class="sec-head"><span class="num">01</span><h2 id="model-h">Önce temel karar: insanlar nasıl girsin?</h2>
+      <p>Sıfırdan kurarken ilk soru ekran değil, giriş modeli. Bugün parola var: bu yüzden "Create account", "Forgot password", "Reset password" ve "e-postanı onayla" diye dört ayrı ekran ve dört ayrı hata ailesi doğuyor. Kodla girişte bunların hepsi tek adımda biter. Bu temel bir model kararı; seçimin aşağıdaki bütün ekranları değiştirir.</p></div>
+    <div class="grid3" id="models"></div>
+  </section>
+
+  <section id="marka" aria-labelledby="marka-h">
+    <div class="sec-head"><span class="num">02</span><h2 id="marka-h">Marka</h2>
+      <p>"Newfork" senin 4 Ekim kararınla geçici bir isim. Sembol bu yüzden isimden bağımsız: yazı logosu isim seçilince değişir, sembol, motto ve hareket kalır. Üç yön de restoranın haftasından çıkıyor: vardiya blokları, haftanın ızgarası, kokpitin kadranı.</p></div>
+    <div class="sub-h">Sembol</div><div class="grid3" id="symbols"></div>
+    <div class="sub-h">Motto</div><div class="grid3" id="mottos"></div>
+    <div class="sub-h">Marka hareketi</div><div class="grid3" id="motions"></div>
+  </section>
+
+  <section id="dil" aria-labelledby="dil-h">
+    <div class="sec-head"><span class="num">03</span><h2 id="dil-h">Tasarım dili</h2>
+      <p>Bütün ekranlar bu birkaç parçadan kurulur ve her parçanın tek ölçüsü var.</p></div>
+    <div class="sub-h">Renk</div><div class="swatches" id="swatches"></div>
+    <div class="sub-h">Yazı (Inter, tek aile)</div><div class="card typescale" id="typescale"></div>
+    <div class="sub-h">Bileşenler (gerçek ölçüde)</div>
+    <div class="proof"><div class="app" id="components" style="width:100%;padding:24px;border-radius:10px"></div></div>
+    <div class="sub-h">Kurallar</div>
+    <ul class="rules">
+      <li>Her ekranda tek yeşil düğme: ileri götüren eylem. Beyaz düğme geri ya da öteki yol. Yıkıcı eylem beyaz başlar, ilk tıkta kırmızı "Confirm …" olur.</li>
+      <li>Düğme ve alan tam 44 px, köşe 8; kod kutuları 56 px. Form sütunu 400 px, giriş sonrası sütun 560 px, ikisi de ortada. Boşluklar 8, 12, 16, 24, 32, 48.</li>
+      <li>Yazılan değer normal kalınlıkta; etiket 13 px. Telefonda alan yazısı 16 px.</li>
+      <li>Hata alanın altında ve alana bağlı; odak hataya ya da sonuç başlığına gider. Sunucu metni, kod adı, "organization / tenant / membership" ekranda yok.</li>
+      <li>Kişi adı yerine rol: "The manager of Main Dining invited you", "An owner or admin can lift it".</li>
+      <li>Hareket: açılışta tek düzenli an (0,6–0,9 sn); arkada en çok 8 sn'de bir sakin döngü; "hareketi azalt" açıksa hiç.</li>
+    </ul>
+  </section>
+
+  <section id="harita" aria-labelledby="harita-h">
+    <div class="sec-head"><span class="num">04</span><h2 id="harita-h">Akış haritası</h2>
+      <p>Kapıdan uygulamaya her yol. Tek kapı (e-posta), tek doğrulama (kod), sonra kişinin durumuna göre tek bir iniş. Ayrı "durum sayfası" yok: bir workspace'in neden açılmadığı, Workspaces listesinde satırın içinde yazar.</p></div>
+    <div class="flowmap"><pre class="mermaid">
+flowchart LR
+  MAIL([Davet e-postası]) --> INV[Davet sayfası]
+  DOOR([Giriş: e-posta]) --> CODE[6 haneli kod]
+  INV -->|Continue as …| CODE
+  CODE -->|Hesap yok| NAME[Adın]
+  NAME --> PATH{Ne yapacaksın?}
+  PATH -->|Restoranımı kur| OWNER[Owner kurulumu]
+  PATH -->|Ekibime katıl| WAIT[Davet bekleniyor]
+  CODE -->|Davetten geldi| JOINED[Katıldın] --> ONB[Çalışan kurulumu]
+  CODE -->|Bekleyen davet var| FOUND[Bekleyen davet]
+  FOUND -->|Join| ONB
+  FOUND -->|Not now| HUB
+  CODE -->|Birden çok workspace, favori yok| HUB[Workspaces]
+  CODE -->|Tek workspace ya da favori| APP([Uygulama])
+  HUB --> APP
+  OWNER --> APP
+  ONB -->|Onay| APP
+    </pre></div>
+  </section>
+
+  <section id="duzen" aria-labelledby="duzen-h">
+    <div class="sec-head"><span class="num">05</span><h2 id="duzen-h">Giriş düzeni</h2>
+      <p>Üç sahne, aynı form. Seçtiğin düzen aşağıdaki bütün ekranlara uygulanır.</p></div>
+    <div class="tabs" role="tablist" aria-label="Düzen varyantı" id="layout-tabs"></div>
+    <div class="proof" id="layout-proof"></div>
+    <div class="pick" style="margin-top:14px" data-id="layout" data-choices="A:A · Nane panel ve ürün,B:B · Izgara üstünde kart,C:C · Koyu çam panel"></div>
+  </section>
+
+  <section id="ekranlar" aria-labelledby="ekranlar-h">
+    <div class="sec-head"><span class="num">06</span><h2 id="ekranlar-h">Ekranlar ve bütün hâlleri</h2>
+      <p>Soldan akışı, üstten hâli seç. Giriş akışı 1. bölümdeki modele göre değişir (üstteki düğmeyle ikisine de bakabilirsin). Her hâlin altında ekranın işi ve kuralı yazar; "Uygun / Değiştir / Konuşalım" seçebilirsin.</p></div>
+    <div class="tabs" role="tablist" aria-label="Giriş modeli" id="model-tabs"></div>
+    <div class="explorer">
+      <div class="flows" id="flows" role="tablist" aria-label="Akışlar"></div>
+      <div style="min-width:0">
+        <div class="tabs" id="state-tabs" role="tablist" aria-label="Hâller"></div>
+        <div class="proof" id="screen-proof"></div>
+        <div class="state-notes" id="state-notes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="guvenlik" aria-labelledby="guvenlik-h">
+    <div class="sec-head"><span class="num">07</span><h2 id="guvenlik-h">Güvenlik tasarımı</h2>
+      <p>Her akışın hedef güvenlik davranışı; seçili modele göre. Altında sunucuda yapılacak iş paketi var. Yetki, oturum ve parola işi olduğu için en riskli sınıfta (R3): yazılı görev, bağımsız güvenlik incelemesi, testler ve onayla yapılır.</p></div>
+    <div class="table-wrap"><table class="sec-table" id="sec-table"></table></div>
+    <div class="grid3" style="margin-top:16px" id="sec-build"></div>
+  </section>
+
+  <section id="pazarlama" aria-labelledby="pazarlama-h">
+    <div class="sec-head"><span class="num">08</span><h2 id="pazarlama-h">Pazarlama</h2>
+      <p>Markanın kendi sesiyle üç parça: web ve paylaşım görseli, telefon için dikey hikâye, üç karelik kısa anlatı. Sahte müşteri yorumu, logo ya da uydurma sayı yok; yalnız ürünün gerçekten yaptığı.</p></div>
+    <div class="mk">
+      <div class="card"><div class="tag">Web / paylaşım görseli · 1200 × 630</div><div class="dev" style="width:100%"><div class="viewport" data-w="1200" data-h="630" id="ad-hero"></div></div></div>
+      <div class="card"><div class="tag">Dikey hikâye · 1080 × 1920</div><div class="dev" style="width:min(100%,230px)"><div class="viewport" data-w="1080" data-h="1920" id="ad-story" style="border-radius:16px"></div></div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="tag">Üç karelik anlatı · kendiliğinden döner</div><div class="dev" style="width:100%"><div class="viewport" data-w="1200" data-h="500" id="ad-frames"></div></div></div>
+    <div class="pick" style="margin-top:14px" data-id="marketing" data-choices="uygun:Bu yön uygun,degistir:Değiştir,konusalim:Konuşalım"></div>
+  </section>
+
+  <section id="kararlar" aria-labelledby="kararlar-h">
+    <div class="sec-head"><span class="num">09</span><h2 id="kararlar-h">Kararların</h2>
+      <p>Seçtiklerin burada toplanır. Ben okuyup karar kaydına işler, sonra ekran listesine ve koda dönüştürürüm.</p></div>
+    <div class="decisions" id="decisions"></div>
+  </section>
+</main>
+<div class="wrap"><footer>Ekran 16 · sıfırdan tasarım önerisi · hazırlayan: ekran 16 oturumu · 7 Ekim 2026. Ürün metinleri ABD İngilizcesi; açıklamalar Türkçe.</footer></div>
+
+<script>
+/* ===== brand ===== */
+function symbolSVG(kind, size, opts = {}) {
+  const ink = opts.ink || "#17221e", green = opts.green || "#176954";
+  if (kind === "bars") return `<svg class="sym-bars" width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="17" width="6.5" height="11" rx="3.25" fill="${ink}"/><rect x="12.75" y="11" width="6.5" height="17" rx="3.25" fill="${ink}"/><rect x="21.5" y="4" width="6.5" height="24" rx="3.25" fill="${green}"/></svg>`;
+  if (kind === "grid") return `<svg class="sym-grid" width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true">${[[3, 7], [12.25, 7], [21.5, 7], [3, 17.5], [12.25, 17.5]].map(([x, y]) => `<rect x="${x}" y="${y}" width="7.5" height="7.5" rx="2.2" fill="none" stroke="${ink}" stroke-width="2"/>`).join("")}<rect x="21.5" y="17.5" width="7.5" height="7.5" rx="2.2" fill="${green}"/></svg>`;
+  return `<svg class="sym-dial" width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="${ink}" stroke-width="2.2"/><path class="seg" d="M16 3.5 A12.5 12.5 0 0 1 26.83 9.75" fill="none" stroke="${green}" stroke-width="4.4" stroke-linecap="round"/><g class="hand"><line x1="16" y1="16" x2="22.2" y2="8.8" stroke="${ink}" stroke-width="2.6" stroke-linecap="round"/></g><circle cx="16" cy="16" r="2.4" fill="${ink}"/></svg>`;
+}
+const SYMBOLS = [
+  { id: "bars", name: "Vardiya blokları", idea: "Üç yuvarlak blok, haftadaki vardiyalar gibi yükseliyor; en uzunu yeşil. Hem yükselen bir çizgi hem soyut bir N." },
+  { id: "grid", name: "Haftanın ızgarası", idea: "Altı hücrelik ızgara, biri dolu: bugün. Plan duygusu; 16 px'te bile net." },
+  { id: "dial", name: "Kokpit kadranı", idea: "\"Uygulama bir kokpit\" sözünden: kadran, yeşil dilim, akrep. Şimdi önemli olan vardiyayı gösteren gösterge." }
+];
+const MOTTOS = [
+  { id: "place", text: "Every shift, in its place.", why: "Sakin ve kesin; düzen vaadi. Sembolün yanında tek satıra sığar." },
+  { id: "runs", text: "Run the week before it runs you.", why: "Müdürün Pazar akşamı derdine konuşur; esprili, akılda kalır." },
+  { id: "cockpit", text: "The cockpit for your restaurant team.", why: "Senin ürün tarifin; kategori net, ton ciddi." }
+];
+const MOTIONS = [
+  { id: "settle", name: "Hafta yerine oturur", idea: "Vardiya blokları inip haftaya yerleşir. Giriş panelinde ve yayın anında." },
+  { id: "rise", name: "Bloklar yükselir", idea: "Sembolün blokları kalkıp durur. Yükleniyor ve başarı anlarında." },
+  { id: "sweep", name: "Akrep bugüne döner", idea: "Kadranın akrebi dönüp yeşil dilime oturur. Açılış ve \"bugün\"e dönüş." }
+];
+const MODELS = [
+  { id: "code", name: "E-posta ve 6 haneli kod", rec: true, how: "Kişi e-postasını yazar, gelen kodu girer. Hesap yoksa aynı kod hesabı açar; davetten gelen kişi e-postasını yazmaz bile.",
+    gains: ["Tek kapı: giriş ve hesap açma aynı ekran.", "\"Forgot password\", \"Reset password\", \"Confirm your email\" ekranları yok; kod e-postayı zaten kanıtlıyor.", "Sızdırılacak, unutulacak parola yok; destek yükü düşer.", "Telefonda çalışan için en hızlısı: kod kopyalanıp yapıştırılır."],
+    costs: ["E-postaya o an erişimi olmayan giremez (oturum 30 gün açık kaldığı için nadir).", "Owner'ın sahiplik devri ve workspace kapatma gibi işlerde parola yerine taze kod istenir; bu ekranlar da değişir."],
+    basis: "Dayanak: yok, yeni karar. Slack, Notion ve Linear varsayılan olarak böyle." },
+  { id: "both", name: "Parola, yanında \"kodla gir\"", how: "Bugünkü gibi parola, ama giriş ekranında \"Email me a code\" seçeneği de var.",
+    gains: ["Parola alışkanlığı olanlar için tanıdık.", "Parolasını unutan kodla girer."],
+    costs: ["Dört parola ekranı ve hata ailesi kalır; iki yol iki kat test ve güvenlik yüzeyi.", "Parola sızıntı koruması kapalı (ücretli, senin kararın)."],
+    basis: "Dayanak: yok, yeni karar." },
+  { id: "password", name: "Yalnız parola (bugünkü model)", how: "E-posta ve parola; unutulursa e-postayla sıfırlama.",
+    gains: ["Değişiklik en az."],
+    costs: ["Bütün parola ekranları ve hataları kalır.", "Davetten gelen kişi hesap açarken parola uydurmak zorunda."],
+    basis: "Dayanak: bugünkü kod." }
+];
+
+function renderBrand() {
+  document.getElementById("models").innerHTML = MODELS.map((m) => `<article class="card">${m.rec ? '<span class="rec">ÖNERİLEN</span>' : ""}<h3>${m.name}</h3><p>${m.how}</p>
+    <div><div class="k" style="margin-bottom:6px">Kazanç</div><ul>${m.gains.map((g) => `<li>${g}</li>`).join("")}</ul></div>
+    <div><div class="k" style="margin-bottom:6px">Bedel</div><ul>${m.costs.map((g) => `<li>${g}</li>`).join("")}</ul></div>
+    <p style="color:var(--muted);font-size:13px">${m.basis}</p><div class="pick" data-id="authmodel" data-value="${m.id}"></div></article>`).join("");
+  document.getElementById("symbols").innerHTML = SYMBOLS.map((s) => `
+    <article class="card"><div class="tile anim" data-anim>${symbolSVG(s.id, 112)}<button class="replay" type="button">Tekrar oynat</button></div>
+      <div class="sizes"><span>${symbolSVG(s.id, 16)}</span><span>${symbolSVG(s.id, 24)}</span><span>${symbolSVG(s.id, 32)}</span>
+        <div class="lockup">${symbolSVG(s.id, 26)}<span class="wordmark" style="font-size:21px;color:var(--ink)">newfork</span></div></div>
+      <div><h3>${s.name}</h3><p>${s.idea}</p></div><div class="pick" data-id="symbol" data-value="${s.id}"></div></article>`).join("");
+  document.getElementById("mottos").innerHTML = MOTTOS.map((m) => `
+    <article class="card"><div class="tile mint motto-tile"><div class="lockup">${symbolSVG("bars", 22)}<span class="wordmark" style="font-size:17px">newfork</span></div><div class="m">${m.text}</div></div>
+      <p>${m.why}</p><div class="pick" data-id="motto" data-value="${m.id}"></div></article>`).join("");
+  const filled = [1, 2, 4, 8, 9, 10, 12, 15, 16, 18];
+  const demo = {
+    settle: `<div class="md-week">${Array.from({ length: 21 }, (_, i) => filled.includes(i) ? `<i class="f" style="background:${i === 10 ? "#176954" : "#9cbfb3"};animation-delay:${(i % 7) * 0.07 + Math.floor(i / 7) * 0.12}s"></i>` : "<i></i>").join("")}</div>`,
+    rise: `<div class="md-eq">${[0.45, 0.7, 1, 0.6, 0.85].map((h, i) => `<i style="height:${h * 64}px;animation-delay:${i * 0.08}s;${i === 2 ? "" : "background:#17221e"}"></i>`).join("")}</div>`,
+    sweep: symbolSVG("dial", 112)
+  };
+  document.getElementById("motions").innerHTML = MOTIONS.map((m) => `
+    <article class="card"><div class="tile ${m.id === "sweep" ? "" : "mint"} anim" data-anim>${demo[m.id]}<button class="replay" type="button">Tekrar oynat</button></div>
+      <div><h3>${m.name}</h3><p>${m.idea}</p></div><div class="pick" data-id="motion" data-value="${m.id}"></div></article>`).join("");
+  document.querySelectorAll(".replay").forEach((b) => b.addEventListener("click", () => { const t = b.closest("[data-anim]"); t.classList.remove("anim"); void t.offsetWidth; t.classList.add("anim"); }));
+}
+
+/* ===== language ===== */
+const SWATCHES = [["Newfork Green", "#176954", "Tek ileri eylem, bağlantı, odak"], ["Deep Green", "#12624f", "Yeşil üzerine gelince"], ["Mint Wash", "#dbece5", "Marka paneli, seçili satır"], ["Selected", "#e7f1ed", "Bilgi bandı, seçili satır"], ["Pine Ink", "#17221e", "Başlık ve gövde"], ["Slate Green", "#50605a", "İkincil metin"], ["Muted", "#5f6b66", "Etiket, dipnot"], ["Mist", "#f4f5f3", "Sayfa zemini"], ["Hairline", "#dce3df", "Kart ve ayraç"], ["Input border", "#aeb9b4", "Alan kenarı"], ["Brick", "#b84234", "Hata, yıkıcı onay"], ["Amber Ink", "#8a5a00", "Uyarı"]];
+function renderLanguage() {
+  document.getElementById("swatches").innerHTML = SWATCHES.map(([n, h, r]) => `<div class="sw"><i style="background:${h}"></i><div><b>${n}</b><span class="mono">${h}</span><span style="color:var(--muted)">${r}</span></div></div>`).join("");
+  const ts = [["Display 32/40", 32, 650, "Sign in to Newfork"], ["Phone 26/32", 26, 650, "Check your email"], ["Title 20/28", 20, 600, "Where you work"], ["Body 15/24", 15, 400, "We sent a 6-digit code to ali@meyhouse.com."], ["Label 13/20", 13, 550, "Work email"], ["Caption 12/16", 12, 400, "Privacy · Terms · Accessibility · Contact"]];
+  document.getElementById("typescale").innerHTML = ts.map(([l, s, w, t]) => `<div class="row"><span>${l}</span><span style="font-size:${s}px;font-weight:${w};letter-spacing:${s > 20 ? "-0.02em" : "0"};line-height:1.25">${t}</span></div>`).join("");
+  document.getElementById("components").innerHTML = `<div style="display:grid;gap:24px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    <div class="form"><div class="field"><div class="label">Work email</div><div class="input"><span class="ph">you@restaurant.com</span></div></div>
+      <div class="field"><div class="label">Work email (focused)</div><div class="input focus">ali@meyhouse.com</div></div>
+      <div class="field"><div class="label">Code</div>${otp("48", 2)}</div>
+      <div class="field"><div class="label">Code (wrong)</div>${otp("482913", -1, "err")}<div class="ferr">${ic("alert", 16)}That code isn't right. 4 tries left.</div></div></div>
+    <div class="form"><div class="btn primary w">Continue</div><div class="btn secondary w">Use a different email</div>
+      <div style="display:flex;gap:8px"><div class="btn secondary" style="flex:1">Decline</div><div class="btn danger" style="flex:1">Confirm decline</div></div>
+      <div class="btn primary w"><span class="spin"></span>Sending code</div></div>
+    <div class="form"><div class="banner info">${ic("info")}<span>You're signed out.</span></div><div class="banner warn">${ic("clock")}<span>Too many tries. Ask for a new code in 15 minutes.</span></div>
+      <div class="ctx"><div class="av">N</div><div><b>Northstar Kitchen</b><span>Server · Main Dining</span></div></div></div></div>`;
+}
+
+/* ===== icons ===== */
+function ic(name, size = 18, color = "currentColor") {
+  const p = {
+    alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5h.01"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', mail: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/>',
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l2.6-2.6a4.5 4.5 0 0 0-6.4-6.4L11.4 6.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0L5 12.6a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/><path d="m4 4 16 16"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>', user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    store: '<path d="M4 9.5 5.5 4h13L20 9.5"/><path d="M4 9.5h16v1a3 3 0 0 1-5.3 1.9 3 3 0 0 1-5.4 0A3 3 0 0 1 4 10.5z"/><path d="M5.5 13v7h13v-7"/>',
+    team: '<circle cx="9" cy="9" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="8" r="2.6"/><path d="M15.5 13.6A4.5 4.5 0 0 1 21 18"/>',
+    out: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/>', restore: '<path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>'
+  }[name];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;margin-top:1px">${p}</svg>`;
+}
+function otp(digits, focusAt, tone = "") {
+  return `<div class="otp ${tone}">${Array.from({ length: 6 }, (_, i) => `<i class="${i === focusAt ? "f" : ""}">${digits[i] || ""}</i>`).join("")}</div>`;
+}
+
+/* ===== product drawing ===== */
+let LAYOUT = "A", SYMBOL = "bars", MODEL = "code";
+const state = { db: null, me: null, canWrite: false, choices: {}, writing: {}, timers: {} };
+const MOTTO_TEXT = () => (MOTTOS.find((m) => m.id === (state.choices.motto || {}).choice) || MOTTOS[0]).text;
+const lockup = (size = 26, fs = 20, dark = false) => `<div class="lockup">${symbolSVG(SYMBOL, size, dark ? { ink: "#e9f2ee", green: "#5cc29d" } : {})}<span class="wordmark" style="font-size:${fs}px;${dark ? "color:#e9f2ee" : ""}">newfork</span></div>`;
+function glimpse() {
+  const rows = [{ n: "Ava R.", i: "AR", c: ["srv:9–5", "", "srv:9–5", "", "open", "srv:4–11", ""] }, { n: "Diego M.", i: "DM", c: ["kit:6–2", "kit:6–2", "", "kit:6–2", "kit:2–10", "", "kit:10–6"] }, { n: "Lena K.", i: "LK", c: ["", "srv:11–7", "srv:11–7", "srv:4–11", "", "srv:4–11", "srv:11–7"] }];
+  let k = 0;
+  const cell = (v) => { const d = `animation-delay:${0.15 + (k++) * 0.05}s`; if (!v) return `<div class="e"></div>`; if (v === "open") return `<div class="s open" style="${d}">Open<small>Server 5–11</small></div>`; const [t, h] = v.split(":"); return `<div class="s ${t}" style="${d}">${h}<small>${t === "srv" ? "Server" : "Cook"}</small></div>`; };
+  return `<div class="glimpse"><div class="gh"><span>Week of Oct 13</span><span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#e7f1ed;color:#1d5b48;font-weight:600">Published</span></div><div class="gtabs"><span class="on">Main Dining</span><span>Garden Room</span></div>
+    <div class="gg"><div></div>${["M", "T", "W", "T", "F", "S", "S"].map((d) => `<div class="d">${d}</div>`).join("")}${rows.map((r) => `<div class="n"><i>${r.i}</i>${r.n}</div>${r.c.map(cell).join("")}`).join("")}</div>
+    <div class="toast">${ic("check", 16, "#5cc29d")}<div><b>Open shift claimed</b>Fri 5–11 PM · Server</div></div></div>`;
+}
+function ticketRail() {
+  const tk = [["MON", "9–5", "Server"], ["TUE", "6–2", "Cook"], ["WED", "TODAY", "4–11"], ["THU", "11–7", "Host"]];
+  return `<svg class="rail-ill" width="520" height="300" viewBox="0 0 520 300" aria-hidden="true"><line x1="10" y1="40" x2="510" y2="40" stroke="#5cc29d" stroke-width="3" stroke-linecap="round"/>
+    ${tk.map((t, i) => { const x = 20 + i * 124, td = t[1] === "TODAY", b = td ? 210 : 190; return `<g class="tk" style="animation-delay:${0.2 + i * 0.15}s"><rect x="${x}" y="40" width="108" height="${b - 40}" rx="6" fill="${td ? "#5cc29d" : "#e9f2ee"}"/>
+      <path d="M${x} ${b} ${Array.from({ length: 9 }, (_, j) => `L${x + 6 + j * 12} ${b + (j % 2 ? 0 : 8)}`).join(" ")} L${x + 108} ${b}" fill="${td ? "#5cc29d" : "#e9f2ee"}"/>
+      <text x="${x + 14}" y="74" font-family="Inter" font-size="13" font-weight="700" fill="#14201b" letter-spacing="1">${t[0]}</text><text x="${x + 14}" y="108" font-family="Inter" font-size="${td ? 20 : 22}" font-weight="700" fill="#14201b">${t[1]}</text>
+      <text x="${x + 14}" y="134" font-family="Inter" font-size="13" fill="#14201b" opacity=".75">${t[2]}</text><rect x="${x + 14}" y="152" width="${td ? 60 : 72}" height="6" rx="3" fill="#14201b" opacity=".18"/></g>`; }).join("")}
+    <g transform="translate(452,250)"><circle r="30" fill="none" stroke="#5cc29d" stroke-width="3"/><line x1="0" y1="0" x2="0" y2="-18" stroke="#e9f2ee" stroke-width="3" stroke-linecap="round"/><line x1="0" y1="0" x2="13" y2="6" stroke="#e9f2ee" stroke-width="3" stroke-linecap="round"/></g></svg>`;
+}
+const VALUES = ["Build next week in minutes, for every location.", "Everyone sees the published schedule on their phone.", "Requests and swaps reach the manager who decides."];
+function brandPanel(v) {
+  const dark = v === "C";
+  return `<div class="brandpanel ${dark ? "pine" : "mint"}">${lockup(30, 22, dark)}<div style="display:grid;gap:${dark ? 36 : 40}px;align-content:center"><div class="bp-motto">${MOTTO_TEXT()}</div>${dark ? ticketRail() : glimpse()}</div>
+    <div class="bp-values">${VALUES.map((t) => `<div><i>${ic("check", 14, dark ? "#5cc29d" : "#176954")}</i>${t}</div>`).join("")}</div></div>`;
+}
+function field(f) {
+  if (Array.isArray(f)) return `<div class="twocol">${f.map(field).join("")}</div>`;
+  if (f.otp !== undefined) return `<div class="field">${f.label ? `<div class="label"><span>${f.label}</span></div>` : ""}${otp(f.otp, f.focusAt, f.tone)}${f.error ? `<div class="ferr">${ic("alert", 16)}${f.error}</div>` : ""}${f.hint ? `<div class="hint">${f.hint}</div>` : ""}</div>`;
+  const cls = ["input", f.focus && "focus", f.error && "error", f.locked && "locked"].filter(Boolean).join(" ");
+  const inner = f.prefix ? `<span class="phone-prefix"><span class="pre">${f.prefix}</span>${f.value || `<span class="ph">${f.ph}</span>`}</span>` : f.value ? `<span>${f.value}</span>` : `<span class="ph">${f.ph || ""}</span>`;
+  const right = f.pw ? `<span class="eye">Show</span>` : f.lockIcon ? ic("lock", 16, "#5f6b66") : "";
+  return `<div class="field"><div class="label"><span>${f.label}</span>${f.link ? `<a>${f.link}</a>` : ""}</div><div class="${cls}">${inner}${right}</div>${f.error ? `<div class="ferr">${ic("alert", 16)}${f.error}</div>` : ""}${f.hint ? `<div class="hint">${f.hint}</div>` : ""}${f.rules ? `<div class="rules">${f.rules.map(([on, t]) => `<span class="${on ? "on" : ""}">${on ? "✓" : "○"} ${t}</span>`).join("")}</div>` : ""}</div>`;
+}
+function head(s) {
+  const icon = s.icon ? `<div class="center-icon ${s.iconTone || ""}">${ic(s.icon, 24)}</div>` : "";
+  return `<div style="display:grid;gap:16px">${icon}<div><h1 class="title">${s.title}</h1>${s.sub ? `<p class="subtitle">${s.sub}</p>` : ""}</div></div>`;
+}
+function bannerHtml(b) { return b ? `<div class="banner ${b[0]}">${ic(b[0] === "danger" ? "alert" : b[0] === "warn" ? "clock" : "info")}<span>${b[1]}</span></div>` : ""; }
+function ctxHtml(c) { return c ? `<div class="ctx"><div class="av">${c[0][0]}</div><div><b>${c[0]}</b><span>${c[1]}</span></div></div>` : ""; }
+function optionsHtml(o) { return o ? `<div class="options">${o.map((x) => `<div class="option ${x.sel ? "sel" : ""}"><div class="oi">${ic(x.icon, 20)}</div><div><b>${x.t}</b><span>${x.d}</span></div><i class="radio"></i></div>`).join("")}</div>` : ""; }
+function formInner(s) {
+  const fields = (s.fields || []).map(field).join("");
+  const p = s.primary ? `<div class="btn primary w ${s.primaryDis ? "dis" : ""}">${s.loading ? '<span class="spin"></span>' : ""}${s.primary}</div>` : "";
+  const sec = s.secondary ? `<div class="btn secondary w">${s.secondary}</div>` : "";
+  const skel = s.skeleton ? `<div style="display:grid;gap:12px"><div class="skel" style="height:78px;border-radius:12px"></div><div class="skel" style="height:44px"></div><div class="skel" style="height:44px"></div></div>` : "";
+  return `${head(s)}${ctxHtml(s.ctx)}${bannerHtml(s.banner)}${skel}${optionsHtml(s.options)}${fields || p || sec ? `<div class="form">${fields}${p}${sec}</div>` : ""}${s.after ? `<p class="after">${s.after}</p>` : ""}`;
+}
+const LEGAL = `<div class="legal"><span>Privacy</span><span>Terms</span><span>Accessibility</span><span>Contact</span></div>`;
+function authScreen(s, device) {
+  const v = LAYOUT;
+  if (device === "phone") {
+    if (v === "B") return `<div class="app ph" style="width:390px;height:844px"><div class="gridcanvas" style="display:block;padding:28px 16px"><div style="display:grid;justify-items:center;margin-bottom:20px">${lockup(26, 19)}</div>
+      <div class="cardshell" style="width:auto;padding:28px 20px">${s.topline ? `<div class="topline" style="font-size:13px">${s.topline}</div>` : ""}${formInner(s)}</div><div style="display:grid;justify-items:center;gap:12px;margin-top:20px"><span class="under-motto">${MOTTO_TEXT()}</span>${LEGAL}</div></div></div>`;
+    const dark = v === "C";
+    return `<div class="app ph" style="width:390px;height:844px;background:#fff"><div class="phone-head ${dark ? "pine" : "mint"}">${lockup(26, 19, dark)}<div class="ph-motto">${MOTTO_TEXT()}</div><div class="strip">${"<i></i>".repeat(7)}</div></div>
+      <div class="phone-body">${s.topline ? `<div class="topline" style="font-size:13px">${s.topline}</div>` : ""}${formInner(s)}<div style="margin-top:8px">${LEGAL}</div></div></div>`;
+  }
+  if (v === "B") return `<div class="app" style="width:1440px;height:900px"><div class="gridcanvas"><div class="centerstack">${lockup(32, 24)}<div class="cardshell">${s.topline ? `<div class="topline">${s.topline}</div>` : ""}${formInner(s)}</div><span class="under-motto">${MOTTO_TEXT()}</span>${LEGAL}</div></div></div>`;
+  return `<div class="app" style="width:1440px;height:900px"><div class="split">${brandPanel(v)}<div class="formcol"><div class="topline">${s.topline || "<span></span>"}</div><div class="inner">${formInner(s)}</div>${LEGAL}</div></div></div>`;
+}
+function topbar(device, who = ["Ali Brown", "ali@meyhouse.com"], extra = "") {
+  const ph = device === "phone";
+  return `<div class="topbar">${lockup(ph ? 24 : 26, ph ? 18 : 19)}<div class="who">${extra}${ph ? "" : `<div class="id"><b>${who[0]}</b><span>${who[1]}</span></div>`}<div class="btn secondary" style="height:40px;padding:0 12px">${ic("out", 16)}${ph ? "" : "Sign out"}</div></div></div>`;
+}
+function rowHtml(r) {
+  return `<div class="row ${r.sel ? "sel" : ""}"><div class="rt"><b>${r.t}</b><span>${r.m || ""}${r.pill ? ` <span class="pill ${r.pill[0]}">${r.pill[1]}</span>` : ""}${r.star ? ' <span class="star">★ Default</span>' : ""}</span></div>
+    <div class="acts">${(r.a || []).map((b) => `<div class="btn ${b[1]}" style="height:40px">${b[0]}</div>`).join("")}</div>${r.why ? `<div class="why">${r.why}</div>` : ""}</div>`;
+}
+function hubScreen(s, device) {
+  const ph = device === "phone";
+  const groups = (s.groups || []).map((g) => `<div class="group">${g.l ? `<div class="gl">${g.l}</div>` : ""}<div class="list">${g.rows.map(rowHtml).join("")}</div></div>`).join("");
+  const btns = (s.buttons || []).map((b) => `<div class="btn ${b[1]} ${ph ? "w" : ""}">${b[0]}</div>`).join("");
+  return `<div class="app ${ph ? "ph" : ""}" style="width:${ph ? 390 : 1440}px;height:${ph ? 844 : 900}px">${topbar(device, s.who)}
+    <div class="col560">${head(s)}${bannerHtml(s.banner)}${ctxHtml(s.ctx)}${optionsHtml(s.options)}${groups}${btns ? `<div style="display:flex;gap:10px;flex-wrap:wrap">${btns}</div>` : ""}${s.after ? `<p class="meta">${s.after}</p>` : ""}</div></div>`;
+}
+function wizardScreen(s, device) {
+  const ph = device === "phone";
+  const steps = s.steps.map((t, i) => `<div class="step ${i < s.at ? "done" : i === s.at ? "now" : ""}"><i>${i < s.at ? "✓" : i + 1}</i>${t}</div>`).join("");
+  const body = `<div class="col560">${ph ? `<div style="display:grid;gap:8px"><div class="badge-step">Step ${s.at + 1} of ${s.steps.length} · ${s.steps[s.at]}</div><div class="progress"><b style="width:${((s.at + 1) / s.steps.length) * 100}%"></b></div></div>` : ""}
+    ${head(s)}${bannerHtml(s.banner)}${s.list ? `<div class="list">${s.list.map(rowHtml).join("")}</div>` : ""}${s.fields ? `<div class="form">${s.fields.map(field).join("")}</div>` : ""}</div>`;
+  const foot = `<div class="footbar">${s.back ? `<div class="btn secondary">${s.back}</div>` : "<span></span>"}<div class="btn primary">${s.loading ? '<span class="spin"></span>' : ""}${s.primary}</div></div>`;
+  const exit = `<div class="btn ghost" style="font-size:14px">${s.exit || "Exit setup"}</div>`;
+  if (ph) return `<div class="app ph" style="width:390px;height:844px">${topbar(device, s.who, exit)}<div class="stage" style="height:788px">${body}${foot}</div></div>`;
+  return `<div class="app" style="width:1440px;height:900px">${topbar(device, s.who, exit)}<div class="wizard"><div class="rail"><div class="badge-step" style="padding:0 12px 10px">${s.railTitle}</div>${steps}</div><div class="stage">${body}${foot}</div></div></div>`;
+}
+function draw(s, device) { return s.kind === "hub" ? hubScreen(s, device) : s.kind === "wizard" ? wizardScreen(s, device) : authScreen(s, device); }
+
+/* ===== flows (built from the map, not from today's routes) ===== */
+const BACK = "<span><a>← Use a different email</a></span><span></span>";
+const DOOR_CODE = { id: "door", name: "Giriş kapısı", states: [
+  { id: "email", label: "E-posta", title: "Sign in or create an account", sub: "Enter your work email. We'll send you a 6-digit code.", fields: [{ label: "Work email", ph: "you@restaurant.com", focus: true }], primary: "Continue with email", after: "No password to remember. Codes work once, for 10 minutes.",
+    job: "Tek kapı: giriş ve hesap açma aynı ekran. Hesabı olan da olmayan da buradan geçer.", rule: "Her adrese aynı cevap ve aynı süre; ekran hesabın var olup olmadığını söylemez." },
+  { id: "sending", label: "Gönderiliyor", title: "Sign in or create an account", sub: "Enter your work email. We'll send you a 6-digit code.", fields: [{ label: "Work email", value: "ali@meyhouse.com", locked: true }], primary: "Sending code", loading: true,
+    job: "Düğmede dönen simge, alan kilitli; çift gönderim yok.", rule: "Gönderim e-posta başına 60 sn'de bir." },
+  { id: "code", label: "Kod", title: "Check your email", sub: "We sent a 6-digit code to <b>ali@meyhouse.com</b>.", topline: BACK, fields: [{ otp: "48", focusAt: 2, hint: "Paste it or type it. It works once, for 10 minutes." }], primary: "Continue", primaryDis: true, after: "Didn't get it? <a>Resend</a> in 0:42",
+    job: "Kod yapıştırılınca kendiliğinden gönderilir; telefonda klavye rakam açılır ve SMS/e-posta önerisi kutulara dolar.", rule: "Kod 10 dk, tek kullanımlık, en çok 5 deneme." },
+  { id: "wrong", label: "Yanlış kod", title: "Check your email", sub: "We sent a 6-digit code to <b>ali@meyhouse.com</b>.", topline: BACK, fields: [{ otp: "482913", focusAt: -1, tone: "err", error: "That code isn't right. 4 tries left." }], primary: "Continue", after: "Didn't get it? <a>Resend</a> in 0:12",
+    job: "Hata kutuların altında, kalan deneme yazılı; odak ilk kutuya döner.", rule: "5 yanlış denemede kod geçersiz olur." },
+  { id: "expired", label: "Kodun süresi doldu", title: "Check your email", sub: "We sent a new code to <b>ali@meyhouse.com</b>.", topline: BACK, banner: ["info", "That code expired, so we sent a new one."], fields: [{ otp: "", focusAt: 0 }], primary: "Continue", primaryDis: true,
+    job: "Süresi geçen kod girilince yenisi kendiliğinden gider; kişi başa dönmez.", rule: "Yeni kod eskisini geçersiz kılar." },
+  { id: "limited", label: "Çok deneme", title: "Check your email", sub: "We sent a 6-digit code to <b>ali@meyhouse.com</b>.", topline: BACK, banner: ["warn", "Too many tries. Ask for a new code in 15 minutes."], fields: [{ otp: "", focusAt: -1 }], primary: "Continue", primaryDis: true,
+    job: "Bekleme süresi yazılı, sakin dil.", rule: "Adres ve e-posta başına sınır; sayaç sunucuda." },
+  { id: "offline", label: "Bağlantı yok", title: "Sign in or create an account", sub: "Enter your work email. We'll send you a 6-digit code.", banner: ["warn", "Couldn't reach Newfork. Check your connection and try again."], fields: [{ label: "Work email", value: "ali@meyhouse.com" }], primary: "Try again",
+    job: "Yazılan kalır; tek eylem tekrar dene.", rule: "—" },
+  { id: "signedout", label: "Çıkıştan sonra", title: "Sign in or create an account", sub: "Enter your work email. We'll send you a 6-digit code.", banner: ["info", "You're signed out."], fields: [{ label: "Work email", ph: "you@restaurant.com", focus: true }], primary: "Continue with email",
+    job: "Çıkıştan sonra kapı boş açılır; paylaşılan tablette bir sonraki kişi öncekinin sayfasına inmez.", rule: "Çıkışta önbellek, workspace ve oturum silinir." }
+] };
+const DOOR_PW = { id: "door", name: "Giriş kapısı", states: [
+  { id: "signin", label: "Giriş", title: "Sign in", sub: "Welcome back. Use the email you work with.", topline: "<span></span><span>New here? <a>Create an account</a></span>", fields: [{ label: "Work email", ph: "you@restaurant.com", focus: true }, { label: "Password", link: "Forgot password?", ph: "Your password", pw: true }], primary: "Sign in", after: "Or <a>email me a code</a> instead (only in the \"both\" model).",
+    job: "E-posta ve parola; \"ikisi\" modelinde altında kodla giriş.", rule: "Tek cümle hata; hesap varlığı belli olmaz." },
+  { id: "wrong", label: "Yanlış parola", title: "Sign in", sub: "Welcome back. Use the email you work with.", topline: "<span></span><span>New here? <a>Create an account</a></span>", fields: [{ label: "Work email", value: "ali@meyhouse.com" }, { label: "Password", link: "Forgot password?", ph: "Your password", pw: true, focus: true, error: "The email or password is incorrect." }], primary: "Sign in",
+    job: "Hata parolada, odak parolada, düğmeler kaymaz.", rule: "Giriş hız sınırı; sakin bekleme cümlesi." },
+  { id: "create", label: "Hesap aç", title: "Create your account", sub: "Start a workspace, or join your team.", topline: "<span></span><span>Have an account? <a>Sign in</a></span>", fields: [{ label: "Work email", ph: "you@restaurant.com", focus: true }, { label: "Password", ph: "8 or more characters", pw: true, rules: [[false, "8 or more characters"]] }], primary: "Create account",
+    job: "Parolalı modelde ayrı hesap açma.", rule: "E-posta onayı zorunlu; parola en az 8." },
+  { id: "confirm", label: "E-postanı onayla", icon: "mail", title: "Confirm your email", sub: "We sent a link to <b>ali@meyhouse.com</b>. Open it on this device.", primary: "Open email app", secondary: "Use a different email",
+    job: "Onay bağlantısı kişiyi geldiği yere döndürür.", rule: "—" },
+  { id: "forgot", label: "Parolamı unuttum", title: "Reset your password", sub: "We'll email you a link to choose a new password.", topline: "<span><a>← Back to sign in</a></span><span></span>", fields: [{ label: "Work email", ph: "you@restaurant.com", focus: true }], primary: "Send reset link",
+    job: "Tek alan, tek eylem.", rule: "Her adrese aynı cevap, ~1,5 sn sabit süre; e-posta başına 15 dk'da 1." },
+  { id: "reset", label: "Yeni parola", title: "Choose a new password", sub: "For <b>ali@meyhouse.com</b>.", fields: [{ label: "New password", value: "•••••••••", pw: true, focus: true, rules: [[true, "8 or more characters"], [false, "Different from your current password"]] }, { label: "Confirm new password", ph: "Type it again", pw: true }], primary: "Save password",
+    job: "Kurallar yazarken işaretlenir.", rule: "Anahtar # içinde, yalnız Save'de harcanır; öteki oturumlar kapanır." },
+  { id: "resetbad", label: "Bağlantı geçersiz", icon: "link", iconTone: "warn", title: "This link has expired", sub: "Reset links work once and for 1 hour.", primary: "Send a new link", secondary: "Back to sign in",
+    job: "Her zaman bir çıkış yolu.", rule: "—" }
+] };
+
+const FLOWS_SHARED = [
+  { id: "new", name: "Yeni hesap", states: [
+    { id: "name", label: "Adın", title: "Welcome to Newfork", sub: "What should your team call you?", fields: [[{ label: "First name", value: "Jordan", focus: true }, { label: "Last name", ph: "Rivera" }]], primary: "Continue",
+      job: "Kod doğrulandıktan sonra hesabı olmayan kişiye tek soru: adı.", rule: "Resmî ad burada sorulmaz; o kurulumda, kişinin kendi eliyle." },
+    { id: "path", label: "Ne yapacaksın", kind: "hub", who: ["Jordan Rivera", "jordan@riversidegrill.com"], title: "How will you use Newfork?", sub: "You can do the other later.", options: [{ icon: "store", t: "Set up my restaurant", d: "Create a workspace for your locations and team.", sel: true }, { icon: "team", t: "Join my team", d: "Your manager invites jordan@riversidegrill.com.", sel: false }], buttons: [["Continue", "primary"]],
+      job: "Niyet sorulur (P10); iki büyük seçenek, tek yeşil düğme.", rule: "Başka bir workspace'te çalışan kişiye \"restoranımı kur\" çıkmaz (soru S2'ye bağlı)." },
+    { id: "wait", label: "Davet bekliyor", kind: "hub", who: ["Jordan Rivera", "jordan@riversidegrill.com"], icon: "mail", title: "Waiting for your invitation", sub: "When your manager invites <b>jordan@riversidegrill.com</b>, it shows up here and in your email.", buttons: [["Check again", "primary"], ["Set up my restaurant instead", "secondary"]],
+      job: "Bekleyene iş yükleme yok; tek eylem tekrar bak.", rule: "—" }
+  ] },
+  { id: "invite", name: "Davet", states: [
+    { id: "loading", label: "Yükleniyor", title: "Checking your invitation", sub: "This takes a moment.", skeleton: true,
+      job: "Bilgi gelene kadar düğme yok.", rule: "Anahtar adresin # parçasında; sunucuya isteğin gövdesiyle gider." },
+    { id: "landing", label: "Bağlantıdan", title: "Join your team on Newfork", sub: "The manager of Main Dining invited you.", ctx: ["Northstar Kitchen", "Server · Main Dining · Expires in 5 days"], primary: "Continue as a•••@meyhouse.com", secondary: "Decline invitation", after: "We'll send a code to that address to confirm it's you.",
+      job: "Davetli e-posta yazmaz, parola uydurmaz: tek düğme, sonra kod.", rule: "Kod yalnız davet edilen adrese gider; katılım o adresle." },
+    { id: "code", label: "Kod", title: "Check your email", sub: "We sent a 6-digit code to <b>a•••@meyhouse.com</b>.", ctx: ["Northstar Kitchen", "Server · Main Dining"], fields: [{ otp: "", focusAt: 0 }], primary: "Join Northstar Kitchen", primaryDis: true, after: "Didn't get it? <a>Resend</a> in 0:42",
+      job: "Kod girilince katılım ve hesap aynı anda; sonra çalışan kurulumu.", rule: "Kod 10 dk, tek kullanımlık." },
+    { id: "joined", label: "Katıldın", icon: "check", title: "You're on the Northstar Kitchen team", sub: "A few details and you can see your schedule.", primary: "Start (about 3 minutes)",
+      job: "Bir sonraki adım ve süresi yazılı.", rule: "—" },
+    { id: "other", label: "Başka hesap açık", icon: "user", iconTone: "warn", title: "This invitation is for another address", sub: "It was sent to a•••@meyhouse.com. You're signed in as ayse@sunsettacos.com.", primary: "Switch account", secondary: "Go to your workspaces",
+      job: "Uyuşmazlık ilk ekranda; hesap değişince davet korunur.", rule: "—" },
+    { id: "replaced", label: "Yenisi gönderildi", icon: "mail", title: "A newer invitation was sent", sub: "Northstar Kitchen sent you a new link. Open the latest email to join.", primary: "OK",
+      job: "Eski bağlantı \"iptal\" demez, yenisini gösterir.", rule: "Yeni davet eskisini kapatır." },
+    { id: "expired", label: "Süresi doldu", icon: "clock", iconTone: "warn", title: "This invitation expired", sub: "Invitations last 7 days. Ask your manager to send a new one.", primary: "OK",
+      job: "—", rule: "7 gün." },
+    { id: "withdrawn", label: "Geri çekildi", icon: "link", iconTone: "warn", title: "This invitation was withdrawn", sub: "Northstar Kitchen withdrew it. If that's a mistake, ask your manager.", primary: "OK",
+      job: "Yalnız gerçekten geri çekilene.", rule: "—" },
+    { id: "closed", label: "Workspace açık değil", icon: "lock", iconTone: "warn", title: "Northstar Kitchen isn't open right now", sub: "You can join when it opens again. Your invitation stays in your workspaces.", primary: "OK",
+      job: "—", rule: "Açık olmayan workspace'e katılınmaz; davet listede kalır." }
+  ] },
+  { id: "found", name: "Bekleyen davet", states: [
+    { id: "with", label: "Workspace'i olan", kind: "hub", title: "You have an invitation", sub: "Answer now, or later from Workspaces.", groups: [{ rows: [{ t: "Northstar Kitchen", m: "Server · Main Dining · Expires in 5 days", a: [["Decline", "secondary"], ["Join", "primary"]] }] }], buttons: [["Not now", "secondary"]], after: "Not now takes you to Workspaces, where the invitation stays listed.",
+      job: "Girişte ilk ekran (senin 5 Ekim A görünümün).", rule: "Decline geri alınamaz: ilk tıkta kırmızı onay." },
+    { id: "without", label: "Workspace'i olmayan", kind: "hub", title: "You have an invitation", sub: "Join your team to get started.", groups: [{ rows: [{ t: "Northstar Kitchen", m: "Server · Main Dining · Expires in 5 days", a: [["Decline", "secondary"], ["Join", "primary"]] }] }],
+      job: "Hiç workspace'i olmayanda Not now yok.", rule: "—" }
+  ] },
+  { id: "hub", name: "Workspaces", states: [
+    { id: "list", label: "Liste", kind: "hub", title: "Workspaces", sub: "Choose where to work. Mark one as default to skip this next time.", groups: [
+      { l: "Invitations", rows: [{ t: "Northstar Kitchen", m: "Server · Expires in 5 days", a: [["Decline", "secondary"], ["Join", "primary"]] }] },
+      { l: "In progress", rows: [{ t: "Beyoğlu", m: "Your setup · step 2 of 4", a: [["Discard", "secondary"], ["Continue setup", "primary"]] }] },
+      { l: "Where you work", rows: [{ t: "Meyhouse", m: "Owner", star: true, sel: true, a: [["Open", "primary"]] }, { t: "Sunset Tacos", m: "Manager", a: [["Open", "secondary"]] }] },
+      { l: "Not open to you", rows: [{ t: "Garden Bistro", m: "Employee", pill: ["grey", "Access on hold"], why: "Your access to Garden Bistro is on hold. An owner or admin there can lift it. Garden Bistro itself is open." }] }],
+      job: "Neden açılmadığı satırın içinde yazar; ayrı durum sayfası yok. Favori yoksa her girişte burası sorar.", rule: "Silinen taslak listede yok; askıdaki üye hiçbir veriyi açamaz." },
+    { id: "back", label: "Aktif workspace yok", kind: "hub", icon: "arrow", title: "Welcome back", sub: "You don't have an active workspace right now.", buttons: [["Set up my restaurant", "primary"], ["I am waiting for another invitation", "secondary"]],
+      job: "Bir kez karşılanan kişi yeniden \"yeni\" sayılmaz.", rule: "—" }
+  ] },
+  { id: "owner", name: "Owner kurulumu", states: [
+    { id: "s1", label: "1 · İşletme", kind: "wizard", who: ["Jordan Rivera", "jordan@riversidegrill.com"], railTitle: "Set up your restaurant", steps: ["Business", "Locations", "Jobs", "Team"], at: 0, title: "About your business", sub: "Your team sees the workspace name.", fields: [[{ label: "First name, as on your ID", value: "Jordan" }, { label: "Last name, as on your ID", value: "Rivera" }], { label: "Workspace name", value: "Riverside Grill", hint: "You can change it later." }], primary: "Continue",
+      job: "Her adım sunucuya kaydedilir; çıkıp dönen kişi kaldığı yerden, dolu alanlarla devam eder.", rule: "Kurulum bitmeden davet gitmez." },
+    { id: "s2", label: "2 · Lokasyonlar", kind: "wizard", who: ["Jordan Rivera", "jordan@riversidegrill.com"], railTitle: "Set up your restaurant", steps: ["Business", "Locations", "Jobs", "Team"], at: 1, title: "Where does your team work?", sub: "Each location has its own schedule.", list: [{ t: "Main Dining", m: "Austin, TX · Central time", a: [["Edit", "secondary"]] }], fields: [{ label: "Location name", ph: "Garden Room" }, [{ label: "ZIP code", value: "78701" }, { label: "Time zone", value: "Central time (Chicago)", hint: "Suggested from the ZIP code." }], { label: "Phone (optional)", prefix: "+1", ph: "(512) 555-0100" }], back: "Back", primary: "Continue",
+      job: "Saat dilimi posta kodundan önerilir; telefon +1 sabit.", rule: "—" }
+  ] },
+  { id: "employee", name: "Çalışan kurulumu", states: [
+    { id: "details", label: "Bilgilerin", kind: "wizard", exit: "Exit onboarding", who: ["Orhan Turan", "orhan@meyhouse.com"], railTitle: "Join Northstar Kitchen", steps: ["Your details", "Emergency contact", "Documents", "Review"], at: 0, title: "Your details", sub: "Your manager uses these for payroll and emergencies.", fields: [[{ label: "Legal first name", ph: "As on your ID", focus: true }, { label: "Legal last name", ph: "As on your ID" }], { label: "Phone", prefix: "+1", ph: "(512) 555-0100" }, { label: "Date of birth", ph: "MM / DD / YYYY" }], back: "", primary: "Continue",
+      job: "Resmî ad boş başlar, kişi kendisi yazar; davetteki addan farklıysa onaya gider.", rule: "Resmî ad farkını yalnız owner ya da admin onaylar." },
+    { id: "review", label: "Onay bekliyor", kind: "wizard", exit: "Exit onboarding", who: ["Orhan Turan", "orhan@meyhouse.com"], railTitle: "Join Northstar Kitchen", steps: ["Your details", "Emergency contact", "Documents", "Review"], at: 3, title: "Sent for review", sub: "You'll get access as soon as it's approved. We'll email you.", list: [{ t: "Your details", m: "Legal name differs from your invitation", pill: ["warn", "In review"] }, { t: "Emergency contact", pill: ["ok", "Done"] }, { t: "Food handler card", pill: ["warn", "In review"] }], primary: "Done",
+      job: "Neyin beklediği adım adım yazılı.", rule: "Kimse kendi kurulumunu onaylayamaz." },
+    { id: "retry", label: "Bitirirken hata", kind: "wizard", exit: "Exit onboarding", who: ["Orhan Turan", "orhan@meyhouse.com"], railTitle: "Join Northstar Kitchen", steps: ["Your details", "Emergency contact", "Documents", "Review"], at: 3, title: "You're approved", sub: "We couldn't open Northstar Kitchen just now.", banner: ["danger", "The connection dropped while finishing. Your onboarding is saved."], primary: "Try again",
+      job: "Hiçbir ekran düğmesiz kalmaz.", rule: "—" }
+  ] },
+  { id: "recovery", name: "Hesap kurtarma", states: [
+    { id: "valid", label: "Geri yükle", icon: "restore", title: "Restore your account", sub: "It's set to be deleted on Oct 21. Restoring brings back your sign-in and every workspace you belonged to.", primary: "Restore my account",
+      job: "Ne geri geleceği açık.", rule: "Anahtar # içinde, tek kullanımlık, 14 gün." },
+    { id: "done", label: "Geri geldi", icon: "check", title: "Your account is back", sub: "Sign in with ali@meyhouse.com to continue.", primary: "Continue",
+      job: "—", rule: "—" },
+    { id: "incomplete", label: "Bağlantı eksik", icon: "link", iconTone: "warn", title: "This link is incomplete", sub: "It may have been cut off. Open the link from the email again, or ask for a new one.", fields: [{ label: "Work email", ph: "you@restaurant.com" }], primary: "Send a new link",
+      job: "Neden ve yol yazılı.", rule: "Yeni bağlantı isteği hız sınırlı." },
+    { id: "expired", label: "Süresi geçti", icon: "clock", iconTone: "warn", title: "This account can't be restored", sub: "Accounts can be restored for 14 days after deletion.", primary: "Create a new account",
+      job: "—", rule: "Sunucu hatası \"geçersiz bağlantı\" diye gösterilmez." }
+  ] }
+];
+const FLOWS = () => [MODEL === "code" ? DOOR_CODE : DOOR_PW, ...FLOWS_SHARED];
+
+/* ===== frames ===== */
+const ro = new ResizeObserver((entries) => entries.forEach((e) => fit(e.target)));
+function fit(vp) {
+  const w = +vp.dataset.w, h = +vp.dataset.h, scale = vp.clientWidth / w;
+  vp.style.height = Math.round(h * scale) + "px";
+  const c = vp.firstElementChild; if (c) c.style.transform = `scale(${scale})`;
+}
+function mount(vp, html) { vp.innerHTML = `<div class="canvas" style="width:${vp.dataset.w}px;height:${vp.dataset.h}px">${html}</div>`; ro.observe(vp); fit(vp); }
+function devFrame(kind, cap) {
+  const w = kind === "desk" ? 1440 : 390, h = kind === "desk" ? 900 : 844;
+  const wrap = document.createElement("div");
+  wrap.className = "dev " + kind;
+  wrap.innerHTML = `<div class="cap"><span>${kind === "desk" ? "Masaüstü 1440" : "Telefon 390"}</span><span>${cap || ""}</span></div><div class="viewport" data-w="${w}" data-h="${h}"></div>`;
+  return { wrap, vp: wrap.querySelector(".viewport") };
+}
+function showPair(host, s, cap) {
+  host.innerHTML = "";
+  const d = devFrame("desk", cap), p = devFrame("phone", s.label || "");
+  host.append(d.wrap, p.wrap);
+  mount(d.vp, draw(s, "desk"));
+  mount(p.vp, draw(s, "phone"));
+}
+
+/* ===== sections ===== */
+function renderLayout() {
+  const tabs = document.getElementById("layout-tabs");
+  tabs.innerHTML = [["A", "A · Nane panel ve ürün"], ["B", "B · Izgara üstünde kart"], ["C", "C · Koyu çam panel"]].map(([v, l]) => `<button type="button" class="tab" role="tab" data-v="${v}" aria-selected="${v === LAYOUT}">${l}</button>`).join("");
+  tabs.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { LAYOUT = b.dataset.v; renderLayout(); renderScreen(); }));
+  showPair(document.getElementById("layout-proof"), FLOWS()[0].states[0], "Giriş kapısı");
+}
+let FLOW = "door", STATE = null;
+function renderModelTabs() {
+  const t = document.getElementById("model-tabs");
+  t.innerHTML = [["code", "Kodla giriş (önerilen)"], ["password", "Parolayla giriş"]].map(([v, l]) => `<button type="button" class="tab" role="tab" data-v="${v}" aria-selected="${(MODEL === "code") === (v === "code")}">${l}</button>`).join("");
+  t.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { MODEL = b.dataset.v; STATE = null; renderModelTabs(); renderLayout(); renderFlows(); renderScreen(); renderSecurity(); }));
+}
+function renderFlows() {
+  const f = document.getElementById("flows");
+  f.innerHTML = FLOWS().map((x) => `<button type="button" class="flow-btn" data-f="${x.id}" aria-current="${x.id === FLOW}">${x.name}<small>${x.states.length}</small></button>`).join("");
+  f.querySelectorAll(".flow-btn").forEach((b) => b.addEventListener("click", () => { FLOW = b.dataset.f; STATE = null; renderFlows(); renderScreen(); }));
+}
+function renderScreen() {
+  const flow = FLOWS().find((x) => x.id === FLOW) || FLOWS()[0];
+  const st = flow.states.find((x) => x.id === STATE) || flow.states[0];
+  STATE = st.id;
+  const tabs = document.getElementById("state-tabs");
+  tabs.innerHTML = flow.states.map((x) => `<button type="button" class="tab" role="tab" data-s="${x.id}" aria-selected="${x.id === STATE}">${x.label}</button>`).join("");
+  tabs.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => { STATE = b.dataset.s; renderScreen(); }));
+  showPair(document.getElementById("screen-proof"), st, `${flow.name} · ${st.label}`);
+  const id = `screen-${MODEL === "code" || flow.id !== "door" ? "" : "pw-"}${flow.id}-${st.id}`;
+  document.getElementById("state-notes").innerHTML = `<div class="card"><div class="k">Ekranın işi</div><p>${st.job}</p></div>
+    <div class="card"><div class="k">Kural ve güvenlik</div><p>${st.rule}</p><div class="pick" data-id="${id}" data-choices="uygun:Uygun,degistir:Değiştir,konusalim:Konuşalım"></div></div>`;
+  buildPickers(document.getElementById("state-notes"));
+  paint();
+}
+
+const SEC_CODE = [
+  ["Giriş kodu", "\"Check your email\", 6 kutu, geri sayımlı yeniden gönder.", "6 haneli, 10 dk, tek kullanımlık; en çok 5 deneme; e-posta başına 60 sn'de bir, saatte 5; adres başına saatte 30. Her cevap aynı ve aynı sürede."],
+  ["Hesap açma", "Kod doğrulanınca ad sorulur.", "Hesap yalnız kod doğrulanınca açılır; e-posta kodla kanıtlanmış olur (ayrı onay yok)."],
+  ["Oturum", "30 gün açık kalır; Account'ta \"Sign out everywhere\".", "Kayan yenileme; çıkışta önbellek, workspace ve oturum işareti silinir; askıya alınan üyenin açık oturumu hiçbir veri alamaz."],
+  ["Hassas işler", "Sahiplik devri, workspace kapatma, hesap silme taze kod ister.", "Son 10 dk içinde doğrulanmış kod yoksa sunucu reddeder (bugünkü \"recent reauthentication\" kuralının kodlu hâli)."],
+  ["Davet", "Bağlantıdan tek düğme; başka hesap uyarısı en başta.", "64 karakter anahtar, yalnız özeti saklanır, # içinde taşınır, adresten silinir; 7 gün; kod yalnız davet edilen adrese; açık olmayan ya da kurulumu bitmemiş workspace'e katılım yok; yeni davet eskisini \"replaced\" yapar."],
+  ["Hesap kurtarma", "Ne geri geleceği yazılı; eksik ve süresi geçmiş bağlantı ekranları.", "32 bayt anahtar, özeti saklanır, # içinde, tek kullanımlık, 14 gün; sunucu hatası ayrı gösterilir."],
+  ["Tarayıcı", "—", "Çerçeveye koyma yasak (frame-ancestors none), dar CSP, Referrer-Policy, HSTS; API yalnız kendi adresinden istek kabul eder."],
+  ["Hata dili", "Tek cümle, ne oldu ve ne yapılır.", "\"Hayır\" tek biçim; bilinmeyen ve kapsam dışı hedef aynı cevap; ham sunucu metni ekrana çıkmaz."]
+];
+const SEC_PW = [
+  ["Giriş", "Tek cümle hata; bekleme süresi yazılı.", "Parola girişi ve hız sınırı (Supabase); hesap varlığı belli olmaz."],
+  ["Hesap açma", "E-postanı onayla ekranı.", "Onay zorunlu; parola en az 8; onay bağlantısı geldiği yere döndürür."],
+  ["Parolamı unuttum", "Her adrese aynı cevap.", "~1,5 sn sabit süre; e-posta başına 15 dk'da 1, adres başına saatte 10; bağlantı 1 saat."],
+  ["Parola sıfırlama", "Kurallar canlı; geçersiz bağlantı ekranı.", "Anahtar # içinde, yalnız Save'de harcanır; sıfırlanınca öteki oturumlar kapanır; parola değiştirme yolu mevcut parolayı ister."],
+  ["Davet, kurtarma, tarayıcı, hata dili", "Kodla girişteki gibi.", "Kodla girişteki satırlarla aynı."]
+];
+const BUILD = [
+  { t: "Kod modeli seçilirse", items: ["Supabase e-posta kodu (6 hane) şablonu ve hız sınırları; kapı ekranı tek uç.", "Parola ekranları, parola rotaları ve parola testleri silinir; e-posta onay adımı kalkar.", "Hassas işlerde parola yerine taze kod (sahiplik devri, workspace kapatma, hesap silme)."] },
+  { t: "Her iki modelde", items: ["Davet ve kurtarma anahtarı # içinde; adres çubuğundan silinir.", "Davet kapısı veritabanında: açık olmayan ya da kurulumu bitmemiş workspace'e davet ve katılım yok; arşivlenen kişinin daveti kapanır; yeni davet eskisini \"replaced\" yapar.", "Tarayıcı güvenlik başlıkları (vercel.json).", "\"Hayır\" tek biçim (42501 + authz ipucu); hata cümleleri tek sözlükten."] },
+  { t: "Nasıl yapılır", items: ["Yazılı görev dosyası, önce kırmızı testler (pgTAP, API, web, e2e).", "Bağımsız güvenlik incelemesi (nf-guvenlik), tam kapı.", "Canlı ayar ve migration senin \"evet\"inle, önce yedek."] }
+];
+function renderSecurity() {
+  const rows = MODEL === "code" ? SEC_CODE : SEC_PW;
+  document.getElementById("sec-table").innerHTML = `<thead><tr><th>Konu</th><th>Kişi ne görür</th><th>Sunucu nasıl korur</th></tr></thead><tbody>${rows.map((r) => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</tbody>`;
+  document.getElementById("sec-build").innerHTML = BUILD.map((b) => `<article class="card"><h3>${b.t}</h3><ul>${b.items.map((i) => `<li>${i}</li>`).join("")}</ul></article>`).join("");
+}
+
+let storyTimer = null;
+function renderMarketing() {
+  const hero = document.getElementById("ad-hero");
+  mount(hero, `<div class="app" style="width:1200px;height:630px;background:#e7f1ed;display:grid;grid-template-columns:1fr 560px;align-items:center;padding:0 72px;gap:40px">
+    <div style="display:grid;gap:28px">${lockup(40, 30)}<div style="font-size:64px;line-height:68px;font-weight:650;letter-spacing:-0.035em">${MOTTO_TEXT()}</div>
+      <div style="font-size:22px;line-height:32px;color:#2c3d36;max-width:480px">Scheduling for restaurant teams with more than one location.</div>
+      <div><div class="btn primary" style="height:52px;font-size:17px;padding:0 24px">Start your 14-day trial</div></div></div><div>${glimpse()}</div></div>`);
+  const story = document.getElementById("ad-story");
+  mount(story, `<div class="app" style="width:1080px;height:1920px;background:#14201b;color:#e9f2ee;padding:120px 96px;display:grid;grid-template-rows:auto auto 1fr auto;gap:64px">
+    ${lockup(64, 48, true)}<div style="font-size:120px;line-height:124px;font-weight:650;letter-spacing:-0.04em">Your week,<br>in your pocket.</div>
+    <div style="display:grid;place-items:center"><div style="width:620px;height:1000px;border-radius:72px;background:#fff;border:14px solid #2a3a33;padding:56px 40px;display:grid;gap:28px;align-content:start;color:#17221e">
+      <div style="font-size:40px;font-weight:650">This week</div>
+      ${[["Mon", "9:00 AM – 5:00 PM", "Server · Main Dining"], ["Wed", "4:00 PM – 11:00 PM", "Server · Main Dining"], ["Fri", "5:00 PM – 11:00 PM", "Open shift you claimed"]].map((r, i) => `<div class="glimpse-row" style="display:grid;grid-template-columns:110px 1fr;gap:20px;align-items:center;padding:28px;border-radius:28px;background:${i === 2 ? "#dbece5" : "#f4f5f3"};animation:settle .7s ${0.3 + i * 0.25}s both;opacity:0;transform:translateY(12px)"><div style="font-size:34px;font-weight:700;color:#176954">${r[0]}</div><div><div style="font-size:34px;font-weight:600">${r[1]}</div><div style="font-size:26px;color:#50605a;margin-top:6px">${r[2]}</div></div></div>`).join("")}
+    </div></div><div style="font-size:40px;line-height:52px;color:#b9cbc3">Published schedules, open shifts and swaps, on every phone.</div></div>`);
+  const F = [["Sunday, 9 PM.", "The schedule lives in a group chat of 40 people and a spreadsheet only one manager can read.", "#14201b", "#e9f2ee", "dial"], ["Build the week once.", "Plan every location on one grid. Publish, and it reaches every phone at the same moment.", "#e7f1ed", "#17221e", "grid"], ["Changes find the right person.", "Requests and swaps go to the manager who decides. Everyone else just sees the answer.", "#ffffff", "#17221e", "bars"]];
+  const frames = document.getElementById("ad-frames");
+  mount(frames, `<div class="app" style="width:1200px;height:500px"><div class="story-frames" style="width:1200px;height:500px">${F.map((f, i) => `<div class="fr ${i === 0 ? "on" : ""}" style="background:${f[2]};color:${f[3]};display:grid;grid-template-columns:1fr 360px;align-items:center;padding:0 80px;gap:48px">
+      <div style="display:grid;gap:20px"><div style="font-size:15px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.7">${i + 1} / 3</div><div style="font-size:52px;line-height:58px;font-weight:650;letter-spacing:-0.03em">${f[0]}</div><div style="font-size:21px;line-height:31px;opacity:.85;max-width:560px">${f[1]}</div></div>
+      <div style="display:grid;place-items:center">${symbolSVG(f[4], 200, i === 0 ? { ink: "#e9f2ee", green: "#5cc29d" } : {})}</div></div>`).join("")}
+      <div class="dots" style="position:absolute;left:0;right:0;bottom:28px">${F.map(() => "<i></i>").join("")}</div></div></div>`);
+  let k = 0;
+  const paintDots = () => frames.querySelectorAll(".dots i").forEach((d, i) => { d.classList.toggle("on", i === k); d.style.background = k === 0 ? (i === k ? "#fff" : "#ffffff55") : (i === k ? "#17221e" : "#17221e33"); });
+  paintDots();
+  clearInterval(storyTimer);
+  storyTimer = setInterval(() => { k = (k + 1) % F.length; frames.querySelectorAll(".fr").forEach((f, i) => f.classList.toggle("on", i === k)); paintDots(); }, 4200);
+}
+
+/* ===== choices (db) ===== */
+function buildPickers(root = document) {
+  root.querySelectorAll(".pick").forEach((box) => {
+    if (box.dataset.built) return;
+    box.dataset.built = "1";
+    const id = box.dataset.id;
+    box.innerHTML = box.dataset.value
+      ? `<button type="button" class="chip" data-v="${box.dataset.value}" aria-pressed="false">Bunu seç</button>`
+      : box.dataset.choices.split(",").map((pair) => { const [v, l] = pair.split(":"); return `<button type="button" class="chip ${v === "konusalim" ? "soft" : ""}" data-v="${v}" aria-pressed="false">${l}</button>`; }).join("");
+    box.insertAdjacentHTML("beforeend", `<button type="button" class="note-btn">Not ekle</button><span class="saved"></span><textarea class="note" hidden aria-label="Not: ${id}" placeholder="Ne değişsin, nasıl olsun?"></textarea>`);
+    box.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => choose(id, c.dataset.v)));
+    const area = box.querySelector(".note");
+    box.querySelector(".note-btn").addEventListener("click", () => { area.hidden = !area.hidden; if (!area.hidden) area.focus(); });
+    area.addEventListener("input", () => { clearTimeout(state.timers[id]); state.timers[id] = setTimeout(() => write(id, { note: area.value }), 900); });
+  });
+}
+function paint() {
+  document.querySelectorAll(".pick").forEach((box) => {
+    const id = box.dataset.id, cur = state.choices[id] || {};
+    box.querySelectorAll(".chip").forEach((c) => { c.setAttribute("aria-pressed", cur.choice === c.dataset.v ? "true" : "false"); c.disabled = !state.canWrite; });
+    const area = box.querySelector(".note");
+    if (area) { if (document.activeElement !== area && typeof cur.note === "string" && box.dataset.noteFor !== id + cur.at) { area.value = cur.note; if (cur.note) area.hidden = false; } area.disabled = !state.canWrite; }
+    const saved = box.querySelector(".saved");
+    if (saved) saved.textContent = cur.at ? "Kaydedildi " + new Date(cur.at).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  });
+  const all = Object.keys(state.choices).filter((k) => state.choices[k].choice);
+  document.getElementById("pick-count").textContent = all.length + " seçim yapıldı";
+  const named = { authmodel: ["Giriş modeli", MODELS, "name"], symbol: ["Sembol", SYMBOLS, "name"], motto: ["Motto", MOTTOS, "text"], motion: ["Marka hareketi", MOTIONS, "name"] };
+  const vals = { uygun: "Uygun", degistir: "Değiştir", konusalim: "Konuşalım", A: "A · Nane panel", B: "B · Izgara üstünde kart", C: "C · Koyu çam panel" };
+  const line = (label, value) => `<div><span>${label}</span><b>${value}</b></div>`;
+  const screens = all.filter((k) => k.startsWith("screen-"));
+  document.getElementById("decisions").innerHTML = Object.entries(named).map(([k, [label, list, f]]) => { const c = (state.choices[k] || {}).choice; const n = list.find((x) => x.id === c); return line(label, n ? n[f] : "—"); }).join("")
+    + line("Giriş düzeni", vals[(state.choices.layout || {}).choice] || "—") + line("Pazarlama yönü", vals[(state.choices.marketing || {}).choice] || "—")
+    + line("Ekran hâlleri", `${screens.length} işaretli · ${screens.filter((k) => state.choices[k].choice === "degistir").length} değişsin · ${screens.filter((k) => state.choices[k].choice === "konusalim").length} konuşalım`);
+}
+function setDb(text, kind) { const n = document.getElementById("db-state"); n.textContent = text; n.className = "dbstate" + (kind ? " " + kind : ""); }
+function applyChoices(changed) {
+  const sym = (state.choices.symbol || {}).choice, lay = (state.choices.layout || {}).choice, mod = (state.choices.authmodel || {}).choice;
+  let redraw = changed === "motto";
+  if (sym && sym !== SYMBOL) { SYMBOL = sym; redraw = true; }
+  if (lay && lay !== LAYOUT && (changed === undefined || changed === "layout")) { LAYOUT = lay; redraw = true; }
+  if (mod && (changed === undefined || changed === "authmodel")) { const m = mod === "code" ? "code" : "password"; if (m !== MODEL) { MODEL = m; STATE = null; redraw = true; } }
+  if (redraw) { renderModelTabs(); renderLayout(); renderFlows(); renderScreen(); renderSecurity(); renderMarketing(); }
+}
+async function write(id, patch) {
+  if (!state.db || !state.canWrite) return;
+  const prev = state.writing[id] || Promise.resolve();
+  const job = prev.then(async () => {
+    const next = { ...(state.choices[id] || {}), ...patch, at: new Date().toISOString(), by: state.me };
+    state.choices[id] = next; applyChoices(id); paint();
+    try { await state.db.doc("choices/" + id).set(next); }
+    catch (e) { if (e && e.code === "invalid_argument") { state.canWrite = false; setDb("Bu görünümde seçim kaydedilemiyor (salt okunur)", "warn"); paint(); } else setDb("Kaydedilemedi, tekrar dene", "warn"); }
+  });
+  state.writing[id] = job.catch(() => {});
+}
+function choose(id, v) { const cur = (state.choices[id] || {}).choice; write(id, { choice: cur === v ? null : v }); }
+
+renderBrand(); renderLanguage(); renderModelTabs(); renderLayout(); renderFlows(); renderScreen(); renderSecurity(); renderMarketing(); buildPickers(); paint();
+
+(async () => {
+  const claude = window.claude;
+  if (!claude || typeof claude.use !== "function") { setDb("Seçimler yalnız yayınlanmış sayfada kaydedilir", "warn"); return; }
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([claude.use("db"), claude.use("user")]); } catch (e) { db = null; }
+  if (!db) { setDb("Seçimler bu görünümde kaydedilemiyor", "warn"); return; }
+  state.db = db;
+  try { state.me = user ? await user.id() : null; } catch (e) { state.me = null; }
+  let can = null;
+  try { can = user && typeof user.can === "function" ? await user.can("data.write") : null; } catch (e) { can = null; }
+  state.canWrite = can !== false;
+  setDb(state.canWrite ? "Seçimler kaydediliyor" : "Salt okunur görünüm", state.canWrite ? "ok" : "warn");
+  paint();
+  db.collection("choices").onSnapshot((snap) => {
+    const next = {}; snap.docs.forEach((d) => { const x = d.data(); if (x) next[d.id] = x; });
+    state.choices = next; applyChoices(); paint();
+  }, () => setDb("Seçimler şu an okunamıyor", "warn"));
+})();
+</script>
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="/_runtime/mermaid-11.16.1.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+
+</body></html>

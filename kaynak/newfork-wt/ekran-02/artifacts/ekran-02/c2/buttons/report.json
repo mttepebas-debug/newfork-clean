@@ -1,0 +1,110 @@
+{
+ "swap-a-1440": {
+  "window": 282,
+  "buttons": [
+   [
+    "Decline",
+    34,
+    77,
+    "600",
+    "13px"
+   ],
+   [
+    "Approve",
+    34,
+    81,
+    "600",
+    "13px"
+   ]
+  ],
+  "deadlineLines": 1
+ },
+ "swap-b-1440": {
+  "window": 284,
+  "buttons": [
+   [
+    "Decline",
+    36,
+    65,
+    "600",
+    "12px"
+   ],
+   [
+    "Approve",
+    36,
+    69,
+    "600",
+    "12px"
+   ]
+  ],
+  "deadlineLines": 1
+ },
+ "drawer-1440": [
+  [
+   "Deny",
+   36,
+   "600",
+   "12px"
+  ],
+  [
+   "Approve",
+   36,
+   "600",
+   "12px"
+  ]
+ ],
+ "swap-a-390": {
+  "window": 490,
+  "buttons": [
+   [
+    "Decline",
+    44,
+    159,
+    "600",
+    "13px"
+   ],
+   [
+    "Approve",
+    44,
+    157,
+    "600",
+    "13px"
+   ]
+  ],
+  "deadlineLines": 1
+ },
+ "swap-b-390": {
+  "window": 490,
+  "buttons": [
+   [
+    "Decline",
+    44,
+    159,
+    "600",
+    "13px"
+   ],
+   [
+    "Approve",
+    44,
+    157,
+    "600",
+    "13px"
+   ]
+  ],
+  "deadlineLines": 1
+ },
+ "drawer-390": [
+  [
+   "Deny",
+   44,
+   "600",
+   "12px"
+  ],
+  [
+   "Approve",
+   44,
+   "600",
+   "12px"
+  ]
+ ]
+}

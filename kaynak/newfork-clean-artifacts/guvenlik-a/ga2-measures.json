@@ -1,0 +1,82 @@
+{
+  "Manager-1440": {
+    "rewritten": 18,
+    "orgRead": [
+      "General Read",
+      "Locations Read",
+      "Jobs & departments Read",
+      "Shift catalog Read",
+      "Schedule rules Read",
+      "Document requirements Read",
+      "Notification settings Read"
+    ],
+    "orgEdit": [],
+    "invitationsEdit": false,
+    "horizontalScroll": false
+  },
+  "Admin-1440": {
+    "rewritten": 27,
+    "orgRead": [
+      "General Read",
+      "Locations Read",
+      "Jobs & departments Read",
+      "Shift catalog Read",
+      "Schedule rules Read",
+      "Document requirements Read",
+      "Notification settings Read",
+      "Roles & permissions Read"
+    ],
+    "orgEdit": [
+      "General Edit",
+      "Locations Edit",
+      "Jobs & departments Edit",
+      "Shift catalog Edit",
+      "Schedule rules Edit",
+      "Document requirements Edit",
+      "Notification settings Edit",
+      "Roles & permissions Edit"
+    ],
+    "invitationsEdit": true,
+    "horizontalScroll": false
+  },
+  "Manager-390": {
+    "rewritten": 18,
+    "orgRead": [
+      "General Read",
+      "Locations Read",
+      "Jobs & departments Read",
+      "Shift catalog Read",
+      "Schedule rules Read",
+      "Document requirements Read",
+      "Notification settings Read"
+    ],
+    "orgEdit": [],
+    "invitationsEdit": false,
+    "horizontalScroll": false
+  },
+  "Admin-390": {
+    "rewritten": 27,
+    "orgRead": [
+      "General Read",
+      "Locations Read",
+      "Jobs & departments Read",
+      "Shift catalog Read",
+      "Schedule rules Read",
+      "Document requirements Read",
+      "Notification settings Read",
+      "Roles & permissions Read"
+    ],
+    "orgEdit": [
+      "General Edit",
+      "Locations Edit",
+      "Jobs & departments Edit",
+      "Shift catalog Edit",
+      "Schedule rules Edit",
+      "Document requirements Edit",
+      "Notification settings Edit",
+      "Roles & permissions Edit"
+    ],
+    "invitationsEdit": true,
+    "horizontalScroll": false
+  }
+}

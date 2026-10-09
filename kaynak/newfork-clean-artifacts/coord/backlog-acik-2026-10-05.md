@@ -1,0 +1,423 @@
+# Açık backlog — 407 madde
+
+Kaynak: `docs/plan/BACKLOG.md`, origin/main, 2026-10-05. "Açık" = dosyada kapandı yazmayan madde; bugünkü koda karşı tazelik ölçümü yapılmadı.
+İşaretler: ilki bekletmenin bedeli, ikincisi yapmanın riski (safe / moderate / risky).
+
+## Yüksek (bekletmek sorun yaratıyor) — 10
+
+- **BL-178** (risky) Özel müdür rolü organizasyon ayarlarını RLS üzerinden yazabiliyor; çekirdek "hayır" diyor.
+- **BL-232** (risky) Settings yazmalarını API'ye taşımak; sonra 6 katalog tablosunun tarayıcı iznini kapatmak.
+- **BL-238** (risky) Sunucu "bu hafta"yı UTC'ye göre hesaplıyor: her Pazar Pacific ~17:00–24:00 (PST'de ~16:00'dan) yönetici ekrandaki haftayı düzenleyemiyor.
+- **BL-276** (risky) Eski yetki kapısı (`service_actor_has_permission`) rütbe, kapsam ve kapalı workspace kontrollerini atlıyor (denetim ailesi A).
+- **BL-503** (risky) Onaylanan form kuralları kodda her alanda uygulanmıyor.
+- **BL-560** (risky) Yerleşik Manager rolünde belge izni yok; yeni workspace'te müdür çalışanlarının belgelerini göremez ve onaylayamaz.
+- **BL-101** (moderate) Zamanlanmış dışa aktarmalar cron'da her seferinde düşüyor.
+- **BL-559** (moderate) Birincil lokasyonu olmayan kişi (ör. owner) son tarihli belgeyi gönderemiyor.
+- **BL-624** (moderate) Girişte bekleyen davet ekranı ("Active invitation found") yok; KARARLAR'daki kural uygulanmamış.
+- **BL-682** (moderate) Çalışanın Schedule'ında bu haftadan başka haftaya geçince ızgara kutusundan taşıyor.
+
+## Orta (yapılmaya değer, acil değil) — 131
+
+- **BL-041** (risky) Requests > Shift Changes baştan sona elden geçirme.
+- **BL-059** (risky) Billing/Stripe: plan, limit, promo, trial.
+- **BL-079** (risky) gorunen ad tek kaynaktan okunmali (2026-09-21, JOIN-008 olcumu).
+- **BL-189** (risky) Takas kurtarma fonksiyonu eski yetki yardımcısını kullanıyor, "hayır" sözleşmesine uymuyor.
+- **BL-374** (risky) Settings yazma rotalarının kapısı çekirdeğe çevrilmeli (BL-223'ün kapı yarısı).
+- **BL-377** (risky) 382 migration dosyası; temiz DB kurulumu ve CI yavaş, bir tabana (baseline) sıkıştırılmalı.
+- **BL-038** (moderate) Schedule Templates: 6 ürün kararı ve UAT (ARGE: docs/archive/rebuild/bl-038-schedule-templates-arge-2026-09-11.md).
+- **BL-046** (moderate) Settings > Notifications sadeleştirme, producer audit ve gerçek belge email teslimatı.
+- **BL-055** (moderate) Global date/time tercihinin Schedule, Employee Hub ve Notifications'ta kullanılması.
+- **BL-056** (moderate) Employee arayüzü: tüm sayfaların audit ve polish'i.
+- **BL-057** (moderate) Shift Hub bilgi mimarisi: tab karmaşası temizlenir, Time Tracking gizlenir.
+- **BL-058** (moderate) Beş tenant E2E prova verisi ve kabul turu.
+- **BL-096** (moderate) BL-070'in kalan dosyalari.
+- **BL-117** (moderate) FEEDBACK-001'e kaldığı yerden devam: Aşama 2, hiyerarşi istişaresi.
+- **BL-118** (moderate) Owner kendi belgesini gönüllü yükleyemiyor.
+- **BL-159** (moderate) Açık düzenleme, tutmadığı bir lokasyona vardiya ekleyebiliyor.
+- **BL-174** (moderate) Yayın yazma tetikleyicisi, son yayında aynı kimlikte vardiya bulunca hiç değerlendirme yapmıyor.
+- **BL-176** (moderate) Rota korumaları ve landing hâlâ izin anahtarına bakıyor.
+- **BL-179** (moderate) Üç izin fonksiyonu hâlâ eski yardımcıya soruyor, rütbeye bakmıyor.
+- **BL-200** (moderate) Her takas onayı cevaptan önce bildirim dağıtımını 2 sn'ye kadar bekliyor.
+- **BL-217** (moderate) İki pgTAP dosyası gerçek seed lokasyonunu değiştiriyor.
+- **BL-218** (moderate) Owner/Management sistem kaydı için görev dosyası.
+- **BL-226** (moderate) `roles_permissions_rls` testinde artık `set_config('request.jwt.claim.sub', …)` satırları.
+- **BL-255** (moderate) İkinci beyaz düğme sistemi: `.job-secondary-button` ortak beyaz düğme kuralını almıyor.
+- **BL-275** (moderate) Schedule ızgarası her çizimde bütün modeli yeniden kuruyor.
+- **BL-280** (moderate) İşlevsel kusurlar ve ölü ikiz rotalar (denetim ailesi F).
+- **BL-292** (moderate) Vardiya düzenleme servisi, yükte `note` anahtarı yoksa notu uyarısız siliyor.
+- **BL-304** (moderate) Kullanıcının dev sunucusu (5555) `@newfork/ui`'nin eski derlemesini kullanıyor; taslak silme düğmesi görünmüyor.
+- **BL-334** (moderate) Ortak ikon düğmesi (`.icon-button`) 38×36px; telefonda dokunma hedefi 44×44'ün altında.
+- **BL-336** (moderate) Davet token'ı e-posta onayı boyunca saklanmıyor; koşulu gerçekleşti, yeniden ölçülmeli.
+- **BL-338** (moderate) Çalışan kaydı olmayan owner'lar Employees'te hiç görünmez; kaydı kurulum sihirbazını atlayan veri doğuruyor.
+- **BL-340** (moderate) Pasif (disabled) düğmelerin soluk yazısının kontrastı ölçülmemiş; ortak kural bütün uygulamayı etkiliyor.
+- **BL-351** (moderate) Kurtarma ve davet bağlantıları token'ı adres çubuğunda (sorgu dizesinde) taşıyor.
+- **BL-362** (moderate) Schedule → hücre: "izni kısalt ve ata" tek adım olsun.
+- **BL-363** (moderate) İzin API'si iki klasörde: `apps/api/src/time-off/` ve `apps/api/src/schedule/schedule-requests-routes.ts`.
+- **BL-382** (moderate) SSN kalıntıları duruyor; ROADMAP "SSN yok" diyor.
+- **BL-383** (moderate) 84 API rotası isteğin gövdesini yetki sorusundan önce doğruluyor (BL-172'nin devamı).
+- **BL-404** (moderate) Test dünyasında parolası verilmemiş bir hesapla giriş denenince auth sunucusu "Invalid login credentials" yerine 500 veriyor.
+- **BL-436** (moderate) Employees listesinin lokasyon süzgeci yalnız birincil lokasyona bakıyor: owner ve bir lokasyonda ikincil çalışan kişi o lokasyon seçilince listeden düşüyor.
+- **BL-437** (moderate) Zamanlanmış dışa aktarma arayüzden kurulamıyor: canlı Export paneli bu bölümü taşımıyor.
+- **BL-449** (moderate) Schedule üst çubuğundaki hafta düğmesinin erişilebilir adı, üstünde yazanla uyuşmuyor (WCAG 2.5.3).
+- **BL-452** (moderate) Settings'ten bir lokasyon silinir ya da arşivlenirse o lokasyonun tek müdürü lokasyonsuz kalır.
+- **BL-474** (moderate) "En az bir iş ve bir birincil iş" kuralı yalnız çekmece kaydında; Settings → Jobs'tan işi alınan kişi işsiz kalıyor.
+- **BL-515** (moderate) Ortak çekmece açıkken atılan toast tıklanamıyor ve ekran okuyucu okumuyor.
+- **BL-533** (moderate) Workspace ana sayfasındaki bildirim kutucuğu eski gelen kutusunu (`get_notifications_service`) okuyor.
+- **BL-549** (moderate) Arşivden dönen lokasyonun vardiyalarına kapalı gün listesiz uygulanıyor; K13 sorusu sorulmuyor.
+- **BL-562** (moderate) Takvim ızgarasının 50 ms bütçe testi CI'da e2e ile aynı anda koşunca yine düşüyor.
+- **BL-564** (moderate) Workspace ana sayfasındaki "Announcements" kutusu arşivli, süresi dolmuş ("Expired") ve yayımlanamamış ("Couldn't publish") duyuruyu da gösteriyor.
+- **BL-565** (moderate) Ekibin haftalık müsaitliğini okuyan rota izni kendi içinde soruyor.
+- **BL-571** (moderate) Telefonda alan odaktayken Employee Hub alt sekme çubuğu gizleniyor; Save'e ilk dokunuş yutuluyor.
+- **BL-599** (moderate) Telefonda liste tabloları: sütunlar gizli yana kayıyor, başlık taşıyor, sekme satırı yarım, y'ler eşit değil.
+- **BL-600** (moderate) Arama ve açılır liste çerçevesi `#aeb9b4` sayfa zemininde 1.86:1 (WCAG 1.4.11 3:1 ister); odak zayıf.
+- **BL-602** (moderate) `role="tab"` sekme listeleri ok tuşuyla gezilmiyor.
+- **BL-604** (moderate) Yeni liste dili Employees, Schedule → Requests, Settings → Locations / Jobs / Acknowledgements / Shift catalog'a yayılmadı.
+- **BL-608** (moderate) Schedule'da Esc ve boş tık katmanları yanlış sırada kapanıyor.
+- **BL-618** (moderate) Prototipte gerçek uygulamadan daha iyi yapılan Schedule cilalarını gerçek uygulamaya taşımak.
+- **BL-620** (moderate) Onboarding ekranlarında hatanın ham teknik metni kişiye gösteriliyor ("duplicate key value violates unique constraint …", "Failed to fetch").
+- **BL-621** (moderate) Ortak şemaların varsayılan zod mesajları kişiye ulaşıyor ("Too small: expected string to have >=1 characters", "Invalid string: must match pattern …").
+- **BL-625** (moderate) Varsayılan workspace kuralı uygulanmamış: işaret yokken sistem tahmin ediyor.
+- **BL-628** (moderate) Giriş ekranı Supabase'in ham İngilizce cümlelerini gösteriyor; "Email not confirmed" ekranında yeniden gönderme yolu yok — karar gerekir.
+- **BL-632** (moderate) Kurulum sihirbazında önceki bir adımda kayıt yapmak ilerlemeyi geri sarıyor.
+- **BL-633** (moderate) Kurulum sihirbazı kaldığı yerden açılınca sayfada tutulanları unutuyor; Start over da onları silmiyor.
+- **BL-656** (moderate) Onay kutusu kapanınca odak kayboluyor; sonra Esc çekmeceyi kapatmıyor.
+- **BL-675** (moderate) Çalışan her onaylanmamış duyuruda "Acknowledge" görüyor; K22 yalnız yükümlü olanlara diyor.
+- **BL-034** (safe) Landing page kapsam kararı: public ziyaretçiyi doğru auth/onboarding yoluna yönlendirme.
+- **BL-045** (safe) App Notifications fonksiyonel audit.
+- **BL-051** (safe) Roles: gerçek custom-role silme işleminin browser kabulü.
+- **BL-053** (safe) Acknowledgements sayfasının MVP rolü kararı.
+- **BL-122** (safe) Kurulumdan çıkan owner boş ızgarayla karşılaşıyor.
+- **BL-135** (safe) "Manager note": yöneticiler arası ortak müsaitlik/plan notu.
+- **BL-191** (safe) Toplu yollar birden çok vardiyanın yeni saatlerini birbiriyle karşılaştırmıyor olabilir.
+- **BL-211** (safe) Yayın hazırlığında `GET /schedule/shifts?…&draft_id=…` bir kez 500 döndü.
+- **BL-224** (safe) `delete_schedule_draft_service` Q-B kuralını satır içinde hesaplıyor.
+- **BL-233** (safe) 768px'te Schedule üst çubuğunda Export düğmesi lokasyon süzgecinin üstüne biniyor.
+- **BL-249** (safe) Employee Hub karşılama bölümü 721–800px'te sıkışıyor.
+- **BL-262** (safe) Yerel `test:db` kırmızı listesi ölçülmeli: `roles_permissions_rls` 5, `weekly_team_availability` 5 kırmızı; migration olmadan da düşüyor.
+- **BL-281** (safe) Test ve CI bekçileri delik (denetim ailesi G).
+- **BL-319** (safe) Telefonda Schedule'ın sol düğme grubu hâlâ kaydırılan bir kutu; oradan açılan menüler kırpılıyor olabilir (doğrulanmadı).
+- **BL-325** (safe) Veritabanının anahtar izin listesi ile ortak şemanın zorunlu alanları yeniden ayrışabilir; bunu yakalayan genel bir kontrol yok.
+- **BL-333** (safe) Telefonda (375px) Schedule → Settings menüsü ekranın sağından taşıyor; "Sort employees" başlığı ve satırlar kırpılıyor.
+- **BL-373** (safe) Üç bildirim pgTAP dosyası bildirim kataloğunu sabit 9 tür sayıyor; katalog büyüdü, CI'da kırmızı.
+- **BL-407** (safe) Telefonda Employees çekmecesinde "Terminate employee" (ve arşivli kişide "Restore employee") hiç görünmüyor; telefondan işten çıkarma yolu yok.
+- **BL-429** (safe) Kilitli "Terminate employee" düğmesinin nedeni yalnız fare üstü ipucunda; klavyeyle ve dokunarak okunamıyor.
+- **BL-434** (safe) Davetlinin yeni hesap açarak daveti kabul etmesi e2e'de yok.
+- **BL-438** (safe) e2e'de `getByLabel("E-mail")`, gizli bilgileri görebilen okuyucuda (owner, admin) iki alan buluyor.
+- **BL-445** (safe) Schedule topbar dar pane'de (~936px) iki satıra sarıyor; taşma yok, polish (F5).
+- **BL-447** (safe) Web testi `PublicTrustPages.test.tsx` makine yüklüyken 5 saniyelik sınırı aşıyor.
+- **BL-455** (safe) Ekran metni değişen işte "etkilenen e2e yok" hükmü bir günde iki kez yanlış çıktı; değişen metnin e2e'deki ikizini arayan bir adım yok.
+- **BL-478** (safe) Düzenleme çekmecesi klavye odağını içinde tutmuyor (WCAG 2.4.3).
+- **BL-481** (safe) Kurulum sihirbazında Management satırında "Rename" ve "Remove" etkin görünüyor.
+- **BL-507** (safe) İzin süre işinin hataları yalnız Postgres günlüğünde kalıyor; kalıcı iz yok.
+- **BL-516** (safe) Oturum panosu her satırda aynı iş/durum etiketini gösteriyor.
+- **BL-520** (safe) Kullanıcının yerel Meyhouse verisi (`supabase/local-fixture/meyhouse.sql`, git dışı) `.7`'nin sildiği kolonlara yazıyor; `.7` main'e girince yerel `supabase db reset` o dosyada düşer.
+- **BL-525** (safe) Müsaitlik turuncusu ile onaylı izin kırmızısı yalnız renkle ayrılıyor; renk körlüğü benzetiminde ikisi zeytin rengine yakın görünüyor.
+- **BL-529** (safe) Guard dal silmeyi yalnız düz `git branch -D <ad>` biçiminde yedekliyor; döngü ya da değişkenle yapılan silme yedeksiz geçiyor.
+- **BL-540** (safe) Schedule'da yayınlanmış vardiyanın "!" ipucu son satırda hep "Publish asks you to confirm it." diyor.
+- **BL-541** (safe) Announcements'ta çalışanın "Acknowledge" düğmesi 12px yerine 16px yazıyor.
+- **BL-542** (safe) Announcements çalışan listesi telefonda (375 px) başlığı ~10 harfte kesiyor.
+- **BL-543** (safe) Announcements'ta yayınlanmış duyurunun kırmızı iki tık "Delete"i aslında arşivliyor.
+- **BL-563** (safe) `nf-db` yetki matrisini değiştirince shared'daki ikiz testi düşüyor; rol talimatında adımı yok.
+- **BL-566** (safe) `bl052_document_onboarding` pgTAP dosyasının 25.
+- **BL-570** (safe) Schedule'da boş hücrenin müsaitlik balonu eski dilde.
+- **BL-587** (safe) Schedule filtre menüsü 375 px telefonda sağdan taşıyor.
+- **BL-595** (safe) Settings satır menülerinde Archive tek tık; Mert iki tık kırmızı istedi.
+- **BL-609** (safe) Paste mode'un ekranda geri bildirimi yok ya da yanlış.
+- **BL-610** (safe) Schedule'da klavye ve odak eksikleri: fareyle odaklanan kart Enter / Ctrl+C'ye tepki vermiyor; yatay kaydırma çubuğu odak halkası göstermiyor.
+- **BL-612** (safe) Boş Schedule ızgarasında "No employees" yalnız ekran okuyucuya söyleniyor.
+- **BL-619** (safe) "Changed after publishing" etiketi onaylı izni de sayıyor; M11 yalnız müsaitlik diyor.
+- **BL-622** (safe) Owner kurulum sihirbazında ve çalışan onboarding'inde yazılan her cevap kalın görünüyor.
+- **BL-626** (safe) Workspaces'te "Create your workspace" görünürlüğü KARARLAR'a uymuyor; sunucunun reddettiği durumda da gösteriliyor.
+- **BL-627** (safe) Paylaşılan cihazda yeni giren kişi bir öncekinin son sayfasına iniyor.
+- **BL-629** (safe) Hesap kurtarma ekranında bağlantı eksik ya da bozuksa düğme sessizce kapalı; yeni bağlantı isteme yolu yok.
+- **BL-630** (safe) Süresi geçmiş ya da kullanılmış kurtarma bağlantısı "Valid recovery token required" diyor.
+- **BL-631** (safe) Davet sayfası önizleme yüklenirken "this workspace / the invited address" diyen açık bir Accept düğmesi gösteriyor.
+- **BL-634** (safe) Kurulum sihirbazında posta kodundan saat dilimi önerisi hiç çalışmıyor.
+- **BL-635** (safe) Herkese açık sayfalar yanlış ya da iç bilgiler söylüyor: "Light and dark themes", "Newfork Clean", "Phase 10".
+- **BL-645** (safe) Çalışan onboarding'i "Needs changes" diye işaretli adımı aç diyor; satırlarda böyle bir işaret yok.
+- **BL-646** (safe) Çalışan resmî adını davetten farklı yazınca onay beklediği söylenmiyor; adım "Done" görünüyor — karar gerekir.
+- **BL-647** (safe) Çalışan onboarding'inde "Send for review", dosyası ya da gerekçesi olmayan koşullu belgeyi bilmiyor; sunucu teknik bir cümleyle reddediyor.
+- **BL-651** (safe) Settings → Notifications'ta 16 bildirim türü ham anahtar adıyla yazıyor.
+- **BL-652** (safe) Çalışan görünümünde vardiya değişiklikleri: geçmiş ertesi gün kayboluyor, kendi talebi "Cover for <kendi adı>", Schedule'daki vardiyaya tıklamak hiçbir şey yapmıyor.
+- **BL-654** (safe) Settings ve Schedule → Requests'te sunucunun iç cümlesi ekrana çıkıyor ya da genel hata asıl nedeni saklıyor.
+- **BL-657** (safe) Schedule → Requests sayfası bütün odak halkalarını kaldırıyor.
+- **BL-658** (safe) Schedule → Requests'te görünüm kusurları: Shorten formu çekmeceyi kaplıyor, liste ve sekmeler Time off ile Shift changes arasında farklı.
+- **BL-666** (safe) Workspace ana sayfasında yanlış ve eksik satırlar: ileri tarihli iş "Due 1m ago" diyor.
+- **BL-674** (safe) Birçok ekranda ham ISO tarih ve 24 saat; workspace'in saat biçimi yok sayılıyor.
+- **BL-676** (safe) Geçmiş önemli tarihin satırı kapalı; notu okumak için bile açılamıyor.
+- **BL-681** (safe) Schedule görünüm modunda Unassigned satırı gizlenmeli; bugün görünüyor.
+- **BL-683** (safe) Çalışanın Schedule'ında lokasyon noktası yöneticiye yazılmış "Deadline approaching… publish the schedule as soon as possible" diyor.
+- **BL-007** (belirsiz) Onboarding yedi adımlı akış ve taslak otomatik kaydetme.
+- **BL-008** (belirsiz) Workspace avatar upload/crop.
+
+## Düşük (düzen, küçük iyileştirme) — 264
+
+- **BL-060** (risky) Kiosk, time tracking, break, payroll, compliance.
+- **BL-071** (risky) `membership_status='invited'` ve enum temizliği (2026-09-21).
+- **BL-123** (risky) Yayınlanan haftanın salt-okunur, süresi dolan paylaşım linki.
+- **BL-126** (risky) Taslakta lokasyonlar arası ortak çalışma daveti.
+- **BL-494** (risky) Bütün lokasyonları arşivli bir zamanlanmış dışa aktarma kuralını müdür düzenleyemiyor; yalnız owner/admin.
+- **BL-050** (moderate) Shift type başına birden çok saat preset'i ve grid'de sağ tık ile hızlı shift.
+- **BL-072** (moderate) iki avatar alanı (2026-09-21).
+- **BL-073** (moderate) canvas önerisi: hesap butonu + switcher tek kontrol (2026-09-21).
+- **BL-169** (moderate) Ortak durum mesajlarında ham hex: `.form-error`, `.settings-notice`, `.request-notice`.
+- **BL-261** (moderate) Sahiplik devrinin "hayır" cevapları yetki sözleşmesi dışında.
+- **BL-318** (moderate) Schedule'ın diğer pencereleri eski ağır stilde; sağ üst menüler ve Publish penceresi yeni sade stilde.
+- **BL-326** (moderate) Yayınlama, hedef lokasyonların taslağın `location_ids`'inde olmasını istemiyor.
+- **BL-366** (moderate) Employees çekmecesinin formu ilk karede boş; çok hızlı tıklanırsa kişinin işleri ve lokasyonları formdan silinir.
+- **BL-376** (moderate) `apps/api/src/schedule/schedule-routes.ts` 2667 satır; bölünmeli.
+- **BL-378** (moderate) `packages/shared` tek 3121 satırlık `index.ts`; alt yol (subpath) export'larına bölünmeli.
+- **BL-379** (moderate) API'nin üç kök yolu var: `/v1`, `/schedule`, `/shifts`; `vercel.json` üçünü ayrı yönlendiriyor.
+- **BL-386** (moderate) Schedule ekranının ana bileşeni `SchedulePage.tsx` 3519 satır, 53 `useState`, 22 `useEffect`; parça parça ayrı bileşen ve hook'lara çıkarılmalı.
+- **BL-390** (moderate) Kişi değişince okumalar iptal ediliyor ama yolda olan bir kaydetmenin cevabı yeni kişinin önbelleğine yazılabilir.
+- **BL-419** (moderate) Kurulumu bitmemiş (taslak) workspace'te owner API'den davet gönderebiliyor; web'de bu kapalı.
+- **BL-423** (moderate) G8'den sonra, arşivli lokasyonu satır içinde eleyen 29 fonksiyon çekirdekle ikizleşir.
+- **BL-428** (moderate) Employees listesinde owner satırı "Unassigned +1" yazıyor: birincil lokasyonu yok ama lokasyonu var, etiket çelişkili.
+- **BL-442** (moderate) Unpublish penceresi, yayın durumu okunamazsa yayında vardiyası olmayan lokasyonu "0 live shifts will be removed" diye listeliyor.
+- **BL-448** (moderate) Schedule ızgarasında "bugün" rozeti ile sütunun yeşil tonu gün dönümünde ayrı günlere düşüyor.
+- **BL-450** (moderate) Schedule üst çubuk denetimlerinin kenarı beyaz üstünde 2,0:1.
+- **BL-456** (moderate) "Her müdürün en az bir lokasyonu olur" kuralı iki yoldan atlanıyor: bekleyen müdür daveti ve arşivden geri alma.
+- **BL-462** (moderate) Müdürü Employee yapıp aynı kayıtta son lokasyonunu çıkarmak tutuluyor.
+- **BL-487** (moderate) Tetikleyicinin adı ve ipucu artık kuralı anlatmıyor.
+- **BL-502** (moderate) Bitmiş işlerin worktree'leri birikmiş.
+- **BL-506** (moderate) İzin süre işi bir turda en çok 500 talebi tek transaction'da kapatıyor ve tur boyunca kilit tutuyor.
+- **BL-518** (moderate) İzin dönem anlık görüntüsü veritabanında zorunlu, shared'da opsiyonel.
+- **BL-523** (moderate) Onaylı izin kuralı ayarlarda tek değerli bir anahtar olarak duruyor; okuyucular onu ayardan okuyor.
+- **BL-526** (moderate) Schedule ızgarasında klavyeyle (Tab) görünmeyen hücreye geçilince ızgara kayıyor ve balon açılıp hemen kapanıyor.
+- **BL-539** (moderate) Duyurunun hedefi daraltılırken bildirim gönderici o anda işliyorsa çıkarılan kişiye bildirim yine ulaşabilir.
+- **BL-544** (moderate) Onaylı izin ile kapalı gün, vardiyayı open'a düşürme adımlarını iki ayrı yerde yazıyor.
+- **BL-545** (moderate) Açık Schedule düzenleme oturumundaki yalnız-taslak vardiyalar kapalı gün ilan edilince düşmez.
+- **BL-548** (moderate) Kapalı gün önizlemesinde saat dilimi karışık: başlangıç lokasyonun diliyle, süzgeç vardiyanın kendi diliyle hesaplanıyor.
+- **BL-567** (moderate) Veritabanında "employee olmayana müsaitlik haftası yazılamaz" kısıtı yok.
+- **BL-580** (moderate) Ortak onay penceresi (`ConfirmDialog`) telefonda 8 px sağa kayık.
+- **BL-581** (moderate) Mevcut kadro için toplu "mark as on file" yok.
+- **BL-584** (moderate) Settings → Acknowledgements düzenleyicisi belge düzenleyicisi kadar sade değil.
+- **BL-585** (moderate) Optional belge Required yapılınca mevcut muafiyetler sorulmadan taşınıyor.
+- **BL-596** (moderate) Notifications "Read (N)" sayısı yüklenen satırlardan geliyor; API okunmuş toplamı vermiyor.
+- **BL-597** (moderate) Notifications toplu "Mark as read" her satır için ayrı istek atıyor; toplu uç yok.
+- **BL-002** (safe) `pnpm.cmd dev` için yapılandırılabilir portlar; aynı sunucu ikinci kez başlatılmasın.
+- **BL-003** (safe) Tek komutla env anahtarlarının varlığı (değer göstermeden), port ve checkout kontrolü.
+- **BL-042** (safe) Employee drawer UI polish.
+- **BL-044** (safe) Announcements sayfası ve Add Announcement drawer polish.
+- **BL-047** (safe) Settings > General ve Location drawer polish; Jobs drawer polish da burada (BL-048 sadece crash).
+- **BL-062** (safe) Default-hours review.
+- **BL-083** (safe) Seed replay hatalari.
+- **BL-105** (safe) Ortak yerel DB'de pgTAP kalıcı kurulu değil; oturumların pgTAP koşuları birbirini sırayla bekliyor.
+- **BL-110** (safe) 5.4'ten sonra "saat yok" geri dönüşleri ölü kaldı.
+- **BL-125** (safe) Kilitli kalan eski takım çalışma kopyası.
+- **BL-151** (safe) Kurulum sihirbazının telefon görünümünde iki yerleşim kusuru.
+- **BL-153** (safe) Terfide not silme tetikleyicisi bir yolu kapsamıyor.
+- **BL-167** (safe) Takas kurtarmasında vardiya notu ve "saati gizle" kopyalanmıyor.
+- **BL-168** (safe) Web'de ölü taslak işlem fonksiyonları.
+- **BL-194** (safe) Schedule durum kutusu ve birincil buton hover'ı ham hex kullanıyor.
+- **BL-195** (safe) Erişim-yok ekranının testleri eksik ve biri yanlış kurulmuş.
+- **BL-206** (safe) BL-186 sonrası ölü kalan kod.
+- **BL-215** (safe) Kurulum sihirbazında ham hex `#596672`.
+- **BL-227** (safe) `weekly_exchange_changed_terms` yerelde kırmızı.
+- **BL-228** (safe) BL-198: onay ve yayın aynı anlarda olursa zaman damgası penceresi.
+- **BL-229** (safe) BL-198: cover ve open pickup türleri testsiz.
+- **BL-236** (safe) Şablon uygulama mesajı etiket adını UTF-16 birimiyle kesiyor; emojili adda yarım karakter çıkıyor.
+- **BL-241** (safe) Yönetim telefon menüsünün More sayfasında Account satırının yazısı birkaç piksel sağa kayıyor.
+- **BL-244** (safe) Employees çekmecesinde var olan kişi düzenlenirken lokasyon/iş/rol listesi yüklenemezse uyarı çıkmıyor; seçiciler boş görünüyor.
+- **BL-248** (safe) BL-221 Düşük 1: `owner_time_off_needs_no_documents` fixture'ı owner'ı elle kuruyor (`lifecycle_exempt=false`).
+- **BL-256** (safe) Schedule → Requests'in stil bloğu "beyaz düğme"yi yanlış sınıftan tanıyor.
+- **BL-257** (safe) Pakette kalan iki ham hex.
+- **BL-258** (safe) Account → Notifications'ta satır açma düğmesinin üzerine gelince zemini görünmüyor.
+- **BL-259** (safe) Employees çekmecesinin form alanlarının kenarı soluk (ham `#cbd2ce`, beyazda 1,54:1).
+- **BL-260** (safe) Settings → Roles'ta beyaz düğmelerin yazısı ince (font-weight 500), her yerde 750.
+- **BL-282** (safe) Kod denetiminin düşük bulguları (tek madde).
+- **BL-284** (safe) "Kurulumu bitmemiş workspace" yorumu kodla uyuşmuyor.
+- **BL-285** (safe) "Check your email" ve "Forgot password" ekranlarında Privacy/Terms bağlantıları yok; "Sign in"de var.
+- **BL-286** (safe) Giriş öncesi ekranların beyaz düğmesinin kenarı soluk (`--theme-border-strong` `#cbd4d0`, beyazda 1,47:1).
+- **BL-287** (safe) Aynı sayfada hata metni iki renk: Account → Workspaces'te kapatma penceresindeki hata cümlesi `#66524d` (açık pembe zeminde), aynı sayfadaki davet satırı ve Account → Security hatası `#a23725` kırmızı.
+- **BL-289** (safe) Forgot password'da "Send reset link" sonrası klavye odağı sayfanın başına (BODY) düşüyor.
+- **BL-298** (safe) "Yalnız boşluktan oluşan not = not yok" kuralı yalnız hızlı düzenleyicide; sunucu ve ortak şema kırpmıyor.
+- **BL-315** (safe) Management iş kümesi Schedule ve çekmecede tekrar tekrar kuruluyor.
+- **BL-320** (safe) Telefonda Published ▾ menüsü uzun taslak adında ekranın kenarından taşabilir (doğrulanmadı).
+- **BL-327** (safe) New Schedule ▾ menüsü ve Schedule pencerelerinde erişilebilirlik ve küçük görsel pürüzler.
+- **BL-337** (safe) React hook bağımlılık uyarıları: 20 `react-hooks/exhaustive-deps` uyarısı (0 hata).
+- **BL-339** (safe) Account → Preferences'ta "System" seçeneği hangi biçimi verdiğini göstermiyor.
+- **BL-344** (safe) Kararsız pgTAP: `bl052_document_onboarding.test.sql` 25.
+- **BL-346** (safe) Ölü CSS: `.schedule-shift-drawer` kuralları hiçbir bileşende kullanılmıyor.
+- **BL-348** (safe) Tercih edilen ad onay bildiriminin bağlantısı `/app`'e gidiyor; ad Account → Profile'da (`/account/profile`).
+- **BL-349** (safe) Settings → Shift types'taki bilgi baloncuğu ortak Tooltip'i kullanmıyor.
+- **BL-350** (safe) Ortak Tooltip ve not köşesi: kapanma gecikmesi testte kilitli değil; kalemle basılı bayrak takılabilir.
+- **BL-352** (safe) Davet teslim sırrı (`employee_invitation_delivery_secrets.token`) düz metin duruyor ve davet kapanınca silinmiyor.
+- **BL-355** (safe) Account'ta küçük ölçü ve metin düzeltmeleri: düğme yükseklikleri, eksik sayacının erken görünmesi, onboarding'de e-posta notu.
+- **BL-357** (safe) Hesap silmede ilk kurtarma e-postası düşerse kişi 15 dakika yeniden gönderim alamıyor ve ekran bunu söylemiyor.
+- **BL-358** (safe) Parola sıfırlama sayacı e-posta ve IP adresini tuzsuz sha256 ile saklıyor; özet geri çevrilebilir.
+- **BL-359** (safe) `claim_password_reset_send_service` oturumsuz çağrılıyor ama yetki kataloğunda `account.self` eylemiyle sınıflı.
+- **BL-360** (safe) Saklama süresi dolan workspace silinirken logo dosyası depolamada kalıyor.
+- **BL-364** (safe) Sistemin yazdığı izin kısaltma satırı Requests → Closed ve Employee Hub istek listesinde düz "Cancellation" görünüyor.
+- **BL-367** (safe) Web testlerinde ekran bekleme süresi üç dosyada ayrı ayrı ayarlı.
+- **BL-371** (safe) Menülerde "Published by Unknown" görünüyor: yayın durumu okuması yayınlayanın adını hiç doldurmuyor.
+- **BL-375** (safe) Requests → Shift changes, API'nin "hayır"ını ortak erişim-yok kartıyla değil kendi kartıyla gösteriyor.
+- **BL-380** (safe) `docs/archive/rebuild` repoda 141 dosya, 5,3 MB.
+- **BL-381** (safe) İki dev test dosyası: `apps/web/src/App.test.tsx` 5509 satır, `apps/api/src/app.test.ts` 4185 satır.
+- **BL-384** (safe) Account ve workspace-account rotalarında 27 yerde kendi `401 "Bearer token required"` cevabı (sebep anahtarı yok).
+- **BL-385** (safe) Zamanlanmış dışa aktarmanın `Idempotency-Key`'i (plan + hafta + alıcı) çok uzun e-posta adresinde 256 karakteri aşabilir; Resend 400 döner.
+- **BL-388** (safe) Lokasyondan çıkarma ve işten çıkarma, vardiyanın saatini lokasyonun bugünkü saat dilimiyle hesaplıyor; vardiyanın kendi saat dilimi kaydıyla değil; taslak atamalarına da dokunmuyorlar.
+- **BL-389** (safe) Workspace hub'ındaki davet satırı kabul ya da ret sonrası Account rozetini yenilemiyor.
+- **BL-391** (safe) Schedule'da ölü anahtar `schedulePublicationStatusKey` ve `void refreshPublicationStatus()` çağrıları işlenmemiş hata bırakıyor.
+- **BL-393** (safe) Ortak yerel DB yükteyken workspace çözücü statement timeout'a takılıp gerçek 500 veriyor.
+- **BL-395** (safe) Schedule'da altı işleyici hatanın ham metnini ekrana yazıyor (`(error as Error).message` → `setOperationError`).
+- **BL-396** (safe) İzin kısaltılınca onaylayan yöneticiye giden bildirim "is back on the schedule" diyor; kişi vardiyaya yazılmadı, yalnız izni kalktı.
+- **BL-397** (safe) Shift Hub'da aynı "izin sırasında" rıza metni iki farklı görünümde; kart etiketinde ⚠ ile yazı bitişik.
+- **BL-398** (safe) İzin iptal ve kısaltma formunun stilinde ham renkler: kenar `#c5ccd6`, odak halkası mavi `#508dc8`.
+- **BL-399** (safe) Requests → Time off detayındaki "Revoke" yıkıcı işlem ama soluk görünüyor ve tek tıkla çalışıyor.
+- **BL-400** (safe) Telefonda Shift Hub filtresinin altında ~200px boşluk.
+- **BL-401** (safe) Davet bağlantısını yükleme, bekleyen davet yoksa "bulunamadı" (P0002), yöneticinin veremeyeceği rolde davet varsa "izin yok" (42501) diyor; fark, üst rütbeli bir davetin varlığını ele veriyor.
+- **BL-402** (safe) Employees çekmecesi erişim-yok kartını gösterirken sol sütun ve bölüm sekmeleri yerinde kalıyor.
+- **BL-403** (safe) Schedule'da çalışanı okuma izni olmayan için kişi adı hâlâ tıklanır düğme gibi görünüyor; Availability'de aynı durumda düğme pasif.
+- **BL-408** (safe) Salt okunur Employees çekmecesinde "Profile photo removal" başlığı ve açıklaması kalıyor ama düğme yok; tek düğmenin adı "Cancel".
+- **BL-409** (safe) Settings → Locations silme onayı, silinince lokasyonsuz kalacak kişileri adıyla söylemiyor.
+- **BL-410** (safe) Workspace ana sayfasında izni olmayana sayı widget'ı 0 ile gösteriliyor; hiç gösterilmemeli.
+- **BL-411** (safe) İzin talebi yetkisi, bilinmeyen talebe üyeliğe bakmadan 403 veriyor; var olan talepte üye olmayana 404 gidiyor.
+- **BL-412** (safe) Schedule hafta listesi, lokasyon kapsamına bakmadan taslağın varlığını P0002 ile söylüyor.
+- **BL-415** (safe) `roles_permissions_rls` testinde eskimiş bir hücre adı var; ret hücreleri yalnız 42501'i kontrol ediyor, `authz.*` ipucunu değil.
+- **BL-416** (safe) `authz_catalog`'un "kendi kapsam ya da rütbe mantığı" sayacı `is not distinct from` ve `.class` yazımlarını görmüyor; kapsam testinde iki sınıflama eskimiş.
+- **BL-420** (safe) Davet bağlantısını yükleme her hatayı "bağlantı yok" diye gösteriyor; rütbe reddi "yetkin yok" olarak görünmüyor.
+- **BL-422** (safe) Çalışan kaydı olmayan owner Employee Hub'a girince "Ask an admin for access." görüyor; owner için anlamsız.
+- **BL-425** (safe) Telefonda davet hazırlanırken Employees çekmecesinin alt çubuğu taşıyor.
+- **BL-427** (safe) Employee Hub → More sayfasında neredeyse aynı iki cümle alt alta; "My account" satırındaki avatar yassı ovale dönüşüyor.
+- **BL-430** (safe) Employees çekmecesinde "Workspace role" seçicisi tek seçenekle de açık duruyor.
+- **BL-433** (safe) Dört eski klasörde commit'lenmemiş rol hafıza notları duruyor.
+- **BL-435** (safe) e2e sunucu günlüğünde tekrar eden uyarı: "Realtime send() is automatically falling back to REST API… use httpSend()".
+- **BL-439** (safe) Employees çekmecesinde uzun e-mail adresi, alanın sonundaki durum simgesi yüzünden yaklaşık 25px erken kesiliyor.
+- **BL-441** (safe) Publish penceresinin ikinci adımında aynı özet iki kez yazıyor.
+- **BL-451** (safe) Schedule okunamadığında hafta etiketi haftanın ilk gününü değil, adresteki günü yazıyor.
+- **BL-453** (safe) Ölü CSS seçicisi: `.schedule-publish-action:disabled`.
+- **BL-454** (safe) Kurtarma penceresi kapanınca odak pasif Publish'e düşerse neden balonu kendiliğinden açılıyor olabilir (doğrulanmadı).
+- **BL-457** (safe) Schedule okunamadığında ortadaki hafta düğmesi "bu haftada değilsin" işaretini (amber) vermiyor.
+- **BL-459** (safe) Employees çekmecesinde "müdürün lokasyonu olmalı" cümlesi alt çubuğun üstünde çıkıyor, Locations alanının altında değil.
+- **BL-460** (safe) `EmployeeDrawer.test.tsx` testler arasında mock'ları yalnız ilk blokta temizliyor.
+- **BL-463** (safe) Rol kaydolup ardından yeniden okuma düşerse çekmece "Done" der ve içerik yerine hata satırı gösterir; rolün kaydolduğunu söylemez.
+- **BL-464** (safe) EMP-001 B4'ün üç test boşluğu.
+- **BL-468** (safe) Belge gönderimi ekranda görünmeyen eski ek alanın değerini de gönderiyor.
+- **BL-469** (safe) Settings → Documents → Publish penceresinde "Reason" zorunlu ama ekran söylemiyor.
+- **BL-470** (safe) Documents sayısı ile Documents listesi kişiyi farklı yoldan buluyor.
+- **BL-471** (safe) Account → Profile → "Preferred name": erişimi alınmış kişi hâlâ "Try again." okuyor.
+- **BL-472** (safe) Employees çekmecesi → Access → "Profile photo": üç yazı aynı şeyi söylüyor.
+- **BL-473** (safe) "Remove photo" fotoğraf yokken soluk duruyor ve nedenini söylemiyor.
+- **BL-476** (safe) Belge çekmecesinde testsiz kalan dallar.
+- **BL-477** (safe) Yalnız rol kaydedilince geri bildirim düğmedeki "Done"; bildirim yok, ekran okuyucu duymayabilir.
+- **BL-479** (safe) Kişi lokasyondan çıkarılıp çekmece kapanınca klavye odağı sayfanın başına düşüyor.
+- **BL-482** (safe) Owner'ın kaydında Jobs başlığı hâlâ "Required" diyor.
+- **BL-483** (safe) Employment'ta iki ayrı kilitli görünüm var.
+- **BL-484** (safe) Telefonda "Remove"lu lokasyon satırı öteki satırlardan yüksek.
+- **BL-485** (safe) Kilitli kutucuğun nedeni klavyeyle görülemiyor.
+- **BL-486** (safe) Settings sayfalarında iç içe iki `main` öğesi var.
+- **BL-488** (safe) API, şemadan düşen çalışan kaydına genel "Valid employee details required" diyor.
+- **BL-490** (safe) Kurulumu tamamlama reddi ipucu taşımıyor.
+- **BL-491** (safe) İki veritabanı testinde `todo` işareti artık gereksiz: işaretli hücreler geçiyor ("TODO passed").
+- **BL-492** (safe) "Yalnız Owner işiyle owner kaydı kaydedilir" için veritabanı testi hücresi yok.
+- **BL-493** (safe) Arşivli lokasyondaki atamadan kişi çıkarılamıyor; çıkış yolu "geri al → çıkar → arşivle".
+- **BL-497** (safe) `bl052_document_notifications` ortak yerel veritabanında "more than one row returned by a subquery" ile düşüyor.
+- **BL-499** (safe) Varsayılan saatleri gözden geçirme penceresi arşivli vardiya tipine "Saved shift type" yazıyor.
+- **BL-501** (safe) Plan belgelerinde bayat satırlar.
+- **BL-504** (safe) Locations ayar sayfası testi yük altında kararsız.
+- **BL-505** (safe) EMP-001 C onayından sonra değişen dört yüzeye kısa görsel QA turu.
+- **BL-508** (safe) İzin ilerlemesi (hangi lokasyonu kim onayladı) oy veremeyen ama talebi okuyabilen kişiye de gidiyor.
+- **BL-509** (safe) Yeni izin uçlarında her CHECK ihlali (23514) "bayat ekran" 409'u oluyor.
+- **BL-510** (safe) Yayında "not" seviyesinin üstüne geçilemez bir soft bulgu eklenirse istemcinin kararı override kaydı olarak yazılır.
+- **BL-511** (safe) Account → Workspaces'te iki düğmede etkisiz fazladan sınıf (`primary-button`) — temizlik.
+- **BL-512** (safe) İzin ekranlarında üç biçim kırıntısı.
+- **BL-513** (safe) Requests listesinin başlık satırı telefonda kayıyor.
+- **BL-514** (safe) Settings → Conflict handling'de hata ve "kaydedildi" satırları kartın kenarına yapışık.
+- **BL-517** (safe) Yeni izin iptal isteği şeması aynı istekte çakışan saatleri reddetmiyor.
+- **BL-519** (safe) Dört haftalık veritabanı testi onaylı izni ham UPDATE ile `pending`/`denied`'a çevirip "izin artık engel değil"i ölçüyor; bugün onaylı izin geri dönmez, doğru yol `revoked`.
+- **BL-521** (safe) `management_owner_job.test.sql`'deki iki `todo` testi artık geçiyor; işaret kaldırılmalı.
+- **BL-522** (safe) Schedule hücresindeki vardiya çakışması çizgisi yaratılamayan bir durum için duruyor olabilir.
+- **BL-524** (safe) Schedule ad sütunundaki haftalık müsaitlik simgesi hâlâ üstü çizili takvim ve eski amber; yeni turuncu işaretle tutarsız.
+- **BL-527** (safe) Notu okuma izni olmayan müdür balonda "Manager note (only managers see this)" görüyor; kendisi müdür olduğu için kafa karıştırabilir.
+- **BL-528** (safe) `bl052_document_notifications` ortak yerel DB'de "more than one row returned by a subquery" ile düşüyor, CI'da yeşil.
+- **BL-535** (safe) `request_account_deletion_v2_service` `_v2` adını taşıyor; `_base/_vN/_legacy` sayaç tavanını dolduranlardan.
+- **BL-537** (safe) Kapanış görünümü (`schedule_closures`) sorgu planında bütün workspace'lerin lokasyonlarını tarıyor.
+- **BL-538** (safe) `docs/plan/ILKELER.md` kendi boyut sınırını aştı: 22 265 bayt, sınır ~20 KB.
+- **BL-546** (safe) Yıllık çok günlü önemli tarih kendi günleri sürerken düzenlenirse o yılın tekrarı eski kayıtta kalır.
+- **BL-547** (safe) K11 ile bölünen geçmiş kopyanın History'de kaydı yok.
+- **BL-550** (safe) Değişmeyen önemli tarih kaydı geçmiş tarihte de sürüm numarasını artırıyor.
+- **BL-551** (safe) Yeni `important_date_shift_releases` tablosunun üç yabancı anahtarı indekssiz; canlı performans uyarılarında aynı türden toplam 237 satır var.
+- **BL-552** (safe) Shared `shiftAvailabilityAssessmentSchema` sunucunun gönderdiği `confirm_scope: "edit_session"` alanını tanımıyor; ayrıştırmada sessizce düşüyor.
+- **BL-553** (safe) Menü görünürlüğü hâlâ izin anahtarına bakıyor; `can()`'a taşınmalı.
+- **BL-554** (safe) Belge düzenleyicide "Named people" (tek tek kişiye atama) ölü yolu: veritabanı reddediyor, ekran kodu hâlâ taşıyor.
+- **BL-555** (safe) Rol editörü müdür tipi role `documents.manage` veriyor, ama M2'de bu izin müdüre hiçbir şey açmıyor.
+- **BL-556** (safe) `notification_actor_is_active_member_service` yalnız bildirim tercihleri kaydında kaldı; yetki çekirdeğine taşınabilir.
+- **BL-557** (safe) Owner'ın belge yüklemesinde API `exemption_locked`'a, veritabanı `owner_excused`'a bakıyor.
+- **BL-558** (safe) Telefonda (390 px) belge çekmecesinin sağında ~15 px gri şerit.
+- **BL-561** (safe) Employees → Documents'ta kartta Approve'dan sonra "Decision saved" bildirimi her zaman görünmüyor.
+- **BL-568** (safe) Kapanmış onboarding'lerde employee olmayan kişilerin eski "Availability" adımları duruyor.
+- **BL-569** (safe) Terfide yöneticinin notu siliniyor ama eski kopyaları kalıyor.
+- **BL-572** (safe) Müsaitlik saat aralığı sıra hatası yalnız alt çubukta; hatalı satır işaretlenmiyor.
+- **BL-573** (safe) Telefonda Schedule hücre balonu vardiya düzenleyicisinin Job / Labels alanını örtüyor.
+- **BL-574** (safe) Availability kapalıyken Schedule sütunu daralıyor, saat iki satıra bölünüyor.
+- **BL-575** (safe) Telefonda onboarding müsaitlik adımında "Skip for now" iki satıra sarıyor.
+- **BL-576** (safe) Müsaitlik giriş modu değişince çeviri notların yazanını değiştiriyor.
+- **BL-577** (safe) Schedule çakışma sorusu iki yerde iki ayrı cümleyle soruluyor.
+- **BL-578** (safe) Telefonda Schedule üst çubuğuyla düzenleme şeridi arasında ~45 px boş bant.
+- **BL-579** (safe) Onaylı izin üstündeki yayınlanmış vardiya hem izin kırmızısı hem müsaitlik "!" işareti taşıyor.
+- **BL-582** (safe) Bir işin departmanı değişince belge kapsamı uyarısı yok.
+- **BL-583** (safe) Settings → Documents listesinde "Who needs it" ve "Exempt (N)" sütunları yok.
+- **BL-586** (safe) Employees telefonda "No app access" 3 px kesiliyor.
+- **BL-588** (safe) Settings → General: "Manage logo" telefonda kartın sağından taşıyor; Employees'te "START D…" başlığı ve "Not Invited …" rozeti kesik.
+- **BL-589** (safe) CSS'te 850 ve 900 yazı ağırlığı var, Inter 800'de bitiyor.
+- **BL-590** (safe) `bl052_document_lifecycle` ve `bl052_document_notifications` ortak yerel DB'de kırmızı ("null value in column notification_key of document_notification_dedup").
+- **BL-592** (safe) Account → Documents boş tablosu beyaz kaldı.
+- **BL-593** (safe) Settings listelerinin sütun başlıkları tablo rolünde değil; `aria-sort` ekran okuyucuya ulaşmayabilir.
+- **BL-598** (safe) Important Dates telefonda boş tablonun sütun başlığı "IMPOR…" diye kesiliyor.
+- **BL-601** (safe) Notifications "Dismiss" (çöp kutusu) tek tık; iki tık mı olmalı, bilinçli tek tık mı — karar yok.
+- **BL-603** (safe) Settings sayfalarında içerik x=544 ve tablo satır yükseklikleri 48 / 51 / 60 — KARARLAR'a tek değer yazılmalı.
+- **BL-605** (safe) Öteki sayfalarda arşivli satır `opacity: 0.45` ile yaklaşık 2.4–2.9:1 kontrastta (gerek 4.5:1).
+- **BL-611** (safe) Schedule'da ham kodlar ekrana çıkıyor.
+- **BL-613** (safe) Vardiya penceresinde küçük hatalar.
+- **BL-614** (safe) Yayın bildirimindeki "N changes" değişenleri değil, yayınlanan bütün vardiyaları sayıyor.
+- **BL-615** (safe) Schedule logo penceresinde pasif düğmeler etkin gibi çiziliyor.
+- **BL-616** (safe) `EnterEditModeDialog` hiç gösterilmiyor; ölü kod.
+- **BL-617** (safe) Açık bir menünün dışına tık alttaki öğeye de geçiyor — bilerek mi, karar gerekiyor.
+- **BL-623** (safe) Herkese açık sayfalar (Privacy, Terms, Accessibility, Contact, Your privacy choices) kendi ham renk setini kullanıyor.
+- **BL-636** (safe) Sign in ↔ Create account geçişinde ve Forgot password'den dönüşte eski hata kalıyor.
+- **BL-637** (safe) Forgot password ağ hatasında "Failed to fetch", tarayıcının kabul ettiği "name@host" adresinde "Valid email required" diyor.
+- **BL-638** (safe) Reset password ekranı Supabase'in ham cümlesini gösteriyor ("New password should be different from the old password.").
+- **BL-639** (safe) Açık bir workspace'in durum adresi "That workspace isn't open to you" diyor.
+- **BL-640** (safe) Kurulum sihirbazının Team adımında geliştirici notu gibi bir cümle: "Invite delivery waits until owner onboarding is completed." "Send the invitation when setup finishes" işaretli ve e-posta yazılıyken altında bu cümle ç
+- **BL-641** (safe) Kurulum sihirbazında başarı/hata satırı adım değişince kalıyor.
+- **BL-642** (safe) Kurulum sihirbazı Team adımındaki onay kutuları metinlerinin altında duruyor.
+- **BL-643** (safe) Herkese açık sayfalar arasında geçişte sayfa yukarıdan açılmıyor.
+- **BL-644** (safe) Herkese açık sayfaların dili müşteriye değil geliştiriciye yazılmış — karar gerekir.
+- **BL-648** (safe) Dosyası yüklenmemiş zorunlu belgede yeşil "Continue" aynı belgeyi yeniden açıyor.
+- **BL-649** (safe) Çalışan onboarding'inin belge sayfalarında üç yerleşim kusuru.
+- **BL-650** (safe) Kurulum sihirbazındaki "Switch workspace" emekli `/organization-switcher` rotasına gidiyor.
+- **BL-653** (safe) Time off çekmecesinde yanlış metinler: karar verilmiş iptalde "until this is approved", müdürün notu "Employee note" başlığıyla.
+- **BL-655** (safe) Schedule ayar menüsünde yazım hatası: "Role Seperators".
+- **BL-659** (safe) Vazgeçme ve ikincil düğmeler yeşil çiziliyor.
+- **BL-660** (safe) Çalışan görünümünde stilsiz tarayıcı düğmeleri.
+- **BL-661** (safe) Tekil/çoğul hataları: "1 employees", "1 employees assigned", "1 notification policies reset.", "All 1 active applications will close." Availability sayacı (`AvailabilityPage.tsx:152`), Settings → Jobs atama çekmecesi (`J
+- **BL-662** (safe) Filtre sonuç vermeyince ekran "henüz yok" diyor.
+- **BL-663** (safe) Sıralı sütunun oku yalnız fareyle üzerine gelince görünüyor.
+- **BL-664** (safe) Settings'te küçük görünüm ve metin tutarsızlıkları.
+- **BL-665** (safe) Tablonun son satırındaki menü çerçeve tarafından kesilebilir (şüphe, görülmedi).
+- **BL-667** (safe) Workspace'te altıncı açık iş sessizce görünmüyor.
+- **BL-668** (safe) Account → Inbox uygulama sayfa kabını hesap sütununun içinde açıyor.
+- **BL-669** (safe) Employees çekmecesinde: arşivli bağlı kişi "Onboarding in progress", rol sırası iki seçicide farklı, yeni kişide atama çubuğu erken.
+- **BL-670** (safe) Employees listesinde seçici Esc ile kapanmıyor; seçilen lokasyon sonuçsuz kalınca filtre "All locations"a dönüyor.
+- **BL-671** (safe) Settings → Jobs atama çekmecesinde Cancel hazırlanan atamaları sormadan atıyor; X ve Esc soruyor.
+- **BL-672** (safe) Settings → Documents'ta Move up/down filtre ya da durum sekmesi açıkken de çalışıyor.
+- **BL-673** (safe) Süresi dolmuş sürüm için Approve basılabiliyor, sonra sunucu reddediyor.
+- **BL-677** (safe) Settings formlarında Save durumu yanlış.
+- **BL-678** (safe) Duyuru hedef metni her zaman "All departments · All jobs" ekliyor.
+- **BL-679** (safe) Yıllık önemli tarih bu yılki günü geçince "Past" sekmesine düşüyor.
+- **BL-680** (safe) Settings → Roles: varsayılan müdür rolünde "Organization settings" kapalı; KARARLAR K14 S1 müdürün kataloğu okuduğunu söylüyor.
+- **BL-684** (safe) Yerelde `employee-hub/schedule` isteği zaman zaman 10–40 sn bekliyor.
+- **BL-685** (safe) Sunucunun `confirm_scope: "edit_session"` işareti web'e hiç ulaşmıyor.
+- **BL-009** (belirsiz) Kiosk ve PIN reset.
+- **BL-030** (belirsiz) Time Entries menüsü.
+- **BL-043** (belirsiz) Important Dates drawer/sayfa ve ek fonksiyonlar.
+- **BL-054** (belirsiz) Settings > Support yeniden kurgu.
+- **BL-067** (belirsiz) Schedule günlük/haftalık saat limitleri.
+- **BL-458** (belirsiz) Schedule pencerelerinin arkasındaki karartılmış alana basış hâlâ sayfanın "boş yere basıldı" kuralına gidiyor.
+- **BL-465** (belirsiz) Yeni kişi isteği hiç cevap almazsa çekmece kilitli kalır.
+
+## İşareti belirsiz — 2
+
+- **BL-027** (safe) Resend anahtarını yenile (provider smoke testinden önce).
+- **BL-048** (belirsiz) Add Department crash ve Jobs drawer.

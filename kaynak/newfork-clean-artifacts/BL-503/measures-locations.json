@@ -1,0 +1,43 @@
+{
+  "locations-1440-before": [
+    {
+      "label": "",
+      "value": "",
+      "input": {
+        "x": 1119,
+        "y": 191,
+        "w": 291,
+        "h": 36
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "10px",
+      "textStartX": 1130
+    }
+  ],
+  "locations-1440-after": [
+    {
+      "label": "Phone number",
+      "value": "",
+      "input": {
+        "x": 1119,
+        "y": 191,
+        "w": 291,
+        "h": 36
+      },
+      "inputFont": "13px/400",
+      "paddingLeft": "35px",
+      "textStartX": 1155,
+      "prefix": {
+        "x": 1130,
+        "right": 1143,
+        "centerY": 209
+      },
+      "prefixFont": "13px/400",
+      "prefixColor": "rgb(95, 107, 102)",
+      "inputCenterY": 209,
+      "gapPrefixToText": 11,
+      "prefixInset": 11
+    }
+  ],
+  "blockedWrites": []
+}

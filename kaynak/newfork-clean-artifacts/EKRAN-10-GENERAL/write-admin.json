@@ -1,0 +1,60 @@
+{
+  "original": "World e2e1790265977849",
+  "turkish": {
+    "messages": [
+      "Organization settings saved."
+    ],
+    "sidebar": "Boğaziçi Mutfağı"
+  },
+  "revertName": [],
+  "checklistBefore": "Hide checklist",
+  "checklistAfter1": "Hide checklist",
+  "checklistAfter2": "Hide checklist",
+  "prefBefore": "Answer them here",
+  "prefAfter1": "Let them through",
+  "prefAfter2": "Answer them here",
+  "net": [
+    {
+      "m": "PATCH",
+      "s": 204,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b",
+      "range": "0-0/*",
+      "body": ""
+    },
+    {
+      "m": "PATCH",
+      "s": 204,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b",
+      "range": "0-0/*",
+      "body": ""
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "range": null,
+      "body": "{\"workspace_id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"user_id\":\"3d0f14cf-68ec-4323-9908-cee65eb30e1c\",\"completed_item_ids\":[],\"closed_at\":\"2026-10-07T08:52:45.699699+00:00\"}"
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "range": null,
+      "body": "{\"workspace_id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"user_id\":\"3d0f14cf-68ec-4323-9908-cee65eb30e1c\",\"completed_item_ids\":[],\"closed_at\":null}"
+    },
+    {
+      "m": "PUT",
+      "s": 204,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/preferred-name-approval",
+      "range": null,
+      "body": ""
+    },
+    {
+      "m": "PUT",
+      "s": 204,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/preferred-name-approval",
+      "range": null,
+      "body": ""
+    }
+  ]
+}

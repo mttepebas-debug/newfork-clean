@@ -1,0 +1,34 @@
+{
+ "before-1440": {
+  "visible": true,
+  "focused": "",
+  "tooltip": null,
+  "box": {
+   "x": 580,
+   "y": 852,
+   "w": 158,
+   "h": 36,
+   "color": "rgb(95, 107, 102)",
+   "cursor": "not-allowed"
+  }
+ },
+ "before-390": {
+  "visible": false
+ },
+ "after-1440": {
+  "visible": true,
+  "focused": "Terminate employeeSave your ch",
+  "tooltip": "Save your changes before terminating the employee",
+  "box": {
+   "x": 580,
+   "y": 852,
+   "w": 158,
+   "h": 36,
+   "color": "rgb(95, 107, 102)",
+   "cursor": "not-allowed"
+  }
+ },
+ "after-390": {
+  "visible": false
+ }
+}

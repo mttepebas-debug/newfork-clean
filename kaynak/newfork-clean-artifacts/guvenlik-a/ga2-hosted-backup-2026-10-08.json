@@ -1,0 +1,25 @@
+{
+  "what": "GUVENLIK-A GA-2 hosted backup before apply_migration organization_settings_stay_with_owner_and_admin (project hvyvyisrqyathtliyyyv, read-only SELECT)",
+  "taken_at": "2026-10-08T13:28:55.764559+00:00",
+  "migrations": 451,
+  "last_migration": "20261008111751",
+  "rows_to_delete": 0,
+  "orphan_candidates": 0,
+  "save_fn_md5_prosrc": "42ed6430bb7885bbee3fab1b3f0ea5da",
+  "save_fn_md5_note": "equals the local DB at main 9f287986, so the definition is the one in supabase/schema.sql on main",
+  "save_fn_acl": "{postgres=X/postgres,service_role=X/postgres}",
+  "permissions_before": [
+    {"key": "documents.manage", "label": "Manage documents and acknowledgements", "category": "Documents", "sort_order": 80, "custom_grantable": true, "employee_eligible": false},
+    {"key": "employee_access.manage", "label": "Manage employee access", "category": "Employees", "sort_order": 140, "custom_grantable": true, "employee_eligible": false},
+    {"key": "notifications.settings.write", "label": "Manage notification settings", "category": "Notifications", "sort_order": 450, "custom_grantable": true, "employee_eligible": false},
+    {"key": "roles.read", "label": "View roles", "category": "Roles", "sort_order": 50, "custom_grantable": true, "employee_eligible": false},
+    {"key": "schedule.conflict_rules.manage", "label": "Manage conflict rules", "category": "Schedule", "sort_order": 619, "custom_grantable": true, "employee_eligible": false},
+    {"key": "settings.general.manage", "label": "Settings General Manage", "category": "Roles", "sort_order": 610, "custom_grantable": true, "employee_eligible": false},
+    {"key": "settings.jobs.manage", "label": "Settings Jobs Manage", "category": "Roles", "sort_order": 614, "custom_grantable": true, "employee_eligible": false},
+    {"key": "settings.locations.manage", "label": "Settings Locations Manage", "category": "Roles", "sort_order": 612, "custom_grantable": true, "employee_eligible": false},
+    {"key": "settings.schedule_rules.manage", "label": "Settings Schedule Rules Manage", "category": "Roles", "sort_order": 618, "custom_grantable": true, "employee_eligible": false},
+    {"key": "settings.shift_catalog.manage", "label": "Settings Shift Catalog Manage", "category": "Roles", "sort_order": 616, "custom_grantable": true, "employee_eligible": false}
+  ],
+  "expected_after": {"save_fn_md5_prosrc": "406fc2599e99ff5b92c11336374137a0", "migration_file_md5": "3b20788cbbc36eb98af8a3761386d357"},
+  "rollback": "update public.permissions set custom_grantable = true where key in (the ten keys above); then re-create public.save_workspace_role_service from supabase/schema.sql at main 9f287986 (CREATE OR REPLACE keeps the grants)"
+}

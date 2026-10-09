@@ -1,0 +1,145 @@
+[
+  {
+    "id": "0dcf",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\0dcf\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "342c",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\342c\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "3845",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\3845\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "4285",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\4285\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "48c1",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\48c1\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "4dfb",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\4dfb\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 233,
+    "archivedChanges": true,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "53d4",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\53d4\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "6377",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\6377\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "8293",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\8293\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "897b",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\897b\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "9f7c",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\9f7c\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "c0db",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\c0db\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  },
+  {
+    "id": "d872",
+    "path": "C:\\Users\\TheWe\\.codex\\worktrees\\d872\\newfork-clean",
+    "head": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+    "changes": 0,
+    "archivedChanges": false,
+    "ignored": [
+      ".codex/environments/environment.toml"
+    ],
+    "removed": true
+  }
+]

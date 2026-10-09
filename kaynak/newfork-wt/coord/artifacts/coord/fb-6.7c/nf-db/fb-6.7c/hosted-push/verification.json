@@ -1,0 +1,24 @@
+{
+  "project": "hvyvyisrqyathtliyyyv",
+  "migration_file": "supabase/migrations/20261005000000_closed_days_reach_the_shifts.sql",
+  "branch_head": "00401d79",
+  "file_md5_with_final_newline": "abef2dffc426bd395d89aa915485c00c",
+  "hosted_statements_md5": "abef2dffc426bd395d89aa915485c00c",
+  "mcp_stamped_version": "20261002114057",
+  "version_after_fix": "20261005000000",
+  "precondition": { "20261004000000": "present", "20261004010000": "present", "20261005000000": "absent before" },
+  "data_before": { "workspace_scheduling_settings": 3, "closed_location": { "confirm": 3 }, "announcements": 0, "important_dates": 0, "schedule_published_shifts": 11, "schedule_closures": 0 },
+  "data_after": { "workspace_scheduling_settings": 3, "closed_location": { "confirm": 3 }, "warn_rows": 0, "announcements": 0, "important_dates": 0, "schedule_published_shifts": 11, "schedule_closures": 0, "important_date_shift_releases": 0 },
+  "hosted_vs_local_rolled_back": {
+    "functions_compared": 17,
+    "pg_get_functiondef_md5_equal": 17,
+    "prosrc_md5_equal": 17,
+    "acl_equal": 17,
+    "view_schedule_closures_md5": "03511fdb20f20dcdee40a932bd941ebc (both)",
+    "constraint_scheduling_conflict_rules_valid_md5": "caef6873e2582fdf7031eb3927664612 (both)",
+    "local_after_rollback": "version 20261005000000 rows 0, important_date_shift_releases absent"
+  },
+  "grants": "anon and authenticated: no execute on any of the 17 functions, no select on schedule_closures or important_date_shift_releases; service_role execute on the 8 *_service/closure_days entries",
+  "advisors_security": { "before": { "rls_enabled_no_policy": 97, "extension_in_public": 1, "auth_leaked_password_protection": 1 }, "after": { "rls_enabled_no_policy": 98, "extension_in_public": 1, "auth_leaked_password_protection": 1 }, "new": ["rls_enabled_no_policy: public.important_date_shift_releases (INFO, same pattern as every internal table)"] },
+  "advisors_performance": { "before": { "unindexed_foreign_keys": 234, "unused_index": 54 }, "after": { "unindexed_foreign_keys": 237, "unused_index": 55 }, "new": "3 unindexed FKs + 1 unused index, all on the new empty table important_date_shift_releases" }
+}

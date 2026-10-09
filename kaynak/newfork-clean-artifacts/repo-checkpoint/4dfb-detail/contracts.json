@@ -1,0 +1,244 @@
+{
+  "testChanges": [
+    {
+      "file": "apps/api/src/app.test.ts",
+      "oldCount": 59,
+      "currentCount": 90,
+      "missingTitles": [
+        "prepares employee invitations only inside the authorized workspace",
+        "validates SSN before crossing the encryption service boundary"
+      ]
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-export-cron.test.ts",
+      "oldCount": 5,
+      "currentCount": 6,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-service.test.ts",
+      "oldCount": 7,
+      "currentCount": 16,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/App.test.tsx",
+      "oldCount": 58,
+      "currentCount": 58,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleEmployeeCard.test.tsx",
+      "oldCount": 3,
+      "currentCount": 4,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleGrid.test.tsx",
+      "oldCount": 8,
+      "currentCount": 8,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "oldCount": 16,
+      "currentCount": 29,
+      "missingTitles": [
+        "submits fallback clock values when badge clock time is hidden",
+        "saves clock-off named shifts with fallback times when scheduling times are off",
+        "opens a conflict sheet and lets availability-only warnings continue",
+        "requires and submits an override reason for closed-day warnings"
+      ]
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useCellState.test.ts",
+      "oldCount": 9,
+      "currentCount": 10,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleGridDragControllers.test.ts",
+      "oldCount": 7,
+      "currentCount": 9,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.test.tsx",
+      "oldCount": 4,
+      "currentCount": 4,
+      "missingTitles": [
+        "starts dragging after the threshold and drops on the resolved cell"
+      ]
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftClipboard.test.ts",
+      "oldCount": 4,
+      "currentCount": 4,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftEditorEligibility.test.ts",
+      "oldCount": 7,
+      "currentCount": 7,
+      "missingTitles": [
+        "filters eligible employees by availability and overlapping shifts"
+      ]
+    },
+    {
+      "file": "apps/web/src/schedule/lineup-share.test.ts",
+      "oldCount": 3,
+      "currentCount": 7,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/views/CommunicationPages.test.tsx",
+      "oldCount": 3,
+      "currentCount": 3,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "oldCount": 8,
+      "currentCount": 31,
+      "missingTitles": [
+        "keeps the landing focused on next shift and open actions"
+      ]
+    },
+    {
+      "file": "apps/web/src/views/LineupPage.test.tsx",
+      "oldCount": 3,
+      "currentCount": 12,
+      "missingTitles": [
+        "moves published source rows through the active Line-up move endpoint"
+      ]
+    },
+    {
+      "file": "packages/shared/src/index.test.ts",
+      "oldCount": 35,
+      "currentCount": 53,
+      "missingTitles": [
+        "requires a complete private profile without accepting an SSN field"
+      ]
+    },
+    {
+      "file": "apps/api/src/account/workspace-account-routes.test.ts",
+      "oldCount": 3,
+      "currentCount": 28,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/communications/communication-service.test.ts",
+      "oldCount": 2,
+      "currentCount": 7,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/employees/employee-directory-routes.test.ts",
+      "oldCount": 3,
+      "currentCount": 10,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/notifications/notification-outbox-migration.test.ts",
+      "oldCount": 4,
+      "currentCount": 5,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/notifications/notification-outbox-worker.test.ts",
+      "oldCount": 3,
+      "currentCount": 6,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/notifications/notification-settings-routes.test.ts",
+      "oldCount": 8,
+      "currentCount": 10,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/settings/document-types-routes.test.ts",
+      "oldCount": 3,
+      "currentCount": 5,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/settings/organization-settings-routes.test.ts",
+      "oldCount": 6,
+      "currentCount": 9,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/settings/roles-routes.test.ts",
+      "oldCount": 3,
+      "currentCount": 5,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/api/src/settings/signature-settings-routes.test.ts",
+      "oldCount": 3,
+      "currentCount": 5,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/account/WorkspacesPage.test.tsx",
+      "oldCount": 3,
+      "currentCount": 10,
+      "missingTitles": [
+        "opens the active workspace without selecting it again"
+      ]
+    },
+    {
+      "file": "apps/web/src/auth/ProtectedRoute.test.tsx",
+      "oldCount": 1,
+      "currentCount": 3,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/settings/NotificationSettingsNavigation.test.tsx",
+      "oldCount": 6,
+      "currentCount": 6,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/settings/ShiftLabelsSettingsPage.test.tsx",
+      "oldCount": 1,
+      "currentCount": 1,
+      "missingTitles": []
+    },
+    {
+      "file": "apps/web/src/shell/AppShellNotificationBadge.test.tsx",
+      "oldCount": 4,
+      "currentCount": 13,
+      "missingTitles": [
+        "keeps Schedule inactive when a promoted Schedule child route owns the page"
+      ]
+    },
+    {
+      "file": "apps/web/src/views/OwnerOnboardingPage.test.tsx",
+      "oldCount": 3,
+      "currentCount": 13,
+      "missingTitles": [
+        "saves workspace identity and the first location before moving to departments",
+        "adds and invites the first employee with active location and job defaults"
+      ]
+    },
+    {
+      "file": "packages/shared/src/notification-catalog.test.ts",
+      "oldCount": 7,
+      "currentCount": 7,
+      "missingTitles": []
+    },
+    {
+      "file": "packages/shared/src/notification-settings.test.ts",
+      "oldCount": 5,
+      "currentCount": 6,
+      "missingTitles": []
+    }
+  ],
+  "routeChanges": {
+    "oldCount": 206,
+    "currentCount": 237,
+    "missing": []
+  }
+}

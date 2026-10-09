@@ -1,0 +1,11 @@
+- [Atlanan alan yoklaması](checklist-omitted-input-probe.md) — TS yetki ikizinde opsiyonel hedef alanı atlanınca izin çıkıyor mu; matris kapsamaz
+- [rpcFailure filtresi](checklist-rpcfailure-raw-detail.md) — BL-131 sonrasi; servis rpcFailure'a gecerken JSON mesajli RAISE yutulur mu, detail uuid kimin
+- [API kapısı çekirdek eylemleri](checklist-api-gate-core-actions.md) — resolveActor+authorize; manages=works kilitlenmesi, ikiz inline kapı, rota tablosu tamlığı
+- [Rollback denemesi güvenliği](feedback-rollback-trial-safety.md) — "begin;" noktalı virgülsüz migration kalıcı uygulanır; önce dump, tek dosya, iz kontrolü
+- [Boş dizi tuzakları](checklist-empty-array-traps.md) — array(select..) bilinmeyeni '{}' yapar (owner geçer); '{}' <@ x true; silinmiş lokasyon owner'ı da kilitler
+- [no_self ile rank_below farkı](checklist-no-self-vs-rank-below.md) — no_self owner/admin kendi satırını da keser; "kayıt kuralıyla aynı" = yalnız rank_below
+- [NOT NULL gevşetmesi okuyucuları](checklist-not-null-relax-readers.md) — kolon null olabilince jsonb döndüren fonksiyon + shared zod şeması 500 verir; mock'lar yakalamaz
+- [TODO altındaki red testi](checklist-todo-refusal-live-lock.md) — todo() başarısızlığı saymaz; bugünkü reddi kod+metinle TODO dışında kilitle, seed'e dayanma
+- [Mock sınırı ve zaman testi izolasyonu](checklist-mock-boundary-and-timing-isolation.md) — BL-137; test iddiası mocklanmış modülün dışında mı, tek testte birden fazla zaman vakası eşiği belirsizleştirir
+- [Kurgu değişince boşa düşen kontrol](checklist-vacuous-after-fixture-change.md) — kırmızı test yeşile çekilirken kurgu kaydıysa komşu "0 kaldı" kontrolleri hâlâ kırılabilir mi
+- [Mesaj metni sızıntısı + kırmızı ayrımı](checklist-message-text-leak-and-red-split.md) — reason metni ghost alanlarıyla kıyasla; testi migration'sız da koştur

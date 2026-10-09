@@ -1,0 +1,3833 @@
+{
+  "archive": "artifacts/repo-checkpoint/preserved-local-20260909.zip",
+  "files": [
+    {
+      "status": "??",
+      "path": ".temp/availability-final-inventory.log",
+      "bytes": 2260,
+      "sha256": "20fdb45f1d1647df0d903992afe0cbdc6a31e2a36f1e87ca83ec149b92e6acb8"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-final-inventory.py",
+      "bytes": 6305,
+      "sha256": "4981d5f19b32d2226e67fe7f9b43146c2a4bc45ba87471b97c86d47db8c975e7"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-apply-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 76,
+      "sha256": "a236579f1c0633c7a3fca3202750694cfb55609e383f3dbd40257fd489a496a3"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-apply-newfork-availability-schedule-verify-20260907.log",
+      "bytes": 76,
+      "sha256": "a236579f1c0633c7a3fca3202750694cfb55609e383f3dbd40257fd489a496a3"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-apply-supabase_db_newfork-clean.log",
+      "bytes": 76,
+      "sha256": "a236579f1c0633c7a3fca3202750694cfb55609e383f3dbd40257fd489a496a3"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-clean-applied.log",
+      "bytes": 14167,
+      "sha256": "288a4d684b4a7be57d50605c3d11988faf28ed7ca44cce9c73cb6666efecd219"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-dev.stderr.log",
+      "bytes": 159,
+      "sha256": "da5e16898732ae456b199813d9a821867180e3e7f966f7e438818a87872554be"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-dev.stdout.log",
+      "bytes": 8346,
+      "sha256": "f4bc207b288bb4fa334acfc9fe1484432b176a46b86798799c73128f047b7f6d"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-dto.json",
+      "bytes": 56810,
+      "sha256": "48ce5d5ff055479e2992700d81e91a28fec22882012c4bc5c2898a26763cd98a"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-dto.test.ts",
+      "bytes": 795,
+      "sha256": "220671a9c8a20a4f8f4de6d9ad8997f53c5d082c8af4ec06241ca9951f63b752"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-main-applied.log",
+      "bytes": 14167,
+      "sha256": "eb0f9866801c1657fa5a83d4b4aa13f177455df396fc896724cf8e8057bc09bf"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-main-preapply.log",
+      "bytes": 61440,
+      "sha256": "71c2b308af30e6ab32c3340f2c95ead35c74d96231e54797c9ada45b8496ffdf"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-preapply.log",
+      "bytes": 14243,
+      "sha256": "7fca7d9b5c1cccb11c80d0dcde6b9108ba181d7e972b4cae6a42f74f6ed1272b"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-regression-availability_publication_lock.log",
+      "bytes": 4431,
+      "sha256": "23f9b57262e2b38da4af82579068f4fe581b68d504ac11e0f82e83d4fe399143"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-regression-availability_read_model_consistency.log",
+      "bytes": 12065,
+      "sha256": "1fbd22ce7c961cd14fcaefdf49e4b3c3b9213162eb1d0d53dbeb8bd1b1e75c90"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/calendar-regression-availability_review_lifecycle.log",
+      "bytes": 16015,
+      "sha256": "d866d038047c2e99d40e9806e1a0ad4a40526487b15791f4b3391e10af7ae287"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/cancellation-privileges.log",
+      "bytes": 770,
+      "sha256": "808a336e761c3916b65a3d97d8c1d9c175c625406a39cec6dace07b6b176a5af"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/cancellation-remainder-applied-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 15647,
+      "sha256": "9edf74163faf46819d293367649eb9ba7b7b9c290e9aa6f6f716db8dbe635ad7"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/cancellation-remainder-applied-supabase_db_newfork-clean.log",
+      "bytes": 15647,
+      "sha256": "2673381171fcf8cd9f2bb3b827cacd006a3de7b08b8357152e386be0e621f070"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/cancellation-remainder-main-preapply.log",
+      "bytes": 15651,
+      "sha256": "2c268a50e27f98fc370b27571978ca1e4ee2de9e94d571bbbdcf5f6b1f107db9"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/cancellation-remainder-preapply.log",
+      "bytes": 15651,
+      "sha256": "def73379f6e8e1ea5a52f5d174a7a1b9aa07d45e1a8212aa78fa2fe097d01a05"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-apply-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 61,
+      "sha256": "0133bed68fd36f002d77248da68873b5b1ce52f080e3f4ae6127a38faffa77b5"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-apply-newfork-availability-schedule-verify-20260907.log",
+      "bytes": 61,
+      "sha256": "0133bed68fd36f002d77248da68873b5b1ce52f080e3f4ae6127a38faffa77b5"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-apply-supabase_db_newfork-clean.log",
+      "bytes": 61,
+      "sha256": "0133bed68fd36f002d77248da68873b5b1ce52f080e3f4ae6127a38faffa77b5"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-dto.json",
+      "bytes": 4410,
+      "sha256": "a87021f1baaefb031028f19ded4ed213d60dfb1d01ea3384a42f33ff0eac7bce"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-dto.test.ts",
+      "bytes": 639,
+      "sha256": "129ab11353ed86b04a2537e3f045f619b64634d581d307ca6a482bcf3b6d0375"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-main-postapply.log",
+      "bytes": 6847,
+      "sha256": "7dfd46de0c09e66c26401dffc40b41000c8eca17f8337f8c01046d32a530c7ca"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-main-preapply.log",
+      "bytes": 6908,
+      "sha256": "8283022f7ca3f2afe438f57c80bf4e9a1c3f72572d3efc06c26518f1f053e9a7"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-preapply.log",
+      "bytes": 6908,
+      "sha256": "455e328e4b40aebdbef8e77f1c1ed3914eee9ad8aeb7a193676ada51886d8f1d"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-privileges.log",
+      "bytes": 770,
+      "sha256": "808a336e761c3916b65a3d97d8c1d9c175c625406a39cec6dace07b6b176a5af"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-regression-availability_calendar_comparison.log",
+      "bytes": 6847,
+      "sha256": "5a98c6a3210fd74637daa191aefab29370af5b16e0eeaaec0257cbec543cd64b"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-regression-availability_date_overrides.log",
+      "bytes": 14167,
+      "sha256": "906b2da7305a88dfd220eef5cc1eab4304e0752952ac6af803786e9d755218c1"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-regression-availability_publication_lock.log",
+      "bytes": 4431,
+      "sha256": "23f9b57262e2b38da4af82579068f4fe581b68d504ac11e0f82e83d4fe399143"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-regression-availability_read_model_consistency.log",
+      "bytes": 12059,
+      "sha256": "2e318cf62db8f6b78a725b201e8025e8ff8a6976da00fcef560f458025201e08"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/comparison-regression-availability_review_lifecycle.log",
+      "bytes": 16015,
+      "sha256": "d866d038047c2e99d40e9806e1a0ad4a40526487b15791f4b3391e10af7ae287"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/current-core-mutate.sql",
+      "bytes": 8193,
+      "sha256": "4c3c73722ccacd7a162420f0ff9e80411aca0ead765d8c46c5ced218b57a21e0"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/current-mutate-base.sql",
+      "bytes": 1540,
+      "sha256": "ce9a466e11684a2b2b9c438dfee9d373ec0c505d5c5a672282e098fb5378099d"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/current-mutate.sql",
+      "bytes": 2638,
+      "sha256": "bd0fdaaa6b5ad885b2ec5469eff59096edb4f9b8351adca50a72f56219e907e1"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-application-races.json",
+      "bytes": 7845,
+      "sha256": "de5f8c087e4fd2bffa6cd7eea1935f9e5a02376e7d2cbb9192a68d1d7904d074"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-apply-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 140,
+      "sha256": "c3a9a4cd34c0dca4142cbd6ed662daadb2450cbff9aa81bcdd09535039e66738"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-apply-newfork-availability-schedule-verify-20260907.log",
+      "bytes": 140,
+      "sha256": "c3a9a4cd34c0dca4142cbd6ed662daadb2450cbff9aa81bcdd09535039e66738"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-apply-supabase_db_newfork-clean.log",
+      "bytes": 140,
+      "sha256": "c3a9a4cd34c0dca4142cbd6ed662daadb2450cbff9aa81bcdd09535039e66738"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-dto.json",
+      "bytes": 14231,
+      "sha256": "87f6ca7b7b3492b621df3f60c2013b436b1fc0c861392db62a51ec2e9a880adb"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-dto.test.ts",
+      "bytes": 733,
+      "sha256": "6382185ec37b189adb93231dafa4b9ceb315d03655909770ce49ed975f48a613"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-main-postapply.log",
+      "bytes": 65321,
+      "sha256": "fed4334c54d2767cc9187074e877907bb6ce03f977ce813c1f411455e7372edc"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-preapply-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 64955,
+      "sha256": "277a9ab2628a2e653372f3c04f5488148ccd2d085a9af66a4aaa224d579e3b18"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-preapply-supabase_db_newfork-clean.log",
+      "bytes": 64955,
+      "sha256": "2ad5caa74ff7a22b62351497e2b6542b596f3b26928051c0ffa229cfbfb57717"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-preapply.log",
+      "bytes": 17272,
+      "sha256": "65871e88938a01ea760310091ebbd2290d76e3ba9ab93755b280cc00c708e410"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-privileges.log",
+      "bytes": 770,
+      "sha256": "808a336e761c3916b65a3d97d8c1d9c175c625406a39cec6dace07b6b176a5af"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-regression-availability_publication_lock.log",
+      "bytes": 4431,
+      "sha256": "23f9b57262e2b38da4af82579068f4fe581b68d504ac11e0f82e83d4fe399143"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-regression-schedule_availability_enforcement.log",
+      "bytes": 14125,
+      "sha256": "88d8ff54fbee26149321a1680c315b25f2ffb73eeb9f4e3e7917755c99729f0a"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-regression-schedule_default_hours_review.log",
+      "bytes": 64815,
+      "sha256": "5c97a26d39a08acf9664520f3a760a177794654b666525dd62e6371cebd507f1"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-regression-schedule_time_source.log",
+      "bytes": 8078,
+      "sha256": "8cd65b99a67184d4ee1ab8b373de7f28b4f01539e05effaee0a36bed9c1d21b4"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-retry-preapply-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 65325,
+      "sha256": "d376da140775be70015a3c75e3603f99067a87bede174804a46a9a1e469eb52b"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-review-retry-preapply-supabase_db_newfork-clean.log",
+      "bytes": 65325,
+      "sha256": "c60c1824aec2ebde74e30623770bb0f95d03fed03b758792afbba2f9d3981e4c"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-revision-race-result.json",
+      "bytes": 366,
+      "sha256": "75e273ffe1a9b1326dd161cfe477775134129c36b0300db48747cf6cd1b37eaa"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-revision-race.py",
+      "bytes": 3456,
+      "sha256": "59550ee658ec36a2be01b3242e669c9447256f16134ede89c2e97d609a7c2880"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-source-regression.log",
+      "bytes": 8078,
+      "sha256": "8cd65b99a67184d4ee1ab8b373de7f28b4f01539e05effaee0a36bed9c1d21b4"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-ui-applied.json",
+      "bytes": 431,
+      "sha256": "316ededbf494a8ccc2990296d2e2ced8cf95ac1ddc2abfbb91e6dc91db056be7"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-ui-cleanup.json",
+      "bytes": 97,
+      "sha256": "beaa3c4836a9d584d218b3ecc3b17c5d046b36511deea9b17075f6013fe04d43"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/default-ui-state.json",
+      "bytes": 351,
+      "sha256": "82a3b826d3b2e2f4e9d27d12faec01a3094276c8aa6940c5a3070c9efbf405cd"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/draft-impact-main-preapply.log",
+      "bytes": 9434,
+      "sha256": "0f26503060723cae483beadbac69a216d18a95caeb33616853933f0067371518"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/draft-impact-preapply.log",
+      "bytes": 9434,
+      "sha256": "0f26503060723cae483beadbac69a216d18a95caeb33616853933f0067371518"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/employee-ui-decision-proof.json",
+      "bytes": 2714,
+      "sha256": "b160025b31932e1f301ed5ae7b98fa8d89273a73ebccaa856f87f602e0e2b141"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/employee-ui-pending-proof.json",
+      "bytes": 1783,
+      "sha256": "54b4ab00d45840298db49800ae4aeb830dc7e557f4c226c72e4897f1f0c0eb81"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/employee-ui-state.json",
+      "bytes": 506,
+      "sha256": "746a2ecfbb8697cc49c96e8034fd1deb05c134d8a172d839faae903ebdc42f48"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-applied-newfork-availability-schedule-regression-20260907.log",
+      "bytes": 9251,
+      "sha256": "e85e480e362d09841d5e89fbe79fb8de65707c1ea198c037f1c129f31260ade5"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-applied-supabase_db_newfork-clean.log",
+      "bytes": 9251,
+      "sha256": "e85e480e362d09841d5e89fbe79fb8de65707c1ea198c037f1c129f31260ade5"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-dto.json",
+      "bytes": 6258,
+      "sha256": "8403ad2e2992767dd6965d9f2161c234e4f90dae202ebdcebe03512c1816ed14"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-dto.test.ts",
+      "bytes": 636,
+      "sha256": "908df2e3cba1dd9b2fcccb28044b4a8cae957ea93cf84bf9cfddbb7e28e2fcb3"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-regression-availability_authoritative_assessment.log",
+      "bytes": 9649,
+      "sha256": "3beed574351c146556f56e35711fd3d4a8931ab690adff6e1b50597a3b612bf2"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-regression-availability_manager_request_queue.log",
+      "bytes": 7366,
+      "sha256": "272781058b0f72defd285871ab24c59af0c6f0841735adb2d2e508a29fb432e9"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-regression-availability_publication_lock.log",
+      "bytes": 4614,
+      "sha256": "e3725143a0c38793c72cfdb001dca90a1b5482322be40004895f22b059d1e662"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-regression-availability_shift_type_restrictions.log",
+      "bytes": 8191,
+      "sha256": "f69505493fe445d66d5cb13eafb76a4c1b94f69eb95f58c972eaddfd9b2e429e"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-regression-schedule_custom_service_classification.log",
+      "bytes": 11583,
+      "sha256": "eb595de35b564007c573d1d08d29a1bde7ea219b0053dda66f2ec48083c1a4e3"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/impact-regression-time_off_published_assignment_disposition.log",
+      "bytes": 7652,
+      "sha256": "5195e8e0440eff2191b25b18d14aa69dec5b8a37a2a03a9cc173c9b443d20f9a"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/onboarding-ui-state.json",
+      "bytes": 405,
+      "sha256": "1e5ee87b40ae38a0e6628528c234fe8c29c5e768e9805be7953d9bdde2a49077"
+    },
+    {
+      "status": "??",
+      "path": ".temp/availability-time-off-v2/vitest.config.mjs",
+      "bytes": 77,
+      "sha256": "0b8c05f5eea5dbcdd1d840e2008dd044ef043e26122d3d3e571468b7ffba14e9"
+    },
+    {
+      "status": "??",
+      "path": ".temp/repo-checkpoint-inventory.cjs",
+      "bytes": 2763,
+      "sha256": "3f577eae4379ea6d57e2068425133fd4f2a5311b3f211fa54d8f5efd5ca81544"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/exchange-availability-20260907/app.cjs",
+      "bytes": 5497873,
+      "sha256": "0e3087d7d2ff600664a0bb937e3f997849331b5978ed0fc08e0edaa2ae2dd170"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/exchange-availability-20260907/server.cjs",
+      "bytes": 217,
+      "sha256": "d13c2aea1babdc23ead91a695ba0fd59858c4ce60ec082ccb7618b575c6bc6e8"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/shift-exchange-detail-1788821010/app.cjs",
+      "bytes": 5471765,
+      "sha256": "e6db76de60d4f8c39c6ac5d0271a386d33cea0dc5593fa8979054d972fa76a64"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/shift-exchange-detail-1788821010/server.cjs",
+      "bytes": 184,
+      "sha256": "4db3ba83532f8b9b01888afa79be3500e7d02602a0784250dca5961dd0fdf3a9"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/shift-exchange-stable-1788819400/app-v2.cjs",
+      "bytes": 5470486,
+      "sha256": "e39d5a2d8832a332b6320495cc7953c38a98a37b95f0165ccc738b57d7a6447f"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/shift-exchange-stable-1788819400/app.cjs",
+      "bytes": 5469860,
+      "sha256": "e2d4b1312ac983d57b2d9c8d929dba85bcbd318fccf2512463ffadb336c18df2"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/shift-exchange-stable-1788819400/server-v2.cjs",
+      "bytes": 187,
+      "sha256": "1fe3add9cb65bb8ef1ec96a96c563958fb8777199a3f547cb23dac82c1742ba8"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/shift-exchange-stable-1788819400/server.cjs",
+      "bytes": 184,
+      "sha256": "4db3ba83532f8b9b01888afa79be3500e7d02602a0784250dca5961dd0fdf3a9"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/staffing-immediate-20260907/app.cjs",
+      "bytes": 5473959,
+      "sha256": "c135a50c51a8fa1e376e1c1e37174c37b50ec0c2fafd16cd9457d57521e6a333"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/.temp/staffing-immediate-20260907/server.cjs",
+      "bytes": 184,
+      "sha256": "4db3ba83532f8b9b01888afa79be3500e7d02602a0784250dca5961dd0fdf3a9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-calendar-proof-2026-09-07/calendar-read-sample.json",
+      "bytes": 5440,
+      "sha256": "7e9600ca546466981f55387673c7397c79ce9bdb394f0ae307ee62299b23b0de"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-cancellation-proof-2026-09-07/employee-ui-decision-proof.json",
+      "bytes": 2714,
+      "sha256": "b160025b31932e1f301ed5ae7b98fa8d89273a73ebccaa856f87f602e0e2b141"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-cancellation-proof-2026-09-07/employee-ui-pending-proof.json",
+      "bytes": 1783,
+      "sha256": "54b4ab00d45840298db49800ae4aeb830dc7e557f4c226c72e4897f1f0c0eb81"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-default-application-proof-2026-09-07/browser-applied.json",
+      "bytes": 431,
+      "sha256": "316ededbf494a8ccc2990296d2e2ced8cf95ac1ddc2abfbb91e6dc91db056be7"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-default-application-proof-2026-09-07/browser-cleanup.json",
+      "bytes": 97,
+      "sha256": "beaa3c4836a9d584d218b3ecc3b17c5d046b36511deea9b17075f6013fe04d43"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-default-concurrency-proof-2026-09-07/race-result.json",
+      "bytes": 7845,
+      "sha256": "de5f8c087e4fd2bffa6cd7eea1935f9e5a02376e7d2cbb9192a68d1d7904d074"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-defaults-proof-2026-09-07/race-result.json",
+      "bytes": 366,
+      "sha256": "75e273ffe1a9b1326dd161cfe477775134129c36b0300db48747cf6cd1b37eaa"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-fullchain-proof-2026-09-07/initial-permission-failure.log",
+      "bytes": 376,
+      "sha256": "93e61853b0034b809bd55cd79d28e569cba62e4802b6ed439e387503b8fd052d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-fullchain-proof-2026-09-07/permission-forward-preapply.log",
+      "bytes": 213,
+      "sha256": "df5152718d74a21a82102113c8757e06a8f148a2330a9e0694b46eeaeaf8d5f2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-fullchain-proof-2026-09-07/regression-result.json",
+      "bytes": 7231,
+      "sha256": "a9365755613ff8233ca0734edcf578a6164d27d0f928a5fd3e0da0bcbb30cf30"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-fullchain-proof-2026-09-07/replay-result.json",
+      "bytes": 39611,
+      "sha256": "609a05f21d2365d86d4667f30605713887cc2abf66920e0f6585c4c001530614"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/availability-fullchain-proof-2026-09-07/seed-result.json",
+      "bytes": 190,
+      "sha256": "c12a51ac5cf3744375ae8eb8515c3a0e3e7eb1726b2d0d364e4d25a9fda59830"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-api/matrix.json",
+      "bytes": 7519,
+      "sha256": "5f60b5f996b3912859974505466fe414168ddb41ba93eec36868374f151de89d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-api/source-sha256.json",
+      "bytes": 1176,
+      "sha256": "31a669325679178dff1f7b6b3c64c712ea868824c3312da2c7761451dfe60ee1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/browser-final.json",
+      "bytes": 1807,
+      "sha256": "816ce69dab262246d53570ad00a221a87a514014dbe148b22820feefd56b1abf"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/browser.json",
+      "bytes": 1748,
+      "sha256": "b52ebee92751f7cc02f6426a8dbba78a5b34894ebe03c04b4c6c15b61613ea15"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/current-data.json",
+      "bytes": 406,
+      "sha256": "8c6ce65d42459db543f822be78bc49185482ef784a79753ab9aeb98426b086f8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/final-two-sided-1440-dark.png",
+      "bytes": 135899,
+      "sha256": "81a52a93fa88dd5dda111d955187b42625d188a63c293aabb85d1798e7772035"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/final-two-sided-1440-light.png",
+      "bytes": 137338,
+      "sha256": "c49c769813a326cabd8d40b90e2dec73cc18a014382c9348e82cd83348cf8fd2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/final-two-sided-390-dark.png",
+      "bytes": 43764,
+      "sha256": "2357682bef75b055e98e9fb797f9586cdbc5934b505c680fe896585947c7bd65"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/final-two-sided-390-light.png",
+      "bytes": 43750,
+      "sha256": "ebf5a9a9ec8a0cff0235f8363cd477f2a147572bb0bed92834bd9ea5b0153282"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/matrix.json",
+      "bytes": 7804,
+      "sha256": "7d726a794425ce47ca6bf18260d1aee5977b98810063dd8dce69b989c069bf19"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/source-sha256.json",
+      "bytes": 1343,
+      "sha256": "7686977b281ea56ac333dc1c77805d52ca77646e78fab6341cfff74e49542ad4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/two-sided-1440-dark.png",
+      "bytes": 140963,
+      "sha256": "88012a24b6fb51b0ada606c4fd877ff18cd903e65d3aab48cb21167ec079706f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/two-sided-1440-light.png",
+      "bytes": 142772,
+      "sha256": "124b3c27cbe219f573a045b670987d57e237809ed1ca6bae5816df4aa4d33bd1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/two-sided-390-dark.png",
+      "bytes": 47376,
+      "sha256": "a50f3310f2cf62a7a854a62ec6216e4c0c806d7e7d11b864de5fd8245203725c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/availability-swap/two-sided-390-light.png",
+      "bytes": 47260,
+      "sha256": "0e8b6079ea9b778e1ac02d9e4f21ff43bd4fb183fd717c839674570aca4e138e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-dark-1440.jpg",
+      "bytes": 82946,
+      "sha256": "c3d8f0a42cc474c7501919ed230cd0c32233e477d29d531d6fbf2943907d8280"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-dark-320.jpg",
+      "bytes": 29960,
+      "sha256": "d39d52e5c9f0e067c6ab8790e72ac5d5615f13f61d5e9ae9d366422760b149dc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-dark-390-cards.jpg",
+      "bytes": 33334,
+      "sha256": "14524dbddc46c0af2814f8ad3da10292fc1def6471d81b093ce2a824c0d92b2d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-dark-390.jpg",
+      "bytes": 34300,
+      "sha256": "2ab3db0af637574520e7cdf9d7493196c2cb159cd2d27a3c03537ab553201ba8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-dark-768.jpg",
+      "bytes": 52502,
+      "sha256": "2eaa1cf7586c785708776dcd9f80a71ba5d6b01370b73c7b692c3f1aa93f0dac"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-light-1440.jpg",
+      "bytes": 80704,
+      "sha256": "caa07ff691e656659de108a387c003714011f2da8af95471d6e29878e405e550"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-light-320.jpg",
+      "bytes": 29136,
+      "sha256": "0a3150ceaa14492222e16241e7dda1988f3c00df04d087b22e081a4590fbc5cc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-light-390-cards.jpg",
+      "bytes": 33148,
+      "sha256": "0e5910fb75d1a45b49f8e747d3de8bda56917de920b40ac99a69dabf405698c2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-light-390.jpg",
+      "bytes": 33322,
+      "sha256": "de959f7032add1c6d34501b7435cc31b4064eeab7de68ca544529674567b16cf"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/available-light-768.jpg",
+      "bytes": 51520,
+      "sha256": "6e181145c8918490807138a99e4842a50b55f8909890296d67abc797fd56161f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/browser-final.json",
+      "bytes": 5461,
+      "sha256": "bd69e065c2dc6d2c1a0bc9d7c4e2176d750ba7b59392a2b41a1d0cd2a39dd418"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/browser.json",
+      "bytes": 5365,
+      "sha256": "d3550af8d09d0881c7d16306a08693192b38921584912efe5a6d0e297d667100"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-0-1440-dark.png",
+      "bytes": 97671,
+      "sha256": "b9d75a4b8ed93aa85b756ac48a4a2be636b824f4c9a63efe18f7cfd20ee30d2e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-0-390-light.png",
+      "bytes": 42241,
+      "sha256": "28da10d1d98665cd258f520df2c8e707f555c4d1f45f7e435ac9f5d84c87c507"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-1-1440-dark.png",
+      "bytes": 96773,
+      "sha256": "333e06f8fa5b7b2dd44a74c4adc87505d1d68c72435e702c247b7979b514583e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-1-390-light.png",
+      "bytes": 41955,
+      "sha256": "2f48fbbecd54950d51f5d895fb7a54af01d39f3602efdba9ce9d0d3a8d0bb576"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-2-1440-dark.png",
+      "bytes": 96953,
+      "sha256": "bca2e65be5aa1b08c89a52607730cc307eb4e9baa725ccea09b06aaf1318245f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-2-390-light.png",
+      "bytes": 41699,
+      "sha256": "3fa6e5d443f997f19dbffd35ca1f457d598b31193dc6276ced341374dd52c895"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-3-1440-dark.png",
+      "bytes": 87389,
+      "sha256": "27cd73963b1b6bca6069c9093ebeac09b66b4e7461bfede5811384cd3d500405"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/casey-3-390-light.png",
+      "bytes": 39094,
+      "sha256": "23a822e2367616189a324df27137a947dd76ce65b6c2e93ebcf7938f96f56fd7"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-0-1440-dark.png",
+      "bytes": 97671,
+      "sha256": "b9d75a4b8ed93aa85b756ac48a4a2be636b824f4c9a63efe18f7cfd20ee30d2e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-0-390-light.png",
+      "bytes": 42241,
+      "sha256": "28da10d1d98665cd258f520df2c8e707f555c4d1f45f7e435ac9f5d84c87c507"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-1-1440-dark.png",
+      "bytes": 96773,
+      "sha256": "333e06f8fa5b7b2dd44a74c4adc87505d1d68c72435e702c247b7979b514583e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-1-390-light.png",
+      "bytes": 41955,
+      "sha256": "2f48fbbecd54950d51f5d895fb7a54af01d39f3602efdba9ce9d0d3a8d0bb576"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-2-1440-dark.png",
+      "bytes": 98501,
+      "sha256": "2d68e39db795a412fc973e0eab29457619d6254a49084658d98034ce02e570c5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-2-390-light.png",
+      "bytes": 42298,
+      "sha256": "00cc8cfb8ec30dab17ef9b6a93846778ff7c57eba036067e45f8a999774b9b6b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-3-1440-dark.png",
+      "bytes": 87389,
+      "sha256": "27cd73963b1b6bca6069c9093ebeac09b66b4e7461bfede5811384cd3d500405"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-casey-3-390-light.png",
+      "bytes": 39094,
+      "sha256": "23a822e2367616189a324df27137a947dd76ce65b6c2e93ebcf7938f96f56fd7"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-0-1440-dark.png",
+      "bytes": 95959,
+      "sha256": "9510421c13ad507fd245ece4ac36d275e494d6e18228aab2127d40ad45b6f6a8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-0-390-light.png",
+      "bytes": 43076,
+      "sha256": "da4a7a7e074564bdc5be9584532f7303d644552ea5ab16e0bada2bac94e4a065"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-1-1440-dark.png",
+      "bytes": 95183,
+      "sha256": "b119aa6c83b8d755995d527ed182bd5d80caba8b56bebe5fd692430e73d8c105"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-1-390-light.png",
+      "bytes": 42698,
+      "sha256": "438f5b7034a0736f1e244c67e171b3b28ff8fd736f6ebbf4adac3c56903abbaa"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-2-1440-dark.png",
+      "bytes": 97219,
+      "sha256": "09fbcc997655edfc3a636026d05a1c979b3f23bac9a8ae319648a709f1f712f4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-2-390-light.png",
+      "bytes": 43123,
+      "sha256": "73f74857f62bd955178d1152a711f0e5f9a40797f9d97edc6233ec276459f771"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-3-1440-dark.png",
+      "bytes": 88643,
+      "sha256": "30679a234ad6f988d6d1a969fbee5baa9f8df3bf4207587a293497428c8d6354"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/final-manager-3-390-light.png",
+      "bytes": 41043,
+      "sha256": "1ebbf466b7e24ee5e7b6c09caa86edeb2c7cc738fc3352ed971bb49df8b31bd4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-0-1440-dark.png",
+      "bytes": 95959,
+      "sha256": "9510421c13ad507fd245ece4ac36d275e494d6e18228aab2127d40ad45b6f6a8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-0-390-light.png",
+      "bytes": 43076,
+      "sha256": "da4a7a7e074564bdc5be9584532f7303d644552ea5ab16e0bada2bac94e4a065"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-1-1440-dark.png",
+      "bytes": 95183,
+      "sha256": "b119aa6c83b8d755995d527ed182bd5d80caba8b56bebe5fd692430e73d8c105"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-1-390-light.png",
+      "bytes": 42698,
+      "sha256": "438f5b7034a0736f1e244c67e171b3b28ff8fd736f6ebbf4adac3c56903abbaa"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-2-1440-dark.png",
+      "bytes": 95562,
+      "sha256": "52310d7b16d645d473f70af2ffcab293fc7b9697696b1bc6a45080874e5e0522"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-2-390-light.png",
+      "bytes": 42546,
+      "sha256": "c0172663852c4d51ec44988e9c331bbd9cc178e7739b45bea0f52d5098124183"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-3-1440-dark.png",
+      "bytes": 88643,
+      "sha256": "30679a234ad6f988d6d1a969fbee5baa9f8df3bf4207587a293497428c8d6354"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/manager-3-390-light.png",
+      "bytes": 41043,
+      "sha256": "1ebbf466b7e24ee5e7b6c09caa86edeb2c7cc738fc3352ed971bb49df8b31bd4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/matrix.json",
+      "bytes": 3433,
+      "sha256": "da15b9045da3bfd79f753518c9518ae8ed346126d47cf216eccaf502644ae555"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/clock-details/source-sha256.json",
+      "bytes": 1191,
+      "sha256": "56b6702ee0dd3b76ad6fbd6b163aa3e87aa01c0ee98d45cad3817450d772de38"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/browser-baseline.json",
+      "bytes": 7211,
+      "sha256": "8986400aa8034d31310a784ef6672e99871f7ee436e92c0585374b21d8b4f814"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/browser-final.json",
+      "bytes": 4886,
+      "sha256": "2037461ab54daafe1703e024104d45d8a6f9f30490c789f0e2d51f2187b6b877"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/data.json",
+      "bytes": 21037,
+      "sha256": "b1fe27c1333152bbe3c1328f8490c69e24404b4887be3d1259cb8bfc1730acf0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/final-owner-approve.png",
+      "bytes": 39829,
+      "sha256": "94f95d5a6dc8e6d8a17bdcac9dcd91348f83fd8906b6f83eb5ad10a274c72e48"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/final-owner-decline.png",
+      "bytes": 41034,
+      "sha256": "b59bb57470f6e4a54c917af6a3382f11b8dc0dd15565fb1945000a8554b9e30f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/final-recipient-approve.png",
+      "bytes": 36031,
+      "sha256": "ee1a3a46d3ada86c2469dc39793eab9261f3d508129b460ff34f6e0211df90c5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/final-recipient-decline.png",
+      "bytes": 38803,
+      "sha256": "ea4d2e4a6b1f062d97066358b0ce3e6df840db672adf609ebff0feba9ea4ae41"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/final-recipient-invitation-dark.png",
+      "bytes": 42861,
+      "sha256": "c80189683afc80f17e14baccba571b6c4d39660ec6543ce48c05f2ff20892e7a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/final-recipient-invitation-light.png",
+      "bytes": 42541,
+      "sha256": "c7e1754d59b90ad7dce8c42ffd169ae5b69d2f5c9fb661ce8ec7048f5e9ab1ac"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/owner-approve.png",
+      "bytes": 40541,
+      "sha256": "c564ac9abd400856e67a44904e3a6673f0a656fb3b4dd00011f96341dbea6531"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/owner-decline.png",
+      "bytes": 41546,
+      "sha256": "ccc8c2a93ae0fca82b37222fed63f45b8e1adb94acdb1d043cb7d79824f9e905"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/owner-reject.png",
+      "bytes": 41574,
+      "sha256": "066a1f49ca472008fa421d618cc23b1b4e0166c079cc2b2a6e34c0dd648ea96c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/owner-withdraw.png",
+      "bytes": 41831,
+      "sha256": "32f98ebf50d2e75b3d528ea5b25c0364e58aadeb733e74cc298841fb242980d9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/previous-snapshots.json",
+      "bytes": 159,
+      "sha256": "ed103dbf1a44d659915bff599151096ad5d752b6fd4397c7ff594037c86857ba"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-approve.png",
+      "bytes": 36957,
+      "sha256": "f55d423d5305800b645af746b6964f961fd4f4b4e4dcab19484a523ff962746f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-awaiting-manager.png",
+      "bytes": 39409,
+      "sha256": "7f9bcf91fe7b056922f6d9ff74f8c630e46fe6d9f6a4bf26406ee2b2cdc5df77"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-decline.png",
+      "bytes": 38562,
+      "sha256": "c8688e38468e856116a32bef12fe7a0049ed7270e218842ca1a183b164207b5d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-invitation-dark.png",
+      "bytes": 42807,
+      "sha256": "2b6cabb96ca2e9a8dac05c93e39c4213daa35b7bd96593422264079039f1a2bf"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-invitation-light.png",
+      "bytes": 42486,
+      "sha256": "b9e7f65d9eaf5efd2977500c65e342d4a5c306b49a554379a28808a7a30fab83"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-reject.png",
+      "bytes": 38536,
+      "sha256": "527f69dd7a1cb12fff9e1f4fc9e4dfd8ec95a323f0ddf2352280c7cd2fa09737"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/recipient-withdraw.png",
+      "bytes": 37410,
+      "sha256": "cc234262e6692f1511a1e37560856615376b6cbb3c1d905a8016c3b6a0c893e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/direct-cover/source-sha256.json",
+      "bytes": 1057,
+      "sha256": "2c942bbdb15035008feb595eb2a163e0b0d5aa55bfb4a42bc5261d3bdc82a4ff"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/browser-final.json",
+      "bytes": 1444,
+      "sha256": "4f76d61751678cbf5d7c646e6ba1ebde67850be029ac55aecf327cb8d04b5ffa"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/browser.json",
+      "bytes": 1400,
+      "sha256": "a08b6918af13cb65478b87aedc1c2d2c70aecbe1bcc65e6d6cde016e15b470be"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/data.json",
+      "bytes": 926,
+      "sha256": "c75a450b89abdcc26d02332dc67efd27ad7feb11d955bf84896d95f6bc015e97"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/final-stale-eligibility-dark.png",
+      "bytes": 53963,
+      "sha256": "be6ac326dd80a04b58771f9b1a801a14321c3f2a59a3c7046dd9a6f219df5431"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/final-stale-eligibility-light.png",
+      "bytes": 53239,
+      "sha256": "674be51e6632037340824806123c41181a211a0c6aceb4935604fc4902d95419"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/matrix.json",
+      "bytes": 10392,
+      "sha256": "c51112daf8fea7a19fe3b1554a30113aa480a6d164a75e711fe379efdb1d89f0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/source-sha256.json",
+      "bytes": 1341,
+      "sha256": "bb90e2568740192a3851a3ef2580fbed8918c4338ac023ee8bca2377d5aa63b1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/stale-eligibility-dark.png",
+      "bytes": 56680,
+      "sha256": "f02d5fdc3edfcbee8ee2a4f457e7ac963169f75c317714a7efc9da0d5a195517"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/eligibility-api/stale-eligibility-light.png",
+      "bytes": 55589,
+      "sha256": "65a60bb42d56047418327995d6fb28f789d40d292aaa4010628e63cc1439ecd5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-dark-1788816191728.png",
+      "bytes": 51642,
+      "sha256": "debdf9fc019037a8de839684e6f99d2fdc4ad1508c51add2796fe9fbfa006eef"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-dark-1788816250859.png",
+      "bytes": 51642,
+      "sha256": "debdf9fc019037a8de839684e6f99d2fdc4ad1508c51add2796fe9fbfa006eef"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-dark-1788816322572.png",
+      "bytes": 51642,
+      "sha256": "debdf9fc019037a8de839684e6f99d2fdc4ad1508c51add2796fe9fbfa006eef"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-dark-1788816387588.png",
+      "bytes": 51642,
+      "sha256": "debdf9fc019037a8de839684e6f99d2fdc4ad1508c51add2796fe9fbfa006eef"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-dark-1788816542591.png",
+      "bytes": 51642,
+      "sha256": "debdf9fc019037a8de839684e6f99d2fdc4ad1508c51add2796fe9fbfa006eef"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-dark-1788816602573.png",
+      "bytes": 51642,
+      "sha256": "debdf9fc019037a8de839684e6f99d2fdc4ad1508c51add2796fe9fbfa006eef"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-light-1788816191610.png",
+      "bytes": 51622,
+      "sha256": "a2fac0510ee45fd20706124d4fbe0e258c694b0ea6e0c63f5846a1c7c6a76680"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-light-1788816250727.png",
+      "bytes": 51625,
+      "sha256": "4e3277ac821df18eb4f6fa74886e6c17a80692e6ae8feaec4972bcb10e9a1eb4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-light-1788816322443.png",
+      "bytes": 51625,
+      "sha256": "4e3277ac821df18eb4f6fa74886e6c17a80692e6ae8feaec4972bcb10e9a1eb4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-light-1788816387440.png",
+      "bytes": 51625,
+      "sha256": "4e3277ac821df18eb4f6fa74886e6c17a80692e6ae8feaec4972bcb10e9a1eb4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-light-1788816542476.png",
+      "bytes": 51625,
+      "sha256": "4e3277ac821df18eb4f6fa74886e6c17a80692e6ae8feaec4972bcb10e9a1eb4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-1440-light-1788816602458.png",
+      "bytes": 51625,
+      "sha256": "4e3277ac821df18eb4f6fa74886e6c17a80692e6ae8feaec4972bcb10e9a1eb4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-dark-1788816191089.png",
+      "bytes": 33894,
+      "sha256": "bf4f1d838df9327d6c81cbdcccc4873acd03c2c7ff7b6a31fb6c4b5ff39d03c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-dark-1788816250223.png",
+      "bytes": 33894,
+      "sha256": "bf4f1d838df9327d6c81cbdcccc4873acd03c2c7ff7b6a31fb6c4b5ff39d03c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-dark-1788816321919.png",
+      "bytes": 33894,
+      "sha256": "bf4f1d838df9327d6c81cbdcccc4873acd03c2c7ff7b6a31fb6c4b5ff39d03c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-dark-1788816386854.png",
+      "bytes": 33894,
+      "sha256": "bf4f1d838df9327d6c81cbdcccc4873acd03c2c7ff7b6a31fb6c4b5ff39d03c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-dark-1788816541919.png",
+      "bytes": 33894,
+      "sha256": "bf4f1d838df9327d6c81cbdcccc4873acd03c2c7ff7b6a31fb6c4b5ff39d03c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-dark-1788816601982.png",
+      "bytes": 33894,
+      "sha256": "bf4f1d838df9327d6c81cbdcccc4873acd03c2c7ff7b6a31fb6c4b5ff39d03c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-light-1788816191013.png",
+      "bytes": 33576,
+      "sha256": "3031e15f4e67f91d6f5258ae24a575fb79993453f449dd873df1ceb07085cfcb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-light-1788816250121.png",
+      "bytes": 33576,
+      "sha256": "3031e15f4e67f91d6f5258ae24a575fb79993453f449dd873df1ceb07085cfcb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-light-1788816321809.png",
+      "bytes": 33576,
+      "sha256": "3031e15f4e67f91d6f5258ae24a575fb79993453f449dd873df1ceb07085cfcb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-light-1788816386748.png",
+      "bytes": 33576,
+      "sha256": "3031e15f4e67f91d6f5258ae24a575fb79993453f449dd873df1ceb07085cfcb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-light-1788816541806.png",
+      "bytes": 33581,
+      "sha256": "c972372e3cd7f7db610f845dba247ab8cdb37365b22570b4e4f5ee432ef6b554"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-320-light-1788816601886.png",
+      "bytes": 33581,
+      "sha256": "c972372e3cd7f7db610f845dba247ab8cdb37365b22570b4e4f5ee432ef6b554"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-dark-1788816191273.png",
+      "bytes": 34258,
+      "sha256": "d89458670c6fc95d95d2f006d48cc748a239e9e5f55add71966fa4bc2f55b3c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-dark-1788816250426.png",
+      "bytes": 34258,
+      "sha256": "d89458670c6fc95d95d2f006d48cc748a239e9e5f55add71966fa4bc2f55b3c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-dark-1788816322121.png",
+      "bytes": 34258,
+      "sha256": "d89458670c6fc95d95d2f006d48cc748a239e9e5f55add71966fa4bc2f55b3c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-dark-1788816387054.png",
+      "bytes": 34258,
+      "sha256": "d89458670c6fc95d95d2f006d48cc748a239e9e5f55add71966fa4bc2f55b3c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-dark-1788816542102.png",
+      "bytes": 34258,
+      "sha256": "d89458670c6fc95d95d2f006d48cc748a239e9e5f55add71966fa4bc2f55b3c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-dark-1788816602156.png",
+      "bytes": 34258,
+      "sha256": "d89458670c6fc95d95d2f006d48cc748a239e9e5f55add71966fa4bc2f55b3c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-light-1788816191192.png",
+      "bytes": 33924,
+      "sha256": "5053c07c0122b3511661de613dab2efafd176a34d0cc438b169d3f9a505ff8e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-light-1788816250324.png",
+      "bytes": 33924,
+      "sha256": "5053c07c0122b3511661de613dab2efafd176a34d0cc438b169d3f9a505ff8e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-light-1788816322021.png",
+      "bytes": 33924,
+      "sha256": "5053c07c0122b3511661de613dab2efafd176a34d0cc438b169d3f9a505ff8e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-light-1788816386951.png",
+      "bytes": 33924,
+      "sha256": "5053c07c0122b3511661de613dab2efafd176a34d0cc438b169d3f9a505ff8e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-light-1788816542016.png",
+      "bytes": 33924,
+      "sha256": "5053c07c0122b3511661de613dab2efafd176a34d0cc438b169d3f9a505ff8e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-390-light-1788816602072.png",
+      "bytes": 33924,
+      "sha256": "5053c07c0122b3511661de613dab2efafd176a34d0cc438b169d3f9a505ff8e9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-dark-1788816191471.png",
+      "bytes": 48024,
+      "sha256": "1ed05c8503296301b67aa584d5ce5fb7f7fb7751e9f4c6dbf1147201d4945430"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-dark-1788816250622.png",
+      "bytes": 48024,
+      "sha256": "1ed05c8503296301b67aa584d5ce5fb7f7fb7751e9f4c6dbf1147201d4945430"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-dark-1788816322324.png",
+      "bytes": 48024,
+      "sha256": "1ed05c8503296301b67aa584d5ce5fb7f7fb7751e9f4c6dbf1147201d4945430"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-dark-1788816387311.png",
+      "bytes": 48024,
+      "sha256": "1ed05c8503296301b67aa584d5ce5fb7f7fb7751e9f4c6dbf1147201d4945430"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-dark-1788816542361.png",
+      "bytes": 48024,
+      "sha256": "1ed05c8503296301b67aa584d5ce5fb7f7fb7751e9f4c6dbf1147201d4945430"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-dark-1788816602361.png",
+      "bytes": 48024,
+      "sha256": "1ed05c8503296301b67aa584d5ce5fb7f7fb7751e9f4c6dbf1147201d4945430"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-light-1788816191373.png",
+      "bytes": 47845,
+      "sha256": "394beee683be37a29d8dd79ee10a7b5bd31c96afc47043c1b74a358f29e52313"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-light-1788816250519.png",
+      "bytes": 47845,
+      "sha256": "394beee683be37a29d8dd79ee10a7b5bd31c96afc47043c1b74a358f29e52313"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-light-1788816322221.png",
+      "bytes": 47845,
+      "sha256": "394beee683be37a29d8dd79ee10a7b5bd31c96afc47043c1b74a358f29e52313"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-light-1788816387175.png",
+      "bytes": 47845,
+      "sha256": "394beee683be37a29d8dd79ee10a7b5bd31c96afc47043c1b74a358f29e52313"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-light-1788816542247.png",
+      "bytes": 47845,
+      "sha256": "394beee683be37a29d8dd79ee10a7b5bd31c96afc47043c1b74a358f29e52313"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-lineup-dates/date-controls-768-light-1788816602261.png",
+      "bytes": 47845,
+      "sha256": "394beee683be37a29d8dd79ee10a7b5bd31c96afc47043c1b74a358f29e52313"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-matches/final-recovered-light-320.png",
+      "bytes": 38750,
+      "sha256": "dc27eb4088b42214532852424f7942e59a67bd4a5b75fe23c5436140f23d8a04"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-matches/final-retry-dark-390.png",
+      "bytes": 37373,
+      "sha256": "79ac3b1a85806c00b8ca9fe6a8def036ed649c25d254f67c5e03af00cd4eec87"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-matches/final-retry-light-320.png",
+      "bytes": 35883,
+      "sha256": "174d41420ecfdb3bf2cdbd9b27cb2a1e3119a560434b533dee017c0e7b326d77"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-matches/measurements.json",
+      "bytes": 1207,
+      "sha256": "6e01a7bfd382dd0d9af3c43fca9bcdf9c22f6479c10fdfe778585f5fc81f5905"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-matches/swap-retry-dark-390.png",
+      "bytes": 37617,
+      "sha256": "fede5c1b545663db5c229bec4a2f55780de553c79fa7c69709db3b5571c9b198"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-1440-dark.png",
+      "bytes": 90961,
+      "sha256": "ed8195f55abe5f8beb749bb1d7133909b40d663227fd34739c4d934249219d33"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-1440-light.png",
+      "bytes": 90230,
+      "sha256": "bba6a2eba4e096e8cffc7dae9319a26bbe7d6fdf94fe49b30b31a284b89d8cb4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-320-dark.png",
+      "bytes": 41299,
+      "sha256": "97bd073a5cad6a205f887cb058125c44ea0c037b6bc45e27990437bdb5deb4b0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-320-light.png",
+      "bytes": 40909,
+      "sha256": "a9bf82f5ad27a6b8a7980cdb791c0b471351de7ae0997e0a0660c3fa76a3cfaf"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-390-dark.png",
+      "bytes": 42650,
+      "sha256": "5a6bd2c988781259b13c012841c8e30cd5a6aa267c46ee0d34cfa7c3d53e7bde"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-390-light.png",
+      "bytes": 42271,
+      "sha256": "1916250558321f1fe230a8a3cdb782a3431cc67c13bb65e9e69f37b0fdd630a4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-390-text200.png",
+      "bytes": 62454,
+      "sha256": "1b1df83c03a701f173f42f608a768c26509b7e29c0d134cb90a1aae16e5e9ab7"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-768-dark.png",
+      "bytes": 64097,
+      "sha256": "699b9a2dd54a5a2525aabdb70af91f433492a689f7dcc2e2ad3e4961fce17045"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/blake-768-light.png",
+      "bytes": 64156,
+      "sha256": "f0a2f4b8bab9abebaac905fd19ebb37db343317125dd490580f61e11694d4026"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-1440-dark.png",
+      "bytes": 91343,
+      "sha256": "66d754fe86d80a43e51966b97276e6428919bee8697fd8fb64d8f478baa39c3f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-1440-light.png",
+      "bytes": 90656,
+      "sha256": "c75bd294f671b1ef5319c6b70dba7c00c6b8c6315415921c12be4dd2bad9d93b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-320-dark.png",
+      "bytes": 42623,
+      "sha256": "72d58550d261f8f9db8e90eefe6599bafaadaecf9bf57dde8882098f9b51659b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-320-light.png",
+      "bytes": 42202,
+      "sha256": "000dae35466cbb317908c77001a11e8fbedd6b32ca5c7355b3ef96816ffdaa8d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-390-dark.png",
+      "bytes": 44266,
+      "sha256": "dc149e1045ab1cd14cee7740ec8a21793b1d819d6ac142528f94ddf0eee2c703"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-390-light.png",
+      "bytes": 43896,
+      "sha256": "1042c845c83ef244f76f57100a48e30ab2b880cf55f95911bbd3c46f32e2702e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-390-text200.png",
+      "bytes": 62529,
+      "sha256": "7e1f3da30abccf91951eec6437a00c3c80f2c4d7305eb410833e5ed78193917a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-768-dark.png",
+      "bytes": 64179,
+      "sha256": "93eab2f3800a0bc7bdaa251ebd1ca74a0fe30386afb15568275c1920eb683fc2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/employee-768-light.png",
+      "bytes": 64340,
+      "sha256": "9d2cddf630e9d5f74dea604d286fd6561ee6259ea1b2d58e37f52943a4dbf89e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/fallback.json",
+      "bytes": 3720,
+      "sha256": "a40f4309129c1a81a1d70b458667617e4bb690c4935bd72a773aeee3cc262473"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/final-data.json",
+      "bytes": 1042,
+      "sha256": "38d1858bb5031f62b166353eb1a70bb8b59458d21e007834f3e66816c60eb7ac"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-1440-dark.png",
+      "bytes": 90889,
+      "sha256": "64ad4b245fc2c5f9ffc3c598906938b7bea0dd66b0fb7e4f4963155d7f25be4a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-1440-light.png",
+      "bytes": 90659,
+      "sha256": "5b1ff8842c9e57cb7e0286d39a79e31bc36abe212b2c34adc03764185bcfcb0e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-320-dark.png",
+      "bytes": 41337,
+      "sha256": "3578b1190d9203103c427865e9e146fa3a1aa06e91d60424f92e5a742379fdc8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-320-light.png",
+      "bytes": 41284,
+      "sha256": "6887ae9266009b81668e98d0f2899d4f7fabd4d30f9cb334435c40e1d65679a0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-390-dark.png",
+      "bytes": 45015,
+      "sha256": "0fefbf1581db6baf2fe5aaeb556924b1ff800b89ef47d75e6640fc76523cacbe"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-390-light.png",
+      "bytes": 44822,
+      "sha256": "e149a250dcac1df2c6b7eeb16e83e228dd67cf8e80a7c87397007c35f78d13dc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-390-text200.png",
+      "bytes": 62429,
+      "sha256": "e321452574275f3a1e03adcd8f305a60c4d8d36e43ef130613ffe6c7830c612a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-768-dark.png",
+      "bytes": 64041,
+      "sha256": "9e29f678788ff0eb6577bc955721c6f096942b5cf13814b45727e25bd5ea49f0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/blake-768-light.png",
+      "bytes": 64332,
+      "sha256": "96f9f489d2e0f909f2947599d874472bd7c8537eb778f6386b1a7597e673ad42"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-1440-dark.png",
+      "bytes": 91336,
+      "sha256": "7813e8dbf6feeb55981b97b8c6555f9345dba74c2c484e16412a5e7905477f86"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-1440-light.png",
+      "bytes": 91141,
+      "sha256": "706506d3d38b38b3f364a61daf188b17e82f1fad1ef8ac633b8e1dc74044236f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-320-dark.png",
+      "bytes": 42638,
+      "sha256": "36dfa1b8a90e03d7e7ca0790676e8e10187bdbd77efd833f167dd9c9c7b4aab0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-320-light.png",
+      "bytes": 42574,
+      "sha256": "fd4a22fdc03ac3060d2e5a634d4abbf3ff3fa3af7eedcbac5a94a7b9d31bb096"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-390-dark.png",
+      "bytes": 44299,
+      "sha256": "5758e1199c766aded181d5b9d845659b8cd6315dfb3687e9a4126e21c56f4186"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-390-light.png",
+      "bytes": 44188,
+      "sha256": "f1f24372d7143a462141f844c1ace7563001f85bdd8936d4c46bb49154bd2e8d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-390-text200.png",
+      "bytes": 62538,
+      "sha256": "18a3bab52ed9ee61f4c69e12112af327d9179620b1dc442e02c3113b8c88db0e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-768-dark.png",
+      "bytes": 64071,
+      "sha256": "2ddafdddd0f02f841ac7e0e19dd1b21b9f92cd1b039474e68876f45209672e36"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/pre-polish/employee-768-light.png",
+      "bytes": 64487,
+      "sha256": "e3a613304042e8070b247b00634d402c4db98891790afbfc6259a29f56baf733"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/reconnect.json",
+      "bytes": 3907,
+      "sha256": "443ffa94a916c7a8a541fcd48a558ccb67638b3d36f78937fed1c6fbdf879985"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/source-sha256.json",
+      "bytes": 739,
+      "sha256": "39f5c30ef5b11ffcbb6444a7ca0ec92740138e98b309facbf7f3db502778d9a0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/timings.json",
+      "bytes": 97290,
+      "sha256": "84db62bc40c60fc48fcf655879030f9f77a749edd002e51c81152b263e8802be"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/employee-team/visual.json",
+      "bytes": 16711,
+      "sha256": "8014eff6f6ec5f390a8ed1e8fa6a2e55f8594e80394b04361f201462e14b449d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/browser-result.json",
+      "bytes": 11781,
+      "sha256": "779535d75ac28dd0ce96a16027754c69b61386a29ca4788da409043b381a5b14"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-1440-dark.png",
+      "bytes": 115781,
+      "sha256": "4eba8f0dbda15e761d7f6c70f1690b99d7a39d79aeff65c21168c666ed7c4e0d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-1440-light.png",
+      "bytes": 115428,
+      "sha256": "b569980645de476516f473f59dcff75b2cf40e92d351ac8cb158a015e9322df5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-320-dark.png",
+      "bytes": 39148,
+      "sha256": "0397b03b6ea966089903337589959cc6d145df715a6dbcc35261b0431612dd01"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-320-light.png",
+      "bytes": 38908,
+      "sha256": "419ade18b8c49a6e8b6fa4238509c950fba8bdd8eb84cae8ee4aef0875556f02"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-390-dark.png",
+      "bytes": 39653,
+      "sha256": "df9de50e3046c960c06744ea47b0e534bd9efa15407ce507438b8b2fd59d6f17"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-390-light.png",
+      "bytes": 39569,
+      "sha256": "222173977a05bc105205d94dbf834a5d2b658fc8bca1e5f1ace87ff616f39358"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-390-text200.png",
+      "bytes": 53318,
+      "sha256": "ab7d1b39c274090e0ad5ae6d5fabbee22b34136489beb5c07f0414d97877fe30"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-768-dark.png",
+      "bytes": 55139,
+      "sha256": "da5fbc6d15a0e4dc56cbed1f75b6ff5dd01cc8185a4a1a74b2fc34dc6cf23065"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-768-light.png",
+      "bytes": 55269,
+      "sha256": "80e8cac48799697723b6dbe803bd56cfe3b132090db92ec276b51ba2a573a9f0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/employee-history-after.png",
+      "bytes": 102211,
+      "sha256": "d4f0eeb3c2578ec75c687ef545d47c012390c16c9fa40f3ae1817eba33cedb58"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/final-data.json",
+      "bytes": 1078,
+      "sha256": "cb31368fb6668908be751623edb6e3347107db4b1d214c8f25e037505e2df191"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/harness-manager-route.json",
+      "bytes": 872,
+      "sha256": "d717f1b743b3dd1fe62ae33cf49a98bf3e99c5240b6052c7b101fe2ec49c55b3"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/harness-missing-idempotency.json",
+      "bytes": 797,
+      "sha256": "34a55ad17be1a6f39dbafa00da955daaf6349875ff9af556d69a9914611d964a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-1440-dark.png",
+      "bytes": 115799,
+      "sha256": "3b02380fe6e30e5566f56e75057187f05d554c841f3d062afcb9e5c092760b01"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-1440-light.png",
+      "bytes": 116825,
+      "sha256": "17f768c5827ce74b8b706f231e26f8e7fa5b7e7ab0dd6b807b120d7c8e994bf0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-320-dark.png",
+      "bytes": 35613,
+      "sha256": "063f555899e56b54dd17b36974c78161a5c7e2e5f7accc51b1fa65337f5777b0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-320-light.png",
+      "bytes": 35440,
+      "sha256": "baf1fa175126285956bfe5a94d08a6a1c1d7024260a61fa00d909cf0415382d4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-390-dark.png",
+      "bytes": 38080,
+      "sha256": "9cbb4fa6f8e66f52abe8bcd4fa6c6f413e5bd67f93bd41b0a5b4a561769d9565"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-390-light.png",
+      "bytes": 37983,
+      "sha256": "9f049a2cdce451da0039379c3687a4c9c81580fa697e7e47f8d34dc9ae9e7c94"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-390-text200.png",
+      "bytes": 55425,
+      "sha256": "e2bc1221f917ad44b01357906cd80dd2ccc949690b2b037031396392f22b6b9d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-768-dark.png",
+      "bytes": 58115,
+      "sha256": "8adadeeb9c18f18032baf430f656c531ef740ff6a8f54b932a5bd9d0a9e8ceb6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-768-light.png",
+      "bytes": 58522,
+      "sha256": "a064c8b5ba9dea57b092a3c599fcfe584c9612c2d010966eecd9d633044e0541"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/manager-history-after.png",
+      "bytes": 108158,
+      "sha256": "147d62f4abc517ea25d0fcc5ad9e3bdfa5fe92b58c2e0caabf46931ad1e9078f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-assignments/source-sha256.json",
+      "bytes": 959,
+      "sha256": "2d188d4ec0fa3fe848651196a3ca2e31118be7e3b0b02bf73f9f6d072a8481e8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/employee-1440-dark.png",
+      "bytes": 79890,
+      "sha256": "beff85d56539741e2307521d2cea373effaa0fb090c334793868a7ed246bbd9a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/employee-1440-light.png",
+      "bytes": 79586,
+      "sha256": "06bca8a9402cba12594afcb149bddbd5bf6cad9ab73d378106b435cbfc4dbaba"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/employee-320-dark.png",
+      "bytes": 35661,
+      "sha256": "7c81ac6ca8e7a55e44f7612df63d1e943ae7897c5bfe369165ab6e545ae2ae60"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/employee-320-light.png",
+      "bytes": 35469,
+      "sha256": "f72d63c20dc15f6b88b6bcdace00cfaeec9e59f9c471fa562ab79c44ca306975"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/fallback.json",
+      "bytes": 86814,
+      "sha256": "d8d0e556dc108cd57cf8abc72d5c1e03b5df203ed2061fb615235aceb30a3e1d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/filters.json",
+      "bytes": 2914,
+      "sha256": "3e8e53883c1f1600196886434ea2da38de492ca69dbd476746bf5da233bd1a89"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/final-data.json",
+      "bytes": 1078,
+      "sha256": "d52d3d6992425f9f1ecabded60fb268e54744a8b2648886b5aff932f5c45759d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/manager-1440-dark.png",
+      "bytes": 76774,
+      "sha256": "03bbd16a36a3a4e9f7fabc7e31c813a9fa5307b55d1867358fd7dc2b0dfbd04e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/manager-1440-light.png",
+      "bytes": 76996,
+      "sha256": "2bf4486c91f30fcff65d88eab4c8db7c9e2ce73b1de924edc243bb6c466b155c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/manager-320-dark.png",
+      "bytes": 33425,
+      "sha256": "6e85028fc810232016293afb63ac6ce993e31507747845c5cda4ee1293d5bea2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/manager-320-light.png",
+      "bytes": 33375,
+      "sha256": "b9a1a749b73898b3e1ba95f48e1f1d72da91034a3417d077e43d46c889c335b9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/read-after.json",
+      "bytes": 326,
+      "sha256": "8ed87bc58fb585c0c4ab5c9baa817ff485084f3ad193fc4dbc52a8df72150c57"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/read-baseline.json",
+      "bytes": 291,
+      "sha256": "393b67ca17a1782df19ee440471cb143e1ffa749932f32b325ae6b35cf57285d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/repeated-read-diagnostics.json",
+      "bytes": 1633,
+      "sha256": "f13ccf8af6cebb76eef90509c6e706098da0f468e9a9b5aa87429dc794511eca"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/source-sha256.json",
+      "bytes": 950,
+      "sha256": "10bdd5de354fdb14f95981c117e645cae23510b2a3483b031c940c17ed114663"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/timings-initial.json",
+      "bytes": 812429,
+      "sha256": "16486678f3fe9db29d92f383a3c3fd705e0c6f5cb256e253204e16d850c0d6b4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/timings.json",
+      "bytes": 842180,
+      "sha256": "ea35137d12d5c0b8a1e2a8f78382be3ab961ba1092f16de5042f4b94bfd0b89f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-range/verifier-initial-sha256.json",
+      "bytes": 141,
+      "sha256": "5f7b4eb7179ebdfed0dd2c614913058eaa98185ce32175209fcb1f186f0aae65"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/accumulation-parity.json",
+      "bytes": 250,
+      "sha256": "47aaa8c65e87063a3b6a7422bf6b8f15eea9fd8aff1e17ac84be0218b97d7165"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/array-profile-balanced.json",
+      "bytes": 2531,
+      "sha256": "5d94a0d1f7309c3e0cc7683258b99771332168418aa3da6968540263a513c413"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/array-profile-initial.json",
+      "bytes": 953,
+      "sha256": "1ccb726321aff17e742421e811d062dc5449da1887971b05ccb4f78e35bacf2d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/data-coalescer-only.json",
+      "bytes": 1078,
+      "sha256": "5d522de19d9e9fb9d4ab27d732b2f4f9ec4e2f57003363c115c689ada71107c8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/fallback-coalescer-only.json",
+      "bytes": 86887,
+      "sha256": "9d2a69291569d13c474715ab7794303d3bb26a3bf0e16f998a56be0bc6c0dca3"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/fallback.json",
+      "bytes": 87005,
+      "sha256": "5b77d31fc2035bad09464834f7e3447d7f5394b5eef2eaba537f207ce4107d4c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/final-data.json",
+      "bytes": 1078,
+      "sha256": "10bb79e8e9aa179a66183b41b3ae9f9054c161ec5254b7b3f8f57949a4adb156"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/read-diagnostics.json",
+      "bytes": 16831,
+      "sha256": "d25ce5f7080796fba2d7265e95aeaaae4b687396d4f7483de697ff73dbc06890"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/schema-state.json",
+      "bytes": 100,
+      "sha256": "652cd8b1284fa21e3120904f4a8acbb354cd86ad46055717f59f0876dfc92afb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/scope-profile.json",
+      "bytes": 218,
+      "sha256": "e9bbb99b961da8c9a3d380155154a283a1e18c25ac1a658d2c6a2233892ded39"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/source-sha256.json",
+      "bytes": 959,
+      "sha256": "c130272c8ce58431594f9211a04104e40ba30f5341c7fcfc2e98b7085fa862a4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/timings-coalescer-only.json",
+      "bytes": 767886,
+      "sha256": "8f485ba71d86fc2fab2607b5225e373cf8538e0204cdb526b3e8eb8052090828"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/exchange-refresh/timings.json",
+      "bytes": 764650,
+      "sha256": "249920e92307103eb526c2ca14e90ad6d6079c4921b14b5b21677c786871bc6d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/auth-after.json",
+      "bytes": 127,
+      "sha256": "e2aef6541d0d4f9b0dd425161186da7766f995c767e7dd55acc3045d6328f416"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/auth-connection-failure.json",
+      "bytes": 1514,
+      "sha256": "632ff5ab5f42a119bd425589f9b8be53bce80c50ad06a7bcce0630a147a1ae81"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/busy-lock.json",
+      "bytes": 290,
+      "sha256": "e6d1876753288171e054f1821e4e55ec82bcc474ecfe40f1efbf9745a2f3d1ce"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/fallback.json",
+      "bytes": 3803,
+      "sha256": "18a858a571a553cf6becb0565b0066daa51c1b1ff87e8cf4bcd51147a83e765f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/final-data.json",
+      "bytes": 298,
+      "sha256": "e703c7e1d36efd8bbb14639ef1d8ed282f4ae5f11269d6d0062ff2d9201b8db9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/interrupted-second.json",
+      "bytes": 43902,
+      "sha256": "3887057f0e24a8e14bbea854c66ecd0a403c22fa9e2b696cb7023ab0172ef7f9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/interrupted-stable.json",
+      "bytes": 41341,
+      "sha256": "b2d8f4ab6760f3fff31c414af9fe9c449be4efdf600149bda07e7f7e397ef448"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/interrupted.json",
+      "bytes": 53550,
+      "sha256": "b6e339662bed4d7a5ec22bc1450a2255ccfc94bc97a4d84b53522a0b76fff111"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/privilege-inventory.json",
+      "bytes": 809,
+      "sha256": "a536e7d269360cb00d80c78bc6377eae8cb644ffbe8e65defad8bdcf507d153b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/sql-isolated-followup.json",
+      "bytes": 241,
+      "sha256": "b6c503f637c5a9d22263a8a3c766cf4e8a8c31d53bae9daed0b2781d685905c3"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/sql-isolated-initial.json",
+      "bytes": 322,
+      "sha256": "b458d82250f50713546f195163f971e7acb21a6f48267273dad260b11ec794e1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/sql-main.json",
+      "bytes": 360,
+      "sha256": "acf1627ac2865efce830504236db9be8e7bb5a720a2d5dc1bed430390ac50856"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/stable-build.json",
+      "bytes": 21379,
+      "sha256": "d91d633fd433fb76f6a87a6b4369bb417b4cef277acd45d42f921998ed7740e2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/immediate-inbox/timings.json",
+      "bytes": 96126,
+      "sha256": "2a67bb60ebcdcc48a200fc8bbbcf6566a9da372f573ccca826b4acbf21fbe021"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-overlap/matrix.json",
+      "bytes": 3840,
+      "sha256": "91d809b5218d787a9e4a4262ecaf8241a6adc0dbcccac9c206cc358380fc5438"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-overlap/source-sha256.json",
+      "bytes": 780,
+      "sha256": "d2d8d375d5c9a8aaf73ee322270ac4546973a686517e75e53155d3867615bd89"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-blocked-1440-dark.png",
+      "bytes": 66581,
+      "sha256": "b6189dfc3e714508fabcd97c031af02987e8c56f78f266ac9c60590afe4d3440"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-blocked-1440-light.png",
+      "bytes": 66864,
+      "sha256": "923b9875d429fa3464a6d60dc22b2dd5f5021e806c397f87d688b78272c1ba50"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-blocked-390-dark.png",
+      "bytes": 36598,
+      "sha256": "3399bc9c4438a16bc089d4d333488a1c400d3f7e8f08b1bf2bcfa79cab54c126"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-blocked-390-light.png",
+      "bytes": 36459,
+      "sha256": "4448d303bacfc47e215532bdb84c7dc40471a53bb7e2dbe4e1044d3512fe0318"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-browser-attempt-1788837655973.json",
+      "bytes": 3902,
+      "sha256": "1bbbf88062e37492c2e12e4c1efc818f944ab7fdaa0bfcb7713a885aceda2851"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-browser.json",
+      "bytes": 9150,
+      "sha256": "2d5827383b4e37739e576476992dda417a32be78145ba5981b722c466f2d691f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-failed.png",
+      "bytes": 101588,
+      "sha256": "689e37730d1d57ab305d12cab6575b5e04464c699e6ebb614582821f10aa9c85"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-final-lineup-1440-dark.png",
+      "bytes": 103900,
+      "sha256": "37860d16471a7e59e4431cdfc89ee7e99ce1336ed36e9e40e36d1f85417e2552"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-final-lineup-1440-light.png",
+      "bytes": 102489,
+      "sha256": "c30da45fcc9beeb3bc3a29a1f0363e3617cbda5b9bba0a5dd380f48ae7131336"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-final-lineup-390-dark.png",
+      "bytes": 41944,
+      "sha256": "52fdc84a6d0940c188216078600f51e414f265af548ac5e80f796a355c12bfc5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-final-lineup-390-light.png",
+      "bytes": 40854,
+      "sha256": "2a28dc60758290796c8412c03dd34810ee6c47cdc2b315a2a5703f97893b3f14"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-ready-1440-dark.png",
+      "bytes": 64194,
+      "sha256": "1c72f1e44add4c0de838dfe33c1b469d6ec3184754122988d6621777da61f253"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-ready-1440-light.png",
+      "bytes": 64454,
+      "sha256": "857e1a3162fe5b632630c1df27f6b691bf71f46971fd8458559752c908abddd9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-ready-390-dark.png",
+      "bytes": 35439,
+      "sha256": "5679c032e66b3b4a2dbe61d097fae77132e1045657f55acf841f3164d264dabb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/recovery-ready-390-light.png",
+      "bytes": 35364,
+      "sha256": "6cfaa76a87dafde16ef42c584c42e9d4cf16b3148e236986ac7e81d0788e65c9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/lineup-person-state/source-sha256.json",
+      "bytes": 1084,
+      "sha256": "30c5088f7ecdd04836270aa7b0dc9898a1cd2833ebcdcde19d311f8e2fdc4790"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-dark-1440.jpg",
+      "bytes": 40061,
+      "sha256": "f4aea8ff577c9a0dbe1605868143cfbb1ce9a4219f3b7885e3b1d6069421a4a9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-dark-320.jpg",
+      "bytes": 23336,
+      "sha256": "840a1688378b40ca4dc3049de9bbdb44e019c2c37a2bb89132177118eef21fd2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-dark-390.jpg",
+      "bytes": 25035,
+      "sha256": "73dd1b52b1e6fca6cf0a8278ffefbf49bc2c8148728e7d7694fc839003409d36"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-dark-768.jpg",
+      "bytes": 33117,
+      "sha256": "0608be20247cf2b6310ae300e0e8b49326f0d2fef6fbb035d98394ac9cc37b81"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-light-1440.jpg",
+      "bytes": 40921,
+      "sha256": "5e168bb09c6bcd9560b07429456b4dad1cd78f9b5e0c7a14cc803025c9bc2d44"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-light-320.jpg",
+      "bytes": 23630,
+      "sha256": "86fb4aa4bfb270943357860ceedbd01d0efab14578092f0df7466e93b052c95f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-light-390.jpg",
+      "bytes": 25519,
+      "sha256": "57b048dbf5c2ba749dea83847532952a718d72891bb2245929a002040b886f5b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manager-confirm-light-768.jpg",
+      "bytes": 34268,
+      "sha256": "ee5302c78039ec1618d887c9fdc66724ad3889016878950f3641ace4478ceb3e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/manifest.json",
+      "bytes": 13249,
+      "sha256": "1584faf287a8e16d793f704dee9d6eb845c0193cef26b219764166073db93499"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/blake-inbox-2026-12-08-1788820052116.png",
+      "bytes": 83719,
+      "sha256": "cfdc0bed2d6fae6b1a53ddd5398959a3281419661e3349a6d562bf40ebe638e1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-lineup-2026-12-08-1788816870423.png",
+      "bytes": 52770,
+      "sha256": "0bc311a45ebd783d907779bad1d8fd42b16f02a32e73e2f4c3255b02ac47ac42"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-lineup-2026-12-08-1788820051709.png",
+      "bytes": 51115,
+      "sha256": "016fc815784247c358134065e3a614405e8de6bb5e3c4dd12ef3c3dac776ca6c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-lineup-2026-12-15-1788816870540.png",
+      "bytes": 50786,
+      "sha256": "769bd1a0beaa26126e92b53477457cd9cd3e7bd7bd0c0a2b409ad3b2fab18ff0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-lineup-2026-12-15-1788820051886.png",
+      "bytes": 52590,
+      "sha256": "043b96b59f92aac13d9372dbcda63298d72ec493604dd1786f8311bf54395709"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-schedule-2026-12-08-1788814973759.png",
+      "bytes": 38837,
+      "sha256": "dd5715dc739a344712b36b6579e8c3da27ec8c085fcd932406526e71354fe6c6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-schedule-2026-12-08-1788816870393.png",
+      "bytes": 39223,
+      "sha256": "9b482f9a023fe130c7d0051756ef8d0543bbe79f85cd6a850a776b846d51e33c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-schedule-2026-12-08-1788820051656.png",
+      "bytes": 36903,
+      "sha256": "b88b3537fe82eaa46e14aa1028771d51ba7b558ba6cc68b55f153c489d461a2f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-schedule-2026-12-15-1788814973905.png",
+      "bytes": 36733,
+      "sha256": "bdce19a4b3155387f77f8997ba8c9ee7e6ea071420961f593b737b5f34df0775"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-schedule-2026-12-15-1788816870511.png",
+      "bytes": 36733,
+      "sha256": "bdce19a4b3155387f77f8997ba8c9ee7e6ea071420961f593b737b5f34df0775"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-employee-schedule-2026-12-15-1788820051829.png",
+      "bytes": 39277,
+      "sha256": "1b5c1eaa124defdedf5a5d13baa287272fb2119dd23e3e15f595c33ed5d2412a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/employee-inbox-2026-12-08-1788820052047.png",
+      "bytes": 83703,
+      "sha256": "f3f479adbcedd65840971b2c6d937ddbf101801dba8f5dfa49207be03125a780"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-inbox-2026-12-08-1788820051986.png",
+      "bytes": 36579,
+      "sha256": "fefbe3b2879ad52270c2b83d27485e55477a2ce60c4bc30c1d8b1bcbec449dee"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-manager-lineup-2026-12-08-1788814973689.png",
+      "bytes": 101465,
+      "sha256": "c01f854e112a216752b87492963b5504603abe3b97872d3afb575e673ae18d4d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-manager-lineup-2026-12-08-1788816870348.png",
+      "bytes": 101574,
+      "sha256": "e9d34ed3ff6bb66df59eae9113449f8ce53e75b8ec526e1c0bf5c30826c4bbd6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-manager-lineup-2026-12-08-1788820051585.png",
+      "bytes": 101253,
+      "sha256": "94ea966b5cefc27d361d053fd8abde6a4dd328c3e9892e3e828ba0d5c0a7bff2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-manager-lineup-2026-12-15-1788814973824.png",
+      "bytes": 101105,
+      "sha256": "79cd2c682c1da016a3d9dc6a763214a97342de814383924da2494343c1867623"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-manager-lineup-2026-12-15-1788816870456.png",
+      "bytes": 101215,
+      "sha256": "c93a946adf9929ff6890dd09eba5f84e4e208d3f121d555bd29bace582d5c4f8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/manager-manager-lineup-2026-12-15-1788820051766.png",
+      "bytes": 101520,
+      "sha256": "9bba026fde547c4615003f0a8020ffda61f28327a00a7e3c397ce66035e5156a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/schedule-cover-action-1440-dark-1788815252748.png",
+      "bytes": 38465,
+      "sha256": "85bbffdb1d25d7973b535febbb64189d615d889242122912eb470ef0529909a6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/schedule-cover-action-1440-light-1788815252637.png",
+      "bytes": 39278,
+      "sha256": "ca05129083f39cea46d986216c42420122c093809362a132916a688628da08c9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/schedule-cover-action-320-dark-1788815252367.png",
+      "bytes": 21137,
+      "sha256": "823c65dedb74d204758e2c0b9b50ade1858abbec341251ed8f819f4cb80a5024"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/schedule-cover-action-320-light-1788815252256.png",
+      "bytes": 21330,
+      "sha256": "d0c3702204ff494ee639f0621ea818304c1302e946d9452043ac47b036498b71"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/schedule-cover-action-390-dark-1788815252534.png",
+      "bytes": 21556,
+      "sha256": "d821e13c0648cd2f629e2ace5ce848c3e1a3b2f3acc81a002ca5d3d0927fb2d0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/schedule-cover-action-390-light-1788815252445.png",
+      "bytes": 21720,
+      "sha256": "e8b56882d4599806d5c0428740feca7815f417b9e70167819ace843ac8237c12"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/timings-12-surfaces.json",
+      "bytes": 83189,
+      "sha256": "86e7f113d8bae77e65ed43176c458a0e9c505615c3dbc72ce9474db5d2cced36"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/multisurface/timings.json",
+      "bytes": 65472,
+      "sha256": "79cfafe5cdd98c373dc4e92505a74866c42b5638cb553b805a7580a15e7ee3c4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-batch/function-parity.json",
+      "bytes": 1533,
+      "sha256": "a4d1392f1d3c9b23a5bff96bafbba645aaca33219caeb678f677c9bfd9994ddd"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-batch/result.json",
+      "bytes": 7289,
+      "sha256": "d3ed3d4079c5c88c973fcdf63b2027c0d55cd110db5661cbd70153156aaf046e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-1440-dark-1788821306736.png",
+      "bytes": 77968,
+      "sha256": "7a889fe6dab4d21307a76c1b2a64e7003d5b555b22ae1068e4edf6801d02aff9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-1440-dark-1788821539276.png",
+      "bytes": 78057,
+      "sha256": "d28df50bcf9bd1f0e0c8f1e3506be4b4a24e5bc1305b36ee16ec47aa11567758"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-1440-dark-1788821963375.png",
+      "bytes": 78070,
+      "sha256": "2060b8d8bc05f2cc97d78eb09ff11ea8ef4d05b609a3d725893602d0f787a49c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-1440-light-1788821306602.png",
+      "bytes": 78368,
+      "sha256": "91a1104e840f46d1ba546efe98cadbe7dd52da58d512fb12d2cd48d56ace909e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-1440-light-1788821539127.png",
+      "bytes": 78378,
+      "sha256": "ba75664629f92e4a3233571b040956fa7dc0ddfb19bcd434c3669b80647ec1a2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-1440-light-1788821963292.png",
+      "bytes": 78393,
+      "sha256": "22c47561013b100236e152e67f1bc4035c175c30ea9e1357ca39b32c5030ee6c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-320-dark-1788821305952.png",
+      "bytes": 41337,
+      "sha256": "43bd4a2fc224e5f82dab67d785663ddecff7af6c7d182433c42783ee9a342d7a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-320-dark-1788821538527.png",
+      "bytes": 41356,
+      "sha256": "9ccbdf890bfe75459b5dff3107f08566c451cc331a8f9b1b2626330c783c50d3"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-320-dark-1788821962891.png",
+      "bytes": 41369,
+      "sha256": "964085f585f5bf105a95e1e0395b8f994c585d0f1c48882d8630f2e6b21d8b38"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-320-light-1788821305820.png",
+      "bytes": 41575,
+      "sha256": "11bce88d2990d8f76f4e20febfaaa9911fa9475aefe4312ffb1253de2ecc60a5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-320-light-1788821538411.png",
+      "bytes": 41391,
+      "sha256": "1ccb5df2326921deda1c4fabd2e8a0a94dfd4c6a8260edd5b5849c0b18eab78f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-320-light-1788821962825.png",
+      "bytes": 41423,
+      "sha256": "ae303313ea024b8a795390747a49a34116f14a0818741662a019dc3b8625607d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-dark-1788821306185.png",
+      "bytes": 45445,
+      "sha256": "91ae2968962454f22499eefca748c529abc0f457371ca403b5cda2475e45dd5a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-dark-1788821538777.png",
+      "bytes": 42885,
+      "sha256": "de86a096e53a79e84f98a0540daaad3163bdb1bc8402c0441cd377e7ac6cf550"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-dark-1788821963042.png",
+      "bytes": 42900,
+      "sha256": "eee9769b5b54b077a8101168cf505ddd7aa4f297779974fe18739bada700ab0d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-light-1788821306053.png",
+      "bytes": 45648,
+      "sha256": "5c9888a7ec73735c9cfd7d00b42c21c7ba00a5d96a133653d972a11f57acc1c1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-light-1788821538661.png",
+      "bytes": 42951,
+      "sha256": "344f4bf9bff678c3d3a45eb7d48815274416ce6d525845ccb9cbbd4f988680f6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-light-1788821962976.png",
+      "bytes": 42982,
+      "sha256": "44563d0a5c332f1aee28acc884b004f42341d82a09b9f71ada9cfd69685419af"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-text200-1788821306870.png",
+      "bytes": 55062,
+      "sha256": "afd3274a3807b6b38c9ecec0309708f310cf7c2e7d772dec652eac0d39aff872"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-text200-1788821539461.png",
+      "bytes": 54136,
+      "sha256": "f09f97e0dd851decb2ace46b769bc1945797191c137a276d31a15304cd796663"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-390-text200-1788821963492.png",
+      "bytes": 54136,
+      "sha256": "f09f97e0dd851decb2ace46b769bc1945797191c137a276d31a15304cd796663"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-768-dark-1788821306468.png",
+      "bytes": 65702,
+      "sha256": "0e6b627f07274c12651ed9e25e2b56d4f76fa3e4623ce16d4d3f53374837cbca"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-768-dark-1788821539012.png",
+      "bytes": 62772,
+      "sha256": "6fe82afc66f7bb0313db6270fbab5d33430a3435ec9fa3d2da3de4803d3c9290"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-768-dark-1788821963208.png",
+      "bytes": 62783,
+      "sha256": "f412a4886a9d99a3e47a4db19f89749880a87d7d09e4544c91c0622d43c59cc8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-768-light-1788821306318.png",
+      "bytes": 66091,
+      "sha256": "38267c8ca66f5d51047ba7bfa399d53fffc0bfbb0b3c131a6d0225b7b310b06e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-768-light-1788821538876.png",
+      "bytes": 62999,
+      "sha256": "85100c2d0bfc7a9c5a4801528b6a5a60f6252c16f2a1e2cb87c49bd4c3ff09c7"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/employee-768-light-1788821963125.png",
+      "bytes": 63016,
+      "sha256": "959b056054765c45e69a0f43acf79e1bdcaa5bd8251e0a063c44290148e8bf78"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-1440-dark-1788821305102.png",
+      "bytes": 68463,
+      "sha256": "f8b131b25d13a661972f914124ea0eec25e2a8156698c69c61aa6807312ddff0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-1440-dark-1788821537828.png",
+      "bytes": 74915,
+      "sha256": "407db727e259241d4d5128f18938edffb879d324d5bb351f42c177b601a17a94"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-1440-dark-1788821962225.png",
+      "bytes": 75024,
+      "sha256": "c20e8ed3af972205e65886fb2635c29d5c4c58b1f89db1f4605db4bb06b93356"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-1440-light-1788821304937.png",
+      "bytes": 68819,
+      "sha256": "f9b9b0b448e2875d1e0c8cfa61cf4869a6a2f288b15465c16c1340d24b38bb04"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-1440-light-1788821537711.png",
+      "bytes": 75365,
+      "sha256": "2adc4a317ab00c335b3bf5f0cd5f308f1e6f31497fc520a0825c7e8b6d226231"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-1440-light-1788821962131.png",
+      "bytes": 75432,
+      "sha256": "bdee8217aca4042c0825ccc877b61262ecd2e4aeaf13e7dfaa5d5552d867c9ff"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-320-dark-1788821304135.png",
+      "bytes": 35514,
+      "sha256": "9c8c2c4560a5c6fd0e1c3c67539f32f8a02ea94688a537f160d2eb8b64215356"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-320-dark-1788821537194.png",
+      "bytes": 36447,
+      "sha256": "467508c8eaf1caeefa3d0346c9f5cf9c34194b0878a406bb65a80724836b1d36"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-320-dark-1788821961692.png",
+      "bytes": 36707,
+      "sha256": "b0c1b5942c38884a27aedf114f305fc3b733c86748d8ed1a43de08bc54c30a94"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-320-light-1788821304003.png",
+      "bytes": 35678,
+      "sha256": "4ea0f0a4520fc77e174229403242bf3a1f5addf5f355c7b8b7e92d1001c4fe56"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-320-light-1788821537112.png",
+      "bytes": 36598,
+      "sha256": "9afaed2047637464dea3d3ebef1d1a447dda045f29b9066c09e24d528687a5fb"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-320-light-1788821961629.png",
+      "bytes": 36845,
+      "sha256": "66a22aeadbd6820f32930cb4af72d1e0bd7ee182b31ea18af4fbe0424faac0d0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-dark-1788821304536.png",
+      "bytes": 40072,
+      "sha256": "f7434dfb7097ea4ea19adc8f1874bc25df0351c40319b0fad6d2c23ca0e69501"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-dark-1788821537393.png",
+      "bytes": 39181,
+      "sha256": "7bd6057050c2092eade1f6512eb9a3b4d671a2bf02c5740473d7f256d8172e7a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-dark-1788821961843.png",
+      "bytes": 39251,
+      "sha256": "d77aa070343f80090c86922214c60295ee0769bbc0c51f983e05af416bb56176"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-light-1788821304270.png",
+      "bytes": 40128,
+      "sha256": "639e4077300ce7cf301085fda9625aa8b461310d994400c53bbd24fd436a9e71"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-light-1788821537310.png",
+      "bytes": 39327,
+      "sha256": "3b340dd5e6611ef45b5c9d73f515ab120f0eb7472fb41508885e8727e1777802"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-light-1788821961776.png",
+      "bytes": 39416,
+      "sha256": "5e72a255ebafcc454bbfb084627d7188abb30f4e182b30695a9c29e547413461"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-text200-1788821305302.png",
+      "bytes": 47833,
+      "sha256": "be87fb289e0616b7d13668bedbd8a5294bff814abf9eb0e0d0b1de6083aba5f9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-text200-1788821537959.png",
+      "bytes": 55264,
+      "sha256": "4334ded06d3807edb750587f4fa26bb2d74ed3e83234467987b4090b9a5b4293"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-390-text200-1788821962326.png",
+      "bytes": 55264,
+      "sha256": "4334ded06d3807edb750587f4fa26bb2d74ed3e83234467987b4090b9a5b4293"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-768-dark-1788821304819.png",
+      "bytes": 62737,
+      "sha256": "fa01fce55847c79aecef2198f50f26da2a9a1090cfbefc8139ef442aeecd330c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-768-dark-1788821537577.png",
+      "bytes": 60758,
+      "sha256": "278fea2785a0946c8d0bc95e744290ab53517f32dd8d7ba8051481c4e11d1319"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-768-dark-1788821962042.png",
+      "bytes": 60827,
+      "sha256": "05e8ed52f079f446b103eec2c0ba2243ded04af61462a923885c45764e818850"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-768-light-1788821304701.png",
+      "bytes": 63126,
+      "sha256": "070533bcb6f1844cb25d894701a2940c34db8c47069e86f450c37f9b46af03ec"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-768-light-1788821537477.png",
+      "bytes": 61148,
+      "sha256": "d2016631dba5fb82c771a34d3c5a6c11183288115e2dc7f1bf6063fd9ae35fa5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/manager-768-light-1788821961927.png",
+      "bytes": 61224,
+      "sha256": "7518a79b7668d0b7789605bca67e6d7b95a5ea8e8104e759bc16b3c14f99b39f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/result.json",
+      "bytes": 17551,
+      "sha256": "3729368331e48773b64d7eb46e9f2c0dc2ad80fc5b453b6c54d494ed7d7e4fff"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/source-sha256.json",
+      "bytes": 1447,
+      "sha256": "9f814aa7addd78609454a449dd3f36fb5112ce1e56afa262eb59ad5099394687"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/notification-details/sql.json",
+      "bytes": 231,
+      "sha256": "d650c0d76c8d38cb9942e0dfc77c79582abf88ea4887b6669eace5ceba25f85c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-dark-1440.jpg",
+      "bytes": 82528,
+      "sha256": "eb97707893106b2f93f187bd82c633efc4acb34ff9098fa85ef0ba963da6b97c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-dark-320.jpg",
+      "bytes": 30695,
+      "sha256": "1f6da8c36a12751f75f4a5bea38ff983c14fefb4e47680b696b900da6bda2245"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-dark-390-list.jpg",
+      "bytes": 32957,
+      "sha256": "6454d7573b391d961afdf6a28dcb5b08e21d527e827c1301ac26837a0e4b891b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-dark-390.jpg",
+      "bytes": 32571,
+      "sha256": "bc6da9a0bcc3e390fa2048bed75fc9c496c6d7e4314a2e51b753eb1bf8e4c55a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-dark-768.jpg",
+      "bytes": 49221,
+      "sha256": "0f30e51fb89ea2629766031b6671a1554c71cb550aaa9a6d0e4ff028d282da1a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-light-1440.jpg",
+      "bytes": 80450,
+      "sha256": "75dd4de89c91d9ca941ad1e360ab03edff2b68b54dd6b9c87694ba0528bda5a0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-light-320.jpg",
+      "bytes": 30237,
+      "sha256": "79201aeaac32986a2602c3b8961ee684592a90c76084c51fc848f4c0f2a1b992"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-light-390-list.jpg",
+      "bytes": 32423,
+      "sha256": "fc9df9c8f25bf3fbe8f35df28778bb4a68bf51db246bf6933bffef577e5dbfdc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-light-390.jpg",
+      "bytes": 32009,
+      "sha256": "ef735d498e589f222df0109838e73f9cf482bbdcf12d4eb907a14e6122c03629"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/owner-candidates-light-768.jpg",
+      "bytes": 48894,
+      "sha256": "f0ef6fe814b9b72ba291e4df59f2c8a6fb5db597a5b5b68950a8ecc527897ab6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/dark-320-action-focused.jpg",
+      "bytes": 41977,
+      "sha256": "51ed5d5ecd86a9f863843a12f1b25eae733f63d55ce695caae52f9bbbaf1fa06"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/dark-320-action.jpg",
+      "bytes": 42176,
+      "sha256": "82e67e9707692a3470b3004e4c281ef9bf93e6122bc3caf196998ec0ee4067f2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/dark-390-action.jpg",
+      "bytes": 46477,
+      "sha256": "d83a5258fe623fdaf53292c056b5d674e352268077c2f5372c14c371f4c25cbe"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/dark-390-review.jpg",
+      "bytes": 47518,
+      "sha256": "f25155308e587bf9e1d2f88119417522055f38243b001da9d0ca1df943dd540a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-dark-1440.jpg",
+      "bytes": 102217,
+      "sha256": "daf5c44ccf31ce0c792590159d18642e6ff846e2f14cd9c5564abd498c0458a8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-dark-320.jpg",
+      "bytes": 47589,
+      "sha256": "7b36b8b7034b466eb58cecd9ec03d862023e40395ffa76aacb5a775522e61854"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-dark-390-opening.jpg",
+      "bytes": 57977,
+      "sha256": "5d3f85458fac2701530cb50c24b52bfea2b676b2a50ee91690020813605cad08"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-dark-390-text200.jpg",
+      "bytes": 41383,
+      "sha256": "f2449ea9d630e2f06fb70d06267a7369b0864f00ef9507fe0a31b52134ed430a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-dark-390.jpg",
+      "bytes": 53325,
+      "sha256": "d1e0764d337fab0cb09577150efee6371cfc1542efc7a9bd78ab54c5995b57cc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-light-1440.jpg",
+      "bytes": 107326,
+      "sha256": "156f57371ccdf0ce7bb9b4cbebb53aa356b99fcb2dabe7c8f20877000d8e98e1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-light-320.jpg",
+      "bytes": 47570,
+      "sha256": "af5faf0f6ec213439b0483a5a819985084c8465faa0468f1b7f123d250e5a1be"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/final-light-390.jpg",
+      "bytes": 53786,
+      "sha256": "943149261073a8104d2171ab0ed50d70d368240bb417265c1bc831005623cd5b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/light-390-action.jpg",
+      "bytes": 47812,
+      "sha256": "0b1e9d0db66960589b7acb09c6d2da4cdb83a4e1ae63f2637a70dda998c96d95"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/light-390-text200-action.jpg",
+      "bytes": 43038,
+      "sha256": "18a9adbd72032b8f71a9723c0d3875182b5987fb7a0a932f0d3217746c35b916"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/light-390-text200-before.jpg",
+      "bytes": 36077,
+      "sha256": "724cf2f578a2cfac37e611b0b95207198ccd59a6bd9c0cb2bb893d6c626a6ac4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/measurements.json",
+      "bytes": 6834,
+      "sha256": "f8af6413e54d195d3861759ec804d08e11a6f73aad49a430529502ffd02a43e6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/recovery/saved-state.txt",
+      "bytes": 8736,
+      "sha256": "0a63f8ae9969b70c9c862ec3c8593072c0640d72b4b59351cd9bb4ea59931645"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-e2e/employee-accepted.png",
+      "bytes": 68549,
+      "sha256": "279c91231a1721b1442b27bd8f9528428ecfab93bd62afbb7b2147d396371923"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-e2e/employee-inbox-gap.png",
+      "bytes": 35644,
+      "sha256": "e26bcf437b5a05b4b50b04c2faf0e0bf9e8dec0b750bf03fee3ce3f2cc3bba32"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-e2e/manager-assignment.png",
+      "bytes": 73230,
+      "sha256": "8fa02aa4bb053ea3c9e868ea6dcbf9d42547965f48f42fb5fc338de8c00dd22b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-e2e/manager-confirmed.png",
+      "bytes": 69051,
+      "sha256": "afab8c5ac1634aa84cc91032a7ae129068786aab32ca98213839a9714513831e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-e2e/manager-final-review.png",
+      "bytes": 44424,
+      "sha256": "a65a136cd8573f17173ebba02c433d75d83ebcbfa9c88504acacb144c65743ec"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-e2e/manager-offer-review.png",
+      "bytes": 60262,
+      "sha256": "1d08768042be7f2d206cb2e5f5f681dfb52a12108f75895ace1bf0d78cc89806"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/browser.json",
+      "bytes": 1309,
+      "sha256": "ded5d0c26a9e1dfbda63765845b15ae501ab1aab7c15a977aa76062d2e74db3c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/employee-inbox.png",
+      "bytes": 79401,
+      "sha256": "fc1be0df96ef7942ac52d0e951141ea08c6a3a10dbed2aebce302c8d0cc37e02"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/employee-schedule.png",
+      "bytes": 39855,
+      "sha256": "fe1afece640c408d138b6f49c8324cbd89a6c95d91dd57ffd671beb79459f76c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/final-data.json",
+      "bytes": 2695,
+      "sha256": "f50dc1e425b970f92b9524b8755a9d63377ec1b405b622d34ff7f111f1730b60"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/lock.json",
+      "bytes": 904,
+      "sha256": "0a2b535dcd7f85a0e6fa80f582852c1b169623af7847ae6f6d2fcdf6c3f3ae35"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/manager-lineup.png",
+      "bytes": 107562,
+      "sha256": "5eaf9db7ca27ae6cf942c6287b8486893b37ce51b183b475fb89a41927a69a6e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-immediate/source-sha256.json",
+      "bytes": 936,
+      "sha256": "991698f37ae15abca4a45fc7bcfbe7170873765ce58aec2a24c82b48274f14b8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-offers/accepted-dark-390.png",
+      "bytes": 35247,
+      "sha256": "dffb9cfd1b6680c186f734206d96cdcfdb6e9a3542095dbec0da99f42651a5f0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-offers/accepted-light-320.png",
+      "bytes": 33467,
+      "sha256": "0ceea958747d7ce22a93095c1c7db92f5e6efde6b0ab7b9aea046ef6f629c087"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-offers/closed-dark-320.png",
+      "bytes": 31528,
+      "sha256": "bdd731d6ec76cf22ae95401c2ea8fd41825dd14ae9a46eb7dd49fb135e50eea9"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-offers/measurements.json",
+      "bytes": 495,
+      "sha256": "3f7ab6ecdab3da181db8b24288065acb0a9ab6ce8d39de9f29684278da985434"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/staffing-offers/pending-dark-390.png",
+      "bytes": 35135,
+      "sha256": "76000eea860c5e781b0dd6017d61aba813da1c0fb0b8378d0b0d46f986468448"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-dark-1440.jpg",
+      "bytes": 87033,
+      "sha256": "9d5684c3e9ff21ec4a5b49f4f7898e84dc1c97c02dfc601e2b8a5aaa652b9081"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-dark-320.jpg",
+      "bytes": 29904,
+      "sha256": "478ab8fe0630f7a1a620d4ad566aff2c0969177a2598d109d60f399952793e8f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-dark-390.jpg",
+      "bytes": 37135,
+      "sha256": "7d7a25621c6e0b7a935fdc22d10e03a50d24de7a9346e08c50aaf8a5ea670714"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-dark-768.jpg",
+      "bytes": 55977,
+      "sha256": "fcba89509a87cc82e70259e2efcdc6aa6770c8e1162425b9e257005faab71848"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-light-1440.jpg",
+      "bytes": 83330,
+      "sha256": "12d62f4e83a7db75e92c32de6f2c231d6c34446760a6caeef1452f86a0b439df"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-light-320.jpg",
+      "bytes": 28873,
+      "sha256": "6e1eef12cd9931b357a1301a67c2be29f3b916d8fb0c08a3663e9fb3dee5558d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-light-390.jpg",
+      "bytes": 35535,
+      "sha256": "38bad9df5ca7394f6793bd97518b65d7fa42aeeb959ca2111c6b5ea74f60a9f2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stale-light-768.jpg",
+      "bytes": 53896,
+      "sha256": "87108a089474980a89a7feb096adf46f0507ed8c6646c5e54e5582304ec39985"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/keyboard-cycle.json",
+      "bytes": 354,
+      "sha256": "c34a52a7743cc396c4caaea0a6f78e97b0432ef33969ffede8b6e1bc27a43661"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/manifest.json",
+      "bytes": 5506,
+      "sha256": "b6d52ac0b76d63d1f512101f144555f83ea50d256616efd2aa008e22aa01d848"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-confirm-dark-1440-text200.jpg",
+      "bytes": 67289,
+      "sha256": "90bd3aeb40581160e8db5da9b51794007ddf6acffd8616b2dda15c47a9e36205"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-confirm-dark-320-text200.jpg",
+      "bytes": 29297,
+      "sha256": "47833288e041d41502baec5cec79793ae81521f1bd8ea9514fd7157ed5fab5d0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-confirm-dark-390-text200.jpg",
+      "bytes": 37985,
+      "sha256": "55b0ad60afeb64d5286eead4c564f29fe1d4f3b55b8d03299502e8ea39ac55c0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-confirm-light-1440-text200.jpg",
+      "bytes": 67430,
+      "sha256": "80363bdeb7558fd1483e36c8f9a822d2601efa80ed7e048b348aad4df500dff0"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-confirm-light-320-text200.jpg",
+      "bytes": 29686,
+      "sha256": "4d48fc7bc860bc333d9ce940d37900b2dfc9d0b9adf4613045e916758976896e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-confirm-light-390-text200.jpg",
+      "bytes": 38630,
+      "sha256": "05e641b3016db09fa71181af83994709690c68dfea0919ca9fd6c2a9ca7c6ab8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-note-dark-390-text200.jpg",
+      "bytes": 39679,
+      "sha256": "d7372eb82f41f7ab9a18f6208b24b0544affcfe6ec87ff016d62a6e359e5702e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-preview-dark-1440-text200.jpg",
+      "bytes": 83520,
+      "sha256": "1119b79fe5adce39bd12560dc3eb13410df492849d5cc75be3b56dc1a419bb30"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-preview-dark-320-text200.jpg",
+      "bytes": 34108,
+      "sha256": "9f75c3843edc02a977a9bbcd5ca9500976df4a657c94a9e2429b0f3ac46025c4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-preview-dark-390-text200.jpg",
+      "bytes": 39900,
+      "sha256": "f45744f85f399bd2b5e73b591386edbc369bd85f06e100dd7263e49bd0526924"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-preview-light-1440-text200.jpg",
+      "bytes": 81908,
+      "sha256": "929ff2abcc65cd0be8503432039f212e5a50a6096aa7342c7f67fd1425aa8bba"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-preview-light-320-text200.jpg",
+      "bytes": 32165,
+      "sha256": "fb4d97a87f79da78af1d1e9b6feec1c332ad5b4f648d2a3a59064fde1ef65503"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/many-preview-light-390-text200.jpg",
+      "bytes": 37654,
+      "sha256": "fc4470a4c990c41ee2043b29347bbeceff3924af010dc712ac6f0c0b47891f9c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/measurements.json",
+      "bytes": 3355,
+      "sha256": "02aedbe950f197c37f1745c5d4d6f62df8eee4b42e88d3b5140f6de2f1620b4a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/withdrawal-browser.json",
+      "bytes": 258,
+      "sha256": "62941bad89d4d99763b30f839e8e2f8d48d15b89d78eb63477171d1e637e44fe"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/stress/withdrawal-dialog.jpg",
+      "bytes": 40585,
+      "sha256": "21aa5a30a8eeecd70b23d4eec3256625abe8e42ab86fc0192c555528152051bd"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-dark-1440.jpg",
+      "bytes": 82062,
+      "sha256": "d870ef9b323c336ba86d4702992f61c13d442ef80596649be156d0aa7f0c4c7a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-dark-320.jpg",
+      "bytes": 28853,
+      "sha256": "6414b8a8568849aa901db66172e2a1d5785b40a010a321e81ccd43be37956a05"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-dark-390-comparison.jpg",
+      "bytes": 34260,
+      "sha256": "64b284436cb80df09241838f2d15d8e60599dc5c5a2f166f2d531fe49fef0f1e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-dark-390.jpg",
+      "bytes": 30282,
+      "sha256": "c2f5a85d76150d10d395656a6671bf741d9f2289dc42cd317ab5db7c301e1ec3"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-dark-768.jpg",
+      "bytes": 47917,
+      "sha256": "1e618222020298f369d75f6227094d143876dd02c2f7728612870c0cedb019d7"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-light-1440.jpg",
+      "bytes": 79348,
+      "sha256": "4d039d905a8473be83e186db53f449ce12a9505ad700687e80c2428b84eb8dd6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-light-320.jpg",
+      "bytes": 27841,
+      "sha256": "b6fa03e866a9b8943ec01e6cb3898cfb20544a13c576a78f9a20d8db8c28f15d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-light-390-comparison.jpg",
+      "bytes": 32662,
+      "sha256": "4e89b2ef7e01c5cb0c2236777d95d278b72222701a817d29a1e6667a895c0e61"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-light-390.jpg",
+      "bytes": 29003,
+      "sha256": "e6976cf96c82ea2cc1d14bbbec119e0b932fdcd16b39938824805336e98fa057"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/swap-light-768.jpg",
+      "bytes": 47086,
+      "sha256": "f7423d08cf50946d7458778f64efb59b1c8feacd9ca0dca41539debcd7964938"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/browser-attempt-1.json",
+      "bytes": 379,
+      "sha256": "c14aa1558202b9e1e7939e5ac2e43292dde28e890b75e38c8762e2559b2bb971"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/browser.json",
+      "bytes": 4826,
+      "sha256": "085c654f5cbe1e482e9b93e679deffd438f8189cbd1c0042a2febe8d9f70a6a2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/casey-0-1440-dark.png",
+      "bytes": 94277,
+      "sha256": "5e2358132f78cc724202edfbd00a141123d445cf7e81c564b432695d040bd731"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/casey-0-390-light.png",
+      "bytes": 39879,
+      "sha256": "cd729520686ebb23133a8fc689e8731eb7098e555ed3931a66ff16287dc03b37"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/casey-1-1440-dark.png",
+      "bytes": 96793,
+      "sha256": "5c8eba8b440749518ddca3d586841b903abba8b6530ddae253f2889f53ee7190"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/casey-1-390-light.png",
+      "bytes": 41640,
+      "sha256": "6dc4a97e3c2fe946351009eb94fd504fbb3c88b5de5a798b2614a519e816c289"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/employee-0-1440-dark.png",
+      "bytes": 94342,
+      "sha256": "74c943727a96dfd08d01ca8e88a8570ee7516b60035a44479b053428ef223efe"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/employee-0-390-light.png",
+      "bytes": 40461,
+      "sha256": "fa5b88c07e4540d97e4e9ecb168076f33b09425600402eda228056ea0f2d7a95"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/employee-1-1440-dark.png",
+      "bytes": 96893,
+      "sha256": "64b3e5ce6103ef7ccc2db8b10c1feed4c46f8dd19824863086ff11cc984f4b85"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/employee-1-390-light.png",
+      "bytes": 42211,
+      "sha256": "d75603c4327b8b47eeb9f7979ac4370f6b1e3bb2a4b478c48fb72ce6af8d4e26"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/manager-0-1440-dark.png",
+      "bytes": 91277,
+      "sha256": "992ade3a38f15a515a5c15e9e449fabf79638d5c4ad63c08b32dba1e500a0642"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/manager-0-390-light.png",
+      "bytes": 38721,
+      "sha256": "ea260baa4320607d73be528c316972d597d3c526086f1ec27a6565bf6e419ebc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/manager-1-1440-dark.png",
+      "bytes": 93570,
+      "sha256": "1944a15124f38442060088c66683971a111b8ada1c75cadc3fd4b8445f4f8ba1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/manager-1-390-light.png",
+      "bytes": 40448,
+      "sha256": "66db1a9bc46a27e6c164f94fd3c8649f6779645b8794253bfdcb98eb32c5e097"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/matrix.json",
+      "bytes": 22398,
+      "sha256": "d501ba38387e4f7f75947b52a4483174c165bbc9b97305d50af62fb7987938c8"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/timezone-swaps/source-sha256.json",
+      "bytes": 1191,
+      "sha256": "2f5e6f027701e22b4a2b6666616fec781e87b07731c806c8e09218ca88ffdd5f"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/acceptance-source-sha256.json",
+      "bytes": 1292,
+      "sha256": "3ffbd00f1974b8dd0573d0044fd393f048648d4c249ae5744a00086ac4fc6130"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/api-attempt-1.json",
+      "bytes": 264,
+      "sha256": "22221dbc80dc6e598c9365a4ed0a712d745da77961dc910cfa3bb8638161c540"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/api.json",
+      "bytes": 401,
+      "sha256": "1b8e215c2f302dcf307b36dd1459a8af132d80c288ead8ca270bc9c702c6fca3"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/browser-attempt-1.json",
+      "bytes": 840,
+      "sha256": "b0a5089bfc299b230c3aadd5033c066d69ef04d4fcca984281d38d357e42416d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/browser-before-style.json",
+      "bytes": 1272,
+      "sha256": "553b2558412bf799abbd0a74b31845561f7ff2ad7bb2f7c6575f8cd1fbdc3497"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/browser.json",
+      "bytes": 1272,
+      "sha256": "553b2558412bf799abbd0a74b31845561f7ff2ad7bb2f7c6575f8cd1fbdc3497"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-1440-dark.png",
+      "bytes": 212053,
+      "sha256": "2853f18872c568d43cb6d0a091cfdd3796198189970f844f04b0a479be23a10c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-1440-light.png",
+      "bytes": 204428,
+      "sha256": "9629baafbd2edf4e64f72c297c2ee775d48079218f1a884ba91b12fba619a4e2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-390-dark.png",
+      "bytes": 49946,
+      "sha256": "882b68abcbcfa39b1d2e2b1a840371f78ab8559c4c3776e786896b2070b0d96d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-390-light.png",
+      "bytes": 48957,
+      "sha256": "50ad85eef0ca4cbb0910eeca71b9b181b85057fc44d25cadfb6b2c00b10d7aec"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-browser-attempt-1.json",
+      "bytes": 201,
+      "sha256": "10f6437e1cc3ba686af96f8257b9069bfecc2997a4aa18d9b30e3c4db89a0573"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-browser-attempt-2.json",
+      "bytes": 2310,
+      "sha256": "3396bc7b9ec37e988b4c56a2d701cfc4a412d24167833b862fd389ee947bca90"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-browser.json",
+      "bytes": 1707,
+      "sha256": "de2f7d2fda01df869c8f4a01e63065d7890c7c60db55bb574ae02f14a7d07d25"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-failed.png",
+      "bytes": 198040,
+      "sha256": "974f2b247ae56385eb133f5458f65ca1a9113d36f3cb65f1681bbf9eeb537524"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/lineup-label-debug.png",
+      "bytes": 198040,
+      "sha256": "974f2b247ae56385eb133f5458f65ca1a9113d36f3cb65f1681bbf9eeb537524"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/pickup.json",
+      "bytes": 3189,
+      "sha256": "cff86ec6a1b56e3613f9cdacdd225fa1f4851b76866bd50b859ff5e8a027ec15"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/races-swaps-source-sha256.json",
+      "bytes": 1032,
+      "sha256": "44a307ed016229c553ef8167bd2500db0f89d6856abb6c6de912e7ab2b7cef07"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/races.json",
+      "bytes": 2021,
+      "sha256": "cc571cae2d9d29f87a142d352309429e236c52f4798813f682e5abe9ed33d561"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/settings-1440-dark.png",
+      "bytes": 79325,
+      "sha256": "22bc1756108e6e211ed7d206b207c44e7d54b0b010fa7c51a84bcafe91fed71a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/settings-1440-light.png",
+      "bytes": 80286,
+      "sha256": "2741558fe4bbf12105405dc0955f0d9b19261d0824c82537786c1e0e001315e5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/settings-390-dark.png",
+      "bytes": 37850,
+      "sha256": "783eddb598d7c3dddafe470e39fc8de659e13c66af85e26893320c992fac376b"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/settings-390-light.png",
+      "bytes": 37344,
+      "sha256": "8f62a6d901708c10787408c834956305ef5caad4bf39af1cd9dd200d4791320c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/source-sha256.json",
+      "bytes": 2285,
+      "sha256": "649db5988eec230e3405afa3c7a4be27da8b56a4259cc626c19af2966531ae9a"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/stale-final.json",
+      "bytes": 465,
+      "sha256": "1b1a9bfe8d8e355696806b3ee9e015e5bd6f1e5ba453318274b673debb38f4a5"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/travel-policy/swaps.json",
+      "bytes": 3763,
+      "sha256": "936f9e4de81fd9289649861597eeb3d92b899b38be964aa67168532770da3aa4"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/browser-final.json",
+      "bytes": 9857,
+      "sha256": "722ad858bc0f70a92eed30a3996c90399ea40e2af9215f8d38c671ce67b54b39"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/browser-initial.json",
+      "bytes": 8411,
+      "sha256": "b7591fdb970edae0fe333b0523b255f3baaf204eb947a62742a24435598ece3c"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/data.json",
+      "bytes": 1770,
+      "sha256": "eb7ac71a006dfc80be2e86940e08439033ffe3b71d5d9d20d71a50088d2ee1de"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-1440-dark.png",
+      "bytes": 129818,
+      "sha256": "c9f4c844a2f8c4fb5d1b5428e2972b1a73f9864b9cd363dad6694c6c72b05d7e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-1440-light.png",
+      "bytes": 131128,
+      "sha256": "3edc36728fe275138d0b98177a6fe2aaa715380f42ea329ab95483a804af0ae2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-320-dark.png",
+      "bytes": 60199,
+      "sha256": "76bf232cd1c37e27b4d088aae917db4b482f572643fbbf1e8e55ccdc262914de"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-320-light.png",
+      "bytes": 60061,
+      "sha256": "7949dde4fbbc72ae36aa10ca90ea3ba31783ee3ee268f001c1e702144bef44ab"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-390-dark.png",
+      "bytes": 63289,
+      "sha256": "6d4ab99186e6a0aca4e44bfd51affe341c0cace1e8e09c13073be08f32bd8d51"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-390-light.png",
+      "bytes": 62919,
+      "sha256": "23ad7ccd010c5b988629773ef5609c72dc3804b63c2194e6ffedcb06d93c3624"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-390-text200.png",
+      "bytes": 66787,
+      "sha256": "3bb94404e96f4edd80ac052b32609ad4f7a2872c203ffc1a597351790396d1b1"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-768-dark.png",
+      "bytes": 99535,
+      "sha256": "c19672eb2f5b700255c58dce59c5206e5fe5d67c36f9bbd8dec5fc617be8051e"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/final-review-updated-768-light.png",
+      "bytes": 103855,
+      "sha256": "17a32a1f63adbabdd6fa90e336b6e5a3378b076b7913c5cff65b18377bbdfcd2"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-1440-dark.png",
+      "bytes": 130702,
+      "sha256": "d841ffaba08b323b20ce7c555cab8b108a87ebce76b566c01da1e35e54ffb743"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-1440-light.png",
+      "bytes": 132752,
+      "sha256": "a2c559884005354ac6cec685d6712e7d811997e31879bcca01d23388c03a9c69"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-320-dark.png",
+      "bytes": 57139,
+      "sha256": "54b007458984c337734d63df52d429ff837a6e7cede69419a63819529c6a5544"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-320-light.png",
+      "bytes": 57314,
+      "sha256": "af22e42bf3e3748385caaebfd458f01a05d0eabf4afb573457d01b5d25cb74cd"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-390-dark.png",
+      "bytes": 60479,
+      "sha256": "59471e6bbb18e4da7e17efa00d9ecdb19987fa14bfb80252e5957e267d39cc59"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-390-light.png",
+      "bytes": 60485,
+      "sha256": "29e8226a96db6ebcf3eea833df165a8abc9095b6f8d5918f0e7a23ea3339c1dc"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-390-text200.png",
+      "bytes": 64001,
+      "sha256": "0732b2abb3f301622e926ff5e3ca80d13e02ffd100b441482d80a370ac44692d"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-768-dark.png",
+      "bytes": 101756,
+      "sha256": "897375ad63821b438f3c501413e97d6ce1749edd89da897dd0431ae47dd5eec6"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/review-updated-768-light.png",
+      "bytes": 106348,
+      "sha256": "5140fc34264e3822a38ab0a49f6786d91fade1d197ee87829c236b10220ad506"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/snapshots.json",
+      "bytes": 159,
+      "sha256": "ed103dbf1a44d659915bff599151096ad5d752b6fd4397c7ff594037c86857ba"
+    },
+    {
+      "status": "??",
+      "path": "docs/rebuild/shift-hub-visual-proof-2026-09-07/two-managers/source-sha256.json",
+      "bytes": 1057,
+      "sha256": "6c977667b7c0e1be63f9d651910d4b839f1a5a845c7b227d3615d5e78ebeeb1e"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/availability_default_application_races_local.cpython-314.pyc",
+      "bytes": 25087,
+      "sha256": "877cd0a0c2e3ca9be8e4c1df2c441839c04d342b2c686ecca6790877e762814d"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/availability_fullchain_regression_local.cpython-314.pyc",
+      "bytes": 9203,
+      "sha256": "056a07f192918901246db303083e4d8ecd390f8a0d291cc73c22cd3dd54394de"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/availability_schedule_api_local.cpython-314.pyc",
+      "bytes": 4778,
+      "sha256": "3918064f2e65f686196ae0dfb8c67e399cffb4f79162b2d96b4849b3cafc6994"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/availability_schedule_races_local.cpython-314.pyc",
+      "bytes": 15419,
+      "sha256": "fabc0e04189b9f60770aae81e09aa1055543b6f572c39aef55bdc563ea505f54"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/availability_schedule_replay_local.cpython-314.pyc",
+      "bytes": 9714,
+      "sha256": "bacef798279665d4aaec72aa1d23e50bb8fdcbeb7dc465a2ad8cee1900306169"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/lineup_role_fixture_local.cpython-314.pyc",
+      "bytes": 14772,
+      "sha256": "4e5025958e240c3755b0cc4ec14877858ca70c4d7df23b1b1dfffaadc325f63d"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/lineup_visual_fixture_local.cpython-314.pyc",
+      "bytes": 17872,
+      "sha256": "2629f28c8d841d84ad45341103d8ae2ed4889bcb60a67c0ab6aa527c46cea39f"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_api_local.cpython-314.pyc",
+      "bytes": 7825,
+      "sha256": "692727412b23e89b5ce6b874a260a1ec8c645591afc0fa700568847a7b31d2ff"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_availability_api_local.cpython-314.pyc",
+      "bytes": 24213,
+      "sha256": "6835b5fe0a44414990ece494d0f3e36b4dac5b3d187dd134487cfaae007cac4c"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_availability_swap_local.cpython-314.pyc",
+      "bytes": 19643,
+      "sha256": "33f6029abadfb071e07eb63638d2e1d3de3bcd1f79f1c36005b10eceed5ee5e5"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_deadline_races_local.cpython-314.pyc",
+      "bytes": 18917,
+      "sha256": "8c399e5825f4669bec70ac2d508779b19a7645ee8c4eedb364ef1d980706e93c"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_eligibility_api_local.cpython-314.pyc",
+      "bytes": 25011,
+      "sha256": "ca2ebee3ced4c6694cc1a69000a54c099c790509741b4e0e8b0c63a3796b82e1"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_eligibility_races_local.cpython-314.pyc",
+      "bytes": 14823,
+      "sha256": "3b27d5452656bbcec31f6307f41f833541fd1d4f00e48ef91919dca047137e93"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_legacy_audit_local.cpython-314.pyc",
+      "bytes": 11647,
+      "sha256": "a7533e5979cbdffc065f3913530f99a8cabc908d07774c7a2dfcb11a368bf956"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_many_candidates_local.cpython-314.pyc",
+      "bytes": 8105,
+      "sha256": "99b67a11587776bef40938a603b0100a4fc96908094c8ee4beb3aaff67fbae34"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_notification_retry_local.cpython-314.pyc",
+      "bytes": 9316,
+      "sha256": "c4887521164c07106f7e27803c20ff2eb34ab2291e473fcd379b073e543da098"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_owner_close_race_local.cpython-314.pyc",
+      "bytes": 11349,
+      "sha256": "fad9043faa78cc762810ac2c1444530f78e79189e9c9397797f008e576e42e0e"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_recovery_browser_fixture_local.cpython-314.pyc",
+      "bytes": 8458,
+      "sha256": "23b73b9acfd955962d00570ca3ebd0ab4066fdff44e79c0f2bfcce6107965608"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_role_fixture_local.cpython-314.pyc",
+      "bytes": 5811,
+      "sha256": "68759b5c0ed87a1f5afdaee628631d35526171d56c02c619a88b41c737cfca7e"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_schedule_races_local.cpython-314.pyc",
+      "bytes": 17381,
+      "sha256": "f500d0b8f3f312720310d7f60dc1a63db33bd0ba0c3b65db8faf617968c835e0"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_staffing_e2e_local.cpython-314.pyc",
+      "bytes": 15052,
+      "sha256": "86ed005c95662a3319c7da46acd3376bb414e671d6f8c3f7ddb18cbe5feab233"
+    },
+    {
+      "status": "??",
+      "path": "supabase/verification/__pycache__/shift_exchange_visual_stress_manifest.cpython-314.pyc",
+      "bytes": 4191,
+      "sha256": "94c3b6ed2fd02d59d74e9851d16037a4fdaa443ff7bbe2372a89b30dee4720f9"
+    }
+  ]
+}

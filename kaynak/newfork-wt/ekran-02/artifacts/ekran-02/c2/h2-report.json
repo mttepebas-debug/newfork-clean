@@ -1,0 +1,734 @@
+{
+ "clean-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    34,
+    false
+   ],
+   [
+    "Approve",
+    34,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "travel-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [
+   {
+    "w": 137,
+    "h": 44,
+    "left": 25.11,
+    "right": 25.11,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 27.75,
+    "right": 27.75,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    34,
+    false
+   ],
+   [
+    "Approve",
+    34,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz 30 min to travel 45 min needed Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Travel time OK 45 min needed Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "rest-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [
+   {
+    "w": 137,
+    "h": 44,
+    "left": 35.55,
+    "right": 35.56,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 35.55,
+    "right": 35.56,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    34,
+    false
+   ],
+   [
+    "Approve",
+    34,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz 12 h of rest 10 h needed Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali 8 h of rest 10 h needed Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "two-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [
+   {
+    "w": 137,
+    "h": 44,
+    "left": 25.11,
+    "right": 25.11,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 35.55,
+    "right": 35.56,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 29.06,
+    "right": 29.08,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 27.75,
+    "right": 27.75,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 35.55,
+    "right": 35.56,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 38.5,
+    "right": 38.5,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    34,
+    false
+   ],
+   [
+    "Approve",
+    34,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz 30 min to travel 45 min needed 12 h of rest 10 h needed Unavailable chose to take it Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Travel time OK 45 min needed 8 h of rest 10 h needed Available on Tuesday D"
+ },
+ "timeoff-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [
+   {
+    "w": 137,
+    "h": 44,
+    "left": 37.69,
+    "right": 37.7,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 137,
+    "h": 44,
+    "left": 31.81,
+    "right": 31.83,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    34,
+    false
+   ],
+   [
+    "Approve",
+    34,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz No time off on Tuesday Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali On time off chose to work Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "locked-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    34,
+    true
+   ],
+   [
+    "Approve",
+    34,
+    true
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Another Kadikoy or Besiktas manager, the owner or an admin decides this request. Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "waiting-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Decide by Oct 13, 9:00 AM Waiting for Deniz to accept."
+ },
+ "decline-1440": {
+  "width": 380,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   159,
+   159
+  ],
+  "iconGap": [
+   8.5,
+   8.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Back",
+    34,
+    false
+   ],
+   [
+    "Decline swap",
+    34,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Reason for Deniz Back Decline swap"
+ },
+ "clean-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    44,
+    false
+   ],
+   [
+    "Approve",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "travel-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [
+   {
+    "w": 300,
+    "h": 44,
+    "left": 106.61,
+    "right": 106.61,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 109.25,
+    "right": 109.25,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    44,
+    false
+   ],
+   [
+    "Approve",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz 30 min to travel 45 min needed Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Travel time OK 45 min needed Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "rest-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [
+   {
+    "w": 300,
+    "h": 44,
+    "left": 117.05,
+    "right": 117.06,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 117.05,
+    "right": 117.06,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    44,
+    false
+   ],
+   [
+    "Approve",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz 12 h of rest 10 h needed Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali 8 h of rest 10 h needed Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "two-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [
+   {
+    "w": 300,
+    "h": 44,
+    "left": 106.61,
+    "right": 106.61,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 117.05,
+    "right": 117.06,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 110.56,
+    "right": 110.58,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 109.25,
+    "right": 109.25,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 117.05,
+    "right": 117.06,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 120,
+    "right": 120,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    44,
+    false
+   ],
+   [
+    "Approve",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz 30 min to travel 45 min needed 12 h of rest 10 h needed Unavailable chose to take it Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Travel time OK 45 min needed 8 h of rest 10 h needed Available on Tuesday D"
+ },
+ "timeoff-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [
+   {
+    "w": 300,
+    "h": 44,
+    "left": 119.19,
+    "right": 119.2,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   },
+   {
+    "w": 300,
+    "h": 44,
+    "left": 113.31,
+    "right": 113.33,
+    "iconX": 10,
+    "iconMid": 0,
+    "cut": false
+   }
+  ],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    44,
+    false
+   ],
+   [
+    "Approve",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz No time off on Tuesday Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali On time off chose to work Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "locked-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Decline",
+    44,
+    true
+   ],
+   [
+    "Approve",
+    44,
+    true
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Another Kadikoy or Besiktas manager, the owner or an admin decides this request. Decide by Oct 13, 9:00 AM Decline Approve"
+ },
+ "waiting-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Decide by Oct 13, 9:00 AM Waiting for Deniz to accept."
+ },
+ "decline-390": {
+  "width": 352,
+  "overflowX": false,
+  "titleOff": 0,
+  "namesOff": -0.01,
+  "cardWidths": [
+   322,
+   322
+  ],
+  "iconGap": [
+   -168.5,
+   -168.5
+  ],
+  "boxes": [],
+  "buttons": [
+   [
+    "Close",
+    44,
+    false
+   ],
+   [
+    "Back",
+    44,
+    false
+   ],
+   [
+    "Decline swap",
+    44,
+    false
+   ]
+  ],
+  "text": "SWAP REQUEST Ali Person ⇄ Deniz Person Tue, Oct 13 Kadikoy 9:00 AM – 3:00 PM Ali → Deniz Tue, Oct 13 Besiktas 9:00 AM – 3:00 PM Deniz → Ali Reason for Deniz Back Decline swap"
+ }
+}

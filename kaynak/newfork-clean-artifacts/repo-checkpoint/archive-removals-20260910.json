@@ -1,0 +1,18 @@
+{
+  "removedAt": "2026-09-10T00:04:31.8618839-07:00",
+  "removed": [
+    "apps/web/src/schedule/lib/shiftClipboard.ts",
+    "apps/web/src/schedule/lib/shiftEditorEligibility.ts",
+    "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+    "apps/web/src/lib/supabase.ts",
+    "apps/web/src/views/LineupPage.tsx",
+    "apps/api/src/schedule/schedule-export-cron.ts",
+    "apps/api/src/notifications/notification-outbox-worker.ts"
+  ],
+  "remaining": 226,
+  "remainingDifferent": 114,
+  "remainingIdentical": 112,
+  "retainedEntriesByteVerified": true,
+  "liveSourcesUnchanged": true,
+  "gitHistoryRewritten": false
+}

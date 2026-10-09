@@ -1,0 +1,379 @@
+{
+  "lightBeforeAfter": [
+    {
+      "name": "announcements",
+      "before": 136,
+      "after": 207,
+      "diffs": 86,
+      "note": "Initial baseline was loading; use controlled comparison below."
+    },
+    {
+      "name": "notifications",
+      "before": 146,
+      "after": 146,
+      "diffs": 0
+    },
+    {
+      "name": "schedule",
+      "before": 2000,
+      "after": 2000,
+      "diffs": 0
+    },
+    {
+      "name": "settings",
+      "before": 270,
+      "after": 270,
+      "diffs": 0
+    },
+    {
+      "name": "account-profile",
+      "before": 98,
+      "after": 98,
+      "diffs": 0
+    },
+    {
+      "name": "public",
+      "before": 74,
+      "after": 74,
+      "diffs": 0
+    },
+    {
+      "name": "kiosk",
+      "before": 17,
+      "after": 17,
+      "diffs": 0
+    }
+  ],
+  "announcementsLightControl": {
+    "count": 207,
+    "patchDisabledExact": true
+  },
+  "mobileLightControl": {
+    "count": 36,
+    "patchDisabledExact": true
+  },
+  "mobileCrossThemeDiagnostic": {
+    "count": 36,
+    "differences": [
+      {
+        "index": 16,
+        "cls": "notification-toolbar",
+        "changes": [
+          {
+            "key": "h",
+            "dark": 116,
+            "light": 101
+          }
+        ]
+      },
+      {
+        "index": 17,
+        "cls": "communication-filters",
+        "changes": [
+          {
+            "key": "h",
+            "dark": 65,
+            "light": 50
+          }
+        ]
+      },
+      {
+        "index": 27,
+        "cls": "notification-unread-toggle",
+        "changes": [
+          {
+            "key": "y",
+            "dark": 342.6875,
+            "light": 327.6875
+          }
+        ]
+      },
+      {
+        "index": 28,
+        "cls": null,
+        "changes": [
+          {
+            "key": "y",
+            "dark": 345.6875,
+            "light": 330.6875
+          }
+        ]
+      },
+      {
+        "index": 29,
+        "cls": "notification-groups",
+        "changes": [
+          {
+            "key": "y",
+            "dark": 375.6875,
+            "light": 360.6875
+          }
+        ]
+      },
+      {
+        "index": 30,
+        "cls": "notification-empty",
+        "changes": [
+          {
+            "key": "y",
+            "dark": 375.6875,
+            "light": 360.6875
+          }
+        ]
+      },
+      {
+        "index": 31,
+        "cls": "lucide lucide-bell",
+        "changes": [
+          {
+            "key": "y",
+            "dark": 550.6875,
+            "light": 535.6875
+          }
+        ]
+      },
+      {
+        "index": 32,
+        "cls": null,
+        "changes": [
+          {
+            "key": "y",
+            "dark": 575.1875,
+            "light": 560.1875
+          }
+        ]
+      },
+      {
+        "index": 33,
+        "cls": null,
+        "changes": [
+          {
+            "key": "y",
+            "dark": 553.0208129882812,
+            "light": 538.0208129882812
+          }
+        ]
+      },
+      {
+        "index": 34,
+        "cls": null,
+        "changes": [
+          {
+            "key": "y",
+            "dark": 590.6875,
+            "light": 575.6875
+          }
+        ]
+      },
+      {
+        "index": 35,
+        "cls": null,
+        "changes": [
+          {
+            "key": "y",
+            "dark": 614.6875,
+            "light": 599.6875
+          }
+        ]
+      }
+    ],
+    "note": "Not a pre/post patch comparison. Light patch control above is exact."
+  },
+  "finalDarkChecks": [
+    {
+      "name": "notifications",
+      "count": 15,
+      "failures": []
+    },
+    {
+      "name": "schedule",
+      "count": 62,
+      "failures": []
+    },
+    {
+      "name": "notification-settings",
+      "count": 41,
+      "failures": []
+    },
+    {
+      "name": "shift-catalog",
+      "count": 15,
+      "failures": []
+    }
+  ],
+  "toastChecks": [
+    {
+      "tone": "success",
+      "checks": [
+        {
+          "bg": [
+            32,
+            49,
+            43
+          ],
+          "cls": "toast-title",
+          "fg": "rgb(237, 241, 239)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 12.001260361369017,
+          "tag": "DIV"
+        }
+      ],
+      "failures": []
+    },
+    {
+      "tone": "warning",
+      "checks": [
+        {
+          "bg": [
+            48,
+            43,
+            29
+          ],
+          "cls": "toast-title",
+          "fg": "rgb(237, 241, 239)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 12.377311822598331,
+          "tag": "DIV"
+        },
+        {
+          "bg": [
+            32,
+            49,
+            43
+          ],
+          "cls": "toast-title",
+          "fg": "rgb(237, 241, 239)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 12.001260361369017,
+          "tag": "DIV"
+        },
+        {
+          "bg": [
+            32,
+            49,
+            43
+          ],
+          "cls": "toast-description",
+          "fg": "rgb(170, 181, 176)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 6.47663564793684,
+          "tag": "DIV"
+        }
+      ],
+      "failures": []
+    },
+    {
+      "tone": "info",
+      "checks": [
+        {
+          "bg": [
+            34,
+            49,
+            59
+          ],
+          "cls": "toast-title",
+          "fg": "rgb(237, 241, 239)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 11.734788100640197,
+          "tag": "DIV"
+        },
+        {
+          "bg": [
+            48,
+            43,
+            29
+          ],
+          "cls": "toast-title",
+          "fg": "rgb(237, 241, 239)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 12.377311822598331,
+          "tag": "DIV"
+        },
+        {
+          "bg": [
+            48,
+            43,
+            29
+          ],
+          "cls": "toast-description",
+          "fg": "rgb(170, 181, 176)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 6.679576691287284,
+          "tag": "DIV"
+        },
+        {
+          "bg": [
+            32,
+            49,
+            43
+          ],
+          "cls": "toast-title",
+          "fg": "rgb(237, 241, 239)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 12.001260361369017,
+          "tag": "DIV"
+        },
+        {
+          "bg": [
+            32,
+            49,
+            43
+          ],
+          "cls": "toast-description",
+          "fg": "rgb(170, 181, 176)",
+          "grand": "newfork-toast",
+          "min": 4.5,
+          "parent": "toast-content",
+          "ratio": 6.47663564793684,
+          "tag": "DIV"
+        }
+      ],
+      "failures": []
+    }
+  ],
+  "additionalFinalLiveChecks": {
+    "employeeAccess": "0 visible text candidates below threshold",
+    "employeeHistory": "0",
+    "employeeDocumentsEmpty": "0",
+    "terminationDialog": "0",
+    "timeEntries": "0",
+    "timeEntryDialog": "0",
+    "scheduleTemplatesEmpty": "0",
+    "lineup": "0",
+    "announcementEditorPortal": "0",
+    "importantDates": "0",
+    "availability": "0",
+    "workspace": "0",
+    "kioskSettingsDevicesActivityPin": "0",
+    "anonymousSignInAndSignUp": "0"
+  },
+  "systemMediaChange": {
+    "from": "dark",
+    "to": "light",
+    "withoutReload": true
+  },
+  "restored": {
+    "savedPreference": "light",
+    "viewport": [
+      1920,
+      855
+    ],
+    "anonymousTabClosed": true
+  }
+}

@@ -1,0 +1,736 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Requests Warnings Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one column; each block opens with a scenario card, then today's screen and five versions,
+   all drawn on the one-table Requests (EKRAN-02 C1). Deliberately single light theme: Newfork is light-only. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --surface-muted: #f0f3f1;
+  --text: #17221e;
+  --body: #46514d;
+  --muted: #66716c;
+  --muted-strong: #50605a;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --frame: #d7dcda;
+  --head-bg: #e6ece8;
+  --head-line: #d3dbd6;
+  --head-text: #4f5d57;
+  --row-line: #e2e6e4;
+  --accent: #176954;
+  --selected: #e7f1ed;
+  --warn: #8a5a00;
+  --warn-soft: #fff7e2;
+  --warn-border: #e8cf98;
+  --warn-text: #5f491f;
+  --warn-bar: #e0a63a;
+  --warn-hatch: #f5dfa9;
+  --danger: #a43830;
+  --danger-soft: #fff0ee;
+  --green-soft: #e7f1ed;
+  --green-text: #176b4e;
+  --track-a: #dfe7e3;
+  --track-b: #cfe3da;
+  --track-bg: #eceeec;
+  --disabled-text: #9aa4a0;
+  --shadow: rgba(23, 34, 30, 0.10);
+  --shadow-soft: rgba(23, 34, 30, 0.06);
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 72px; }
+h1 { margin: 0 0 6px; color: var(--text); font-size: 28px; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { margin: 0 0 6px; max-width: 72ch; color: var(--muted-strong); }
+.rule { margin: 0; max-width: 72ch; color: var(--muted); font-size: 13px; }
+section.part { margin-top: 48px; display: grid; gap: 22px; }
+.part > h2 { margin: 0; color: var(--text); font-size: 21px; letter-spacing: -0.01em; text-wrap: balance; }
+
+.scenario { display: grid; margin: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.scenario > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; padding: 11px 16px; border-top: 1px solid var(--row-line); }
+.scenario > div:first-child { border-top: 0; }
+.scenario dt { padding-top: 2px; color: var(--head-text); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.scenario dd { margin: 0; min-width: 0; color: var(--text); font-size: 13.5px; }
+.scenario dd b { font-weight: 600; }
+.scenario .problem dd { color: var(--danger); }
+
+.specs { display: grid; gap: 30px; }
+.spec { display: grid; gap: 10px; }
+.spec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { display: inline-flex; min-width: 30px; justify-content: center; padding: 2px 9px; border-radius: 999px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; }
+.tag.today { background: var(--border-strong); color: var(--text); }
+.spec-head strong { color: var(--text); font-size: 15px; }
+.note { margin: 0; color: var(--muted-strong); font-size: 13px; }
+.note .plus { color: var(--accent); font-weight: 700; }
+.note .minus { color: var(--danger); font-weight: 700; }
+.stage { min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); overflow-x: auto; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.tabs { display: flex; gap: 22px; margin-bottom: 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.tabs span { padding: 0 2px 9px; color: var(--muted-strong); font-weight: 500; }
+.tabs span.on { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px var(--accent); }
+.tabs b { margin-left: 5px; font-weight: 600; }
+.table { min-width: 720px; border: 1px solid var(--frame); border-radius: 7px; background: var(--surface); overflow: hidden; }
+.thead, .tr { display: grid; grid-template-columns: 27% 12% 24% 16% 13% 8%; align-items: center; }
+.thead { height: 40px; background: var(--head-bg); border-bottom: 1px solid var(--head-line); color: var(--head-text); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.thead span, .tr > span { min-width: 0; padding: 0 14px; }
+.tr { min-height: 52px; border-top: 1px solid var(--row-line); color: var(--body); font-size: 13px; }
+.thead + .tr { border-top: 0; }
+.tr.sel { background: var(--selected); }
+.tr > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { display: flex; align-items: center; gap: 10px; }
+.mark { display: inline-grid; width: 30px; height: 30px; flex: none; place-items: center; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.mark.sys { border-radius: 8px; background: var(--surface-soft); }
+.stack { display: grid; min-width: 0; }
+.stack strong { overflow: hidden; color: var(--text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.stack small { overflow: hidden; color: var(--muted-strong); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.type { display: inline-flex; align-items: center; gap: 6px; }
+.type.sys { color: var(--text); font-weight: 600; }
+.chip { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.chip.amber { background: var(--warn-soft); color: var(--warn); }
+.chip.green { background: var(--green-soft); color: var(--green-text); }
+.chip.red { background: var(--danger-soft); color: var(--danger); }
+.rev { text-align: right; color: var(--muted); }
+.rev .warnc { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); font-weight: 600; }
+.pill { display: inline-flex; margin-left: 6px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--muted-strong); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.child { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px 0 54px; border-top: 1px dashed var(--row-line); background: var(--surface-soft); color: var(--muted-strong); font-size: 12.5px; }
+.log { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 14px; border-top: 1px solid var(--row-line); background: var(--surface-soft); color: var(--muted-strong); font-size: 12.5px; }
+.log time { margin-left: auto; color: var(--muted); }
+.muted { color: var(--muted); }
+
+/* The review drawer opens over the right side of the table in the app; here it sits under it, right-aligned. */
+.duo { display: grid; gap: 14px; }
+.drawer { justify-self: end; width: min(100%, 440px); display: grid; gap: 12px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 28px var(--shadow); }
+.drawer-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.drawer-top small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.drawer-top h4 { margin: 2px 0 0; color: var(--text); font-size: 17px; }
+.panel { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); }
+.panel p { margin: 0; font-size: 13px; }
+.eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+.panel h5 { margin: 0; color: var(--text); font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { display: inline-flex; align-items: center; min-height: 36px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text); font: 600 13px var(--font); }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.btn[disabled] { border-color: var(--row-line); background: var(--surface-muted); color: var(--disabled-text); }
+.elig { padding-left: 11px; border-left: 3px solid var(--danger); color: var(--danger); font-size: 13px; }
+.elig strong { color: var(--text); }
+.elig ul { margin: 4px 0 0; padding-left: 18px; }
+.callout { display: grid; gap: 5px; padding: 11px 13px; border: 1px solid var(--warn-border); border-radius: 8px; background: var(--warn-soft); color: var(--warn-text); font-size: 12.5px; }
+.callout-head { display: flex; align-items: center; gap: 7px; color: var(--warn); font-size: 13px; font-weight: 700; }
+.callout ul { margin: 0; padding-left: 20px; }
+.checks { width: 100%; border-collapse: collapse; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; }
+.checks th { padding: 6px 10px; background: var(--head-bg); color: var(--head-text); font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; }
+.checks td { padding: 7px 10px; border-top: 1px solid var(--row-line); }
+.checks td.short { color: var(--warn); font-weight: 600; }
+.checks td.ok { color: var(--accent); }
+.dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--warn); }
+.dot.ok { background: var(--accent); }
+.gauge { display: grid; gap: 5px; }
+.gauge-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.gauge-top span:last-child { color: var(--warn); font-weight: 600; }
+.bar { position: relative; height: 8px; border-radius: 999px; background: var(--track-bg); }
+.bar i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--warn-bar); }
+.gauge small { color: var(--muted); font-size: 11.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--warn-border); border-radius: 999px; background: var(--warn-soft); color: var(--warn-text); font-size: 12px; font-weight: 600; }
+.foot { color: var(--muted); font-size: 12px; }
+.lane { display: grid; gap: 5px; }
+.lane-name { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.lane-name strong { color: var(--text); }
+.lane-name span { color: var(--warn); font-weight: 600; }
+.track { display: grid; grid-template-columns: 2fr 1fr 2fr; height: 24px; font-size: 11px; font-weight: 600; }
+.seg { display: flex; align-items: center; justify-content: center; padding: 0 5px; overflow: hidden; white-space: nowrap; color: var(--text); }
+.seg.a { border-radius: 6px 0 0 6px; background: var(--track-a); }
+.seg.b { border-radius: 0 6px 6px 0; background: var(--track-b); }
+.seg.gap { background: repeating-linear-gradient(135deg, var(--warn-soft) 0 5px, var(--warn-hatch) 5px 7px); color: var(--warn-text); border-block: 1px solid var(--warn-border); }
+.ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+
+/* Review window, six fresh designs: white surface, hairlines, one green action, amber only for warnings. */
+.rw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 26px; }
+.rw-item { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.rw { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 28px var(--shadow); overflow: hidden; }
+.rw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 20px 0; }
+.rw-title { margin: 0; color: var(--text); font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.rw-sub { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+.rw-x { display: grid; flex: none; width: 28px; height: 28px; place-items: center; border-radius: 6px; color: var(--muted); }
+.rw-body { display: grid; flex: 1; align-content: start; gap: 16px; padding: 18px 20px 20px; min-width: 0; }
+.rw-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--row-line); }
+.rw-foot .grow { margin-right: auto; color: var(--muted); font-size: 12.5px; }
+.rw-label { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.rw-lede { margin: 0; color: var(--text); font-size: 15px; line-height: 1.45; }
+.rw-hr { height: 1px; margin: 0; border: 0; background: var(--row-line); }
+.rw-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.rw-list li { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+.rw-list .to { margin-left: auto; color: var(--text); font-weight: 600; white-space: nowrap; }
+.rw-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--warn-bar); transform: translateY(-1px); }
+.rw-warn { color: var(--warn); }
+.rw-kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px 16px; margin: 0; font-size: 13px; }
+.rw-kv dt { color: var(--muted); }
+.rw-kv dd { margin: 0; color: var(--text); font-weight: 500; text-align: right; }
+.rw-kv dd.rw-warn { color: var(--warn); font-weight: 600; }
+.rw-ledger { display: grid; font-size: 13px; }
+.rw-ledger .r { display: grid; grid-template-columns: minmax(0, 1fr) 64px 16px 64px; gap: 8px; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--row-line); }
+.rw-ledger .r.h { padding: 0 0 8px; border-top: 0; }
+.rw-ledger .r.h span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.rw-ledger .when { display: grid; min-width: 0; color: var(--text); }
+.rw-ledger .when small { color: var(--muted); font-size: 12px; }
+.rw-ledger .when em { color: var(--warn); font-size: 12px; font-style: normal; font-weight: 600; }
+.rw-ledger .arrow { color: var(--muted); }
+.rw-ledger .new { color: var(--text); font-weight: 600; }
+.rw-person { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
+.rw-avatar { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.rw-person p { margin: 0; font-size: 13px; }
+.rw-person strong { color: var(--text); font-weight: 600; }
+.rw-person .rw-warn { font-size: 12.5px; font-weight: 600; }
+.rw-checks { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.rw-checks li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
+.rw-checks .ok { color: var(--accent); }
+.rw-checks .val { color: var(--muted); }
+.rw-checks .rw-warn .val { color: var(--warn); font-weight: 600; }
+.rw-q { margin: 0; color: var(--text); font-size: 22px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+.rw-days { display: grid; gap: 10px; }
+.rw-day { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; }
+.rw-tile { display: grid; place-items: center; height: 46px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 16px; font-weight: 650; line-height: 1; }
+.rw-tile small { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; }
+.rw-day p { margin: 0; font-size: 13px; }
+.rw-day span { color: var(--muted); font-size: 12.5px; }
+.rw-strip { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn-text); font-size: 12.5px; }
+
+/* Compact review windows (G–J): 330–380 px wide, 12–14 px type, 30 px buttons. */
+.rc-intro { display: grid; gap: 4px; margin-top: 10px; }
+.rc-intro h3 { margin: 0; color: var(--text); font-size: 16px; letter-spacing: -0.01em; text-wrap: balance; }
+.rc-intro p { margin: 0; max-width: 72ch; color: var(--muted-strong); font-size: 13px; }
+.rc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 26px 22px; align-items: start; }
+.rc-item { display: grid; gap: 10px; min-width: 0; }
+.rc { width: 100%; max-width: 380px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 1px 2px var(--shadow-soft), 0 8px 24px var(--shadow); overflow: hidden; color: var(--body); font-size: 12.5px; }
+.rc-g { max-width: 330px; }
+.rc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 12px 14px 10px; }
+.rc-kicker { display: block; color: var(--muted-strong); font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+.rc-title { margin: 2px 0 0; color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.3; }
+.rc-meta { margin: 2px 0 0; color: var(--muted-strong); font-size: 12px; }
+.rc-x { display: grid; flex: none; width: 24px; height: 24px; place-items: center; border-radius: 6px; color: var(--muted); font-size: 12px; }
+.rc-body { display: grid; gap: 10px; min-width: 0; padding: 0 14px 12px; }
+.rc-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; padding: 9px 14px; border-top: 1px solid var(--row-line); background: var(--surface-soft); }
+.rc-foot .grow { flex: 1 1 140px; min-width: 0; margin-right: auto; color: var(--muted-strong); font-size: 12px; }
+.btn.sm { min-height: 30px; padding: 0 11px; border-radius: 6px; font-size: 12.5px; }
+/* G */
+.rc-rows { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--row-line); }
+.rc-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 10px; padding: 7px 0; border-bottom: 1px solid var(--row-line); }
+.rc-day { color: var(--text); font-weight: 600; }
+.rc-to { color: var(--text); font-weight: 600; }
+.rc-to::before { content: "→ "; color: var(--muted); font-weight: 400; }
+.rc-where { grid-column: 1 / -1; color: var(--muted-strong); font-size: 12px; }
+.rc-warnline { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--warn); font-size: 12px; font-weight: 600; }
+.rc-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--warn-bar); }
+/* H */
+.rc-pair { display: grid; grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); align-items: stretch; }
+.rc-shift { display: grid; align-content: start; gap: 2px; min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.rc-shift b { color: var(--text); font-size: 12.5px; font-weight: 600; }
+.rc-shift span { color: var(--muted-strong); font-size: 12px; }
+.rc-shift .rc-hand { margin-top: 6px; color: var(--text); font-size: 12.5px; }
+.rc-shift .rc-hand i { color: var(--muted); font-style: normal; }
+.rc-shift .rc-flag { margin-top: 4px; color: var(--warn); font-size: 11.5px; font-weight: 600; }
+.rc-swapicon { display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+/* H2: a twist on H. Darker swap mark, a pin by the location, both names in one
+   weight, a warning only when a rule is broken, Decide by at the bottom. */
+.rc-wide { grid-column: 1 / -1; }
+.rc-states { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 22px; }
+.rc-state { display: grid; flex: 1 1 340px; gap: 6px; min-width: 0; max-width: 380px; margin: 0; }
+.rc-state figcaption { color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.rc-swapicon.dark { color: var(--text); }
+.rc-swapicon.dark svg { width: 17px; height: 17px; stroke-width: 2.4; }
+.rc-shift .rc-loc { display: flex; align-items: center; gap: 4px; }
+.rc-shift .rc-loc svg { width: 12px; height: 12px; color: var(--muted-strong); }
+.rc-shift .rc-hand2 { margin-top: 6px; color: var(--text); font-size: 12.5px; font-weight: 600; }
+.rc-shift .rc-hand2 i { color: var(--muted-strong); font-style: normal; font-weight: 400; }
+.rc-shift .rc-alert { display: grid; grid-template-columns: 13px minmax(0, 1fr); gap: 6px; margin: 6px 0 0; padding-top: 7px; border-top: 1px dashed var(--warn-border); color: var(--warn-text); font-size: 11.5px; line-height: 1.4; }
+.rc-shift .rc-alert svg { width: 13px; height: 13px; margin-top: 1px; color: var(--warn); }
+.rc-shift .rc-alert span { color: inherit; font-size: inherit; }
+/* H2: everything in a shift badge is centred. */
+.rc-wide .rc-shift { justify-items: center; text-align: center; }
+.rc-wide .rc-shift .rc-loc { justify-content: center; }
+.rc-wide .rc-shift .rc-alert { display: flex; justify-content: center; align-items: flex-start; gap: 5px; width: 100%; text-align: center; }
+.rc-wide .rc-shift .rc-alert svg { flex: none; }
+/* H2: the title is centred over the window; the left padding balances the close button. */
+.rc-wide .rc-head > div { flex: 1; padding-left: 34px; text-align: center; }
+/* H2: room around the swap mark, which sits in the exact middle of the gap. */
+.rc-wide .rc-pair { grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr); }
+.rc-wide .rc-swapicon.dark svg { width: 15px; height: 15px; }
+/* H2: a warning is a small amber box, two short lines, no rule line above it. */
+.rc-wide .rc-shift .rc-alert { display: flex; justify-content: center; align-items: flex-start; gap: 5px; width: 100%; box-sizing: border-box; margin: 6px 0 0; padding: 4px 6px; border: 0; border-radius: 6px; background: var(--warn-soft); line-height: 1.3; }
+.rc-wide .rc-shift .rc-alert svg { flex: none; width: 12px; height: 12px; margin-top: 1px; }
+.rc-wide .rc-shift .rc-alert-t { display: grid; text-align: center; }
+.rc-wide .rc-shift .rc-alert-t strong { color: var(--warn); font-size: 11.5px; font-weight: 600; }
+.rc-wide .rc-shift .rc-alert-t small { color: var(--warn-text); font-size: 11px; }
+.rc-wide .rc-shift .rc-alert.ok { background: var(--green-soft); }
+.rc-wide .rc-shift .rc-alert.ok svg { color: var(--green-text); }
+.rc-wide .rc-shift .rc-alert.ok .rc-alert-t strong { color: var(--green-text); }
+.rc-wide .rc-shift .rc-alert.ok .rc-alert-t small { color: var(--muted-strong); }
+/* H2: the mark is 14 px and sits in the middle of the two lines; no line wraps. */
+.rc-wide .rc-shift .rc-alert { align-items: center; gap: 6px; padding: 5px 6px; }
+.rc-wide .rc-shift .rc-alert svg { width: 14px; height: 14px; margin: 0; stroke-width: 2.2; }
+.rc-wide .rc-shift .rc-alert-t strong, .rc-wide .rc-shift .rc-alert-t small { white-space: nowrap; }
+/* H2: every warning box has one fixed size, the card's full inner width and 44 px high;
+   the mark and the words sit in its exact middle. */
+.rc-wide .rc-shift .rc-alert { display: flex; justify-content: center; align-items: center; justify-self: stretch; width: 100%; height: 44px; box-sizing: border-box; padding: 0 8px; }
+/* The words sit in the box's exact middle; the mark keeps its place at the left edge. */
+.rc-wide .rc-shift .rc-alert { position: relative; padding: 0 26px; }
+.rc-wide .rc-shift .rc-alert svg { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); }
+/* I */
+.rc-handoffs { display: grid; margin: 0; padding: 0; list-style: none; }
+.rc-handoffs li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--row-line); }
+.rc-handoffs li:first-child { padding-top: 2px; border-top: 0; }
+.rc-avs { display: inline-flex; align-items: center; gap: 4px; }
+.rc-av { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 10.5px; font-weight: 600; }
+.rc-av.to { background: var(--selected); color: var(--green-text); }
+.rc-avs i { color: var(--muted); font-size: 11px; font-style: normal; }
+.rc-hl { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.rc-hl b { color: var(--text); font-weight: 600; }
+.rc-hl small { flex-basis: 100%; color: var(--muted-strong); font-size: 12px; }
+.rc-tag { padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+/* J */
+.rc-chips { display: flex; gap: 6px; }
+.rc-chip { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-strong); font-size: 11px; font-weight: 600; }
+.rc-chip.amber { border-color: var(--warn-soft); background: var(--warn-soft); color: var(--warn); }
+.rc-head .rc-chips + .rc-title { margin-top: 6px; }
+.rc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rc-table th { padding: 0 0 6px; color: var(--muted-strong); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-align: left; text-transform: uppercase; }
+.rc-table td { padding: 7px 0; border-top: 1px solid var(--row-line); vertical-align: top; }
+.rc-table th:last-child, .rc-table td:last-child { text-align: right; }
+.rc-table td b { display: block; color: var(--text); font-weight: 600; }
+.rc-meters { display: grid; gap: 7px; padding: 9px 10px; border-radius: 8px; background: var(--surface-soft); }
+.rc-meter-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 76px; gap: 10px; align-items: center; font-size: 12px; }
+.rc-meter { height: 4px; overflow: hidden; border-radius: 999px; background: var(--track-bg); }
+.rc-meter i { display: block; height: 100%; border-radius: inherit; background: var(--warn-bar); }
+.rc-meter-row .num { color: var(--warn); font-weight: 600; text-align: right; }
+
+@media (max-width: 640px) {
+  .wrap { padding-inline: 16px; }
+  .stage { padding: 12px; }
+  h1 { font-size: 24px; }
+  .scenario > div { grid-template-columns: 1fr; gap: 2px; }
+}
+</style>
+
+<div class="wrap">
+  <h1>Requests: warnings and the review window</h1>
+  <p class="lead">All three blocks are drawn on the new Requests: one table for time off and every shift change. Each block starts with the situation, then the versions. The data is the same in every version, so only the design changes. Pick one per block.</p>
+  <p class="rule">Built in the app's own type and colours. The screens are drawn copies; nothing here is live.</p>
+
+  <section class="part" aria-labelledby="g2">
+    <h2 id="g2">1. Travel and rest warning on a shift swap</h2>
+    <dl class="scenario">
+      <div><dt>Nerede</dt><dd>Requests → <b>Needs review</b> sekmesi → Ali'nin <b>Swap</b> satırı → satıra tıklayınca sağda açılan inceleme penceresi → "IF APPROVED" bölümü.</dd></div>
+      <div><dt>Kim bakıyor</dt><dd>Kadıköy müdürü <b>Ayşe</b>. Karar onun.</dd></div>
+      <div><dt>Ne oluyor</dt><dd><b>Ali</b>, Çarşamba 14 Ekim Kadıköy 3:30–11:00 PM vardiyasını <b>Deniz</b>'in Cuma 16 Ekim Beşiktaş 7:30 AM–3:00 PM vardiyasıyla değiştirmek istiyor; Deniz kabul etti. Onaylanırsa iki sorun çıkıyor. <b>Deniz</b> Çarşamba Beşiktaş'ta 3:00 PM'de çıkıp 3:30 PM'de Kadıköy'de başlıyor: yol için 30 dk kalıyor, kural 45 dk. <b>Ali</b> Perşembe Kadıköy'ü 11:30 PM'de kapatıp Cuma 7:30 AM'de Beşiktaş'ı açıyor: dinlenme 8 saat, kural 10 saat.</dd></div>
+      <div class="problem"><dt>Bugün sorun</dt><dd>Kural bir uyarı, engel değil; ama ekran engel gibi davranıyor: Approve kapalı, neden kırmızı yazıyla, rakam yok. Ayşe ne kadar eksik kaldığını göremiyor ve onaylayamıyor.</dd></div>
+    </dl>
+    <div class="specs" id="g2-specs"></div>
+  </section>
+
+  <section class="part" aria-labelledby="rw">
+    <h2 id="rw">2. The review window, fresh designs</h2>
+    <dl class="scenario">
+      <div><dt>Nerede</dt><dd>Requests → <b>Needs review</b> → Ali'nin <b>Swap</b> satırı → sağda açılan inceleme penceresi.</dd></div>
+      <div><dt>Ne var</dt><dd>Bölüm 1'deki takasın aynısı: Ali ile Deniz vardiya değiştiriyor; Deniz'e yol 30 dk (kural 45), Ali'ye dinlenme 8 saat (kural 10). Uyarılar engel değil, Approve açık.</dd></div>
+      <div><dt>İstek</dt><dd>Pencere sıfırdan, sade ve temiz. Altı tasarımda veri aynı; yalnız düzen değişiyor. Düğmeler uygulamanın kuralıyla: Approve yeşil ve sağ altta, Decline beyaz.</dd></div>
+    </dl>
+    <div class="rw-grid">
+
+      <div class="rw-item">
+        <div class="spec-head"><span class="tag">A</span><strong>Two plain sentences</strong></div>
+        <div class="rw">
+          <div class="rw-head"><div><h4 class="rw-title">Ali ↔ Deniz</h4><p class="rw-sub num">Swap · decide by Oct 13, 9:00 AM</p></div><span class="rw-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rw-body">
+            <p class="rw-lede">Ali takes Deniz's Friday. Deniz takes Ali's Wednesday.</p>
+            <ul class="rw-list num">
+              <li><span>Fri, Oct 16 · 7:30 AM–3:00 PM · Besiktas</span><span class="to">→ Ali</span></li>
+              <li><span>Wed, Oct 14 · 3:30–11:00 PM · Kadikoy</span><span class="to">→ Deniz</span></li>
+            </ul>
+            <hr class="rw-hr">
+            <ul class="rw-list num">
+              <li><span class="rw-dot"></span><span>Deniz has 30 min to travel. The rule is 45.</span></li>
+              <li><span class="rw-dot"></span><span>Ali gets 8 h rest. The rule is 10.</span></li>
+            </ul>
+          </div>
+          <div class="rw-foot"><button class="btn">Decline</button><button class="btn primary">Approve swap</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Pencere iki cümleyle okunur; uyarı düz yazı. · <span class="minus">−</span> Hangi uyarının hangi vardiyaya ait olduğu satırdan çıkarılmalı.</p>
+      </div>
+
+      <div class="rw-item">
+        <div class="spec-head"><span class="tag">B</span><strong>Shift ledger</strong></div>
+        <div class="rw">
+          <div class="rw-head"><div><h4 class="rw-title">Swap request</h4><p class="rw-sub num">From Ali Person · decide by Oct 13, 9:00 AM</p></div><span class="rw-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rw-body">
+            <div class="rw-ledger num">
+              <div class="r h"><span>Shift</span><span>Now</span><span></span><span>After</span></div>
+              <div class="r"><span class="when">Wed, Oct 14<small>3:30–11:00 PM · Kadikoy</small><em>Travel 30 of 45 min</em></span><span>Ali</span><span class="arrow">→</span><span class="new">Deniz</span></div>
+              <div class="r"><span class="when">Fri, Oct 16<small>7:30 AM–3:00 PM · Besiktas</small><em>Rest 8 of 10 h</em></span><span>Deniz</span><span class="arrow">→</span><span class="new">Ali</span></div>
+            </div>
+          </div>
+          <div class="rw-foot"><span class="grow">Warnings don't block approval.</span><button class="btn">Decline</button><button class="btn primary">Approve</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Kimin neyi bırakıp neyi aldığı tek bakışta; uyarı ilgili vardiyanın altında. · <span class="minus">−</span> Tablo dili dar pencerede biraz sıkışık.</p>
+      </div>
+
+      <div class="rw-item">
+        <div class="spec-head"><span class="tag">C</span><strong>One block per person</strong></div>
+        <div class="rw">
+          <div class="rw-head"><div><h4 class="rw-title">Swap</h4><p class="rw-sub num">Pending · decide by Oct 13, 9:00 AM</p></div><span class="rw-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rw-body num">
+            <div class="rw-person"><span class="rw-avatar">A</span><div><p><strong>Ali Person</strong></p><p>Gives Wed, Oct 14 · Kadikoy · 3:30–11:00 PM</p><p>Takes Fri, Oct 16 · Besiktas · 7:30 AM–3:00 PM</p><p class="rw-warn">8 h rest before Friday · rule 10 h</p></div></div>
+            <hr class="rw-hr">
+            <div class="rw-person"><span class="rw-avatar">D</span><div><p><strong>Deniz Person</strong></p><p>Gives Fri, Oct 16 · Besiktas · 7:30 AM–3:00 PM</p><p>Takes Wed, Oct 14 · Kadikoy · 3:30–11:00 PM</p><p class="rw-warn">30 min to travel on Wednesday · rule 45 min</p></div></div>
+          </div>
+          <div class="rw-foot"><button class="btn">Decline</button><button class="btn primary">Approve swap</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Her kişinin günü ve sorunu kendi bloğunda. · <span class="minus">−</span> Aynı iki vardiya iki kez yazılı; pencere en uzun hâli.</p>
+      </div>
+
+      <div class="rw-item">
+        <div class="spec-head"><span class="tag">D</span><strong>Quiet checklist</strong></div>
+        <div class="rw">
+          <div class="rw-head"><div><h4 class="rw-title">Ali ↔ Deniz</h4><p class="rw-sub num">Wed, Oct 14 for Fri, Oct 16 · decide by Oct 13</p></div><span class="rw-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rw-body">
+            <span class="rw-label">Checks</span>
+            <ul class="rw-checks num">
+              <li><span class="ok">✓</span><span>Location and job match</span><span class="val">Both</span></li>
+              <li><span class="ok">✓</span><span>No double booking</span><span class="val">Both</span></li>
+              <li><span class="ok">✓</span><span>No approved time off</span><span class="val">Both</span></li>
+              <li class="rw-warn"><span>!</span><span>Travel between locations · Deniz</span><span class="val">30 / 45 min</span></li>
+              <li class="rw-warn"><span>!</span><span>Rest between shifts · Ali</span><span class="val">8 / 10 h</span></li>
+            </ul>
+          </div>
+          <div class="rw-foot"><span class="grow">2 warnings. You can still approve.</span><button class="btn">Decline</button><button class="btn primary">Approve</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Geçen ve uyaran bütün kontroller aynı listede, rakamlar sağda hizalı. · <span class="minus">−</span> Vardiyaların saatleri pencerede yok; satırdan okunur.</p>
+      </div>
+
+      <div class="rw-item">
+        <div class="spec-head"><span class="tag">E</span><strong>One question</strong></div>
+        <div class="rw">
+          <div class="rw-head"><div><span class="rw-label">Swap · Pending</span></div><span class="rw-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rw-body num">
+            <p class="rw-q">Approve this swap?</p>
+            <div class="rw-days">
+              <div class="rw-day"><span class="rw-tile"><span><small>WED</small><br>14</span></span><p>Kadikoy · 3:30–11:00 PM<br><span>Ali → Deniz</span></p></div>
+              <div class="rw-day"><span class="rw-tile"><span><small>FRI</small><br>16</span></span><p>Besiktas · 7:30 AM–3:00 PM<br><span>Deniz → Ali</span></p></div>
+            </div>
+            <div class="rw-strip"><span class="rw-dot"></span>Travel 30 of 45 min · rest 8 of 10 h</div>
+          </div>
+          <div class="rw-foot"><span class="grow">Decide by Oct 13, 9:00 AM</span><button class="btn">Decline</button><button class="btn primary">Approve</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Pencere bir soruyla açılır; tarih kutuları takvim gibi okunur. · <span class="minus">−</span> Kişi adları küçük; uyarının kime ait olduğu yazmıyor.</p>
+      </div>
+
+      <div class="rw-item">
+        <div class="spec-head"><span class="tag">F</span><strong>Receipt</strong></div>
+        <div class="rw">
+          <div class="rw-head"><div><h4 class="rw-title">Swap request</h4><p class="rw-sub">Pending</p></div><span class="rw-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rw-body num">
+            <dl class="rw-kv"><dt>Asked by</dt><dd>Ali Person</dd><dt>Accepted by</dt><dd>Deniz Person</dd><dt>Decide by</dt><dd>Oct 13, 9:00 AM</dd></dl>
+            <hr class="rw-hr">
+            <dl class="rw-kv"><dt>Wed, Oct 14 · Kadikoy · 3:30–11:00 PM</dt><dd>Ali → Deniz</dd><dt>Fri, Oct 16 · Besiktas · 7:30 AM–3:00 PM</dt><dd>Deniz → Ali</dd></dl>
+            <hr class="rw-hr">
+            <dl class="rw-kv"><dt>Travel · Deniz</dt><dd class="rw-warn">30 / 45 min</dd><dt>Rest · Ali</dt><dd class="rw-warn">8 / 10 h</dd></dl>
+          </div>
+          <div class="rw-foot"><button class="btn">Decline</button><button class="btn primary">Approve swap</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Her bilgi etiket–değer satırında; sakin ve taranması kolay. · <span class="minus">−</span> En az görsel vurgu; uyarı yalnız rengiyle ayrılıyor.</p>
+      </div>
+
+    </div>
+
+    <div class="rc-intro">
+      <h3>Daha küçük: dört kompakt tasarım (G–J)</h3>
+      <p>İstek: daha küçük, okunaklı, sleek ve profesyonel. Veri A–F ile aynı. Pencere 330–380 px, yazı 12–14 px, düğmeler 30 px; Approve yine yeşil ve sağ altta, Decline beyaz.</p>
+    </div>
+    <div class="rc-grid">
+
+      <div class="rc-item">
+        <div class="spec-head"><span class="tag">G</span><strong>Hover card</strong></div>
+        <div class="rc rc-g">
+          <div class="rc-head"><div><span class="rc-kicker">Swap · Pending</span><h4 class="rc-title">Ali ↔ Deniz</h4><p class="rc-meta num">Decide by Oct 13, 9:00 AM</p></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rc-body num">
+            <ul class="rc-rows">
+              <li><span class="rc-day">Wed, Oct 14</span><span class="rc-to">Deniz</span><span class="rc-where">Kadikoy · 3:30–11:00 PM</span></li>
+              <li><span class="rc-day">Fri, Oct 16</span><span class="rc-to">Ali</span><span class="rc-where">Besiktas · 7:30 AM–3:00 PM</span></li>
+            </ul>
+            <p class="rc-warnline"><span class="rc-dot"></span>Travel 30 of 45 min · Rest 8 of 10 h</p>
+          </div>
+          <div class="rc-foot"><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> En küçük hâl; satırın yanında açılan bir kart gibi, her şey tek bakışta. · <span class="minus">−</span> Uyarı tek satırda; hangisinin kime ait olduğu yazmıyor.</p>
+      </div>
+
+      <div class="rc-item">
+        <div class="spec-head"><span class="tag">H</span><strong>Shift pair</strong></div>
+        <div class="rc">
+          <div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4><p class="rc-meta num">Decide by Oct 13, 9:00 AM</p></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rc-body num">
+            <div class="rc-pair">
+              <div class="rc-shift"><b>Wed, Oct 14</b><span>Kadikoy</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand">Ali <i>→</i> <b>Deniz</b></span><span class="rc-flag">Travel 30 of 45 min</span></div>
+              <span class="rc-swapicon" aria-hidden="true">⇄</span>
+              <div class="rc-shift"><b>Fri, Oct 16</b><span>Besiktas</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand">Deniz <i>→</i> <b>Ali</b></span><span class="rc-flag">Rest 8 of 10 h</span></div>
+            </div>
+          </div>
+          <div class="rc-foot"><span class="grow">Warnings don't block approval.</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> İki kart ve aradaki ⇄ takası "değiş tokuş" olarak gösterir; uyarı kendi vardiyasının kartında. · <span class="minus">−</span> Telefonda iki kart yan yana dar kalır.</p>
+      </div>
+
+      <div class="rc-item rc-wide">
+        <div class="spec-head"><span class="tag">H2</span><strong>Shift pair, twist</strong></div>
+        <div class="rc-states">
+          <figure class="rc-state">
+            <figcaption>Kural ihlali varsa (bu takas)</figcaption>
+            <div class="rc">
+              <div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+              <div class="rc-body num">
+                <div class="rc-pair">
+                  <div class="rc-shift">
+                    <b>Wed, Oct 14</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span>
+                    <span>3:30 PM – 11:00 PM</span>
+                    <span class="rc-hand2">Ali <i>→</i> Deniz</span>
+                    <p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>30 min to travel</strong><small>45 min needed</small></span></p>
+                  </div>
+                  <span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span>
+                  <div class="rc-shift">
+                    <b>Fri, Oct 16</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span>
+                    <span>7:30 AM – 3:00 PM</span>
+                    <span class="rc-hand2">Deniz <i>→</i> Ali</span>
+                    <p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>8 h of rest</strong><small>10 h needed</small></span></p>
+                  </div>
+                </div>
+              </div>
+              <div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div>
+            </div>
+          </figure>
+          <figure class="rc-state">
+            <figcaption>Kural ihlali yoksa</figcaption>
+            <div class="rc">
+              <div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+              <div class="rc-body num">
+                <div class="rc-pair">
+                  <div class="rc-shift">
+                    <b>Wed, Oct 14</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span>
+                    <span>3:30 PM – 11:00 PM</span>
+                    <span class="rc-hand2">Ali <i>→</i> Deniz</span>
+                  </div>
+                  <span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span>
+                  <div class="rc-shift">
+                    <b>Fri, Oct 16</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span>
+                    <span>7:30 AM – 3:00 PM</span>
+                    <span class="rc-hand2">Deniz <i>→</i> Ali</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div>
+            </div>
+          </figure>
+        </div>
+        <p class="note"><span class="plus">+</span> H'nin üstüne: ⇄ koyu; lokasyonun yanında konum simgesi; iki isim aynı kalınlıkta; yol ve dinlenme yalnız kural tutmazsa, küçük amber kutuda iki kısa satırla; "Decide by" pencerenin altında, "Warnings don't block approval" yok. · <span class="minus">−</span> Uyarı cümlesi kartı uzatır; iki kartın boyu uyarıya göre değişebilir.</p>
+      </div>
+
+      <div class="rc-item rc-wide">
+        <div class="spec-head"><span class="tag">H2</span><strong>Kural ihlali hâlleri</strong></div>
+        <div class="rc-states"><figure class="rc-state"><figcaption>Yalnız yol süresi</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Ali <i>→</i> Deniz</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>30 min to travel</strong><small>45 min needed</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Deniz <i>→</i> Ali</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Travel time OK</strong><small>45 min needed</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Yalnız dinlenme süresi</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Ali <i>→</i> Deniz</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>12 h of rest</strong><small>10 h needed</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Deniz <i>→</i> Ali</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>8 h of rest</strong><small>10 h needed</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Müsait değil, kendi rızasıyla</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Ali <i>→</i> Deniz</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>Unavailable</strong><small>chose to take it</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Deniz <i>→</i> Ali</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Available</strong><small>on Friday</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Onaylı izni var, kendi rızasıyla</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Ali <i>→</i> Deniz</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>No time off</strong><small>on Wednesday</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Deniz <i>→</i> Ali</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>On time off</strong><small>chose to work</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Bir kartta iki uyarı</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Ali Person ⇄ Deniz Person</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Kadikoy</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Ali <i>→</i> Deniz</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>30 min to travel</strong><small>45 min needed</small></span></p><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>Unavailable</strong><small>chose to take it</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Besiktas</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Deniz <i>→</i> Ali</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Travel time OK</strong><small>45 min needed</small></span></p><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Available</strong><small>on Friday</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div></div></figure></div>
+        <p class="note">Bir kuralı tutmayan vardiyanın kartında turuncu kutu çıkar; öteki kartta aynı kural tutuyorsa yeşil kutuyla yazılır, kart boş kalmaz. Hiçbir kural tutmazlık yoksa kutu hiç çıkmaz (yukarıdaki kilitli hâl). Uyarılar onayı engellemez; müsaitlik ve onaylı izin çalışanın kendi rızasıyla ezilmiş olabilir (KARARLAR: takas uygunluğu).</p>
+      </div>
+
+      <div class="rc-item">
+        <div class="spec-head"><span class="tag">I</span><strong>Handoff list</strong></div>
+        <div class="rc">
+          <div class="rc-head"><div><h4 class="rc-title">Swap request</h4><p class="rc-meta num">Ali Person and Deniz Person · decide by Oct 13</p></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rc-body num">
+            <ul class="rc-handoffs">
+              <li><span class="rc-avs"><span class="rc-av">AP</span><i>→</i><span class="rc-av to">DP</span></span><span class="rc-hl"><b>Wed, Oct 14</b><span class="rc-tag">Travel 30/45 min</span><small>Kadikoy · 3:30–11:00 PM</small></span></li>
+              <li><span class="rc-avs"><span class="rc-av">DP</span><i>→</i><span class="rc-av to">AP</span></span><span class="rc-hl"><b>Fri, Oct 16</b><span class="rc-tag">Rest 8/10 h</span><small>Besiktas · 7:30 AM–3:00 PM</small></span></li>
+            </ul>
+          </div>
+          <div class="rc-foot"><button class="btn sm">Decline</button><button class="btn sm primary">Approve swap</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Kimin kime verdiği baş harflerle, uyarı satırın sağında küçük etiket; iş takip araçlarının dili. · <span class="minus">−</span> Baş harfler (AP, DP) adı tam söylemez; adlar yalnız başlıkta.</p>
+      </div>
+
+      <div class="rc-item">
+        <div class="spec-head"><span class="tag">J</span><strong>Status chips and small meters</strong></div>
+        <div class="rc">
+          <div class="rc-head"><div><div class="rc-chips"><span class="rc-chip">Swap</span><span class="rc-chip amber">Pending</span></div><h4 class="rc-title">Ali ↔ Deniz</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+          <div class="rc-body num">
+            <table class="rc-table">
+              <thead><tr><th>Shift</th><th>Where</th><th>Goes to</th></tr></thead>
+              <tbody>
+                <tr><td><b>Wed, Oct 14</b>3:30–11:00 PM</td><td>Kadikoy</td><td><b>Deniz</b></td></tr>
+                <tr><td><b>Fri, Oct 16</b>7:30 AM–3:00 PM</td><td>Besiktas</td><td><b>Ali</b></td></tr>
+              </tbody>
+            </table>
+            <div class="rc-meters">
+              <div class="rc-meter-row"><span>Travel · Deniz</span><span class="rc-meter"><i style="width: 66.7%"></i></span><span class="num">30 / 45 min</span></div>
+              <div class="rc-meter-row"><span>Rest · Ali</span><span class="rc-meter"><i style="width: 80%"></i></span><span class="num">8 / 10 h</span></div>
+            </div>
+          </div>
+          <div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn sm">Decline</button><button class="btn sm primary">Approve</button></div>
+        </div>
+        <p class="note"><span class="plus">+</span> Durum çipleri, küçük tablo ve ince ölçü çubukları; ne kadar eksik kaldığı hem rakamla hem çubukla. · <span class="minus">−</span> Dört öğe türü bir arada; G'den kalabalık.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="part" aria-labelledby="g3">
+    <h2 id="g3">3. The line the system writes when a manager shortens time off</h2>
+    <dl class="scenario">
+      <div><dt>Nerede</dt><dd>Requests → <b>Closed</b> sekmesi (kapanmış talepler, en yeni üstte).</dd></div>
+      <div><dt>Kim bakıyor</dt><dd>Kadıköy müdürü <b>Ayşe</b>.</dd></div>
+      <div><dt>Ne oluyor</dt><dd><b>Ali</b>'nin 11 Ekim tam gün izni onaylıydı. 9 Ekim'de Ayşe, o günün akşam vardiyası (4:00–10:00 PM) için izni kısalttı; Ali o akşam çalışacak. Aynı listede Ali'nin 28 Eylül'deki <b>kendi</b> iptal isteği de duruyor.</dd></div>
+      <div class="problem"><dt>Bugün sorun</dt><dd>İki satır aynı görünüyor: ikisi de "Time off · Cancels approved time off". Hangisini Ali istedi, hangisini Ayşe yaptı, ne kadar kısaldı, listeden anlaşılmıyor.</dd></div>
+    </dl>
+    <div class="specs" id="g3-specs"></div>
+  </section>
+</div>
+
+<script>
+const ic = {
+  off: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 13l6 6M15 13l-6 6"/></svg>',
+  swap: '<svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>',
+  cover: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M3 20c0-3.3 2.7-6 6-6h1"/><circle cx="17" cy="17" r="3"/><path d="m21 21-1.8-1.8"/></svg>',
+  cut: '<svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  moon: '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  ret: '<svg class="i" viewBox="0 0 24 24"><path d="M5 4v9a3 3 0 0 0 3 3h11M15 12l4 4-4 4"/></svg>',
+};
+const typeLabel = { off: "Time off", swap: "Swap", cover: "Cover" };
+
+function row(r) {
+  const mark = r.sys ? `<span class="mark sys">${ic.cut}</span>` : `<span class="mark">${r.name[0]}</span>`;
+  const second = r.detail ? `<small>${r.detail}</small>` : "";
+  const review = r.warn ? `<span class="warnc">${ic.warn}${r.warn}</span>` : ic.chev;
+  return `<div class="tr${r.sel ? " sel" : ""}" role="row">
+    <span class="who">${mark}<span class="stack"><strong>${r.name}${r.pill ? '<span class="pill">System</span>' : ""}</strong>${second}</span></span>
+    <span class="type${r.typeSys ? " sys" : ""}">${ic[r.typeIcon ?? r.type]}${r.typeText ?? typeLabel[r.type]}</span>
+    <span class="num">${r.when}</span>
+    <span class="num${r.by ? "" : " muted"}">${r.by ?? "—"}</span>
+    <span><span class="chip ${r.tone}">${r.status}</span></span>
+    <span class="rev">${review}</span>
+  </div>${r.after ?? ""}`;
+}
+function table(rows, tabs) {
+  return `<div class="tabs" aria-hidden="true">${tabs}</div>
+  <div class="table" role="table"><div class="thead" role="row"><span>Employee</span><span>Type</span><span>When</span><span>Decide by</span><span>Status</span><span>Review</span></div>${rows.map(row).join("")}</div>`;
+}
+function spec(tag, title, stage, note, today) {
+  return `<div class="spec"><div class="spec-head"><span class="tag${today ? " today" : ""}">${tag}</span><strong>${title}</strong></div>
+  <div class="stage">${stage}</div><p class="note">${note}</p></div>`;
+}
+const note = (plus, minus) => `<span class="plus">+</span> ${plus} · <span class="minus">−</span> ${minus}`;
+
+/* G2: travel and rest on a swap */
+const openTabs = '<span class="on">Needs review<b>3</b></span><span>In progress<b>1</b></span><span>Closed</span>';
+function g2Rows(warnInRow) {
+  return [
+    { name: "Ali Person", detail: "for Deniz Person's Fri, Oct 16", type: "swap", when: "Wed, Oct 14 · 3:30–11:00 PM", by: "Oct 13, 9:00 AM", status: "Pending", tone: "amber", sel: true, warn: warnInRow ? 2 : 0 },
+    { name: "Emre Person", detail: "2 candidates", type: "cover", when: "Sat, Oct 17 · 11:00 AM–3:00 PM", by: "Oct 16, 12:00 PM", status: "Pending", tone: "amber" },
+    { name: "Busra Person", detail: "1 shift becomes open", type: "off", when: "Oct 20", by: "Oct 18, 5:00 PM", status: "Pending", tone: "amber", warn: 1 },
+  ];
+}
+const caseHead = `<div class="drawer-top"><div><small>Request review · Swap</small><h4>Ali Person ↔ Deniz Person</h4></div><span class="chip amber">Pending</span></div>`;
+const ifApproved = `<span class="eyebrow">IF APPROVED</span><h5>Ali gets Fri, Oct 16 · Besiktas · 7:30 AM–3:00 PM<br>Deniz gets Wed, Oct 14 · Kadikoy · 3:30–11:00 PM</h5>`;
+const approve = (on) => `<div class="actions"><button class="btn primary"${on ? "" : " disabled"}>Approve swap</button><button class="btn">Decline</button></div>`;
+const g2 = (body, warnInRow = false) =>
+  `<div class="duo"><div>${table(g2Rows(warnInRow), openTabs)}</div><div class="drawer">${caseHead}<div class="panel">${ifApproved}${body}</div></div></div>`;
+
+document.getElementById("g2-specs").innerHTML = [
+  spec("Today", "Blocked, the reasons in red", g2(`
+    <div class="elig"><strong>Deniz Person</strong> · gets the Kadikoy shift<ul><li>There is not enough travel time between locations.</li></ul></div>
+    <div class="elig"><strong>Ali Person</strong> · gets the Besiktas shift<ul><li>There is not enough rest time between shifts.</li></ul></div>
+    ${approve(false)}`), "Bugün: uyarı engel gibi; Approve kapalı, neden kırmızı, rakam yok. Tabloda satır hiçbir şey söylemiyor.", true),
+  spec("1", "One quiet callout", g2(`
+    <div class="callout" role="note"><span class="callout-head">${ic.warn}2 things to check. You can still approve.</span>
+      <ul class="num"><li>Deniz: 30 min to travel, rule 45 min (Besiktas ends 3:00 PM, Kadikoy starts 3:30 PM)</li>
+      <li>Ali: 8 h rest, rule 10 h (closes Thu 11:30 PM, opens Fri 7:30 AM)</li></ul></div>
+    ${approve(true)}`), note("tek kutu, iki satır; rakamlar ve saatler orada, Approve açık", "tabloda satır sessiz, Ayşe uyarıyı ancak pencereyi açınca görür")),
+  spec("2", "A small checks table", g2(`
+    <table class="checks"><thead><tr><th>Check</th><th>Person</th><th>Has</th><th>Rule</th></tr></thead><tbody class="num">
+      <tr><td><span class="dot"></span>Travel</td><td>Deniz</td><td class="short">30 min</td><td>45 min</td></tr>
+      <tr><td><span class="dot"></span>Rest</td><td>Ali</td><td class="short">8 h</td><td>10 h</td></tr>
+      <tr><td><span class="dot ok"></span>Location, job</td><td>Both</td><td class="ok">OK</td><td>—</td></tr></tbody></table>
+    ${approve(true)}`), note("geçen ve kalan bütün kontroller tek bakışta", "dar pencerede tablo kalabalık; neden kısa olduğu (saatler) yok")),
+  spec("3", "Two gauges", g2(`
+    <div class="gauge"><div class="gauge-top"><span>Deniz · travel between locations</span><span class="num">30 of 45 min</span></div><div class="bar"><i style="width:66.7%"></i></div><small class="num">Besiktas ends 3:00 PM · Kadikoy starts 3:30 PM</small></div>
+    <div class="gauge"><div class="gauge-top"><span>Ali · rest between shifts</span><span class="num">8 of 10 h</span></div><div class="bar"><i style="width:80%"></i></div><small class="num">Closes Thu 11:30 PM · opens Fri 7:30 AM</small></div>
+    ${approve(true)}`), note("ne kadar eksik kaldığı çubukta bir bakışta (30/45, 8/10)", "pencerede en çok yer kaplayan hâl; uygulamada başka yerde çubuk yok")),
+  spec("4", "A count in the table, chips in the review", g2(`
+    <div class="chips"><span class="wchip num">${ic.pin}Deniz · travel 30 / 45 min</span><span class="wchip num">${ic.moon}Ali · rest 8 / 10 h</span></div>
+    ${approve(true)}<p class="foot">Warnings only. Approving is still allowed.</p>`, true), note("Ayşe uyarıyı pencereyi açmadan tabloda görür: Review sütununda amber ⚠ 2, izindeki \"açılan vardiya\" sayısıyla aynı dil", "pencerede açıklama en kısa hâli; saatler yok")),
+  spec("5", "The gap on a timeline", g2(`
+    <div class="lane"><div class="lane-name"><strong>Deniz</strong><span class="num">30 min to travel · needs 45</span></div><div class="track"><span class="seg a">Besiktas</span><span class="seg gap num">30 min</span><span class="seg b">Kadikoy</span></div><div class="ticks num"><span>ends 3:00 PM</span><span>starts 3:30 PM</span></div></div>
+    <div class="lane"><div class="lane-name"><strong>Ali</strong><span class="num">8 h rest · needs 10</span></div><div class="track"><span class="seg a">Close</span><span class="seg gap num">8 h</span><span class="seg b">Open</span></div><div class="ticks num"><span>Thu 11:30 PM</span><span>Fri 7:30 AM</span></div></div>
+    ${approve(true)}`), note("neden kısa olduğu saatlerle çizili; iki vardiya arası taralı amber", "en karmaşık hâl; kuralın kaçta kaçının tuttuğu bir rakam olarak yok")),
+].join("");
+
+/* G3: the shortened time off line in Closed */
+const closedTabs = '<span>Needs review<b>3</b></span><span>In progress<b>1</b></span><span class="on">Closed</span>';
+const base = {
+  deniz: { name: "Deniz Person", type: "off", when: "Oct 9 – Oct 10", status: "Approved", tone: "green" },
+  emre: { name: "Emre Person", detail: "with Busra Person's Sun, Oct 4", type: "swap", when: "Sat, Oct 3 · 4:00–11:00 PM", status: "Completed", tone: "green" },
+  aliOwn: { name: "Ali Person", detail: "Cancels approved time off", type: "off", when: "Sep 28", status: "Approved", tone: "green" },
+  busra: { name: "Busra Person", type: "off", when: "Sep 21 – Sep 22", status: "Denied", tone: "red" },
+};
+const g3 = (short, own = base.aliOwn) => table([base.deniz, short, base.emre, own, base.busra], closedTabs);
+
+document.getElementById("g3-specs").innerHTML = [
+  spec("Today", "Two rows that look the same", g3({ name: "Ali Person", detail: "Cancels approved time off", type: "off", when: "Oct 11", status: "Approved", tone: "green" }),
+    "Bugün: 11 Eki satırı (Ayşe'nin kısaltması) ile 28 Eyl satırı (Ali'nin kendi iptali) aynı: ikisi de \"Time off · Cancels approved time off\".", true),
+  spec("1", "Say who and how much", g3(
+    { name: "Ali Person", detail: "Shortened by Ayse Person · 1 shift, 4:00–10:00 PM", type: "off", when: "Oct 11", status: "Approved", tone: "green" },
+    { ...base.aliOwn, detail: "Cancellation asked by Ali" }),
+    note("satır yerinde kalır, ikinci satır kimin ne yaptığını ve saati söyler", "fark yalnız küçük gri yazıda; hızlı bakışta iki satır yine benzer")),
+  spec("2", "A different marker and a System pill", g3(
+    { name: "Ali Person", detail: "Shortened for a shift", type: "off", when: "Oct 11", status: "Approved", tone: "green", sys: true, pill: true }),
+    note("sistemin yazdığı satır makas işareti ve \"System\" etiketiyle ilk bakışta ayrılır", "\"System\" kimin yaptığını (Ayşe) söylemez; kişi yuvarlağının yerini alır")),
+  spec("3", "Under the time off it changed", g3(
+    { name: "Ali Person", type: "off", when: "Oct 11", status: "Approved", tone: "green",
+      after: `<div class="child num">${ic.ret}Shortened by Ayse Person for 1 shift, 4:00–10:00 PM · Oct 9</div>` }),
+    note("kısaltma, değiştirdiği iznin hemen altında; ayrı bir talep gibi sayılmaz", "satır yüksekliği değişir; sayfalamada iç satır sayılmaz")),
+  spec("4", "A new value in the Type column", g3(
+    { name: "Ali Person", detail: "By Ayse Person · 4:00–10:00 PM", type: "off", typeIcon: "cut", typeText: "Shortened", typeSys: true, when: "Oct 11", status: "Approved", tone: "green" },
+    { ...base.aliOwn, detail: "", typeText: "Cancellation" }),
+    note("tabloda zaten olan Type sütunu söyler (Time off / Cancellation / Shortened); yeni sütun yok, Request type süzgecine de değer olarak girer", "Type'ta artık dört değil altı değer var")),
+  spec("5", "An activity line, not a request", table([
+      { ...base.deniz, after: `<div class="log num">${ic.cut}Ayse Person shortened Ali Person's Oct 11 time off for one shift (4:00–10:00 PM)<time>Oct 9</time></div>` },
+      base.emre, base.aliOwn, base.busra], closedTabs),
+    note("kısaltma talep gibi görünmez: durum etiketi olmayan, gri, tek cümlelik kayıt", "tablonun düzenini bozan tek satır biçimi; tıklanınca ne açılacağı belirsiz")),
+].join("");
+</script>
+
+
+</body></html>

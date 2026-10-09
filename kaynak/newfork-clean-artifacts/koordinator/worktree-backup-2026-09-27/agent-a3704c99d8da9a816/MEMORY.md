@@ -1,0 +1,6 @@
+- [e2e in workspace since BL-146](e2e-in-workspace-since-bl146.md) — `pnpm --filter @newfork/e2e typecheck`/`lint` now real gates, no live DB needed
+- [Cross-worktree git block](cross-worktree-git-block.md) — sandbox refuses any `git` command (log/-C/--git-dir) aimed at a worktree other than this agent's own, even the task-assigned one; read `.git/worktrees/<name>/HEAD` + `refs/heads/<branch>` instead
+- [supabase db query is single-statement](supabase-db-query-file-single-statement.md) — `--file` on a multi-statement SQL file errors; pipe into `docker exec ... psql -f -` instead, container name from config.toml project_id
+- [Shared DB unscoped count flakiness](shared-db-unscoped-count-flakiness.md) — superuser count(*) with no fixture-id where is flaky only in full local test:db runs (BL-170); same pattern found unfixed in several sibling bl052/time_off/termination test files
+- [Playwright screenshot to disk](playwright-screenshot-to-disk.md) — Claude_Browser MCP can't save PNGs; drive the same steps with a throwaway Playwright script inside e2e/ instead
+- [Shift exchange builder traps](shift-exchange-builder-traps.md) — actor param is auth user id not employee id; publish-scope GUC cast trap on raw approve; no note field in Schedule UI; enable_shift_hub is dead; approve auto-rebases dirty sessions silently

@@ -1,0 +1,31 @@
+{
+  "fixture": {
+    "workspace": "d7818f89-82ab-432c-bad3-70b7820eafcd",
+    "location": "38ffcf9c-4825-4986-870d-dba705a4e4c3",
+    "department": "af14e4c1-cbf0-4bba-8a55-7b5024aa9ea0",
+    "job": "14030dbf-eb39-495f-abb3-6320c8cdc187",
+    "type": "cc029057-c4ae-4ec3-a00f-a4aa400e1923",
+    "employee": "ad0135aa-6d5e-4da6-8fc8-644943600f9a",
+    "name": "Weekly authenticated acceptance d7818f89-82ab-432c-bad3-70b7820eafcd",
+    "users": {
+      "owner": {
+        "id": "208a20fd-1ce0-45cd-9d39-a6e629107efa",
+        "email": "weekly-owner-d7818f89-82ab-432c-bad3-70b7820eafcd@example.test"
+      },
+      "manager": {
+        "id": "b1707ba6-1ec7-42e1-8570-a6f58a1c20a6",
+        "email": "weekly-manager-d7818f89-82ab-432c-bad3-70b7820eafcd@example.test"
+      },
+      "employee": {
+        "id": "d891f07c-fdab-4481-aee9-1ce113980c89",
+        "email": "weekly-employee-d7818f89-82ab-432c-bad3-70b7820eafcd@example.test"
+      }
+    }
+  },
+  "checks": [
+    "Owned workspace and synthetic Auth users removed"
+  ],
+  "cleanup": true,
+  "status": "failed",
+  "error": "Command failed: docker exec -i supabase_db_newfork-clean psql -XqAt -U postgres -d postgres -v ON_ERROR_STOP=1\nERROR:  new row for relation \"employee_profiles\" violates check constraint \"employee_profiles_employee_code_check\"\nDETAIL:  Failing row contains (ad0135aa-6d5e-4da6-8fc8-644943600f9a, d7818f89-82ab-432c-bad3-70b7820eafcd, d891f07c-fdab-4481-aee9-1ce113980c89, E-WEEKLY-QA, Weekly, Tester, , null, null, , 1, null, null, 208a20fd-1ce0-45cd-9d39-a6e629107efa, 2026-09-09 16:55:26.912864+00, 2026-09-09 16:55:26.912864+00, f, f).\n"
+}

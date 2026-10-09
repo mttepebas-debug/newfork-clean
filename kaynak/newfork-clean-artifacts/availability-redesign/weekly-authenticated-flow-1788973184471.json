@@ -1,0 +1,52 @@
+{
+  "fixture": {
+    "workspace": "61c0619a-2a0d-4cb2-9c37-e7006f2c4efa",
+    "location": "ec433551-7a3c-4e7f-ad5d-bd0f9813c4ad",
+    "department": "21430c82-75b4-4a8c-895f-12456f63652f",
+    "job": "451b4f25-b217-425c-a658-f8e7117302f2",
+    "type": "ed7b5f28-d345-4fe0-bbda-9b19e7da55d6",
+    "employee": "234afac4-a351-4151-9a77-40268e99a439",
+    "name": "Weekly authenticated acceptance 61c0619a-2a0d-4cb2-9c37-e7006f2c4efa",
+    "users": {
+      "owner": {
+        "id": "5799881a-674e-4dab-bc16-1e92a08ca1bd",
+        "email": "weekly-owner-61c0619a-2a0d-4cb2-9c37-e7006f2c4efa@example.test"
+      },
+      "manager": {
+        "id": "773c5446-5327-468e-8845-546757bfdb01",
+        "email": "weekly-manager-61c0619a-2a0d-4cb2-9c37-e7006f2c4efa@example.test"
+      },
+      "employee": {
+        "id": "878e2e41-d29e-4493-b116-5742ac5d4484",
+        "email": "weekly-employee-61c0619a-2a0d-4cb2-9c37-e7006f2c4efa@example.test"
+      }
+    }
+  },
+  "checks": [
+    "Unsubmitted employee starts without restrictions",
+    "Employee preference takes effect immediately",
+    "Retry creates one event and no approval request",
+    "Manager inbox links to employee Availability drawer",
+    "Team table reads the saved employee week",
+    "Schedule warns instead of blocking employee preference",
+    "Line Up retains selectable unavailable employee",
+    "Copy preserves exact employee week and private notes",
+    "Employee response never exposes manager reminders",
+    "Later employee save does not automatically replace reminders",
+    "Manager-only restriction affects Schedule",
+    "Disabled reminders stop Schedule and Line Up warnings",
+    "Disabled reminders retain selections and notes",
+    "Employee cannot read team availability",
+    "Manager cannot change organization availability settings",
+    "Owner settings are reflected in employee read",
+    "Shift-type restriction follows organization confirmation policy",
+    "Current type hours appear without rewriting employee selections",
+    "Matching type identity outside current hours does not conflict",
+    "Time Off still requires a separate manager approval",
+    "Approved Time Off remains a Schedule hard blocker",
+    "Approved Time Off remains a Line Up hard blocker",
+    "Owned workspace and synthetic Auth users removed"
+  ],
+  "cleanup": true,
+  "status": "passed"
+}

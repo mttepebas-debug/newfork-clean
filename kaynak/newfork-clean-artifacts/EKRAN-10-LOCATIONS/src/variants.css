@@ -1,0 +1,145 @@
+/* ===== shared bits of the five Locations designs ===== */
+.lv .lv-cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--theme-list-cell-text); font-size: 13px; }
+.lv .lv-faint, .lv .lv-faint-row { color: var(--theme-text-faint); }
+.lv .lv-card-line, .lv .lv-card-meta, .lv .lv-phone-top, .lv .lv-abbr { display: none; }
+.lv .lv-chip, .lv-drawer .lv-chip {
+  display: inline-flex; align-items: center; box-sizing: border-box; height: 22px; padding: 0 7px;
+  border: 1px solid var(--theme-border); border-radius: 5px; background: var(--theme-surface-muted);
+  color: var(--theme-text); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; white-space: nowrap;
+}
+.lv .lv-chev { display: none; color: var(--theme-muted); }
+.lv.list-page .job-catalog-row { min-height: 52px; }
+/* Today the body keeps a 15 px scrollbar gutter even with nothing to scroll, so the
+   fields stop 15 px short of the close button and Save. Reserve it only when it scrolls. */
+.lv-drawer .catalog-drawer-body { scrollbar-gutter: auto; }
+.lv-drawer .catalog-drawer-body > fieldset.lv-form { display: block; margin: 0; padding: 0; border: 0; min-width: 0; }
+.lv-drawer .lv-f { min-width: 0; }
+.lv-drawer .lv-f > .location-field, .lv-drawer .lv-f > .job-field { margin: 0; }
+
+/* ===== A · shared list language, drawer as today ===== */
+.lv.lv-A.list-page .location-catalog-row { grid-template-columns: minmax(0, 24fr) minmax(0, 40fr) minmax(0, 16fr) minmax(0, 16fr) 32px; gap: 12px; }
+
+/* ===== B · short name column, two-line cells, sectioned drawer ===== */
+.lv.lv-B.list-page .location-catalog-row { grid-template-columns: minmax(0, 1fr) 104px minmax(0, 1.4fr) 128px minmax(0, 1fr) 32px; gap: 12px; }
+.lv.lv-B.list-page .job-catalog-row { min-height: 64px; }
+.lv.lv-B .lv-two { display: grid; gap: 2px; }
+.lv.lv-B .lv-two > span { overflow: hidden; text-overflow: ellipsis; }
+.lv.lv-B .lv-sub { color: var(--theme-muted); font-size: 12px; }
+.lv-drawer.lv-B .lv-sec { padding: 16px 16px 18px; border-top: 1px solid var(--theme-border-subtle); }
+.lv-drawer.lv-B .lv-sec:first-child { border-top: 0; }
+.lv-drawer.lv-B .lv-sec h3 { margin: 0 0 12px; color: var(--theme-muted-strong); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; line-height: 16px; text-transform: uppercase; }
+.lv-drawer.lv-B .lv-g { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lv-drawer.lv-B .lv-sec-name .lv-g { grid-template-columns: minmax(0, 1fr) 168px; }
+.lv-drawer.lv-B .lv-sec-addr .lv-g { grid-template-columns: minmax(0, 1fr) 120px 140px; }
+.lv-drawer.lv-B .lv-sec-addr .lv-wide { grid-column: 1 / -1; }
+
+/* ===== C · location cards, narrow single-column drawer ===== */
+.lv.lv-C .lv-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.lv.lv-C .lv-card { box-sizing: border-box; padding: 16px; border: 1px solid var(--theme-list-frame); border-radius: 8px; background: var(--theme-surface); }
+.lv.lv-C .lv-card-head { display: grid; grid-template-columns: 36px minmax(0, 1fr) 32px; gap: 12px; align-items: center; }
+.lv.lv-C .lv-tile { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; background: var(--theme-accent-soft); color: var(--theme-accent); }
+.lv.lv-C .lv-card-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lv.lv-C .lv-card-name { min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: var(--theme-text); font: inherit; font-size: 15px; font-weight: 600; line-height: 22px; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.lv.lv-C .lv-facts { display: grid; gap: 10px; margin: 14px 0 0; padding: 14px 0 0; border-top: 1px solid var(--theme-border-subtle); list-style: none; }
+.lv.lv-C .lv-facts li { display: grid; grid-template-columns: 15px minmax(0, 1fr); gap: 10px; align-items: start; color: var(--theme-list-cell-text); font-size: 13px; line-height: 18px; }
+.lv.lv-C .lv-facts li svg { margin-top: 1.5px; color: var(--theme-muted); }
+.lv.lv-C .lv-facts li.lv-faint-row, .lv.lv-C .lv-facts li.lv-faint-row svg { color: var(--theme-text-faint); }
+.jobs-settings-page.catalog-drawer.lv-C { width: min(440px, 100%); }
+.lv-drawer.lv-C .lv-eyebrow { display: block; margin: 0 0 4px; color: var(--theme-accent); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; line-height: 16px; text-transform: uppercase; }
+.lv-drawer.lv-C .job-editor-title h2 { margin: 0 0 4px; font-size: 20px; line-height: 26px; }
+.lv-drawer.lv-C .lv-form { display: grid !important; gap: 14px; padding: 20px 16px !important; }
+.lv-drawer.lv-C .lv-pair, .lv-drawer.lv-D .lv-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+/* ===== D · docked side panel, list stays open; time zone as six tiles ===== */
+.lv.lv-D.list-page .location-catalog-row { grid-template-columns: minmax(0, 24fr) minmax(0, 40fr) minmax(0, 16fr) minmax(0, 16fr) 32px; gap: 12px; }
+.lv.lv-D .lv-chev { display: flex; align-items: center; justify-content: center; }
+.lv.lv-D.list-page .job-catalog-row.lv-row-selected { background: var(--theme-selected); }
+.catalog-drawer-backdrop.lv-D { background: transparent; pointer-events: none; }
+.catalog-drawer-backdrop.lv-D > .catalog-drawer { pointer-events: auto; }
+.jobs-settings-page.catalog-drawer.lv-D { width: min(460px, 100%); border-left: 1px solid var(--theme-border); box-shadow: -8px 0 24px rgb(16 34 26 / 8%); }
+.lv-drawer.lv-D .lv-back { display: none; }
+.lv-drawer.lv-D .job-editor-title h2 { display: flex; align-items: center; gap: 8px; }
+.lv-drawer.lv-D .lv-form { display: grid !important; gap: 14px; padding: 16px !important; }
+.lv-drawer.lv-D .lv-tz { display: grid; gap: 8px; margin: 2px 0 0; padding: 0; border: 0; min-width: 0; }
+.lv-drawer.lv-D .lv-tz legend { margin: 0 0 7px; padding: 0; font-size: 12px; font-weight: 600; }
+.lv-drawer.lv-D .lv-tz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lv-drawer.lv-D .lv-tz-opt { display: flex; align-items: center; gap: 10px; box-sizing: border-box; height: 48px; padding: 0 12px; border: 1px solid var(--theme-border); border-radius: 6px; background: var(--theme-surface); cursor: pointer; }
+.lv-drawer.lv-D .lv-tz-opt.is-on { border-color: var(--theme-accent); background: var(--theme-selected); box-shadow: inset 0 0 0 1px var(--theme-accent); }
+.lv-drawer.lv-D .lv-tz-opt input { width: 16px; height: 16px; margin: 0; accent-color: var(--theme-accent); }
+.lv-drawer.lv-D .lv-tz-text { display: grid; gap: 1px; line-height: 16px; }
+.lv-drawer.lv-D .lv-tz-text span { color: var(--theme-text); font-size: 13px; font-weight: 600; }
+.lv-drawer.lv-D .lv-tz-text small { color: var(--theme-muted); font-size: 12px; }
+.lv-drawer.lv-D .lv-link { justify-self: start; padding: 0; border: 0; background: none; color: var(--theme-accent); font-size: 12px; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+/* ===== E · plain rows without a table, label-left drawer ===== */
+.lv.lv-E .lv-plain { display: grid; border-top: 1px solid var(--theme-border); }
+.lv.lv-E .lv-plain-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 130px auto 32px; gap: 16px; align-items: center; min-height: 72px; padding: 0 4px 0 2px; border-bottom: 1px solid var(--theme-border); }
+.lv.lv-E .lv-plain-main { display: grid; gap: 4px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.lv.lv-E .lv-plain-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lv.lv-E .lv-plain-name { overflow: hidden; color: var(--theme-text); font-size: 15px; font-weight: 600; line-height: 22px; text-overflow: ellipsis; white-space: nowrap; }
+.lv.lv-E .lv-plain-sub { overflow: hidden; color: var(--theme-muted); font-size: 13px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.lv.lv-E .lv-plain-zone-m { display: none; }
+.lv.lv-E :is(.lv-plain-zone, .lv-plain-phone) { display: flex; align-items: center; gap: 7px; color: var(--theme-list-cell-text); font-size: 13px; white-space: nowrap; }
+.lv.lv-E :is(.lv-plain-zone, .lv-plain-phone) svg { color: var(--theme-muted); }
+.lv.lv-E .lv-plain-phone.lv-faint, .lv.lv-E .lv-plain-phone.lv-faint svg { color: var(--theme-text-faint); }
+.lv.lv-E .lv-edit-button { box-sizing: border-box; height: 32px; padding: 0 12px; border: 1px solid var(--theme-muted); border-radius: 6px; background: var(--theme-surface); color: var(--theme-accent-deep); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.jobs-settings-page.catalog-drawer.lv-E { width: min(680px, 100%); }
+.lv-drawer.lv-E .lv-grab { display: none; }
+.lv-drawer.lv-E .lv-form { display: grid !important; gap: 0; padding: 8px 16px !important; }
+.lv-drawer.lv-E .lv-row { padding: 10px 0; border-bottom: 1px solid var(--theme-border-subtle); }
+.lv-drawer.lv-E .lv-row:last-child { border-bottom: 0; }
+.lv-drawer.lv-E .lv-row .job-field { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 16px; align-items: center; }
+.lv-drawer.lv-E .lv-row .job-field > span { margin: 0; color: var(--theme-text-secondary); font-weight: 600; }
+
+/* ===== phone (UI-14: one 720 px shell break) ===== */
+@media (max-width: 720px) {
+  /* A, B, D share the card-row phone list (KARARLAR Genel: phone lists are card rows). */
+  .lv:is(.lv-A, .lv-B).list-page .job-catalog { display: grid; gap: 8px; overflow: visible; border: 0; background: none; }
+  .lv:is(.lv-A, .lv-B, .lv-D).list-page .job-column-headings { display: none; }
+  .lv:is(.lv-A, .lv-B, .lv-D) .lv-cell { display: none; }
+  .lv:is(.lv-A, .lv-B).list-page .job-catalog-row { grid-template-columns: minmax(0, 1fr) 44px; align-items: start; min-height: 0; padding: 14px 4px 14px 14px; border: 1px solid var(--theme-list-frame); border-radius: 8px; }
+  .lv:is(.lv-A, .lv-B, .lv-D).list-page .job-row-identity { min-height: 0; }
+  .lv:is(.lv-A, .lv-B, .lv-D).list-page .job-row-name { font-size: 15px; line-height: 22px; }
+  .lv:is(.lv-A, .lv-B, .lv-D) .lv-card-line { display: block; margin-top: 2px; color: var(--theme-list-cell-text); font-size: 13px; line-height: 18px; }
+  .lv:is(.lv-A, .lv-B) .lv-card-meta { display: block; margin-top: 4px; color: var(--theme-muted); font-size: 12px; line-height: 16px; }
+  .lv.lv-B .lv-phone-top { display: block; margin-bottom: 6px; }
+  .lv.lv-B .lv-dot { margin: 0 6px; }
+  .lv:is(.lv-A, .lv-B).list-page .job-row-menu > summary { width: 40px; height: 40px; }
+
+  /* B drawer: sections stack, City full, State and ZIP share a row. */
+  .lv-drawer.lv-B .lv-g, .lv-drawer.lv-B .lv-sec-name .lv-g { grid-template-columns: minmax(0, 1fr); }
+  .lv-drawer.lv-B .lv-sec-addr .lv-g { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lv-drawer.lv-B .lv-sec-addr .lv-city { grid-column: 1 / -1; }
+
+  /* C: one card per row. */
+  .lv.lv-C .lv-cards { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+
+  /* D: one grouped list; the panel becomes its own page with a back link. */
+  .lv.lv-D.list-page .job-catalog { border-radius: 10px; }
+  .lv.lv-D.list-page .job-catalog-row { grid-template-columns: minmax(0, 1fr) 40px; min-height: 0; padding: 12px 4px 12px 14px; }
+  .lv.lv-D.list-page .job-catalog-row.lv-row-selected { background: var(--theme-surface); }
+  .lv.lv-D .job-row-identity { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+  .lv.lv-D .lv-abbr { display: block; color: var(--theme-muted); font-size: 12px; font-weight: 600; }
+  .jobs-settings-page.catalog-drawer.lv-D { width: 100%; border-left: 0; box-shadow: none; }
+  .lv-drawer.lv-D .job-editor-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 8px; }
+  .lv-drawer.lv-D .lv-back { display: inline-flex; grid-column: 1 / -1; align-items: center; gap: 6px; justify-self: start; height: 32px; margin: -4px 0 0 -6px; padding: 0 6px; border: 0; background: none; color: var(--theme-accent); font: inherit; font-size: 14px; font-weight: 600; }
+  .lv-drawer.lv-D .job-editor-title > .job-icon-button { display: none; }
+  .lv-drawer.lv-D .job-editor-title h2 { font-size: 24px; line-height: 30px; }
+  .lv-drawer.lv-D .lv-tz-opt { height: 52px; }
+
+  /* E: full-bleed rows; the drawer is a bottom sheet. */
+  .lv.lv-E .lv-plain { margin: 0 -16px; border-top-color: var(--theme-border-subtle); background: var(--theme-surface); }
+  .lv.lv-E .lv-plain-row { grid-template-columns: minmax(0, 1fr) 40px; gap: 8px; min-height: 0; padding: 14px 6px 14px 16px; border-bottom-color: var(--theme-border-subtle); }
+  .lv.lv-E :is(.lv-plain-zone, .lv-plain-phone, .lv-edit-button) { display: none; }
+  .lv.lv-E .lv-plain-zone-m { display: block; color: var(--theme-muted); font-size: 12px; line-height: 16px; }
+  .lv.lv-E .lv-plain-row > .job-row-menu > summary { width: 40px; height: 40px; }
+  .catalog-drawer-backdrop.lv-E { align-items: flex-end; }
+  .jobs-settings-page.catalog-drawer.lv-E { width: 100%; height: calc(100% - 56px); border-radius: 16px 16px 0 0; overflow: hidden; }
+  .lv-drawer.lv-E .lv-grab { display: block; flex: 0 0 auto; width: 40px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--theme-border-strong); }
+  .lv-drawer.lv-E .job-editor-title { padding-top: 10px; }
+  .lv-drawer.lv-E .lv-form { padding: 4px 16px !important; }
+  .lv-drawer.lv-E .lv-form { gap: 12px; padding: 16px !important; }
+  .lv-drawer.lv-E .lv-row { padding: 0; border-bottom: 0; }
+  .lv-drawer.lv-E .lv-row .job-field { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .lv-drawer.lv-E .lv-row .job-field > span { margin-bottom: 7px; }
+}

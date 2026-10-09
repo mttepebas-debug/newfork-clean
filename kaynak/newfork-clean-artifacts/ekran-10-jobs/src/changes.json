@@ -1,0 +1,37 @@
+[
+  {
+    "item": "V1 · iş tablosu → Employees sütunu",
+    "prop": "hücre içeriği",
+    "from": "baş harf yuvarlağı + kişi adı (ör. Jordan Lee)",
+    "to": "o işe atanmış kişi sayısı; ortak tablo hücresi gibi 13 px, `--theme-list-cell-text`, normal kalınlık, rakamlar eşit genişlikte; sütun 140 px",
+    "scope": "yalnız Jobs; ortak bileşen ya da token değişmez"
+  },
+  {
+    "item": "V1 · çekmece → Employees başlığı",
+    "prop": "yardım yazısı",
+    "from": "Check to assign. Uncheck to remove.",
+    "to": "kaldırıldı",
+    "scope": "yalnız Jobs çekmecesi"
+  },
+  {
+    "item": "V1 · çekmece → çalışan listesi alanı",
+    "prop": "listenin sınırı ve kaydırma",
+    "from": "son satırdan sonra çizgisiz beyaz boşluk (liste bugün de kendi alanında kayıyor)",
+    "to": "listenin üstünden alt çubuğun 20 px üstüne kadar tek çerçeve (`--theme-list-frame`, köşe 7); boş yer 56 px aralıklı çizgili dolgu satırı (`--theme-border-subtle`); satırlar çerçevenin içinde kayar (Mert: C + sağ/sol dikey kenar)",
+    "scope": "yalnız Jobs çekmecesi; var olan token'lar, değer değişmez"
+  },
+  {
+    "item": "V1 · çekmece → sayfa geçişi ve bekleyen değişiklik satırı",
+    "prop": "görünürlük",
+    "from": "V1 görüntüsünde yoktu (bugünkü uygulamada var)",
+    "to": "geri kondu: çerçevenin altında \"1–4 of 4\" ve ‹ › (50'şer kişi), alt çubuğun üstünde \"No pending changes\" satırı; bugünkü davranış",
+    "scope": "yalnız Jobs çekmecesi; yeni davranış yok"
+  },
+  {
+    "item": "V1 · çekmece → metinler ve başlık",
+    "prop": "metin",
+    "from": "\"Save changes\"; \"Unassigned\"; filtrede sayı yok; \"Details\" başlığı yok; \"1 employees assigned\"",
+    "to": "\"Save\"; \"Not assigned\"; \"All 4 · Assigned 1 · Not assigned 3\"; \"Details\" başlığı; \"1 employee assigned\"; başlıkta iş renginde dolu kare ve büyük harf DINING ROOM",
+    "scope": "yalnız Jobs çekmecesi; koda geçerken e2e metin ikizleri aranır"
+  }
+]

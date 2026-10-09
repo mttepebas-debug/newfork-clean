@@ -1,0 +1,774 @@
+{
+  "oldBaseUrl": "http://127.0.0.1:5173",
+  "cleanBaseUrl": "http://127.0.0.1:5174",
+  "generatedAt": "2026-09-01T19:40:06.595Z",
+  "captures": [
+    {
+      "route": {
+        "name": "weekly",
+        "path": "/app/schedule?date=2026-08-17&view=week"
+      },
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "reference": {
+        "side": "reference",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\reference-schedule-weekly-desktop.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5173/app/schedule?date=2026-08-17&view=week",
+          "documentWidth": 1440,
+          "documentScrollWidth": 1440,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Meyhouse Sep 1st, Tuesday Workspace Schedule Availability Time Entries Important Dates Employees Announcements Notifications Settings Account Sign out Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Aug 17 – Aug 23, 2026 Weekly view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 Alex Kim E-0002 Open-Server 9a–5p Close-Server 6p–2a +1 Dinner-Server 3p–11p Open-Server Main Dining 9a–5p Close-Server Main Dining 6p–2a +1 Dinner-Server Main Dining 3p–11p Jordy Lee E-0003 Bartender 6p–10p Dinner-Bartender 3p–11p Bartender Main Dining 6p–10p Dinner-Bartender Main Dining 3p–11p Sam Rivera E-0004 Open-Line Cook Garden Room 9a–5p Dinner-Line Cook Ga",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 2580,
+          "gridTemplateColumns": "200px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun",
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Close-Server6p–2a +1",
+            "Dinner-Server3p–11p",
+            "Open-ServerMain Dining9a–5p",
+            "Close-ServerMain Dining6p–2a +1",
+            "Dinner-ServerMain Dining3p–11p",
+            "Bartender6p–10p",
+            "Dinner-Bartender3p–11p",
+            "BartenderMain Dining6p–10p",
+            "Dinner-BartenderMain Dining3p–11p",
+            "Open-Line CookGarden Room9a–5p",
+            "Dinner-Line CookGarden Room3p–11p",
+            "Open-Line Cook9a–5p",
+            "Dinner-Line Cook3p–11p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 14,
+            "minWidth": 157,
+            "maxWidth": 157,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 14,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 42,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 373,
+          "dataDropCellCount": 42
+        }
+      },
+      "clean": {
+        "side": "clean",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-weekly-desktop.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=week",
+          "documentWidth": 1440,
+          "documentScrollWidth": 1440,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Meyhouse Sep 1st, Tuesday Workspace Schedule Availability Time Entries Important Dates Employees Announcements Notifications Settings Account Sign out Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Aug 17 – Aug 23, 2026 Weekly view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 Alex Kim E-0002 Open-Server 9a–5p Close-Server 6p–2a +1 Dinner-Server 3p–11p Open-Server Main Dining 9a–5p Close-Server Main Dining 6p–2a +1 Dinner-Server Main Dining 3p–11p Jordy Lee E-0003 Bartender 6p–10p Dinner-Bartender 3p–11p Bartender Main Dining 6p–10p Dinner-Bartender Main Dining 3p–11p Sam Rivera E-0004 Open-Line Cook Garden Room 9a–5p Dinner-Line Cook Ga",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 2580,
+          "gridTemplateColumns": "200px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun",
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Close-Server6p–2a +1",
+            "Dinner-Server3p–11p",
+            "Open-ServerMain Dining9a–5p",
+            "Close-ServerMain Dining6p–2a +1",
+            "Dinner-ServerMain Dining3p–11p",
+            "Bartender6p–10p",
+            "Dinner-Bartender3p–11p",
+            "BartenderMain Dining6p–10p",
+            "Dinner-BartenderMain Dining3p–11p",
+            "Open-Line CookGarden Room9a–5p",
+            "Dinner-Line CookGarden Room3p–11p",
+            "Open-Line Cook9a–5p",
+            "Dinner-Line Cook3p–11p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 14,
+            "minWidth": 157,
+            "maxWidth": 157,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 14,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 42,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 373,
+          "dataDropCellCount": 42
+        }
+      }
+    },
+    {
+      "route": {
+        "name": "weekly",
+        "path": "/app/schedule?date=2026-08-17&view=week"
+      },
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 1000
+      },
+      "reference": {
+        "side": "reference",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\reference-schedule-weekly-mobile.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5173/app/schedule?date=2026-08-17&view=week",
+          "documentWidth": 390,
+          "documentScrollWidth": 390,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Aug 17 – Aug 23, 2026 Weekly view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 Alex Kim E-0002 Open-Server 9a–5p Close-Server 6p–2a +1 Dinner-Server 3p–11p Open-Server Main Dining 9a–5p Close-Server Main Dining 6p–2a +1 Dinner-Server Main Dining 3p–11p Jordy Lee E-0003 Bartender 6p–10p Dinner-Bartender 3p–11p Bartender Main Dining 6p–10p Dinner-Bartender Main Dining 3p–11p Sam Rivera E-0004 Open-Line Cook Garden Room 9a–5p Dinner-Line Cook Garden Room 3p–11p Open-Line Cook 9a–5p Dinner-Line Cook 3p–11p",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 2580,
+          "gridTemplateColumns": "200px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun",
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Close-Server6p–2a +1",
+            "Dinner-Server3p–11p",
+            "Open-ServerMain Dining9a–5p",
+            "Close-ServerMain Dining6p–2a +1",
+            "Dinner-ServerMain Dining3p–11p",
+            "Bartender6p–10p",
+            "Dinner-Bartender3p–11p",
+            "BartenderMain Dining6p–10p",
+            "Dinner-BartenderMain Dining3p–11p",
+            "Open-Line CookGarden Room9a–5p",
+            "Dinner-Line CookGarden Room3p–11p",
+            "Open-Line Cook9a–5p",
+            "Dinner-Line Cook3p–11p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 14,
+            "minWidth": 157,
+            "maxWidth": 157,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 14,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 42,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 373,
+          "dataDropCellCount": 42
+        }
+      },
+      "clean": {
+        "side": "clean",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-weekly-mobile.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=week",
+          "documentWidth": 390,
+          "documentScrollWidth": 390,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Aug 17 – Aug 23, 2026 Weekly view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 MON 17 TUE 18 WED 19 THU 20 FRI 21 SAT 22 SUN 23 Alex Kim E-0002 Open-Server 9a–5p Close-Server 6p–2a +1 Dinner-Server 3p–11p Open-Server Main Dining 9a–5p Close-Server Main Dining 6p–2a +1 Dinner-Server Main Dining 3p–11p Jordy Lee E-0003 Bartender 6p–10p Dinner-Bartender 3p–11p Bartender Main Dining 6p–10p Dinner-Bartender Main Dining 3p–11p Sam Rivera E-0004 Open-Line Cook Garden Room 9a–5p Dinner-Line Cook Garden Room 3p–11p Open-Line Cook 9a–5p Dinner-Line Cook 3p–11p",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 2580,
+          "gridTemplateColumns": "200px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun",
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Close-Server6p–2a +1",
+            "Dinner-Server3p–11p",
+            "Open-ServerMain Dining9a–5p",
+            "Close-ServerMain Dining6p–2a +1",
+            "Dinner-ServerMain Dining3p–11p",
+            "Bartender6p–10p",
+            "Dinner-Bartender3p–11p",
+            "BartenderMain Dining6p–10p",
+            "Dinner-BartenderMain Dining3p–11p",
+            "Open-Line CookGarden Room9a–5p",
+            "Dinner-Line CookGarden Room3p–11p",
+            "Open-Line Cook9a–5p",
+            "Dinner-Line Cook3p–11p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 14,
+            "minWidth": 157,
+            "maxWidth": 157,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 14,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 42,
+            "minWidth": 170,
+            "maxWidth": 170,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 373,
+          "dataDropCellCount": 42
+        }
+      }
+    },
+    {
+      "route": {
+        "name": "daily",
+        "path": "/app/schedule?date=2026-08-17&view=day"
+      },
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "reference": {
+        "side": "reference",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\reference-schedule-daily-desktop.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5173/app/schedule?date=2026-08-17&view=day",
+          "documentWidth": 1440,
+          "documentScrollWidth": 1440,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Meyhouse Sep 1st, Tuesday Workspace Schedule Availability Time Entries Important Dates Employees Announcements Notifications Settings Account Sign out Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Monday, August 17, 2026 Daily view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 MON 17 Alex Kim E-0002 Open-Server 9a–5p Open-Server Main Dining 9a–5p Jordy Lee E-0003 Sam Rivera E-0004",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 1150,
+          "gridTemplateColumns": "200px 475px 475px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Mon"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Open-ServerMain Dining9a–5p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 2,
+            "minWidth": 462,
+            "maxWidth": 462,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 2,
+            "minWidth": 475,
+            "maxWidth": 475,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 6,
+            "minWidth": 475,
+            "maxWidth": 475,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 194,
+          "dataDropCellCount": 6
+        }
+      },
+      "clean": {
+        "side": "clean",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-daily-desktop.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=day",
+          "documentWidth": 1440,
+          "documentScrollWidth": 1440,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Meyhouse Sep 1st, Tuesday Workspace Schedule Availability Time Entries Important Dates Employees Announcements Notifications Settings Account Sign out Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Monday, August 17, 2026 Daily view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 MON 17 Alex Kim E-0002 Open-Server 9a–5p Open-Server Main Dining 9a–5p Jordy Lee E-0003 Sam Rivera E-0004",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 1150,
+          "gridTemplateColumns": "200px 475px 475px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Mon"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Open-ServerMain Dining9a–5p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 2,
+            "minWidth": 462,
+            "maxWidth": 462,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 2,
+            "minWidth": 475,
+            "maxWidth": 475,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 6,
+            "minWidth": 475,
+            "maxWidth": 475,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 194,
+          "dataDropCellCount": 6
+        }
+      }
+    },
+    {
+      "route": {
+        "name": "daily",
+        "path": "/app/schedule?date=2026-08-17&view=day"
+      },
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 1000
+      },
+      "reference": {
+        "side": "reference",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\reference-schedule-daily-mobile.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5173/app/schedule?date=2026-08-17&view=day",
+          "documentWidth": 390,
+          "documentScrollWidth": 390,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Monday, August 17, 2026 Daily view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 MON 17 Alex Kim E-0002 Open-Server 9a–5p Open-Server Main Dining 9a–5p Jordy Lee E-0003 Sam Rivera E-0004",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 561,
+          "gridTemplateColumns": "200px 180.719px 180.719px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Mon"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Open-ServerMain Dining9a–5p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 2,
+            "minWidth": 168,
+            "maxWidth": 168,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 2,
+            "minWidth": 181,
+            "maxWidth": 181,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 6,
+            "minWidth": 181,
+            "maxWidth": 181,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 198,
+          "dataDropCellCount": 6
+        }
+      },
+      "clean": {
+        "side": "clean",
+        "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-daily-mobile.png",
+        "metrics": {
+          "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=day",
+          "documentWidth": 390,
+          "documentScrollWidth": 390,
+          "documentOverflowFree": true,
+          "bodyTextSample": "Calendar Settings Hide Unscheduled All locations All shifts All jobs All employees Export New Schedule Templates Schedule Monday, August 17, 2026 Daily view Main Dining 5 Garden Room 2 Published schedule VIEW ONLY ME Meyhouse Edit Main Dining PUBLISHED Garden Room PUBLISHED EMPLOYEES MON 17 MON 17 Alex Kim E-0002 Open-Server 9a–5p Open-Server Main Dining 9a–5p Jordy Lee E-0003 Sam Rivera E-0004",
+          "topbarVisible": true,
+          "commandStripVisible": true,
+          "readOnlyBannerText": "Published scheduleView only",
+          "gridVisible": true,
+          "gridWidth": 561,
+          "gridTemplateColumns": "200px 180.719px 180.719px",
+          "locations": [],
+          "dayHeaders": [
+            "Mon",
+            "Mon"
+          ],
+          "employeeNames": [],
+          "shiftBadgeTexts": [
+            "Open-Server9a–5p",
+            "Open-ServerMain Dining9a–5p"
+          ],
+          "presetChipTexts": [],
+          "shiftBadges": {
+            "count": 2,
+            "minWidth": 168,
+            "maxWidth": 168,
+            "minHeight": 59,
+            "maxHeight": 63,
+            "overflowingCount": 0
+          },
+          "dayHeaderRects": {
+            "count": 2,
+            "minWidth": 181,
+            "maxWidth": 181,
+            "minHeight": 50,
+            "maxHeight": 50,
+            "overflowingCount": 0
+          },
+          "cells": {
+            "count": 6,
+            "minWidth": 181,
+            "maxWidth": 181,
+            "minHeight": 94,
+            "maxHeight": 94,
+            "overflowingCount": 0
+          },
+          "presetChips": {
+            "count": 0,
+            "minWidth": 0,
+            "maxWidth": 0,
+            "minHeight": 0,
+            "maxHeight": 0,
+            "overflowingCount": 0
+          },
+          "scheduleClassElementCount": 198,
+          "dataDropCellCount": 6
+        }
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "route": {
+        "name": "weekly",
+        "path": "/app/schedule?date=2026-08-17&view=week"
+      },
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "checked": [
+        "documentOverflowFree",
+        "topbarVisible",
+        "commandStripVisible",
+        "gridVisible",
+        "locations",
+        "dayHeaders",
+        "employeeNames",
+        "shiftBadgeTexts",
+        "presetChipTexts",
+        "shiftBadgeCount",
+        "cellCount",
+        "dayHeaderCount",
+        "presetChipCount",
+        "gridWidth",
+        "shiftBadgeMinHeight",
+        "shiftBadgeMaxHeight",
+        "shiftBadgeOverflow",
+        "cellOverflow"
+      ],
+      "failures": []
+    },
+    {
+      "route": {
+        "name": "weekly",
+        "path": "/app/schedule?date=2026-08-17&view=week"
+      },
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 1000
+      },
+      "checked": [
+        "documentOverflowFree",
+        "topbarVisible",
+        "commandStripVisible",
+        "gridVisible",
+        "locations",
+        "dayHeaders",
+        "employeeNames",
+        "shiftBadgeTexts",
+        "presetChipTexts",
+        "shiftBadgeCount",
+        "cellCount",
+        "dayHeaderCount",
+        "presetChipCount",
+        "gridWidth",
+        "shiftBadgeMinHeight",
+        "shiftBadgeMaxHeight",
+        "shiftBadgeOverflow",
+        "cellOverflow"
+      ],
+      "failures": []
+    },
+    {
+      "route": {
+        "name": "daily",
+        "path": "/app/schedule?date=2026-08-17&view=day"
+      },
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 1100
+      },
+      "checked": [
+        "documentOverflowFree",
+        "topbarVisible",
+        "commandStripVisible",
+        "gridVisible",
+        "locations",
+        "dayHeaders",
+        "employeeNames",
+        "shiftBadgeTexts",
+        "presetChipTexts",
+        "shiftBadgeCount",
+        "cellCount",
+        "dayHeaderCount",
+        "presetChipCount",
+        "gridWidth",
+        "shiftBadgeMinHeight",
+        "shiftBadgeMaxHeight",
+        "shiftBadgeOverflow",
+        "cellOverflow"
+      ],
+      "failures": []
+    },
+    {
+      "route": {
+        "name": "daily",
+        "path": "/app/schedule?date=2026-08-17&view=day"
+      },
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 1000
+      },
+      "checked": [
+        "documentOverflowFree",
+        "topbarVisible",
+        "commandStripVisible",
+        "gridVisible",
+        "locations",
+        "dayHeaders",
+        "employeeNames",
+        "shiftBadgeTexts",
+        "presetChipTexts",
+        "shiftBadgeCount",
+        "cellCount",
+        "dayHeaderCount",
+        "presetChipCount",
+        "gridWidth",
+        "shiftBadgeMinHeight",
+        "shiftBadgeMaxHeight",
+        "shiftBadgeOverflow",
+        "cellOverflow"
+      ],
+      "failures": []
+    }
+  ],
+  "failureCount": 0
+}

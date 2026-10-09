@@ -1,0 +1,3614 @@
+{
+  "sourceHead": "fbdcaeaa0eca6b831ba098626b5808c9253f29c6",
+  "base": "415b15f77180fbf2f7aaa1a7a9740d886c86a967",
+  "scope": "Source-level restoration triage, not complete behavioral equivalence or deletion approval",
+  "rows": [
+    {
+      "file": "apps/api/package.json",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 0,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -11,7 +11,6 @@"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/001.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D01"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/api/src/app.test.ts",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 1735,
+      "mainRemoved": 54,
+      "hunks": [
+        "@@ -79,6 +79,18 @@ const resolvedContext: ActiveWorkspaceContext = {",
+        "@@ -172,6 +184,7 @@ describe(\"api app\", () => {",
+        "@@ -197,6 +210,7 @@ describe(\"api app\", () => {",
+        "@@ -204,6 +218,40 @@ describe(\"api app\", () => {",
+        "@@ -240,6 +288,28 @@ describe(\"api app\", () => {",
+        "@@ -253,6 +323,20 @@ describe(\"api app\", () => {",
+        "@@ -289,6 +373,105 @@ describe(\"api app\", () => {",
+        "@@ -331,6 +514,24 @@ describe(\"api app\", () => {",
+        "@@ -345,6 +546,54 @@ describe(\"api app\", () => {",
+        "@@ -529,12 +778,14 @@ describe(\"api app\", () => {",
+        "@@ -558,6 +809,186 @@ describe(\"api app\", () => {",
+        "@@ -640,6 +1071,31 @@ describe(\"api app\", () => {",
+        "@@ -842,13 +1298,19 @@ describe(\"api app\", () => {",
+        "@@ -856,7 +1318,10 @@ describe(\"api app\", () => {",
+        "@@ -865,7 +1330,10 @@ describe(\"api app\", () => {",
+        "@@ -926,6 +1394,159 @@ describe(\"api app\", () => {",
+        "@@ -1069,6 +1690,203 @@ describe(\"api app\", () => {",
+        "@@ -1146,8 +1964,22 @@ describe(\"api app\", () => {",
+        "@@ -1156,18 +1988,20 @@ describe(\"api app\", () => {",
+        "@@ -1178,53 +2012,382 @@ describe(\"api app\", () => {",
+        "@@ -1242,33 +2405,396 @@ describe(\"api app\", () => {",
+        "@@ -1292,6 +2818,22 @@ describe(\"api app\", () => {",
+        "@@ -1318,6 +2860,68 @@ describe(\"api app\", () => {",
+        "@@ -1645,6 +3249,7 @@ describe(\"api app\", () => {",
+        "@@ -1670,6 +3275,7 @@ describe(\"api app\", () => {",
+        "@@ -1727,6 +3333,7 @@ describe(\"api app\", () => {",
+        "@@ -1761,6 +3368,7 @@ describe(\"api app\", () => {",
+        "@@ -1789,6 +3397,7 @@ describe(\"api app\", () => {",
+        "@@ -1875,6 +3484,22 @@ describe(\"api app\", () => {",
+        "@@ -1893,6 +3518,29 @@ describe(\"api app\", () => {",
+        "@@ -1913,6 +3561,7 @@ describe(\"api app\", () => {",
+        "@@ -1938,6 +3587,14 @@ describe(\"api app\", () => {",
+        "@@ -2983,6 +4640,24 @@ describe(\"api app\", () => {",
+        "@@ -3655,12 +5330,18 @@ function onboardingServiceMock("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/002.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D01",
+        "D08",
+        "D10",
+        "D18"
+      ],
+      "action": "SSN bilincli kaldirilmis; diger guncel baglantilar korunur"
+    },
+    {
+      "file": "apps/api/src/app.ts",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 388,
+      "mainRemoved": 71,
+      "hunks": [
+        "@@ -13,8 +13,14 @@ import {",
+        "@@ -26,15 +32,15 @@ import {",
+        "@@ -55,6 +61,10 @@ import {",
+        "@@ -107,6 +117,30 @@ const requestContextHeadersSchema = z.object({",
+        "@@ -138,7 +172,12 @@ interface BuildAppOptions {",
+        "@@ -174,6 +213,9 @@ const invitationAcceptanceSchema = z.object({",
+        "@@ -190,11 +232,21 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -243,6 +295,7 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -302,7 +355,7 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -328,13 +381,37 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -346,6 +423,13 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -358,31 +442,31 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -401,35 +485,81 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -452,7 +582,58 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -463,7 +644,10 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -476,18 +660,50 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -495,6 +711,9 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -539,6 +758,26 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -573,7 +812,7 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -600,11 +839,75 @@ export function buildApp(options: BuildAppOptions = {}) {",
+        "@@ -626,14 +929,31 @@ function createWorkspaceAccountServiceFromEnvironment(): WorkspaceAccountService",
+        "@@ -642,7 +962,7 @@ function developmentWorkspaceContext(",
+        "@@ -657,14 +977,17 @@ function createDevelopmentWorkspaceContextResolver(",
+        "@@ -677,6 +1000,20 @@ function createEmployeeDirectoryServiceFromEnvironment(): EmployeeDirectoryServi",
+        "@@ -696,20 +1033,9 @@ function createOnboardingServiceFromEnvironment(): EmployeeOnboardingService | n",
+        "@@ -842,15 +1168,6 @@ function integerEnvironmentValue("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/003.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "resolveRequestContext"
+      ],
+      "decisionIds": [
+        "D01",
+        "D08",
+        "D10"
+      ],
+      "action": "SSN bilincli kaldirilmis; diger guncel baglantilar korunur"
+    },
+    {
+      "file": "apps/api/src/auth/workspace-context.ts",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 184,
+      "mainRemoved": 7,
+      "hunks": [
+        "@@ -1,4 +1,5 @@",
+        "@@ -6,7 +7,121 @@ import {",
+        "@@ -37,24 +152,66 @@ export function createSupabaseWorkspaceContextResolver(",
+        "@@ -84,3 +241,23 @@ export function createSupabaseWorkspaceContextResolver("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/004.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/communications/communication-routes.ts",
+      "status": " M",
+      "group": "communications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 197,
+      "mainRemoved": 36,
+      "hunks": [
+        "@@ -1,19 +1,28 @@",
+        "@@ -22,6 +31,10 @@ const announcementSaveBody = z.object({",
+        "@@ -72,11 +85,10 @@ export function registerCommunicationRoutes(",
+        "@@ -100,11 +112,10 @@ export function registerCommunicationRoutes(",
+        "@@ -136,11 +147,10 @@ export function registerCommunicationRoutes(",
+        "@@ -173,11 +183,9 @@ export function registerCommunicationRoutes(",
+        "@@ -211,11 +219,9 @@ export function registerCommunicationRoutes(",
+        "@@ -239,8 +245,11 @@ export function registerCommunicationRoutes(",
+        "@@ -266,8 +275,11 @@ export function registerCommunicationRoutes(",
+        "@@ -284,6 +296,143 @@ export function registerCommunicationRoutes(",
+        "@@ -291,27 +440,39 @@ async function authorize("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/005.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D16"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/communications/communication-service.ts",
+      "status": " M",
+      "group": "communications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 69,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -2,13 +2,20 @@ import {",
+        "@@ -60,6 +67,21 @@ export interface CommunicationService {",
+        "@@ -104,7 +126,7 @@ export function createCommunicationServiceWithClient(",
+        "@@ -113,6 +135,8 @@ export function createCommunicationServiceWithClient(",
+        "@@ -183,6 +207,50 @@ export function createCommunicationServiceWithClient("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/006.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D16"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/api/src/employee-hub/employee-hub-service.ts",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 73,
+      "mainRemoved": 18,
+      "hunks": [
+        "@@ -1,4 +1,7 @@",
+        "@@ -7,7 +10,6 @@ import {",
+        "@@ -19,17 +21,21 @@ import {",
+        "@@ -85,6 +91,25 @@ export function createEmployeeHubService(options: {",
+        "@@ -95,23 +120,46 @@ export function createEmployeeHubService(options: {",
+        "@@ -135,6 +183,13 @@ export function createEmployeeHubService(options: {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/007.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D02",
+        "D07"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-export-cron.test.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 31,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -180,6 +180,35 @@ describe(\"scheduled schedule export cron\", () => {",
+        "@@ -187,11 +216,13 @@ function scheduleServiceMock(candidates: ScheduledExportCronCandidate[]) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/008.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D03",
+        "D11",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-export-cron.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 13,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -56,6 +56,19 @@ export async function runScheduledExportsCron(input: {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/009.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-lineup-service.ts",
+      "status": " M",
+      "group": "lineup",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 273,
+      "mainRemoved": 3,
+      "hunks": [
+        "@@ -14,204 +14,474 @@ import {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/010.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D06"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-service.test.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 278,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -4,15 +4,17 @@ import { createScheduleReadService } from \"./schedule-service\";",
+        "@@ -27,6 +29,7 @@ const departmentId = \"22000000-0000-4000-8000-000000000001\";",
+        "@@ -34,6 +37,38 @@ beforeEach(() => {",
+        "@@ -175,6 +210,248 @@ describe(\"createScheduleReadService realtime invalidation\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/011.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D03",
+        "D11",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-service.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 237,
+      "mainRemoved": 12,
+      "hunks": [
+        "@@ -1,4 +1,8 @@",
+        "@@ -92,6 +96,11 @@ export type ScheduledExportCronCandidate = z.infer<",
+        "@@ -158,11 +167,31 @@ export interface ScheduleReadService {",
+        "@@ -229,6 +258,7 @@ export interface ScheduleReadService {",
+        "@@ -371,6 +401,12 @@ export interface ScheduleReadService {",
+        "@@ -397,7 +433,7 @@ export function createScheduleReadService(options: {",
+        "@@ -427,14 +463,17 @@ export function createScheduleReadService(options: {",
+        "@@ -444,7 +483,9 @@ export function createScheduleReadService(options: {",
+        "@@ -460,9 +501,20 @@ export function createScheduleReadService(options: {",
+        "@@ -542,7 +594,8 @@ export function createScheduleReadService(options: {",
+        "@@ -555,6 +608,21 @@ export function createScheduleReadService(options: {",
+        "@@ -579,6 +647,44 @@ export function createScheduleReadService(options: {",
+        "@@ -776,7 +882,25 @@ export function createScheduleReadService(options: {",
+        "@@ -954,7 +1078,9 @@ export function createScheduleReadService(options: {",
+        "@@ -1116,6 +1242,67 @@ export function createScheduleReadService(options: {",
+        "@@ -1146,6 +1333,36 @@ export function createScheduleReadService(options: {",
+        "@@ -1207,13 +1424,21 @@ function importantDateTouchesRange("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/012.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/App.test.tsx",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 18,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -625,12 +625,14 @@ vi.mock(\"./communications/communications-data\", () => ({",
+        "@@ -638,6 +640,8 @@ vi.mock(\"./communications/communications-data\", () => ({",
+        "@@ -674,7 +678,10 @@ describe(\"App\", () => {",
+        "@@ -5069,6 +5076,16 @@ describe(\"App\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/014.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D08",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/App.tsx",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 89,
+      "mainRemoved": 19,
+      "hunks": [
+        "@@ -14,6 +14,7 @@ import { SignInPage } from \"./views/SignInPage\";",
+        "@@ -46,6 +47,16 @@ const NotificationPreferencesPage = lazy(",
+        "@@ -55,6 +66,9 @@ const EmployeesPage = lazy(() => import(\"./employees/EmployeesPage\"));",
+        "@@ -91,11 +105,8 @@ const NotificationSettingsPage = lazy(",
+        "@@ -125,7 +136,7 @@ export function App() {",
+        "@@ -150,6 +161,7 @@ export function App() {",
+        "@@ -159,6 +171,14 @@ export function App() {",
+        "@@ -175,6 +195,54 @@ export function App() {",
+        "@@ -303,16 +371,7 @@ export function App() {",
+        "@@ -351,7 +410,17 @@ export function App() {",
+        "@@ -427,7 +496,7 @@ export function App() {",
+        "@@ -435,10 +504,11 @@ export function App() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/015.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "ShiftTypesSettingsPage",
+        "ShiftLabelsSettingsPage"
+      ],
+      "decisionIds": [
+        "D07",
+        "D08",
+        "D12",
+        "D15"
+      ],
+      "action": "Time Entries kaynaklari korunur; menu MVP kapsaminda geri eklenmez"
+    },
+    {
+      "file": "apps/web/src/account/PreferencesPage.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 14,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -1,7 +1,7 @@",
+        "@@ -19,6 +19,13 @@ export default function PreferencesPage() {",
+        "@@ -28,6 +35,7 @@ export default function PreferencesPage() {",
+        "@@ -63,7 +71,11 @@ export default function PreferencesPage() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/017.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/account/ProfilePage.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 116,
+      "mainRemoved": 5,
+      "hunks": [
+        "@@ -1,14 +1,28 @@",
+        "@@ -17,7 +31,8 @@ export default function ProfilePage() {",
+        "@@ -30,6 +45,30 @@ export default function ProfilePage() {",
+        "@@ -45,11 +84,15 @@ export default function ProfilePage() {",
+        "@@ -62,6 +105,25 @@ export default function ProfilePage() {",
+        "@@ -78,6 +140,55 @@ export default function ProfilePage() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/018.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/account/WorkspacesPage.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 569,
+      "mainRemoved": 29,
+      "hunks": [
+        "@@ -1,20 +1,28 @@",
+        "@@ -22,6 +30,28 @@ export default function WorkspacesPage() {",
+        "@@ -53,6 +83,14 @@ export default function WorkspacesPage() {",
+        "@@ -61,7 +99,11 @@ export default function WorkspacesPage() {",
+        "@@ -77,6 +119,7 @@ export default function WorkspacesPage() {",
+        "@@ -85,10 +128,10 @@ export default function WorkspacesPage() {",
+        "@@ -107,6 +150,151 @@ export default function WorkspacesPage() {",
+        "@@ -130,6 +318,8 @@ export default function WorkspacesPage() {",
+        "@@ -138,34 +328,366 @@ export default function WorkspacesPage() {",
+        "@@ -205,7 +727,25 @@ function workspaceSummaryFromContext("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/019.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/auth/AuthContext.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 226,
+      "mainRemoved": 37,
+      "hunks": [
+        "@@ -7,6 +7,7 @@ import {",
+        "@@ -14,24 +15,30 @@ import {",
+        "@@ -44,6 +51,53 @@ function storedDevelopmentRole(): WorkspaceRole | null {",
+        "@@ -52,7 +106,11 @@ interface AuthContextValue {",
+        "@@ -60,25 +118,57 @@ interface AuthContextValue {",
+        "@@ -87,7 +177,7 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -95,46 +185,88 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -161,17 +293,22 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -187,19 +324,33 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -209,6 +360,9 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -217,8 +371,8 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -226,18 +380,41 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {",
+        "@@ -248,32 +425,44 @@ export function AuthProvider({ children }: { readonly children: ReactNode }) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/020.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/auth/ProtectedRoute.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 8,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -60,7 +60,14 @@ export function ProtectedRoute({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/022.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/communications/communications-data.ts",
+      "status": " M",
+      "group": "communications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 72,
+      "mainRemoved": 11,
+      "hunks": [
+        "@@ -4,13 +4,24 @@ import {",
+        "@@ -22,19 +33,19 @@ async function request(",
+        "@@ -64,6 +75,56 @@ export async function saveWorkspaceLayout("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/023.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D16"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/employee-hub/employee-hub-data.ts",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 29,
+      "mainRemoved": 17,
+      "hunks": [
+        "@@ -1,17 +1,23 @@",
+        "@@ -20,18 +26,19 @@ async function request(",
+        "@@ -53,14 +60,19 @@ export async function getEmployeeHub("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/024.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "saveEmployeeAvailability"
+      ],
+      "decisionIds": [
+        "D02",
+        "D07",
+        "D08"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/employees/EmployeesPage.tsx",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 53,
+      "mainRemoved": 32,
+      "hunks": [
+        "@@ -17,6 +17,7 @@ import {",
+        "@@ -39,13 +40,7 @@ const statusFilters = [",
+        "@@ -171,7 +166,9 @@ export default function EmployeesPage() {",
+        "@@ -208,11 +205,13 @@ export default function EmployeesPage() {",
+        "@@ -293,7 +292,10 @@ export default function EmployeesPage() {",
+        "@@ -400,8 +402,21 @@ function EmployeeColumnPicker({",
+        "@@ -489,13 +504,15 @@ function renderEmployeeCell(",
+        "@@ -513,7 +530,6 @@ function renderEmployeeCell(",
+        "@@ -523,11 +539,13 @@ function renderEmployeeCell(",
+        "@@ -535,7 +553,6 @@ function renderEmployeeCell(",
+        "@@ -545,9 +562,13 @@ function renderEmployeeCell("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/026.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D10"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/employees/employee-data.ts",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 215,
+      "mainRemoved": 43,
+      "hunks": [
+        "@@ -1,14 +1,26 @@",
+        "@@ -21,6 +33,7 @@ export interface EmployeeReferenceData {",
+        "@@ -74,27 +87,30 @@ async function request(",
+        "@@ -124,6 +140,18 @@ export async function getEmployeeDetail(",
+        "@@ -138,6 +166,18 @@ export async function saveEmployee(",
+        "@@ -194,19 +234,19 @@ export async function loadEmployeeReferenceData(",
+        "@@ -223,18 +263,16 @@ export async function prepareEmployeeInvitation(",
+        "@@ -245,17 +283,37 @@ export async function prepareEmployeeInvitation(",
+        "@@ -263,22 +321,119 @@ export async function revokeEmployeeInvitation(",
+        "@@ -290,11 +445,28 @@ export async function acceptEmployeeInvitation("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/027.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D10"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/employees/onboarding-data.ts",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 25,
+      "mainRemoved": 48,
+      "hunks": [
+        "@@ -1,18 +1,12 @@",
+        "@@ -32,31 +26,6 @@ export async function saveMyOnboardingProfile(",
+        "@@ -125,11 +94,27 @@ export async function submitMyOnboarding(revision: number): Promise<number> {",
+        "@@ -170,20 +155,12 @@ export async function getEmployeeDocumentDownload("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/028.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "apiUrl",
+        "saveMySsn",
+        "saveMyAvailability"
+      ],
+      "decisionIds": [
+        "D01",
+        "D02",
+        "D10"
+      ],
+      "action": "SSN bilincli kaldirilmis; diger guncel baglantilar korunur"
+    },
+    {
+      "file": "apps/web/src/lib/supabase.ts",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 198,
+      "mainRemoved": 15,
+      "hunks": [
+        "@@ -18,6 +18,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();",
+        "@@ -36,6 +37,28 @@ export const developmentIdentityAllowed =",
+        "@@ -49,26 +72,36 @@ export function developmentBearerToken(): string | null {",
+        "@@ -84,9 +117,24 @@ async function apiRequest(",
+        "@@ -96,7 +144,7 @@ export async function loadAccountProfile(",
+        "@@ -116,6 +164,7 @@ export async function loadAccountProfile(",
+        "@@ -128,6 +177,7 @@ export async function saveAccountProfile(",
+        "@@ -171,7 +221,108 @@ export async function selectActiveWorkspace(",
+        "@@ -181,8 +332,9 @@ export async function saveOwnerOnboarding(",
+        "@@ -194,11 +346,42 @@ export async function saveOwnerOnboarding("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/030.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleEmployeeCard.test.tsx",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 13,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -21,6 +21,19 @@ function employee(overrides: Partial<ScheduleEmployee> = {}): ScheduleEmployee {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/033.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D10",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 5,
+      "mainRemoved": 3,
+      "hunks": [
+        "@@ -1,6 +1,7 @@",
+        "@@ -30,7 +31,8 @@ export function ScheduleEmployeeCard({",
+        "@@ -77,10 +79,10 @@ export function ScheduleEmployeeCard({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/034.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D10"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleGrid.test.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -252,7 +252,7 @@ describe(\"ScheduleGrid\", () => {",
+        "@@ -260,7 +260,7 @@ describe(\"ScheduleGrid\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/042.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D03",
+        "D11",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 3,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -67,6 +67,7 @@ export function ScheduleGrid({",
+        "@@ -110,6 +111,7 @@ export function ScheduleGrid({",
+        "@@ -226,7 +228,7 @@ export function ScheduleGrid({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/043.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 1,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -273,7 +273,7 @@ export function ScheduleGridBody({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/044.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/SchedulePresetRows.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -37,7 +37,7 @@ export interface PresetDropTarget extends PresetDragSource {",
+        "@@ -46,7 +46,7 @@ export interface PresetDragState extends PresetDragSource {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/053.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 89,
+      "mainRemoved": 18,
+      "hunks": [
+        "@@ -23,7 +23,7 @@ import {",
+        "@@ -33,12 +33,14 @@ import {",
+        "@@ -92,6 +94,12 @@ interface ScheduleTopBarProps {",
+        "@@ -177,10 +185,14 @@ export function ScheduleTopBar({",
+        "@@ -218,6 +230,37 @@ export function ScheduleTopBar({",
+        "@@ -367,7 +410,15 @@ export function ScheduleViewModeControls({",
+        "@@ -397,20 +448,40 @@ export function ScheduleViewModeControls({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/058.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D14"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleTotalsRow.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 3,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -81,6 +81,9 @@ export function ScheduleTotalValue({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/059.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 327,
+      "mainRemoved": 30,
+      "hunks": [
+        "@@ -1,8 +1,43 @@",
+        "@@ -80,6 +115,245 @@ function dispatchPointerEvent(",
+        "@@ -294,7 +568,7 @@ describe(\"ShiftQuickEditor\", () => {",
+        "@@ -331,8 +605,8 @@ describe(\"ShiftQuickEditor\", () => {",
+        "@@ -658,7 +932,7 @@ describe(\"ShiftQuickEditor\", () => {",
+        "@@ -699,29 +973,41 @@ describe(\"ShiftQuickEditor\", () => {",
+        "@@ -768,14 +1054,30 @@ describe(\"ShiftQuickEditor\", () => {",
+        "@@ -826,19 +1128,14 @@ describe(\"ShiftQuickEditor\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/062.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D03",
+        "D04",
+        "D05",
+        "D18"
+      ],
+      "action": "Kullanici mevcut checkoutu secti: acik onay yeterli, yazili gerekce zorunlu degil; kod/test korunur"
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 279,
+      "mainRemoved": 59,
+      "hunks": [
+        "@@ -3,6 +3,8 @@ import type {",
+        "@@ -41,8 +43,9 @@ import { ScheduleConflictNotice } from \"./ScheduleConflictNotice\";",
+        "@@ -244,6 +247,7 @@ function QuickEditorLabelMultiSelect({",
+        "@@ -260,6 +264,7 @@ export function ShiftQuickEditor({",
+        "@@ -317,18 +322,50 @@ export function ShiftQuickEditor({",
+        "@@ -347,33 +384,57 @@ export function ShiftQuickEditor({",
+        "@@ -381,48 +442,118 @@ export function ShiftQuickEditor({",
+        "@@ -457,7 +588,6 @@ export function ShiftQuickEditor({",
+        "@@ -664,6 +794,7 @@ export function ShiftQuickEditor({",
+        "@@ -677,6 +808,26 @@ export function ShiftQuickEditor({",
+        "@@ -747,6 +898,27 @@ export function ShiftQuickEditor({",
+        "@@ -764,13 +936,16 @@ export function ShiftQuickEditor({",
+        "@@ -790,16 +965,21 @@ export function ShiftQuickEditor({",
+        "@@ -808,6 +988,33 @@ export function ShiftQuickEditor({",
+        "@@ -836,7 +1043,7 @@ export function ShiftQuickEditor({",
+        "@@ -861,9 +1068,11 @@ export function ShiftQuickEditor({",
+        "@@ -872,23 +1081,37 @@ export function ShiftQuickEditor({",
+        "@@ -902,13 +1125,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/063.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "isAvailabilityConflictReason"
+      ],
+      "decisionIds": [
+        "D03",
+        "D04",
+        "D05"
+      ],
+      "action": "Kullanici mevcut checkoutu secti: acik onay yeterli, yazili gerekce zorunlu degil; kod/test korunur"
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useCellState.test.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 13,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -77,6 +77,19 @@ function model(shifts: readonly ScheduleShift[]): ScheduleReadModel {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/064.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D02",
+        "D03",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useCellState.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 8,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -49,6 +49,14 @@ export function orderScheduleCellShifts("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/065.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D02",
+        "D03"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleGridDragControllers.test.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 17,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -93,6 +93,23 @@ const model: ScheduleReadModel = {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/068.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D03",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 14,
+      "mainRemoved": 24,
+      "hunks": [
+        "@@ -14,6 +14,7 @@ import type {",
+        "@@ -25,6 +26,14 @@ import {",
+        "@@ -61,7 +70,7 @@ export function evaluateScheduleShiftDropTarget({",
+        "@@ -73,14 +82,6 @@ export function evaluateScheduleShiftDropTarget({",
+        "@@ -162,7 +163,7 @@ export function evaluateScheduleShiftGroupDropTarget({",
+        "@@ -178,26 +179,15 @@ export function evaluateScheduleShiftGroupDropTarget({",
+        "@@ -245,7 +235,7 @@ export function evaluateSchedulePresetDropTarget({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/069.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-extra-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D19"
+      ],
+      "action": "Cift fonksiyon ekleyen simule patchi uygulama"
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.test.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 6,
+      "mainRemoved": 4,
+      "hunks": [
+        "@@ -8,9 +8,11 @@ import {",
+        "@@ -18,7 +20,7 @@ function Harness({",
+        "@@ -58,9 +60,9 @@ describe(\"useSingleShiftPointerDrag\", () => {",
+        "@@ -81,7 +83,7 @@ describe(\"useSingleShiftPointerDrag\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/070.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D03",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -26,7 +26,7 @@ export interface ShiftDropEvaluation {",
+        "@@ -39,7 +39,7 @@ export interface ShiftDragState {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/071.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftClipboard.test.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 3,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -72,6 +72,9 @@ describe(\"shiftClipboard\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/080.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D04",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftClipboard.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 6,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -28,6 +28,9 @@ export function createShiftClipboardSnapshot(",
+        "@@ -70,6 +73,9 @@ export function applyShiftClipboardSnapshot("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/081.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D04"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftEditorEligibility.test.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -164,7 +164,7 @@ describe(\"shiftEditorEligibility\", () => {",
+        "@@ -186,7 +186,7 @@ describe(\"shiftEditorEligibility\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/082.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D03",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftEditorEligibility.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 6,
+      "mainRemoved": 6,
+      "hunks": [
+        "@@ -57,11 +57,9 @@ function isEmployeeEligibilityBlockingConflict(reason: unknown): boolean {",
+        "@@ -87,7 +85,9 @@ export function shouldShowShiftEditorCountStepper({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/083.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lineup-data.ts",
+      "status": " M",
+      "group": "lineup",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 312,
+      "mainRemoved": 12,
+      "hunks": [
+        "@@ -1,3 +1,17 @@",
+        "@@ -5,30 +19,45 @@ import {",
+        "@@ -40,6 +69,102 @@ async function request(",
+        "@@ -141,11 +266,16 @@ export async function previewLineupShare(",
+        "@@ -154,11 +284,181 @@ export async function shareLineup("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/086.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D06"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lineup-share.test.ts",
+      "status": " M",
+      "group": "lineup",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 39,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -98,6 +98,36 @@ const model = {",
+        "@@ -111,17 +141,24 @@ describe(\"lineup share text\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/087.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D06",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/lineup-share.ts",
+      "status": " M",
+      "group": "lineup",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 130,
+      "mainRemoved": 7,
+      "hunks": [
+        "@@ -1,24 +1,54 @@",
+        "@@ -26,47 +56,65 @@ export function formatLineupShareDate(iso: string): string {",
+        "@@ -75,40 +123,75 @@ function activeEntries(",
+        "@@ -118,39 +201,56 @@ export function buildLineupShareText(model: ScheduleLineupReadModel): string {",
+        "@@ -158,13 +258,17 @@ export async function copyLineupPng(element: HTMLElement): Promise<void> {",
+        "@@ -172,35 +276,54 @@ export async function downloadLineupPng("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/088.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D06"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/requests-data.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 16,
+      "mainRemoved": 6,
+      "hunks": [
+        "@@ -4,7 +4,8 @@ import {",
+        "@@ -16,15 +17,18 @@ async function request(",
+        "@@ -86,6 +90,12 @@ export async function decideTimeOff("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/089.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/schedule/schedule-data.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 44,
+      "mainRemoved": 10,
+      "hunks": [
+        "@@ -1,4 +1,7 @@",
+        "@@ -66,7 +69,11 @@ import {",
+        "@@ -370,6 +377,19 @@ export async function createScheduleShift(",
+        "@@ -540,6 +560,7 @@ export async function publishScheduleDraft(",
+        "@@ -677,6 +698,13 @@ export async function previewScheduleAutoFill(",
+        "@@ -838,14 +866,17 @@ async function activeScheduleDownload(",
+        "@@ -866,15 +897,18 @@ async function activeScheduleRequest("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/090.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/settings/GeneralSettingsPage.tsx",
+      "status": " M",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 58,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -1,7 +1,12 @@",
+        "@@ -11,6 +16,7 @@ import { saveScheduleLogo, updateOrganizationName } from \"./organization-data\";",
+        "@@ -18,11 +24,28 @@ export default function GeneralSettingsPage() {",
+        "@@ -130,6 +153,40 @@ export default function GeneralSettingsPage() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/091.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "status": " M",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 508,
+      "mainRemoved": 278,
+      "hunks": [
+        "@@ -1,3 +1,4 @@",
+        "@@ -6,23 +7,18 @@ import {",
+        "@@ -44,6 +40,7 @@ function newDraft(): ImportantDateInput {",
+        "@@ -54,6 +51,26 @@ function newDraft(): ImportantDateInput {",
+        "@@ -73,17 +90,25 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -96,88 +121,105 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -193,7 +235,7 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -204,181 +246,294 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -398,52 +553,79 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -451,14 +633,10 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -467,17 +645,63 @@ export default function ImportantDatesSettingsPage() {",
+        "@@ -495,3 +719,9 @@ function formatDate(value: string): string {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/092.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "SummaryTile"
+      ],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/settings/SettingsLayout.tsx",
+      "status": " M",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 10,
+      "mainRemoved": 14,
+      "hunks": [
+        "@@ -2,7 +2,6 @@ import {",
+        "@@ -11,9 +10,8 @@ import {",
+        "@@ -63,14 +61,8 @@ const groups = [",
+        "@@ -130,6 +122,7 @@ const groups = [",
+        "@@ -169,9 +162,12 @@ export default function SettingsLayout() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/094.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D12"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/settings/documents-data.ts",
+      "status": " M",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 1,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -52,7 +52,7 @@ export async function listDocumentTypes("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/095.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/settings/organization-data.ts",
+      "status": " M",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 68,
+      "mainRemoved": 18,
+      "hunks": [
+        "@@ -49,7 +49,7 @@ function message(error: { message: string } | null): void {",
+        "@@ -80,6 +80,8 @@ async function request(",
+        "@@ -239,6 +241,7 @@ export async function listLocations(workspaceId: string): Promise<Location[]> {",
+        "@@ -287,6 +290,7 @@ export async function listDepartments(",
+        "@@ -334,6 +338,7 @@ export async function listJobs(workspaceId: string): Promise<Job[]> {",
+        "@@ -344,7 +349,7 @@ export async function saveJob(",
+        "@@ -352,11 +357,20 @@ export async function saveJob(",
+        "@@ -408,10 +422,14 @@ export async function saveSchedulingSettings(",
+        "@@ -420,6 +438,9 @@ export async function listImportantDates(",
+        "@@ -436,15 +457,25 @@ export async function saveImportantDate(",
+        "@@ -471,8 +502,9 @@ export async function listShiftTypes(",
+        "@@ -496,18 +528,35 @@ export async function saveShiftType(",
+        "@@ -543,6 +592,7 @@ export async function listShiftLabels("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/097.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/settings/signature-templates-data.ts",
+      "status": " M",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 22,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -130,6 +130,19 @@ export async function approveSignatureRetentionPolicy(",
+        "@@ -175,6 +188,15 @@ export async function publishSignatureTemplate("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/099.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/shell/AppShell.tsx",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 154,
+      "mainRemoved": 183,
+      "hunks": [
+        "@@ -1,11 +1,10 @@",
+        "@@ -17,22 +16,26 @@ import {",
+        "@@ -43,6 +46,7 @@ const navItems: readonly NavItem[] = [",
+        "@@ -50,14 +54,18 @@ const navItems: readonly NavItem[] = [",
+        "@@ -67,19 +75,24 @@ const navItems: readonly NavItem[] = [",
+        "@@ -87,19 +100,32 @@ const navItems: readonly NavItem[] = [",
+        "@@ -107,12 +133,14 @@ const navItems: readonly NavItem[] = [",
+        "@@ -126,14 +154,17 @@ const settingsNavItem: NavItem = {",
+        "@@ -143,19 +174,6 @@ export function AppShell() {",
+        "@@ -217,26 +235,23 @@ export function AppShell() {",
+        "@@ -250,130 +265,114 @@ export function AppShell() {",
+        "@@ -432,7 +431,7 @@ export function AppShell() {",
+        "@@ -446,46 +445,18 @@ export function AppShell() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/100.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "startOfWeekIso",
+        "formatSidebarDate"
+      ],
+      "decisionIds": [
+        "D08",
+        "D14",
+        "D15",
+        "D17"
+      ],
+      "action": "Time Entries kaynaklari korunur; menu MVP kapsaminda geri eklenmez"
+    },
+    {
+      "file": "apps/web/src/styles.css",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 1101,
+      "mainRemoved": 20,
+      "hunks": [
+        "@@ -731,6 +731,41 @@",
+        "@@ -829,6 +864,32 @@",
+        "@@ -842,6 +903,7 @@",
+        "@@ -855,6 +917,7 @@",
+        "@@ -1207,6 +1270,7 @@",
+        "@@ -1223,6 +1287,15 @@",
+        "@@ -1659,6 +1732,30 @@",
+        "@@ -1733,6 +1830,102 @@",
+        "@@ -1774,6 +1967,49 @@",
+        "@@ -1829,6 +2065,129 @@",
+        "@@ -1929,6 +2288,80 @@",
+        "@@ -2630,6 +3063,17 @@ select:focus-visible {",
+        "@@ -2659,6 +3103,9 @@ select:focus-visible {",
+        "@@ -2953,6 +3400,14 @@ select:focus-visible {",
+        "@@ -2984,16 +3439,59 @@ select:focus-visible {",
+        "@@ -3219,11 +3717,29 @@ select:focus-visible {",
+        "@@ -4685,6 +5201,7 @@ select:focus-visible {",
+        "@@ -5360,6 +5877,32 @@ select:focus-visible {",
+        "@@ -7230,6 +7773,38 @@ select:focus-visible {",
+        "@@ -7814,9 +8389,16 @@ select:focus-visible {",
+        "@@ -7849,6 +8431,21 @@ select:focus-visible {",
+        "@@ -8140,6 +8737,25 @@ select:focus-visible {",
+        "@@ -8318,21 +8934,72 @@ select:focus-visible {",
+        "@@ -10642,6 +11309,11 @@ select:focus-visible {",
+        "@@ -10796,6 +11468,11 @@ select:focus-visible {",
+        "@@ -11175,12 +11852,18 @@ select:focus-visible {",
+        "@@ -11212,6 +11895,84 @@ select:focus-visible {",
+        "@@ -11345,6 +12106,20 @@ select:focus-visible {",
+        "@@ -12565,7 +13340,7 @@ select:focus-visible {",
+        "@@ -12590,12 +13365,43 @@ select:focus-visible {",
+        "@@ -12941,7 +13747,9 @@ select:focus-visible {",
+        "@@ -12980,6 +13788,48 @@ select:focus-visible {",
+        "@@ -14492,6 +15342,43 @@ select:focus-visible {",
+        "@@ -14811,7 +15698,8 @@ select:focus-visible {",
+        "@@ -15636,6 +16524,87 @@ select:focus-visible {",
+        "@@ -15711,6 +16680,30 @@ select:focus-visible {",
+        "@@ -15726,6 +16719,15 @@ select:focus-visible {",
+        "@@ -16151,6 +17153,21 @@ select:focus-visible {",
+        "@@ -16184,6 +17201,20 @@ select:focus-visible {",
+        "@@ -16230,12 +17261,14 @@ select:focus-visible {",
+        "@@ -16244,11 +17277,13 @@ select:focus-visible {",
+        "@@ -16256,6 +17291,8 @@ select:focus-visible {",
+        "@@ -16264,7 +17301,8 @@ select:focus-visible {",
+        "@@ -16278,6 +17316,14 @@ select:focus-visible {",
+        "@@ -17097,3 +18143,38 @@ select:focus-visible {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/103.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D07",
+        "D12",
+        "D14",
+        "D16"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/AnnouncementsPage.tsx",
+      "status": " M",
+      "group": "communications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 804,
+      "mainRemoved": 443,
+      "hunks": [
+        "@@ -1,28 +1,56 @@",
+        "@@ -30,520 +58,853 @@ export function AnnouncementsPage() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/105.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "AnnouncementState"
+      ],
+      "decisionIds": [
+        "D16"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/CommunicationPages.test.tsx",
+      "status": " M",
+      "group": "communications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -86,12 +86,14 @@ describe(\"Phase 8 communication pages\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/106.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D16",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 490,
+      "mainRemoved": 25,
+      "hunks": [
+        "@@ -1,19 +1,34 @@",
+        "@@ -62,7 +77,7 @@ const fixture = {",
+        "@@ -121,11 +136,14 @@ const fixture = {",
+        "@@ -164,33 +182,264 @@ function renderPageWithFixture(",
+        "@@ -207,21 +456,167 @@ describe(\"EmployeeHubPage\", () => {",
+        "@@ -235,13 +630,83 @@ describe(\"EmployeeHubPage\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/107.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D02",
+        "D07",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/EmployeeHubPage.tsx",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 347,
+      "mainRemoved": 519,
+      "hunks": [
+        "@@ -1,18 +1,39 @@",
+        "@@ -22,36 +43,87 @@ const tabs = [",
+        "@@ -65,508 +137,278 @@ export function EmployeeHubPage() {",
+        "@@ -575,12 +417,16 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {",
+        "@@ -596,6 +442,24 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {",
+        "@@ -605,9 +469,10 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {",
+        "@@ -617,13 +482,26 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {",
+        "@@ -637,7 +515,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {",
+        "@@ -654,70 +532,23 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {",
+        "@@ -737,7 +568,9 @@ function ShiftDetails({",
+        "@@ -755,33 +588,26 @@ function InlineError({ error }: { error: unknown }) {",
+        "@@ -794,7 +620,9 @@ function dateRange(start: string, end: string) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/108.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "weekdays",
+        "Overview",
+        "ShiftHubView",
+        "TeamView",
+        "LineupView",
+        "formatEmployeeShiftTimeRange",
+        "formatShiftOption"
+      ],
+      "decisionIds": [
+        "D02",
+        "D07"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/LineupPage.test.tsx",
+      "status": " M",
+      "group": "lineup",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 388,
+      "mainRemoved": 30,
+      "hunks": [
+        "@@ -9,7 +9,13 @@ import { describe, expect, it, vi } from \"vitest\";",
+        "@@ -189,26 +195,317 @@ vi.mock(\"../schedule/lineup-data\", () => ({",
+        "@@ -216,35 +513,94 @@ describe(\"LineupPage\", () => {",
+        "@@ -272,13 +628,15 @@ describe(\"LineupPage\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/109.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D06",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/LineupPage.tsx",
+      "status": " M",
+      "group": "lineup",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 4,
+      "mainRemoved": 1279,
+      "hunks": [
+        "@@ -1,1279 +1,4 @@"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/110.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "LineupPage",
+        "LocationBandProps",
+        "LocationBand",
+        "StaffDrawer",
+        "BriefValue",
+        "BriefDialog",
+        "ShareDialog",
+        "LineupVisualPreview",
+        "SectionDraft",
+        "SectionsDialog",
+        "Dialog",
+        "State"
+      ],
+      "decisionIds": [
+        "D06"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/NotificationsPage.tsx",
+      "status": " M",
+      "group": "notifications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 57,
+      "mainRemoved": 13,
+      "hunks": [
+        "@@ -10,15 +10,29 @@ import {",
+        "@@ -30,6 +44,9 @@ export function NotificationsPage() {",
+        "@@ -128,7 +145,10 @@ export function NotificationsPage() {",
+        "@@ -160,6 +180,26 @@ export function NotificationsPage() {",
+        "@@ -215,6 +255,21 @@ export function NotificationsPage() {",
+        "@@ -273,17 +328,6 @@ function formatTime(iso: string) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/111.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "safeNotificationActionUrl"
+      ],
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/SchedulePage.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 138,
+      "mainRemoved": 69,
+      "hunks": [
+        "@@ -60,6 +60,7 @@ import {",
+        "@@ -91,6 +92,7 @@ import {",
+        "@@ -99,7 +101,11 @@ import { ScheduleEditTimeoutDialog as ScheduleEditTimeoutDialogComponent } from",
+        "@@ -229,6 +235,7 @@ const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [",
+        "@@ -273,13 +280,15 @@ export function SchedulePage({",
+        "@@ -307,6 +316,7 @@ export function SchedulePage({",
+        "@@ -380,6 +390,8 @@ export function SchedulePage({",
+        "@@ -534,6 +546,7 @@ export function SchedulePage({",
+        "@@ -658,6 +671,8 @@ export function SchedulePage({",
+        "@@ -792,12 +807,6 @@ export function SchedulePage({",
+        "@@ -1132,7 +1141,7 @@ export function SchedulePage({",
+        "@@ -1148,7 +1157,7 @@ export function SchedulePage({",
+        "@@ -1160,6 +1169,7 @@ export function SchedulePage({",
+        "@@ -1190,10 +1200,11 @@ export function SchedulePage({",
+        "@@ -1305,6 +1316,7 @@ export function SchedulePage({",
+        "@@ -1797,7 +1809,7 @@ export function SchedulePage({",
+        "@@ -1823,7 +1835,7 @@ export function SchedulePage({",
+        "@@ -1869,20 +1881,14 @@ export function SchedulePage({",
+        "@@ -1950,7 +1956,10 @@ export function SchedulePage({",
+        "@@ -2142,8 +2151,8 @@ export function SchedulePage({",
+        "@@ -2153,11 +2162,20 @@ export function SchedulePage({",
+        "@@ -2453,6 +2471,7 @@ export function SchedulePage({",
+        "@@ -2582,6 +2601,7 @@ export function SchedulePage({",
+        "@@ -2610,6 +2630,7 @@ export function SchedulePage({",
+        "@@ -2713,33 +2734,18 @@ export function SchedulePage({",
+        "@@ -2882,6 +2888,7 @@ export function SchedulePage({",
+        "@@ -2899,8 +2906,6 @@ export function SchedulePage({",
+        "@@ -2949,15 +2954,9 @@ export function SchedulePage({",
+        "@@ -2991,14 +2990,50 @@ export function SchedulePage({",
+        "@@ -3064,9 +3099,12 @@ export function SchedulePage({",
+        "@@ -3109,12 +3147,35 @@ export function SchedulePage({",
+        "@@ -3173,6 +3234,9 @@ export function SchedulePage({",
+        "@@ -3255,6 +3319,8 @@ export function SchedulePage({",
+        "@@ -3308,6 +3374,9 @@ function scheduleShiftFromPasteInput(",
+        "@@ -3444,7 +3513,7 @@ function ScheduleDiscardEditDialog({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/112.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/ScheduleRequestsPage.tsx",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 638,
+      "mainRemoved": 194,
+      "hunks": [
+        "@@ -1,7 +1,11 @@",
+        "@@ -15,14 +19,29 @@ import {",
+        "@@ -40,6 +59,27 @@ type Decision =",
+        "@@ -88,14 +128,14 @@ export function ScheduleRequestsPage() {",
+        "@@ -113,18 +153,35 @@ export function ScheduleRequestsPage() {",
+        "@@ -135,10 +192,22 @@ export function ScheduleRequestsPage() {",
+        "@@ -153,16 +222,84 @@ export function ScheduleRequestsPage() {",
+        "@@ -177,36 +314,45 @@ export function ScheduleRequestsPage() {",
+        "@@ -297,15 +443,24 @@ export function ScheduleRequestsPage() {",
+        "@@ -358,55 +513,63 @@ export function ScheduleRequestsPage() {",
+        "@@ -415,11 +578,9 @@ export function ScheduleRequestsPage() {",
+        "@@ -432,44 +593,63 @@ function RequestRow({",
+        "@@ -478,6 +658,7 @@ function TimeOffDetail({",
+        "@@ -501,10 +682,38 @@ function TimeOffDetail({",
+        "@@ -512,24 +721,15 @@ function TimeOffDetail({",
+        "@@ -537,7 +737,8 @@ function TimeOffDetail({",
+        "@@ -554,7 +755,9 @@ function TimeOffDetail({",
+        "@@ -562,8 +765,9 @@ function TimeOffDetail({",
+        "@@ -722,7 +926,13 @@ function ShiftBlock({",
+        "@@ -737,6 +947,10 @@ function Timeline({ events }: { events: TimeOffRequest[\"events\"] }) {",
+        "@@ -747,15 +961,31 @@ function Timeline({ events }: { events: TimeOffRequest[\"events\"] }) {",
+        "@@ -764,92 +994,305 @@ function DecisionDialog({",
+        "@@ -893,3 +1336,4 @@ function actionLabel(value: Decision[\"action\"]) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/113.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D03",
+        "D11"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/SignInPage.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 62,
+      "mainRemoved": 18,
+      "hunks": [
+        "@@ -18,28 +18,32 @@ export function SignInPage() {",
+        "@@ -56,7 +60,9 @@ export function SignInPage() {",
+        "@@ -66,6 +72,19 @@ export function SignInPage() {",
+        "@@ -92,24 +111,30 @@ export function SignInPage() {",
+        "@@ -141,3 +166,22 @@ export function SignInPage() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/114.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/views/WorkspacePage.tsx",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 289,
+      "mainRemoved": 5,
+      "hunks": [
+        "@@ -1,7 +1,9 @@",
+        "@@ -11,25 +13,35 @@ import {",
+        "@@ -46,6 +58,12 @@ export function WorkspacePage() {",
+        "@@ -74,7 +92,8 @@ export function WorkspacePage() {",
+        "@@ -142,6 +161,10 @@ export function WorkspacePage() {",
+        "@@ -184,7 +207,7 @@ export function WorkspacePage() {",
+        "@@ -193,12 +216,152 @@ export function WorkspacePage() {",
+        "@@ -265,6 +428,9 @@ function Widget({",
+        "@@ -280,6 +446,123 @@ function Widget({",
+        "@@ -291,8 +574,9 @@ function NotificationPreview({ item }: { item: NotificationRecord }) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/116.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "packages/shared/src/communications.ts",
+      "status": " M",
+      "group": "communications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 89,
+      "mainRemoved": 15,
+      "hunks": [
+        "@@ -21,21 +21,24 @@ export type AnnouncementAudienceRole = z.infer<",
+        "@@ -62,10 +65,15 @@ export const announcementRecordSchema = z.object({",
+        "@@ -81,6 +89,18 @@ export const announcementListSchema = z.object({",
+        "@@ -116,10 +136,7 @@ export const notificationRecordSchema = z.object({",
+        "@@ -159,18 +176,23 @@ export const workspaceWidgetIdSchema = z.enum([",
+        "@@ -180,6 +202,57 @@ export const workspaceLayoutInputSchema = z",
+        "@@ -192,6 +265,7 @@ export const workspaceDashboardSchema = z.object({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/120.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D16"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/employee-hub.ts",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 79,
+      "mainRemoved": 19,
+      "hunks": [
+        "@@ -1,21 +1,28 @@",
+        "@@ -26,8 +33,11 @@ export const employeeHubShiftSchema = z.object({",
+        "@@ -45,6 +55,10 @@ export const employeeHubRequestSchema = z.object({",
+        "@@ -70,6 +84,7 @@ export const employeeHubLineupEntrySchema = z.object({",
+        "@@ -89,15 +104,52 @@ export const employeeHubReadModelSchema = z.object({",
+        "@@ -126,12 +178,20 @@ export type EmployeeShiftRequestInput = z.infer<",
+        "@@ -139,7 +199,7 @@ export type EmployeeRequestActionInput = z.infer<"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/121.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "availabilityDaySchema"
+      ],
+      "decisionIds": [
+        "D02",
+        "D04",
+        "D07"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/index.test.ts",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 819,
+      "mainRemoved": 99,
+      "hunks": [
+        "@@ -2,17 +2,23 @@ import { describe, expect, it } from \"vitest\";",
+        "@@ -26,7 +32,10 @@ import {",
+        "@@ -37,6 +46,212 @@ import {",
+        "@@ -66,6 +281,31 @@ describe(\"shared contracts\", () => {",
+        "@@ -172,9 +412,7 @@ describe(\"shared contracts\", () => {",
+        "@@ -299,34 +537,64 @@ describe(\"shared contracts\", () => {",
+        "@@ -364,66 +632,66 @@ describe(\"shared contracts\", () => {",
+        "@@ -450,9 +718,7 @@ describe(\"shared contracts\", () => {",
+        "@@ -634,6 +900,23 @@ describe(\"shared contracts\", () => {",
+        "@@ -655,13 +938,70 @@ describe(\"shared contracts\", () => {",
+        "@@ -669,6 +1009,7 @@ describe(\"shared contracts\", () => {",
+        "@@ -677,32 +1018,378 @@ describe(\"shared contracts\", () => {",
+        "@@ -739,6 +1426,23 @@ describe(\"organization basics schemas\", () => {",
+        "@@ -972,10 +1676,26 @@ describe(\"document type schemas\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/122.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D02",
+        "D08",
+        "D10",
+        "D13",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/index.ts",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 786,
+      "mainRemoved": 114,
+      "hunks": [
+        "@@ -1,4 +1,29 @@",
+        "@@ -13,6 +38,7 @@ export * from \"./notification-display\";",
+        "@@ -24,11 +50,39 @@ export const workspaceRoleSchema = z.enum([",
+        "@@ -89,6 +143,7 @@ const rolePermissions = {",
+        "@@ -183,7 +238,8 @@ export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;",
+        "@@ -194,6 +250,7 @@ export const accountProfileSchema = z.object({",
+        "@@ -202,34 +259,108 @@ export const workspaceSummarySchema = z.object({",
+        "@@ -297,7 +428,8 @@ export const activeWorkspaceRowSchema = z.object({",
+        "@@ -334,6 +466,7 @@ export function activeWorkspaceContextFromRow(",
+        "@@ -378,10 +511,10 @@ export const locationSchema = z.object({",
+        "@@ -434,6 +567,148 @@ export const jobInputSchema = jobSchema.pick({",
+        "@@ -454,11 +729,20 @@ export const schedulingSettingsSchema = z.object({",
+        "@@ -481,6 +765,8 @@ export const importantDateSchema = z.object({",
+        "@@ -496,6 +782,7 @@ export type ImportantDate = z.infer<typeof importantDateSchema>;",
+        "@@ -537,6 +824,7 @@ export const shiftTypeSchema = z.object({",
+        "@@ -612,6 +900,7 @@ export const scheduleJobSchema = scheduleReferenceSchema.extend({",
+        "@@ -620,9 +909,63 @@ export type ScheduleShiftLabel = z.infer<typeof scheduleShiftLabelSchema>;",
+        "@@ -633,6 +976,22 @@ export const scheduleEmployeeSchema = z.object({",
+        "@@ -643,9 +1002,22 @@ export const scheduleShiftSchema = z.object({",
+        "@@ -774,8 +1146,11 @@ export type SchedulePendingOpType = z.infer<typeof schedulePendingOpTypeSchema>;",
+        "@@ -879,6 +1254,9 @@ export const scheduleShiftMutationInputSchema = scheduleShiftSchema",
+        "@@ -889,6 +1267,15 @@ export const scheduleShiftMutationInputSchema = scheduleShiftSchema",
+        "@@ -926,12 +1313,19 @@ export const scheduleAvailabilityConflictSchema = z.object({",
+        "@@ -946,6 +1340,9 @@ export type ScheduleAvailabilityConflictResult = z.infer<",
+        "@@ -961,6 +1358,8 @@ export const schedulePublishFindingSchema = z.object({",
+        "@@ -972,7 +1371,7 @@ export const schedulePublishFindingSchema = z.object({",
+        "@@ -1044,7 +1443,7 @@ export type SchedulePublishConflictShiftSummary = z.infer<",
+        "@@ -1053,6 +1452,41 @@ export const schedulePublishConflictSummarySchema = z.object({",
+        "@@ -1202,9 +1636,12 @@ export const scheduleTemplateShiftSchema = z.object({",
+        "@@ -1324,6 +1761,9 @@ export const scheduleExportRequestSchema = z.object({",
+        "@@ -1331,11 +1771,11 @@ export const scheduleExportRowSchema = z.object({",
+        "@@ -1440,7 +1880,12 @@ export type UpdateScheduleExportScheduleInput = z.infer<",
+        "@@ -1450,6 +1895,9 @@ export const scheduleLineupSectionSchema = z.object({",
+        "@@ -1480,12 +1928,25 @@ export type ScheduleLineupEmployeeOption = z.infer<",
+        "@@ -1503,6 +1964,7 @@ export const scheduleLineupEntrySchema = z.object({",
+        "@@ -1529,6 +1991,19 @@ export const scheduleLineupLocationSchema = z.object({",
+        "@@ -1559,6 +2034,13 @@ export type ScheduleLineupReadModel = z.infer<",
+        "@@ -1573,6 +2055,7 @@ export const scheduleLineupEntryInputSchema = z.object({",
+        "@@ -1608,6 +2091,7 @@ export const scheduleLineupSharePreviewSchema = z.object({",
+        "@@ -1637,6 +2121,7 @@ export type ScheduleLineupShareResult = z.infer<",
+        "@@ -1657,13 +2142,7 @@ export const timeOffSegmentStatusSchema = z.enum([",
+        "@@ -1671,6 +2150,7 @@ export const timeOffRequestSchema = z.object({",
+        "@@ -1734,6 +2214,7 @@ export type ShiftChangeRequest = z.infer<typeof shiftChangeRequestSchema>;",
+        "@@ -1751,25 +2232,66 @@ export type ScheduleRequestsReadModel = z.infer<",
+        "@@ -1785,6 +2307,7 @@ export const scheduleRequestMutationResultSchema = z.object({",
+        "@@ -2105,7 +2628,32 @@ export type EmployeeEvent = z.infer<typeof employeeEventSchema>;",
+        "@@ -2113,9 +2661,21 @@ export const employeeDetailSchema = employeeSummarySchema.extend({",
+        "@@ -2135,21 +2695,80 @@ export const employeeDetailSchema = employeeSummarySchema.extend({",
+        "@@ -2202,75 +2821,100 @@ export type EmployeeOnboardingRequirement = z.infer<",
+        "@@ -2283,7 +2927,7 @@ export const employeeOnboardingSchema = z.object({",
+        "@@ -2291,8 +2935,9 @@ export const employeeOnboardingSchema = z.object({",
+        "@@ -2319,6 +2964,15 @@ export type EmployeeOnboardingManager = z.infer<",
+        "@@ -2329,6 +2983,8 @@ export const documentTypeSchema = z.object({",
+        "@@ -2343,6 +2999,7 @@ export const documentTypeInputSchema = documentTypeSchema",
+        "@@ -2352,7 +3009,20 @@ export const documentTypeInputSchema = documentTypeSchema",
+        "@@ -2471,3 +3141,5 @@ export const productBoundary = {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/123.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [
+        "timeOffSegmentDecisionSchema",
+        "TimeOffSegmentDecision"
+      ],
+      "decisionIds": [
+        "D02",
+        "D08",
+        "D10",
+        "D13",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "packages/shared/src/schedule.ts",
+      "status": " M",
+      "group": "schedule",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 1,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -1,3 +1,4 @@"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/124.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D11"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "pnpm-lock.yaml",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 0,
+      "mainRemoved": 274,
+      "hunks": [
+        "@@ -29,9 +29,6 @@ importers:",
+        "@@ -180,70 +177,6 @@ packages:",
+        "@@ -750,30 +683,6 @@ packages:",
+        "@@ -1111,9 +1020,6 @@ packages:",
+        "@@ -2270,151 +2176,6 @@ snapshots:",
+        "@@ -2832,39 +2593,6 @@ snapshots:",
+        "@@ -3255,8 +2983,6 @@ snapshots:"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/125.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D01"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "supabase/tests/communication_operations.test.sql",
+      "status": " M",
+      "group": "communications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 97,
+      "mainRemoved": 9,
+      "hunks": [
+        "@@ -1,6 +1,6 @@",
+        "@@ -20,6 +20,11 @@ insert into public.membership_location_scopes(workspace_id,membership_id,locatio",
+        "@@ -38,7 +43,7 @@ select throws_ok($$select public.save_announcement_service('a8000000-0000-4000-8",
+        "@@ -53,23 +58,106 @@ do $$ declare outbox_id uuid; begin"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/126.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D16",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/document_types_rls.test.sql",
+      "status": " M",
+      "group": "settings",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 15,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -1,6 +1,6 @@",
+        "@@ -37,7 +37,7 @@ select lives_ok(",
+        "@@ -60,6 +60,11 @@ select ok(",
+        "@@ -92,6 +97,14 @@ select throws_ok("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/127.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D13",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/employee_directory_rls.test.sql",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 747,
+      "mainRemoved": 5,
+      "hunks": [
+        "@@ -1,6 +1,6 @@",
+        "@@ -8,7 +8,12 @@ values",
+        "@@ -56,6 +61,156 @@ select lives_ok(",
+        "@@ -69,7 +224,152 @@ select lives_ok(",
+        "@@ -80,6 +380,16 @@ select lives_ok(",
+        "@@ -97,13 +407,43 @@ select throws_ok(",
+        "@@ -113,6 +453,34 @@ select throws_ok(",
+        "@@ -121,8 +489,29 @@ select lives_ok(",
+        "@@ -133,6 +522,11 @@ select lives_ok(",
+        "@@ -152,8 +546,166 @@ select lives_ok(",
+        "@@ -168,6 +720,196 @@ select throws_ok("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/129.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D10",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/employee_termination_offboarding.test.sql",
+      "status": " M",
+      "group": "employees-onboarding",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 16,
+      "mainRemoved": 3,
+      "hunks": [
+        "@@ -63,6 +63,19 @@ values (",
+        "@@ -133,8 +146,8 @@ select is((select employee_id from public.schedule_published_shifts where id = '",
+        "@@ -147,7 +160,7 @@ select lives_ok("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/130.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D10",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "supabase/tests/organization_basics_rls.test.sql",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 7,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -1,6 +1,6 @@",
+        "@@ -72,7 +72,12 @@ select lives_ok("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/131.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D08",
+        "D09",
+        "D18"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "supabase/tests/workspace_rls.test.sql",
+      "status": " M",
+      "group": "account-auth-workspace",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 1383,
+      "mainRemoved": 12,
+      "hunks": [
+        "@@ -1,20 +1,29 @@",
+        "@@ -22,15 +31,217 @@ values ('10000000-0000-4000-8000-000000000001', 'Test Owner');",
+        "@@ -43,17 +254,489 @@ values (",
+        "@@ -65,6 +748,34 @@ select throws_ok(",
+        "@@ -73,6 +784,359 @@ select throws_ok(",
+        "@@ -92,5 +1156,312 @@ select is("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/136.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D09",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "vercel.json",
+      "status": " M",
+      "group": "shared-runtime-shell",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 6,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -2,6 +2,12 @@"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/137.diff",
+      "existsInBase": true,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "clean-merge-no-change",
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Metinsel patch zaten karsilanmis; tasima"
+    },
+    {
+      "file": "apps/api/src/account/workspace-account-routes.test.ts",
+      "status": "??",
+      "group": "account-auth-workspace",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 822,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -1,9 +1,52 @@",
+        "@@ -13,7 +56,7 @@ describe(\"workspace account routes\", () => {",
+        "@@ -53,9 +96,32 @@ describe(\"workspace account routes\", () => {",
+        "@@ -79,6 +145,761 @@ describe(\"workspace account routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/139.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D09",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/account/workspace-account-routes.ts",
+      "status": "??",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 423,
+      "mainRemoved": 7,
+      "hunks": [
+        "@@ -1,5 +1,11 @@",
+        "@@ -8,15 +14,70 @@ const createWorkspaceBody = z.object({",
+        "@@ -78,6 +139,183 @@ export function registerWorkspaceAccountRoutes(",
+        "@@ -90,6 +328,25 @@ export function registerWorkspaceAccountRoutes(",
+        "@@ -100,6 +357,92 @@ export function registerWorkspaceAccountRoutes(",
+        "@@ -107,12 +450,50 @@ export function registerWorkspaceAccountRoutes(",
+        "@@ -127,5 +508,40 @@ function requestError(reply: FastifyReply, error: unknown) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/140.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "bearerToken"
+      ],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/account/workspace-account-service.ts",
+      "status": "??",
+      "group": "account-auth-workspace",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 203,
+      "mainRemoved": 3,
+      "hunks": [
+        "@@ -8,15 +8,76 @@ export interface WorkspaceAccountService {",
+        "@@ -26,6 +87,25 @@ interface RpcClient {",
+        "@@ -40,9 +120,9 @@ export function createWorkspaceAccountService(options: {",
+        "@@ -55,6 +135,7 @@ export function createWorkspaceAccountService(options: {",
+        "@@ -67,6 +148,42 @@ export function createWorkspaceAccountServiceWithClients(options: {",
+        "@@ -89,6 +206,55 @@ export function createWorkspaceAccountServiceWithClients(options: {",
+        "@@ -96,6 +262,40 @@ export function createWorkspaceAccountServiceWithClients(options: {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/141.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D09"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/communications/communication-service.test.ts",
+      "status": "??",
+      "group": "communications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 194,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -5,6 +5,91 @@ const workspaceId = \"6ea5d512-bc7f-4cf3-aad4-2f0815de00fd\";",
+        "@@ -88,4 +173,113 @@ describe(\"communication service notification bridge\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/142.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D16",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/employees/employee-directory-routes.test.ts",
+      "status": "??",
+      "group": "employees-onboarding",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 322,
+      "mainRemoved": 7,
+      "hunks": [
+        "@@ -4,8 +4,10 @@ import { buildApp } from \"../app\";",
+        "@@ -25,11 +27,7 @@ const context: ActiveWorkspaceContext = {",
+        "@@ -47,8 +45,58 @@ const employeeInput = {",
+        "@@ -74,6 +122,32 @@ describe(\"employee directory routes\", () => {",
+        "@@ -89,8 +163,7 @@ describe(\"employee directory routes\", () => {",
+        "@@ -103,6 +176,41 @@ describe(\"employee directory routes\", () => {",
+        "@@ -133,4 +241,211 @@ describe(\"employee directory routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/143.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D10",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/employees/employee-directory-routes.ts",
+      "status": "??",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 239,
+      "mainRemoved": 22,
+      "hunks": [
+        "@@ -1,14 +1,25 @@",
+        "@@ -37,9 +48,59 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -50,8 +111,10 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -80,8 +143,10 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -100,19 +165,120 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -144,9 +310,10 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -166,21 +333,60 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -214,9 +420,10 @@ export function registerEmployeeDirectoryRoutes(",
+        "@@ -242,14 +449,24 @@ async function authorize("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/144.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D10"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/employees/employee-directory-service.ts",
+      "status": "??",
+      "group": "employees-onboarding",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 88,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -1,9 +1,11 @@",
+        "@@ -26,6 +28,11 @@ export interface EmployeeTerminationResult {",
+        "@@ -45,6 +52,12 @@ export interface EmployeeDirectoryService {",
+        "@@ -58,6 +71,21 @@ export interface EmployeeDirectoryService {",
+        "@@ -65,6 +93,21 @@ interface RpcClient {",
+        "@@ -140,10 +183,22 @@ export function createEmployeeDirectoryServiceWithClient(",
+        "@@ -167,5 +222,38 @@ export function createEmployeeDirectoryServiceWithClient("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/145.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D10"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/notifications/notification-outbox-migration.test.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 19,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -16,6 +16,13 @@ const resolverMigration = readFileSync(",
+        "@@ -62,4 +69,16 @@ describe(\"notification outbox relay migration\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/146.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/notifications/notification-outbox-worker.test.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 95,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -24,6 +24,7 @@ describe(\"notification outbox worker\", () => {",
+        "@@ -47,6 +48,39 @@ describe(\"notification outbox worker\", () => {",
+        "@@ -107,4 +141,65 @@ describe(\"notification outbox worker\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/148.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/notifications/notification-outbox-worker.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 41,
+      "mainRemoved": 3,
+      "hunks": [
+        "@@ -10,6 +10,9 @@ const leasedOutboxItemSchema = z.object({",
+        "@@ -21,9 +24,18 @@ interface NotificationRpcClient {",
+        "@@ -45,12 +57,22 @@ export function createNotificationOutboxWorker(options: {",
+        "@@ -67,6 +89,16 @@ export function createNotificationOutboxWorkerWithClient(",
+        "@@ -82,9 +114,11 @@ export function createNotificationOutboxWorkerWithClient(",
+        "@@ -98,7 +132,11 @@ export function createNotificationOutboxWorkerWithClient("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/149.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/notifications/notification-settings-routes.test.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 215,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -5,6 +5,7 @@ import { registerNotificationSettingsRoutes } from \"./notification-settings-rout",
+        "@@ -47,6 +48,17 @@ function build(",
+        "@@ -215,6 +227,119 @@ describe(\"notification settings routes\", () => {",
+        "@@ -292,4 +417,94 @@ describe(\"notification settings routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/150.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/notifications/notification-settings-routes.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 46,
+      "mainRemoved": 23,
+      "hunks": [
+        "@@ -8,7 +8,11 @@ import {",
+        "@@ -30,8 +34,10 @@ export function registerNotificationSettingsRoutes(",
+        "@@ -52,8 +58,10 @@ export function registerNotificationSettingsRoutes(",
+        "@@ -76,8 +84,10 @@ export function registerNotificationSettingsRoutes(",
+        "@@ -100,8 +110,10 @@ export function registerNotificationSettingsRoutes(",
+        "@@ -122,8 +134,9 @@ export function registerNotificationSettingsRoutes(",
+        "@@ -143,8 +156,9 @@ export function registerNotificationSettingsRoutes(",
+        "@@ -165,27 +179,39 @@ async function authorize(",
+        "@@ -194,9 +220,6 @@ function actor(context: ActiveWorkspaceContext) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/151.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [
+        "forbidden"
+      ],
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/document-types-routes.test.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 107,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -4,8 +4,18 @@ import { buildApp } from \"../app\";",
+        "@@ -38,8 +48,17 @@ const documentTypeInput = {",
+        "@@ -54,7 +73,7 @@ describe(\"document type routes\", () => {",
+        "@@ -83,7 +102,7 @@ describe(\"document type routes\", () => {",
+        "@@ -94,6 +113,32 @@ describe(\"document type routes\", () => {",
+        "@@ -115,4 +160,64 @@ describe(\"document type routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/155.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D13",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/document-types-routes.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 27,
+      "mainRemoved": 24,
+      "hunks": [
+        "@@ -1,7 +1,10 @@",
+        "@@ -32,11 +35,9 @@ export function registerDocumentTypesRoutes(",
+        "@@ -69,11 +70,9 @@ export function registerDocumentTypesRoutes(",
+        "@@ -107,11 +106,9 @@ export function registerDocumentTypesRoutes(",
+        "@@ -142,11 +139,9 @@ export function registerDocumentTypesRoutes(",
+        "@@ -170,14 +165,22 @@ async function authorize("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/156.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/document-types-service.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 1,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -65,6 +65,7 @@ export function createDocumentTypesServiceWithClient("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/157.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/organization-settings-routes.test.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 184,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -4,11 +4,19 @@ import { buildApp } from \"../app\";",
+        "@@ -33,7 +41,30 @@ const context: ActiveWorkspaceContext = {",
+        "@@ -89,6 +120,91 @@ describe(\"organization settings routes\", () => {",
+        "@@ -183,4 +299,72 @@ describe(\"organization settings routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/158.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D13",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/organization-settings-routes.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 44,
+      "mainRemoved": 32,
+      "hunks": [
+        "@@ -1,8 +1,13 @@",
+        "@@ -23,6 +28,7 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -33,9 +39,9 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -64,11 +70,9 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -76,6 +80,7 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -98,11 +103,9 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -133,11 +136,9 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -167,11 +168,9 @@ export function registerOrganizationSettingsRoutes(",
+        "@@ -194,13 +193,16 @@ async function authorizeMember(",
+        "@@ -208,14 +210,22 @@ async function authorize(",
+        "@@ -223,6 +233,8 @@ function requestError(reply: FastifyReply, error: unknown) {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/159.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/organization-settings-service.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 12,
+      "mainRemoved": 21,
+      "hunks": [
+        "@@ -1,4 +1,5 @@",
+        "@@ -6,10 +7,12 @@ import {",
+        "@@ -41,21 +44,11 @@ interface RpcClient {",
+        "@@ -77,11 +70,12 @@ export function createOrganizationSettingsServiceWithClient(",
+        "@@ -89,15 +83,12 @@ export function createOrganizationSettingsServiceWithClient("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/160.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/roles-routes.test.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 95,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -4,8 +4,18 @@ import { buildApp } from \"../app\";",
+        "@@ -37,6 +47,13 @@ const roleInput = {",
+        "@@ -51,7 +68,7 @@ describe(\"roles routes\", () => {",
+        "@@ -63,6 +80,33 @@ describe(\"roles routes\", () => {",
+        "@@ -76,7 +120,7 @@ describe(\"roles routes\", () => {",
+        "@@ -108,4 +152,53 @@ describe(\"roles routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/161.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D13",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/roles-routes.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 25,
+      "mainRemoved": 14,
+      "hunks": [
+        "@@ -1,7 +1,10 @@",
+        "@@ -24,9 +27,9 @@ export function registerRolesRoutes(",
+        "@@ -56,9 +59,9 @@ export function registerRolesRoutes(",
+        "@@ -89,9 +92,9 @@ export function registerRolesRoutes(",
+        "@@ -115,14 +118,22 @@ async function authorize("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/162.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/signature-settings-routes.test.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 259,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -4,9 +4,23 @@ import { buildApp } from \"../app\";",
+        "@@ -51,6 +65,19 @@ const templateInput = {",
+        "@@ -65,7 +92,7 @@ describe(\"signature settings routes\", () => {",
+        "@@ -100,6 +127,149 @@ describe(\"signature settings routes\", () => {",
+        "@@ -124,4 +294,92 @@ describe(\"signature settings routes\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/164.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D13",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/signature-settings-routes.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 101,
+      "mainRemoved": 40,
+      "hunks": [
+        "@@ -5,7 +5,10 @@ import {",
+        "@@ -36,11 +39,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -73,11 +74,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -110,11 +109,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -132,6 +129,39 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -146,11 +176,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -183,11 +211,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -220,11 +246,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -257,11 +281,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -279,6 +301,39 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -293,11 +348,9 @@ export function registerSignatureSettingsRoutes(",
+        "@@ -322,14 +375,22 @@ async function authorize("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/165.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/api/src/settings/signature-settings-service.ts",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 24,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -18,6 +18,11 @@ export interface SignatureSettingsService {",
+        "@@ -35,6 +40,11 @@ export interface SignatureSettingsService {",
+        "@@ -92,6 +102,13 @@ export function createSignatureSettingsServiceWithClient(",
+        "@@ -126,6 +143,13 @@ export function createSignatureSettingsServiceWithClient("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/166.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D08",
+        "D13"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/account/WorkspacesPage.test.tsx",
+      "status": "??",
+      "group": "account-auth-workspace",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 387,
+      "mainRemoved": 23,
+      "hunks": [
+        "@@ -1,19 +1,45 @@",
+        "@@ -43,27 +69,49 @@ const workspaces = [",
+        "@@ -72,22 +120,29 @@ function LocationProbe() {",
+        "@@ -95,8 +150,17 @@ describe(\"WorkspacesPage\", () => {",
+        "@@ -114,12 +178,19 @@ describe(\"WorkspacesPage\", () => {",
+        "@@ -130,7 +201,11 @@ describe(\"WorkspacesPage\", () => {",
+        "@@ -139,11 +214,13 @@ describe(\"WorkspacesPage\", () => {",
+        "@@ -154,4 +231,291 @@ describe(\"WorkspacesPage\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/171.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D09",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/auth/ProtectedRoute.test.tsx",
+      "status": "??",
+      "group": "account-auth-workspace",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 65,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -1,5 +1,5 @@",
+        "@@ -7,7 +7,9 @@ const authState = vi.hoisted(() => ({",
+        "@@ -58,4 +60,65 @@ describe(\"ProtectedRoute\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/176.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D09",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/settings/NotificationSettingsNavigation.test.tsx",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -74,7 +74,7 @@ describe(\"notification settings navigation\", () => {",
+        "@@ -97,7 +97,7 @@ describe(\"notification settings navigation\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/183.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/settings/ShiftLabelsSettingsPage.test.tsx",
+      "status": "??",
+      "group": "settings",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 4,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -3,6 +3,7 @@ import type { ActiveWorkspaceContext, ShiftLabel } from \"@newfork/shared\";",
+        "@@ -72,7 +73,7 @@ function renderPage() {",
+        "@@ -103,6 +104,7 @@ describe(\"ShiftLabelsSettingsPage\", () => {",
+        "@@ -113,6 +115,7 @@ describe(\"ShiftLabelsSettingsPage\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/187.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D12",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "status": "??",
+      "group": "settings",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 152,
+      "mainRemoved": 184,
+      "hunks": [
+        "@@ -1,3 +1,4 @@",
+        "@@ -5,19 +6,15 @@ import {",
+        "@@ -30,6 +27,10 @@ const defaultDraft: ShiftLabelInput = {",
+        "@@ -44,6 +45,7 @@ export default function ShiftLabelsSettingsPage() {",
+        "@@ -70,6 +72,7 @@ export default function ShiftLabelsSettingsPage() {",
+        "@@ -77,6 +80,7 @@ export default function ShiftLabelsSettingsPage() {",
+        "@@ -91,7 +95,16 @@ export default function ShiftLabelsSettingsPage() {",
+        "@@ -103,7 +116,7 @@ export default function ShiftLabelsSettingsPage() {",
+        "@@ -111,92 +124,123 @@ export default function ShiftLabelsSettingsPage() {",
+        "@@ -211,97 +255,21 @@ export default function ShiftLabelsSettingsPage() {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/188.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D12"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "apps/web/src/shell/AppShellNotificationBadge.test.tsx",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 264,
+      "mainRemoved": 27,
+      "hunks": [
+        "@@ -2,9 +2,11 @@ import { fireEvent, render, screen, waitFor } from \"@testing-library/react\";",
+        "@@ -29,17 +31,36 @@ const context = {",
+        "@@ -60,6 +81,18 @@ vi.mock(\"../settings/organization-data\", () => ({",
+        "@@ -72,9 +105,34 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -84,6 +142,18 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -92,7 +162,7 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -126,7 +196,9 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -140,12 +212,12 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -157,12 +229,12 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -175,14 +247,18 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -208,12 +284,12 @@ describe(\"AppShell notification badge\", () => {",
+        "@@ -223,15 +299,176 @@ describe(\"AppShell notification badge\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/192.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D14",
+        "D15",
+        "D17",
+        "D18"
+      ],
+      "action": "Time Entries kaynaklari korunur; menu MVP kapsaminda geri eklenmez"
+    },
+    {
+      "file": "apps/web/src/views/OwnerOnboardingPage.test.tsx",
+      "status": "??",
+      "group": "account-auth-workspace",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 345,
+      "mainRemoved": 37,
+      "hunks": [
+        "@@ -11,10 +11,14 @@ import { beforeEach, describe, expect, it, vi } from \"vitest\";",
+        "@@ -22,12 +26,19 @@ import {",
+        "@@ -35,16 +46,22 @@ const storage = vi.hoisted(() => ({",
+        "@@ -56,7 +73,6 @@ vi.mock(\"../settings/organization-data\", () => ({",
+        "@@ -98,7 +114,7 @@ const job = {",
+        "@@ -118,12 +134,12 @@ function contextForStep(currentStep: 1 | 2 | 3): ActiveWorkspaceContext {",
+        "@@ -142,19 +158,17 @@ describe(\"OwnerOnboardingPage\", () => {",
+        "@@ -162,12 +176,102 @@ describe(\"OwnerOnboardingPage\", () => {",
+        "@@ -185,23 +289,75 @@ describe(\"OwnerOnboardingPage\", () => {",
+        "@@ -215,7 +371,7 @@ describe(\"OwnerOnboardingPage\", () => {",
+        "@@ -225,7 +381,7 @@ describe(\"OwnerOnboardingPage\", () => {",
+        "@@ -240,20 +396,46 @@ describe(\"OwnerOnboardingPage\", () => {",
+        "@@ -281,11 +463,137 @@ describe(\"OwnerOnboardingPage\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/194.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D08",
+        "D09",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/notification-catalog.test.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 19,
+      "mainRemoved": 11,
+      "hunks": [
+        "@@ -61,17 +61,24 @@ describe(\"notification catalog governance\", () => {",
+        "@@ -103,6 +110,7 @@ describe(\"notification catalog governance\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/201.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/notification-catalog.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 127,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -40,6 +40,8 @@ export const notificationCatalogEntrySchema = z.object({",
+        "@@ -228,6 +230,69 @@ export const notificationCatalog = {",
+        "@@ -249,28 +314,57 @@ export const notificationCatalog = {",
+        "@@ -286,6 +380,30 @@ export type NotificationProducerInventoryEntry = {",
+        "@@ -295,6 +413,15 @@ export const notificationProducerInventory: readonly NotificationProducerInvento"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/202.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/notification-display.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 71,
+      "mainRemoved": 13,
+      "hunks": [
+        "@@ -35,7 +35,8 @@ export const notificationCategoryDisplay = {",
+        "@@ -63,7 +64,10 @@ export const notificationCategoryDisplay = {",
+        "@@ -79,10 +83,25 @@ export const notificationTypeDisplay = {",
+        "@@ -175,6 +194,48 @@ export const notificationTypeDisplay = {",
+        "@@ -184,11 +245,13 @@ export const notificationChannelDisplay = {",
+        "@@ -201,12 +264,10 @@ export const notificationLockReasonDisplay: Record<string, string> = {",
+        "@@ -220,10 +281,7 @@ export function displayForNotificationType("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/203.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/notification-settings.test.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 53,
+      "mainRemoved": 0,
+      "hunks": [
+        "@@ -65,6 +65,59 @@ describe(\"notification settings contracts\", () => {"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/204.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "packages/shared/src/notification-settings.ts",
+      "status": "??",
+      "group": "notifications",
+      "type": "source-config",
+      "comparison": "different",
+      "mainAdded": 3,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -4,6 +4,7 @@ import {",
+        "@@ -70,7 +71,7 @@ export const notificationSettingsCatalogEntrySchema = z.object({",
+        "@@ -252,7 +253,7 @@ export const notificationPreferenceWorkspaceSchema = z.object({"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/205.diff",
+      "sameNonTriviaTokens": false,
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "oldNamesMissingInSameFile": [],
+      "decisionIds": [
+        "D17"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/notification_outbox_relay.test.sql",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 40,
+      "mainRemoved": 1,
+      "hunks": [
+        "@@ -1,6 +1,6 @@",
+        "@@ -192,5 +192,44 @@ select is("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/227.diff",
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/notification_platform_core.test.sql",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -17,8 +17,8 @@ select has_table('public', 'notification_audit_log', 'notification audit log exi"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/228.diff",
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/notification_preference_resolver_and_producers.test.sql",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 3,
+      "mainRemoved": 3,
+      "hunks": [
+        "@@ -3,9 +3,9 @@ create extension if not exists pgtap with schema extensions;"
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/229.diff",
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    },
+    {
+      "file": "supabase/tests/notification_settings_admin.test.sql",
+      "status": "??",
+      "group": "notifications",
+      "type": "test",
+      "comparison": "different",
+      "mainAdded": 2,
+      "mainRemoved": 2,
+      "hunks": [
+        "@@ -47,8 +47,8 @@ select is("
+      ],
+      "patchFile": "artifacts/repo-checkpoint/4dfb-detail/231.diff",
+      "existsInBase": false,
+      "otherEqualsBase": false,
+      "mainEqualsBase": false,
+      "threeWay": "conflict-review",
+      "decisionIds": [
+        "D17",
+        "D18"
+      ],
+      "action": "Guncel akis karsiligi bulundu; eski dosyayi topluca tasima"
+    }
+  ]
+}

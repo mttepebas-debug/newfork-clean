@@ -1,0 +1,72 @@
+{
+  "start": {
+    "objects": "0 objects:",
+    "row": "(none)"
+  },
+  "first": {
+    "dialog": "Schedule logo / logo-a.png / SVG, PNG, JPEG, or WebP under 5 MB. / Replace / Remove / Scale / 1.00x / Horizontal / 0% / Vertical / 0% / Reset / Save",
+    "objects": "1 objects: ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png",
+    "row": "ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png"
+  },
+  "second": {
+    "dialog": "Schedule logo / logo-b.png / SVG, PNG, JPEG, or WebP under 5 MB. / Replace / Remove / Scale / 1.00x / Horizontal / 0% / Vertical / 0% / Reset / Save",
+    "objects": "2 objects: ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/7c651315-a7e2-4850-b178-3d4b98781b89.png, ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png",
+    "row": "ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/7c651315-a7e2-4850-b178-3d4b98781b89.png"
+  },
+  "dialogWithLogo": "Schedule logo / logo-b.png / SVG, PNG, JPEG, or WebP under 5 MB. / Updated Oct 7, 2026 / Replace / Remove / Scale / 1.00x / Horizontal / 0% / Vertical / 0% / Reset / Save",
+  "removed": {
+    "objects": "2 objects: ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/7c651315-a7e2-4850-b178-3d4b98781b89.png, ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png",
+    "row": "(none)"
+  },
+  "net": [
+    {
+      "m": "POST",
+      "s": 200,
+      "u": "/storage/v1/object/workspace-logos/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png",
+      "range": null,
+      "body": "{\"Key\":\"workspace-logos/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png\",\"Id\":\"5093dc64-9635-473e-98b7-caa1b3e78f83\"}"
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b&select=id%2Cname%2Clogo_storage_path%2Clogo_file_name%2Clogo_updated_at%2Csch",
+      "range": "0-0/*",
+      "body": "{\"id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"name\":\"World e2e1790265977849\",\"logo_storage_path\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/8558f98a-cd03-453c-89e9-aac0e75beaff.png\",\"logo_file_name\":\"logo-a.png\",\"logo_updated_at\":\"2026-10-07T08:55:59.224+00:00\",\"schedule_logo_scale\":1.00,\"schedule_l"
+    },
+    {
+      "m": "POST",
+      "s": 200,
+      "u": "/storage/v1/object/workspace-logos/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/7c651315-a7e2-4850-b178-3d4b98781b89.png",
+      "range": null,
+      "body": "{\"Key\":\"workspace-logos/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/7c651315-a7e2-4850-b178-3d4b98781b89.png\",\"Id\":\"8f87c5d6-3552-49d4-9bf6-fcf2cc2d251c\"}"
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b&select=id%2Cname%2Clogo_storage_path%2Clogo_file_name%2Clogo_updated_at%2Csch",
+      "range": "0-0/*",
+      "body": "{\"id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"name\":\"World e2e1790265977849\",\"logo_storage_path\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b/logo/7c651315-a7e2-4850-b178-3d4b98781b89.png\",\"logo_file_name\":\"logo-b.png\",\"logo_updated_at\":\"2026-10-07T08:56:14.852+00:00\",\"schedule_logo_scale\":1.00,\"schedule_l"
+    },
+    {
+      "m": "DELETE",
+      "s": 200,
+      "u": "/storage/v1/object/workspace-logos",
+      "range": null,
+      "body": "[]"
+    },
+    {
+      "m": "DELETE",
+      "s": 200,
+      "u": "/storage/v1/object/workspace-logos",
+      "range": null,
+      "body": "[]"
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b&select=id%2Cname%2Clogo_storage_path%2Clogo_file_name%2Clogo_updated_at%2Csch",
+      "range": "0-0/*",
+      "body": "{\"id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"name\":\"World e2e1790265977849\",\"logo_storage_path\":null,\"logo_file_name\":null,\"logo_updated_at\":null,\"schedule_logo_scale\":1.00,\"schedule_logo_offset_x\":0.00,\"schedule_logo_offset_y\":0.00}"
+    }
+  ]
+}

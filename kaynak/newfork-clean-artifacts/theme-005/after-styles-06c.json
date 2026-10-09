@@ -1,0 +1,59 @@
+[
+  {
+    "scenario": "06c-organization-switcher-open-hover",
+    "role": "owner",
+    "url": "/organization-switcher",
+    "h1": "Choose organization",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Open Meyhouse"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button active-workspace",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(232, 241, 237)",
+        "color": "rgb(15, 79, 66)",
+        "border": "1px solid rgb(137, 185, 170)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Open Employee Demo"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": true,
+        "bg": "rgb(240, 244, 242)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 11,
+        "texts": [
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412",
+          "Open Line Up role verification 87103246-0550-4ff"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      }
+    ]
+  }
+]

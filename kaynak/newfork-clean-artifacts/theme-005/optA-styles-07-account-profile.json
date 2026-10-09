@@ -1,0 +1,56 @@
+[
+  {
+    "scenario": "07-account-profile",
+    "role": "owner",
+    "url": "/account/profile",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Upload"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button danger-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-form-actions"
+      }
+    ]
+  }
+]

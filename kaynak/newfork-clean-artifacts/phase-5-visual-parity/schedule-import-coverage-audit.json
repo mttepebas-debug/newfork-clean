@@ -1,0 +1,521 @@
+{
+  "generatedAt": "2026-09-01T19:36:25.832Z",
+  "requiredFiles": [
+    {
+      "file": "apps/web/src/views/SchedulePage.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/TimeInput.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftCard.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleContextMenu.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftDragPreview.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ShiftTypePresetDragPreview.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/SaveDraftMenu.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/DraftDropdownMenu.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/WorkingCopyBanner.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/PublishPreflightPanel.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/UnpublishScheduleDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleConflictNotice.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleConflictSheet.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleSaveRecoverySheet.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleEditLockedDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleEditTimeoutDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/RetroactiveEditDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleFilterCommandStrip.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleTopBarFilter.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/MiniCalendar.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/DayHeaderCell.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportPanel.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportControls.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportPresets.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportPreviewDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportSchedules.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleExportRecentEvents.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/scheduleExportDownload.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleTemplateDialogs.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/AutoFillReviewOverlay.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleLogoUploadDialog.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/components/ScheduleLogoFrame.tsx",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleQuery.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useEffectiveShifts.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleDrafts.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/usePendingOpsQuery.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useShiftMutations.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useDraftMutations.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useEditSessionActions.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleMode.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useEditLock.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useEditIdleTimer.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleRealtime.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useScheduleViewerPresence.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/store/scheduleUiStore.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useCellState.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useUniformBadgeWidth.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useSynchronizedRowBadgeHeight.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useRetroactiveEditPrompt.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/useCascadeNotice.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/scheduleHourTotals.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/scheduleEmployeeSort.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/employeeEligibility.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftOccupancy.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/shiftClipboard.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/draftSaveFlow.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/scheduleExportRenderModel.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/lib/exportAccess.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/cache.ts",
+      "present": true
+    },
+    {
+      "file": "apps/web/src/schedule/hooks/optimisticScheduleCache.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-routes.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-service.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-export.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-export-cron.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-lineup-routes.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-lineup-service.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-requests-routes.ts",
+      "present": true
+    },
+    {
+      "file": "apps/api/src/schedule/schedule-requests-service.ts",
+      "present": true
+    },
+    {
+      "file": "packages/scheduling-shared/src/conflicts.ts",
+      "present": true
+    },
+    {
+      "file": "packages/scheduling-shared/src/minutes.ts",
+      "present": true
+    },
+    {
+      "file": "packages/scheduling-shared/src/format.ts",
+      "present": true
+    },
+    {
+      "file": "packages/scheduling-shared/src/auto-fill.ts",
+      "present": true
+    },
+    {
+      "file": "packages/scheduling-shared/src/types.ts",
+      "present": true
+    },
+    {
+      "file": "packages/scheduling-shared/src/index.ts",
+      "present": true
+    },
+    {
+      "file": "packages/shared/src/schedule.ts",
+      "present": true
+    }
+  ],
+  "tokenChecks": [
+    {
+      "group": "frontend-routes",
+      "file": "apps/web/src/App.tsx",
+      "missing": [],
+      "requiredCount": 5
+    },
+    {
+      "group": "frontend-orchestration",
+      "file": "apps/web/src/views/SchedulePage.tsx",
+      "missing": [],
+      "requiredCount": 18
+    },
+    {
+      "group": "frontend-api-boundary",
+      "file": "apps/web/src/schedule/schedule-data.ts",
+      "missing": [],
+      "requiredCount": 30
+    },
+    {
+      "group": "frontend-component-core",
+      "file": "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "missing": [],
+      "requiredCount": 8
+    },
+    {
+      "group": "frontend-grid-body",
+      "file": "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "missing": [],
+      "requiredCount": 8
+    },
+    {
+      "group": "frontend-topbar-filters",
+      "file": "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+      "missing": [],
+      "requiredCount": 9
+    },
+    {
+      "group": "frontend-editing",
+      "file": "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "missing": [],
+      "requiredCount": 7
+    },
+    {
+      "group": "frontend-publish",
+      "file": "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+      "missing": [],
+      "requiredCount": 9
+    },
+    {
+      "group": "backend-registration",
+      "file": "apps/api/src/app.ts",
+      "missing": [],
+      "requiredCount": 7
+    },
+    {
+      "group": "backend-main-routes",
+      "file": "apps/api/src/schedule/schedule-routes.ts",
+      "missing": [],
+      "requiredCount": 24
+    },
+    {
+      "group": "backend-main-service",
+      "file": "apps/api/src/schedule/schedule-service.ts",
+      "missing": [],
+      "requiredCount": 22
+    },
+    {
+      "group": "backend-lineups",
+      "file": "apps/api/src/schedule/schedule-lineup-routes.ts",
+      "missing": [],
+      "requiredCount": 3
+    },
+    {
+      "group": "backend-requests",
+      "file": "apps/api/src/schedule/schedule-requests-routes.ts",
+      "missing": [],
+      "requiredCount": 3
+    },
+    {
+      "group": "shared-scheduling-package",
+      "file": "packages/scheduling-shared/src/index.ts",
+      "missing": [],
+      "requiredCount": 5
+    },
+    {
+      "group": "shared-schedule-schema",
+      "file": "packages/shared/src/schedule.ts",
+      "missing": [],
+      "requiredCount": 13
+    },
+    {
+      "group": "permissions",
+      "file": "packages/shared/src/index.ts",
+      "missing": [],
+      "requiredCount": 10
+    }
+  ],
+  "migrationChecks": [
+    {
+      "token": "schedule_drafts",
+      "present": true
+    },
+    {
+      "token": "schedule_location_publications",
+      "present": true
+    },
+    {
+      "token": "schedule_pending_ops",
+      "present": true
+    },
+    {
+      "token": "schedule_templates",
+      "present": true
+    },
+    {
+      "token": "schedule_export_presets",
+      "present": true
+    },
+    {
+      "token": "schedule_export_schedules",
+      "present": true
+    },
+    {
+      "token": "schedule_export_events",
+      "present": true
+    },
+    {
+      "token": "schedule_edit_sessions",
+      "present": true
+    },
+    {
+      "token": "schedule_lineup",
+      "present": true
+    },
+    {
+      "token": "schedule_shift_change",
+      "present": true
+    },
+    {
+      "token": "auto_fill",
+      "present": true
+    },
+    {
+      "token": "department_ids",
+      "present": true
+    },
+    {
+      "token": "unpaid_break_minutes",
+      "present": true
+    },
+    {
+      "token": "hide_time_on_badge",
+      "present": true
+    },
+    {
+      "token": "shift_labels",
+      "present": true
+    },
+    {
+      "token": "closure",
+      "present": true
+    },
+    {
+      "token": "retroactive",
+      "present": true
+    }
+  ],
+  "evidence": {
+    "runtimeParityFailures": 0,
+    "sourceContractMissing": 0,
+    "interactionChecks": {
+      "focus": true,
+      "blankUnwind": 5,
+      "filters": 4,
+      "toasts": 4,
+      "dragMoveDrop": true,
+      "presetPreview": true,
+      "publishDepartmentScope": true
+    },
+    "cleanCaptureWarnings": 0
+  },
+  "failures": [],
+  "status": "pass"
+}

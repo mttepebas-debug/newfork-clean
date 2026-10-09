@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-09-01T19:38:54.952Z",
+  "oldRoot": "C:/Users/TheWe/newfork/apps/web/src/features/schedule",
+  "newRoot": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\apps\\web\\src",
+  "counts": {
+    "oldCoreFiles": 89,
+    "newCoreFiles": 130,
+    "oldExports": 428,
+    "newExports": 430,
+    "oldScheduleClassTokens": 53,
+    "newScheduleClassTokens": 359,
+    "oldScheduleDomClassTokens": 6,
+    "newScheduleDomClassTokens": 308,
+    "oldScheduleDataAttributes": 51,
+    "newScheduleDataAttributes": 54
+  },
+  "missingCoreBasenames": [],
+  "missingExports": [],
+  "missingScheduleDomClassTokens": [],
+  "missingScheduleStringTokens": [],
+  "missingScheduleDataAttributes": []
+}

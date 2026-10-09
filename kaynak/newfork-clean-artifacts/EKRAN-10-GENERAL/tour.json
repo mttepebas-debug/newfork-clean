@@ -1,0 +1,506 @@
+{
+  "admin-zeynep-1440": {
+    "landed": "http://127.0.0.1:5555/app/workspace",
+    "url": "/app/settings/general",
+    "h1": [
+      "General"
+    ],
+    "text": "Settings\nORGANIZATION\nGeneral\nLocations\nJobs\nNotifications\nSCHEDULING\nSchedule rules\nConflict handling\nShift catalog\nACCESS\nRoles & permissions\nDocuments\nAcknowledgements\nHELP\nSupport\nGeneral\n\nOrganization identity used across navigation, invitations, and shared workspaces.\n\nSchedule logo\n\nLogo shown in the sticky top-left corner of the schedule grid and schedule exports.\n\nWE\nWorld e2e1790265977849\nManage logo\nOrganization name\n\nChanging the display name does not change the organization ID or access.\n\nSave changes\nSetup checklist\n\nControls whether the guided setup checklist appears on the Workspace dashboard for this workspace.\n\nVisible on Workspace\nHide checklist\nPreferred names\n\nA preferred name is what people here call somebody. Documents and signatures always use the name on file. This is not the onboarding approval setting.\n\nUsed as soon as it is entered\nAnswer them here",
+    "inputs": [
+      {
+        "id": "organization-name",
+        "value": "World e2e1790265977849",
+        "disabled": false,
+        "maxLength": 120
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Manage logo",
+        "disabled": false,
+        "cls": "nf-button"
+      },
+      {
+        "text": "Save changes",
+        "disabled": true,
+        "cls": "nf-button"
+      },
+      {
+        "text": "Hide checklist",
+        "disabled": false,
+        "cls": "nf-button"
+      },
+      {
+        "text": "Answer them here",
+        "disabled": false,
+        "cls": "nf-button"
+      }
+    ],
+    "settingsNav": [
+      "Workspace",
+      "Schedule",
+      "Requests",
+      "Employees",
+      "Documents",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "General",
+      "Locations",
+      "Jobs",
+      "Notifications",
+      "Schedule rules",
+      "Conflict handling",
+      "Shift catalog",
+      "Roles & permissions",
+      "Documents",
+      "Acknowledgements",
+      "Support",
+      "Workspace",
+      "Schedule",
+      "Requests",
+      "Employees",
+      "Documents",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "Settings",
+      "Employee view",
+      "ZPAccount"
+    ],
+    "api": [
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "HEAD 200 /rest/v1/account_organization_history?select=user_id",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /v1/context",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/context",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/preferred-name-approval",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1"
+    ]
+  },
+  "admin-zeynep-390": {
+    "landed": "http://127.0.0.1:5555/app/workspace",
+    "url": "/app/settings/general",
+    "h1": [
+      "General"
+    ],
+    "text": "General\nLocations\nJobs\nNotifications\nSchedule rules\nConflict handling\nShift catalog\nRoles & permissions\nDocuments\nAcknowledgements\nSupport\nGeneral\n\nOrganization identity used across navigation, invitations, and shared workspaces.\n\nSchedule logo\n\nLogo shown in the sticky top-left corner of the schedule grid and schedule exports.\n\nWE\nWorld e2e1790265977849\nManage logo\nOrganization name\n\nChanging the display name does not change the organization ID or access.\n\nSave changes\nSetup checklist\n\nControls whether the guided setup checklist appears on the Workspace dashboard for this workspace.\n\nVisible on Workspace\nHide checklist\nPreferred names\n\nA preferred name is what people here call somebody. Documents and signatures always use the name on file. This is not the onboarding approval setting.\n\nUsed as soon as it is entered\nAnswer them here",
+    "inputs": [
+      {
+        "id": "organization-name",
+        "value": "World e2e1790265977849",
+        "disabled": false,
+        "maxLength": 120
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Manage logo",
+        "disabled": false,
+        "cls": "nf-button"
+      },
+      {
+        "text": "Save changes",
+        "disabled": true,
+        "cls": "nf-button"
+      },
+      {
+        "text": "Hide checklist",
+        "disabled": false,
+        "cls": "nf-button"
+      },
+      {
+        "text": "Answer them here",
+        "disabled": false,
+        "cls": "nf-button"
+      }
+    ],
+    "settingsNav": [
+      "Workspace",
+      "Requests",
+      "Employees",
+      "Documents",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "General",
+      "Locations",
+      "Jobs",
+      "Notifications",
+      "Schedule rules",
+      "Conflict handling",
+      "Shift catalog",
+      "Roles & permissions",
+      "Documents",
+      "Acknowledgements",
+      "Support",
+      "Workspace",
+      "Requests",
+      "Employees",
+      "Documents",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "Settings",
+      "Employee view",
+      "ZPAccount"
+    ],
+    "api": [
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "HEAD 200 /rest/v1/account_organization_history?select=user_id",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=manager",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.3d0f14cf-68ec-4323-9908-cee65eb30e1c",
+      "GET 200 /v1/context",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/context",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/preferred-name-approval",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1"
+    ]
+  },
+  "manager-ayse-1440": {
+    "landed": "http://127.0.0.1:5555/workspaces",
+    "url": "/app/workspace",
+    "h1": [
+      "Workspace"
+    ],
+    "text": "TODAY'S WORK. ONE PLACE.\nWorkspace\n\nTrack today’s operations, open requests, announcements, todos, and quick actions. Good morning, Ayse Person · Wednesday, October 7 at 1:32 AM.\n\nCustomize\nToday\n0\nScheduled today\n0\nOpen today\nPending requests\n0\nTime off\n0\nShift changes\nReview requests\nOpen shifts\n0\nunassigned shifts today\nOpen Schedule\nAnnouncements\n\nNo active announcements\n\nTodos\nAdd\n\nNo open todos\n\nNotifications\n\nYou're all caught up\n\nQuick actions\nOpen Schedule\nView employees\nNew announcement",
+    "inputs": [
+      {
+        "id": "",
+        "value": "",
+        "disabled": false,
+        "maxLength": 160
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Customize",
+        "disabled": false,
+        "cls": "nf-button secondary"
+      },
+      {
+        "text": "Add",
+        "disabled": true,
+        "cls": "nf-button secondary"
+      }
+    ],
+    "settingsNav": [
+      "Workspace",
+      "Schedule",
+      "Requests",
+      "Employees",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "Workspace",
+      "Schedule",
+      "Requests",
+      "Employees",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "Employee view",
+      "APAccount"
+    ],
+    "api": [
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=manager",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1"
+    ]
+  },
+  "manager-ayse-390": {
+    "landed": "http://127.0.0.1:5555/app/workspace",
+    "url": "/app/workspace",
+    "h1": [
+      "Workspace"
+    ],
+    "text": "TODAY'S WORK. ONE PLACE.\nWorkspace\n\nTrack today’s operations, open requests, announcements, todos, and quick actions. Good morning, Ayse Person · Wednesday, October 7 at 1:32 AM.\n\nCustomize\nToday\n0\nScheduled today\n0\nOpen today\nPending requests\n0\nTime off\n0\nShift changes\nReview requests\nOpen shifts\n0\nunassigned shifts today\nAnnouncements\n\nNo active announcements\n\nTodos\nAdd\n\nNo open todos\n\nNotifications\n\nYou're all caught up\n\nQuick actions\nView employees\nNew announcement",
+    "inputs": [
+      {
+        "id": "",
+        "value": "",
+        "disabled": false,
+        "maxLength": 160
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Customize",
+        "disabled": false,
+        "cls": "nf-button secondary"
+      },
+      {
+        "text": "Add",
+        "disabled": true,
+        "cls": "nf-button secondary"
+      }
+    ],
+    "settingsNav": [
+      "Workspace",
+      "Requests",
+      "Employees",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "Workspace",
+      "Requests",
+      "Employees",
+      "Availability",
+      "Important Dates",
+      "Announcements",
+      "Notifications",
+      "Employee view",
+      "APAccount"
+    ],
+    "api": [
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "HEAD 200 /rest/v1/account_organization_history?select=user_id",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=manager",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=manager",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.c4e9d83e-a026-4f7b-9d69-1b02108df186",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=manager",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=manager",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace"
+    ]
+  },
+  "employee-emre-1440": {
+    "landed": "http://127.0.0.1:5555/app/employee-hub",
+    "url": "/app/employee-hub",
+    "h1": [
+      "Good morning, Emre."
+    ],
+    "text": "W\nWorld e2e1790265977849\nYour personal space\nE\nA LITTLE CLARITY FOR YOUR DAY\nGood morning, Emre.\n\nA clear view of what’s next. Make the day yours.\n\nWednesday, October 7\n1:32 AM\nLocal time\nLOOKING AHEAD\nA little room to plan ahead.\n\nNo upcoming shifts published in this range.\n\nKeep your availability up to date. Your next shift will appear here when it’s published.\n\nUpdate availability\nOn your radar\nYou’re all caught up\n\nNo requests need your response.\n\nView your requests\nMy schedule\nYour week at a glance\nRequest time off\nMake room for your plans\nMy availability\nLet your team know\nOpen shifts\nFind another opportunity\nComing up\nView all\n\nThe next 7 days · dates in Europe/Istanbul\n\nWed\n7\nThu\n8\nFri\n9\nSat\n10\nSun\n11\nMon\n12\nTue\n13\n\nYour next published shifts will appear here.\n\nMy reminders\n\nJust for you. Saved across your devices.\n\nNothing on your list. Add a reminder for later.\n\nLatest updates\nView all\n\nYou’re up to date. Schedule changes and request updates will appear here.\n\nTeam notices\nView all\n\nNo new notices. Enjoy a little quiet.\n\nYour team\n\nPeople at your assigned locations\n\nOO\nOlcay Owner\nCook · Owner · Server\nAP\nAyse Person\nCook\nZP\nZeynep Person\nServer\nA clear day starts here.\nNotification preferences",
+    "inputs": [
+      {
+        "id": "",
+        "value": "",
+        "disabled": false,
+        "maxLength": 160
+      }
+    ],
+    "buttons": [
+      {
+        "text": "",
+        "disabled": true,
+        "cls": "eh-icon-button"
+      }
+    ],
+    "settingsNav": [
+      "Home",
+      "Schedule",
+      "Shift Hub",
+      "My Availability",
+      "Announcements",
+      "Notifications",
+      "My scheduleYour week at a glance",
+      "Request time offMake room for your plans",
+      "My availabilityLet your team know",
+      "Open shiftsFind another opportunity",
+      "Home",
+      "Schedule",
+      "Requests",
+      "More"
+    ],
+    "api": [
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "HEAD 200 /rest/v1/account_organization_history?select=user_id",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub?from=2026-10-05&to=2026-11-18",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub/personal-tasks",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/announcements",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=employee",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=5",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub?from=2026-10-05&to=2026-11-18",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub/personal-tasks",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=employee",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=5",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/announcements",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub?from=2026-10-05&to=2026-11-18"
+    ]
+  },
+  "employee-emre-390": {
+    "landed": "http://127.0.0.1:5555/app/employee-hub",
+    "url": "/app/employee-hub",
+    "h1": [
+      "Good morning, Emre."
+    ],
+    "text": "W\nWorld e2e1790265977849\nE\nA LITTLE CLARITY FOR YOUR DAY\nGood morning, Emre.\n\nA clear view of what’s next. Make the day yours.\n\nWednesday, October 7\n1:32 AM\nLOOKING AHEAD\nA little room to plan ahead.\n\nNo upcoming shifts published in this range.\n\nKeep your availability up to date. Your next shift will appear here when it’s published.\n\nUpdate availability\nYou’re all caught up\nView your requests\nMy schedule\nRequest time off\nMy availability\nOpen shifts\nComing up\nView all\n\nThe next 7 days · dates in Europe/Istanbul\n\nWed\n7\nThu\n8\nFri\n9\nSat\n10\nSun\n11\nMon\n12\nTue\n13\n\nYour next published shifts will appear here.\n\nMy reminders\n\nJust for you. Saved across your devices.\n\nNothing on your list. Add a reminder for later.\n\nLatest updates\nView all\n\nYou’re up to date. Schedule changes and request updates will appear here.\n\nTeam notices\nView all\n\nNo new notices. Enjoy a little quiet.\n\nYour team\n\nPeople at your assigned locations\n\nOO\nOlcay Owner\nCook · Owner · Server\nAP\nAyse Person\nCook\nZP\nZeynep Person\nServer\nA clear day starts here.\nNotification preferences",
+    "inputs": [
+      {
+        "id": "",
+        "value": "",
+        "disabled": false,
+        "maxLength": 160
+      }
+    ],
+    "buttons": [
+      {
+        "text": "",
+        "disabled": true,
+        "cls": "eh-icon-button"
+      }
+    ],
+    "settingsNav": [
+      "Home",
+      "Schedule",
+      "Shift Hub",
+      "My Availability",
+      "Announcements",
+      "Notifications",
+      "My scheduleYour week at a glance",
+      "Request time offMake room for your plans",
+      "My availabilityLet your team know",
+      "Open shiftsFind another opportunity",
+      "Home",
+      "Schedule",
+      "Requests",
+      "More"
+    ],
+    "api": [
+      "GET 200 /v1/context",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /v1/context",
+      "HEAD 200 /rest/v1/account_organization_history?select=user_id",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_preferences?select=theme%2Ctime_format%2Cdate_format&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /rest/v1/user_profiles?select=display_name%2Cphone%2Cphone_e164%2Cavatar_object_path&user_id=eq.caec2fcb-1356-45da-8299-247598376c39",
+      "GET 200 /v1/context",
+      "GET 200 /v1/context",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/account/workspaces",
+      "GET 200 /v1/account/attention",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/me/avatar",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/invitations/pending",
+      "GET 200 /v1/me/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/documents/access",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub?from=2026-10-05&to=2026-11-18",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=5",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/notifications?unread_only=false&limit=1",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/shift-exchanges?view=employee",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub/personal-tasks",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/communications/announcements",
+      "GET 200 /v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/employee-hub?from=2026-10-05&to=2026-11-18"
+    ]
+  }
+}

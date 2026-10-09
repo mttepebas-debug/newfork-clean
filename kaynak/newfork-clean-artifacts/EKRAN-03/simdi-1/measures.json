@@ -1,0 +1,546 @@
+{
+  "before-open": {
+    "dialog": {
+      "x": 490,
+      "y": 206,
+      "w": 460,
+      "h": 488,
+      "right": 950
+    },
+    "form": {
+      "x": 491,
+      "y": 281,
+      "w": 458,
+      "h": 412,
+      "right": 949
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 641,
+        "y": 631,
+        "w": 89,
+        "h": 42,
+        "right": 730,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "Confirm termination",
+        "x": 738,
+        "y": 631,
+        "w": 191,
+        "h": 42,
+        "right": 929,
+        "bg": "rgb(23, 105, 84)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Reason",
+        "x": 511,
+        "right": 929
+      }
+    ],
+    "errors": [],
+    "focused": "Terminate employee"
+  },
+  "before-tab-start": "Terminate employee",
+  "before-escape-focus": "Terminate employee",
+  "before-no-location": {
+    "dialog": {
+      "x": 490,
+      "y": 183,
+      "w": 460,
+      "h": 534,
+      "right": 950
+    },
+    "form": {
+      "x": 491,
+      "y": 258,
+      "w": 458,
+      "h": 458,
+      "right": 949
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 641,
+        "y": 654,
+        "w": 89,
+        "h": 42,
+        "right": 730,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "Confirm termination",
+        "x": 738,
+        "y": 654,
+        "w": 191,
+        "h": 42,
+        "right": 929,
+        "bg": "rgb(23, 105, 84)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": true
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Reason",
+        "x": 511,
+        "right": 929
+      }
+    ],
+    "errors": [],
+    "focused": "Terminate employee"
+  },
+  "before-no-location-zones": [],
+  "before-390": {
+    "dialog": {
+      "x": 0,
+      "y": 278,
+      "w": 390,
+      "h": 566,
+      "right": 390
+    },
+    "form": {
+      "x": 1,
+      "y": 353,
+      "w": 388,
+      "h": 490,
+      "right": 389
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 81,
+        "y": 781,
+        "w": 89,
+        "h": 42,
+        "right": 170,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "Confirm termination",
+        "x": 178,
+        "y": 781,
+        "w": 191,
+        "h": 42,
+        "right": 369,
+        "bg": "rgb(23, 105, 84)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": true
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 21,
+        "right": 369
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 21,
+        "right": 369
+      },
+      {
+        "label": "Reason",
+        "x": 21,
+        "right": 369
+      }
+    ],
+    "errors": [],
+    "focused": "MeyhouseWorkspaceRequestsEmployeesDocume"
+  },
+  "before-preferred-1440": {
+    "disabled": false,
+    "bg": "rgb(255, 255, 255)",
+    "first": {
+      "h": 40
+    },
+    "own": {
+      "h": 40
+    }
+  },
+  "before-preferred-390": {
+    "disabled": false,
+    "bg": "rgb(255, 255, 255)",
+    "first": {
+      "h": 44
+    },
+    "own": {
+      "h": 44
+    }
+  },
+  "after-open": {
+    "dialog": {
+      "x": 490,
+      "y": 206,
+      "w": 460,
+      "h": 488,
+      "right": 950
+    },
+    "form": {
+      "x": 491,
+      "y": 281,
+      "w": 458,
+      "h": 412,
+      "right": 949
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 641,
+        "y": 631,
+        "w": 89,
+        "h": 42,
+        "right": 730,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "TerminateConfirm termination",
+        "x": 738,
+        "y": 631,
+        "w": 191,
+        "h": 42,
+        "right": 929,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Reason",
+        "x": 511,
+        "right": 929
+      }
+    ],
+    "errors": [],
+    "focused": "Effective date and time"
+  },
+  "after-missing-reason": {
+    "dialog": {
+      "x": 490,
+      "y": 197,
+      "w": 460,
+      "h": 506,
+      "right": 950
+    },
+    "form": {
+      "x": 491,
+      "y": 272,
+      "w": 458,
+      "h": 430,
+      "right": 949
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 641,
+        "y": 640,
+        "w": 89,
+        "h": 42,
+        "right": 730,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "TerminateConfirm termination",
+        "x": 738,
+        "y": 640,
+        "w": 191,
+        "h": 42,
+        "right": 929,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Reason",
+        "x": 511,
+        "right": 929
+      }
+    ],
+    "errors": [
+      {
+        "text": "Enter a reason of at least 3 characters.",
+        "x": 511,
+        "y": 543,
+        "w": 418,
+        "h": 12,
+        "right": 929,
+        "color": "rgb(161, 63, 48)",
+        "weight": "700"
+      }
+    ],
+    "focused": "Reason"
+  },
+  "after-armed": {
+    "dialog": {
+      "x": 490,
+      "y": 206,
+      "w": 460,
+      "h": 488,
+      "right": 950
+    },
+    "form": {
+      "x": 491,
+      "y": 281,
+      "w": 458,
+      "h": 412,
+      "right": 949
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 641,
+        "y": 631,
+        "w": 89,
+        "h": 42,
+        "right": 730,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "Confirm terminationConfirm termination",
+        "x": 738,
+        "y": 631,
+        "w": 191,
+        "h": 42,
+        "right": 929,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Reason",
+        "x": 511,
+        "right": 929
+      }
+    ],
+    "errors": [],
+    "focused": "Confirm terminationConfirm termination"
+  },
+  "after-escape-focus": "Terminate employee",
+  "after-tab-order": [
+    "Effective date and time",
+    "America/Los_Angeles",
+    "Reason",
+    "Cancel",
+    "TerminateConfirm termination",
+    "Close termination dialog",
+    "Effective date and time",
+    "America/Los_Angeles",
+    "Reason",
+    "Cancel",
+    "TerminateConfirm termination",
+    "Close termination dialog"
+  ],
+  "after-no-location": {
+    "dialog": {
+      "x": 490,
+      "y": 206,
+      "w": 460,
+      "h": 488,
+      "right": 950
+    },
+    "form": {
+      "x": 491,
+      "y": 281,
+      "w": 458,
+      "h": 412,
+      "right": 949
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 641,
+        "y": 631,
+        "w": 89,
+        "h": 42,
+        "right": 730,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "TerminateConfirm termination",
+        "x": 738,
+        "y": 631,
+        "w": 191,
+        "h": 42,
+        "right": 929,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 511,
+        "right": 929
+      },
+      {
+        "label": "Reason",
+        "x": 511,
+        "right": 929
+      }
+    ],
+    "errors": [],
+    "focused": "Effective date and time"
+  },
+  "after-no-location-zones": [
+    "America/Los_Angeles"
+  ],
+  "after-390": {
+    "dialog": {
+      "x": 0,
+      "y": 339,
+      "w": 390,
+      "h": 505,
+      "right": 390
+    },
+    "form": {
+      "x": 1,
+      "y": 414,
+      "w": 388,
+      "h": 429,
+      "right": 389
+    },
+    "buttons": [
+      {
+        "text": "Cancel",
+        "x": 81,
+        "y": 781,
+        "w": 89,
+        "h": 42,
+        "right": 170,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(36, 76, 61)",
+        "disabled": false
+      },
+      {
+        "text": "TerminateConfirm termination",
+        "x": 178,
+        "y": 781,
+        "w": 191,
+        "h": 42,
+        "right": 369,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "disabled": false
+      }
+    ],
+    "fields": [
+      {
+        "label": "Effective date and time",
+        "x": 21,
+        "right": 369
+      },
+      {
+        "label": "Worksite timezone",
+        "x": 21,
+        "right": 369
+      },
+      {
+        "label": "Reason",
+        "x": 21,
+        "right": 369
+      }
+    ],
+    "errors": [],
+    "focused": "Effective date and time"
+  },
+  "after-preferred-1440": {
+    "disabled": true,
+    "bg": "rgb(239, 242, 240)",
+    "first": {
+      "h": 40
+    },
+    "own": {
+      "h": 40
+    }
+  },
+  "after-preferred-390": {
+    "disabled": true,
+    "bg": "rgb(239, 242, 240)",
+    "first": {
+      "h": 44
+    },
+    "own": {
+      "h": 44
+    }
+  }
+}

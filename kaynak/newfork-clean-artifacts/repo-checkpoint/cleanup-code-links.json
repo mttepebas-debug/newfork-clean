@@ -1,0 +1,2545 @@
+{
+  "roots": [
+    "apps/web/src/main.tsx",
+    "apps/api/src/server.ts",
+    "apps/api/src/app.ts",
+    "packages/scheduling-shared/src/index.ts",
+    "packages/scheduling-shared/src/index.ts",
+    "packages/scheduling-shared/src/index.ts",
+    "packages/shared/src/index.ts",
+    "packages/shared/src/schedule.ts",
+    "packages/shared/src/index.ts",
+    "packages/shared/src/index.ts",
+    "packages/ui/src/index.ts",
+    "packages/ui/src/index.ts",
+    "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+    "apps/web/src/main.tsx"
+  ],
+  "sources": 578,
+  "reached": 326,
+  "reachable": [
+    "apps/api/src/account/workspace-account-routes.ts",
+    "apps/api/src/account/workspace-account-service.ts",
+    "apps/api/src/account/workspace-retention-routes.ts",
+    "apps/api/src/account/workspace-retention-worker.ts",
+    "apps/api/src/app.ts",
+    "apps/api/src/auth/workspace-context.ts",
+    "apps/api/src/availability/availability-retirement.ts",
+    "apps/api/src/availability/availability-routes.ts",
+    "apps/api/src/availability/availability-service.ts",
+    "apps/api/src/availability/weekly-preferences-routes.ts",
+    "apps/api/src/communications/communication-routes.ts",
+    "apps/api/src/communications/communication-service.ts",
+    "apps/api/src/employee-hub/employee-hub-routes.ts",
+    "apps/api/src/employee-hub/employee-hub-service.ts",
+    "apps/api/src/employees/employee-create-service.ts",
+    "apps/api/src/employees/employee-directory-routes.ts",
+    "apps/api/src/employees/employee-directory-service.ts",
+    "apps/api/src/employees/invitation-service.ts",
+    "apps/api/src/employees/onboarding-routes.ts",
+    "apps/api/src/employees/onboarding-service.ts",
+    "apps/api/src/kiosk/kiosk-crypto.ts",
+    "apps/api/src/kiosk/kiosk-routes.ts",
+    "apps/api/src/kiosk/kiosk-service.ts",
+    "apps/api/src/notifications/notification-outbox-routes.ts",
+    "apps/api/src/notifications/notification-outbox-worker.ts",
+    "apps/api/src/notifications/notification-settings-routes.ts",
+    "apps/api/src/notifications/notification-settings-service.ts",
+    "apps/api/src/schedule/schedule-export-cron-routes.ts",
+    "apps/api/src/schedule/schedule-export-cron.ts",
+    "apps/api/src/schedule/schedule-export.ts",
+    "apps/api/src/schedule/schedule-lineup-routes.ts",
+    "apps/api/src/schedule/schedule-lineup-service.ts",
+    "apps/api/src/schedule/schedule-requests-routes.ts",
+    "apps/api/src/schedule/schedule-requests-service.ts",
+    "apps/api/src/schedule/schedule-routes.ts",
+    "apps/api/src/schedule/schedule-service.ts",
+    "apps/api/src/server.ts",
+    "apps/api/src/settings/document-types-routes.ts",
+    "apps/api/src/settings/document-types-service.ts",
+    "apps/api/src/settings/jobs-management-routes.ts",
+    "apps/api/src/settings/jobs-management-service.ts",
+    "apps/api/src/settings/organization-settings-routes.ts",
+    "apps/api/src/settings/organization-settings-service.ts",
+    "apps/api/src/settings/roles-routes.ts",
+    "apps/api/src/settings/roles-service.ts",
+    "apps/api/src/settings/signature-settings-routes.ts",
+    "apps/api/src/settings/signature-settings-service.ts",
+    "apps/api/src/shift-exchanges/shift-exchanges-routes.ts",
+    "apps/api/src/shift-exchanges/shift-exchanges-service.ts",
+    "apps/api/src/time-entries/time-entries-routes.ts",
+    "apps/api/src/time-entries/time-entries-service.ts",
+    "apps/web/src/App.tsx",
+    "apps/web/src/account/AccountLayout.tsx",
+    "apps/web/src/account/NotificationPreferencesPage.tsx",
+    "apps/web/src/account/PreferencesPage.tsx",
+    "apps/web/src/account/ProfilePage.tsx",
+    "apps/web/src/account/WorkspacesPage.tsx",
+    "apps/web/src/account/components.tsx",
+    "apps/web/src/account/notification-preferences-data.ts",
+    "apps/web/src/auth/AuthContext.tsx",
+    "apps/web/src/auth/PermissionRoute.tsx",
+    "apps/web/src/auth/ProtectedRoute.tsx",
+    "apps/web/src/auth/routeDestinations.ts",
+    "apps/web/src/auth/tenant-query-cache.ts",
+    "apps/web/src/availability/AvailabilityClockInput.tsx",
+    "apps/web/src/availability/WeeklyCommitmentReview.tsx",
+    "apps/web/src/availability/WeeklyPreferenceSettings.tsx",
+    "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+    "apps/web/src/availability/WeeklyPreferencesForm.tsx",
+    "apps/web/src/availability/WeeklyPreferencesPanel.tsx",
+    "apps/web/src/availability/WeeklyUnavailableEditor.tsx",
+    "apps/web/src/availability/availability-data.ts",
+    "apps/web/src/availability/availability-navigation.tsx",
+    "apps/web/src/communications/NotificationShiftDetails.tsx",
+    "apps/web/src/communications/action-url.ts",
+    "apps/web/src/communications/communications-data.ts",
+    "apps/web/src/dev/EmployeeOnboardingPreview.tsx",
+    "apps/web/src/dev/ScheduleShiftBadgeLabPage.tsx",
+    "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+    "apps/web/src/dev/scheduleShiftBadgeLabCatalog.ts",
+    "apps/web/src/dev/scheduleShiftBadgeLabRuntime.ts",
+    "apps/web/src/employee-hub/DashboardCommunications.tsx",
+    "apps/web/src/employee-hub/DashboardPrimitives.tsx",
+    "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+    "apps/web/src/employee-hub/EmployeeMobileNav.tsx",
+    "apps/web/src/employee-hub/EmployeeTeamView.tsx",
+    "apps/web/src/employee-hub/PersonalReminders.tsx",
+    "apps/web/src/employee-hub/ShiftSheet.tsx",
+    "apps/web/src/employee-hub/TimeOffCancellation.tsx",
+    "apps/web/src/employee-hub/TimeOffCancellationHours.tsx",
+    "apps/web/src/employee-hub/TimeOffDateFields.tsx",
+    "apps/web/src/employee-hub/TimeOffHourFields.tsx",
+    "apps/web/src/employee-hub/TimeOffPartialDecision.tsx",
+    "apps/web/src/employee-hub/TimeOffPeriods.tsx",
+    "apps/web/src/employee-hub/TimeOffReleasedAssignments.tsx",
+    "apps/web/src/employee-hub/dashboard-model.ts",
+    "apps/web/src/employee-hub/employee-hub-data.ts",
+    "apps/web/src/employee-hub/shift-exchanges/EarlierShiftRequests.tsx",
+    "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.tsx",
+    "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.tsx",
+    "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+    "apps/web/src/employee-hub/shift-exchanges/exchange-data.ts",
+    "apps/web/src/employee-hub/shift-exchanges/exchange-time-details.ts",
+    "apps/web/src/employee-hub/shift-exchanges/useExchangeRealtime.ts",
+    "apps/web/src/employee-hub/time-off-split.ts",
+    "apps/web/src/employee-hub/useHubClock.ts",
+    "apps/web/src/employees/AcceptInvitationPage.tsx",
+    "apps/web/src/employees/EmployeeDrawer.tsx",
+    "apps/web/src/employees/EmployeeOnboardingPage.tsx",
+    "apps/web/src/employees/EmployeesPage.tsx",
+    "apps/web/src/employees/PendingInvitationsPage.tsx",
+    "apps/web/src/employees/employee-create-flow.ts",
+    "apps/web/src/employees/employee-data.ts",
+    "apps/web/src/employees/employee-history-guard.ts",
+    "apps/web/src/employees/onboarding-data.ts",
+    "apps/web/src/kiosk/KioskPage.tsx",
+    "apps/web/src/kiosk/kiosk-data.ts",
+    "apps/web/src/lib/escape-focus.ts",
+    "apps/web/src/lib/supabase.ts",
+    "apps/web/src/main.tsx",
+    "apps/web/src/public/PublicTrustLayout.tsx",
+    "apps/web/src/public/PublicTrustPages.tsx",
+    "apps/web/src/schedule/availabilityIndicators.ts",
+    "apps/web/src/schedule/badgeAccessibility.ts",
+    "apps/web/src/schedule/components/AutoFillReviewOverlay.tsx",
+    "apps/web/src/schedule/components/CascadeNoticeToast.tsx",
+    "apps/web/src/schedule/components/DayHeaderCell.tsx",
+    "apps/web/src/schedule/components/DefaultHoursReviewDialog.tsx",
+    "apps/web/src/schedule/components/DraftDropdownMenu.tsx",
+    "apps/web/src/schedule/components/EnterEditModeDialog.tsx",
+    "apps/web/src/schedule/components/LocationPublicationChips.tsx",
+    "apps/web/src/schedule/components/MiniCalendar.tsx",
+    "apps/web/src/schedule/components/PublishPreflightPanel.tsx",
+    "apps/web/src/schedule/components/PublishReturn.preview.tsx",
+    "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+    "apps/web/src/schedule/components/RetroactiveEditDialog.tsx",
+    "apps/web/src/schedule/components/SaveDraftDialog.tsx",
+    "apps/web/src/schedule/components/SaveDraftMenu.tsx",
+    "apps/web/src/schedule/components/ScheduleConflictNotice.tsx",
+    "apps/web/src/schedule/components/ScheduleConflictSheet.tsx",
+    "apps/web/src/schedule/components/ScheduleContextMenu.tsx",
+    "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx",
+    "apps/web/src/schedule/components/ScheduleEditLockedDialog.tsx",
+    "apps/web/src/schedule/components/ScheduleEditTimeoutDialog.tsx",
+    "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx",
+    "apps/web/src/schedule/components/ScheduleExportControls.tsx",
+    "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+    "apps/web/src/schedule/components/ScheduleExportPanel.tsx",
+    "apps/web/src/schedule/components/ScheduleExportPresets.tsx",
+    "apps/web/src/schedule/components/ScheduleExportPreviewDialog.tsx",
+    "apps/web/src/schedule/components/ScheduleExportRecentEvents.tsx",
+    "apps/web/src/schedule/components/ScheduleExportSchedules.tsx",
+    "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx",
+    "apps/web/src/schedule/components/ScheduleFillerRow.tsx",
+    "apps/web/src/schedule/components/ScheduleFilterCommandStrip.tsx",
+    "apps/web/src/schedule/components/ScheduleGrid.tsx",
+    "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+    "apps/web/src/schedule/components/ScheduleGridDragPreviews.tsx",
+    "apps/web/src/schedule/components/ScheduleGridHeaders.tsx",
+    "apps/web/src/schedule/components/ScheduleGridShell.tsx",
+    "apps/web/src/schedule/components/ScheduleLocationHeader.tsx",
+    "apps/web/src/schedule/components/ScheduleLogoFrame.tsx",
+    "apps/web/src/schedule/components/ScheduleLogoUploadDialog.tsx",
+    "apps/web/src/schedule/components/SchedulePresetRows.tsx",
+    "apps/web/src/schedule/components/ScheduleRow.tsx",
+    "apps/web/src/schedule/components/ScheduleSaveRecoverySheet.tsx",
+    "apps/web/src/schedule/components/ScheduleState.tsx",
+    "apps/web/src/schedule/components/ScheduleTemplateDialogs.tsx",
+    "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+    "apps/web/src/schedule/components/ScheduleTopBarFilter.tsx",
+    "apps/web/src/schedule/components/ScheduleTotalsRow.tsx",
+    "apps/web/src/schedule/components/ShiftCard.tsx",
+    "apps/web/src/schedule/components/ShiftDragPreview.tsx",
+    "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+    "apps/web/src/schedule/components/TimeInput.tsx",
+    "apps/web/src/schedule/components/UnpublishScheduleDialog.tsx",
+    "apps/web/src/schedule/components/scheduleExportDownload.ts",
+    "apps/web/src/schedule/hooks/optimisticScheduleCache.ts",
+    "apps/web/src/schedule/hooks/useCascadeNotice.ts",
+    "apps/web/src/schedule/hooks/useCellState.ts",
+    "apps/web/src/schedule/hooks/useEditIdleTimer.ts",
+    "apps/web/src/schedule/hooks/useEffectiveShifts.ts",
+    "apps/web/src/schedule/hooks/usePendingOpsQuery.ts",
+    "apps/web/src/schedule/hooks/usePreflightShiftFocus.ts",
+    "apps/web/src/schedule/hooks/useRetroactiveEditPrompt.ts",
+    "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx",
+    "apps/web/src/schedule/hooks/useScheduleDrafts.ts",
+    "apps/web/src/schedule/hooks/useScheduleDropReview.ts",
+    "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+    "apps/web/src/schedule/hooks/useScheduleGridSelectionClear.ts",
+    "apps/web/src/schedule/hooks/useScheduleMode.ts",
+    "apps/web/src/schedule/hooks/useScheduleQuery.ts",
+    "apps/web/src/schedule/hooks/useScheduleRealtime.ts",
+    "apps/web/src/schedule/hooks/useScheduleViewerPresence.ts",
+    "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.ts",
+    "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.ts",
+    "apps/web/src/schedule/importantDateCoverage.ts",
+    "apps/web/src/schedule/lib/draftSaveFlow.ts",
+    "apps/web/src/schedule/lib/employeeEligibility.ts",
+    "apps/web/src/schedule/lib/exportAccess.ts",
+    "apps/web/src/schedule/lib/retroactiveEditRecovery.ts",
+    "apps/web/src/schedule/lib/scheduleActionButton.ts",
+    "apps/web/src/schedule/lib/scheduleClosures.ts",
+    "apps/web/src/schedule/lib/scheduleDateTime.ts",
+    "apps/web/src/schedule/lib/scheduleDeleteSelection.ts",
+    "apps/web/src/schedule/lib/scheduleDismissal.ts",
+    "apps/web/src/schedule/lib/scheduleDragTargets.ts",
+    "apps/web/src/schedule/lib/scheduleEmployeeSort.ts",
+    "apps/web/src/schedule/lib/scheduleFilterModel.ts",
+    "apps/web/src/schedule/lib/scheduleGridLayout.ts",
+    "apps/web/src/schedule/lib/scheduleGridViewModel.ts",
+    "apps/web/src/schedule/lib/scheduleHourTotals.ts",
+    "apps/web/src/schedule/lib/scheduleInteractionTargets.ts",
+    "apps/web/src/schedule/lib/scheduleLocationFilterToggle.ts",
+    "apps/web/src/schedule/lib/schedulePreflightReturn.ts",
+    "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+    "apps/web/src/schedule/lib/schedulePublishRecovery.ts",
+    "apps/web/src/schedule/lib/scheduleShiftMetadata.ts",
+    "apps/web/src/schedule/lib/scheduleShiftMutation.ts",
+    "apps/web/src/schedule/lib/scheduleShiftSelection.ts",
+    "apps/web/src/schedule/lib/scheduleWeeklyAvailability.ts",
+    "apps/web/src/schedule/lib/shiftClipboard.ts",
+    "apps/web/src/schedule/lib/shiftEditorEligibility.ts",
+    "apps/web/src/schedule/lib/shiftEditorState.ts",
+    "apps/web/src/schedule/lib/shiftEditorView.ts",
+    "apps/web/src/schedule/lineup-data.ts",
+    "apps/web/src/schedule/lineup-share.ts",
+    "apps/web/src/schedule/lineup/EmployeeLineup.tsx",
+    "apps/web/src/schedule/lineup/EmployeeLineupOffers.tsx",
+    "apps/web/src/schedule/lineup/LineupBoard.tsx",
+    "apps/web/src/schedule/lineup/LineupCandidates.tsx",
+    "apps/web/src/schedule/lineup/LineupDialog.tsx",
+    "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+    "apps/web/src/schedule/lineup/LineupEditor.tsx",
+    "apps/web/src/schedule/lineup/LineupNotes.tsx",
+    "apps/web/src/schedule/lineup/LineupPlacements.tsx",
+    "apps/web/src/schedule/lineup/LineupQueue.tsx",
+    "apps/web/src/schedule/lineup/LineupSectionPlan.tsx",
+    "apps/web/src/schedule/lineup/LineupSections.tsx",
+    "apps/web/src/schedule/lineup/LineupWorkspace.tsx",
+    "apps/web/src/schedule/lineup/lineup-helpers.ts",
+    "apps/web/src/schedule/lineup/lineup-time.ts",
+    "apps/web/src/schedule/lineup/useLineupAutosave.tsx",
+    "apps/web/src/schedule/requests-data.ts",
+    "apps/web/src/schedule/schedule-conflicts.ts",
+    "apps/web/src/schedule/schedule-data.ts",
+    "apps/web/src/schedule/store/scheduleUiStore.ts",
+    "apps/web/src/schedule/timeInput.ts",
+    "apps/web/src/settings/CatalogDeleteAction.tsx",
+    "apps/web/src/settings/CatalogDrawer.tsx",
+    "apps/web/src/settings/CatalogRowMenu.tsx",
+    "apps/web/src/settings/DocumentsSettingsPage.tsx",
+    "apps/web/src/settings/GeneralSettingsPage.tsx",
+    "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+    "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+    "apps/web/src/settings/JobCatalogEditor.tsx",
+    "apps/web/src/settings/JobsSettingsPage.tsx",
+    "apps/web/src/settings/KioskSettingsPage.tsx",
+    "apps/web/src/settings/LocationsSettingsPage.tsx",
+    "apps/web/src/settings/NotificationSettingsPage.tsx",
+    "apps/web/src/settings/RolesSettingsPage.tsx",
+    "apps/web/src/settings/SchedulingSettingsPage.tsx",
+    "apps/web/src/settings/SettingsHomeRedirect.tsx",
+    "apps/web/src/settings/SettingsLayout.tsx",
+    "apps/web/src/settings/ShiftCatalogList.tsx",
+    "apps/web/src/settings/ShiftCatalogSettingsPage.tsx",
+    "apps/web/src/settings/ShiftCatalogTabs.tsx",
+    "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+    "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+    "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+    "apps/web/src/settings/SupportSettingsPage.tsx",
+    "apps/web/src/settings/documents-data.ts",
+    "apps/web/src/settings/jobs-management-data.ts",
+    "apps/web/src/settings/kiosk-management-data.ts",
+    "apps/web/src/settings/notification-settings-data.ts",
+    "apps/web/src/settings/organization-data.ts",
+    "apps/web/src/settings/roles-data.ts",
+    "apps/web/src/settings/signature-templates-data.ts",
+    "apps/web/src/shell/AppShell.tsx",
+    "apps/web/src/shell/NoOrganizationPage.tsx",
+    "apps/web/src/shell/OrganizationSwitcherPage.tsx",
+    "apps/web/src/shell/PendingOrganizationStatusPage.tsx",
+    "apps/web/src/shell/SuspendedOrganizationStatusPage.tsx",
+    "apps/web/src/time-entries/time-entries-data.ts",
+    "apps/web/src/views/AnnouncementsPage.tsx",
+    "apps/web/src/views/AvailabilityPage.tsx",
+    "apps/web/src/views/EmployeeHubPage.tsx",
+    "apps/web/src/views/EmployeeTimeTrackingView.tsx",
+    "apps/web/src/views/LineupPage.tsx",
+    "apps/web/src/views/NotificationsPage.tsx",
+    "apps/web/src/views/OwnerOnboardingPage.tsx",
+    "apps/web/src/views/SchedulePage.tsx",
+    "apps/web/src/views/ScheduleRequestsPage.tsx",
+    "apps/web/src/views/ScheduleTemplatesPage.tsx",
+    "apps/web/src/views/SignInPage.tsx",
+    "apps/web/src/views/TimeEntriesPage.tsx",
+    "apps/web/src/views/WorkspacePage.tsx",
+    "packages/scheduling-shared/src/auto-fill.ts",
+    "packages/scheduling-shared/src/conflicts.ts",
+    "packages/scheduling-shared/src/format.ts",
+    "packages/scheduling-shared/src/index.ts",
+    "packages/scheduling-shared/src/minutes.ts",
+    "packages/scheduling-shared/src/types.ts",
+    "packages/shared/src/availability-assessment.ts",
+    "packages/shared/src/availability-calendar.ts",
+    "packages/shared/src/availability-lifecycle.ts",
+    "packages/shared/src/availability.ts",
+    "packages/shared/src/communications.ts",
+    "packages/shared/src/employee-hub.ts",
+    "packages/shared/src/index.ts",
+    "packages/shared/src/kiosk.ts",
+    "packages/shared/src/lineup-operations.ts",
+    "packages/shared/src/notification-catalog.ts",
+    "packages/shared/src/notification-display.ts",
+    "packages/shared/src/notification-settings.ts",
+    "packages/shared/src/schedule-default-hours.ts",
+    "packages/shared/src/schedule.ts",
+    "packages/shared/src/shift-exchanges.ts",
+    "packages/shared/src/storage-access.ts",
+    "packages/shared/src/time-capture.ts",
+    "packages/shared/src/time-off.ts",
+    "packages/shared/src/weekly-preferences.ts",
+    "packages/ui/src/components/Button.tsx",
+    "packages/ui/src/components/Toaster.tsx",
+    "packages/ui/src/index.ts",
+    "packages/ui/src/lib/use-toast.ts"
+  ],
+  "consumers": {
+    "packages/shared/src/index.ts": [
+      "apps/api/src/account/workspace-account-routes.test.ts",
+      "apps/api/src/account/workspace-account-service.ts",
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/auth/workspace-context.test.ts",
+      "apps/api/src/auth/workspace-context.ts",
+      "apps/api/src/availability/availability-routes.test.ts",
+      "apps/api/src/availability/availability-routes.ts",
+      "apps/api/src/availability/availability-service.ts",
+      "apps/api/src/availability/weekly-preferences-routes.test.ts",
+      "apps/api/src/availability/weekly-preferences-routes.ts",
+      "apps/api/src/availability/weekly-preferences-service.test.ts",
+      "apps/api/src/communications/communication-routes.test.ts",
+      "apps/api/src/communications/communication-routes.ts",
+      "apps/api/src/communications/communication-service.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.test.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.ts",
+      "apps/api/src/employee-hub/employee-hub-service.ts",
+      "apps/api/src/employees/employee-create-service.ts",
+      "apps/api/src/employees/employee-directory-routes.test.ts",
+      "apps/api/src/employees/employee-directory-routes.ts",
+      "apps/api/src/employees/employee-directory-service.ts",
+      "apps/api/src/employees/invitation-service.ts",
+      "apps/api/src/employees/onboarding-routes.ts",
+      "apps/api/src/employees/onboarding-service.ts",
+      "apps/api/src/kiosk/kiosk-routes.test.ts",
+      "apps/api/src/kiosk/kiosk-routes.ts",
+      "apps/api/src/kiosk/kiosk-service.ts",
+      "apps/api/src/notifications/notification-settings-routes.test.ts",
+      "apps/api/src/notifications/notification-settings-routes.ts",
+      "apps/api/src/notifications/notification-settings-service.ts",
+      "apps/api/src/schedule/schedule-batch-routes.test.ts",
+      "apps/api/src/schedule/schedule-default-hours-routes.test.ts",
+      "apps/api/src/schedule/schedule-lineup-http-matrix.test.ts",
+      "apps/api/src/schedule/schedule-lineup-operations-routes.test.ts",
+      "apps/api/src/schedule/schedule-lineup-routes.ts",
+      "apps/api/src/schedule/schedule-lineup-routes.ts",
+      "apps/api/src/schedule/schedule-requests-routes.ts",
+      "apps/api/src/schedule/schedule-requests-routes.ts",
+      "apps/api/src/schedule/schedule-requests-service.ts",
+      "apps/api/src/settings/document-types-routes.test.ts",
+      "apps/api/src/settings/document-types-routes.ts",
+      "apps/api/src/settings/document-types-service.ts",
+      "apps/api/src/settings/jobs-management-routes.test.ts",
+      "apps/api/src/settings/jobs-management-routes.ts",
+      "apps/api/src/settings/jobs-management-service.ts",
+      "apps/api/src/settings/organization-settings-routes.test.ts",
+      "apps/api/src/settings/organization-settings-routes.ts",
+      "apps/api/src/settings/organization-settings-service.test.ts",
+      "apps/api/src/settings/organization-settings-service.ts",
+      "apps/api/src/settings/roles-routes.test.ts",
+      "apps/api/src/settings/roles-routes.ts",
+      "apps/api/src/settings/roles-service.ts",
+      "apps/api/src/settings/signature-settings-routes.test.ts",
+      "apps/api/src/settings/signature-settings-routes.ts",
+      "apps/api/src/settings/signature-settings-service.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-routes.test.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-routes.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-service.ts",
+      "apps/api/src/time-entries/time-entries-routes.test.ts",
+      "apps/api/src/time-entries/time-entries-routes.ts",
+      "apps/api/src/time-entries/time-entries-service.ts",
+      "apps/web/src/App.test.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.test.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.tsx",
+      "apps/web/src/account/PreferencesPage.test.tsx",
+      "apps/web/src/account/PreferencesPage.tsx",
+      "apps/web/src/account/ProfilePage.test.tsx",
+      "apps/web/src/account/WorkspacesPage.test.tsx",
+      "apps/web/src/account/WorkspacesPage.tsx",
+      "apps/web/src/account/notification-preferences-data.ts",
+      "apps/web/src/auth/AuthContext.tsx",
+      "apps/web/src/auth/PermissionRoute.test.tsx",
+      "apps/web/src/auth/PermissionRoute.tsx",
+      "apps/web/src/auth/routeDestinations.test.ts",
+      "apps/web/src/auth/routeDestinations.ts",
+      "apps/web/src/availability/WeeklyCommitmentReview.tsx",
+      "apps/web/src/availability/WeeklyPreferenceSettings.test.tsx",
+      "apps/web/src/availability/WeeklyPreferenceSettings.tsx",
+      "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+      "apps/web/src/availability/WeeklyPreferencesForm.test.tsx",
+      "apps/web/src/availability/WeeklyPreferencesForm.tsx",
+      "apps/web/src/availability/WeeklyPreferencesPanel.test.tsx",
+      "apps/web/src/availability/WeeklyPreferencesPanel.tsx",
+      "apps/web/src/availability/WeeklyUnavailableEditor.tsx",
+      "apps/web/src/availability/availability-data.ts",
+      "apps/web/src/communications/NotificationShiftDetails.test.tsx",
+      "apps/web/src/communications/NotificationShiftDetails.tsx",
+      "apps/web/src/communications/communications-data.ts",
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/EmployeeTeamView.test.tsx",
+      "apps/web/src/employee-hub/PersonalReminders.tsx",
+      "apps/web/src/employee-hub/ShiftSheet.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellation.test.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellation.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellationHours.tsx",
+      "apps/web/src/employee-hub/TimeOffHourFields.tsx",
+      "apps/web/src/employee-hub/TimeOffPartialDecision.tsx",
+      "apps/web/src/employee-hub/TimeOffPeriods.tsx",
+      "apps/web/src/employee-hub/TimeOffReleasedAssignments.tsx",
+      "apps/web/src/employee-hub/dashboard-model.test.ts",
+      "apps/web/src/employee-hub/dashboard-model.ts",
+      "apps/web/src/employee-hub/employee-hub-data.ts",
+      "apps/web/src/employee-hub/shift-exchanges/EarlierShiftRequests.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/exchange-data.ts",
+      "apps/web/src/employee-hub/shift-exchanges/exchange-time-details.ts",
+      "apps/web/src/employees/EmployeeDrawer.create.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.test.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.tsx",
+      "apps/web/src/employees/EmployeesPage.test.tsx",
+      "apps/web/src/employees/EmployeesPage.tsx",
+      "apps/web/src/employees/employee-create-flow.ts",
+      "apps/web/src/employees/employee-data.ts",
+      "apps/web/src/employees/onboarding-data.ts",
+      "apps/web/src/kiosk/KioskPage.tsx",
+      "apps/web/src/kiosk/kiosk-data.ts",
+      "apps/web/src/lib/supabase.ts",
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleLogoFrame.tsx",
+      "apps/web/src/schedule/components/ScheduleLogoUploadDialog.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.ts",
+      "apps/web/src/schedule/lib/exportAccess.ts",
+      "apps/web/src/schedule/lib/scheduleHourTotals.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+      "apps/web/src/schedule/lib/scheduleWeeklyAvailability.test.ts",
+      "apps/web/src/schedule/lib/scheduleWeeklyAvailability.ts",
+      "apps/web/src/schedule/lineup-data.ts",
+      "apps/web/src/schedule/lineup-data.ts",
+      "apps/web/src/schedule/lineup-data.ts",
+      "apps/web/src/schedule/lineup-data.ts",
+      "apps/web/src/schedule/lineup/EmployeeLineup.test.tsx",
+      "apps/web/src/schedule/lineup/EmployeeLineup.tsx",
+      "apps/web/src/schedule/lineup/LineupBoard.tsx",
+      "apps/web/src/schedule/lineup/LineupCandidates.test.tsx",
+      "apps/web/src/schedule/lineup/LineupCandidates.tsx",
+      "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.test.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupNotes.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.test.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.tsx",
+      "apps/web/src/schedule/lineup/LineupSectionPlan.tsx",
+      "apps/web/src/schedule/lineup/LineupSections.test.tsx",
+      "apps/web/src/schedule/lineup/LineupSections.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx",
+      "apps/web/src/schedule/lineup/lineup-helpers.ts",
+      "apps/web/src/schedule/lineup/useLineupAutosave.test.tsx",
+      "apps/web/src/schedule/requests-data.ts",
+      "apps/web/src/schedule/schedule-conflicts.ts",
+      "apps/web/src/settings/DocumentsSettingsPage.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.test.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.test.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobCatalogEditor.tsx",
+      "apps/web/src/settings/JobsManagement.test.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx",
+      "apps/web/src/settings/KioskSettingsPage.test.tsx",
+      "apps/web/src/settings/KioskSettingsPage.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/NotificationSettingsNavigation.test.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.test.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.tsx",
+      "apps/web/src/settings/RolesSettingsPage.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.test.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.tsx",
+      "apps/web/src/settings/SettingsLayout.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.test.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.test.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+      "apps/web/src/settings/documents-data.ts",
+      "apps/web/src/settings/jobs-management-data.ts",
+      "apps/web/src/settings/kiosk-management-data.ts",
+      "apps/web/src/settings/notification-settings-data.ts",
+      "apps/web/src/settings/organization-data.ts",
+      "apps/web/src/settings/roles-data.ts",
+      "apps/web/src/settings/signature-templates-data.ts",
+      "apps/web/src/shell/AppShell.tsx",
+      "apps/web/src/shell/AppShellNotificationBadge.test.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.test.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.tsx",
+      "apps/web/src/time-entries/time-entries-data.ts",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/AvailabilityPage.test.tsx",
+      "apps/web/src/views/AvailabilityPage.tsx",
+      "apps/web/src/views/CommunicationPages.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/EmployeeTimeTrackingView.tsx",
+      "apps/web/src/views/LineupPage.test.tsx",
+      "apps/web/src/views/NotificationsPage.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.test.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.test.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx",
+      "apps/web/src/views/SignInPage.tsx",
+      "apps/web/src/views/TimeEntriesPage.test.tsx",
+      "apps/web/src/views/TimeEntriesPage.tsx",
+      "apps/web/src/views/WorkspacePage.test.tsx",
+      "apps/web/src/views/WorkspacePage.tsx",
+      "packages/shared/src/availability-date-overrides.test.ts",
+      "packages/shared/src/index.test.ts",
+      "packages/shared/src/index.test.ts",
+      "packages/shared/src/index.test.ts",
+      "packages/shared/src/index.test.ts",
+      "packages/shared/src/index.test.ts",
+      "packages/shared/src/schedule.ts",
+      "packages/shared/src/schedule.ts",
+      "packages/shared/src/time-off-decision.test.ts"
+    ],
+    "apps/api/src/app.ts": [
+      "apps/api/src/account/workspace-account-routes.test.ts",
+      "apps/api/src/app.test.ts",
+      "apps/api/src/communications/communication-routes.test.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.test.ts",
+      "apps/api/src/employees/employee-directory-routes.test.ts",
+      "apps/api/src/kiosk/kiosk-routes.test.ts",
+      "apps/api/src/server.ts",
+      "apps/api/src/settings/document-types-routes.test.ts",
+      "apps/api/src/settings/organization-settings-routes.test.ts",
+      "apps/api/src/settings/roles-routes.test.ts",
+      "apps/api/src/settings/signature-settings-routes.test.ts",
+      "apps/api/src/time-entries/time-entries-routes.test.ts"
+    ],
+    "apps/api/src/account/workspace-account-service.ts": [
+      "apps/api/src/account/workspace-account-routes.test.ts",
+      "apps/api/src/account/workspace-account-routes.ts",
+      "apps/api/src/account/workspace-account-service.test.ts",
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/auth/workspace-context.ts": [
+      "apps/api/src/account/workspace-account-routes.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/auth/workspace-context.test.ts",
+      "apps/api/src/availability/availability-routes.ts",
+      "apps/api/src/availability/weekly-preferences-routes.ts",
+      "apps/api/src/communications/communication-routes.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.ts",
+      "apps/api/src/employees/employee-directory-routes.ts",
+      "apps/api/src/employees/onboarding-routes.ts",
+      "apps/api/src/kiosk/kiosk-routes.ts",
+      "apps/api/src/notifications/notification-settings-routes.ts",
+      "apps/api/src/schedule/schedule-lineup-routes.ts",
+      "apps/api/src/schedule/schedule-requests-routes.ts",
+      "apps/api/src/schedule/schedule-routes.ts",
+      "apps/api/src/settings/document-types-routes.ts",
+      "apps/api/src/settings/jobs-management-routes.ts",
+      "apps/api/src/settings/organization-settings-routes.ts",
+      "apps/api/src/settings/roles-routes.ts",
+      "apps/api/src/settings/signature-settings-routes.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-routes.ts",
+      "apps/api/src/time-entries/time-entries-routes.ts"
+    ],
+    "apps/api/src/employees/invitation-service.ts": [
+      "apps/api/src/account/workspace-account-routes.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/employees/employee-create-service.ts",
+      "apps/api/src/employees/invitation-service.test.ts"
+    ],
+    "apps/api/src/account/workspace-retention-worker.ts": [
+      "apps/api/src/account/workspace-retention-routes.ts",
+      "apps/api/src/account/workspace-retention-worker.test.ts",
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/employees/onboarding-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/employees/onboarding-routes.ts",
+      "apps/api/src/employees/onboarding-service.test.ts"
+    ],
+    "apps/api/src/schedule/schedule-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/schedule/schedule-batch-routes.test.ts",
+      "apps/api/src/schedule/schedule-default-hours-routes.test.ts",
+      "apps/api/src/schedule/schedule-export-cron-routes.ts",
+      "apps/api/src/schedule/schedule-export-cron.test.ts",
+      "apps/api/src/schedule/schedule-export-cron.ts",
+      "apps/api/src/schedule/schedule-routes.ts",
+      "apps/api/src/schedule/schedule-service.test.ts"
+    ],
+    "apps/api/src/schedule/schedule-lineup-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/schedule/schedule-lineup-delivery.test.ts",
+      "apps/api/src/schedule/schedule-lineup-http-matrix.test.ts",
+      "apps/api/src/schedule/schedule-lineup-operations-routes.test.ts",
+      "apps/api/src/schedule/schedule-lineup-rollout.test.ts",
+      "apps/api/src/schedule/schedule-lineup-routes.ts"
+    ],
+    "apps/api/src/schedule/schedule-requests-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/schedule/schedule-requests-routes.ts",
+      "apps/api/src/schedule/time-off-decision-service.test.ts"
+    ],
+    "apps/api/src/employee-hub/employee-hub-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/employee-hub/employee-hub-read-service.test.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.test.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.ts",
+      "apps/api/src/employee-hub/employee-time-off-service.test.ts"
+    ],
+    "apps/api/src/communications/communication-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/communications/communication-routes.test.ts",
+      "apps/api/src/communications/communication-routes.ts",
+      "apps/api/src/communications/communication-service.test.ts"
+    ],
+    "apps/api/src/time-entries/time-entries-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/time-entries/time-entries-routes.test.ts",
+      "apps/api/src/time-entries/time-entries-routes.ts"
+    ],
+    "apps/api/src/notifications/notification-settings-service.ts": [
+      "apps/api/src/app.test.ts",
+      "apps/api/src/app.ts",
+      "apps/api/src/notifications/notification-settings-routes.test.ts",
+      "apps/api/src/notifications/notification-settings-routes.ts",
+      "apps/api/src/notifications/notification-settings-service.test.ts"
+    ],
+    "apps/api/src/account/workspace-account-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/account/workspace-retention-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/employees/employee-directory-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/employees/employee-directory-routes.test.ts",
+      "apps/api/src/employees/employee-directory-routes.ts"
+    ],
+    "apps/api/src/employees/employee-directory-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/employees/employee-create-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/employees/employee-create-service.test.ts",
+      "apps/api/src/employees/employee-directory-routes.ts"
+    ],
+    "apps/api/src/employees/onboarding-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/schedule/schedule-routes.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/schedule/schedule-batch-routes.test.ts",
+      "apps/api/src/schedule/schedule-default-hours-routes.test.ts"
+    ],
+    "apps/api/src/schedule/schedule-export-cron-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/schedule/schedule-lineup-routes.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/schedule/schedule-lineup-http-matrix.test.ts",
+      "apps/api/src/schedule/schedule-lineup-operations-routes.test.ts"
+    ],
+    "apps/api/src/schedule/schedule-requests-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/employee-hub/employee-hub-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/shift-exchanges/shift-exchanges-routes.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-routes.test.ts"
+    ],
+    "apps/api/src/shift-exchanges/shift-exchanges-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-routes.test.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-routes.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-service.test.ts"
+    ],
+    "apps/api/src/availability/availability-routes.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/availability/availability-routes.test.ts"
+    ],
+    "apps/api/src/availability/availability-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/availability/availability-routes.ts",
+      "apps/api/src/availability/weekly-preferences-routes.ts",
+      "apps/api/src/availability/weekly-preferences-service.test.ts"
+    ],
+    "apps/api/src/communications/communication-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/time-entries/time-entries-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/kiosk/kiosk-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/kiosk/kiosk-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/kiosk/kiosk-routes.test.ts",
+      "apps/api/src/kiosk/kiosk-routes.ts"
+    ],
+    "apps/api/src/notifications/notification-outbox-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/notifications/notification-outbox-worker.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/notifications/notification-outbox-routes.ts",
+      "apps/api/src/notifications/notification-outbox-worker.test.ts"
+    ],
+    "apps/api/src/notifications/notification-settings-routes.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/notifications/notification-settings-routes.test.ts"
+    ],
+    "apps/api/src/settings/document-types-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/settings/document-types-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/settings/document-types-routes.test.ts",
+      "apps/api/src/settings/document-types-routes.ts"
+    ],
+    "apps/api/src/settings/organization-settings-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/settings/organization-settings-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/settings/organization-settings-routes.test.ts",
+      "apps/api/src/settings/organization-settings-routes.ts",
+      "apps/api/src/settings/organization-settings-service.test.ts"
+    ],
+    "apps/api/src/settings/roles-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/settings/roles-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/settings/roles-routes.test.ts",
+      "apps/api/src/settings/roles-routes.ts"
+    ],
+    "apps/api/src/settings/signature-settings-routes.ts": [
+      "apps/api/src/app.ts"
+    ],
+    "apps/api/src/settings/signature-settings-service.ts": [
+      "apps/api/src/app.ts",
+      "apps/api/src/settings/signature-settings-routes.test.ts",
+      "apps/api/src/settings/signature-settings-routes.ts"
+    ],
+    "apps/api/src/availability/availability-retirement.ts": [
+      "apps/api/src/availability/availability-routes.ts",
+      "apps/api/src/employee-hub/employee-hub-routes.ts",
+      "apps/api/src/employees/onboarding-routes.ts"
+    ],
+    "apps/api/src/availability/weekly-preferences-routes.ts": [
+      "apps/api/src/availability/availability-routes.ts",
+      "apps/api/src/availability/weekly-preferences-routes.test.ts"
+    ],
+    "apps/api/src/kiosk/kiosk-crypto.ts": [
+      "apps/api/src/kiosk/kiosk-crypto.test.ts",
+      "apps/api/src/kiosk/kiosk-service.ts"
+    ],
+    "apps/api/src/schedule/schedule-export-cron.ts": [
+      "apps/api/src/schedule/schedule-export-cron-routes.ts",
+      "apps/api/src/schedule/schedule-export-cron.test.ts"
+    ],
+    "packages/shared/src/schedule.ts": [
+      "apps/api/src/schedule/schedule-export-cron.test.ts",
+      "apps/api/src/schedule/schedule-export.test.ts",
+      "apps/api/src/schedule/schedule-export.ts",
+      "apps/api/src/schedule/schedule-lineup-routes.ts",
+      "apps/api/src/schedule/schedule-lineup-service.ts",
+      "apps/api/src/schedule/schedule-requests-routes.ts",
+      "apps/api/src/schedule/schedule-requests-service.ts",
+      "apps/api/src/schedule/schedule-routes.ts",
+      "apps/api/src/schedule/schedule-service.ts",
+      "apps/api/src/shift-exchanges/shift-exchanges-service.ts",
+      "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/exchange-data.ts",
+      "apps/web/src/schedule/availabilityIndicators.test.ts",
+      "apps/web/src/schedule/availabilityIndicators.ts",
+      "apps/web/src/schedule/badgeAccessibility.ts",
+      "apps/web/src/schedule/components/AutoFillReviewOverlay.tsx",
+      "apps/web/src/schedule/components/DayHeaderCell.tsx",
+      "apps/web/src/schedule/components/DefaultHoursReviewDialog.test.tsx",
+      "apps/web/src/schedule/components/DefaultHoursReviewDialog.tsx",
+      "apps/web/src/schedule/components/DraftDropdownMenu.tsx",
+      "apps/web/src/schedule/components/EnterEditModeDialog.tsx",
+      "apps/web/src/schedule/components/PublishPreflightPanel.test.tsx",
+      "apps/web/src/schedule/components/PublishPreflightPanel.tsx",
+      "apps/web/src/schedule/components/PublishReturn.preview.tsx",
+      "apps/web/src/schedule/components/PublishScheduleDialog.test.tsx",
+      "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+      "apps/web/src/schedule/components/SaveDraftDialog.test.tsx",
+      "apps/web/src/schedule/components/SaveDraftDialog.tsx",
+      "apps/web/src/schedule/components/SaveDraftMenu.tsx",
+      "apps/web/src/schedule/components/ScheduleContextMenu.test.tsx",
+      "apps/web/src/schedule/components/ScheduleContextMenu.tsx",
+      "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx",
+      "apps/web/src/schedule/components/ScheduleEmployeeCard.test.tsx",
+      "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx",
+      "apps/web/src/schedule/components/ScheduleExportControls.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportControls.tsx",
+      "apps/web/src/schedule/components/ScheduleExportDialog.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPanel.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPanel.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPresets.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPresets.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPreviewDialog.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPreviewDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportRecentEvents.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportRecentEvents.tsx",
+      "apps/web/src/schedule/components/ScheduleExportSchedules.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportSchedules.tsx",
+      "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleFillerRow.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.hour-totals.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleGridDragPreviews.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGridDragPreviews.tsx",
+      "apps/web/src/schedule/components/ScheduleGridHeaders.tsx",
+      "apps/web/src/schedule/components/SchedulePresetRows.test.tsx",
+      "apps/web/src/schedule/components/SchedulePresetRows.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.test.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/components/ScheduleTemplateDialogs.test.tsx",
+      "apps/web/src/schedule/components/ScheduleTemplateDialogs.tsx",
+      "apps/web/src/schedule/components/ScheduleTopBar.test.tsx",
+      "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+      "apps/web/src/schedule/components/ScheduleTotalsRow.test.tsx",
+      "apps/web/src/schedule/components/ScheduleTotalsRow.tsx",
+      "apps/web/src/schedule/components/ShiftCard.test.tsx",
+      "apps/web/src/schedule/components/ShiftCard.tsx",
+      "apps/web/src/schedule/components/ShiftDragPreview.test.tsx",
+      "apps/web/src/schedule/components/ShiftDragPreview.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/components/UnpublishScheduleDialog.tsx",
+      "apps/web/src/schedule/components/scheduleExportDownload.test.ts",
+      "apps/web/src/schedule/components/scheduleExportDownload.ts",
+      "apps/web/src/schedule/hooks/optimisticScheduleCache.test.ts",
+      "apps/web/src/schedule/hooks/optimisticScheduleCache.ts",
+      "apps/web/src/schedule/hooks/useCellState.test.ts",
+      "apps/web/src/schedule/hooks/useCellState.ts",
+      "apps/web/src/schedule/hooks/useEffectiveShifts.test.ts",
+      "apps/web/src/schedule/hooks/useEffectiveShifts.test.ts",
+      "apps/web/src/schedule/hooks/useEffectiveShifts.ts",
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.ts",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.test.ts",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/hooks/useScheduleQuery.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleQuery.ts",
+      "apps/web/src/schedule/hooks/useScheduleRealtime.ts",
+      "apps/web/src/schedule/importantDateCoverage.test.ts",
+      "apps/web/src/schedule/importantDateCoverage.ts",
+      "apps/web/src/schedule/lib/draftSaveFlow.test.ts",
+      "apps/web/src/schedule/lib/draftSaveFlow.ts",
+      "apps/web/src/schedule/lib/employeeEligibility.ts",
+      "apps/web/src/schedule/lib/exportAccess.ts",
+      "apps/web/src/schedule/lib/scheduleClosures.test.ts",
+      "apps/web/src/schedule/lib/scheduleClosures.ts",
+      "apps/web/src/schedule/lib/scheduleDateTime.ts",
+      "apps/web/src/schedule/lib/scheduleEmployeeSort.test.ts",
+      "apps/web/src/schedule/lib/scheduleEmployeeSort.ts",
+      "apps/web/src/schedule/lib/scheduleFilterModel.test.ts",
+      "apps/web/src/schedule/lib/scheduleFilterModel.ts",
+      "apps/web/src/schedule/lib/scheduleGridLayout.ts",
+      "apps/web/src/schedule/lib/scheduleGridViewModel.test.ts",
+      "apps/web/src/schedule/lib/scheduleGridViewModel.ts",
+      "apps/web/src/schedule/lib/scheduleHourTotals.test.ts",
+      "apps/web/src/schedule/lib/scheduleHourTotals.ts",
+      "apps/web/src/schedule/lib/schedulePreflightReturn.test.ts",
+      "apps/web/src/schedule/lib/schedulePreflightReturn.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.test.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.test.ts",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMetadata.test.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMetadata.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMutation.test.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMutation.ts",
+      "apps/web/src/schedule/lib/scheduleWeeklyAvailability.test.ts",
+      "apps/web/src/schedule/lib/scheduleWeeklyAvailability.ts",
+      "apps/web/src/schedule/lib/shiftClipboard.test.ts",
+      "apps/web/src/schedule/lib/shiftClipboard.ts",
+      "apps/web/src/schedule/lib/shiftEditorEligibility.test.ts",
+      "apps/web/src/schedule/lib/shiftEditorEligibility.ts",
+      "apps/web/src/schedule/lib/shiftEditorState.test.ts",
+      "apps/web/src/schedule/lib/shiftEditorState.ts",
+      "apps/web/src/schedule/lineup-data.ts",
+      "apps/web/src/schedule/lineup-share.test.ts",
+      "apps/web/src/schedule/lineup-share.ts",
+      "apps/web/src/schedule/requests-data.ts",
+      "apps/web/src/schedule/schedule-conflicts.test.ts",
+      "apps/web/src/schedule/schedule-conflicts.ts",
+      "apps/web/src/schedule/schedule-data-keys.test.ts",
+      "apps/web/src/schedule/schedule-data.ts",
+      "apps/web/src/views/SchedulePage.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.test.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.tsx"
+    ],
+    "apps/api/src/schedule/schedule-export.ts": [
+      "apps/api/src/schedule/schedule-export-cron.ts",
+      "apps/api/src/schedule/schedule-export.test.ts",
+      "apps/api/src/schedule/schedule-routes.ts"
+    ],
+    "apps/api/src/settings/jobs-management-routes.ts": [
+      "apps/api/src/settings/jobs-management-routes.test.ts",
+      "apps/api/src/settings/organization-settings-routes.ts"
+    ],
+    "apps/api/src/settings/jobs-management-service.ts": [
+      "apps/api/src/settings/jobs-management-routes.test.ts",
+      "apps/api/src/settings/jobs-management-routes.ts",
+      "apps/api/src/settings/organization-settings-service.ts"
+    ],
+    "apps/web/src/App.tsx": [
+      "apps/web/src/App.test.tsx",
+      "apps/web/src/main.tsx",
+      "apps/web/src/public/PublicTrustPages.test.tsx"
+    ],
+    "apps/web/src/schedule/schedule-data.ts": [
+      "apps/web/src/App.test.tsx",
+      "apps/web/src/schedule/components/DefaultHoursReviewDialog.test.tsx",
+      "apps/web/src/schedule/components/DefaultHoursReviewDialog.tsx",
+      "apps/web/src/schedule/components/PublishScheduleDialog.test.tsx",
+      "apps/web/src/schedule/components/RetroactiveEditDialog.test.tsx",
+      "apps/web/src/schedule/components/RetroactiveEditDialog.tsx",
+      "apps/web/src/schedule/components/scheduleExportDownload.test.ts",
+      "apps/web/src/schedule/components/scheduleExportDownload.ts",
+      "apps/web/src/schedule/hooks/optimisticScheduleCache.test.ts",
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.test.tsx",
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.test.tsx",
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.ts",
+      "apps/web/src/schedule/hooks/useRetroactiveEditPrompt.ts",
+      "apps/web/src/schedule/hooks/useScheduleDrafts.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDrafts.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDrafts.ts",
+      "apps/web/src/schedule/hooks/useScheduleQuery.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleQuery.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleQuery.ts",
+      "apps/web/src/schedule/hooks/useScheduleRealtime.ts",
+      "apps/web/src/schedule/lib/draftSaveFlow.test.ts",
+      "apps/web/src/schedule/lib/draftSaveFlow.ts",
+      "apps/web/src/schedule/lib/retroactiveEditRecovery.test.ts",
+      "apps/web/src/schedule/lib/retroactiveEditRecovery.ts",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.test.ts",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.ts",
+      "apps/web/src/schedule/schedule-data-keys.test.ts",
+      "apps/web/src/views/SchedulePage.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.test.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.test.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.tsx"
+    ],
+    "packages/ui/src/index.ts": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.tsx",
+      "apps/web/src/account/PreferencesPage.tsx",
+      "apps/web/src/account/ProfilePage.tsx",
+      "apps/web/src/account/WorkspacesPage.tsx",
+      "apps/web/src/employees/AcceptInvitationPage.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.tsx",
+      "apps/web/src/employees/EmployeesPage.tsx",
+      "apps/web/src/employees/PendingInvitationsPage.tsx",
+      "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/hooks/useCascadeNotice.test.tsx",
+      "apps/web/src/schedule/hooks/useCascadeNotice.ts",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.ts",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.tsx",
+      "apps/web/src/settings/DocumentsSettingsPage.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/KioskSettingsPage.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.tsx",
+      "apps/web/src/settings/RolesSettingsPage.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+      "apps/web/src/settings/SupportSettingsPage.tsx",
+      "apps/web/src/shell/NoOrganizationPage.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.tsx",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.tsx",
+      "apps/web/src/views/SchedulePage.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.tsx",
+      "apps/web/src/views/SignInPage.tsx"
+    ],
+    "apps/web/src/auth/AuthContext.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/account/AccountLayout.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.tsx",
+      "apps/web/src/account/PreferencesPage.tsx",
+      "apps/web/src/account/ProfilePage.tsx",
+      "apps/web/src/account/WorkspacesPage.tsx",
+      "apps/web/src/auth/AuthContext.test.tsx",
+      "apps/web/src/auth/PermissionRoute.tsx",
+      "apps/web/src/auth/ProtectedRoute.tsx",
+      "apps/web/src/employee-hub/DashboardCommunications.tsx",
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/EmployeeMobileNav.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/employees/AcceptInvitationPage.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.tsx",
+      "apps/web/src/employees/EmployeesPage.tsx",
+      "apps/web/src/public/PublicTrustLayout.tsx",
+      "apps/web/src/public/PublicTrustPages.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx",
+      "apps/web/src/settings/DocumentsSettingsPage.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx",
+      "apps/web/src/settings/KioskSettingsPage.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.tsx",
+      "apps/web/src/settings/RolesSettingsPage.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.tsx",
+      "apps/web/src/settings/SettingsHomeRedirect.tsx",
+      "apps/web/src/settings/SettingsLayout.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+      "apps/web/src/settings/SupportSettingsPage.tsx",
+      "apps/web/src/shell/AppShell.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.tsx",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/AvailabilityPage.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/NotificationsPage.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.tsx",
+      "apps/web/src/views/SchedulePage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.tsx",
+      "apps/web/src/views/SignInPage.tsx",
+      "apps/web/src/views/TimeEntriesPage.tsx",
+      "apps/web/src/views/WorkspacePage.tsx"
+    ],
+    "apps/web/src/auth/ProtectedRoute.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/auth/ProtectedRoute.test.tsx"
+    ],
+    "apps/web/src/auth/PermissionRoute.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/auth/PermissionRoute.test.tsx",
+      "apps/web/src/settings/SettingsLayout.tsx",
+      "apps/web/src/shell/AppShellNotificationBadge.test.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.test.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/auth/routeDestinations.ts": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/auth/PermissionRoute.tsx",
+      "apps/web/src/auth/routeDestinations.test.ts",
+      "apps/web/src/shell/OrganizationSwitcherPage.tsx"
+    ],
+    "apps/web/src/shell/AppShell.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/shell/AppShellNotificationBadge.test.tsx"
+    ],
+    "apps/web/src/views/SignInPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/SignInPage.test.tsx"
+    ],
+    "apps/web/src/account/AccountLayout.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/dev/EmployeeOnboardingPreview.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/public/PublicTrustLayout.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/public/PublicTrustPages.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/App.tsx",
+      "apps/web/src/App.tsx",
+      "apps/web/src/App.tsx",
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/account/PreferencesPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/account/PreferencesPage.test.tsx"
+    ],
+    "apps/web/src/account/NotificationPreferencesPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.test.tsx"
+    ],
+    "apps/web/src/account/ProfilePage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/account/ProfilePage.test.tsx"
+    ],
+    "apps/web/src/account/WorkspacesPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/account/WorkspacesPage.test.tsx"
+    ],
+    "apps/web/src/shell/OrganizationSwitcherPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.test.tsx"
+    ],
+    "apps/web/src/shell/NoOrganizationPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/shell/NoOrganizationPage.test.tsx"
+    ],
+    "apps/web/src/shell/PendingOrganizationStatusPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/shell/OrganizationStatusPages.test.tsx"
+    ],
+    "apps/web/src/shell/SuspendedOrganizationStatusPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/shell/OrganizationStatusPages.test.tsx"
+    ],
+    "apps/web/src/views/EmployeeHubPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx"
+    ],
+    "apps/web/src/kiosk/KioskPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/kiosk/KioskPage.test.tsx"
+    ],
+    "apps/web/src/views/WorkspacePage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/CommunicationPages.test.tsx",
+      "apps/web/src/views/WorkspacePage.test.tsx"
+    ],
+    "apps/web/src/views/AnnouncementsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/CommunicationPages.test.tsx"
+    ],
+    "apps/web/src/views/NotificationsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/communications/NotificationShiftDetails.test.tsx",
+      "apps/web/src/views/CommunicationPages.test.tsx"
+    ],
+    "apps/web/src/employees/EmployeesPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/employees/EmployeesPage.test.tsx"
+    ],
+    "apps/web/src/employees/AcceptInvitationPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/employees/AcceptInvitationPage.test.tsx"
+    ],
+    "apps/web/src/employees/PendingInvitationsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/employees/PendingInvitationsPage.test.tsx"
+    ],
+    "apps/web/src/employees/EmployeeOnboardingPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.test.tsx"
+    ],
+    "apps/web/src/views/OwnerOnboardingPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.test.tsx"
+    ],
+    "apps/web/src/views/SchedulePage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/dev/ScheduleShiftBadgeLabPage.tsx"
+    ],
+    "apps/web/src/dev/ScheduleShiftDesignPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/dev/ScheduleShiftBadgeLabPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/dev/ScheduleShiftBadgeLabPage.test.tsx"
+    ],
+    "apps/web/src/views/ScheduleTemplatesPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/ScheduleTemplatesPage.test.tsx"
+    ],
+    "apps/web/src/views/AvailabilityPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/AvailabilityPage.test.tsx"
+    ],
+    "apps/web/src/views/TimeEntriesPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/TimeEntriesPage.test.tsx"
+    ],
+    "apps/web/src/views/LineupPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/LineupPage.test.tsx"
+    ],
+    "apps/web/src/views/ScheduleRequestsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.test.tsx"
+    ],
+    "apps/web/src/settings/SettingsLayout.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/NotificationSettingsNavigation.test.tsx"
+    ],
+    "apps/web/src/settings/GeneralSettingsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/DocumentsSettingsPage.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.test.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobCatalogEditor.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx",
+      "apps/web/src/settings/KioskSettingsPage.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.tsx",
+      "apps/web/src/settings/RolesSettingsPage.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+      "apps/web/src/settings/SupportSettingsPage.tsx",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/settings/LocationsSettingsPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/settings/JobsSettingsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/JobsManagement.test.tsx"
+    ],
+    "apps/web/src/settings/NotificationSettingsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.test.tsx"
+    ],
+    "apps/web/src/settings/SchedulingSettingsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.test.tsx"
+    ],
+    "apps/web/src/settings/ShiftCatalogSettingsPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/settings/ImportantDatesSettingsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.test.tsx"
+    ],
+    "apps/web/src/settings/RolesSettingsPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/settings/DocumentsSettingsPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/settings/SupportSettingsPage.tsx": [
+      "apps/web/src/App.tsx"
+    ],
+    "apps/web/src/settings/KioskSettingsPage.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/KioskSettingsPage.test.tsx"
+    ],
+    "apps/web/src/settings/SettingsHomeRedirect.tsx": [
+      "apps/web/src/App.tsx",
+      "apps/web/src/settings/NotificationSettingsNavigation.test.tsx"
+    ],
+    "apps/web/src/account/notification-preferences-data.ts": [
+      "apps/web/src/account/NotificationPreferencesPage.test.tsx",
+      "apps/web/src/account/NotificationPreferencesPage.tsx",
+      "apps/web/src/account/notification-preferences-data.test.ts"
+    ],
+    "apps/web/src/account/components.tsx": [
+      "apps/web/src/account/NotificationPreferencesPage.tsx",
+      "apps/web/src/account/PreferencesPage.tsx",
+      "apps/web/src/account/ProfilePage.tsx",
+      "apps/web/src/account/WorkspacesPage.tsx"
+    ],
+    "apps/web/src/lib/supabase.ts": [
+      "apps/web/src/account/ProfilePage.test.tsx",
+      "apps/web/src/account/ProfilePage.tsx",
+      "apps/web/src/account/WorkspacesPage.test.tsx",
+      "apps/web/src/account/WorkspacesPage.tsx",
+      "apps/web/src/account/notification-preferences-data.ts",
+      "apps/web/src/auth/AuthContext.tsx",
+      "apps/web/src/availability/availability-data.ts",
+      "apps/web/src/communications/communications-data.ts",
+      "apps/web/src/employee-hub/employee-hub-data.ts",
+      "apps/web/src/employee-hub/shift-exchanges/exchange-data.ts",
+      "apps/web/src/employee-hub/shift-exchanges/useExchangeRealtime.ts",
+      "apps/web/src/employees/PendingInvitationsPage.test.tsx",
+      "apps/web/src/employees/PendingInvitationsPage.tsx",
+      "apps/web/src/employees/employee-data.ts",
+      "apps/web/src/employees/onboarding-data.ts",
+      "apps/web/src/kiosk/kiosk-data.ts",
+      "apps/web/src/lib/supabase.test.ts",
+      "apps/web/src/schedule/hooks/useCascadeNotice.ts",
+      "apps/web/src/schedule/hooks/useScheduleRealtime.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleRealtime.ts",
+      "apps/web/src/schedule/hooks/useScheduleViewerPresence.ts",
+      "apps/web/src/schedule/lineup-data.ts",
+      "apps/web/src/schedule/requests-data.ts",
+      "apps/web/src/schedule/schedule-data.ts",
+      "apps/web/src/settings/documents-data.ts",
+      "apps/web/src/settings/kiosk-management-data.ts",
+      "apps/web/src/settings/notification-settings-data.ts",
+      "apps/web/src/settings/organization-data.ts",
+      "apps/web/src/settings/roles-data.ts",
+      "apps/web/src/settings/signature-templates-data.ts",
+      "apps/web/src/shell/AppShell.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.test.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.tsx",
+      "apps/web/src/time-entries/time-entries-data.ts",
+      "apps/web/src/views/OwnerOnboardingPage.test.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.tsx"
+    ],
+    "apps/web/src/auth/tenant-query-cache.ts": [
+      "apps/web/src/account/WorkspacesPage.tsx",
+      "apps/web/src/auth/AuthContext.tsx",
+      "apps/web/src/auth/tenant-query-cache.test.ts",
+      "apps/web/src/employees/EmployeeOnboardingPage.tsx",
+      "apps/web/src/shell/OrganizationSwitcherPage.tsx"
+    ],
+    "apps/web/src/availability/AvailabilityClockInput.tsx": [
+      "apps/web/src/availability/AvailabilityClockInput.test.tsx",
+      "apps/web/src/availability/WeeklyCommitmentReview.tsx",
+      "apps/web/src/availability/WeeklyUnavailableEditor.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellationHours.tsx",
+      "apps/web/src/employee-hub/TimeOffDateFields.tsx",
+      "apps/web/src/employee-hub/TimeOffHourFields.tsx",
+      "apps/web/src/employee-hub/TimeOffHourFields.tsx",
+      "apps/web/src/employee-hub/TimeOffPartialDecision.tsx",
+      "apps/web/src/employee-hub/TimeOffPeriods.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/availability/WeeklyPreferenceSettings.tsx": [
+      "apps/web/src/availability/WeeklyPreferenceSettings.test.tsx",
+      "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.tsx"
+    ],
+    "apps/web/src/availability/availability-data.ts": [
+      "apps/web/src/availability/WeeklyPreferenceSettings.tsx",
+      "apps/web/src/availability/WeeklyPreferencesPanel.test.tsx",
+      "apps/web/src/availability/WeeklyPreferencesPanel.tsx",
+      "apps/web/src/employees/EmployeeDrawer.test.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.test.tsx",
+      "apps/web/src/schedule/hooks/useScheduleDropReview.ts",
+      "apps/web/src/settings/SchedulingSettingsPage.test.tsx",
+      "apps/web/src/views/AvailabilityPage.test.tsx",
+      "apps/web/src/views/AvailabilityPage.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/availability/WeeklyPreferencesForm.tsx": [
+      "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+      "apps/web/src/availability/WeeklyPreferencesForm.test.tsx",
+      "apps/web/src/availability/WeeklyPreferencesPanel.tsx"
+    ],
+    "apps/web/src/schedule/components/PublishPreflightPanel.tsx": [
+      "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+      "apps/web/src/schedule/components/PublishPreflightPanel.test.tsx",
+      "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.ts",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.ts"
+    ],
+    "apps/web/src/schedule/components/PublishReturn.preview.tsx": [
+      "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx"
+    ],
+    "apps/web/src/availability/WeeklyUnavailableEditor.tsx": [
+      "apps/web/src/availability/WeeklyPreferencesForm.tsx"
+    ],
+    "apps/web/src/availability/WeeklyCommitmentReview.tsx": [
+      "apps/web/src/availability/WeeklyPreferencesForm.tsx"
+    ],
+    "apps/web/src/availability/WeeklyPreferencesPanel.tsx": [
+      "apps/web/src/availability/WeeklyPreferencesPanel.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/availability/availability-navigation.tsx": [
+      "apps/web/src/availability/availability-navigation.test.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellation.test.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellation.tsx",
+      "apps/web/src/shell/AppShell.tsx",
+      "apps/web/src/shell/AppShellNotificationBadge.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/employees/employee-history-guard.ts": [
+      "apps/web/src/availability/availability-navigation.test.tsx",
+      "apps/web/src/availability/availability-navigation.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/main.tsx"
+    ],
+    "apps/web/src/communications/NotificationShiftDetails.tsx": [
+      "apps/web/src/communications/NotificationShiftDetails.test.tsx",
+      "apps/web/src/views/NotificationsPage.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/exchange-data.ts": [
+      "apps/web/src/communications/NotificationShiftDetails.test.tsx",
+      "apps/web/src/communications/NotificationShiftDetails.test.tsx",
+      "apps/web/src/communications/NotificationShiftDetails.tsx",
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/EmployeeTeamView.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/EarlierShiftRequests.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/exchange-data.test.ts",
+      "apps/web/src/employee-hub/shift-exchanges/useExchangeRealtime.ts",
+      "apps/web/src/schedule/lineup/LineupEditor.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.test.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.test.tsx",
+      "apps/web/src/views/WorkspacePage.tsx"
+    ],
+    "apps/web/src/communications/communications-data.ts": [
+      "apps/web/src/communications/NotificationShiftDetails.test.tsx",
+      "apps/web/src/communications/communications-data.test.ts",
+      "apps/web/src/employee-hub/DashboardCommunications.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.test.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.tsx",
+      "apps/web/src/shell/AppShell.tsx",
+      "apps/web/src/shell/AppShellNotificationBadge.test.tsx",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/CommunicationPages.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/NotificationsPage.tsx",
+      "apps/web/src/views/WorkspacePage.test.tsx",
+      "apps/web/src/views/WorkspacePage.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.tsx": [
+      "apps/web/src/communications/NotificationShiftDetails.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx"
+    ],
+    "apps/web/src/communications/action-url.ts": [
+      "apps/web/src/communications/NotificationShiftDetails.tsx",
+      "apps/web/src/communications/action-url.test.ts",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/NotificationsPage.tsx",
+      "apps/web/src/views/WorkspacePage.tsx"
+    ],
+    "apps/web/src/dev/scheduleShiftBadgeLabCatalog.ts": [
+      "apps/web/src/dev/ScheduleShiftBadgeLabPage.tsx",
+      "apps/web/src/dev/scheduleShiftBadgeLabRuntime.test.ts",
+      "apps/web/src/dev/scheduleShiftBadgeLabRuntime.ts"
+    ],
+    "apps/web/src/dev/scheduleShiftBadgeLabRuntime.ts": [
+      "apps/web/src/dev/ScheduleShiftBadgeLabPage.tsx",
+      "apps/web/src/dev/scheduleShiftBadgeLabRuntime.test.ts"
+    ],
+    "apps/web/src/schedule/components/ScheduleGrid.tsx": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.hour-totals.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleContextMenu.tsx": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/schedule/components/ScheduleContextMenu.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/components/ShiftCard.tsx",
+      "apps/web/src/schedule/lib/schedulePresetTargets.test.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMetadata.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ShiftQuickEditor.tsx": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/SchedulePresetRows.tsx": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleGridDragPreviews.tsx",
+      "apps/web/src/schedule/components/SchedulePresetRows.test.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/components/ShiftDragPreview.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.test.tsx",
+      "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleDateTime.ts": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/EmployeeTeamView.tsx",
+      "apps/web/src/employee-hub/ShiftSheet.tsx",
+      "apps/web/src/employee-hub/dashboard-model.ts",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/schedule/components/DayHeaderCell.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/lib/scheduleDateTime.test.ts",
+      "apps/web/src/schedule/lib/scheduleGridLayout.ts",
+      "apps/web/src/schedule/lib/scheduleGridViewModel.test.ts",
+      "apps/web/src/schedule/lib/shiftClipboard.ts",
+      "apps/web/src/schedule/lineup-share.ts",
+      "apps/web/src/schedule/lineup/LineupPlacements.tsx",
+      "apps/web/src/schedule/lineup/lineup-time.ts",
+      "apps/web/src/views/AvailabilityPage.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleClosures.ts": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/lib/scheduleClosures.test.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/shiftEditorState.ts": [
+      "apps/web/src/dev/ScheduleShiftDesignPage.tsx",
+      "apps/web/src/schedule/components/SchedulePresetRows.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/lib/shiftEditorState.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/employee-hub/DashboardPrimitives.tsx": [
+      "apps/web/src/employee-hub/DashboardCommunications.tsx",
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/PersonalReminders.tsx"
+    ],
+    "apps/web/src/employee-hub/employee-hub-data.ts": [
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/EmployeeTeamView.test.tsx",
+      "apps/web/src/employee-hub/EmployeeTeamView.tsx",
+      "apps/web/src/employee-hub/PersonalReminders.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellation.test.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellation.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/EarlierShiftRequests.tsx",
+      "apps/web/src/views/EmployeeHubPage.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/EmployeeTimeTrackingView.tsx"
+    ],
+    "apps/web/src/employee-hub/dashboard-model.ts": [
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/employee-hub/ShiftSheet.tsx",
+      "apps/web/src/employee-hub/dashboard-model.test.ts"
+    ],
+    "apps/web/src/employee-hub/DashboardCommunications.tsx": [
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx"
+    ],
+    "apps/web/src/employee-hub/PersonalReminders.tsx": [
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx"
+    ],
+    "apps/web/src/employee-hub/ShiftSheet.tsx": [
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx"
+    ],
+    "apps/web/src/employee-hub/useHubClock.ts": [
+      "apps/web/src/employee-hub/EmployeeDashboard.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/EmployeeTeamView.tsx": [
+      "apps/web/src/employee-hub/EmployeeTeamView.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/schedule/lineup/lineup-time.ts": [
+      "apps/web/src/employee-hub/EmployeeTeamView.tsx",
+      "apps/web/src/schedule/lineup-share.ts",
+      "apps/web/src/schedule/lineup/EmployeeLineup.tsx",
+      "apps/web/src/schedule/lineup/EmployeeLineupOffers.tsx",
+      "apps/web/src/schedule/lineup/LineupBoard.tsx",
+      "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+      "apps/web/src/schedule/lineup/lineup-time.test.ts",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffCancellation.tsx": [
+      "apps/web/src/employee-hub/TimeOffCancellation.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffPeriods.tsx": [
+      "apps/web/src/employee-hub/TimeOffCancellation.test.tsx",
+      "apps/web/src/employee-hub/TimeOffPeriods.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/employee-hub/time-off-split.ts": [
+      "apps/web/src/employee-hub/TimeOffCancellation.tsx",
+      "apps/web/src/employee-hub/TimeOffCancellationHours.tsx",
+      "apps/web/src/employee-hub/TimeOffPartialDecision.tsx",
+      "apps/web/src/employee-hub/TimeOffPeriods.tsx",
+      "apps/web/src/employee-hub/TimeOffReleasedAssignments.tsx",
+      "apps/web/src/employee-hub/time-off-split.test.ts",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffCancellationHours.tsx": [
+      "apps/web/src/employee-hub/TimeOffCancellation.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffHourFields.tsx": [
+      "apps/web/src/employee-hub/TimeOffDateFields.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx": [
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeDialog.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.tsx": [
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeScheduleRecovery.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/exchange-time-details.ts": [
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.test.tsx",
+      "apps/web/src/employee-hub/shift-exchanges/ExchangeShiftCard.tsx"
+    ],
+    "apps/web/src/settings/CatalogDrawer.tsx": [
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/settings/DocumentsSettingsPage.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobCatalogEditor.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+      "apps/web/src/views/AnnouncementsPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupQueue.tsx": [
+      "apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.tsx",
+      "apps/web/src/schedule/lineup/EmployeeLineup.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.test.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/useExchangeRealtime.ts": [
+      "apps/web/src/employee-hub/shift-exchanges/useExchangeRealtime.test.tsx",
+      "apps/web/src/shell/AppShell.tsx"
+    ],
+    "apps/web/src/employees/employee-data.ts": [
+      "apps/web/src/employees/AcceptInvitationPage.test.tsx",
+      "apps/web/src/employees/AcceptInvitationPage.tsx",
+      "apps/web/src/employees/EmployeeDrawer.create.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/employees/EmployeesPage.test.tsx",
+      "apps/web/src/employees/EmployeesPage.tsx",
+      "apps/web/src/employees/PendingInvitationsPage.test.tsx",
+      "apps/web/src/employees/PendingInvitationsPage.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.test.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.tsx"
+    ],
+    "apps/web/src/employees/EmployeeDrawer.tsx": [
+      "apps/web/src/employees/EmployeeDrawer.create.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.test.tsx",
+      "apps/web/src/employees/EmployeesPage.tsx",
+      "apps/web/src/views/AvailabilityPage.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/employees/onboarding-data.ts": [
+      "apps/web/src/employees/EmployeeDrawer.test.tsx",
+      "apps/web/src/employees/EmployeeDrawer.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.test.tsx",
+      "apps/web/src/employees/EmployeeOnboardingPage.tsx"
+    ],
+    "apps/web/src/employees/employee-create-flow.ts": [
+      "apps/web/src/employees/EmployeeDrawer.tsx"
+    ],
+    "apps/web/src/kiosk/kiosk-data.ts": [
+      "apps/web/src/kiosk/KioskPage.test.tsx",
+      "apps/web/src/kiosk/KioskPage.test.tsx",
+      "apps/web/src/kiosk/KioskPage.tsx"
+    ],
+    "apps/web/src/lib/escape-focus.ts": [
+      "apps/web/src/lib/escape-focus.test.ts",
+      "apps/web/src/main.tsx"
+    ],
+    "apps/web/src/schedule/availabilityIndicators.ts": [
+      "apps/web/src/schedule/availabilityIndicators.test.ts",
+      "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx"
+    ],
+    "apps/web/src/schedule/badgeAccessibility.ts": [
+      "apps/web/src/schedule/badgeAccessibility.test.ts",
+      "apps/web/src/schedule/components/ShiftCard.tsx"
+    ],
+    "apps/web/src/schedule/components/CascadeNoticeToast.tsx": [
+      "apps/web/src/schedule/components/CascadeNoticeToast.test.tsx",
+      "apps/web/src/schedule/hooks/useCascadeNotice.test.tsx",
+      "apps/web/src/schedule/hooks/useCascadeNotice.ts"
+    ],
+    "apps/web/src/schedule/components/DayHeaderCell.tsx": [
+      "apps/web/src/schedule/components/DayHeaderCell.test.tsx",
+      "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx"
+    ],
+    "apps/web/src/schedule/components/DefaultHoursReviewDialog.tsx": [
+      "apps/web/src/schedule/components/DefaultHoursReviewDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/DraftDropdownMenu.tsx": [
+      "apps/web/src/schedule/components/DraftDropdownMenu.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleActionButton.ts": [
+      "apps/web/src/schedule/components/DraftDropdownMenu.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/EnterEditModeDialog.tsx": [
+      "apps/web/src/schedule/components/EnterEditModeDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/LocationPublicationChips.tsx": [
+      "apps/web/src/schedule/components/LocationPublicationChips.test.tsx",
+      "apps/web/src/schedule/components/UnpublishScheduleDialog.tsx",
+      "apps/web/src/schedule/lib/scheduleFilterModel.ts"
+    ],
+    "apps/web/src/schedule/components/MiniCalendar.tsx": [
+      "apps/web/src/schedule/components/MiniCalendar.test.tsx",
+      "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+      "apps/web/src/schedule/lib/scheduleFilterModel.ts"
+    ],
+    "apps/web/src/schedule/components/PublishScheduleDialog.tsx": [
+      "apps/web/src/schedule/components/PublishReturn.preview.tsx",
+      "apps/web/src/schedule/components/PublishScheduleDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/usePreflightShiftFocus.ts": [
+      "apps/web/src/schedule/components/PublishReturn.preview.tsx",
+      "apps/web/src/schedule/hooks/usePreflightShiftFocus.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/schedulePublishRecovery.ts": [
+      "apps/web/src/schedule/components/PublishScheduleDialog.tsx",
+      "apps/web/src/schedule/lib/schedulePublishRecovery.test.ts"
+    ],
+    "apps/web/src/schedule/components/RetroactiveEditDialog.tsx": [
+      "apps/web/src/schedule/components/RetroactiveEditDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/SaveDraftDialog.tsx": [
+      "apps/web/src/schedule/components/SaveDraftDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/SaveDraftMenu.tsx": [
+      "apps/web/src/schedule/components/SaveDraftMenu.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleConflictNotice.tsx": [
+      "apps/web/src/schedule/components/ScheduleConflictNotice.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx"
+    ],
+    "apps/web/src/schedule/schedule-conflicts.ts": [
+      "apps/web/src/schedule/components/ScheduleConflictNotice.tsx",
+      "apps/web/src/schedule/components/ScheduleConflictSheet.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.ts",
+      "apps/web/src/schedule/lib/scheduleWeeklyAvailability.test.ts",
+      "apps/web/src/schedule/lib/shiftEditorEligibility.ts",
+      "apps/web/src/schedule/schedule-conflicts.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleConflictSheet.tsx": [
+      "apps/web/src/schedule/components/ScheduleConflictSheet.test.tsx",
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx": [
+      "apps/web/src/schedule/components/ScheduleDayHeaderCells.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGridHeaders.tsx"
+    ],
+    "apps/web/src/schedule/importantDateCoverage.ts": [
+      "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx",
+      "apps/web/src/schedule/importantDateCoverage.test.ts"
+    ],
+    "apps/web/src/schedule/lib/scheduleGridLayout.ts": [
+      "apps/web/src/schedule/components/ScheduleDayHeaderCells.tsx",
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleGridHeaders.tsx",
+      "apps/web/src/schedule/components/ScheduleGridShell.tsx",
+      "apps/web/src/schedule/components/ScheduleLocationHeader.tsx",
+      "apps/web/src/schedule/components/SchedulePresetRows.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/hooks/useCellState.ts",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx",
+      "apps/web/src/schedule/lib/scheduleGridLayout.test.ts",
+      "apps/web/src/schedule/lib/scheduleGridViewModel.ts"
+    ],
+    "apps/web/src/schedule/components/ScheduleEditLockedDialog.tsx": [
+      "apps/web/src/schedule/components/ScheduleEditLockedDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleEditTimeoutDialog.tsx": [
+      "apps/web/src/schedule/components/ScheduleEditTimeoutDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx": [
+      "apps/web/src/schedule/components/ScheduleEmployeeCard.test.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleWeeklyAvailability.ts": [
+      "apps/web/src/schedule/components/ScheduleEmployeeCard.tsx",
+      "apps/web/src/schedule/lib/scheduleWeeklyAvailability.test.ts",
+      "apps/web/src/schedule/schedule-conflicts.ts"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportControls.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportControls.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPanel.tsx",
+      "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportDialog.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportPresets.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPresets.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportPreviewDialog.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPanel.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPreviewDialog.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportRecentEvents.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportRecentEvents.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportSchedules.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportSchedules.test.tsx",
+      "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportWorkspaceDialog.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPanel.tsx"
+    ],
+    "apps/web/src/schedule/components/scheduleExportDownload.ts": [
+      "apps/web/src/schedule/components/ScheduleExportDialog.tsx",
+      "apps/web/src/schedule/components/ScheduleExportPanel.tsx",
+      "apps/web/src/schedule/components/scheduleExportDownload.test.ts"
+    ],
+    "apps/web/src/schedule/components/ScheduleExportPanel.tsx": [
+      "apps/web/src/schedule/components/ScheduleExportPanel.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleFillerRow.tsx": [
+      "apps/web/src/schedule/components/ScheduleFillerRow.test.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleFilterCommandStrip.tsx": [
+      "apps/web/src/schedule/components/ScheduleFilterCommandStrip.test.tsx",
+      "apps/web/src/schedule/lib/scheduleFilterModel.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleGridBody.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleGridDragPreviews.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridDragPreviews.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleGridHeaders.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridHeaders.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleGridShell.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridShell.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleRow.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleState.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleState.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.test.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useCellState.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/hooks/useCellState.test.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMetadata.test.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMetadata.ts"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.test.ts"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleGridSelectionClear.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridSelectionClear.test.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleFilterModel.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/lib/scheduleFilterModel.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleGridViewModel.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/lib/scheduleGridViewModel.test.ts"
+    ],
+    "apps/web/src/schedule/lib/scheduleLocationFilterToggle.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/lib/scheduleLocationFilterToggle.test.ts"
+    ],
+    "apps/web/src/schedule/lib/scheduleEmployeeSort.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/lib/scheduleEmployeeSort.test.ts",
+      "apps/web/src/schedule/lib/scheduleGridViewModel.ts",
+      "apps/web/src/schedule/store/scheduleUiStore.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/shiftClipboard.ts": [
+      "apps/web/src/schedule/components/ScheduleGrid.tsx",
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/lib/shiftClipboard.test.ts",
+      "apps/web/src/schedule/lib/shiftEditorState.test.ts",
+      "apps/web/src/schedule/lib/shiftEditorState.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.ts": [
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleGridDragPreviews.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleTotalsRow.tsx": [
+      "apps/web/src/schedule/components/ScheduleGridBody.tsx",
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/components/ScheduleTotalsRow.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ShiftDragPreview.tsx": [
+      "apps/web/src/schedule/components/ScheduleGridDragPreviews.tsx",
+      "apps/web/src/schedule/components/ShiftDragPreview.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleLogoUploadDialog.tsx": [
+      "apps/web/src/schedule/components/ScheduleGridHeaders.tsx",
+      "apps/web/src/schedule/components/ScheduleLogoUploadDialog.test.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleLocationHeader.tsx": [
+      "apps/web/src/schedule/components/ScheduleGridHeaders.tsx",
+      "apps/web/src/schedule/components/ScheduleLocationHeader.test.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleLogoFrame.tsx": [
+      "apps/web/src/schedule/components/ScheduleGridHeaders.tsx",
+      "apps/web/src/schedule/components/ScheduleLogoFrame.test.tsx",
+      "apps/web/src/schedule/components/ScheduleLogoUploadDialog.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleDragTargets.ts": [
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.ts",
+      "apps/web/src/schedule/hooks/useSingleShiftPointerDrag.ts",
+      "apps/web/src/schedule/lib/scheduleDragTargets.test.ts"
+    ],
+    "apps/web/src/schedule/lib/scheduleHourTotals.ts": [
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/components/ScheduleTotalsRow.tsx",
+      "apps/web/src/schedule/lib/scheduleHourTotals.test.ts"
+    ],
+    "apps/web/src/schedule/lib/scheduleShiftMetadata.ts": [
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx",
+      "apps/web/src/schedule/lib/scheduleShiftMetadata.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ShiftCard.tsx": [
+      "apps/web/src/schedule/components/ScheduleRow.tsx",
+      "apps/web/src/schedule/components/ShiftCard.test.tsx",
+      "apps/web/src/schedule/components/ShiftDragPreview.tsx",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleSaveRecoverySheet.tsx": [
+      "apps/web/src/schedule/components/ScheduleSaveRecoverySheet.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleTemplateDialogs.tsx": [
+      "apps/web/src/schedule/components/ScheduleTemplateDialogs.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleTopBar.tsx": [
+      "apps/web/src/schedule/components/ScheduleTopBar.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/components/ScheduleTopBarFilter.tsx": [
+      "apps/web/src/schedule/components/ScheduleTopBar.tsx",
+      "apps/web/src/schedule/components/ScheduleTopBarFilter.test.tsx"
+    ],
+    "apps/web/src/schedule/timeInput.ts": [
+      "apps/web/src/schedule/components/ShiftCard.tsx",
+      "apps/web/src/schedule/components/TimeInput.tsx",
+      "apps/web/src/schedule/components/TimeInput.tsx",
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx"
+    ],
+    "apps/web/src/schedule/lib/shiftEditorEligibility.ts": [
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/lib/shiftEditorEligibility.test.ts"
+    ],
+    "apps/web/src/schedule/lib/shiftEditorView.ts": [
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/lib/shiftEditorView.test.ts"
+    ],
+    "apps/web/src/schedule/components/TimeInput.tsx": [
+      "apps/web/src/schedule/components/ShiftQuickEditor.tsx",
+      "apps/web/src/schedule/components/TimeInput.test.tsx"
+    ],
+    "apps/web/src/schedule/components/UnpublishScheduleDialog.tsx": [
+      "apps/web/src/schedule/components/UnpublishScheduleDialog.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/optimisticScheduleCache.ts": [
+      "apps/web/src/schedule/hooks/optimisticScheduleCache.test.ts",
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.ts"
+    ],
+    "apps/web/src/schedule/hooks/useCascadeNotice.ts": [
+      "apps/web/src/schedule/hooks/useCascadeNotice.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useEditIdleTimer.ts": [
+      "apps/web/src/schedule/hooks/useEditIdleTimer.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useEffectiveShifts.ts": [
+      "apps/web/src/schedule/hooks/useEffectiveShifts.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/usePendingOpsQuery.ts": [
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleMode.ts": [
+      "apps/web/src/schedule/hooks/usePendingOpsQuery.ts",
+      "apps/web/src/schedule/hooks/useScheduleMode.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleInteractionTargets.ts": [
+      "apps/web/src/schedule/hooks/useScheduleBadgeMeasurements.tsx",
+      "apps/web/src/schedule/hooks/useScheduleGridSelectionClear.ts",
+      "apps/web/src/schedule/lib/scheduleInteractionTargets.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleDrafts.ts": [
+      "apps/web/src/schedule/hooks/useScheduleDrafts.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleDropReview.ts": [
+      "apps/web/src/schedule/hooks/useScheduleDropReview.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleShiftMutation.ts": [
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/lib/scheduleShiftMutation.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/schedulePresetTargets.ts": [
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/lib/schedulePresetTargets.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.ts": [
+      "apps/web/src/schedule/hooks/useScheduleGridDragControllers.ts",
+      "apps/web/src/schedule/hooks/useShiftTypePresetPointerDrag.test.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleQuery.ts": [
+      "apps/web/src/schedule/hooks/useScheduleQuery.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleRealtime.ts": [
+      "apps/web/src/schedule/hooks/useScheduleRealtime.test.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useScheduleViewerPresence.ts": [
+      "apps/web/src/schedule/hooks/useScheduleViewerPresence.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/draftSaveFlow.ts": [
+      "apps/web/src/schedule/lib/draftSaveFlow.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/employeeEligibility.ts": [
+      "apps/web/src/schedule/lib/employeeEligibility.test.ts",
+      "apps/web/src/schedule/lib/scheduleFilterModel.ts"
+    ],
+    "apps/web/src/schedule/lib/exportAccess.ts": [
+      "apps/web/src/schedule/lib/exportAccess.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/retroactiveEditRecovery.ts": [
+      "apps/web/src/schedule/lib/retroactiveEditRecovery.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleDeleteSelection.ts": [
+      "apps/web/src/schedule/lib/scheduleDeleteSelection.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleDismissal.ts": [
+      "apps/web/src/schedule/lib/scheduleDismissal.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "packages/scheduling-shared/src/index.ts": [
+      "apps/web/src/schedule/lib/scheduleHourTotals.ts"
+    ],
+    "apps/web/src/schedule/lib/schedulePreflightReturn.ts": [
+      "apps/web/src/schedule/lib/schedulePreflightReturn.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lib/scheduleShiftSelection.ts": [
+      "apps/web/src/schedule/lib/scheduleShiftSelection.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lineup-data.ts": [
+      "apps/web/src/schedule/lineup-offer-data.test.ts",
+      "apps/web/src/schedule/lineup/EmployeeLineup.test.tsx",
+      "apps/web/src/schedule/lineup/EmployeeLineup.tsx",
+      "apps/web/src/schedule/lineup/EmployeeLineupOffers.test.tsx",
+      "apps/web/src/schedule/lineup/EmployeeLineupOffers.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.test.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupNotes.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.test.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.test.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.tsx",
+      "apps/web/src/schedule/lineup/LineupSectionPlan.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx",
+      "apps/web/src/schedule/lineup/useLineupAutosave.test.tsx",
+      "apps/web/src/views/LineupPage.test.tsx"
+    ],
+    "apps/web/src/schedule/lineup-share.ts": [
+      "apps/web/src/schedule/lineup-share.test.ts",
+      "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/schedule/lineup/EmployeeLineup.tsx": [
+      "apps/web/src/schedule/lineup/EmployeeLineup.test.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/schedule/lineup/EmployeeLineupOffers.tsx": [
+      "apps/web/src/schedule/lineup/EmployeeLineupOffers.test.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.tsx"
+    ],
+    "apps/web/src/schedule/lineup/lineup-helpers.ts": [
+      "apps/web/src/schedule/lineup/LineupBoard.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.test.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupCandidates.tsx": [
+      "apps/web/src/schedule/lineup/LineupCandidates.test.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupDialog.tsx": [
+      "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupNotes.tsx",
+      "apps/web/src/schedule/lineup/LineupPlacements.tsx",
+      "apps/web/src/schedule/lineup/LineupQueue.tsx",
+      "apps/web/src/schedule/lineup/LineupSectionPlan.tsx",
+      "apps/web/src/schedule/lineup/LineupSections.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/schedule/lineup/useLineupAutosave.tsx": [
+      "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/schedule/lineup/LineupNotes.tsx",
+      "apps/web/src/schedule/lineup/LineupSectionPlan.tsx",
+      "apps/web/src/schedule/lineup/useLineupAutosave.test.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupSections.tsx": [
+      "apps/web/src/schedule/lineup/LineupDialogs.tsx",
+      "apps/web/src/schedule/lineup/LineupSections.test.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupEditor.tsx": [
+      "apps/web/src/schedule/lineup/LineupEditor.test.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/settings/organization-data.ts": [
+      "apps/web/src/schedule/lineup/LineupEditor.tsx",
+      "apps/web/src/settings/CatalogDeleteAction.test.tsx",
+      "apps/web/src/settings/CatalogDeleteAction.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.test.tsx",
+      "apps/web/src/settings/GeneralSettingsPage.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.test.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobCatalogEditor.tsx",
+      "apps/web/src/settings/JobsManagement.test.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.test.tsx",
+      "apps/web/src/settings/SchedulingSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.test.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.test.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx",
+      "apps/web/src/settings/jobs-management-data.ts",
+      "apps/web/src/settings/shift-type-data.test.ts",
+      "apps/web/src/views/OwnerOnboardingPage.test.tsx",
+      "apps/web/src/views/OwnerOnboardingPage.tsx",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupPlacements.tsx": [
+      "apps/web/src/schedule/lineup/LineupPlacements.test.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupBoard.tsx": [
+      "apps/web/src/schedule/lineup/LineupPlacements.test.tsx",
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupSectionPlan.tsx": [
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupDialogs.tsx": [
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx",
+      "apps/web/src/schedule/lineup/useLineupAutosave.test.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupNotes.tsx": [
+      "apps/web/src/schedule/lineup/LineupWorkspace.tsx",
+      "apps/web/src/schedule/lineup/useLineupAutosave.test.tsx"
+    ],
+    "apps/web/src/schedule/store/scheduleUiStore.ts": [
+      "apps/web/src/schedule/store/scheduleUiStore.test.ts",
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/settings/CatalogDeleteAction.tsx": [
+      "apps/web/src/settings/CatalogDeleteAction.test.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobCatalogEditor.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/jobs-management-data.ts": [
+      "apps/web/src/settings/CatalogDeleteAction.test.tsx",
+      "apps/web/src/settings/CatalogDeleteAction.tsx",
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobCatalogEditor.tsx",
+      "apps/web/src/settings/JobsManagement.test.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/CatalogRowMenu.tsx": [
+      "apps/web/src/settings/DocumentsSettingsPage.tsx",
+      "apps/web/src/settings/ImportantDatesSettingsPage.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx",
+      "apps/web/src/settings/LocationsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftCatalogList.tsx",
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx",
+      "apps/web/src/views/AnnouncementsPage.tsx"
+    ],
+    "apps/web/src/settings/documents-data.ts": [
+      "apps/web/src/settings/DocumentsSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/JobCatalogEditor.tsx": [
+      "apps/web/src/settings/JobAssignmentsDrawer.tsx",
+      "apps/web/src/settings/JobsManagement.test.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/JobAssignmentsDrawer.tsx": [
+      "apps/web/src/settings/JobsManagement.test.tsx",
+      "apps/web/src/settings/JobsSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/kiosk-management-data.ts": [
+      "apps/web/src/settings/KioskSettingsPage.test.tsx",
+      "apps/web/src/settings/KioskSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/notification-settings-data.ts": [
+      "apps/web/src/settings/NotificationSettingsPage.test.tsx",
+      "apps/web/src/settings/NotificationSettingsPage.tsx",
+      "apps/web/src/settings/notification-settings-data.test.ts"
+    ],
+    "apps/web/src/settings/roles-data.ts": [
+      "apps/web/src/settings/RolesSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/ShiftLabelsSettingsPage.tsx": [
+      "apps/web/src/settings/ShiftCatalogSettingsPage.tsx",
+      "apps/web/src/settings/ShiftLabelsSettingsPage.test.tsx"
+    ],
+    "apps/web/src/settings/ShiftTypesSettingsPage.tsx": [
+      "apps/web/src/settings/ShiftCatalogSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.test.tsx"
+    ],
+    "apps/web/src/settings/ShiftCatalogTabs.tsx": [
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/ShiftCatalogList.tsx": [
+      "apps/web/src/settings/ShiftLabelsSettingsPage.tsx",
+      "apps/web/src/settings/ShiftTypesSettingsPage.tsx"
+    ],
+    "apps/web/src/settings/signature-templates-data.ts": [
+      "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx"
+    ],
+    "apps/web/src/employee-hub/EmployeeMobileNav.tsx": [
+      "apps/web/src/shell/AppShell.tsx",
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffDateFields.tsx": [
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffReleasedAssignments.tsx": [
+      "apps/web/src/views/EmployeeHubPage.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/views/EmployeeTimeTrackingView.tsx": [
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/EmployeeDashboard.tsx": [
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/employee-hub/shift-exchanges/EarlierShiftRequests.tsx": [
+      "apps/web/src/views/EmployeeHubPage.tsx"
+    ],
+    "apps/web/src/schedule/lineup/LineupWorkspace.tsx": [
+      "apps/web/src/views/LineupPage.tsx"
+    ],
+    "apps/web/src/schedule/components/AutoFillReviewOverlay.tsx": [
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/hooks/useRetroactiveEditPrompt.ts": [
+      "apps/web/src/views/SchedulePage.tsx"
+    ],
+    "apps/web/src/schedule/requests-data.ts": [
+      "apps/web/src/views/ScheduleRequestsPage.test.tsx",
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/employee-hub/TimeOffPartialDecision.tsx": [
+      "apps/web/src/views/ScheduleRequestsPage.tsx"
+    ],
+    "apps/web/src/time-entries/time-entries-data.ts": [
+      "apps/web/src/views/TimeEntriesPage.test.tsx",
+      "apps/web/src/views/TimeEntriesPage.tsx"
+    ],
+    "packages/scheduling-shared/src/auto-fill.ts": [
+      "packages/scheduling-shared/src/auto-fill.test.ts",
+      "packages/scheduling-shared/src/auto-fill.test.ts",
+      "packages/scheduling-shared/src/index.ts"
+    ],
+    "packages/scheduling-shared/src/conflicts.ts": [
+      "packages/scheduling-shared/src/conflicts.test.ts",
+      "packages/scheduling-shared/src/index.ts"
+    ],
+    "packages/scheduling-shared/src/types.ts": [
+      "packages/scheduling-shared/src/conflicts.test.ts",
+      "packages/scheduling-shared/src/conflicts.ts",
+      "packages/scheduling-shared/src/format.ts",
+      "packages/scheduling-shared/src/index.ts"
+    ],
+    "packages/scheduling-shared/src/minutes.ts": [
+      "packages/scheduling-shared/src/conflicts.ts",
+      "packages/scheduling-shared/src/index.ts",
+      "packages/scheduling-shared/src/minutes.test.ts"
+    ],
+    "packages/scheduling-shared/src/format.ts": [
+      "packages/scheduling-shared/src/format.test.ts",
+      "packages/scheduling-shared/src/index.ts"
+    ],
+    "packages/shared/src/availability.ts": [
+      "packages/shared/src/availability-date-overrides.test.ts",
+      "packages/shared/src/availability-lifecycle.ts",
+      "packages/shared/src/availability-shift-types.test.ts",
+      "packages/shared/src/availability.test.ts",
+      "packages/shared/src/employee-hub.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/shift-exchanges.ts"
+    ],
+    "packages/shared/src/availability-lifecycle.ts": [
+      "packages/shared/src/availability-date-overrides.test.ts",
+      "packages/shared/src/availability-request-replacements.test.ts",
+      "packages/shared/src/availability-shift-types.test.ts",
+      "packages/shared/src/index.ts"
+    ],
+    "packages/shared/src/availability-assessment.ts": [
+      "packages/shared/src/availability-lifecycle.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/schedule-default-hours.ts"
+    ],
+    "packages/shared/src/availability-calendar.ts": [
+      "packages/shared/src/availability-lifecycle.ts",
+      "packages/shared/src/index.ts"
+    ],
+    "packages/shared/src/time-off.ts": [
+      "packages/shared/src/availability.ts",
+      "packages/shared/src/employee-hub.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/time-off-periods.test.ts"
+    ],
+    "packages/shared/src/employee-hub.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/index.ts",
+      "packages/shared/src/time-off-cancellation.test.ts",
+      "packages/shared/src/time-off-periods.test.ts"
+    ],
+    "packages/shared/src/weekly-preferences.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/weekly-preferences.test.ts"
+    ],
+    "packages/shared/src/communications.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/notification-settings.ts"
+    ],
+    "packages/shared/src/notification-catalog.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/notification-catalog.test.ts",
+      "packages/shared/src/notification-display.ts",
+      "packages/shared/src/notification-settings.ts"
+    ],
+    "packages/shared/src/notification-display.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/notification-catalog.test.ts"
+    ],
+    "packages/shared/src/notification-settings.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/notification-settings.test.ts"
+    ],
+    "packages/shared/src/time-capture.ts": [
+      "packages/shared/src/index.ts"
+    ],
+    "packages/shared/src/kiosk.ts": [
+      "packages/shared/src/index.ts"
+    ],
+    "packages/shared/src/storage-access.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/storage-access.test.ts"
+    ],
+    "packages/shared/src/lineup-operations.ts": [
+      "packages/shared/src/index.ts"
+    ],
+    "packages/shared/src/shift-exchanges.ts": [
+      "packages/shared/src/index.ts"
+    ],
+    "packages/shared/src/schedule-default-hours.ts": [
+      "packages/shared/src/index.ts",
+      "packages/shared/src/schedule.ts"
+    ],
+    "packages/ui/src/components/Button.tsx": [
+      "packages/ui/src/components/Button.test.tsx",
+      "packages/ui/src/index.ts",
+      "packages/ui/src/index.ts"
+    ],
+    "packages/ui/src/components/Toaster.tsx": [
+      "packages/ui/src/index.ts"
+    ],
+    "packages/ui/src/lib/use-toast.ts": [
+      "packages/ui/src/index.ts"
+    ]
+  },
+  "unresolved": [],
+  "candidates": []
+}

@@ -1,0 +1,350 @@
+{
+  "baseUrl": "http://127.0.0.1:5174",
+  "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=week",
+  "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-interactions.png",
+  "responsive": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-interactions-mobile.png",
+    "metrics": {
+      "documentWidth": 390,
+      "documentScrollWidth": 390,
+      "documentOverflowFree": true,
+      "gridClientWidth": 388,
+      "gridScrollWidth": 2881,
+      "gridContained": true,
+      "gridWidth": 2881,
+      "badgeRect": {
+        "width": 179,
+        "height": 62,
+        "left": 207,
+        "right": 386
+      },
+      "cellRect": {
+        "width": 192,
+        "height": 94,
+        "left": 201,
+        "right": 393
+      },
+      "employeeCellRect": {
+        "width": 200,
+        "height": 94,
+        "left": 1,
+        "right": 201
+      },
+      "badgeWithinCell": true,
+      "visibleShiftBadges": 14
+    }
+  },
+  "focusedBadgeCount": 0,
+  "shiftBadgeFocus": {
+    "dataFocused": "true",
+    "ariaPressed": "false",
+    "shiftTypeFilterApplied": true,
+    "jobFilterApplied": true,
+    "escapeClearsFocusFilters": true
+  },
+  "blankClickUnwind": [
+    "settings-menu",
+    "hide-unscheduled",
+    "content-filters",
+    "location-filter",
+    "daily-view"
+  ],
+  "dailyWeeklyViews": {
+    "dailyRouteVisible": true,
+    "weeklyRouteVisible": true,
+    "commandStripDayNavigation": true,
+    "commandStripWeekNavigation": true,
+    "dayHeaderClickOpensDailyView": true,
+    "dailyLocationHeaderClickAppliesLocationFilter": true
+  },
+  "toastChecks": {
+    "shiftCopied": {
+      "type": "success",
+      "text": "✓Shift copied",
+      "className": "newfork-toast"
+    },
+    "pasteBlocked": {
+      "type": "error",
+      "text": "✕Paste blockedThis paste was not applied. Review the reason before scheduling the shift.",
+      "className": "newfork-toast"
+    },
+    "publishSuccess": {
+      "type": "success",
+      "text": "✓Published 2 locations · 0 changes",
+      "className": "newfork-toast"
+    },
+    "unpublishSuccess": {
+      "type": "success",
+      "text": "✓Unpublished 2 locations · 0 worked shifts kept",
+      "className": "newfork-toast"
+    }
+  },
+  "filterChecks": {
+    "locationDropdown": {
+      "opened": true,
+      "selectOnlyAppliesUrl": true,
+      "labelReflectsSelection": true,
+      "labelClickClearsAllWhenAllSelected": true,
+      "outsideClickClosesButKeepsFilter": true
+    },
+    "shiftTypeDropdownAndChip": {
+      "opened": true,
+      "selectOnlyAppliesUrl": true,
+      "chipVisible": true,
+      "chipRemoveClearsUrl": true
+    },
+    "jobDropdown": {
+      "opened": true,
+      "selectOnlyAppliesUrl": true,
+      "labelClickTogglesBackToAll": true
+    },
+    "employeeDropdown": {
+      "opened": true,
+      "selectOnlyAppliesUrl": true,
+      "allEmployeesClearsUrl": true
+    }
+  },
+  "contextMenuChecks": {
+    "shiftActionLabels": [
+      "Edit shift",
+      "Copy shift",
+      "Unpublish shift"
+    ],
+    "cellActionLabels": [
+      "Paste shift"
+    ],
+    "presetCellActionLabels": [
+      "Paste shift",
+      "Open-Server",
+      "Dinner-Server",
+      "Close-Server"
+    ]
+  },
+  "dragPreviewChecks": {
+    "shiftPreviewCancelsWithoutDrop": true,
+    "presetPreviewCancelsWithoutDrop": true,
+    "shiftMoveDropUpdatesCell": true,
+    "shiftMoveDropPlan": {
+      "shiftId": "23000000-0000-4000-8000-000000000001",
+      "sourceSelector": "[data-drop-cell=\"true\"][data-employee-id=\"15000000-0000-4000-8000-000000000001\"][data-location-id=\"11000000-0000-4000-8000-000000000001\"][data-date=\"2026-08-17\"]",
+      "targetSelector": "[data-drop-cell=\"true\"][data-employee-id=\"15000000-0000-4000-8000-000000000001\"][data-location-id=\"11000000-0000-4000-8000-000000000001\"][data-date=\"2026-08-20\"]",
+      "fromDate": "2026-08-17",
+      "toDate": "2026-08-20",
+      "employeeId": "15000000-0000-4000-8000-000000000001",
+      "locationId": "11000000-0000-4000-8000-000000000001"
+    }
+  },
+  "sizingMetrics": {
+    "gridTemplateColumns": "200px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px 191.5px",
+    "dayColumnMin": "170px",
+    "columnCount": "14",
+    "dayHeaders": {
+      "count": 14,
+      "minWidth": 192,
+      "maxWidth": 192,
+      "minHeight": 49,
+      "maxHeight": 49,
+      "overflowingCount": 0
+    },
+    "cells": {
+      "count": 112,
+      "minWidth": 192,
+      "maxWidth": 192,
+      "minHeight": 86,
+      "maxHeight": 94,
+      "overflowingCount": 0
+    },
+    "shiftBadges": {
+      "count": 14,
+      "minWidth": 179,
+      "maxWidth": 179,
+      "minHeight": 62,
+      "maxHeight": 65,
+      "overflowingCount": 0
+    },
+    "rowHeightVars": [
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      },
+      {
+        "minHeight": "94px",
+        "badgeHeight": "58px"
+      }
+    ],
+    "badgeContainment": {
+      "count": 14,
+      "containedCount": 14,
+      "minBadgeWidth": 179,
+      "maxBadgeWidth": 179,
+      "minCellWidth": 192,
+      "minCellHeight": 94
+    }
+  },
+  "multiSelect": {
+    "ctrlClickSelectsTwoBadges": true,
+    "bulkDeleteActionVisible": true,
+    "blankClickClearsSelection": true,
+    "shiftClickSelectsTwoBadges": true,
+    "escapeClearsSelection": true
+  },
+  "unassignedRow": {
+    "visibleInEditMode": true,
+    "settingsToggleHidesAndShows": true,
+    "freezeControlVisible": true
+  },
+  "alphabeticalOrder": [
+    "Alex Kim",
+    "Jordy Lee",
+    "Mert Tepebas"
+  ],
+  "byJobOrder": [
+    "Alex Kim",
+    "Jordy Lee",
+    "Mert Tepebas"
+  ],
+  "byJobGroupLabels": [
+    "Server",
+    "Bartender",
+    "Line Cook"
+  ],
+  "alphabeticalOrderAfterToggle": [
+    "Alex Kim",
+    "Jordy Lee",
+    "Mert Tepebas"
+  ],
+  "addEditDrawer": {
+    "editShift": {
+      "dialogVisible": true,
+      "startTime": "09:00 AM",
+      "endTime": "05:00 PM",
+      "activeBreak": "None",
+      "updateEnabled": true
+    },
+    "addShift": {
+      "dialogVisible": true,
+      "locationPicker": "LocationMain Dining",
+      "employeePicker": "Unassigned",
+      "jobPicker": "Server",
+      "shiftTypePicker": "OpenDinnerClose",
+      "startTime": "03:00 PM",
+      "endTime": "11:00 PM",
+      "breakOptions": [
+        "None",
+        "15m",
+        "30m",
+        "45m",
+        "60m"
+      ]
+    },
+    "dirtyDiscardGuard": true,
+    "editExistingShift": true,
+    "addUnassignedShift": true,
+    "shiftTypeDefaultTimes": true,
+    "dirtyDrawerDiscardGuard": true,
+    "editSessionDiscardConfirm": true,
+    "committed": false
+  },
+  "contextMenuPaste": {
+    "shiftContextMenu": true,
+    "copyShift": true,
+    "pasteModeStatus": true,
+    "clickPasteBlocked": true,
+    "cellContextPasteBlocked": true,
+    "conflictSheetAndToast": true,
+    "committed": false
+  },
+  "presetInteractions": {
+    "jobSortEnablesPresetRows": true,
+    "presetChipAttributes": true,
+    "employeeCellPresetMenu": true,
+    "committed": false
+  },
+  "publishWizard": {
+    "weekStart": "2026-09-07",
+    "steps": [
+      "Locations",
+      "Pre-flight",
+      "Notify"
+    ],
+    "departmentScope": {
+      "initialLabels": [
+        "Dining Room",
+        "Kitchen",
+        "No department"
+      ],
+      "emptySelectionBlocksReview": true,
+      "scopedSelectionEnablesReview": true,
+      "checkboxCount": 3
+    },
+    "committed": true,
+    "toastObserved": true,
+    "cleanupUnpublished": true
+  },
+  "unpublishDialog": {
+    "draftMenuAction": true,
+    "opened": true,
+    "effectsCopy": true,
+    "disabledUntilLocationSelected": true,
+    "cancelKeepsPublishedSchedule": true,
+    "committed": false
+  },
+  "exportWorkspace": {
+    "routePanel": true,
+    "pdfPreviewFrame": true,
+    "workspaceDialog": true,
+    "csvDataFileState": true,
+    "downloadTriggered": true,
+    "presetCreateDelete": true,
+    "scheduledEmailValidation": true,
+    "scheduledEmailCreateToggleDelete": true,
+    "committed": false
+  },
+  "templatesDialog": {
+    "editSessionDialog": true,
+    "createFromDraftControls": true,
+    "applyControlsWhenTemplatesExist": true,
+    "createDeleteRoundTrip": true,
+    "committed": false
+  },
+  "autoFillReview": {
+    "dialog": true,
+    "fixtureCreated": true,
+    "hasProposal": true,
+    "rejectUndo": true,
+    "applyResultBanner": true,
+    "noProposalState": true,
+    "committed": false
+  },
+  "shiftCount": 14,
+  "documentWidth": 1440,
+  "documentScrollWidth": 1440
+}

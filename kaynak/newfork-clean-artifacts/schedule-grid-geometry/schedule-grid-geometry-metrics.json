@@ -1,0 +1,771 @@
+{
+  "baseUrl": "http://127.0.0.1:5555",
+  "acquireHits": 1,
+  "consoleErrors": [],
+  "preview": {
+    "url": "http://127.0.0.1:5555/app/schedule?date=2026-09-07&view=week",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "documentScrollWidth": 1440,
+    "gridClientWidth": 1135,
+    "gridScrollWidth": 6791,
+    "editing": "false",
+    "gridTemplateColumns": "200px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px",
+    "dayColumnMin": "260px",
+    "stacks": [
+      {
+        "badgeCount": 3,
+        "ghostCount": 0,
+        "cell": {
+          "width": 313.859375,
+          "height": 172
+        },
+        "badges": [
+          {
+            "ghost": false,
+            "top": 352,
+            "bottom": 409,
+            "left": 489,
+            "right": 801.859375,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 409,
+            "bottom": 466,
+            "left": 489,
+            "right": 801.859375,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 466,
+            "bottom": 523,
+            "left": 489,
+            "right": 801.859375,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 57,
+            "scrollHeight": 57,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          }
+        ],
+        "gaps": [
+          0,
+          0
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 1,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 313.859375,
+          "height": 172
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 352,
+            "bottom": 409,
+            "left": 2686.015625,
+            "right": 2998.875,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 409,
+            "bottom": 466,
+            "left": 2686.015625,
+            "right": 2998.875,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 466,
+            "bottom": 523,
+            "left": 2686.015625,
+            "right": 2998.875,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 57,
+            "scrollHeight": 57,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          0,
+          0
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 1,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 313.859375,
+          "height": 172
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 352,
+            "bottom": 409,
+            "left": 4883.03125,
+            "right": 5195.890625,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 409,
+            "bottom": 466,
+            "left": 4883.03125,
+            "right": 5195.890625,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 466,
+            "bottom": 523,
+            "left": 4883.03125,
+            "right": 5195.890625,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 57,
+            "scrollHeight": 57,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          0,
+          0
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 1,
+        "contained": true,
+        "clipped": false
+      }
+    ]
+  },
+  "previewMobile": {
+    "url": "http://127.0.0.1:5555/app/schedule?date=2026-09-07&view=week",
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "documentScrollWidth": 390,
+    "gridClientWidth": 373,
+    "gridScrollWidth": 6791,
+    "editing": "false",
+    "gridTemplateColumns": "200px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px 313.859px",
+    "dayColumnMin": "260px",
+    "stacks": [
+      {
+        "badgeCount": 3,
+        "ghostCount": 0,
+        "cell": {
+          "width": 313.859375,
+          "height": 172
+        },
+        "badges": [
+          {
+            "ghost": false,
+            "top": 440,
+            "bottom": 497,
+            "left": 201,
+            "right": 513.859375,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 497,
+            "bottom": 554,
+            "left": 201,
+            "right": 513.859375,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 554,
+            "bottom": 611,
+            "left": 201,
+            "right": 513.859375,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 57,
+            "scrollHeight": 57,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          }
+        ],
+        "gaps": [
+          0,
+          0
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 1,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 313.859375,
+          "height": 172
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 440,
+            "bottom": 497,
+            "left": 2398.015625,
+            "right": 2710.875,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 497,
+            "bottom": 554,
+            "left": 2398.015625,
+            "right": 2710.875,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 554,
+            "bottom": 611,
+            "left": 2398.015625,
+            "right": 2710.875,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 57,
+            "scrollHeight": 57,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          0,
+          0
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 1,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 313.859375,
+          "height": 172
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 440,
+            "bottom": 497,
+            "left": 4595.03125,
+            "right": 4907.890625,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 497,
+            "bottom": 554,
+            "left": 4595.03125,
+            "right": 4907.890625,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 56,
+            "scrollHeight": 56,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 554,
+            "bottom": 611,
+            "left": 4595.03125,
+            "right": 4907.890625,
+            "width": 312.859375,
+            "height": 57,
+            "clientHeight": 57,
+            "scrollHeight": 57,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          0,
+          0
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 1,
+        "contained": true,
+        "clipped": false
+      }
+    ]
+  },
+  "edit": {
+    "url": "http://127.0.0.1:5555/app/schedule?date=2026-09-07&view=week&mode=edit",
+    "viewportWidth": 1440,
+    "documentWidth": 1440,
+    "documentScrollWidth": 1440,
+    "gridClientWidth": 1135,
+    "gridScrollWidth": 7064,
+    "editing": "true",
+    "gridTemplateColumns": "200px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px",
+    "dayColumnMin": "272px",
+    "stacks": [
+      {
+        "badgeCount": 3,
+        "ghostCount": 0,
+        "cell": {
+          "width": 326.859375,
+          "height": 251
+        },
+        "badges": [
+          {
+            "ghost": false,
+            "top": 595,
+            "bottom": 662,
+            "left": 495,
+            "right": 808.859375,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 667,
+            "bottom": 734,
+            "left": 495,
+            "right": 808.859375,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 739,
+            "bottom": 806,
+            "left": 495,
+            "right": 808.859375,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          }
+        ],
+        "gaps": [
+          5,
+          5
+        ],
+        "badgeToAddGap": 5,
+        "addControl": {
+          "height": 22,
+          "bottom": 833
+        },
+        "bottomRemainder": 7,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 326.859375,
+          "height": 251
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 595,
+            "bottom": 662,
+            "left": 2783.015625,
+            "right": 3096.875,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 667,
+            "bottom": 734,
+            "left": 2783.015625,
+            "right": 3096.875,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 739,
+            "bottom": 806,
+            "left": 2783.015625,
+            "right": 3096.875,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          5,
+          5
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 34,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 326.859375,
+          "height": 251
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 595,
+            "bottom": 662,
+            "left": 5071.03125,
+            "right": 5384.890625,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 667,
+            "bottom": 734,
+            "left": 5071.03125,
+            "right": 5384.890625,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 739,
+            "bottom": 806,
+            "left": 5071.03125,
+            "right": 5384.890625,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          5,
+          5
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 34,
+        "contained": true,
+        "clipped": false
+      }
+    ]
+  },
+  "editMobile": {
+    "url": "http://127.0.0.1:5555/app/schedule?date=2026-09-07&view=week&mode=edit",
+    "viewportWidth": 390,
+    "documentWidth": 390,
+    "documentScrollWidth": 390,
+    "gridClientWidth": 373,
+    "gridScrollWidth": 7064,
+    "editing": "true",
+    "gridTemplateColumns": "200px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px 326.859px",
+    "dayColumnMin": "272px",
+    "stacks": [
+      {
+        "badgeCount": 3,
+        "ghostCount": 0,
+        "cell": {
+          "width": 326.859375,
+          "height": 251
+        },
+        "badges": [
+          {
+            "ghost": false,
+            "top": 683,
+            "bottom": 750,
+            "left": 207,
+            "right": 520.859375,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 755,
+            "bottom": 822,
+            "left": 207,
+            "right": 520.859375,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          },
+          {
+            "ghost": false,
+            "top": 827,
+            "bottom": 894,
+            "left": 207,
+            "right": 520.859375,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 38.59375,
+            "contentScrollHeight": 39
+          }
+        ],
+        "gaps": [
+          5,
+          5
+        ],
+        "badgeToAddGap": 5,
+        "addControl": {
+          "height": 22,
+          "bottom": 921
+        },
+        "bottomRemainder": 7,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 326.859375,
+          "height": 251
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 683,
+            "bottom": 750,
+            "left": 2495.015625,
+            "right": 2808.875,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 755,
+            "bottom": 822,
+            "left": 2495.015625,
+            "right": 2808.875,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 827,
+            "bottom": 894,
+            "left": 2495.015625,
+            "right": 2808.875,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          5,
+          5
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 34,
+        "contained": true,
+        "clipped": false
+      },
+      {
+        "badgeCount": 3,
+        "ghostCount": 3,
+        "cell": {
+          "width": 326.859375,
+          "height": 251
+        },
+        "badges": [
+          {
+            "ghost": true,
+            "top": 683,
+            "bottom": 750,
+            "left": 4783.03125,
+            "right": 5096.890625,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 755,
+            "bottom": 822,
+            "left": 4783.03125,
+            "right": 5096.890625,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          },
+          {
+            "ghost": true,
+            "top": 827,
+            "bottom": 894,
+            "left": 4783.03125,
+            "right": 5096.890625,
+            "width": 313.859375,
+            "height": 67,
+            "clientHeight": 65,
+            "scrollHeight": 65,
+            "contentHeight": 51.59375,
+            "contentScrollHeight": 52
+          }
+        ],
+        "gaps": [
+          5,
+          5
+        ],
+        "badgeToAddGap": null,
+        "addControl": null,
+        "bottomRemainder": 34,
+        "contained": true,
+        "clipped": false
+      }
+    ]
+  },
+  "selectedVisual": {
+    "selectedCount": 2,
+    "nativeDraggable": false,
+    "draggableAttribute": null,
+    "outerBorderPreserved": true,
+    "selectedBorderColor": "color(srgb 0.25098 0.424314 0.353725)",
+    "unselectedBorderColor": "color(srgb 0.25098 0.424314 0.353725)",
+    "ringBoxShadow": "color(srgb 0.215294 0.418275 0.344941) 0px 0px 0px 2px inset",
+    "ringPointerEvents": "none",
+    "contentPaddingLeft": "22px"
+  },
+  "multiSelectDragBlocked": true
+}

@@ -1,0 +1,24 @@
+{
+ "before-archived-footer": [
+  "Cancel"
+ ],
+ "before-phones": [
+  "+14155550123",
+  "4155550100"
+ ],
+ "before-zone": "America/Los_Angeles",
+ "before-history": [],
+ "before-create-blocker": [
+  "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule."
+ ],
+ "after-archived-footer": [
+  "Close"
+ ],
+ "after-phones": [
+  "+1 (415) 555-0123",
+  "+1 (415) 555-0100"
+ ],
+ "after-zone": "Pacific Time (Los Angeles)",
+ "after-history": [],
+ "after-create-blocker": []
+}

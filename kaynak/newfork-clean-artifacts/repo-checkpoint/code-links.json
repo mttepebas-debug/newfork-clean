@@ -1,0 +1,122 @@
+{
+  "sourceFiles": 354,
+  "reachable": 320,
+  "unlinked": [
+    "apps/web/src/availability/WeeklyPreferencesForm.preview.tsx",
+    "apps/web/src/schedule/components/PublishReturn.preview.tsx",
+    "apps/web/src/schedule/LineupPage.tsx",
+    "apps/web/src/schedule/api.ts",
+    "apps/web/src/schedule/cache.ts",
+    "apps/web/src/schedule/components/BulkPublishPopover.tsx",
+    "apps/web/src/schedule/components/PublishWizardDialog.tsx",
+    "apps/web/src/schedule/components/ShiftDrawer.tsx",
+    "apps/web/src/schedule/components/ShiftTypePresetDragPreview.tsx",
+    "apps/web/src/schedule/components/WorkingCopyBanner.tsx",
+    "apps/web/src/schedule/components/drawer/FormView.tsx",
+    "apps/web/src/schedule/components/drawer/StaleBlockedView.tsx",
+    "apps/web/src/schedule/components/drawer/VanishedView.tsx",
+    "apps/web/src/schedule/components/employeeDragGhost.ts",
+    "apps/web/src/schedule/data/mockData.ts",
+    "apps/web/src/schedule/hooks/useDraftMutations.ts",
+    "apps/web/src/schedule/hooks/useEditLock.ts",
+    "apps/web/src/schedule/hooks/useEditSessionActions.ts",
+    "apps/web/src/schedule/hooks/useShiftMutations.ts",
+    "apps/web/src/schedule/hooks/useSynchronizedRowBadgeHeight.ts",
+    "apps/web/src/schedule/hooks/useUniformBadgeWidth.ts",
+    "apps/web/src/schedule/lib/employeeDragScroll.ts",
+    "apps/web/src/schedule/lib/scheduleDebug.ts",
+    "apps/web/src/schedule/lib/scheduleExportRenderModel.ts",
+    "apps/web/src/schedule/lib/shiftOccupancy.ts",
+    "apps/web/src/schedule/sidebarCalendarEvents.ts",
+    "apps/web/src/schedule/state/drawerMachine.ts",
+    "apps/web/src/schedule/types.ts",
+    "apps/web/src/schedule/undo/shiftUndoCommands.ts",
+    "apps/web/src/shell/MiniCalendar.tsx",
+    "packages/ui/src/components/Button.tsx",
+    "packages/ui/src/components/Toaster.tsx",
+    "packages/ui/src/index.ts",
+    "packages/ui/src/lib/use-toast.ts"
+  ],
+  "unresolved": [],
+  "worktrees": [
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/0dcf/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/342c/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/3845/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/4285/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/48c1/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/4dfb/newfork-clean",
+      "changes": 233,
+      "paths": [
+        "apps/api/package.json",
+        "apps/api/src/app.test.ts",
+        "apps/api/src/app.ts",
+        "apps/api/src/auth/workspace-context.ts",
+        "apps/api/src/communications/communication-routes.ts",
+        "apps/api/src/communications/communication-service.ts",
+        "apps/api/src/employee-hub/employee-hub-service.ts",
+        "apps/api/src/schedule/schedule-export-cron.test.ts",
+        "apps/api/src/schedule/schedule-export-cron.ts",
+        "apps/api/src/schedule/schedule-lineup-service.ts",
+        "apps/api/src/schedule/schedule-service.test.ts",
+        "apps/api/src/schedule/schedule-service.ts"
+      ]
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/53d4/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/6377/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/8293/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/897b/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/9f7c/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/c0db/newfork-clean",
+      "changes": 0,
+      "paths": []
+    },
+    {
+      "path": "C:/Users/TheWe/.codex/worktrees/d872/newfork-clean",
+      "changes": 0,
+      "paths": []
+    }
+  ],
+  "note": "Static import graph only. Unlinked does not mean unused or approved for deletion."
+}

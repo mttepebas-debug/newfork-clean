@@ -1,0 +1,1454 @@
+[
+  {
+    "scenario": "01-sign-in-dev-identity",
+    "role": "none",
+    "url": "/sign-in",
+    "h1": "Sign in to your workspace",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Use development identity"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "development-access"
+      }
+    ]
+  },
+  {
+    "scenario": "02-onboarding-step1",
+    "role": "owner",
+    "url": "/onboarding",
+    "h1": "Name the organization",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Start over"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "onboarding-header-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "03-onboarding-step2",
+    "role": "owner",
+    "url": "/onboarding",
+    "h1": "Add at least one location",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Start over"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "onboarding-header-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Back"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "form-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Add location"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "onboarding-action-group"
+      }
+    ]
+  },
+  {
+    "scenario": "04-onboarding-step3",
+    "role": "owner",
+    "url": "/onboarding",
+    "h1": "Create the first team structure",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Start over"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "onboarding-header-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Back"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "form-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Add job"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "onboarding-action-group"
+      }
+    ]
+  },
+  {
+    "scenario": "05-onboarding-step4",
+    "role": "owner",
+    "url": "/onboarding",
+    "h1": "Add your team",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Start over"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "onboarding-header-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Back"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "form-actions"
+      },
+      {
+        "count": 2,
+        "texts": [
+          "Add employee",
+          "Clear draft"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "onboarding-action-group"
+      }
+    ]
+  },
+  {
+    "scenario": "06-organization-switcher",
+    "role": "owner",
+    "url": "/organization-switcher",
+    "h1": "Choose organization",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Open Meyhouse"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button active-workspace",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(232, 241, 237)",
+        "color": "rgb(15, 79, 66)",
+        "border": "1px solid rgb(137, 185, 170)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 12,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      }
+    ]
+  },
+  {
+    "scenario": "06b-organization-switcher-active-hover",
+    "role": "owner",
+    "url": "/organization-switcher",
+    "h1": "Choose organization",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Open Meyhouse"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button active-workspace",
+        "disabled": false,
+        "hover": true,
+        "bg": "rgb(220, 238, 231)",
+        "color": "rgb(15, 79, 66)",
+        "border": "1px solid rgb(137, 185, 170)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 12,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      }
+    ]
+  },
+  {
+    "scenario": "06c-organization-switcher-open-hover",
+    "role": "owner",
+    "url": "/organization-switcher",
+    "h1": "Choose organization",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Open Meyhouse"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button active-workspace",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(232, 241, 237)",
+        "color": "rgb(15, 79, 66)",
+        "border": "1px solid rgb(137, 185, 170)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Open Employee Demo"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": true,
+        "bg": "rgb(240, 244, 242)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 11,
+        "texts": [
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412",
+          "Open Line Up role verification 87103246-0550-4ff"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      }
+    ]
+  },
+  {
+    "scenario": "07-account-profile",
+    "role": "owner",
+    "url": "/account/profile",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Upload"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove"
+        ],
+        "tag": "button",
+        "cls": "nf-button danger-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "border": "0px none rgb(255, 255, 255)",
+        "opacity": "0.55",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-form-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "08-account-profile-dirty",
+    "role": "owner",
+    "url": "/account/profile",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Upload"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove"
+        ],
+        "tag": "button",
+        "cls": "nf-button danger-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "border": "0px none rgb(255, 255, 255)",
+        "opacity": "0.55",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-form-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "09-account-profile-crop-dialog",
+    "role": "owner",
+    "url": "/account/profile",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Cancel crop"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-form-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Upload"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove"
+        ],
+        "tag": "button",
+        "cls": "nf-button danger-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "border": "0px none rgb(255, 255, 255)",
+        "opacity": "0.55",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-form-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "10-account-security",
+    "role": "owner",
+    "url": "/account/security",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Sign out other sessions"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-inline-form"
+      }
+    ]
+  },
+  {
+    "scenario": "11-account-security-pending-email",
+    "role": "owner",
+    "url": "/account/security",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Resend"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel change"
+        ],
+        "tag": "button",
+        "cls": "nf-button danger-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "border": "0px none rgb(255, 255, 255)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Sign out other sessions"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-inline-form"
+      }
+    ]
+  },
+  {
+    "scenario": "11b-account-security-danger-hover",
+    "role": "owner",
+    "url": "/account/security",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Resend"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel change"
+        ],
+        "tag": "button",
+        "cls": "nf-button danger-button",
+        "disabled": false,
+        "hover": true,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "border": "0px none rgb(255, 255, 255)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Sign out other sessions"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-inline-form"
+      }
+    ]
+  },
+  {
+    "scenario": "12-account-security-delete-dialog",
+    "role": "employee",
+    "url": "/account/security",
+    "h1": "Account",
+    "problems": [
+      "step failed: btn=Delete account - locator.click: Timeout 5000ms exceeded."
+    ],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Sign out other sessions"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-inline-form"
+      }
+    ]
+  },
+  {
+    "scenario": "13-account-preferences",
+    "role": "owner",
+    "url": "/account/preferences",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-form-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "14-account-notification-preferences",
+    "role": "owner",
+    "url": "/account/preferences/notifications",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-form-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "15-account-workspaces",
+    "role": "owner",
+    "url": "/account/workspaces",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 10,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "16-account-workspaces-create-dialog",
+    "role": "owner",
+    "url": "/account/workspaces",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 10,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-field"
+      }
+    ]
+  },
+  {
+    "scenario": "17-account-workspaces-transfer-dialog",
+    "role": "owner",
+    "url": "/account/workspaces",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 10,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "18-account-workspaces-close-dialog",
+    "role": "owner",
+    "url": "/account/workspaces",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 10,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Keep organization"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "19-employee-drawer-footer",
+    "role": "owner",
+    "url": "/app/employees?employeeId=fa53de75-0842-4051-9d81-4d3e9835895b&section=profile",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 2,
+        "texts": [
+          "Cancel",
+          "Resend"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "20-employee-drawer-access-invited",
+    "role": "owner",
+    "url": "/app/employees?employeeId=fa53de75-0842-4051-9d81-4d3e9835895b&section=access",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Send reminder"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-pending-invite-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Revoke invitation"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button employee-revoke-invite",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-pending-invite-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove photo"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "employee-avatar-control"
+      },
+      {
+        "count": 2,
+        "texts": [
+          "Cancel",
+          "Resend"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "21-employee-drawer-access-linked",
+    "role": "owner",
+    "url": "/app/employees?employeeId=f67ea739-b9ec-484f-a18a-e4c7fd27012a&section=access",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove access"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button employee-remove-access",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-linked-access-controls"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove photo"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "employee-avatar-control"
+      },
+      {
+        "count": 2,
+        "texts": [
+          "Cancel",
+          "Invite"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "22-employee-drawer-documents",
+    "role": "owner",
+    "url": "/app/employees?employeeId=f67ea739-b9ec-484f-a18a-e4c7fd27012a&section=documents",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 2,
+        "texts": [
+          "Cancel",
+          "Invite"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "23-employee-terminate-dialog",
+    "role": "owner",
+    "url": "/app/employees?employeeId=fa53de75-0842-4051-9d81-4d3e9835895b&section=profile",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 2,
+        "texts": [
+          "Cancel",
+          "Resend"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": ""
+      }
+    ]
+  },
+  {
+    "scenario": "24-employee-create-drawer",
+    "role": "owner",
+    "url": "/app/employees?mode=create&section=profile",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(28, 41, 37)",
+        "border": "1px solid rgb(186, 198, 191)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "25-employee-create-discard-dialog",
+    "role": "owner",
+    "url": "/app/employees?mode=create&section=profile",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(28, 41, 37)",
+        "border": "1px solid rgb(186, 198, 191)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Keep editing"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgba(0, 0, 0, 0)",
+        "color": "rgb(32, 42, 39)",
+        "border": "1px solid rgb(186, 198, 191)",
+        "opacity": "1",
+        "ctx": ""
+      }
+    ]
+  },
+  {
+    "scenario": "26-settings-support",
+    "role": "owner",
+    "url": "/app/settings/support",
+    "h1": "Support",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Copy diagnostics"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "support-section-heading"
+      }
+    ]
+  },
+  {
+    "scenario": "27-settings-support-hover",
+    "role": "owner",
+    "url": "/app/settings/support",
+    "h1": "Support",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Copy diagnostics"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": true,
+        "bg": "rgb(240, 244, 242)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "support-section-heading"
+      }
+    ]
+  },
+  {
+    "scenario": "28-settings-roles",
+    "role": "owner",
+    "url": "/app/settings/roles",
+    "h1": "Roles & permissions",
+    "problems": [],
+    "secondary": []
+  },
+  {
+    "scenario": "29-manager-employee-drawer",
+    "role": "manager",
+    "url": "/app/employees?employeeId=fa53de75-0842-4051-9d81-4d3e9835895b&section=profile",
+    "h1": "Employees",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Table column settings"
+        ],
+        "tag": "button",
+        "cls": "secondary-button compact employee-column-trigger",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-column-picker"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Cancel"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "employee-drawer-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "30-employee-role-account-profile",
+    "role": "employee",
+    "url": "/account/profile",
+    "h1": "Account",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Upload"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Remove"
+        ],
+        "tag": "button",
+        "cls": "nf-button danger-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(168, 64, 52)",
+        "color": "rgb(255, 255, 255)",
+        "border": "0px none rgb(255, 255, 255)",
+        "opacity": "0.55",
+        "ctx": "account-button-row"
+      },
+      {
+        "count": 1,
+        "texts": [
+          "Discard"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button",
+        "disabled": true,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "0.55",
+        "ctx": "account-form-actions"
+      }
+    ]
+  },
+  {
+    "scenario": "31-employee-role-hub",
+    "role": "employee",
+    "url": "/app/employee-hub",
+    "h1": null,
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Retry"
+        ],
+        "tag": "button",
+        "cls": "secondary-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "empty-state"
+      }
+    ]
+  },
+  {
+    "scenario": "32-pending-invitations",
+    "role": "owner",
+    "url": "/invitations/pending",
+    "h1": "Active invitation found",
+    "problems": [],
+    "secondary": []
+  }
+]

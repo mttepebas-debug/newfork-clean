@@ -1,0 +1,44 @@
+{
+  "fixture": {
+    "workspace": "4df043fa-fa95-4270-89a0-ab4fe1eab501",
+    "location": "6c584593-c4f3-4cd4-8b16-8b799bc0aac8",
+    "department": "13e69db3-5ff5-416c-adc0-5f45bd0a3419",
+    "job": "a39a66ca-e1b6-4c4b-b657-0e066b5ff9f3",
+    "type": "364e6040-b6d7-4635-bed8-063dcdcb0e8d",
+    "employee": "59e4f8f4-c8f4-43bc-b597-e1b183580111",
+    "name": "Weekly authenticated acceptance 4df043fa-fa95-4270-89a0-ab4fe1eab501",
+    "users": {
+      "owner": {
+        "id": "745868fa-d4cc-439e-be99-5e7459965428",
+        "email": "weekly-owner-4df043fa-fa95-4270-89a0-ab4fe1eab501@example.test"
+      },
+      "manager": {
+        "id": "5a62f350-9b1e-42d8-8fa8-a57949ed0dfd",
+        "email": "weekly-manager-4df043fa-fa95-4270-89a0-ab4fe1eab501@example.test"
+      },
+      "employee": {
+        "id": "ad07a371-6acb-4b4f-9227-d59b8f3cb448",
+        "email": "weekly-employee-4df043fa-fa95-4270-89a0-ab4fe1eab501@example.test"
+      }
+    }
+  },
+  "checks": [
+    "Unsubmitted employee starts without restrictions",
+    "Employee preference takes effect immediately",
+    "Retry creates one event and no approval request",
+    "Manager inbox links to employee Availability drawer",
+    "Team table reads the saved employee week",
+    "Schedule warns instead of blocking employee preference",
+    "Line Up retains selectable unavailable employee",
+    "Copy preserves exact employee week and private notes",
+    "Employee response never exposes manager reminders",
+    "Later employee save does not automatically replace reminders",
+    "Manager-only restriction affects Schedule",
+    "Disabled reminders stop Schedule and Line Up warnings",
+    "Disabled reminders retain selections and notes",
+    "Employee cannot read team availability",
+    "Owned workspace and synthetic Auth users removed"
+  ],
+  "cleanup": true,
+  "status": "passed"
+}

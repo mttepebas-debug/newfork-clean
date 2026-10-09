@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "view": "onboarding",
+      "mode": "shift_type",
+      "width": 1440,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "onboarding",
+      "mode": "shift_type",
+      "width": 390,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "onboarding",
+      "mode": "time_range",
+      "width": 1440,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    },
+    {
+      "view": "onboarding",
+      "mode": "time_range",
+      "width": 390,
+      "overflow": false,
+      "rows": 7,
+      "nestedForms": 0,
+      "tabs": [],
+      "settingsFooterClear": true
+    }
+  ],
+  "errors": []
+}

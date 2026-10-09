@@ -1,0 +1,333 @@
+{
+  "baseUrl": "http://127.0.0.1:5174",
+  "results": [
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "scheduleView": {
+        "name": "weekly",
+        "view": "week"
+      },
+      "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-weekly-desktop.png",
+      "metrics": {
+        "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=week",
+        "documentWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyHeight": 900,
+        "topbar": {
+          "x": 288,
+          "y": 0,
+          "width": 1152,
+          "height": 45,
+          "scrollWidth": 1152,
+          "clientWidth": 1152
+        },
+        "toolbar": null,
+        "grid": {
+          "x": 288,
+          "y": 165,
+          "width": 1152,
+          "height": 771,
+          "scrollWidth": 2580,
+          "clientWidth": 1150
+        },
+        "exactGrid": {
+          "x": 289,
+          "y": 166,
+          "width": 2580,
+          "height": 807,
+          "scrollWidth": 2580,
+          "clientWidth": 2580
+        },
+        "gridTemplateColumns": "200px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px",
+        "dayColumnMin": "170px",
+        "dayHeaders": {
+          "count": 14,
+          "minWidth": 170,
+          "maxWidth": 170,
+          "minHeight": 50,
+          "maxHeight": 50,
+          "overflowingCount": 0
+        },
+        "cells": {
+          "count": 112,
+          "minWidth": 170,
+          "maxWidth": 170,
+          "minHeight": 86,
+          "maxHeight": 94,
+          "overflowingCount": 0
+        },
+        "shiftBadges": {
+          "count": 14,
+          "minWidth": 157,
+          "maxWidth": 157,
+          "minHeight": 59,
+          "maxHeight": 63,
+          "overflowingCount": 0
+        },
+        "badgeContainment": {
+          "count": 14,
+          "containedCount": 14,
+          "maxBadgeWidth": 157,
+          "minCellWidth": 170
+        },
+        "focusedBadgeCount": 0,
+        "locationCount": 2,
+        "shiftCount": 14,
+        "warningCount": 0,
+        "hasPayrollText": false
+      },
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "scheduleView": {
+        "name": "weekly",
+        "view": "week"
+      },
+      "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-weekly-mobile.png",
+      "metrics": {
+        "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=week",
+        "documentWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyHeight": 844,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 90,
+          "scrollWidth": 390,
+          "clientWidth": 390
+        },
+        "toolbar": null,
+        "grid": {
+          "x": 0,
+          "y": 210,
+          "width": 390,
+          "height": 715,
+          "scrollWidth": 2580,
+          "clientWidth": 388
+        },
+        "exactGrid": {
+          "x": 1,
+          "y": 211,
+          "width": 2580,
+          "height": 807,
+          "scrollWidth": 2580,
+          "clientWidth": 2580
+        },
+        "gridTemplateColumns": "200px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px 170px",
+        "dayColumnMin": "170px",
+        "dayHeaders": {
+          "count": 14,
+          "minWidth": 170,
+          "maxWidth": 170,
+          "minHeight": 50,
+          "maxHeight": 50,
+          "overflowingCount": 0
+        },
+        "cells": {
+          "count": 112,
+          "minWidth": 170,
+          "maxWidth": 170,
+          "minHeight": 86,
+          "maxHeight": 94,
+          "overflowingCount": 0
+        },
+        "shiftBadges": {
+          "count": 14,
+          "minWidth": 157,
+          "maxWidth": 157,
+          "minHeight": 59,
+          "maxHeight": 63,
+          "overflowingCount": 0
+        },
+        "badgeContainment": {
+          "count": 14,
+          "containedCount": 14,
+          "maxBadgeWidth": 157,
+          "minCellWidth": 170
+        },
+        "focusedBadgeCount": 0,
+        "locationCount": 2,
+        "shiftCount": 14,
+        "warningCount": 0,
+        "hasPayrollText": false
+      },
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "viewport": {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      "scheduleView": {
+        "name": "daily",
+        "view": "day"
+      },
+      "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-daily-desktop.png",
+      "metrics": {
+        "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=day",
+        "documentWidth": 1440,
+        "documentScrollWidth": 1440,
+        "bodyHeight": 900,
+        "topbar": {
+          "x": 288,
+          "y": 0,
+          "width": 1152,
+          "height": 45,
+          "scrollWidth": 1152,
+          "clientWidth": 1152
+        },
+        "toolbar": null,
+        "grid": {
+          "x": 288,
+          "y": 165,
+          "width": 1152,
+          "height": 771,
+          "scrollWidth": 1150,
+          "clientWidth": 1150
+        },
+        "exactGrid": {
+          "x": 289,
+          "y": 166,
+          "width": 1150,
+          "height": 807,
+          "scrollWidth": 1150,
+          "clientWidth": 1150
+        },
+        "gridTemplateColumns": "200px 475px 475px",
+        "dayColumnMin": "170px",
+        "dayHeaders": {
+          "count": 2,
+          "minWidth": 475,
+          "maxWidth": 475,
+          "minHeight": 50,
+          "maxHeight": 50,
+          "overflowingCount": 0
+        },
+        "cells": {
+          "count": 16,
+          "minWidth": 475,
+          "maxWidth": 475,
+          "minHeight": 86,
+          "maxHeight": 94,
+          "overflowingCount": 0
+        },
+        "shiftBadges": {
+          "count": 2,
+          "minWidth": 462,
+          "maxWidth": 462,
+          "minHeight": 59,
+          "maxHeight": 63,
+          "overflowingCount": 0
+        },
+        "badgeContainment": {
+          "count": 2,
+          "containedCount": 2,
+          "maxBadgeWidth": 462,
+          "minCellWidth": 475
+        },
+        "focusedBadgeCount": 0,
+        "locationCount": 2,
+        "shiftCount": 2,
+        "warningCount": 0,
+        "hasPayrollText": false
+      },
+      "consoleErrors": [],
+      "failedRequests": []
+    },
+    {
+      "viewport": {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      },
+      "scheduleView": {
+        "name": "daily",
+        "view": "day"
+      },
+      "screenshotPath": "C:\\Users\\TheWe\\Documents\\Codex\\newfork-clean\\artifacts\\phase-5-visual-parity\\clean-schedule-daily-mobile.png",
+      "metrics": {
+        "url": "http://127.0.0.1:5174/app/schedule?date=2026-08-17&view=day",
+        "documentWidth": 390,
+        "documentScrollWidth": 390,
+        "bodyHeight": 844,
+        "topbar": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 90,
+          "scrollWidth": 390,
+          "clientWidth": 390
+        },
+        "toolbar": null,
+        "grid": {
+          "x": 0,
+          "y": 210,
+          "width": 390,
+          "height": 715,
+          "scrollWidth": 561,
+          "clientWidth": 388
+        },
+        "exactGrid": {
+          "x": 1,
+          "y": 211,
+          "width": 561,
+          "height": 807,
+          "scrollWidth": 561,
+          "clientWidth": 561
+        },
+        "gridTemplateColumns": "200px 180.719px 180.719px",
+        "dayColumnMin": "170px",
+        "dayHeaders": {
+          "count": 2,
+          "minWidth": 181,
+          "maxWidth": 181,
+          "minHeight": 50,
+          "maxHeight": 50,
+          "overflowingCount": 0
+        },
+        "cells": {
+          "count": 16,
+          "minWidth": 181,
+          "maxWidth": 181,
+          "minHeight": 86,
+          "maxHeight": 94,
+          "overflowingCount": 0
+        },
+        "shiftBadges": {
+          "count": 2,
+          "minWidth": 168,
+          "maxWidth": 168,
+          "minHeight": 59,
+          "maxHeight": 63,
+          "overflowingCount": 0
+        },
+        "badgeContainment": {
+          "count": 2,
+          "containedCount": 2,
+          "maxBadgeWidth": 168,
+          "minCellWidth": 181
+        },
+        "focusedBadgeCount": 0,
+        "locationCount": 2,
+        "shiftCount": 2,
+        "warningCount": 0,
+        "hasPayrollText": false
+      },
+      "consoleErrors": [],
+      "failedRequests": []
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "url": "/app/settings/general",
+  "rail": "ORGANIZATION\nGeneral\nHELP\nSupport",
+  "disabled": false,
+  "nameMessages": [
+    "Organization settings saved."
+  ],
+  "sidebarAfter": "Renamed by Shift lead",
+  "revert": [
+    "Organization settings saved."
+  ],
+  "checklistMsg": [
+    "Organization settings saved."
+  ],
+  "checklistLabel": "Show checklist",
+  "prefMsg": [
+    "Organization settings saved.",
+    "That setting could not be saved."
+  ],
+  "prefLabel": "Answer them here",
+  "net": [
+    {
+      "m": "PATCH",
+      "s": 204,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b",
+      "range": "0-0/*",
+      "body": ""
+    },
+    {
+      "m": "PATCH",
+      "s": 204,
+      "u": "/rest/v1/workspaces?id=eq.ed44c7ab-3008-4ae6-8f9f-e70f1496012b",
+      "range": "0-0/*",
+      "body": ""
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "range": null,
+      "body": "{\"workspace_id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"user_id\":\"f2b90cae-972c-4dad-9a31-aea2e1660b1f\",\"completed_item_ids\":[],\"closed_at\":\"2026-10-07T08:53:58.020936+00:00\"}"
+    },
+    {
+      "m": "PATCH",
+      "s": 200,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/workspace/setup-checklist",
+      "range": null,
+      "body": "{\"workspace_id\":\"ed44c7ab-3008-4ae6-8f9f-e70f1496012b\",\"user_id\":\"f2b90cae-972c-4dad-9a31-aea2e1660b1f\",\"completed_item_ids\":[],\"closed_at\":null}"
+    },
+    {
+      "m": "PUT",
+      "s": 403,
+      "u": "/v1/workspaces/ed44c7ab-3008-4ae6-8f9f-e70f1496012b/preferred-name-approval",
+      "range": null,
+      "body": "{\"error\":\"Not allowed\",\"reason\":\"authz.out_of_scope\",\"detail\":\"settings.people\",\"requestId\":\"req-20d\"}"
+    }
+  ]
+}

@@ -1,0 +1,382 @@
+<title>List Page Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: each system = one labelled block; the Employees page drawn at desktop size and scaled,
+   then three other list pages built by the same system. Single light theme: Newfork is light-only. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --surface-muted: #f0f3f1;
+  --text: #17221e;
+  --body: #46514d;
+  --muted: #66716c;
+  --muted-strong: #50605a;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --control: #aeb9b4;
+  --head: #e6ece8;
+  --head-text: #4f5d57;
+  --accent: #176954;
+  --accent-soft: #e7f1ed;
+  --eyebrow: #256b56;
+  --dot: #2d8c64;
+  --warn: #8a5a00;
+  --info: #2b5a8a;
+  --info-soft: #e7eef8;
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 72px; }
+h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { margin: 0 0 6px; max-width: 78ch; color: var(--muted-strong); }
+.small { margin: 0; max-width: 78ch; color: var(--muted); font-size: 13px; }
+.inv { margin-top: 12px; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.inv table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 12.5px; }
+.inv th { padding: 8px 10px; background: var(--head); color: var(--head-text); font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; }
+.inv td { padding: 8px 10px; border-top: 1px solid #e2e6e4; color: var(--body); vertical-align: top; }
+.inv td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+details.inv-box { margin-top: 18px; }
+details.inv-box summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.system { margin-top: 56px; }
+.sys-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tag { display: inline-flex; min-width: 34px; justify-content: center; padding: 2px 10px; border-radius: 999px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; }
+.tag.today { background: var(--border-strong); color: var(--text); }
+.tag.keep { background: var(--accent); }
+.sys-head h2 { margin: 0; font-size: 21px; letter-spacing: -0.01em; text-wrap: balance; }
+.idea { margin: 6px 0 12px; max-width: 80ch; color: var(--muted-strong); font-size: 13.5px; }
+.idea b { color: var(--text); font-weight: 600; }
+.frame-label { margin: 14px 0 6px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.stage { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.previews { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pv { display: block; width: 100%; min-width: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); text-align: left; font: inherit; color: inherit; cursor: zoom-in; }
+.pv:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pv .pv-name { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 12px; font-weight: 700; }
+.pv .pv-name span { color: var(--muted); font-weight: 500; }
+.pv .pv-body { padding: 10px; }
+.pv.big { grid-column: 1 / -1; cursor: zoom-out; }
+.scaler { width: 100%; overflow: hidden; }
+.scaler > .page { transform-origin: 0 0; }
+.today-pair > *, .previews > * { min-width: 0; }
+.today-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .previews, .today-pair { grid-template-columns: 1fr; } .wrap { padding-inline: 16px; } }
+
+/* ================= the drawn page (1000 px = a 1440 screen without the side menu) ================= */
+.page { width: 1000px; padding: 0 30px 24px; background: var(--page); font-size: 13px; color: var(--body); }
+.page svg.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 32px 0 20px; border-bottom: 1px solid #d9dfdb; }
+.eb { display: block; margin-bottom: 9px; color: var(--eyebrow); font-size: 9px; font-weight: 700; letter-spacing: 1.7px; text-transform: uppercase; }
+.ttl { display: flex; align-items: center; gap: 12px; margin: 0; color: #16211c; font-size: 38px; font-weight: 650; line-height: 1.15; letter-spacing: -0.02em; }
+.ttl::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 6px rgb(45 140 100 / 11%); }
+.dsc { margin: 9px 0 0; max-width: 620px; color: #56655d; font-size: 12px; }
+.btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); font: 600 13px var(--font); white-space: nowrap; }
+.btn.green { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.btn.big { height: 40px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 700; }
+.sel { display: inline-flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; min-width: 180px; height: 36px; padding: 0 10px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; }
+.srch { display: flex; flex: 1; min-width: 160px; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--muted); font-size: 13px; }
+.cols { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); }
+.ul-tabs { display: flex; gap: 6px; border-bottom: 1px solid #dce3df; }
+.ul-tabs span { display: inline-flex; align-items: center; gap: 6px; margin-bottom: -1px; padding: 8px 12px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; }
+.ul-tabs span.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+.cnt { display: inline-grid; min-width: 18px; height: 18px; place-items: center; padding: 0 5px; border-radius: 999px; background: var(--surface-muted); color: var(--muted-strong); font-size: 10.5px; font-weight: 700; }
+.on .cnt { background: var(--accent-soft); color: var(--accent); }
+.row-flex { display: flex; align-items: center; gap: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.chip.g { background: #e7f1ed; color: #176b4e; }
+.chip.n { background: #f0f3f1; color: #50605a; }
+.chip.a { background: #fff7e2; color: #8a5a00; }
+.chip.b { background: var(--info-soft); color: var(--info); }
+.tbl { overflow: hidden; border: 1px solid #d7dcda; border-radius: 7px; background: var(--surface-soft); }
+.tr { display: grid; align-items: center; background: var(--surface); }
+.tr > * { min-width: 0; overflow: hidden; padding: 10px 14px; text-overflow: ellipsis; white-space: nowrap; }
+.tr.h { background: #e6ece8; border-bottom: 1px solid #d3dbd6; }
+.tr.h > * { display: flex; align-items: center; height: 40px; padding: 0 14px; color: #4f5d57; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.tr.r { min-height: 50px; border-bottom: 1px solid #e2e6e4; }
+.tr.r > :first-child { color: var(--text); font-weight: 600; }
+.tr.g { background: var(--surface-soft); border-bottom: 1px solid #e2e6e4; }
+.tr.g > * { padding: 6px 14px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.tr.unread > :nth-child(2) { color: var(--text); font-weight: 650; }
+.who { display: flex; align-items: center; gap: 9px; }
+.av { display: grid; flex: none; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #e3ece8; color: var(--accent); font-size: 11px; font-weight: 800; }
+.sub { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+.box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid var(--control); border-radius: 3px; background: var(--surface); vertical-align: -2px; }
+.box.on { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 2px var(--surface); }
+.muted { color: var(--muted); }
+.warnline { display: inline-flex; align-items: center; gap: 5px; color: var(--warn); font-weight: 600; }
+
+/* Today: Employees as it is */
+.s0 .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: #edf0ee; }
+.s0 .seg span { padding: 6px 11px; border-radius: 6px; color: var(--muted-strong); font-size: 12.5px; font-weight: 600; }
+.s0 .seg span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.1); }
+.s0 .tr.h { background: #f3f5f3; }
+.s0 .tr.h > * { color: #68726e; font-size: 10.5px; font-weight: 800; }
+
+/* System 1: shared language, green action at the end of the filter row (C) */
+.s1 .tools { display: grid; gap: 12px; margin: 16px 0 14px; }
+
+/* System 2: one panel */
+.s2 .ph { padding-bottom: 18px; border-bottom: 0; }
+.s2 .panel { overflow: hidden; border: 1px solid #d7dcda; border-radius: 10px; background: var(--surface); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.04); }
+.s2 .panel .ul-tabs { padding: 0 12px; }
+.s2 .panel .bar { display: flex; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid #e2e6e4; }
+.s2 .panel .tbl { border: 0; border-radius: 0; }
+.s2 .tr.h { background: var(--surface); border-bottom: 1px solid #e2e6e4; }
+.s2 .foot { display: flex; justify-content: space-between; padding: 9px 14px; background: var(--surface); color: var(--muted); font-size: 11.5px; }
+
+/* System 3: a filter rail */
+.s3 .body { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 18px; margin-top: 18px; }
+.s3 .rail { display: grid; align-content: start; gap: 18px; }
+.s3 .rail h4 { margin: 0 0 6px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.s3 .nav { display: grid; gap: 2px; }
+.s3 .nav span { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 7px; color: var(--muted-strong); font-size: 13px; }
+.s3 .nav span.on { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.s3 .rail .sel { width: 100%; min-width: 0; }
+.s3 .typeswitch { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-muted); }
+.s3 .typeswitch span { padding: 6px 8px; border-radius: 6px; color: var(--muted-strong); font-size: 12px; font-weight: 600; text-align: center; }
+.s3 .typeswitch span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.1); }
+.s3 .main { display: grid; align-content: start; gap: 10px; min-width: 0; }
+
+/* System 4: compact command bar */
+.s4 .ph { padding: 22px 0 14px; }
+.s4 .ttl { font-size: 26px; }
+.s4 .ttl::after { width: 7px; height: 7px; box-shadow: 0 0 0 4px rgb(45 140 100 / 11%); }
+.s4 .count { color: var(--muted); font-size: 15px; font-weight: 500; }
+.s4 .cmd { display: flex; align-items: center; gap: 8px; margin: 14px 0 12px; }
+.s4 .segc { display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 8px; background: #e9eeeb; }
+.s4 .segc span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; color: var(--muted-strong); font-size: 12.5px; font-weight: 600; }
+.s4 .segc span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.12); }
+.s4 .pill { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 32px; padding: 0 11px; border: 1px dashed var(--control); border-radius: 999px; color: var(--muted-strong); font-size: 12.5px; font-weight: 600; }
+.s4 .pill.set { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.s4 .srch { min-width: 100px; height: 32px; border-radius: 999px; }
+.s4 .btn, .s4 .cols { height: 32px; }
+.s4 .cols { width: 32px; }
+.s4 .tbl { border-radius: 9px; }
+.s4 .tr.h > * { height: 34px; font-size: 10.5px; }
+.s4 .tr.r { min-height: 42px; }
+.s4 .tr > * { padding-top: 7px; padding-bottom: 7px; }
+
+/* System 5: summary tiles */
+.s5 .tiles { display: flex; gap: 10px; margin: 18px 0 12px; }
+.s5 .tile { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.s5 .tile b { display: block; color: var(--text); font-size: 22px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.s5 .tile span { color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.s5 .tile.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.s5 .tile.on span { color: var(--accent); }
+.s5 .tile.warn b { color: var(--warn); }
+.s5 .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.s5 .fchip { display: inline-flex; flex: none; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; background: var(--surface-muted); color: var(--text); font-size: 12.5px; font-weight: 600; }
+.s5 .fchip .x { display: inline-flex; color: var(--muted); }
+.s5 .addf { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border-radius: 999px; color: var(--accent); font-size: 12.5px; font-weight: 600; }
+.s5 .srch { height: 32px; }
+.s5 .btn { height: 34px; }
+.s5 .typerow { margin-top: 14px; }
+</style>
+
+<div class="wrap">
+  <h1>List pages: one desktop system</h1>
+  <p class="lead">Five ways to lay out every list page the same. Each block shows the Employees page in full, then three other pages built by the same rules, so you can see where each page's own parts go. Click a small page to enlarge it.</p>
+  <p class="small">Drawn in the app's own type and colours. Nothing here is live; the people are the e2e world's, the rows are realistic.</p>
+
+  <details class="inv-box">
+    <summary>Which pages this has to fit, and what each one has of its own</summary>
+    <div class="inv"><table>
+      <thead><tr><th>Page</th><th>Main button</th><th>Tabs</th><th>Filters / search</th><th>Own parts</th></tr></thead>
+      <tbody>
+        <tr><td>Employees</td><td>Add employee</td><td>All, Invited, Onboarding, Needs Attention, Active, Archived</td><td>Location · search</td><td>column picker; "No location" chip; "+1" location</td></tr>
+        <tr><td>Requests · Time off</td><td>—</td><td>type: Time off (3), Shift changes · queue: Needs review, Closed</td><td>Location · search</td><td>two tab levels; "Decide by"; open-shift alert count</td></tr>
+        <tr><td>Requests · Shift changes</td><td>—</td><td>Ready for review (2), Finding cover, Awaiting response, History</td><td>Location · search · date range (today + 6 weeks)</td><td>candidates column</td></tr>
+        <tr><td>Settings → Documents</td><td>New document</td><td>All, Draft, Published, Archived</td><td>Requirement · search</td><td>row menu (publish, reorder)</td></tr>
+        <tr><td>Employees → Documents</td><td>—</td><td>All, Needs review, Missing, Expired, Completed (counts)</td><td>Location · Document type · search</td><td>review drawer</td></tr>
+        <tr><td>Announcements</td><td>New announcement</td><td>All, Draft (n), Scheduled (n), Published, Archived</td><td>Location · search</td><td>employee view: no tabs, Acknowledge in the row</td></tr>
+        <tr><td>Important Dates</td><td>New date</td><td>Upcoming, Past, Archived</td><td>Type · search</td><td>"Repeats yearly", "Schedule flag"</td></tr>
+        <tr><td>Notifications</td><td>(Mark as read, with a selection)</td><td>Unread (n), Read (n)</td><td>Category, no search</td><td>check boxes, "N selected", day groups, Dismiss</td></tr>
+        <tr><td>Availability</td><td>—</td><td>All, Submitted, Not submitted</td><td>Location · search</td><td>"N employees" count; seven day columns</td></tr>
+        <tr><td>Locations · Jobs · Acknowledgements · Shift catalog</td><td>Add location / Create ▾ / Add template / Add shift type</td><td>Jobs: All, Departments, Jobs · Templates, Retention · Shift types, Shift labels</td><td>search · "Show archived"</td><td>older Settings header today; move up/down; department groups</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <div id="systems"></div>
+</div>
+
+<script>
+const ic = {
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  caret: '<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  cols: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  cal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  dots: '<svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+};
+const chip = (tone, text) => `<span class="chip ${tone}">${text}</span>`;
+const who = (n, sub = "") => `<span class="who"><span class="av">${n[0]}</span><span>${n}${sub ? `<span class="sub">${sub}</span>` : ""}</span></span>`;
+
+const pages = {
+  employees: {
+    name: "Employees", eyebrow: "YOUR TEAM. CONNECTED AND READY.", desc: "Manage employee profiles, assignments, invitations, and workspace access.",
+    primary: "Add employee",
+    tabs: [["All", 9, 1], ["Invited", 1], ["Onboarding", 1], ["Needs Attention", 1], ["Active", 6], ["Archived"]],
+    filters: [["Location", "All locations"]], search: "Search name, location, or job", columnPicker: true,
+    cols: ["Employee", "Status", "Primary location", "Primary job", "Access", "Start date"], widths: "24% 13% 17% 16% 15% 15%",
+    rows: [
+      [who("Olcay Owner", "E-0001"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy <span class="muted">+1</span></span>`, "Owner", "Owner", "Not set"],
+      [who("Zeynep Person", "E-0005"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy</span>`, "Server", "Admin", "Mar 3, 2026"],
+      [who("Ayse Person", "E-0002"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy</span>`, "Cook", "Manager", "Jan 12, 2026"],
+      [who("Ali Person", "E-0006"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy <span class="muted">+1</span></span>`, "Cook", "Employee", "Feb 2, 2026"],
+      [who("Busra Person", "E-0009"), chip("b", "Onboarding"), `<span class="row-flex">${ic.pin}Kadikoy</span>`, "Barista", "Employee", "Oct 14, 2028"],
+      [who("Emre Person", "E-0010"), chip("n", "Invited"), `<span class="row-flex">${ic.pin}Besiktas</span>`, "Server", "Employee", "Not set"],
+      [who("Mehmet Person", "E-0011"), chip("a", "Needs attention"), chip("a", "No location"), "Cook", "Employee", "Not set"],
+    ],
+  },
+  requests: {
+    name: "Requests", eyebrow: "TEAM CHANGES. REVIEWED WITH CONTROL.", desc: "Review time off and shift change requests in one place.",
+    typeTabs: [["Time off", 3, 1], ["Shift changes", 2]],
+    tabs: [["Needs review", 3, 1], ["Closed"]],
+    filters: [["Location", "All locations"]], dateRange: "Oct 9 – Nov 20, 2028", search: "Search employee or note",
+    cols: ["Employee", "Dates", "Decide by", "Status", "Review"], widths: "28% 24% 22% 14% 12%",
+    rows: [
+      [who("Ali Person"), "Oct 11 – Oct 11, 2028", "Oct 9, 5:00 PM", chip("a", "Pending"), `<span class="warnline">${ic.warn}2</span>`],
+      [who("Deniz Person"), "Oct 14 – Oct 16, 2028", "Oct 12, 9:00 AM", chip("a", "Pending"), `<span class="muted">${ic.chev}</span>`],
+      [who("Busra Person", "Leave cancellation"), "Oct 20 – Oct 20, 2028", "Oct 18, 5:00 PM", chip("a", "Pending"), `<span class="muted">${ic.chev}</span>`],
+    ],
+  },
+  announcements: {
+    name: "Announcements", eyebrow: "THE RIGHT UPDATE. THE RIGHT PEOPLE.", desc: "Create, schedule, and publish updates for the right teams.",
+    primary: "New announcement",
+    tabs: [["All", 0, 1], ["Draft", 1], ["Scheduled", 1], ["Published"], ["Archived"]],
+    filters: [["Location", "All locations"]], search: "Search announcements",
+    cols: ["Announcement", "Audience", "Status", "Publish date", ""], widths: "38% 24% 15% 17% 6%",
+    rows: [
+      ["Holiday hours for Oct 29", "Kadikoy, Besiktas", chip("g", "Published"), "Oct 2, 2028", `<span class="muted">${ic.dots}</span>`],
+      ["Espresso machine training", "Kadikoy · Baristas", chip("a", "Scheduled"), "Oct 12, 2028", `<span class="muted">${ic.dots}</span>`],
+      ["Uniform policy update", "All locations", chip("n", "Draft"), `<span class="muted">Not published</span>`, `<span class="muted">${ic.dots}</span>`],
+    ],
+  },
+  notifications: {
+    name: "Notifications", eyebrow: "UPDATES. ALERTS. ACTIONS.", desc: "Review account security alerts and updates for this workspace. 3 unread.",
+    tabs: [["Unread", 3, 1], ["Read", 41]],
+    filters: [["Category", "All categories"]], noSearch: true, bulk: { selected: 2, action: "Mark as read" },
+    cols: [`<span class="box"></span>`, "Notification", "Category", "Received", ""], widths: "44px 1fr 16% 14% 56px",
+    groups: [["Today", [
+      [`<span class="box on"></span>`, "Ali Person asked for time off on Oct 11", "Requests", "9:12 AM", `<span class="muted">${ic.trash}</span>`, "unread"],
+      [`<span class="box on"></span>`, "A shift swap is ready for review", "Requests", "8:40 AM", `<span class="muted">${ic.trash}</span>`, "unread"],
+    ]], ["Yesterday", [
+      [`<span class="box"></span>`, "Deniz Person uploaded Food handler card", "People", "4:05 PM", `<span class="muted">${ic.trash}</span>`, "unread"],
+    ]]],
+  },
+};
+
+function table(p) {
+  const head = `<div class="tr h" style="grid-template-columns:${p.widths}">${p.cols.map((c) => `<span>${c}</span>`).join("")}</div>`;
+  const row = (r) => `<div class="tr r ${r[5] ?? ""}" style="grid-template-columns:${p.widths}">${r.slice(0, p.cols.length).map((c) => `<span>${c}</span>`).join("")}</div>`;
+  const body = p.groups
+    ? p.groups.map(([g, rows]) => `<div class="tr g" style="grid-template-columns:1fr"><span>${g}</span></div>${rows.map(row).join("")}`).join("")
+    : p.rows.map(row).join("");
+  return `<div class="tbl">${head}${body}</div>`;
+}
+const header = (p, right = "") => `<div class="ph"><div><span class="eb">${p.eyebrow}</span><h3 class="ttl">${p.name}</h3><p class="dsc">${p.desc}</p></div>${right}</div>`;
+const ulTabs = (tabs) => `<div class="ul-tabs">${tabs.map(([l, n, on]) => `<span class="${on ? "on" : ""}">${l}${n ? ` <span class="cnt">${n}</span>` : ""}</span>`).join("")}</div>`;
+const selects = (p) => (p.filters ?? []).map(([, v]) => `<span class="sel">${v} ${ic.caret}</span>`).join("");
+const dateSel = (p) => p.dateRange ? `<span class="sel">${ic.cal}${p.dateRange} ${ic.caret}</span>` : "";
+const searchBox = (p) => p.noSearch ? "" : `<span class="srch">${ic.search}${p.search}</span>`;
+const plusBtn = (label, cls = "") => `<span class="btn ${cls}">${ic.plus}${label}</span>`;
+const bulkBits = (p) => p.bulk ? `<span class="muted" style="margin-left:auto">${p.bulk.selected} selected</span><span class="btn">${p.bulk.action}</span>` : "";
+const picker = (p) => p.columnPicker ? `<span class="cols">${ic.cols}</span>` : "";
+const shown = (p) => p.rows?.length ?? p.groups.reduce((s, [, r]) => s + r.length, 0);
+
+const systems = [
+  {
+    id: "s0", tag: "Today", tagCls: "today", title: "Today: two languages side by side",
+    idea: "<b>Bugün:</b> Employees eski dilde (büyük yeşil düğme başlıkta, gri kutulu sekmeler, sütun seçici sekme satırında). Announcements ve öteki beş sayfa ortak dilde (başlıkta düğme yok, alt çizgili sekmeler, beyaz düğme süzgeç satırının sonunda). Requests ve dört Settings sayfası da kendi eski dillerinde.",
+    todayPair: true,
+  },
+  {
+    id: "s1", tag: "1 · C", tagCls: "keep", title: "Shared language, green action at the end of the filter row",
+    idea: "<b>Fikir:</b> bugünkü ortak dil aynen; yalnız ana düğme yeşil (Mert'in C'si) ve her sayfada süzgeç satırının sağ ucunda. Sekmeler alt çizgili, sayaç sekmenin içinde. Requests'in tür sekmeleri ikinci bir alt çizgili satır; tarih aralığı süzgeç satırında. Notifications'ta seçim sayısı ve \"Mark as read\" düğmenin yerini alır.",
+    render(p) {
+      return header(p) + `<div class="tools">${p.typeTabs ? ulTabs(p.typeTabs) : ""}${ulTabs(p.tabs)}<div class="row-flex">${selects(p)}${dateSel(p)}${searchBox(p)}${bulkBits(p)}${picker(p)}${p.primary ? plusBtn(p.primary, "green") : ""}</div></div>` + table(p);
+    },
+  },
+  {
+    id: "s2", tag: "2", title: "One panel: tabs, filters and table in a single card",
+    idea: "<b>Fikir:</b> başlık sade, ana düğme başlığın sağında yeşil; altında tek bir beyaz panel: üstte sekmeler, altında süzgeç çubuğu, sonra tablo ve sayım satırı. Requests'in tür seçimi başlığın sağında iki parçalı düğme olur.",
+    render(p) {
+      const typeSwitch = p.typeTabs ? `<span class="row-flex" style="gap:0">${p.typeTabs.map(([l, n, on], i) => `<span class="btn ${on ? "green" : ""}" style="border-radius:${i ? "0 7px 7px 0" : "7px 0 0 7px"}">${l}${n ? ` · ${n}` : ""}</span>`).join("")}</span>` : "";
+      return header(p, p.primary ? plusBtn(p.primary, "green") : typeSwitch) + `<div class="panel">${ulTabs(p.tabs)}<div class="bar">${selects(p)}${dateSel(p)}${searchBox(p)}${bulkBits(p)}${picker(p)}</div>${table(p)}<div class="foot"><span>${shown(p)} shown</span><span>Sorted by name</span></div></div>`;
+    },
+  },
+  {
+    id: "s3", tag: "3", title: "Filters in a side rail",
+    idea: "<b>Fikir:</b> sekmeler ve süzgeçler tablonun solunda dikey bir rayda, sayaçlarıyla; tablo kalan genişliği alır, üstünde yalnız arama. Ana düğme başlıkta yeşil. Çok süzgeçli sayfalar (Requests, Employees → Documents) rahatlar.",
+    render(p) {
+      const rail = `<div class="rail">${p.typeTabs ? `<div><h4>Type</h4><div class="typeswitch">${p.typeTabs.map(([l, , on]) => `<span class="${on ? "on" : ""}">${l}</span>`).join("")}</div></div>` : ""}<div><h4>${p.typeTabs ? "Queue" : "Status"}</h4><div class="nav">${p.tabs.map(([l, n, on]) => `<span class="${on ? "on" : ""}">${l}<span>${n ?? ""}</span></span>`).join("")}</div></div>${(p.filters ?? []).map(([k, v]) => `<div><h4>${k}</h4><span class="sel">${v} ${ic.caret}</span></div>`).join("")}${p.dateRange ? `<div><h4>Dates</h4><span class="sel">${p.dateRange}</span></div>` : ""}</div>`;
+      const top = p.noSearch && !p.bulk ? "" : `<div class="row-flex">${searchBox(p)}${bulkBits(p)}${picker(p)}</div>`;
+      return header(p, p.primary ? plusBtn(p.primary, "green") : "") + `<div class="body">${rail}<div class="main">${top}${table(p)}</div></div>`;
+    },
+  },
+  {
+    id: "s4", tag: "4", title: "Compact command bar",
+    idea: "<b>Fikir:</b> daha kısa başlık (yanında sayı), altında tek satırlık komut çubuğu: durum için kayan seçici, süzgeçler kesik çizgili hap (seçilince yeşil), yuvarlak arama, yeşil ana düğme kısa başlığın sağında. Satırlar sık; ekrana daha çok kişi sığar.",
+    render(p) {
+      const head = `<div class="ph"><div><span class="eb">${p.eyebrow}</span><h3 class="ttl">${p.name}<span class="count">${p.name === "Employees" ? 9 : shown(p)}</span></h3></div>${p.primary ? plusBtn(p.primary, "green") : ""}</div>`;
+      const seg = (tabs) => `<span class="segc">${tabs.map(([l, n, on]) => `<span class="${on ? "on" : ""}">${l}${n ? ` <span class="cnt">${n}</span>` : ""}</span>`).join("")}</span>`;
+      const pills = (p.filters ?? []).map(([k, v]) => `<span class="pill">${k}: ${v.replace(/^All /, "all ")}</span>`).join("") + (p.dateRange ? `<span class="pill set">${ic.cal}${p.dateRange}</span>` : "");
+      return head + `<div class="cmd">${p.typeTabs ? seg(p.typeTabs) : ""}${seg(p.tabs)}${pills}${searchBox(p)}${bulkBits(p)}${picker(p)}</div>` + table(p);
+    },
+  },
+  {
+    id: "s5", tag: "5", title: "Summary tiles as tabs",
+    idea: "<b>Fikir:</b> sekmeler sayı kutucuklarına dönüşür (ne kadar iş var, bir bakışta); dikkat isteyen kutucuk amber. Altında seçili süzgeçler silinebilir çip, \"+ Filter\", arama ve sağ uçta yeşil ana düğme. Requests'te tür sekmeleri kutucukların üstünde alt çizgili.",
+    render(p) {
+      const tiles = `<div class="tiles">${p.tabs.map(([l, n, on]) => `<div class="tile ${on ? "on" : ""} ${/Needs|Unread|Draft/.test(l) && n ? "warn" : ""}"><b>${n ?? "—"}</b><span>${l}</span></div>`).join("")}</div>`;
+      const chips = (p.filters ?? []).map(([k, v]) => `<span class="fchip">${k}: ${v.replace(/^All /, "all ")}</span>`).join("") + (p.dateRange ? `<span class="fchip">${p.dateRange}<span class="x">${ic.x}</span></span>` : "");
+      return header(p) + (p.typeTabs ? `<div class="typerow">${ulTabs(p.typeTabs)}</div>` : "") + tiles + `<div class="bar">${chips}<span class="addf">${ic.plus}Filter</span>${searchBox(p)}${bulkBits(p)}${picker(p)}${p.primary ? plusBtn(p.primary, "green") : ""}</div>` + table(p);
+    },
+  },
+];
+
+function todayEmployees() {
+  const p = pages.employees;
+  const seg = `<span class="seg">${p.tabs.map(([l, , on]) => `<span class="${on ? "on" : ""}">${l}</span>`).join("")}</span>`;
+  return header(p, plusBtn(p.primary, "green big")) + `<div style="display:grid;gap:10px;margin:16px 0 12px"><div class="row-flex" style="justify-content:space-between">${seg}<span class="cols" style="border-color:var(--text)">${ic.cols}</span></div><div class="row-flex">${selects(p)}${searchBox(p)}</div></div>` + table(p);
+}
+function todayAnnouncements() {
+  const p = pages.announcements;
+  return header(p) + `<div style="display:grid;gap:12px;margin:16px 0 14px">${ulTabs(p.tabs)}<div class="row-flex">${selects(p)}${searchBox(p)}${plusBtn(p.primary)}</div></div>` + table(p);
+}
+
+const frame = (cls, html) => `<div class="scaler"><div class="page ${cls}">${html}</div></div>`;
+document.getElementById("systems").innerHTML = systems.map((s) => {
+  let body;
+  if (s.todayPair) {
+    body = `<div class="today-pair"><div><div class="frame-label">Employees today</div><div class="stage" data-shot="s0-employees">${frame("s0", todayEmployees())}</div></div><div><div class="frame-label">Announcements today (the shared language)</div><div class="stage" data-shot="s0-announcements">${frame("s0b", todayAnnouncements())}</div></div></div>`;
+  } else {
+    const prev = [["requests", "Requests · Time off", "two tab levels, date range"], ["announcements", "Announcements", "main button, counts on tabs"], ["notifications", "Notifications", "selection, day groups, no search"]];
+    body = `<div class="frame-label">Employees</div><div class="stage" data-shot="${s.id}-employees">${frame(s.id, s.render(pages.employees))}</div>
+      <div class="frame-label">The same system on three other pages (click to enlarge)</div>
+      <div class="previews">${prev.map(([k, name, note]) => `<button type="button" class="pv" data-shot="${s.id}-${k}"><span class="pv-name">${name}<span>${note}</span></span><span class="pv-body" style="display:block">${frame(s.id, s.render(pages[k]))}</span></button>`).join("")}</div>`;
+  }
+  return `<section class="system" id="${s.id}" aria-labelledby="${s.id}-t"><div class="sys-head"><span class="tag ${s.tagCls ?? ""}">${s.tag}</span><h2 id="${s.id}-t">${s.title}</h2></div><p class="idea">${s.idea}</p>${body}</section>`;
+}).join("");
+
+function fit() {
+  document.querySelectorAll(".scaler").forEach((box) => {
+    const pageEl = box.firstElementChild;
+    const scale = box.clientWidth / pageEl.offsetWidth;
+    pageEl.style.transform = `scale(${scale})`;
+    box.style.height = `${pageEl.offsetHeight * scale}px`;
+  });
+}
+fit();
+addEventListener("resize", fit);
+if (document.fonts) document.fonts.ready.then(fit);
+document.querySelectorAll(".pv").forEach((b) => b.addEventListener("click", () => { b.classList.toggle("big"); fit(); }));
+</script>

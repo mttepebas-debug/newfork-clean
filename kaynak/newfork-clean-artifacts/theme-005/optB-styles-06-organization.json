@@ -1,0 +1,44 @@
+[
+  {
+    "scenario": "06-organization-switcher",
+    "role": "owner",
+    "url": "/organization-switcher",
+    "h1": "Choose organization",
+    "problems": [],
+    "secondary": [
+      {
+        "count": 1,
+        "texts": [
+          "Open Meyhouse"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button active-workspace",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(232, 241, 237)",
+        "color": "rgb(15, 79, 66)",
+        "border": "1px solid rgb(137, 185, 170)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      },
+      {
+        "count": 12,
+        "texts": [
+          "Open Employee Demo",
+          "Open Line Up role verification 47b9b868-f523-47c",
+          "Open Line Up role verification 4e2ae030-9cb3-406",
+          "Open Line Up role verification 72957f3b-0670-412"
+        ],
+        "tag": "button",
+        "cls": "nf-button secondary-button compact-button",
+        "disabled": false,
+        "hover": false,
+        "bg": "rgb(255, 255, 255)",
+        "color": "rgb(49, 80, 72)",
+        "border": "1px solid rgb(189, 200, 195)",
+        "opacity": "1",
+        "ctx": "workspace-row"
+      }
+    ]
+  }
+]
