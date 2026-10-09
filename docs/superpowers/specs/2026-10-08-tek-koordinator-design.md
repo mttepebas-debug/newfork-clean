@@ -3,6 +3,15 @@
 Tarih: 2026-10-08 · Yazan: Mert'in oturumu (Claude) · Durum: taslak, Mert'in incelemesini bekliyor
 Mert'in seçimleri (2026-10-08, soru turu): çalışanlar koordinatörün içinde · tam test trende bir kez, CI'da · tek karar defteri + tek durum sayfası · eski kural dosyaları geri getirilmez (Mert masaüstüne yedekledi; kaynak olarak git'teki son hâlleri okunur).
 
+## Değişiklikler (Mert, 2026-10-08, sonradan)
+
+Bu kararlar aşağıdaki metinle çeliştiğinde geçerli olan bunlardır; kurallar `CLAUDE.md`'de ve `/oto`'da.
+
+- **D1 Main'e gönderim:** yalnız tren, beklemesiz. Hazır dal varsa ve tren koşmuyorsa tren hemen kalkar; koşan tren varsa dal sonrakine biner.
+- **D2 İşçi sınırı:** aynı anda 1 işçi; fazlası yalnız Mert komut verince (`DURUM.md` "Sağlık"ta `işçi sınırı <n>`). §4'teki "en çok 3 işçi" ve §12'deki karşılığı bunun yerine geçer.
+- **D3 Main koruması:** ücretsiz alarm. Koordinatör her turda `node scripts/main-watch.mjs` ile main'e trenden başka yoldan commit girip girmediğine bakar; girdiyse 🔴 alarm, yeni iş başlamaz, Mert'e söylenir. Sunucu tarafı koruma (GitHub dal koruması) fikrinin yerine geçer.
+- **D4 Main kırmızı:** önce geri al; canlı veritabanına dokunan değişiklikte önce düzelt. Sahibi yapar; 15 dakikada yapmazsa koordinatör. Süre kırmızının yük mü kod mu olduğu ayrıldıktan sonra başlar. §7.3'teki "Main kırmızıysa ilk tren yalnız düzelteni taşır" bununla birlikte okunur.
+
 ## Özet
 
 - Mert yalnız **bir pencereyle** konuşur: koordinatör. Başka oturum açılmaz.
