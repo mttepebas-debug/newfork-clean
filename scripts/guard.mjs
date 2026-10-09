@@ -377,7 +377,7 @@ const AGENT_TREE = /\/\.claude\/worktrees\/agent-[^/]+\//i;
 export const inWorkerTree = (p) => AGENT_TREE.test(`${String(p ?? "").replaceAll("\\", "/")}/`);
 const byWorker = (input, where) => Boolean(input.agent_id) || inWorkerTree(where);
 const RECORD_REFUSAL =
-  "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §5).";
+  "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §6).";
 
 // A git commit's record files: the staged ones plus any named on the command line.
 const COMMIT_VALUE = new Set(["-m", "-F", "-C", "-c", "-t", "--author", "--date", "--file", "--message", "--template", "--cleanup", "--fixup", "--squash", "--trailer", "--reuse-message", "--reedit-message"]);

@@ -219,15 +219,13 @@ const mine = (s, name) => {
 // The train holds `name` (already, or takes it now). A dead holder is cleared first, also one under the train's
 // own identity left by an earlier train process. A live one is waited for in the lock's queue, in arrival order
 // (spec §7.4), up to ctx.lockWaitMin; past that it is a check NF_OVERRIDE can pass. With NF_OVERRIDE the train
-// does not wait: it tries once, then takes the override path. Waiting lines also go to the screen as they come.
+// does not wait: it tries once, then takes the override path. Waiting lines go only to the screen, as they come.
 function hold(ctx, s, name, step, lines, beforeOverride) {
   const cleared = clearDead(name);
   if (cleared) lines.push(cleared);
   if (mine(s, name)) return true;
-  const say = (l) => {
-    lines.push(l);
-    console.log(l);
-  };
+  // waiting lines go to the screen as they come, not again in the final print
+  const say = (l) => console.log(l);
   const got = acquire(name, `${s.identity}, tren ${step}`, { maxWaitMin: ctx.override ? 0 : (ctx.lockWaitMin ?? 30), sleep: ctx.sleep, say });
   if (got.ok) return true;
   // what kept it: the holder, or a ticket ahead in the queue (ours is gone by now)
@@ -629,7 +627,7 @@ const USAGE = [
   "       node scripts/train.mjs plan|build <dal[@sha]…>",
   "       node scripts/train.mjs ci|push|apply-local",
   '       NF_OVERRIDE="<gerekçe>" önüne: kilit ya da CI kontrolünü aşar (origin/main önce yedeklenir, audit.log); fast-forward olmayan push asla',
-  "       NF_OVERRIDE ile kilit sırası beklenmez: bir kez denenir, alınamazsa aşılır",
+  "       NF_OVERRIDE ile kilit sırası beklenmez: db kilidi bir kez denenir; alınamazsa apply-local kilitsiz koşar (audit.log'a yazılır)",
 ];
 
 function main(argv) {

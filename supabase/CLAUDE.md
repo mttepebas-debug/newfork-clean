@@ -10,7 +10,7 @@
 - "Bir yerde" şekli tam olarak `app_private.authorize(a, w, 'act', target_locations => app_private.scope_set(a, w, 'act'))`; `schedule_asks_the_core.test.sql` bu biçimi ayrıştırır.
 - `authz_check`'te `own` dalı `owner_only`'den önce döner: "yalnız owner, kendi kaydı" `org` + `owner_only` action'dır.
 - Kapı public `*_service`'e konur, başka akışın çağırdığı iç işe (`app_private.initialize_employee_onboarding`) değil. Kurulumu bitmemiş workspace yalnız owner'a açık (`authz.workspace_closed`).
-- Matris personası "her izin eksi `permissions_removed`"; core gerçek rol izinlerini okur. Manager rolünde olmayan izne bağlı action, manager personalarının `permissions_removed`'ına girer. Bölüm 2–5 değişince `node scripts/lock.mjs run db -- pnpm.cmd --filter @newfork/shared dump:authz-matrix` (uygulanmamış migration: `AUTHZ_MATRIX_PRELUDE=<yol>`) ve `targetedAuthzActions` güncellenir.
+- Matris personası "her izin eksi `permissions_removed`"; core gerçek rol izinlerini okur. Manager rolünde olmayan izne bağlı action, manager personalarının `permissions_removed`'ına girer. Bölüm 2–5 değişince `node scripts/lock.mjs run db -- pnpm.cmd --filter @newfork/shared dump:authz-matrix` (uygulanmamış migration için tek PowerShell satırı: `$env:AUTHZ_MATRIX_PRELUDE='<yol>'; node scripts/lock.mjs run db -- pnpm.cmd --filter @newfork/shared dump:authz-matrix`) ve `targetedAuthzActions` güncellenir.
 
 ## Migration
 - Ad `YYYYMMDDHHMMSS_<ad>.sql`.
