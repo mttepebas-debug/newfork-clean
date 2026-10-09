@@ -28,12 +28,6 @@
 .requests-catalog-page .catalog-status-tabs {
   justify-self: start;
 }
-.requests-catalog-page .requests-workbench {
-  display: block;
-  min-height: 0;
-  border: 0;
-  background: transparent;
-}
 .requests-catalog-page .requests-list {
   border: 1px solid var(--job-border);
   border-radius: 7px;
@@ -112,11 +106,6 @@
   gap: 4px;
   font-size: 12px;
 }
-.requests-catalog-page .request-pagination {
-  padding: 10px 14px;
-  border-top: 1px solid var(--job-border);
-  background: var(--job-subtle);
-}
 .requests-catalog-page .requests-empty {
   min-height: 130px;
   padding: 28px 16px;
@@ -126,7 +115,6 @@
 .requests-catalog-page
   :is(
     .nf-button,
-    .request-pagination button,
     .sx-root button:not(.request-catalog-button),
     button.sx-primary,
     button.sx-icon,
@@ -149,9 +137,9 @@
     .sx-root button.sx-primary,
     button.sx-primary
   ) {
-  color: #fff;
-  background: #256b56;
-  border-color: #256b56;
+  color: var(--theme-on-accent);
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
 }
 .requests-catalog-page .nf-button.danger {
   color: var(--job-error);
@@ -167,7 +155,7 @@
   max-width: 100%;
   min-height: 36px;
   padding: 7px 10px;
-  border: 1px solid var(--job-border);
+  border: 1px solid var(--theme-border-control); /* S7: the shared field edge, not the 1.25:1 job edge */
   border-radius: 5px;
   background: var(--job-bg);
   color: var(--job-text);
@@ -181,10 +169,12 @@
   outline: 0;
   padding-left: 0;
 }
+/* One frame: the S7 edge sits on the search box, its input has none. */
 .requests-catalog-page .catalog-toolbar .requests-search.toolbar-search {
   min-height: 36px;
   height: 36px;
   padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
   border-radius: 6px;
   color: var(--job-muted);
 }
@@ -198,6 +188,7 @@
   min-height: 0;
   height: 34px;
   padding: 0;
+  border: 0;
   color: var(--job-text);
   font-size: 12px;
 }
@@ -213,9 +204,10 @@
 .requests-catalog-page label {
   font-size: 12px;
 }
+/* A mouse press leaves no ring; the keyboard keeps the shared focus ring (C1). */
 .requests-catalog-page
-  :is(button, summary, [tabindex]):is(:focus, :focus-visible) {
-  outline: none;
+  :is(button, summary, [tabindex]):focus:not(:focus-visible) {
+  outline: 0;
   box-shadow: none;
 }
 .request-sr-only {
@@ -651,4 +643,117 @@
 .requests-review-drawer .tov-place {
   display: grid;
   gap: 2px;
+}
+
+/* EKRAN-02 C1: Requests as one table in the shared list language (System 1). */
+.requests-table tbody tr {
+  cursor: pointer;
+}
+.request-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.request-person-mark {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* An open shift has nobody yet: an empty-shift mark, not a person (KK-173). */
+.request-person-mark--open {
+  border-style: dashed;
+  background: var(--theme-surface);
+}
+.request-person-text {
+  display: grid;
+  min-width: 0;
+}
+.request-person-name {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.request-person-text small {
+  overflow: hidden;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.request-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-list-cell-text);
+}
+.request-review-cell {
+  color: var(--theme-muted);
+  text-align: right;
+}
+/* Decide by: the time, then the zone's name on its own line (KARARLAR:133),
+   set like Employee's two lines so every row keeps one height. */
+.request-deadline {
+  display: grid;
+}
+.request-deadline small {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* EKRAN-02 #67: the phone (KARARLAR Genel, telefonda kart satırı). Cards stand
+   in for the table; every touch target is 44 high. Five type tabs do not fit:
+   the row scrolls and fades at the edge where more tabs wait. */
+@media (max-width: 720px) {
+  .requests-page.list-page.list-page .requests-table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+  .requests-page .requests-table {
+    display: none;
+  }
+  .requests-page.list-page.list-page .catalog-toolbar-status-row {
+    height: 44px;
+    min-height: 44px;
+    scrollbar-width: none;
+  }
+  .requests-page.list-page.list-page .catalog-toolbar .catalog-status-tabs button {
+    height: 44px;
+    min-height: 44px;
+  }
+  .requests-page .catalog-toolbar-status-row[data-more="right"] {
+    mask-image: linear-gradient(to right, var(--theme-text) calc(100% - 32px), transparent);
+  }
+  .requests-page .catalog-toolbar-status-row[data-more="left"] {
+    mask-image: linear-gradient(to left, var(--theme-text) calc(100% - 32px), transparent);
+  }
+  .requests-page .catalog-toolbar-status-row[data-more="both"] {
+    mask-image: linear-gradient(to right, transparent, var(--theme-text) 32px, var(--theme-text) calc(100% - 32px), transparent);
+  }
+  .requests-page .catalog-table-empty .nf-button {
+    min-height: 44px;
+  }
+  /* Pages: back, the current page, next; the range line says where you are. */
+  .requests-page .list-pagination select,
+  .requests-page .list-pagination-pages button {
+    height: 44px;
+    min-width: 44px;
+  }
+  .requests-page .list-pagination-pages button[aria-label^="Page "]:not([aria-current]),
+  .requests-page .list-pagination-gap {
+    display: none;
+  }
 }

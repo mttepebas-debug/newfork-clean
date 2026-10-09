@@ -157,6 +157,19 @@ select is(pg_temp.candidate()->'approval_flags'->(0),'{"code":"minimum_rest","ga
 select is(pg_temp.candidate()->'assessment'->>'operation','allowed','in an exchange the assessment leaves travel and rest to the flags');
 select is(public.assess_weekly_shift_availability((select w from ws),(select emp from ws),pg_temp.target()||'{"scheduled_date":"2035-01-15"}')->>'operation','blocked',
  'Schedule''s own assignment keeps the Block setting');
+-- C2 (KARARLAR "Takas inceleme penceresi H2", uyarı kutuları; ILKELER P11): the
+-- review shows the rule that holds next to the one that does not, with what was
+-- measured ("12 h of rest / 10 h needed"); only the review asks for it.
+create function pg_temp.measured(changes jsonb default '{}') returns jsonb language sql stable as $$
+ select app_private.eligibility(w,emp,pg_temp.target(changes),'{"operation":"swap","with_measures":true}')->'measures' from ws;
+$$;
+update public.workspace_scheduling_settings set minimum_rest_minutes=300 where workspace_id=(select w from ws);
+select is(pg_temp.measured(),'{"rest_gap_minutes":360,"travel_gap_minutes":null,"rest_rule_minutes":300,"travel_rule_minutes":30}'::jsonb,
+ 'a rest that holds is still measured: 360 minutes against a 300 minute rule, no travel at the same location');
+select is(pg_temp.measured(jsonb_build_object('location_id',other_loc,'start_time','15:30','end_time','16:00'))->'travel_gap_minutes','30'::jsonb,
+ 'a travel gap that holds is measured too: 30 of 30 minutes') from ws;
+select ok(not (app_private.eligibility((select w from ws),(select emp from ws),pg_temp.target(),'{"operation":"swap"}') ? 'measures'),
+ 'the measures come out only when the review asks for them');
 update public.workspace_scheduling_settings set minimum_travel_minutes=0,minimum_rest_minutes=0 where workspace_id=(select w from ws);
 
 -- 7. Saved time zones stay canonical when a location's time zone changes.

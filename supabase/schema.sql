@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 455, last: 20261009084804_undo_skips_a_step_that_cannot_come_back.sql
--- fingerprint: sha256:fc5d80295f2b685e300eb824abdbed2146db8be1e3af221f5f21d8cf085ec15a
+-- migrations: 456, last: 20261009101500_swap_review_measures_the_rule_that_holds.sql
+-- fingerprint: sha256:e7d0880cf6684882f15d8b557fe4d2b40a47ad2ed79477a44c3fad6c27afc893
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2890,7 +2890,7 @@ declare
  loc uuid:=(shift->>'location_id')::uuid; d date:=(shift->>'date')::date;
  tz text; span tstzrange; a jsonb; leave jsonb; settings public.workspace_scheduling_settings%rowtype;
  blockers jsonb:='[]'; acks jsonb:='[]'; flags jsonb:='[]'; shortens boolean:=false; r jsonb;
- travel numeric; rest numeric; gap numeric; n record;
+ travel numeric; rest numeric; gap numeric; n record; near numeric; near_travel numeric;
 begin
  if op is null or op not in ('swap','release_pickup','open_pickup','cover_accept') then
   raise exception 'Unknown exchange operation' using errcode='22023'; end if;
@@ -2957,6 +2957,8 @@ begin
  loop
   if n.r && span then continue; end if;
   gap:=extract(epoch from greatest(lower(span)-upper(n.r),lower(n.r)-upper(span)))/60;
+  near:=least(coalesce(near,gap),gap);
+  if n.location_id<>loc then near_travel:=least(coalesce(near_travel,gap),gap); end if;
   if n.location_id<>loc and gap<settings.minimum_travel_minutes then travel:=least(coalesce(travel,gap),gap); end if;
   if gap<settings.minimum_rest_minutes then rest:=least(coalesce(rest,gap),gap); end if;
  end loop;
@@ -2971,7 +2973,11 @@ begin
   'shortens_time_off',shortens,
   'reasons',case when jsonb_array_length(blockers)=0 then '["Position and location match","No assignment blockers"]'::jsonb
    else (select jsonb_agg(b->>'message') from jsonb_array_elements(blockers) b) end)
-  ||case when coalesce((ctx->>'with_assessment')::boolean,false) then jsonb_build_object('assessment',a) else '{}'::jsonb end;
+  ||case when coalesce((ctx->>'with_assessment')::boolean,false) then jsonb_build_object('assessment',a) else '{}'::jsonb end
+  -- C2: the swap review names the rule that holds too ("12 h of rest / 10 h needed").
+  ||case when coalesce((ctx->>'with_measures')::boolean,false) then jsonb_build_object('measures',jsonb_build_object(
+   'rest_gap_minutes',near::integer,'travel_gap_minutes',near_travel::integer,
+   'rest_rule_minutes',settings.minimum_rest_minutes,'travel_rule_minutes',settings.minimum_travel_minutes)) else '{}'::jsonb end;
 end;
 $$;
 
@@ -24364,11 +24370,11 @@ begin
  elsif not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
   where app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) is null) then
   problems:=array_append(problems,'Someone with a higher role must approve this exchange'); end if;
- if s is not null then r:=app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',a.time_off_consent,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)))); end if;
+ if s is not null then r:=app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'consent',a.time_off_consent,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)),'with_measures',true)); end if;
  if r is null then r:='{"status":"ineligible","reasons":["Published shift unavailable"]}'; end if;
  if r->>'status'<>'eligible' then problems:=array_append(problems,'The receiving employee is not eligible for the full shift'); end if;
  if c.kind='swap' and t is not null then
-  g:=app_private.eligibility(w,c.owner_id,t,jsonb_build_object('operation','swap','consent',c.owner_time_off_consent,'excluded',jsonb_build_array(s->>'id',t->>'id')));
+  g:=app_private.eligibility(w,c.owner_id,t,jsonb_build_object('operation','swap','consent',c.owner_time_off_consent,'excluded',jsonb_build_array(s->>'id',t->>'id'),'with_measures',true));
   if g->>'status'<>'eligible' then problems:=array_append(problems,'The other employee is not eligible for the exchanged shift'); end if;
  end if;
  for loc in select distinct x from unnest(array[(s->>'location_id')::uuid,(t->>'location_id')::uuid]) x where x is not null loop

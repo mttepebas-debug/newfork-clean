@@ -2,6 +2,7 @@ import { DocumentsSettingsRoute } from "./documents/DocumentsSettingsRoute";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@newfork/ui";
 import { lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
@@ -10,6 +11,7 @@ import { DesktopOnlyRoute } from "./auth/DesktopOnlyRoute";
 import { PermissionRoute } from "./auth/PermissionRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
+import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
 import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
@@ -141,7 +143,12 @@ export function App() {
     <QueryClientProvider client={appQueryClient}>
       <BrowserRouter>
         <AuthProvider queryClient={appQueryClient}>
-          <Toaster />
+          {createPortal(
+            <div {...{ [TOAST_LAYER_ATTRIBUTE]: "" }}>
+              <Toaster />
+            </div>,
+            document.body,
+          )}
           <Suspense
             fallback={
               <main className="auth-loading" aria-label="Loading page" />

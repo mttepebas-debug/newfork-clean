@@ -14,6 +14,13 @@ import { loadSchedulingSettings } from "../settings/organization-data";
 import { isNoAccess } from "./no-access";
 
 vi.mock("./supabase", () => ({
+  // The shared helper as it answers a failure: the body's sentence, status and key.
+  apiRequest: async (_client: unknown, path: string, init?: RequestInit) => {
+    const response = await fetch(path, init);
+    const body: unknown = await response.json();
+    if (!response.ok) throw (await import("./request-error")).requestFailure(body, response.status, "Workspace operation failed");
+    return body;
+  },
   getApiAccessToken: vi.fn(async () => "token"),
   getTabWorkspaceId: vi.fn(() => null),
   newforkApiUrl: "http://api.test",

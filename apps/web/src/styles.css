@@ -81,8 +81,9 @@
   --theme-published-hover: #0b6f53;
   --theme-published-partial: #b45309;
   --theme-published-partial-hover: #92400e;
-  /* The edge every Schedule top bar control shares (G14); value unchanged. */
-  --theme-border-control: #aeb9b4;
+  /* The edge every Schedule top bar control and list search/select shares
+     (G14; S7, KARARLAR 2026-10-06): 3.2:1 on the page ground, 3.5:1 on white. */
+  --theme-border-control: #7f8c86;
   /* The dot of a location, or the chip of a person, that has no colour of its own. */
   --theme-swatch-fallback: #64748b;
   --theme-swatch-fallback-soft: #cbd5e1;
@@ -98,7 +99,7 @@
   --theme-list-head-text: #4f5d57;
   --theme-list-cell-text: #46514d;
   --theme-list-col-line: #dce1de;
-  --theme-text-faint: var(--theme-border-control);
+  --theme-text-faint: #aeb9b4;
   --theme-availability-text: #8a4a06;
   --schedule-action: var(--theme-action);
   --schedule-action-hover: var(--theme-action-hover);
@@ -265,7 +266,7 @@
     color: var(--theme-on-accent);
     font: inherit;
     font-size: 12px;
-    font-weight: 850;
+    font-weight: 800;
     cursor: pointer;
   }
 
@@ -1295,19 +1296,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The sort arrow is always there (BL-663): a quiet two-way arrow on an
+   unsorted heading, one solid arrow in the sorted direction on the sorted one,
+   read from the heading's aria-sort. */
 .catalog-sort-icon {
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 120ms ease;
+  color: var(--theme-muted);
 }
-.catalog-sort-button:hover .catalog-sort-icon,
-.catalog-sort-button:focus-visible .catalog-sort-icon {
-  opacity: 1;
+.catalog-sort-icon--ascending,
+.catalog-sort-icon--descending,
+[aria-sort="ascending"] .catalog-sort-icon--none,
+[aria-sort="descending"] .catalog-sort-icon--none {
+  display: none;
 }
-.employee-table th:hover .catalog-sort-icon,
-.catalog-column-headings > *:hover .catalog-sort-icon,
-.weekly-team-table th:hover .catalog-sort-icon {
-  opacity: 1;
+[aria-sort="ascending"] .catalog-sort-icon--ascending,
+[aria-sort="descending"] .catalog-sort-icon--descending {
+  display: block;
+  color: var(--theme-text);
 }
 /* An empty catalog table keeps its heading row; the space under it is the
    soft ground (Settings → Documents, KARARLAR "Ekran kararları → Settings"). */
@@ -3160,7 +3165,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   place-items: center;
   color: #5f6a65;
   font-size: 10.5px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
 }
@@ -5144,7 +5149,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-right-color: #c5cfca;
   color: #3e4a45;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
 }
@@ -5175,7 +5180,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   gap: 5px;
   overflow: visible;
   font-size: 18px;
-  font-weight: 850;
+  font-weight: 800;
   text-align: left;
   white-space: nowrap;
 }
@@ -5214,7 +5219,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: inherit;
   cursor: pointer;
   font: inherit;
-  font-weight: 850;
+  font-weight: 800;
 }
 .schedule-location-header-list button:hover,
 .schedule-location-header-list button:focus-visible {
@@ -5357,7 +5362,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-right-color: #c5cfca;
   color: #56615c;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 .schedule-day-header strong {
@@ -5380,7 +5385,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 1px 6px;
   color: #0f172a;
   font-size: 14px;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1.25;
 }
 .schedule-day-header .schedule-day-header-main {
@@ -5486,7 +5491,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   cursor: pointer;
   font: inherit;
   font-size: 12px;
-  font-weight: 850;
+  font-weight: 800;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5546,7 +5551,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   z-index: 2;
 }
 .schedule-employee-cell[data-unassigned="true"] strong {
-  font-weight: 850;
+  font-weight: 800;
 }
 .schedule-employee-cell[data-schedule-unassigned-label-mode="centered"] {
   justify-content: center;
@@ -5642,7 +5647,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding-inline: 13px;
   color: #56615c;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
   text-transform: uppercase;
 }
 .schedule-preset-row-label {
@@ -5697,7 +5702,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
   text-align: center;
@@ -5742,7 +5747,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background-color: #f6f8f6;
   color: #34413c;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 .schedule-total-row-label,
@@ -5758,7 +5763,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #edf2ef;
   color: #34413c;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 .schedule-total-row-label {
@@ -6206,7 +6211,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--shift-color) 14%, var(--theme-surface));
   color: #000;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 800;
   letter-spacing: 0;
   line-height: 1;
   text-overflow: ellipsis;
@@ -6273,7 +6278,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--shift-color) 62%, #173e34);
   color: var(--theme-on-accent);
   font-size: 9px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.78);
 }
@@ -6521,7 +6526,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   overflow: hidden;
   color: #26332e;
   font-size: 13.5px;
-  font-weight: 850;
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -7193,7 +7198,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin: 0;
   color: var(--theme-text);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 800;
 }
 .schedule-shift-drawer p {
   margin: 0;
@@ -7290,7 +7295,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   z-index: 1100;
   inset: 0;
   display: grid;
-  place-items: center;
+  /* One column up to 440 wide, centred; the padding is the phone gutter (BL-580). */
+  grid-template-columns: minmax(0, 440px);
+  place-content: center;
   padding: 18px;
 }
 .app-confirm-backdrop {
@@ -7303,7 +7310,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .app-confirm {
   position: relative;
   display: grid;
-  width: min(440px, calc(100vw - 28px));
+  width: 100%;
   overflow: hidden;
   border: 1px solid var(--theme-border);
   border-radius: 8px;
@@ -7336,7 +7343,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin: 0;
   color: var(--theme-text);
   font-size: 16px;
-  font-weight: 850;
+  font-weight: 800;
 }
 .app-confirm p {
   margin: 6px 0 0;
@@ -7428,7 +7435,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   margin: 0;
   color: var(--theme-text);
   font-size: 16px;
-  font-weight: 850;
+  font-weight: 800;
 }
 .schedule-discard-dialog p {
   margin: 6px 0 0;
@@ -7723,7 +7730,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-form-section-title strong {
   color: var(--theme-text);
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
 }
 .schedule-shift-form-section-title span {
   overflow: hidden;
@@ -11058,7 +11065,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--shift-color) 78%, var(--theme-surface));
   color: #17231d;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.1;
   text-align: center;
   box-shadow: 0 1px 2px rgba(24, 34, 30, 0.16);
@@ -12864,13 +12871,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font: inherit;
   font-size: 13px;
 }
-.requests-workbench {
-  min-height: 610px;
-  display: grid;
-  grid-template-columns: minmax(330px, 0.86fr) minmax(470px, 1.4fr);
-  border: 1px solid #ccd5d1;
-  background: var(--theme-surface);
-}
 .requests-list {
   min-width: 0;
   border-right: 1px solid #d8dedb;
@@ -13128,13 +13128,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .requests-empty span {
   font-size: 12px;
 }
-.request-pagination {
-  padding: 12px;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  border-top: 1px solid #e2e7e4;
-}
 .detail-empty {
   min-height: 500px;
 }
@@ -13215,9 +13208,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: var(--theme-surface);
 }
 @media (max-width: 1040px) {
-  .requests-workbench {
-    grid-template-columns: minmax(290px, 0.75fr) minmax(400px, 1fr);
-  }
   .request-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13238,10 +13228,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .request-queue-toggle button {
     flex: 1;
     justify-content: center;
-  }
-  .requests-workbench {
-    min-height: 520px;
-    display: block;
   }
   .requests-list {
     min-height: 500px;
@@ -14143,7 +14129,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .public-trust-brand {
   color: #1f694f;
   font-size: 13px;
-  font-weight: 850;
+  font-weight: 800;
   text-decoration: none;
 }
 .public-trust-header nav {
@@ -14471,3 +14457,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   }
 }
 .current-user-avatar { width: 24px; height: 24px; flex: 0 0 24px; object-fit: cover; border-radius: 50%; display: inline-grid; place-items: center; background: var(--surface-muted, #edf1ee); color: var(--text-primary, #183c30); font-size: 10px; font-weight: 700; }
+
+/* On a phone the column picker has no room in the tab row and the list turns
+   into cards (C1b), so it is not offered there; a clipped control must not
+   take keyboard focus (EKRAN-03 C1a visual QA). */
+@media (max-width: 720px) {
+  .employees-page .employee-column-picker {
+    display: none;
+  }
+}
