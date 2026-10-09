@@ -88,6 +88,14 @@ describe("ConflictHandlingSettingsPage", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 
+  it("offers Closed location in three degrees, no Warn (FB-6.7 C2-A, K17)", async () => {
+    renderPage();
+    const select = (await screen.findByRole("combobox", { name: "Closed location handling" })) as HTMLSelectElement;
+    expect([...select.options].map((option) => option.text)).toEqual(["Block", "Ask every time", "Ask once per edit"]);
+    expect(select.value).toBe("confirm");
+    expect(screen.getByText("Shifts on a closed day.")).toBeTruthy();
+  });
+
   it("uses the canonical Settings header and saves through the existing endpoint", async () => {
     renderPage();
     expect(

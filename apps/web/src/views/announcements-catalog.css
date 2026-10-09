@@ -74,6 +74,16 @@
   font-size: 13px;
   color: var(--job-accent);
 }
+/* The text changed after this person acknowledged it (FB-6.7 B2-A, Mert 2026-10-03). */
+.catalog-drawer.announcements-catalog-page .catalog-drawer-body > .announcement-update-notice {
+  margin: 0 0 12px;
+  border: 1px solid var(--theme-warning-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--theme-warning-surface);
+  color: var(--theme-warning-text);
+  font-size: 13px;
+}
 .announcement-catalog-hint {
   margin: 0;
   font-size: 12px;
@@ -333,6 +343,11 @@
   color: var(--job-text);
   font-size: 12px;
   cursor: pointer;
+}
+.announcements-catalog-page .announcement-acknowledge-button[data-again="true"] {
+  border-color: var(--theme-warning-border);
+  background: var(--theme-warning-surface);
+  color: var(--theme-warning-text);
 }
 .announcement-acknowledge-button:disabled {
   opacity: 0.6;

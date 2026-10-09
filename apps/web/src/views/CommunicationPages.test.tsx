@@ -442,10 +442,10 @@ describe("Phase 8 communication pages", () => {
     expect((screen.getByLabelText("Main Dining") as HTMLInputElement).checked).toBe(true);
   });
 
-  it("requires a second animated delete click without opening a confirmation panel", async () => {
+  it("archives with a second red click, never a confirmation panel (Mert 2026-10-03, BL-543)", async () => {
     const draft = announcement({
       id: "a8200000-0000-4000-8000-000000000007",
-      title: "Draft to delete",
+      title: "Draft to archive",
       status: "draft",
     });
     vi.mocked(transitionAnnouncement).mockClear();
@@ -467,14 +467,15 @@ describe("Phase 8 communication pages", () => {
     const editor = await screen.findByRole("dialog", {
       name: "Edit announcement",
     });
-    fireEvent.click(within(editor).getByRole("button", { name: "Delete" }));
+    expect(within(editor).queryByRole("button", { name: "Delete" })).toBeNull();
+    fireEvent.click(within(editor).getByRole("button", { name: "Archive" }));
 
     expect(transitionAnnouncement).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("group", { name: "Confirm deletion" }),
     ).toBeNull();
     const confirm = within(editor).getByRole("button", {
-      name: "Confirm delete",
+      name: "Confirm archive",
     });
     expect(confirm.getAttribute("data-confirming")).toBe("true");
 
@@ -487,6 +488,37 @@ describe("Phase 8 communication pages", () => {
         draft.revision,
       ),
     );
+  });
+
+  it("offers Archive, not Delete, in the row menu (Mert 2026-10-03, BL-543)", async () => {
+    const item = announcement({ id: "a8200000-0000-4000-8000-000000000024", title: "Menu tasting", status: "published" });
+    vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: true, locations: [], announcements: [item] });
+    renderRoute("/app/announcements", <AnnouncementsPage />);
+    await screen.findByText("Menu tasting");
+    expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeTruthy();
+  });
+
+  it("asks an employee to acknowledge again, in amber, once the text changed (Mert 2026-10-03, FB-6.7 B2-A)", async () => {
+    const item = announcement({
+      id: "a8200000-0000-4000-8000-000000000025",
+      title: "Uniform policy",
+      status: "published",
+      published_at: now,
+      acknowledged_at: null,
+      content_changed_since_acknowledged: true,
+      can_edit: false,
+      can_publish: false,
+      can_archive: false,
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: false, locations: [], announcements: [item] });
+    renderRoute(`/app/announcements/${item.id}`, <AnnouncementsPage />, "/app/announcements/:announcementId");
+
+    const editor = await screen.findByRole("dialog");
+    expect(within(editor).getByText("Updated. Please acknowledge the new version.")).toBeTruthy();
+    const again = screen.getAllByRole("button", { name: "Acknowledge again" });
+    expect(again).toHaveLength(2);
+    for (const button of again) expect(button.getAttribute("data-again")).toBe("true");
   });
 
   it("marks a personal notification read", async () => {
