@@ -9867,8 +9867,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-template-actions svg {
   vertical-align: -2px;
 }
-.schedule-template-departments {
+/* Beats `.schedule-template-actions > div`, which right-aligns the button rows. */
+.schedule-template-actions > .schedule-template-departments {
   display: grid;
+  justify-content: stretch;
   gap: 6px;
 }
 /* BL-038 K4: the department filter stays folded until the manager narrows it. */
