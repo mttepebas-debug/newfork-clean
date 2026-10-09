@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 457, last: 20261009130000_the_workspace_box_shows_only_live_announcements.sql
--- fingerprint: sha256:a81cbd6ed7b7e01fc8a762030b86e2f9903586b964f584bcd3e6530065774935
+-- migrations: 458, last: 20261009221500_publish_rules_name_and_override.sql
+-- fingerprint: sha256:dbe47f44d1e2b5e18e339b59fa2081ecc6e219ba3e3b2e6479660c3045c713d5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12123,7 +12123,10 @@ CREATE OR REPLACE FUNCTION "public"."get_schedule_publication_status_service"("a
       'published_shift_count', coalesce(published_counts.shift_count, 0),
       'draft_shift_count', coalesce(draft_counts.shift_count, 0),
       'published_at', publication.published_at,
-      'published_by_name', null,
+      -- Who published, never "Unknown" (BL-371).
+      'published_by_name', case when publication.id is not null then coalesce((
+        select nullif(profile.display_name, '') from public.user_profiles profile
+        where profile.user_id = publication.published_by), 'Team member') end,
       'source_draft_id', publication.source_draft_id,
       'source_draft_name', source_draft.name
     ) order by location.sort_order, location.name), '[]'::jsonb)
@@ -12424,6 +12427,33 @@ begin
       join allowed_locations location on location.id = closure.location_id
       where closure.workspace_id = target_workspace_id
         and closure.closed_date between resolved_week_start and resolved_week_start + 6
+    ), '[]'::jsonb),
+    -- Published dates that touch the week, one row per reachable location;
+    -- a date for no location is everyone's (B-7). An annual date repeats from
+    -- its first year to two years ahead, 29 Feb falling on 28 Feb.
+    'important_dates', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', d.id, 'location_id', place.id, 'title', d.title, 'type', d.type,
+        'starts_on', d.starts_on, 'ends_on', d.ends_on, 'recurrence', d.recurrence
+      ) order by d.starts_on, d.title, place.id)
+      from public.important_dates d
+      cross join lateral (
+        select coalesce(nullif(d.location_ids, '{}'), array_remove(array[d.location_id], null)) ids
+      ) named
+      cross join lateral (
+        select location.id from allowed_locations location where location.id = any (named.ids)
+        union all select null::uuid where cardinality(named.ids) = 0
+      ) place
+      where d.workspace_id = target_workspace_id and d.archived_at is null
+        and d.status = 'published' and d.affects_scheduling
+        and case when d.recurrence = 'annual' then exists (
+          select 1 from generate_series(resolved_week_start, resolved_week_start + 6, interval '1 day') day(at)
+          cross join lateral (values (extract(year from day.at)::integer - 1), (extract(year from day.at)::integer)) y(year)
+          cross join lateral (select y.year - extract(year from d.starts_on)::integer k) shift
+          where shift.k >= 0
+            and y.year <= greatest(extract(year from current_date)::integer + 2, extract(year from d.starts_on)::integer)
+            and day.at::date between d.starts_on + make_interval(years => shift.k) and d.ends_on + make_interval(years => shift.k))
+        else d.starts_on <= resolved_week_start + 6 and resolved_week_start <= d.ends_on end
     ), '[]'::jsonb)
   ) || app_private.schedule_departments_and_jobs(target_workspace_id)
     || app_private.schedule_referenced_catalog(target_workspace_id,
@@ -12798,14 +12828,13 @@ begin
   return new;
  end if;
  prior:=public.schedule_availability_prior_publication(new.workspace_id,s,case when tg_table_name='schedule_published_shifts' and tg_op='INSERT' then (s->>'publication_id')::uuid end);
- if prior is not null then
-  if tg_table_name='schedule_published_shifts' then
-   new.availability_snapshot:=coalesce(nullif(prior->'availability_snapshot','null'),jsonb_build_object(
-    'status','legacy_published','original_published_shift_id',prior->>'id','original_publication_id',prior->>'publication_id',
-    'message','This existing responsibility predates availability snapshots. Historical availability is not reconstructed.'));
-  end if;
-  return new;
+ if prior is not null and tg_table_name='schedule_published_shifts' then
+  new.availability_snapshot:=coalesce(nullif(prior->'availability_snapshot','null'),jsonb_build_object(
+   'status','legacy_published','original_published_shift_id',prior->>'id','original_publication_id',prior->>'publication_id',
+   'message','This existing responsibility predates availability snapshots. Historical availability is not reconstructed.'));
  end if;
+ -- A draft row of a published shift is where it gets fixed; it is never refused.
+ if prior is not null and (tg_table_name<>'schedule_published_shifts' or new.employee_id is null) then return new; end if;
  if tg_table_name<>'schedule_published_shifts' and tg_op='INSERT' then
   -- Acquiring/recovering a draft must remain possible when its old assessment
   -- has become stale. The assignment is retained for repair, not certified.
@@ -12830,6 +12859,14 @@ begin
   s:=s||jsonb_build_object('_exclude_shift_ids',exchange_scope->'shift_ids','_shift_exchange',true);
  end if;
  a:=public.assess_weekly_shift_availability(new.workspace_id,new.employee_id,s);
+ -- Published before: the conflict accepted then stays accepted, as the publish
+ -- preview says; what nobody can set aside still stops it (BL-174).
+ if prior is not null then
+  if a->>'operation' in ('blocked','verification_required') then
+   raise exception 'Resolve shift hours or approved time off before this assignment' using errcode='23514',detail=a::text;
+  end if;
+  return new;
+ end if;
  evidence:=public.schedule_availability_override(new.workspace_id,s,a);
  if tg_table_name='schedule_published_shifts' and evidence is null then
   select to_jsonb(o) into evidence from public.schedule_publication_overrides o where o.workspace_id=new.workspace_id
@@ -27567,6 +27604,9 @@ begin
    raise exception 'Confirm the current schedule conflicts before publishing' using errcode='22023'; end if;
   if f->>'availability_state' is null and coalesce(f->>'tier','blocker')<>'note' and decision is null then
    raise exception 'Review the current schedule conflicts before publishing' using errcode='22023'; end if;
+  -- What nobody may override stops the publish, whatever was decided on it (BL-510).
+  if not coalesce((f->>'overrideable')::boolean,true) then
+   raise exception 'This schedule conflict cannot be overridden' using errcode='22023'; end if;
   result:=result||jsonb_build_array(jsonb_build_object('finding_id',f->>'id','reason',case
    when f->>'availability_state'='accepted' then 'Previously accepted schedule conflict retained.'
    when f->>'warning_policy'='warn' then 'Schedule warning acknowledged (warn policy).'
