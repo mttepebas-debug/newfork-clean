@@ -229,6 +229,18 @@ as $$
   ));
 $$;
 
+-- The number a person of the test world gives in onboarding: their own, one
+-- per person (TEL-2: a workspace refuses a number another of its people holds).
+-- Derived from the label, so a test can name it: tests.phone('w:ali').
+create or replace function tests.phone(person_key text)
+returns text
+language sql
+immutable
+set search_path = ''
+as $$
+  select '+1415' || lpad((abs(hashtext(person_key)) % 10000000)::text, 7, '0');
+$$;
+
 -- Somebody the owner added and invited, who accepted. access is a system role
 -- (admin, manager, employee) or the name of a role made with tests.role.
 -- locs are location keys (K, B), jobs are job keys (cook, server); both empty
@@ -300,7 +312,7 @@ begin
       user_id,
       jsonb_build_object(
         'legal_first_name', initcap(person_label), 'legal_last_name', 'Person',
-        'phone', '+14155550123', 'emergency_contact_name', 'Contact',
+        'phone', tests.phone(w || ':' || person_label), 'emergency_contact_name', 'Contact',
         'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'
       ),
       (select c.revision from public.employee_onboarding_cases c where c.employee_id = employee),

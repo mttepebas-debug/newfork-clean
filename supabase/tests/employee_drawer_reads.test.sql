@@ -105,7 +105,7 @@ select is(pg_temp.may(pg_temp.detail('owner', 'ola'), array['invite']),
 
 select is(jsonb_typeof(pg_temp.detail('owner', 'emre') -> 'private_contact'), 'object',
   'the owner reads Emre''s private profile, which is on file');
-select is(pg_temp.detail('owner', 'emre') -> 'private_contact' ->> 'phone', '+14155550123',
+select is(pg_temp.detail('owner', 'emre') -> 'private_contact' ->> 'phone', tests.phone('d:emre'),
   'with what he gave in onboarding');
 select is(pg_temp.detail('owner', 'pia') -> 'private_contact',
   jsonb_build_object(
