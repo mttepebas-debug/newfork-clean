@@ -302,6 +302,7 @@ describe("NotificationSettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Run safe test for Published schedules" }));
     expect(await screen.findByText("Safe preview allowed; no external message was sent.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Reset Published schedules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset Published schedules" }));
     await waitFor(() =>
       expect(resetNotificationPolicies).toHaveBeenCalledWith(workspaceId, {
         target: { kind: "type", value: "schedule.published" },
@@ -313,12 +314,62 @@ describe("NotificationSettingsPage", () => {
       target: { value: "schedule" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Reset current category" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset category" }));
     await waitFor(() =>
       expect(resetNotificationPolicies).toHaveBeenCalledWith(workspaceId, {
         target: { kind: "category", value: "schedule" },
         reason: "Restore visible category defaults",
       }),
     );
+  });
+
+  // BL-1011: a reset wipes saved policies, so it is red and asks once more.
+  it("resets all policies only on a second click of a red button", async () => {
+    renderPage();
+    await screen.findByText("Published schedules");
+    fireEvent.change(screen.getByLabelText("Reset reason"), {
+      target: { value: "Start over with defaults" },
+    });
+    const resetAll = screen.getByRole("button", { name: "Reset all policies" });
+    expect(resetAll.className).toContain("danger-button");
+
+    fireEvent.click(resetAll);
+    expect(resetNotificationPolicies).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm reset all" }));
+    await waitFor(() =>
+      expect(resetNotificationPolicies).toHaveBeenCalledWith(workspaceId, {
+        target: { kind: "all" },
+        reason: "Start over with defaults",
+      }),
+    );
+    expect(resetNotificationPolicies).toHaveBeenCalledTimes(1);
+  });
+
+  it("backs out of every reset with Escape without calling the API", async () => {
+    renderPage();
+    await screen.findByText("Published schedules");
+    fireEvent.change(screen.getByLabelText("Reset reason"), {
+      target: { value: "Start over with defaults" },
+    });
+    fireEvent.change(screen.getByLabelText("Category"), {
+      target: { value: "schedule" },
+    });
+    for (const [name, armedName] of [
+      ["Reset all policies", "Confirm reset all"],
+      ["Reset current category", "Confirm reset category"],
+      ["Reset Published schedules", "Confirm reset Published schedules"],
+    ] as const) {
+      const button = screen.getByRole("button", { name });
+      expect(button.className).toContain("danger-button");
+      fireEvent.click(button);
+      fireEvent.keyDown(screen.getByRole("button", { name: armedName }), {
+        key: "Escape",
+      });
+      expect(screen.getByRole("button", { name }).className).not.toContain(
+        "is-armed",
+      );
+    }
+    expect(resetNotificationPolicies).not.toHaveBeenCalled();
   });
 });
 
