@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
-import { CatalogRowMenu } from "./CatalogRowMenu";
+import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 
 type Entry = {
   id: string;
@@ -215,15 +215,12 @@ export function ShiftCatalogList<T extends Entry>({
                     </button>
                   </>
                 )}
-                <button
-                  type="button"
-                  aria-label={`${item.archived_at ? "Restore" : "Archive"} ${item.name}`}
+                <CatalogArchiveButton
+                  archived={Boolean(item.archived_at)}
+                  name={item.name}
                   disabled={disabled || archivePending}
-                  className={item.archived_at ? undefined : "job-danger-text"}
-                  onClick={() => onArchive(item)}
-                >
-                  {item.archived_at ? "Restore" : "Archive"}
-                </button>
+                  onToggle={() => onArchive(item)}
+                />
               </CatalogRowMenu>
             </div>
           ))}

@@ -2214,3 +2214,9 @@
   outline: none;
   box-shadow: none;
 }
+.job-menu-popover .job-danger-text[data-confirming="true"],
+.job-menu-popover .job-danger-text[data-confirming="true"]:hover:not(:disabled) {
+  background: var(--theme-danger-strong);
+  color: var(--theme-surface);
+  font-weight: 600;
+}

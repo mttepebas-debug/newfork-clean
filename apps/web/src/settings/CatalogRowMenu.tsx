@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
 import { ChevronDown, MoreHorizontal, Plus } from "lucide-react";
+import { useConfirmClick } from "@newfork/ui";
 export function CatalogRowMenu({
   name,
   children,
@@ -59,5 +60,62 @@ export function CatalogRowMenu({
         {children}
       </div>
     </details>
+  );
+}
+
+// Archive in a Settings row menu takes two clicks: red "Archive" arms,
+// "Confirm archive" archives (BL-595). Restore stays one click.
+export function CatalogArchiveButton({
+  archived,
+  name,
+  disabled = false,
+  title,
+  onToggle,
+}: {
+  archived: boolean;
+  /** Adds the row's name to the accessible label, e.g. "Archive Prep". */
+  name?: string;
+  disabled?: boolean;
+  title?: string;
+  onToggle: () => void;
+}) {
+  const { armed, confirmProps } = useConfirmClick(onToggle);
+  const named = (label: string) => (name ? `${label} ${name}` : undefined);
+  if (archived) {
+    return (
+      <button
+        type="button"
+        aria-label={named("Restore")}
+        disabled={disabled}
+        title={title}
+        onClick={onToggle}
+      >
+        Restore
+      </button>
+    );
+  }
+  const label = armed ? "Confirm archive" : "Archive";
+  return (
+    <>
+      <button
+        type="button"
+        className="job-danger-text"
+        aria-label={named(label)}
+        disabled={disabled}
+        title={title}
+        data-confirming={armed}
+        {...confirmProps}
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          // Only the confirming click may close the menu.
+          if (!armed || event.detail > 1) event.stopPropagation();
+          confirmProps.onClick(event);
+        }}
+      >
+        {label}
+      </button>
+      <span className="sr-only" role="status">
+        {armed ? "Confirm archive" : ""}
+      </span>
+    </>
   );
 }

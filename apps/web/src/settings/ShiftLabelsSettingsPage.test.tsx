@@ -128,6 +128,10 @@ describe("ShiftLabelsSettingsPage", () => {
       screen.getByRole("button", { name: "Actions for Training" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Archive Training" }));
+    expect(setShiftLabelArchived).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Confirm archive Training" }),
+    );
     await waitFor(() =>
       expect(setShiftLabelArchived).toHaveBeenCalledWith(
         workspaceId,

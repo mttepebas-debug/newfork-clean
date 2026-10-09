@@ -26,7 +26,7 @@ import { loadJobCounts } from "./jobs-management-data";
 import { JobCatalogEditor, type CatalogEditor } from "./JobCatalogEditor";
 import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
 import "./jobs-settings.css";
-import { CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
+import { CatalogArchiveButton, CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
@@ -196,9 +196,8 @@ export default function JobsSettingsPage() {
             Manage employees
           </button>
         )}
-        <button
-          type="button"
-          className={!item.archived_at ? "job-danger-text" : undefined}
+        <CatalogArchiveButton
+          archived={Boolean(item.archived_at)}
           disabled={
             mutation.isPending ||
             (type === "departments" && !item.archived_at && jobCount > 0)
@@ -208,10 +207,8 @@ export default function JobsSettingsPage() {
               ? "Archive active jobs first"
               : undefined
           }
-          onClick={() => mutation.mutate({ kind: "archive", type, item })}
-        >
-          {item.archived_at ? "Restore" : "Archive"}
-        </button>
+          onToggle={() => mutation.mutate({ kind: "archive", type, item })}
+        />
       </RowMenu>
     );
   }

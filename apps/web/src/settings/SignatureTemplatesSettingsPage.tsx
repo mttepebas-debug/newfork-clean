@@ -31,7 +31,7 @@ import {
 } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { CatalogRowMenu } from "./CatalogRowMenu";
+import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
   approveSignatureRetentionPolicy,
@@ -1195,13 +1195,10 @@ function RetentionList({
                   </button>
                 </>
               ) : null}
-              <button
-                type="button"
-                className={policy.archived_at ? undefined : "job-danger-text"}
-                onClick={() => archive(policy.id, !policy.archived_at)}
-              >
-                {policy.archived_at ? "Restore" : "Archive"}
-              </button>
+              <CatalogArchiveButton
+                archived={Boolean(policy.archived_at)}
+                onToggle={() => archive(policy.id, !policy.archived_at)}
+              />
             </CatalogRowMenu>
           ) : null}
         </div>
@@ -1491,15 +1488,10 @@ function TemplateList({
                       Edit template
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className={
-                      template.archived_at ? undefined : "job-danger-text"
-                    }
-                    onClick={() => archive(template.id, !template.archived_at)}
-                  >
-                    {template.archived_at ? "Restore" : "Archive"}
-                  </button>
+                  <CatalogArchiveButton
+                    archived={Boolean(template.archived_at)}
+                    onToggle={() => archive(template.id, !template.archived_at)}
+                  />
                 </>
               ) : null}
             </CatalogRowMenu>
