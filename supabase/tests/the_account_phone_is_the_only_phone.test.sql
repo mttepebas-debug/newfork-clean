@@ -64,13 +64,13 @@ language sql as $$
   select phone from public.employee_private_profiles where employee_id = target_employee_id
 $$;
 
--- Onboarding (tests.person) typed 4155550123 into an empty account.
+-- Onboarding (tests.person) typed Ali's own number into an empty account.
 select is(
   (select phone_e164 from public.user_profiles where user_id = (select ali from ph)),
-  '+14155550123',
+  tests.phone('ph:ali'),
   'onboarding writes the number to an empty account, in E.164'
 );
-select is(pg_temp.phone_of((select ali_here from ph)), '+14155550123',
+select is(pg_temp.phone_of((select ali_here from ph)), tests.phone('ph:ali'),
   'and the record it opened carries the account''s number');
 
 -- (a) Ali changes his number the way Account > Profile does it.
@@ -90,7 +90,7 @@ select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000002'), '+1310555000
   'an archived record keeps the number it had');
 select is(pg_temp.phone_of('33510000-0000-4000-8000-000000000003'), '+13105550000',
   'a record behind a suspended membership keeps the number it had');
-select is(pg_temp.phone_of((select bea_here from ph)), '+14155550123',
+select is(pg_temp.phone_of((select bea_here from ph)), tests.phone('ph:bea'),
   'somebody else''s record is not touched');
 
 -- (c) The manager's side. First what her own session can do, so the refusals
