@@ -1291,26 +1291,37 @@
 .location-catalog-fields .field-wide {
   grid-column: 1/-1;
 }
-.locations-catalog-settings-page .location-catalog-row {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 130px 140px 32px;
+/* Locations, design A (Mert 2026-10-07, KARARLAR Settings → Locations): the
+   shared list language of Settings → Documents; only columns and the phone card are
+   Locations' own. Location 24 · Address 40 · Phone number 16 · Time zone 16 · menu. */
+.locations-catalog-settings-page.list-page .location-catalog-row {
+  grid-template-columns:
+    minmax(0, 24fr) minmax(0, 40fr) minmax(0, 16fr) minmax(0, 16fr)
+    32px;
+  gap: 12px;
 }
-.location-catalog-address.location-catalog-cell {
-  margin-top: 0;
+.locations-catalog-settings-page.list-page .job-catalog-row {
+  min-height: 52px;
 }
-.locations-catalog-settings-page .location-address-meta {
+.locations-catalog-settings-page .location-catalog-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-list-cell-text);
+  font-size: 13px;
+}
+.locations-catalog-settings-page .location-catalog-faint {
+  color: var(--theme-text-faint);
+}
+.locations-catalog-settings-page .location-card-line,
+.locations-catalog-settings-page .location-card-meta {
   display: none;
 }
-/* Narrow content: address moves under the name. */
-@media (max-width: 1100px) {
-  .locations-catalog-settings-page .location-catalog-row {
-    grid-template-columns: minmax(0, 1fr) 100px 90px 32px;
-  }
-  .locations-catalog-settings-page .location-address-col {
-    display: none;
-  }
-  .locations-catalog-settings-page .location-address-meta {
-    display: block;
-  }
+/* The scrollbar gutter only while the body scrolls: fields end on the line of the
+   close button and Save. Locations only; spreading it is BL-953. */
+.catalog-drawer.locations-catalog-settings-page .catalog-drawer-body {
+  scrollbar-gutter: auto;
 }
 .job-field input[aria-invalid="true"] {
   border-color: var(--job-error);
@@ -1320,45 +1331,66 @@
   color: var(--job-error);
   font-size: 12px;
 }
-.locations-catalog-settings-page .job-catalog-row {
-  min-height: 64px;
-}
-.location-catalog-marker {
-  flex-shrink: 0;
-  color: var(--job-muted);
-}
-.location-catalog-address {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--job-muted);
-  font-size: 12px;
-  font-weight: 400;
-  margin-top: 3px;
-}
-.location-catalog-zone {
-  color: var(--job-muted);
-  font-size: 12px;
-}
 .locations-catalog-settings-page .job-catalog-editor > .form-error {
   margin: 0 16px 16px;
   color: var(--job-error);
   font-size: 12px;
 }
+/* Phone (UI-14): one card per location. */
 @media (max-width: 720px) {
-  .locations-catalog-settings-page .location-catalog-row {
-    grid-template-columns: minmax(0, 1fr) 44px;
-  }
-  .location-catalog-zone,
-  .location-catalog-cell {
-    display: none;
-  }
   .job-catalog-editor .location-catalog-fields {
     grid-template-columns: minmax(0, 1fr);
   }
-  .locations-catalog-settings-page .location-catalog-row.job-column-headings {
+  .locations-catalog-settings-page.list-page .job-catalog {
+    display: grid;
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    background: none;
+  }
+  .locations-catalog-settings-page.list-page .job-column-headings,
+  .locations-catalog-settings-page .location-catalog-cell {
     display: none;
+  }
+  .locations-catalog-settings-page.list-page .job-catalog-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: start;
+    min-height: 0;
+    padding: 14px 4px 14px 14px;
+    border: 1px solid var(--theme-list-frame);
+    border-radius: 8px;
+  }
+  .locations-catalog-settings-page.list-page .job-row-identity {
+    min-height: 0;
+  }
+  .locations-catalog-settings-page.list-page .job-row-name {
+    font-size: 15px;
+    line-height: 22px;
+  }
+  .locations-catalog-settings-page .location-card-line {
+    display: block;
+    margin-top: 2px;
+    color: var(--theme-list-cell-text);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .locations-catalog-settings-page .location-card-meta {
+    display: block;
+    margin-top: 4px;
+    color: var(--theme-muted);
+    font-size: 12px;
+    line-height: 16px;
+  }
+  .locations-catalog-settings-page.list-page .job-row-menu > summary {
+    width: 40px;
+    height: 40px;
+  }
+  /* An empty tab keeps the card stack's look: one framed box. */
+  .locations-catalog-settings-page.list-page .job-catalog:has(> .catalog-table-empty) {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--theme-list-frame);
+    border-radius: 8px;
   }
 }
 @media (max-width: 720px) {

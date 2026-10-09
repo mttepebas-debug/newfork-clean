@@ -41,6 +41,47 @@ describe("Locations table", () => {
   });
 });
 
+// Locations A (Mert 2026-10-07): the shared list language.
+describe("Locations list", () => {
+  it("has a list header, Active / Archived tabs and New location at the end of the filter row", async () => {
+    vi.mocked(listLocations).mockResolvedValue([legacy, { ...current, archived_at: "2026-10-01T00:00:00Z" }]);
+    page();
+    await screen.findByRole("button", { name: /^Main/ });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Locations");
+    expect(screen.queryByText("Show archived")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add location/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "New location" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Deniz/ })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    expect(screen.getByRole("button", { name: /^Deniz/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /^Main/ })).toBeNull();
+  });
+  it("says where archived locations go when there are none", async () => {
+    page();
+    await screen.findByRole("button", { name: /^Main/ });
+    fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    expect(screen.getByText("No archived locations")).toBeTruthy();
+    expect(screen.getByText("Archived locations will appear here.")).toBeTruthy();
+  });
+  it("sorts by a column heading and clears the sorting", async () => {
+    page();
+    await screen.findByRole("button", { name: /^Main/ });
+    const names = () => [...document.querySelectorAll(".job-row-name")].map((node) => node.textContent);
+    expect(names()).toEqual(["Main", "Deniz"]);
+    fireEvent.click(screen.getByRole("button", { name: "Location" }));
+    expect(names()).toEqual(["Deniz", "Main"]);
+    fireEvent.click(screen.getByRole("button", { name: "Location" }));
+    expect(names()).toEqual(["Main", "Deniz"]);
+    fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+    expect(names()).toEqual(["Main", "Deniz"]);
+  });
+  it("hides New location from a reader", async () => {
+    state.canEdit = false; page();
+    await screen.findByRole("button", { name: /^Main/ });
+    expect(screen.queryByRole("button", { name: "New location" })).toBeNull();
+  });
+});
+
 describe("Location short name editor", () => {
   it("fills the suggestion on save when the short name is empty", async () => {
     const client = page();
