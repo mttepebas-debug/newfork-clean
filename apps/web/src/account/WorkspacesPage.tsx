@@ -134,6 +134,11 @@ export default function WorkspacesPage() {
   const canCreate = loaded && !loading && (
     workspaces.some(workspace => workspace.role === "owner" && workspace.status === "active") ||
     (workspaces.length === 0 && (supabaseClient === null || (invitationsQuery.isSuccess && invitations.length === 0))));
+  // An unfinished setup is continued, never created again: the server would
+  // resume it and write the draft name over the one typed in step 1.
+  const startSetup = (): void => {
+    void setup.start(workspaces.find(unfinishedSetup) ?? null);
+  };
   const currentWorkspaceId = context?.workspace.id ?? null;
   const onboardingWorkspaces = workspaces.filter(workspace => workspace.status === "pending");
   const orderedWorkspaces = [...accessibleWorkspaces, ...onboardingWorkspaces].sort((a, b) =>
@@ -492,7 +497,7 @@ export default function WorkspacesPage() {
             type="button"
             className="primary-button"
             disabled={setup.busy}
-            onClick={() => void setup.start()}
+            onClick={startSetup}
           >
             <Plus size={16} aria-hidden /> Create workspace
           </Button>
@@ -532,7 +537,7 @@ export default function WorkspacesPage() {
             <div>
               <strong>No workspaces yet</strong>
               <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
-              {canCreate ? <Button type="button" disabled={setup.busy} onClick={() => void setup.start()}>Create workspace</Button> : null}
+              {canCreate ? <Button type="button" disabled={setup.busy} onClick={startSetup}>Create workspace</Button> : null}
             </div>
           </div>
         ) : null}
