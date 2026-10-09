@@ -131,6 +131,18 @@ test("plan: a task branch whose own commits touch a record file stops the train;
   assert.doesNotMatch(text(c), /kayıt dosyasına dokunuyor/);
 });
 
+test("plan: a task branch adding a quarantine line stops the train; coord/kayit carries it (S-106)", () => {
+  const line = "employee hub tomorrow | BL-1 | 2026-10-08 | 2026-10-09\n";
+  w.branch("task/kq", ["quarantine", { "e2e/karantina.txt": line }]);
+  const r = plan(w.ctx, ["task/kq"]);
+  assert.equal(r.code, 1, text(r));
+  assert.match(text(r), /ENGEL: task\/kq: kayıt dosyasına dokunuyor: e2e\/karantina\.txt/);
+  w.branch("coord/kayit", ["quarantine", { "e2e/karantina.txt": line }]);
+  const c = plan(w.ctx, ["coord/kayit"]);
+  assert.equal(c.code, 0, text(c));
+  assert.doesNotMatch(text(c), /kayıt dosyasına dokunuyor/);
+});
+
 test("plan: NF_OVERRIDE passes a branch touching a record file, and the pass is logged", () => {
   w.branch("task/rec", ["records", { "DURUM.md": "# Durum\n" }]);
   const r = plan({ ...w.ctx, override: "Mert kayıt düzeltmesini işçiye verdi" }, ["task/rec"]);

@@ -8,7 +8,7 @@
 // ponytail: a client-side guard reads words, not what git will run: `git -c alias.p=push p ...`, `eval`,
 //   `iex`, `node -e "...execSync('git push ...')"` stay invisible. Server-side protection of main is the real fix.
 // - A worker agent (a hook input with agent_id, or a folder under .claude/worktrees/agent-*) never writes
-//   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log), by edit or by commit,
+//   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log, e2e/karantina.txt), by edit or by commit,
 //   and never pushes to the coordinator's branch coord/kayit. It never runs scripts/train.mjs and never writes
 //   <OPS_DIR>/audit.log (Edit/Write, a redirection, tee or a content cmdlet).
 // - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
@@ -406,7 +406,8 @@ function ghToMain(seg) {
 }
 
 // ---- record files (spec §6.1): the coordinator's; a worker agent never writes them ----
-const RECORDS = /(^|\/)(DURUM\.md|docs\/plan\/(BACKLOG|KARARLAR|SORULAR|EKRAN-PLANI)\.md|docs\/plan\/gunluk\/.+)$/i;
+// e2e/karantina.txt too (S-106): only the coordinator quarantines a known red, on coord/kayit.
+const RECORDS = /(^|\/)(DURUM\.md|docs\/plan\/(BACKLOG|KARARLAR|SORULAR|EKRAN-PLANI)\.md|docs\/plan\/gunluk\/.+|e2e\/karantina\.txt)$/i;
 // `docs/plan/./KARARLAR.md`, `docs/plan/x/../SORULAR.md`, backslashes: a path is normalized before it is read.
 // Windows also opens `KARARLAR.md.`, `KARARLAR.md ` and `DURUM.md::$DATA` (an NTFS stream) as the file itself, so
 // each name loses its stream suffix and its trailing dots and spaces first (a drive's `C:` is kept).
@@ -418,7 +419,7 @@ const AGENT_TREE = /\/\.claude\/worktrees\/agent-[^/]+\//i;
 export const inWorkerTree = (p) => AGENT_TREE.test(`${posix(p)}/`);
 const byWorker = (input, where) => Boolean(input.agent_id) || inWorkerTree(where);
 const RECORD_REFUSAL =
-  "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §6).";
+  "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük, e2e/karantina.txt) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §6).";
 // The coordinator's record branch (spec §7.3): a worker never pushes to it.
 const COORD_BRANCH = "coord/kayit";
 const COORD_REFUSAL = `Reddedildi: ${COORD_BRANCH} koordinatörün kayıt dalıdır, işçi oraya gönderemez; kendi task/<iş> dalına gönder (CLAUDE.md §6).`;

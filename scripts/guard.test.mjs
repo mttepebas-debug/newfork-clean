@@ -176,9 +176,11 @@ test("record files: DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI and the daily
     "docs/plan/EKRAN-PLANI.md",
     "docs/plan/gunluk/2026-10-08.md",
     "docs\\plan\\gunluk\\2026-10-08\\0930-X-nf-isci-ab.md",
+    "e2e/karantina.txt", // S-106: only the coordinator quarantines a test
+    "e2e\\karantina.txt",
   ])
     assert.equal(isRecordFile(f), true, f);
-  for (const f of ["docs/archive/2026-10-08-v1/DERSLER.md", "docs/plan/ekranlar/02-requests/uygulama/RAPOR.md", "apps/web/src/DURUM.md.ts"])
+  for (const f of ["docs/archive/2026-10-08-v1/DERSLER.md", "docs/plan/ekranlar/02-requests/uygulama/RAPOR.md", "apps/web/src/DURUM.md.ts", "e2e/karantina.mjs", "e2e/flows/karantina.txt.ts"])
     assert.equal(isRecordFile(f), false, f);
   assert.equal(inWorkerTree("C:\\c\\coord\\.claude\\worktrees\\agent-a1"), true);
   assert.equal(inWorkerTree("C:/c/coord/.claude/worktrees/workflow-v2"), false);
@@ -576,4 +578,12 @@ test("a worker cannot write the audit log, by Edit/Write or by a shell redirecti
   assert.equal(ps.block, true);
   for (const cmd of [`cat ${log}`, `grep train-push ${log}`, `tail -5 ${log} > /tmp/x.txt`]) assert.equal(worker(cmd).block, false, cmd);
   assert.equal(evaluate(bash(`echo x >> ${log}`)).block, false); // the coordinator
+});
+
+test("a worker cannot edit e2e/karantina.txt (S-106); the coordinator can", () => {
+  const file = `${repo}/e2e/karantina.txt`;
+  const r = evaluate({ tool_name: "Edit", session_id: "s", agent_id: "a9", cwd: repo, tool_input: { file_path: file } });
+  assert.equal(r.block, true);
+  assert.equal(auditLines().at(-1).event, "record-by-worker-blocked");
+  assert.equal(evaluate({ tool_name: "Edit", session_id: "s", cwd: repo, tool_input: { file_path: file } }).block, false);
 });
