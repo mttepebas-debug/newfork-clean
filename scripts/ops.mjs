@@ -2,9 +2,24 @@
 // WORKFLOW-V2: what several scripts share. OPS_DIR is the git-free folder that keeps audit.log and
 // decisions.jsonl (formerly the inbox's INBOX_DIR; NEWFORK_INBOX_DIR overrides it, tests only).
 // ciState() asks GitHub Actions through `gh`; NEWFORK_CI_STATE=idle|running|unknown forces it (tests only).
+import os from "node:os";
+import path from "node:path";
 import { execFileSync } from "node:child_process";
 
-export const OPS_DIR = process.env.NEWFORK_INBOX_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-inbox";
+// PROJECT-GECIS (Mert, 2026-10-09): the shared local database, the CI runner, the lock and the train folder are
+// on Mert's Windows PC only. Elsewhere (a cloud thread on Linux) a C:/ default is a relative path and would open
+// a "C:" folder inside the repo, so PC-only tools refuse there. NEWFORK_PLATFORM stands in for process.platform
+// (tests only).
+export const ON_PC = (process.env.NEWFORK_PLATFORM ?? process.platform) === "win32";
+const CODEX = "C:/Users/TheWe/Documents/Codex";
+// The folder a PC-only tool uses: its test override, else the Codex folder on Mert's PC, else null.
+export const pcPath = (override, rel) => override ?? (ON_PC ? `${CODEX}/${rel}` : null);
+export const NOT_ON_PC_EXIT = 3;
+export const NOT_ON_PC =
+  "Bu makinede ortak yerel veritabanı, kilit ve tren klasörü yok (bulut thread'i). Kilit, test:db, e2e ve tren yalnız Mert'in bilgisayarında, Remote Control thread'inde koşar (CLAUDE.md §5).";
+
+// The guard's audit.log goes to the temp folder off the PC: a cloud thread's log matters only to itself.
+export const OPS_DIR = pcPath(process.env.NEWFORK_INBOX_DIR, ".newfork-inbox") ?? path.join(os.tmpdir(), "newfork-ops");
 
 // Passwords and tokens never reach a log or a report file (the guard's audit.log, the daily log). Masked:
 // - a URL's password (postgres://u:<pw>@…);

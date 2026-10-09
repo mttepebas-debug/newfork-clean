@@ -21,8 +21,9 @@ import { acquire, release, status as lockStatus, clearDead } from "./lock.mjs";
 import { audit, backupMain, isRecordFile } from "./guard.mjs";
 import { fingerprint, headerHash } from "./schema-snapshot.mjs";
 import { container, nonTransactional } from "./test-db.mjs";
+import { pcPath, NOT_ON_PC, NOT_ON_PC_EXIT } from "./ops.mjs";
 
-const TRAIN_DIR = process.env.NEWFORK_TRAIN_DIR ?? "C:/Users/TheWe/Documents/Codex/newfork-wt/train";
+const TRAIN_DIR = pcPath(process.env.NEWFORK_TRAIN_DIR, "newfork-wt/train"); // null off Mert's PC
 const BASE = "origin/main";
 const MIGRATIONS = "supabase/migrations";
 const SCHEMA = "supabase/schema.sql";
@@ -656,6 +657,11 @@ const USAGE = [
 ];
 
 function main(argv) {
+  if (!TRAIN_DIR) {
+    console.error(NOT_ON_PC);
+    process.exitCode = NOT_ON_PC_EXIT;
+    return;
+  }
   const [cmd, ...rest] = argv;
   const repo = git(process.cwd(), ["rev-parse", "--show-toplevel"]);
   const ctx = { repo, trainDir: TRAIN_DIR, exec: realExec(TRAIN_DIR), now: () => new Date(), override: process.env.NF_OVERRIDE?.trim() || null };

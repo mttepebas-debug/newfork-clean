@@ -17,14 +17,16 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { ciState } from "./ops.mjs";
+import { ciState, pcPath, NOT_ON_PC, NOT_ON_PC_EXIT } from "./ops.mjs";
 
-const LOCK_DIR = process.env.NEWFORK_LOCK_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-locks";
+// null off Mert's PC: there is no shared local database to lock (main() refuses, lockPath() throws).
+const LOCK_DIR = pcPath(process.env.NEWFORK_LOCK_DIR, ".newfork-locks");
 const LONG_MIN = 30; // spec §2: no lock is held longer than this; status flags it
 const STALE_MS = 2 * 60 * 60 * 1000; // flagged in status, never deleted by age alone
 const LOCKS = ["db"];
 
 function lockPath(name) {
+  if (!LOCK_DIR) throw new Error(NOT_ON_PC);
   if (!LOCKS.includes(name)) throw new Error(`unknown lock "${name}" (expected ${LOCKS.join("|")})`);
   return path.join(LOCK_DIR, `${name}.lock`);
 }
@@ -377,6 +379,11 @@ export function parseMaxWait(v) {
 }
 
 async function main(argv) {
+  if (!LOCK_DIR) {
+    console.error(NOT_ON_PC);
+    process.exitCode = NOT_ON_PC_EXIT;
+    return;
+  }
   const [cmd, ...rest] = argv;
   if (cmd === "status") return printStatus();
   if (cmd === "run") {
