@@ -13,6 +13,9 @@ const submitBodySchema = z.object({ revision: revisionSchema });
 const workspaceQuerySchema = z.object({
   workspaceId: z.string().uuid().optional(),
 });
+const phoneQuerySchema = workspaceQuerySchema.extend({
+  phone: z.string().trim().min(1).max(40),
+});
 const managerParamsSchema = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().uuid(),
@@ -41,6 +44,23 @@ export function registerEmployeeOnboardingRoutes(
     return serviceReply(reply, () =>
       options.service.get(token, query.data.workspaceId),
     );
+  });
+
+  // TEL-2: asked while the number is typed; the answer names nobody.
+  app.get("/v1/me/onboarding/phone-in-use", async (request, reply) => {
+    const token = bearerToken(request.headers.authorization);
+    const query = phoneQuerySchema.safeParse(request.query);
+    if (!token)
+      return reply.status(401).send({ error: "Valid bearer session required" });
+    if (!query.success)
+      return reply.status(400).send({ error: "Valid phone required" });
+    return serviceReply(reply, async () => ({
+      inUse: await options.service.phoneInUse(
+        token,
+        query.data.phone,
+        query.data.workspaceId,
+      ),
+    }));
   });
 
   app.patch("/v1/me/onboarding/profile", async (request, reply) => {

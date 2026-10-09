@@ -21,6 +21,12 @@ export interface EmployeeOnboardingService {
     revision: number,
     workspaceId?: string,
   ): Promise<number>;
+  // TEL-2: whether another live record of the workspace holds the number.
+  phoneInUse(
+    accessToken: string,
+    phone: string,
+    workspaceId?: string,
+  ): Promise<boolean>;
   submit(
     accessToken: string,
     revision: number,
@@ -86,6 +92,15 @@ export function createEmployeeOnboardingService(
         expected_revision: revision,
         ...workspaceArg(workspaceId),
       });
+    },
+    async phoneInUse(accessToken, phone, workspaceId) {
+      const user = await authenticatedUser(client, accessToken);
+      const data = await rpc(client, "onboarding_phone_in_use_service", {
+        target_user_id: user.id,
+        typed_phone: phone,
+        ...workspaceArg(workspaceId),
+      });
+      return z.boolean().parse(data);
     },
     async submit(accessToken, revision, workspaceId) {
       const user = await authenticatedUser(client, accessToken);
