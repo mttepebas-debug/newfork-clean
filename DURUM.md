@@ -49,8 +49,7 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 - B25 Uzak dal silme (ajanlara yasak): `task/guvenlik-a`, `-ga4`, `-ga4-v2`, `task/sayfa-klasoru`, `task/acil-40001`, `-v2`; eski `task/bl-965*`, `task/bl-969`, `-2`, `-3`, `task/tren-araci*`, `task/bl-757` (önce `git cherry` ile ölçerim) — 2026-10-08
 - B26 Makine: `C:\Users\TheWe\.codex` silme (14 GB, HATIRLATMALAR), Supabase Studio kapatma, vmmem kaynağı; OTOMASYON-4 hesap değişimi testi 2026-10-11 18:00 PT — 2026-10-08
 - B27 Para / CI: GitHub ücretsiz 2.000 dk sonrası dakika başı; tavan; public repo — 2026-10-08
-- B28 Hatırlatma: otomasyon duraklatıldı (senin isteğinle). Yedek saat kapalı, BL-990 işçisi senin durdurmanla yarıda (ara işi `C:UsersTheWeDocumentsCodex
-ewfork-clean.claudeworktreesagent-a2539fabf0e3a2190`, ilki `…agent-adc5b7c78af9b7328`; kaldığı yer `docs/plan/gunluk/2026-10-09-devir.md`). Sürdürmek için koordinatöre "/oto devam" yaz: saati ve uyanık tutmayı yeniden kurar, BL-990a kaldığı yerden devam eder. Main hâlâ kırmızı, karantina 2026-10-15te biter — 2026-10-09
+- B28 Hatırlatma: otomasyon duraklatıldı (senin isteğinle). Yedek saat kapalı, BL-990 işçisi senin durdurmanla yarıda (ara işi `C:\Users\TheWe\Documents\Codex\newfork-clean\.claude\worktrees\agent-a2539fabf0e3a2190`, ilki `C:\Users\TheWe\Documents\Codex\newfork-clean\.claude\worktrees\agent-adc5b7c78af9b7328`; kaldığı yer `C:\Users\TheWe\Documents\Codex\newfork-wt\coord\docs\plan\gunluk\2026-10-09-devir.md`). Sürdürmek için koordinatöre "/oto devam" yaz: saati ve uyanık tutmayı yeniden kurar, BL-990'a kaldığı yerden devam eder. Main hâlâ kırmızı, karantina 2026-10-15'te biter — 2026-10-09
 
 ## Bugün biten
 - İş akışı v2 (tek koordinatör, beklemesiz tren, tek kilit, karar defteri, `/oto` ve `/durum`) — `9f287986..7ecbcc74`; tren CI'ı e2e'de kırmızıydı (yalnız Time off onayı, main'de de kırmızı), Mert'in tek seferlik aşımıyla gönderildi; main yedeği `refs/nf-backup/main/20261009T023046Z`
