@@ -1,5 +1,8 @@
 import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
+import { grepInvertFrom, parseKarantina } from "./karantina.mjs";
 
 // Browser tests (FOUNDATION-B stage 2d): the real sign-in screen, the real API
 // and the web app, against the local Supabase that `supabase start` runs.
@@ -63,6 +66,22 @@ function requireSupabaseEnv(key: string): string {
   return value;
 }
 
+// S-106: tests on the quarantine list (e2e/karantina.txt) are skipped until their end date. No file means
+// nothing is quarantined; expired and invalid lines are printed and ignored, so those tests run.
+function quarantine(): RegExp | undefined {
+  let text = "";
+  try {
+    text = readFileSync(fileURLToPath(new URL("./karantina.txt", import.meta.url)), "utf8");
+  } catch {
+    return undefined;
+  }
+  const { patterns, expired, invalid } = parseKarantina(text, new Date());
+  for (const line of expired) console.warn(`karantina: süresi dolmuş, test koşar: ${line}`);
+  for (const line of invalid) console.warn(`karantina: geçersiz satır, yok sayıldı: ${line}`);
+  for (const p of patterns) console.log(`karantina: atlanıyor: ${p}`);
+  return grepInvertFrom(patterns);
+}
+
 export default defineConfig({
   testDir: "./flows",
   globalSetup: "./global-setup.ts",
@@ -72,6 +91,7 @@ export default defineConfig({
   workers: 1,
   // A forgotten test.only would quietly skip every other spec in CI (BL-281).
   forbidOnly: Boolean(process.env.CI),
+  grepInvert: quarantine(),
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: webUrl,

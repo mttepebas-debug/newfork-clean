@@ -1,0 +1,10 @@
+# e2e quarantine list (KARARLAR S-106; e2e/karantina.mjs reads it, e2e/playwright.config.ts skips the matches).
+# A known e2e red that is red on main too is added here by the train, so CI stays green; NF_OVERRIDE is not
+# used for a known red.
+# One entry per line:
+#   <test başlığından bir parça> | BL-<no> | <YYYY-MM-DD bitiş>
+# - The first part is matched literally against the full test title (describe › test); keep it specific.
+# - The entry counts through its end date; after it the entry is ignored and the test runs again.
+# - At most 7 days: an end date more than 7 days after today is invalid (logged, ignored), and so is a
+#   malformed line. Extending means a new train with a new date and the same BL number.
+# - Lines starting with # are comments.
