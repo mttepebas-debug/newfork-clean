@@ -1,5 +1,5 @@
-# Durum — 2026-10-09 02:40Z
-🟠 İş akışı v2 main'de (`7ecbcc74`). Main CI kırmızı: Time off onay e2e'leri Requests paketinden beri takılıyor (BL-990); o düzelmeden hiçbir tren yeşil olmaz — ilk iş o.
+# Durum — 2026-10-09 02:55Z
+🟠 Main CI kırmızı (Time off onay e2e'leri, BL-990); kökünü bulup düzeltmek için tek işçi çalışıyor. Bu iş bitene kadar tren kalkmıyor (kırmızı çıkacağı belli, işçinin yerel e2e'sini de bekletir).
 
 ## Seni bekleyen (26)
 Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
@@ -55,12 +55,12 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 - Eski koordinatörün main'e girmemiş kayıtları (KK-229…235, BL-974…989, DERS 61, HANDOFF, HATIRLATMALAR) ve devir klasörü yeni yapıya taşındı — aynı tren
 
 ## Koşuyor
-- — (eski oturumlar durduruldu)
+- BL-990 Time off onay e2e'lerinin kökü (dal `task/bl-990`) — nf-isci (incelemeli, effort high) — port 5612/5613 — başladı 02:53Z
 
 ## Sırada
 İş · dal@sha · kalan adım · sınıf · neden bu sırada. ⏸ = seni bekliyor.
 
-0. S0 BL-990 Time off onay e2e'lerinin takılması (EKRAN-02-CI) · — · nf-okur: onay yolunu yerel DB'de `pg_locks` ile adım adım zamanla (`measure.sh` hazır, devir yedeğinin scratchpad klasöründe); kökü düzelt (canlıya dokunduğu için geri alma değil, düzeltme); karantina satırını sil · incelemeli · main kırmızıyken hiçbir tren yeşil olamaz
+0. S0 BL-990 → "Koşuyor"da
 1. S1 GA-2 main'e al · `task/guvenlik-a-ga2`@`302af460` · trene bindir (ledger adı `20261008133054` aynen kalır); S0'dan sonra · incelemeli (canlıda, yetki; ONAY var) · canlıda olup main'de olmayan tek şey; GA-3a buna dayanıyor
 2. S2 BL-985 e2e'de rastgele 60 sn takılmaları · — · S0 bittikten sonra kalan var mı ölç · normal
 3. S3 Requests `20261008111800` (silen) canlıya · main'de · yedek hazır → `apply_migration` → ledger sürümünü dosya adına eşle → md5 `62e92f77…`, advisors, SELECT · incelemeli (riskli, koordinatör uygular) · main CI yeşilini bekliyor (S2)
@@ -98,12 +98,14 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 - —
 
 ## Plan
+- Şimdi (Mert onayı 2026-10-09): BL-990 — kök kanıtıyla yazılı · önce kırmızı test → düzeltme → yeşil · time-off-approval, shift-hub-swap, shift-hub-time-off, schedule-publish-approved-exchange ardışık iki koşuda yeşil · shift-hub-time-off ≤15 sn · karantina satırı silinir · trenin CI'ı tam yeşil. Tahmin 2–4 saat. CI Playwright raporları Mert'in izniyle indirildi: `C:\Users\TheWe\Documents\Codex\newfork-wt\coord\artifacts\bl-990\ci\` (5 rapor, ~215 MB açılmış).
+- Sonra "Sırada" listesi S1'den.
 - EKRAN-PLANI sırası: 1 Schedule → 2 Requests → 3 Employees → 4 Availability → 5 Workspace → 6 Documents → 7 Announcements → 8 Important Dates → 9 Bildirim → 10 Settings → 11–14 çalışan ekranları → 15 Account → 16 Giriş → 17 Yasal → 18 Billing; açık hatlar 01, 02, 03, 08, 09, 10, 16 ve GUVENLIK-A.
 
 ## Sağlık
-- işçi sınırı 1 · main alarmı since `7ecbcc74` (geçişteki origin/main) · temiz
-- karantina: `two locations approve in turn, the last one opens the shift` · BL-990 · 2026-10-08 → 2026-10-15
-- ölçüm günü 2026-10-15 · yedek saat: (kurulacak)
+- işçi sınırı 1 · main alarmı temiz (since `7ecbcc74`) · kilit: db boş
+- karantina: two locations approve in turn, the last one opens the shift · BL-990 · 2026-10-08→2026-10-15
+- kullanım: 5 saatlik %2, haftalık %64 (2026-10-11'de sıfırlanır) · yedek saat `15baa153` (20 dk'da bir, 2026-10-15'te biter) · ölçüm günü 2026-10-15
 
 ## Devirden gelen notlar
 - N1 Devir notları ve README: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`; bu kayıtlar artık main'de (`docs/plan/`, `docs/archive/2026-10-08-v1/`).
