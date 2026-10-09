@@ -1,0 +1,288 @@
+import { createHash } from "node:crypto";
+import Fastify from "fastify";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  createPasswordResetSender,
+  registerPasswordResetRoutes,
+  type PasswordResetClaim,
+  type PasswordResetSender,
+} from "./password-reset";
+
+const url = "/v1/auth/password-reset";
+const known = "known@example.test";
+const unknown = "nobody@example.test";
+
+// generateLink as supabase-js answers it: a hashed token for an account, an
+// error for an address nobody owns.
+function fakeAdmin() {
+  return {
+    generateLink: vi.fn(async (params: { type: string; email: string }) =>
+      params.email === known
+        ? {
+            data: { properties: { hashed_token: "hashed-token-1" }, user: {} },
+            error: null,
+          }
+        : { data: { properties: null, user: null }, error: new Error("User not found") },
+    ),
+  };
+}
+
+async function appWith(
+  send: PasswordResetSender | null,
+  extra: {
+    responseFloorMs?: number;
+    sendBudgetMs?: number;
+    claim?: PasswordResetClaim;
+  } = {},
+) {
+  const app = Fastify();
+  registerPasswordResetRoutes(app, {
+    send,
+    claim: extra.claim ?? (async () => "send"),
+    responseFloorMs: extra.responseFloorMs ?? 0,
+    sendBudgetMs: extra.sendBudgetMs ?? 0,
+  });
+  await app.ready();
+  return app;
+}
+
+const post = (
+  app: Awaited<ReturnType<typeof appWith>>,
+  email: unknown,
+  ip = "203.0.113.7",
+) =>
+  app.inject({
+    method: "POST",
+    url,
+    headers: { "x-real-ip": ip },
+    payload: { email },
+  });
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("password reset request", () => {
+  it("answers a known and an unknown email with the same status and body", async () => {
+    const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const send = createPasswordResetSender({
+      admin: fakeAdmin(),
+      appUrl: "http://app.test/",
+      resendApiKey: "re_test",
+    });
+    const app = await appWith(send);
+
+    const forKnown = await post(app, known);
+    const forUnknown = await post(app, unknown);
+
+    expect(forKnown.statusCode).toBe(202);
+    expect(forUnknown.statusCode).toBe(forKnown.statusCode);
+    expect(forUnknown.body).toBe(forKnown.body);
+    expect(forKnown.json()).toEqual({ status: "accepted" });
+    await app.close();
+  });
+
+  // The floor is 0 here, so only the route's wait for the send can hold the
+  // answer back: dropping that wait turns both halves red.
+  it("finishes a send that fits the budget before it answers", async () => {
+    let delivered = false;
+    const slowButInBudget = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      delivered = true;
+    });
+    const app = await appWith(slowButInBudget, { responseFloorMs: 0, sendBudgetMs: 80 });
+    const started = performance.now();
+    const response = await post(app, known);
+    const elapsed = performance.now() - started;
+    expect(response.statusCode).toBe(202);
+    expect(delivered).toBe(true);
+    expect(elapsed).toBeGreaterThanOrEqual(35);
+    await app.close();
+  });
+
+  it("aborts a send still running at the budget and answers then", async () => {
+    let seen: AbortSignal | undefined;
+    const hung = vi.fn((_email: string, signal: AbortSignal) => {
+      seen = signal;
+      return new Promise<void>(() => undefined);
+    });
+    const app = await appWith(hung, { responseFloorMs: 0, sendBudgetMs: 80 });
+    const started = performance.now();
+    const response = await post(app, known);
+    const elapsed = performance.now() - started;
+    expect(response.statusCode).toBe(202);
+    expect(seen?.aborted).toBe(true);
+    expect(elapsed).toBeGreaterThanOrEqual(75);
+    expect(elapsed).toBeLessThan(1_000);
+    await app.close();
+  });
+
+  it("holds even an instant send to the floor", async () => {
+    const app = await appWith(vi.fn(async () => undefined), {
+      responseFloorMs: 120,
+      sendBudgetMs: 80,
+    });
+    const started = performance.now();
+    expect((await post(app, known)).statusCode).toBe(202);
+    expect(performance.now() - started).toBeGreaterThanOrEqual(115);
+    await app.close();
+  });
+
+  it("takes the same time for an email with an account and one without", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 200 })));
+    const send = createPasswordResetSender({
+      admin: fakeAdmin(),
+      appUrl: "http://app.test",
+      resendApiKey: "re_test",
+    });
+    const app = await appWith(send, { responseFloorMs: 120, sendBudgetMs: 80 });
+    const timed = async (email: string) => {
+      const started = performance.now();
+      const response = await post(app, email, `192.0.2.${email.length}`);
+      return { response, elapsed: performance.now() - started };
+    };
+    for (const { response, elapsed } of [await timed(known), await timed(unknown)]) {
+      expect(response.statusCode).toBe(202);
+      expect(elapsed).toBeGreaterThanOrEqual(115);
+      expect(elapsed).toBeLessThan(400);
+    }
+    await app.close();
+  });
+
+  it("hides a failed send behind the same answer", async () => {
+    const send = vi.fn(async () => {
+      throw new Error("Resend is down");
+    });
+    const app = await appWith(send);
+    const response = await post(app, known);
+    expect(response.statusCode).toBe(202);
+    expect(response.body).not.toContain("Resend");
+    await app.close();
+  });
+
+  it("rejects a missing or malformed email without calling the sender", async () => {
+    const send = vi.fn(async () => undefined);
+    const app = await appWith(send);
+    for (const email of [undefined, "", "not-an-email", "a".repeat(330) + "@x.test"]) {
+      const response = await post(app, email);
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ error: "Valid email required" });
+    }
+    expect(send).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("says the service is unavailable when it is not configured", async () => {
+    const app = await appWith(null);
+    expect((await post(app, known)).statusCode).toBe(503);
+    await app.close();
+  });
+
+  it("asks the database whether to send, by digests of the email and the caller (BL-162)", async () => {
+    const claim = vi.fn<PasswordResetClaim>(async () => "send");
+    const send = vi.fn(async () => undefined);
+    const app = await appWith(send, { claim });
+    expect((await post(app, "Ayse@Example.test", "203.0.113.7")).statusCode).toBe(202);
+    expect(claim).toHaveBeenCalledWith(
+      createHash("sha256").update("ayse@example.test").digest("hex"),
+      createHash("sha256").update("203.0.113.7").digest("hex"),
+    );
+    expect(send).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it("sends nothing while the last link is fresh, and answers exactly the same (BL-162)", async () => {
+    const send = vi.fn(async () => undefined);
+    const app = await appWith(send, { claim: async () => "quiet" });
+    const response = await post(app, known);
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toEqual({ status: "accepted" });
+    expect(send).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("refuses a caller over its hourly limit without sending", async () => {
+    const send = vi.fn(async () => undefined);
+    const app = await appWith(send, { claim: async () => "address_limited" });
+    const limited = await post(app, known);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.headers["retry-after"]).toBe("3600");
+    expect(limited.json()).toEqual({ error: "Too many reset requests. Try again later." });
+    expect(send).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe("password reset sender", () => {
+  it("emails a known account a reset link built from the recovery token hash", async () => {
+    const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const admin = fakeAdmin();
+    const send = createPasswordResetSender({
+      admin,
+      appUrl: "http://app.test/",
+      resendApiKey: "re_test",
+      emailFrom: "Newfork <security@newfork.test>",
+    });
+
+    const signal = new AbortController().signal;
+    await send(known, signal);
+
+    expect(admin.generateLink).toHaveBeenCalledWith({ type: "recovery", email: known });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [target, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+    expect(target).toBe("https://api.resend.com/emails");
+    // Resend is told to stop when the route's budget runs out.
+    expect(init.signal).toBe(signal);
+    const body = JSON.parse(String(init.body)) as { to: string[]; html: string; from: string };
+    expect(body.to).toEqual([known]);
+    expect(body.from).toBe("Newfork <security@newfork.test>");
+    expect(body.html).toContain(
+      // In the fragment, so the token never reaches a server log.
+      "http://app.test/reset-password#token_hash=hashed-token-1",
+    );
+    expect(body.html).toContain("1 hour");
+  });
+
+  it("sends nothing for an email without an account", async () => {
+    const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const send = createPasswordResetSender({
+      admin: fakeAdmin(),
+      appUrl: "http://app.test",
+      resendApiKey: "re_test",
+    });
+    await expect(send(unknown, new AbortController().signal)).resolves.toBeUndefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("skips delivery without a Resend key outside production and fails loudly in production", async () => {
+    const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      createPasswordResetSender({ admin: fakeAdmin(), appUrl: "http://app.test" })(
+        known,
+        new AbortController().signal,
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      createPasswordResetSender({
+        admin: fakeAdmin(),
+        appUrl: "http://app.test",
+        production: true,
+      })(known, new AbortController().signal),
+    ).rejects.toThrow("not configured");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("throws when Resend refuses the message", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 500 })));
+    const send = createPasswordResetSender({
+      admin: fakeAdmin(),
+      appUrl: "http://app.test",
+      resendApiKey: "re_test",
+    });
+    await expect(send(known, new AbortController().signal)).rejects.toThrow("(500)");
+  });
+});

@@ -1,0 +1,24 @@
+/* The one US phone field (BL-503): a fixed grey "+1" before the number.
+   Tokens only; the field itself keeps each screen's own look. */
+.us-phone-field {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.us-phone-prefix {
+  position: absolute;
+  top: 50%;
+  left: 11px;
+  transform: translateY(-50%);
+  color: var(--theme-muted-strong);
+  /* The number's own type: each screen's field takes its label's font. */
+  font: inherit;
+  line-height: 1;
+  pointer-events: none;
+}
+/* Room for the prefix, whatever padding the screen gives its fields: the same
+   11px before the +1 and after it, the +1 being about 1em wide in the field's
+   own type. */
+.us-phone-field > input.us-phone-input {
+  padding-left: calc(22px + 1em);
+}

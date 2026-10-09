@@ -1,0 +1,335 @@
+.bl051-roles {
+  --border: light-dark(#e4e9e6, #374039);
+  --text: light-dark(#23382c, #e7eee9);
+  --muted: light-dark(#68766d, #a6b4ab);
+  --surface: light-dark(#fff, #191d1b);
+  --surface-soft: light-dark(#f7f9f8, #202623);
+  min-width: 0;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.bl051-roles > .settings-page-header {
+  margin-bottom: 0;
+}
+.bl051-roles .rp-directory {
+  min-width: 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  overflow: visible;
+  border-bottom: 1px solid var(--border);
+}
+.bl051-roles .rp-directory button {
+  flex: 0 1 auto;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.bl051-roles .rp-directory button:focus-visible {
+  outline: 2px solid light-dark(#21734a, #80d4a1);
+  outline-offset: -2px;
+}
+.bl051-roles .rp-custom-group {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+.bl051-roles .rp-custom-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 7px);
+  left: 0;
+  display: grid;
+  width: max-content;
+  min-width: 190px;
+  max-width: min(320px, calc(100vw - 48px));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 18px 42px rgb(22 34 28 / 14%);
+}
+.bl051-roles .rp-custom-menu button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bl051-roles .rp-custom-menu button:last-child {
+  border-bottom: 0;
+}
+.bl051-roles .rp-custom-menu button:hover,
+.bl051-roles .rp-custom-menu button.selected {
+  background: light-dark(#eef6f2, #263f30);
+  color: light-dark(#183e30, #80d4a1);
+}
+.bl051-roles .rp-panel {
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 0 24px;
+  background: var(--surface);
+}
+.bl051-roles .rp-editor {
+  min-width: 0;
+}
+.bl051-roles .rp-locked {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 12px 0 17px;
+}
+.bl051-roles .rp-locked svg {
+  flex: none;
+  margin-top: 2px;
+}
+.bl051-roles .rp-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 15px 18px;
+}
+.bl051-roles .rp-description {
+  grid-column: 1/-1;
+}
+.bl051-roles .rp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+.bl051-roles .rp-editor > .rp-field {
+  margin: 16px 18px 10px;
+}
+.bl051-roles .rp-field input,
+.bl051-roles .rp-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.bl051-roles .rp-field small {
+  color: var(--muted);
+}
+.bl051-roles .rp-permission-head,
+.bl051-roles .rp-category-head,
+.bl051-roles .rp-permission-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 46px 46px;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 8px;
+}
+.bl051-roles .rp-permission-head {
+  min-height: 40px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  background: light-dark(#f3f5f3, #202623);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bl051-roles .rp-permission-head > span:not(:first-child) {
+  text-align: center;
+}
+.bl051-roles .rp-category {
+  border-bottom: 1px solid var(--border);
+}
+.bl051-roles .rp-category-head {
+  min-height: 51px;
+}
+.bl051-roles .rp-category-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 6px 0;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+.bl051-roles .rp-category-toggle svg {
+  flex: none;
+  color: var(--muted);
+}
+.bl051-roles .rp-category-toggle small {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.bl051-roles .rp-permission-row {
+  min-height: 44px;
+  padding-left: 30px;
+  border-top: 1px solid light-dark(#e8edea, #2c3631);
+  background: light-dark(var(--theme-surface-soft), #202623);
+  font-size: 14px;
+}
+.bl051-roles .rp-permission-row small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.bl051-roles .rp-check-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 30px;
+  color: var(--muted);
+}
+.bl051-roles input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: light-dark(#21734a, #80d4a1);
+  cursor: pointer;
+}
+.bl051-roles input[type="checkbox"]:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.bl051-roles .rp-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 18px 0;
+}
+.bl051-roles .rp-footer-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.bl051-roles .rp-delete-action {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bl051-roles .rp-delete-button {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+.bl051-roles .rp-delete-button.is-armed {
+  border-color: light-dark(#b84b3f, #ffaaa4);
+  background: light-dark(#fff2ef, #4a2724);
+  color: light-dark(#912f27, #ffd0cb);
+  box-shadow: inset 0 0 0 1px light-dark(#e2aaa3, #87524c);
+  animation: rp-delete-arm 240ms ease-out;
+}
+.bl051-roles .rp-delete-button.is-armed:not(.is-blocked):hover {
+  background: light-dark(#a84034, #8d332b);
+  color: var(--theme-on-accent);
+}
+.bl051-roles .rp-delete-button.is-blocked {
+  cursor: default;
+}
+.bl051-roles .rp-delete-hint {
+  max-width: min(460px, 100%);
+  color: light-dark(#704137, #ffbcb5);
+  font-size: 13px;
+  line-height: 1.35;
+  animation: rp-delete-hint-in 180ms ease-out;
+}
+@keyframes rp-delete-arm {
+  from {
+    transform: scale(0.98);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes rp-delete-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 736px) {
+  .bl051-roles .rp-panel {
+    padding-bottom: 18px;
+  }
+}
+@media (max-width: 390px) {
+  .bl051-roles .rp-category-toggle {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .bl051-roles .rp-category-toggle small {
+    margin-left: 18px;
+  }
+  .bl051-roles .rp-permission-row {
+    padding-left: 12px;
+  }
+  .bl051-roles .rp-fields {
+    grid-template-columns: 1fr;
+    margin-inline: 12px;
+  }
+  .bl051-roles .rp-editor > .rp-field,
+  .bl051-roles .rp-footer {
+    margin-inline: 12px;
+  }
+  .bl051-roles .rp-footer {
+    padding-inline: 0;
+  }
+  .bl051-roles .rp-permission-head,
+  .bl051-roles .rp-category-head,
+  .bl051-roles .rp-permission-row {
+    grid-template-columns: minmax(0, 1fr) 34px 34px;
+  }
+}
+
+.bl051-roles .secondary-button {
+  font-weight: 500;
+}
+.bl051-roles .rp-mobile-selector {
+  display: none;
+}
+.bl051-roles .rp-permission-label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.bl051-roles .rp-info {
+  color: var(--muted);
+  display: inline-flex;
+}
+@media (max-width: 736px) {
+  .bl051-roles .rp-mobile-selector {
+    display: flex;
+  }
+  .bl051-roles .rp-directory {
+    margin-top: 10px;
+  }
+}

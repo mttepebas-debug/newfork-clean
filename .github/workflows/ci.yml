@@ -1,0 +1,235 @@
+name: CI
+
+on:
+  # WORKFLOW-V2 (spec §7.2): the full check runs once per train, on its train/<stamp> branch; main only ever
+  # receives that same green commit (scripts/train.mjs push), so a push to main or task/** starts nothing.
+  # No pull_request trigger (PROJECT-GECIS, Mert 2026-10-09): a thread's PR would race the train for the one
+  # runner on Mert's PC; a branch reaches main only through the train.
+  push:
+    branches: ["train/**"]
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+
+# A newer push to the same ref (a PR) cancels the running check; every train branch is new.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # BL-107: every job runs on the self-hosted runner on the user's PC (WSL
+    # Ubuntu, label newfork-local); db and e2e reuse this line. Back to
+    # GitHub's machines: change it to `runs-on: &runner ubuntu-latest`.
+    # (scripts/ci-supabase-apart.sh also rejects runner names it does not know;
+    # teach it the hosted runner first -- and the Actions budget is $0 today.)
+    runs-on: &runner [self-hosted, linux, newfork-local]
+    timeout-minutes: 20
+    env:
+      TZ: America/Los_Angeles # tests assume local dev TZ (ScheduleExportSchedules)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version from packageManager
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # no .nvmrc/engines; LTS, matches local
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # ponytail: concurrency=1 only in CI to avoid load flakiness; local scripts unchanged
+      - run: pnpm run lint --concurrency=1
+      - run: pnpm run typecheck --concurrency=1
+      # U18 measured 2026-09-29: --concurrency=2 took 2m26s against 1m44s-1m54s
+      # at 1 (check, db and e2e share one PC), so it stays at 1.
+      - run: pnpm run test --concurrency=1
+      - run: pnpm run build --concurrency=1
+
+  # Database tests (pgTAP) run against a fresh local Supabase: migrations + seed.sql only
+  # (the gitignored local fixture is absent in CI). Only files listed in
+  # supabase/tests/ci-green.txt run; the list may grow, never shrink (FOUNDATION-B stage 1a).
+  db:
+    runs-on: *runner
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the grow-only guard compares against where the branch left main (BL-281)
+      - uses: actions/setup-node@v4 # the schema snapshot check below; no packages needed
+        with:
+          node-version: 22
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0 # pinned: image versions and privilege defaults follow the CLI
+      # setup-cli points the CLI at ghcr.io, which has been refusing pulls
+      # (toomanyrequests, signed in or not); Amazon's public registry carries the
+      # same Supabase images. Every later step pulls from there, pg_prove included.
+      - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
+      # BL-281: a branch is judged against where it left main, not against its
+      # previous push (that push's run may have been cancelled).
+      - name: Green list only grows
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          case "$base" in ""|0000000000000000000000000000000000000000) base=$(git merge-base HEAD origin/main) ;; esac
+          bash scripts/ci-green-guard.sh "$base"
+      # BL-112: check, db and e2e can run at once; isolation is keyed to
+      # which runner this job landed on (RUNNER_NAME), not the job's name.
+      - &apart
+        name: Keep CI's Supabase apart from the shared local stack
+        id: apart
+        run: bash scripts/ci-supabase-apart.sh
+      # BL-112: three jobs' `supabase start` landing in the same second --
+      # ~25 containers registering ports with Docker Desktop's WSL2 proxy at
+      # once -- has failed one of them with "forwards/expose returned
+      # unexpected status: 500", repeatedly enough that 3 quick retries
+      # weren't always enough. A per-runner stagger spreads the registration
+      # load; the retries stay as a second line of defence.
+      - &start-db
+        name: Start Supabase (database, auth, storage, realtime)
+        run: |
+          sleep $(( (CI_RUNNER_INDEX - 1) * 8 ))
+          for attempt in 1 2 3 4 5; do
+            supabase start -x analytics,edge-runtime,functions,imgproxy,inbucket,meta,studio,vector && break
+            [ "$attempt" = 5 ] && exit 1
+            echo "::warning::supabase start failed (attempt $attempt), retrying"
+            supabase stop --no-backup || true
+            sleep $((attempt * 8))
+          done
+      # SCHEMA-SNAP: supabase/schema.sql must be what these migrations build
+      # (seed.sql and the test world builder add nothing to public/app_private).
+      # Before pgTAP, so no test leftovers. A warning until STRICT flips in the
+      # script (ILKELER P16: a new check arrives as a warning).
+      - name: Schema snapshot matches the migrations
+        run: node scripts/schema-snapshot.mjs check
+      # The Schedule speed budget stays on the green list (it only grows) but
+      # runs in the db-budget job below, alone, once the PC is quiet.
+      - name: pgTAP (green list)
+        run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt | grep -vxF "$BUDGET_TEST")
+        env: &budget
+          BUDGET_TEST: supabase/tests/schedule_grid_read_budget.test.sql
+      # Only after the rename took: otherwise this would stop the shared stack.
+      # BL-143: `supabase stop` ends by pruning Docker networks, and Docker's
+      # prune lock is per-daemon, not per-project -- when the db and e2e jobs
+      # (each on its own runner, one shared Docker Desktop) land their stop
+      # step at the same moment, the second one fails with "a prune operation
+      # is already running" even though its own containers were already
+      # removed by then. Retry instead of failing the job over it; a retry is
+      # a no-op once this project is already stopped, so it only waits out
+      # the other job's prune.
+      - &stop-db
+        name: Stop CI's Supabase
+        if: always() && steps.apart.outcome == 'success'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            supabase stop --no-backup && exit 0
+            echo "::warning::supabase stop failed (attempt $attempt), retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+  # BL-562 (Mert, 2026-10-06): the Schedule grid read budget (<= 50 ms) is a
+  # timing test. Beside e2e it measured 57-67 ms and failed main twice; alone
+  # it reads 21-24 ms. So it runs last, after check, db and e2e have finished,
+  # with nothing else from this run on the PC. The 50 ms limit is unchanged.
+  # (Another branch's run can still overlap; trains run one at a time. Only a re-push to the same PR cancels its older run; every train branch is new, so train runs are not cancelled.)
+  db-budget:
+    needs: [check, db, e2e]
+    runs-on: *runner
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0
+      - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
+      - *apart
+      - *start-db
+      - name: pgTAP (Schedule speed budget, alone)
+        run: supabase test db "$BUDGET_TEST"
+        env: *budget
+      - *stop-db
+
+  # Browser tests (Playwright): the real sign-in screen, API and web app against a
+  # fresh local Supabase; people come from the test world builder with a password
+  # (FOUNDATION-B stage 2d).
+  # e2e waits for check and db: three heavy jobs at once on the one PC timed
+  # tests out under load (VAR-E2E-2, BL-764).
+  e2e:
+    needs: [check, db]
+    runs-on: *runner
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0
+      # setup-cli points the CLI at ghcr.io, which has been refusing pulls
+      # (toomanyrequests, signed in or not); Amazon's public registry carries the
+      # same Supabase images. Every later step pulls from there, pg_prove included.
+      - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @newfork/shared --filter @newfork/ui build
+      # BL-112: check, db and e2e can run at once; isolation is keyed to
+      # which runner this job landed on (RUNNER_NAME), not the job's name.
+      - name: Keep CI's Supabase apart from the shared local stack
+        id: apart
+        run: bash scripts/ci-supabase-apart.sh
+      # BL-112: three jobs' `supabase start` landing in the same second --
+      # ~25 containers registering ports with Docker Desktop's WSL2 proxy at
+      # once -- has failed one of them with "forwards/expose returned
+      # unexpected status: 500", repeatedly enough that 3 quick retries
+      # weren't always enough. A per-runner stagger spreads the registration
+      # load; the retries stay as a second line of defence.
+      - name: Start Supabase (database, auth, gateway)
+        run: |
+          sleep $(( (CI_RUNNER_INDEX - 1) * 8 ))
+          for attempt in 1 2 3 4 5; do
+            supabase start -x analytics,edge-runtime,functions,imgproxy,meta,studio,vector && break
+            [ "$attempt" = 5 ] && exit 1
+            echo "::warning::supabase start failed (attempt $attempt), retrying"
+            supabase stop --no-backup || true
+            sleep $((attempt * 8))
+          done
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test -c e2e/playwright.config.ts
+      # BL-112: playwright's webServer teardown is supposed to stop the api/web
+      # processes it started, but a coordinator run caught a leftover process
+      # still answering on this job's ports after the test step ended, feeding
+      # stale state to whatever reused those ports next. Belt and suspenders:
+      # kill anything still listening on them, success or failure.
+      - name: Stop any api/web process left on this runner's ports
+        if: always()
+        run: |
+          web=$((5580 + CI_RUNNER_INDEX * 10))
+          api=$((5581 + CI_RUNNER_INDEX * 10))
+          fuser -k -TERM "$web"/tcp "$api"/tcp 2>/dev/null || true
+          sleep 1
+          fuser -k -KILL "$web"/tcp "$api"/tcp 2>/dev/null || true
+      # Only after the rename took: otherwise this would stop the shared stack.
+      # BL-143: `supabase stop` ends by pruning Docker networks, and Docker's
+      # prune lock is per-daemon, not per-project -- when the db and e2e jobs
+      # (each on its own runner, one shared Docker Desktop) land their stop
+      # step at the same moment, the second one fails with "a prune operation
+      # is already running" even though its own containers were already
+      # removed by then. Retry instead of failing the job over it; a retry is
+      # a no-op once this project is already stopped, so it only waits out
+      # the other job's prune.
+      - name: Stop CI's Supabase
+        if: always() && steps.apart.outcome == 'success'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            supabase stop --no-backup && exit 0
+            echo "::warning::supabase stop failed (attempt $attempt), retrying"
+            sleep $((attempt * 5))
+          done
+          exit 1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7

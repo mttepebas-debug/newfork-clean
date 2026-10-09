@@ -1,0 +1,55 @@
+import { requestFailure } from "../lib/request-error";
+import {
+  notificationUserPreferencePatchSchema,
+  notificationUserPreferenceSavedResultSchema,
+  notificationUserPreferencesResponseSchema,
+  type NotificationUserPreferencePatch,
+} from "@newfork/shared";
+import { supabaseClient } from "../lib/supabase";
+
+async function request(
+  workspaceId: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<unknown> {
+  if (!supabaseClient)
+    throw new Error("Notification preferences storage is not configured");
+  const token =
+    (await supabaseClient.auth.getSession()).data.session?.access_token;
+  if (!token) throw new Error("A current session is required");
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}${workspaceId ? `/v1/workspaces/${workspaceId}${path}` : "/v1/account/notification-preferences"}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+    },
+  );
+  const body = (await response.json().catch(() => null)) as unknown;
+  if (!response.ok) {
+    throw requestFailure(body, response.status, "Notification preferences operation failed");
+  }
+  return body;
+}
+
+export async function getNotificationPreferences(workspaceId: string) {
+  return notificationUserPreferencesResponseSchema.parse(
+    await request(workspaceId, "/me/notification-preferences"),
+  );
+}
+
+export async function saveNotificationPreferences(
+  workspaceId: string,
+  input: NotificationUserPreferencePatch,
+) {
+  const patch = notificationUserPreferencePatchSchema.parse(input);
+  return notificationUserPreferenceSavedResultSchema.parse(
+    await request(workspaceId, "/me/notification-preferences", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  );
+}

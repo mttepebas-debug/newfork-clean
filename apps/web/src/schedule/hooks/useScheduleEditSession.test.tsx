@@ -1,0 +1,300 @@
+import type { ScheduleEditSession } from "@newfork/shared/schedule";
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import {
+  acquireScheduleEditSession,
+  autosaveScheduleEditSession,
+  discardScheduleEditSession,
+  heartbeatScheduleEditSession,
+  ScheduleRequestError,
+} from "../schedule-data";
+import { useScheduleEditSession } from "./useScheduleEditSession";
+
+vi.mock("../schedule-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../schedule-data")>()),
+  acquireScheduleEditSession: vi.fn(),
+  heartbeatScheduleEditSession: vi.fn(),
+  discardScheduleEditSession: vi.fn().mockResolvedValue(undefined),
+  autosaveScheduleEditSession: vi.fn(),
+}));
+
+const WORKSPACE_ID = "11111111-1111-4111-8111-111111111111";
+const session: ScheduleEditSession = {
+  id: "77777777-7777-4777-8777-777777777777",
+  workspace_id: WORKSPACE_ID,
+  week_start: "2026-08-17",
+  source_kind: "draft",
+  source_draft_id: "33333333-3333-4333-8333-333333333333",
+  source_revision: 1,
+  holder_user_id: "88888888-8888-4888-8888-888888888888",
+  holder_name: "Ayse Yilmaz",
+  revision: 4,
+  dirty: true,
+  last_heartbeat: "2026-08-17T12:00:00Z",
+  expires_at: "2026-08-17T12:04:00Z",
+  location_ids: ["22222222-2222-4222-8222-222222222222"],
+  shifts: [],
+};
+const leaseExpired = () =>
+  new ScheduleRequestError("edit lease expired", 409, { error: "edit lease expired", code: "edit_lease_expired" });
+const sessionClosed = () =>
+  new ScheduleRequestError("edit session closed", 409, { error: "edit session closed", code: "edit_session_closed" });
+const ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
+
+function renderEditSession() {
+  const onError = vi.fn();
+  const onEnded = vi.fn();
+  const onAutoSaved = vi.fn();
+  const onRecovered = vi.fn();
+  const hook = renderHook(() =>
+    useScheduleEditSession({ userId: session.holder_user_id, workspaceId: WORKSPACE_ID, onError, onEnded, onAutoSaved, onRecovered }),
+  );
+  return { ...hook, onError, onEnded, onAutoSaved, onRecovered };
+}
+
+async function startEditing(hook: ReturnType<typeof renderEditSession>) {
+  vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session });
+  await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.mocked(acquireScheduleEditSession).mockReset();
+  // Every heartbeat answers with a fresh copy, as the API does.
+  vi.mocked(heartbeatScheduleEditSession).mockReset().mockImplementation(() => Promise.resolve({ ...session }));
+  vi.mocked(discardScheduleEditSession).mockClear();
+  vi.mocked(autosaveScheduleEditSession).mockReset().mockResolvedValue({
+    status: "saved", draft_id: "55555555-5555-4555-8555-555555555555", draft_name: "Auto-save · Ayse Yilmaz · Aug 17, 12:15 PM",
+  });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("useScheduleEditSession", () => {
+  it("keeps the lock alive while the Keep editing? countdown is open (D-Y3)", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    // No activity: the warning opens at 15 min and counts down 15 s (S1).
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 10_000));
+
+    expect(vi.mocked(heartbeatScheduleEditSession).mock.calls.length).toBe(15);
+    expect(hook.result.current.idleSeconds).not.toBeNull();
+    expect(hook.onEnded).not.toHaveBeenCalled();
+  });
+
+  it("still ends the edit at the idle timeout although every heartbeat answers", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  // S1 (KARARLAR "Hareketsizlik"): the work is kept, never thrown away.
+  it("keeps the work as an Auto-save draft when the countdown ends, and says so", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    expect(hook.onAutoSaved).toHaveBeenCalledWith("Auto-save · Ayse Yilmaz · Aug 17, 12:15 PM");
+  });
+
+  // D-O9 (KK-162): a lapsed edit put aside on opening is named, once.
+  it("names the draft an earlier edit was saved as when opening sets it aside", async () => {
+    const hook = renderEditSession();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      status: "acquired_after_recovery",
+      session,
+      recovered_draft_id: "55555555-5555-4555-8555-555555555555",
+      recovered_draft_name: "Auto-save · Ayse Yilmaz · Oct 5, 9:14 PM",
+    });
+
+    await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+
+    expect(hook.onRecovered).toHaveBeenCalledWith("Auto-save · Ayse Yilmaz · Oct 5, 9:14 PM");
+  });
+
+  it("says nothing when opening sets nothing aside", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    expect(hook.onRecovered).not.toHaveBeenCalled();
+  });
+
+  // A heartbeat answering after the edit ended (Discard, Save) must not bring it back.
+  it("ignores a heartbeat that answers after the edit ended", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    let answer: (value: ScheduleEditSession) => void = () => undefined;
+    vi.mocked(heartbeatScheduleEditSession).mockImplementationOnce(
+      () => new Promise((resolve) => { answer = resolve; }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    act(() => hook.result.current.setSession(null));
+    await act(async () => { answer({ ...session }); });
+
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  // A shift change whose lock lapsed picks the edit back up and tries once more,
+  // never showing the raw lock text (W-1a follow-up).
+  it("retries a change once after picking a lapsed lock back up", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: { ...session } });
+    const action = vi.fn().mockRejectedValueOnce(leaseExpired()).mockResolvedValueOnce("done");
+
+    let result: unknown;
+    await act(async () => { result = await hook.result.current.runWithLease(action); });
+
+    expect(result).toBe("done");
+    expect(action).toHaveBeenCalledTimes(2);
+  });
+
+  it("says plainly when a change's lock lapses twice", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: { ...session } });
+    const action = vi.fn().mockRejectedValue(leaseExpired());
+
+    let failure: unknown;
+    await act(async () => { failure = await hook.result.current.runWithLease(action).catch((error: unknown) => error); });
+
+    expect((failure as Error).message).toBe("Your edit could not be reconnected. Check your connection and try again.");
+  });
+
+  // DB-1a: a person whose scope shrank is refused with 403 authz.*; the edit closes, plainly.
+  it("closes the edit and says why when the person may no longer edit it", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(heartbeatScheduleEditSession).mockRejectedValueOnce(
+      new ScheduleRequestError("Not allowed", 403, { error: "Not allowed", reason: "authz.out_of_scope" }),
+    );
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    expect(hook.onError).toHaveBeenCalledWith("You can no longer edit this schedule, so your edit closed.");
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("says why when keeping an idle edit is refused", async () => {
+    vi.mocked(autosaveScheduleEditSession).mockRejectedValueOnce(
+      new ScheduleRequestError("Not allowed", 403, { error: "Not allowed", reason: "authz.out_of_scope" }),
+    );
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(hook.onError).toHaveBeenCalledWith("You can no longer edit this schedule, so your edit closed.");
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+  });
+
+  it("says a draft is no longer available when opening it is refused", async () => {
+    const hook = renderEditSession();
+    vi.mocked(acquireScheduleEditSession).mockRejectedValueOnce(
+      new ScheduleRequestError("Not allowed", 403, { error: "Not allowed", reason: "authz.out_of_scope" }),
+    );
+
+    await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+
+    expect(hook.onError).toHaveBeenCalledWith("This draft is no longer available to you.");
+  });
+
+  it("closes an edit with nothing to keep quietly", async () => {
+    vi.mocked(autosaveScheduleEditSession).mockResolvedValueOnce({ status: "nothing_to_save", draft_id: null, draft_name: null });
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 15_000));
+
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.onAutoSaved).not.toHaveBeenCalled();
+  });
+
+  it("does not pass off a fresh edit as the lapsed one; it releases it and ends the edit", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    const fresh = { ...session, id: "66666666-6666-4666-8666-666666666666", dirty: false };
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session: fresh });
+
+    let recovered: ScheduleEditSession | null = session;
+    await act(async () => { recovered = await hook.result.current.recoverLease(); });
+
+    expect(recovered).toBeNull();
+    expect(hook.result.current.session).toBeNull();
+    expect(discardScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, fresh.id);
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.onError).toHaveBeenCalledWith(expect.not.stringMatching(/lease/i));
+  });
+
+  it("picks the same edit back up when its lock lapsed, without a raw error (D-Y3)", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    const resumed = { ...session, expires_at: "2026-08-17T12:09:00Z" };
+    vi.mocked(heartbeatScheduleEditSession).mockRejectedValueOnce(leaseExpired());
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: resumed });
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    expect(acquireScheduleEditSession).toHaveBeenLastCalledWith(
+      WORKSPACE_ID, session.week_start, "draft", session.source_draft_id, session.location_ids,
+    );
+    expect(hook.result.current.session).toEqual(resumed);
+    expect(hook.onError).not.toHaveBeenCalled();
+  });
+
+  // EKRAN-01 B3: an edit closed elsewhere (Ayşe opened the week's published
+  // schedule in another tab, which set this draft edit aside) is not picked up
+  // again: opening it again would set the other tab's edit aside in turn.
+  it("ends an edit closed elsewhere without opening it again", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(heartbeatScheduleEditSession).mockRejectedValueOnce(sessionClosed());
+    vi.mocked(acquireScheduleEditSession).mockClear();
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+    expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+    expect(hook.onError).toHaveBeenCalledWith(ENDED_AWAY);
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("does not retry a change on an edit closed elsewhere; it ends the edit and says so", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockClear();
+    const action = vi.fn().mockRejectedValue(sessionClosed());
+
+    let failure: unknown;
+    await act(async () => { failure = await hook.result.current.runWithLease(action).catch((error: unknown) => error); });
+
+    expect(action).toHaveBeenCalledTimes(1);
+    expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+    expect((failure as Error).message).toBe(ENDED_AWAY);
+    expect(hook.onEnded).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("recoverLease resumes the open edit and hands back the live session", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "resumed", session: { ...session } });
+
+    let recovered: ScheduleEditSession | null = null;
+    await act(async () => { recovered = await hook.result.current.recoverLease(); });
+
+    expect(recovered).toEqual(session);
+  });
+});

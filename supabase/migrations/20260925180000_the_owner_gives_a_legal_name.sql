@@ -1,0 +1,799 @@
+-- BL-080. The owner's legal name was asked for nowhere. Employees give theirs
+-- during onboarding; the owner never runs onboarding, and the account area
+-- filled the gap by copying the record's name into the legal name the first
+-- time an emergency contact was saved -- a guess, written where documents and
+-- signatures will read it.
+--
+-- User decisions 2026-09-25:
+--   1. The owner gives it at the first step of setup. The three name fields
+--      there are the legal name too; the account and the record keep taking
+--      their name from the same answers.
+--   2. The owner can change it later, in Account > Profile. The old name, the
+--      new name, who changed it and when go to the audit log. Employees keep
+--      the onboarding review they have.
+--   3. It is required, it cannot be empty, and it is never copied from the
+--      account name.
+
+-- 1. A private record can hold a legal name before it holds anything else ------------
+--
+-- The first step of setup knows the owner's legal name and nothing else, so the
+-- row has to exist without an emergency contact. The contact becomes all or
+-- nothing instead of always: its name and phone arrive together or not at all,
+-- and a record with nobody on it has no relationship to show either. Onboarding
+-- still asks every employee for one; that is the form's rule and it stays in
+-- save_employee_onboarding_profile_service. The relationship loses its
+-- "Emergency contact" default, which would otherwise put a relationship on a
+-- record with nobody on it.
+alter table public.employee_private_profiles
+  alter column emergency_contact_name drop not null,
+  alter column emergency_contact_phone drop not null,
+  alter column emergency_contact_relationship drop not null,
+  alter column emergency_contact_relationship drop default,
+  add constraint employee_private_profiles_emergency_contact_whole check (
+    (emergency_contact_name is null) = (emergency_contact_phone is null)
+    and (emergency_contact_name is not null or emergency_contact_relationship is null)
+  );
+
+-- 2. One writer for the owner's legal name --------------------------------------------
+--
+-- Setup's first step and the account area both land here. Validation is the
+-- column's, said in words the screen can show.
+create function app_private.write_owner_legal_name(
+  target_workspace_id uuid,
+  target_employee_id uuid,
+  first_name text,
+  middle_name text,
+  last_name text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  cleaned_first text := btrim(coalesce(first_name, ''));
+  cleaned_middle text := btrim(coalesce(middle_name, ''));
+  cleaned_last text := btrim(coalesce(last_name, ''));
+begin
+  if cleaned_first = '' or cleaned_last = '' then
+    raise exception 'a legal name needs a first and a last name' using errcode = '22023';
+  end if;
+  if char_length(cleaned_first) > 80 or char_length(cleaned_middle) > 80
+    or char_length(cleaned_last) > 80 then
+    raise exception 'each part of a legal name fits in 80 characters' using errcode = '22023';
+  end if;
+
+  insert into public.employee_private_profiles (
+    employee_id, workspace_id, legal_first_name, legal_middle_name, legal_last_name
+  ) values (
+    target_employee_id, target_workspace_id, cleaned_first, cleaned_middle, cleaned_last
+  )
+  on conflict (employee_id) do update set
+    legal_first_name = excluded.legal_first_name,
+    legal_middle_name = excluded.legal_middle_name,
+    legal_last_name = excluded.legal_last_name,
+    updated_at = now();
+end;
+$$;
+
+revoke all on function app_private.write_owner_legal_name(uuid, uuid, text, text, text)
+  from public, anon, authenticated;
+
+-- 3a. The owner's record is filed under the names setup asked for, and nothing else -----
+--
+-- It used to fall back to the account's display name, the sign-up metadata,
+-- the e-mail's local part, and finally 'Owner' / '-'. Setup now refuses a
+-- first step without a name, so that chain could only ever guess -- the thing
+-- decision 3 rules out. A record is opened from the given and family name or
+-- not at all.
+create or replace function app_private.ensure_owner_employee_profile(
+  target_workspace_id uuid,
+  owner_user_id uuid,
+  owner_first_name text default null,
+  owner_middle_name text default null,
+  owner_last_name text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  existing_employee_id uuid;
+  next_code bigint;
+  owner_email text;
+  given_name text := btrim(coalesce(owner_first_name, ''));
+  family_name text := btrim(coalesce(owner_last_name, ''));
+begin
+  if not exists (
+    select 1
+    from public.workspace_memberships membership
+    where membership.workspace_id = target_workspace_id
+      and membership.user_id = owner_user_id
+      and membership.role = 'owner'::public.workspace_role
+      and membership.status = 'active'::public.membership_status
+  ) then
+    raise exception 'active owner membership required' using errcode = '42501';
+  end if;
+
+  select employee.id
+  into existing_employee_id
+  from public.employee_profiles employee
+  where employee.workspace_id = target_workspace_id
+    and employee.user_id = owner_user_id
+    and employee.archived_at is null
+  order by employee.created_at
+  limit 1
+  for update;
+
+  -- Whatever the employees tab says is what the workspace decided to call this
+  -- person. Setup finishing again is not a reason to argue with it, and the
+  -- owner hides from the schedule there like anyone else.
+  if existing_employee_id is not null then
+    return existing_employee_id;
+  end if;
+
+  if given_name = '' or family_name = '' then
+    raise exception 'a legal name needs a first and a last name' using errcode = '22023';
+  end if;
+
+  select lower(auth_user.email) into owner_email
+  from auth.users auth_user
+  where auth_user.id = owner_user_id;
+
+  select coalesce(max(substring(employee.employee_code from 3)::bigint), 0) + 1
+  into next_code
+  from public.employee_profiles employee
+  where employee.workspace_id = target_workspace_id
+    and employee.employee_code ~ '^E-[0-9]+$';
+
+  insert into public.workspace_employee_counters (workspace_id, next_value)
+  values (target_workspace_id, next_code + 1)
+  on conflict (workspace_id) do update
+  set next_value = greatest(
+    public.workspace_employee_counters.next_value + 1,
+    excluded.next_value
+  )
+  returning next_value - 1 into next_code;
+
+  insert into public.employee_profiles (
+    workspace_id, user_id, employee_code, first_name, middle_name, last_name,
+    preferred_name, invitation_email, internal_note, is_remote,
+    is_excluded_from_schedule, created_by
+  ) values (
+    target_workspace_id,
+    owner_user_id,
+    'E-' || lpad(next_code::text, 4, '0'),
+    -- Too long is refused with the legal name's own words right after this.
+    left(given_name, 80),
+    left(btrim(coalesce(owner_middle_name, '')), 80),
+    left(family_name, 80),
+    '',
+    owner_email,
+    -- An internal note is a manager's sentence about a person. Nothing the
+    -- system has to say belongs in it.
+    '',
+    false,
+    -- On the schedule like everyone else. Exclude is a choice made in the row.
+    false,
+    owner_user_id
+  )
+  returning id into existing_employee_id;
+
+  insert into public.employee_events (
+    workspace_id, employee_id, actor_user_id, action, summary
+  ) values (
+    target_workspace_id,
+    existing_employee_id,
+    owner_user_id,
+    'employee.owner_record_created',
+    'Owner employee record created when setup began'
+  );
+
+  return existing_employee_id;
+end;
+$function$;
+
+-- 3. Setup's first step writes it, and no step passes without it ----------------------
+--
+-- The rule lives in the one function that moves setup forward: every save
+-- leaves the owner with a legal name on file, or is refused. The first save is
+-- the one that files the owner, so an owner who is past the first step -- or
+-- finished -- always has one. A later step sends no names and keeps what is on
+-- file; the first step sends them again when the owner goes back to it, and
+-- the correction is the legal name.
+create or replace function app_private.apply_owner_onboarding_update(
+  actor_user_id uuid,
+  target_workspace_id uuid,
+  workspace_name text,
+  next_step smallint,
+  mark_complete boolean default false,
+  expected_revision integer default null,
+  owner_first_name text default null,
+  owner_middle_name text default null,
+  owner_last_name text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  owner_employee_id uuid;
+  current_status public.onboarding_status;
+  current_revision integer;
+  completed_timestamp timestamptz;
+  names_given boolean := coalesce(btrim(owner_first_name), '') <> ''
+    or coalesce(btrim(owner_middle_name), '') <> ''
+    or coalesce(btrim(owner_last_name), '') <> '';
+begin
+  if actor_user_id is null then
+    raise exception 'valid actor required' using errcode = '42501';
+  end if;
+  if not exists (
+    select 1
+    from public.workspace_memberships membership
+    where membership.workspace_id = target_workspace_id
+      and membership.user_id = actor_user_id
+      and membership.role = 'owner'
+      and membership.status = 'active'
+  ) then
+    raise exception 'owner access required' using errcode = '42501';
+  end if;
+  if char_length(btrim(workspace_name)) not between 1 and 120 then
+    raise exception 'workspace name must be between 1 and 120 characters' using errcode = '22023';
+  end if;
+  if next_step not between 1 and 4 then
+    raise exception 'invalid onboarding step' using errcode = '22023';
+  end if;
+
+  select onboarding.status, onboarding.revision
+  into current_status, current_revision
+  from public.workspace_onboarding onboarding
+  where onboarding.workspace_id = target_workspace_id
+  for update;
+
+  if current_status is null then
+    raise exception 'workspace onboarding was not found' using errcode = 'P0002';
+  end if;
+
+  if current_status = 'complete'::public.onboarding_status then
+    if mark_complete then
+      return;
+    end if;
+    raise exception 'completed owner onboarding cannot be changed' using errcode = '22023';
+  end if;
+
+  if expected_revision is not null and current_revision <> expected_revision then
+    raise exception 'owner onboarding revision conflict' using errcode = '40001';
+  end if;
+
+  if mark_complete and not exists (
+    select 1
+    from public.locations location
+    where location.workspace_id = target_workspace_id
+      and location.archived_at is null
+  ) then
+    raise exception 'at least one active location is required to complete owner onboarding' using errcode = '23514';
+  end if;
+
+  if mark_complete and not exists (
+    select 1
+    from public.departments department
+    where department.workspace_id = target_workspace_id
+      and department.archived_at is null
+  ) then
+    raise exception 'at least one active department is required to complete owner onboarding' using errcode = '23514';
+  end if;
+
+  if mark_complete and not exists (
+    select 1
+    from public.jobs job
+    where job.workspace_id = target_workspace_id
+      and job.archived_at is null
+  ) then
+    raise exception 'at least one active job is required to complete owner onboarding' using errcode = '23514';
+  end if;
+
+  completed_timestamp := now();
+
+  update public.workspaces
+  set name = btrim(workspace_name), updated_at = completed_timestamp
+  where id = target_workspace_id;
+
+  update public.workspace_onboarding
+  set
+    status = case
+      when mark_complete then 'complete'::public.onboarding_status
+      else 'incomplete'::public.onboarding_status
+    end,
+    current_step = next_step,
+    completed_at = case when mark_complete then completed_timestamp else null end,
+    revision = revision + 1,
+    updated_by = actor_user_id,
+    updated_at = completed_timestamp
+  where workspace_id = target_workspace_id;
+
+  -- No names sent and none on file: the first step has not been answered.
+  if not names_given and not exists (
+    select 1
+    from public.employee_profiles employee
+    join public.employee_private_profiles private_profile
+      on private_profile.employee_id = employee.id
+    where employee.workspace_id = target_workspace_id
+      and employee.user_id = actor_user_id
+      and employee.archived_at is null
+  ) then
+    raise exception 'the owner''s legal name is required' using errcode = '23514';
+  end if;
+
+  -- The owner is a member from the first step, so their record exists from the
+  -- first step too. Waiting for completion meant the team list did not contain
+  -- the one person who was certainly on the team.
+  owner_employee_id := app_private.ensure_owner_employee_profile(
+    target_workspace_id,
+    actor_user_id,
+    owner_first_name,
+    owner_middle_name,
+    owner_last_name
+  );
+
+  if names_given then
+    perform app_private.write_owner_legal_name(
+      target_workspace_id, owner_employee_id,
+      owner_first_name, owner_middle_name, owner_last_name
+    );
+  end if;
+
+  -- Locations and jobs come into existence during setup, so this runs on every
+  -- save and picks up whatever was added since the last one.
+  perform app_private.open_owner_record_to_everything(
+    target_workspace_id,
+    owner_employee_id,
+    actor_user_id
+  );
+
+  if mark_complete then
+
+    insert into public.workspace_entitlements (
+      workspace_id,
+      status,
+      trial_started_at,
+      trial_ends_at,
+      current_period_started_at,
+      current_period_ends_at,
+      billing_owner_user_id,
+      provider,
+      created_at,
+      updated_at
+    ) values (
+      target_workspace_id,
+      'trialing'::public.workspace_entitlement_status,
+      completed_timestamp,
+      completed_timestamp + interval '14 days',
+      completed_timestamp,
+      completed_timestamp + interval '14 days',
+      actor_user_id,
+      'internal'::public.workspace_entitlement_provider,
+      completed_timestamp,
+      completed_timestamp
+    )
+    on conflict (workspace_id) do nothing;
+  end if;
+
+  insert into public.audit_events (
+    workspace_id, actor_user_id, action, target_type, target_id, metadata
+  ) values (
+    target_workspace_id,
+    actor_user_id,
+    case when mark_complete then 'workspace.onboarding_completed' else 'workspace.onboarding_saved' end,
+    'workspace',
+    target_workspace_id::text,
+    jsonb_build_object(
+      'step', next_step,
+      'previous_revision', current_revision,
+      'revision', current_revision + 1
+    )
+  );
+end;
+$function$;
+
+-- 4. The owner changes it later, and the change is on record ---------------------------
+--
+-- Owner only, and only their own record: there is no target person to pass,
+-- the record is the caller's in the workspace named. The rule is
+-- workspace.setup's -- owner only, the whole organization -- so the core
+-- answers with that action rather than a second key with the same row.
+create function public.save_owner_legal_name_service(
+  actor_user_id uuid,
+  target_workspace_id uuid,
+  legal_first_name text,
+  legal_middle_name text,
+  legal_last_name text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  own_employee_id uuid;
+  previous_name jsonb;
+  next_name jsonb;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.setup');
+
+  select employee.id into own_employee_id
+  from public.employee_profiles employee
+  where employee.workspace_id = target_workspace_id
+    and employee.user_id = actor_user_id
+    and employee.archived_at is null;
+  if own_employee_id is null then
+    raise exception 'employee not found' using errcode = 'P0002';
+  end if;
+
+  select jsonb_build_object(
+    'first_name', private_profile.legal_first_name,
+    'middle_name', private_profile.legal_middle_name,
+    'last_name', private_profile.legal_last_name
+  ) into previous_name
+  from public.employee_private_profiles private_profile
+  where private_profile.employee_id = own_employee_id
+  for update;
+
+  perform app_private.write_owner_legal_name(
+    target_workspace_id, own_employee_id,
+    legal_first_name, legal_middle_name, legal_last_name
+  );
+
+  select jsonb_build_object(
+    'first_name', private_profile.legal_first_name,
+    'middle_name', private_profile.legal_middle_name,
+    'last_name', private_profile.legal_last_name
+  ) into next_name
+  from public.employee_private_profiles private_profile
+  where private_profile.employee_id = own_employee_id;
+
+  -- A save that changes nothing is not a change.
+  if previous_name is not distinct from next_name then
+    return;
+  end if;
+
+  insert into public.audit_events (
+    workspace_id, actor_user_id, action, target_type, target_id, metadata
+  ) values (
+    target_workspace_id,
+    actor_user_id,
+    'employee.legal_name_changed',
+    'employee',
+    own_employee_id::text,
+    jsonb_build_object('previous', previous_name, 'next', next_name)
+  );
+end;
+$$;
+
+revoke all on function public.save_owner_legal_name_service(uuid, uuid, text, text, text)
+  from public, anon, authenticated;
+grant execute on function public.save_owner_legal_name_service(uuid, uuid, text, text, text)
+  to service_role;
+
+-- 5. The account area writes a contact, never a legal name -----------------------------
+--
+-- It used to open a missing private record with the record's name copied in as
+-- the legal name. The record is now opened by the step that knows the legal
+-- name -- onboarding for an employee, setup for the owner -- so here it only
+-- has to exist.
+create or replace function public.save_own_employment_contact_service(
+  actor_user_id uuid,
+  target_workspace_id uuid,
+  target_employee_id uuid,
+  contact_name text,
+  contact_relationship text,
+  contact_phone text,
+  contact_email text default ''::text,
+  personal_phone text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  employee_row public.employee_profiles%rowtype;
+  private_row public.employee_private_profiles%rowtype;
+  cleaned_personal_phone text := nullif(btrim(coalesce(personal_phone, '')), '');
+  relationship text;
+begin
+  select * into employee_row
+  from public.employee_profiles
+  where id = target_employee_id
+    and workspace_id = target_workspace_id
+    and archived_at is null;
+
+  if employee_row.id is null then
+    raise exception 'employee not found' using errcode = 'P0002';
+  end if;
+
+  -- The one rule: your own record, whoever you are here.
+  if employee_row.user_id is distinct from actor_user_id then
+    raise exception 'this record belongs to somebody else' using errcode = '42501';
+  end if;
+
+  if char_length(btrim(coalesce(contact_name, ''))) < 1
+    or char_length(btrim(coalesce(contact_phone, ''))) < 7 then
+    raise exception 'an emergency contact needs a name and a phone number'
+      using errcode = '22023';
+  end if;
+  -- The column allows nothing shorter, and a half-typed number here would be
+  -- refused by the constraint with nowhere to read the refusal.
+  if cleaned_personal_phone is not null
+    and char_length(cleaned_personal_phone) < 7 then
+    raise exception 'a personal phone number is too short to reach anybody'
+      using errcode = '22023';
+  end if;
+
+  select * into private_row
+  from public.employee_private_profiles
+  where employee_id = employee_row.id
+  for update;
+  if private_row.employee_id is null then
+    raise exception 'there is no legal name on file for this record yet'
+      using errcode = '23514';
+  end if;
+
+  relationship := coalesce(
+    nullif(btrim(coalesce(contact_relationship, '')), ''),
+    private_row.emergency_contact_relationship
+  );
+  if relationship is null then
+    raise exception 'an emergency contact needs a relationship' using errcode = '22023';
+  end if;
+
+  update public.employee_private_profiles
+  set
+    phone = coalesce(cleaned_personal_phone, phone),
+    emergency_contact_name = btrim(contact_name),
+    emergency_contact_relationship = relationship,
+    emergency_contact_phone = btrim(contact_phone),
+    emergency_contact_email = btrim(coalesce(contact_email, '')),
+    updated_at = now()
+  where employee_id = employee_row.id;
+end;
+$$;
+
+-- 6. The owner reads it back ------------------------------------------------------------
+--
+-- Account > Profile shows the legal name before it can be changed. Same rule as
+-- the change: owner only, the caller's own record in the workspace named. One
+-- row always; every part is null when no legal name is on file yet.
+create function public.get_own_legal_name_service(
+  actor_user_id uuid,
+  target_workspace_id uuid
+)
+returns table (
+  legal_first_name text,
+  legal_middle_name text,
+  legal_last_name text
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.setup');
+
+  return query
+  select private_profile.legal_first_name, private_profile.legal_middle_name,
+    private_profile.legal_last_name
+  from (select 1) always_one_row
+  left join public.employee_profiles employee
+    on employee.workspace_id = target_workspace_id
+   and employee.user_id = actor_user_id
+   and employee.archived_at is null
+  left join public.employee_private_profiles private_profile
+    on private_profile.employee_id = employee.id;
+end;
+$$;
+
+revoke all on function public.get_own_legal_name_service(uuid, uuid)
+  from public, anon, authenticated;
+grant execute on function public.get_own_legal_name_service(uuid, uuid)
+  to service_role;
+
+-- 7. Ownership goes only to somebody with a legal name -----------------------------------
+--
+-- User decision 2026-09-26: an owner without a legal name cannot exist, so a
+-- transfer to somebody without one is refused when it is started. Nothing
+-- removes a legal name once filed, so accepting the transfer does not ask
+-- again. Same shape as the other refusals the Workspaces screen reads: 23514
+-- and a transfer.* key.
+create or replace function public.initiate_workspace_ownership_transfer_service(actor_user_id uuid, target_workspace_id uuid, target_user_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  workspace_row public.workspaces%rowtype;
+  actor_membership public.workspace_memberships%rowtype;
+  target_membership public.workspace_memberships%rowtype;
+  target_access public.workspace_role;
+  target_email_verified boolean;
+  target_onboarding_blocked boolean;
+  transfer_id uuid;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.transfer_ownership');
+
+  if actor_user_id is null or target_user_id is null then
+    raise exception 'valid actor and target required' using errcode = '42501', hint = 'actor.required';
+  end if;
+  if actor_user_id = target_user_id then
+    raise exception 'ownership transfer target must be another account' using errcode = '23514', hint = 'transfer.target_is_self';
+  end if;
+
+  select * into workspace_row
+  from public.workspaces
+  where id = target_workspace_id
+  for update;
+
+  if workspace_row.id is null or workspace_row.lifecycle_status <> 'active' then
+    raise exception 'workspace not found' using errcode = '02000', hint = 'workspace.not_found';
+  end if;
+
+  select membership.* into actor_membership
+  from public.workspace_memberships membership
+  where membership.workspace_id = target_workspace_id
+    and membership.user_id = actor_user_id
+    and membership.status = 'active'
+  limit 1;
+
+  if exists (
+    select 1
+    from public.workspace_ownership_transfers transfer
+    where transfer.workspace_id = target_workspace_id
+      and transfer.status = 'pending'
+  ) then
+    raise exception 'pending ownership transfer already exists' using errcode = '23505', hint = 'transfer.already_pending';
+  end if;
+
+  select membership.* into target_membership
+  from public.workspace_memberships membership
+  where membership.workspace_id = target_workspace_id
+    and membership.user_id = target_user_id
+    and membership.status = 'active'
+  limit 1
+  for update;
+
+  select coalesce(role.access_class, membership.role) into target_access
+  from public.workspace_memberships membership
+  left join public.workspace_roles role
+    on role.id = membership.role_id
+   and role.workspace_id = membership.workspace_id
+  where membership.workspace_id = target_workspace_id
+    and membership.user_id = target_user_id
+    and membership.status = 'active'
+  limit 1;
+
+  if target_membership.id is null or target_access is distinct from 'admin'::public.workspace_role then
+    raise exception 'ownership transfer target must be an active admin' using errcode = '23514', hint = 'transfer.target_not_admin';
+  end if;
+
+  select exists (
+    select 1
+    from auth.users target_user
+    where target_user.id = target_user_id
+      and target_user.email_confirmed_at is not null
+  ) into target_email_verified;
+  if not target_email_verified then
+    raise exception 'ownership transfer target must have a verified email' using errcode = '23514', hint = 'transfer.target_email_unverified';
+  end if;
+
+  select exists (
+    select 1
+    from public.employee_onboarding_cases onboarding
+    where onboarding.workspace_id = target_workspace_id
+      and onboarding.membership_id = target_membership.id
+      and onboarding.status <> 'approved'
+  ) into target_onboarding_blocked;
+  if target_onboarding_blocked then
+    raise exception 'ownership transfer target must have completed onboarding' using errcode = '23514', hint = 'transfer.target_onboarding_incomplete';
+  end if;
+
+  -- The owner's legal name is required (BL-080), so ownership only goes to
+  -- somebody whose legal name is already on file here.
+  if not exists (
+    select 1
+    from public.employee_profiles employee
+    join public.employee_private_profiles private_profile
+      on private_profile.employee_id = employee.id
+    where employee.workspace_id = target_workspace_id
+      and employee.user_id = target_user_id
+      and employee.archived_at is null
+  ) then
+    raise exception 'the new owner has no legal name on file yet' using errcode = '23514', hint = 'transfer.target_legal_name_missing';
+  end if;
+
+  insert into public.workspace_ownership_transfers (
+    workspace_id,
+    initiated_by,
+    target_user_id,
+    previous_owner_membership_id,
+    target_membership_id
+  )
+  values (
+    target_workspace_id,
+    actor_user_id,
+    target_user_id,
+    actor_membership.id,
+    target_membership.id
+  )
+  returning id into transfer_id;
+
+  insert into public.audit_events (
+    workspace_id,
+    actor_user_id,
+    action,
+    target_type,
+    target_id,
+    metadata
+  )
+  values (
+    target_workspace_id,
+    actor_user_id,
+    'workspace.ownership_transfer.initiated',
+    'workspace_ownership_transfer',
+    transfer_id::text,
+    jsonb_build_object('target_user_id', target_user_id)
+  );
+
+  return jsonb_build_object(
+    'status', 'pending',
+    'transfer_id', transfer_id,
+    'workspace_id', target_workspace_id,
+    'target_user_id', target_user_id
+  );
+end;
+$function$;
+
+-- 8. The candidate list offers only people a transfer would accept -----------------------
+--
+-- Section 7 refuses a transfer to somebody with no legal name on file; the
+-- Workspaces screen's candidate search still offered them, so the screen would
+-- let an owner pick a person and then say no. Same filter here, same shape.
+create or replace function public.search_workspace_ownership_candidates_service(actor_user_id uuid, target_workspace_id uuid, search_text text)
+ returns table("userId" uuid, name text, email text)
+ language plpgsql
+ stable security definer
+ set search_path to ''
+as $function$
+begin
+  if actor_user_id is null or not app_private.workspace_allows_interactive_access(target_workspace_id)
+    or not exists (
+      select 1 from public.workspace_memberships m
+      left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+      where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
+        and m.status = 'active' and coalesce(r.access_class, m.role) = 'owner'
+    ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
+  if search_text is null or char_length(btrim(search_text)) not between 2 and 80 then
+    raise exception 'search must contain 2 to 80 characters' using errcode = '22023', hint = 'search.length_invalid';
+  end if;
+  return query
+    select m.user_id, coalesce(nullif(concat_ws(' ', coalesce(nullif(e.preferred_name, ''), e.first_name), e.last_name), ''), p.display_name, u.email)::text, u.email::text
+    from public.workspace_memberships m
+    join auth.users u on u.id = m.user_id and u.email_confirmed_at is not null
+    left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+    left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
+    left join public.user_profiles p on p.user_id = m.user_id
+    where m.workspace_id = target_workspace_id and m.status = 'active'
+      and m.user_id <> actor_user_id and coalesce(r.access_class, m.role) = 'admin'
+      -- Active legacy memberships without an onboarding case are already complete.
+      and not exists (select 1 from public.employee_onboarding_cases c
+        where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')
+      -- A legal name on file, or the transfer would be refused (BL-080).
+      and exists (select 1 from public.employee_private_profiles private_profile
+        where private_profile.employee_id = e.id)
+      -- Literal substring matching: '%' and '_' cannot enumerate the directory.
+      and position(lower(btrim(search_text)) in lower(concat_ws(' ', e.first_name, e.last_name, e.preferred_name, p.display_name, u.email))) > 0
+    order by 2, m.user_id limit 10;
+end; $function$;

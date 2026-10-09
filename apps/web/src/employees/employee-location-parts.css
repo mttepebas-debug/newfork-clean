@@ -1,0 +1,90 @@
+/* Employees: where somebody works (FB-6.2.8). Tokens only. */
+
+/* Remove on a location's row: soft red at rest, solid red once armed (two
+   clicks), the Account photo rule (account.css). */
+.nf-button.danger-button.employee-location-remove:not(.is-armed) {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.nf-button.danger-button.employee-location-remove:not(.is-armed):not(:disabled):hover {
+  background: var(--theme-danger-surface);
+  box-shadow: inset 0 0 0 1px var(--theme-danger-border);
+}
+.nf-button.employee-location-remove {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .nf-button.employee-location-remove {
+    min-height: 40px;
+  }
+}
+
+/* A location only Remove takes them off: row with room for the button. */
+.employee-assignment-picker > div[data-locked="true"] {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+/* Terminate, switched off for a manager, and the reason under Locations. */
+.employee-lifecycle-button.employee-terminate-passive[aria-disabled="true"] {
+  padding: 0 8px;
+  color: var(--theme-muted-strong);
+  cursor: not-allowed;
+}
+.employee-lifecycle-button.employee-terminate-passive[aria-disabled="true"]:hover {
+  background: transparent;
+}
+.employee-terminate-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: -6px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.employee-terminate-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+/* The list's location cell and the phone's chips under the name. */
+.employee-location-cell {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.employee-location-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.employee-chip {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 2px 9px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 999px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.employee-chip-warning {
+  border-color: var(--theme-warning-border);
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.employee-location-chips {
+  display: none;
+}
+@media (max-width: 720px) {
+  .employee-location-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
+  }
+}

@@ -1,0 +1,674 @@
+.schedule-badge-lab-clone .schedule-badge-lab-panel {
+  position: fixed;
+  top: 72px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1500;
+  display: grid;
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 88px);
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #aebbb4;
+  border-radius: 8px;
+  background: rgb(250 251 249 / 98%);
+  box-shadow: 0 18px 52px rgb(24 36 31 / 24%);
+  color: #24322c;
+}
+
+.schedule-badge-lab-clone .schedule-badge-lab-panel[data-open="false"] {
+  top: auto;
+  width: 232px;
+  height: 42px;
+  max-height: 42px;
+}
+
+.schedule-badge-lab-panel-header {
+  display: grid;
+  min-height: 42px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-bottom: 1px solid #31443b;
+  background: #20332c;
+  color: #fff;
+}
+
+.schedule-badge-lab-panel[data-open="false"] .schedule-badge-lab-panel-header {
+  border-bottom: 0;
+}
+
+.schedule-badge-lab-panel-title,
+.schedule-badge-lab-header-actions button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.schedule-badge-lab-panel-title {
+  display: flex;
+  min-width: 0;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.schedule-badge-lab-panel-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-badge-lab-header-actions {
+  display: flex;
+  align-items: center;
+  padding-right: 5px;
+}
+
+.schedule-badge-lab-header-actions button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 4px;
+}
+
+.schedule-badge-lab-header-actions button:hover,
+.schedule-badge-lab-header-actions button:focus-visible,
+.schedule-badge-lab-header-actions button[aria-pressed="true"] {
+  background: rgb(255 255 255 / 14%);
+  outline: none;
+}
+
+.schedule-badge-lab-header-actions button[aria-pressed="true"] {
+  color: #ffd28f;
+}
+
+.schedule-badge-lab-clone .schedule-badge-lab-controls {
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.schedule-badge-lab-clone .schedule-badge-lab-modes,
+.schedule-badge-lab-view-tabs,
+.schedule-badge-lab-property-tabs,
+.schedule-badge-lab-scope {
+  display: grid;
+  gap: 4px;
+}
+
+.schedule-badge-lab-clone .schedule-badge-lab-modes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 8px 10px 4px;
+}
+
+.schedule-badge-lab-view-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 4px 10px 8px;
+  border-bottom: 1px solid #d7dfda;
+}
+
+.schedule-badge-lab-clone .schedule-badge-lab-modes button,
+.schedule-badge-lab-view-tabs button,
+.schedule-badge-lab-property-tabs button,
+.schedule-badge-lab-scope button {
+  min-height: 30px;
+  border: 1px solid #cbd5cf;
+  border-radius: 5px;
+  background: #fff;
+  color: #33443c;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.schedule-badge-lab-clone
+  .schedule-badge-lab-modes
+  button[aria-selected="true"],
+.schedule-badge-lab-view-tabs button[aria-selected="true"],
+.schedule-badge-lab-property-tabs button[aria-selected="true"],
+.schedule-badge-lab-scope button[aria-pressed="true"] {
+  border-color: #26745f;
+  background: #e7f2ed;
+  color: #134c3e;
+}
+
+.schedule-badge-lab-clone
+  .schedule-badge-lab-modes
+  button[data-grid-match="true"]::after {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #df8a2e;
+  content: "";
+  vertical-align: middle;
+}
+
+.schedule-badge-lab-view-tabs button span {
+  display: inline-grid;
+  min-width: 17px;
+  height: 17px;
+  margin-left: 5px;
+  place-items: center;
+  border-radius: 4px;
+  background: #dfe8e3;
+  font-size: 10px;
+}
+
+.schedule-badge-lab-inspector,
+.schedule-badge-lab-change-log {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.schedule-badge-lab-inspector {
+  padding: 9px 10px 10px;
+}
+
+.schedule-badge-lab-target-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 7px;
+}
+
+.schedule-badge-lab-target-row > label,
+.schedule-badge-lab-target-options > label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  color: #53635b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.schedule-badge-lab-target-row select,
+.schedule-badge-lab-target-options select,
+.schedule-badge-lab-control-row select,
+.schedule-badge-lab-control-row input[type="text"],
+.schedule-badge-lab-search input {
+  width: 100%;
+  min-width: 0;
+  height: 31px;
+  border: 1px solid #c7d2cc;
+  border-radius: 4px;
+  background: #fff;
+  color: #26362f;
+  font: inherit;
+  font-size: 11px;
+}
+
+.schedule-badge-lab-target-row select,
+.schedule-badge-lab-target-options select,
+.schedule-badge-lab-control-row select {
+  padding: 0 7px;
+}
+
+.schedule-badge-lab-inspect-button {
+  display: inline-flex;
+  min-height: 31px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #b7c4bd;
+  border-radius: 5px;
+  padding: 0 9px;
+  background: #fff;
+  color: #2f443a;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.schedule-badge-lab-inspect-button[aria-pressed="true"] {
+  border-color: #c66e16;
+  background: #fff1df;
+  color: #7a3e08;
+}
+
+.schedule-badge-lab-breadcrumb {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0;
+  color: #627169;
+  font-size: 11px;
+}
+
+.schedule-badge-lab-breadcrumb > * + *::before {
+  margin-right: 5px;
+  color: #9ca9a2;
+  content: "/";
+}
+
+.schedule-badge-lab-breadcrumb strong {
+  overflow: hidden;
+  color: #25352e;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-badge-lab-breadcrumb[data-mode-match="false"] span:first-child {
+  color: #a65413;
+}
+
+.schedule-badge-lab-target-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 128px;
+  align-items: end;
+  gap: 7px;
+}
+
+.schedule-badge-lab-scope {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.schedule-badge-lab-scope button:disabled,
+.schedule-badge-lab-reset-row button:disabled,
+.schedule-badge-lab-property-reset:disabled,
+.schedule-badge-lab-log-actions button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+
+.schedule-badge-lab-filter-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  margin: 9px 0 7px;
+}
+
+.schedule-badge-lab-search {
+  position: relative;
+  display: block;
+}
+
+.schedule-badge-lab-search svg {
+  position: absolute;
+  top: 50%;
+  left: 8px;
+  color: #708078;
+  transform: translateY(-50%);
+}
+
+.schedule-badge-lab-search input {
+  padding: 0 8px 0 28px;
+}
+
+.schedule-badge-lab-changed-only {
+  display: flex;
+  min-height: 31px;
+  align-items: center;
+  gap: 5px;
+  color: #42524a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.schedule-badge-lab-changed-only input {
+  margin: 0;
+}
+
+.schedule-badge-lab-property-tabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.schedule-badge-lab-property-tabs button {
+  min-height: 27px;
+  font-size: 10px;
+}
+
+.schedule-badge-lab-clone .schedule-badge-lab-description {
+  min-height: 35px;
+  margin: 7px 0 0;
+  border: 0;
+  border-left: 3px solid #c6d3cc;
+  border-radius: 0;
+  padding: 6px 8px;
+  background: #f0f4f1;
+  color: #516159;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.schedule-badge-lab-control-list {
+  margin-top: 7px;
+  border-top: 1px solid #d9e0dc;
+}
+
+.schedule-badge-lab-control-row {
+  display: grid;
+  min-height: 44px;
+  grid-template-columns: 105px minmax(0, 1fr) 27px;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid #e0e6e2;
+  padding: 5px 0;
+}
+
+.schedule-badge-lab-control-row[data-changed="true"] {
+  box-shadow: inset 3px 0 0 #d78029;
+  padding-left: 7px;
+}
+
+.schedule-badge-lab-control-row > label {
+  overflow: hidden;
+  color: #35473e;
+  font-size: 11px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-badge-lab-number-control {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(58px, 1fr) 82px;
+  align-items: center;
+  gap: 7px;
+}
+
+.schedule-badge-lab-number-control > input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: #26745f;
+}
+
+.schedule-badge-lab-number-control > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 3px;
+}
+
+.schedule-badge-lab-number-control input[type="number"] {
+  width: 100%;
+  min-width: 0;
+  height: 29px;
+  border: 1px solid #c7d2cc;
+  border-radius: 4px;
+  padding: 0 4px;
+  color: #26362f;
+  font: inherit;
+  font-size: 11px;
+}
+
+.schedule-badge-lab-number-control small {
+  color: #65746c;
+  font-size: 9px;
+}
+
+.schedule-badge-lab-color-control {
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.schedule-badge-lab-color-control input[type="color"] {
+  width: 31px;
+  height: 31px;
+  border: 1px solid #c7d2cc;
+  border-radius: 4px;
+  padding: 2px;
+  background: #fff;
+}
+
+.schedule-badge-lab-color-control input[type="text"],
+.schedule-badge-lab-control-row > input[type="text"] {
+  padding: 0 7px;
+}
+
+.schedule-badge-lab-property-reset {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #66776e;
+  cursor: pointer;
+}
+
+.schedule-badge-lab-property-reset:not(:disabled):hover,
+.schedule-badge-lab-property-reset:not(:disabled):focus-visible {
+  background: #e8eeea;
+  color: #224c3d;
+}
+
+.schedule-badge-lab-reset-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 9px;
+}
+
+.schedule-badge-lab-reset-row button,
+.schedule-badge-lab-log-actions button {
+  display: inline-flex;
+  min-height: 29px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid #c4d0c9;
+  border-radius: 5px;
+  padding: 0 8px;
+  background: #fff;
+  color: #34483e;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.schedule-badge-lab-change-log {
+  padding: 9px 10px 12px;
+}
+
+.schedule-badge-lab-log-actions {
+  position: sticky;
+  top: -9px;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0 0 9px;
+  background: rgb(250 251 249 / 98%);
+}
+
+.schedule-badge-lab-log-actions button.danger {
+  color: #9d342d;
+}
+
+.schedule-badge-lab-log-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.schedule-badge-lab-log-list li {
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid #dbe2de;
+  padding: 9px 1px;
+}
+
+.schedule-badge-lab-log-list header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.schedule-badge-lab-log-list strong {
+  color: #26372f;
+  font-size: 11px;
+}
+
+.schedule-badge-lab-log-list header span,
+.schedule-badge-lab-log-list small {
+  color: #68776f;
+  font-size: 9px;
+}
+
+.schedule-badge-lab-log-list p {
+  margin: 0;
+  color: #3c4d44;
+  font-size: 11px;
+}
+
+.schedule-badge-lab-log-list del {
+  color: #94524c;
+}
+
+.schedule-badge-lab-log-list ins {
+  color: #17634d;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.schedule-badge-lab-log-list code {
+  overflow: hidden;
+  color: #58675f;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-badge-lab-log-empty,
+.schedule-badge-lab-empty {
+  display: flex;
+  min-height: 100px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0;
+  color: #77857e;
+  font-size: 11px;
+}
+
+.schedule-badge-lab-footer {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid #d5ddd8;
+  padding: 0 10px;
+  background: #f1f4f2;
+  color: #64736b;
+  font-size: 9px;
+}
+
+.schedule-badge-lab-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.schedule-badge-lab-footer span[data-active="true"] {
+  color: #9a4d0d;
+  font-weight: 800;
+}
+
+.schedule-badge-lab-target-overlay {
+  position: fixed;
+  z-index: 1480;
+  pointer-events: none;
+  border: 2px dashed #e0781f;
+  background: rgb(235 132 40 / 8%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 80%);
+}
+
+.schedule-badge-lab-target-overlay[data-kind="selected"] {
+  z-index: 1479;
+  border-style: solid;
+  border-color: #087f68;
+  background: rgb(8 127 104 / 5%);
+}
+
+.schedule-badge-lab-target-overlay > span {
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: -2px;
+  max-width: 220px;
+  overflow: hidden;
+  border-radius: 3px;
+  padding: 3px 6px;
+  background: #8e450b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-badge-lab-target-overlay[data-kind="selected"] > span {
+  background: #086a58;
+}
+
+.schedule-badge-lab-clone[data-inspecting="true"] .schedule-page,
+.schedule-badge-lab-clone[data-inspecting="true"] .schedule-page * {
+  cursor: crosshair !important;
+}
+
+.schedule-badge-lab-clone[data-inspecting="true"]
+  .schedule-shift-badge[data-ghost="true"] {
+  pointer-events: auto !important;
+}
+
+.schedule-badge-lab-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .schedule-badge-lab-clone .schedule-badge-lab-panel {
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-height: 58dvh;
+  }
+
+  .schedule-badge-lab-clone .schedule-badge-lab-panel[data-open="false"] {
+    right: 8px;
+    left: auto;
+    width: 210px;
+  }
+
+  .schedule-badge-lab-property-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .schedule-badge-lab-control-row {
+    grid-template-columns: 88px minmax(0, 1fr) 27px;
+  }
+
+  .schedule-badge-lab-number-control {
+    grid-template-columns: minmax(44px, 1fr) 76px;
+  }
+}

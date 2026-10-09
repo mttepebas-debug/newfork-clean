@@ -1,0 +1,356 @@
+.announcements-catalog-page .announcement-catalog-row {
+  grid-template-columns:
+    minmax(180px, 40fr) minmax(150px, 26fr)
+    minmax(100px, 16fr) minmax(125px, 18fr) 36px;
+}
+.announcements-catalog-page .job-catalog-row {
+  cursor: pointer;
+}
+.announcements-catalog-page .job-catalog-row > [role="cell"] {
+  min-width: 0;
+}
+.announcements-catalog-page .job-row-identity {
+  width: 100%;
+}
+.announcement-toolbar-controls {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.announcements-catalog-page .job-search {
+  flex: 1 1 auto;
+  max-width: none;
+}
+.announcements-catalog-page .requests-tabs button {
+  font-size: 13px;
+  font-weight: 700;
+}
+.announcement-status-tab-count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--job-accent) 12%, var(--job-bg));
+  color: var(--job-accent);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+.catalog-status-tabs button.active .announcement-status-tab-count {
+  background: var(--job-soft);
+  color: var(--job-accent);
+}
+.announcement-catalog-marker {
+  flex-shrink: 0;
+  color: var(--job-accent);
+}
+.announcement-row-preview,
+.announcement-audience-cell,
+.announcement-date-cell {
+  color: var(--job-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.announcement-row-preview {
+  display: block;
+  max-width: 100%;
+  margin-top: 2px;
+}
+.announcement-all-badge {
+  background: var(--job-soft);
+  color: var(--job-accent);
+}
+.announcement-catalog-message {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--job-accent);
+}
+.announcement-catalog-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--job-muted);
+}
+.announcements-catalog-page .announcement-catalog-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+  min-width: 0;
+}
+.announcement-field-wide {
+  grid-column: 1 / -1;
+}
+.catalog-drawer.announcements-catalog-page .catalog-drawer-body {
+  padding: 16px;
+}
+.catalog-drawer.announcements-catalog-page
+  .job-catalog-editor
+  .catalog-drawer-body
+  > fieldset {
+  padding: 0;
+}
+.announcements-catalog-page .job-field {
+  min-width: 0;
+}
+.announcements-catalog-page .job-field > span {
+  margin-bottom: 5px;
+}
+.announcements-catalog-page .job-field small {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--job-muted);
+}
+.announcements-catalog-page textarea {
+  display: block;
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--job-border);
+  border-radius: 5px;
+  box-sizing: border-box;
+  color: var(--job-text);
+  background: var(--job-bg);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  overflow-y: hidden;
+}
+.announcement-audience-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--job-border);
+}
+.announcement-audience-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.announcement-audience-heading h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.announcement-audience-section > p {
+  margin: 5px 0 12px;
+  color: var(--job-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.announcement-all-badge {
+  flex-shrink: 0;
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.announcement-audience-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+.announcement-audience-picker {
+  min-width: 0;
+  border: 1px solid var(--job-border);
+  border-radius: 6px;
+  background: var(--job-bg);
+}
+.announcement-audience-picker > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  list-style: none;
+  cursor: pointer;
+}
+.announcement-audience-picker > summary::-webkit-details-marker {
+  display: none;
+}
+.announcement-audience-picker > summary > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.announcement-audience-picker > summary strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+}
+.announcement-picker-value {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--job-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.announcement-audience-picker[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.announcement-picker-content {
+  padding: 4px 8px 8px;
+  border-top: 1px solid var(--job-border);
+}
+.announcement-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  color: var(--job-muted);
+}
+.announcement-picker-options {
+  max-height: 180px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.announcement-picker-options > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px;
+  box-sizing: border-box;
+  cursor: pointer;
+  font-size: 12px;
+}
+.announcement-picker-options > label:hover {
+  background: var(--job-hover);
+  border-radius: 4px;
+}
+.announcement-picker-options input {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--job-accent);
+}
+.announcement-picker-options span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.announcement-picker-options p {
+  font-size: 12px;
+  color: var(--job-muted);
+}
+.announcement-all-option {
+  font-weight: 600;
+  border-bottom: 1px solid var(--job-border);
+}
+.announcements-catalog-page .form-error {
+  color: var(--job-error);
+  font-size: 12px;
+}
+.announcements-catalog-page .catalog-delete-trigger[data-confirming="true"] {
+  border-color: color-mix(in srgb, var(--job-error) 40%, var(--job-border));
+  background: color-mix(in srgb, var(--job-error) 12%, var(--job-bg));
+  animation: announcement-delete-confirm 420ms ease;
+}
+@keyframes announcement-delete-confirm {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.04);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .announcements-catalog-page .catalog-delete-trigger[data-confirming="true"] {
+    animation: none;
+  }
+}
+@media (max-width: 1050px) {
+  .announcements-catalog-page .announcement-catalog-row {
+    grid-template-columns: minmax(160px, 1.6fr) minmax(100px, 1fr) 90px 36px;
+  }
+  .announcement-catalog-row > :nth-child(4) {
+    display: none;
+  }
+}
+@media (max-width: 650px) {
+  .announcements-catalog-page .announcement-catalog-row {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+  .announcement-catalog-row > :nth-child(2),
+  .announcement-catalog-row > :nth-child(3) {
+    display: none;
+  }
+  .announcements-catalog-page .requests-tabs {
+    margin-left: 0;
+  }
+  .announcement-toolbar-controls {
+    align-items: stretch;
+  }
+  .announcement-toolbar-controls > .catalog-status-tabs {
+    width: 100%;
+  }
+  .announcement-toolbar-controls .catalog-status-tabs button {
+    flex: 1 0 auto;
+  }
+  .announcements-catalog-page .job-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .announcements-catalog-page .announcement-catalog-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .announcements-catalog-page .job-editor-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 390px) {
+  .announcement-audience-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.announcements-catalog-page .announcement-catalog-row[data-reader="true"] {
+  grid-template-columns:
+    minmax(180px, 1.7fr) 125px minmax(120px, 1fr)
+    120px 36px;
+}
+.announcement-acknowledged {
+  display: inline-flex;
+  color: #2f9e5b;
+}
+.announcement-acknowledge-button {
+  padding: 3px 9px;
+  border: 1px solid var(--job-border, currentColor);
+  border-radius: 5px;
+  background: var(--job-bg, transparent);
+  color: var(--job-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.announcement-acknowledge-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+@media (max-width: 1050px) {
+  .announcements-catalog-page .announcement-catalog-row[data-reader="true"] {
+    grid-template-columns: minmax(160px, 1.6fr) 110px 120px 36px;
+  }
+  .announcement-catalog-row[data-reader="true"] > :nth-child(3) {
+    display: none;
+  }
+  .announcement-catalog-row[data-reader="true"] > :nth-child(4) {
+    display: initial;
+  }
+}
+@media (max-width: 650px) {
+  .announcements-catalog-page .announcement-catalog-row[data-reader="true"] {
+    grid-template-columns: minmax(0, 1fr) auto 36px;
+  }
+}

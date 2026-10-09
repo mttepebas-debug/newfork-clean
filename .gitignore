@@ -1,0 +1,50 @@
+node_modules
+dist
+coverage
+.turbo
+.env
+.env.local
+playwright-report
+test-results
+supabase/.temp
+# scripts/test-db.mjs: per-run copies of the pgTAP files, each scoped to the worktree's builder
+supabase/tests/.builder-run/
+*.tsbuildinfo
+
+.vercel
+
+# Local Codex runtime and generated verification evidence
+.codex/
+.planning/
+artifacts/
+
+# Local scratch work, Python caches and private environment variants
+.temp/
+__pycache__/
+*.pyc
+*.pyo
+.env.*
+!.env.example
+!.env.*.example
+
+# Generated browser/API proof payloads stay local; keep README and source scripts
+/docs/archive/rebuild/*proof*/**/*.png
+/docs/archive/rebuild/*proof*/**/*.jpg
+/docs/archive/rebuild/*proof*/**/*.jpeg
+/docs/archive/rebuild/*proof*/**/*.json
+/docs/archive/rebuild/*proof*/**/*.log
+/docs/archive/rebuild/*proof*/**/*.txt
+
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
+.claude/launch.json
+
+# Local working data: real names, contact details and a throwaway password.
+# Regenerate with `node scripts/export-local-fixture.mjs`.
+/supabase/local-fixture/
+
+# Browser tests (e2e/): the world file global-setup writes, and Playwright output.
+e2e/.world.json
+test-results/
+playwright-report/

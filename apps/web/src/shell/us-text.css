@@ -1,0 +1,6 @@
+/* The US letter rule's line under a field, where the screen has no error line
+   of its own (BL-503). */
+.form-error.us-letters-line {
+  display: block;
+  margin: 6px 0 0;
+}

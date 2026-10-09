@@ -1,0 +1,82 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+
+-- All fixtures roll back, independent of seed data and the user's Schedule.
+-- The edit is of a draft: only a draft is locked (FOUNDATION-B 3b), so only
+-- another person opening the same draft meets the lease.
+create temp table lease_fixture as select
+  gen_random_uuid() w, gen_random_uuid() actor, gen_random_uuid() other_actor,
+  gen_random_uuid() outsider, gen_random_uuid() loc, gen_random_uuid() job, gen_random_uuid() draft,
+  current_date - extract(isodow from current_date)::integer + 1 + 700 week,
+  null::uuid session, null::jsonb result, null::jsonb snapshot;
+insert into auth.users(id,email)
+select actor,actor::text || '@example.test' from lease_fixture
+union all select other_actor,other_actor::text || '@example.test' from lease_fixture;
+insert into public.workspaces(id,name,created_by)
+select w,'BL-069 lease regression',actor from lease_fixture;
+insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
+select w,actor,'owner'::public.workspace_role,true from lease_fixture
+union all select w,other_actor,'admin'::public.workspace_role,true from lease_fixture;
+insert into public.workspace_scheduling_settings(workspace_id)
+select w from lease_fixture on conflict do nothing;
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
+select 'T00037', loc,w,'Lease location','1 Test Street','Test City','CA','90001','America/Los_Angeles' from lease_fixture;
+insert into public.jobs(id,workspace_id,name) select job,w,'Lease job' from lease_fixture;
+insert into public.schedule_drafts(id,workspace_id,week_start,name,created_by,updated_by,location_ids)
+select draft,w,week,'Lease draft',actor,actor,array[loc] from lease_fixture;
+grant all on lease_fixture to service_role;
+set local role service_role;
+update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft);
+update lease_fixture set session=(result->'session'->>'id')::uuid;
+select is(result->>'status','acquired','initial acquire succeeds') from lease_fixture;
+set local role postgres;
+insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,job_id,scheduled_date,start_time,end_time,note)
+select gen_random_uuid(),w,session,loc,job,week,'09:00','17:00','Unsaved work must survive resume' from lease_fixture;
+update public.schedule_edit_sessions set dirty=true,revision=7,
+  last_heartbeat=now()-interval '3 minutes',expires_at=now()+interval '1 minute'
+where id=(select session from lease_fixture);
+update lease_fixture f set snapshot=(select to_jsonb(s) from public.schedule_edit_session_shifts s where s.session_id=f.session);
+set local role service_role;
+-- The same draft asked for again resumes the open edit; another draft or source
+-- puts it aside instead (EKRAN-01 DB-1b, schedule_edit_session_lifecycle).
+update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft);
+select is(result->>'status','resumed','live same-holder acquire of the same draft resumes') from lease_fixture;
+select is((result->'session'->>'expires_at')::timestamptz,now()+interval '4 minutes','live resume refreshes lease') from lease_fixture;
+set local role postgres;
+update public.schedule_edit_sessions set last_heartbeat=now()-interval '5 minutes',expires_at=now()-interval '1 minute'
+where id=(select session from lease_fixture);
+set local role service_role;
+update lease_fixture set result=public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft);
+select is((result->'session'->>'id')::uuid,session,'expired same-holder keeps session identity') from lease_fixture;
+select ok((result->'session'->>'expires_at')::timestamptz>now(),'expired resume returns a usable lease') from lease_fixture;
+select is((result->'session'->>'revision')::integer,7,'resume preserves revision') from lease_fixture;
+select ok((result->'session'->>'dirty')::boolean,'resume preserves unsaved state') from lease_fixture;
+select is((select to_jsonb(s) from public.schedule_edit_session_shifts s where s.session_id=f.session),snapshot,'resume preserves complete working shift') from lease_fixture f;
+select lives_ok($$select public.heartbeat_schedule_edit_session_service(actor,w,session) from lease_fixture$$,'heartbeat works immediately after expired resume');
+select is(public.acquire_schedule_edit_session_service(other_actor,w,week,'draft',draft)->>'status','conflict','another manager cannot open the draft while the renewed lease holds it') from lease_fixture;
+select throws_ok($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$,'42501','Not allowed','unauthorized actor cannot resume');
+-- BL-160: the message alone is the same for every authz.* reason; check the
+-- reason itself (a true outsider is refused as not a member, not, say, blocked).
+create function pg_temp.said(statement text) returns text
+language plpgsql as $$
+declare code text; reason text; what text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, reason = pg_exception_hint, what = pg_exception_detail;
+  return concat_ws(' ', code, nullif(reason, ''), nullif(what, ''));
+end;
+$$;
+select is(pg_temp.said($$select public.acquire_schedule_edit_session_service(outsider,w,week,'blank',null) from lease_fixture$$),
+  '42501 authz.not_member schedule.edit', 'unauthorized actor is refused as not a member, not some other reason');
+set local role postgres;
+update public.schedule_edit_sessions set expires_at=now()-interval '1 minute' where id=(select session from lease_fixture);
+set local role service_role;
+update lease_fixture set result=public.acquire_schedule_edit_session_service(other_actor,w,week,'draft',draft);
+select is(result->>'status','acquired_after_recovery','another manager opening the draft recovers an expired dirty edit of it') from lease_fixture;
+select is((select count(*)::integer from public.schedule_draft_shifts s where s.draft_id=(result->>'recovered_draft_id')::uuid),1,'recovery preserves unsaved shift') from lease_fixture;
+select is(public.acquire_schedule_edit_session_service(actor,w,week,'draft',draft)->>'status','conflict','former holder cannot take the draft back while another manager edits it') from lease_fixture;
+select * from finish();
+rollback;

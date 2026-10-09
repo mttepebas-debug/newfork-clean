@@ -1,0 +1,536 @@
+/* UI-PRE-001 kit: every screen an account sees before it is linked to a business.
+   Light tokens only. Button selectors double the class (`.pb-btn.pb-btn-*`) so
+   they match outside the frame too and tie the global `.nf-button:hover` on
+   specificity; this file loads after styles.css, so the tie goes to the kit.
+   The global button rules stay untouched (THEME-005 owns that cascade). */
+
+.pb {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: 280px minmax(0, 1fr);
+  /* The side panel carries the tint, so the stage stays white to read as separate. */
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+}
+
+.pb-brand {
+  color: var(--theme-accent-strong);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+/* The gate frame: a bar across the top, the stage centred on the page under it.
+   Wizards keep `.pb` below, because their panel actually carries the steps. */
+.pb-gate {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+}
+.pb-topbar {
+  display: flex;
+  min-height: 62px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+/* The account block stacks in the side panel; in the bar it reads as one row. */
+.pb-topbar .pb-account {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.pb-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  /* A wizard fills the panel: on a short screen it scrolls instead of hiding the ways out. */
+  gap: 18px;
+  overflow-y: auto;
+  padding: 28px 22px;
+  border-right: 1px solid var(--theme-border);
+  background: var(--theme-surface-muted);
+}
+/* One column of fields: heading, form and the legal row share one centre line. */
+.pb-stage.pb-stage-narrow {
+  width: min(100% - 48px, 420px);
+  text-align: center;
+}
+.pb-stage-narrow .onboarding-field {
+  /* A label read over its field, so those stay left even when the page is centred. */
+  text-align: left;
+}
+.pb-stage {
+  width: min(100% - 48px, 600px);
+  margin: 0 auto;
+  padding: 96px 0;
+}
+
+.pb-account {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+.pb-account-id {
+  display: grid;
+  min-width: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.pb-account-id strong {
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.pb-account-id span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pb-stage h1 {
+  margin: 0 0 10px;
+  color: var(--theme-text);
+  font-size: 30px;
+  line-height: 1.2;
+}
+.pb-description {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 15px;
+  line-height: 1.55;
+  /* An e-mail address is one unbreakable word. */
+  overflow-wrap: anywhere;
+}
+/* A stage-level alert follows the heading; the global rule is spaced and sized
+   for a form field, so here it sat tight under the title in small print. */
+.pb-stage > .form-error {
+  margin: 18px 0 0;
+  color: var(--theme-danger);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.pb-section {
+  margin-top: 32px;
+}
+.pb-section h2 {
+  margin: 0 0 10px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pb-list {
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+}
+
+.pb-row {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.pb-row:last-child {
+  border-bottom: 0;
+}
+.pb-row[aria-current="true"] {
+  background: var(--theme-selected);
+}
+/* The tint is the success badge's own green, so on that row the badge turns
+   white or it would read as loose text beside the role. */
+.pb-row[aria-current="true"] .pb-badge-success {
+  background: var(--theme-surface);
+}
+.pb-row-text {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.pb-row-text strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.pb-row-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.pb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+.pb-badge-progress {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+.pb-badge-success {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+.pb-badge-danger {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger);
+}
+
+/* Buttons: green acts, white steps back, red only once armed. */
+.pb-btn.pb-btn {
+  display: inline-flex;
+  width: auto;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pb-btn.pb-btn:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.pb-btn.pb-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.pb-btn.pb-btn-primary {
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.pb-btn.pb-btn-primary:hover:not(:disabled) {
+  background: var(--theme-accent-strong);
+}
+.pb-btn.pb-btn-secondary,
+.pb-btn.pb-btn-danger {
+  border-color: var(--theme-border-strong);
+  background: var(--theme-surface);
+  color: var(--theme-text);
+}
+.pb-btn.pb-btn-secondary:hover:not(:disabled),
+.pb-btn.pb-btn-danger:hover:not(:disabled) {
+  background: var(--theme-surface-soft);
+}
+.pb-btn.pb-btn-danger.is-armed,
+.pb-btn.pb-btn-danger.is-armed:hover:not(:disabled) {
+  border-color: var(--theme-danger);
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+}
+.pb-btn.pb-btn-block {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.pb-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+.pb-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+/* A text link on a form screen ("Forgot password?", "Back to sign in"). 24px
+   touch target like the trust links (WCAG 2.5.8); focus ring from `a:focus-visible`. */
+.pb-link {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  color: var(--theme-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+/* The way back is sometimes a button (same page, other state), not a route. */
+button.pb-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+/* Focus lands on the heading only by script, to say where the person is. */
+.pb-stage h1:focus {
+  outline: none;
+}
+.pb-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+/* Under a field it sits at the field's right edge, clear of the label column. */
+.onboarding-field > .pb-link {
+  justify-self: end;
+}
+/* The US letter rule's line under a field (BL-503) keeps the error colour. */
+.onboarding-field > small.form-error {
+  margin: 0;
+  color: var(--theme-danger-strong);
+}
+/* The way back sits centred under the form or the answer. */
+.pb-stage > .pb-link {
+  margin-top: 20px;
+}
+/* Form and stage messages read like the stage alert above: danger colour,
+   left under the fields they are about; the answer to a request, centred. */
+.pb-stage-narrow .sign-in-form > .form-error {
+  margin: 0;
+  color: var(--theme-danger);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+.pb-stage > .form-success {
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Wizard: the same frame, the side panel also says where you are. */
+.pb-side-group {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+.pb-context {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-top: 10px;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.pb-context strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pb-progress {
+  display: grid;
+  gap: 8px;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.pb-progress [role="progressbar"] {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--theme-border);
+}
+.pb-progress [role="progressbar"] span {
+  display: block;
+  height: 100%;
+  background: var(--theme-accent);
+}
+.pb-progress p {
+  margin: 0;
+}
+.pb-steps {
+  display: grid;
+  gap: 4px;
+}
+.pb-step {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--theme-muted-strong);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.pb-step:hover {
+  background: var(--theme-surface);
+}
+.pb-step-number {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 50%;
+  background: var(--theme-surface);
+  font-size: 11px;
+  font-weight: 700;
+}
+.pb-step.is-done .pb-step-number {
+  border-color: var(--theme-success);
+  color: var(--theme-success);
+}
+.pb-step.is-active {
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+  font-weight: 700;
+}
+.pb-step.is-active .pb-step-number {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.pb-step-label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A wizard step is a form, not a notice: wider, and it starts higher. */
+.pb-stage-wide {
+  width: min(100% - 48px, 760px);
+  padding: 48px 0 72px;
+}
+/* The step heading spaces itself with its own grid gap. */
+.pb-stage-wide h1 {
+  margin: 0;
+}
+/* Grid children stretch by default; these keep their own width. */
+.pb-stage-wide .onboarding-step > .pb-btn,
+.pb-stage-wide .onboarding-step > .pb-badge {
+  justify-self: start;
+}
+/* A document page's blocks carry their own spacing inside the step grid. */
+.pb-doc-block {
+  display: grid;
+  gap: 14px;
+}
+.pb-doc-block > .pb-btn {
+  justify-self: start;
+}
+
+/* The step's action bar. Sticky, so on a form taller than the screen the way
+   forward stays in reach; it settles into place at the end of the form. */
+.pb-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+.pb-bar-end {
+  display: flex;
+  /* Whatever comes before it, the green button keeps the right edge. */
+  margin-left: auto;
+  gap: 10px;
+}
+.pb-bar .form-error {
+  max-width: 380px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.pb-bar .pb-btn-primary {
+  min-height: 42px;
+  padding: 0 20px;
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .pb {
+    grid-template-columns: 1fr;
+    /* Without this the two auto rows split the free height and the bar balloons. */
+    align-content: start;
+  }
+  .pb-side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    /* At 320px the two exits do not fit beside the brand; they drop to a second row. */
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--theme-border);
+  }
+  .pb-account {
+    flex-direction: row;
+    align-items: center;
+  }
+  /* The e-mail stays: it says which account an invitation must match. */
+  .pb-account-id strong {
+    display: none;
+  }
+  .pb-stage {
+    padding: 40px 0 64px;
+  }
+  .pb-stage h1 {
+    font-size: 24px;
+  }
+  .pb-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pb-row-actions .pb-btn {
+    flex: 1;
+  }
+  /* The wizard bar keeps brand, progress, the account e-mail and the two ways out. */
+  .pb-context,
+  .pb-steps {
+    display: none;
+  }
+  .pb-side-group:last-child {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}

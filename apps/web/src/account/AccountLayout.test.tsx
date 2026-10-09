@@ -1,0 +1,120 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import AccountLayout from "./AccountLayout";
+import { countAccountAttention } from "../lib/supabase";
+
+const signOut = vi.fn();
+
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({
+    account: {
+      userId: "user-1",
+      email: "owner@example.test",
+      displayName: "Owner User",
+      avatarUrl: null,
+    },
+    context: null,
+    signOut,
+  }),
+}));
+
+// The nav counts what is waiting on the person; this file is about the nav.
+vi.mock("../lib/supabase", () => ({
+  countAccountAttention: vi.fn(),
+  supabaseClient: {},
+}));
+vi.mock("./AccountAvatar", () => ({
+  AccountAvatar: () => <span aria-hidden />,
+}));
+
+function renderLayout() {
+  return render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter initialEntries={["/account/workspaces"]}>
+        <Routes>
+          <Route element={<AccountLayout />}>
+            <Route path="/account/profile" element={<p>Profile content</p>} />
+            <Route
+              path="/account/workspaces"
+              element={<p>Workspace content</p>}
+            />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+describe("AccountLayout mobile navigation", () => {
+  const scrolledLabels: string[] = [];
+
+  beforeEach(() => {
+    scrolledLabels.length = 0;
+    vi.mocked(countAccountAttention).mockResolvedValue({
+      documents: 0,
+      workspaces: 0,
+    });
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+    HTMLElement.prototype.scrollIntoView = function () {
+      scrolledLabels.push(this.textContent?.trim() ?? "");
+    };
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("brings the active tab into view on direct load and route changes", async () => {
+    renderLayout();
+
+    await waitFor(() => expect(scrolledLabels).toContain("Workspaces"));
+    fireEvent.click(screen.getByRole("link", { name: "Profile" }));
+    await waitFor(() => expect(scrolledLabels.at(-1)).toBe("Profile"));
+  });
+});
+
+describe("AccountLayout counts", () => {
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // Six tabs, and until now nothing said which of them wanted anything.
+  it("puts the count on the tab that is waiting, and on no other", async () => {
+    vi.mocked(countAccountAttention).mockResolvedValue({
+      documents: 2,
+      workspaces: 1,
+    });
+    renderLayout();
+
+    expect(
+      await screen.findByRole("link", { name: "Documents, 2 waiting on you" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Workspaces, 1 waiting on you" }),
+    ).toBeTruthy();
+    // Nothing is ever waiting on a person in these, so they carry no number.
+    expect(screen.getByRole("link", { name: "Profile" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Security" })).toBeTruthy();
+  });
+
+  it("leaves the tab plain when nothing is waiting", async () => {
+    vi.mocked(countAccountAttention).mockResolvedValue({
+      documents: 0,
+      workspaces: 0,
+    });
+    renderLayout();
+
+    expect(await screen.findByRole("link", { name: "Documents" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /waiting on you/ })).toBeNull();
+  });
+});

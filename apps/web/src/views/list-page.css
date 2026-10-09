@@ -1,0 +1,365 @@
+/* DOC-TABLE: the one look of the list pages — Settings → Documents,
+   Employees → Documents, Announcements, Important Dates, Notifications and
+   Availability (KARARLAR Genel → "Liste sayfalarının ortak dili"). A page
+   joins by adding `list-page` to its section; nothing else reads these rules.
+   Selectors carry `.list-page` twice where a page's own stylesheet (loaded
+   later) would otherwise win at the same weight. */
+
+/* Page skeleton, desktop: heading block 142 + 18, tab row 40 + 10, filter row
+   36 + 16, then the table. A tab, a filter or an empty list never moves
+   anything above the table. */
+.list-page.list-page > .catalog-page-header {
+  box-sizing: border-box;
+  height: 142px;
+  min-height: 142px;
+  flex: 0 0 auto;
+  align-items: center;
+  margin: 0 0 18px;
+  padding: 32px 0 20px;
+}
+.list-page.list-page > .catalog-page-header p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-page.list-page .catalog-toolbar {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+/* Tabs: underlined, on a 1 px line. */
+.list-page.list-page .catalog-toolbar-status-row {
+  height: 40px;
+  min-height: 40px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--theme-border);
+}
+.list-page.list-page .catalog-status-tabs {
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.list-page.list-page .catalog-toolbar .catalog-status-tabs button {
+  height: 40px;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--theme-muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.list-page.list-page .catalog-toolbar .catalog-status-tabs button.active {
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.list-page.list-page .catalog-toolbar .catalog-status-tabs button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+.list-page.list-page .catalog-toolbar-status-row .weekly-team-count {
+  align-self: center;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+}
+
+/* Filter row: 36 high; the search takes every pixel left, up to the table's
+   right edge or the button at the end. */
+.list-page.list-page .catalog-toolbar-filter-row {
+  height: 36px;
+  min-height: 36px;
+  gap: 10px;
+}
+.list-page.list-page .catalog-toolbar-filter-row .toolbar-filter-select {
+  box-sizing: border-box;
+  width: 200px;
+  max-width: none;
+  height: 36px;
+  min-height: 36px;
+  flex: 0 0 200px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background-color: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 13px;
+}
+.list-page.list-page
+  .catalog-toolbar-filter-row
+  .toolbar-filter-select.list-filter-narrow {
+  width: 180px;
+  flex-basis: 180px;
+}
+.list-page.list-page .catalog-toolbar-filter-row > label:not(.toolbar-search) {
+  display: flex;
+  flex: 0 0 auto;
+}
+.list-page.list-page .catalog-toolbar .toolbar-search {
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+  flex: 1 1 auto;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+}
+.list-page.list-page .catalog-toolbar .toolbar-search input {
+  color: var(--theme-text);
+  font-size: 13px;
+}
+
+/* The add button (green below) and the Notifications bulk button (white), 36 high,
+   as wide as its words. */
+.list-page .list-add-button {
+  display: inline-flex;
+  box-sizing: border-box;
+  height: 36px;
+  min-height: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 7px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.list-page .list-add-button:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface);
+}
+.list-page .list-add-button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+/* A list page's own add action (New document, New announcement, New date) is
+   green, the action colour (Mert, 2026-10-06, list system 1). The Notifications
+   bulk button keeps the white style above. */
+.list-page .list-add-button.list-add-action {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.list-page .list-add-button.list-add-action:hover:not(:disabled) {
+  border-color: var(--theme-accent-strong);
+  background: var(--theme-accent-strong);
+}
+.list-page .list-add-button:disabled {
+  border-color: var(--theme-border-subtle);
+  background: var(--theme-surface-soft);
+  color: var(--theme-text-faint);
+  cursor: default;
+  opacity: 1;
+}
+
+/* Table frame: the soft ground shows under a short table. */
+.list-page.list-page :is(.job-catalog, .employee-table-wrap, .weekly-team-scroll) {
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 7px;
+  background: var(--theme-surface-soft);
+}
+.list-page.list-page :is(.job-catalog, .weekly-team-scroll) {
+  overflow: hidden;
+}
+.list-page.list-page :is(.employee-table, .weekly-team-table) {
+  background: var(--theme-surface);
+}
+.list-page.list-page .job-catalog-row {
+  background: var(--theme-surface);
+}
+
+/* Column-heading row. */
+.list-page.list-page :is(.catalog-column-headings, .employee-table th, .weekly-team-table thead th) {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--theme-list-head-border);
+  background: var(--theme-list-head);
+  color: var(--theme-list-head-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.list-page.list-page .job-column-headings {
+  border-radius: 0;
+}
+
+/* Body cells. */
+.list-page.list-page .employee-table tbody tr {
+  height: auto;
+  border-bottom: 0;
+}
+.list-page.list-page .employee-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  color: var(--theme-list-cell-text);
+  font-size: 13px;
+}
+.list-page.list-page .employee-table td:first-child {
+  color: var(--theme-text);
+  font-weight: 600;
+  white-space: normal;
+}
+.list-page.list-page .job-catalog-row {
+  border-bottom: 1px solid var(--theme-border-subtle);
+  color: var(--theme-list-cell-text);
+  font-size: 13px;
+}
+/* One cell type for every list (KARARLAR "Hücre"): the grid lists' own cell
+   classes read like Employees → Documents' table cells. */
+.list-page.list-page
+  .job-catalog-row
+  :is(
+    .job-department-cell,
+    .announcement-audience-cell,
+    .announcement-date-cell,
+    .important-date-date-cell
+  ) {
+  color: var(--theme-list-cell-text);
+  font-size: 13px;
+}
+/* First column: 600, ink, and it wraps instead of cutting. */
+.list-page.list-page .job-catalog-row .job-row-name {
+  overflow: visible;
+  color: var(--theme-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+/* Keyboard focus on the button that opens a row, and on a table row. */
+.list-page.list-page .job-row-identity:focus-visible,
+.list-page.list-page .employee-table tbody tr:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+/* Important Dates → Archived: the tab already says archived; rows keep full
+   ink instead of the disabled-button fade. */
+.important-dates-catalog-page.list-page
+  .job-catalog-row[data-archived="true"]
+  .job-row-identity:disabled {
+  color: var(--theme-text);
+  opacity: 1;
+}
+
+/* Status chip. */
+.list-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-chip[data-tone="green"] {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+.list-chip[data-tone="gray"] {
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-secondary);
+}
+.list-chip[data-tone="amber"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+.list-chip[data-tone="red"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+
+/* Empty table: heading row stays, soft ground below. */
+.list-page.list-page .catalog-table-empty {
+  gap: 10px;
+  padding: 40px 20px;
+  background: var(--theme-surface-soft);
+}
+.list-page.list-page .catalog-table-empty-icon {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent);
+}
+.list-page.list-page .catalog-table-empty p {
+  color: var(--theme-text-secondary);
+}
+
+@media (max-width: 720px) {
+  .list-page.list-page > .catalog-page-header {
+    height: auto;
+    min-height: 0;
+    align-items: flex-start;
+  }
+  /* A long one-word title stays inside its box; the dot moves down instead. */
+  .list-page.list-page > .catalog-page-header .catalog-page-heading {
+    max-width: 100%;
+  }
+  .list-page.list-page > .catalog-page-header h1 {
+    flex-wrap: wrap;
+    font-size: 28px;
+  }
+  .list-page.list-page > .catalog-page-header p {
+    white-space: normal;
+  }
+  .list-page.list-page .catalog-toolbar-status-row {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .list-page.list-page .catalog-status-tabs {
+    width: auto;
+    flex: 0 0 auto;
+  }
+  .list-page.list-page .catalog-toolbar .catalog-status-tabs button {
+    min-height: 40px;
+    flex: 0 0 auto;
+    padding-inline: 10px;
+  }
+  .list-page.list-page .catalog-toolbar-status-row .weekly-team-count {
+    margin-left: auto;
+    padding-left: 12px;
+    white-space: nowrap;
+  }
+  .list-page.list-page .catalog-toolbar-filter-row {
+    height: auto;
+    flex-wrap: wrap;
+  }
+  .list-page.list-page .catalog-toolbar-filter-row .toolbar-filter-select,
+  .list-page.list-page
+    .catalog-toolbar-filter-row
+    .toolbar-filter-select.list-filter-narrow,
+  .list-page.list-page .catalog-toolbar-filter-row > label:not(.toolbar-search),
+  .list-page.list-page .catalog-toolbar .toolbar-search {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+  .list-page.list-page .catalog-toolbar .toolbar-search,
+  .list-page.list-page .catalog-toolbar-filter-row .toolbar-filter-select {
+    height: 44px;
+    min-height: 44px;
+  }
+  .list-page .list-add-button {
+    min-height: 44px;
+    height: 44px;
+  }
+}

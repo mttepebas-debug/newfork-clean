@@ -1,0 +1,17 @@
+/* The board sits inside a normal page column, not a full-bleed workspace like
+   the manager Schedule. A catalog card edge (same border and radius as the
+   announcements table) keeps its left side from reading as a hard cut. No
+   overflow clipping here: top bar dropdowns must still overlay a short grid. */
+.employee-schedule-board {
+  border: 1px solid #e1e7e3;
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+.employee-schedule-board .schedule-topbar {
+  border-radius: 8px 8px 0 0;
+}
+.employee-schedule-board .schedule-grid-scroll {
+  border: 0;
+  border-top: 1px solid #e1e7e3;
+  border-radius: 0 0 8px 8px;
+}

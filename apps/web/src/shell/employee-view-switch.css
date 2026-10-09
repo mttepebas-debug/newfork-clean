@@ -1,0 +1,9 @@
+/* "Employee view" / "Management view" row above Account (FB-6.2.8). */
+.employee-view-link {
+  color: var(--theme-accent-deep);
+  text-decoration: none;
+}
+.employee-view-link-hint {
+  margin-left: auto;
+  color: var(--theme-muted);
+}

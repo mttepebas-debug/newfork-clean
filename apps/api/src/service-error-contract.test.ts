@@ -1,0 +1,95 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { createAvailabilityService } from "./availability/availability-service";
+import { createCommunicationService } from "./communications/communication-service";
+import { createEmployeeHubService } from "./employee-hub/employee-hub-service";
+import { createEmployeeCreateService } from "./employees/employee-create-service";
+import { createEmployeeDirectoryService } from "./employees/employee-directory-service";
+import { createNotificationSettingsService } from "./notifications/notification-settings-service";
+import { createScheduleRequestsService } from "./schedule/schedule-requests-service";
+import { createDocumentTypesService } from "./settings/document-types-service";
+import { createJobsManagementService } from "./settings/jobs-management-service";
+import { createOrganizationSettingsService } from "./settings/organization-settings-service";
+import { createSignatureSettingsService } from "./settings/signature-settings-service";
+import { createShiftExchangesService } from "./shift-exchanges/shift-exchanges-service";
+import { createDocumentLifecycleServiceWithClient } from "./employees/document-lifecycle-service";
+
+// BL-134: whatever the database says goes through rpcFailure, so a refusal
+// keeps its status and machine key and Postgres's own sentence never reaches
+// the screen. One call per service; the error is the database's.
+const database = vi.hoisted(() => ({ error: null as unknown }));
+vi.mock("@supabase/supabase-js", () => {
+  const answer = () => Promise.resolve({ data: null, error: database.error });
+  const chain: object = new Proxy(() => chain, {
+    get: (_target, key) =>
+      key === "then"
+        ? (...args: Parameters<Promise<unknown>["then"]>) => answer().then(...args)
+        : chain,
+    apply: () => chain,
+  });
+  return { createClient: () => ({ rpc: answer, from: () => chain, schema: () => chain }) };
+});
+afterEach(() => {
+  database.error = null;
+});
+
+const options = { url: "http://localhost", serviceRoleKey: "test-only" };
+const actor = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
+const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+const id = "98020000-0000-4000-8000-000000000001";
+const input = { actorUserId: actor, workspaceId: workspace } as never;
+const createOptions = { ...options, appUrl: "https://app.example.test", resendApiKey: "test-key", production: true };
+const newEmployee = {
+  request_id: id,
+  invite_role_id: id,
+  employee: {
+    first_name: "Ada", last_name: "Lovelace", preferred_name: "", invitation_email: "ada@example.test",
+    start_date: "", internal_note: "", location_ids: [], primary_location_id: null, job_ids: [],
+    primary_job_id: null, is_remote: true, expected_revision: null,
+  },
+};
+const documentsClient = {
+  rpc: () => Promise.resolve({ data: null, error: database.error }),
+  auth: { getUser: () => Promise.resolve({ data: { user: { id: actor } }, error: null }) },
+} as never;
+const jobsClient = {
+  rpc: () => Promise.resolve({ data: null, error: database.error }),
+} as never;
+
+const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
+  ["availability", () => createAvailabilityService(options).readWeekly(actor, workspace)],
+  ["communications", () => createCommunicationService(options).getAnnouncements(input)],
+  ["employee hub", () => createEmployeeHubService(options).getPersonalTasks(input)],
+  ["employee create", () => createEmployeeCreateService(createOptions).create(actor, workspace, newEmployee as never)],
+  ["employee directory", () => createEmployeeDirectoryService(options).list(input)],
+  ["notification settings", () => createNotificationSettingsService(options).get(input)],
+  ["schedule requests", () => createScheduleRequestsService(options).get(input)],
+  ["document types", () => createDocumentTypesService(options).targetOptions(input)],
+  ["jobs management", () => createJobsManagementService(jobsClient).deleteJob(input, id)],
+  ["organization settings", () => createOrganizationSettingsService(options).readSchedulingSettings(input)],
+  ["signature settings", () => createSignatureSettingsService(options).approveRetentionPolicy({ actorUserId: actor, workspaceId: workspace, policyId: id })],
+  ["shift exchanges", () => createShiftExchangesService(options).read(actor, workspace, false)],
+  ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
+];
+
+describe.each(calls)("%s service", (_name, call) => {
+  it("answers a non-member with 404 and authz.not_member", async () => {
+    database.error = { message: "Not allowed", code: "42501", hint: "authz.not_member", details: null };
+    await expect(call()).rejects.toMatchObject({ statusCode: 404, reason: "authz.not_member" });
+  });
+
+  it("keeps an authz reason on a 403", async () => {
+    database.error = { message: "Not allowed", code: "42501", hint: "authz.out_of_scope", details: null };
+    await expect(call()).rejects.toMatchObject({ statusCode: 403, reason: "authz.out_of_scope" });
+  });
+
+  it("swaps Postgres's own sentence for a plain one", async () => {
+    database.error = { message: "permission denied for table employees", code: "42501", hint: null, details: null };
+    await expect(call()).rejects.toMatchObject({ statusCode: 403, message: "Not allowed" });
+  });
+
+  it("answers a code nobody raises on purpose with 500", async () => {
+    database.error = { message: 'relation "app_private.x" does not exist', code: "42P01", hint: null, details: null };
+    await expect(call()).rejects.toMatchObject({ statusCode: 500, message: "Internal server error" });
+  });
+});

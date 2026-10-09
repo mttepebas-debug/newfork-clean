@@ -1,0 +1,115 @@
+.document-location-label {
+  display: block;
+  color: var(--theme-muted);
+}
+/* Reuse the directory's header / toolbar / table grid on this standalone route. */
+.employee-documents-page > .employee-documents-list {
+  display: contents;
+}
+.document-file-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-block: 8px;
+}
+.document-file-row input {
+  min-width: 0;
+}
+.employee-documents-list .catalog-toolbar-filter-row {
+  flex-wrap: wrap;
+}
+.document-catalog-settings-page
+  .catalog-toolbar
+  .toolbar-search
+  input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.document-catalog-settings-page .document-catalog-row[data-editable="true"] {
+  cursor: pointer;
+}
+.employee-documents-list
+  .catalog-toolbar-filter-row
+  > label:not(.toolbar-search) {
+  display: flex;
+  min-width: 0;
+  flex: 0 0 200px;
+}
+.employee-documents-list .catalog-toolbar-filter-row .toolbar-filter-select {
+  width: 100%;
+}
+.employee-documents-empty {
+  min-height: 220px;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  color: var(--theme-muted);
+  text-align: center;
+}
+/* Employees → Documents: column shares and the empty ground that fills the
+   frame (KARARLAR Genel → "Liste sayfalarının ortak dili"). */
+.employee-documents-page .employee-table th:nth-child(1) {
+  width: 34%;
+}
+.employee-documents-page .employee-table th:nth-child(2) {
+  width: 40%;
+}
+.employee-table-wrap:has(> .catalog-table-empty) {
+  display: flex;
+  flex-direction: column;
+}
+.employee-table-wrap > .catalog-table-empty {
+  flex: 1 1 auto;
+}
+/* Account's own list: filters that match nothing get a short box, and a
+   workspace that asked for nothing gets one line instead of an empty table. */
+.employee-documents-empty.is-compact {
+  min-height: 0;
+  padding: 20px 16px;
+}
+/* Two columns fit a phone: no sideways scroll to reach the status. */
+.employee-table.document-personal-table {
+  min-width: 0;
+}
+/* A long document name wraps rather than hiding behind an ellipsis. */
+.employee-table.document-personal-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.employee-documents-none {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.employee-documents-empty strong {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.document-detail-body {
+  padding: 16px;
+}
+.document-detail-body > section {
+  margin-block: 16px;
+}
+.document-detail-body .onboarding-document-content {
+  white-space: pre-wrap;
+}
+/* Stands where a reviewer would find the exemption button, and says why it
+   is not there. */
+.document-exemption-note {
+  border-left: 2px solid var(--theme-border);
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+  padding-left: 10px;
+}
+@media (max-width: 720px) {
+  .employee-documents-list
+    .catalog-toolbar-filter-row
+    > label:not(.toolbar-search) {
+    flex-basis: 100%;
+  }
+}

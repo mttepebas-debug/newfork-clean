@@ -1,0 +1,254 @@
+/* Option 03: compact filter menus. Inter comes from the app root (styles.css). */
+.schedule-topbar-filter {
+  --filter-surface: #fff;
+  --filter-text: #23312b;
+  --filter-muted: var(--theme-muted);
+  --filter-border: #dfe5e1;
+  --filter-soft: #f5f7f5;
+  --filter-accent: #376554;
+  --filter-selected: #edf4ef;
+}
+/* Specificity keeps this component independent of legacy global menu rules. */
+:root .schedule-topbar-filter[data-filter-id] .schedule-topbar-filter-menu {
+  top: calc(100% + 7px);
+  display: flex;
+  flex-direction: column;
+  width: 270px;
+  max-width: calc(100vw - 24px);
+  max-height: min(520px, 64vh);
+  min-height: 0;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--filter-border);
+  border-radius: 5px;
+  background: var(--filter-surface);
+  color: var(--filter-text);
+  box-shadow: 0 8px 22px #0b211f25;
+  font:
+    400 13px var(--theme-font-sans);
+  transform-origin: top left;
+}
+.schedule-topbar-filter[open] .schedule-topbar-filter-menu {
+  animation: schedule-filter-reveal 120ms ease-out;
+}
+.schedule-topbar-filter-heading,
+.schedule-topbar-filter-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 13px;
+}
+.schedule-topbar-filter-heading {
+  border-bottom: 1px solid var(--filter-border);
+}
+.schedule-topbar-filter-heading strong {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.15px;
+}
+.schedule-topbar-filter-heading > span {
+  font:
+    400 10px var(--theme-font-sans);
+  color: var(--filter-muted);
+}
+.schedule-topbar-filter-all-section,
+.schedule-topbar-filter-top-content {
+  flex: 0 0 auto;
+  padding: 6px;
+  border-bottom: 1px solid var(--filter-border);
+}
+.schedule-topbar-filter-top-content {
+  padding: 0;
+}
+.schedule-topbar-filter-list {
+  min-height: 0;
+  max-height: 327px;
+  padding: 5px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--filter-border) transparent;
+}
+.schedule-topbar-filter-footer {
+  gap: normal;
+  padding: 8px 12px;
+  background: var(--filter-soft);
+  color: var(--filter-muted);
+  font:
+    400 9px var(--theme-font-sans);
+  border-top: 1px solid var(--filter-border);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  button {
+  width: 100%;
+  min-height: 29px;
+  gap: 10px;
+  border: 0;
+  border-radius: 2px;
+  padding: 5px 9px;
+  background: transparent;
+  color: var(--filter-text);
+  font:
+    400 12px/1.4 var(--theme-font-sans);
+  transition:
+    background 120ms,
+    color 120ms;
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  button[data-selected="true"]:not(.schedule-topbar-filter-group-button) {
+  background: var(--filter-selected);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  button:hover {
+  background: var(--filter-soft);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  button:focus-visible {
+  outline: 2px solid var(--filter-accent);
+  outline-offset: 3px;
+}
+.schedule-topbar-filter-list
+  > .schedule-topbar-filter-item
+  + .schedule-topbar-filter-item,
+.schedule-topbar-filter-group-items
+  > .schedule-topbar-filter-item
+  + .schedule-topbar-filter-item {
+  margin-top: 2px;
+}
+:root .schedule-topbar-filter[data-filter-id] .schedule-topbar-filter-check {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--filter-border);
+  border-radius: 2px;
+  background: transparent;
+  color: transparent;
+  font:
+    400 9px/1 var(--theme-font-sans);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  [aria-checked="true"]
+  .schedule-topbar-filter-check {
+  background: var(--filter-accent);
+  border-color: var(--filter-accent);
+  color: var(--filter-surface);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  [aria-checked="mixed"]
+  .schedule-topbar-filter-check {
+  background: var(--filter-selected);
+  border-color: var(--filter-accent);
+  color: var(--filter-accent);
+}
+:root .schedule-topbar-filter[data-filter-id] .schedule-topbar-filter-label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  .schedule-topbar-filter-all {
+  font-weight: 400;
+}
+.schedule-topbar-filter-group + .schedule-topbar-filter-group {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px solid var(--filter-border);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  .schedule-topbar-filter-group-button {
+  min-height: 28px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  color: var(--filter-muted);
+  background: transparent;
+}
+.schedule-topbar-filter-group-count {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.schedule-topbar-filter-group-items {
+  margin-left: 15px;
+  padding-left: 6px;
+  border-left: 1px solid var(--filter-border);
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  .schedule-topbar-filter-menu
+  .schedule-grid-view-mode-toggle {
+  min-height: 38px;
+  padding: 11px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: normal;
+}
+.schedule-topbar-filter .schedule-grid-view-mode-toggle > svg {
+  display: none;
+}
+:root .schedule-topbar-filter[data-filter-id] .schedule-filter-layout-switch {
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 16px;
+  border-radius: 10px;
+  background: var(--filter-border);
+}
+.schedule-filter-layout-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--filter-surface);
+  border-radius: 50%;
+  transition: transform 160ms;
+}
+:root
+  .schedule-topbar-filter[data-filter-id]
+  [aria-pressed="true"]
+  .schedule-filter-layout-switch {
+  background: var(--filter-accent);
+}
+[aria-pressed="true"] > .schedule-filter-layout-switch::after {
+  transform: translateX(12px);
+}
+@keyframes schedule-filter-reveal {
+  from {
+    opacity: 0.4;
+    clip-path: inset(0 0 15% 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-topbar-filter[open] .schedule-topbar-filter-menu {
+    animation: none;
+  }
+  :root
+    .schedule-topbar-filter[data-filter-id]
+    .schedule-topbar-filter-menu
+    button,
+  .schedule-filter-layout-switch::after {
+    transition: none;
+  }
+}

@@ -1,0 +1,7 @@
+/* KARARLAR "Schedule telefonda tamamen kapalı": the one line a phone sees instead of the screen. */
+.desktop-only-route {
+  margin: 0;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--theme-text-secondary);
+}

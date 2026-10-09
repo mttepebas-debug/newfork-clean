@@ -1,0 +1,3 @@
+supabase/**/*.sql text eol=lf
+# Function bodies intentionally keep embedded CR bytes; store verbatim.
+supabase/migrations/20260909003001_schedule_time_source_snapshots.sql -text

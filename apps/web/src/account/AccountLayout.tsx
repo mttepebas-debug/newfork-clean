@@ -1,0 +1,139 @@
+import {
+  ArrowLeft,
+  Bell,
+  FileText,
+  LogOut,
+  Palette,
+  ShieldCheck,
+  UserRound,
+  Warehouse,
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { useAuth } from "../auth/AuthContext";
+import "./account.css";
+import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { AccountAvatar } from "./AccountAvatar";
+import { countAccountAttention, supabaseClient } from "../lib/supabase";
+
+/**
+ * `waiting` names which count belongs to a tab. Four of the six ask nothing of
+ * anybody, so they carry no number and never will.
+ */
+const accountNav = [
+  { to: "/account/profile", label: "Profile", icon: UserRound },
+  { to: "/account/security", label: "Security", icon: ShieldCheck },
+  { to: "/account/preferences", label: "Preferences", icon: Palette },
+  {
+    to: "/account/preferences/notifications",
+    label: "Notifications",
+    icon: Bell,
+  },
+  {
+    to: "/account/workspaces",
+    label: "Workspaces",
+    icon: Warehouse,
+    waiting: "workspaces",
+  },
+  {
+    to: "/account/documents",
+    label: "Documents",
+    icon: FileText,
+    waiting: "documents",
+  },
+] as const;
+
+export default function AccountLayout() {
+  const { account, context, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const contentRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  // A number here means somebody is waiting for an answer. It closes when the
+  // thing is done, not when the tab is opened, so it cannot be cleared by
+  // looking at it.
+  const attention = useQuery({
+    queryKey: ["account-attention", account?.userId],
+    queryFn: () =>
+      supabaseClient
+        ? countAccountAttention(supabaseClient)
+        : { documents: 0, workspaces: 0 },
+    enabled: Boolean(account),
+  });
+  const waiting = attention.data ?? { documents: 0, workspaces: 0 };
+
+  useEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = 0;
+    const frame = window.requestAnimationFrame(() => {
+      if (!window.matchMedia("(max-width: 820px)").matches) return;
+      navRef.current
+        ?.querySelector<HTMLElement>(".account-nav-item.active")
+        ?.scrollIntoView({ block: "nearest", inline: "center" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
+  return (
+    <div className="account-shell">
+      <div className="account-layout-grid">
+        <aside className="account-sidebar" aria-label="Account navigation">
+        <div className="account-identity">
+          <AccountAvatar globalUrl={account?.avatarUrl} name={account?.displayName ?? "Account"} className="account-avatar" />
+          <div>
+            <strong>{account?.displayName ?? "Account"}</strong>
+          </div>
+        </div>
+        <nav ref={navRef} aria-label="Account">
+          {accountNav.map((item) => {
+            const Icon = item.icon;
+            const count = "waiting" in item ? waiting[item.waiting] : 0;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/account/preferences"}
+                className={({ isActive }) =>
+                  "account-nav-item" + (isActive ? " active" : "")
+                }
+                aria-label={
+                  count > 0
+                    ? `${item.label}, ${count} waiting on you`
+                    : undefined
+                }
+              >
+                <Icon size={17} aria-hidden />
+                {item.label}
+                {count > 0 ? (
+                  <span className="account-nav-count" aria-hidden>
+                    {count}
+                  </span>
+                ) : null}
+              </NavLink>
+            );
+          })}
+        </nav>
+        <div className="account-sidebar-footer">
+          {context ? (
+            <button
+              type="button"
+              className="account-nav-item"
+              onClick={() => requestAvailabilityNavigation(() => navigate("/app"))}
+            >
+              <ArrowLeft size={17} aria-hidden /> Back to workspace
+            </button>
+          ) : null}
+          <button type="button" className="account-nav-item" onClick={() => requestAvailabilityNavigation(() => void signOut())}>
+            <LogOut size={17} aria-hidden /> Sign out
+          </button>
+        </div>
+        </aside>
+        <main className="account-content-scroll" ref={contentRef}>
+          <div className="account-main">
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

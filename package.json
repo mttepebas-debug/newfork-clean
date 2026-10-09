@@ -1,0 +1,34 @@
+{
+  "name": "newfork-clean",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @newfork/web dev",
+    "dev:turbo": "turbo dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "test": "node --test scripts/lock.test.mjs scripts/guard.test.mjs scripts/decision-log.test.mjs scripts/schema-snapshot.test.mjs scripts/test-db.test.mjs scripts/hooks.test.mjs scripts/wt-hazirla.test.mjs scripts/train-plan.test.mjs scripts/train-steps.test.mjs scripts/kararlar-check.test.mjs scripts/main-watch.test.mjs scripts/karantina.test.mjs scripts/pc-only.test.mjs && turbo test",
+    "test:db": "node scripts/test-db.mjs",
+    "db:schema": "node scripts/schema-snapshot.mjs write",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "lint": "node scripts/schema-snapshot.mjs check-fast && turbo lint",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset --local"
+  },
+  "pnpm": {
+    "overrides": {
+      "fast-uri@>=3.0.0 <4": "^3.1.8",
+      "fast-uri@>=4": "^4.2.1"
+    }
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
+    "eslint": "^9.33.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2"
+  }
+}

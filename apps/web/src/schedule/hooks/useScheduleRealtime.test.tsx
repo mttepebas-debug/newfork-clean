@@ -1,0 +1,193 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useScheduleRealtime } from "./useScheduleRealtime";
+
+type BroadcastHandler = (event: { payload: unknown }) => void;
+
+const mocks = vi.hoisted(() => {
+  let broadcastHandler: BroadcastHandler | null = null;
+  const removeChannelMock = vi.fn();
+  const channel = {
+    on: vi.fn((_type: string, _filter: unknown, handler: BroadcastHandler) => {
+      broadcastHandler = handler;
+      return channel;
+    }),
+    subscribe: vi.fn(() => channel),
+  };
+  const channelMock = vi.fn(() => channel);
+  return {
+    channel,
+    channelMock,
+    get broadcastHandler() {
+      return broadcastHandler;
+    },
+    resetBroadcastHandler() {
+      broadcastHandler = null;
+    },
+    removeChannelMock,
+  };
+});
+
+vi.mock("../../lib/supabase", () => ({
+  supabaseClient: {
+    channel: mocks.channelMock,
+    removeChannel: mocks.removeChannelMock,
+  },
+}));
+
+function wrapper(queryClient: QueryClient) {
+  return function Wrapper({ children }: { readonly children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+  };
+}
+
+function renderRealtimeHook(queryClient = new QueryClient()) {
+  return renderHook(
+    () =>
+      useScheduleRealtime({
+        workspaceId: "workspace",
+        weekStart: "2026-05-04",
+        locationIds: ["loc-1", "loc-2"],
+      }),
+    { wrapper: wrapper(queryClient) },
+  );
+}
+
+beforeEach(() => {
+  mocks.resetBroadcastHandler();
+  mocks.channel.on.mockClear();
+  mocks.channel.subscribe.mockClear();
+  mocks.channelMock.mockClear();
+  mocks.removeChannelMock.mockClear();
+});
+
+describe("useScheduleRealtime", () => {
+  // DB-2: one private channel per shown location, never the workspace-wide one.
+  it("joins each shown location's private schedule invalidation channel", () => {
+    const { unmount } = renderRealtimeHook();
+
+    expect(mocks.channelMock.mock.calls).toEqual([
+      ["schedule:invalidation:workspace:loc-1", { config: { private: true } }],
+      ["schedule:invalidation:workspace:loc-2", { config: { private: true } }],
+    ]);
+    expect(mocks.channel.on).toHaveBeenCalledWith(
+      "broadcast",
+      { event: "schedule_invalidation" },
+      expect.any(Function),
+    );
+    expect(mocks.channel.subscribe).toHaveBeenCalled();
+
+    unmount();
+
+    expect(mocks.removeChannelMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes the open draft on a draft change that names no draft", () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    renderRealtimeHook(queryClient);
+
+    mocks.broadcastHandler?.({
+      payload: {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-04",
+        location_ids: ["loc-1"],
+        targets: ["draft_shifts"],
+      },
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["schedule-read", "workspace"],
+    });
+  });
+
+  it("invalidates matching schedule, pending op, and draft caches", () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    renderRealtimeHook(queryClient);
+
+    mocks.broadcastHandler?.({
+      payload: {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-04",
+        location_ids: ["loc-2"],
+        targets: [
+          "published_shifts",
+          "draft_shifts",
+          "pending_ops",
+          "drafts",
+        ],
+      },
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["schedule-read", "workspace"],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["schedule-pending-ops", "workspace", "2026-05-04"],
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["schedule-drafts", "workspace", "2026-05-04"],
+    });
+  });
+
+  // BL-278 (4): a live change must reach every cached day of the week.
+  it("marks another cached day of the week stale on a published change", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["schedule-read", "workspace", "2026-05-07"], { shifts: [] });
+    renderRealtimeHook(queryClient);
+
+    mocks.broadcastHandler?.({
+      payload: {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-04",
+        location_ids: ["loc-2"],
+        targets: ["published_shifts"],
+      },
+    });
+
+    expect(queryClient.getQueryState(["schedule-read", "workspace", "2026-05-07"])?.isInvalidated).toBe(true);
+  });
+
+  it("ignores invalidations for a different workspace, week, or location", () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+    renderRealtimeHook(queryClient);
+
+    for (const payload of [
+      {
+        kind: "schedule_invalidation",
+        workspace_id: "other",
+        week_start: "2026-05-04",
+        location_ids: ["loc-1"],
+        targets: ["published_shifts"],
+      },
+      {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-11",
+        location_ids: ["loc-1"],
+        targets: ["published_shifts"],
+      },
+      {
+        kind: "schedule_invalidation",
+        workspace_id: "workspace",
+        week_start: "2026-05-04",
+        location_ids: ["loc-3"],
+        targets: ["published_shifts"],
+      },
+    ]) {
+      mocks.broadcastHandler?.({ payload });
+    }
+
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+});

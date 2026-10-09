@@ -1,0 +1,916 @@
+/* Account area: one page title (the tab's own), a quiet sidebar, and sections
+   that read by type and spacing rather than by boxes inside boxes. */
+.account-shell {
+  display: block;
+  min-height: 100dvh;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+}
+
+.account-confirmation-dialog {
+  width: min(460px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: inherit;
+}
+.account-confirmation-dialog::backdrop { background: rgb(15 28 22 / 45%); }
+.account-confirmation-dialog p { font-size: 13px; line-height: 1.5; }
+
+.account-shell .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.account-layout-grid {
+  display: grid;
+  width: min(100% - 64px, 1120px);
+  height: 100dvh;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 56px;
+  margin: 0 auto;
+  padding-top: 40px;
+}
+
+/* ---- Sidebar ---- */
+.account-sidebar {
+  position: sticky;
+  top: 40px;
+  display: flex;
+  min-height: auto;
+  max-height: calc(100dvh - 64px);
+  flex-direction: column;
+  align-self: start;
+  overflow-y: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.account-identity {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+}
+
+.account-identity .account-avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-strong);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.account-identity strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.account-identity span {
+  margin-top: 2px;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+
+.account-avatar {
+  object-fit: cover;
+}
+
+.account-nav-item {
+  min-height: 36px;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.account-nav-item.active {
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+  font-weight: 700;
+}
+
+.account-sidebar-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+/* ---- Content ---- */
+.account-content-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-bottom: 72px;
+}
+
+.account-main {
+  min-width: 0;
+  max-width: 720px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.account-page {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.account-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0 20px;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.account-page-header > div:first-child {
+  min-width: 0;
+}
+
+.account-page-header h1 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.account-page-header > div > p:last-child {
+  margin: 6px 0 0;
+  color: var(--theme-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.account-header-action {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.account-header-action .nf-button {
+  gap: 7px;
+  padding-inline: 13px;
+}
+
+/* Account's form buttons (Save, Discard, Change email, Create workspace...)
+   are as tall as a field: 40px here, 44px on a phone. The photo's Upload and
+   Remove stay compact beside the avatar; row buttons follow the row kit. */
+.account-header-action .nf-button,
+.account-form-actions .nf-button,
+.account-inline-form .nf-button {
+  min-height: 40px;
+  padding-block: 0;
+}
+
+/* ---- Sections: one column, separated by a hairline ---- */
+.account-section-block,
+.account-profile-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin: 0;
+  padding: 24px 0;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  border-radius: 0;
+  background: transparent;
+}
+
+.account-profile-form {
+  gap: 20px;
+  border-bottom: 0;
+}
+
+.account-section-block:last-child {
+  border-bottom: 0;
+}
+
+.account-section-copy h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.account-section-copy p {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.account-section-body {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 16px;
+}
+
+.account-button-row,
+.account-inline-form,
+.account-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The photo leads the page: who this is, and the two things to do with it. */
+.account-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* The avatar with the file rules right under it, both on the same centre line. */
+.account-photo {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: center;
+  gap: 10px;
+}
+
+.account-photo-formats {
+  display: grid;
+  margin: 0;
+  gap: 1px;
+  text-align: center;
+}
+
+.account-profile-identity {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.account-profile-identity > strong {
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-profile-identity > span {
+  overflow: hidden;
+  color: var(--theme-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.account-photo-actions .nf-button {
+  min-height: 34px;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.account-avatar-large {
+  display: grid;
+  width: 104px;
+  height: 104px;
+  flex: 0 0 104px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-strong);
+  object-fit: cover;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+/* One labelled group of fields inside a form, e.g. the three parts of the
+   legal name. */
+.account-fieldset {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.account-fieldset legend {
+  float: left;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* The second group in a form: a hairline says where the first one ends. */
+.account-fieldset-divided {
+  padding-top: 24px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+.account-fieldset-hint {
+  clear: both;
+  margin: -8px 0 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.account-legal-name {
+  display: grid;
+  gap: 8px;
+}
+
+.account-legal-name > strong,
+.account-employment-record > strong {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Soft at rest, solid red once armed: removing the photo stays reachable
+   without competing with Upload. */
+.account-shell .nf-button.danger-button:not(.is-armed) {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.account-shell .nf-button.danger-button:not(.is-armed):not(:disabled):hover {
+  background: var(--theme-danger-surface);
+  box-shadow: inset 0 0 0 1px var(--theme-danger-border);
+}
+
+.account-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px 16px;
+}
+
+/* The legal name reads in one line, as it does at setup: first, middle, last. */
+.account-legal-name-grid,
+.account-profile-grid,
+.account-contact-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* On the shared three-column grid, so every field edge lines up down the page. */
+.account-field-span-2 {
+  grid-column: span 2;
+}
+
+/* align-content keeps the input right under its label when a neighbour's help
+   text makes the row taller. */
+.account-field {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 6px;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Fields side by side share their label, input and help rows, so a label that
+   wraps or a help line under one field never pushes its neighbour's input. */
+.account-field-grid > .account-field {
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  row-gap: 6px;
+}
+
+.account-field-wide {
+  grid-column: 1 / -1;
+}
+
+.account-field input,
+.account-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  /* WCAG 1.4.11: resting edge >=3:1 on white, as in BL-136 (BL-166). */
+  border: 1px solid var(--theme-muted);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  padding: 8px 11px;
+  color: var(--theme-text-body);
+  font: inherit;
+  font-weight: 400;
+  outline: none;
+}
+
+.account-field input:focus,
+.account-field select:focus {
+  border-color: var(--theme-accent-strong);
+  box-shadow: 0 0 0 3px var(--theme-focus-halo);
+}
+
+.account-field input[readonly] {
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted);
+}
+
+.account-field small {
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+/* Why Save is off, in one line right above it. */
+.account-form-missing {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+.account-form-actions,
+.account-employment-record .account-button-row {
+  justify-content: flex-end;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.account-main .workspace-row {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--theme-border);
+  background: transparent;
+}
+
+.account-main .workspace-row:first-child {
+  border-top: 1px solid var(--theme-border);
+}
+
+/* A value the page shows before offering to change it, e.g. the sign-in
+   email: the value, then its state in the muted line. */
+.account-current-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.account-current-value span {
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+
+/* Profile's three-column rhythm for any short-field form (password, formats). */
+.account-field-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.account-inline-form {
+  align-items: end;
+}
+
+.account-inline-form .account-field {
+  flex: 1 1 auto;
+}
+
+
+.account-notice,
+.account-main .workspace-transfer-panel {
+  border-left: 3px solid var(--theme-warning-border);
+  border-radius: 0;
+  background: var(--theme-warning-surface);
+  padding: 13px 15px;
+  color: var(--theme-warning-text);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-notice p {
+  margin: 4px 0 10px;
+}
+
+/* Why a button is off, in plain words: information, not an alarm. */
+.account-blocked-notice {
+  border-radius: 8px;
+  background: var(--theme-surface-muted);
+  padding: 12px 14px;
+  color: var(--theme-text-body);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.account-blocked-notice p {
+  margin: 2px 0 0;
+}
+
+.account-main .workspace-closure-panel,
+.account-main .workspace-transfer-panel {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+/* Workspaces: a plain list under the page title, rows split by hairlines. */
+.account-main .workspace-list {
+  margin-top: 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+@media (max-width: 820px) {
+  :root:has(.account-shell) {
+    scrollbar-gutter: stable;
+  }
+
+  .account-layout-grid {
+    display: block;
+    width: min(100% - 32px, 760px);
+    height: auto;
+    padding: 12px 0 48px;
+  }
+
+  .account-sidebar {
+    position: static;
+    display: flex;
+    max-height: none;
+    flex-direction: column;
+    overflow: visible;
+    margin-bottom: 24px;
+  }
+
+  .account-identity {
+    display: none;
+  }
+
+  /* Tabs scroll sideways; the rule under them is the page's top edge. */
+  .account-sidebar nav {
+    display: flex;
+    gap: 4px;
+    margin-inline: -16px;
+    overflow-x: auto;
+    padding: 0 16px 10px;
+    border-bottom: 1px solid var(--theme-border);
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+  }
+
+  .account-sidebar nav::-webkit-scrollbar { display: none; }
+
+  .account-nav-item {
+    width: auto;
+    min-height: 44px;
+    flex: 0 0 auto;
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+
+  .account-photo-actions .nf-button {
+    min-height: 42px;
+  }
+
+  .account-header-action .nf-button,
+  .account-form-actions .nf-button,
+  .account-inline-form .nf-button {
+    min-height: 44px;
+  }
+
+  .account-main .employee-documents-list .toolbar-filter-select {
+    height: 44px;
+    min-height: 44px;
+  }
+
+  /* Workspaces' row buttons and menu reach the 44px a thumb needs. */
+  .account-main .workspace-list .pb-btn.pb-btn {
+    min-height: 44px;
+  }
+
+  .account-main .workspace-actions-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .account-field input,
+  .account-field select {
+    min-height: 44px;
+  }
+
+  .account-field-span-2 {
+    grid-column: auto;
+  }
+
+  /* Back and Sign out stay reachable on a phone, as a quiet row above the tabs. */
+  .account-sidebar-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 2px;
+    order: -1;
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+  }
+
+  .account-sidebar-footer .account-nav-item {
+    min-height: 40px;
+    padding-inline: 8px;
+    color: var(--theme-muted);
+    font-size: 12px;
+  }
+
+  .account-content-scroll {
+    overflow: visible;
+    scrollbar-gutter: auto;
+    padding-bottom: 0;
+  }
+
+  .account-page-header {
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 18px;
+  }
+
+  .account-page-header h1 {
+    font-size: 22px;
+  }
+
+  .account-header-action,
+  .account-header-action .nf-button {
+    width: 100%;
+  }
+
+  .account-section-block {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    padding: 24px 0;
+  }
+
+  .account-field-grid,
+  .account-legal-name-grid,
+  .account-contact-grid,
+  .account-field-grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-field-wide {
+    grid-column: auto;
+  }
+
+  .account-inline-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .account-inline-form .nf-button {
+    width: 100%;
+  }
+
+}
+
+@media (max-width: 430px) {
+  .account-form-actions,
+  .account-employment-record .account-button-row {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .account-form-actions .nf-button,
+  .account-employment-record .account-button-row .nf-button {
+    width: 100%;
+  }
+
+  .account-form-missing {
+    text-align: left;
+  }
+
+  .account-profile-head {
+    align-items: flex-start;
+  }
+}
+.account-crop-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.account-crop-preview { width: min(100%, 280px); aspect-ratio: 1; overflow: hidden; position: relative; margin: 16px auto; background: var(--theme-surface-muted); border-radius: 8px; }
+.account-crop-preview img { position: absolute; height: auto; }
+.account-crop-controls { border: 0; margin: 0; padding: 0; display: grid; gap: 12px; min-width: 0; }
+.account-crop-controls label { display: grid; gap: 6px; }
+.account-crop-controls input { width: 100%; accent-color: var(--theme-accent-deep); }
+.account-main .workspace-row > div:first-child { min-width: 0; }
+.account-main .workspace-row > div:first-child strong,
+.account-main .workspace-row > div:first-child span { overflow-wrap: anywhere; }
+.workspace-row-actions { flex: 0 0 auto; }
+/* The list has no panel, so the rows' text starts on the page title's line. */
+.account-main .workspace-list .pb-row { padding-inline: 0; }
+/* The workspace you are in is tinted; the tint reaches a little past the
+   column so its text keeps the same left line as the other rows. The hairlines
+   on either side stand back so the tint reads as one rounded band. */
+.account-main .workspace-list .pb-row[aria-current="true"] {
+  margin-inline: -12px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  border-bottom-color: transparent;
+}
+.account-main .workspace-list .pb-row:has(+ .pb-row[aria-current="true"]) {
+  border-bottom-color: transparent;
+}
+/* On the tint the muted grey falls under 4.5:1, so the role line steps up. */
+.account-main .workspace-list .pb-row[aria-current="true"] .pb-row-meta {
+  color: var(--theme-text-secondary);
+}
+
+/* Documents' type filter looks like every other Account field. */
+.account-main .employee-documents-list .toolbar-filter-select {
+  height: 40px;
+  min-height: 40px;
+  border-color: var(--theme-muted);
+  padding: 8px 11px;
+  font-size: 13px;
+}
+.account-main .employee-documents-list .toolbar-filter-select:focus {
+  border-color: var(--theme-accent-strong);
+  box-shadow: 0 0 0 3px var(--theme-focus-halo);
+  outline: none;
+}
+/* Stacked on a narrow screen, the current row has no button to push the menu to
+   the right edge, and its right-anchored popover would open off the left side. */
+.pb-row-actions .workspace-actions-menu { margin-left: auto; }
+.workspace-actions-menu { position: relative; }
+.workspace-actions-trigger {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 7px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+}
+.workspace-actions-trigger:hover,
+.workspace-actions-trigger:focus-visible,
+.workspace-actions-trigger[aria-expanded="true"] {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-muted);
+  color: var(--theme-accent-strong);
+}
+.workspace-actions-trigger:focus-visible {
+  outline: 3px solid var(--theme-focus-halo);
+  outline-offset: 1px;
+}
+.workspace-actions-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  display: grid;
+  width: max-content;
+  min-width: 190px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  padding: 5px;
+  box-shadow: 0 12px 30px rgb(26 49 40 / 14%);
+}
+.workspace-actions-popover button {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  padding: 8px 10px;
+  color: var(--theme-text-menu);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-actions-popover button:hover,
+.workspace-actions-popover button:focus-visible { background: var(--theme-surface-muted); outline: none; }
+.workspace-actions-popover button:disabled { opacity: 0.55; cursor: default; }
+.workspace-actions-separator { height: 1px; margin: 4px 6px; background: var(--theme-border); }
+.workspace-actions-popover .workspace-actions-danger { color: var(--theme-danger-strong); }
+.workspace-candidates { display: grid; gap: 8px; }
+.workspace-candidate { display: flex !important; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--theme-border); border-radius: 8px; }
+.workspace-candidate input { width: auto !important; }
+.workspace-candidate span { min-width: 0; overflow-wrap: anywhere; }
+.workspace-candidate small { display: block; }
+.account-create-workspace-form, .account-create-workspace-form > div { display: flex; flex-wrap: wrap; gap: 12px; }
+.account-create-workspace-form input { width: 100%; min-width: 0; }
+.workspace-transfer-banner { margin-bottom: 18px; }
+@media (max-width: 600px) {
+  .account-main .workspace-row { align-items: center; gap: 10px; }
+  .account-main .workspace-row-actions { flex-wrap: nowrap; }
+  .workspace-actions-popover { max-width: calc(100vw - 48px); }
+}
+.account-create-workspace-form label { width: 100%; }
+/* The US letter rule's line, on its own row under the name (BL-503). */
+.account-create-workspace-form small.form-error { width: 100%; margin: -6px 0 0; }
+
+/* The account beside the record each workspace keeps: two columns so the pair
+   reads as a pair, stacked once there is no room for two. */
+.account-identity-list {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-border);
+  list-style: none;
+}
+.account-identity-list li {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--theme-surface);
+}
+.account-identity-where {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.account-identity-where strong {
+  font-size: 13.5px;
+}
+.account-identity-where span {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.account-identity-who {
+  display: grid;
+  gap: 2px;
+  flex: 0 0 auto;
+  color: var(--theme-text);
+  font-size: 13px;
+  text-align: right;
+}
+.account-identity-who small {
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 620px) {
+  .account-identity-list li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .account-identity-who {
+    text-align: left;
+  }
+}
+
+/* The US letter rule's line under a field (BL-503) keeps the error colour. */
+.account-field small.form-error {
+  margin: 0;
+  color: var(--theme-danger-strong);
+}
+
+/* The +1 in the type of the number beside it, not of the label (BL-503). */
+.account-field .us-phone-prefix {
+  font-weight: 400;
+}

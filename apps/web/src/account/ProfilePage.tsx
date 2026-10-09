@@ -1,0 +1,806 @@
+import {
+  normalizeAccountPhone,
+  toUsPhone,
+  usPhoneDraft,
+  type EmploymentContactRecord,
+  type OwnerLegalName,
+} from "@newfork/shared";
+import { Button, ConfirmButton } from "@newfork/ui";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Camera, Trash2 } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
+import { Link, useNavigate } from "react-router";
+import { useAuth } from "../auth/AuthContext";
+import {
+  listOwnEmploymentRecords,
+  removeAccountAvatar,
+  supabaseClient,
+  uploadAccountAvatar,
+} from "../lib/supabase";
+import {
+  requestPreferredName,
+  saveOwnEmploymentContact,
+} from "../employees/employee-data";
+import { AccountPageHeader, unfinishedSetup } from "./components";
+import {
+  legalNameErrorMessage,
+  onboardingUnfinished,
+  ownedWorkspaces,
+  useAccountWorkspaces,
+  useOwnLegalName,
+  useSaveOwnLegalName,
+} from "./legal-name-data";
+import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { AvatarCropDialog } from "./AvatarCropDialog";
+import { validateAvatarFile } from "./avatar-crop";
+import { AccountAvatar } from "./AccountAvatar";
+import { RequestError } from "../lib/request-error";
+import { UsPhoneInput } from "../shell/UsPhoneInput";
+import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+
+/**
+ * What the page's one Save needs from each legal name form. The legal name is
+ * written per owned workspace and the rest of the profile to the account, so
+ * the forms keep their own draft and report it up instead of saving alone.
+ */
+type LegalNameHandle = {
+  readonly dirty: boolean;
+  /** First and last name are both there; the middle name may stay empty. */
+  readonly filled: boolean;
+  /** No part breaks the US letter rule (BL-503). */
+  readonly lettersOk: boolean;
+  readonly save: () => Promise<void>;
+  readonly reset: () => void;
+};
+type RegisterLegalName = (
+  workspaceId: string,
+  handle: LegalNameHandle | null,
+) => void;
+
+type Contact = {
+  readonly name: string;
+  readonly relationship: string;
+  readonly phone: string;
+};
+
+/** "a", "a and b", "a, b and c". */
+function listWords(words: readonly string[]): string {
+  return words.length < 2
+    ? (words[0] ?? "")
+    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+function workspaceNames(records: readonly EmploymentContactRecord[]): string {
+  return listWords(records.map((record) => record.workspaceName));
+}
+
+/** The same contact is kept on every workspace record; the first filled one leads. */
+function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
+  const lead = records.find((record) => record.emergencyContactName) ?? records[0];
+  return {
+    name: lead?.emergencyContactName ?? "",
+    relationship: lead?.emergencyContactRelationship ?? "",
+    phone: usPhoneDraft(lead?.emergencyContactPhone),
+  };
+}
+
+/**
+ * Did the core refuse for good? Access ended there, access taken away while
+ * the form was open (no longer a member, a 404), or the workspace is closed.
+ * Trying again changes none of them.
+ */
+function accessEnded(cause: unknown): boolean {
+  return (
+    cause instanceof RequestError &&
+    (cause.reason === "authz.not_active" ||
+      cause.reason === "authz.not_member" ||
+      cause.reason === "authz.workspace_closed")
+  );
+}
+
+export default function ProfilePage() {
+  const { account, updateAccount } = useAuth();
+  const cache = useQueryClient();
+  const navigate = useNavigate();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const workspaces = useAccountWorkspaces();
+  const records = useQuery({
+    queryKey: ["account-employment-records"],
+    queryFn: () =>
+      supabaseClient ? listOwnEmploymentRecords(supabaseClient) : [],
+  });
+  const [preferredDraft, setPreferredDraft] = useState<string | null>(null);
+  const [contactDraft, setContactDraft] = useState<Contact | null>(null);
+  // Workspaces that already took the preferred name being typed. A request a
+  // manager still has to approve leaves the record as it was, so the record
+  // alone cannot say it was sent.
+  const [preferredSent, setPreferredSent] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [phone, setPhone] = useState(usPhoneDraft(account?.phone));
+  const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
+  const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [draftFile, setDraftFile] = useState<File | null>(null);
+  const legalForms = useRef(new Map<string, LegalNameHandle>());
+  const [legalState, setLegalState] = useState<
+    Record<
+      string,
+      { readonly dirty: boolean; readonly filled: boolean; readonly lettersOk: boolean }
+    >
+  >({});
+  const registerLegalName = useCallback<RegisterLegalName>(
+    (workspaceId, handle) => {
+      if (handle) legalForms.current.set(workspaceId, handle);
+      else legalForms.current.delete(workspaceId);
+      setLegalState((current) => {
+        const before = current[workspaceId];
+        if (
+          handle &&
+          before?.dirty === handle.dirty &&
+          before.filled === handle.filled &&
+          before.lettersOk === handle.lettersOk
+        )
+          return current;
+        if (!handle && !before) return current;
+        const next = { ...current };
+        if (handle)
+          next[workspaceId] = {
+            dirty: handle.dirty,
+            filled: handle.filled,
+            lettersOk: handle.lettersOk,
+          };
+        else delete next[workspaceId];
+        return next;
+      });
+    },
+    [],
+  );
+
+  // A workspace whose person has not finished onboarding has no private record
+  // yet, so the database would refuse a contact on it. A workspace its owner is
+  // still setting up keeps its employee routes shut, so it would be refused too.
+  const recordList = records.data ?? [];
+  const unfinishedRecords = recordList.filter((record) =>
+    onboardingUnfinished(workspaces.data, record.workspaceId),
+  );
+  const setupRecords = recordList.filter((record) => {
+    const workspace = workspaces.data?.find(
+      (item) => item.id === record.workspaceId,
+    );
+    return workspace ? unfinishedSetup(workspace) : false;
+  });
+  const contactRecords = recordList.filter(
+    (record) =>
+      !unfinishedRecords.includes(record) && !setupRecords.includes(record),
+  );
+  const hasContactForm = contactRecords.length > 0;
+  // The name a person goes by: what a workspace already holds for them, else
+  // the name the account was made with.
+  const preferredOnFile =
+    contactRecords.find((record) => record.preferredName)?.preferredName ??
+    account?.displayName ??
+    "";
+  const preferred = preferredDraft ?? preferredOnFile;
+  const contactOnFile = leadingContact(contactRecords);
+  const contact = contactDraft ?? contactOnFile;
+
+  const legalDirty = Object.values(legalState).some((form) => form.dirty);
+  const legalFilled = Object.values(legalState).every((form) => form.filled);
+  // Each workspace is compared on its own, so one that refused the last Save
+  // keeps Save open and is the only one sent again.
+  const preferredBehind =
+    preferredDraft === null
+      ? []
+      : contactRecords.filter(
+          (record) =>
+            record.preferredName !== preferred.trim() &&
+            !preferredSent.has(record.workspaceId),
+        );
+  const preferredDirty =
+    preferredDraft !== null &&
+    (preferred !== preferredOnFile || preferredBehind.length > 0);
+  const contactBehind =
+    contactDraft === null
+      ? []
+      : contactRecords.filter(
+          (record) =>
+            record.emergencyContactName !== contact.name ||
+            record.emergencyContactRelationship !== contact.relationship ||
+            record.emergencyContactPhone !== (toUsPhone(contact.phone) ?? contact.phone),
+        );
+  const contactDirty = contactBehind.length > 0;
+  const formDirty = dirty || legalDirty || preferredDirty || contactDirty;
+  // Only the preferred name and the middle name may stay empty.
+  // What is still missing, by the labels on screen; Save waits for all of it.
+  const missing = [
+    legalFilled ? null : "legal name",
+    toUsPhone(phone) ? null : "phone number",
+    hasContactForm && contact.name.trim() === "" ? "contact name" : null,
+    hasContactForm && contact.relationship.trim() === "" ? "relationship" : null,
+    hasContactForm && !toUsPhone(contact.phone) ? "contact phone" : null,
+  ].filter((part): part is string => part !== null);
+  // A field that breaks the US letter rule says so under itself.
+  const lettersOk =
+    Object.values(legalState).every((form) => form.lettersOk) &&
+    !breaksLetterRule(preferred) &&
+    !(hasContactForm && breaksLetterRule(contact.name, contact.relationship));
+  const complete = missing.length === 0 && lettersOk;
+
+  useEffect(() => {
+    if (!draftFile) return;
+    const url = URL.createObjectURL(draftFile);
+    setAvatarUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [draftFile]);
+
+  useEffect(() => {
+    if (!account || dirty) return;
+    setPhone(usPhoneDraft(account.phone));
+    setAvatarObjectPath(account.avatarObjectPath);
+    setAvatarUrl(account.avatarUrl);
+  }, [account, dirty]);
+
+  const navigationDialog = useAvailabilityNavigationGuard({
+    dirty: formDirty, busy: saving || Boolean(cropFile), onDiscard: () => discard(),
+    labels: { saving: "Saving profile", discard: "Discard profile changes?", saved: "Profile saved",
+      unsaved: "Your unsaved profile changes will be lost." },
+  });
+
+  if (!account) return null;
+
+  const markDirty = () => {
+    setDirty(true);
+    setSaved(null);
+  };
+
+  const closeCropDialog = () => {
+    setCropFile(null);
+    requestAnimationFrame(() =>
+      document.getElementById("profile-photo-upload-trigger")?.focus(),
+    );
+  };
+
+  const discard = () => {
+    setDraftFile(null);
+    setPreferredDraft(null);
+    setPreferredSent(new Set());
+    setContactDraft(null);
+    setPhone(usPhoneDraft(account.phone));
+    setAvatarObjectPath(account.avatarObjectPath);
+    setAvatarUrl(account.avatarUrl);
+    for (const form of legalForms.current.values()) form.reset();
+    setDirty(false);
+    setSaved(null);
+    setError(null);
+  };
+
+  /** Saves the account part; returns what went wrong, or null. */
+  const saveProfile = async (): Promise<string | null> => {
+    let profileSaved = false;
+    try {
+      const normalizedPhone = normalizeAccountPhone(phone);
+      const previousAvatarPath = account.avatarObjectPath;
+      let nextAvatar = { avatarObjectPath, avatarUrl };
+      if (draftFile) {
+        if (!supabaseClient) throw new Error("Account photo storage is not configured");
+        nextAvatar = await uploadAccountAvatar(supabaseClient, account.userId, draftFile);
+      }
+      // Emptying the preferred name leaves the account's own name as it is.
+      await updateAccount(
+        preferred.trim() || account.displayName,
+        account.theme,
+        normalizedPhone,
+        { ...nextAvatar },
+      );
+      profileSaved = true;
+      setDraftFile(null);
+      setAvatarObjectPath(nextAvatar.avatarObjectPath);
+      setAvatarUrl(nextAvatar.avatarUrl);
+      setDirty(false);
+      if (supabaseClient && previousAvatarPath && previousAvatarPath !== nextAvatar.avatarObjectPath) {
+        await removeAccountAvatar(supabaseClient, account.userId, previousAvatarPath);
+      }
+      return null;
+    } catch (saveError: unknown) {
+      // A failed save response may follow a committed profile write. Do not
+      // delete the new object on that ambiguous outcome and break its reference.
+      return profileSaved ? "Profile saved, but the previous photo could not be removed."
+        : saveError instanceof Error ? saveError.message : "Profile could not be saved";
+    }
+  };
+
+  /**
+   * Sends the preferred name to each workspace that does not have it yet.
+   * Says how many hold it for a manager's answer and which ones refused.
+   */
+  const savePreferredName = async () => {
+    let waiting = 0;
+    const sent: string[] = [];
+    const refused: EmploymentContactRecord[] = [];
+    for (const record of preferredBehind) {
+      try {
+        const outcome = await requestPreferredName(
+          record.workspaceId,
+          record.employeeId,
+          preferred.trim(),
+        );
+        if (outcome === "waiting") waiting += 1;
+        sent.push(record.workspaceId);
+      } catch {
+        refused.push(record);
+      }
+    }
+    return { waiting, sent, refused };
+  };
+
+  /**
+   * Writes the contact to each workspace that differs; returns the ones that
+   * refused, apart from the ones where trying again changes nothing: access
+   * ended there or the workspace is closed (the core's reason, BL-444).
+   */
+  const saveContact = async (): Promise<{
+    refused: EmploymentContactRecord[];
+    ended: EmploymentContactRecord[];
+  }> => {
+    const refused: EmploymentContactRecord[] = [];
+    const ended: EmploymentContactRecord[] = [];
+    for (const record of contactBehind) {
+      try {
+        // personalPhone left out: the number a workspace has on file stays.
+        await saveOwnEmploymentContact(record.workspaceId, record.employeeId, {
+          name: contact.name,
+          relationship: contact.relationship,
+          phone: toUsPhone(contact.phone) ?? contact.phone,
+          email: record.emergencyContactEmail,
+        });
+      } catch (cause: unknown) {
+        (accessEnded(cause) ? ended : refused).push(record);
+      }
+    }
+    return { refused, ended };
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setSaved(null);
+    setError(null);
+    const failures: string[] = [];
+    let waiting = 0;
+    if (dirty || preferredDirty) {
+      const failure = await saveProfile();
+      if (failure) failures.push(failure);
+    }
+    for (const form of legalForms.current.values()) {
+      if (!form.dirty) continue;
+      try {
+        await form.save();
+      } catch (legalError: unknown) {
+        failures.push(legalNameErrorMessage(legalError));
+      }
+    }
+    if (preferredDirty && failures.length === 0) {
+      const outcome = await savePreferredName();
+      waiting = outcome.waiting;
+      if (outcome.refused.length === 0) {
+        setPreferredDraft(null);
+        setPreferredSent(new Set());
+      } else {
+        // The draft stays, so Save stays open for the ones that refused.
+        setPreferredSent((current) => new Set([...current, ...outcome.sent]));
+        failures.push(
+          `Your preferred name could not be sent to ${workspaceNames(outcome.refused)}. Try again.`,
+        );
+      }
+    }
+    if (contactDirty) {
+      const { refused, ended } = await saveContact();
+      if (refused.length === 0 && ended.length === 0) setContactDraft(null);
+      if (refused.length > 0)
+        failures.push(
+          `Your emergency contact could not be saved in ${workspaceNames(refused)}. Try again.`,
+        );
+      if (ended.length > 0)
+        failures.push(
+          `Your emergency contact can no longer be changed in ${workspaceNames(ended)}: your access there has ended or the workspace is closed.`,
+        );
+    }
+    if (contactDirty || preferredDirty)
+      await cache.invalidateQueries({ queryKey: ["account-employment-records"] });
+    if (failures.length > 0) setError(failures.join(" "));
+    else
+      setSaved(
+        waiting > 0
+          ? "Profile saved. A manager needs to approve your preferred name."
+          : "Profile saved",
+      );
+    setSaving(false);
+  };
+
+  const selectAvatar = (file: File | undefined) => {
+    if (!file) return;
+    if (!supabaseClient) {
+      setError("Account photo storage is not configured");
+      return;
+    }
+    setError(null);
+    try {
+      validateAvatarFile(file);
+      setCropFile(file);
+    } catch (uploadError: unknown) {
+      setError(uploadError instanceof Error ? uploadError.message : "Photo could not be uploaded");
+    } finally {
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  };
+
+  const editContact = (part: keyof Contact, value: string) => {
+    setSaved(null);
+    setContactDraft({ ...contact, [part]: value });
+  };
+
+  return (
+    <section className="account-page" aria-labelledby="profile-title">
+      {navigationDialog}
+      {cropFile ? <AvatarCropDialog file={cropFile} onCancel={closeCropDialog} onConfirm={file => {
+        setDraftFile(file); closeCropDialog(); markDirty();
+      }} /> : null}
+      <AccountPageHeader
+        title="Profile"
+        titleId="profile-title"
+        description="Your name, photo and phone, and who to call in an emergency."
+      />
+      <form className="account-profile-form" aria-label="Profile" onSubmit={submit}>
+        <div className="account-profile-head">
+          <div className="account-photo">
+            <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={account.displayName} />
+            <span className="field-help account-photo-formats">
+              <span>JPG, PNG or WebP</span>
+              <span>up to 5 MB</span>
+            </span>
+          </div>
+          <div className="account-profile-identity">
+            <strong>{account.displayName}</strong>
+            <span>{account.email}</span>
+            <div className="account-photo-actions">
+              <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
+                <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
+              </Button>
+              {avatarObjectPath || draftFile ? <ConfirmButton
+                className="danger-button"
+                disabled={saving}
+                confirmLabel="Confirm remove"
+                onConfirm={() => {
+                  setDraftFile(null);
+                  setAvatarObjectPath(null);
+                  setAvatarUrl(null);
+                  markDirty();
+                }}
+              >
+                <Trash2 size={15} aria-hidden /> Remove
+              </ConfirmButton> : null}
+            </div>
+          </div>
+          <input
+            ref={fileInput}
+            className="visually-hidden"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Choose profile photo"
+            disabled={saving}
+            onChange={(event) => selectAvatar(event.target.files?.[0])}
+          />
+        </div>
+
+        <OwnerLegalNames register={registerLegalName} onEdit={() => setSaved(null)} />
+
+        <div className="account-field-grid account-profile-grid">
+          <label className="account-field" htmlFor="account-preferred-name">
+            <span>
+              Preferred name<span className="field-optional">optional</span>
+            </span>
+            <input
+              id="account-preferred-name"
+              aria-label="Preferred name"
+              value={preferred}
+              maxLength={80}
+              onChange={(event) => {
+                setPreferredDraft(event.target.value);
+                // A new name goes to every workspace again.
+                setPreferredSent(new Set());
+                setSaved(null);
+              }}
+              {...letterRuleProps(preferred, "account-preferred-name-error")}
+            />
+            {/* One line under the field: the rule while it is broken, else the help. */}
+            {breaksLetterRule(preferred) ? (
+              <LetterRuleError value={preferred} id="account-preferred-name-error" />
+            ) : (
+              <small>Shown everywhere except documents. A manager approves it.</small>
+            )}
+          </label>
+          <label className="account-field account-field-span-2" htmlFor="account-phone-number">
+            <span>Phone number</span>
+            <UsPhoneInput
+              id="account-phone-number"
+              aria-label="Phone number"
+              value={phone}
+              onChange={(next) => {
+                setPhone(next);
+                markDirty();
+              }}
+              required
+            />
+          </label>
+        </div>
+
+        {hasContactForm ||
+        unfinishedRecords.length > 0 ||
+        setupRecords.length > 0 ? (
+          <fieldset className="account-fieldset account-fieldset-divided">
+            <legend>Emergency contact</legend>
+            {hasContactForm ? (
+              <div className="account-field-grid account-contact-grid">
+                <label className="account-field" htmlFor="account-contact-name">
+                  <span>Contact name</span>
+                  <input
+                    id="account-contact-name"
+                    aria-label="Contact name"
+                    value={contact.name}
+                    maxLength={120}
+                    onChange={(event) => editContact("name", event.target.value)}
+                    placeholder="Morgan Reyes"
+                    required
+                    {...letterRuleProps(contact.name, "account-contact-name-error")}
+                  />
+                  <LetterRuleError value={contact.name} id="account-contact-name-error" />
+                </label>
+                <label className="account-field" htmlFor="account-contact-relationship">
+                  <span>Relationship</span>
+                  <input
+                    id="account-contact-relationship"
+                    aria-label="Relationship"
+                    value={contact.relationship}
+                    maxLength={80}
+                    onChange={(event) => editContact("relationship", event.target.value)}
+                    placeholder="Spouse"
+                    required
+                    {...letterRuleProps(contact.relationship, "account-contact-relationship-error")}
+                  />
+                  <LetterRuleError
+                    value={contact.relationship}
+                    id="account-contact-relationship-error"
+                  />
+                </label>
+                <label className="account-field" htmlFor="account-contact-phone">
+                  <span>Contact phone</span>
+                  <UsPhoneInput
+                    id="account-contact-phone"
+                    aria-label="Contact phone"
+                    value={contact.phone}
+                    onChange={(next) => editContact("phone", next)}
+                    required
+                  />
+                </label>
+              </div>
+            ) : null}
+            {setupRecords.map((record) => (
+              <div key={record.workspaceId} className="account-employment-record">
+                <strong>{record.workspaceName}</strong>
+                <p className="account-record-note">
+                  Finish setting up this workspace, then you can add your
+                  emergency contact. Continue it in{" "}
+                  <Link to="/account/workspaces">Account › Workspaces</Link>.
+                </p>
+              </div>
+            ))}
+            {unfinishedRecords.map((record) => (
+              <div key={record.workspaceId} className="account-employment-record">
+                <strong>{record.workspaceName}</strong>
+                <p className="account-record-note">
+                  Finish setting up your account here, then you can add your
+                  emergency contact.
+                </p>
+                <div className="account-button-row">
+                  <Button
+                    type="button"
+                    aria-label={`Continue setup for ${record.workspaceName}`}
+                    onClick={() => navigate(`/welcome/${record.workspaceId}`)}
+                  >
+                    Continue setup
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </fieldset>
+        ) : null}
+
+        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {saved ? <p className="form-success" role="status">{saved}</p> : null}
+        {/* Why Save is off: the missing fields, by name. */}
+        {missing.length > 0 ? (
+          <p className="account-form-missing" id="profile-missing">
+            To save, fill in {listWords(missing)}.
+          </p>
+        ) : null}
+        <div className="account-form-actions">
+          {formDirty ? (
+            <Button type="button" className="secondary-button" disabled={saving} onClick={() => void discard()}>
+              Discard
+            </Button>
+          ) : null}
+          <Button
+            type="submit"
+            disabled={!formDirty || saving || !complete}
+            aria-describedby={missing.length > 0 ? "profile-missing" : undefined}
+          >
+            {saving ? "Saving" : "Save"}
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+/**
+ * The owner's legal name: the name on their ID, which documents and
+ * signatures read. Given at the first step of setup; changed here, and each
+ * change goes to the audit log. Shown only where this account is the owner.
+ */
+function OwnerLegalNames({
+  register,
+  onEdit,
+}: {
+  readonly register: RegisterLegalName;
+  readonly onEdit: () => void;
+}) {
+  const workspaces = useAccountWorkspaces();
+  const owned = ownedWorkspaces(workspaces.data);
+  if (owned.length === 0) return null;
+
+  return (
+    <fieldset className="account-fieldset">
+      <legend>Legal name</legend>
+      <p className="account-fieldset-hint">
+        As it appears on your ID. Documents and signatures use it; every change
+        is recorded.
+      </p>
+      {owned.map((workspace) => (
+        <OwnerLegalNameBlock
+          key={workspace.id}
+          workspaceId={workspace.id}
+          workspaceName={workspace.name}
+          showName={owned.length > 1}
+          register={register}
+          onEdit={onEdit}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
+function OwnerLegalNameBlock({
+  workspaceId,
+  workspaceName,
+  showName,
+  register,
+  onEdit,
+}: {
+  readonly workspaceId: string;
+  readonly workspaceName: string;
+  readonly showName: boolean;
+  readonly register: RegisterLegalName;
+  readonly onEdit: () => void;
+}) {
+  const legalName = useOwnLegalName(workspaceId);
+  // Kept above the fields, which start over when the saved name comes back.
+  const save = useSaveOwnLegalName(workspaceId);
+  if (legalName.isPending) return null;
+  // A failed read is not a failed save: the save wording would send the owner
+  // looking for a change they never made.
+  if (legalName.isError)
+    return (
+      <p className="form-error" role="alert">
+        Your legal name could not be loaded. Reload the page to try again.
+      </p>
+    );
+  return (
+    <OwnerLegalNameFields
+      // A saved name comes back from the server and starts a clean draft.
+      key={JSON.stringify(legalName.data)}
+      workspaceId={workspaceId}
+      workspaceName={showName ? workspaceName : null}
+      initial={legalName.data ?? { firstName: "", middleName: "", lastName: "" }}
+      saveName={save.mutateAsync}
+      register={register}
+      onEdit={onEdit}
+    />
+  );
+}
+
+function OwnerLegalNameFields({
+  workspaceId,
+  workspaceName,
+  initial,
+  saveName,
+  register,
+  onEdit,
+}: {
+  readonly workspaceId: string;
+  readonly workspaceName: string | null;
+  readonly initial: OwnerLegalName;
+  readonly saveName: (name: OwnerLegalName) => Promise<void>;
+  readonly register: RegisterLegalName;
+  readonly onEdit: () => void;
+}) {
+  const [draft, setDraft] = useState(initial);
+  const dirty =
+    draft.firstName !== initial.firstName ||
+    draft.middleName !== initial.middleName ||
+    draft.lastName !== initial.lastName;
+  const filled = draft.firstName.trim() !== "" && draft.lastName.trim() !== "";
+  const lettersOk = !breaksLetterRule(draft.firstName, draft.middleName, draft.lastName);
+
+  useEffect(() => {
+    register(workspaceId, {
+      dirty,
+      filled,
+      lettersOk,
+      save: () =>
+        saveName({
+          firstName: draft.firstName.trim(),
+          middleName: draft.middleName.trim(),
+          lastName: draft.lastName.trim(),
+        }),
+      reset: () => setDraft(initial),
+    });
+  }, [dirty, draft, initial, filled, lettersOk, register, saveName, workspaceId]);
+  useEffect(() => () => register(workspaceId, null), [register, workspaceId]);
+
+  const field = (suffix: string) => `legal-name-${workspaceId}-${suffix}`;
+  const input = (part: keyof OwnerLegalName, label: string, suffix: string) => (
+    <label className="account-field" htmlFor={field(suffix)}>
+      <span>
+        {label}
+        {part === "middleName" ? (
+          <span className="field-optional">optional</span>
+        ) : null}
+      </span>
+      <input
+        id={field(suffix)}
+        aria-label={`Legal ${label.toLowerCase()}`}
+        value={draft[part]}
+        maxLength={80}
+        required={part !== "middleName"}
+        onChange={(event) => {
+          onEdit();
+          setDraft({ ...draft, [part]: event.target.value });
+        }}
+        {...letterRuleProps(draft[part], field(`${suffix}-error`))}
+      />
+      <LetterRuleError value={draft[part]} id={field(`${suffix}-error`)} />
+    </label>
+  );
+
+  return (
+    <div className="account-legal-name">
+      {workspaceName ? <strong>{workspaceName}</strong> : null}
+      <div className="account-field-grid account-legal-name-grid">
+        {input("firstName", "First name", "first")}
+        {input("middleName", "Middle name", "middle")}
+        {input("lastName", "Last name", "last")}
+      </div>
+    </div>
+  );
+}

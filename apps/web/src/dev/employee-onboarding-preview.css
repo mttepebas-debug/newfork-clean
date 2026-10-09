@@ -1,0 +1,815 @@
+.eo-preview {
+  --eo-bg: #fff;
+  --eo-side: #f2f5f3;
+  --eo-text: #202923;
+  --eo-muted: #6c756f;
+  --eo-line: #e1e7e2;
+  --eo-accent: #256c50;
+  --eo-tint: #e1ebe5;
+  --eo-input: #fff;
+  --eo-read: #f6f7f6;
+  min-height: 100vh;
+  background: var(--eo-bg);
+  color: var(--eo-text);
+  font-family: Inter, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+  color-scheme: light;
+}
+.eo-preview[data-direction="system"] {
+  --eo-side: #f3f4f6;
+  --eo-accent: #375fd1;
+  --eo-tint: #e8edfc;
+}
+.eo-preview * {
+  box-sizing: border-box;
+}
+.eo-preview button,
+.eo-preview input,
+.eo-preview select {
+  font: inherit;
+  letter-spacing: 0;
+}
+.eo-preview button {
+  cursor: pointer;
+}
+.eo-preview button:disabled {
+  cursor: default;
+}
+.eo-preview button:focus-visible,
+.eo-preview input:focus-visible,
+.eo-preview select:focus-visible {
+  outline: 2px solid var(--eo-accent);
+  outline-offset: 4px;
+}
+.eo-preview h1:focus {
+  outline: none;
+}
+.eo-preview h1,
+.eo-preview h2,
+.eo-preview p {
+  margin: 0;
+}
+.eo-lab {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--eo-line);
+  background: var(--eo-bg);
+  font-size: 11px;
+  position: relative;
+  z-index: 5;
+}
+.eo-lab-label {
+  font-weight: 750;
+  white-space: nowrap;
+}
+.eo-lab-label span {
+  font-weight: 400;
+  color: var(--eo-muted);
+  margin-left: 8px;
+}
+.eo-segment {
+  display: flex;
+  background: var(--eo-side);
+  padding: 3px;
+  border-radius: 6px;
+  gap: 3px;
+}
+.eo-segment button {
+  background: transparent;
+  border: 0;
+  color: var(--eo-muted);
+  padding: 7px 14px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.eo-segment button[aria-pressed="true"] {
+  background: var(--eo-bg);
+  color: var(--eo-text);
+  box-shadow: 0 1px 4px #00000015;
+}
+.eo-segment button span {
+  margin-left: 7px;
+}
+.eo-lab-tag {
+  color: var(--eo-muted);
+  width: 100px;
+  text-align: right;
+}
+.eo-shell {
+  min-height: calc(100vh - 54px);
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+.eo-sidebar {
+  background: var(--eo-side);
+  padding: 40px 26px 22px;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 54px);
+  max-height: calc(100vh - 54px);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--eo-line);
+}
+.eo-company {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 7px 55px;
+}
+.eo-company-mark {
+  width: 39px;
+  height: 42px;
+  font-family: Georgia, serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--eo-accent);
+  display: grid;
+  place-items: center;
+}
+.eo-company strong {
+  font-size: 22px;
+  display: block;
+  font-weight: 650;
+}
+.eo-company div > span {
+  font-size: 11px;
+  color: var(--eo-muted);
+  display: block;
+  margin-top: 5px;
+}
+.eo-sidebar-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.eo-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--eo-muted);
+  margin: 0 12px 11px;
+}
+.eo-progress-label strong {
+  font-weight: 500;
+}
+.eo-progress {
+  height: 3px;
+  background: var(--eo-line);
+  margin: 0 12px 28px;
+  overflow: hidden;
+}
+.eo-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--eo-accent);
+  transition: width 0.35s ease;
+}
+.eo-sidebar nav {
+  display: grid;
+  gap: 8px;
+}
+.eo-sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  color: var(--eo-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  position: relative;
+}
+.eo-sidebar nav button.is-current {
+  background: var(--eo-tint);
+  color: var(--eo-accent);
+  font-weight: 650;
+}
+.eo-step-number {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--eo-line);
+  border-radius: 50%;
+  font-size: 10px;
+  flex-shrink: 0;
+  font-weight: 550;
+  background: var(--eo-bg);
+}
+.is-current .eo-step-number {
+  background: var(--eo-accent);
+  border-color: var(--eo-accent);
+  color: var(--eo-bg);
+}
+.eo-step-number.is-done {
+  color: var(--eo-accent);
+}
+.eo-step-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.eo-side-bottom {
+  margin-top: auto;
+  padding: 55px 5px 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.eo-avatar-small {
+  background: #e8dced;
+  color: #695277;
+  font-size: 11px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.eo-side-bottom strong {
+  font-size: 11px;
+  font-weight: 600;
+  display: block;
+}
+.eo-side-bottom div > span {
+  font-size: 10px;
+  color: var(--eo-muted);
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.eo-powered {
+  border-top: 1px solid var(--eo-line);
+  padding: 17px 8px 0;
+  font-size: 9px;
+  color: var(--eo-muted);
+}
+.eo-powered strong {
+  margin-left: 4px;
+  font-size: 10px;
+}
+.eo-mobile-step {
+  display: none;
+}
+.eo-main {
+  min-width: 0;
+}
+.eo-page-top {
+  height: 82px;
+  margin: 0 56px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  color: var(--eo-muted);
+}
+.eo-page-top > span:last-child {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.eo-welcome {
+  max-width: 760px;
+  padding: 62px 56px 30px;
+  margin: 0 auto;
+}
+.eo-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--eo-accent);
+  display: block;
+  margin-bottom: 21px;
+}
+.eo-welcome h1 {
+  font-size: 64px;
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+.eo-welcome h1 > span {
+  color: var(--eo-accent);
+}
+.eo-welcome-title > p {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--eo-muted);
+  margin-top: 25px;
+}
+.eo-placement {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  border-top: 1px solid var(--eo-line);
+  border-bottom: 1px solid var(--eo-line);
+  padding: 26px 0;
+  margin-top: 43px;
+}
+.eo-placement > div:first-child {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.eo-placement-icon {
+  color: var(--eo-accent);
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: var(--eo-side);
+  border-radius: 50%;
+}
+.eo-caption {
+  display: block;
+  font-size: 9px;
+  color: var(--eo-muted);
+  margin-bottom: 9px;
+}
+.eo-placement strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+.eo-address {
+  display: block;
+  font-size: 11px;
+  color: var(--eo-muted);
+  margin-top: 7px;
+}
+.eo-job {
+  padding-left: 30px;
+  border-left: 1px solid var(--eo-line);
+}
+.eo-welcome-action {
+  margin-top: 33px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 14px;
+}
+.eo-primary {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--eo-accent);
+  color: white;
+  min-height: 44px;
+  padding: 12px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  font-size: 12px !important;
+  font-weight: 550 !important;
+  transition:
+    filter 0.16s,
+    transform 0.16s;
+}
+.eo-primary:hover {
+  filter: brightness(1.1);
+}
+.eo-primary:active {
+  transform: translateY(1px);
+}
+.eo-welcome-action > span {
+  font-size: 11px;
+  color: var(--eo-muted);
+}
+.eo-welcome-foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--eo-muted);
+  margin-top: 65px;
+}
+.eo-small-line {
+  width: 25px;
+  height: 1px;
+  background: var(--eo-muted);
+}
+.eo-profile {
+  margin: 0;
+  max-width: none;
+}
+.eo-form-body {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 22px 56px 42px;
+}
+.eo-form-body > .eo-eyebrow {
+  margin-bottom: 13px;
+}
+.eo-profile h1 {
+  font-size: 32px;
+  line-height: 1.25;
+  font-weight: 550;
+  letter-spacing: 0;
+}
+.eo-intro {
+  font-size: 13px;
+  color: var(--eo-muted);
+  margin-top: 13px !important;
+  line-height: 1.6;
+}
+.eo-profile-section {
+  margin-top: 36px;
+}
+.eo-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--eo-line);
+  margin-bottom: 22px;
+}
+.eo-section-title h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.eo-section-title > span {
+  font-size: 10px;
+  color: var(--eo-muted);
+}
+.eo-photo-row {
+  display: flex;
+  gap: 17px;
+  align-items: center;
+  margin-bottom: 25px;
+}
+.eo-photo {
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+  background: #eee4f1;
+  color: #745981;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 20px;
+  overflow: hidden;
+}
+.eo-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.eo-photo-row strong {
+  font-size: 11px;
+  font-weight: 500;
+}
+.eo-optional {
+  font-size: 10px;
+  color: var(--eo-muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.eo-photo-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 9px;
+}
+.eo-photo-buttons button {
+  background: var(--eo-input);
+  color: var(--eo-text);
+  border: 1px solid var(--eo-line);
+  padding: 6px 9px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+}
+.eo-zoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  margin-top: 10px;
+}
+.eo-zoom input {
+  width: 130px;
+}
+.eo-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px 18px;
+}
+.eo-fields label {
+  font-size: 11px;
+  font-weight: 500;
+  min-width: 0;
+  display: block;
+}
+.eo-fields label > svg {
+  color: var(--eo-muted);
+  margin-left: 5px;
+  vertical-align: middle;
+}
+.eo-fields input,
+.eo-fields select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--eo-line);
+  border-radius: 5px;
+  background: var(--eo-input);
+  color: var(--eo-text);
+  padding: 9px 12px;
+  margin-top: 9px;
+  font-size: 12px;
+}
+.eo-fields input::placeholder {
+  color: var(--eo-muted);
+}
+.eo-fields input[readonly] {
+  background: var(--eo-read);
+  color: var(--eo-muted);
+}
+.eo-wide {
+  grid-column: 1/-1;
+}
+.eo-phone {
+  display: flex;
+  gap: 8px;
+}
+.eo-phone select {
+  width: 82px;
+  flex-shrink: 0;
+}
+.eo-state-zip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.eo-sharing {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 26px;
+  cursor: pointer;
+}
+.eo-sharing input {
+  accent-color: var(--eo-accent);
+  width: 16px;
+  height: 16px;
+  margin: 1px 0;
+  flex-shrink: 0;
+}
+.eo-sharing strong {
+  font-size: 12px;
+  font-weight: 500;
+  display: block;
+}
+.eo-sharing small {
+  display: block;
+  color: var(--eo-muted);
+  font-size: 11px;
+  margin-top: 7px;
+  line-height: 1.6;
+}
+.eo-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  justify-content: space-between;
+  border-top: 1px solid var(--eo-line);
+  padding: 18px 56px;
+  background: var(--eo-bg);
+  z-index: 3;
+  min-height: 81px;
+}
+.eo-back {
+  background: none;
+  border: 0;
+  color: var(--eo-muted);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px !important;
+  padding: 10px 0;
+}
+.eo-save-state {
+  font-size: 11px;
+  color: var(--eo-accent);
+  margin-left: auto;
+}
+.eo-footer .eo-primary {
+  gap: 25px;
+}
+.eo-enter {
+  animation: eo-appear 0.32s ease both;
+}
+@keyframes eo-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (min-width: 1500px) {
+  .eo-welcome {
+    padding-top: 95px;
+  }
+  .eo-shell {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+}
+@media (max-width: 1050px) {
+  .eo-shell {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .eo-sidebar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .eo-welcome {
+    padding: 45px 35px;
+  }
+  .eo-welcome h1 {
+    font-size: 52px;
+  }
+  .eo-form-body {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .eo-page-top {
+    margin: 0 32px;
+  }
+  .eo-footer {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+@media (max-width: 700px) {
+  .eo-lab {
+    height: auto;
+    min-height: 76px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+  .eo-lab-label {
+    width: 100%;
+    font-size: 9px;
+  }
+  .eo-segment button {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  .eo-lab-tag {
+    font-size: 9px;
+    width: auto;
+  }
+  .eo-shell {
+    display: block;
+    min-height: calc(100vh - 76px);
+  }
+  .eo-sidebar {
+    height: auto;
+    max-height: none;
+    position: relative;
+    border-right: 0;
+    border-bottom: 1px solid var(--eo-line);
+    padding: 18px 22px 0;
+  }
+  .eo-company {
+    margin: 0 0 15px;
+  }
+  .eo-company strong {
+    font-size: 19px;
+  }
+  .eo-company div > span {
+    font-size: 10px;
+  }
+  .eo-company-mark {
+    height: 31px;
+    width: 29px;
+    font-size: 27px;
+  }
+  .eo-mobile-step {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--eo-line);
+    color: var(--eo-muted);
+    padding: 14px 0;
+    width: 100%;
+    font-size: 11px;
+  }
+  .eo-mobile-step strong {
+    margin-left: 13px;
+    color: var(--eo-text);
+    font-weight: 550;
+  }
+  .eo-sidebar-body {
+    display: none;
+    padding: 16px 0;
+  }
+  .eo-sidebar-body.is-open {
+    display: flex;
+  }
+  .eo-side-bottom {
+    padding-top: 24px;
+  }
+  .eo-page-top {
+    height: 52px;
+    margin: 0 24px;
+    font-size: 8px;
+  }
+  .eo-welcome {
+    padding: 30px 25px;
+  }
+  .eo-welcome h1 {
+    font-size: 44px;
+  }
+  .eo-welcome-title > p {
+    font-size: 13px;
+    margin-top: 20px;
+  }
+  .eo-desktop-break {
+    display: none;
+  }
+  .eo-placement {
+    gap: 12px;
+    padding: 23px 0;
+    margin-top: 29px;
+  }
+  .eo-placement > div:first-child {
+    gap: 10px;
+  }
+  .eo-placement-icon {
+    width: 28px;
+    background: none;
+  }
+  .eo-job {
+    padding-left: 16px;
+  }
+  .eo-caption {
+    font-size: 8px;
+  }
+  .eo-placement strong {
+    font-size: 13px;
+  }
+  .eo-address {
+    font-size: 10px;
+  }
+  .eo-welcome-action {
+    margin-top: 27px;
+  }
+  .eo-welcome-foot {
+    margin-top: 42px;
+  }
+  .eo-form-body {
+    padding: 17px 24px 30px;
+  }
+  .eo-profile h1 {
+    font-size: 27px;
+  }
+  .eo-intro {
+    font-size: 12px;
+  }
+  .eo-fields {
+    gap: 18px 12px;
+  }
+  .eo-state-zip {
+    gap: 8px;
+  }
+  .eo-footer {
+    padding: 14px 22px;
+  }
+  .eo-save-state {
+    font-size: 10px;
+    max-width: 100px;
+  }
+  .eo-primary {
+    gap: 20px;
+  }
+  .eo-profile-section {
+    margin-top: 30px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .eo-preview * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

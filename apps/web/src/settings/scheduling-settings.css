@@ -1,0 +1,15 @@
+.scheduling-settings-section + .scheduling-settings-section {
+  margin-top: 24px;
+}
+
+.scheduling-section-title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.scheduling-section-description {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
