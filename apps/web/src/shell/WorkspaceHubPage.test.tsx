@@ -115,7 +115,7 @@ describe("WorkspaceHubPage", () => {
       screen.getByRole("button", { name: /Create your workspace/ }),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "I have an invitation" }),
+      screen.getByRole("button", { name: "I am waiting for an invitation" }),
     ).toBeTruthy();
   });
 
