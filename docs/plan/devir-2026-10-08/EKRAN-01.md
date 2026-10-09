@@ -74,7 +74,7 @@ Yazıldı: 2026-10-08 ~22:35Z. Ölçüm tabanı: `origin/main` = `9f287986`. Bu 
 - **Sıradaki somut adımlar:**
   1. Main'in üstüne taşı: `git rebase origin/main`. Yalnız `supabase/schema.sql` başlığı çakışır. Ekteki `resolve-schema-header.mjs` ile çöz, sonda `pnpm.cmd db:schema` ile karşılaştır.
      - Kontrol ettim: main'e sonradan giren 6 göçün hiçbiri #12'nin dayandığı üç fonksiyona (acquire, undo, trigger) dokunmuyor.
-  2. `db` ve `heavy` kilitlerini al, sonra ekteki `test-db-branch.mjs` ile tam `test:db`.
+  2. `db` ve `heavy` kilitlerini al, sonra ekteki `test-db-branch.mjs` ile tam `test:db` (betik repoda yok; bu belgenin Ek A'sından kopyalanır).
   3. Koordinatörden "gönder" iste.
   4. Canlı yedeği al: `pg_get_functiondef` md5 değerleri. Kapsam: trigger `app_private.record_schedule_edit_undo_step()`, `acquire_schedule_edit_session_service`, `undo_schedule_edit_session_step_service` ve `app_private.schedule_edit_undo_steps` sütunları.
   5. `apply_migration` ile uygula.
@@ -91,7 +91,7 @@ Yazıldı: 2026-10-08 ~22:35Z. Ölçüm tabanı: `origin/main` = `9f287986`. Bu 
   - Web, vardiyanın bulunduğu hücrede kırmızı izin işaretini çizmez.
   - `schedule_time_off_events(request_id)` üzerinde yeni bir index var.
 - **Dosyalar:**
-  - Göç: `C:\Users\TheWe\Documents\Codex\newfork-wt\ekran-01-38\supabase\migrations\20261008130000_a_day_off_given_up_for_a_shift_reads_as_work.sql`.
+  - Göç: `C:\Users\TheWe\Documents\Codex\newfork-wt\ekran-01-38\supabase\migrations\20261009050000_a_day_off_given_up_for_a_shift_reads_as_work.sql` (2026-10-09: `task/ekran-01-38@2f107766`'te 20261008130000'dan yeniden adlandırıldı).
   - Web: `apps\web\src\schedule\lib\scheduleAvailabilityMark.ts`, `apps\web\src\schedule\hooks\useCellState.ts`, `apps\web\src\schedule\components\PublishPreflightPanel.tsx`.
   - Shared tip: `packages\shared\src\index.ts`.
   - Testler: `supabase\tests\time_off_shortens_for_a_shift.test.sql` (plan 36), `scheduleAvailabilityMark.test.ts`, `useCellState.test.ts`.
