@@ -11,3 +11,4 @@
 # - Extending: the same line (same BL number) gets new start and end dates. The coordinator may extend a BL once; a second
 #   extension needs Mert's "evet".
 # - Lines starting with # are comments.
+two locations approve in turn, the last one opens the shift | BL-990 | 2026-10-08 | 2026-10-15
