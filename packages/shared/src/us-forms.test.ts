@@ -5,6 +5,7 @@ import {
   editUsPhone,
   formatUsPhone,
   hasTurkishOnlyLetters,
+  sameUsPhone,
   toUsPhone,
   usLettersMessage,
   usPhoneDigits,
@@ -162,5 +163,15 @@ describe("the US phone rule", () => {
     expect(usPhoneSchema.safeParse("+442079460958").success).toBe(false);
     expect(usPhoneSchema.safeParse("4155550100").success).toBe(false);
     expect(usPhoneSchema.safeParse("+10155550100").success).toBe(false);
+  });
+
+  // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else. The
+  // match goes as soon as one digit is erased.
+  it("tells the same number however it is written, and only a whole one", () => {
+    expect(sameUsPhone("(415) 555-0100", "+14155550100")).toBe(true);
+    expect(sameUsPhone("(415) 555-010", "+14155550100")).toBe(false);
+    expect(sameUsPhone("", "")).toBe(false);
+    expect(sameUsPhone("+44 20 7946 0958", "+44 20 7946 0958")).toBe(false);
+    expect(sameUsPhone("(415) 555-0100", null)).toBe(false);
   });
 });

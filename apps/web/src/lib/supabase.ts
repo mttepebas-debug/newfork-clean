@@ -233,6 +233,10 @@ export async function saveAccountProfile(
       updated_at: new Date().toISOString(),
     }),
   ]);
+  // TEL-2: the account's number reaches every live record of the person, and
+  // a record refuses an emergency number equal to its own.
+  if (profileResult.error?.message.includes("employee_private_profiles_emergency_is_not_own_phone"))
+    throw new Error("This number is your emergency contact's in a workspace. Change that contact first.");
   if (profileResult.error) throw new Error(profileResult.error.message);
   if (preferenceResult.error) throw new Error(preferenceResult.error.message);
 }
