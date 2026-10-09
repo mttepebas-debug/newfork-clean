@@ -1,4 +1,18 @@
+import type { PersonalTimeFormat } from "@newfork/shared";
+
 export type TimeFormat = "12h" | "24h";
+
+/**
+ * The format a person types times in: their own 12h/24h choice from
+ * Account → Preferences, or the workspace's Schedule setting when they left
+ * it on "System" (BL-055).
+ */
+export function resolveTimeInputFormat(
+  personal: PersonalTimeFormat | null | undefined,
+  workspace: TimeFormat,
+): TimeFormat {
+  return personal === "12h" || personal === "24h" ? personal : workspace;
+}
 
 export type TimePeriod = "AM" | "PM";
 

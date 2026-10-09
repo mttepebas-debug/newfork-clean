@@ -58,6 +58,7 @@ type TestRole = "owner" | "admin" | "manager" | "employee";
 const testAuth = vi.hoisted(() => ({
   role: null as TestRole | null,
   nextRole: "owner" as TestRole,
+  timeFormat: "system" as "system" | "12h" | "24h",
 }));
 
 vi.mock("./auth/AuthContext", async () => {
@@ -123,7 +124,7 @@ vi.mock("./auth/AuthContext", async () => {
     const context = React.useMemo(() => (role ? contextFor(role) : null), [role]);
     const value = React.useMemo(
       () => ({
-        account: role ? account : null,
+        account: role ? { ...account, timeFormat: testAuth.timeFormat } : null,
         authenticated: role !== null,
         context,
         error: null,
@@ -265,6 +266,7 @@ beforeEach(() => {
   window.localStorage.clear();
   testAuth.role = null;
   testAuth.nextRole = "owner";
+  testAuth.timeFormat = "system";
   resetScheduleApiMocks();
   vi.mocked(authorizeScheduleExportV2).mockReset().mockResolvedValue(undefined);
   vi.mocked(renderExportFiles).mockReset().mockResolvedValue([{ name: "schedule.pdf", blob: new Blob(["pdf"]) }]);
@@ -3038,6 +3040,26 @@ describe("App", () => {
         screen.queryByRole("dialog", { name: "Draft is being edited" }),
       ).toBeNull(),
     );
+  });
+
+  // BL-055: the shift editor's times follow the person's own 12h/24h choice
+  // (Account → Preferences), not only the workspace's Schedule setting.
+  it("types shift times in the person's own 24-hour format in a 12-hour workspace", async () => {
+    testAuth.timeFormat = "24h";
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    const shiftBadge = await waitFor(() => {
+      const badge = container.querySelector<HTMLElement>(".schedule-shift-badge");
+      expect(badge?.getAttribute("draggable")).toBeNull();
+      return badge;
+    });
+    fireEvent.doubleClick(shiftBadge!);
+    expect(await screen.findByRole("dialog", { name: "Edit shift" })).toBeTruthy();
+
+    expect(screen.getByRole("textbox", { name: "Start time" })).toHaveProperty("value", "16:00");
+    expect(screen.getByRole("textbox", { name: "End time" })).toHaveProperty("value", "22:30");
   });
 
   it("opens reference-style schedule context menus while editing", async () => {

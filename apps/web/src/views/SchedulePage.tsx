@@ -56,6 +56,7 @@ import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
 import { ScheduleTopBar, ScheduleViewModeControls } from "../schedule/components/ScheduleTopBar";
 import { ScheduleState } from "../schedule/components/ScheduleState";
 import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
+import { resolveTimeInputFormat } from "../schedule/timeInput";
 import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
 import {
   applyScheduleAutoFill,
@@ -2951,7 +2952,7 @@ export function SchedulePage({
           model={model}
           sessionId={gridEditSession.id}
           state={editor}
-          timeFormat={model.settings.time_format}
+          timeFormat={resolveTimeInputFormat(account?.timeFormat, model.settings.time_format)}
           formatTime={formatTime}
           addDays={addDays}
           scheduleClosureCoversDate={scheduleClosureCoversDate}
