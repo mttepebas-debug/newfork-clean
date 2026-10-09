@@ -52,6 +52,34 @@ test("new job: task/<id> from origin/main, install then the libs, local env copi
   assert.match(r.message, /origin\/main/);
 });
 
+test("env copy drops hosted-service secrets (RESEND_API_KEY, STRIPE_*, VERCEL_*, SENTRY_*) and keeps every other line", (t) => {
+  const w = world(t);
+  fs.mkdirSync(path.join(w.mainDir, "apps/web"), { recursive: true });
+  const env = [
+    "# local stack",
+    "SUPABASE_URL=http://127.0.0.1:54321",
+    "SUPABASE_SERVICE_ROLE_KEY=local-service-key",
+    "RESEND_API_KEY=re_live_123",
+    "STRIPE_SECRET_KEY=sk_live_456",
+    "export STRIPE_WEBHOOK_SECRET=whsec_789",
+    "VERCEL_TOKEN=vc_abc",
+    "  SENTRY_AUTH_TOKEN = sntrys_def",
+    "RESEND_FROM=noreply@example.test",
+    "NEXT_STRIPE_HINT=keep-me",
+    "",
+  ].join("\r\n");
+  fs.writeFileSync(path.join(w.mainDir, "apps/web/.env.local"), env);
+  const r = prepare("BL-9", { cwd: w.repo, mainDir: w.mainDir, pnpm: w.pnpm });
+  assert.equal(r.code, 0, r.message);
+  const copied = fs.readFileSync(path.join(w.repo, "apps/web/.env.local"), "utf8");
+  assert.equal(
+    copied,
+    ["# local stack", "SUPABASE_URL=http://127.0.0.1:54321", "SUPABASE_SERVICE_ROLE_KEY=local-service-key", "RESEND_FROM=noreply@example.test", "NEXT_STRIPE_HINT=keep-me", ""].join("\r\n"),
+  );
+  assert.equal(fs.readFileSync(path.join(w.repo, "apps/api/.env.local"), "utf8"), "LOCAL=1\n");
+  assert.match(r.message, /apps\/web\/\.env\.local \(5 barındırılan servis anahtarı çıkarıldı\)/);
+});
+
 test("continuing job: an existing origin/task/<id> is checked out with its commits", (t) => {
   const w = world(t);
   git(w.repo, "checkout", "-q", "-b", "task/bl-2");

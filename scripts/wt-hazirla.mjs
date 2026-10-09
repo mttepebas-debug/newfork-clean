@@ -2,7 +2,9 @@
 // WORKFLOW-V2 (spec §5.3): a worker agent's first command, in its own worktree (Agent tool, isolation: worktree).
 //   node scripts/wt-hazirla.mjs <İŞ-ID>
 // task/<id> from origin/main, or the existing task/<id> (local, or on origin when a job continues), then
-// pnpm install, the shared and ui builds, and the local .env files copied from the main folder (never hosted keys).
+// pnpm install, the shared and ui builds, and the local .env files copied from the main folder without the
+// hosted-service secrets: a line whose key is RESEND_API_KEY or starts with STRIPE_, VERCEL_ or SENTRY_ is
+// dropped; every other line (the local stack's keys and URLs, comments) is kept as it is.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -14,6 +16,15 @@ const git = (cwd, args) => execFileSync("git", ["-C", cwd, ...args], { encoding:
 const has = (cwd, ref) => spawnSync("git", ["-C", cwd, "rev-parse", "--verify", "-q", ref]).status === 0;
 const realPnpm = (args, cwd) =>
   spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", args, { cwd, stdio: "inherit", shell: process.platform === "win32" }).status ?? 1;
+
+// ponytail: a value spanning several lines (a quoted multi-line key) is read line by line; only its first
+// line carries the key, so its other lines stay. No such value is in the local env files today.
+const HOSTED_SECRET = /^(RESEND_API_KEY|STRIPE_\w*|VERCEL_\w*|SENTRY_\w*)$/;
+export function withoutHostedSecrets(text) {
+  const lines = text.split("\n");
+  const kept = lines.filter((line) => !HOSTED_SECRET.test(line.match(/^\s*(?:export\s+)?([A-Za-z_]\w*)\s*=/)?.[1] ?? ""));
+  return { text: kept.join("\n"), dropped: lines.length - kept.length };
+}
 
 export function branchOf(id) {
   if (!/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(String(id ?? ""))) throw new Error(`iş kimliği geçersiz: "${id}" (ör. BL-987, EKRAN-02)`);
@@ -86,8 +97,9 @@ function prepareSteps(id, { cwd, mainDir = MAIN_DIR, pnpm = realPnpm }) {
     const dst = path.join(cwd, rel);
     if (fs.existsSync(src) && !fs.existsSync(dst)) {
       fs.mkdirSync(path.dirname(dst), { recursive: true });
-      fs.copyFileSync(src, dst);
-      copied.push(rel);
+      const { text, dropped } = withoutHostedSecrets(fs.readFileSync(src, "utf8"));
+      fs.writeFileSync(dst, text);
+      copied.push(dropped ? `${rel} (${dropped} barındırılan servis anahtarı çıkarıldı)` : rel);
     }
   }
   const sha = step(cwd, ["rev-parse", "--short", "HEAD"]);
