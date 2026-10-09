@@ -524,3 +524,56 @@ test("a record path is normalized first: ./ and ../ do not hide it", () => {
   const worker = { tool_name: "Write", session_id: "s", agent_id: "a3", cwd: repo, tool_input: { file_path: `${repo}/docs/plan/./KARARLAR.md` } };
   assert.equal(evaluate(worker).block, true);
 });
+
+test("a worker cannot run scripts/train.mjs, any subcommand; the coordinator can", () => {
+  const worker = (command, extra = { agent_id: "a7" }) => evaluate(bash(command, extra));
+  for (const cmd of [
+    "node scripts/train.mjs run task/a@abc",
+    "node scripts/train.mjs push",
+    'NF_OVERRIDE="acil" node scripts/train.mjs push',
+    "node ./scripts/train.mjs apply-local",
+    'node.exe "C:\\c\\coord\\scripts\\train.mjs" ci',
+    "git status && node scripts/train.mjs status",
+  ]) {
+    const r = worker(cmd);
+    assert.equal(r.block, true, cmd);
+    assert.match(r.message, /train\.mjs/);
+    assert.equal(auditLines().at(-1).event, "train-by-worker-blocked");
+  }
+  const ps = (command) => evaluate({ tool_name: "PowerShell", session_id: "s", cwd: repo, agent_id: "a7", tool_input: { command } });
+  assert.equal(ps("node.exe C:\\c\\coord\\scripts\\train.mjs ci").block, true);
+  assert.equal(ps("$env:NF_OVERRIDE='acil'; & node scripts/train.mjs push").block, true);
+  // an agent tree without agent_id is a worker too
+  assert.equal(evaluate(bash("node scripts/train.mjs push", { cwd: "C:/c/coord/.claude/worktrees/agent-a1" })).block, true);
+  // reading or testing the script is not running it
+  for (const cmd of ["cat scripts/train.mjs", "node --test scripts/train-steps.test.mjs", "git add scripts/train.mjs", "grep -n push scripts/train.mjs"])
+    assert.equal(worker(cmd).block, false, cmd);
+  assert.equal(evaluate(bash("node scripts/train.mjs run task/a@abc")).block, false); // the coordinator
+});
+
+test("a worker cannot write the audit log, by Edit/Write or by a shell redirection; reading passes", () => {
+  const log = path.join(process.env.NEWFORK_INBOX_DIR, "audit.log");
+  const edit = (tool, file, extra = { agent_id: "a8" }) => evaluate({ tool_name: tool, session_id: "s", cwd: repo, tool_input: { file_path: file }, ...extra });
+  for (const tool of ["Edit", "Write"]) {
+    const r = edit(tool, log);
+    assert.equal(r.block, true, tool);
+    assert.match(r.message, /audit\.log/);
+    assert.equal(auditLines().at(-1).event, "audit-write-by-worker-blocked");
+  }
+  assert.equal(edit("Write", "C:/Users/x/Documents/Codex/.newfork-inbox/audit.log").block, true); // the real folder by name
+  assert.equal(edit("Write", log, {}).block, false); // the coordinator's session (no agent_id, not an agent tree)
+  const worker = (command) => evaluate(bash(command, { agent_id: "a8" }));
+  for (const cmd of [
+    `echo '{"event":"train-push"}' >> ${log}`,
+    `printf x > "${log}"`,
+    `echo x | tee -a ${log}`,
+  ]) {
+    const r = worker(cmd);
+    assert.equal(r.block, true, cmd);
+    assert.equal(auditLines().at(-1).event, "audit-write-by-worker-blocked");
+  }
+  const ps = evaluate({ tool_name: "PowerShell", session_id: "s", cwd: repo, agent_id: "a8", tool_input: { command: `Add-Content -Path '${log}' -Value x` } });
+  assert.equal(ps.block, true);
+  for (const cmd of [`cat ${log}`, `grep train-push ${log}`, `tail -5 ${log} > /tmp/x.txt`]) assert.equal(worker(cmd).block, false, cmd);
+  assert.equal(evaluate(bash(`echo x >> ${log}`)).block, false); // the coordinator
+});

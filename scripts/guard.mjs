@@ -9,7 +9,8 @@
 //   `iex`, `node -e "...execSync('git push ...')"` stay invisible. Server-side protection of main is the real fix.
 // - A worker agent (a hook input with agent_id, or a folder under .claude/worktrees/agent-*) never writes
 //   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log), by edit or by commit,
-//   and never pushes to the coordinator's branch coord/kayit.
+//   and never pushes to the coordinator's branch coord/kayit. It never runs scripts/train.mjs and never writes
+//   <OPS_DIR>/audit.log (Edit/Write, a redirection, tee or a content cmdlet).
 // - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
 // - Commands the settings deny list refuses are logged when tried.
 // Every decision lands in <OPS_DIR>/audit.log (one JSON object per line, secrets masked).
@@ -422,6 +423,27 @@ const RECORD_REFUSAL =
 const COORD_BRANCH = "coord/kayit";
 const COORD_REFUSAL = `Reddedildi: ${COORD_BRANCH} koordinatörün kayıt dalıdır, işçi oraya gönderemez; kendi task/<iş> dalına gönder (CLAUDE.md §6).`;
 
+// The train is the coordinator's (CLAUDE.md §5): a worker never runs scripts/train.mjs, whatever the subcommand.
+// ponytail: words, as everywhere here: `node -e "import('./scripts/train.mjs')"` is not seen.
+const TRAIN_REFUSAL = "Reddedildi: scripts/train.mjs'i yalnız koordinatör koşar; dalını push et ve son mesajında HAZIR yaz (CLAUDE.md §5).";
+function runsTrain(seg) {
+  const w = words(seg);
+  const n = w.findIndex((x) => /(^|[\\/])node(\.exe)?$/i.test(x));
+  return n >= 0 && w.slice(n + 1).some((x) => /(^|[\\/])train\.mjs$/i.test(x));
+}
+// <OPS_DIR>/audit.log is the guard's and the train's record (main-watch reads train pushes from it): a worker
+// never writes it, by Edit/Write or by a shell redirection, tee or a content cmdlet. Reading it passes.
+const AUDIT_REFUSAL = "Reddedildi: audit.log'u yalnız guard ve tren yazar; işçi ona yazamaz (CLAUDE.md §6).";
+const isAuditLog = (f) => {
+  const p = posix(f).toLowerCase();
+  return p === posix(AUDIT()).toLowerCase() || /(^|\/)\.newfork-inbox\/audit\.log$/.test(p);
+};
+const AUDIT_SHELL_WRITE = [
+  />\s*["']?[^\s"'|;&<>]*audit\.log\b/i,
+  /\b(tee|tee-object|out-file|add-content|set-content|clear-content|remove-item|move-item|rm|del|mv|truncate)\b[^|;&]*audit\.log\b/i,
+];
+const writesAuditLog = (seg) => AUDIT_SHELL_WRITE.some((re) => re.test(seg));
+
 // A git commit's record files: the staged ones plus any named on the command line.
 const COMMIT_VALUE = new Set(["-m", "-F", "-C", "-c", "-t", "--author", "--date", "--file", "--message", "--template", "--cleanup", "--fixup", "--squash", "--trailer", "--reuse-message", "--reedit-message"]);
 function commitRecords(seg, cwd) {
@@ -500,6 +522,10 @@ const SUBST_PUSH_MAIN = /\bgit\b[^;&|\n]*\bpush\b[^;&|\n]*\bmain\b/;
 const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
 function evaluateEdit(input) {
   const file = String(input.tool_input?.file_path ?? input.tool_input?.notebook_path ?? "");
+  if (isAuditLog(file) && byWorker(input, input.cwd)) {
+    audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "audit-write-by-worker-blocked" });
+    return { block: true, message: AUDIT_REFUSAL };
+  }
   // the session's own folder decides, so a worker cannot reach the coordinator's file by absolute path
   if (!isRecordFile(file) || !(byWorker(input, input.cwd) || inWorkerTree(file))) return { block: false };
   audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "record-by-worker-blocked" });
@@ -525,6 +551,14 @@ export function evaluate(input) {
       if (recs.length) {
         audit({ ...base, event: "record-by-worker-blocked", files: recs });
         return { block: true, message: RECORD_REFUSAL };
+      }
+      if (byWorker(input, dirs[i]) && runsTrain(seg)) {
+        audit({ ...base, event: "train-by-worker-blocked" });
+        return { block: true, message: TRAIN_REFUSAL };
+      }
+      if (byWorker(input, dirs[i]) && writesAuditLog(seg)) {
+        audit({ ...base, event: "audit-write-by-worker-blocked" });
+        return { block: true, message: AUDIT_REFUSAL };
       }
       const push = pushCall(seg, dirs[i]);
       if (push && byWorker(input, dirs[i]) && push.refs.some((r) => r.dst === COORD_BRANCH)) {
