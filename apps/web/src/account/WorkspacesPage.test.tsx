@@ -239,10 +239,14 @@ describe("WorkspacesPage", () => {
     const buttons = screen.getAllByRole("button", { name: "Create workspace" });
     expect(buttons).toHaveLength(2);
     expect(document.querySelectorAll("#create-workspace-trigger")).toHaveLength(1);
+    // The empty state's own button starts setup too, with no name window.
     fireEvent.click(buttons[1]!);
+    expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() =>
       expect(screen.getByLabelText("Current path").textContent).toBe("/onboarding"),
     );
+    expect(createOwnerWorkspace).toHaveBeenCalledWith(supabaseClientMock, "New workspace");
+    expect(setTabWorkspaceId).toHaveBeenCalledWith(secondWorkspaceId);
   });
 
   it("hides create for an invited account that has no organization yet", async () => {
@@ -294,6 +298,23 @@ describe("WorkspacesPage", () => {
     expect(screen.queryByRole("button", { name: "Open West Room" })).toBeNull();
     fireEvent.click(resume);
     await waitFor(() => expect(selectActiveWorkspace).toHaveBeenCalledWith(supabaseClientMock, secondWorkspaceId));
+  });
+
+  // nf-guvenlik @b2655180: the server resumes an unfinished setup and would
+  // write "New workspace" over the name typed in step 1, so Create continues
+  // the draft instead of creating one.
+  it("Create workspace continues an unfinished setup and keeps its name", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([
+      ownerWorkspace,
+      { ...ownerWorkspace, id: secondWorkspaceId, name: "Taco Bros", isActive: false, onboarding: { status: "incomplete", currentStep: 1 } },
+    ]);
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Create workspace" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe("/onboarding"),
+    );
+    expect(createOwnerWorkspace).not.toHaveBeenCalled();
+    expect(setTabWorkspaceId).toHaveBeenCalledWith(secondWorkspaceId);
   });
 
   it("keeps Continue on a draft that is also this tab's business", async () => {
