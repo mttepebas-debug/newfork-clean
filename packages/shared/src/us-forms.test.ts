@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   displayUsPhone,
+  editUsPhone,
   formatUsPhone,
   hasTurkishOnlyLetters,
   toUsPhone,
@@ -68,12 +69,44 @@ describe("the US phone rule", () => {
     expect(formatUsPhone("+1 415 555 0100")).toBe("(415) 555-0100");
   });
 
-  it("masks while typing", () => {
-    expect(formatUsPhone("")).toBe("");
-    expect(formatUsPhone("41")).toBe("(41");
-    expect(formatUsPhone("4155")).toBe("(415) 5");
-    expect(formatUsPhone("4155550100")).toBe("(415) 555-0100");
+  // Mert, 2026-10-09 (mask A): a separator comes with the digit that closes its
+  // group, the brackets with the 3rd digit and the dash with the 6th.
+  it("masks while typing, a separator with the digit that closes its group", () => {
+    const shown = [
+      "",
+      "4",
+      "41",
+      "(415)",
+      "(415) 5",
+      "(415) 55",
+      "(415) 555-",
+      "(415) 555-0",
+      "(415) 555-01",
+      "(415) 555-010",
+      "(415) 555-0100",
+    ];
+    shown.forEach((expected, length) =>
+      expect(formatUsPhone("4155550100".slice(0, length)), String(length)).toBe(expected),
+    );
     expect(formatUsPhone("+14155550100")).toBe("(415) 555-0100");
+    expect(formatUsPhone("(415)5")).toBe("(415) 5");
+  });
+
+  // Backspace on a separator the mask would put straight back takes the digit
+  // before it as well, so a separator leaves with the digit that brought it.
+  it("erases a separator together with the digit before it", () => {
+    expect(editUsPhone("(415)", "(415", 4)).toBe("41");
+    expect(editUsPhone("(415) 555-", "(415) 555", 9)).toBe("(415) 55");
+    expect(editUsPhone("(415) 5", "(415)5", 5)).toBe("(415)");
+    expect(editUsPhone("(415) 5", "(415) ", 6)).toBe("(415)");
+    // Inside the number: the digit before the caret goes.
+    expect(editUsPhone("(415) 555-0100", "(415 555-0100", 4)).toBe("(415) 550-100");
+    // A digit erased, typed or pasted is masked as it stands.
+    expect(editUsPhone("(415) 555-01", "(415) 555-0", 11)).toBe("(415) 555-0");
+    expect(editUsPhone("(415) 55", "(415) 555", 9)).toBe("(415) 555-");
+    expect(editUsPhone("", "+1 (415) 555-0100", 17)).toBe("(415) 555-0100");
+    // A number from outside the US stays as typed, spaces erased one by one.
+    expect(editUsPhone("+44 ", "+44", 3)).toBe("+44");
   });
 
   // The same table is in supabase/tests/account_avatar_phone_contract.test.sql:
