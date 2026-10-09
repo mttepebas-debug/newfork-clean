@@ -1,10 +1,13 @@
 # e2e quarantine list (KARARLAR S-106; e2e/karantina.mjs reads it, e2e/playwright.config.ts skips the matches).
-# A known e2e red that is red on main too is added here by the train, so CI stays green; NF_OVERRIDE is not
-# used for a known red.
+# A known e2e red that is red on main too is added here by the coordinator on coord/kayit and rides the train,
+# so CI stays green; NF_OVERRIDE is not used for a known red. A worker branch touching this file stops the train.
 # One entry per line:
-#   <test başlığından bir parça> | BL-<no> | <YYYY-MM-DD bitiş>
-# - The first part is matched literally against the full test title (describe › test); keep it specific.
-# - The entry counts through its end date; after it the entry is ignored and the test runs again.
-# - At most 7 days: an end date more than 7 days after today is invalid (logged, ignored), and so is a
-#   malformed line. Extending means a new train with a new date and the same BL number.
+#   <test başlığından bir parça> | BL-<no> | <başlangıç YYYY-MM-DD> | <bitiş YYYY-MM-DD>
+# - The first part is matched literally against the test's title path, describe and test joined by a single
+#   space (Playwright's grep form; a " › " written here is read as one space). At least 12 characters.
+# - The entry counts from its start through its end date; after the end it is ignored and the test runs again.
+# - End minus start is at most 7 days; a longer span, a start after the end or after today, or a malformed line
+#   is invalid (logged, ignored).
+# - Extending: the same line (same BL number) gets new start and end dates. The coordinator may extend a BL once; a second
+#   extension needs Mert's "evet".
 # - Lines starting with # are comments.

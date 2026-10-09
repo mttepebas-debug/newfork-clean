@@ -1,11 +1,13 @@
 // WORKFLOW-V2 (S-106, Mert's #12 as the controller ruled it 2026-10-08): the e2e quarantine list.
-// A known e2e red that is red on main too does not stop the train: the train adds that test to
-// e2e/karantina.txt (a BL number, at most MAX_DAYS days), the run skips it and CI stays green.
+// A known e2e red that is red on main too does not stop the train: the coordinator adds that test to
+// e2e/karantina.txt (a BL number, at most MAX_DAYS days) on coord/kayit, the run skips it and CI stays green.
 // e2e/playwright.config.ts turns the live entries into Playwright's grepInvert.
-// Line format: `<a part of the test title> | BL-<no> | <YYYY-MM-DD end date>`; `#` starts a comment.
+// Line format: `<a part of the test title> | BL-<no> | <YYYY-MM-DD start> | <YYYY-MM-DD end>`; `#` starts a comment.
 
-// Longest quarantine, counted from today: an end date further out is invalid (logged, ignored).
+// Longest quarantine: end minus start, in days; longer is invalid (logged, ignored).
 export const MAX_DAYS = 7;
+// Shortest title part: a shorter one would skip unrelated tests.
+export const MIN_PATTERN = 12;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -29,8 +31,12 @@ function epochDay(s) {
   return t / DAY_MS;
 }
 
+// Playwright matches grep against the title path joined by spaces; the report shows it joined by " › ".
+const asPlaywrightTitle = (s) => s.replace(/\s*›\s*/g, " ").trim();
+
 // The quarantine file's text → the title parts to skip today, plus the lines that no longer count (expired:
-// end date before today) and the ones that never did (invalid: wrong shape, or end date beyond MAX_DAYS).
+// end date before today) and the ones that never did (invalid: wrong shape, a title part under MIN_PATTERN
+// characters, a start after the end or after today, or more than MAX_DAYS from start to end).
 export function parseKarantina(text, today) {
   const out = { patterns: [], expired: [], invalid: [] };
   const now = epochDay(dayOf(today));
@@ -38,15 +44,18 @@ export function parseKarantina(text, today) {
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
     const parts = line.split("|").map((p) => p.trim());
-    const end = parts.length === 3 ? epochDay(parts[2]) : null;
-    if (parts.length !== 3 || !parts[0] || !/^BL-\d+$/.test(parts[1]) || end === null || now === null) {
+    const ok4 = parts.length === 4;
+    const pattern = ok4 ? asPlaywrightTitle(parts[0]) : "";
+    const start = ok4 ? epochDay(parts[2]) : null;
+    const end = ok4 ? epochDay(parts[3]) : null;
+    if (!ok4 || pattern.length < MIN_PATTERN || !/^BL-\d+$/.test(parts[1]) || start === null || end === null || now === null) {
+      out.invalid.push(line);
+    } else if (start > end || start > now || end - start > MAX_DAYS) {
       out.invalid.push(line);
     } else if (end < now) {
       out.expired.push(line);
-    } else if (end - now > MAX_DAYS) {
-      out.invalid.push(line);
     } else {
-      out.patterns.push(parts[0]);
+      out.patterns.push(pattern);
     }
   }
   return out;
