@@ -349,18 +349,20 @@ export function JobAssignmentsDrawer({
           <div className="job-drawer-heading">
             <span
               className="job-drawer-job-icon"
-              style={{ color: jobDraft.color }}
+              style={{ backgroundColor: jobDraft.color }}
             >
-              <Users size={22} />
+              <Users size={22} aria-hidden />
             </span>
             <div>
-              <p>{departmentName}</p>
+              <p className="job-drawer-department">{departmentName}</p>
               <h2 id="job-assignment-title" title={baseline.name}>
                 {createMode ? "New job" : baseline.name}
               </h2>
               {canRead && (
                 <span>
-                  {data.data?.assigned_count ?? "…"} employees assigned
+                  {data.data
+                    ? `${data.data.assigned_count} ${data.data.assigned_count === 1 ? "employee" : "employees"} assigned`
+                    : "… employees assigned"}
                 </span>
               )}
             </div>
@@ -380,6 +382,7 @@ export function JobAssignmentsDrawer({
             className="job-details-fields"
             disabled={busy || !canManageJob}
           >
+            <legend className="job-details-legend">Details</legend>
             <div className="job-field">
               <label htmlFor="edit-job-name">Job name</label>
               <div className="job-name-color">
@@ -461,7 +464,6 @@ export function JobAssignmentsDrawer({
               <div className="job-drawer-controls">
                 <div className="job-drawer-intro">
                   <h3>Employees</h3>
-                  <p>Check to assign. Uncheck to remove.</p>
                 </div>
                 {job?.archived_at && (
                   <p className="job-hint">
@@ -524,7 +526,7 @@ export function JobAssignmentsDrawer({
                             ? "All"
                             : value === "assigned"
                               ? "Assigned"
-                              : "Unassigned"}
+                              : "Not assigned"}
                         </button>
                       ),
                     )}
@@ -644,7 +646,7 @@ export function JobAssignmentsDrawer({
                 (pending.size > 0 && !canEdit)
               }
             >
-              {save.isPending ? "Saving…" : "Save changes"}
+              {save.isPending ? "Saving…" : "Save"}
             </button>
           </div>
         </footer>

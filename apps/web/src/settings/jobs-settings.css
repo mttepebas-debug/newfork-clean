@@ -2252,3 +2252,57 @@
   color: var(--theme-surface);
   font-weight: 600;
 }
+
+/* Jobs drawer, V1 edits (Mert 2026-10-07, KARARLAR Settings → Jobs): the job's
+   colour as a filled tile with a white icon, the department in capitals, a
+   "Details" heading, and the employee list in one frame whose empty room keeps
+   56 px rule lines; rows and lines scroll inside the frame. */
+.job-drawer-job-icon {
+  border-color: transparent;
+  color: var(--theme-surface);
+}
+.job-drawer-heading .job-drawer-department {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.job-details-fields > .job-details-legend {
+  float: left;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--job-text);
+}
+.catalog-drawer .job-drawer-employees > .job-drawer-controls {
+  border-bottom: 0;
+}
+/* The frame lines up with the search row above it. */
+.catalog-drawer .job-drawer-employees > .job-employee-list {
+  margin: 0 16px;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 7px;
+  background-color: var(--theme-surface);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 55px,
+    var(--theme-border-subtle) 55px 56px
+  );
+  background-attachment: local;
+}
+.catalog-drawer .job-employee-list .job-employee-row {
+  min-height: 56px;
+  background-color: var(--theme-surface);
+}
+.catalog-drawer .job-employee-list .job-employee-row:hover {
+  background-color: var(--job-hover);
+}
+.catalog-drawer .job-employee-list .job-employee-row[data-pending="true"] {
+  background-color: var(--job-soft);
+}
+/* Employees column: the number alone, in the shared table cell's type. */
+.jobs-settings-page .job-catalog-row .job-count-button {
+  font-size: 13px !important;
+  color: var(--theme-list-cell-text);
+  font-variant-numeric: tabular-nums;
+}
