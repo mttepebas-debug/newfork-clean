@@ -5,22 +5,27 @@
   display: block;
   width: 100%;
 }
+/* The +1 sits on the number's own line: centred the way the input centres its
+   one line of text, in the number's type (Mert, 2026-10-09: it sat low). */
 .us-phone-prefix {
   position: absolute;
-  top: 50%;
+  top: 0;
+  bottom: 0;
   left: 11px;
-  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
   color: var(--theme-muted-strong);
   /* The number's own type: each screen's field takes its label's font. */
   font: inherit;
-  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  line-height: normal;
   pointer-events: none;
 }
-/* Room for the prefix, whatever padding the screen gives its fields: the same
-   11px before the +1 and after it, the +1 being about 1em wide in the field's
-   own type. */
+/* One narrow space between the +1 and the number, whatever padding the screen
+   gives its fields: 11px edge, the +1 (two figures wide), then 4px (Mert,
+   2026-10-09: the gap was too wide). */
 .us-phone-field > input.us-phone-input {
-  padding-left: calc(22px + 1em);
+  padding-left: calc(15px + 2ch);
 }
 /* A number the screen refuses (TEL-2): red, and still red while it is typed,
    whatever the screen's own focus look. */
