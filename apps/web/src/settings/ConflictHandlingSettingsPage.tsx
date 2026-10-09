@@ -20,16 +20,20 @@ const conflictRuleChoices: readonly {
   label: string;
   description: string;
   actions: readonly string[];
+  /** The rule's own names for its choices, where the shared ones would mislead. */
+  actionLabels?: Readonly<Record<string, string>>;
 }[] = [
   { key: "document_required", label: "Required documents", description: "Missing, expired or pending required employee documents.", actions: ["warn", "confirm", "block"] },
   { key: "document_conditional_grace", label: "Conditional documents during grace", description: "Unresolved documents while the delivery period is still open.", actions: ["warn", "confirm", "block"] },
   { key: "document_conditional_overdue", label: "Conditional documents after grace", description: "Unresolved documents after the delivery deadline. Cannot be softer than the grace rule.", actions: ["confirm", "block"] },
   {
     key: "closed_location",
-    label: "Closed location or shift type",
-    description: "Assignments on a closed date.",
-    // K17: block, confirm each cell, or confirm once per editing session.
-    actions: ["confirm", "confirm_once", "block"],
+    label: "Closed location",
+    description: "Shifts on a closed day.",
+    // K17: block, confirm each cell, or confirm once per editing session
+    // (C2-A, Mert 2026-10-03: the same dropdown, these three names).
+    actions: ["block", "confirm", "confirm_once"],
+    actionLabels: { block: "Block", confirm: "Ask every time", confirm_once: "Ask once per edit" },
   },
   {
     key: "minimum_travel",
@@ -49,7 +53,6 @@ const conflictActionLabels: Record<string, string> = {
   allow: "Allow",
   warn: "Warn",
   confirm: "Require confirmation",
-  confirm_once: "Confirm once per editing session",
   block: "Block",
 };
 
@@ -183,7 +186,7 @@ export default function ConflictHandlingSettingsPage() {
                   >
                     {rule.actions.map((action) => (
                       <option key={action} value={action}>
-                        {conflictActionLabels[action]}
+                        {rule.actionLabels?.[action] ?? conflictActionLabels[action]}
                       </option>
                     ))}
                   </select>

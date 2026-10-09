@@ -13,7 +13,6 @@ import {
   Megaphone,
   Search,
   Send,
-  Trash2,
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -430,12 +429,12 @@ export function AnnouncementsPage() {
                           type="button"
                           className="job-danger-text"
                           onClick={() =>
-                            navigate(`/app/announcements/${item.id}?delete=1`, {
+                            navigate(`/app/announcements/${item.id}?archive=1`, {
                               preventScrollReset: true,
                             })
                           }
                         >
-                          Delete
+                          Archive
                         </button>
                       )}
                     </CatalogRowMenu>
@@ -580,15 +579,18 @@ function AnnouncementEditor({
     },
   });
   const busy = save.isPending || transition.isPending;
-  // The row menu's Delete opens this editor with its delete already armed.
-  const deleteConfirm = useConfirmClick(
+  // The row menu's Archive opens this editor with its archive already armed.
+  // It archives, so it says Archive, not Delete (Mert, 2026-10-03, BL-543).
+  const archiveConfirm = useConfirmClick(
     () => transition.mutate("archive"),
-    new URLSearchParams(window.location.search).has("delete"),
+    new URLSearchParams(window.location.search).has("archive"),
   );
-  const confirmDelete = deleteConfirm.armed;
+  const confirmArchive = archiveConfirm.armed;
   const canSave = editable && parsed.success && (!item || changed) && !busy;
-  const canDelete = item && item.can_archive && !isArchived(item);
+  const canArchive = item && item.can_archive && !isArchived(item);
   const actionUrl = safeAppActionUrl(item?.action_url ?? null);
+  const reacknowledge =
+    item && !editable && !item.acknowledged_at && item.content_changed_since_acknowledged;
   const update = <K extends keyof AnnouncementInput>(
     key: K,
     value: AnnouncementInput[K],
@@ -610,7 +612,7 @@ function AnnouncementEditor({
         className="job-catalog-editor"
         onSubmit={(event) => {
           event.preventDefault();
-          if (canSave && !confirmDelete) save.mutate();
+          if (canSave && !confirmArchive) save.mutate();
         }}
       >
         <div className="job-editor-title">
@@ -639,6 +641,11 @@ function AnnouncementEditor({
           </button>
         </div>
         <div className="catalog-drawer-body">
+          {reacknowledge && (
+            <p className="announcement-update-notice">
+              Updated. Please acknowledge the new version.
+            </p>
+          )}
           <fieldset
             className="announcement-catalog-fields"
             disabled={busy || !editable}
@@ -803,26 +810,26 @@ function AnnouncementEditor({
           )}
         </div>
         <div className="job-editor-footer">
-          {canDelete ? (
+          {canArchive ? (
             <div className="catalog-delete-action">
               <button
                 className="catalog-delete-trigger"
                 type="button"
-                data-confirming={confirmDelete}
+                data-confirming={confirmArchive}
                 disabled={busy}
-                {...deleteConfirm.confirmProps}
+                {...archiveConfirm.confirmProps}
               >
                 {transition.isPending ? (
-                  "Deleting..."
-                ) : confirmDelete ? (
+                  "Archiving..."
+                ) : confirmArchive ? (
                   <>
                     <CheckCircle2 size={14} aria-hidden />
-                    Confirm delete
+                    Confirm archive
                   </>
                 ) : (
                   <>
-                    <Trash2 size={14} aria-hidden />
-                    Delete
+                    <Archive size={14} aria-hidden />
+                    Archive
                   </>
                 )}
               </button>
@@ -840,7 +847,7 @@ function AnnouncementEditor({
             {item && !editable && item.status !== "draft" && (
               <AcknowledgeControl item={item} workspaceId={workspaceId} />
             )}
-            {item?.can_publish && !confirmDelete && (
+            {item?.can_publish && !confirmArchive && (
               <Button
                 className="job-secondary-button"
                 type="button"
@@ -857,7 +864,7 @@ function AnnouncementEditor({
               <Button
                 className="job-primary-button"
                 type="submit"
-                disabled={!canSave || confirmDelete}
+                disabled={!canSave || confirmArchive}
               >
                 {save.isPending
                   ? "Saving..."
@@ -897,15 +904,23 @@ function AcknowledgeControl({
         <CheckCircle2 size={18} aria-hidden />
       </span>
     );
+  // The text changed since this person acknowledged it: ask again, in amber
+  // (Mert, 2026-10-03, FB-6.7 B2-A).
+  const again = Boolean(item.content_changed_since_acknowledged);
   return (
     <button
       type="button"
       className="announcement-acknowledge-button"
+      data-again={again || undefined}
       disabled={acknowledge.isPending}
       title={acknowledge.error?.message}
       onClick={() => acknowledge.mutate()}
     >
-      {acknowledge.isPending ? "Saving..." : "Acknowledge"}
+      {acknowledge.isPending
+        ? "Saving..."
+        : again
+          ? "Acknowledge again"
+          : "Acknowledge"}
     </button>
   );
 }
