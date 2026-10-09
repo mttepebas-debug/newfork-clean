@@ -7,9 +7,10 @@
 // <since> = the oldest train push's `before`, or --since <sha> (a commit Mert already knows of).
 // Run: node scripts/main-watch.mjs [--since <sha>]
 //   exit 0 "main temiz" · exit 1 one "🔴 trenden geçmemiş commit: <sha> <subject>" line per commit, or
-//   "🔴 main geri sarıldı: <after>" when the latest train push's tip is no longer on origin/main
-//   exit 2 nothing to measure from (no train push in audit.log and no --since, or <since> unreadable)
-//   exit 3 "main alarmı bayat": git fetch failed, so origin/main is old and no verdict is given
+//   "🔴 main geri sarıldı: <sha>" when <since> or the latest train push's tip is no longer on origin/main
+//   exit 2 nothing to measure from (no train push in audit.log and no --since, or <since>..main unreadable)
+//   exit 3 no verdict: "main alarmı bayat" (git fetch failed, origin/main is old) or "🟠 main alarmı
+//   ölçülemiyor" (git does not know <since> or the latest train sha)
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -75,6 +76,26 @@ function main(argv) {
     console.log(`main izlenemiyor: ${path.join(OPS_DIR, "audit.log")} içinde train-push yok; başlangıç için --since <sha> ver`);
     return 2;
   }
+  // ancestor-or-equal of origin/main: true, false, or null when git does not know the sha (exit 128)
+  const onMain = (sha) => {
+    const st = spawnSync("git", ["-C", cwd, "merge-base", "--is-ancestor", sha, "origin/main"]).status;
+    return st === 0 ? true : st === 1 ? false : null;
+  };
+  const unknown = (sha) => {
+    console.log(`🟠 main alarmı ölçülemiyor: git bu sha'yı tanımıyor: ${sha.slice(0, 8)}`);
+    return 3;
+  };
+  // main rewound (a force push past the guard): <since>, or the latest train's tip, is no longer on main
+  const sinceOn = onMain(since);
+  if (sinceOn === null) return unknown(since);
+  if (!sinceOn) {
+    console.log(`🔴 main geri sarıldı: ${since.slice(0, 8)}`);
+    return 1;
+  }
+  const latest = pushes.at(-1);
+  const latestOn = latest ? onMain(latest.after) : true;
+  if (latestOn === null) return unknown(latest.after);
+  const rewound = !latestOn;
   let raw;
   try {
     raw = git(cwd, ["rev-list", "--first-parent", "--format=%H %s", "--no-commit-header", `${since}..origin/main`]);
@@ -82,9 +103,6 @@ function main(argv) {
     console.log(`main izlenemiyor: ${since.slice(0, 8)}..origin/main okunamadı (${String(e.stderr ?? e.message).trim().split("\n")[0]})`);
     return 2;
   }
-  // main rewound (a force push past the guard): the latest train's tip is no longer an ancestor of main
-  const latest = pushes.at(-1);
-  const rewound = latest ? spawnSync("git", ["-C", cwd, "merge-base", "--is-ancestor", latest.after, "origin/main"]).status !== 0 : false;
   const revList = raw
     .split("\n")
     .filter(Boolean)

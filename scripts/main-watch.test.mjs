@@ -198,3 +198,31 @@ test("CLI: the latest train push's after is no longer on origin/main → '🔴 m
   assert.equal(r.code, 1, r.out + r.err);
   assert.deepEqual(r.out.split("\n"), [`🔴 main geri sarıldı: ${p2.after.slice(0, 8)}`]);
 });
+
+test("CLI: --since no longer on origin/main (no train yet) → '🔴 main geri sarıldı: <since>', exit 1", () => {
+  const w = world();
+  const since = w.commit("feat: seen by the coordinator");
+  w.pushMain();
+  git(w.repo, "push", "-q", "-f", "origin", `${w.base}:refs/heads/main`);
+  const r = w.run("--since", since);
+  assert.equal(r.code, 1, r.out + r.err);
+  assert.deepEqual(r.out.split("\n"), [`🔴 main geri sarıldı: ${since.slice(0, 8)}`]);
+});
+
+test("CLI: a train sha git does not know → 🟠 'ölçülemiyor', exit 3, not a 🔴", () => {
+  const w = world();
+  const p1 = w.trainPush(["feat: one"]);
+  const ghost = "f".repeat(40);
+  w.log([p1, { event: "train-push", before: p1.after, after: ghost }]);
+  const r = w.run();
+  assert.equal(r.code, 3, r.out + r.err);
+  assert.match(r.out, /^🟠 main alarmı ölçülemiyor: git bu sha'yı tanımıyor: ffffffff/m);
+  assert.doesNotMatch(r.out, /🔴/);
+});
+
+test("CLI: a --since git does not know → 🟠 'ölçülemiyor', exit 3", () => {
+  const w = world();
+  const r = w.run("--since", "e".repeat(40));
+  assert.equal(r.code, 3, r.out + r.err);
+  assert.match(r.out, /^🟠 main alarmı ölçülemiyor: git bu sha'yı tanımıyor: eeeeeeee/m);
+});
