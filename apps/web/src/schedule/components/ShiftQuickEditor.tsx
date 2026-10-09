@@ -931,7 +931,7 @@ export function ShiftQuickEditor({
                     }
                   }}
                   onBoundaryEnter={
-                    timeFormat === "12h" && !value.hide_time_on_badge
+                    !value.hide_time_on_badge
                       ? () => {
                           void attemptSubmit();
                         }

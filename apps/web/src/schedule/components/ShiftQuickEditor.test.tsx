@@ -576,6 +576,44 @@ describe("ShiftQuickEditor", () => {
     expect(document.activeElement).toBe(start);
   });
 
+  // BL-613: a 24-hour manager types both times and saves without the mouse.
+  it("takes start, end and Enter from the keyboard in a 24-hour workspace (BL-613)", async () => {
+    const onSubmit = vi.fn().mockResolvedValue("saved" as const);
+    render(
+      <ShiftQuickEditor
+        model={model}
+        state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }}
+        timeFormat="24h"
+        formatTime={(value) => value}
+        addDays={(value) => value}
+        scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+    const start = screen.getByLabelText("Start time") as HTMLInputElement;
+    const end = screen.getByLabelText("End time") as HTMLInputElement;
+    act(() => start.focus());
+
+    for (const key of ["1", "4", "3"]) fireEvent.keyDown(start, { key });
+    expect(document.activeElement).toBe(start);
+    fireEvent.keyDown(start, { key: "0" });
+    expect(document.activeElement).toBe(end);
+    expect(getTimeSegment(end, "hour")?.dataset.active).toBe("true");
+
+    for (const key of ["2", "2", "1", "5"]) fireEvent.keyDown(end, { key });
+    expect(document.activeElement).toBe(end);
+    fireEvent.keyDown(end, { key: "Enter" });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ start_time: "14:30", end_time: "22:15" }),
+      1,
+    );
+  });
+
   it("links start and end time keyboard flow like the reference popup", () => {
     render(
       <ShiftQuickEditor

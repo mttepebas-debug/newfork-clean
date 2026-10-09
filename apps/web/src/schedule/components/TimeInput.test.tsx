@@ -307,6 +307,38 @@ describe("TimeInput", () => {
     fireEvent.change(input, { target: { value: "0715" } });
     expect(onChange).toHaveBeenLastCalledWith("07:15");
   });
+
+  // BL-613: in 24h, two hour digits used to move on before the minutes.
+  it.each([
+    ["two-digit hour", ["1", "4", "3", "0"], "14:30"],
+    ["one-digit hour", ["9", "4", "5"], "09:45"],
+  ])("waits for both minute digits before moving on in 24h (%s)", (_label, keys, expected) => {
+    const onChange = vi.fn();
+    const onAutoAdvance = vi.fn();
+
+    render(
+      <TimeInput
+        value=""
+        onChange={onChange}
+        timeFormat="24h"
+        ariaLabel="Shift start"
+        onAutoAdvance={onAutoAdvance}
+      />,
+    );
+
+    const input = screen.getByLabelText("Shift start") as HTMLInputElement;
+    act(() => input.focus());
+    for (const key of keys.slice(0, -1)) {
+      fireEvent.keyDown(input, { key });
+      expect(onAutoAdvance).not.toHaveBeenCalled();
+    }
+    expect(getSegment(input, "minute")?.dataset.active).toBe("true");
+
+    fireEvent.keyDown(input, { key: keys.at(-1)! });
+    expect(onChange).toHaveBeenLastCalledWith(expected);
+    expect(onAutoAdvance).toHaveBeenCalledTimes(1);
+    expect(onAutoAdvance).toHaveBeenCalledWith("typing");
+  });
 });
 
 function getSegment(

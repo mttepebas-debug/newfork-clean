@@ -306,6 +306,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
     const current = { ...segmentBuffersRef.current };
     const nextPeriod = period;
     let nextActiveSegment: TimeSegment = activeSegment;
+    let minuteCompleted = false;
 
     if (activeSegment === "period") {
       current.hour = "";
@@ -336,11 +337,13 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
       current.minute = nextMinute.minute;
       nextActiveSegment = nextMinute.complete ? getLastSegment(timeFormat) : "minute";
       replaceActiveSegmentRef.current = nextMinute.complete;
+      minuteCompleted = nextMinute.complete;
     }
 
     lastTypingInteractionRef.current = true;
-    const shouldAdvance =
-      timeFormat === "24h" && nextActiveSegment === "minute" && current.hour.length >= 2;
+    // 24h has no AM/PM to wait for: the field moves on once both minute
+    // digits are in, never after the hour alone (BL-613).
+    const shouldAdvance = timeFormat === "24h" && minuteCompleted;
     applySegmentBuffers(current, nextPeriod, nextActiveSegment, { advance: shouldAdvance });
   }
 
