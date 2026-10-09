@@ -15,23 +15,19 @@ import {
 const draftWorkspaceName = "New workspace";
 
 /**
- * Starts employer onboarding in one click. An unfinished setup is resumed
- * instead of created again, which also protects the name it already carries.
+ * Starts employer onboarding in one click: no name window first, owner setup
+ * step 1 asks for the name (KARARLAR "Create" button, Mert). An unfinished
+ * setup is resumed instead of created again, which also protects the name it
+ * already carries.
  */
-export function CreateOrganizationButton({
-  className = "",
-  existingDraft = null,
-}: {
-  readonly className?: string;
-  readonly existingDraft?: WorkspaceSummary | null;
-}) {
+export function useStartOwnerSetup() {
   const navigate = useNavigate();
   const { refresh } = useAuth();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const start = async (): Promise<void> => {
+  const start = async (existingDraft: WorkspaceSummary | null = null): Promise<void> => {
     if (!supabaseClient) return;
     setBusy(true);
     setError(null);
@@ -54,13 +50,25 @@ export function CreateOrganizationButton({
     }
   };
 
+  return { start, busy, error };
+}
+
+export function CreateOrganizationButton({
+  className = "",
+  existingDraft = null,
+}: {
+  readonly className?: string;
+  readonly existingDraft?: WorkspaceSummary | null;
+}) {
+  const { start, busy, error } = useStartOwnerSetup();
+
   return (
     <>
       <Button
         className={className}
         type="button"
         disabled={busy}
-        onClick={() => void start()}
+        onClick={() => void start(existingDraft)}
       >
         <Building2 size={16} aria-hidden />
         {busy ? "Starting" : "Create your workspace"}

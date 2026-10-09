@@ -1,6 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
-import { usLettersMessage } from "@newfork/shared";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -241,27 +240,9 @@ describe("WorkspacesPage", () => {
     expect(buttons).toHaveLength(2);
     expect(document.querySelectorAll("#create-workspace-trigger")).toHaveLength(1);
     fireEvent.click(buttons[1]!);
-    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
-  });
-
-  // BL-503: Create workspace takes the name the way owner setup does.
-  it("says under Workspace name that Turkish-only letters are not taken, and holds Create", async () => {
-    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
-    renderPage({ pathname: "/account/workspaces", state: { openCreate: true } });
-    await screen.findByRole("dialog", { name: "Create workspace" });
-    const name = screen.getByRole("textbox", { name: "Workspace name" });
-    fireEvent.change(name, { target: { value: "Kadıköy Cafe" } });
-    expect(name.getAttribute("aria-invalid")).toBe("true");
-    expect(document.getElementById(name.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
-      usLettersMessage,
+    await waitFor(() =>
+      expect(screen.getByLabelText("Current path").textContent).toBe("/onboarding"),
     );
-    expect(screen.getByRole("button", { name: "Create" })).toHaveProperty("disabled", true);
-  });
-
-  it("opens the create dialog when navigation requests it", async () => {
-    vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
-    renderPage({ pathname: "/account/workspaces", state: { openCreate: true } });
-    expect(await screen.findByRole("dialog", { name: "Create workspace" })).toBeTruthy();
   });
 
   it("hides create for an invited account that has no organization yet", async () => {
@@ -551,21 +532,15 @@ describe("WorkspacesPage", () => {
   it("stores a newly created workspace as the tab-local context before onboarding", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
     renderPage();
+    // KARAR-001: no name window; owner setup step 1 asks for the name.
     fireEvent.click(await screen.findByRole("button", { name: "Create workspace" }));
-    expect(screen.getByRole("dialog", { name: "Create workspace" })).toBeTruthy();
-
-    fireEvent.change(
-      await screen.findByRole("textbox", { name: "Workspace name" }),
-      {
-        target: { value: "New Business" },
-      },
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Workspace name" })).toBeNull();
 
     await waitFor(() =>
       expect(createOwnerWorkspace).toHaveBeenCalledWith(
         supabaseClientMock,
-        "New Business",
+        "New workspace",
       ),
     );
     expect(setTabWorkspaceId).toHaveBeenCalledWith(secondWorkspaceId);

@@ -2,19 +2,18 @@ import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Check, Crown, Ellipsis, Plus, Star, Trash2, X } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
 import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
-import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { useStartOwnerSetup } from "../shell/CreateOrganizationButton";
 import { RequestError } from "../lib/request-error";
 import { AccountPageHeader, unfinishedSetup } from "./components";
 import { accountWorkspacesKey } from "./legal-name-data";
 import {
-  createOwnerWorkspace,
   cancelWorkspaceClosure,
   cancelWorkspaceOwnershipTransfer,
   clearTabWorkspaceId,
@@ -26,21 +25,16 @@ import {
   respondWorkspaceOwnershipTransfer,
   selectActiveWorkspace,
   setDefaultWorkspace,
-  setTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
 
 export default function WorkspacesPage() {
   const { account, context, refresh } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
-  const [workspaceName, setWorkspaceName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [createOpen, setCreateOpen] = useState(
-    () => (location.state as { openCreate?: boolean } | null)?.openCreate === true,
-  );
-  const createDialog = useRef<HTMLDialogElement>(null);
+  // "Create workspace" opens owner setup step 1 directly; that step asks for
+  // the name (KARARLAR "Create" button, KARAR-001).
+  const setup = useStartOwnerSetup();
   const actionsMenuRef = useRef<HTMLDivElement>(null);
   const actionTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
   const [openActionsWorkspaceId, setOpenActionsWorkspaceId] = useState<string | null>(null);
@@ -147,12 +141,6 @@ export default function WorkspacesPage() {
     Number(b.isActive) - Number(a.isActive));
 
   useEffect(() => {
-    if (!createOpen || !canCreate) return;
-    createDialog.current?.showModal();
-    return () => document.getElementById("create-workspace-trigger")?.focus();
-  }, [createOpen, canCreate]);
-
-  useEffect(() => {
     if (!openActionsWorkspaceId) return;
     const workspaceId = openActionsWorkspaceId;
     const closeMenu = (returnFocus: boolean): void => {
@@ -216,37 +204,6 @@ export default function WorkspacesPage() {
     return () => { active = false; window.clearTimeout(timer); };
   }, [transferTarget, candidateQuery]);
 
-  const createWorkspace = async (
-    event: FormEvent<HTMLFormElement>,
-  ): Promise<void> => {
-    event.preventDefault();
-    if (!supabaseClient || !canCreate) return;
-    setCreating(true);
-    setError(null);
-    try {
-      const createdWorkspaceId = await createOwnerWorkspace(
-        supabaseClient,
-        workspaceName,
-      );
-      setTabWorkspaceId(createdWorkspaceId);
-      await refresh();
-      navigate("/onboarding");
-    } catch (createError: unknown) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "Workspace could not be created",
-      );
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const openCreateDialog = (): void => {
-    setWorkspaceName("");
-    setError(null);
-    setCreateOpen(true);
-  };
 
   const activate = async (workspace: WorkspaceSummary): Promise<void> => {
     if (!supabaseClient) {
@@ -456,10 +413,10 @@ export default function WorkspacesPage() {
 
   // What went wrong belongs next to the thing that went wrong, not at the end
   // of the page. Only one of these is ever on screen at a time.
-  const errorNotice = error ?? listError ? (
+  const errorNotice = error ?? setup.error ?? listError ? (
     <div className="workspace-error-notice">
       <p className="form-error" role="alert">
-        {error ?? listError}
+        {error ?? setup.error ?? listError}
       </p>
       {/* The refusal named the transfer, so the way out is a button rather
           than directions to a menu. */}
@@ -534,7 +491,8 @@ export default function WorkspacesPage() {
             id="create-workspace-trigger"
             type="button"
             className="primary-button"
-            onClick={openCreateDialog}
+            disabled={setup.busy}
+            onClick={() => void setup.start()}
           >
             <Plus size={16} aria-hidden /> Create workspace
           </Button>
@@ -574,7 +532,7 @@ export default function WorkspacesPage() {
             <div>
               <strong>No workspaces yet</strong>
               <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
-              {canCreate ? <Button type="button" onClick={openCreateDialog}>Create workspace</Button> : null}
+              {canCreate ? <Button type="button" disabled={setup.busy} onClick={() => void setup.start()}>Create workspace</Button> : null}
             </div>
           </div>
         ) : null}
@@ -982,48 +940,7 @@ export default function WorkspacesPage() {
           {errorNotice}
         </section>
       ) : null}
-      {createOpen && canCreate ? <dialog ref={createDialog} className="account-confirmation-dialog account-create-workspace-dialog" aria-labelledby="create-workspace-title"
-        onKeyDown={event => {
-          if (event.key !== "Tab") return;
-          const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
-          const first = controls[0], last = controls.at(-1);
-          if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-          else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
-        }}
-        onCancel={event => { event.preventDefault(); if (!creating) setCreateOpen(false); }}>
-      {/* Opened by "Create workspace": the dialog says the same word as its button. */}
-      <h2 id="create-workspace-title">Create workspace</h2>
-      <p>Start a separate workspace and complete its setup.</p>
-      <form className="account-create-workspace-form" onSubmit={createWorkspace}>
-        <label htmlFor="new-workspace-name">Workspace name</label>
-        <div className="account-field">
-          <input
-            id="new-workspace-name"
-            autoFocus
-            value={workspaceName}
-            maxLength={120}
-            onChange={(event) => setWorkspaceName(event.target.value)}
-            placeholder="Restaurant group name"
-            required
-            {...letterRuleProps(workspaceName, "new-workspace-name-error")}
-          />
-          <LetterRuleError value={workspaceName} id="new-workspace-name-error" />
-          <Button
-            type="submit"
-            disabled={
-              creating ||
-              workspaceName.trim().length === 0 ||
-              breaksLetterRule(workspaceName)
-            }
-          >
-            <Plus size={16} aria-hidden /> {creating ? "Creating" : "Create"}
-          </Button>
-          <Button type="button" className="secondary-button" disabled={creating} onClick={() => setCreateOpen(false)}>Cancel</Button>
-        </div>
-      </form>
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
-      </dialog> : null}
-      {!createOpen && !closureTarget && !transferTarget && !transferResponseTarget
+      {!closureTarget && !transferTarget && !transferResponseTarget
         ? errorNotice
         : null}
     </section>
