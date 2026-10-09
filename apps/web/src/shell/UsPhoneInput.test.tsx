@@ -28,9 +28,55 @@ describe("UsPhoneInput", () => {
     render(<Harness />);
     const field = screen.getByLabelText("Phone") as HTMLInputElement;
     fireEvent.change(field, { target: { value: "415a555" } });
-    expect(field.value).toBe("(415) 555");
+    expect(field.value).toBe("(415) 555-");
     fireEvent.change(field, { target: { value: "+1 415 555 0100 99" } });
     expect(field.value).toBe("(415) 555-0100");
+  });
+
+  // Mert, 2026-10-09 (mask A): the brackets come with the 3rd digit and the dash
+  // with the 6th, and each leaves with that digit when it is erased.
+  it("brings and takes each separator with the digit that closes its group", () => {
+    function Harness() {
+      const [value, setValue] = useState("");
+      return <UsPhoneInput aria-label="Phone" value={value} onChange={setValue} />;
+    }
+    render(<Harness />);
+    const field = screen.getByLabelText("Phone") as HTMLInputElement;
+    const typedShows: string[] = [];
+    for (const key of "4155550100") {
+      fireEvent.change(field, { target: { value: field.value + key } });
+      typedShows.push(field.value);
+    }
+    expect(typedShows).toEqual([
+      "4",
+      "41",
+      "(415)",
+      "(415) 5",
+      "(415) 55",
+      "(415) 555-",
+      "(415) 555-0",
+      "(415) 555-01",
+      "(415) 555-010",
+      "(415) 555-0100",
+    ]);
+    const erasedShows: string[] = [];
+    while (field.value) {
+      // Backspace at the end takes the last character, a separator included.
+      fireEvent.change(field, { target: { value: field.value.slice(0, -1) } });
+      erasedShows.push(field.value);
+    }
+    expect(erasedShows).toEqual([
+      "(415) 555-010",
+      "(415) 555-01",
+      "(415) 555-0",
+      "(415) 555-",
+      "(415) 55",
+      "(415) 5",
+      "(415)",
+      "41",
+      "4",
+      "",
+    ]);
   });
 
   // BL-969 code review: cut to ten digits, "+44 …" read as a wrong US number.

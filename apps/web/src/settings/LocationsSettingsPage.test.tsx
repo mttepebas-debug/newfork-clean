@@ -131,7 +131,7 @@ describe("Location short name editor", () => {
 });
 
 describe("Location phone", () => {
-  it.each([["4", "(4"], ["4155", "(415) 5"], ["14155550100", "(415) 555-0100"], ["415-555-0100 99", "(415) 555-0100"], ["", ""]])(
+  it.each([["4", "4"], ["415", "(415)"], ["4155", "(415) 5"], ["415555", "(415) 555-"], ["14155550100", "(415) 555-0100"], ["415-555-0100 99", "(415) 555-0100"], ["", ""]])(
     "formats %s as %s", (value, expected) => expect(formatUsPhone(value)).toBe(expected));
   // BL-503: the one US phone field, a fixed +1 before the number.
   it("draws the fixed +1 before the number", async () => {
