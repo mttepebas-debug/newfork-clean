@@ -3089,6 +3089,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #4b5551;
   cursor: pointer;
 }
+/* On a touch screen the icon button is a 44 × 44 target (WCAG 2.5.5; BL-334);
+   the icon itself keeps its size. */
+@media (pointer: coarse) {
+  .icon-button {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+}
 .icon-button:hover,
 .nav-item:hover {
   background: var(--theme-surface-muted);
