@@ -662,6 +662,35 @@ describe("ProfilePage US form rules", () => {
     expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   });
 
+  // TEL-2 review: a record refuses an emergency number equal to its own at
+  // every step, so the account's number takes the contact's old one only after
+  // the contact has moved on.
+  it("saves the new contact first when the account takes the contact's old number", async () => {
+    ownerWithContact();
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    fireEvent.change(screen.getByLabelText("Contact phone"), { target: { value: "3105550111" } });
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "4155550199" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateAccount).toHaveBeenCalled());
+    expect(vi.mocked(saveOwnEmploymentContact).mock.invocationCallOrder.at(-1)!).toBeLessThan(
+      updateAccount.mock.invocationCallOrder.at(-1)!,
+    );
+  });
+
+  it("saves the account first when the contact takes the account's old number", async () => {
+    ownerWithContact();
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "3105550111" } });
+    fireEvent.change(screen.getByLabelText("Contact phone"), { target: { value: "4155550142" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saveOwnEmploymentContact).toHaveBeenCalled());
+    expect(updateAccount.mock.invocationCallOrder.at(-1)!).toBeLessThan(
+      vi.mocked(saveOwnEmploymentContact).mock.invocationCallOrder.at(-1)!,
+    );
+  });
+
   it("keeps one line under Preferred name: the rule while it is broken, else the help", async () => {
     ownerWithContact();
     renderProfile();
