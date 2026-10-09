@@ -561,6 +561,13 @@ describe("EmployeeHubPage", () => {
     expect(await screen.findByRole("tab", { name: "Availability" })).toHaveProperty("ariaSelected", "true");
   });
 
+  // EKRAN-02 C2 #89: the dashboard's "Open shifts" lands on the Shift Hub's open shifts.
+  it("opens the Shift Hub's available shifts from the dashboard's Open shifts", async () => {
+    renderPage();
+    const link = await screen.findByRole("link", { name: /Open shifts/ });
+    expect(link.getAttribute("href")).toMatch(/\/shift-hub\?hub_view=available$/);
+  });
+
   // C2.3, P26: both drafts ask before a tab change loses them.
   it("protects an unsaved weekly draft and a time-off draft on tab changes", async () => {
     renderPage("/app/employee-hub/my-availability");
