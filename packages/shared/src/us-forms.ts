@@ -10,7 +10,7 @@ import { z } from "zod";
 /** The letters only Turkish uses; other Latin accents ("José Peña") pass, and so do hyphens. */
 const turkishOnlyLetters = /[şŞğĞıİ]/;
 
-export const usLettersMessage = "Use English letters instead of ş, ğ, ı or İ.";
+export const usLettersMessage = "English letters only.";
 
 /**
  * Read in composed form: pasted from macOS or a PDF, "ş" can arrive as "s"
