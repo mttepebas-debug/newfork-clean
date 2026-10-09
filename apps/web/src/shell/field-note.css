@@ -1,0 +1,14 @@
+/* The line under a field (TEL-2): help and error share one cell, as tall as
+   the longest of them, so an error coming or going moves nothing. */
+.field-note {
+  display: grid;
+}
+.field-note > small {
+  grid-area: 1 / 1;
+}
+.field-note > .field-note-reserve {
+  visibility: hidden;
+}
+.field-note > small.field-note-error {
+  color: var(--theme-danger);
+}

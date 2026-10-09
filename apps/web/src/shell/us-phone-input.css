@@ -22,3 +22,11 @@
 .us-phone-field > input.us-phone-input {
   padding-left: calc(22px + 1em);
 }
+/* A number the screen refuses (TEL-2): red, and still red while it is typed,
+   whatever the screen's own focus look. */
+.us-phone-field > input.us-phone-input[aria-invalid="true"],
+.us-phone-field > input.us-phone-input[aria-invalid="true"]:focus {
+  border-color: var(--theme-danger);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+  outline-color: var(--theme-danger);
+}

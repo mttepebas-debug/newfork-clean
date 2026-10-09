@@ -1,5 +1,7 @@
 import {
+  emergencyIsOwnPhoneMessage,
   normalizeAccountPhone,
+  sameUsPhone,
   toUsPhone,
   type EmploymentContactRecord,
   type OwnerLegalName,
@@ -40,6 +42,7 @@ import { AvatarCropDialog } from "./AvatarCropDialog";
 import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
 import { RequestError } from "../lib/request-error";
+import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 
@@ -234,7 +237,9 @@ export default function ProfilePage() {
     Object.values(legalState).every((form) => form.lettersOk) &&
     !breaksLetterRule(preferred) &&
     !(hasContactForm && breaksLetterRule(contact.name, contact.relationship));
-  const complete = missing.length === 0 && lettersOk;
+  // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
+  const contactIsOwn = hasContactForm && sameUsPhone(phone, contact.phone);
+  const complete = missing.length === 0 && lettersOk && !contactIsOwn;
 
   useEffect(() => {
     if (!draftFile) return;
@@ -590,6 +595,16 @@ export default function ProfilePage() {
                     value={contact.phone}
                     onChange={(next) => editContact("phone", next)}
                     required
+                    aria-invalid={contactIsOwn ? true : undefined}
+                    aria-describedby={fieldNoteId(
+                      "account-contact-phone",
+                      contactIsOwn ? emergencyIsOwnPhoneMessage : null,
+                    )}
+                  />
+                  <FieldNote
+                    id="account-contact-phone"
+                    error={contactIsOwn ? emergencyIsOwnPhoneMessage : null}
+                    reserve={emergencyIsOwnPhoneMessage}
                   />
                 </label>
               </div>

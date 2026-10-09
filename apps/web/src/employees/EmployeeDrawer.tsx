@@ -5,10 +5,12 @@ import {
 import { EmployeeDocumentPanel } from "../documents/EmployeeDocumentPanel";
 import {
   displayUsPhone,
+  emergencyIsOwnPhoneMessage,
   employeeInputSchema,
   hasTurkishOnlyLetters,
   managerLocationRefusal,
   employeeSectionSchema,
+  sameUsPhone,
   toUsPhone,
   usLettersMessage,
   usPhoneMessage,
@@ -57,6 +59,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
+import { FieldNote } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import "./employee-termination.css";
@@ -340,9 +343,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       JSON.stringify(storedContact(contactBaseline));
   // Both halves: a name with no number is not a contact (the server's rule);
   // a whole US number, and names under the US letter rule (BL-503).
+  // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
+  const contactIsOwn = sameUsPhone(detail.data?.private_contact?.phone, contactNow.phone);
   const contactReady =
     contactNow.name.trim().length > 0 &&
     toUsPhone(contactNow.phone) !== null &&
+    !contactIsOwn &&
     !hasTurkishOnlyLetters(contactNow.name) &&
     !hasTurkishOnlyLetters(contactNow.relationship);
   // What Save changes has to send; Terminate and Invite wait for it too.
@@ -1273,6 +1279,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                             value: contactNow,
                             onChange: setContactDraft,
                             required: contactDirty,
+                            isOwnPhone: contactIsOwn,
                             disabled: busy || readOnly,
                           }
                         : null,
@@ -3161,6 +3168,8 @@ function Field({
   mark,
   required = false,
   optional = false,
+  refusal,
+  reserve,
 }: {
   label: string;
   value: string;
@@ -3176,6 +3185,10 @@ function Field({
   required?: boolean;
   /** Says so beside the label, rather than leaving it to be inferred. */
   optional?: boolean;
+  /** Said under the field as it is typed, in a line whose room is kept (TEL-2). */
+  refusal?: string | null;
+  /** The longest refusal the field can say. */
+  reserve?: string;
 }) {
   const [touched, setTouched] = useState(false);
   const id = useId();
@@ -3198,6 +3211,7 @@ function Field({
     type === "text" && !readOnly && !disabled && hasTurkishOnlyLetters(value);
   const describedBy = [
     invalid ? `${id}-error` : null,
+    refusal ? `${id}-note-error` : null,
     lettersBroken ? `${id}-letters` : null,
     lockedReason ? `${id}-reason` : null,
     mark ? `${id}-mark` : null,
@@ -3235,7 +3249,7 @@ function Field({
           <UsPhoneInput
             aria-label={label}
             aria-required={required || undefined}
-            aria-invalid={invalid || undefined}
+            aria-invalid={invalid || Boolean(refusal) || undefined}
             aria-describedby={describedBy || undefined}
             onBlur={markTouched}
             value={value}
@@ -3279,6 +3293,12 @@ function Field({
           {validationMessage}
         </small>
       ) : null}
+      <FieldNote
+        id={`${id}-note`}
+        error={refusal}
+        reserve={reserve}
+        className="employee-field-helper employee-field-error"
+      />
       {lettersBroken ? (
         <small
           id={`${id}-letters`}
@@ -3669,11 +3689,13 @@ interface OwnContactControl {
   readonly onChange: (next: ContactDraft) => void;
   /** Once anything is typed, a name and a number are both needed. */
   readonly required: boolean;
+  /** The number is the owner's own (TEL-2). */
+  readonly isOwnPhone: boolean;
   readonly disabled: boolean;
 }
 
 function OwnEmergencyContact({ control }: { readonly control: OwnContactControl }) {
-  const { value, onChange, required, disabled } = control;
+  const { value, onChange, required, disabled, isOwnPhone } = control;
   return (
     <>
       <Field
@@ -3699,6 +3721,8 @@ function OwnEmergencyContact({ control }: { readonly control: OwnContactControl 
         value={value.phone}
         disabled={disabled}
         onChange={(phone) => onChange({ ...value, phone })}
+        refusal={isOwnPhone ? emergencyIsOwnPhoneMessage : null}
+        reserve={emergencyIsOwnPhoneMessage}
       />
     </>
   );

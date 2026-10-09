@@ -1,7 +1,10 @@
 import { todayIn } from "../lib/today";
 import {
+  emergencyIsOwnPhoneMessage,
   employeeOnboardingProfileSchema,
   hasTurkishOnlyLetters,
+  phoneInUseMessage,
+  sameUsPhone,
   toUsPhone,
   usLettersMessage,
   type EmployeeOnboarding,
@@ -27,6 +30,8 @@ import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { setTabWorkspaceId } from "../lib/supabase";
+import { RequestError } from "../lib/request-error";
+import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
   AccountBlock,
@@ -39,6 +44,7 @@ import {
 } from "../shell/prebiz/PreBiz";
 import {
   getMyOnboarding,
+  isMyOnboardingPhoneInUse,
   saveMyOnboardingProfile,
   submitMyOnboarding,
 } from "./onboarding-data";
@@ -564,6 +570,18 @@ function ProfileStep({
     emergency_contact_phone:
       toUsPhone(typed.emergency_contact_phone) ?? typed.emergency_contact_phone,
   };
+  // TEL-2 (Mert, 2026-10-09): the number is nobody else's in this workspace,
+  // asked once it is whole; the emergency contact is somebody else.
+  const ownPhone = toUsPhone(typed.phone);
+  const phoneCheck = useQuery({
+    queryKey: ["my-onboarding-phone", workspaceId, ownPhone],
+    queryFn: () => isMyOnboardingPhoneInUse(workspaceId, ownPhone ?? ""),
+    enabled: ownPhone !== null && workspaceId !== "",
+    staleTime: 60_000,
+  });
+  const phoneInUse = ownPhone !== null && phoneCheck.data === true;
+  const emergencyIsOwn = sameUsPhone(typed.phone, profile.emergency_contact_phone);
+  const queryClient = useQueryClient();
   const [validationError, setValidationError] = useState<string | null>(null);
   const relationshipOptions = [
     "Spouse/partner",
@@ -585,6 +603,11 @@ function ProfileStep({
     mutationFn: () =>
       saveMyOnboardingProfile(workspaceId, draft, model.revision),
     onSuccess: onSaved,
+    // Somebody may have taken the number since it was asked about.
+    onError: (error) => {
+      if (error instanceof RequestError && error.reason === "onboarding.phone_in_use")
+        void queryClient.invalidateQueries({ queryKey: ["my-onboarding-phone"] });
+    },
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -597,6 +620,8 @@ function ProfileStep({
           (item) =>
             personalFields.has(String(item.path[0])) === (page === "personal"),
         );
+    // The field already says why, in red.
+    if (page === "personal" ? phoneInUse : emergencyIsOwn) return;
     if (issue || (page === "emergency" && !parsed.success)) {
       setValidationError(issue?.message ?? "Complete all required fields.");
       return;
@@ -608,6 +633,15 @@ function ProfileStep({
     }
     mutation.mutate();
   };
+  // With the number on the account, it changes there.
+  const phoneInUseNote = phoneOnAccount ? (
+    <>
+      {phoneInUseMessage} Change it in{" "}
+      <Link to="/account/profile">Account › Profile</Link>.
+    </>
+  ) : (
+    phoneInUseMessage
+  );
   const rejection =
     profileRequirement?.status === "rejected" ? (
       <Attention
@@ -672,6 +706,8 @@ function ProfileStep({
             onChange={(value) =>
               setProfile({ ...profile, emergency_contact_phone: value })
             }
+            error={emergencyIsOwn ? emergencyIsOwnPhoneMessage : null}
+            reserve={emergencyIsOwnPhoneMessage}
           />
           <TextField
             label="Email (optional)"
@@ -760,6 +796,8 @@ function ProfileStep({
               "The number this workspace can reach you on."
             )
           }
+          error={phoneInUse ? phoneInUseNote : null}
+          reserve={phoneInUseNote}
         />
         <TextField
           label="Date of birth"
@@ -1089,12 +1127,18 @@ function PhoneField({
   onChange,
   readOnly = false,
   help,
+  error,
+  reserve,
 }: {
   readonly label: string;
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly readOnly?: boolean;
   readonly help?: ReactNode;
+  /** Said in red in the help line's place; the field turns red with it. */
+  readonly error?: ReactNode;
+  /** The longest error the field can show, whose room is always kept. */
+  readonly reserve?: ReactNode;
 }) {
   const id = useId();
   return (
@@ -1105,10 +1149,11 @@ function PhoneField({
         value={value}
         required
         readOnly={readOnly}
-        aria-describedby={help ? `${id}-help` : undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={fieldNoteId(id, error, help)}
         onChange={onChange}
       />
-      {help ? <small id={`${id}-help`}>{help}</small> : null}
+      <FieldNote id={id} help={help} error={error} reserve={reserve} />
     </div>
   );
 }
@@ -1189,5 +1234,9 @@ function requirementPath(requirement: EmployeeOnboardingRequirement): string {
 }
 
 function errorMessage(error: unknown): string {
+  if (error instanceof RequestError && error.reason === "onboarding.phone_in_use")
+    return phoneInUseMessage;
+  if (error instanceof RequestError && error.reason === "onboarding.emergency_is_own_phone")
+    return emergencyIsOwnPhoneMessage;
   return error instanceof Error ? error.message : "Onboarding request failed";
 }
