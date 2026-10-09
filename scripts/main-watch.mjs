@@ -6,11 +6,13 @@
 // catches a commit pushed straight to main that a later train then built on top of.
 // <since> = the oldest train push's `before`, or --since <sha> (a commit Mert already knows of).
 // Run: node scripts/main-watch.mjs [--since <sha>]
-//   exit 0 "main temiz" · exit 1 one "🔴 trenden geçmemiş commit: <sha> <subject>" line per commit
-//   exit 2 nothing to measure from (no train push in audit.log and no --since)
+//   exit 0 "main temiz" · exit 1 one "🔴 trenden geçmemiş commit: <sha> <subject>" line per commit, or
+//   "🔴 main geri sarıldı: <after>" when the latest train push's tip is no longer on origin/main
+//   exit 2 nothing to measure from (no train push in audit.log and no --since, or <since> unreadable)
+//   exit 3 "main alarmı bayat": git fetch failed, so origin/main is old and no verdict is given
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OPS_DIR } from "./ops.mjs";
 
@@ -57,8 +59,10 @@ function main(argv) {
   }
   try {
     git(cwd, ["fetch", "-q", "origin"]);
-  } catch {
-    console.error("uyarı: git fetch başarısız; yerel origin/main ile bakıldı");
+  } catch (e) {
+    // a stale origin/main would read "temiz" while main moved: no verdict at all
+    console.log(`main alarmı bayat: git fetch başarısız (${String(e.stderr ?? e.message).trim().split("\n")[0]})`);
+    return 3;
   }
   let text = "";
   try {
@@ -78,6 +82,9 @@ function main(argv) {
     console.log(`main izlenemiyor: ${since.slice(0, 8)}..origin/main okunamadı (${String(e.stderr ?? e.message).trim().split("\n")[0]})`);
     return 2;
   }
+  // main rewound (a force push past the guard): the latest train's tip is no longer an ancestor of main
+  const latest = pushes.at(-1);
+  const rewound = latest ? spawnSync("git", ["-C", cwd, "merge-base", "--is-ancestor", latest.after, "origin/main"]).status !== 0 : false;
   const revList = raw
     .split("\n")
     .filter(Boolean)
@@ -98,7 +105,8 @@ function main(argv) {
     return reach.get(y).has(x);
   };
   const foreign = foreignCommits({ revList, trainPushes: pushes, isAncestor });
-  if (!foreign.length) {
+  if (rewound) console.log(`🔴 main geri sarıldı: ${latest.after.slice(0, 8)}`);
+  if (!foreign.length && !rewound) {
     console.log(`main temiz (${since.slice(0, 8)}..origin/main: ${revList.length} commit, ${pushes.length} tren gönderimi)`);
     return 0;
   }

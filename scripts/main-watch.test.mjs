@@ -175,3 +175,26 @@ test("CLI: no audit.log at all → exit 2, not a crash", () => {
   assert.equal(r.code, 2);
   assert.match(r.out + r.err, /train-push yok/);
 });
+
+test("CLI: git fetch fails → 'main alarmı bayat', exit 3 (not a stale 'temiz')", () => {
+  const w = world();
+  const p1 = w.trainPush(["feat: one"]);
+  w.log([p1]);
+  git(w.repo, "remote", "set-url", "origin", path.join(path.dirname(w.repo), "no-such-origin.git"));
+  const r = w.run();
+  assert.equal(r.code, 3, r.out + r.err);
+  assert.match(r.out, /^main alarmı bayat: git fetch başarısız/m);
+  assert.doesNotMatch(r.out, /main temiz/);
+});
+
+test("CLI: the latest train push's after is no longer on origin/main → '🔴 main geri sarıldı', exit 1", () => {
+  const w = world();
+  const p1 = w.trainPush(["feat: one"]);
+  const p2 = w.trainPush(["feat: two"]);
+  w.log([p1, p2]);
+  // someone rewinds main to before the last train (a force push the guard should have refused)
+  git(w.repo, "push", "-q", "-f", "origin", `${p2.before}:refs/heads/main`);
+  const r = w.run();
+  assert.equal(r.code, 1, r.out + r.err);
+  assert.deepEqual(r.out.split("\n"), [`🔴 main geri sarıldı: ${p2.after.slice(0, 8)}`]);
+});
