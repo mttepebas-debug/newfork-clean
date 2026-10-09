@@ -226,6 +226,26 @@ test("push: NF_OVERRIDE passes a head CI did not pass, after saving origin main 
   assert.equal(o.sha, before);
 });
 
+test("push: NF_OVERRIDE past a red CI records that run, its conclusion and failed jobs in the audit entry", () => {
+  w.branch("task/a", code("a"));
+  built("task/a");
+  w.ciResult = { conclusion: "failure", run: 303, failedJobs: ["e2e", "db"] };
+  assert.equal(ci(w.ctx).code, 1);
+  const r = push({ ...w.ctx, override: "acil düzeltme" });
+  assert.equal(r.code, 0, text(r));
+  const o = auditLines().find((l) => l.event === "train-override");
+  assert.deepEqual(o.ci, { run: 303, conclusion: "failure", failedJobs: ["e2e", "db"], head: state().ci.head });
+});
+
+test("push: NF_OVERRIDE with no CI at all records that no CI ran", () => {
+  w.branch("task/a", code("a"));
+  built("task/a");
+  const r = push({ ...w.ctx, override: "acil düzeltme" });
+  assert.equal(r.code, 0, text(r));
+  const o = auditLines().find((l) => l.event === "train-override");
+  assert.deepEqual(o.ci, { run: null, conclusion: "yok", failedJobs: [], head: null });
+});
+
 // ---- run ----
 
 test("run: build, ci, push and apply-local in one command; main ends at the train, db.lock is free", () => {

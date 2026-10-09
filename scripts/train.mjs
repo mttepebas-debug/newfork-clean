@@ -528,10 +528,14 @@ export function push(ctx) {
     refuse(ctx, s, "push", `main ilerledi, yeniden build (origin/main @${short(before)} trenin atası değil; force push yok)`, lines, { before, after: tip });
     return { code: 1, lines };
   }
-  // passing a missing green CI with NF_OVERRIDE first saves origin/main, as the guard does
+  // passing a missing green CI with NF_OVERRIDE first saves origin/main, as the guard does, and records which
+  // CI it passed (run, conclusion, failed jobs; "yok" when none ran) so the audit shows what was overridden
   const backup = () => {
     const b = backupMain(repo);
-    return { backup: b.ref, sha: b.sha, fetched: b.fetched };
+    const c = s.ci
+      ? { run: s.ci.run ?? null, conclusion: s.ci.conclusion ?? null, failedJobs: s.ci.failedJobs ?? [], head: s.ci.head ?? null }
+      : { run: null, conclusion: "yok", failedJobs: [], head: null };
+    return { backup: b.ref, sha: b.sha, fetched: b.fetched, ci: c };
   };
   if (!(s.ci?.ok && s.ci.head === tip) && !pass(ctx, s, "push", `CI bu sha'da yeşil değil (@${short(tip)})`, lines, backup)) return { code: 1, lines };
   const r = spawnSync("git", ["-C", repo, "push", "origin", `${tip}:refs/heads/main`], { encoding: "utf8" });
