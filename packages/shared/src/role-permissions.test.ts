@@ -98,6 +98,40 @@ describe("what Settings > Roles offers each kind of role (GUVENLIK-A GA-2)", () 
   });
 });
 
+// K-S3 (Mert 2026-10-05, KARARLAR: Time off has no "View" level): reading
+// time off comes with deciding it. The database drops a read without manage
+// (20261008111454), so Settings > Roles offers only Edit, and Edit holds both.
+describe("Time off in Settings > Roles has no View level (K-S3)", () => {
+  const timeOff = (accessClass: "manager" | "admin") =>
+    permissionGroupsForRole(accessClass, catalog)
+      .flatMap((group) => group.areas)
+      .find((area) => area.id === "time-off");
+  it("offers no Read box, only Edit", () => {
+    for (const accessClass of ["manager", "admin"] as const) {
+      expect(timeOff(accessClass)?.read).toEqual([]);
+      expect(timeOff(accessClass)?.edit).toEqual([
+        "schedule.time_off_requests.read",
+        "schedule.time_off_requests.manage",
+      ]);
+    }
+  });
+  it("Edit on gives read and manage together; Edit off takes both away", () => {
+    const keys = timeOff("manager")!.edit;
+    const on = toggleRolePermissions(personalRolePermissions, keys, true);
+    expect(on).toEqual(
+      expect.arrayContaining([
+        "schedule.read",
+        "schedule.time_off_requests.read",
+        "schedule.time_off_requests.manage",
+      ]),
+    );
+    const off = toggleRolePermissions(on, keys, false);
+    expect(off).not.toContain("schedule.time_off_requests.read");
+    expect(off).not.toContain("schedule.time_off_requests.manage");
+    expect(off).toContain("schedule.read");
+  });
+});
+
 describe("role editor permission contract", () => {
   it("bulk Edit enables prerequisite reads and Read removal clears dependent writes", () => {
     const edit = toggleRolePermissions(

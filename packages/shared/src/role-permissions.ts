@@ -67,8 +67,13 @@ export const rolePermissionGroups: readonly {
         id: "time-off",
         label: "Time off",
         description: "View requests and record decisions.",
-        read: ["schedule.time_off_requests.read"],
-        edit: ["schedule.time_off_requests.manage"],
+        // No View level: reading time off comes with deciding it (K-S3, Mert
+        // 2026-10-05); the database drops a read without manage.
+        read: [],
+        edit: [
+          "schedule.time_off_requests.read",
+          "schedule.time_off_requests.manage",
+        ],
       },
       {
         id: "shift-changes",
