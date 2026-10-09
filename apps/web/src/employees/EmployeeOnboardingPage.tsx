@@ -576,7 +576,11 @@ function ProfileStep({
   const phoneCheck = useQuery({
     queryKey: ["my-onboarding-phone", workspaceId, ownPhone],
     queryFn: () => isMyOnboardingPhoneInUse(workspaceId, ownPhone ?? ""),
-    enabled: ownPhone !== null && workspaceId !== "",
+    // Only while the profile can still be saved; the server closes it after.
+    enabled:
+      ownPhone !== null &&
+      workspaceId !== "" &&
+      !["submitted", "approved", "cancelled"].includes(model.case_status),
     staleTime: 60_000,
   });
   const phoneInUse = ownPhone !== null && phoneCheck.data === true;
