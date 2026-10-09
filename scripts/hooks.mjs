@@ -3,14 +3,17 @@
 //   agent-report   SubagentStop: the agent's last message -> docs/plan/gunluk/<day>/<HHMM>-<job>-<agent>-<id8>.md,
 //                  so no report is lost to a missed notification or a compacted context.
 //   session-start  SessionStart (startup, resume, clear, compact): the top of DURUM.md back into the context.
-// Both read the hook JSON on stdin, write under CLAUDE_PROJECT_DIR and never fail the session (exit 0).
-// settings.json is shared by every session, so the CLI acts only in the coordinator's checkout (branch
-// coord/kayit); anywhere else it does nothing. Secrets in an agent's message are masked before it is written.
+// Both read the hook JSON on stdin and never fail the session (exit 0). settings.json is shared by every
+// session, so the CLI writes under CLAUDE_PROJECT_DIR only in the coordinator's checkout (branch coord/kayit).
+// A folder off that branch that still has DURUM.md is the coordinator's checkout caught mid-rebase or on a
+// detached HEAD: its agent report goes to <OPS_DIR>/gunluk-yedek/<day>/ instead of being lost, and the
+// coordinator moves it into the daily log later. Anywhere else the CLI does nothing (session-start gives no
+// DURUM.md off coord/kayit). Secrets in an agent's message are masked before it is written.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { redact } from "./ops.mjs";
+import { OPS_DIR, redact } from "./ops.mjs";
 
 const COORD_BRANCH = "coord/kayit";
 export function isCoordinatorCheckout(dir) {
@@ -52,12 +55,13 @@ function lastText(file) {
   return "";
 }
 
-export function agentReport(input, { projectDir, now = new Date() }) {
+// `root` holds the <day>/ folders: the daily log by default, <OPS_DIR>/gunluk-yedek for the fallback.
+export function agentReport(input, { projectDir, now = new Date(), root = path.join(projectDir, "docs", "plan", "gunluk") }) {
   const text = String(input.last_assistant_message ?? "").trim() || lastText(input.agent_transcript_path).trim();
   const job = safe(jobOf(text) ?? "is-yok", 40) || "is-yok";
   const agent = safe(input.agent_type ?? "ajan", 24) || "ajan";
   const id = safe(input.agent_id ?? "", 8);
-  const dir = path.join(projectDir, "docs", "plan", "gunluk", day(now));
+  const dir = path.join(root, day(now));
   fs.mkdirSync(dir, { recursive: true });
   const stem = path.join(dir, [hhmm(now), job, agent, id].filter(Boolean).join("-"));
   let file = `${stem}.md`;
@@ -92,9 +96,12 @@ async function main([cmd]) {
   } catch {}
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   try {
-    if ((cmd === "agent-report" || cmd === "session-start") && !isCoordinatorCheckout(projectDir)) return;
-    if (cmd === "agent-report") agentReport(input, { projectDir });
-    else if (cmd === "session-start") {
+    const coord = isCoordinatorCheckout(projectDir);
+    if (cmd === "agent-report") {
+      if (coord) agentReport(input, { projectDir });
+      else if (fs.existsSync(path.join(projectDir, "DURUM.md"))) agentReport(input, { projectDir, root: path.join(OPS_DIR, "gunluk-yedek") });
+    } else if (cmd === "session-start") {
+      if (!coord) return;
       const out = sessionStart(input, { projectDir });
       if (out) process.stdout.write(JSON.stringify(out));
     } else process.stderr.write("usage: node scripts/hooks.mjs agent-report|session-start   (hook JSON on stdin)\n");

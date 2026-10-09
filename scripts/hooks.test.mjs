@@ -8,6 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { agentReport, sessionStart, jobOf } from "./hooks.mjs";
+import { redact } from "./ops.mjs";
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "newfork-hooks-"));
 const at = new Date(2026, 9, 8, 9, 5); // local 2026-10-08 09:05
@@ -83,43 +84,101 @@ test("agent-report: tokens and passwords in the message are masked in the daily-
   assert.match(body, /token=\*\*\*/);
 });
 
+test("redact: KEY=value and JSON keys ending in KEY/TOKEN/SECRET/PASSWORD/PWD, known key prefixes and JWTs; prose stays", () => {
+  const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.c2lnbmF0dXJlLXZhbHVl";
+  const masked = {
+    "STRIPE_SECRET_KEY=sk_live_51AbCdEfGhIjKlMn": "sk_live_51AbCdEfGhIjKlMn",
+    [`SUPABASE_SERVICE_ROLE_KEY=${jwt}`]: jwt,
+    'export RESEND_API_KEY="re_live_value_123"': "re_live_value_123",
+    "DB_PWD=hunter22": "hunter22",
+    "github_token=abc123def": "abc123def",
+    '{"password": "pa ss w0rd", "user": "ada"}': "pa ss w0rd",
+    '{"apiKey":"k-123-456"}': "k-123-456",
+    '"SERVICE_ROLE_KEY" : "srk-value"': "srk-value",
+    "anahtar ghp_abcdefghijklmnopqrstuvwxyz0123456789 burada": "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+    "gho_abcdefghijklmnop0123": "gho_abcdefghijklmnop0123",
+    "github_pat_11ABCDEFG0123456789_abcdefghij": "github_pat_11ABCDEFG0123456789_abcdefghij",
+    "sbp_0123456789abcdef0123456789abcdef01234567": "sbp_0123456789abcdef0123456789abcdef01234567",
+    "rk_live_abcdef123456": "rk_live_abcdef123456",
+    "whsec_abcdef123456": "whsec_abcdef123456",
+    "Resend: re_AbCdEfGh_IjKlMnOpQrStUvWx": "re_AbCdEfGh_IjKlMnOpQrStUvWx",
+    [`jwt ${jwt} bitti`]: jwt,
+  };
+  for (const [line, value] of Object.entries(masked)) {
+    const out = redact(line);
+    assert.ok(!out.includes(value), `${line} -> ${out}`);
+    assert.match(out, /\*\*\*/, line);
+  }
+  for (const prose of [
+    "token budget is 200k",
+    "the key point: tests first",
+    "secret sauce",
+    "password reset flow",
+    "re_render the list",
+    "keyboard=true",
+    "Monkey: banana",
+    "eyJ alone. not.a.jwt",
+  ])
+    assert.equal(redact(prose), prose);
+  assert.equal(redact("token=ghp_x"), "token=***");
+});
+
 // The hooks are wired in the shared .claude/settings.json, so every session runs them; only the coordinator's
-// checkout (branch coord/kayit) writes the daily log or gets DURUM.md back.
-function checkout(branch) {
+// checkout (branch coord/kayit) writes the daily log or gets DURUM.md back. NEWFORK_INBOX_DIR points the
+// fallback folder (<OPS_DIR>/gunluk-yedek) at a temp dir, never the real .newfork-inbox.
+function checkout(branch, { durum = true } = {}) {
   const dir = tmp();
   execFileSync("git", ["init", "-q", "-b", branch, dir]);
   execFileSync("git", ["-C", dir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"]);
-  fs.writeFileSync(path.join(dir, "DURUM.md"), "# Durum\n🟢 iyi\n");
+  if (durum) fs.writeFileSync(path.join(dir, "DURUM.md"), "# Durum\n🟢 iyi\n");
   return dir;
 }
-const cli = (cmd, dir, input) =>
+const cli = (cmd, dir, input, ops = tmp()) =>
   spawnSync(process.execPath, [fileURLToPath(new URL("./hooks.mjs", import.meta.url)), cmd], {
-    input: JSON.stringify(input),
+    input: typeof input === "string" ? input : JSON.stringify(input),
     encoding: "utf8",
-    env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    env: { ...process.env, CLAUDE_PROJECT_DIR: dir, NEWFORK_INBOX_DIR: ops },
   });
+const report = { agent_id: "a1", agent_type: "nf-isci", last_assistant_message: "İŞ: BL-8 | DURUM: HAZIR" };
 
 test("CLI: only the coordinator's checkout (coord/kayit) writes the agent report and gets DURUM.md back", () => {
-  const report = { agent_id: "a1", agent_type: "nf-isci", last_assistant_message: "İŞ: BL-8 | DURUM: HAZIR" };
   const coord = checkout("coord/kayit");
-  const a = cli("agent-report", coord, report);
+  const ops = tmp();
+  const a = cli("agent-report", coord, report, ops);
   assert.equal(a.status, 0, a.stderr);
   assert.equal(fs.readdirSync(path.join(coord, "docs/plan/gunluk")).length, 1);
+  assert.equal(fs.existsSync(path.join(ops, "gunluk-yedek")), false);
   const s = cli("session-start", coord, { source: "startup" });
   assert.equal(s.status, 0, s.stderr);
   assert.match(JSON.parse(s.stdout).hookSpecificOutput.additionalContext, /# Durum/);
 
-  const other = checkout("main");
-  const b = cli("agent-report", other, report);
+  const other = checkout("main", { durum: false });
+  const b = cli("agent-report", other, report, ops);
   assert.equal(b.status, 0, b.stderr);
   assert.equal(fs.existsSync(path.join(other, "docs")), false);
+  assert.equal(fs.existsSync(path.join(ops, "gunluk-yedek")), false);
   const t = cli("session-start", other, { source: "startup" });
   assert.equal(t.status, 0, t.stderr);
   assert.equal(t.stdout, "");
 });
 
+test("CLI: a checkout off coord/kayit that has DURUM.md (detached HEAD, a rebase) keeps the report in <OPS_DIR>/gunluk-yedek", () => {
+  const coord = checkout("coord/kayit");
+  execFileSync("git", ["-C", coord, "checkout", "-q", "--detach"]);
+  const ops = tmp();
+  const r = cli("agent-report", coord, { ...report, last_assistant_message: "İŞ: BL-8 | DURUM: HAZIR\ntoken=ghp_abcdef1234567890" }, ops);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(fs.existsSync(path.join(coord, "docs")), false); // the coordinator's tree is mid-rebase: not written to
+  const days = fs.readdirSync(path.join(ops, "gunluk-yedek"));
+  assert.equal(days.length, 1);
+  const files = fs.readdirSync(path.join(ops, "gunluk-yedek", days[0]));
+  assert.equal(files.length, 1);
+  assert.match(files[0], /^\d{4}-BL-8-nf-isci-a1\.md$/);
+  const body = fs.readFileSync(path.join(ops, "gunluk-yedek", days[0], files[0]), "utf8");
+  assert.match(body, /İŞ: BL-8/);
+  assert.doesNotMatch(body, /ghp_abcdef/);
+});
+
 test("the CLI never fails the session: broken stdin still exits 0", () => {
-  const script = fileURLToPath(new URL("./hooks.mjs", import.meta.url));
-  const r = spawnSync(process.execPath, [script, "agent-report"], { input: "{not json", encoding: "utf8", env: { ...process.env, CLAUDE_PROJECT_DIR: tmp() } });
-  assert.equal(r.status, 0);
+  assert.equal(cli("agent-report", tmp(), "{not json").status, 0);
 });

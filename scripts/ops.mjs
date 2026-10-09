@@ -6,11 +6,28 @@ import { execFileSync } from "node:child_process";
 
 export const OPS_DIR = process.env.NEWFORK_INBOX_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-inbox";
 
-// Passwords and tokens never reach a log or a report file (the guard's audit.log, the daily log).
+// Passwords and tokens never reach a log or a report file (the guard's audit.log, the daily log). Masked:
+// - a URL's password (postgres://u:<pw>@…);
+// - the value of a name ending in KEY, TOKEN, SECRET, PASSWORD or PWD (any case): NAME=value (env, shell, a
+//   query string), "name": "value" (JSON); name: value only for an unmistakable name (password, x_token,
+//   SERVICE_ROLE_KEY, api_key), so prose like "the key point: …" stays;
+// - `--password <pw>` and `Bearer <token>`;
+// - bare keys by their prefix: sk_live_, rk_live_, whsec_, ghp_, gho_, github_pat_, sbp_, re_ (Resend, 20+ chars
+//   after it), and a three-part JWT (eyJ….….…).
+const SECRET_NAME = String.raw`[A-Za-z0-9_.-]*(?:key|token|secret|password|pwd)`;
+const JSON_SECRET = new RegExp(String.raw`("${SECRET_NAME}"\s*:\s*)"(?:[^"\\]|\\.)*"`, "gi");
+const ENV_SECRET = new RegExp(String.raw`(\b${SECRET_NAME}\s*=\s*)("[^"]*"|'[^']*'|[^\s&;,]+)`, "gi");
+const COLON_SECRET = /(\b(?:[\w.-]*[_-])?(?:token|secret|password|passwd|pwd)|\b[\w.-]*[_-](?:key|token)|\bapi_?key)(\s*:\s*)(?!\*\*\*)\S+/gi;
 export const redact = (s) =>
   String(s)
     .replace(/(\/\/[^:\s/@]+:)[^@\s]+@/g, "$1***@")
-    .replace(/(--password[=\s]+|PGPASSWORD=|Bearer\s+|(?:api[_-]?key|token|secret|password)[=:]\s*)\S+/gi, "$1***");
+    .replace(JSON_SECRET, '$1"***"')
+    .replace(ENV_SECRET, "$1***")
+    .replace(COLON_SECRET, "$1$2***")
+    .replace(/(--password\s+|Bearer\s+)(?!\*\*\*)\S+/gi, "$1***")
+    .replace(/\b(sk_live_|rk_live_|whsec_|ghp_|gho_|github_pat_|sbp_)[A-Za-z0-9_]+/g, "$1***")
+    .replace(/\bre_[A-Za-z0-9_]{20,}/g, "re_***")
+    .replace(/\beyJ[\w-]*\.[\w-]+\.[\w-]+/g, "eyJ***");
 
 export const slug = (s) =>
   String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "x";
