@@ -28,10 +28,15 @@ YAPMA
 SON MESAJ (ilk satır makine okur; gövde en çok 15 satır, Türkçe, sade)
 ```
 İŞ: <ID> | DURUM: HAZIR | SORU | TAKILDI | BÖLÜNDÜ | DAL: task/<id>@<sha>
+- Anladığım: (görevi tek cümleyle)
+- Eksik/yanlış olabilecek: (görevde ya da kodda; yoksa "yok")
+- Sorularım: (yoksa "yok")
+- Bence: (önerin; elediğin seçenek varsa nedeniyle)
 - Ne yapıldı (etkisi; ekranda ne değişti, ekran adıyla)
 - Kanıt: komut + sonuç, dosya:satır, görüntü yolu
 - Açık kalan ve nedeni
 - Ders: (varsa, tek satır; bir klasörün tuzağıysa klasör adıyla)
 - Backlog adayı: (varsa)
 ```
+Dosya yolları tam Windows yolu ve tıklanır bağlantı: `[C:\…\dosya.md](göreli/yol)`; kısaltılmış yol yok.
 SORU ise: soru (bugün ne oluyor → isimli örnek → her seçeneğin sonucu), adlı seçenekler, önerilen ilk sırada "(Önerilen)", son satırı "Dayanak: <KARARLAR kimliği>" ya da "Dayanak: yok — yeni karar".
