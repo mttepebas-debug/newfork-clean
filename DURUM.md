@@ -1,4 +1,4 @@
-# Durum — 2026-10-09 03:15Z
+# Durum — 2026-10-09 03:23Z
 🟠 Main CI kırmızı (Time off onay e2e'leri, BL-990); kökünü bulup düzeltmek için tek işçi çalışıyor. Bu iş bitene kadar tren kalkmıyor (kırmızı çıkacağı belli, işçinin yerel e2e'sini de bekletir).
 
 ## Seni bekleyen (26)
@@ -55,7 +55,7 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 - Eski koordinatörün main'e girmemiş kayıtları (KK-229…235, BL-974…989, DERS 61, HANDOFF, HATIRLATMALAR) ve devir klasörü yeni yapıya taşındı — aynı tren
 
 ## Koşuyor
-- BL-990 — işçi ~03:04Z oturum yeniden başlayınca durdu (commit yok); kaldığı yer ve sıradaki adımlar: `docs/plan/gunluk/2026-10-09-devir.md`
+- BL-990 (devam, dal `task/bl-990`) — nf-isci (incelemeli, effort high) — port 5612/5613 — başladı 03:22Z · önceki işçi 03:04Z durdu, kaldığı yer `docs/plan/gunluk/2026-10-09-devir.md`
 
 ## Sırada
 İş · dal@sha · kalan adım · sınıf · neden bu sırada. ⏸ = seni bekliyor.
@@ -105,7 +105,7 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 ## Sağlık
 - işçi sınırı 1 · main alarmı temiz (since `7ecbcc74`) · kilit: db boş
 - karantina: two locations approve in turn, the last one opens the shift · BL-990 · 2026-10-08→2026-10-15
-- kullanım: 5 saatlik %2, haftalık %64 (2026-10-11'de sıfırlanır) · yedek saat yok (`15baa153` yeniden başlatmayla gitti; yeniden kurulacak) · ölçüm günü 2026-10-15
+- kullanım: 5 saatlik %2, haftalık %64 (2026-10-11'de sıfırlanır) · yedek saat `15baa153` (20 dk, 2026-10-15te biter) · ölçüm günü 2026-10-15
 
 ## Devirden gelen notlar
 - N1 Devir notları ve README: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`; bu kayıtlar artık main'de (`docs/plan/`, `docs/archive/2026-10-08-v1/`).
