@@ -1,5 +1,11 @@
 {
   "framework": null,
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "**": false
+    }
+  },
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @newfork/api build:vercel && pnpm --filter \"@newfork/web...\" build",
   "outputDirectory": "apps/web/dist",
