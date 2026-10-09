@@ -291,6 +291,7 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001); 
 - **Telefon.**
   - Yalnız rakam girilir; +1 sabittir. Ülke seçici ve uluslararası numara yoktur.
   - Yazarken (xxx) xxx-xxxx maskesi uygulanır; mevcut şema kullanılır.
+  - Ayraç, grubunu kapatan haneyle gelir ve onunla gider (kullanıcı kararı, maske A; Mert, 2026-10-09 22:04Z, BL-969 önce/sonra thread'i, karar kartı; deneme sayfası https://claude.ai/artifact/LPMFzbYr4Yd2fdPSDWSiio). 3. hanede "(415)", 6. hanede "(415) 555-", sonunda "(415) 555-0100"; Backspace bir ayracı silince önündeki hane de gider ("(415)" → "41"). Bütün telefon alanlarında aynı (`UsPhoneInput`). Reddedilen: "(xxx)xx-xx-xxxx" (B; ABD numarası 10 hane, alışılmış biçim değil).
   - Reddedilenler: "serbest metin" ve "uluslararası +E.164".
   - Alanın başında sabit, gri, silinemez "+1" görünür: owner ve çalışan kurulumunda ve Employees çekmecesinde (kullanıcı kararı 2026-10-05 ~17:20Z, Mert, koordinatör `local_b9b956a0…`'ın penceresinde, çoktan seçmeli, önerilen; besleme #203). Reddedilen: "+1 görünmesin, yalnız maske".
 - **E-posta tekil.** Bir workspace'te e-posta tekildir; aynı e-postayla davetli ya da davetsiz ikinci bir kayıt açılamaz. Çakışma kaydederken değil, çekmeceye yazıldığı anda uyarılır.

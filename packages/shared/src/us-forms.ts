@@ -57,18 +57,39 @@ export const workspaceNameInputSchema = usText(z.string().trim().min(1).max(120)
 
 /**
  * "(415) 555-0100", built while typing; the "+1" stays outside the field. A
- * number with another country code stays as typed, so it reads as what it is
- * and is refused on save, and a "+" typed on its own waits for the next key.
+ * separator comes with the digit that closes its group: the brackets with the
+ * 3rd digit, the dash with the 6th (Mert, 2026-10-09). A number with another
+ * country code stays as typed, so it reads as what it is and is refused on
+ * save, and a "+" typed on its own waits for the next key.
  */
 export function formatUsPhone(value: string): string {
   // Kept as typed, the space before the next group too.
   const text = plainPhone(value).trimStart();
   if (otherCountryCode.test(text) || /^\+[ \t\n\v\f\r().-]*$/.test(text)) return text;
   const digits = usPhoneDigits(text);
-  if (!digits) return "";
-  if (digits.length <= 3) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length < 3) return digits;
+  const area = `(${digits.slice(0, 3)})`;
+  if (digits.length === 3) return area;
+  if (digits.length < 6) return `${area} ${digits.slice(3)}`;
+  return `${area} ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+/**
+ * What the field shows after an edit: `typed` is the field's text after the
+ * key, `caret` where the cursor stands in it. An erase that took only a
+ * separator takes the digit before it too, so the mask does not put the
+ * separator straight back and each separator leaves with its digit.
+ */
+export function editUsPhone(shown: string, typed: string, caret: number): string {
+  const before = usPhoneDigits(shown);
+  if (before && typed.length < shown.length && usPhoneDigits(typed) === before) {
+    const digitsBeforeCaret = usPhoneDigits(typed.slice(0, caret)).length;
+    if (digitsBeforeCaret > 0)
+      return formatUsPhone(
+        before.slice(0, digitsBeforeCaret - 1) + before.slice(digitsBeforeCaret),
+      );
+  }
+  return formatUsPhone(typed);
 }
 
 /**
