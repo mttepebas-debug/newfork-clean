@@ -51,6 +51,19 @@ describe("employee onboarding review availability", () => {
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("leave_employee_onboarding_service", { target_user_id: actorUserId, expected_revision: 2, target_workspace_id: workspaceId });
   });
 
+  // TEL-2: asked while the number is typed; the answer names nobody.
+  it("asks whether a typed phone is somebody else's in the workspace", async () => {
+    mocks.auth.getUser.mockResolvedValue({ data: { user: { id: actorUserId } }, error: null });
+    mocks.rpc.mockResolvedValue({ error: null, data: true });
+    await expect(service().phoneInUse("test-access-token", "(415) 555-0100", workspaceId)).resolves.toBe(true);
+    mocks.rpc.mockResolvedValue({ error: null, data: false });
+    await expect(service().phoneInUse("test-access-token", "(415) 555-0100")).resolves.toBe(false);
+    expect(mocks.rpc.mock.calls).toEqual([
+      ["onboarding_phone_in_use_service", { target_user_id: actorUserId, typed_phone: "(415) 555-0100", target_workspace_id: workspaceId }],
+      ["onboarding_phone_in_use_service", { target_user_id: actorUserId, typed_phone: "(415) 555-0100" }],
+    ]);
+  });
+
   it("returns an empty review for the RPC's absent or inaccessible case result", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: missingCase });
 
