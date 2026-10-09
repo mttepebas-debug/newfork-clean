@@ -2,6 +2,8 @@
 
 **Neden:** Mert (2026-10-08 ~22:30Z): "Workflow değişikliği yapacağız; bu sessionlar ve ilerlemeleri silinsin kaybolsun istemiyorum. Yeni koordinatör sessionında yeni workflow kararlarıyla devam edeceğiz." Koordinatör, "Koordinatör ile session yönetimi" (`local_6784bc5c…`) dışındaki bütün açık oturumlardan devir notu topladı; notlar oturumların kendi yazdığı metindir (aynen). Toplama: 22:27–22:31Z; oturumların hepsi DUR'da, notu yazıp boşta bekliyor.
 
+**Devralan:** Mert (2026-10-09 ~02:15Z): "Koordinatör ile session yönetimi sessionuna devret". Devir o oturuma (`local_6784bc5c-57f7-4dd2-a4d2-1abc3b3f9cca`, başlangıç klasörü `C:\Users\TheWe\Documents\Codex\newfork-clean`) mesajla verildi; eski koordinatör (`f2f4ad49…`) posta kutusunu bıraktı ve bu worktree'ye bir daha yazmaz. Eski koordinatörün yardımcı betikleri (oturum geçmişi okuma `tx.py`, not bölümü çıkarma `sections.py`, posta toplama `collect.sh` vb.): `C:\Users\TheWe\Documents\Codex\newfork-wt\devir-yedek-2026-10-08\koordinator-betikleri\`.
+
 **Yerler**
 - Bu klasör: `C:\Users\TheWe\Documents\Codex\newfork-wt\coord\docs\plan\devir-2026-10-08\` — GitHub'da `task/devir-2026-10-08` dalı (koordinatörün main'e gitmemiş 17 kayıt commit'iyle birlikte).
 - Geçici dosyaların yedeği (git dışı, 172 MB): `C:\Users\TheWe\Documents\Codex\newfork-wt\devir-yedek-2026-10-08\` (`OKU-BENI.md`).
