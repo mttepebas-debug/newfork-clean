@@ -27,6 +27,7 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 - Runner yalıtımı (`scripts/ci-supabase-apart.sh`) ve "forwards/expose … 500" port tuzağı: KARARLAR OPS-01.
 
 ## Tuzaklar
+- Eski daldan gelen spec trene verilmeden önce tam `pnpm.cmd lint` koşulur: e2e/flows'ta `@playwright/test`'ten `test`/`expect` içe aktarmak yasak, `../fixtures/test`'ten alınır (BL-990; tren CI 37919832135 bu yüzden düştü).
 - `scripts/*.test.mjs` kökteki `pnpm.cmd test` içinde `node --test` ile koşar.
 - `ci.yml` düzenlemesi izin sınıflandırıcısınca reddedilebilir; izni kullanıcı o pencerede verir.
 - Diske PNG için repo içinde geçici Playwright betiği (`chromium.launch({ channel: "chrome" })`), sonra silinir; scratchpad'den modül bulunmaz. Spec içi görüntü yolu worktree köküne göre: `artifacts/...`.
