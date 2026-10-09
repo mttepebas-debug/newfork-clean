@@ -1,4 +1,4 @@
-import { formatUsPhone } from "@newfork/shared";
+import { editUsPhone, formatUsPhone } from "@newfork/shared";
 import type { InputHTMLAttributes } from "react";
 import "./us-phone-input.css";
 
@@ -35,7 +35,15 @@ export function UsPhoneInput({
         maxLength={24}
         placeholder={placeholder}
         value={formatUsPhone(value)}
-        onChange={(event) => onChange(formatUsPhone(event.target.value))}
+        onChange={(event) =>
+          onChange(
+            editUsPhone(
+              formatUsPhone(value),
+              event.target.value,
+              event.target.selectionStart ?? event.target.value.length,
+            ),
+          )
+        }
       />
     </span>
   );
