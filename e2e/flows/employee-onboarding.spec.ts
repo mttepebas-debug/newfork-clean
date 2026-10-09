@@ -223,12 +223,129 @@ test("a legal name typed differently from the invitation is approved by an admin
   expect(JSON.parse(profile()).status).toBe("completed");
 });
 
+// TEL-2 (Mert, 2026-10-09). The phone is masked as it is typed and erased; a
+// number somebody else in the workspace has, or one's own as the emergency
+// contact's, turns the field red with a line under it, and nothing moves.
+test("onboarding masks the phone and says in red when it is somebody else's or one's own", async ({ page }) => {
+  const key = `tel${tag()}`;
+  const firstName = `Tel${tag()}`;
+  const email = lastLine(
+    sql(`
+    select tests.new_user('${run}:${key}', '${firstName} Person');
+    select tests.password('${run}:${key}', '${password}');`),
+  );
+  sql(`
+    with created as (
+      select public.create_employee_command_service(
+        tests.user('${run}:owner'), tests.id('${run}'), gen_random_uuid(),
+        jsonb_build_object(
+          'first_name', '${firstName}', 'middle_name', '', 'last_name', 'Person', 'preferred_name', '',
+          'invitation_email', '${email}', 'start_date', '', 'internal_note', '',
+          'location_ids', jsonb_build_array(tests.id('${run}:K')),
+          'primary_location_id', tests.id('${run}:K'),
+          'job_ids', jsonb_build_array(tests.id('${run}:job:cook')),
+          'primary_job_id', tests.id('${run}:job:cook'),
+          'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
+        (select id from public.workspace_roles
+         where workspace_id = tests.id('${run}') and system_key = 'employee')) as employee
+    )
+    select public.accept_employee_invitation_by_id_service(
+      tests.user('${run}:${key}'), (employee ->> 'invitation_id')::uuid) is not null from created;
+    select tests.settle();`);
+  // Emre's number, as onboarding saved it.
+  const emre = lastLine(
+    sql(`select substr(phone, 3) from public.employee_private_profiles where employee_id = tests.id('${run}:emre');`),
+  );
+
+  await signInAs(page, email);
+  await page.goto("/welcome");
+  await page.getByRole("button", { name: "Begin" }).click();
+  await expect(page.getByRole("heading", { name: "Your details" })).toBeVisible();
+  await page.getByLabel("Legal first name", { exact: true }).fill(firstName);
+  await page.getByLabel("Legal last name", { exact: true }).fill("Person");
+
+  // Each separator comes with the digit that closes its group and goes with it.
+  const phone = page.getByLabel("Phone", { exact: true });
+  // Its neighbour in the row and the row under it, before any line appears.
+  const birth = page.getByLabel("Date of birth", { exact: true });
+  const street = page.getByLabel("Street address", { exact: true });
+  const before = [await birth.boundingBox(), await street.boundingBox()];
+  const shown: string[] = [];
+  for (const digit of emre) {
+    await phone.press(digit);
+    shown.push(await phone.inputValue());
+  }
+  const [a, b, c] = [emre.slice(0, 3), emre.slice(3, 6), emre.slice(6)];
+  expect(shown[2]).toBe(`(${a})`);
+  expect(shown[5]).toBe(`(${a}) ${b}-`);
+  expect(shown[9]).toBe(`(${a}) ${b}-${c}`);
+
+  // Emre has it: red, a line under it, and the next field where it was.
+  await expect(phone).toHaveAttribute("aria-invalid", "true");
+  // Its room was kept all along: the copy that holds it is hidden, not this one.
+  await expect(page.getByRole("alert").filter({ hasText: "Someone in this workspace already uses this number." })).toBeVisible();
+  expect([await birth.boundingBox(), await street.boundingBox()]).toEqual(before);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByRole("heading", { name: "Your details" })).toBeVisible();
+
+  await phone.press("Backspace");
+  await expect(phone).toHaveValue(`(${a}) ${b}-${c.slice(0, 3)}`);
+  await expect(phone).not.toHaveAttribute("aria-invalid", "true");
+  await phone.press("Backspace");
+  await phone.press("Backspace");
+  await phone.press("Backspace");
+  await expect(phone).toHaveValue(`(${a}) ${b}-`);
+  await phone.press("Backspace");
+  await expect(phone).toHaveValue(`(${a}) ${b.slice(0, 2)}`);
+
+  const own = freshPhone();
+  await phone.fill(own);
+  await expect(phone).not.toHaveAttribute("aria-invalid", "true");
+  await birth.fill("1996-04-12");
+  await street.fill("12 Moda Cd");
+  await page.getByLabel("City", { exact: true }).fill("Istanbul");
+  await page.getByLabel("State", { exact: true }).fill("Istanbul");
+  await page.getByLabel("ZIP code", { exact: true }).fill("34710");
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  // The emergency contact is somebody else; a coworker's number is fine.
+  await expect(page.getByRole("heading", { name: "Who we call in an emergency" })).toBeVisible();
+  await page.getByLabel("Full name", { exact: true }).fill("Deniz Contact");
+  await page.getByLabel("Relationship", { exact: true }).selectOption("Friend");
+  const contact = page.getByLabel("Phone", { exact: true });
+  const email2 = page.getByLabel("Email (optional)", { exact: true });
+  const emailBefore = await email2.boundingBox();
+  await contact.fill(own);
+  await expect(contact).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByRole("alert").filter({ hasText: "This is your own number. Enter someone else's." })).toBeVisible();
+  expect(await email2.boundingBox()).toEqual(emailBefore);
+  await contact.press("Backspace");
+  await expect(contact).not.toHaveAttribute("aria-invalid", "true");
+  await contact.fill(emre);
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await expect(page.getByRole("heading", { name: "Who we call in an emergency" })).toBeHidden();
+  expect(
+    lastLine(
+      sql(`
+      select emergency_contact_phone || ' ' || phone from public.employee_private_profiles p
+      join public.employee_profiles e on e.id = p.employee_id
+      where e.workspace_id = tests.id('${run}') and e.user_id = tests.user('${run}:${key}');`),
+    ),
+  ).toBe(`+1${emre} +1${own}`);
+});
+
+/**
+ * A number nobody in the world has: a workspace refuses one another of its
+ * people holds (TEL-2), and every spec here onboards into the same world.
+ */
+const freshPhone = (): string => `415${String(Math.floor(Math.random() * 1e7)).padStart(7, "0")}`;
+
 /** Both profile pages of employee onboarding, saved: the details, then the emergency contact. */
 async function fillProfile(page: Page, legalFirstName: string, legalLastName: string) {
   await expect(page.getByRole("heading", { name: "Your details" })).toBeVisible();
   await page.getByLabel("Legal first name", { exact: true }).fill(legalFirstName);
   await page.getByLabel("Legal last name", { exact: true }).fill(legalLastName);
-  await page.getByLabel("Phone", { exact: true }).fill("4155550142");
+  await page.getByLabel("Phone", { exact: true }).fill(freshPhone());
   await page.getByLabel("Date of birth", { exact: true }).fill("1996-04-12");
   await page.getByLabel("Street address", { exact: true }).fill("12 Moda Cd");
   await page.getByLabel("City", { exact: true }).fill("Istanbul");
