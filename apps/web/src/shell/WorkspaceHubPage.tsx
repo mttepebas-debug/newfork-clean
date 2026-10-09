@@ -173,7 +173,7 @@ export default function WorkspaceHubPage() {
         description={
           invitationsQuery.error
             ? undefined
-            : "Nothing has been sent to this address so far — ask your manager to invite it."
+            : "Nothing has been sent to this address so far — ask your manager to invite this email."
         }
       >
         {invitationsQuery.error ? (
@@ -220,7 +220,11 @@ export default function WorkspaceHubPage() {
             className="pb-btn pb-btn-secondary pb-btn-block"
             onClick={() => setExpectingInvitation(true)}
           >
-            <MailCheck size={16} aria-hidden /> I am waiting for an invitation
+            <MailCheck size={16} aria-hidden />
+            {/* KARARLAR "Welcome back": someone welcomed before waits for another one. */}
+            {everLinkedQuery.data === false
+              ? "I am waiting for an invitation"
+              : "I am waiting for another invitation"}
           </Button>
         </div>
       </PreBizFrame>
