@@ -92,3 +92,29 @@ export function reviewBoxes([first, second]: [ReviewSide, ReviewSide]): [ReviewB
   }
   return cards;
 }
+
+// The server's two catch-all sentences for a person the rules stop; the eligibility
+// check beside them says which rule it is (EKRAN-02 recovery).
+const NOT_ELIGIBLE = {
+  receiver: "The receiving employee is not eligible for the full shift",
+  giver: "The other employee is not eligible for the exchanged shift",
+} as const;
+
+/** One sentence per refusal; a catch-all one names the person, whose shift, and the rule. */
+export function blockerLines(
+  reasons: readonly string[],
+  checks: { readonly receiver: { readonly reasons: readonly string[] } | null; readonly giver: { readonly reasons: readonly string[] } | null },
+  names: { readonly owner: string; readonly other: string },
+): string[] {
+  const why = (list: readonly string[] | undefined) =>
+    (list ?? []).map((text) => text.trim().replace(/\.+$/, "")).filter(Boolean).join("; ");
+  return reasons.map((reason) => {
+    const side = reason === NOT_ELIGIBLE.receiver ? "receiver" : reason === NOT_ELIGIBLE.giver ? "giver" : null;
+    const rules = side ? why(checks[side]?.reasons) : "";
+    if (!side || !rules) return reason;
+    // The receiver takes the owner's shift; in a swap the giver (the owner) takes the other's.
+    return side === "receiver"
+      ? `${names.other} can't take ${names.owner}'s shift: ${rules}.`
+      : `${names.owner} can't take ${names.other}'s shift: ${rules}.`;
+  });
+}
