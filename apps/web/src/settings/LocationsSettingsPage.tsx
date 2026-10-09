@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Plus, Search, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { CatalogRowMenu } from "./CatalogRowMenu";
+import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
@@ -432,21 +432,16 @@ export default function LocationsSettingsPage() {
                     <button type="button" onClick={() => openEditor(location)}>
                       Edit location
                     </button>
-                    <button
-                      type="button"
-                      className={
-                        !location.archived_at ? "job-danger-text" : undefined
-                      }
+                    <CatalogArchiveButton
+                      archived={Boolean(location.archived_at)}
                       disabled={!canEdit || archiveMutation.isPending}
-                      onClick={() =>
+                      onToggle={() =>
                         archiveMutation.mutate({
                           id: location.id,
                           archived: !location.archived_at,
                         })
                       }
-                    >
-                      {location.archived_at ? "Restore" : "Archive"}
-                    </button>
+                    />
                   </CatalogRowMenu>
                 )}
               </div>

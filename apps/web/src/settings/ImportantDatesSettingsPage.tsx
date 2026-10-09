@@ -13,7 +13,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
-import { CatalogRowMenu } from "./CatalogRowMenu";
+import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import {
   listImportantDates,
@@ -711,21 +711,16 @@ export default function ImportantDatesSettingsPage() {
                         {item.can_unpublish ? "Unpublish" : "Republish"}
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      className={
-                        !item.archived_at ? "job-danger-text" : undefined
-                      }
+                    <CatalogArchiveButton
+                      archived={Boolean(item.archived_at)}
                       disabled={archiveMutation.isPending}
-                      onClick={() =>
+                      onToggle={() =>
                         archiveMutation.mutate({
                           id: item.id,
                           action: item.archived_at ? "restore" : "archive",
                         })
                       }
-                    >
-                      {item.archived_at ? "Restore" : "Archive"}
-                    </button>
+                    />
                   </CatalogRowMenu>
                 ) : null}
               </div>

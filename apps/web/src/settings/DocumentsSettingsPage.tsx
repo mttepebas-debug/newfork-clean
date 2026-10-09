@@ -12,7 +12,7 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { CatalogSortButton } from "../views/CatalogSortButton";
-import { CatalogRowMenu } from "./CatalogRowMenu";
+import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
 import {
@@ -520,21 +520,16 @@ export default function DocumentsSettingsPage() {
                           </button>
                         </>
                       )}
-                      <button
-                        type="button"
-                        className={
-                          item.archived_at ? undefined : "job-danger-text"
-                        }
+                      <CatalogArchiveButton
+                        archived={Boolean(item.archived_at)}
                         disabled={archiveMutation.isPending}
-                        onClick={() =>
+                        onToggle={() =>
                           archiveMutation.mutate({
                             id: item.id,
                             archived: !item.archived_at,
                           })
                         }
-                      >
-                        {item.archived_at ? "Restore" : "Archive"}
-                      </button>
+                      />
                     </CatalogRowMenu>
                   ) : (
                     <span />
