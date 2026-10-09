@@ -220,7 +220,7 @@ export default function WorkspaceHubPage() {
             className="pb-btn pb-btn-secondary pb-btn-block"
             onClick={() => setExpectingInvitation(true)}
           >
-            <MailCheck size={16} aria-hidden /> I have an invitation
+            <MailCheck size={16} aria-hidden /> I am waiting for an invitation
           </Button>
         </div>
       </PreBizFrame>
