@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 459, last: 20261009230000_onboarding_phone_is_ones_own.sql
--- fingerprint: sha256:61d49a3ecd61f5246e82bd0ab025cabea2c97c0b580ff3e2b229891e6d12abdb
+-- fingerprint: sha256:b2c4893b6e96e6e402cebe9c1f8f8ab17b3cce536835b3a65053fa30c8969302
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15977,6 +15977,11 @@ begin
   if target_case.id is null then
     raise exception 'onboarding unavailable' using errcode = 'P0002';
   end if;
+  -- Open only while the profile can still be saved: after that it would only
+  -- tell somebody whose number a guess is (TEL-2 review, item 1).
+  if target_case.status in ('submitted', 'approved', 'cancelled') then
+    raise exception 'onboarding cannot be edited' using errcode = '22023';
+  end if;
   return app_private.phone_used_in_workspace(
     target_case.workspace_id,
     app_private.account_phone_e164(typed_phone),
@@ -21531,7 +21536,12 @@ begin
   end if;
 
   -- TEL-2: the number is nobody else's in this workspace, and the
-  -- emergency contact is somebody else.
+  -- emergency contact is somebody else. Two people saving one number at once
+  -- in one workspace take turns, so the second sees the first.
+  perform pg_advisory_xact_lock(hashtext(
+    'onboarding-phone:' || target_case.workspace_id::text || ':'
+    || coalesce(account_phone, app_private.account_phone_e164(submitted_phone), '')
+  ));
   if app_private.phone_used_in_workspace(
     target_case.workspace_id,
     coalesce(account_phone, app_private.account_phone_e164(submitted_phone)),
@@ -28587,7 +28597,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_private_profiles" (
     CONSTRAINT "employee_private_profiles_emergency_contact_phone_us_phone" CHECK (("emergency_contact_phone" ~ '^\+1[2-9][0-9]{9}$'::"text")),
     CONSTRAINT "employee_private_profiles_emergency_contact_whole" CHECK (((("emergency_contact_name" IS NULL) = ("emergency_contact_phone" IS NULL)) AND (("emergency_contact_name" IS NOT NULL) OR ("emergency_contact_relationship" IS NULL)))),
     CONSTRAINT "employee_private_profiles_emergency_email_check" CHECK ((("emergency_contact_email" = ''::"text") OR ("emergency_contact_email" ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'::"text"))),
-    CONSTRAINT "employee_private_profiles_emergency_is_not_own_phone" CHECK (("emergency_contact_phone" <> "phone")),
     CONSTRAINT "employee_private_profiles_emergency_relationship_check" CHECK ((("char_length"("btrim"("emergency_contact_relationship")) >= 1) AND ("char_length"("btrim"("emergency_contact_relationship")) <= 80))),
     CONSTRAINT "employee_private_profiles_emergency_relationship_us_letters" CHECK ((NORMALIZE("emergency_contact_relationship", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_legal_first_name_check" CHECK ((("char_length"("btrim"("legal_first_name")) >= 1) AND ("char_length"("btrim"("legal_first_name")) <= 80))),
@@ -30436,6 +30445,11 @@ ALTER TABLE ONLY "public"."employee_personal_tasks"
 
 ALTER TABLE ONLY "public"."employee_preferred_name_requests"
     ADD CONSTRAINT "employee_preferred_name_requests_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE "public"."employee_private_profiles"
+    ADD CONSTRAINT "employee_private_profiles_emergency_is_not_own_phone" CHECK (("emergency_contact_phone" <> "phone")) NOT VALID;
 
 
 
