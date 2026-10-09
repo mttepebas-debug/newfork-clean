@@ -1,4 +1,4 @@
-import { Button } from "@newfork/ui";
+import { Button, ConfirmButton } from "@newfork/ui";
 import {
   displayForNotificationCategory,
   displayForNotificationType,
@@ -313,20 +313,25 @@ export default function NotificationSettingsPage() {
               maxLength={500}
             />
           </label>
-          <Button
+          {/* A reset wipes saved policies: red, and the second click confirms. */}
+          <ConfirmButton
             type="button"
+            className="danger-button"
             disabled={category === "all" || resetReason.trim().length < 3 || reset.isPending}
-            onClick={() => reset.mutate({ kind: "category", value: category as CatalogEntry["category"] })}
+            confirmLabel="Confirm reset category"
+            onConfirm={() => reset.mutate({ kind: "category", value: category as CatalogEntry["category"] })}
           >
             <RotateCcw size={15} aria-hidden /> Reset current category
-          </Button>
-          <Button
+          </ConfirmButton>
+          <ConfirmButton
             type="button"
+            className="danger-button"
             disabled={resetReason.trim().length < 3 || reset.isPending}
-            onClick={() => reset.mutate({ kind: "all" })}
+            confirmLabel="Confirm reset all"
+            onConfirm={() => reset.mutate({ kind: "all" })}
           >
             <RotateCcw size={15} aria-hidden /> Reset all policies
-          </Button>
+          </ConfirmButton>
         </div>
       ) : null}
 
@@ -433,12 +438,15 @@ export default function NotificationSettingsPage() {
                   ><Send size={15} aria-hidden /> Safe test</Button>
                 ) : null}
                 {canWrite ? (
-                  <Button
+                  <ConfirmButton
                     type="button"
+                    className="danger-button"
                     aria-label={`Reset ${title}`}
+                    confirmName={`Confirm reset ${title}`}
                     disabled={resetReason.trim().length < 3 || reset.isPending}
-                    onClick={() => reset.mutate({ kind: "type", value: entry.type_key })}
-                  ><RotateCcw size={15} aria-hidden /> Reset</Button>
+                    confirmLabel="Confirm reset"
+                    onConfirm={() => reset.mutate({ kind: "type", value: entry.type_key })}
+                  ><RotateCcw size={15} aria-hidden /> Reset</ConfirmButton>
                 ) : null}
                 {canWrite ? (
                   <Button
