@@ -105,6 +105,21 @@ export function toUsPhone(value: string): string | null {
   return /^[2-9]\d{9}$/.test(local) ? `+1${local}` : null;
 }
 
+/**
+ * Whether two numbers are the same whole US number, however each is written
+ * (TEL-2: an emergency contact is somebody else; Mert, 2026-10-09).
+ */
+export function sameUsPhone(first: string | null | undefined, second: string | null | undefined): boolean {
+  const one = toUsPhone(first ?? "");
+  return one !== null && one === toUsPhone(second ?? "");
+}
+
+/** TEL-2: said under a phone field when the number is the person's own. */
+export const emergencyIsOwnPhoneMessage = "This is your own number. Enter someone else's.";
+
+/** TEL-2: said under the onboarding phone when another person of the workspace has it. */
+export const phoneInUseMessage = "Someone in this workspace already uses this number.";
+
 /** A saved number, a US one in E.164 (BL-969), as "+1 (415) 555-0100". */
 export function displayUsPhone(value: string | null | undefined): string | null {
   return value ? `+1 ${formatUsPhone(value)}` : null;

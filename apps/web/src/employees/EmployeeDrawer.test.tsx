@@ -14,6 +14,7 @@ import type {
 } from "@newfork/shared";
 import {
   defaultDocumentLifecycleSettings,
+  emergencyIsOwnPhoneMessage,
   emptyWeeklyPreference,
   managementAndOwnerRefusals,
   usLettersMessage,
@@ -917,6 +918,48 @@ describe("EmployeeDrawer", () => {
     expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
     fireEvent.change(phone, { target: { value: "(415) 555-0100" } });
     expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+  });
+
+  // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
+  it("refuses the owner's own number as their emergency phone until one digit differs", async () => {
+    renderDrawer("profile", {
+      ...detail,
+      user_id: context.userId,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      private_contact: {
+        phone: "+13105559999",
+        street_address: null,
+        city: null,
+        region: null,
+        postal_code: null,
+        country_code: null,
+        date_of_birth: null,
+        emergency_contact_name: "Morgan",
+        emergency_contact_relationship: "Spouse",
+        emergency_contact_phone: "+14155550100",
+        emergency_contact_email: "",
+        share_phone_with_teammates: false,
+        share_email_with_teammates: false,
+      },
+    });
+
+    const phone = await screen.findByLabelText("Emergency phone");
+    const slot = phone.closest(".employee-field")?.querySelector(".field-note");
+    expect(slot?.textContent).toContain(emergencyIsOwnPhoneMessage);
+    fireEvent.change(phone, { target: { value: "3105559999" } });
+    expect(phone.getAttribute("aria-invalid")).toBe("true");
+    expect(
+      (phone.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent),
+    ).toContain(emergencyIsOwnPhoneMessage);
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+
+    fireEvent.change(phone, { target: { value: "(310) 555-999" } });
+    expect(phone.getAttribute("aria-invalid")).toBeNull();
+    fireEvent.change(phone, { target: { value: "(310) 555-9998" } });
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
   });
 
   it("says under the owner's emergency contact that Turkish-only letters are not taken", async () => {

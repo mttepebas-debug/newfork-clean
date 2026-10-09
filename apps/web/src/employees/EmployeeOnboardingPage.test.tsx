@@ -11,7 +11,12 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { usLettersMessage } from "@newfork/shared";
+import {
+  emergencyIsOwnPhoneMessage,
+  phoneInUseMessage,
+  usLettersMessage,
+} from "@newfork/shared";
+import { RequestError } from "../lib/request-error";
 import EmployeeOnboardingPage from "./EmployeeOnboardingPage";
 import {
   emptyWeeklyPreference,
@@ -31,6 +36,7 @@ vi.mock("../availability/availability-data", () => ({
 }));
 import {
   getMyOnboarding,
+  isMyOnboardingPhoneInUse,
   saveMyOnboardingProfile,
   submitMyOnboarding,
 } from "./onboarding-data";
@@ -58,6 +64,7 @@ vi.mock("../auth/AuthContext", () => ({
 
 vi.mock("./onboarding-data", () => ({
   getMyOnboarding: vi.fn(),
+  isMyOnboardingPhoneInUse: vi.fn(),
   leaveMyOnboarding: vi.fn(),
   saveMyOnboardingProfile: vi.fn(),
   submitMyOnboarding: vi.fn(),
@@ -160,6 +167,7 @@ describe("EmployeeOnboardingPage", () => {
     authMock.refresh.mockResolvedValue(null);
     authMock.phone = "+13105559999";
     vi.mocked(getMyOnboarding).mockResolvedValue(onboarding);
+    vi.mocked(isMyOnboardingPhoneInUse).mockResolvedValue(false);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     vi.mocked(saveWeeklyPreferences).mockImplementation(
       async (_workspace, command) => {
@@ -613,6 +621,108 @@ describe("EmployeeOnboardingPage", () => {
     expect(contact.closest(".us-phone-field")?.querySelector(".us-phone-prefix")?.textContent).toBe("+1");
     fireEvent.change(contact, { target: { value: "310555010199" } });
     expect(contact).toHaveProperty("value", "(310) 555-0101");
+  });
+
+  // TEL-2 (Mert, 2026-10-09): a number somebody else in the workspace has is
+  // said under the field, which turns red; nothing on the page moves.
+  /** What a field's aria-describedby points at. */
+  function describedText(field: HTMLElement) {
+    return (field.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(" ");
+  }
+
+  it("says under the phone that somebody in the workspace has it, and does not move on", async () => {
+    authMock.phone = null;
+    vi.mocked(isMyOnboardingPhoneInUse).mockImplementation(
+      async (_workspace, phone) => phone === "+14155550135",
+    );
+    renderProfileStep();
+    await fillPersonal();
+    const own = screen.getByLabelText(/^Phone/);
+    const slot = own.closest(".onboarding-field")?.querySelector(".field-note");
+    // The slot is as tall as the error before the error is there.
+    expect(slot?.textContent).toContain(phoneInUseMessage);
+    expect(own.getAttribute("aria-invalid")).toBeNull();
+
+    fireEvent.change(own, { target: { value: "4155550135" } });
+    await waitFor(() => expect(own.getAttribute("aria-invalid")).toBe("true"));
+    expect(describedText(own)).toBe(phoneInUseMessage);
+    expect(isMyOnboardingPhoneInUse).toHaveBeenCalledWith(onboarding.workspace_id, "+14155550135");
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+    expect(screen.queryByLabelText("Full name")).toBeNull();
+
+    fireEvent.change(own, { target: { value: "4155550136" } });
+    await waitFor(() => expect(own.getAttribute("aria-invalid")).toBeNull());
+    expect(describedText(own)).toBe("The number this workspace can reach you on.");
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+    expect(await screen.findByLabelText("Full name")).toBeTruthy();
+  });
+
+  it("asks only once the number is whole", async () => {
+    authMock.phone = null;
+    renderProfileStep();
+    const own = await screen.findByLabelText(/^Phone/);
+    fireEvent.change(own, { target: { value: "415555013" } });
+    await Promise.resolve();
+    expect(isMyOnboardingPhoneInUse).not.toHaveBeenCalled();
+  });
+
+  it("points to Account › Profile when the account's phone is somebody else's here", async () => {
+    vi.mocked(isMyOnboardingPhoneInUse).mockResolvedValue(true);
+    renderProfileStep();
+    const own = await screen.findByLabelText(/^Phone/);
+    await waitFor(() => expect(own.getAttribute("aria-invalid")).toBe("true"));
+    expect(describedText(own)).toBe(`${phoneInUseMessage} Change it in Account › Profile.`);
+    expect(
+      screen.getByRole("link", { name: "Account › Profile" }).getAttribute("href"),
+    ).toBe("/account/profile");
+  });
+
+  it("refuses the person's own number for the emergency contact until one digit differs", async () => {
+    authMock.phone = null;
+    vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+    renderProfileStep();
+    await fillPersonal();
+    fireEvent.change(screen.getByLabelText(/^Phone/), { target: { value: "4155550135" } });
+    fireEvent.click(screen.getByRole("button", { name: /^continue/i }));
+    fireEvent.change(await screen.findByLabelText("Full name"), { target: { value: "Morgan Reed" } });
+    fireEvent.change(screen.getByLabelText("Relationship"), { target: { value: "Friend" } });
+    const contact = screen.getByLabelText("Phone");
+    const slot = contact.closest(".onboarding-field")?.querySelector(".field-note");
+    expect(slot?.textContent).toContain(emergencyIsOwnPhoneMessage);
+    expect(contact.getAttribute("aria-invalid")).toBeNull();
+
+    fireEvent.change(contact, { target: { value: "4155550135" } });
+    expect(contact.getAttribute("aria-invalid")).toBe("true");
+    expect(describedText(contact)).toBe(emergencyIsOwnPhoneMessage);
+    fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
+    expect(saveMyOnboardingProfile).not.toHaveBeenCalled();
+
+    fireEvent.change(contact, { target: { value: "(415) 555-013" } });
+    expect(contact.getAttribute("aria-invalid")).toBeNull();
+    fireEvent.change(contact, { target: { value: "(415) 555-0137" } });
+    fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
+    await waitFor(() =>
+      expect(saveMyOnboardingProfile).toHaveBeenCalledWith(
+        onboarding.workspace_id,
+        expect.objectContaining({ phone: "+14155550135", emergency_contact_phone: "+14155550137" }),
+        1,
+      ),
+    );
+  });
+
+  it.each([
+    ["onboarding.phone_in_use", phoneInUseMessage],
+    ["onboarding.emergency_is_own_phone", emergencyIsOwnPhoneMessage],
+  ])("says the server's %s refusal in the screen's words", async (reason, sentence) => {
+    vi.mocked(saveMyOnboardingProfile).mockRejectedValue(
+      new RequestError("refused", reason, undefined, 409),
+    );
+    renderProfileStep();
+    await fillProfileAndSave();
+    expect(await screen.findByText(sentence)).toBeTruthy();
   });
 
   it.each([["Legal first name"], ["Preferred name"], ["Street address"], ["City"]])(
