@@ -4,9 +4,22 @@
 //                  so no report is lost to a missed notification or a compacted context.
 //   session-start  SessionStart (startup, resume, clear, compact): the top of DURUM.md back into the context.
 // Both read the hook JSON on stdin, write under CLAUDE_PROJECT_DIR and never fail the session (exit 0).
+// settings.json is shared by every session, so the CLI acts only in the coordinator's checkout (branch
+// coord/kayit); anywhere else it does nothing. Secrets in an agent's message are masked before it is written.
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { redact } from "./ops.mjs";
+
+const COORD_BRANCH = "coord/kayit";
+export function isCoordinatorCheckout(dir) {
+  try {
+    return execFileSync("git", ["-C", dir, "branch", "--show-current"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 }).trim() === COORD_BRANCH;
+  } catch {
+    return false;
+  }
+}
 
 const pad = (n) => String(n).padStart(2, "0");
 export const day = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -49,7 +62,7 @@ export function agentReport(input, { projectDir, now = new Date() }) {
   const stem = path.join(dir, [hhmm(now), job, agent, id].filter(Boolean).join("-"));
   let file = `${stem}.md`;
   for (let k = 2; fs.existsSync(file); k++) file = `${stem}-${k}.md`;
-  fs.writeFileSync(file, `<!-- ajan: ${input.agent_type ?? "?"} · id: ${input.agent_id ?? "?"} · ${now.toISOString()} -->\n${text || "(son mesaj boş)"}\n`);
+  fs.writeFileSync(file, `<!-- ajan: ${input.agent_type ?? "?"} · id: ${input.agent_id ?? "?"} · ${now.toISOString()} -->\n${redact(text) || "(son mesaj boş)"}\n`);
   return file;
 }
 
@@ -79,6 +92,7 @@ async function main([cmd]) {
   } catch {}
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   try {
+    if ((cmd === "agent-report" || cmd === "session-start") && !isCoordinatorCheckout(projectDir)) return;
     if (cmd === "agent-report") agentReport(input, { projectDir });
     else if (cmd === "session-start") {
       const out = sessionStart(input, { projectDir });

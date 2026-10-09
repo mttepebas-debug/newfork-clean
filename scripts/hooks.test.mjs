@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { agentReport, sessionStart, jobOf } from "./hooks.mjs";
 
@@ -64,6 +64,58 @@ test("session-start: the top of DURUM.md goes back into context; no DURUM.md, no
   assert.equal(out.hookSpecificOutput.hookEventName, "SessionStart");
   assert.match(out.hookSpecificOutput.additionalContext, /DURUM\.md \(compact\)[\s\S]*## Koşuyor\n- BL-1/);
   assert.ok(out.hookSpecificOutput.additionalContext.length <= 6500);
+});
+
+test("agent-report: tokens and passwords in the message are masked in the daily-log file", () => {
+  const dir = tmp();
+  const secret = [
+    "İŞ: BL-7 | DURUM: HAZIR",
+    "token=ghp_abcdef1234567890",
+    "PGPASSWORD=hunter2 psql",
+    "postgres://postgres:S3cretPw@127.0.0.1:54322/postgres",
+    "password: p4ssw0rd",
+    "Authorization: Bearer eyJhbGciOi.payload.sig",
+  ].join("\n");
+  const file = agentReport({ agent_id: "a7", agent_type: "nf-isci", last_assistant_message: secret }, { projectDir: dir, now: at });
+  const body = fs.readFileSync(file, "utf8");
+  for (const leak of ["ghp_abcdef1234567890", "hunter2", "S3cretPw", "p4ssw0rd", "eyJhbGciOi"]) assert.doesNotMatch(body, new RegExp(leak), leak);
+  assert.match(body, /İŞ: BL-7 \| DURUM: HAZIR/);
+  assert.match(body, /token=\*\*\*/);
+});
+
+// The hooks are wired in the shared .claude/settings.json, so every session runs them; only the coordinator's
+// checkout (branch coord/kayit) writes the daily log or gets DURUM.md back.
+function checkout(branch) {
+  const dir = tmp();
+  execFileSync("git", ["init", "-q", "-b", branch, dir]);
+  execFileSync("git", ["-C", dir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"]);
+  fs.writeFileSync(path.join(dir, "DURUM.md"), "# Durum\n🟢 iyi\n");
+  return dir;
+}
+const cli = (cmd, dir, input) =>
+  spawnSync(process.execPath, [fileURLToPath(new URL("./hooks.mjs", import.meta.url)), cmd], {
+    input: JSON.stringify(input),
+    encoding: "utf8",
+    env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+  });
+
+test("CLI: only the coordinator's checkout (coord/kayit) writes the agent report and gets DURUM.md back", () => {
+  const report = { agent_id: "a1", agent_type: "nf-isci", last_assistant_message: "İŞ: BL-8 | DURUM: HAZIR" };
+  const coord = checkout("coord/kayit");
+  const a = cli("agent-report", coord, report);
+  assert.equal(a.status, 0, a.stderr);
+  assert.equal(fs.readdirSync(path.join(coord, "docs/plan/gunluk")).length, 1);
+  const s = cli("session-start", coord, { source: "startup" });
+  assert.equal(s.status, 0, s.stderr);
+  assert.match(JSON.parse(s.stdout).hookSpecificOutput.additionalContext, /# Durum/);
+
+  const other = checkout("main");
+  const b = cli("agent-report", other, report);
+  assert.equal(b.status, 0, b.stderr);
+  assert.equal(fs.existsSync(path.join(other, "docs")), false);
+  const t = cli("session-start", other, { source: "startup" });
+  assert.equal(t.status, 0, t.stderr);
+  assert.equal(t.stdout, "");
 });
 
 test("the CLI never fails the session: broken stdin still exits 0", () => {
