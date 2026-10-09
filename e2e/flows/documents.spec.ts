@@ -1,4 +1,5 @@
-import { expect, test, type Browser } from "@playwright/test";
+import type { Browser } from "@playwright/test";
+import { expect, test } from "../fixtures/test";
 import { emailOf } from "../fixtures/world";
 import {
   approveAs,

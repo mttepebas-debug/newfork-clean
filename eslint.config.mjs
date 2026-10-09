@@ -36,4 +36,22 @@ export default [
       ],
     },
   },
+  {
+    // BL-990: a spec's `test` closes the pages it opened; Playwright's own does not.
+    files: ["e2e/flows/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@playwright/test",
+              importNames: ["test", "expect"],
+              message: 'Import test and expect from "../fixtures/test" (BL-990).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/test";
 import { emailOf, roundLabel } from "../fixtures/world";
 
 // BL-137: forgot password, end to end. The reset email goes out through

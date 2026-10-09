@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/test";
 import { signIn } from "../fixtures/world";
 
 test("an employee signs in and lands in Employee Hub", async ({ page }) => {
