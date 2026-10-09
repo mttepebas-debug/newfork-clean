@@ -835,17 +835,12 @@
 .workspace-candidate input { width: auto !important; }
 .workspace-candidate span { min-width: 0; overflow-wrap: anywhere; }
 .workspace-candidate small { display: block; }
-.account-create-workspace-form, .account-create-workspace-form > div { display: flex; flex-wrap: wrap; gap: 12px; }
-.account-create-workspace-form input { width: 100%; min-width: 0; }
 .workspace-transfer-banner { margin-bottom: 18px; }
 @media (max-width: 600px) {
   .account-main .workspace-row { align-items: center; gap: 10px; }
   .account-main .workspace-row-actions { flex-wrap: nowrap; }
   .workspace-actions-popover { max-width: calc(100vw - 48px); }
 }
-.account-create-workspace-form label { width: 100%; }
-/* The US letter rule's line, on its own row under the name (BL-503). */
-.account-create-workspace-form small.form-error { width: 100%; margin: -6px 0 0; }
 
 /* The account beside the record each workspace keeps: two columns so the pair
    reads as a pair, stacked once there is no room for two. */
