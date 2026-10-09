@@ -58,6 +58,11 @@ begin
   if target_case.id is null then
     raise exception 'onboarding unavailable' using errcode = 'P0002';
   end if;
+  -- Open only while the profile can still be saved: after that it would only
+  -- tell somebody whose number a guess is (TEL-2 review, item 1).
+  if target_case.status in ('submitted', 'approved', 'cancelled') then
+    raise exception 'onboarding cannot be edited' using errcode = '22023';
+  end if;
   return app_private.phone_used_in_workspace(
     target_case.workspace_id,
     app_private.account_phone_e164(typed_phone),
@@ -78,7 +83,12 @@ declare
     'public.save_employee_onboarding_profile_service(uuid, jsonb, integer, uuid)'::regprocedure;
   anchor constant text := '  -- The account is the phone''s only source.';
   checks constant text := $checks$  -- TEL-2: the number is nobody else's in this workspace, and the
-  -- emergency contact is somebody else.
+  -- emergency contact is somebody else. Two people saving one number at once
+  -- in one workspace take turns, so the second sees the first.
+  perform pg_advisory_xact_lock(hashtext(
+    'onboarding-phone:' || target_case.workspace_id::text || ':'
+    || coalesce(account_phone, app_private.account_phone_e164(submitted_phone), '')
+  ));
   if app_private.phone_used_in_workspace(
     target_case.workspace_id,
     coalesce(account_phone, app_private.account_phone_e164(submitted_phone)),
