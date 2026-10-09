@@ -142,6 +142,7 @@ insert into service_class values
   ('notification_default_channels_service', 'exempt:predicate'),
   ('notification_user_channel_lock_reason_service', 'exempt:predicate'),
   ('notify_schedule_request_event_service', 'time_off.decide'),
+  ('onboarding_phone_in_use_service', 'onboarding.self'),
   ('organization_job_counts_service', 'employee.list'),
   ('prepare_account_deletion_delivery_service', 'exempt:worker'),
   ('prepare_account_deletion_recovery_resend_service', 'account.self'),
