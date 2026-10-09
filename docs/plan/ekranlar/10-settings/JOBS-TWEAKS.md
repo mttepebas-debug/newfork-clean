@@ -64,8 +64,8 @@ Ortak değer değişmedi. Jobs zaten karar verilmiş ortak liste diline geçiyor
   - Sayfa geçişi ve bekleyen değişiklik satırı olduğu gibi kalır (değişiklik 4).
   - Değişiklik 5'teki metinler: önce e2e'deki ikizleri aranır.
 - Açık sorular (Mert'e; uygulama işi başlamadan cevaplanır):
-  1. **Düz Jobs görünümü.** Bugünkü Department sütunlu düz liste V1'de yok. V1'de onun yerini Department süzgeci tutuyor. Kalkıyor mu?
-  2. **Sütun sıralama.** Bugün Job, Department ve Employees'e göre sıralanıyor (URL `sort`, `direction`; testleri `JobsManagement.test.tsx`'te). V1'de sıralama düğmesi yok. KARARLAR'a göre işler ve departmanlar ada göre A→Z; ortak dilde başlıkta ↕ var (UI-02). Kalkıyor mu?
+  1. *(Kapandı 2026-10-09: düz liste kalkar; V1 tek tablo + Department süzgeci — KARARLAR "Settings → Jobs & departments: V1", "Requests tek tablo".)* **Düz Jobs görünümü.** Bugünkü Department sütunlu düz liste V1'de yok. V1'de onun yerini Department süzgeci tutuyor. Kalkıyor mu?
+  2. *(Kapandı 2026-10-09: sıralama kalır, başlıkta ↕, varsayılan ada göre A→Z — KARARLAR "Liste sayfalarının ortak dili" başlık satırı, Settings "Jobs: … A→Z", UI-02.)* **Sütun sıralama.** Bugün Job, Department ve Employees'e göre sıralanıyor (URL `sort`, `direction`; testleri `JobsManagement.test.tsx`'te). V1'de sıralama düğmesi yok. KARARLAR'a göre işler ve departmanlar ada göre A→Z; ortak dilde başlıkta ↕ var (UI-02). Kalkıyor mu?
   3. **Grupları katlama.** Bugünkü "Collapse all / Expand all" ve departman gruplarının katlanması V1'de yok. Kalkıyor mu?
   4. **Archived sekmesi.** Bugün "Show archived" arşivlileri etkin satırların arasında, Archived etiketi ve Restore ile gösteriyor. Sekmede şunlar belirsiz:
      - Arşivli işler mi, arşivli departmanlar mı, ikisi mi listelenecek?
