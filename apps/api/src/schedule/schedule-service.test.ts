@@ -251,6 +251,22 @@ describe("createScheduleReadService undo", () => {
     }));
   });
 
+  // BL-998: a step that could not come back left the history; the screen reads why.
+  it("passes on why the last step was taken off the Undo list", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: { ...scheduleSessionModel(), revision: 5, undo_depth: 1, undo_refused: { reason: "conflict_acceptance" } },
+      error: null,
+    });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    const session = await service.undoSessionStep({
+      actorUserId, workspaceId, sessionId: "87000000-0000-4000-8000-000000000001", expectedSessionRevision: 4,
+    });
+
+    expect(session.undo_refused).toEqual({ reason: "conflict_acceptance" });
+    expect(session.undo_depth).toBe(1);
+  });
+
   it("keeps the database's reason when there is nothing to undo", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "nothing to undo", hint: "schedule.nothing_to_undo" } });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });

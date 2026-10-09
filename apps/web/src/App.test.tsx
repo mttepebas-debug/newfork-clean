@@ -577,6 +577,8 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   return {
   ScheduleRequestError: actual.ScheduleRequestError,
   isNothingToUndo: actual.isNothingToUndo,
+  isEditSessionStale: actual.isEditSessionStale,
+  undoRefusedText: actual.undoRefusedText,
   isEditLeaseExpired: actual.isEditLeaseExpired,
   isEditSessionClosed: actual.isEditSessionClosed,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
@@ -4360,6 +4362,62 @@ describe("App", () => {
     });
     expect((await screen.findAllByText("This step can no longer be undone.")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/employee document hard conflict/)).toBeNull();
+  });
+
+  // BL-998: the server took a step that cannot come back off the list; the screen
+  // says why, the button follows the new depth, and nothing reads as undone.
+  it("says why a step was taken off the Undo list, and Undo stays usable for the step before it", async () => {
+    const undoMock = vi.mocked(undoScheduleEditSessionStep);
+    undoMock.mockReset();
+    undoMock.mockImplementation(async (_workspaceId, currentSession) => ({
+      ...currentSession,
+      revision: currentSession.revision + 1,
+      undo_depth: 1,
+      undo_refused: { reason: "availability" as const },
+    }));
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired, session: { ...acquired.session, undo_depth: 2 },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    await waitFor(() => expect((undo as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(undo);
+
+    expect(await screen.findByText("Last edit can't come back")).toBeTruthy();
+    expect(screen.getByText(/approved time off or a shift-hours rule/)).toBeTruthy();
+    expect(screen.queryByText("Last edit undone")).toBeNull();
+    await waitFor(() => expect((undo as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  // BL-1000: another tab moved the edit on; Undo asks for a reload instead of
+  // blaming the step.
+  it("asks for a reload when the edit moved on in another tab", async () => {
+    const undoMock = vi.mocked(undoScheduleEditSessionStep);
+    undoMock.mockReset();
+    undoMock.mockRejectedValue(new ScheduleRequestError("session revision stale", 409, {
+      error: "session revision stale", code: "edit_session_stale",
+    }));
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired, session: { ...acquired.session, undo_depth: 1 },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    await waitFor(() => expect((undo as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(undo);
+
+    expect((await screen.findAllByText("This page is out of date. Reload it, then press Undo again.")).length)
+      .toBeGreaterThan(0);
+    expect(screen.queryByText("This step can no longer be undone.")).toBeNull();
   });
 
   it("moves shifts with the reference-style pointer drag interaction", async () => {

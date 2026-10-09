@@ -185,11 +185,45 @@ select public.bulk_delete_schedule_edit_shifts_service(tests.user('ud:ayse'), te
 select tests.approved_leave(tests.id('ud'), tests.id('ud:ali'), tests.user('ud:ali'), tests.id('ud:K'), tests.week(3) + 1, '17:00', '23:00');
 truncate ud_before; insert into ud_before select pg_temp.state(tests.id('ud:e3'));
 truncate ud_rev; insert into ud_rev select pg_temp.rev(tests.id('ud:e3'));
-select throws_ok(format('select pg_temp.undo(%L, %L)', 'ayse', tests.id('ud:e3')),
-  '23514', null, 'Undo that would put Ali on his time off is refused');
+-- BL-998: a step that can no longer come back leaves the history and says
+-- why, so Undo never sticks on it and the steps before it stay in reach.
+create temp table ud_refused as select pg_temp.undo('ayse', tests.id('ud:e3')) v;
+select is((select v -> 'undo_refused' ->> 'reason' from ud_refused), 'availability',
+  'Undo that would put Ali on his time off is refused, and says why');
 select is(pg_temp.state(tests.id('ud:e3')), (select v from ud_before), 'and Emre''s evening is not back either');
-select is(pg_temp.rev(tests.id('ud:e3')), (select v from ud_rev), 'nothing of the edit moved');
-select is(pg_temp.depth('ayse', tests.id('ud:e3')), 3, 'the step is still there to undo');
+select is(pg_temp.depth('ayse', tests.id('ud:e3')), 2, 'the refused step leaves the history');
+select is((select (v ->> 'undo_depth')::integer from ud_refused), 2, 'and the answer says so');
+select is((select (v ->> 'revision')::integer from ud_refused), pg_temp.rev(tests.id('ud:e3')),
+  'the answer carries the edit''s revision, which moved with its history');
+select ok(pg_temp.rev(tests.id('ud:e3')) > (select v from ud_rev), 'so another screen on this edit reloads');
+create temp table ud_next as select pg_temp.undo('ayse', tests.id('ud:e3')) v;
+select is((select v -> 'undo_refused' from ud_next), null, 'the next Undo takes back the step before it');
+select is(pg_temp.depth('ayse', tests.id('ud:e3')), 1, 'one step is left');
+
+-- 5b. A warning acceptance the edit lost (BL-999) ---------------------------------
+
+-- Two hours of rest between shifts is the rule; Ayşe gives Ali a 09:00 and,
+-- accepting the short rest, an 18:00 the same day; then she moves the 18:00 to
+-- 19:30 (enough rest: the acceptance goes) and presses Undo.
+update public.workspace_scheduling_settings set minimum_rest_minutes = 120 where workspace_id = tests.id('ud');
+select tests.remember('ud:e5', pg_temp.open('ayse', 5, 'blank'));
+select pg_temp.add('ayse', tests.id('ud:e5'),
+  pg_temp.shift('ali', 5, 1) || '{"start_time": "09:00", "end_time": "17:00"}');
+select tests.remember('ud:e5:eve', gen_random_uuid());
+select public.mutate_schedule_edit_shift_service(tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e5'),
+  pg_temp.rev(tests.id('ud:e5')), 'create', tests.id('ud:e5:eve'), null,
+  pg_temp.shift('ali', 5, 1) || jsonb_build_object('availability_assessment_fingerprint',
+    public.assess_weekly_shift_availability(tests.id('ud'), tests.id('ud:ali'),
+      pg_temp.shift('ali', 5, 1) || jsonb_build_object('_exclude_shift_id', tests.id('ud:e5:eve'),
+        'session_id', tests.id('ud:e5'))) ->> 'fingerprint'),
+  gen_random_uuid());
+select pg_temp.change('ayse', tests.id('ud:e5'), tests.id('ud:e5:eve'), '{"start_time": "19:30"}');
+truncate ud_before; insert into ud_before select pg_temp.state(tests.id('ud:e5'));
+create temp table ud_lost as select pg_temp.undo('ayse', tests.id('ud:e5')) v;
+select is((select v -> 'undo_refused' ->> 'reason' from ud_lost), 'conflict_acceptance',
+  'Undo back to the short rest needs a new acceptance, and says so instead of sticking');
+select is(pg_temp.state(tests.id('ud:e5')), (select v from ud_before), 'Ali keeps his 19:30');
+select is(pg_temp.depth('ayse', tests.id('ud:e5')), 2, 'and the steps before it stay in reach');
 
 -- 6. Only the holder; nobody else's edit moves --------------------------------------
 
