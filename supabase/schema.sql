@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 454, last: 20261009080320_undo_keeps_its_order_and_full_depth.sql
--- fingerprint: sha256:f5a44ede03ddf8f1aafd5c9f1d6991c9033d7aae1dda913a679c3d757ed4ec92
+-- migrations: 455, last: 20261009090000_undo_skips_a_step_that_cannot_come_back.sql
+-- fingerprint: sha256:ee81af9b95b331fa6e82541ea7b69e5b608ee982299d099e4919fb2cff56d784
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -26140,6 +26140,8 @@ declare
   last_at timestamptz;
   last_xact xid8;
   steps jsonb;
+  refused_message text;
+  refused text;
 begin
   perform public.availability_lock_workspace(target_workspace_id);
   select * into edit from public.schedule_edit_sessions session
@@ -26169,6 +26171,11 @@ begin
     raise exception 'nothing to undo' using errcode = 'PT409', hint = 'schedule.nothing_to_undo';
   end if;
 
+  -- BL-998: a step that can no longer come back (a rule that applies now:
+  -- approved time off, a missing document, an acceptance the edit lost) leaves
+  -- the history and the answer says why; nothing of it is written, and the
+  -- steps before it stay in reach.
+  begin
   -- Each shift the step touched, as it was before it. The step leaves the
   -- history first, so the writes below do not push an older step out.
   with taken as (
@@ -26223,6 +26230,16 @@ begin
   ) then
     raise exception 'employee document hard conflict' using errcode = '23514';
   end if;
+  exception when check_violation then
+    get stacked diagnostics refused_message = message_text;
+    refused := case refused_message
+      when 'Resolve shift hours or approved time off before this assignment' then 'availability'
+      when 'A current conflict acceptance is required' then 'conflict_acceptance'
+      when 'employee document hard conflict' then 'document'
+      else 'rule' end;
+    delete from app_private.schedule_edit_undo_steps step
+    where step.session_id = edit.id and step.step_at = last_at and step.step_xact = last_xact;
+  end;
 
   -- Undo's own writes are not a step.
   delete from app_private.schedule_edit_undo_steps step
@@ -26232,7 +26249,8 @@ begin
   set revision = revision + 1, dirty = true, last_heartbeat = now(), expires_at = now() + interval '4 minutes'
   where id = edit.id;
 
-  return public.get_schedule_edit_session_service(actor_user_id, target_workspace_id, target_session_id);
+  return public.get_schedule_edit_session_service(actor_user_id, target_workspace_id, target_session_id)
+    || case when refused is not null then jsonb_build_object('undo_refused', jsonb_build_object('reason', refused)) else '{}'::jsonb end;
 end;
 $$;
 

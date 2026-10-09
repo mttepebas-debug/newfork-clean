@@ -69,7 +69,9 @@ import {
   deleteScheduleDraft,
   discardScheduleEditSession,
   undoScheduleEditSessionStep,
+  isEditSessionStale,
   isNothingToUndo,
+  undoRefusedText,
   deleteScheduleTemplate,
   isEditLeaseExpired,
   isEditSessionClosed,
@@ -1573,6 +1575,14 @@ export function SchedulePage({
         true,
       );
       if (!next) return;
+      // BL-998: the step could not come back and left the list; nothing changed on the grid.
+      if (next.undo_refused) {
+        toast.warning("Last edit can't come back", {
+          dedupeKey: "schedule-undo-refused",
+          description: undoRefusedText(next.undo_refused.reason),
+        });
+        return;
+      }
       void queryClient.invalidateQueries({
         queryKey: ["schedule-pending-ops", context.workspace.id, next.week_start],
       });
@@ -1588,8 +1598,10 @@ export function SchedulePage({
       }
       // The server refused the step (a rule that applies now, or the edit moved on):
       // nothing changed, and the person reads one plain sentence.
-      const message =
-        error instanceof ScheduleRequestError && error.status >= 400 && error.status < 500
+      // BL-1000: another tab moved the edit on; the step itself is fine.
+      const message = isEditSessionStale(error)
+        ? "This page is out of date. Reload it, then press Undo again."
+        : error instanceof ScheduleRequestError && error.status >= 400 && error.status < 500
           ? "This step can no longer be undone."
           : requestErrorText(error);
       setOperationError(message);

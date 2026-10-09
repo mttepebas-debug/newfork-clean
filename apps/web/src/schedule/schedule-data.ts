@@ -103,6 +103,17 @@ export function isNothingToUndo(error: unknown): boolean {
   return requestReason(error) === "schedule.nothing_to_undo";
 }
 
+/** BL-998: why the server took the last step off the Undo list instead of putting it back. */
+export function undoRefusedText(reason: NonNullable<ScheduleEditSession["undo_refused"]>["reason"]): string {
+  const why = {
+    availability: "It would put someone on approved time off or a shift-hours rule blocks it.",
+    document: "It would put someone on a shift while a required document is missing.",
+    conflict_acceptance: "It needs a schedule conflict to be accepted again.",
+    rule: "A scheduling rule blocks it now.",
+  }[reason];
+  return `${why} It is off the Undo list; press Undo again for the edit before it.`;
+}
+
 /** DB-1a: the authorization core said no (scope shrank, or the target is unknown). */
 export function isScheduleAccessRefused(error: unknown): boolean {
   const reason = requestReason(error);

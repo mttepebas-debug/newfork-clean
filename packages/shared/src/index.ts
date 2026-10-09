@@ -1621,6 +1621,11 @@ export const scheduleEditSessionSchema = z.object({
   // S2 (KK-171): steps Undo can still take back on the server, 0-25.
   // The database keeps at most 25; the screen does not enforce it.
   undo_depth: z.coerce.number().int().min(0).optional(),
+  // BL-998: only on Undo's answer, when the last step could not come back and
+  // left the history instead; names the rule that stopped it.
+  undo_refused: z
+    .object({ reason: z.enum(["availability", "document", "conflict_acceptance", "rule"]) })
+    .optional(),
 });
 export type ScheduleEditSession = z.infer<typeof scheduleEditSessionSchema>;
 
