@@ -79,6 +79,7 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["signature settings", "GET", `${w}/signature-templates/target-options`],
   ["workspace account", "GET", "/v1/account/workspaces"],
   ["employee onboarding", "GET", "/v1/me/onboarding"],
+  ["employee onboarding phone", "GET", "/v1/me/onboarding/phone-in-use?phone=4155550100"],
 ];
 
 describe.each(requests)("%s route", (_name, method, url) => {

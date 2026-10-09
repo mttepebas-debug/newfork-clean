@@ -1376,6 +1376,37 @@ describe("api app", () => {
     ]);
   });
 
+  // TEL-2: the onboarding screen asks while the number is typed.
+  it("answers whether a typed onboarding phone is somebody else's", async () => {
+    const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
+    const calls: unknown[][] = [];
+    const service = onboardingServiceMock({
+      phoneInUse: async (...input) => {
+        calls.push(input);
+        return true;
+      },
+    });
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const headers = { authorization: "Bearer pending-member-token" };
+    const asked = await app.inject({
+      method: "GET",
+      url: `/v1/me/onboarding/phone-in-use?phone=${encodeURIComponent("(415) 555-0100")}&workspaceId=${workspaceId}`,
+      headers,
+    });
+    const noPhone = await app.inject({ method: "GET", url: "/v1/me/onboarding/phone-in-use", headers });
+    const badWorkspace = await app.inject({
+      method: "GET",
+      url: "/v1/me/onboarding/phone-in-use?phone=4155550100&workspaceId=not-a-uuid",
+      headers,
+    });
+    const signedOut = await app.inject({ method: "GET", url: "/v1/me/onboarding/phone-in-use?phone=4155550100" });
+
+    expect(asked.statusCode).toBe(200);
+    expect(asked.json()).toEqual({ inUse: true });
+    expect([noPhone.statusCode, badWorkspace.statusCode, signedOut.statusCode]).toEqual([400, 400, 401]);
+    expect(calls).toEqual([["pending-member-token", "(415) 555-0100", workspaceId]]);
+  });
+
   it("forwards self-scoped onboarding writes only from token, path and validated fields", async () => {
     const calls: Array<{ kind: string; input: unknown[] }> = [];
     const service = onboardingServiceMock({
@@ -3664,6 +3695,7 @@ function onboardingServiceMock(
       requirements: [],
     }),
     saveProfile: async () => 2,
+    phoneInUse: async () => false,
     submit: async () => 2,
     leave: async () => ({
       status: "left",
