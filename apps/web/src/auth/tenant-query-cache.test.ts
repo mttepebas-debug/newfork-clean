@@ -17,6 +17,7 @@ describe("tenant query cache", () => {
     expect(isTenantScopedQueryKey(["owner-setup-checklist", "org-a"])).toBe(
       true,
     );
+    expect(isTenantScopedQueryKey(["my-onboarding-phone", "org-a", "+14155550100"])).toBe(true);
     expect(isTenantScopedQueryKey(["account-profile"])).toBe(false);
     expect(isTenantScopedQueryKey(["account-workspaces"])).toBe(false);
     expect(isTenantScopedQueryKey(["account-pending-invitations"])).toBe(false);

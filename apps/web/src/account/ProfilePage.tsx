@@ -382,6 +382,25 @@ export default function ProfilePage() {
     setError(null);
     const failures: string[] = [];
     let waiting = 0;
+    // Said after the rest, whichever went first; and never in the way of it.
+    const contactFailures: string[] = [];
+    const contactStep = async () => {
+      const failures = contactFailures;
+      const { refused, ended } = await saveContact();
+      if (refused.length === 0 && ended.length === 0) setContactDraft(null);
+      if (refused.length > 0)
+        failures.push(
+          `Your emergency contact could not be saved in ${workspaceNames(refused)}. Try again.`,
+        );
+      if (ended.length > 0)
+        failures.push(
+          `Your emergency contact can no longer be changed in ${workspaceNames(ended)}: your access there has ended or the workspace is closed.`,
+        );
+    };
+    // A record refuses an emergency number equal to its own at every step
+    // (TEL-2): the contact moves first, unless it takes the account's old number.
+    const contactFirst = !sameUsPhone(contact.phone, account.phone);
+    if (contactDirty && contactFirst) await contactStep();
     if (dirty || preferredDirty) {
       const failure = await saveProfile();
       if (failure) failures.push(failure);
@@ -408,18 +427,8 @@ export default function ProfilePage() {
         );
       }
     }
-    if (contactDirty) {
-      const { refused, ended } = await saveContact();
-      if (refused.length === 0 && ended.length === 0) setContactDraft(null);
-      if (refused.length > 0)
-        failures.push(
-          `Your emergency contact could not be saved in ${workspaceNames(refused)}. Try again.`,
-        );
-      if (ended.length > 0)
-        failures.push(
-          `Your emergency contact can no longer be changed in ${workspaceNames(ended)}: your access there has ended or the workspace is closed.`,
-        );
-    }
+    if (contactDirty && !contactFirst) await contactStep();
+    failures.push(...contactFailures);
     if (contactDirty || preferredDirty)
       await cache.invalidateQueries({ queryKey: ["account-employment-records"] });
     if (failures.length > 0) setError(failures.join(" "));
