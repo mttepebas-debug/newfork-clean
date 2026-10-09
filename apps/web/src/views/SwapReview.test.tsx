@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ExchangeCase, ExchangePreview } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -213,5 +214,33 @@ describe("SwapReview", () => {
     const dialog = await screen.findByRole("dialog", { name: "Swap request" });
     expect(dialog.textContent).toContain("Waiting for Deniz to accept.");
     expect(within(dialog).queryByRole("button", { name: "Approve" })).toBeNull();
+  });
+
+  // EKRAN-02 recovery: a long location name stays inside its card and can still be read in full.
+  it("cuts a long location name inside its card and keeps the full name readable", async () => {
+    const long = "Kadikoy Moda Waterfront Garden Terrace and Rooftop Bar";
+    renderReview({ ...swap, shift: { ...swap.shift, location_name: long } } as ExchangeCase);
+    const dialog = await screen.findByRole("dialog", { name: "Swap request" });
+    const place = within(dialog).getByTitle(long);
+    expect(place.className).toContain("swap-review-place");
+    const css = readFileSync("src/views/swap-review.css", "utf8");
+    const rule = /\.swap-review-place\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(rule).toMatch(/max-width:\s*100%/);
+    expect(rule).toMatch(/overflow:\s*hidden/);
+    const text = /\.swap-review-place-name\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+    expect(text).toMatch(/text-overflow:\s*ellipsis/);
+  });
+
+  // EKRAN-02 recovery: a swap the system finds ineligible says which rule stops whom.
+  it("names the rule that stops a person instead of only saying they are not eligible", async () => {
+    vi.mocked(getExchangePreview).mockResolvedValue(preview({
+      allowed: false,
+      reasons: ["The other employee is not eligible for the exchanged shift"],
+      giver: { status: "ineligible", reasons: ["Not eligible for this position"], approval_flags: [], measures },
+    }));
+    renderReview();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Ali can't take Deniz's shift: Not eligible for this position.");
+    expect(alert.textContent).not.toContain("The other employee is not eligible");
   });
 });

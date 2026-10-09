@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { changeExchange, getExchangePreview, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { timeOffDeadlineAt } from "../employee-hub/time-off-split";
 import { clockRange, shortDate } from "./RequestsTable";
-import { reviewBoxes, timeOffStops, type ReviewBox, type ReviewSide } from "./swap-review";
+import { blockerLines, reviewBoxes, timeOffStops, type ReviewBox, type ReviewSide } from "./swap-review";
 import "./swap-review.css";
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", 2026-10-07): Requests →
@@ -145,7 +145,9 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
   // The first side is the one who takes the offered shift: the other person.
   const onTimeOff = ([[sides[0], other], [sides[1], owner]] as const).filter(([side]) => timeOffStops([side])).map(([, name]) => name);
   const reasons = [
-    ...(preview.data && !preview.data.allowed ? preview.data.reasons : []),
+    ...(preview.data && !preview.data.allowed
+      ? blockerLines(preview.data.reasons, { receiver: preview.data.receiver, giver: preview.data.giver }, { owner, other })
+      : []),
     ...onTimeOff.map((name) => `${name} has approved time off then. Their time off must be shortened before this swap.`),
   ];
   const blocked = reasons.length > 0;
