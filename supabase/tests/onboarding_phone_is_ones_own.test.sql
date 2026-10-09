@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(25);
 
 -- TEL-2 (Mert, 2026-10-09). A phone given in onboarding is the person's own:
 -- nobody else live in the workspace holds it, and the emergency contact is
@@ -129,13 +129,28 @@ select is(
   '23514 employee_private_profiles_emergency_is_not_own_phone',
   'nor can the account phone become the emergency contact''s on the way to the record');
 
+-- Added NOT VALID: an archived record from before the rule keeps what it has,
+-- and a new write to it obeys like any other.
+select ok(
+  (select not convalidated from pg_constraint
+   where conname = 'employee_private_profiles_emergency_is_not_own_phone'),
+  'records written before the rule are not rewritten');
+select is(
+  pg_temp.refusal(format(
+    'update public.employee_private_profiles set phone = %L, emergency_contact_phone = %L where employee_id = %L',
+    '+13105550177', '+13105550177', tests.id('tp:rem'))),
+  '23514 employee_private_profiles_emergency_is_not_own_phone',
+  'an archived record cannot be written that way either');
+
 -- The edit kept the rest of the save function.
 select ok(
   pg_get_functiondef('public.save_employee_onboarding_profile_service(uuid, jsonb, integer, uuid)'::regprocedure) like '%PT409%',
   'the save still refuses a stale revision');
 select ok(
-  (select count(*) from public.employee_private_profiles where emergency_contact_phone = phone) = 0,
-  'no record names its own phone as the emergency contact''s');
+  (select count(*) from public.employee_private_profiles private_record
+   join public.employee_profiles record on record.id = private_record.employee_id
+   where private_record.emergency_contact_phone = private_record.phone and record.archived_at is null) = 0,
+  'no live record names its own phone as the emergency contact''s');
 
 select * from finish();
 rollback;
