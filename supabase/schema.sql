@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 456, last: 20261009101500_swap_review_measures_the_rule_that_holds.sql
--- fingerprint: sha256:e7d0880cf6684882f15d8b557fe4d2b40a47ad2ed79477a44c3fad6c27afc893
+-- migrations: 457, last: 20261009130000_the_workspace_box_shows_only_live_announcements.sql
+-- fingerprint: sha256:a81cbd6ed7b7e01fc8a762030b86e2f9903586b964f584bcd3e6530065774935
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12695,7 +12695,10 @@ begin
       where location.workspace_id = target_workspace_id
         and location.id = any(schedule_places)
     ),
-    'announcements', coalesce((select jsonb_agg(item.value) from (select value from jsonb_array_elements((public.get_announcements_service(actor_user_id, target_workspace_id)->'announcements')) value where value->>'status' in ('published', 'scheduled') and (value->>'publish_at')::timestamptz <= now() limit 5) item), '[]'::jsonb),
+    'announcements', coalesce((select jsonb_agg(item.value) from (select value from jsonb_array_elements((public.get_announcements_service(actor_user_id, target_workspace_id)->'announcements')) value
+      -- K28: what is live; archived, expired and couldn't-publish stay in the list only.
+      where value->>'display_status' in ('published', 'scheduled') and value->>'archived_at' is null
+        and (value->>'publish_at')::timestamptz <= now() limit 5) item), '[]'::jsonb),
     'notifications', coalesce(public.get_notifications_service(actor_user_id, target_workspace_id, null, false, null, 5)->'notifications', '[]'::jsonb),
     'todos', coalesce((
       select jsonb_agg(jsonb_build_object(
