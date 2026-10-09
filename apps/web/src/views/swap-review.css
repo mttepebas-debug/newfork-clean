@@ -102,6 +102,17 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
+  max-width: 100%;
+  overflow: hidden;
+}
+.swap-review-place svg {
+  flex-shrink: 0;
+}
+.swap-review-place-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .swap-review-shift > .swap-review-hand {
   margin-top: 6px;
