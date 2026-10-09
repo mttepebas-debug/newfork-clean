@@ -180,6 +180,9 @@ select is(pg_temp.state(tests.id('ud:e2')), (select v from ud_before), 'Undo tak
 select tests.remember('ud:e3', pg_temp.open('ayse', 3, 'blank'));
 select tests.remember('ud:e3:ali', pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('ali', 3, 1)));
 select tests.remember('ud:e3:emre', pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 1)));
+-- Before that she gave Emre a Thursday and moved it to Friday.
+select tests.remember('ud:e3:thu', pg_temp.add('ayse', tests.id('ud:e3'), pg_temp.shift('emre', 3, 4)));
+select pg_temp.change('ayse', tests.id('ud:e3'), tests.id('ud:e3:thu'), jsonb_build_object('scheduled_date', tests.week(3) + 5));
 select public.bulk_delete_schedule_edit_shifts_service(tests.user('ud:ayse'), tests.id('ud'),
   array[tests.id('ud:e3:ali'), tests.id('ud:e3:emre')]);
 select tests.approved_leave(tests.id('ud'), tests.id('ud:ali'), tests.user('ud:ali'), tests.id('ud:K'), tests.week(3) + 1, '17:00', '23:00');
@@ -191,14 +194,19 @@ create temp table ud_refused as select pg_temp.undo('ayse', tests.id('ud:e3')) v
 select is((select v -> 'undo_refused' ->> 'reason' from ud_refused), 'availability',
   'Undo that would put Ali on his time off is refused, and says why');
 select is(pg_temp.state(tests.id('ud:e3')), (select v from ud_before), 'and Emre''s evening is not back either');
-select is(pg_temp.depth('ayse', tests.id('ud:e3')), 2, 'the refused step leaves the history');
-select is((select (v ->> 'undo_depth')::integer from ud_refused), 2, 'and the answer says so');
+select is(pg_temp.depth('ayse', tests.id('ud:e3')), 4, 'the refused step leaves the history');
+select is((select (v ->> 'undo_depth')::integer from ud_refused), 4, 'and the answer says so');
 select is((select (v ->> 'revision')::integer from ud_refused), pg_temp.rev(tests.id('ud:e3')),
   'the answer carries the edit''s revision, which moved with its history');
 select ok(pg_temp.rev(tests.id('ud:e3')) > (select v from ud_rev), 'so another screen on this edit reloads');
 create temp table ud_next as select pg_temp.undo('ayse', tests.id('ud:e3')) v;
 select is((select v -> 'undo_refused' from ud_next), null, 'the next Undo takes back the step before it');
-select is(pg_temp.depth('ayse', tests.id('ud:e3')), 1, 'one step is left');
+select is((pg_temp.row_of(tests.id('ud:e3'), tests.id('ud:e3:thu'))).scheduled_date, tests.week(3) + 4,
+  'Emre''s shift is back on Thursday');
+select ok(not exists (select 1 from public.schedule_edit_session_shifts s where s.session_id = tests.id('ud:e3')
+    and s.id in (tests.id('ud:e3:ali'), tests.id('ud:e3:emre'))),
+  'and the refused deletion still stands');
+select is(pg_temp.depth('ayse', tests.id('ud:e3')), 3, 'three steps are left');
 
 -- 5b. A warning acceptance the edit lost (BL-999) ---------------------------------
 
