@@ -97,6 +97,20 @@ describe("SwapReview", () => {
     expect(cards[1]!.querySelector(".swap-review-box")!.textContent).toBe("Travel time OK45 min needed");
   });
 
+  // KARARLAR §1.1 (Mert, 2026-10-09): a swap onto approved time off is never approved.
+  it("keeps Approve off and says why when the swap lands on approved time off", async () => {
+    vi.mocked(getExchangePreview).mockResolvedValue(preview({
+      receiver: { status: "eligible", reasons: [], approval_flags: [], measures, shortens_time_off: true },
+    }));
+    renderReview();
+    const cards = await screen.findAllByRole("group");
+    await waitFor(() => expect(cards[0]!.querySelector(".swap-review-box")).not.toBeNull());
+    expect(cards[0]!.querySelector(".swap-review-box")!.textContent).toBe("On time offcan't take this shift");
+    expect(within(screen.getByRole("alert")).getByText("Deniz has approved time off then. Their time off must be shortened before this swap.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Approve" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Decline" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("approves with the preview's fingerprint and reports it", async () => {
     renderReview();
     const approve = await screen.findByRole("button", { name: "Approve" });
