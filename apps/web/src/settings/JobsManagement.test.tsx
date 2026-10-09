@@ -318,6 +318,36 @@ describe("department and job names under the US letter rule", () => {
     expect(screen.getByRole("button", { name: "Save department" })).toHaveProperty("disabled", true);
   });
 
+  it("says it under an existing department's name and holds Save until it is fixed", () => {
+    editor({ item: department });
+    const name = screen.getByLabelText("Department name");
+    fireEvent.change(name, { target: { value: "Aşçı" } });
+    saysUnder(name);
+    expect(screen.getByRole("button", { name: "Save department" })).toHaveProperty("disabled", true);
+    fireEvent.change(name, { target: { value: "Kitchen" } });
+    expect(name.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save department" })).toHaveProperty("disabled", false);
+  });
+
+  it("says it under a job's name in the Jobs drawer and holds Save", async () => {
+    wrap(
+      <JobAssignmentsDrawer
+        workspaceId="workspace"
+        job={job}
+        departments={[department]}
+        onClose={vi.fn()}
+      />,
+    );
+    const name = screen.getByLabelText("Job name");
+    fireEvent.change(name, { target: { value: "Aşçı" } });
+    saysUnder(name);
+    // Even with a person's change waiting, Save stays off.
+    fireEvent.click(await screen.findByLabelText("Assign Employee 1"));
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    fireEvent.change(name, { target: { value: "Cook" } });
+    expect(name.getAttribute("aria-invalid")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+  });
 });
 
 describe("job assignment drawer", () => {

@@ -501,6 +501,14 @@ describe("OwnerOnboardingPage", () => {
     expect(screen.getByText("America/Los_Angeles")).toBeTruthy();
   });
 
+  it("opens a saved US phone in the mask", async () => {
+    vi.mocked(listLocations).mockResolvedValue([{ ...location, phone: "+14155550100" }]);
+    renderPage(2);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit Main Dining" }));
+    expect(screen.getByLabelText(/^Phone number/)).toHaveProperty("value", "(415) 555-0100");
+  });
+
   it("edits a location in the form instead of asking for all nine fields again", async () => {
     vi.mocked(listLocations).mockResolvedValue([location]);
     renderPage(2);
