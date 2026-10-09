@@ -269,7 +269,6 @@ export default function JobsSettingsPage() {
           onClick={() => openJob(job)}
           aria-label={`Manage employees for ${job.name}`}
         >
-          <Users size={14} />
           {countText(jobCounts.get(job.id))}
         </button>
         {menu(job, "jobs")}
@@ -748,7 +747,6 @@ export default function JobsSettingsPage() {
                     })()}
                   </button>
                   <span className="job-count-button">
-                    <Users size={14} />
                     {countText(departmentCounts.get(dep.id))}
                   </span>
                   {menu(dep, "departments")}

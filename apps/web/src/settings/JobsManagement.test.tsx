@@ -343,7 +343,7 @@ describe("department and job names under the US letter rule", () => {
     saysUnder(name);
     // The name is not sent until it changes, so the people on it still save.
     fireEvent.click(await screen.findByLabelText("Assign Employee 1"));
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(api.saveJobDetails).toHaveBeenCalledWith("workspace", jobId, {
         changes: [{ employee_id: "employee-1", assigned: true, expected_revision: 1 }],
@@ -366,7 +366,7 @@ describe("department and job names under the US letter rule", () => {
       />,
     );
     fireEvent.change(screen.getByLabelText("Job name"), { target: { value: "Cook" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(api.saveJobDetails).toHaveBeenCalledWith(
         "workspace",
@@ -381,6 +381,17 @@ describe("department and job names under the US letter rule", () => {
 });
 
 describe("job assignment drawer", () => {
+  it("shows Mert's V1 drawer words: Details, Not assigned, Save, no help line", async () => {
+    drawer();
+    await screen.findByLabelText("Assign Employee 0");
+    expect(screen.getByText("Details")).toBeTruthy();
+    expect(screen.getByText("1 employee assigned")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Not assigned" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Unassigned" })).toBeNull();
+    expect(screen.queryByText("Check to assign. Uncheck to remove.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+  });
   it("has no bulk dropdown and still pages beyond 100 employees", async () => {
     drawer();
     await screen.findByLabelText("Assign Employee 0");
@@ -426,7 +437,7 @@ describe("job assignment drawer", () => {
     expect(
       (screen.getByLabelText("Assign Employee 1") as HTMLInputElement).checked,
     ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(api.saveJobDetails).toHaveBeenCalledWith("workspace", jobId, {
         changes: [
@@ -447,7 +458,7 @@ describe("job assignment drawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Assigned" }));
     fireEvent.click(await screen.findByLabelText("Assign Employee 0"));
     expect(screen.getByLabelText("Assign Employee 0")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect((await screen.findByRole("alert")).textContent).toContain(
       "Employee changed",
     );
