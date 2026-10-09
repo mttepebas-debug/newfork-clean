@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(23);
 
 -- TEL-2 (Mert, 2026-10-09). A phone given in onboarding is the person's own:
 -- nobody else live in the workspace holds it, and the emergency contact is
@@ -83,6 +83,11 @@ select throws_ok(
     tests.user('tq:xena'), tests.phone('tp:ali'), tests.id('tp')),
   '42501', null,
   'somebody outside the workspace cannot ask');
+select throws_ok(
+  format('select public.onboarding_phone_in_use_service(%L, %L, %L)',
+    tests.user('tp:ali'), tests.phone('tp:sus'), tests.id('tp')),
+  '22023', 'onboarding cannot be edited',
+  'somebody whose onboarding is behind them cannot ask any more');
 select ok(
   not has_function_privilege('authenticated', 'public.onboarding_phone_in_use_service(uuid, text, uuid)', 'execute')
   and not has_function_privilege('authenticated', 'app_private.phone_used_in_workspace(uuid, text, uuid)', 'execute'),
