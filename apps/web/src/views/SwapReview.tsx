@@ -7,14 +7,14 @@ import { createPortal } from "react-dom";
 import { changeExchange, getExchangePreview, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { timeOffDeadlineAt } from "../employee-hub/time-off-split";
 import { clockRange, shortDate } from "./RequestsTable";
-import { reviewBoxes, type ReviewBox } from "./swap-review";
+import { reviewBoxes, timeOffStops, type ReviewBox, type ReviewSide } from "./swap-review";
 import "./swap-review.css";
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", 2026-10-07): Requests →
 // Review → a swap opens this compact window. Centred title and names; the two
 // shifts side by side with a dark ⇄ between them; a box per rule that fails on
 // either shift (orange where it fails, green where it holds; warnings never
-// block approval); Decide by at the bottom left, Decline and Approve at the
+// block approval, approved time off always does: KARARLAR §1.1, 2026-10-09); Decide by at the bottom left, Decline and Approve at the
 // right. Decline asks for the reason the employee reads (BL-910: only them).
 
 const firstName = (name: string | null | undefined) => (name ?? "").split(" ")[0] || "Teammate";
@@ -136,11 +136,18 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
       void refreshExchangeSurfaces(client, workspace).catch(() => undefined);
     },
   });
-  const [offered, returned] = reviewBoxes([
+  const sides: [ReviewSide, ReviewSide] = [
     { date: item.shift.scheduled_date, check: preview.data?.receiver ?? null },
     { date: item.requested_shift?.scheduled_date ?? item.shift.scheduled_date, check: preview.data?.giver ?? null },
-  ]);
-  const blocked = preview.data && !preview.data.allowed;
+  ];
+  const [offered, returned] = reviewBoxes(sides);
+  // The first side is the one who takes the offered shift: the other person.
+  const onTimeOff = ([[sides[0], other], [sides[1], owner]] as const).filter(([side]) => timeOffStops([side])).map(([, name]) => name);
+  const reasons = [
+    ...(preview.data && !preview.data.allowed ? preview.data.reasons : []),
+    ...onTimeOff.map((name) => `${name} has approved time off then. Their time off must be shortened before this swap.`),
+  ];
+  const blocked = reasons.length > 0;
   const decideBy = timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat);
   const places = [...new Set([item.shift.location_name, item.requested_shift?.location_name].filter(Boolean))].join(" or ");
   return (
@@ -161,7 +168,7 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
         </div>
         {blocked ? (
           <ul className="swap-review-blockers" role="alert">
-            {[...new Set(preview.data!.reasons)].map((text) => <li key={text}>{text}</li>)}
+            {[...new Set(reasons)].map((text) => <li key={text}>{text}</li>)}
           </ul>
         ) : null}
         {preview.isError ? <p className="swap-review-error" role="alert">Eligibility could not be checked. Close and try again.</p> : null}
@@ -202,7 +209,7 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
               <button
                 type="button"
                 className="nf-button"
-                disabled={!decides || !pending || !preview.data?.allowed || preview.isFetching || decide.isPending}
+                disabled={!decides || !pending || !preview.data?.allowed || onTimeOff.length > 0 || preview.isFetching || decide.isPending}
                 onClick={() => decide.mutate("approve")}
               >
                 Approve

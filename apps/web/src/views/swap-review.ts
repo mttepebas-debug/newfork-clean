@@ -6,6 +6,9 @@ import type { ExchangePreview } from "@newfork/shared";
 // gap; no rule fails, no box. Every value comes from the core's decision
 // preview (ILKELER P11): the failing side's approval flag, the holding side's
 // measure. Two short lines per box; the window draws them the same size.
+// Approved time off is never given up by consent (KARARLAR §1.1, Mert,
+// 2026-10-09): its box says the person can't take the shift, and the window
+// keeps Approve off until the time off is shortened.
 
 export type ReviewRule = "travel" | "rest" | "availability" | "time_off";
 export interface ReviewBox {
@@ -53,7 +56,7 @@ function warnBox(side: ReviewSide, rule: ReviewRule): ReviewBox {
     return { rule, tone: "warn", top: `${hours(item.gap_minutes ?? 0)} of rest`, bottom: `${hours(item.rule_minutes ?? 0)} needed` };
   }
   if (rule === "availability") return { rule, tone: "warn", top: "Unavailable", bottom: "chose to take it" };
-  return { rule, tone: "warn", top: "On time off", bottom: "chose to work" };
+  return { rule, tone: "warn", top: "On time off", bottom: "can't take this shift" };
 }
 
 function okBox(side: ReviewSide, other: ReviewSide, rule: ReviewRule): ReviewBox {
@@ -69,6 +72,11 @@ function okBox(side: ReviewSide, other: ReviewSide, rule: ReviewRule): ReviewBox
   }
   if (rule === "availability") return { rule, tone: "ok", top: "Available", bottom: `on ${weekday(side.date)}` };
   return { rule, tone: "ok", top: "No time off", bottom: `on ${weekday(side.date)}` };
+}
+
+/** Whether approved time off of either person stops the swap (KARARLAR §1.1). */
+export function timeOffStops(sides: readonly ReviewSide[]) {
+  return sides.some((side) => fails(side, "time_off"));
 }
 
 /** The boxes of the two cards, in one rule order so they line up. */

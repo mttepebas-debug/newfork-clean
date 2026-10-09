@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reviewBoxes, type ReviewSide } from "./swap-review";
+import { reviewBoxes, timeOffStops, type ReviewSide } from "./swap-review";
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", uyarı kutuları, 2026-10-07):
 // a rule that fails on one shift gets an orange box there and a green box on the
@@ -41,9 +41,16 @@ describe("reviewBoxes", () => {
     expect(text(boxes)).toEqual([["warn: Unavailable / chose to take it"], ["ok: Available / on Friday"]]);
   });
 
-  it("tells time off given up by consent from the other shift's day without it", () => {
+  // KARARLAR §1.1 (Mert, 2026-10-09): approved time off is never given up by consent.
+  it("says the person on time off can't take the shift, against the other shift's day without it", () => {
     const boxes = reviewBoxes([side(wednesday), side(friday, { shortens_time_off: true })]);
-    expect(text(boxes)).toEqual([["ok: No time off / on Wednesday"], ["warn: On time off / chose to work"]]);
+    expect(text(boxes)).toEqual([["ok: No time off / on Wednesday"], ["warn: On time off / can't take this shift"]]);
+  });
+
+  it("tells whether approved time off stops the swap", () => {
+    expect(timeOffStops([side(wednesday), side(friday)])).toBe(false);
+    expect(timeOffStops([side(wednesday), side(friday, { shortens_time_off: true })])).toBe(true);
+    expect(timeOffStops([{ date: wednesday, check: null }, side(friday)])).toBe(false);
   });
 
   it("keeps the rules in one order on both cards, so the boxes line up", () => {
