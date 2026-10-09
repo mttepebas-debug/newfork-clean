@@ -57,12 +57,12 @@ Yazıldı: 2026-10-08, koordinatörün DEVIR-2026-10-08 isteğiyle. Bu notta kod
 
 ## 5. Karar bekleyen
 
-Soruların hepsi `JOBS-TWEAKS.md` → "Koda uygulanacaklar → Açık sorular" bölümünde. Her birinde önerdiğim seçenek ilk sırada:
+Soruların hepsi `JOBS-TWEAKS.md` → "Koda uygulanacaklar → Açık sorular" bölümünde. 1 ve 2 eski kararlarla kapandı (2026-10-09); açık kalanlar `SORULAR.md` → "Settings → Jobs & departments". Her birinde önerdiğim seçenek ilk sırada:
 
 | # | Soru | Seçenekler | Dayanak |
 |---|---|---|---|
-| 1 | Bugünkü Department sütunlu düz Jobs listesi V1'de yok; ne olsun? | **Kalksın (önerilen)**: tek tablo + Department süzgeci · Kalsın: dördüncü sekme ("All jobs") | Mert'in V1 kararı, CLAUDE.md §1 "ayar cehennemi yok" |
-| 2 | Sütun başlığından sıralama (bugün Job / Department / Employees; URL `sort`, `direction`; testleri `JobsManagement.test.tsx`'te) | **Kalksın, hep A→Z (önerilen)** · Grup içinde ↕ sıralama kalsın | KARARLAR Settings "ada göre A→Z" / UI-02 |
+| 1 | ~~Bugünkü Department sütunlu düz Jobs listesi V1'de yok; ne olsun?~~ | **Kapandı (eski kararla, 2026-10-09):** düz liste kalkar; V1 tek tablo + Department süzgeci | KARARLAR "Settings → Jobs & departments: V1" (2026-10-07) ve "Requests tek tablo" (2026-10-06) |
+| 2 | ~~Sütun başlığından sıralama~~ | **Kapandı (eski kararla, 2026-10-09):** sütun başlığından sıralama **kalır** (ortak dilde başlık ↕), varsayılan ada göre A→Z. Buradaki "Kalksın" önerisi bu karara ters olduğu için geri alındı. | KARARLAR Genel "Liste sayfalarının ortak dili" → "Başlık satırı … sıralanabilir (↕)"; Settings "Jobs: … ada göre A→Z"; UI-02 |
 | 3 | Departman gruplarını katlama ve "Collapse all" | **Kalksın (önerilen)** · Kalsın (başlıkta ok + Collapse all) | ILKELER P20 |
 | 4 | Archived sekmesinde ne görünsün? | **Arşivli işler ve departmanlar birlikte, departman başlıklı, her satırda Restore (önerilen)** · Yalnız arşivli işler (arşivli departmanlar Departments sekmesinde) | ILKELER P25 |
 | 5 | New department'ın yeri ve Departments sekmesinin satır düzeni | henüz seçenek yok; varyantla gösterilecek | ILKELER P04 |

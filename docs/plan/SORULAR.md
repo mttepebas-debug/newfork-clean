@@ -273,6 +273,25 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
 | Availability telefonda: kart satırı / yapışkan sütunlu tablo / "Available on a computer" | **henüz hazır değil** (Availability turunun V dilimi) | varyant hazırlanınca |
 | Workspace başlığı: liste iskeleti / yalnız selamlama + tarih / bugünkü | **henüz hazır değil** (Workspace turunun V dilimi) | varyant hazırlanınca |
 
+## Settings → Jobs & departments (EKRAN-10; 2026-10-09)
+Kaynak `docs/plan/ekranlar/10-settings/JOBS-TWEAKS.md` "Açık sorular" ve `docs/plan/devir-2026-10-08/EKRAN-10-JOBS.md` §5. Oradaki 1 (düz liste) ve 2 (sıralama) eski kararlarla kapandı, sorulmaz. Uygulama işi bu üçü cevaplanınca başlar.
+
+### Soru-26. Jobs'ta departman gruplarını katlama ve "Collapse all" kalsın mı?
+- **Bugün:** Settings → Jobs & departments'ta her departman grubu başlıktaki okla katlanıyor, üstte "Collapse all / Expand all" var. Mert'in seçtiği V1 tasarımında (https://claude.ai/artifact/BUJShpW3rXDGFVNyEygDZr) ikisi de yok.
+- **Örnek:** Bosphorus Kitchen'da Bar, Kitchen, Management, Service; Kitchen'ı katlayan müdür sayfayı açınca yine katlı mı görür, açık mı?
+- (a) **Kalksın (Önerilen):** gruplar hep açık, V1'deki gibi. Dayanak: ILKELER P20 (ayar ve düğme eklemenin varsayılan cevabı hayır), Mert'in 2026-10-07 V1 kararı.
+- (b) Kalsın: başlıkta ok ve "Collapse all".
+
+### Soru-27. Jobs → Archived sekmesinde arşivli departmanlar nasıl görünsün?
+- **Bugün:** "Show archived" arşivlileri etkin satırların arasında Archived etiketi ve Restore ile gösteriyor. V1'de ayrı Archived sekmesi var; arşivli departmanın yeri gösterilmedi.
+- **Örnek:** Owner "Bar" departmanını arşivledi; içindeki "Bartender" işi de arşivde. Geri almak istediğinde Bar'ı nerede bulur, Bartender da onunla mı döner?
+- (a) **Archived sekmesinde departman başlıklı, departman satırında Restore; departman dönünce işleri de döner (Önerilen).** Dayanak: ILKELER P25.
+- (b) Arşivli departmanlar Departments sekmesinde, Archived sekmesinde yalnız işler.
+
+### Soru-28. Görsel — Departments sekmesinin satır düzeni
+- **Bugün:** V1'de Departments sekmesi gösterilmedi; satırda hangi sütunlar (ad, renk, iş sayısı, kişi sayısı) olacağı ve düzeni belli değil.
+- Varyantlar hazırlanıp aynı sayfaya (https://claude.ai/artifact/BUJShpW3rXDGFVNyEygDZr) eklenecek; seçim varyant harfiyle. Dayanak: ILKELER P04 (yeni görsel tasarımı Mert seçer).
+
 ## Önce sohbette konuşulacak — temel model (ILKELER P18; seçim sohbetten sonra)
 
 ### Soru-25. Birden çok lokasyonlu işte "bu hafta" hangi saate göre hesaplansın?
