@@ -8,7 +8,7 @@ Mert'in seçimleri (2026-10-08, soru turu): çalışanlar koordinatörün içind
 Bu kararlar aşağıdaki metinle çeliştiğinde geçerli olan bunlardır; kurallar `CLAUDE.md`'de ve `/oto`'da.
 
 - **D1 Main'e gönderim:** yalnız tren, beklemesiz. Hazır dal varsa ve tren koşmuyorsa tren hemen kalkar; koşan tren varsa dal sonrakine biner.
-- **D2 İşçi sınırı:** aynı anda 1 işçi; fazlası yalnız Mert komut verince (`DURUM.md` "Sağlık"ta `işçi sınırı <n>`). §4'teki "en çok 3 işçi" ve §12'deki karşılığı bunun yerine geçer.
+- **D2 İşçi sınırı:** aynı anda 1 işçi; fazlası yalnız Mert komut verince (`DURUM.md` "Sağlık"ta `işçi sınırı <n>`). §4 ve §12 buna göre düzeltildi.
 - **D3 Main koruması:** ücretsiz alarm. Koordinatör her turda `node scripts/main-watch.mjs` ile main'e trenden başka yoldan commit girip girmediğine bakar; girdiyse 🔴 alarm, yeni iş başlamaz, Mert'e söylenir. Sunucu tarafı koruma (GitHub dal koruması) fikrinin yerine geçer.
 - **D4 Main kırmızı:** önce geri al; canlı veritabanına dokunan değişiklikte önce düzelt. Sahibi yapar; 15 dakikada yapmazsa koordinatör. Süre kırmızının yük mü kod mu olduğu ayrıldıktan sonra başlar. §7.3'teki "Main kırmızıysa ilk tren yalnız düzelteni taşır" bununla birlikte okunur.
 
@@ -70,7 +70,7 @@ Mert'in kullanım konforu için. Her biri yeni `CLAUDE.md`'de aynen yer alır. K
 | **`nf-hakem`** (yeni) | Gelen soruyu defterle karşılaştırır: `KARAR` (dayanaklı) ya da `SOR` (Mert'e, §3.8 biçiminde) | Dayanak uydurmaz; "benzer" madde yetmez |
 
 - Model: hepsi Opus 5.5 (Mert, 2026-10-07). Effort: işçi medium, incelemeli işte high; hakem ve güvenlik high; okur medium.
-- Paralellik: aynı anda en çok **3 işçi**. Neden: tek bilgisayar ve tek CI makinesi var; fazla paralel iş hızlandırmaz, sırada bekletir (2026-10-08'de 11 hat açıktı, 5'i saatlerce bekliyordu). Yarım iş biriktirmek yerine işi bitirmek önce gelir. Dosyaları çakışmayan işler aynı anda koşar; görev metninde "dokunulacak" ve "dokunulmayacak" dosya listesi yazılır. Sayı ilk haftada bilgisayar yüküne göre ayarlanır.
+- Paralellik: **işçi sınırı (varsayılan 1, Mert komutla artırır)**; `DURUM.md` "Sağlık"ta `işçi sınırı <n>` (D2). Neden: tek bilgisayar ve tek CI makinesi var; fazla paralel iş hızlandırmaz, sırada bekletir (2026-10-08'de 11 hat açıktı, 5'i saatlerce bekliyordu). Yarım iş biriktirmek yerine işi bitirmek önce gelir. Sınır 1'den büyükse yalnız dosyaları çakışmayan işler aynı anda koşar; görev metninde "dokunulacak" ve "dokunulmayacak" dosya listesi yazılır. Sınırı yalnız Mert'in komutu değiştirir.
 - Değişen ilke: P17 ("tek hat; ikinci işi Mert açar") yerine: **paralel iş yalnız Mert'in onayladığı planın içinden ve dosyaları çakışmıyorsa.**
 
 ## 5. Bir işin yolu
@@ -243,7 +243,7 @@ Kalanlar: `decision-log.mjs` (soru biçimi kontrolü ve kabul oranı, hakemin ka
 | Yeniden başlatmada yarım ajanlar durur | Küçük commit + `DURUM.md` "Koşuyor" + yeniden başlatma adımı (§8.2) |
 | Koordinatör tek nokta | Yedek saat; `SessionStart` kancası; durum diskte |
 | Koordinatörün bağlamı uzun koşuda dolar | Ajan dönüşü ≤ 15 satır, gerisi dosyada; sıkıştırmadan sonra `DURUM.md` yeniden yüklenir |
-| CI ile yerel test aynı bilgisayarda çakışır | `lock run db --e2e` CI'da e2e koşarken bekler; en çok 3 işçi |
+| CI ile yerel test aynı bilgisayarda çakışır | `lock run db --e2e` CI'da e2e koşarken bekler; işçi sınırı (varsayılan 1, Mert komutla artırır) |
 | Hakem yanlış karar verir | Dayanak birebir olmalı; "her zaman sor" listesi; her karar `DURUM.md`'de görünür ve ters çevrilebilir; kalibrasyon §6.3 |
 | Arka plan ajanının uzun işte bağlamı dolar | İş ≤ ~2 saatlik dilimlere bölünür; işçi `BÖLÜNDÜ` ile kalanını yazar |
 
