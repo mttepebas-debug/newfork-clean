@@ -65,7 +65,7 @@ select is(pg_temp.one('2030-03-04', 'ali', 'K') ->> 'status', 'ready', 'a week o
 select ok(pg_temp.one('2030-03-04', 'ali', 'K') -> 'unavailable_intervals'
   @> '[{"start_at": "2030-03-04T15:00:00.000000Z", "end_at": "2030-03-04T19:00:00.000000Z"}]',
   'Monday 18:00-22:00 in Istanbul is 15:00-19:00 UTC');
-select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 0, '{"date": "2030-03-04", "has_unavailable": true, "all_day": false}',
+select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 0, '{"date": "2030-03-04", "has_unavailable": true, "all_day": false, "leave_given_for_shift": false}',
   'Monday is marked, not all day');
 select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 2 ->> 'all_day', 'true', 'an all-day mark covers the whole local day');
 select is(pg_temp.one('2030-03-04', 'ali', 'K') -> 'days' -> 4 ->> 'has_unavailable', 'false', 'the manager''s note is no unavailable hour (M12)');
