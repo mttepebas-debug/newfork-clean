@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reviewBoxes, timeOffStops, type ReviewSide } from "./swap-review";
+import { reviewBoxes, timeOffStops, type ReviewSide, blockerLines } from "./swap-review";
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", uyarı kutuları, 2026-10-07):
 // a rule that fails on one shift gets an orange box there and a green box on the
@@ -69,5 +69,28 @@ describe("reviewBoxes", () => {
       [{ rule: "availability", tone: "warn", top: "Unavailable", bottom: "chose to take it" }],
       [],
     ]);
+  });
+});
+
+// EKRAN-02 recovery: the red line names whom and which rule (nf-guvenlik ONAY @432e0097 follow-up).
+describe("blockerLines", () => {
+  const names = { owner: "Ali", other: "Deniz" };
+  it("names the receiver, whose shift they would take, and the rule", () => {
+    expect(blockerLines(["The receiving employee is not eligible for the full shift"],
+      { receiver: { reasons: ["Required document is expired."] }, giver: null }, names))
+      .toEqual(["Deniz can't take Ali's shift: Required document is expired."]);
+  });
+  it("names the giver in a swap, joining several rules", () => {
+    expect(blockerLines(["The other employee is not eligible for the exchanged shift"],
+      { receiver: { reasons: [] }, giver: { reasons: ["Not assigned to this location", "Employee already has an overlapping shift."] } }, names))
+      .toEqual(["Ali can't take Deniz's shift: Not assigned to this location; Employee already has an overlapping shift."]);
+  });
+  it("keeps the server's sentence when the check gives no rule", () => {
+    const reason = "The receiving employee is not eligible for the full shift";
+    expect(blockerLines([reason], { receiver: { reasons: [] }, giver: null }, names)).toEqual([reason]);
+  });
+  it("leaves any other sentence as it is", () => {
+    expect(blockerLines(["This shift has already started"], { receiver: { reasons: ["x"] }, giver: null }, names))
+      .toEqual(["This shift has already started"]);
   });
 });
