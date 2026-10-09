@@ -524,5 +524,45 @@ select is(pg_temp.refusal_hint(format('select public.heartbeat_schedule_edit_ses
   tests.user('ud:ayse'), tests.id('ud'), tests.id('ud:e1'))),
   'PT409 schedule.edit_lease_expired', 'and so does its heartbeat');
 
+-- 11. Every refusal names its rule (BL-998, S4b review) --------------------------------
+
+-- Ayşe gives Emre a Monday and moves it to Tuesday. Before she presses Undo,
+-- Emre's required document lapses for Monday: putting him back there is
+-- refused for the document. (The check is stood in for here, rolled back
+-- with the rest; the assessment does not read it, only Undo's own check does.)
+select tests.remember('ud:e14', pg_temp.open('ayse', 14, 'blank'));
+select tests.remember('ud:e14:mon', pg_temp.add('ayse', tests.id('ud:e14'), pg_temp.shift('emre', 14, 0)));
+select pg_temp.change('ayse', tests.id('ud:e14'), tests.id('ud:e14:mon'), jsonb_build_object('scheduled_date', tests.week(14) + 1));
+create or replace function public.employee_has_hard_document_schedule_conflict_service(
+    target_workspace_id uuid, target_employee_id uuid, target_scheduled_date date) returns boolean
+  language sql stable security definer set search_path to '' as $doc$
+    select target_employee_id = tests.id('ud:emre') and target_scheduled_date = tests.week(14)
+  $doc$;
+create temp table ud_doc as select pg_temp.undo('ayse', tests.id('ud:e14')) v;
+select is((select v -> 'undo_refused' ->> 'reason' from ud_doc), 'document',
+  'a step that would put Emre on a day his document lapsed is refused for the document');
+select is((pg_temp.row_of(tests.id('ud:e14'), tests.id('ud:e14:mon'))).scheduled_date, tests.week(14) + 1,
+  'and Emre stays on Tuesday');
+select is(pg_temp.depth('ayse', tests.id('ud:e14')), 1, 'the step left the history');
+
+-- Any other rule that says no to the row coming back is named as a rule.
+select tests.remember('ud:e14:wed', pg_temp.add('ayse', tests.id('ud:e14'), pg_temp.shift('emre', 14, 2)));
+select pg_temp.change('ayse', tests.id('ud:e14'), tests.id('ud:e14:wed'), jsonb_build_object('scheduled_date', tests.week(14) + 3));
+create function pg_temp.refuse_wednesday() returns trigger language plpgsql as $$
+begin
+  if new.id = tests.id('ud:e14:wed') and new.scheduled_date = tests.week(14) + 2 then
+    raise exception 'a rule of this test' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+create trigger ud_refuse_wednesday before update on public.schedule_edit_session_shifts
+  for each row execute function pg_temp.refuse_wednesday();
+create temp table ud_rule as select pg_temp.undo('ayse', tests.id('ud:e14')) v;
+select is((select v -> 'undo_refused' ->> 'reason' from ud_rule), 'rule', 'any other rule is named as a rule');
+select is((pg_temp.row_of(tests.id('ud:e14'), tests.id('ud:e14:wed'))).scheduled_date, tests.week(14) + 3,
+  'and Emre''s Thursday stands');
+drop trigger ud_refuse_wednesday on public.schedule_edit_session_shifts;
+
 select * from finish();
 rollback;

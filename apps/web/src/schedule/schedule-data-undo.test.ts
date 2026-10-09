@@ -1,7 +1,7 @@
 import type { ScheduleEditSession } from "@newfork/shared/schedule";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { isNothingToUndo, undoScheduleEditSessionStep } from "./schedule-data";
+import { isNothingToUndo, undoRefusedText, undoScheduleEditSessionStep } from "./schedule-data";
 
 vi.mock("../lib/supabase", () => ({
   supabaseClient: { auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } },
@@ -55,5 +55,19 @@ describe("undoScheduleEditSessionStep", () => {
     const error = await undoScheduleEditSessionStep(session.workspace_id, session).then(() => null, (failure: unknown) => failure);
 
     expect(isNothingToUndo(error)).toBe(true);
+  });
+});
+
+// BL-998: every reason the server can give for a refused step reads as its own sentence.
+describe("undoRefusedText", () => {
+  it.each([
+    ["availability", "approved time off or a shift-hours rule"],
+    ["document", "a required document is missing"],
+    ["conflict_acceptance", "a schedule conflict to be accepted again"],
+    ["rule", "A scheduling rule blocks it now"],
+  ] as const)("names the %s rule and points to the edit before it", (reason, words) => {
+    const text = undoRefusedText(reason);
+    expect(text).toContain(words);
+    expect(text).toContain("press Undo again for the edit before it");
   });
 });
