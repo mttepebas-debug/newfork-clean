@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { plan, build, fingerprint, headerHash, git, write, commit, STAMP, ID, text, refs, state, subjects, w } from "./train-test-world.mjs";
+import { plan, build, fingerprint, headerHash, git, write, commit, auditLines, STAMP, ID, text, refs, state, subjects, w } from "./train-test-world.mjs";
 
 // ---- plan ----
 
@@ -115,6 +115,31 @@ test("plan: foresees a conflict (branch skipped, exit 2) and a schema.sql-only c
   assert.match(text(r), /task\/m2: girer \(schema\.sql yeniden üretilecek\)/);
   assert.equal(refs(w.repo), before);
   assert.equal(fs.existsSync(w.ctx.trainDir), false);
+});
+
+test("plan: a task branch whose own commits touch a record file stops the train; coord/kayit does not", () => {
+  w.branch("task/rec", ["code", { "docs/a.md": "a\n" }], ["records too", { "docs/plan/KARARLAR.md": "# Kararlar\n" }]);
+  const r = plan(w.ctx, ["task/rec"]);
+  assert.equal(r.code, 1, text(r));
+  assert.match(text(r), /ENGEL: task\/rec: kayıt dosyasına dokunuyor: docs\/plan\/KARARLAR\.md; kayıtları yalnız koordinatör yazar \(CLAUDE\.md §6\)/);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "train-blocked");
+  assert.equal(e.step, "plan");
+  w.branch("coord/kayit", ["records", { "docs/plan/KARARLAR.md": "# Kararlar\n", "DURUM.md": "# Durum\n" }]);
+  const c = plan(w.ctx, ["coord/kayit"]);
+  assert.equal(c.code, 0, text(c));
+  assert.doesNotMatch(text(c), /kayıt dosyasına dokunuyor/);
+});
+
+test("plan: NF_OVERRIDE passes a branch touching a record file, and the pass is logged", () => {
+  w.branch("task/rec", ["records", { "DURUM.md": "# Durum\n" }]);
+  const r = plan({ ...w.ctx, override: "Mert kayıt düzeltmesini işçiye verdi" }, ["task/rec"]);
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /AŞILDI \(NF_OVERRIDE\): task\/rec: kayıt dosyasına dokunuyor: DURUM\.md/);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "train-override");
+  assert.equal(e.reason, "Mert kayıt düzeltmesini işçiye verdi");
+  assert.match(e.blocker, /kayıt dosyasına dokunuyor: DURUM\.md/);
 });
 
 // ---- build ----

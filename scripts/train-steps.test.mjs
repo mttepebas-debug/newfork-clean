@@ -294,6 +294,19 @@ test("apply-local: a dead db.lock under the train's own identity (an earlier tra
   assert.deepEqual({ identity: seen[0].identity, pid: seen[0].pid }, { identity: ID, pid: process.pid });
 });
 
+test("apply-local: a live db.lock under the train's identity but another process's pid is not the train's", () => {
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  fs.mkdirSync(process.env.NEWFORK_LOCK_DIR, { recursive: true });
+  const held = { identity: ID, purpose: "tren apply-local", startedAt: new Date().toISOString(), pid: process.ppid }; // a second train process, alive
+  fs.writeFileSync(path.join(process.env.NEWFORK_LOCK_DIR, "db.lock"), JSON.stringify(held));
+  const r = applyLocal(w.ctx);
+  assert.equal(r.code, 1, text(r));
+  assert.match(text(r), /DUR: .*db\.lock aynı kimlikte başka süreçte/);
+  assert.equal(w.calls.psql.length, 0);
+  assert.deepEqual({ identity: lock("db").identity, pid: lock("db").pid }, { identity: ID, pid: process.ppid }); // left as it was
+});
+
 test("apply-local: waits its turn while another session holds db, then applies once it is let go", () => {
   w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
   built("task/m1");

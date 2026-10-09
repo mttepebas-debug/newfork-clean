@@ -18,7 +18,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { acquire, release, status as lockStatus, clearDead } from "./lock.mjs";
-import { audit, backupMain } from "./guard.mjs";
+import { audit, backupMain, isRecordFile } from "./guard.mjs";
 import { fingerprint, headerHash } from "./schema-snapshot.mjs";
 import { container, nonTransactional } from "./test-db.mjs";
 
@@ -90,6 +90,16 @@ function migrationChanges(repo, commits, onMain) {
 
 // Commits whose change main does not have yet, oldest first (`git cherry` matches rebased copies by patch).
 const ahead = (repo, ref) => listed(git(repo, ["cherry", BASE, ref])).filter((l) => l.startsWith("+ ")).map((l) => l.slice(2));
+
+const COORD_BRANCH = "coord/kayit"; // the coordinator's records (spec §7.3)
+// Record files (guard.mjs isRecordFile) a branch's own commits change; only coord/kayit may carry them (spec §10).
+function recordFiles(repo, commits) {
+  const files = new Set();
+  for (const c of commits)
+    for (const f of listed(git(repo, ["-c", "core.quotePath=false", "diff-tree", "--no-commit-id", "--name-only", "-r", "--no-renames", `${c}^`, c])))
+      if (isRecordFile(f)) files.add(f);
+  return [...files].sort();
+}
 
 // ---- building commits in memory: nothing is checked out until the whole train is known ----
 
@@ -212,9 +222,11 @@ function refuse(ctx, s, step, blocker, lines, extra = {}) {
 }
 
 const lockOf = (name) => lockStatus().find((l) => l.name === name);
+// The train's own lock: its identity and this very process (a second train process with the same stamp
+// holds a lock under the same identity, and it is not ours to use or let go).
 const mine = (s, name) => {
   const l = lockOf(name);
-  return !l.free && l.identity === s.identity;
+  return !l.free && l.identity === s.identity && l.pid === process.pid;
 };
 // The train holds `name` (already, or takes it now). A dead holder is cleared first, also one under the train's
 // own identity left by an earlier train process. A live one is waited for in the lock's queue, in arrival order
@@ -232,7 +244,9 @@ function hold(ctx, s, name, step, lines, beforeOverride) {
   const l = lockOf(name);
   const ahead = l.queue?.[0];
   const why = !l.free
-    ? `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`
+    ? l.identity === s.identity
+      ? `${name}.lock aynı kimlikte başka süreçte: ${l.identity} (pid ${l.pid ?? "?"})`
+      : `${name}.lock başka kimlikte: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`
     : ahead
       ? `${name}.lock sırasında önde: ${ahead.identity ?? "?"}${ahead.command ? ` (${ahead.command})` : ""}`
       : null;
@@ -270,6 +284,14 @@ export function plan(ctx, args) {
     const merges = listed(git(repo, ["rev-list", "--merges", `${BASE}..${b.ref}`]));
     if (merges.length) blockers.push(`${b.name}: birleştirme commit'i var (${short(merges[0])}); dalı rebase et`);
     if (b.moved) warnings.push(`${b.name}: dal @${short(b.moved)}'a ilerlemiş; tren @${short(b.ref)}'yı alıyor`);
+    // a worker never writes a record file (CLAUDE.md §6); NF_OVERRIDE passes it, logged
+    if (b.name !== COORD_BRANCH)
+      for (const f of recordFiles(repo, commits)) {
+        const said = [];
+        const blocker = `${b.name}: kayıt dosyasına dokunuyor: ${f}; kayıtları yalnız koordinatör yazar (CLAUDE.md §6)`;
+        if (pass(ctx, { branch: null }, "plan", blocker, said)) lines.push(...said);
+        else blockers.push(blocker);
+      }
     const changes = migrationChanges(repo, commits, onMain);
     for (const f of changes.added.filter((f) => !MIGRATION_NAME.test(f))) blockers.push(`${b.name}: göç adı geçersiz: ${f} (YYYYMMDDHHMMSS_<ad>.sql)`);
     for (const f of changes.edited) blockers.push(`${b.name}: main'deki göç değişiyor: ${f} (uygulanmış göç değişmez; düzeltme yeni göçle)`);
@@ -525,7 +547,6 @@ export function push(ctx) {
   return { code: 0, lines };
 }
 
-const COORD_BRANCH = "coord/kayit"; // the coordinator's records (spec §7.3)
 function coordBranch(repo) {
   const b = resolve(repo, COORD_BRANCH); // origin's first, as build reads it
   return b && ahead(repo, b.ref).length ? COORD_BRANCH : null;
