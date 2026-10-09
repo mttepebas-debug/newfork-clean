@@ -1,7 +1,7 @@
-# Durum — 2026-10-09 03:23Z
+# Durum — 2026-10-09 03:40Z
 🟠 Main CI kırmızı (Time off onay e2e'leri, BL-990); kökünü bulup düzeltmek için tek işçi çalışıyor. Bu iş bitene kadar tren kalkmıyor (kırmızı çıkacağı belli, işçinin yerel e2e'sini de bekletir).
 
-## Seni bekleyen (26)
+## Seni bekleyen (27)
 Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 
 **Giriş ve katılım — EKRAN-16** (`EKRAN-16.md` §5)
@@ -49,13 +49,15 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 - B25 Uzak dal silme (ajanlara yasak): `task/guvenlik-a`, `-ga4`, `-ga4-v2`, `task/sayfa-klasoru`, `task/acil-40001`, `-v2`; eski `task/bl-965*`, `task/bl-969`, `-2`, `-3`, `task/tren-araci*`, `task/bl-757` (önce `git cherry` ile ölçerim) — 2026-10-08
 - B26 Makine: `C:\Users\TheWe\.codex` silme (14 GB, HATIRLATMALAR), Supabase Studio kapatma, vmmem kaynağı; OTOMASYON-4 hesap değişimi testi 2026-10-11 18:00 PT — 2026-10-08
 - B27 Para / CI: GitHub ücretsiz 2.000 dk sonrası dakika başı; tavan; public repo — 2026-10-08
+- B28 Hatırlatma: otomasyon duraklatıldı (senin isteğinle). Yedek saat kapalı, BL-990 işçisi senin durdurmanla yarıda (ara işi `C:UsersTheWeDocumentsCodex
+ewfork-clean.claudeworktreesagent-a2539fabf0e3a2190`, ilki `…agent-adc5b7c78af9b7328`; kaldığı yer `docs/plan/gunluk/2026-10-09-devir.md`). Sürdürmek için koordinatöre "/oto devam" yaz: saati ve uyanık tutmayı yeniden kurar, BL-990a kaldığı yerden devam eder. Main hâlâ kırmızı, karantina 2026-10-15te biter — 2026-10-09
 
 ## Bugün biten
 - İş akışı v2 (tek koordinatör, beklemesiz tren, tek kilit, karar defteri, `/oto` ve `/durum`) — `9f287986..7ecbcc74`; tren CI'ı e2e'de kırmızıydı (yalnız Time off onayı, main'de de kırmızı), Mert'in tek seferlik aşımıyla gönderildi; main yedeği `refs/nf-backup/main/20261009T023046Z`
 - Eski koordinatörün main'e girmemiş kayıtları (KK-229…235, BL-974…989, DERS 61, HANDOFF, HATIRLATMALAR) ve devir klasörü yeni yapıya taşındı — aynı tren
 
 ## Koşuyor
-- BL-990 (devam, dal `task/bl-990`) — nf-isci (incelemeli, effort high) — port 5612/5613 — başladı 03:22Z · önceki işçi 03:04Z durdu, kaldığı yer `docs/plan/gunluk/2026-10-09-devir.md`
+- — (BL-990 işçisi 03:3xZ Mert durdurdu; bkz. B28)
 
 ## Sırada
 İş · dal@sha · kalan adım · sınıf · neden bu sırada. ⏸ = seni bekliyor.
@@ -105,7 +107,7 @@ Kaynak notlar: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`.
 ## Sağlık
 - işçi sınırı 1 · main alarmı temiz (since `7ecbcc74`) · kilit: db boş
 - karantina: two locations approve in turn, the last one opens the shift · BL-990 · 2026-10-08→2026-10-15
-- kullanım: 5 saatlik %2, haftalık %64 (2026-10-11'de sıfırlanır) · yedek saat `15baa153` (20 dk, 2026-10-15te biter) · ölçüm günü 2026-10-15
+- kullanım: 5 saatlik %2, haftalık %64 (2026-10-11'de sıfırlanır) · yedek saat kapalı (Mert, 2026-10-09) · ölçüm günü 2026-10-15
 
 ## Devirden gelen notlar
 - N1 Devir notları ve README: `task/devir-2026-10-08` dalı, `docs/plan/devir-2026-10-08/`; bu kayıtlar artık main'de (`docs/plan/`, `docs/archive/2026-10-08-v1/`).
