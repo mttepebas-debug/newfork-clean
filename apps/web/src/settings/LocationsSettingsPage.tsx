@@ -8,13 +8,15 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Plus, Search, X } from "lucide-react";
+import { MapPin, Search, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
-import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { errorText } from "./GeneralSettingsPage";
 import { LocationTimezoneField } from "./LocationTimezoneField";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
@@ -52,6 +54,8 @@ const timezones = [
   ["Pacific/Honolulu", "Hawaii Time"],
 ] as const;
 
+type SortKey = "name" | "address" | "phone" | "timezone";
+
 function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -82,7 +86,13 @@ export default function LocationsSettingsPage() {
     queryFn: () => listLocations(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const [showArchived, setShowArchived] = useState(false);
+  // Active / Archived tabs replace "Show archived" (Locations A, Mert 2026-10-07):
+  // Archived lists only archived locations.
+  const [tab, setTab] = useState<"active" | "archived">("active");
+  const [sort, setSort] = useState<{
+    key: SortKey;
+    descending: boolean;
+  } | null>(null);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Location | "new" | null>(null);
   const [draft, setDraft] = useState<LocationDraft>(emptyLocation);
@@ -153,14 +163,43 @@ export default function LocationsSettingsPage() {
     setDraft((current) => ({ ...current, [field]: value }));
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
   };
-  const visible = (locations.data ?? []).filter(
-    (location) =>
-      (showArchived || !location.archived_at) &&
-      (!search.trim() ||
+  const inTab = (locations.data ?? []).filter(
+    (location) => Boolean(location.archived_at) === (tab === "archived"),
+  );
+  const visible = inTab
+    .filter(
+      (location) =>
+        !search.trim() ||
         `${location.name} ${location.street_address} ${location.city}`
           .toLowerCase()
-          .includes(search.trim().toLowerCase())),
-  );
+          .includes(search.trim().toLowerCase()),
+    )
+    .sort((a, b) => {
+      if (!sort) return 0;
+      const comparison = sortText(a, sort.key).localeCompare(
+        sortText(b, sort.key),
+      );
+      return sort.descending ? -comparison : comparison;
+    });
+  const sortColumn = (key: SortKey, label: string) => {
+    const selected = sort?.key === key;
+    return (
+      <span
+        role="columnheader"
+        aria-sort={
+          selected ? (sort.descending ? "descending" : "ascending") : "none"
+        }
+      >
+        <CatalogSortButton
+          active={selected}
+          label={label}
+          onClick={() =>
+            setSort({ key, descending: selected ? !sort.descending : false })
+          }
+        />
+      </span>
+    );
+  };
 
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(locations.error))
@@ -172,47 +211,63 @@ export default function LocationsSettingsPage() {
     );
   return (
     <section
-      className="settings-page jobs-settings-page locations-catalog-settings-page"
+      className="settings-page jobs-settings-page locations-catalog-settings-page list-page"
       aria-labelledby="locations-settings-title"
     >
-      <SettingsHeader
-        icon={<MapPin size={21} aria-hidden />}
+      <CatalogPageHeader
+        eyebrow="SETTINGS"
         title="Locations"
+        titleId="locations-settings-title"
         description="Restaurant addresses and local time zones used throughout scheduling."
-        action={
-          <Button
-            className="job-primary-button"
-            type="button"
-            disabled={!canEdit || saveMutation.isPending || deleteLocked}
-            onClick={() => openEditor()}
-          >
-            <Plus size={16} aria-hidden />
-            Add location
-          </Button>
-        }
       />
-      <div className="job-catalog-toolbar">
-        <label className="job-search">
-          <Search size={16} />
-          <input
-            aria-label="Search locations"
-            placeholder="Search name or address"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </label>
-        <label className="job-archive-filter">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(event) => setShowArchived(event.target.checked)}
-          />
-          Show archived
-        </label>
+      <div className="job-catalog-toolbar catalog-toolbar">
+        <div className="catalog-toolbar-status-row">
+          <div
+            className="catalog-status-tabs"
+            role="tablist"
+            aria-label="Location status"
+          >
+            {(
+              [
+                ["active", "Active"],
+                ["archived", "Archived"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                className={tab === value ? "active" : ""}
+                onClick={() => setTab(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="catalog-toolbar-filter-row">
+          <label className="job-search toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label="Search locations"
+              placeholder="Search name or address"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          {canEdit ? (
+            <ListAddButton
+              label="New location"
+              disabled={saveMutation.isPending || deleteLocked}
+              onClick={() => openEditor()}
+            />
+          ) : null}
+        </div>
       </div>
       {editing ? (
         <CatalogDrawer
-          label={editing === "new" ? "Add location" : `Edit ${editing.name}`}
+          label={editing === "new" ? "New location" : `Edit ${editing.name}`}
           className="locations-catalog-settings-page"
           onClose={closeEditor}
           busy={saveMutation.isPending || deleteLocked}
@@ -222,7 +277,7 @@ export default function LocationsSettingsPage() {
             onSubmit={submit}
             noValidate
             aria-label={
-              editing === "new" ? "Add location" : `Edit ${editing.name}`
+              editing === "new" ? "New location" : `Edit ${editing.name}`
             }
           >
             <div className="job-editor-title">
@@ -368,32 +423,54 @@ export default function LocationsSettingsPage() {
           {errorText(locations.error)}
         </p>
       ) : null}
-      {!locations.isLoading && !locations.error && visible.length === 0 ? (
-        <div className="settings-empty">
-          <MapPin size={22} aria-hidden />
-          <strong>
-            {showArchived ? "No archived locations" : "No locations yet"}
-          </strong>
-          <p>
-            Add the first restaurant location to establish scheduling context.
-          </p>
-        </div>
-      ) : null}
-      {visible.length > 0 ? (
+      {!locations.isLoading && !locations.error ? (
         <div className="job-catalog" aria-label="Locations">
-          <div className="job-column-headings location-catalog-row">
-            <span>Location</span>
-            <span className="location-address-col">Address</span>
-            <span>Phone number</span>
-            <span>Time zone</span>
-            <span />
+          <div
+            className="job-column-headings catalog-column-headings location-catalog-row"
+            role="row"
+          >
+            {sortColumn("name", "Location")}
+            {sortColumn("address", "Address")}
+            {sortColumn("phone", "Phone number")}
+            {sortColumn("timezone", "Time zone")}
+            {sort ? (
+              <button
+                type="button"
+                className="job-icon-button"
+                aria-label="Clear column sorting"
+                onClick={() => setSort(null)}
+              >
+                <X size={14} />
+              </button>
+            ) : (
+              <span />
+            )}
           </div>
+          {visible.length === 0 ? (
+            <div className="catalog-table-empty">
+              <span className="catalog-table-empty-icon" aria-hidden>
+                <MapPin size={22} />
+              </span>
+              <h2>
+                {inTab.length
+                  ? "No locations match your search."
+                  : tab === "archived"
+                    ? "No archived locations"
+                    : "No locations yet"}
+              </h2>
+              <p>
+                {inTab.length
+                  ? "Try another search."
+                  : tab === "archived"
+                    ? "Archived locations will appear here."
+                    : "Add the first restaurant location to establish scheduling context."}
+              </p>
+            </div>
+          ) : null}
           {visible.map((location) => {
-            const zone =
-              timezones.find(([value]) => value === location.timezone)?.[1] ??
-              location.timezone;
-            const address = `${location.street_address}, ${location.city}, ${location.region} ${location.postal_code}`;
-            const phone = displayUsPhone(location.phone) ?? "—";
+            const zone = zoneLabel(location);
+            const address = addressText(location);
+            const phone = displayUsPhone(location.phone);
             return (
               <div
                 className="job-catalog-row location-catalog-row"
@@ -405,36 +482,34 @@ export default function LocationsSettingsPage() {
                   className="job-row-identity"
                   onClick={() => openEditor(location)}
                 >
-                  <MapPin size={17} className="location-catalog-marker" />
                   <span className="job-name-stack">
                     <span className="job-row-name" title={location.name}>
                       {location.name}
                     </span>
-                    <span className="location-catalog-address location-address-meta">{address}</span>
-                    <span className="job-mobile-meta">{location.phone ? `${zone} · ${phone}` : zone}</span>
+                    {/* Phone: one card per location (UI-14). */}
+                    <span className="location-card-line">{address}</span>
+                    <span className="location-card-meta">
+                      {phone ? `${zone} · ${phone}` : zone}
+                    </span>
                   </span>
-                  {location.archived_at && (
-                    <span className="job-archived-label">Archived</span>
-                  )}
                 </button>
-                <span
-                  className="location-catalog-address location-catalog-cell location-address-col"
-                  title={address}
-                >
+                <span className="location-catalog-cell" title={address}>
                   {address}
                 </span>
-                <span className="location-catalog-zone location-catalog-cell">
-                  {phone}
+                <span
+                  className={`location-catalog-cell${phone ? "" : " location-catalog-faint"}`}
+                >
+                  {phone ?? "—"}
                 </span>
-                <span className="location-catalog-zone">{zone}</span>
-                {canEdit && (
+                <span className="location-catalog-cell">{zone}</span>
+                {canEdit ? (
                   <CatalogRowMenu name={location.name}>
                     <button type="button" onClick={() => openEditor(location)}>
                       Edit location
                     </button>
                     <CatalogArchiveButton
                       archived={Boolean(location.archived_at)}
-                      disabled={!canEdit || archiveMutation.isPending}
+                      disabled={archiveMutation.isPending}
                       onToggle={() =>
                         archiveMutation.mutate({
                           id: location.id,
@@ -443,6 +518,8 @@ export default function LocationsSettingsPage() {
                       }
                     />
                   </CatalogRowMenu>
+                ) : (
+                  <span />
                 )}
               </div>
             );
@@ -451,6 +528,24 @@ export default function LocationsSettingsPage() {
       ) : null}
     </section>
   );
+}
+
+function zoneLabel(location: Location): string {
+  return (
+    timezones.find(([value]) => value === location.timezone)?.[1] ??
+    location.timezone
+  );
+}
+
+function addressText(location: Location): string {
+  return `${location.street_address}, ${location.city}, ${location.region} ${location.postal_code}`;
+}
+
+function sortText(location: Location, key: SortKey): string {
+  if (key === "name") return location.name;
+  if (key === "address") return addressText(location);
+  if (key === "phone") return displayUsPhone(location.phone) ?? "";
+  return zoneLabel(location);
 }
 
 function FormField({
