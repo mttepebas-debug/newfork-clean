@@ -1,6 +1,6 @@
 import type { WorkspaceSummary } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
@@ -127,6 +127,16 @@ describe("WorkspaceHubPage", () => {
 
     expect(
       await screen.findByRole("heading", { name: "Welcome back" }),
+    ).toBeTruthy();
+    // KARARLAR "Welcome back": the second way in says "another invitation".
+    fireEvent.click(
+      screen.getByRole("button", { name: "I am waiting for another invitation" }),
+    );
+    // E16-L-welcome-metin: "it" read as the person; the address is meant.
+    expect(
+      await screen.findByText(
+        "Nothing has been sent to this address so far — ask your manager to invite this email.",
+      ),
     ).toBeTruthy();
   });
 
