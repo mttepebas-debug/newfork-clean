@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { Check, CloudOff, Edit3, MapPin } from "lucide-react";
+import { CloudOff, Edit3, MapPin } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -123,6 +123,11 @@ export function ShiftCard({
     ? formatAvailabilityWarning(employeeName)
     : null;
   const showAvailabilityCorner = Boolean(availabilityWarning);
+  // Publication marks while editing (Mert, 2026-10-09, item 3 variant 6): a live
+  // shift carries no mark; a shift not yet published says "New". The edited and
+  // staged-for-removal marks stay.
+  const showPublicationMarker = Boolean(publicationState) && publicationState !== "locked";
+  const showNewMark = editing && !publicationState && !shift.optimistic;
   const availabilityDescriptionId = useId();
   // The card's "!" window says the hours this shift runs into (KARARLAR Schedule, 2026-10-06).
   const availabilityLines = availabilityWarning && availabilityMark?.kind === "unavailable"
@@ -200,7 +205,7 @@ export function ShiftCard({
       data-selected={selected}
       data-dragging={dragging}
       data-job-color-dot={false}
-      data-has-markers={Boolean(publicationState) || showAvailabilityCorner}
+      data-has-markers={showPublicationMarker || showAvailabilityCorner}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
       data-availability-warning={availabilityWarning ? "true" : undefined}
@@ -304,7 +309,12 @@ export function ShiftCard({
         </span>
       ) : null}
       {noteCorner.corner}
-      {publicationState || showAvailabilityCorner ? (
+      {showNewMark ? (
+        <span className="schedule-shift-new-mark" title="Not published yet - goes live on next publish">
+          New
+        </span>
+      ) : null}
+      {showPublicationMarker || showAvailabilityCorner ? (
         <span className="schedule-shift-badge-markers">
           {showAvailabilityCorner ? (
             <AvailabilityMarkButton
@@ -313,11 +323,6 @@ export function ShiftCard({
               label={`${employeeName ?? "This person"}: unavailable during this shift`}
               lines={availabilityLines.length ? availabilityLines : [availabilityWarning ?? ""]}
             />
-          ) : null}
-          {publicationState === "locked" ? (
-            <Check size={12} aria-label="Live - published to employees">
-              <title>Live - published to employees</title>
-            </Check>
           ) : null}
           {publicationState === "staged-removed" ? (
             <CloudOff size={12} aria-label="Staged for removal">

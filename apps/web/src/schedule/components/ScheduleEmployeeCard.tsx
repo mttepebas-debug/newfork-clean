@@ -76,6 +76,7 @@ export function ScheduleEmployeeCard({
               className="schedule-availability-mark-name"
               label={`${employee.display_name}: unavailable days this week`}
               lines={availabilityLines}
+              spotlightEmployeeId={employee.id}
             />
           ) : null}
         </div>

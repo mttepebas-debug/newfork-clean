@@ -5994,6 +5994,30 @@ button.workspace-switcher-item:hover:not(:disabled) {
   text-transform: uppercase;
   pointer-events: none;
 }
+/* Hover and drag over time off (Mert, 2026-10-09, item 16 A "calm"): a darker
+   edge and darker words on hover; while a shift is dragged over it, the red
+   frame stays and one line under the words says why it will not land. The
+   part-day "Add shift" layer covers the words instead of printing over them. */
+.schedule-cell[data-availability-kind="time_off"]:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+}
+.schedule-cell[data-availability-kind="time_off"]:hover::before {
+  color: var(--theme-danger-strong);
+}
+.schedule-cell[data-availability-kind="time_off"]
+  > .schedule-cell-add-action:not(:hover):not([data-add-shift-active="true"]) {
+  background: color-mix(in srgb, var(--theme-surface) 94%, transparent);
+}
+.schedule-cell[data-availability-kind="time_off"][data-drop-status="blocked"]::after {
+  content: "Can't place a shift here";
+  position: absolute;
+  inset: auto 0 14px;
+  color: var(--theme-danger-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
 .schedule-availability-tip-dot {
   display: inline-grid;
   flex: none;
@@ -10978,12 +11002,40 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-availability-mark-window p {
   margin: 0;
 }
+@keyframes schedule-availability-spotlight-in {
+  from {
+    background-color: var(--theme-surface);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-cell[data-availability-kind="unavailable"] {
+    animation: none !important;
+  }
+}
 /* A card with a corner mark keeps its words centred: equal room on both sides
    (the measured column width already counts the mark). */
 .schedule-shift-badge[data-has-markers="true"]:not([data-stack-count])
   .schedule-shift-badge-content {
   padding-right: 24px;
   padding-left: 24px;
+}
+/* A shift not yet published, while editing (Mert, 2026-10-09, item 3 variant 6). */
+.schedule-shift-new-mark {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2;
+  padding: 0 4px;
+  border: 1px solid color-mix(in srgb, var(--theme-success) 45%, transparent);
+  border-radius: 3px;
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 .schedule-shift-stack-count {
   position: absolute;

@@ -168,10 +168,11 @@ export function renderScheduleBadgeWidthMeasurer({
           ? `${formatScheduleBadgeTimeRange(shift.start_time, shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
           : "",
       // Same corner space the card reserves (ShiftCard data-has-markers): a
-      // ghost's location pin, or a real card's publish mark / availability warning.
+      // ghost's location pin, or a real card's edited / staged mark or availability
+      // warning (a live shift has no mark, Mert 2026-10-09 item 3).
       hasMarkers: isGhostScheduleShift(shift)
         ? Boolean(locationName ?? ghostShiftLocation(shift))
-        : Boolean(publicationStateForShift(shift)) ||
+        : (publicationStateForShift(shift) ?? "locked") !== "locked" ||
           shift.warning_codes.includes("availability"),
       hasStack:
         shift.employee_id === null &&

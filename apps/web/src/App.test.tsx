@@ -3780,9 +3780,11 @@ describe("App", () => {
       expect(badge.getAttribute("data-publication-state")).toBe("locked");
       return badge;
     });
+    // A live shift carries no mark while editing (Mert, 2026-10-09, item 3).
     expect(
-      within(liveBadge).getByLabelText("Live - published to employees"),
-    ).toBeTruthy();
+      within(liveBadge).queryByLabelText("Live - published to employees"),
+    ).toBeNull();
+    expect(liveBadge.querySelector(".schedule-shift-new-mark")).toBeNull();
     fireEvent.contextMenu(liveBadge, { clientX: 44, clientY: 48 });
     expect(screen.queryByRole("menuitem", { name: "Delete shift" })).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: "Unpublish shift" }));

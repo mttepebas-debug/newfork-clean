@@ -2,7 +2,10 @@
 // opens a small window with the date and hours only. Escape, a press outside
 // or the same "!" closes it; that first Escape or outside press only closes the
 // window and reaches nothing else (the shift stays selected, filters stay).
-// A press on another "!" closes this window and opens that one.
+// A press on another "!" closes this window and opens that one. Any scroll
+// outside the window closes it too (Mert, 2026-10-09, item 15 B).
+// The name's "!" also tints that person's unavailable days while its window is
+// open (Mert, 2026-10-09, item 1 A).
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
@@ -36,10 +39,34 @@ function swallowRestOfPress() {
   window.addEventListener("pointerdown", done, true);
 }
 
-export function AvailabilityMarkButton({ lines, label, className = "", insideButton = false }: {
+const SPOTLIGHT_STYLE_ID = "schedule-availability-spotlight";
+
+// A stylesheet keyed on the person's id: no grid component has to re-render,
+// and a grid that re-renders while the window is open keeps the tint.
+function setSpotlight(employeeId: string | null) {
+  let style = document.getElementById(SPOTLIGHT_STYLE_ID);
+  if (!employeeId) {
+    style?.remove();
+    return;
+  }
+  if (!style) {
+    style = document.createElement("style");
+    style.id = SPOTLIGHT_STYLE_ID;
+    document.head.append(style);
+  }
+  style.textContent = `.schedule-cell[data-employee-id="${employeeId.replace(/["\\]/g, "\\$&")}"][data-availability-kind="unavailable"] {
+  background-color: var(--theme-availability-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-availability) 45%, transparent);
+  animation: schedule-availability-spotlight-in 0.18s ease-out;
+}`;
+}
+
+export function AvailabilityMarkButton({ lines, label, className = "", insideButton = false, spotlightEmployeeId }: {
   readonly lines: readonly string[];
   readonly label: string;
   readonly className?: string;
+  /** The name's "!": while open, this person's unavailable days are tinted. */
+  readonly spotlightEmployeeId?: string;
   /** On a shift card, itself a button: a focusable span, since a button cannot hold a button. */
   readonly insideButton?: boolean;
 }) {
@@ -71,10 +98,22 @@ export function AvailabilityMarkButton({ lines, label, className = "", insideBut
       setOpen(false);
     };
     activeHub = handle;
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Node && card.current?.contains(event.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener("scroll", onScroll, true);
     return () => {
       if (activeHub === handle) activeHub = null;
+      document.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !spotlightEmployeeId) return;
+    setSpotlight(spotlightEmployeeId);
+    return () => setSpotlight(null);
+  }, [open, spotlightEmployeeId]);
 
   const stop = (event: { stopPropagation: () => void }) => event.stopPropagation();
   const toggle = (element: Element) => {

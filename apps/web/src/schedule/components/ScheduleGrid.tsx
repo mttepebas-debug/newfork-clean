@@ -46,6 +46,7 @@ import { createScheduleGridViewModel } from "../lib/scheduleGridViewModel";
 import { nextScheduleLocationHeaderFilter } from "../lib/scheduleLocationFilterToggle";
 import type { ScheduleEmployeeSortMode } from "../lib/scheduleEmployeeSort";
 import type { ShiftClipboardSnapshot } from "../lib/shiftClipboard";
+import { isScheduleEmployeeEligible } from "../lib/employeeEligibility";
 
 export function ScheduleGrid({
   model,
@@ -195,9 +196,9 @@ export function ScheduleGrid({
   });
   const columns = countScheduleGridColumns({ days, locationGroups });
   const {
-    employeeRowGroups,
+    employeeRowGroups: allEmployeeRowGroups,
     fillerRowCount,
-    rows,
+    rows: allRows,
     showEmployeeGroupHeaders,
     showEmployeeGroups,
     showLocationInBadge,
@@ -249,6 +250,49 @@ export function ScheduleGrid({
   useEffect(() => {
     if (!shiftDrag.dragState) setActivePointerShiftLocationId(null);
   }, [shiftDrag.dragState]);
+  // While a shift is dragged, people who cannot take it at the shift's own
+  // location leave the list until the drop; the shift's own person stays. A
+  // preset has no location yet, so any location on screen counts (Mert,
+  // 2026-10-09, item 4 B; the drop colors of 2026-10-06 stay for the rest).
+  const dragRule = useMemo(() => {
+    if (shiftDrag.dragState) {
+      const shift = filtered.shifts.find((item) => item.id === shiftDrag.dragState?.activeShiftId);
+      if (!shift?.job_id) return null;
+      return {
+        jobId: shift.job_id,
+        shiftTypeId: shift.shift_type_id ?? null,
+        ownerId: shift.employee_id,
+        locationIds: [shift.location_id],
+      };
+    }
+    if (presetDrag.dragState) {
+      return {
+        jobId: presetDrag.dragState.jobId,
+        shiftTypeId: presetDrag.dragState.shiftTypeId,
+        ownerId: null,
+        locationIds: filtered.locations.map((location) => location.id),
+      };
+    }
+    return null;
+  }, [filtered.locations, filtered.shifts, presetDrag.dragState, shiftDrag.dragState]);
+  const { employeeRowGroups, rows } = useMemo(() => {
+    if (!dragRule) return { employeeRowGroups: allEmployeeRowGroups, rows: allRows };
+    const canTake = (employee: (typeof allRows)[number]) =>
+      employee.id === dragRule.ownerId ||
+      dragRule.locationIds.some((locationId) =>
+        isScheduleEmployeeEligible(employee, {
+          locationId,
+          jobId: dragRule.jobId,
+          shiftTypeId: dragRule.shiftTypeId,
+        }),
+      );
+    return {
+      rows: allRows.filter(canTake),
+      employeeRowGroups: allEmployeeRowGroups
+        .map((group) => ({ ...group, employees: group.employees.filter(canTake) }))
+        .filter((group) => group.employees.length > 0),
+    };
+  }, [allEmployeeRowGroups, allRows, dragRule]);
   const activeDragShiftLocationId = useMemo(() => {
     const activeShiftId = shiftDrag.dragState?.activeShiftId;
     if (!activeShiftId) return null;
