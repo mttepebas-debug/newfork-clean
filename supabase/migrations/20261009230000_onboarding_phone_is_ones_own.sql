@@ -115,21 +115,26 @@ $edit$;
 
 -- The table refuses an emergency number equal to the record's own, from every
 -- writer (onboarding, Account > Profile, the owner's own record in Employees,
--- the account phone that reaches the records). Rows that already break it stop
--- the migration with their count, and nothing changes.
+-- the account phone that reaches the records). It is added NOT VALID: an
+-- archived record written before the rule keeps what it has (live had one,
+-- measured 2026-10-09 22:40Z; coordinator's call, no real data touched), and
+-- every write from now on obeys it, an archived record's included. A live
+-- record that breaks it stops the migration with the count, and nothing changes.
 do $check$
 declare
   clashing integer;
 begin
   select count(*) into clashing
-  from public.employee_private_profiles
-  where emergency_contact_phone = phone;
+  from public.employee_private_profiles private_record
+  join public.employee_profiles record on record.id = private_record.employee_id
+  where private_record.emergency_contact_phone = private_record.phone
+    and record.archived_at is null;
   if clashing > 0 then
-    raise exception 'TEL-2 stopped before changing anything: % record(s) give their own phone as the emergency contact''s', clashing;
+    raise exception 'TEL-2 stopped before changing anything: % live record(s) give their own phone as the emergency contact''s', clashing;
   end if;
 end
 $check$;
 
 alter table public.employee_private_profiles
   add constraint employee_private_profiles_emergency_is_not_own_phone
-  check (emergency_contact_phone <> phone);
+  check (emergency_contact_phone <> phone) not valid;
