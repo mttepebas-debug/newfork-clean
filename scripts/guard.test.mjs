@@ -375,3 +375,84 @@ test("ciState reads gh's list: any run not completed means CI is running", async
   assert.equal(runningRuns(json(["queued", "waiting", "COMPLETED"])).length, 2);
   assert.throws(() => runningRuns("not json"));
 });
+
+// ---- final security review (WORKFLOW-V2): main-push forms, gh, a backup-less override, record paths ----
+
+test("--branches counts like --all; @ is the current branch; heads/main and a wildcard refspec count as main", () => {
+  const onTask = cloneRepo("repo-at-task");
+  git(onTask, "checkout", "-q", "-b", "task/x"); // HEAD is not main, so only the push's own words say main
+  for (const cmd of [
+    "git push --branches origin",
+    "git push origin --branches",
+    "git push origin HEAD:heads/main",
+    "git push origin 'refs/heads/*:refs/heads/*'",
+    "git push origin task/*",
+  ])
+    assert.equal(evaluate(bash(cmd, { cwd: onTask })).block, true, cmd);
+  assert.equal(auditLines().at(-1).event, "push-main-blocked");
+  for (const cmd of ["git push origin @", "git push origin HEAD:@"]) assert.equal(evaluate(bash(cmd)).block, true, cmd); // repo is on main
+  for (const cmd of ["git push origin @", "git push origin HEAD:@", "git push origin @:task/x", "git push origin HEAD:heads/task/x"])
+    assert.equal(evaluate(bash(cmd, { cwd: onTask })).block, false, cmd);
+});
+
+test("git's --git-dir, --work-tree and --namespace values are skipped, in both spellings", () => {
+  for (const cmd of [
+    "git --git-dir .git push origin HEAD:main",
+    "git --git-dir=.git push origin HEAD:main",
+    "git --work-tree . push origin HEAD:main",
+    "git --work-tree=. push origin HEAD:main",
+    "git --namespace x push origin HEAD:main",
+    "git --namespace=x push origin HEAD:main",
+    "git -C . --git-dir .git -c k=v push origin HEAD:main",
+  ])
+    assert.equal(evaluate(bash(cmd)).block, true, cmd);
+  assert.equal(evaluate(bash("git --git-dir .git push origin HEAD:task/x")).block, false);
+});
+
+test("gh pr merge and a gh api call on refs/heads/main are refused like a push to main; NF_OVERRIDE passes with a backup", () => {
+  for (const cmd of [
+    "gh pr merge 12 --squash",
+    "gh pr merge --merge --delete-branch",
+    "gh api -X PATCH repos/o/r/git/refs/heads/main -f sha=abc -F force=true",
+    "gh api repos/o/r/git/refs -f ref=refs/heads/main -f sha=abc",
+    "gh.exe api -X PATCH repos/o/r/git/refs/heads/main -f sha=abc",
+  ]) {
+    const r = evaluate(bash(cmd));
+    assert.equal(r.block, true, cmd);
+    assert.match(r.message, /yalnız tren gider/);
+    assert.equal(auditLines().at(-1).event, "push-main-blocked");
+  }
+  for (const cmd of ["gh pr view 12", "gh pr create --fill", "gh api repos/o/r/pulls", "gh api repos/o/r/git/refs/heads/main-old", "gh run list"])
+    assert.equal(evaluate(bash(cmd)).block, false, cmd);
+  const r = evaluate(bash('NF_OVERRIDE="Mert istedi" gh pr merge 12 --squash'));
+  assert.equal(r.block, false);
+  const e = auditLines().at(-1);
+  assert.equal(e.event, "push-main-override");
+  assert.equal(e.reason, "Mert istedi");
+  assert.equal(git(repo, "rev-parse", e.backup), git(repo, "rev-parse", "origin/main"));
+});
+
+test("NF_OVERRIDE without a backup of origin/main is refused, not let through", () => {
+  const lonely = path.join(root, "no-origin");
+  execFileSync("git", ["init", "-q", "-b", "main", lonely]);
+  const r = evaluate(bash('NF_OVERRIDE="acil" git push origin HEAD:main', { cwd: lonely }));
+  assert.equal(r.block, true);
+  assert.match(r.message, /yedek alınamadı/);
+  assert.equal(auditLines().at(-1).event, "push-main-override-no-backup");
+});
+
+test("when the guard itself breaks, an overridden push to main is refused; other commands still pass", () => {
+  fs.mkdirSync(path.join(process.env.NEWFORK_INBOX_DIR, "audit.log"), { recursive: true }); // every audit() now throws
+  const r = evaluate(bash('NF_OVERRIDE="acil" git push origin HEAD:main'));
+  assert.equal(r.block, true);
+  assert.match(r.message, /guard hata verdi/);
+  git(repo, "branch", "doomed-2");
+  assert.equal(evaluate(bash("git branch -D doomed-2")).block, false); // its audit throws too, but it is no main push
+});
+
+test("a record path is normalized first: ./ and ../ do not hide it", () => {
+  for (const f of ["docs/plan/./KARARLAR.md", "docs\\plan\\.\\SORULAR.md", "docs/plan/x/../BACKLOG.md", "./DURUM.md", "docs//plan/EKRAN-PLANI.md"])
+    assert.equal(isRecordFile(f), true, f);
+  const worker = { tool_name: "Write", session_id: "s", agent_id: "a3", cwd: repo, tool_input: { file_path: `${repo}/docs/plan/./KARARLAR.md` } };
+  assert.equal(evaluate(worker).block, true);
+});

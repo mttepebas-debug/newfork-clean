@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 // WORKFLOW-V2 (spec §7.2, §10): PreToolUse guard for Bash, PowerShell, Edit and Write.
 // - A push to main is refused: only scripts/train.mjs sends main (its own process, not seen here), and
-//   only a train CI passed. Emergency: NF_OVERRIDE="<reason>" in front of the push saves origin/main
-//   as refs/nf-backup/main/<stamp> first and is logged.
+//   only a train CI passed. `gh pr merge` and a `gh api` call on refs/heads/main count as a push to main.
+//   Emergency: NF_OVERRIDE="<reason>" in front of the push saves origin/main as refs/nf-backup/main/<stamp>
+//   first and is logged; when that backup cannot be taken the push is refused.
+// ponytail: a client-side guard reads words, not what git will run: `git -c alias.p=push p ...`, `eval`,
+//   `iex`, `node -e "...execSync('git push ...')"` stay invisible. Server-side protection of main is the real fix.
 // - A worker agent (a hook input with agent_id, or a folder under .claude/worktrees/agent-*) never writes
 //   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log), by edit or by commit.
 // - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
@@ -13,8 +16,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { OPS_DIR } from "./ops.mjs";
-export { ciState, runningRuns } from "./ops.mjs";
+import { OPS_DIR, redact } from "./ops.mjs";
+export { ciState, runningRuns, redact } from "./ops.mjs";
 
 const AUDIT = () => path.join(OPS_DIR, "audit.log");
 // Commands already refused by .claude/settings.json deny rules; attempts are logged.
@@ -37,12 +40,6 @@ const tryGit = (cwd, args, timeout) => {
   }
 };
 const stamp = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
-
-// Passwords and tokens never reach the audit log.
-export const redact = (s) =>
-  s
-    .replace(/(\/\/[^:\s/@]+:)[^@\s]+@/g, "$1***@")
-    .replace(/(--password[=\s]+|PGPASSWORD=|Bearer\s+|(?:api[_-]?key|token|secret)[=:]\s*)\S+/gi, "$1***");
 
 // The override counts only as an assignment in front of the guarded command itself:
 // bash `NF_OVERRIDE="why" git push …`, or PowerShell `$env:NF_OVERRIDE='why'; … git push …`
@@ -326,6 +323,9 @@ export function folders(segs, cwd) {
 }
 
 // Arguments after the git subcommand, and the -C directory if one was given.
+// Global options that take the next word as their value: -c key=value, --git-dir, --work-tree, --namespace
+// (the `--opt=value` spelling is one word and needs no skipping).
+const GIT_VALUE = new Set(["-c", "--git-dir", "--work-tree", "--namespace", "--config-env", "--exec-path", "--super-prefix"]);
 function gitCall(seg, sub) {
   const w = words(seg);
   const g = w.findIndex((x) => /(^|[\\/])git(\.exe)?$/.test(x));
@@ -334,7 +334,7 @@ function gitCall(seg, sub) {
   let i = g + 1;
   while (i < w.length && w[i].startsWith("-")) {
     if (w[i] === "-C") cwd = w[++i];
-    else if (w[i] === "-c") i++; // -c key=value takes a value
+    else if (GIT_VALUE.has(w[i])) i++;
     i++;
   }
   if (w[i] !== sub) return null;
@@ -342,14 +342,15 @@ function gitCall(seg, sub) {
 }
 
 // Where a push goes: its directory and, per refspec, what it sends (src) and where (dst; "*" for
-// --all/--mirror). BL-760: `git push origin task/x:main` sends task/x whatever HEAD is.
-// src is null for a delete (`:main`).
+// --all/--branches/--mirror and for any refspec with a wildcard). BL-760: `git push origin task/x:main`
+// sends task/x whatever HEAD is. `@` is git's short name for HEAD, so a dst of `@` or `HEAD` is the current
+// branch. src is null for a delete (`:main`).
 function pushCall(seg, cwd) {
   const call = gitCall(seg, "push");
   if (!call) return null;
   const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
   // ponytail: --all/--mirror send every branch; HEAD stands in for them, as before
-  if (call.args.some((a) => a === "--all" || a === "--mirror")) return { dir, refs: [{ src: "HEAD", dst: "*" }] };
+  if (call.args.some((a) => a === "--all" || a === "--branches" || a === "--mirror")) return { dir, refs: [{ src: "HEAD", dst: "*" }] };
   const plain = call.args.filter((a) => !a.startsWith("-"));
   // --repo=<remote> names the remote as an option, so every plain arg is a refspec
   const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
@@ -362,19 +363,34 @@ function pushCall(seg, cwd) {
     dir,
     refs: refspecs.map((spec) => {
       const s = spec.replace(/^\+/, "");
-      const [src, dst] = s.includes(":") ? s.split(":") : [s, s === "HEAD" ? current() : s];
-      return { src: src || null, dst: dst.replace(/^refs\/heads\//, "") };
+      if (s.includes("*")) return { src: s, dst: "*" };
+      const [src, to] = s.includes(":") ? s.split(":") : [s, s];
+      const dst = to === "HEAD" || to === "@" ? current() : to;
+      return { src: src || null, dst: dst.replace(/^(refs\/)?heads\//, "") };
     }),
   };
 }
 const toMain = (r) => r.dst === "main" || r.dst === "*";
 
+// `gh pr merge ...` (a PR lands on its base, main here) and `gh api ...` naming refs/heads/main (moving the ref
+// through the REST API) reach main without a git push.
+const MAIN_REF = /(^|[^\w.-])refs\/heads\/main(?![\w./-])/;
+function ghToMain(seg) {
+  const w = words(seg);
+  const g = w.findIndex((x) => /(^|[\\/])gh(\.exe)?$/i.test(x));
+  if (g < 0) return false;
+  if (w[g + 1] === "pr" && w[g + 2] === "merge") return true;
+  return w[g + 1] === "api" && w.slice(g + 2).some((a) => MAIN_REF.test(a));
+}
+
 // ---- record files (spec §6.1): the coordinator's; a worker agent never writes them ----
 const RECORDS = /(^|\/)(DURUM\.md|docs\/plan\/(BACKLOG|KARARLAR|SORULAR|EKRAN-PLANI)\.md|docs\/plan\/gunluk\/.+)$/i;
-export const isRecordFile = (f) => RECORDS.test(String(f ?? "").replaceAll("\\", "/"));
+// `docs/plan/./KARARLAR.md`, `docs/plan/x/../SORULAR.md`, backslashes: a path is normalized before it is read.
+const posix = (f) => path.posix.normalize(String(f ?? "").replaceAll("\\", "/"));
+export const isRecordFile = (f) => RECORDS.test(posix(f));
 // Worker agents run in <project>/.claude/worktrees/agent-*/ (Agent tool, isolation: worktree).
 const AGENT_TREE = /\/\.claude\/worktrees\/agent-[^/]+\//i;
-export const inWorkerTree = (p) => AGENT_TREE.test(`${String(p ?? "").replaceAll("\\", "/")}/`);
+export const inWorkerTree = (p) => AGENT_TREE.test(`${posix(p)}/`);
 const byWorker = (input, where) => Boolean(input.agent_id) || inWorkerTree(where);
 const RECORD_REFUSAL =
   "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §6).";
@@ -486,10 +502,19 @@ export function evaluate(input) {
       const push = pushCall(seg, dirs[i]);
       // fail-safe: a push inside $( … ) or `…` is not a word gitCall can see, so the text decides
       const hidden = SUBST.test(seg) && SUBST_PUSH_MAIN.test(seg);
-      if (!hidden && (!push || !push.refs.some(toMain))) continue;
+      const gh = ghToMain(seg);
+      if (!hidden && !gh && (!push || !push.refs.some(toMain))) continue;
       const reason = overrideReason(segs, i);
       if (reason) {
-        const b = backupMain(push?.dir ?? dirs[i]);
+        // no backup, no override: an emergency push never lands on main unsaved
+        let b;
+        try {
+          b = backupMain(push?.dir ?? dirs[i]);
+        } catch (err) {
+          const why = String(err?.message ?? err).split("\n")[0];
+          audit({ ...base, event: "push-main-override-no-backup", reason, error: why });
+          return { block: true, message: `main'e gönderim reddedildi: NF_OVERRIDE verildi ama origin/main yedek alınamadı (${why}); yedeksiz geçilmez.` };
+        }
         audit({ ...base, event: "push-main-override", reason, backup: b.ref, sha: b.sha, fetched: b.fetched });
         continue;
       }
@@ -503,13 +528,13 @@ export function evaluate(input) {
     }
     return { block: false };
   } catch (err) {
-    const overridden = segs.some((_, i) => overrideReason(segs, i));
-    const risky = /\bpush\b/.test(cmd) && /\bmain\b/.test(cmd) && !overridden;
+    // NF_OVERRIDE counts for nothing here: its backup or its log line may be missing, so a main push is refused
+    const risky = (/\bpush\b/.test(cmd) && /\bmain\b/.test(cmd)) || /\bgh(\.exe)?\s[^\n]*\b(pr\s+merge|api)\b/i.test(cmd);
     try {
       audit({ ...base, event: "guard-error", error: String(err?.message ?? err), blocked: risky });
     } catch {}
     return risky
-      ? { block: true, message: `guard hata verdi, main'e gönderim güvenlik için reddedildi: ${err?.message ?? err}. NF_OVERRIDE ile aşılabilir.` }
+      ? { block: true, message: `guard hata verdi, main'e gönderim güvenlik için reddedildi (NF_OVERRIDE ile de; yedek ve kayıt güvencesi yok): ${err?.message ?? err}` }
       : { block: false };
   }
 }

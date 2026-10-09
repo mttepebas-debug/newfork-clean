@@ -6,6 +6,12 @@ import { execFileSync } from "node:child_process";
 
 export const OPS_DIR = process.env.NEWFORK_INBOX_DIR ?? "C:/Users/TheWe/Documents/Codex/.newfork-inbox";
 
+// Passwords and tokens never reach a log or a report file (the guard's audit.log, the daily log).
+export const redact = (s) =>
+  String(s)
+    .replace(/(\/\/[^:\s/@]+:)[^@\s]+@/g, "$1***@")
+    .replace(/(--password[=\s]+|PGPASSWORD=|Bearer\s+|(?:api[_-]?key|token|secret|password)[=:]\s*)\S+/gi, "$1***");
+
 export const slug = (s) =>
   String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "x";
 
