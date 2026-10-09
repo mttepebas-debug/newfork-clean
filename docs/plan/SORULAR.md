@@ -48,12 +48,11 @@ Koordinatör yazar, `/durum`'da dörder dörder sorulur; cevaplanan soru buradan
 ## Tur 1 — hat durduranlar
 
 ### Soru-2. Liste tablolarında sıralama oku hep görünsün mü?
-- **Bugün:** Employees, Requests ve öteki liste tablolarında sütun başlığındaki sıralama oku (↕) yalnız fare üstüne gelince ya da klavye odağında görünüyor; kural da bu: KARARLAR UI-02 "İkon yalnızca hover veya focus halinde görünür" (origin/main böyle). Arşivdeki S2'nin "dal 1"i (Requests C3, BL-663) oku hep görünür yapmıştı; bu dal Requests turunun sahibine gitti (KK-189), kural sorusu cevapsız kaldı.
-- **Örnek:** Ayşe Employees'i açar; hangi sütunun sıralanabildiğini bugün ancak fareyi başlıkların üstünde gezdirince görür.
-- **(a) Ok her zaman görünür. (Önerilen)** UI-02 değişir: "İkon her zaman görünür"; bütün liste sayfaları birlikte değişir.
-  Zayıf yanı: başlık satırı biraz kalabalıklaşır; bütün tablolar aynı anda değişir.
-  `Dayanak: yok — yeni karar (UI-02'yi değiştirir; QA'dan geçmiş dal 1 önerisi, BL-663)`
-- (b) Bugünkü gibi: ok yalnız fare üstünde ya da odakta (UI-02 aynen).
+- **Hat:** durdurmuyor; cevap gelene kadar bugünkü davranış sürer.
+- **Bugün:** Employees, Requests ve öteki liste tablolarında sütun başlığındaki sıralama oku (↕) yalnız fare üstüne gelince ya da klavye odağında görünüyor; listenin o an sıralı olduğu sütunun oku da (BL-663). Kural da bu: KARARLAR UI-02 "İkon yalnızca hover veya focus halinde görünür" (origin/main böyle). Arşivdeki S2'nin "dal 1"i (Requests C3, BL-663) oku hep görünür yapmıştı; bu dal Requests turunun sahibine gitti (KK-189), kural sorusu cevapsız kaldı.
+- **Örnek:** Ayşe Requests'i açar; liste Dates sütununa göre sıralıdır, başlıkta ok görünmez.
+- **(a) Ok her zaman görünür. (Önerilen)** UI-02 değişir: "İkon her zaman görünür"; bütün liste sayfaları birlikte değişir (QA'dan geçmiş dal 1 önerisi, BL-663). Sonucu: Ayşe Dates başlığındaki oku görür, listenin Dates'e göre sıralı olduğunu fareyi gezdirmeden bilir; başlık satırında her sıralanabilir sütunda bir ok durur. Dayanak: yok — yeni karar
+- **(b) Bugünkü gibi:** ok yalnız fare üstünde ya da odakta (UI-02 aynen). Sonucu: başlık satırı sade kalır; Ayşe listenin hangi sütuna göre sıralı olduğunu fareyi başlıkların üstünde gezdirince görür.
 - Not: aynı arşiv sorusunun "dal 3"ü (telefonda çekmecenin kapatma düğmesi 38 → 44 px) ölçülmeden sorulmaz: önce main'de bugünkü boyut ölçülür; 44 px değilse soru değil, erişilebilirlik hatası olarak düzeltilir (CLAUDE.md §3.A.8).
 
 ### Soru-4. Görsel — müdürün izni kısalttığı satır (G3)
