@@ -71,9 +71,10 @@ function ShiftCard({ shift, from, to, boxes, timeFormat }: {
   return (
     <div className="swap-review-shift" role="group" aria-label={`${day}, ${shift.location_name}, ${from} to ${to}`}>
       <b>{day}</b>
-      <span className="swap-review-place">
+      {/* A long location name is cut inside the card; the whole name stays on hover. */}
+      <span className="swap-review-place" title={shift.location_name}>
         <MapPin size={12} aria-hidden />
-        {shift.location_name}
+        <span className="swap-review-place-name">{shift.location_name}</span>
       </span>
       <span>{shift.start_time && shift.end_time ? clockRange(shift.start_time, shift.end_time, timeFormat, { bothHalves: true }) : "Hours not set"}</span>
       <span className="swap-review-hand">
