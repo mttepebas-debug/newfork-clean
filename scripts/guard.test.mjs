@@ -587,3 +587,16 @@ test("a worker cannot edit e2e/karantina.txt (S-106); the coordinator can", () =
   assert.equal(auditLines().at(-1).event, "record-by-worker-blocked");
   assert.equal(evaluate({ tool_name: "Edit", session_id: "s", cwd: repo, tool_input: { file_path: file } }).block, false);
 });
+
+test("a worker cannot cp, mv or sed -i onto the audit log; read-only grep, cat, tail and sed -n pass", () => {
+  const log = path.join(process.env.NEWFORK_INBOX_DIR, "audit.log").replaceAll(path.sep, "/");
+  const worker = (command) => evaluate(bash(command, { agent_id: "a10" }));
+  for (const cmd of [`cp /tmp/fake.log ${log}`, `mv /tmp/fake.log ${log}`, `sed -i 's/train-override/x/' ${log}`, `sed --in-place -e d ${log}`]) {
+    const r = worker(cmd);
+    assert.equal(r.block, true, cmd);
+    assert.equal(auditLines().at(-1).event, "audit-write-by-worker-blocked");
+  }
+  const ps = evaluate({ tool_name: "PowerShell", session_id: "s", cwd: repo, agent_id: "a10", tool_input: { command: `Copy-Item C:/tmp/fake.log ${log}` } });
+  assert.equal(ps.block, true);
+  for (const cmd of [`grep -c train-push ${log}`, `cat ${log}`, `tail -n 20 ${log}`, `sed -n 1,5p ${log}`, `grep -n push ${log} | head`]) assert.equal(worker(cmd).block, false, cmd);
+});

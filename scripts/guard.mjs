@@ -441,7 +441,9 @@ const isAuditLog = (f) => {
 };
 const AUDIT_SHELL_WRITE = [
   />\s*["']?[^\s"'|;&<>]*audit\.log\b/i,
-  /\b(tee|tee-object|out-file|add-content|set-content|clear-content|remove-item|move-item|rm|del|mv|truncate)\b[^|;&]*audit\.log\b/i,
+  /\b(tee|tee-object|out-file|add-content|set-content|clear-content|remove-item|move-item|copy-item|rm|del|mv|cp|copy|truncate)\b[^|;&]*audit\.log\b/i,
+  // sed edits in place only with -i / --in-place; `sed -n …p audit.log` is a read
+  /\bsed\b(?=[^|;&]*\s(-[a-zA-Z]*i|--in-place)\b)[^|;&]*audit\.log\b/i,
 ];
 const writesAuditLog = (seg) => AUDIT_SHELL_WRITE.some((re) => re.test(seg));
 
