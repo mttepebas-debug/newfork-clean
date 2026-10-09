@@ -29,6 +29,17 @@ export async function saveMyOnboardingProfile(
   return revisionFrom(body);
 }
 
+/** TEL-2: whether another person of the workspace has this number; never who. */
+export async function isMyOnboardingPhoneInUse(
+  workspaceId: string,
+  phone: string,
+): Promise<boolean> {
+  const body = await api(
+    `${mePath(workspaceId, "/phone-in-use")}&phone=${encodeURIComponent(phone)}`,
+  );
+  return (body as { inUse?: unknown }).inUse === true;
+}
+
 export async function submitMyOnboarding(
   workspaceId: string,
   revision: number,

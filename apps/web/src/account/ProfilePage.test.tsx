@@ -10,7 +10,7 @@ import {
   listOwnEmploymentRecords,
   saveOwnLegalName,
 } from "../lib/supabase";
-import { usLettersMessage } from "@newfork/shared";
+import { emergencyIsOwnPhoneMessage, usLettersMessage } from "@newfork/shared";
 import { RequestError } from "../lib/request-error";
 import { requestAvailabilityNavigation } from "../availability/availability-navigation";
 import { uploadAccountAvatar, removeAccountAvatar } from "../lib/supabase";
@@ -632,6 +632,34 @@ describe("ProfilePage US form rules", () => {
     }
     expect((screen.getByLabelText("Contact phone") as HTMLInputElement).value).toBe("(415) 555-0199");
     expect(screen.queryByText(/Outside the US or Canada/)).toBeNull();
+  });
+
+  // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
+  it("refuses the account's own number as the contact's until one digit differs, moving nothing", async () => {
+    ownerWithContact();
+    renderProfile();
+    await screen.findByDisplayValue("Morgan");
+    const contact = screen.getByLabelText("Contact phone");
+    const slot = contact.closest(".account-field")?.querySelector(".field-note");
+    expect(slot?.textContent).toContain(emergencyIsOwnPhoneMessage);
+    expect(contact.getAttribute("aria-invalid")).toBeNull();
+
+    fireEvent.change(contact, { target: { value: "4155550142" } });
+    expect(contact.getAttribute("aria-invalid")).toBe("true");
+    expect(document.getElementById(contact.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      emergencyIsOwnPhoneMessage,
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+
+    fireEvent.change(contact, { target: { value: "(415) 555-014" } });
+    expect(contact.getAttribute("aria-invalid")).toBeNull();
+    expect(contact.getAttribute("aria-describedby")).toBeNull();
+
+    // The account's number moving onto the contact's says so under the contact.
+    fireEvent.change(contact, { target: { value: "4155550199" } });
+    fireEvent.change(screen.getByLabelText("Phone number"), { target: { value: "4155550199" } });
+    expect(contact.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
   });
 
   it("keeps one line under Preferred name: the rule while it is broken, else the help", async () => {

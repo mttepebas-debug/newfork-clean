@@ -272,6 +272,34 @@ describe("account profile persistence", () => {
     );
   });
 
+  // TEL-2: a workspace record refuses an emergency number equal to its own,
+  // and the account's number reaches the record; the screen says it in words.
+  it("says so when the new number is the emergency contact's somewhere", async () => {
+    const upsert = vi.fn(async () => ({
+      error: {
+        code: "23514",
+        message:
+          'new row for relation "employee_private_profiles" violates check constraint "employee_private_profiles_emergency_is_not_own_phone"',
+      },
+    }));
+    const from = vi.fn(() => ({ upsert }));
+    const profile = accountProfileSchema.parse({
+      userId: workspaceId,
+      email: "alex@example.test",
+      displayName: "Alex Kim",
+      phone: "+13105550100",
+      avatarObjectPath: null,
+      avatarUrl: null,
+      theme: "system",
+      timeFormat: "12h",
+      dateFormat: "system",
+    });
+
+    await expect(saveAccountProfile({ from } as unknown as SupabaseClient, profile)).rejects.toThrow(
+      "This number is your emergency contact's in a workspace. Change that contact first.",
+    );
+  });
+
   it("uploads only supported private avatars and rejects cross-account removal", async () => {
     vi.spyOn(crypto, "randomUUID").mockReturnValue(
       "fe201916-aa0e-480b-9144-1e1c8da20a31",
