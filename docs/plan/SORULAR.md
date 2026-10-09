@@ -289,6 +289,13 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
 - Kaynak: `.newfork-inbox/done/20261006T173450-nf-db-veri-ekran-01-db4-tazelik.md` (Soru 1); BL-238, KK-6.
 - **Aynı sohbette (KK-182):** duyurunun "Publish at / Expires at" saati de bu modele bağlı — bugün yazanın tarayıcısının saati: New York'taki owner Palo Alto için 09:00 seçer, duyuru Palo Alto'da 06:00'da çıkar (BL-878, EKRAN-07 S2). Ayrı soru açılmaz; Soru-25'in cevabı ikisine birden uygulanır.
 
+## Workflow — açık kalanlar (2026-10-08)
+Kaynak `docs/plan/devir-2026-10-08/WORKFLOW-KONUSMASI.md` §2 #17 ve §3; verilen kararlar `KARARLAR.md` §4 S-102…S-115. §3'ün 3. maddesi (geri alma süresi ne zaman başlar) cevaplandı (S-105); 5. madde (kural dosyası yapısı) ve 6. madde (`main.lock`, guard'ın CI denetimi, e2e damgası) v2 geçişinin kendisiyle ele alınıyor.
+- **Hostinger** (#17): Mert'in hesabı yok, fikir olarak sordu; para kararıyla birlikte (S-115).
+- **Konuşma kuralları için yalnız uyaran hatırlatma kancası** (§3.2): öneri evet ("hatırlamaya güvenmek üç kez tutmadı"); `devir-2026-10-08/ONERI-OTOMASYON.md` madde 3.
+- **Kararlara ne zaman yeniden bakılır** (§3.4): öneri 2026-10-15'te ölçümle.
+- **Yeni düzene geçiş: önce küçük deneme mi, hepsi birden mi** (§3.1): öneri deneme (S-51); aynı anda 1 işçi kararı (S-113) sonrasında hâlâ açık mı, Mert'e sorulur.
+
 ## Hatırlatmalar (eski koordinatörden)
 Mert'in kendi yapacağı, zamanı kendisine bırakılmış işler; soru değil. Tam metin `docs/archive/2026-10-08-v1/HATIRLATMALAR.md` ve `docs/plan/devir-2026-10-08/`. Mert "yaptım" deyince koordinatör sonraki adımı yapar ve satırı siler.
 - **2026-10-08 — Codex klasörünü sil:** `C:\Users\TheWe\.codex` (14 GB, kaldırılan Codex uygulamasının verisi; kaydedilmemiş 13 dosya önce yedeklendi: `C:\Users\TheWe\Documents\Codex\.newfork-backups\codex-worktree-da4e-2026-10-08\`). Mert "sildim" deyince koordinatör `git -C C:\Users\TheWe\newfork worktree prune` koşar. (Mert, 2026-10-08: "Hatirlatmalar diye bir md oluştur")
