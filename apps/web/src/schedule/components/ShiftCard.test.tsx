@@ -67,6 +67,24 @@ function renderShiftCard(
 }
 
 describe("ShiftCard", () => {
+  it("marks a not yet published shift \"New\" while editing and a live one with nothing (Mert, 2026-10-09, item 3 variant 6)", () => {
+    renderShiftCard({ publicationState: "locked" });
+    const live = screen.getByRole("button", { name: /Dinner-Server/i });
+    expect(live.getAttribute("data-has-markers")).toBe("false");
+    expect(live.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    expect(live.querySelector(".schedule-shift-new-mark")).toBeNull();
+  });
+  it("shows \"New\" only while editing, and keeps the edited mark of a live shift", () => {
+    renderShiftCard();
+    expect(document.querySelector(".schedule-shift-new-mark")?.textContent).toBe("New");
+    document.body.innerHTML = "";
+    renderShiftCard({ editing: false });
+    expect(document.querySelector(".schedule-shift-new-mark")).toBeNull();
+    document.body.innerHTML = "";
+    renderShiftCard({ publicationState: "unlocked-modified" });
+    expect(document.querySelector(".schedule-shift-new-mark")).toBeNull();
+    expect(screen.getByLabelText("Edited - updates the live shift on next publish")).toBeTruthy();
+  });
   it("keeps warning context without a warning icon or reserved marker space", () => {
     renderShiftCard({ shift: { ...shift, warning_codes: ["overlap"] } });
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });

@@ -217,7 +217,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
     ).toBe("Dinner-Server Main Dining Patio 4:00 PM - 10:00 PM");
   });
 
-  it("reserves measured width for visible publication markers and unassigned stacks", () => {
+  it("reserves measured width for unassigned stacks, and none for a live shift's missing mark (Mert, 2026-10-09, item 3)", () => {
     const openShift = {
       ...shift,
       id: "open-1",
@@ -262,7 +262,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
     expect(items.map((item) => item.dataset.hasMarkers)).toEqual([
       "false",
       "false",
-      "true",
+      "false",
     ]);
   });
 

@@ -458,7 +458,7 @@ describe("ScheduleGrid", () => {
     expect(onMove).not.toHaveBeenCalled();
   });
 
-  it("keeps employee rows mounted while a shift is dragged", async () => {
+  it("hides people who cannot take the dragged shift at its location until the drop (Mert, 2026-10-09, item 4 B)", async () => {
     const busyEmployeeId = "99999999-9999-4999-8999-999999999997";
     const wrongLocationEmployeeId = "99999999-9999-4999-8999-999999999998";
     const model = scheduleModel({
@@ -543,7 +543,7 @@ describe("ScheduleGrid", () => {
 
     expect(await screen.findByText("Alex Rivera")).toBeTruthy();
     expect(screen.getByText("Busy Server")).toBeTruthy();
-    expect(screen.getByText("Patio Server")).toBeTruthy();
+    expect(screen.queryByText("Patio Server")).toBeNull();
 
     fireEvent.mouseUp(window, {
       button: 0,
