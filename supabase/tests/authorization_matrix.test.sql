@@ -415,15 +415,15 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
        array[$3], null, null, null, '{}', '{}') is not null$$),
   ('important_date.write', 'location', 'important_dates.manage', false, false,
-   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '', false,
-       array[$3], null) is not null$$),
+   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '',
+       array[$3], null, true, null, null, '{}') is not null$$),
   -- The whole workspace (K1); several locations ask the same rule.
   ('announcement.write_wide', 'workspace', 'announcements.manage', false, false,
    $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
        '{}', null, null, null, '{}', '{}') is not null$$),
   ('important_date.write_wide', 'workspace', 'important_dates.manage', false, false,
-   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '', false,
-       '{}', null) is not null$$);
+   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '',
+       '{}', null, true, null, null, '{}') is not null$$);
 
 -- A draft or a template with several locations, and the locations a publish
 -- or an export names (FB-6.1 .4). The export and the publish preview are asked

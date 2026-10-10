@@ -94,8 +94,8 @@ select ok(pg_temp.publication()->'findings'->0->>'availability_state' is null,'r
 
 -- Require confirmation still guards the other rules (BL-186 keeps the
 -- acceptance for them): a closed day, closed_location = confirm.
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select 'ad421000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-01-17')::date, ('2035-01-17')::date, 'Closed', 'closed_day', owner_id from wp_fixture;
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+ select 'ad421000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-01-17')::date, ('2035-01-17')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from wp_fixture;
 create function pg_temp.closed(changes jsonb default '{}') returns jsonb language sql stable as $$
  select jsonb_build_object('id','ad421000-0000-4000-8000-000000000020','scheduled_date','2035-01-17','job_id','ad421000-0000-4000-8000-000000000011')||changes
 $$;

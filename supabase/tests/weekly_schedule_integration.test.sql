@@ -63,8 +63,8 @@ select is((select count(*) from public.schedule_availability_overrides where wor
 select lives_ok($$select pg_temp.mutate(payload||'{"note":"Changed display note"}','update') from ws$$,'a note edit needs no decision');
 select lives_ok($$select pg_temp.mutate(payload||'{"start_time":"19:00"}','update') from ws$$,'changed hours need no decision either');
 -- Require confirmation still guards the other rules: a closed day (closed_location = confirm).
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select 'ad423000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], ('2035-01-19')::date, ('2035-01-19')::date, 'Closed', 'closed_day', owner_id from ws;
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+ select 'ad423000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], ('2035-01-19')::date, ('2035-01-19')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
 select throws_ok($$insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select gen_random_uuid(),w,session,loc,emp,job,'2035-01-19','18:00','20:00','explicit','America/Los_Angeles' from ws$$,'23514',null,'raw assignment cannot bypass the closed-day acceptance');
 select throws_ok($$select pg_temp.mutate(payload||'{"time_basis":"unresolved","start_time":null,"end_time":null}','update') from ws$$,'22023',null,'assignment without hours or a named type is invalid');
@@ -151,8 +151,8 @@ $$;
 select lives_ok($$select pg_temp.apply_defaults()$$,'actual default-hour batch applies without an availability decision');
 select is((select end_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'18:00:00','batch stores the reviewed current hours');
 -- The shift's day closes: new hours on a closed day need the explicit bulk confirmation.
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select 'ad423000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-02-01')::date, ('2035-02-01')::date, 'Closed', 'closed_day', owner_id from ws;
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+ select 'ad423000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-02-01')::date, ('2035-02-01')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
 update public.shift_types set default_start_time='11:00' where id='ad423000-0000-4000-8000-000000000015';
 update wd d set command=command||jsonb_build_object('expected_session_revision',e.revision) from public.schedule_edit_sessions e where e.id=d.session;
 update wd set review=public.preview_schedule_default_hours_service(s.manager,s.w,wd.session,command) from ws s;

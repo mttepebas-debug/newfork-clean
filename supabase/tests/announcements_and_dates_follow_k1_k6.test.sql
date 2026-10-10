@@ -64,10 +64,14 @@ create function pg_temp.publish(person text, id uuid) returns jsonb language sql
   select public.publish_announcement_service(pg_temp.u(person), tests.id('m'), id, pg_temp.rev(id))
 $$;
 
+-- closed: the date closes each of its locations (EKRAN-08).
 create function pg_temp.save_date(person text, keys text[], title text, id uuid default null,
-  starts date default current_date + 60, kind text default 'event', recurrence text default 'none') returns uuid language sql as $$
+  starts date default current_date + 60, kind text default 'event', recurrence text default 'none',
+  closed boolean default false) returns uuid language sql as $$
   select (public.save_important_date_service(pg_temp.u(person), tests.id('m'), id, title, kind, starts, starts,
-    recurrence, '', true, pg_temp.locs(keys), (select d.revision from public.important_dates d where d.id = save_date.id)) ->> 'important_date_id')::uuid
+    recurrence, '', pg_temp.locs(keys), (select d.revision from public.important_dates d where d.id = save_date.id),
+    true, null, null, case when closed then (select jsonb_object_agg(tests.id('m:' || k)::text, '{"status": "closed"}'::jsonb)
+      from unnest(keys) k) else '{}' end) ->> 'important_date_id')::uuid
 $$;
 
 -- The people one notification told: every outbox row for the subject made
@@ -280,7 +284,7 @@ select is(pg_temp.try(format($$select public.read_important_date_history_service
 
 -- 11. BL-530: a "Closed day" important date closes the location -----------------------------------
 
-select tests.remember('m:date:closed', pg_temp.save_date('owner', array['K'], 'Christmas', starts => current_date + 60, kind => 'closed_day', recurrence => 'annual'));
+select tests.remember('m:date:closed', pg_temp.save_date('owner', array['K'], 'Christmas', starts => current_date + 60, kind => 'holiday', closed => true, recurrence => 'annual'));
 select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = current_date + 60),
   'BL-530: a Kadikoy closed day closes Kadikoy that day');
 select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = (current_date + 60 + interval '1 year')::date),

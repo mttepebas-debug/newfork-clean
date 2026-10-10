@@ -39,8 +39,8 @@ create function pg_temp.save_date(person text, title text, id uuid default null,
   starts date default current_date + 60, ends date default null, kind text default 'event',
   recurrence text default 'none') returns uuid language sql as $$
   select (public.save_important_date_service(pg_temp.u(person), tests.id('p'), id, title, kind, starts,
-    coalesce(ends, starts), recurrence, '', true, array[tests.id('p:K')],
-    (select d.revision from public.important_dates d where d.id = save_date.id)) ->> 'important_date_id')::uuid
+    coalesce(ends, starts), recurrence, '', array[tests.id('p:K')],
+    (select d.revision from public.important_dates d where d.id = save_date.id), true, null, null, '{}') ->> 'important_date_id')::uuid
 $$;
 
 create function pg_temp.set_date(person text, id uuid, action text) returns jsonb language sql as $$
@@ -50,11 +50,13 @@ $$;
 -- A date written while its days were still ahead: put in place directly, the
 -- way an older save left it.
 create function pg_temp.old_date(title text, starts date, ends date, kind text default 'event',
-  recurrence text default 'none') returns uuid language sql as $$
+  recurrence text default 'none', closed boolean default false) returns uuid language sql as $$
   insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note,
-    affects_scheduling, location_ids, location_id, created_by, updated_by)
+    location_days, location_ids, location_id, created_by, updated_by)
   values (tests.id('p'), title, kind::public.important_date_type, starts, ends,
-    recurrence::public.important_date_recurrence, '', true, array[tests.id('p:K')], tests.id('p:K'),
+    recurrence::public.important_date_recurrence, '',
+    case when closed then jsonb_build_object(tests.id('p:K')::text, '{"status": "closed"}'::jsonb) else '{}' end,
+    array[tests.id('p:K')], tests.id('p:K'),
     pg_temp.u('owner'), pg_temp.u('owner'))
   returning id
 $$;
@@ -128,7 +130,7 @@ select is((select count(*)::integer from public.important_dates d where d.worksp
 
 -- 3. KK-97: a closed day stays on the Schedule after its week has passed ---------------------
 
-select tests.remember('p:date:closed-past', pg_temp.old_date('Water cut', pg_temp.b() - 6, pg_temp.b() - 6, kind => 'closed_day'));
+select tests.remember('p:date:closed-past', pg_temp.old_date('Water cut', pg_temp.b() - 6, pg_temp.b() - 6, kind => 'holiday', closed => true));
 select is((select count(*)::integer from public.schedule_closures c where c.workspace_id = tests.id('p')
            and c.location_id = tests.id('p:K') and c.closed_date = pg_temp.b() - 6), 1,
   'KK-97: last week''s closed day still closes that day on the Schedule');

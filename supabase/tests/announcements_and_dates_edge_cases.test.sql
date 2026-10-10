@@ -76,11 +76,15 @@ create function pg_temp.date_rev(id uuid) returns integer language sql as $$
   select (to_jsonb(d) ->> 'revision')::integer from public.important_dates d where d.id = date_rev.id
 $$;
 
+-- closed: the date closes each of its locations (EKRAN-08).
 create function pg_temp.save_date(person text, keys text[], title text, id uuid default null,
-  starts date default current_date + 60, kind text default 'event', recurrence text default 'none') returns uuid language plpgsql as $$
+  starts date default current_date + 60, kind text default 'event', recurrence text default 'none',
+  closed boolean default false) returns uuid language plpgsql as $$
 begin
   return (public.save_important_date_service(pg_temp.u(person), tests.id('r'), id, title, kind, starts, starts,
-    recurrence, '', true, pg_temp.locs(keys), pg_temp.date_rev(id)) ->> 'important_date_id')::uuid;
+    recurrence, '', pg_temp.locs(keys), pg_temp.date_rev(id), true, null, null,
+    case when closed then (select jsonb_object_agg(tests.id('r:' || k)::text, '{"status": "closed"}'::jsonb)
+      from unnest(keys) k) else '{}' end) ->> 'important_date_id')::uuid;
 end;
 $$;
 
@@ -135,7 +139,7 @@ $$;
 
 -- 3. The API reads the Schedule's closed days (BL-530) ---------------------------------
 
-select tests.remember('r:date:closed', pg_temp.save_date('owner', array['K'], 'Inventory closed', kind => 'closed_day'));
+select tests.remember('r:date:closed', pg_temp.save_date('owner', array['K'], 'Inventory closed', kind => 'holiday', closed => true));
 set local role service_role;
 select lives_ok($$select count(*) from public.schedule_closures$$,
   'BL-530: the API, as service_role, reads the Schedule''s closed days');
@@ -320,11 +324,11 @@ select is(pg_temp.try(format($$select public.save_announcement_audience_service(
 select tests.remember('r:date:rev', pg_temp.save_date('owner', array['K'], 'Revisioned date'));
 select pg_temp.save_date('owner', array['K'], 'Revisioned date, saved once', id => tests.id('r:date:rev'));
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
-    'none', '', true, %L::uuid[], %s)$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']),
+    'none', '', %L::uuid[], %s, true, null, null, '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']),
     coalesce(pg_temp.date_rev(tests.id('r:date:rev')) - 1, 1))),
   'PT409 ', 'KK-92 c: an important date saved on an old revision is refused, not lost');
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
-    'none', '', true, %L::uuid[], null)$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']))),
+    'none', '', %L::uuid[], null, true, null, null, '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:date:rev'), pg_temp.locs(array['K']))),
   'PT409 ', 'KK-92 c: so is one that names no revision');
 select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, %L, %L, %s, 'archive')$$,
     pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.rev(tests.id('r:ann:rev')) - 1)),
@@ -406,15 +410,15 @@ select ok(pg_temp.has_notice('emre', tests.id('r:date:narrow')), 'BL-534: it rea
 -- 13. A closed day closes the weeks still being planned, never a locked one (P09, K11) -------------
 
 select is(pg_temp.try($$select pg_temp.save_date('owner', array['K'], 'Last Tuesday closed',
-  starts => public.schedule_current_week_start_service(tests.id('r')) - 6, kind => 'closed_day')$$),
+  starts => public.schedule_current_week_start_service(tests.id('r')) - 6, kind => 'holiday', closed => true)$$),
   'P0001 important_date.past', 'K11: a closed day cannot be put on last week''s Tuesday');
 select tests.remember('r:date:this-week', pg_temp.save_date('owner', array['K'], 'This Tuesday closed',
-  starts => public.schedule_current_week_start_service(tests.id('r')) + 1, kind => 'closed_day'));
+  starts => public.schedule_current_week_start_service(tests.id('r')) + 1, kind => 'holiday', closed => true));
 -- Its anniversary falls on this week's Thursday, never on the Tuesday above (on a
 -- Tuesday, three years before today would land on it and close it twice).
 select tests.remember('r:date:yearly-closed', pg_temp.save_date('owner', array['K'], 'Yearly closed',
   starts => (public.schedule_current_week_start_service(tests.id('r')) + 3 - interval '3 years')::date,
-  kind => 'closed_day', recurrence => 'annual'));
+  kind => 'holiday', closed => true, recurrence => 'annual'));
 select is((select count(*)::integer from public.schedule_closures c where c.workspace_id = tests.id('r')
            and c.closed_date = public.schedule_current_week_start_service(tests.id('r')) - 6), 0,
   'P09: a closed day put on last week''s Tuesday leaves that locked week as it was');
@@ -431,9 +435,9 @@ select is((select count(*)::integer from public.schedule_closures c where c.work
 -- (K11), so the rule a save, a change and a republish all ask is asked
 -- directly, of dates put in place the way an older save left them.
 create function pg_temp.notified(title text, starts date, keys text[]) returns uuid[] language sql as $$
-  insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, affects_scheduling,
+  insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note,
     location_ids, location_id, created_by, updated_by)
-  values (tests.id('r'), title, 'event', starts, starts, 'none', '', true, pg_temp.locs(keys),
+  values (tests.id('r'), title, 'event', starts, starts, 'none', '', pg_temp.locs(keys),
     case when cardinality(keys) = 1 then tests.id('r:' || keys[1]) end, pg_temp.u('owner'), pg_temp.u('owner'));
   select app_private.important_date_notified(d) from public.important_dates d where d.workspace_id = tests.id('r') and d.title = notified.title
 $$;

@@ -99,8 +99,8 @@ update public.workspace_memberships set status='active' where workspace_id=(sele
 update public.employee_profiles set is_excluded_from_schedule=true where workspace_id=(select w from ws);
 select is(pg_temp.candidate()->>'status','ineligible','excluded employee remains ineligible');
 update public.employee_profiles set is_excluded_from_schedule=false where workspace_id=(select w from ws);
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select 'ad426000-0000-4000-8000-000000000015', w, loc, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, 'Closed', 'closed_day', owner_id from ws;
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+ select 'ad426000-0000-4000-8000-000000000015', w, loc, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
 select is(pg_temp.candidate()->>'status','ineligible','location closure is not an availability override');
 delete from public.important_dates where id='ad426000-0000-4000-8000-000000000015';
 select is(pg_temp.candidate('{"date":"2035-03-11","start_time":"02:30","end_time":"04:00"}')->>'status','ineligible','nonexistent DST clock time remains blocked');

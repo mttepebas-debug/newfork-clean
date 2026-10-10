@@ -366,6 +366,16 @@ insert into retired (kind, name, step) values
   ('function', 'schedule_actor_can_manage_service', 'FB-6.4'),
   ('function', 'schedule_actor_can_publish_service', 'FB-6.4'),
   ('function', 'schedule_actor_has_capability_service', 'FB-6.4');
+-- EKRAN-08: a date's locations each have their own day; "Closed day" and
+-- "Blackout" are no longer types, and every published date is on the Schedule.
+insert into retired (kind, name, step) values
+  ('column', 'important_dates.affects_scheduling', 'EKRAN-08'),
+  ('function', 'closure_days', 'EKRAN-08'),
+  ('function_signature', 'public.save_important_date_service(uuid, uuid, uuid, text, text, date, date, text, text, boolean, uuid[], integer, uuid[], text)', 'EKRAN-08'),
+  ('function_signature', 'public.preview_important_date_closure_service(uuid, uuid, uuid, text, date, date, text, uuid[])', 'EKRAN-08'),
+  ('function_signature', 'public.set_important_date_state_service(uuid, uuid, uuid, text, uuid[], text)', 'EKRAN-08'),
+  ('function_signature', 'app_private.important_date_closure_impact(uuid, public.important_dates, text, date, date, text, uuid[])', 'EKRAN-08'),
+  ('function_signature', 'app_private.important_date_close_shifts(uuid, public.important_dates, jsonb, uuid[])', 'EKRAN-08');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -483,6 +493,10 @@ select ok(
 select is(
   (select c.relkind::text from pg_class c where c.oid = 'public.schedule_closures'::regclass), 'v',
   'schedule_closures is the closed days, never a table of its own again (BL-530)'
+);
+select is(
+  enum_range(null::public.important_date_type)::text[], array['holiday', 'event'],
+  'an important date is a Holiday or an Event; closing is a location''s (EKRAN-08)'
 );
 
 select * from finish();

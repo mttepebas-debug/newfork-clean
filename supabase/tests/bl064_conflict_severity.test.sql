@@ -44,8 +44,8 @@ update public.workspace_scheduling_settings set minimum_rest_minutes=120 where w
 select is(pg_temp.assess('{"id":"b1640000-0000-4000-8000-000000000008","start_time":"18:00","end_time":"20:00"}')->>'conflict_severity','confirm','short rest uses workspace policy');
 update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{minimum_rest}','"block"') where workspace_id=(select w from f);
 select is(pg_temp.assess('{"id":"b1640000-0000-4000-8000-000000000008","start_time":"18:00","end_time":"20:00"}')->>'conflict_severity','block','rest block policy is authoritative');
-insert into public.important_dates (workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select w, loc, array[loc]::uuid[], ('2035-01-16')::date, ('2035-01-16')::date, 'Closed', 'closed_day', actor from f;
+insert into public.important_dates (workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+ select w, loc, array[loc]::uuid[], ('2035-01-16')::date, ('2035-01-16')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), actor from f;
 select is(pg_temp.assess('{"scheduled_date":"2035-01-16"}')->>'conflict_severity','confirm','closed location defaults to confirmation');
 select throws_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.shift('{"scheduled_date":"2035-01-16"}'),null) from f$$,'PT409',null,'closed-location command requests current fingerprint');
 select lives_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.shift('{"scheduled_date":"2035-01-16"}')||jsonb_build_object('availability_assessment_fingerprint',public.assess_weekly_shift_availability(w,emp,pg_temp.shift('{"scheduled_date":"2035-01-16","_exclude_shift_id":"b1640000-0000-4000-8000-000000000007"}')-'id')->>'fingerprint'),null) from f$$,'confirmation reuses canonical fingerprint and automatic audit');

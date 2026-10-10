@@ -76,8 +76,8 @@ values
   ('40000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000001', '36000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001'),
   ('40000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000002', '36000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001');
 
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
-values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', array['34000000-0000-4000-8000-000000000001']::uuid[], pg_temp.wk(1), pg_temp.wk(1), 'Closed fixture', 'closed_day', '31000000-0000-4000-8000-000000000001');
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', array['34000000-0000-4000-8000-000000000001']::uuid[], pg_temp.wk(1), pg_temp.wk(1), 'Closed fixture', 'holiday', jsonb_build_object(('34000000-0000-4000-8000-000000000001')::text, jsonb_build_object('status', 'closed')), '31000000-0000-4000-8000-000000000001');
 
 insert into public.schedule_location_publications (
   id, workspace_id, location_id, week_start, version_number, status, published_by
