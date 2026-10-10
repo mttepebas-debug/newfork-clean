@@ -209,6 +209,12 @@ insert into retired (kind, name, step) values
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
   ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186'),
   ('trigger', 'manager_weekly_reminders.weekly_reminder_disable_stamp', 'BL-186');
+-- BL-995: approved time off is never given up to take a shift (KARARLAR §1.1,
+-- Mert 2026-10-09); the consent each side of an exchange gave is gone.
+insert into retired (kind, name, step) values
+  ('function', 'weekly_exchange_time_off_consent', 'BL-995'),
+  ('column', 'shift_exchange_cases.owner_time_off_consent', 'BL-995'),
+  ('column', 'shift_exchange_applications.time_off_consent', 'BL-995');
 -- FB-6.1.9: Settings > Roles reads through read_role_workspace_service.
 insert into retired (kind, name, step) values
   ('function', 'read_role_workspace', 'FB-6.1.9');

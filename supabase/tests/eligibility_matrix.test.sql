@@ -108,21 +108,17 @@ select is((pg_temp.candidate('{"date":"2035-11-04","start_time":"00:30","end_tim
 select throws_ok($$select pg_temp.candidate('{"time_basis":"type_default","time_snapshot":{"start_time":"17:00","end_time":"22:00"}}')$$,'22023',null,'inconsistent time snapshot is a technical error');
 select throws_ok($$select pg_temp.candidate('{"location_id":"ad426000-0000-4000-8000-000000000099"}')$$,'P0001',null,'unknown location fails instead of becoming available');
 
--- 4. Approved time off: only the person's own consent sets it aside, and only
--- for the hours they agreed to (BL-182, D1, D2).
+-- 4. Approved time off blocks every overlapping shift, even by a minute; the
+-- person's consent no longer sets it aside (KARARLAR §1.1, Mert 2026-10-09; BL-995).
 update public.employee_weekly_preferences set preference=public.empty_weekly_preference('time_range') where workspace_id=(select w from ws);
 select tests.approved_leave(w,emp,employee_user,other_loc,'2035-01-15','09:00','10:00','ad426000-0000-4000-8000-000000000017') from ws;
 select is(pg_temp.candidate()->>'status','eligible','09:00 New York leave does not overlap the 18:00 Los Angeles shift');
 select tests.approved_leave(w,emp,employee_user,other_loc,'2035-01-15','21:00','22:00','ad426000-0000-4000-8000-000000000016') from ws;
-select is(pg_temp.candidate()->>'status','ineligible','21:00 New York leave overlaps the 18:00 Los Angeles shift: a blocker without consent');
+select is(pg_temp.candidate()->>'status','ineligible','21:00 New York leave overlaps the 18:00 Los Angeles shift: a blocker');
 select ok((pg_temp.candidate()->'reasons'->>0) like 'Approved time off%','leave blocker is explained separately');
-select is(pg_temp.candidate(consent=>'true')->>'status','eligible','the person themselves may take it');
-select is(pg_temp.candidate(consent=>'true')->>'shortens_time_off','true','and their time off shortens at approval');
-select ok(pg_temp.has(pg_temp.candidate(consent=>'true'),'acknowledgements','approved_time_off'),'which they acknowledge');
-select is(pg_temp.candidate(consent=>pg_temp.candidate()->'assessment'->'reasons'->0->'intervals')->>'status','eligible',
- 'the hours they agreed to are enough');
-select is(pg_temp.candidate(consent=>'[{"start_at":"2035-01-16T02:00:00Z","end_at":"2035-01-16T02:30:00Z"}]')->>'status','ineligible',
- 'fewer hours than the leave are not');
+select ok(pg_temp.has(pg_temp.candidate(),'blockers','approved_time_off'),'the blocker is approved_time_off');
+select is(pg_temp.candidate(consent=>'true')->>'status','ineligible','the person''s own agreement no longer sets the leave aside');
+select ok(not (pg_temp.candidate(consent=>'true') ? 'shortens_time_off'),'and nothing says the leave would shorten');
 update public.schedule_time_off_requests set status='pending' where id in ('ad426000-0000-4000-8000-000000000016','ad426000-0000-4000-8000-000000000017');
 select is(pg_temp.candidate()->>'status','eligible','pending leave does not become approved leave');
 
