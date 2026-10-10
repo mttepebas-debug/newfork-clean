@@ -97,7 +97,7 @@ Bu repoda çalışan her oturumun ve ajanın ortak kuralı. Mert'in (ürün sahi
 | `docs/plan/EKRAN-PLANI.md`, `docs/plan/ekranlar/` | Yol haritası ve Mert'in onayladığı ekran kapsamları |
 | Klasör `CLAUDE.md`'leri | O klasörün teknik tuzakları; koordinatör işçinin "Ders" satırından yazar |
 | `e2e/karantina.txt` | Bilinen e2e kırmızılarının karantina listesi (S-106); guard ve tren işçi dalını reddeder |
-- **Kayıt yükü** (Mert, 2026-10-08): ayrı karar kaydı (`DURUM.md` "Senin yerine verdiğim kararlar", gerekirse `KARARLAR.md`) yalnız Mert'in yerine verilen ürün ya da ekran kararı, para ve canlı için; gündelik kararlar (iş sırası, model, test, dal) thread'de tek satır. Mert'in bir thread'de verdiği ürün kararı o thread'in dalında `KARARLAR.md`'ye girer.
+- **Kayıt yükü** (Mert, 2026-10-08): ayrı karar kaydı (`DURUM.md` "Senin yerine verdiğim kararlar", gerekirse `KARARLAR.md`) yalnız Mert'in yerine verilen ürün ya da ekran kararı, para ve canlı için; gündelik kararlar (iş sırası, model, test, dal) günlükte tek satır.
 - Claude'un hafızası yalnız Mert ve ortam bilgisi tutar; kural buraya, karar `KARARLAR.md`'ye.
 - `docs/archive/` kural değildir, okunmaz.
 - Commit: İngilizce Conventional Commits, iş numarasıyla (`fix(schedule): … (EKRAN-01)`); dosyalar adıyla, `git commit -a` yok.
