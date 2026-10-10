@@ -272,7 +272,7 @@ declare
 begin
   choices := coalesce(choices, '{}'::jsonb);
   if jsonb_typeof(choices) <> 'object'
-     or exists (select 1 from jsonb_each_text(choices) c where c.value not in ('remove', 'open', 'keep'))
+     or exists (select 1 from jsonb_each_text(choices) c where c.value is null or c.value not in ('remove', 'open', 'keep'))
      or exists (select 1 from jsonb_object_keys(choices) k
                 where not exists (select 1 from jsonb_array_elements(listed) x where x ->> 'id' = k)) then
     raise exception 'Review the shifts on this date again.' using errcode = 'PT409', hint = 'important_date.closure_changed';

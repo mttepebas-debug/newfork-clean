@@ -166,6 +166,9 @@ select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Inventory 
 select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0),
   choices => pg_temp.choose('{"ali_mon": "delete"}'), fingerprint => pg_temp.preview('ayse', array['K'], tests.week(0)) ->> 'fingerprint')$$),
   'PT409 important_date.closure_changed', 'K13: and a choice other than Remove, Open shift or Keep');
+select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0),
+  choices => pg_temp.choose('{"ali_mon": null}'), fingerprint => pg_temp.preview('ayse', array['K'], tests.week(0)) ->> 'fingerprint')$$),
+  'PT409 important_date.closure_changed', 'K13: and an empty choice');
 
 create temporary table monday_saved as select pg_temp.close_day('ayse', array['K'], 'Inventory closed', tests.week(0),
   choices => pg_temp.choose('{"ali_mon": "open", "can_mon": "keep"}'),
