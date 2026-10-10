@@ -1,5 +1,5 @@
 # e2e quarantine list (KARARLAR S-106; e2e/karantina.mjs reads it, e2e/playwright.config.ts skips the matches).
-# A known e2e red that is red on main too is added here by the coordinator on coord/kayit and rides the train,
+# A known e2e red that is red on main too is added here by the coordinator on coord/kayit2 and rides the train,
 # so CI stays green; NF_OVERRIDE is not used for a known red. A worker branch touching this file stops the train.
 # One entry per line:
 #   <test başlığından bir parça> | BL-<no> | <başlangıç YYYY-MM-DD> | <bitiş YYYY-MM-DD>
