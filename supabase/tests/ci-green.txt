@@ -181,3 +181,4 @@ supabase/tests/published_shift_rechecks_time_off.test.sql
 supabase/tests/publish_stays_in_its_draft.test.sql
 supabase/tests/schedule_bulk_paths_keep_rest.test.sql
 supabase/tests/schedule_read_model_important_dates.test.sql
+supabase/tests/onboarding_phone_is_ones_own.test.sql
