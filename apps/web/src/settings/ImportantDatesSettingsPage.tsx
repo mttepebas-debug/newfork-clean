@@ -1,25 +1,16 @@
-import { CatalogDrawer } from "./CatalogDrawer";
-import {
-  importantDateInputSchema,
-  type ImportantDate,
-  type ImportantDateInput,
-  type ImportantDateStateAction,
-  type ImportantDateType,
-} from "@newfork/shared";
-import { Button } from "@newfork/ui";
+import type { ImportantDate, ImportantDateSaved, ImportantDateType } from "@newfork/shared";
+import { toast } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronDown, Search, X } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { CalendarDays, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
+import { ImportantDateDrawer } from "./ImportantDateDrawer";
+import { drawerErrorText, impactLabel, savedPhrase } from "./important-date-drawer-model";
+import { listImportantDates, setImportantDateState } from "./organization-data";
 import { errorText } from "./GeneralSettingsPage";
-import {
-  listImportantDates,
-  saveImportantDate,
-  setImportantDateState,
-} from "./organization-data";
 import "./jobs-settings.css";
 
 import { isNoAccess } from "../lib/no-access";
@@ -34,41 +25,6 @@ const typeOptions = Object.entries(typeLabels) as readonly [
   string,
 ][];
 type ImportantDateSortKey = "title" | "date" | "type" | "locations" | "impact";
-
-function newDraft(): ImportantDateInput {
-  const today = todayIn();
-  return {
-    location_id: null,
-    location_ids: [],
-    title: "",
-    type: "event",
-    starts_on: today,
-    ends_on: today,
-    recurrence: "none",
-    note: "",
-    affects_scheduling: true,
-  };
-}
-
-function draftFrom(item: ImportantDate): ImportantDateInput {
-  return importantDateInputSchema.parse({
-    location_id: item.location_id,
-    location_ids: [
-      ...(item.location_ids ?? (item.location_id ? [item.location_id] : [])),
-    ].sort(),
-    title: item.title,
-    type: item.type,
-    starts_on: item.starts_on,
-    ends_on: item.ends_on,
-    recurrence: item.recurrence,
-    note: item.note,
-    affects_scheduling: item.affects_scheduling,
-  });
-}
-
-function sameJson(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
 
 export default function ImportantDatesSettingsPage() {
   const { context } = useAuth();
@@ -99,10 +55,9 @@ export default function ImportantDatesSettingsPage() {
     key: ImportantDateSortKey;
     descending: boolean;
   }>({ key: "date", descending: false });
-  const [editing, setEditing] = useState<ImportantDate | "new" | null>(null);
-  const [draft, setDraft] = useState<ImportantDateInput>(newDraft);
+  const [editing, setEditing] = useState<{ item: ImportantDate | "new"; republish: boolean } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const liveLocationCount = pickerLocations.filter((location) => !location.archived_at).length;
 
   const refresh = async () => {
     await Promise.all([
@@ -110,23 +65,23 @@ export default function ImportantDatesSettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["schedule-read"] }),
     ]);
   };
-  const saveMutation = useMutation({
-    mutationFn: ({ values, id, revision }: { values: ImportantDateInput; id?: string; revision?: number }) =>
-      saveImportantDate(workspaceId, values, id, revision),
-    onSuccess: async () => {
-      await refresh();
-      setEditing(null);
-      setConfirmDelete(false);
-      setFormError(null);
-    },
-    onError: (error) => setFormError(errorText(error)),
-  });
-  const archiveMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: ImportantDateStateAction }) =>
+  const stateMutation = useMutation({
+    mutationFn: ({ id, action }: { id: string; action: "unpublish" | "republish" | "archive" | "restore" }) =>
       setImportantDateState(workspaceId, id, action),
-    onSuccess: refresh,
-    onError: (error) => setFormError(errorText(error)),
+    onSuccess: async (result) => {
+      await refresh();
+      if (result.shifts_stay_open) toast.success(savedPhrase({ shifts_stay_open: result.shifts_stay_open }));
+    },
+    onError: (error) => setFormError(drawerErrorText(error)),
   });
+  // The drawer closes first, then says what the save did (BL-884): a toast
+  // under an open drawer is inert.
+  const finish = async (result: ImportantDateSaved) => {
+    await refresh();
+    setEditing(null);
+    setFormError(null);
+    toast.success(savedPhrase(result));
+  };
 
   const items = useMemo(() => query.data?.dates ?? [], [query.data]);
   const normalizedSearch = search.trim().toLowerCase();
@@ -152,65 +107,15 @@ export default function ImportantDatesSettingsPage() {
     [filter, items, normalizedSearch, tab, sort],
   );
 
-  const openEditor = (item?: ImportantDate): void => {
-    if (
-      saveMutation.isPending ||
-      archiveMutation.isPending ||
-      !canManage ||
-      (item && !mayManageDate(item))
-    )
-      return;
-    setEditing(item ?? "new");
-    setDraft(
-      item
-        ? draftFrom(item)
-        : {
-            ...newDraft(),
-            // A manager writes for one location (K1): theirs, if they have one.
-            location_ids:
-              !allLocations && pickerLocations.length === 1
-                ? [pickerLocations[0]!.id]
-                : [],
-          },
-    );
-    setConfirmDelete(false);
+  const openEditor = (item?: ImportantDate, republish = false): void => {
+    if (stateMutation.isPending || !canManage || (item && !(republish ? item.can_republish : mayManageDate(item)))) return;
+    setEditing({ item: item ?? "new", republish });
     setFormError(null);
   };
-
-  const closeEditor = (): void => {
-    if (saveMutation.isPending || archiveMutation.isPending) return;
-    setEditing(null);
-    setConfirmDelete(false);
-  };
-
-  const selectedLocationIds = [...(draft.location_ids ?? [])].sort();
-  const normalizedDraft = {
-    ...draft,
-    location_ids: selectedLocationIds,
-    location_id:
-      selectedLocationIds.length === 1 ? selectedLocationIds[0]! : null,
-    affects_scheduling:
-      draft.type === "closed_day" ? true : draft.affects_scheduling,
-  };
-  const parsedDraft = importantDateInputSchema.safeParse(normalizedDraft);
-  const baseline = editing && editing !== "new" ? draftFrom(editing) : null;
-  const canSave =
-    mayManageLocations(selectedLocationIds) &&
-    !saveMutation.isPending &&
-    !archiveMutation.isPending &&
-    Boolean(editing) &&
-    parsedDraft.success &&
-    (editing === "new" ||
-      Boolean(baseline && !sameJson(parsedDraft.data, baseline)));
-
-  const submit = (event: FormEvent): void => {
-    event.preventDefault();
-    if (!canSave) return;
-    setFormError(null);
-    saveMutation.mutate({
-      values: parsedDraft.data,
-      ...(editing !== "new" && editing ? { id: editing.id, revision: editing.revision } : {}),
-    });
+  // Republishing a date that closes or shortens a location reviews its shifts first (K13).
+  const republishDate = (item: ImportantDate): void => {
+    if (Object.keys(item.location_days ?? {}).length) openEditor(item, true);
+    else stateMutation.mutate({ id: item.id, action: "republish" });
   };
 
   // The API's "no" gets the one no-access card, never its raw sentence.
@@ -230,7 +135,7 @@ export default function ImportantDatesSettingsPage() {
         eyebrow="EVERY DATE. ACCOUNTED FOR."
         title="Important Dates"
         titleId="important-dates-settings-title"
-        description="Manage holidays, closures, events, and dates that affect scheduling."
+        description="Manage holidays and events, and the days each location closes or keeps short hours."
       />
 
       <div className="job-catalog-toolbar catalog-toolbar">
@@ -288,7 +193,7 @@ export default function ImportantDatesSettingsPage() {
           {canManage ? (
             <ListAddButton
               label="New date"
-              disabled={saveMutation.isPending || archiveMutation.isPending}
+              disabled={stateMutation.isPending}
               onClick={() => openEditor()}
             />
           ) : null}
@@ -296,294 +201,16 @@ export default function ImportantDatesSettingsPage() {
       </div>
 
       {editing ? (
-        <CatalogDrawer
-          label={
-            editing === "new" ? "Add important date" : `Edit ${editing.title}`
-          }
-          className="important-dates-catalog-page"
-          onClose={closeEditor}
-          busy={saveMutation.isPending || archiveMutation.isPending}
-        >
-          <form
-            className="job-catalog-editor"
-            onSubmit={submit}
-            aria-label={
-              editing === "new" ? "Add important date" : `Edit ${editing.title}`
-            }
-          >
-            <div className="job-editor-title">
-              <div>
-                <h2>
-                  {editing === "new"
-                    ? "New important date"
-                    : "Edit important date"}
-                </h2>
-                <p>Use closed day for dates that should block scheduling.</p>
-              </div>
-              <button
-                type="button"
-                className="job-icon-button"
-                aria-label="Close important date editor"
-                disabled={saveMutation.isPending || archiveMutation.isPending}
-                title="Close"
-                onClick={closeEditor}
-              >
-                <X size={17} aria-hidden />
-              </button>
-            </div>
-            <div className="catalog-drawer-body">
-              <fieldset
-                className="important-date-fields"
-                disabled={saveMutation.isPending || archiveMutation.isPending}
-              >
-                <label className="job-field field-wide">
-                  <span>Title</span>
-                  <input
-                    value={draft.title}
-                    maxLength={120}
-                    required
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        title: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label className="job-field">
-                  <span>Type</span>
-                  <select
-                    value={draft.type}
-                    onChange={(event) => {
-                      const nextType = event.target.value as ImportantDateType;
-                      setDraft((current) => ({
-                        ...current,
-                        type: nextType,
-                        affects_scheduling:
-                          nextType === "closed_day"
-                            ? true
-                            : current.affects_scheduling,
-                      }));
-                    }}
-                  >
-                    {typeOptions.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="job-field">
-                  <span>Locations</span>
-                  <details
-                    className="important-date-location-picker"
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape" && event.currentTarget.open) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.currentTarget.open = false;
-                        event.currentTarget.querySelector("summary")?.focus();
-                      }
-                    }}
-                  >
-                    <summary aria-label="Select locations">
-                      <span
-                        title={selectedLocationIds
-                          .map(
-                            (id) =>
-                              pickerLocations.find(
-                                (location) => location.id === id,
-                              )?.name ?? "Archived location",
-                          )
-                          .join(", ")}
-                      >
-                        {selectedLocationIds.length === 0
-                          ? allLocations
-                            ? "All locations"
-                            : "Select a location"
-                          : selectedLocationIds.length === 1
-                            ? (pickerLocations.find(
-                                (location) =>
-                                  location.id === selectedLocationIds[0],
-                              )?.name ?? "Selected location")
-                            : `${selectedLocationIds.length} locations selected`}
-                      </span>
-                      <ChevronDown size={14} aria-hidden />
-                    </summary>
-                    <div className="important-date-location-options">
-                      {allLocations && (
-                        <label className="important-date-location-all">
-                          <input
-                            type="checkbox"
-                            checked={!selectedLocationIds.length}
-                            onChange={() =>
-                              setDraft((current) => ({
-                                ...current,
-                                location_ids: [],
-                              }))
-                            }
-                          />
-                          <span>All locations</span>
-                        </label>
-                      )}
-                      {pickerLocations
-                        .filter(
-                          (location) =>
-                            !location.archived_at ||
-                            selectedLocationIds.includes(location.id),
-                        )
-                        .map((location) => (
-                          <label key={location.id}>
-                            <input
-                              type="checkbox"
-                              checked={selectedLocationIds.includes(
-                                location.id,
-                              )}
-                              onChange={() =>
-                                setDraft((current) => ({
-                                  ...current,
-                                  location_ids: (
-                                    current.location_ids ?? []
-                                  ).includes(location.id)
-                                    ? (current.location_ids ?? []).filter(
-                                        (id) => id !== location.id,
-                                      )
-                                    : [
-                                        ...(current.location_ids ?? []),
-                                        location.id,
-                                      ],
-                                }))
-                              }
-                            />
-                            <span>
-                              {location.name}
-                              {location.archived_at ? " (archived)" : ""}
-                            </span>
-                          </label>
-                        ))}
-                    </div>
-                  </details>
-                </div>
-                <label className="job-field">
-                  <span>Starts</span>
-                  <input
-                    type="date"
-                    value={draft.starts_on}
-                    required
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        starts_on: event.target.value,
-                        ends_on:
-                          current.ends_on < event.target.value
-                            ? event.target.value
-                            : current.ends_on,
-                      }))
-                    }
-                  />
-                </label>
-                <label className="job-field">
-                  <span>Ends</span>
-                  <input
-                    type="date"
-                    value={draft.ends_on}
-                    required
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        ends_on: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label className="job-field">
-                  <span>Repeats</span>
-                  <select
-                    value={draft.recurrence}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        recurrence: event.target
-                          .value as ImportantDateInput["recurrence"],
-                      }))
-                    }
-                  >
-                    <option value="none">Does not repeat</option>
-                    <option value="annual">Every year</option>
-                  </select>
-                </label>
-                <label className="job-field important-date-note-field field-wide">
-                  <span>Note</span>
-                  <textarea
-                    value={draft.note}
-                    rows={3}
-                    maxLength={500}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        note: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
-                <label className="important-date-check field-wide">
-                  <input
-                    type="checkbox"
-                    checked={normalizedDraft.affects_scheduling}
-                    disabled={draft.type === "closed_day"}
-                    onChange={(event) =>
-                      setDraft((current) => ({
-                        ...current,
-                        affects_scheduling: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>Flag this date inside scheduling</span>
-                </label>
-              </fieldset>
-              {formError ? (
-                <p className="form-error" role="alert">
-                  {formError}
-                </p>
-              ) : null}
-            </div>
-            <div className="job-editor-footer">
-              {editing !== "new" ? (
-                <ImportantDateDeleteAction
-                  name={editing.title}
-                  busy={saveMutation.isPending || archiveMutation.isPending}
-                  confirming={confirmDelete}
-                  setConfirming={setConfirmDelete}
-                  deleteDate={() =>
-                    archiveMutation.mutate(
-                      { id: editing.id, action: "archive" },
-                      { onSuccess: closeEditor },
-                    )
-                  }
-                />
-              ) : (
-                <span />
-              )}
-              <div className="job-editor-actions">
-                <Button
-                  className="job-secondary-button"
-                  type="button"
-                  disabled={saveMutation.isPending || archiveMutation.isPending}
-                  onClick={closeEditor}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="job-primary-button"
-                  type="submit"
-                  disabled={!canSave}
-                >
-                  {saveMutation.isPending ? "Saving" : "Save date"}
-                </Button>
-              </div>
-            </div>
-          </form>
-        </CatalogDrawer>
+        <ImportantDateDrawer
+          workspaceId={workspaceId}
+          editing={editing.item}
+          republish={editing.republish}
+          locations={pickerLocations}
+          canTargetWorkspace={allLocations}
+          mayManageLocations={mayManageLocations}
+          onClose={() => setEditing(null)}
+          onSaved={finish}
+        />
       ) : null}
 
       {!editing && formError ? (
@@ -680,15 +307,7 @@ export default function ImportantDatesSettingsPage() {
                   {locationLabel(item)}
                 </span>
                 <span className="important-date-impact-stack">
-                  {item.recurrence === "annual" ? (
-                    <span className="list-chip" data-tone="amber">Repeats yearly</span>
-                  ) : null}
-                  {item.affects_scheduling ? (
-                    <span className="list-chip" data-tone="amber">Schedule flag</span>
-                  ) : null}
-                  {!item.affects_scheduling && item.recurrence !== "annual" ? (
-                    <span className="list-chip" data-tone="gray">None</span>
-                  ) : null}
+                  {impactLabel(item, liveLocationCount)}
                 </span>
                 {item.can_edit || item.can_restore ? (
                   <CatalogRowMenu name={item.title}>
@@ -700,12 +319,11 @@ export default function ImportantDatesSettingsPage() {
                     {item.can_unpublish || item.can_republish ? (
                       <button
                         type="button"
-                        disabled={archiveMutation.isPending}
+                        disabled={stateMutation.isPending}
                         onClick={() =>
-                          archiveMutation.mutate({
-                            id: item.id,
-                            action: item.can_unpublish ? "unpublish" : "republish",
-                          })
+                          item.can_unpublish
+                            ? stateMutation.mutate({ id: item.id, action: "unpublish" })
+                            : republishDate(item)
                         }
                       >
                         {item.can_unpublish ? "Unpublish" : "Republish"}
@@ -713,9 +331,9 @@ export default function ImportantDatesSettingsPage() {
                     ) : null}
                     <CatalogArchiveButton
                       archived={Boolean(item.archived_at)}
-                      disabled={archiveMutation.isPending}
+                      disabled={stateMutation.isPending}
                       onToggle={() =>
-                        archiveMutation.mutate({
+                        stateMutation.mutate({
                           id: item.id,
                           action: item.archived_at ? "restore" : "archive",
                         })
@@ -757,67 +375,6 @@ export function dateTab(item: ImportantDate, today: string): DateTab {
   return item.ends_on < today ? "past" : "upcoming";
 }
 
-function ImportantDateDeleteAction({
-  name,
-  busy,
-  confirming,
-  setConfirming,
-  deleteDate,
-}: {
-  readonly name: string;
-  readonly busy: boolean;
-  readonly confirming: boolean;
-  readonly setConfirming: (value: boolean) => void;
-  readonly deleteDate: () => void;
-}) {
-  if (confirming) {
-    return (
-      <div
-        className="catalog-delete-confirm policy-footer-confirm"
-        role="group"
-      >
-        <div className="catalog-delete-copy" aria-live="polite">
-          <strong>Delete "{name}"?</strong>
-          <span>
-            This date will be archived and hidden from active scheduling
-            choices.
-          </span>
-        </div>
-        <div className="catalog-delete-buttons">
-          <button
-            type="button"
-            className="job-secondary-button"
-            disabled={busy}
-            onClick={() => setConfirming(false)}
-          >
-            Keep date
-          </button>
-          <button
-            type="button"
-            className="catalog-delete-confirm-button"
-            disabled={busy}
-            onClick={deleteDate}
-          >
-            Delete date
-          </button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="catalog-delete-action">
-      <button
-        type="button"
-        className="catalog-delete-trigger"
-        disabled={busy}
-        onClick={() => setConfirming(true)}
-      >
-        Delete date
-      </button>
-    </div>
-  );
-}
-
 function formatRange(startsOn: string, endsOn: string): string {
   if (startsOn === endsOn) return formatDate(startsOn);
   return `${formatDate(startsOn)} - ${formatDate(endsOn)}`;
@@ -830,12 +387,7 @@ function importantDateSortValue(
   if (key === "date") return `${item.starts_on} ${item.ends_on}`;
   if (key === "type") return typeLabels[item.type];
   if (key === "locations") return locationLabel(item);
-  if (key === "impact") {
-    return [
-      item.recurrence === "annual" ? "Repeats yearly" : "",
-      item.affects_scheduling ? "Schedule flag" : "None",
-    ].join(" ");
-  }
+  if (key === "impact") return impactLabel(item, Number.POSITIVE_INFINITY);
   return item.title;
 }
 

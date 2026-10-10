@@ -4,6 +4,4 @@ import type { ImportantDateType } from "@newfork/shared";
 export const importantDateTypeLabels: Record<ImportantDateType, string> = {
   holiday: "Holiday",
   event: "Event",
-  blackout: "Blackout",
-  closed_day: "Closed day",
 };

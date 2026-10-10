@@ -415,8 +415,9 @@ export async function listImportantDates(workspaceId: string) {
 }
 
 /**
- * K13: what a closed day would land on. List these before saving a closed day
- * (or republishing one); pass the fingerprint back with the choice.
+ * K13: the published shifts a date that closes a location, or gives it short
+ * hours, would land on. The Shifts tab lists these before saving (or
+ * republishing); the fingerprint goes back with the choices.
  */
 export async function previewImportantDateClosure(
   workspaceId: string,
@@ -431,11 +432,12 @@ export async function previewImportantDateClosure(
 }
 
 /**
- * Saves a date. A closed day over published shifts needs `closure`: the
- * fingerprint the preview gave and the shifts kept (the rest drop to open,
- * K13); without it the server answers 409 important_date.closure_changed.
- * Returns shifts_opened, and shifts_stay_open when a change leaves shifts the
- * date opened on days it no longer closes (K15).
+ * Saves a date. A closing over published shifts needs `closure`: the
+ * fingerprint the preview gave and a choice per listed shift (remove, open or
+ * keep; one left out takes its default, K13); without the fingerprint the
+ * server answers 409 important_date.closure_changed. Returns shifts_removed,
+ * shifts_opened, and shifts_stay_open when a change leaves shifts the date
+ * opened on days it no longer closes (K15).
  */
 export async function saveImportantDate(
   workspaceId: string,
@@ -473,7 +475,7 @@ export async function setImportantDateState(
   action: ImportantDateStateAction,
   closure?: ImportantDateClosureChoice,
 ): Promise<ImportantDateSaved> {
-  // Republishing a closed day takes the same closure choice as saving one (K13).
+  // Republishing a closing takes the same choices as saving one (K13).
   return importantDateSavedSchema.parse(
     await request(workspaceId, `/settings/important-dates/${id}/${action}`, {
       method: "POST",

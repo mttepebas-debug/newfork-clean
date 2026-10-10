@@ -14,8 +14,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import ImportantDatesSettingsPage, { dateTab } from "./ImportantDatesSettingsPage";
 import { todayIn } from "../lib/today";
+import { RequestError } from "../lib/request-error";
 import {
+  getImportantDateHistory,
   listImportantDates,
+  previewImportantDateClosure,
   saveImportantDate,
   setImportantDateState,
 } from "./organization-data";
@@ -76,7 +79,7 @@ function day(offset: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-const dates = [
+const dates: ImportantDate[] = [
   {
     id: "90000000-0000-4000-8000-000000000001",
     workspace_id: workspaceId,
@@ -88,7 +91,10 @@ const dates = [
     ends_on: day(30),
     recurrence: "annual",
     note: "Restaurant-wide holiday.",
-    affects_scheduling: true,
+    all_day: true,
+    start_time: null,
+    end_time: null,
+    location_days: {},
     archived_at: null,
     status: "published",
     can_edit: true,
@@ -99,34 +105,67 @@ const dates = [
     id: "90000000-0000-4000-8000-000000000002",
     workspace_id: workspaceId,
     location_id: locationId,
+    location_ids: [locationId],
     location_name: "Main Dining",
     title: "Private buyout",
-    type: "closed_day",
+    type: "event",
     starts_on: day(60),
     ends_on: day(60),
     recurrence: "none",
     note: "",
-    affects_scheduling: true,
+    all_day: true,
+    start_time: null,
+    end_time: null,
+    location_days: { [locationId]: { status: "closed" } },
     archived_at: null,
+    revision: 3,
     status: "published",
     can_edit: true,
     can_unpublish: true,
     can_archive: true,
   },
-] satisfies ImportantDate[];
+];
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("./organization-data", () => ({
+  getImportantDateHistory: vi.fn(),
   listImportantDates: vi.fn(),
+  previewImportantDateClosure: vi.fn(),
   saveImportantDate: vi.fn(),
   setImportantDateState: vi.fn(),
 }));
+
+const shiftId = "72000000-0000-4000-8000-000000000001";
+const listedShift = {
+  id: shiftId,
+  source_id: "72000000-0000-4000-8000-000000000002",
+  employee_id: "73000000-0000-4000-8000-000000000001",
+  employee_name: "Ana Diaz",
+  location_id: locationId,
+  location_name: "Main Dining",
+  job_name: "Server",
+  scheduled_date: day(30),
+  start_time: "09:00",
+  end_time: "17:00",
+  starts_at: `${day(30)}T16:00:00Z`,
+  ends_at: `${day(31)}T00:00:00Z`,
+  reason: "closed" as const,
+  opens: null,
+  closes: null,
+  default_choice: "remove" as const,
+};
 
 function renderPage() {
   // What may be done comes from the server (FB-6.7): the owner, anywhere.
   vi.mocked(listImportantDates).mockResolvedValue({ dates, locations: [location], can_manage: true, can_target_workspace: true });
   vi.mocked(saveImportantDate).mockResolvedValue({ important_date_id: "71000000-0000-4000-8000-000000000001", status: "published" });
   vi.mocked(setImportantDateState).mockResolvedValue({ important_date_id: "71000000-0000-4000-8000-000000000001", status: "unpublished" });
+  vi.mocked(previewImportantDateClosure).mockResolvedValue({
+    fingerprint: "fingerprint-1",
+    shifts: [listedShift],
+    hidden_shift_count: 0,
+    draft_shift_count: 0,
+  });
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -223,19 +262,19 @@ describe("important date tabs", () => {
 });
 
 describe("ImportantDatesSettingsPage", () => {
-  it("lists holidays and closed days with scheduling impact flags", async () => {
+  it("lists holidays and events with what each does to the locations", async () => {
     renderPage();
     expect(
       await screen.findByRole("heading", { name: "Important Dates" }),
     ).toBeTruthy();
-    expect(await screen.findByText("New Year's Day")).toBeTruthy();
-    expect(screen.getByText("Private buyout")).toBeTruthy();
-    expect(screen.getAllByText("Closed day").length).toBeGreaterThan(0);
-    expect(screen.getByText("Repeats yearly")).toBeTruthy();
-    expect(screen.getAllByText("Schedule flag")).toHaveLength(2);
+    const holiday = (await screen.findByText("New Year's Day")).closest(".important-date-catalog-row") as HTMLElement;
+    const buyout = screen.getByText("Private buyout").closest(".important-date-catalog-row") as HTMLElement;
+    expect(within(holiday).getByText("None")).toBeTruthy();
+    expect(within(buyout).getByText("Closed")).toBeTruthy();
+    expect(screen.queryByText("Closed day")).toBeNull();
   });
 
-  it("creates a location closed day that always affects scheduling", async () => {
+  it("closes a location, keeps a listed shift and saves the choice with the preview's fingerprint", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "New date" }));
     const form = screen.getByRole("form", { name: "Add important date" });
@@ -243,35 +282,143 @@ describe("ImportantDatesSettingsPage", () => {
       target: { value: "Kitchen maintenance" },
     });
     fireEvent.change(within(form).getByLabelText("Type"), {
-      target: { value: "closed_day" },
+      target: { value: "holiday" },
     });
-    fireEvent.click(within(form).getByLabelText("Select locations"));
-    fireEvent.click(within(form).getByLabelText("Main Dining"));
     fireEvent.change(within(form).getByLabelText("Starts"), {
-      target: { value: "2027-03-10" },
+      target: { value: day(30) },
     });
     fireEvent.change(within(form).getByLabelText("Ends"), {
-      target: { value: "2027-03-10" },
+      target: { value: day(30) },
     });
-    expect(
-      within(form).getByLabelText("Flag this date inside scheduling"),
-    ).toHaveProperty("disabled", true);
-    fireEvent.click(screen.getByRole("button", { name: "Save date" }));
+    fireEvent.click(
+      within(within(form).getByRole("radiogroup", { name: "Main Dining that day" })).getByRole("radio", { name: "Closed" }),
+    );
+
+    expect(await within(form).findByText("1 shift will be removed")).toBeTruthy();
+    expect(previewImportantDateClosure).toHaveBeenLastCalledWith(
+      workspaceId,
+      expect.objectContaining({
+        location_ids: [],
+        all_day: true,
+        location_days: { [locationId]: { status: "closed" } },
+      }),
+    );
+    fireEvent.click(within(form).getByRole("button", { name: "Review shifts" }));
+    const pick = within(form).getByRole("group", { name: "Ana Diaz's shift" });
+    expect(within(pick).getByRole("button", { name: "Remove" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(within(pick).getByRole("button", { name: "Keep" }));
+    expect(within(form).getByText("No shift changes · 1 kept")).toBeTruthy();
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(saveImportantDate).toHaveBeenCalledWith(
         workspaceId,
         expect.objectContaining({
           title: "Kitchen maintenance",
-          type: "closed_day",
-          location_id: locationId,
-          location_ids: [locationId],
-          affects_scheduling: true,
+          type: "holiday",
+          location_ids: [],
+          all_day: true,
+          start_time: null,
+          end_time: null,
+          location_days: { [locationId]: { status: "closed" } },
         }),
         // A new date: no id yet, so no revision to name (KK-92 c).
         undefined,
         undefined,
+        { shift_choices: { [shiftId]: "keep" }, expected_fingerprint: "fingerprint-1" },
       ),
     );
+    await waitFor(() => expect(screen.queryByRole("form", { name: "Add important date" })).toBeNull());
+  });
+
+  it("keeps the hours off while All day is on, and gives short hours their own times", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "New date" }));
+    const form = screen.getByRole("form", { name: "Add important date" });
+    const startTime = within(form).getByLabelText("Start time");
+    expect(startTime).toHaveProperty("disabled", true);
+    fireEvent.click(within(form).getByLabelText("All day"));
+    expect(startTime).toHaveProperty("disabled", false);
+    fireEvent.change(startTime, { target: { value: "18:00" } });
+    fireEvent.change(within(form).getByLabelText("End time"), { target: { value: "09:00" } });
+    expect(within(form).getByText("End time must be after the start time.")).toBeTruthy();
+
+    fireEvent.click(
+      within(within(form).getByRole("radiogroup", { name: "Main Dining that day" })).getByRole("radio", { name: "Short hours" }),
+    );
+    expect(within(form).getByLabelText<HTMLInputElement>("Main Dining opens").value).toBe("10:00");
+    expect(within(form).getByLabelText<HTMLInputElement>("Main Dining closes").value).toBe("15:00");
+    fireEvent.change(within(form).getByLabelText("Title"), { target: { value: "Christmas Eve" } });
+    expect(within(form).getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  });
+
+  it("will not save a date without a location", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "New date" }));
+    const form = screen.getByRole("form", { name: "Add important date" });
+    fireEvent.change(within(form).getByLabelText("Title"), { target: { value: "Staff day" } });
+    fireEvent.click(within(form).getByLabelText("All locations"));
+    expect(within(form).getByText("Not included")).toBeTruthy();
+    expect(within(form).getByText("Choose at least one location.")).toBeTruthy();
+    expect(within(form).getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  });
+
+  it("says in plain words when the shifts changed under the save", async () => {
+    renderPage();
+    vi.mocked(saveImportantDate).mockRejectedValueOnce(
+      new RequestError("closure changed", "important_date.closure_changed", undefined, 409),
+    );
+    fireEvent.click(await screen.findByText("Private buyout"));
+    const form = await screen.findByRole("form", { name: "Edit Private buyout" });
+    fireEvent.change(within(form).getByLabelText("Title"), { target: { value: "Private buyout dinner" } });
+    expect(await within(form).findByText("1 shift will be removed")).toBeTruthy();
+    fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+
+    expect((await within(form).findByRole("alert")).textContent).toContain(
+      "The shifts on this date changed. Review them on the Shifts tab, then save again.",
+    );
+    expect(saveImportantDate).toHaveBeenLastCalledWith(
+      workspaceId,
+      expect.objectContaining({ title: "Private buyout dinner", location_ids: [locationId] }),
+      dates[1]!.id,
+      3,
+      { shift_choices: {}, expected_fingerprint: "fingerprint-1" },
+    );
+  });
+
+  it("shows who changed the date and what each location did", async () => {
+    renderPage();
+    vi.mocked(getImportantDateHistory).mockResolvedValue({
+      important_date_id: dates[1]!.id,
+      author_user_id: null,
+      author_name: "Zeynep Aydin",
+      changes: [
+        {
+          id: "74000000-0000-4000-8000-000000000001",
+          action: "updated",
+          changed_at: "2026-10-01T17:30:00Z",
+          actor_user_id: null,
+          actor_name: "Zeynep Aydin",
+          before: { ...dates[1]!, location_days: {} },
+          after: dates[1]!,
+        },
+        {
+          id: "74000000-0000-4000-8000-000000000002",
+          action: "updated",
+          changed_at: null,
+          actor_user_id: null,
+          actor_name: null,
+          before: { hidden: true },
+          after: { hidden: true },
+        },
+      ],
+    });
+    fireEvent.click(await screen.findByText("Private buyout"));
+    const form = await screen.findByRole("form", { name: "Edit Private buyout" });
+    fireEvent.click(within(form).getByRole("tab", { name: "History" }));
+
+    expect(await within(form).findByText("Changed by Zeynep Aydin")).toBeTruthy();
+    expect(within(form).getByText((_, node) => node?.textContent === "Main Dining: Open → Closed")).toBeTruthy();
+    expect(within(form).getByText("Hidden change")).toBeTruthy();
   });
 });
