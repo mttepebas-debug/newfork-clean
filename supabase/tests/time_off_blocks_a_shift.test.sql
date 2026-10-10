@@ -2,17 +2,15 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(32);
 
--- BL-182 + BL-127 (KARARLAR "Takas ... uygunluk", KK-19): approved time off
--- is a hard stop for a manager's own scheduling, but its hours can be given
--- back in one way only: a system-written, already approved cancellation piece.
--- * An employee may take a shift inside their own approved time off through
---   Shift Hub after agreeing to shorten it; the leave shortens when the
---   manager approves the transfer, not before (a rejected application burns
---   nothing). Whoever approved the leave hears about it.
--- * A manager who could decide the leave may shorten it (shorten_time_off_service);
+-- KARARLAR §1.1 (Mert, 2026-10-09; BL-995) + BL-127: approved time off blocks
+-- every shift it overlaps, even by a minute, whoever writes it and however it
+-- is taken (manager, swap, pickup). Its hours come back one of two ways only:
+-- * the employee asks to cancel those hours (Employee Hub) and the request is
+--   approved; only then can they take a shift there;
+-- * a manager who could decide the leave shortens it (shorten_time_off_service);
 --   the employee and whoever approved the leave hear about it.
--- * Cover searches still never show someone on approved leave, and leave the
---   employee never agreed to still blocks.
+-- Cover searches never show someone on approved leave; Shift Hub shows the
+-- employee the open shift as not open to them, with the reason.
 
 select tests.world('sto');
 select tests.person('sto', 'ayse', 'manager', array['K'], array['cook']);
@@ -76,40 +74,45 @@ select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'
 select ok(not exists (select 1 from jsonb_array_elements(public.shift_exchanges_candidates_service(tests.user('sto:emre'), tests.id('sto'),
     tests.id('sto:shift:emre-wed')) -> 'employees') e where e ->> 'id' = tests.id('sto:ali')::text),
   'a cover search never lists someone on approved leave');
-select ok(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
-    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed')), '{"operation": "release_pickup"}') ->> 'status' = 'ineligible',
-  'without Ali''s own agreement his leave still blocks the shift');
+select is(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
+    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed')), '{"operation": "release_pickup"}') ->> 'status', 'ineligible',
+  'his leave blocks the shift');
+select is(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
+    public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed')), '{"operation": "release_pickup", "consent": true}') ->> 'status',
+  'ineligible', 'and his own agreement no longer sets it aside');
 select tests.remember('sto:case', (pg_temp.command('emre', jsonb_build_object('action', 'create', 'kind', 'cover',
   'shift_id', tests.id('sto:shift:emre-wed'))) ->> 'case_id')::uuid);
 select tests.settle();
 
--- 2. Ali sees the open shift, with the question that his time off shortens.
-select is(pg_temp.opportunity('emre-wed') ->> 'status', 'eligible', 'Ali may take the shift inside his own leave');
-select is(pg_temp.opportunity('emre-wed') ->> 'shortens_time_off', 'true', 'and is told it shortens his time off');
-select ok(jsonb_array_length(pg_temp.opportunity('emre-wed') -> 'availability_warning' -> 'time_off_intervals') > 0,
-  'the question names the hours of time off it gives back');
+-- 2. Ali sees the open shift in Shift Hub, not open to him, and why.
+select is(pg_temp.opportunity('emre-wed') ->> 'status', 'ineligible', 'Shift Hub lists the shift as not open to Ali');
+select ok(pg_temp.opportunity('emre-wed') -> 'blockers' @> '[{"code": "approved_time_off"}]', 'because of his approved time off');
+select ok(not (pg_temp.opportunity('emre-wed') ? 'shortens_time_off'), 'nothing offers to shorten his leave');
+select ok(coalesce(jsonb_typeof(pg_temp.opportunity('emre-wed') -> 'availability_warning'), 'null') = 'null',
+  'and nothing asks him to agree to anything');
 select throws_ok($$select pg_temp.command('ali', jsonb_build_object('action', 'apply', 'shift_id', tests.id('sto:shift:emre-wed'),
-  'case_id', tests.id('sto:case')))$$, 'PT409', null, 'applying without agreeing is refused');
-select tests.settle();
-
--- 3. Ali agrees and applies; nothing shortens yet.
-select pg_temp.command('ali', jsonb_build_object('action', 'apply', 'shift_id', tests.id('sto:shift:emre-wed'), 'case_id', tests.id('sto:case'),
-  'availability_fingerprint', pg_temp.opportunity('emre-wed') -> 'availability_warning' ->> 'fingerprint'));
-select tests.settle();
-select tests.remember('sto:application', (select a.id from public.shift_exchange_applications a
-  where a.case_id = tests.id('sto:case') and a.employee_id = tests.id('sto:ali') and a.status = 'pending_manager'));
-select isnt(tests.id('sto:application'), null, 'Ali''s application waits for a manager');
-select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'), 'applying alone does not shorten the leave');
-
--- 4. Ayse rejects it: the leave is untouched.
-select pg_temp.command('ayse', jsonb_build_object('action', 'reject', 'case_id', tests.id('sto:case'), 'application_id', tests.id('sto:application'),
-  'expected_revision', (select c.revision from public.shift_exchange_cases c where c.id = tests.id('sto:case')), 'reason', 'Staying off'));
-select tests.settle();
-select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'), 'a rejected application burns no time off');
+  'case_id', tests.id('sto:case')))$$, 'P0001', 'You are not eligible for the full shift', 'applying is refused');
 select is((select count(*)::integer from public.time_off_cancellation_links l where l.parent_request_id = tests.id('sto:ali:time_off')), 0,
-  'and writes no cancellation');
+  'and the refusal gives back no time off');
 
--- 5. Ali applies again; Ayse approves; the leave shortens at that moment.
+-- 3. Ali asks to cancel 10:00-14:00 of his Wednesday; Mert approves it.
+select tests.remember('sto:cancel', (public.request_time_off_cancellation_service(tests.user('sto:ali'), tests.id('sto'), tests.id('sto:ali:time_off'),
+  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('sto:ali:time_off')),
+  (select jsonb_build_array(jsonb_build_object('segment_id', s.id,
+     'starts_at', to_jsonb(lower(pg_temp.span('emre-wed'))), 'ends_at', to_jsonb(upper(pg_temp.span('emre-wed')))))
+   from public.schedule_time_off_segments s where s.request_id = tests.id('sto:ali:time_off')),
+  'Taking Emre''s shift', gen_random_uuid()) ->> 'request_id')::uuid);
+select tests.settle();
+select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed'), 'asking alone gives nothing back');
+select is(pg_temp.opportunity('emre-wed') ->> 'status', 'ineligible', 'so the shift is still not open to him');
+select public.decide_time_off_service(tests.user('sto:mert'), tests.id('sto'), tests.id('sto:cancel'), 'approve', '',
+  app_private.time_off_impact(tests.id('sto'), tests.id('sto:cancel')) ->> 'fingerprint');
+select tests.settle();
+select ok(not (pg_temp.leave(tests.id('sto:ali:time_off')) && pg_temp.span('emre-wed')), 'approved, those hours are no longer time off');
+select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed-late'), 'the rest of his day off stays');
+
+-- 4. Now the shift is open to him: he applies, Ayse approves, he works it.
+select is(pg_temp.opportunity('emre-wed') ->> 'status', 'eligible', 'the shift is open to Ali');
 select pg_temp.command('ali', jsonb_build_object('action', 'apply', 'shift_id', tests.id('sto:shift:emre-wed'), 'case_id', tests.id('sto:case'),
   'availability_fingerprint', pg_temp.opportunity('emre-wed') -> 'availability_warning' ->> 'fingerprint'));
 select tests.settle();
@@ -117,8 +120,6 @@ select tests.remember('sto:application', (select a.id from public.shift_exchange
   where a.case_id = tests.id('sto:case') and a.employee_id = tests.id('sto:ali') and a.status = 'pending_manager'));
 select is(public.shift_exchange_preview(tests.user('sto:ayse'), tests.id('sto'), tests.id('sto:case'), tests.id('sto:application')) ->> 'allowed',
   'true', 'the manager may approve it');
-select is(public.shift_exchange_preview(tests.user('sto:ayse'), tests.id('sto'), tests.id('sto:case'), tests.id('sto:application'))
-  -> 'receiver' ->> 'shortens_time_off', 'true', 'and is told it shortens Ali''s time off');
 select is(pg_temp.command('ayse', jsonb_build_object('action', 'approve', 'case_id', tests.id('sto:case'), 'application_id', tests.id('sto:application'),
   'expected_revision', (select c.revision from public.shift_exchange_cases c where c.id = tests.id('sto:case')),
   'fingerprint', public.shift_exchange_preview(tests.user('sto:ayse'), tests.id('sto'), tests.id('sto:case'), tests.id('sto:application')) ->> 'fingerprint'))
@@ -126,20 +127,16 @@ select is(pg_temp.command('ayse', jsonb_build_object('action', 'approve', 'case_
 select tests.settle();
 select is((select employee_id from public.schedule_published_shifts where id = tests.id('sto:shift:emre-wed')), tests.id('sto:ali'),
   'Ali works the shift');
-select ok(not (pg_temp.leave(tests.id('sto:ali:time_off')) && pg_temp.span('emre-wed')), 'his time off no longer covers those hours');
-select ok(pg_temp.leave(tests.id('sto:ali:time_off')) @> pg_temp.span('emre-wed-late'), 'the rest of his day off stays');
-select is((select status::text from public.schedule_time_off_requests where id = tests.id('sto:ali:time_off')), 'approved',
-  'the leave stays approved; the hours given back read off it (FB-6.3)');
+select is((select count(*)::integer from public.time_off_cancellation_links l where l.parent_request_id = tests.id('sto:ali:time_off')), 1,
+  'the approval writes no cancellation of its own: only Ali''s request gave hours back');
 select ok(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
     public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed-late')), '{"operation": "release_pickup"}') ->> 'status' = 'ineligible',
-  'and still blocks the later shift he did not agree to');
+  'his remaining time off still blocks the later shift');
 
--- 6. Mert, who approved the leave, hears; nobody is asked to review anything.
-select is(pg_temp.recipients(tests.id('sto:ali:time_off')), array[tests.user('sto:mert')], 'the shortening tells Mert, who approved the leave');
-select is((select count(*)::integer from public.notification_outbox o join public.time_off_cancellation_links l
-    on o.payload ->> 'request_id' = l.request_id::text
-  where l.parent_request_id = tests.id('sto:ali:time_off') and o.type_key like 'requests.time_off.%'), 0,
-  'the system cancellation asks nobody for review and sends no status notice');
+-- 5. The approval shortens nothing, so nobody hears of a shortening.
+select is((select count(*)::integer from public.notification_outbox o
+  where o.workspace_id = tests.id('sto') and o.type_key = 'requests.time_off.shortened'), 0,
+  'nobody hears of a shortening, because none happened');
 select is((select count(*)::integer from jsonb_array_elements(public.reconcile_notification_platform_service() -> 'deterministic_domain_events_without_outbox') m
    where m ->> 'workspace_id' = tests.id('sto')::text), 0, 'the notification check counts nothing missing');
 
