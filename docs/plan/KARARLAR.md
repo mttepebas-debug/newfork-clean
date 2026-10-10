@@ -333,6 +333,7 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001). 
 Yalnız koddan çıkarılamayanlar: kullanıcının bir ekran için verdiği karar ve bilerek öyle bırakılan ya da bilinip bekletilen davranış. Kod özeti, dosya yolu, bileşen listesi yazılmaz; kod okunur. Bir iş buradaki bir maddeyi değiştiriyorsa madde aynı işte düzeltilir; "iş girince yazılır" notu bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 
 #### Genel (her ekran)
+- **Arayüz değişikliği önce Artifact varyantıyla gösterilir, kodlanmadan önce (kalıcı kural; Mert, 2026-10-10, koordinatör iletisi).** Mert seçer, sonra kod yazılır. CLAUDE.md §4 "yeni görsel tasarım: varyant hazırlanır, Mert seçer" kuralının her arayüz değişikliğine genişlemesi.
 
 Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001).
 
