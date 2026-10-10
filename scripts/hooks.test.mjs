@@ -124,7 +124,7 @@ test("redact: KEY=value and JSON keys ending in KEY/TOKEN/SECRET/PASSWORD/PWD, k
 });
 
 // The hooks are wired in the shared .claude/settings.json, so every session runs them; only the coordinator's
-// checkout (branch coord/kayit) writes the daily log or gets DURUM.md back. NEWFORK_INBOX_DIR points the
+// checkout (branch coord/kayit2) writes the daily log or gets DURUM.md back. NEWFORK_INBOX_DIR points the
 // fallback folder (<OPS_DIR>/gunluk-yedek) at a temp dir, never the real .newfork-inbox.
 function checkout(branch, { durum = true } = {}) {
   const dir = tmp();
@@ -141,8 +141,8 @@ const cli = (cmd, dir, input, ops = tmp()) =>
   });
 const report = { agent_id: "a1", agent_type: "nf-isci", last_assistant_message: "İŞ: BL-8 | DURUM: HAZIR" };
 
-test("CLI: only the coordinator's checkout (coord/kayit) writes the agent report and gets DURUM.md back", () => {
-  const coord = checkout("coord/kayit");
+test("CLI: only the coordinator's checkout (coord/kayit2) writes the agent report and gets DURUM.md back", () => {
+  const coord = checkout("coord/kayit2");
   const ops = tmp();
   const a = cli("agent-report", coord, report, ops);
   assert.equal(a.status, 0, a.stderr);
@@ -162,8 +162,8 @@ test("CLI: only the coordinator's checkout (coord/kayit) writes the agent report
   assert.equal(t.stdout, "");
 });
 
-test("CLI: a checkout off coord/kayit that has DURUM.md (detached HEAD, a rebase) keeps the report in <OPS_DIR>/gunluk-yedek", () => {
-  const coord = checkout("coord/kayit");
+test("CLI: a checkout off coord/kayit2 that has DURUM.md (detached HEAD, a rebase) keeps the report in <OPS_DIR>/gunluk-yedek", () => {
+  const coord = checkout("coord/kayit2");
   execFileSync("git", ["-C", coord, "checkout", "-q", "--detach"]);
   const ops = tmp();
   const r = cli("agent-report", coord, { ...report, last_assistant_message: "İŞ: BL-8 | DURUM: HAZIR\ntoken=ghp_abcdef1234567890" }, ops);

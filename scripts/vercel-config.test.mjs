@@ -29,6 +29,7 @@ test("vercel: no other branch deploys, flat or nested", () => {
     "archive/ekran-01-undo",
     "claude/project-thread-jcgonw",
     "coord/kayit",
+    "coord/kayit2",
     "ghost-color-mockups",
     "worktree-agent-a3704c99d8da9a816",
   ]) {

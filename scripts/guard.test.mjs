@@ -500,14 +500,14 @@ test("--attr-source takes a value; a record path hides behind no trailing dot, s
   for (const f of ["docs/plan/KARARLAR.md.bak", "C:/c/coord/README.md"]) assert.equal(isRecordFile(f), false, f);
 });
 
-test("a worker cannot push to coord/kayit, by any refspec; the coordinator can", () => {
+test("a worker cannot push to coord/kayit2, by any refspec; the coordinator can", () => {
   const coord = cloneRepo("repo-coord");
-  git(coord, "checkout", "-q", "-b", "coord/kayit");
+  git(coord, "checkout", "-q", "-b", "coord/kayit2");
   const worker = (cmd, cwd = repo) => evaluate(bash(cmd, { cwd, agent_id: "a5" }));
   for (const [cmd, cwd] of [
-    ["git push origin HEAD:coord/kayit", repo],
-    ["git push origin task/x:refs/heads/coord/kayit", repo],
-    ["git push -f origin coord/kayit", repo],
+    ["git push origin HEAD:coord/kayit2", repo],
+    ["git push origin task/x:refs/heads/coord/kayit2", repo],
+    ["git push -f origin coord/kayit2", repo],
     ["git push", coord],
   ]) {
     const r = worker(cmd, cwd);
@@ -515,7 +515,7 @@ test("a worker cannot push to coord/kayit, by any refspec; the coordinator can",
     assert.match(r.message, /coord\/kayit/);
     assert.equal(auditLines().at(-1).event, "coord-push-by-worker-blocked");
   }
-  assert.equal(evaluate(bash("git push origin HEAD:coord/kayit", { cwd: "C:/c/coord/.claude/worktrees/agent-a1" })).block, true); // an agent tree, no agent_id
+  assert.equal(evaluate(bash("git push origin HEAD:coord/kayit2", { cwd: "C:/c/coord/.claude/worktrees/agent-a1" })).block, true); // an agent tree, no agent_id
   assert.equal(evaluate(bash("git push", { cwd: coord })).block, false);
   assert.equal(worker("git push origin HEAD:task/x").block, false);
 });
