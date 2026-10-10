@@ -1,6 +1,6 @@
 # DEVIR — EKRAN-10-JOBS (oturum/ekran-10-jobs)
 
-Yazıldı: 2026-10-08, koordinatörün DEVIR-2026-10-08 isteğiyle. Bu notta kod, test, push ya da veritabanı işlemi yok.
+Yazıldı: 2026-10-08, koordinatörün DEVIR-2026-10-08 isteğiyle. Yeniden denetlendi: 2026-10-09; durum değişmedi (4 soru hâlâ açık, kilit yok, main `cedf5982`). Bu notta kod, test, push ya da veritabanı işlemi yok.
 
 ## 1. Kimlik
 
@@ -22,7 +22,7 @@ Yazıldı: 2026-10-08, koordinatörün DEVIR-2026-10-08 isteğiyle. Bu notta kod
 - **Sonradan gelen istek (Mert, 2026-10-07):** "bu artifacta 2. sekme olarak departments and jobs sayfası ui uxi ve draweri 6 tane varyasyon örneği sun".
 - **Dayandığım dosyalar:**
   - Kayıt: `C:\Users\TheWe\Documents\Codex\newfork-clean\docs\plan\ekranlar\10-settings\JOBS-TWEAKS.md` (main'de son hâli `ce9b24cd`).
-  - Karar satırı: `C:\Users\TheWe\Documents\Codex\newfork-clean\docs\plan\KARARLAR.md` → "Ekran kararları → Settings", "Settings → Jobs & departments: V1 (ortak tablo dili)" (main'de 583. satır civarı; koordinatör yazdı).
+  - Karar satırı: `C:\Users\TheWe\Documents\Codex\newfork-clean\docs\plan\KARARLAR.md` → "Ekran kararları → Settings", "Settings → Jobs & departments: V1 (ortak tablo dili)" (main'de 539. satır, 2026-10-09 ölçümü; koordinatör yazdı).
   - Görev kaydı: `KOORDINATOR-KARARLARI.md` → KK-202.
 
 ## 3. Biten
