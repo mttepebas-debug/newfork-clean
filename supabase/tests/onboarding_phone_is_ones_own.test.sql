@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 select plan(25);
 
 -- TEL-2 (Mert, 2026-10-09). A phone given in onboarding is the person's own:
--- nobody else live in the workspace holds it, and the emergency contact is
+-- nobody else in the workspace holds it, an archived record included, and the emergency contact is
 -- somebody else. Emergency contacts are not compared with other people's
 -- numbers; two friends may name each other.
 --
@@ -72,8 +72,8 @@ select is(pg_temp.in_use('oya', pg_temp.typed(tests.phone('tp:ali'))), true,
   'a number another person of the workspace holds is in use, typed as the screen shows it');
 select is(pg_temp.in_use('oya', tests.phone('tp:ali')), true, 'and in E.164');
 select is(pg_temp.in_use('oya', '(310) 555-0111'), false, 'a number nobody holds is free');
-select is(pg_temp.in_use('oya', pg_temp.typed(tests.phone('tp:rem'))), false,
-  'a number on a record whose employment ended is free');
+select is(pg_temp.in_use('oya', pg_temp.typed(tests.phone('tp:rem'))), true,
+  'a number on a record whose employment ended is still taken: archived records count (Mert, 2026-10-10)');
 select is(pg_temp.in_use('oya', pg_temp.typed(tests.phone('tp:sus'))), true,
   'a number on a record that only lost access is still somebody''s');
 select is(pg_temp.in_use('pia', pg_temp.typed(tests.phone('tp:ali')), 'tq'), false,
@@ -129,12 +129,11 @@ select is(
   '23514 employee_private_profiles_emergency_is_not_own_phone',
   'nor can the account phone become the emergency contact''s on the way to the record');
 
--- Added NOT VALID: an archived record from before the rule keeps what it has,
--- and a new write to it obeys like any other.
+-- Every record obeys it, an archived one included (Mert, 2026-10-10).
 select ok(
-  (select not convalidated from pg_constraint
+  (select convalidated from pg_constraint
    where conname = 'employee_private_profiles_emergency_is_not_own_phone'),
-  'records written before the rule are not rewritten');
+  'the rule holds for every record, archived ones too');
 select is(
   pg_temp.refusal(format(
     'update public.employee_private_profiles set phone = %L, emergency_contact_phone = %L where employee_id = %L',
@@ -149,8 +148,8 @@ select ok(
 select ok(
   (select count(*) from public.employee_private_profiles private_record
    join public.employee_profiles record on record.id = private_record.employee_id
-   where private_record.emergency_contact_phone = private_record.phone and record.archived_at is null) = 0,
-  'no live record names its own phone as the emergency contact''s');
+   where private_record.emergency_contact_phone = private_record.phone) = 0,
+  'no record, archived or not, names its own phone as the emergency contact''s');
 
 select * from finish();
 rollback;
