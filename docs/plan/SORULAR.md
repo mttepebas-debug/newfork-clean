@@ -292,6 +292,15 @@ Kaynak `docs/plan/ekranlar/10-settings/JOBS-TWEAKS.md` "Açık sorular" ve `docs
 - **Bugün:** V1'de Departments sekmesi gösterilmedi; satırda hangi sütunlar (ad, renk, iş sayısı, kişi sayısı) olacağı ve düzeni belli değil.
 - Varyantlar hazırlanıp aynı sayfaya (https://claude.ai/artifact/BUJShpW3rXDGFVNyEygDZr) eklenecek; seçim varyant harfiyle. Dayanak: ILKELER P04 (yeni görsel tasarımı Mert seçer).
 
+## Important Dates çekmecesi A (2026-10-10)
+
+### Soru-29. All day seçili değilken "Closed" günün yalnız verilen saatlerini mi kapatsın? (B13)
+- **Bugün (yapılan varsayılan, Mert onaylamadı):** All day seçili değilse kapanış yalnız girilen saatleri kapsar; All day seçiliyse saat alanları kapalı ve 24 saat kapalı (Mert, 2026-10-10 12:38Z).
+- **Örnek:** Kadıköy 15:00–18:00 kapalı; 12:00–16:00 vardiyası kısmen çakışır, 19:00–23:00 vardiyası etkilenmez.
+- (a) **Yalnız verilen saatler (Önerilen, yapılan varsayılan).** Dayanak: yok — yeni karar.
+- (b) Saat girilse de bütün gün kapalı sayılsın.
+- Çekmece A duraklatıldı; Mert o thread'de "devam" diyene kadar test ve tren yok.
+
 ## Önce sohbette konuşulacak — temel model (ILKELER P18; seçim sohbetten sonra)
 
 ### Soru-25. Birden çok lokasyonlu işte "bu hafta" hangi saate göre hesaplansın?
