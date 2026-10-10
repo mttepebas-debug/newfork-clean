@@ -117,10 +117,11 @@ export function DayHeaderCell({
       {hourLabels.length ? (
         <span
           className="schedule-day-header-partial-closed"
+          data-kind={partialClosures[0]!.kind}
           aria-label={hourSummary}
           title={hourSummary}
         >
-          <Clock size={9} aria-hidden />
+          {partialClosures[0]!.kind === "short" ? <Clock size={9} aria-hidden /> : <Lock size={9} aria-hidden />}
           {hourLabels.length > 1 ? `${firstHours} +${hourLabels.length - 1}` : firstHours}
         </span>
       ) : null}

@@ -5435,6 +5435,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   line-height: 1;
   white-space: nowrap;
 }
+.schedule-day-header .schedule-day-header-partial-closed[data-kind="closed"] {
+  color: var(--theme-danger);
+}
 .schedule-day-header[data-closed="true"] {
   background: #fbf1ef;
 }
