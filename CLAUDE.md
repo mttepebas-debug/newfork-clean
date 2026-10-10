@@ -53,7 +53,7 @@ Bu repoda çalışan her oturumun ve ajanın ortak kuralı. Mert'in (ürün sahi
 
 ## 5. İş akışı
 ### Roller
-İş Claude Projects'te yürür (Mert, 2026-10-09; `KARARLAR.md` S-116). Eski yerel koordinatör oturumu (`newfork-wt/coord`, dal `coord/kayit`, `/oto`, `/durum`) emeklidir.
+İş Claude Projects'te yürür (Mert, 2026-10-09; `KARARLAR.md` S-116). Eski yerel koordinatör oturumu (`newfork-wt/coord`, dal `coord/kayit2`, `/oto`, `/durum`) emeklidir.
 - **Koordinatör:** Project'in proje sohbetindeki Claude'u. Mert'in proje sohbetindeki muhatabı; kod yazmaz. İsteği daraltır, her işe bir thread açar, sırayı ve işçi sınırını tutar, sonucu doğrular, `DURUM.md`'yi yazar, treni Remote Control thread'ine koşturur.
 - **Thread** (işçi): bir iş, uçtan uca; Mert'le kendi thread'inde konuşur. İki türü var:
   - **Bulut thread'i:** GitHub repo'sunun kendi kopyası, Linux. Kod, lint, typecheck, birim test ve dal push'u yapar. Yerel DB, kilit, `test:db`, e2e ve tren yoktur; `lock.mjs` ve `train.mjs` orada çıkış 3 ile durur. Bunlara gereken adım Remote Control thread'ine gider.
