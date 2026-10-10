@@ -18,6 +18,7 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - `src/settings/CatalogDrawer.tsx` açıkken sayfanın geri kalanı `inert`, `Toaster` de: çekmece açık kalıyorsa mesaj içinde `role="status"`, kapanıyorsa toast kapanıştan sonra.
 - Schedule penceresi Escape'i `src/schedule/lib/useCloseOnEscape.ts` ile alır; yoksa sayfanın dinleyicisi haftayı bugüne atlatır.
 - Özgüllük: `.request-detail-inner p` ve `.app-confirm p` her `p`'yi griler; telefonda `jobs-settings.css`'teki `.job-column-headings` her Settings başlığına ızgara dayatır (üç sınıfla ez).
+- Liste sayfası ortak iskelete bölümüne `list-page` sınıfı vererek girer (`views/list-page.css`; `CatalogPageHeader` ve `ListPagination` yükler, `EmployeesPage.test.tsx` sınıfı bekler).
 
 ## Metin
 - Metin değişince `e2e/`'de ikizini ara (`toContainText`, `getByText`, `getByRole(…, { name })`); onu trenin CI'ı koşar; akış değiştiyse etkilenen e2e'yi `node scripts/lock.mjs run db --e2e -- …` ile sen de koş. `toContainText` gizli çocukları da sayar: `aria-describedby` hedefi `not.toContainText`'i kırar.

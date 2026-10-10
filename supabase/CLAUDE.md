@@ -20,11 +20,16 @@
 - `jobs` UPDATE'inden sonra aynı migration'da `ALTER TABLE jobs` "pending trigger events" verir; arada `set constraints public.document_assignment_changed immediate`.
 - Yeni bildirim tipi: `notification_catalog` + `notification_producer_registry` + yayınlanmış `notification_template_versions`; eksiği `reconcile_notification_platform_service()` gösterir.
 - Yeni soft yayın bulgusu `schedule_publication_overrides`'a yazılır; CHECK'i yalnız üç kod alır: ya `overrideable=false` + `tier='note'` ya CHECK genişler.
+- `language sql` fonksiyonda argümanla aynı adlı sütun varsa sütun kazanır, koşul sessizce bütün satırlara eşleşir (BL-234: yayın önizlemesi 500): argümanı `fn.arg` diye nitele ya da çakışmayan ad ver (`target_…`); `pg_temp` yardımcıları da.
+- JSON'a giden `time` değeri `to_char(x, 'HH24:MI')` ile: `jsonb_build_object` `09:00:00` yazar, shared `timeOfDaySchema` yalnız HH:MM alır, API 500 döner.
 
 ## Tek yerde duran kurallar
 - Müsaitlik asla engellemez. `approved_time_off` ayarı yalnız `assess_weekly_shift_availability`'de okunur; atama yazan her yol oradan geçer.
 - Yayınlanmış kabulü koruma, `schedule_availability_prior_publication`'ı çağıran dört fonksiyonda; değişiklik dördüne birden.
 - "Yayın onaylı takası geri almaz" tek kural: `shift_exchange_draft_undoes`.
+- Aynı kişide çakışan vardiya (`time_overlap`) hep engel; ayarı ve onayı yok. Çekirdek bir vardiyayı ötekilerin bugünkü saatiyle kıyaslar: birden çok vardiyanın saatini değiştiren yol yeni-yeni çakışmaya kendisi bakar (`preview_schedule_default_hours_service` eş döngüsü, "Overlaps …").
+- İzin talebinin durumu tek değerlendirme: `app_private.time_off_state`; oy, okuma (`time_off_progress`), süpürme ve bildirim onu okur.
+- Belge muafiyeti yalnız `app_private.set_document_exemption`'dan verilir ya da geri alınır (inceleme servisi, sahiplik devri, yeniden yayın).
 
 ## Test (pgTAP) ve test dünyası
 - `pnpm.cmd test:db` (`scripts/test-db.mjs`) ortak DB'ye kalıcı olarak yalnız `origin/main`'deki `builder.sql`'i yükler (tek işlem); çalışma klasörünün `builder.sql`'i her test dosyasının kendi işleminde yüklenir ve rollback'le gider (geçici kopyalar `supabase/tests/.builder-run/`, izlenen dosyalar değişmez). Ortak DB'ye dokunduğu için kilitle: `node scripts/lock.mjs run db -- pnpm.cmd test:db`; dosya argümanı: `node scripts/lock.mjs run db -- pnpm.cmd test:db supabase/tests/x.test.sql`. Yalnız main'in builder'ını yüklemek: `node scripts/lock.mjs run db -- node scripts/test-db.mjs --load-only`. Her test dosyasının ilk deyimi kendi satırında `begin;` olmalı (`begin transaction;` ve satır sonu `--` yorumu olur), yoksa koşu başlamaz. Rollback'li denemede değişen builder migration'dan sonra aynı transaction'a girer.
@@ -37,6 +42,9 @@
 - "X yok" hücresi önce başarılı cevabı ve öğenin varlığını kanıtlar; servis rollback'li transaction'da bozularak sınanır.
 - Yayınlanmamış belge tipine bağlanan `employee_onboarding_requirements` satırı sessizce düşer: fixture tanımı önce yayınlar.
 - `schedule_grid_read_budget` yükte 50–60 ms'e sıçrar: ölçümü sırayla tekrarla.
+- `tests.person` her çalışana bir `employee_onboarding_cases` satırı açar (`employee_id` unique): ikinci insert yerine var olanı güncelle ya da ayrı kişi kur.
+- K4: Remote olmayan her müdür bir lokasyonda kalır (`app_private.keep_manager_at_a_location`, 22023 `employee.manager_location_required`): tek lokasyonlu müdürü lokasyonundan çıkaran test bunu alır, iki lokasyonlu kişi kullan. Lokasyonsuz `tests.person` Remote kurar, muaftır.
+- `set local role` sonrası çağrılan `pg_temp` yardımcısı `grant execute on function pg_temp.f(...) to service_role` (ya da `public`) ister.
 
 ## Canlı
 - MCP `apply_migration` sürüme sunucu damgasını yazar (uygulama anı). Ekleyen migration'ın dosyası bu damgayla yeniden adlandırılır (`20261008052513_<ad>.sql`), canlı ledger'a dokunulmaz; main'deki sıra canlıya uygulanma sırasıdır (Mert, 2026-10-08; KARARLAR OPS-05 eki). Silen migration main'e kendi adıyla girer; canlıya uygulanınca ledger satırı dosya adına eşlenir: `update supabase_migrations.schema_migrations set version = '<repo>' where name = '<ad>' and version = '<damga>'` (önce satırın yedeği). Kanıt: `md5(statements[1])` = dosya md5'i.
