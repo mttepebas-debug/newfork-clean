@@ -288,6 +288,9 @@ test("onboarding masks the phone and says in red when it is somebody else's or o
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByRole("heading", { name: "Your details" })).toBeVisible();
 
+  // Back in the field, the caret at the end of the number, as a click there leaves it.
+  await phone.click();
+  await phone.press("End");
   await phone.press("Backspace");
   await expect(phone).toHaveValue(`(${a}) ${b}-${c.slice(0, 3)}`);
   await expect(phone).not.toHaveAttribute("aria-invalid", "true");
