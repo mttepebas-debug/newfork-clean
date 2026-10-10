@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 460, last: 20261010064600_the_account_keeps_one_phone.sql
--- fingerprint: sha256:266b52052239f2dc5fd3b9e31e521529bcb1fa5201ecc886f69b288244b1cc3c
+-- migrations: 461, last: 20261010113000_onboarding_phone_is_ones_own.sql
+-- fingerprint: sha256:4a8e4ad02dbdde9766a7f5c53a5c7a73ff11fefe3b08b9dbfbbde7bf655894ba
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4638,6 +4638,28 @@ $$;
 
 
 ALTER FUNCTION "app_private"."owner_setup_checklist_item_ids"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select target_phone is not null and exists (
+    select 1
+    from public.employee_private_profiles private_record
+    join public.employee_profiles record
+      on record.id = private_record.employee_id
+     and record.workspace_id = private_record.workspace_id
+    where private_record.workspace_id = target_workspace_id
+      and private_record.phone = target_phone
+      and record.id is distinct from except_employee_id
+      and record.user_id is distinct from (
+        select own.user_id from public.employee_profiles own where own.id = except_employee_id)
+  );
+$$;
+
+
+ALTER FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."signature_template_versions" (
@@ -15982,6 +16004,37 @@ $$;
 ALTER FUNCTION "public"."notify_time_off_shortened"("actor" "uuid", "w" "uuid", "parent_id" "uuid", "cut" "tstzmultirange", "zone_name" "text", "source" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  target_case public.employee_onboarding_cases%rowtype;
+begin
+  perform app_private.authorize(target_user_id, app_private.onboarding_self_workspace(target_user_id, target_workspace_id, true), 'onboarding.self');
+  select onboarding.* into target_case
+  from public.employee_onboarding_cases onboarding
+  where onboarding.id = app_private.employee_onboarding_case_id(target_user_id, target_workspace_id);
+  if target_case.id is null then
+    raise exception 'onboarding unavailable' using errcode = 'P0002';
+  end if;
+  -- Open only while the profile can still be saved: after that it would only
+  -- tell somebody whose number a guess is (TEL-2 review, item 1).
+  if target_case.status in ('submitted', 'approved', 'cancelled') then
+    raise exception 'onboarding cannot be edited' using errcode = '22023';
+  end if;
+  return app_private.phone_used_in_workspace(
+    target_case.workspace_id,
+    app_private.account_phone_e164(typed_phone),
+    target_case.employee_id
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."organization_job_counts_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -21521,6 +21574,27 @@ begin
     or (normalized_country_code is not null and normalized_country_code !~ '^[A-Z]{2}$')
     or (normalized_birth_date is not null and normalized_birth_date !~ '^\d{4}-\d{2}-\d{2}$') then
     raise exception 'complete private profile required' using errcode = '22023';
+  end if;
+
+  -- TEL-2: the number is nobody else's in this workspace, and the
+  -- emergency contact is somebody else. Two people saving one number at once
+  -- in one workspace take turns, so the second sees the first.
+  perform pg_advisory_xact_lock(hashtext(
+    'onboarding-phone:' || target_case.workspace_id::text || ':'
+    || coalesce(account_phone, app_private.account_phone_e164(submitted_phone), '')
+  ));
+  if app_private.phone_used_in_workspace(
+    target_case.workspace_id,
+    coalesce(account_phone, app_private.account_phone_e164(submitted_phone)),
+    target_case.employee_id
+  ) then
+    raise exception 'phone used by someone else in this workspace'
+      using errcode = '23505', hint = 'onboarding.phone_in_use';
+  end if;
+  if btrim(profile_payload->>'emergency_contact_phone')
+    = coalesce(account_phone, app_private.account_phone_e164(submitted_phone)) then
+    raise exception 'emergency contact phone is the person''s own'
+      using errcode = '23514', hint = 'onboarding.emergency_is_own_phone';
   end if;
 
   -- The account is the phone's only source. An empty account takes the number
@@ -28567,6 +28641,7 @@ CREATE TABLE IF NOT EXISTS "public"."employee_private_profiles" (
     CONSTRAINT "employee_private_profiles_emergency_contact_phone_us_phone" CHECK (("emergency_contact_phone" ~ '^\+1[2-9][0-9]{9}$'::"text")),
     CONSTRAINT "employee_private_profiles_emergency_contact_whole" CHECK (((("emergency_contact_name" IS NULL) = ("emergency_contact_phone" IS NULL)) AND (("emergency_contact_name" IS NOT NULL) OR ("emergency_contact_relationship" IS NULL)))),
     CONSTRAINT "employee_private_profiles_emergency_email_check" CHECK ((("emergency_contact_email" = ''::"text") OR ("emergency_contact_email" ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'::"text"))),
+    CONSTRAINT "employee_private_profiles_emergency_is_not_own_phone" CHECK (("emergency_contact_phone" <> "phone")),
     CONSTRAINT "employee_private_profiles_emergency_relationship_check" CHECK ((("char_length"("btrim"("emergency_contact_relationship")) >= 1) AND ("char_length"("btrim"("emergency_contact_relationship")) <= 80))),
     CONSTRAINT "employee_private_profiles_emergency_relationship_us_letters" CHECK ((NORMALIZE("emergency_contact_relationship", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_legal_first_name_check" CHECK ((("char_length"("btrim"("legal_first_name")) >= 1) AND ("char_length"("btrim"("legal_first_name")) <= 80))),
@@ -34788,6 +34863,10 @@ REVOKE ALL ON FUNCTION "app_private"."owner_setup_checklist_item_ids"() FROM PUB
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") FROM PUBLIC;
+
+
+
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."signature_template_versions" TO "service_role";
 
 
@@ -35910,6 +35989,11 @@ REVOKE ALL ON FUNCTION "public"."notify_schedule_request_event_service"() FROM P
 
 
 REVOKE ALL ON FUNCTION "public"."notify_time_off_shortened"("actor" "uuid", "w" "uuid", "parent_id" "uuid", "cut" "tstzmultirange", "zone_name" "text", "source" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid") TO "service_role";
 
 
 
