@@ -1974,47 +1974,59 @@ describe("scheduling settings schemas", () => {
 });
 
 describe("important date schemas", () => {
-  it("accepts annual events and requires closed days to block scheduling", () => {
+  const kadikoy = "34000000-0000-4000-8000-000000000001";
+  const base = {
+    location_id: kadikoy,
+    location_ids: [kadikoy],
+    title: "Christmas Eve",
+    type: "holiday",
+    starts_on: "2027-12-24",
+    ends_on: "2027-12-24",
+    recurrence: "annual",
+    note: "",
+    all_day: true,
+    start_time: null,
+    end_time: null,
+    location_days: {},
+  };
+
+  it("accepts a holiday with short hours at one location (EKRAN-08)", () => {
     expect(
       importantDateInputSchema.parse({
-        location_id: null,
-        title: "New Year's Day",
-        type: "holiday",
-        starts_on: "2027-01-01",
-        ends_on: "2027-01-01",
-        recurrence: "annual",
-        note: "",
-        affects_scheduling: true,
+        ...base,
+        location_days: { [kadikoy]: { status: "short", opens: "10:00", closes: "15:00" } },
       }),
-    ).toMatchObject({ title: "New Year's Day", recurrence: "annual" });
+    ).toMatchObject({ title: "Christmas Eve", location_days: { [kadikoy]: { status: "short" } } });
+  });
 
+  it("knows only Holiday and Event: closing is a location's day", () => {
+    expect(() => importantDateInputSchema.parse({ ...base, type: "closed_day" })).toThrow();
+    expect(() => importantDateInputSchema.parse({ ...base, type: "blackout" })).toThrow();
+  });
+
+  it("refuses short hours that close before they open, and a day for a location left out", () => {
     expect(() =>
-      importantDateInputSchema.parse({
-        location_id: null,
-        title: "Closed for repairs",
-        type: "closed_day",
-        starts_on: "2027-02-01",
-        ends_on: "2027-02-01",
-        recurrence: "none",
-        note: "",
-        affects_scheduling: false,
-      }),
-    ).toThrow("Closed days must affect scheduling");
+      importantDateInputSchema.parse({ ...base, location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } }),
+    ).toThrow("Closes must be after opens.");
+    expect(() =>
+      importantDateInputSchema.parse({ ...base, location_days: { "34000000-0000-4000-8000-000000000002": { status: "closed" } } }),
+    ).toThrow("A location's day needs the location chosen");
+  });
+
+  it("gives hours only to a date that is not all day (B13)", () => {
+    expect(() => importantDateInputSchema.parse({ ...base, start_time: "09:00", end_time: "17:00" })).toThrow("An all-day date has no hours");
+    expect(() => importantDateInputSchema.parse({ ...base, all_day: false, start_time: "17:00", end_time: "09:00" })).toThrow(
+      "End time must be after the start time",
+    );
+    expect(importantDateInputSchema.parse({ ...base, all_day: false, start_time: "13:00", end_time: "17:00" })).toMatchObject({
+      start_time: "13:00",
+    });
   });
 
   it("rejects inverted date ranges", () => {
-    expect(() =>
-      importantDateInputSchema.parse({
-        location_id: null,
-        title: "Festival weekend",
-        type: "event",
-        starts_on: "2027-05-03",
-        ends_on: "2027-05-01",
-        recurrence: "none",
-        note: "",
-        affects_scheduling: true,
-      }),
-    ).toThrow("End date must be on or after the start date");
+    expect(() => importantDateInputSchema.parse({ ...base, starts_on: "2027-05-03", ends_on: "2027-05-01" })).toThrow(
+      "End date must be on or after the start date",
+    );
   });
 });
 

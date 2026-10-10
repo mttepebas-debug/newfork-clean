@@ -15,12 +15,13 @@ const stateParams = dateParams.extend({ action: importantDateStateActionSchema }
 // A change names the revision it was made on: the second of two saves is refused, not lost.
 const revisionBody = z.object({ expected_revision: z.number().int().positive() });
 
-// K13: the shifts kept on a closed day and the fingerprint of the list it was
-// shown. A body without them keeps nothing and names no list.
+// K13: what the Shifts tab chose for each listed shift (remove, open, keep)
+// and the fingerprint of the list it was shown. A body without them takes the
+// defaults and names no list.
 function closureOf(body: unknown) {
   const choice = importantDateClosureChoiceSchema.safeParse(body ?? {});
   return choice.success
-    ? { keepShiftIds: choice.data.keep_shift_ids, expectedFingerprint: choice.data.expected_fingerprint }
+    ? { shiftChoices: choice.data.shift_choices, expectedFingerprint: choice.data.expected_fingerprint }
     : null;
 }
 
@@ -49,7 +50,7 @@ export function registerImportantDatesRoutes(
     );
   });
 
-  // K13: what a closed day would land on, before it is saved or republished.
+  // K13: what a date would land on, before it is saved or republished.
   app.post(`${base}/closure-preview`, async (request, reply) => {
     const params = workspaceParams.safeParse(request.params);
     const body = importantDateClosurePreviewInputSchema.safeParse(request.body);
@@ -59,8 +60,10 @@ export function registerImportantDatesRoutes(
     return reply.send(
       await options.service.previewClosure({
         actorUserId: context.userId, workspaceId: params.data.workspaceId,
-        importantDateId: body.data.important_date_id ?? null, type: body.data.type, startsOn: body.data.starts_on,
+        importantDateId: body.data.important_date_id ?? null, startsOn: body.data.starts_on,
         endsOn: body.data.ends_on, recurrence: body.data.recurrence, locationIds: body.data.location_ids,
+        allDay: body.data.all_day, startTime: body.data.start_time, endTime: body.data.end_time,
+        locationDays: body.data.location_days,
       }),
     );
   });

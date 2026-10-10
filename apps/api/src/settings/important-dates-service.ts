@@ -5,17 +5,20 @@ import {
   type ImportantDateClosurePreview,
   type ImportantDateHistory,
   type ImportantDateInput,
+  type ImportantDateLocationDays,
   type ImportantDateSaved,
+  type ImportantDateShiftChoice,
   type ImportantDateStateAction,
 } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
 import type { JobsRpcClient } from "./jobs-management-service";
 
 type Actor = { actorUserId: string; workspaceId: string };
-/** K13: the shifts kept on a closed day, and the fingerprint of the list it was shown. */
-type Closure = { keepShiftIds: string[]; expectedFingerprint: string | null };
+/** K13: what was chosen for each listed shift, and the fingerprint of the list it was shown. */
+type Closure = { shiftChoices: Record<string, ImportantDateShiftChoice>; expectedFingerprint: string | null };
 type ClosureQuery = {
-  importantDateId: string | null; type: string; startsOn: string; endsOn: string; recurrence: string; locationIds: string[];
+  importantDateId: string | null; startsOn: string; endsOn: string; recurrence: string; locationIds: string[];
+  allDay: boolean; startTime: string | null; endTime: string | null; locationDays: ImportantDateLocationDays;
 };
 
 /**
@@ -27,7 +30,7 @@ export interface ImportantDatesService {
   save(input: Actor & { importantDateId: string | null; expectedRevision: number | null; date: ImportantDateInput; closure?: Closure }): Promise<ImportantDateSaved>;
   setState(input: Actor & { importantDateId: string; action: ImportantDateStateAction; closure?: Closure }): Promise<ImportantDateSaved>;
   history(input: Actor & { importantDateId: string }): Promise<ImportantDateHistory>;
-  /** K13: the published shifts a closed day would land on. */
+  /** K13: the published shifts a date would land on. */
   previewClosure(input: Actor & ClosureQuery): Promise<ImportantDateClosurePreview>;
 }
 
@@ -53,10 +56,13 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
           target_ends_on: input.date.ends_on,
           target_recurrence: input.date.recurrence,
           target_note: input.date.note,
-          target_affects_scheduling: input.date.affects_scheduling,
           target_location_ids: [...new Set(locations)],
           target_expected_revision: input.expectedRevision,
-          target_keep_shift_ids: input.closure?.keepShiftIds ?? [],
+          target_all_day: input.date.all_day,
+          target_start_time: input.date.start_time,
+          target_end_time: input.date.end_time,
+          target_location_days: input.date.location_days,
+          target_shift_choices: input.closure?.shiftChoices ?? {},
           target_expected_fingerprint: input.closure?.expectedFingerprint ?? null,
         }),
       );
@@ -66,7 +72,7 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
         await rpc("set_important_date_state_service", input, {
           target_important_date_id: input.importantDateId,
           target_action: input.action,
-          target_keep_shift_ids: input.closure?.keepShiftIds ?? [],
+          target_shift_choices: input.closure?.shiftChoices ?? {},
           target_expected_fingerprint: input.closure?.expectedFingerprint ?? null,
         }),
       );
@@ -82,11 +88,14 @@ export function createImportantDatesService(client: JobsRpcClient): ImportantDat
       return importantDateClosurePreviewSchema.parse(
         await rpc("preview_important_date_closure_service", input, {
           target_important_date_id: input.importantDateId,
-          target_type: input.type,
           target_starts_on: input.startsOn,
           target_ends_on: input.endsOn,
           target_recurrence: input.recurrence,
           target_location_ids: [...new Set(input.locationIds)],
+          target_all_day: input.allDay,
+          target_start_time: input.startTime,
+          target_end_time: input.endTime,
+          target_location_days: input.locationDays,
         }),
       );
     },

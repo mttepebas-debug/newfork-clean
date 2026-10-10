@@ -47,8 +47,12 @@ const date = {
   ends_on: "2026-12-25",
   recurrence: "none",
   note: "",
-  affects_scheduling: true,
+  all_day: true,
+  start_time: null,
+  end_time: null,
+  location_days: {},
 };
+const closedAtKadikoy = { [kadikoy]: { status: "closed" } };
 
 function appWith(service: ImportantDatesService, resolved: ActiveWorkspaceContext | null = manager) {
   const organizationSettingsService = {
@@ -155,18 +159,22 @@ describe("important date routes", () => {
     await app.close();
   });
 
-  // K13: a closed day lists the published shifts it lands on before it is saved.
-  it("previews what a closed day lands on, as the signed-in person", async () => {
+  // K13: a closing lists the published shifts it lands on before it is saved.
+  it("previews what a closing lands on, as the signed-in person", async () => {
     const service = serviceMock();
     const app = appWith(service);
     const response = await app.inject({
       method: "POST", url: `${base}/closure-preview`, headers: auth,
-      payload: { important_date_id: dateId, type: "closed_day", starts_on: "2026-12-25", ends_on: "2026-12-25", recurrence: "none", location_ids: [kadikoy] },
+      payload: {
+        important_date_id: dateId, starts_on: "2026-12-25", ends_on: "2026-12-25", recurrence: "none", location_ids: [kadikoy],
+        all_day: false, start_time: "13:00", end_time: "17:00", location_days: closedAtKadikoy,
+      },
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ fingerprint: "f1", shifts: [] });
     expect(service.previewClosure).toHaveBeenCalledWith(expect.objectContaining({
-      actorUserId: userId, workspaceId, importantDateId: dateId, type: "closed_day", startsOn: "2026-12-25", locationIds: [kadikoy],
+      actorUserId: userId, workspaceId, importantDateId: dateId, startsOn: "2026-12-25", locationIds: [kadikoy],
+      allDay: false, startTime: "13:00", endTime: "17:00", locationDays: closedAtKadikoy,
     }));
     await app.close();
   });
@@ -174,43 +182,76 @@ describe("important date routes", () => {
   it("refuses a preview with no dates without asking the database", async () => {
     const service = serviceMock();
     const app = appWith(service);
-    const response = await app.inject({ method: "POST", url: `${base}/closure-preview`, headers: auth, payload: { type: "closed_day" } });
+    const response = await app.inject({ method: "POST", url: `${base}/closure-preview`, headers: auth, payload: { location_days: closedAtKadikoy } });
     expect(response.statusCode).toBe(400);
     expect(service.previewClosure).not.toHaveBeenCalled();
     await app.close();
   });
 
-  it("passes the shifts kept on a closed day and the list it was shown (K13)", async () => {
+  it("passes the choice made for each listed shift and the list it was shown (K13)", async () => {
     const service = serviceMock();
     const app = appWith(service);
     const kept = "81000000-0000-4000-8000-000000000001";
+    const opened = "81000000-0000-4000-8000-000000000002";
     const response = await app.inject({
       method: "POST", url: base, headers: auth,
-      payload: { ...date, type: "closed_day", keep_shift_ids: [kept], expected_fingerprint: "f1" },
+      payload: { ...date, type: "holiday", location_days: closedAtKadikoy, shift_choices: { [kept]: "keep", [opened]: "open" }, expected_fingerprint: "f1" },
     });
     expect(response.statusCode).toBe(201);
-    expect(service.save).toHaveBeenCalledWith(expect.objectContaining({ closure: { keepShiftIds: [kept], expectedFingerprint: "f1" } }));
+    expect(service.save).toHaveBeenCalledWith(expect.objectContaining({
+      date: expect.objectContaining({ location_days: closedAtKadikoy }),
+      closure: { shiftChoices: { [kept]: "keep", [opened]: "open" }, expectedFingerprint: "f1" },
+    }));
     await app.close();
   });
 
-  it("passes them when a closed day is republished", async () => {
+  it("refuses a choice other than remove, open or keep without asking the database", async () => {
     const service = serviceMock();
     const app = appWith(service);
     const response = await app.inject({
-      method: "POST", url: `${base}/${dateId}/republish`, headers: auth, payload: { keep_shift_ids: [], expected_fingerprint: "f1" },
+      method: "POST", url: base, headers: auth,
+      payload: { ...date, location_days: closedAtKadikoy, shift_choices: { "81000000-0000-4000-8000-000000000001": "delete" } },
     });
-    expect(response.statusCode).toBe(200);
-    expect(service.setState).toHaveBeenCalledWith(expect.objectContaining({ closure: { keepShiftIds: [], expectedFingerprint: "f1" } }));
+    expect(response.statusCode).toBe(400);
+    expect(service.save).not.toHaveBeenCalled();
     await app.close();
   });
 
-  it("answers a closed day saved on a stale list with 409 and its reason", async () => {
+  it("refuses a type the drawer no longer has, and a day for a location the date is not for", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const closedDay = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, type: "closed_day" } });
+    const elsewhere = await app.inject({
+      method: "POST", url: base, headers: auth,
+      payload: { ...date, location_days: { "34000000-0000-4000-8000-000000000009": { status: "closed" } } },
+    });
+    const backwards = await app.inject({
+      method: "POST", url: base, headers: auth,
+      payload: { ...date, location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } },
+    });
+    expect([closedDay.statusCode, elsewhere.statusCode, backwards.statusCode]).toEqual([400, 400, 400]);
+    expect(service.save).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("passes them when a closing is republished", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({
+      method: "POST", url: `${base}/${dateId}/republish`, headers: auth, payload: { shift_choices: {}, expected_fingerprint: "f1" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(service.setState).toHaveBeenCalledWith(expect.objectContaining({ closure: { shiftChoices: {}, expectedFingerprint: "f1" } }));
+    await app.close();
+  });
+
+  it("answers a closing saved on a stale list with 409 and its reason", async () => {
     const service = serviceMock();
     vi.mocked(service.save).mockRejectedValue(
       new HttpError("Request conflicts with the current state", 409, { reason: "important_date.closure_changed" }),
     );
     const app = appWith(service);
-    const response = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, type: "closed_day" } });
+    const response = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, location_days: closedAtKadikoy } });
     expect(response.statusCode).toBe(409);
     expect(response.json()).toMatchObject({ reason: "important_date.closure_changed" });
     await app.close();

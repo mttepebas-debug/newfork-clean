@@ -1088,18 +1088,36 @@ export type SchedulingSettingsInput = z.infer<
   typeof schedulingSettingsInputSchema
 >;
 
-export const importantDateTypeSchema = z.enum([
-  "holiday",
-  "event",
-  "blackout",
-  "closed_day",
-]);
+/** A date is a Holiday or an Event; closing is a location's day (EKRAN-08). */
+export const importantDateTypeSchema = z.enum(["holiday", "event"]);
 export type ImportantDateType = z.infer<typeof importantDateTypeSchema>;
 
 export const importantDateRecurrenceSchema = z.enum(["none", "annual"]);
 export type ImportantDateRecurrence = z.infer<
   typeof importantDateRecurrenceSchema
 >;
+
+const importantDateClockSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+
+/**
+ * What a date does at one location that day (L1): closed, or open only from
+ * `opens` to `closes` ("24:00" is midnight at the end of the day). A location
+ * the date leaves out of `location_days` is open as usual.
+ */
+export const importantDateLocationDaySchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("closed") }).strict(),
+  z
+    .object({
+      status: z.literal("short"),
+      opens: importantDateClockSchema,
+      closes: z.union([importantDateClockSchema, z.literal("24:00")]),
+    })
+    .strict()
+    .refine((day) => day.opens < day.closes, { path: ["closes"], message: "Closes must be after opens." }),
+]);
+export type ImportantDateLocationDay = z.infer<typeof importantDateLocationDaySchema>;
+export const importantDateLocationDaysSchema = z.record(z.string().uuid(), importantDateLocationDaySchema);
+export type ImportantDateLocationDays = z.infer<typeof importantDateLocationDaysSchema>;
 
 export const importantDateSchema = z.object({
   id: z.string().uuid(),
@@ -1114,7 +1132,11 @@ export const importantDateSchema = z.object({
   ends_on: z.string().date(),
   recurrence: importantDateRecurrenceSchema,
   note: z.string().max(500),
-  affects_scheduling: z.boolean(),
+  /** All day (the default), or from start_time on the first day to end_time on the last (B13). */
+  all_day: z.boolean(),
+  start_time: importantDateClockSchema.nullable(),
+  end_time: z.union([importantDateClockSchema, z.literal("24:00")]).nullable(),
+  location_days: importantDateLocationDaysSchema,
   archived_at: z.string().datetime({ offset: true }).nullable(),
   /** Unpublished: hidden from its people and the Schedule, still editable (Mert, 2026-10-02). */
   status: z.enum(["published", "unpublished"]).optional(),
@@ -1157,9 +1179,9 @@ export const importantDateHistorySchema = z.object({
 });
 export type ImportantDateHistory = z.infer<typeof importantDateHistorySchema>;
 
-/** A published shift a closed day would land on (K13): the screen lists them before saving. */
+/** A published shift a closing or short hours would land on (K13): the Shifts tab lists them before saving. */
 export const importantDateClosureShiftSchema = z.object({
-  /** The published shift; what keep_shift_ids names. */
+  /** The published shift; what shift_choices names. */
   id: z.string().uuid(),
   source_id: z.string().uuid(),
   employee_id: z.string().uuid(),
@@ -1172,15 +1194,21 @@ export const importantDateClosureShiftSchema = z.object({
   end_time: z.string().nullable(),
   starts_at: z.string(),
   ends_at: z.string(),
+  /** Why it is listed: the location is closed then, or the shift runs outside its short hours. */
+  reason: z.enum(["closed", "short_hours"]),
+  opens: z.string().nullable().optional(),
+  closes: z.string().nullable().optional(),
+  /** Remove on a closed day; with short hours Remove when wholly outside them, else Keep (B12). */
+  default_choice: z.enum(["remove", "open", "keep"]),
 });
 export type ImportantDateClosureShift = z.infer<typeof importantDateClosureShiftSchema>;
 
-/** What a closed day would land on; the fingerprint goes back with the save. */
+/** What a date would land on; the fingerprint goes back with the save. */
 export const importantDateClosurePreviewSchema = z.object({
   fingerprint: z.string(),
   /** Only shifts at locations the person reads the Schedule of. */
   shifts: z.array(importantDateClosureShiftSchema),
-  /** Listed shifts at locations the person may not read: they drop too, and dropping needs schedule.edit there. */
+  /** Listed shifts at locations the person may not read: they take their default, which needs schedule.edit there. */
   hidden_shift_count: z.coerce.number().int().nonnegative(),
   /** A saved draft's own shifts on the newly closed days: they drop to open without asking (K16). */
   draft_shift_count: z.coerce.number().int().nonnegative(),
@@ -1191,22 +1219,31 @@ export type ImportantDateClosurePreview = z.infer<typeof importantDateClosurePre
 export const importantDateClosurePreviewInputSchema = z
   .object({
     important_date_id: z.string().uuid().nullable().optional(),
-    type: importantDateTypeSchema,
     starts_on: z.string().date(),
     ends_on: z.string().date(),
     recurrence: importantDateRecurrenceSchema,
     location_ids: z.array(z.string().uuid()).max(100),
+    all_day: z.boolean(),
+    start_time: importantDateClockSchema.nullable(),
+    end_time: z.union([importantDateClockSchema, z.literal("24:00")]).nullable(),
+    location_days: importantDateLocationDaysSchema,
   })
-  .refine((value) => value.ends_on >= value.starts_on, { path: ["ends_on"], message: "End date must be on or after the start date" });
+  .superRefine((value, issue) => checkImportantDateSpan(value, issue));
 export type ImportantDateClosurePreviewInput = z.infer<typeof importantDateClosurePreviewInputSchema>;
 
 /**
- * The choice made on the list (K13): every listed shift drops to an open shift
- * but the kept ones. A save or republish over published shifts without the
- * fingerprint it was shown is refused (409 important_date.closure_changed).
+ * The choices made on the Shifts tab (K13): each listed shift is removed,
+ * opened or kept; one left out takes its default. A save or republish over
+ * published shifts without the fingerprint it was shown is refused (409
+ * important_date.closure_changed).
  */
+export const importantDateShiftChoiceSchema = z.enum(["remove", "open", "keep"]);
+export type ImportantDateShiftChoice = z.infer<typeof importantDateShiftChoiceSchema>;
 export const importantDateClosureChoiceSchema = z.object({
-  keep_shift_ids: z.array(z.string().uuid()).max(500).default([]),
+  shift_choices: z
+    .record(z.string().uuid(), importantDateShiftChoiceSchema)
+    .refine((choices) => Object.keys(choices).length <= 500, { message: "Too many shifts" })
+    .default({}),
   expected_fingerprint: z.string().max(64).nullable().default(null),
 });
 export type ImportantDateClosureChoice = z.infer<typeof importantDateClosureChoiceSchema>;
@@ -1219,6 +1256,8 @@ export const importantDateSavedSchema = z.object({
   recipient_count: z.coerce.number().int().nonnegative().optional(),
   /** Shifts this change opened (K13). */
   shifts_opened: z.coerce.number().int().nonnegative().optional(),
+  /** Shifts this change removed from the Schedule. */
+  shifts_removed: z.coerce.number().int().nonnegative().optional(),
   /** Draft shifts this change dropped to open (K16). */
   draft_shifts_opened: z.coerce.number().int().nonnegative().optional(),
   /** Shifts the date opened that stay open now that it no longer closes their day (K15: "3 shifts stay open"). */
@@ -1236,24 +1275,35 @@ export const importantDateInputSchema = importantDateSchema
     ends_on: true,
     recurrence: true,
     note: true,
-    affects_scheduling: true,
+    all_day: true,
+    start_time: true,
+    end_time: true,
+    location_days: true,
   })
   .superRefine((value, issue) => {
-    if (value.ends_on < value.starts_on) {
-      issue.addIssue({
-        code: "custom",
-        message: "End date must be on or after the start date",
-        path: ["ends_on"],
-      });
-    }
-    if (value.type === "closed_day" && !value.affects_scheduling) {
-      issue.addIssue({
-        code: "custom",
-        message: "Closed days must affect scheduling",
-        path: ["affects_scheduling"],
-      });
+    checkImportantDateSpan(value, issue);
+    const reach = value.location_ids ?? (value.location_id ? [value.location_id] : []);
+    if (reach.length && Object.keys(value.location_days).some((id) => !reach.includes(id))) {
+      issue.addIssue({ code: "custom", message: "A location's day needs the location chosen", path: ["location_days"] });
     }
   });
+
+function checkImportantDateSpan(
+  value: { starts_on: string; ends_on: string; all_day: boolean; start_time: string | null; end_time: string | null },
+  issue: z.RefinementCtx,
+): void {
+  if (value.ends_on < value.starts_on) {
+    issue.addIssue({ code: "custom", message: "End date must be on or after the start date", path: ["ends_on"] });
+  }
+  if (value.all_day && (value.start_time !== null || value.end_time !== null)) {
+    issue.addIssue({ code: "custom", message: "An all-day date has no hours", path: ["start_time"] });
+  }
+  if (!value.all_day && (value.start_time === null || value.end_time === null)) {
+    issue.addIssue({ code: "custom", message: "Enter a start and an end time", path: [value.start_time === null ? "start_time" : "end_time"] });
+  } else if (!value.all_day && value.starts_on === value.ends_on && value.end_time! <= value.start_time!) {
+    issue.addIssue({ code: "custom", message: "End time must be after the start time", path: ["end_time"] });
+  }
+}
 export type ImportantDateInput = z.infer<typeof importantDateInputSchema>;
 
 const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
@@ -1490,7 +1540,12 @@ export const scheduleClosureSchema = z.object({
   closed_date: z.string().date(),
   end_date: z.string().date().nullable().optional(),
   title: z.string().trim().min(1).max(120),
+  /** Closed the whole day. */
   is_all_day: z.boolean(),
+  /** closed: no shift in window_start-window_end (null: all day); short: open only then (EKRAN-08). */
+  kind: z.enum(["closed", "short"]).default("closed"),
+  window_start: z.string().nullable().default(null),
+  window_end: z.string().nullable().default(null),
   shift_type_ids: z.array(z.string().uuid()).default([]),
 });
 
