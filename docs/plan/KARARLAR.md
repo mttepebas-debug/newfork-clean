@@ -334,6 +334,7 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001). 
 Yalnız koddan çıkarılamayanlar: kullanıcının bir ekran için verdiği karar ve bilerek öyle bırakılan ya da bilinip bekletilen davranış. Kod özeti, dosya yolu, bileşen listesi yazılmaz; kod okunur. Bir iş buradaki bir maddeyi değiştiriyorsa madde aynı işte düzeltilir; "iş girince yazılır" notu bırakılmaz. Ekranın maddesi yoksa başlığı da yoktur.
 
 #### Genel (her ekran)
+- **Mert'e verilen her saat California saatiyle yazılır (Pacific; Ekim'de UTC−7), UTC değil (kalıcı kural; Mert, 2026-10-10 14:09Z, proje sohbeti: "yeni kural saat referansını her zaman bana göre (california) ver").** Kayıtlar UTC tutabilir; Mert'e yazılan her şey onun saatiyle.
 - **Arayüz değişikliği önce Artifact varyantıyla gösterilir, kodlanmadan önce (kalıcı kural; Mert, 2026-10-10 13:44Z, "Schedule izin işareti (S5)" thread'i: "Gri ve nedeni yazılı onerilen. Ama UI için bana mutlaka artifact olarak varyant gösterilsin").** Mert seçer, sonra kod yazılır. CLAUDE.md §4 "yeni görsel tasarım: varyant hazırlanır, Mert seçer" kuralının her arayüz değişikliğine genişlemesi.
 
 Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001).
