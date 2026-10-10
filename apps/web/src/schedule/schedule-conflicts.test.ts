@@ -252,7 +252,7 @@ describe("schedule conflict port", () => {
         },
         closures: [{
           id: "66000000-0000-4000-8000-000000000002", location_id: locationId, closed_date: "2026-08-19",
-          end_date: null, title: "Inventory", is_all_day: true, shift_type_ids: [],
+          title: "Inventory", is_all_day: true, kind: "closed", window_start: null, window_end: null,
         }],
       } as ScheduleReadModel,
       [],
@@ -261,7 +261,7 @@ describe("schedule conflict port", () => {
     expect(reasons).toEqual(expect.arrayContaining([expect.objectContaining({ type: "closed_day", severity: "confirm" })]));
   });
 
-  it("blocks shifts inside a multi-day all-day closure range", () => {
+  it("blocks shifts on a closed day", () => {
     const messages = formatScheduleConflictMessages(
       evaluateScheduleShiftConflicts(
         {
@@ -270,11 +270,12 @@ describe("schedule conflict port", () => {
             {
               id: "66000000-0000-4000-8000-000000000001",
               location_id: locationId,
-              closed_date: "2026-08-18",
-              end_date: "2026-08-20",
+              closed_date: "2026-08-19",
               title: "Renovation",
               is_all_day: true,
-              shift_type_ids: [],
+              kind: "closed",
+              window_start: null,
+              window_end: null,
             },
           ],
         },
@@ -287,32 +288,37 @@ describe("schedule conflict port", () => {
     );
   });
 
-  it("blocks shifts for partial closures scoped to the selected shift type", () => {
-    const partialClosure = {
+  it("asks for shifts that run past a location's short hours or into a closed span (EKRAN-08)", () => {
+    const day = {
       id: "66000000-0000-4000-8000-000000000002",
       location_id: locationId,
       closed_date: "2026-08-19",
-      end_date: null,
-      title: "No dinner",
       is_all_day: false,
-      shift_type_ids: [shiftTypeId],
     };
-    expect(
+    const short = { ...day, title: "Christmas Eve", kind: "short" as const, window_start: "10:00", window_end: "15:00" };
+    const span = { ...day, title: "Inventory", kind: "closed" as const, window_start: "13:00", window_end: "17:00" };
+    const check = (closure: typeof short | typeof span, start_time: string, end_time: string) =>
       formatScheduleConflictMessages(
         evaluateScheduleShiftConflicts(
-          { ...model, closures: [partialClosure] },
+          { ...model, closures: [closure] },
           [],
-          input({ employee_id: null, shift_type_id: shiftTypeId }),
+          input({ employee_id: null, scheduled_date: "2026-08-19", start_time, end_time }),
         ),
-      ),
-    ).toContain(
-      "Location is closed for Dinner. Requested: Dinner / Server at Dining Room.",
-    );
+      );
+
+    expect(check(short, "12:00", "18:00")).toEqual([
+      "Location has short hours for Christmas Eve: open 10a–3p only. Requested: Server at Dining Room.",
+    ]);
+    expect(check(short, "10:00", "15:00")).toEqual([]);
+    expect(check(span, "16:00", "20:00")).toEqual([
+      "Location is closed 1p–5p: Inventory. Requested: Server at Dining Room.",
+    ]);
+    expect(check(span, "17:00", "22:00")).toEqual([]);
     expect(
       evaluateScheduleShiftConflicts(
-        { ...model, closures: [partialClosure] },
+        { ...model, closures: [span] },
         [],
-        input({ employee_id: null, shift_type_id: otherShiftTypeId }),
+        input({ employee_id: null, scheduled_date: "2026-08-20", start_time: "16:00", end_time: "20:00" }),
       ),
     ).toEqual([]);
   });

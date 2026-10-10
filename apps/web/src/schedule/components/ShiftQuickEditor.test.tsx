@@ -673,10 +673,7 @@ describe("ShiftQuickEditor", () => {
           date.setUTCDate(date.getUTCDate() + days);
           return date.toISOString().slice(0, 10);
         }}
-        scheduleClosureCoversDate={(closure, date) =>
-          closure.closed_date <= date &&
-          date <= (closure.end_date ?? closure.closed_date)
-        }
+        scheduleClosureCoversDate={(closure, date) => date === closure.closed_date}
         onClose={vi.fn()}
         onReload={vi.fn()}
         onDelete={vi.fn()}
@@ -1160,9 +1157,10 @@ describe("ShiftQuickEditor", () => {
           location_id: model.locations[0]!.id,
           title: "Private event",
           closed_date: model.week_start,
-          end_date: null,
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          window_start: null,
+          window_end: null,
         },
       ],
     };
@@ -1181,10 +1179,7 @@ describe("ShiftQuickEditor", () => {
         timeFormat="12h"
         formatTime={(value) => value}
         addDays={(iso) => iso}
-        scheduleClosureCoversDate={(closure, date) =>
-          closure.closed_date <= date &&
-          date <= (closure.end_date ?? closure.closed_date)
-        }
+        scheduleClosureCoversDate={(closure, date) => date === closure.closed_date}
         onClose={vi.fn()}
         onReload={vi.fn()}
         onDelete={vi.fn()}

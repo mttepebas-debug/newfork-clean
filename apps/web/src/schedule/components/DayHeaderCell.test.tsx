@@ -12,10 +12,11 @@ describe("DayHeaderCell", () => {
           id: "60000000-0000-4000-8000-000000000001",
           location_id: "10000000-0000-4000-8000-000000000001",
           closed_date: "2026-08-18",
-          end_date: null,
           title: "Private event",
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          window_start: null,
+          window_end: null,
         }}
         importantDates={[
           {
@@ -57,24 +58,50 @@ describe("DayHeaderCell", () => {
     expect(dateNumber.className).toContain("schedule-day-header-date");
   });
 
-  it("renders partial closed shift type counts below the day number", () => {
+  it("shows a location's short hours and closed span below the day number (EKRAN-08)", () => {
+    const day = {
+      id: "60000000-0000-4000-8000-000000000002",
+      location_id: "10000000-0000-4000-8000-000000000001",
+      closed_date: "2026-12-24",
+      is_all_day: false,
+    };
     render(
       <DayHeaderCell
-        date="2026-08-18"
-        partialClosedShiftTypeIds={[
-          "44444444-4444-4444-8444-444444444441",
-          "44444444-4444-4444-8444-444444444442",
-          "44444444-4444-4444-8444-444444444441",
+        date="2026-12-24"
+        partialClosures={[
+          { ...day, title: "Christmas Eve", kind: "short", window_start: "10:00", window_end: "15:00" },
+          { ...day, title: "Inventory", kind: "closed", window_start: "17:00", window_end: "24:00" },
         ]}
       />,
     );
 
-    const header = screen.getByRole("columnheader", {
-      name: "Tue Aug 18",
-    });
+    const header = screen.getByRole("columnheader", { name: "Thu Dec 24" });
     expect(header.getAttribute("data-partial-closed")).toBe("true");
-    expect(screen.getByLabelText("Closed for 2 shift types").textContent).toBe(
-      "⊘2",
+    expect(header.getAttribute("data-closed")).toBe("false");
+    const hours = screen.getByLabelText("Short hours 10a–3p: Christmas Eve · Closed 5p–12a: Inventory");
+    expect(hours.textContent).toBe("10a–3p +1");
+  });
+
+  it("shows the hours in the workspace's 24-hour clock", () => {
+    render(
+      <DayHeaderCell
+        date="2026-12-24"
+        timeFormat="24h"
+        partialClosures={[
+          {
+            id: "60000000-0000-4000-8000-000000000003",
+            location_id: "10000000-0000-4000-8000-000000000001",
+            closed_date: "2026-12-24",
+            title: "Christmas Eve",
+            is_all_day: false,
+            kind: "short",
+            window_start: "10:00",
+            window_end: "15:00",
+          },
+        ]}
+      />,
     );
+
+    expect(screen.getByLabelText("Short hours 10:00–15:00: Christmas Eve").textContent).toBe("10:00–15:00");
   });
 });

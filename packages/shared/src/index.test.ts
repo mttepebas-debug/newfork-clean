@@ -37,6 +37,7 @@ import {
   normalizeAccountPhone,
   permissionsForRole,
   scheduleReadModelSchema,
+  scheduleClosureCoversShift,
   schedulePublishFindingSchema,
   schedulePublicationPreflightAckSchema,
   schedulePublicationOverrideInputSchema,
@@ -678,10 +679,11 @@ describe("shared contracts", () => {
           id: "60000000-0000-4000-8000-000000000001",
           location_id: locationId,
           closed_date: "2026-08-18",
-          end_date: "2026-08-19",
           title: "Renovation",
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          window_start: null,
+          window_end: null,
         },
       ],
       important_dates: [
@@ -735,17 +737,15 @@ describe("shared contracts", () => {
     expect(parsed.shifts[0]?.unpaid_break_minutes).toBe(0);
     expect(parsed.shifts[0]?.label_names).toEqual(["Training"]);
     expect(parsed.shift_labels?.[0]?.name).toBe("Training");
-    expect(parsed.closures[0]?.end_date).toBe("2026-08-19");
-    expect(parsed.closures[0]?.shift_type_ids).toEqual([]);
+    expect(parsed.closures[0]?.kind).toBe("closed");
     expect(parsed.important_dates[0]?.title).toBe("Anniversary");
     expect(parsed.important_dates[0]?.recurrence).toBe("annual");
   });
 
-  it("validates partial schedule closures scoped to shift types", () => {
-    const shiftTypeId = "40000000-0000-4000-8000-000000000002";
+  it("reads a location's short hours on an important date (EKRAN-08)", () => {
     const parsed = scheduleReadModelSchema.parse({
       workspace_id: workspaceId,
-      week_start: "2026-08-17",
+      week_start: "2026-12-21",
       week_start_day: "monday",
       locations: [],
       departments: [],
@@ -757,17 +757,36 @@ describe("shared contracts", () => {
         {
           id: "60000000-0000-4000-8000-000000000002",
           location_id: "10000000-0000-4000-8000-000000000001",
-          closed_date: "2026-08-18",
-          title: "No dinner",
+          closed_date: "2026-12-24",
+          title: "Christmas Eve",
           is_all_day: false,
-          shift_type_ids: [shiftTypeId],
+          kind: "short",
+          window_start: "10:00",
+          window_end: "15:00",
         },
       ],
       referenced_jobs: [],
       referenced_shift_types: [],
     });
 
-    expect(parsed.closures[0]?.shift_type_ids).toEqual([shiftTypeId]);
+    expect(parsed.closures[0]).toMatchObject({ kind: "short", window_start: "10:00", window_end: "15:00" });
+  });
+
+  it("finds the shifts a closed or short day reaches, as app_private.closure_covers does", () => {
+    const allDay = { kind: "closed" as const, window_start: null, window_end: null };
+    const afternoon = { kind: "closed" as const, window_start: "13:00", window_end: "17:00" };
+    const short = { kind: "short" as const, window_start: "10:00", window_end: "15:00" };
+
+    expect(scheduleClosureCoversShift(allDay, "09:00", "17:00")).toBe(true);
+    expect(scheduleClosureCoversShift(allDay, null, null)).toBe(true);
+    expect(scheduleClosureCoversShift(afternoon, "09:00", "13:00")).toBe(false);
+    expect(scheduleClosureCoversShift(afternoon, "12:00", "14:00")).toBe(true);
+    expect(scheduleClosureCoversShift(afternoon, "22:00", "02:00")).toBe(false);
+    expect(scheduleClosureCoversShift(short, "10:00", "15:00")).toBe(false);
+    expect(scheduleClosureCoversShift(short, "07:00", "09:00")).toBe(true);
+    expect(scheduleClosureCoversShift(short, "12:00", "18:00")).toBe(true);
+    expect(scheduleClosureCoversShift(short, "14:00", "01:00")).toBe(true);
+    expect(scheduleClosureCoversShift({ ...short, window_end: "24:00" }, "12:00", "00:00")).toBe(false);
   });
 
   // BL-959: public.schedule_closures names each closed day md5(...)::uuid, which
@@ -790,7 +809,9 @@ describe("shared contracts", () => {
           closed_date: "2026-10-28",
           title: "Staff training",
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          window_start: null,
+          window_end: null,
         },
       ],
       referenced_jobs: [],

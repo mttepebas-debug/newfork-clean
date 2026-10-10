@@ -20,7 +20,6 @@ function cellState(conflictingShiftIds: readonly string[]): ScheduleCellState {
     hasOverlap: conflictingShiftIds.length > 0,
     isClosedAllDay: false,
     closedTitle: null,
-    closedShiftTypeIds: [],
     availabilityMark: null,
   };
 }

@@ -1,18 +1,22 @@
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
-import { Calendar, Lock } from "lucide-react";
+import { Calendar, Clock, Lock } from "lucide-react";
 import type { KeyboardEvent, MouseEvent } from "react";
 
 import {
   formatDateNumber,
   formatDay,
   formatDayNumber,
+  type ScheduleTimeFormat,
 } from "../lib/scheduleDateTime";
+import { scheduleClosureLabel } from "../lib/scheduleClosures";
 import { importantDateTypeLabels } from "../../lib/importantDateTypes";
 
 interface DayHeaderCellProps {
   readonly date: string;
   readonly closure?: ScheduleReadModel["closures"][number] | null;
-  readonly partialClosedShiftTypeIds?: readonly string[];
+  /** Closed spans and short hours that day (EKRAN-08); a whole closed day is `closure`. */
+  readonly partialClosures?: readonly ScheduleReadModel["closures"][number][];
+  readonly timeFormat?: ScheduleTimeFormat;
   readonly importantDates?: readonly ScheduleReadModel["important_dates"][number][];
   readonly isToday?: boolean;
   readonly viewed?: boolean;
@@ -27,7 +31,8 @@ interface DayHeaderCellProps {
 export function DayHeaderCell({
   date,
   closure = null,
-  partialClosedShiftTypeIds = [],
+  partialClosures = [],
+  timeFormat = "12h",
   importantDates = [],
   isToday = false,
   viewed = false,
@@ -40,9 +45,15 @@ export function DayHeaderCell({
   const importantSummary = importantDates
     .map((item) => `${importantDateTypeLabels[item.type]}: ${item.title}`)
     .join(" · ");
-  const partialClosedCount = closure
-    ? 0
-    : new Set(partialClosedShiftTypeIds).size;
+  const hourLabels = closure
+    ? []
+    : [...new Set(partialClosures.map((item) => scheduleClosureLabel(item, timeFormat).text))];
+  const hourSummary = closure
+    ? ""
+    : [...new Set(partialClosures.map((item) => `${scheduleClosureLabel(item, timeFormat).text}: ${item.title}`))].join(" · ");
+  const firstHours = hourLabels.length
+    ? (scheduleClosureLabel(partialClosures[0]!, timeFormat).hours ?? "Closed")
+    : "";
   const interactive = Boolean(onClick);
   const label = `${formatDay(date)} ${formatDateNumber(date)}${locationName ? `, ${locationName}` : ""}`;
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -62,7 +73,7 @@ export function DayHeaderCell({
       data-today={isToday}
       data-viewed={viewed}
       data-closed={Boolean(closure)}
-      data-partial-closed={partialClosedCount > 0}
+      data-partial-closed={hourLabels.length > 0}
       data-important={importantDates.length > 0}
       data-clickable={interactive}
       data-location-boundary={locationBoundary ? "start" : undefined}
@@ -103,13 +114,14 @@ export function DayHeaderCell({
       <span className="schedule-day-header-date">
         {formatDayNumber(date)}
       </span>
-      {partialClosedCount > 0 ? (
+      {hourLabels.length ? (
         <span
           className="schedule-day-header-partial-closed"
-          aria-label={`Closed for ${partialClosedCount} shift types`}
-          title={`Closed for ${partialClosedCount} shift type(s)`}
+          aria-label={hourSummary}
+          title={hourSummary}
         >
-          ⊘{partialClosedCount}
+          <Clock size={9} aria-hidden />
+          {hourLabels.length > 1 ? `${firstHours} +${hourLabels.length - 1}` : firstHours}
         </span>
       ) : null}
     </div>

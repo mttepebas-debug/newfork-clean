@@ -3,7 +3,7 @@ import type { ScheduleReadModel, ScheduleShift, ScheduleView } from "@newfork/sh
 import { formatScheduleBadgeTimeRange, formatScheduleShiftBadgeTitle, formatShiftLabelDisplay } from "../components/ShiftCard";
 import { buildScheduleCellState, orderScheduleCellShifts, scheduleCellStateKey } from "../hooks/useCellState";
 import { scheduleJobName, scheduleShiftTypeOf } from "../lib/scheduleCatalogNames";
-import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
+import { scheduleClosureCoversDate, scheduleClosureLabel } from "../lib/scheduleClosures";
 import { scheduleImportantDateCoversDate } from "../importantDateCoverage";
 import { addDays } from "../lib/scheduleDateTime";
 import { createSortedScheduleModel, type ScheduleEmployeeSortMode } from "../lib/scheduleEmployeeSort";
@@ -174,11 +174,12 @@ export function createScheduleExportSnapshot(input: {
   const dayDecorations = scopes.flatMap(scope => dates.map(date => {
     const closures = model.closures.filter(item => scope.ids.includes(item.location_id) && scheduleClosureCoversDate(item, date));
     const allClosed = scope.ids.every(id => closures.some(item => item.location_id === id && item.is_all_day));
-    const partial = new Set(closures.flatMap(item => item.shift_type_ids)).size;
+    // EKRAN-08: closed spans and short hours print as "Short hours 10a–3p".
+    const hours = [...new Set(closures.filter(item => !item.is_all_day).map(item => scheduleClosureLabel(item, model.settings.time_format).text))];
     const important = [...new Set(model.important_dates.filter(item => scheduleImportantDateCoversDate(item, date) &&
       (item.location_id === null || scope.ids.includes(item.location_id))).map(item => `${item.type}: ${item.title}`))];
     return { locationId: scope.id, date, closed: closures.some(item => item.is_all_day), lines: [
-      ...(allClosed ? [`Closed: ${closures.find(item => item.is_all_day)?.title ?? "Closed"}`] : partial ? [`Closed for ${partial} shift types`] : []), ...important,
+      ...(allClosed ? [`Closed: ${closures.find(item => item.is_all_day)?.title ?? "Closed"}`] : hours), ...important,
     ] };
   }));
   const totals = display.showTotalHours ? {

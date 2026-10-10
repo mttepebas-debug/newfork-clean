@@ -16,6 +16,7 @@ export function ScheduleGridHeaders({
   organizationName,
   selectedDate,
   showTotalHours,
+  timeFormat,
   weekStartDate,
   currentDate,
   onDayHeaderClick,
@@ -31,6 +32,7 @@ export function ScheduleGridHeaders({
   readonly organizationName: string;
   readonly selectedDate: string;
   readonly showTotalHours: boolean;
+  readonly timeFormat?: ScheduleReadModel["settings"]["time_format"];
   readonly weekStartDate: string;
   readonly currentDate?: string;
   readonly onDayHeaderClick: (
@@ -103,6 +105,7 @@ export function ScheduleGridHeaders({
         importantDates={importantDates}
         locationGroups={locationGroups}
         selectedDate={selectedDate}
+        timeFormat={timeFormat}
         onDayHeaderClick={onDayHeaderClick}
       />
       {showTotalHours ? (

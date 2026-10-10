@@ -72,14 +72,23 @@ const model = {
     {
       id: "closure-1",
       closed_date: "2026-08-17",
-      end_date: null,
       title: "Maintenance",
+      is_all_day: true,
     },
     {
       id: "closure-2",
       closed_date: "2026-08-17",
-      end_date: null,
       title: "Private event",
+      is_all_day: true,
+    },
+    {
+      id: "closure-3",
+      closed_date: "2026-08-20",
+      title: "Christmas Eve",
+      is_all_day: false,
+      kind: "short",
+      window_start: "10:00",
+      window_end: "15:00",
     },
   ],
   important_dates: [
@@ -205,11 +214,11 @@ describe("scheduleFilterModel", () => {
     expect(setQueryIds).toHaveBeenCalledWith("locations", []);
   });
 
+  // A day with short hours is not a closed day; its important date marks it (EKRAN-08).
   it("creates merged closure markers for the mini calendar", () => {
     expect(createScheduleCalendarMarkers(model.closures)).toEqual([
       {
         date: "2026-08-17",
-        endDate: null,
         kind: "closed",
         title: "Maintenance, Private event",
       },
@@ -222,7 +231,6 @@ describe("scheduleFilterModel", () => {
     ).toEqual([
       {
         date: "2026-08-17",
-        endDate: null,
         kind: "closed",
         title: "Maintenance, Private event",
       },

@@ -443,6 +443,7 @@ export function ScheduleGrid({
       })}
       <ScheduleGridHeaders
         closures={model.closures}
+        timeFormat={model.settings.time_format}
         days={days}
         importantDates={model.important_dates}
         locationGroups={locationGroups}

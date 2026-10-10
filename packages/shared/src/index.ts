@@ -1538,16 +1538,40 @@ export const scheduleClosureSchema = z.object({
   id: z.guid(),
   location_id: z.string().uuid(),
   closed_date: z.string().date(),
-  end_date: z.string().date().nullable().optional(),
   title: z.string().trim().min(1).max(120),
   /** Closed the whole day. */
   is_all_day: z.boolean(),
-  /** closed: no shift in window_start-window_end (null: all day); short: open only then (EKRAN-08). */
-  kind: z.enum(["closed", "short"]).default("closed"),
-  window_start: z.string().nullable().default(null),
-  window_end: z.string().nullable().default(null),
-  shift_type_ids: z.array(z.string().uuid()).default([]),
+  /** closed: no shift from window_start to window_end (null: all day); short: open only then (EKRAN-08). */
+  kind: z.enum(["closed", "short"]),
+  window_start: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+  window_end: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
 });
+export type ScheduleClosure = z.infer<typeof scheduleClosureSchema>;
+
+const closureMinutes = (value: string) => {
+  const [hours = 0, minutes = 0] = value.slice(0, 5).split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+/**
+ * Whether a location's day reaches a shift from start to end (end at or before
+ * start: past midnight); the twin of app_private.closure_covers. Closed: any
+ * overlap with the closed span. Short hours: any part outside them.
+ */
+export function scheduleClosureCoversShift(
+  closure: Pick<ScheduleClosure, "kind" | "window_start" | "window_end">,
+  start: string | null | undefined,
+  end: string | null | undefined,
+): boolean {
+  if (closure.kind === "closed" && !closure.window_start) return true;
+  if (!start || !end || !closure.window_start || !closure.window_end) return false;
+  const from = closureMinutes(start);
+  let to = closureMinutes(end);
+  if (to <= from) to += 1440;
+  const opens = closureMinutes(closure.window_start);
+  const closes = closureMinutes(closure.window_end);
+  return closure.kind === "closed" ? from < closes && opens < to : from < opens || to > closes;
+}
 
 export const scheduleImportantDateSchema = z.object({
   id: z.string().uuid(),

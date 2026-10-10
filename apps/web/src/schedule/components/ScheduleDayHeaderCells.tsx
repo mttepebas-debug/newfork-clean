@@ -4,6 +4,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { todayIn } from "../../lib/today";
 import { scheduleImportantDateCoversDate } from "../importantDateCoverage";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
+import type { ScheduleTimeFormat } from "../lib/scheduleDateTime";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 import { DayHeaderCell } from "./DayHeaderCell";
 
@@ -13,6 +14,7 @@ export function ScheduleDayHeaderCells({
   importantDates,
   locationGroups,
   selectedDate,
+  timeFormat = "12h",
   todayDate,
   onDayHeaderClick,
 }: {
@@ -21,6 +23,7 @@ export function ScheduleDayHeaderCells({
   readonly importantDates: ScheduleReadModel["important_dates"];
   readonly locationGroups: readonly ScheduleGridLocationGroup[];
   readonly selectedDate: string;
+  readonly timeFormat?: ScheduleTimeFormat;
   readonly todayDate?: string;
   readonly onDayHeaderClick: (
     date: string,
@@ -44,9 +47,11 @@ export function ScheduleDayHeaderCells({
             location.sourceIds.every((sourceId) =>
               allDayClosures.some((item) => item.location_id === sourceId),
             );
-          const closedShiftTypeIds = Array.from(
-            new Set(dayClosures.flatMap((item) => item.shift_type_ids)),
-          );
+          // Closed spans and short hours (EKRAN-08); a whole closed day shows
+          // only when every location in the group is closed.
+          const partialClosures = allSourcesClosed
+            ? []
+            : dayClosures.filter((item) => !item.is_all_day);
           const importantDateItems = dedupeImportantDates(
             importantDates.filter(
               (item) =>
@@ -74,7 +79,8 @@ export function ScheduleDayHeaderCells({
                 onDayHeaderClick(day, location.sourceIds);
               }}
               closure={allSourcesClosed ? allDayClosures[0] : null}
-              partialClosedShiftTypeIds={closedShiftTypeIds}
+              partialClosures={partialClosures}
+              timeFormat={timeFormat}
               importantDates={importantDateItems}
             />
           );

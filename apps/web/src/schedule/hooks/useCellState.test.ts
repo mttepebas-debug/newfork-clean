@@ -93,18 +93,19 @@ describe("buildScheduleCellState", () => {
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.availabilityMark).toBeUndefined();
   });
-  it("marks every cell in a multi-day all-day closure range", () => {
+  it("marks every cell of a closed day", () => {
     const closedModel = {
       ...model([]),
       closures: [
         {
           id: "99999999-9999-4999-8999-999999999991",
           location_id: mainLocationId,
-          closed_date: "2026-08-17",
-          end_date: "2026-08-19",
+          closed_date: "2026-08-18",
           title: "Renovation",
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          window_start: null,
+          window_end: null,
         },
       ],
     } satisfies ScheduleReadModel;
@@ -123,28 +124,26 @@ describe("buildScheduleCellState", () => {
     ).toBeUndefined();
   });
 
-  it("marks partial closed shift type ids without closing the whole cell", () => {
-    const partialClosedModel = {
+  it("leaves the cell open on short hours; the day header and the editor say them (EKRAN-08)", () => {
+    const shortModel = {
       ...model([]),
       closures: [
         {
           id: "99999999-9999-4999-8999-999999999992",
           location_id: mainLocationId,
           closed_date: "2026-08-17",
-          end_date: null,
-          title: "No dinner service",
+          title: "Christmas Eve",
           is_all_day: false,
-          shift_type_ids: ["44444444-4444-4444-8444-444444444444"],
+          kind: "short",
+          window_start: "10:00",
+          window_end: "15:00",
         },
       ],
     } satisfies ScheduleReadModel;
-    const state = buildScheduleCellState(partialClosedModel);
-    const cell = state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
+    const cell = buildScheduleCellState(shortModel).get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
 
-    expect(cell?.isClosedAllDay).toBe(false);
-    expect(cell?.closedShiftTypeIds).toEqual([
-      "44444444-4444-4444-8444-444444444444",
-    ]);
+    expect(cell?.isClosedAllDay ?? false).toBe(false);
+    expect(cell?.closedTitle ?? null).toBeNull();
   });
 
   it("adds same-day other-location employee shifts as ghost badges", () => {

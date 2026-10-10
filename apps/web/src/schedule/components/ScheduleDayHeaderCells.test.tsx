@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { ScheduleReadModel } from "@newfork/shared/schedule";
+
 import { ScheduleDayHeaderCells } from "./ScheduleDayHeaderCells";
 
 const locationGroups = [
@@ -29,42 +31,46 @@ const locationGroups = [
   },
 ];
 
-const closures = [
+const closures: ScheduleReadModel["closures"] = [
   {
     id: "closure-1",
     location_id: "loc-2",
     closed_date: "2026-08-18",
-    end_date: null,
     title: "Private event",
     is_all_day: true,
-    shift_type_ids: [],
+    kind: "closed",
+    window_start: null,
+    window_end: null,
   },
   {
     id: "closure-2",
     location_id: "loc-1",
     closed_date: "2026-08-19",
-    end_date: null,
-    title: "Lunch closed",
+    title: "Christmas Eve",
     is_all_day: false,
-    shift_type_ids: ["type-1", "type-2", "type-1"],
+    kind: "short" as const,
+    window_start: "10:00",
+    window_end: "15:00",
   },
   {
     id: "closure-3",
     location_id: "loc-2",
     closed_date: "2026-08-19",
-    end_date: null,
     title: "Weather",
     is_all_day: true,
-    shift_type_ids: [],
+    kind: "closed",
+    window_start: null,
+    window_end: null,
   },
   {
     id: "closure-4",
     location_id: "loc-3",
     closed_date: "2026-08-19",
-    end_date: null,
     title: "Weather",
     is_all_day: true,
-    shift_type_ids: [],
+    kind: "closed",
+    window_start: null,
+    window_end: null,
   },
 ];
 
@@ -144,7 +150,7 @@ describe("ScheduleDayHeaderCells", () => {
     });
     expect(partialClosed.getAttribute("data-viewed")).toBe("true");
     expect(partialClosed.getAttribute("data-partial-closed")).toBe("true");
-    expect(screen.getByLabelText("Closed for 2 shift types")).toBeTruthy();
+    expect(screen.getByLabelText("Short hours 10a–3p: Christmas Eve").textContent).toBe("10a–3p");
 
     const patioFullyClosed = screen.getByRole("columnheader", {
       name: "View Wed Aug 19, Patio + Bar",

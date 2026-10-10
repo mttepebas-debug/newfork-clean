@@ -156,7 +156,7 @@ describe("Export v2 immutable preview projection", () => {
     const value = input();
     value.display = { ...display, showTotalHours: true };
     value.search.set("locations", "loc-a");
-    value.model.closures = [{ id: "closed", location_id: "loc-a", closed_date: "2026-09-14", end_date: null, title: "Maintenance", is_all_day: true, shift_type_ids: [] }];
+    value.model.closures = [{ id: "closed", location_id: "loc-a", closed_date: "2026-09-14", title: "Maintenance", is_all_day: true, kind: "closed", window_start: null, window_end: null }];
     value.model.important_dates = [{ id: "special", location_id: null, title: "Opening", type: "event", starts_on: "2026-09-14", ends_on: "2026-09-14", recurrence: "none" }];
     const result = ready(value);
     expect(result.totals?.week).toBe("8h / 11h");

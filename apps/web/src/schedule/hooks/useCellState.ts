@@ -14,7 +14,6 @@ export interface ScheduleCellState {
   readonly hasOverlap: boolean;
   readonly isClosedAllDay: boolean;
   readonly closedTitle: string | null;
-  readonly closedShiftTypeIds: readonly string[];
   readonly availabilityMark: ScheduleAvailabilityMark | null;
 }
 
@@ -63,21 +62,21 @@ export function buildScheduleCellState(model: ScheduleReadModel, hideAvailabilit
   }
 
   for (const closure of model.closures) {
-    for (const date of datesInRange(closure.closed_date, closure.end_date ?? null)) {
-      for (const employee of model.employees) {
-        const cell = ensureCell(
-          cells,
-          scheduleCellStateKey(closure.location_id, date, employee.id),
-        );
-        applyClosureToCell(cell, closure);
-      }
-      const unassignedCell = ensureCell(
+    const date = closure.closed_date;
+    for (const employee of model.employees) {
+      const cell = ensureCell(
         cells,
-        scheduleCellStateKey(closure.location_id, date, null),
+        scheduleCellStateKey(closure.location_id, date, employee.id),
       );
-      applyClosureToCell(unassignedCell, closure);
+      applyClosureToCell(cell, closure);
     }
+    const unassignedCell = ensureCell(
+      cells,
+      scheduleCellStateKey(closure.location_id, date, null),
+    );
+    applyClosureToCell(unassignedCell, closure);
   }
+
 
   const gridLocationIds = new Set(model.locations.map((location) => location.id));
   // Out-of-scope shifts join the same ghost and overlap pass, but never model.shifts.
@@ -171,7 +170,7 @@ export function useScheduleCellState(model: ScheduleReadModel, hideAvailability 
   const version = `${model.locations.map((location) => location.id).join(",")}|${model.closures
     .map(
       (closure) =>
-        `${closure.id}:${closure.location_id}:${closure.closed_date}:${closure.end_date ?? ""}:${closure.title}:${closure.is_all_day}:${closure.shift_type_ids.join(",")}`,
+        `${closure.id}:${closure.location_id}:${closure.closed_date}:${closure.title}:${closure.is_all_day}:${closure.kind}:${closure.window_start ?? ""}:${closure.window_end ?? ""}`,
     )
     .join("|")}|${model.shifts
     .map(
@@ -190,7 +189,6 @@ interface MutableScheduleCellState {
   hasOverlap: boolean;
   isClosedAllDay: boolean;
   closedTitle: string | null;
-  closedShiftTypeIds: string[];
   availabilityMark: ScheduleAvailabilityMark | null;
 }
 
@@ -206,7 +204,6 @@ function ensureCell(
     hasOverlap: false,
     isClosedAllDay: false,
     closedTitle: null,
-    closedShiftTypeIds: [],
     availabilityMark: null,
   };
   cells.set(key, next);
@@ -227,18 +224,15 @@ function markConflict(
   cell.conflictingShiftIds.add(shift.id);
 }
 
+// Only a whole closed day marks the cell; closed spans and short hours reach
+// single shifts, which the editor and the day header show (EKRAN-08).
 function applyClosureToCell(
   cell: MutableScheduleCellState,
   closure: ScheduleReadModel["closures"][number],
 ): void {
-  if (closure.is_all_day) {
-    cell.isClosedAllDay = true;
-    cell.closedTitle = closure.title;
-    return;
-  }
-  cell.closedShiftTypeIds = Array.from(
-    new Set([...cell.closedShiftTypeIds, ...closure.shift_type_ids]),
-  );
+  if (!closure.is_all_day) return;
+  cell.isClosedAllDay = true;
+  cell.closedTitle = closure.title;
 }
 
 function mergeCellState(
@@ -252,9 +246,6 @@ function mergeCellState(
   target.hasOverlap = target.hasOverlap || source.hasOverlap;
   target.isClosedAllDay = target.isClosedAllDay || source.isClosedAllDay;
   target.closedTitle = target.closedTitle ?? source.closedTitle;
-  target.closedShiftTypeIds = Array.from(
-    new Set([...target.closedShiftTypeIds, ...source.closedShiftTypeIds]),
-  );
   target.availabilityMark = mergeAvailabilityMarks(
     target.availabilityMark,
     source.availabilityMark,
@@ -300,18 +291,6 @@ function outOfScopeShift(
 
 function locationName(model: ScheduleReadModel, locationId: string): string | null {
   return model.locations.find((location) => location.id === locationId)?.name ?? null;
-}
-
-function datesInRange(start: string, end: string | null): string[] {
-  if (!end || end === start) return [start];
-  const dates: string[] = [];
-  const cursor = new Date(`${start}T00:00:00.000Z`);
-  const last = new Date(`${end}T00:00:00.000Z`);
-  while (cursor <= last) {
-    dates.push(cursor.toISOString().slice(0, 10));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return dates;
 }
 
 function shiftsOverlap(left: ScheduleShift, right: ScheduleShift): boolean {

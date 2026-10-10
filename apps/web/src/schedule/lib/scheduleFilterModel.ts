@@ -41,10 +41,11 @@ export function createScheduleCalendarMarkers(
     markersByDate.set(marker.date, marker);
   };
 
+  // A closed span or short hours is not a closed day; its date marker says it (EKRAN-08).
   for (const closure of closures) {
+    if (!closure.is_all_day) continue;
     addMarker({
       date: closure.closed_date,
-      endDate: closure.end_date,
       kind: "closed",
       title: closure.title,
     });
