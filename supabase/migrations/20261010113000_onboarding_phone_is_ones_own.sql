@@ -1,6 +1,6 @@
 -- TEL-2 (Mert, 2026-10-09): a phone given in onboarding is the person's own.
--- Somebody joining a workspace may not give a number another live record of
--- that workspace already holds, and an emergency contact is somebody else: its
+-- Somebody joining a workspace may not give a number another record of that
+-- workspace already holds, an archived one included (Mert, 2026-10-10), and an emergency contact is somebody else: its
 -- number is never the person's own. Emergency contacts are not compared with
 -- other people's numbers; two friends may name each other.
 --
@@ -11,8 +11,9 @@
 -- A busy table answers in seconds with an error rather than holding the rest.
 set local lock_timeout = '5s';
 
--- Whether another live record of the workspace holds this number. An archived
--- (terminated) record does not count, and neither does the person's own.
+-- Whether another record of the workspace holds this number. An archived
+-- (terminated) record counts too (Mert, 2026-10-10: the rules cover the
+-- archive); the person's own records do not, a rehire's earlier one included.
 create function app_private.phone_used_in_workspace(
   target_workspace_id uuid,
   target_phone text,
@@ -31,7 +32,8 @@ as $$
     where private_record.workspace_id = target_workspace_id
       and private_record.phone = target_phone
       and record.id is distinct from except_employee_id
-      and record.archived_at is null
+      and record.user_id is distinct from (
+        select own.user_id from public.employee_profiles own where own.id = except_employee_id)
   );
 $$;
 
@@ -115,11 +117,11 @@ $edit$;
 
 -- The table refuses an emergency number equal to the record's own, from every
 -- writer (onboarding, Account > Profile, the owner's own record in Employees,
--- the account phone that reaches the records). It is added NOT VALID: an
--- archived record written before the rule keeps what it has (live had one,
--- measured 2026-10-09 22:40Z; coordinator's call, no real data touched), and
--- every write from now on obeys it, an archived record's included. A live
--- record that breaks it stops the migration with the count, and nothing changes.
+-- the account phone that reaches the records), for every record, archived ones
+-- included (Mert, 2026-10-10: the rules cover the archive; all live data is
+-- test data). An archived record that breaks it loses its emergency contact,
+-- which it no longer needs; a live record that breaks it stops the migration
+-- with the count, and nothing changes.
 do $check$
 declare
   clashing integer;
@@ -135,6 +137,16 @@ begin
 end
 $check$;
 
+update public.employee_private_profiles private_record
+set emergency_contact_name = null,
+    emergency_contact_relationship = null,
+    emergency_contact_phone = null,
+    emergency_contact_email = ''
+from public.employee_profiles record
+where record.id = private_record.employee_id
+  and record.archived_at is not null
+  and private_record.emergency_contact_phone = private_record.phone;
+
 alter table public.employee_private_profiles
   add constraint employee_private_profiles_emergency_is_not_own_phone
-  check (emergency_contact_phone <> phone) not valid;
+  check (emergency_contact_phone <> phone);
