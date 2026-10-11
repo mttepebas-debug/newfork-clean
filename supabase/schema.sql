@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 462, last: 20261010150000_time_off_blocks_every_shift.sql
--- fingerprint: sha256:708f1a65132dde64e9677bc96be98f012967a2379b44fd01d845d8ba380a477f
+-- fingerprint: sha256:853a6bb306700e41b0bc75f2299f6d84540072d86d799ef83559f0b86544c6c2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7933,18 +7933,6 @@ $$;
 
 
 ALTER FUNCTION "public"."availability_impact_assessment"("a" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."availability_json_ranges"("intervals" "jsonb") RETURNS "tstzmultirange"
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
- select coalesce(range_agg(tstzrange((x->>'start_at')::timestamptz, (x->>'end_at')::timestamptz, '[)')), '{}')
- from jsonb_array_elements(coalesce(intervals, '[]')) x;
-$$;
-
-
-ALTER FUNCTION "public"."availability_json_ranges"("intervals" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."availability_lock_workspace"("w" "uuid") RETURNS "void"
@@ -24795,7 +24783,7 @@ begin
    if c.audience<>'eligible_pool' or c.kind='swap' or (cid is not null and cid<>c.id) then raise exception 'This offer is not available' using errcode='42501',hint='authz.out_of_scope'; end if;
    if public.shift_exchange_fingerprint(w,s,null)<>c.consent_fingerprint then raise exception 'Shift conditions changed. The owner must renew this offer' using errcode='PT409'; end if;
    perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
-      if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind='open_pickup' then 'open_pickup' else 'release_pickup' end))->>'status'<>'eligible' then raise exception 'You are not eligible for the full shift'; end if;
+   if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind='open_pickup' then 'open_pickup' else 'release_pickup' end))->>'status'<>'eligible' then raise exception 'You are not eligible for the full shift'; end if;
    cid:=c.id;
    if exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='pending_manager') then raise exception 'You already have an active application'; end if;
    insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,emp.id,'pending_manager',c.consent_fingerprint) returning id into aid;
@@ -24836,7 +24824,7 @@ begin
     if action='accept' then
      if public.shift_exchange_fingerprint(w,s,t) is distinct from c.consent_fingerprint then raise exception 'Shift conditions changed. Ask for a new offer' using errcode='PT409'; end if;
      perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
-          if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))->>'status'<>'eligible'
+     if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))->>'status'<>'eligible'
       or (c.kind='swap' and app_private.eligibility(w,c.owner_id,t,jsonb_build_object('operation','swap','excluded',jsonb_build_array(s->>'id',t->>'id')))->>'status'<>'eligible') then raise exception 'Both employees must be eligible for the full exchange'; end if;
     end if;
     update public.shift_exchange_applications set status=case action when 'accept' then 'pending_manager' when 'decline' then 'declined_by_employee' else 'withdrawn' end,
@@ -26066,18 +26054,6 @@ $$;
 
 
 ALTER FUNCTION "public"."time_off_is_the_owners_own"("actor" "uuid", "w" "uuid", "rid" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."time_off_leave_intervals"("assessment" "jsonb") RETURNS "jsonb"
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
- select coalesce((select r->'intervals' from jsonb_array_elements(assessment->'reasons') r
-  where r->>'code' = 'approved_time_off' limit 1), '[]');
-$$;
-
-
-ALTER FUNCTION "public"."time_off_leave_intervals"("assessment" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."time_off_period_span"("segment_id" "uuid") RETURNS "tstzrange"
@@ -35199,10 +35175,6 @@ REVOKE ALL ON FUNCTION "public"."availability_impact_assessment"("a" "jsonb") FR
 
 
 
-REVOKE ALL ON FUNCTION "public"."availability_json_ranges"("intervals" "jsonb") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."availability_lock_workspace"("w" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."availability_lock_workspace"("w" "uuid") TO "service_role";
 
@@ -36744,10 +36716,6 @@ REVOKE ALL ON FUNCTION "public"."time_off_event_released_assignments"("actor" "u
 
 
 REVOKE ALL ON FUNCTION "public"."time_off_is_the_owners_own"("actor" "uuid", "w" "uuid", "rid" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."time_off_leave_intervals"("assessment" "jsonb") FROM PUBLIC;
 
 
 
