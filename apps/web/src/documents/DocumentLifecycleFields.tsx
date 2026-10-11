@@ -459,7 +459,7 @@ export function LifecycleAssignmentFields({
               }
             />
 
-            <span>Restrict organization access after the delivery period</span>
+            <span>Restrict workspace access after the delivery period</span>
           </label>
 
           {!compact &&

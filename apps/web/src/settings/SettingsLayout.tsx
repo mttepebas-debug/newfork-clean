@@ -18,7 +18,7 @@ import { canEnterSettings } from "../auth/PermissionRoute";
 
 const groups = [
   {
-    label: "Organization",
+    label: "Workspace",
     items: [
       {
         to: "/app/settings/general",
@@ -135,7 +135,7 @@ export default function SettingsLayout() {
           <SlidersHorizontal size={18} aria-hidden />
           <strong>Settings</strong>
         </div>
-        <nav aria-label="Organization settings">
+        <nav aria-label="Workspace settings">
           {visibleGroups.map((group) => (
             <div className="settings-nav-group" key={group.label}>
               <span className="settings-nav-label">{group.label}</span>
