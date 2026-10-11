@@ -883,6 +883,33 @@ describe("createScheduleReadService realtime invalidation", () => {
     });
   });
 
+  // KK-162 (BL-694): Replace's first click says how many shifts it removes; the
+  // database counts them (only the template's lanes, never a started shift).
+  it("asks the database how many shifts a template replace removes", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: { removed_shift_count: 10 }, error: null });
+
+    const service = createScheduleReadService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+    });
+    const result = await service.previewTemplateApply({
+      actorUserId,
+      workspaceId,
+      sessionId: "87000000-0000-4000-8000-000000000001",
+      templateId: "86000000-0000-4000-8000-000000000001",
+      departmentKeys: ["__no_department__"],
+    });
+
+    expect(result).toEqual({ removed_shift_count: 10 });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("preview_schedule_template_apply_service", {
+      actor_user_id: actorUserId,
+      target_workspace_id: workspaceId,
+      target_session_id: "87000000-0000-4000-8000-000000000001",
+      target_template_id: "86000000-0000-4000-8000-000000000001",
+      department_keys: ["__no_department__"],
+    });
+  });
+
   it("passes the labels a template could not apply to the screen (BL-197)", async () => {
     // Verbatim from a real run of apply_schedule_template_service() (migration
     // 20260927140000, rolled back): Standby was archived after "Standard week" was saved.

@@ -43,6 +43,25 @@ const draft: ScheduleDraftSummary = {
   updated_at: "2026-08-17T12:00:00.000Z",
 };
 
+const shiftFixture: ScheduleEditSession["shifts"][number] = {
+  id: "99999999-9999-4999-8999-999999999999",
+  location_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  employee_id: null,
+  job_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  shift_type_id: null,
+  scheduled_date: "2026-08-17",
+  start_time: "09:00",
+  end_time: "17:00",
+  crosses_midnight: false,
+  unpaid_break_minutes: 30,
+  note: "",
+  hide_time_on_badge: false,
+  revision: 1,
+  warning_codes: [],
+  label_ids: [],
+  label_names: [],
+};
+
 const session: ScheduleEditSession = {
   id: "55555555-5555-4555-8555-555555555555",
   workspace_id: template.workspace_id,
@@ -88,6 +107,7 @@ function buildDialogProps(
     onRename: vi.fn(),
     onDelete: vi.fn(),
     onApply: vi.fn().mockResolvedValue(undefined),
+    onPreviewReplace: vi.fn().mockResolvedValue(10),
     ...overrides,
   };
   return props;
@@ -252,12 +272,20 @@ describe("ScheduleTemplatesDialog", () => {
     });
 
     expect(
-      screen.getByText(/This schedule already has shifts/),
-    ).toBeTruthy();
-    // KK-162 (BL-694): Replace asks twice and first says what it removes.
+      screen.getByText(/This schedule already has shifts/).textContent,
+    ).toBe(
+      "This schedule already has shifts. Add keeps them; Replace first removes the ones this template covers that haven't started.",
+    );
+    // KK-162 (BL-694): Replace asks twice and first says what it removes. The
+    // database counts it: only the template's locations and departments, never a
+    // started shift, so not every shift in the edit (here 1 in the edit, 10 counted).
     fireEvent.click(screen.getByRole("button", { name: "Replace current shifts" }));
     expect(props.onApply).not.toHaveBeenCalled();
-    expect(screen.getByText("1 shift will be removed. Draft only, not published.")).toBeTruthy();
+    expect(props.onPreviewReplace).toHaveBeenCalledWith(template.id, null);
+    expect(screen.getByText("Counting the shifts it removes…")).toBeTruthy();
+    expect(
+      await screen.findByText("10 shifts will be removed. Draft only, not published."),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Confirm replace" }));
     await waitFor(() =>
       expect(props.onApply).toHaveBeenCalledWith(template.id, "overwrite", null),
@@ -266,6 +294,24 @@ describe("ScheduleTemplatesDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add to current shifts" }));
     await waitFor(() =>
       expect(props.onApply).toHaveBeenCalledWith(template.id, "merge", null),
+    );
+  });
+
+  it("still asks twice when the count cannot be read", async () => {
+    const props = renderDialog({
+      session: { ...session, shifts: [{ ...shiftFixture }] },
+      onPreviewReplace: vi.fn().mockRejectedValue(new Error("offline")),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace current shifts" }));
+    expect(
+      await screen.findByText(
+        "Shifts this template covers will be removed. Draft only, not published.",
+      ),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm replace" }));
+    await waitFor(() =>
+      expect(props.onApply).toHaveBeenCalledWith(template.id, "overwrite", null),
     );
   });
 

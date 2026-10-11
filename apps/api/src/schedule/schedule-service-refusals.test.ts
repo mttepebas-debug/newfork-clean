@@ -36,7 +36,7 @@ const routeMethods = [
   "discardSession", "deleteDraft", "listPendingOps", "addPendingOp",
   "updatePendingOp", "removePendingOp", "getPublicationStatus", "previewPublication", "publish",
   "previewUnpublish", "unpublish", "listTemplates", "getTemplate",
-  "createTemplate", "renameTemplate", "deleteTemplate", "applyTemplate", "previewAutoFill",
+  "createTemplate", "renameTemplate", "deleteTemplate", "applyTemplate", "previewTemplateApply", "previewAutoFill",
   "applyAutoFill", "previewExport", "listExportPresets", "createExportPreset", "updateExportPreset",
   "deleteExportPreset", "listExportSchedules", "createExportSchedule", "updateExportSchedule",
   "deleteExportSchedule", "listRecentExports", "recordExport",
