@@ -308,6 +308,7 @@ export function EmployeeScheduleBoard({
         showUnassignedShifts={false}
         unassignedFrozen={false}
         showJobColorDot
+        publishWarnings={false}
         showRoleSeparators={showRoleSeparators}
         showPresetShiftBadges={false}
         useDefaultTimesForScheduling={false}

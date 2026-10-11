@@ -50,6 +50,29 @@ describe("ScheduleLocationHeader", () => {
     expect(onToggleLocationFilter).toHaveBeenLastCalledWith(["loc-1", "loc-2"]);
   });
 
+  // BL-683: the publish deadline is the manager's job; an employee looking at the
+  // same week is not told to publish it.
+  it("never asks an employee to publish a week whose deadline is near", () => {
+    const header = (publishWarnings?: boolean) => (
+      <ScheduleLocationHeader
+        location={unifiedLocation}
+        locationIndex={0}
+        daysLength={7}
+        weekStartDate="2026-09-07"
+        currentDate="2026-09-06"
+        publishWarnings={publishWarnings}
+        onToggleLocationFilter={vi.fn()}
+      />
+    );
+    const { rerender } = render(header());
+    expect(screen.getByLabelText(/publish the schedule as soon as possible/)).toBeTruthy();
+
+    rerender(header(false));
+    const dot = screen.getByLabelText("Unpublished");
+    expect(dot.dataset.deadline).toBe("false");
+    expect(screen.queryByLabelText(/as soon as possible/)).toBeNull();
+  });
+
   it("renders published status in the per-location header status area", () => {
     render(
       <ScheduleLocationHeader

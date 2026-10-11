@@ -18,6 +18,7 @@ export function ScheduleGridHeaders({
   showTotalHours,
   weekStartDate,
   currentDate,
+  publishWarnings,
   onDayHeaderClick,
   onManageLogo,
   onToggleLocationFilter,
@@ -33,6 +34,7 @@ export function ScheduleGridHeaders({
   readonly showTotalHours: boolean;
   readonly weekStartDate: string;
   readonly currentDate?: string;
+  readonly publishWarnings?: boolean;
   readonly onDayHeaderClick: (
     date: string,
     locationIds: readonly string[],
@@ -73,6 +75,7 @@ export function ScheduleGridHeaders({
           daysLength={days.length}
           weekStartDate={weekStartDate}
           currentDate={currentDate}
+          publishWarnings={publishWarnings}
           onToggleLocationFilter={onToggleLocationFilter}
         />
       ))}
