@@ -224,6 +224,16 @@ export function ShiftCard({
         onMouseDown?.(shift.id, event);
       }}
       onClick={(event) => {
+        // BL-610: the drag start cancels the press, so the browser does not
+        // move focus here; take it, so Enter and Ctrl+C reach this card.
+        // Taken by the mouse: no keyboard ring (the browser would draw one,
+        // having seen no press); Tab back to it draws it again.
+        if (editing && document.activeElement !== event.currentTarget) {
+          const card = event.currentTarget;
+          card.dataset.mouseFocus = "true";
+          card.addEventListener("blur", () => delete card.dataset.mouseFocus, { once: true });
+          card.focus({ preventScroll: true });
+        }
         if (modifierSelectionHandledRef.current) {
           modifierSelectionHandledRef.current = false;
           cancelPendingSingleClick();

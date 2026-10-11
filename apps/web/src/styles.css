@@ -4943,6 +4943,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   touch-action: none;
   user-select: none;
 }
+/* BL-610 (WCAG 2.4.7): the keyboard can reach the bar, so it shows where it is.
+   Inset: the track clips anything drawn outside it. */
+.schedule-horizontal-nav-track:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
 .schedule-horizontal-nav-rail {
   position: absolute;
   top: 50%;
@@ -6143,6 +6149,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-badge:focus-visible {
   outline: 2px solid var(--schedule-focus-ring-color);
   outline-offset: 1px;
+}
+/* BL-610: a card the mouse focused shows its selection, not the keyboard ring. */
+.schedule-shift-badge[data-mouse-focus="true"]:focus-visible {
+  outline: none;
 }
 /* A ghost is the real card switched off: same frame and layout, one dead gray
    with a fine sparse hatch whatever its type, job or place. No opacity, so the
