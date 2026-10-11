@@ -175,4 +175,20 @@ describe("personal list (Account › Documents)", () => {
       "Needs review",
     ]);
   });
+
+  // BL-855: loading and a failed load sit where the rows go, not under the
+  // empty table at the bottom of the screen.
+  it("shows loading and a failed load in the table's place", async () => {
+    vi.mocked(listDocuments).mockReturnValueOnce(new Promise(() => {}) as never);
+    const { unmount } = renderList(false, false);
+    expect(
+      screen.getByText("Loading documents…").closest(".employee-table-wrap"),
+    ).toBeTruthy();
+    unmount();
+    vi.mocked(listDocuments).mockRejectedValueOnce(new Error("Documents unavailable"));
+    renderList(false, false);
+    expect(
+      (await screen.findByRole("alert")).closest(".employee-table-wrap"),
+    ).toBeTruthy();
+  });
 });
