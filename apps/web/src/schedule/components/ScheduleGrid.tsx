@@ -58,6 +58,7 @@ export function ScheduleGrid({
   showShiftType,
   showShiftLabels,
   showClockTimes,
+  timeFormat,
   showTotalHours,
   showUnassignedShifts,
   unassignedFrozen,
@@ -95,6 +96,8 @@ export function ScheduleGrid({
   onManageLogo,
 }: {
   readonly model: ScheduleReadModel;
+  /** BL-055: the viewer's own 12h/24h choice; the workspace's when they have none. */
+  readonly timeFormat?: ScheduleReadModel["settings"]["time_format"];
   readonly search: URLSearchParams;
   readonly selectedDate: string;
   readonly view: ScheduleView;
@@ -423,7 +426,7 @@ export function ScheduleGrid({
           showShiftType={showShiftType}
           showShiftLabels={showShiftLabels}
           showClockTimes={showClockTimes}
-          timeFormat={model.settings.time_format}
+          timeFormat={timeFormat ?? model.settings.time_format}
           showJobColorDot={showJobColorDot}
         />
       }
@@ -491,7 +494,7 @@ export function ScheduleGrid({
         rows={rows}
         selectedIds={selectedIds}
         showClockTimes={showClockTimes}
-        timeFormat={model.settings.time_format}
+        timeFormat={timeFormat ?? model.settings.time_format}
         showEmployeeGroupHeaders={showEmployeeGroupHeaders}
         showEmployeeGroups={showEmployeeGroups}
         showJobColorDot={showJobColorDot}

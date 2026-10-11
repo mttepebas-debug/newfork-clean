@@ -3046,6 +3046,21 @@ describe("App", () => {
     );
   });
 
+  // BL-055: the grid's shift cards follow the person's own 12h/24h choice too.
+  it("shows shift times on the grid in the person's own 24-hour format in a 12-hour workspace", async () => {
+    testAuth.timeFormat = "24h";
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    const badge = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>(".schedule-shift-badge");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    expect(badge.textContent).toContain("16:00");
+    expect(badge.textContent).not.toContain("PM");
+  });
+
   // BL-055: the shift editor's times follow the person's own 12h/24h choice
   // (Account → Preferences), not only the workspace's Schedule setting.
   it("types shift times in the person's own 24-hour format in a 12-hour workspace", async () => {
