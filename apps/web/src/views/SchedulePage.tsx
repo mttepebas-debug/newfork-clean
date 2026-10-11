@@ -61,6 +61,7 @@ import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRo
 import {
   applyScheduleAutoFill,
   applyScheduleTemplate,
+  previewScheduleTemplateApply,
   bulkDeleteShifts,
   createScheduleTemplate,
   createScheduleShift,
@@ -3413,6 +3414,16 @@ export function SchedulePage({
                 });
                 throw error;
               })
+          }
+          onPreviewReplace={(templateId, departmentKeys) =>
+            gridEditSession
+              ? previewScheduleTemplateApply(
+                  context.workspace.id,
+                  gridEditSession.id,
+                  templateId,
+                  departmentKeys,
+                ).then((preview) => preview.removed_shift_count)
+              : Promise.reject(new Error("No edit is open"))
           }
           onApply={(templateId, mode, departmentKeys) =>
             gridEditSession

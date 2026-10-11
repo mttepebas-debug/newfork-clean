@@ -39,6 +39,7 @@ import {
   listScheduleRecentExports,
   listScheduleTemplates,
   applyScheduleTemplate,
+  previewScheduleTemplateApply,
   previewScheduleAutoFill,
   previewSchedulePublication,
   previewScheduleUnpublish,
@@ -655,6 +656,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   renameScheduleTemplate: vi.fn(),
   deleteScheduleTemplate: vi.fn(),
   applyScheduleTemplate: vi.fn(),
+  previewScheduleTemplateApply: vi.fn(),
   previewScheduleAutoFill: vi.fn(),
   applyScheduleAutoFill: vi.fn(),
   listScheduleExportPresets: vi.fn().mockResolvedValue({
@@ -6560,6 +6562,43 @@ describe("App", () => {
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Schedule templates" })).toBeNull());
     expect(screen.queryByText(/edit lease expired/)).toBeNull();
+  });
+
+  // KK-162 (BL-694): Replace's first click shows the database's count of what
+  // goes, not the number of shifts in the edit.
+  it("asks the server how many shifts a template replace removes", async () => {
+    const template = {
+      id: "99999999-9999-4999-8999-999999999981",
+      workspace_id: scheduleFixture.workspace_id,
+      name: "Lunch week",
+      revision: 1,
+      shift_count: 1,
+      open_slot_count: 0,
+      created_by_name: "Development Owner",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(listScheduleTemplates).mockResolvedValue({ templates: [template] });
+    vi.mocked(previewScheduleTemplateApply).mockResolvedValue({ removed_shift_count: 7 });
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce(makeDefaultEditAcquireResult());
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
+    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Lunch week/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Replace current shifts" }));
+
+    expect(await within(dialog).findByText("7 shifts will be removed. Draft only, not published.")).toBeTruthy();
+    const [workspaceId, sessionId, templateId, departmentKeys] =
+      vi.mocked(previewScheduleTemplateApply).mock.calls.at(-1)!;
+    expect([workspaceId, templateId, departmentKeys]).toEqual([
+      scheduleFixture.workspace_id,
+      template.id,
+      null,
+    ]);
+    expect(sessionId).toBe(makeDefaultEditAcquireResult().session.id);
+    expect(within(dialog).getByRole("button", { name: "Confirm replace" })).toBeTruthy();
   });
 
   it("keeps organization settings unavailable to managers", async () => {

@@ -2147,6 +2147,14 @@ export type ScheduleTemplateApplyResult = z.infer<
   typeof scheduleTemplateApplyResultSchema
 >;
 
+/** KK-162 (BL-694): what Replace would remove, counted by the database. */
+export const scheduleTemplateApplyPreviewSchema = z.object({
+  removed_shift_count: z.coerce.number().int().nonnegative(),
+});
+export type ScheduleTemplateApplyPreview = z.infer<
+  typeof scheduleTemplateApplyPreviewSchema
+>;
+
 export const scheduleAutoFillCandidateSchema = z.object({
   employee_id: z.string().uuid(),
   employee_name: z.string().trim().min(1).max(161),
