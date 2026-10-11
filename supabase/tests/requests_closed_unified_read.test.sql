@@ -93,6 +93,12 @@ cross join lateral (select pg_temp.snap(case when s.kind = 'open_pickup' then nu
   case when s.n in (39, 40, 60) then 'B' else 'K' end, dd.d) snap) o
 cross join lateral (select case when s.kind = 'swap' then pg_temp.snap('veli', 'K', dd.d) end snap) r
 where s.kind <> 'time_off';
+-- Every seeded swap and cover reached the managers: somebody asked or the teammate
+-- accepted before it closed (Mert, 2026-10-11; shift_changes_reach_managers_agreed).
+insert into public.shift_exchange_events (workspace_id, case_id, action, created_at)
+select tests.id('rc'), s.id, case when s.kind = 'swap' then 'peer_accepted' else 'application_submitted' end,
+  s.closed_at - interval '12 hours'
+from rc_seed s where s.kind in ('swap', 'cover');
 
 -- The expected order: newest decision first, then kind, then id.
 create temporary table rc_expected as
@@ -131,12 +137,10 @@ select is(
      -> 'time_off_requests') item where item ->> 'id' = (select id::text from rc_seed where kind = 'time_off' and n = 4)),
   'a time-off row is the Time off list''s object');
 select is(
-  -- An open shift: the manager's list carries a swap or a cover only once both
-  -- sides agreed (Mert, 2026-10-11), and these seeded ones never had anybody ask.
-  (select item -> 'exchange' from jsonb_array_elements(pg_temp.closed('owner', array['open_pickup']) -> 'rows') item
-   where item ->> 'id' = (select id::text from rc_seed where kind = 'open_pickup' and n = 42)),
+  (select item -> 'exchange' from jsonb_array_elements(pg_temp.closed('owner', array['cover']) -> 'rows') item
+   where item ->> 'id' = (select id::text from rc_seed where kind = 'cover' and n = 22)),
   (select item from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rc:owner'), tests.id('rc'), true,
-     current_date, current_date + 42) -> 'cases') item where item ->> 'id' = (select id::text from rc_seed where kind = 'open_pickup' and n = 42)),
+     current_date, current_date + 42) -> 'cases') item where item ->> 'id' = (select id::text from rc_seed where kind = 'cover' and n = 22)),
   'a shift-change row is the shift changes list''s object');
 select is((select item -> 'exchange' from jsonb_array_elements(pg_temp.closed('owner', array['time_off']) -> 'rows') item limit 1),
   'null'::jsonb, 'a time-off row has no shift change');
