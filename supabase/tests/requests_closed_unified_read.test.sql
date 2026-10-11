@@ -131,10 +131,12 @@ select is(
      -> 'time_off_requests') item where item ->> 'id' = (select id::text from rc_seed where kind = 'time_off' and n = 4)),
   'a time-off row is the Time off list''s object');
 select is(
-  (select item -> 'exchange' from jsonb_array_elements(pg_temp.closed('owner', array['cover']) -> 'rows') item
-   where item ->> 'id' = (select id::text from rc_seed where kind = 'cover' and n = 22)),
+  -- An open shift: the manager's list carries a swap or a cover only once both
+  -- sides agreed (Mert, 2026-10-11), and these seeded ones never had anybody ask.
+  (select item -> 'exchange' from jsonb_array_elements(pg_temp.closed('owner', array['open_pickup']) -> 'rows') item
+   where item ->> 'id' = (select id::text from rc_seed where kind = 'open_pickup' and n = 42)),
   (select item from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rc:owner'), tests.id('rc'), true,
-     current_date, current_date + 42) -> 'cases') item where item ->> 'id' = (select id::text from rc_seed where kind = 'cover' and n = 22)),
+     current_date, current_date + 42) -> 'cases') item where item ->> 'id' = (select id::text from rc_seed where kind = 'open_pickup' and n = 42)),
   'a shift-change row is the shift changes list''s object');
 select is((select item -> 'exchange' from jsonb_array_elements(pg_temp.closed('owner', array['time_off']) -> 'rows') item limit 1),
   'null'::jsonb, 'a time-off row has no shift change');
@@ -225,6 +227,9 @@ select tests.publish_week('rc', 9, '[
 ]');
 select tests.remember('rc:case:ali-far', (public.shift_exchanges_command_service(tests.user('rc:ali'), tests.id('rc'),
   jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('rc:shift:ali-far')), gen_random_uuid()) ->> 'case_id')::uuid);
+-- Veli asks for it: a cover reaches the manager once somebody asked (Mert, 2026-10-11).
+select public.shift_exchanges_command_service(tests.user('rc:veli'), tests.id('rc'),
+  jsonb_build_object('action', 'apply', 'shift_id', tests.id('rc:shift:ali-far'), 'case_id', tests.id('rc:case:ali-far')), gen_random_uuid());
 select ok(exists (select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rc:ayse'), tests.id('rc'), true) -> 'cases') c
   where c ->> 'id' = tests.id('rc:case:ali-far')::text and c ->> 'status' = 'open'),
   'Ayse''s list holds Ali''s open cover nine weeks out');
