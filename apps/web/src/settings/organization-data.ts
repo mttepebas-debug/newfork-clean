@@ -244,11 +244,14 @@ export async function updateOrganizationName(
   workspaceId: string,
   name: string,
 ): Promise<void> {
-  const { error } = await client()
+  const { data, error } = await client()
     .from("workspaces")
     .update({ name: name.trim(), updated_at: new Date().toISOString() })
-    .eq("id", workspaceId);
+    .eq("id", workspaceId)
+    .select("id");
   message(error);
+  // BL-913: RLS refuses by changing no row, not with an error.
+  if (!data?.length) throw new Error("The workspace name wasn't saved: your role can't change it.");
 }
 
 export async function listLocations(workspaceId: string): Promise<Location[]> {

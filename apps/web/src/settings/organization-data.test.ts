@@ -15,6 +15,7 @@ import {
   saveShiftType,
   setShiftLabelArchived,
   setShiftTypeArchived,
+  updateOrganizationName,
 } from "./organization-data";
 
 const duplicate = (index: string) => ({
@@ -44,5 +45,21 @@ describe("Settings → Shift catalog: a name already in use", () => {
     await expect(saveShiftLabel("w", { name: "VIP", color: "#123456" })).rejects.toThrow(taken);
     await expect(saveShiftLabel("w", { name: "VIP", color: "#123456" }, "id")).rejects.toThrow(taken);
     await expect(setShiftLabelArchived("w", "id", false)).rejects.toThrow(taken);
+  });
+});
+
+// BL-913: a write RLS refuses changes no row and still answers 204; the
+// screen said "Organization settings saved." while the name stayed.
+describe("Settings → General: workspace name", () => {
+  it("fails when no row changed", async () => {
+    answer.current = { data: [], error: null };
+    await expect(updateOrganizationName("w", "Meyhouse")).rejects.toThrow(
+      "The workspace name wasn't saved: your role can't change it.",
+    );
+  });
+
+  it("resolves when the row changed", async () => {
+    answer.current = { data: [{ id: "w" }], error: null };
+    await expect(updateOrganizationName("w", "Meyhouse")).resolves.toBeUndefined();
   });
 });
