@@ -210,6 +210,7 @@ import {
   isScheduleEditFocusedShiftBlankDismissTarget,
   isScheduleGridCellActivationTarget,
   isScheduleInteractionSurface,
+  isScheduleLayerTarget,
   isSchedulePreviewFocusedShiftBlankDismissTarget,
   isScheduleSurfaceTarget,
   isSuppressedScheduleClickTarget,
@@ -1696,6 +1697,9 @@ export function SchedulePage({
         dismissOneScheduleLayerRef.current();
         return;
       }
+      // BL-1003: while the shift window or another window is open, the grid's
+      // shortcuts wait; Ctrl+Z there must not undo an edit behind it.
+      if (editor || isScheduleLayerTarget(event.target)) return;
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key.toLowerCase() === "a" &&
@@ -1745,7 +1749,7 @@ export function SchedulePage({
       }
     };
     const handleCopy = (event: ClipboardEvent) => {
-      if (!gridEditSession) return;
+      if (!gridEditSession || editor || isScheduleLayerTarget(event.target)) return;
       const currentSelectedIds = selectedIdsRef.current;
       if (isTextEditingTarget(event.target) || !currentSelectedIds.length)
         return;
@@ -1754,7 +1758,7 @@ export function SchedulePage({
       event.stopPropagation();
     };
     const handlePaste = (event: ClipboardEvent) => {
-      if (!gridEditSession) return;
+      if (!gridEditSession || editor || isScheduleLayerTarget(event.target)) return;
       if (isTextEditingTarget(event.target)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -1771,6 +1775,7 @@ export function SchedulePage({
   }, [
     clipboard,
     copySelectedShifts,
+    editor,
     findEditableShift,
     removeSelected,
     requestDeleteSelected,

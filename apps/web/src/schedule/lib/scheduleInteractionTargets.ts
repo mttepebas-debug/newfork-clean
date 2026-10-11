@@ -40,6 +40,13 @@ export function isTextEditingTarget(target: EventTarget | null): boolean {
   );
 }
 
+/** BL-1003: a key pressed inside a window or menu belongs to it, not to the grid behind. */
+export function isScheduleLayerTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(
+    target.closest("[role='dialog'], [role='alertdialog'], [aria-modal='true']"),
+  );
+}
+
 export function closeScheduleMenu(target: HTMLElement): void {
   target.closest("details")?.removeAttribute("open");
 }
