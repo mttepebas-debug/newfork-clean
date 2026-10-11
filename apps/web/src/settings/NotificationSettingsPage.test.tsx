@@ -309,6 +309,8 @@ describe("NotificationSettingsPage", () => {
         reason: "Restore visible category defaults",
       }),
     );
+    // BL-661: one policy is "1 notification policy".
+    expect(await screen.findByText("1 notification policy reset.")).toBeTruthy();
     vi.mocked(resetNotificationPolicies).mockClear();
     fireEvent.change(screen.getByLabelText("Category"), {
       target: { value: "schedule" },

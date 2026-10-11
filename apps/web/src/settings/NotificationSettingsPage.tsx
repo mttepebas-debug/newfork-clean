@@ -104,7 +104,9 @@ export default function NotificationSettingsPage() {
     },
     onSuccess: (result) => {
       setDrafts({});
-      setStatus(`${result.affected} notification policies reset.`);
+      setStatus(
+        `${result.affected} notification ${result.affected === 1 ? "policy" : "policies"} reset.`,
+      );
       void queryClient.invalidateQueries({ queryKey });
     },
     onError: (resetError) => {
