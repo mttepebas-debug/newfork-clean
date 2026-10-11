@@ -4368,6 +4368,46 @@ describe("App", () => {
     expect(screen.queryByText(/employee document hard conflict/)).toBeNull();
   });
 
+  // BL-1003: with the shift window open, Ctrl+Z, Delete and paste belong to the
+  // window; nothing behind it is undone, deleted or armed.
+  it("keeps the grid's shortcuts off while the shift window is open", async () => {
+    const undoMock = vi.mocked(undoScheduleEditSessionStep);
+    undoMock.mockReset();
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired, session: { ...acquired.session, undo_depth: 1 },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    await waitFor(() => expect((undo as HTMLButtonElement).disabled).toBe(false));
+    const badge = await waitFor(() => {
+      const found = container.querySelector("button.schedule-shift-badge");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    await act(async () => {
+      fireEvent.doubleClick(badge);
+      await Promise.resolve();
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Edit shift" });
+    const close = within(dialog).getByRole("button", { name: "Close editor" });
+    close.focus();
+
+    fireEvent.keyDown(close, { key: "z", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+    fireEvent.keyDown(close, { key: "Delete" });
+    fireEvent.keyDown(close, { key: "v", ctrlKey: true });
+
+    expect(undoMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Paste mode on" })).toBeNull();
+    expect(screen.queryByText("Paste mode on")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Edit shift" })).toBeTruthy();
+  });
+
   // BL-998: the server took a step that cannot come back off the list; the screen
   // says why, the button follows the new depth, and nothing reads as undone.
   it("says why a step was taken off the Undo list, and Undo stays usable for the step before it", async () => {
