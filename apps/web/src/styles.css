@@ -5505,7 +5505,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-employee-cell span {
   display: block;
   margin-top: 5px;
-  color: #78827e;
+  color: var(--theme-text-secondary);
   font-size: 10px;
 }
 .schedule-employee-cell[data-unassigned="true"] {
