@@ -368,7 +368,9 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage(`/app/schedule/requests?case=${coverCase.id}`);
     expect(await screen.findByRole("dialog", { name: "Swap request" })).toBeTruthy();
-    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+    // The window opens in the same effect that drops ?case=; the router commits
+    // the new URL a tick later, which a loaded CI runner can show (train 2026-10-11).
+    await waitFor(() => expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests"));
   });
   // EKRAN-02 C2 (H2): a swap opens its review window over the list, not Shift Hub.
   it("opens a swap in its review window over the list", async () => {
