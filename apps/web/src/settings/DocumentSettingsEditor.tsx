@@ -39,6 +39,16 @@ function issueSection(issue: ValidationIssue): DocumentEditorSection {
   return "details";
 }
 
+/** BL-664 (3): the review list says the mode in words, as the select does. */
+const requirementLabel: Record<
+  NonNullable<DocumentTypeInput["lifecycle_settings"]>["mode"],
+  string
+> = {
+  optional: "Optional",
+  required: "Required",
+  conditional: "Conditional",
+};
+
 export function DocumentSettingsEditor({
   value,
 
@@ -403,8 +413,12 @@ export function DocumentSettingsEditor({
                 <dt>Requirement</dt>
 
                 <dd>
-                  {value.lifecycle_settings?.mode ??
-                    (value.required_at_onboarding ? "required" : "optional")}
+                  {
+                    requirementLabel[
+                      value.lifecycle_settings?.mode ??
+                        (value.required_at_onboarding ? "required" : "optional")
+                    ]
+                  }
                 </dd>
               </div>
 

@@ -433,7 +433,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                   type="submit"
                   disabled={!canSave}
                 >
-                  {saveMutation.isPending ? "Saving" : "Save"}
+                  {saveMutation.isPending ? "Saving" : "Save shift type"}
                 </Button>
               </div>
             </div>

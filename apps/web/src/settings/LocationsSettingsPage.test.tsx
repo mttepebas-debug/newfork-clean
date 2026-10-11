@@ -41,6 +41,19 @@ describe("Locations table", () => {
   });
 });
 
+// BL-664 (1): an empty address part leaves no stray comma.
+describe("Locations address", () => {
+  it("joins only the parts that are filled in", async () => {
+    vi.mocked(listLocations).mockResolvedValue([
+      { ...current, street_address: "", city: "Oakland", region: "CA", postal_code: "" },
+    ]);
+    page();
+    await screen.findByRole("button", { name: /^Deniz/ });
+    expect(screen.getAllByText("Oakland, CA").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^,/)).toBeNull();
+  });
+});
+
 // Locations A (Mert 2026-10-07): the shared list language.
 describe("Locations list", () => {
   it("has a list header, Active / Archived tabs and New location at the end of the filter row", async () => {
