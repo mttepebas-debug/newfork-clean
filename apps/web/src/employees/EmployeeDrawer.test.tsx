@@ -687,9 +687,11 @@ describe("EmployeeDrawer", () => {
   it("shows the normal empty state when the employee has no onboarding case", async () => {
     renderDrawer("documents", detail, null);
 
+    // BL-834: none at all reads as none yet, not as a filter miss.
     expect(
-      await screen.findByText("No documents match these filters."),
+      await screen.findByRole("heading", { name: "No documents yet" }),
     ).toBeTruthy();
+    expect(screen.getByText("Documents they submit show up here.")).toBeTruthy();
     expect(screen.queryByText("Loading onboarding...")).toBeNull();
     expect(getEmployeeOnboardingReview).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: /Accept / })).toBeNull();

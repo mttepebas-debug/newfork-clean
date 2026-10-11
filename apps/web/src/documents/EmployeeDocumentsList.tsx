@@ -282,6 +282,13 @@ export function EmployeeDocumentsList(props: {
             ))}
           </tbody>
         </table>
+        {/* BL-855: where the rows go, not under the empty table. */}
+        {query.isLoading && <p className="settings-state">Loading documents…</p>}
+        {query.error && !isNoAccess(query.error) && (
+          <p className="settings-state error" role="alert">
+            {errorText(query.error)}
+          </p>
+        )}
         {!query.isLoading && !query.error && !visible.length && (
           noneYet ? (
             <div className="catalog-table-empty">
@@ -289,7 +296,11 @@ export function EmployeeDocumentsList(props: {
                 <FileText size={22} />
               </span>
               <h2>No documents yet</h2>
-              <p>Documents your team submits show up here.</p>
+              <p>
+                {props.employeeId
+                  ? "Documents they submit show up here."
+                  : "Documents your team submits show up here."}
+              </p>
             </div>
           ) : personal ? (
             <div className="employee-documents-empty is-compact">
@@ -307,17 +318,12 @@ export function EmployeeDocumentsList(props: {
         )}
       </div>
       </>}
-      {query.isLoading && <p className="settings-state">Loading documents…</p>}
-      {query.error && (isNoAccess(query.error) ? (
+      {query.error && isNoAccess(query.error) && (
         <NoAccessState
           subject="these documents"
           homeHref={noAccessHomePath(context, "/app/employees/documents")}
         />
-      ) : (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
-      ))}
+      )}
       {selected && (
         <DocumentReviewDrawer
           audience={props.audience}
