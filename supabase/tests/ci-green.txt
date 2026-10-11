@@ -137,7 +137,7 @@ supabase/tests/the_account_phone_is_the_only_phone.test.sql
 supabase/tests/scheduled_export_partial_delivery.test.sql
 supabase/tests/scheduled_export_sends_only_live_locations.test.sql
 supabase/tests/account_checks_count_in_the_database.test.sql
-supabase/tests/time_off_shortens_for_a_shift.test.sql
+supabase/tests/time_off_blocks_a_shift.test.sql
 supabase/tests/employee_hub.test.sql
 supabase/tests/refusals_say_why.test.sql
 supabase/tests/employees_on_the_core.test.sql
