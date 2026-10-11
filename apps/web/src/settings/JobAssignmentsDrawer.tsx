@@ -678,7 +678,7 @@ export function JobAssignmentsDrawer({
                 </button>
                 <button
                   type="button"
-                  className="job-primary-button"
+                  className="job-danger-button"
                   disabled={busy}
                   onClick={onClose}
                 >
