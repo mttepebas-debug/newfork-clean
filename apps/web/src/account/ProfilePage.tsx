@@ -326,12 +326,14 @@ export default function ProfilePage() {
 
   /**
    * Sends the preferred name to each workspace that does not have it yet.
-   * Says how many hold it for a manager's answer and which ones refused.
+   * Says how many hold it for a manager's answer and which ones refused,
+   * keeping apart the ones where trying again changes nothing (BL-471).
    */
   const savePreferredName = async () => {
     let waiting = 0;
     const sent: string[] = [];
     const refused: EmploymentContactRecord[] = [];
+    const ended: EmploymentContactRecord[] = [];
     for (const record of preferredBehind) {
       try {
         const outcome = await requestPreferredName(
@@ -341,11 +343,11 @@ export default function ProfilePage() {
         );
         if (outcome === "waiting") waiting += 1;
         sent.push(record.workspaceId);
-      } catch {
-        refused.push(record);
+      } catch (cause: unknown) {
+        (accessEnded(cause) ? ended : refused).push(record);
       }
     }
-    return { waiting, sent, refused };
+    return { waiting, sent, refused, ended };
   };
 
   /**
@@ -416,15 +418,20 @@ export default function ProfilePage() {
     if (preferredDirty && failures.length === 0) {
       const outcome = await savePreferredName();
       waiting = outcome.waiting;
-      if (outcome.refused.length === 0) {
+      if (outcome.refused.length === 0 && outcome.ended.length === 0) {
         setPreferredDraft(null);
         setPreferredSent(new Set());
       } else {
         // The draft stays, so Save stays open for the ones that refused.
         setPreferredSent((current) => new Set([...current, ...outcome.sent]));
-        failures.push(
-          `Your preferred name could not be sent to ${workspaceNames(outcome.refused)}. Try again.`,
-        );
+        if (outcome.refused.length > 0)
+          failures.push(
+            `Your preferred name could not be sent to ${workspaceNames(outcome.refused)}. Try again.`,
+          );
+        if (outcome.ended.length > 0)
+          failures.push(
+            `Your preferred name can no longer be changed in ${workspaceNames(outcome.ended)}: your access there has ended or the workspace is closed.`,
+          );
       }
     }
     if (contactDirty && !contactFirst) await contactStep();
