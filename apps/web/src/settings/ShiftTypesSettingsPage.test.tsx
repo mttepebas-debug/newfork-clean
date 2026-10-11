@@ -76,7 +76,7 @@ describe("shift type default review", () => {
     expect(
       screen.getByText(/Existing shifts keep their saved reference hours/),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save shift type" }));
     await waitFor(() =>
       expect(saveShiftType).toHaveBeenCalledWith(
         workspace,
@@ -109,7 +109,7 @@ describe("shift type default review", () => {
       screen.getByText(/Default start and end times are required/),
     ).toBeTruthy();
     expect(
-      screen.getByRole("button", { name: "Save" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Save shift type" }).hasAttribute("disabled"),
     ).toBe(true);
   });
   it("preserves edits on a stale save and reloads only on the explicit discard action", async () => {
@@ -120,7 +120,7 @@ describe("shift type default review", () => {
     vi.mocked(saveShiftType).mockRejectedValueOnce(
       new Error("Default hours changed"),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save shift type" }));
     await screen.findByText("Default hours changed");
     expect(
       (screen.getByLabelText("Default start") as HTMLInputElement).value,
@@ -137,12 +137,12 @@ describe("shift type default review", () => {
       ).toBe("10:00"),
     );
     expect(
-      screen.getByRole("button", { name: "Save" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Save shift type" }).hasAttribute("disabled"),
     ).toBe(true);
     fireEvent.change(screen.getByLabelText("Default start"), {
       target: { value: "11:30" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save shift type" }));
     await waitFor(() =>
       expect(vi.mocked(saveShiftType).mock.calls.at(-1)?.[3]).toBe(2),
     );
@@ -158,7 +158,7 @@ describe("shift type default review", () => {
     );
     await screen.findByText(/The default hours changed while/);
     expect(
-      screen.getByRole("button", { name: "Save" }).hasAttribute("disabled"),
+      screen.getByRole("button", { name: "Save shift type" }).hasAttribute("disabled"),
     ).toBe(true);
     expect(
       (screen.getByLabelText("Default start") as HTMLInputElement).value,
@@ -171,7 +171,7 @@ describe("shift type default review", () => {
       target: { value: "11:00" },
     });
     vi.mocked(saveShiftType).mockRejectedValueOnce(new Error("Stale"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save shift type" }));
     await screen.findByText("Stale");
     vi.mocked(listShiftTypes).mockRejectedValueOnce(new Error("Offline"));
     fireEvent.click(
@@ -190,7 +190,7 @@ describe("shift type default review", () => {
       target: { value: "11:00" },
     });
     vi.mocked(saveShiftType).mockRejectedValueOnce(new Error("Stale"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save shift type" }));
     await screen.findByText("Stale");
     let resolve!: (value: ShiftType[]) => void;
     vi.mocked(listShiftTypes).mockReturnValueOnce(
@@ -227,7 +227,7 @@ describe("shift type default review", () => {
         resolve = done;
       }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save shift type" }));
     await screen.findByRole("button", { name: "Saving" });
     expect(
       screen.getByLabelText("Default start").hasAttribute("disabled"),

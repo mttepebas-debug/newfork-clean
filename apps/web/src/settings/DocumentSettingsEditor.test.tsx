@@ -177,6 +177,16 @@ describe("Document guided editor", () => {
     expect(screen.getByRole("button", { name: "Next fields" })).toBeTruthy();
   });
 
+  // BL-664 (3): the review list says the requirement in words; CSS no longer
+  // capitalizes each word ("Manager Approval").
+  it("words the requirement in the review list", () => {
+    const { container } = mount();
+    const review = container.querySelector(".document-editor-review")!;
+    expect(review.textContent).toContain("Conditional");
+    expect(review.textContent).not.toContain("conditional");
+    expect(review.textContent).toContain("Manager approval");
+  });
+
   it("uses Schedule All semantics for each group and applies intersection on filter edits", async () => {
     vi.mocked(getDocumentTargetOptions).mockResolvedValue({
       ...options,

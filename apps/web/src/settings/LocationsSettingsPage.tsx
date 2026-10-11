@@ -523,8 +523,16 @@ function zoneLabel(location: Location): string {
   );
 }
 
+/** BL-664 (1): only the filled-in parts, so a blank one leaves no stray comma. */
 function addressText(location: Location): string {
-  return `${location.street_address}, ${location.city}, ${location.region} ${location.postal_code}`;
+  const regionLine = [location.region, location.postal_code]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return [location.street_address, location.city, regionLine]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 function sortText(location: Location, key: SortKey): string {
