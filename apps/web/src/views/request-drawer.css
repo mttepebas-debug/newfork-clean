@@ -449,24 +449,48 @@
   color: var(--theme-muted-strong);
   font-size: 12.5px;
 }
-.catalog-drawer .rd .nf-button {
+/* The drawer opens inside the Requests page, whose requests-catalog.css styles every
+   .nf-button under it. These rules reach one level deeper so the drawer keeps the
+   app's button roles: green acts, white backs out, red closes or denies. */
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button {
   min-height: 36px;
   padding: 0 14px;
   border-radius: 7px;
   font-size: 13.5px;
   font-weight: 650;
 }
-.catalog-drawer .rd .nf-button.rd-small {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary-button):not(.danger-button):not(.danger-outline) {
+  border: 1px solid var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary-button):not(.danger-button):not(.danger-outline):not(:disabled):hover {
+  background: var(--theme-accent-strong);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.secondary-button {
+  border: 1px solid var(--theme-muted);
+  background: var(--theme-surface);
+  color: var(--theme-accent-deep);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.secondary-button:not(:disabled):hover {
+  background: var(--theme-surface-muted);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-button {
+  border: 1px solid var(--theme-danger-strong);
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.rd-small {
   min-height: 30px;
   padding: 0 10px;
   font-size: 12.5px;
 }
-.catalog-drawer .rd .nf-button.danger-outline {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-outline {
   border: 1px solid var(--theme-danger-border);
   background: var(--theme-surface);
   color: var(--theme-danger-strong);
 }
-.catalog-drawer .rd .nf-button.danger-outline.is-armed {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-outline.is-armed {
   background: var(--theme-danger-strong);
   color: var(--theme-on-accent);
 }
