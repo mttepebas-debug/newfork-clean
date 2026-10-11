@@ -4946,7 +4946,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 /* BL-610 (WCAG 2.4.7): the keyboard can reach the bar, so it shows where it is.
    Inset: the track clips anything drawn outside it. */
 .schedule-horizontal-nav-track:focus-visible {
-  outline: 2px solid var(--theme-focus);
+  outline: 2px solid var(--schedule-focus-ring-color);
   outline-offset: -2px;
 }
 .schedule-horizontal-nav-rail {
@@ -5936,7 +5936,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
     opacity var(--schedule-motion-fast) ease;
 }
 .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-action,
-.schedule-cell[data-editing="true"]:focus-within > .schedule-cell-add-action {
+/* BL-610: a card the mouse focused does not keep its cell's add strip open. */
+.schedule-cell[data-editing="true"]:focus-within:not(:has([data-mouse-focus="true"]))
+  > .schedule-cell-add-action {
   opacity: 1;
   pointer-events: auto;
 }

@@ -228,11 +228,11 @@ export function ShiftCard({
         // move focus here; take it, so Enter and Ctrl+C reach this card.
         // Taken by the mouse: no keyboard ring (the browser would draw one,
         // having seen no press); Tab back to it draws it again.
-        if (editing && document.activeElement !== event.currentTarget) {
+        if (editing && event.currentTarget.dataset.mouseFocus !== "true") {
           const card = event.currentTarget;
           card.dataset.mouseFocus = "true";
           card.addEventListener("blur", () => delete card.dataset.mouseFocus, { once: true });
-          card.focus({ preventScroll: true });
+          if (document.activeElement !== card) card.focus({ preventScroll: true });
         }
         if (modifierSelectionHandledRef.current) {
           modifierSelectionHandledRef.current = false;
