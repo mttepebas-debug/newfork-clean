@@ -72,10 +72,16 @@ select pg_temp.command('veli', jsonb_build_object('action', 'accept', 'case_id',
 select tests.settle();
 select is(pg_temp.read('ayse', true, tests.id('ag:case:swap')) ->> 'stage', 'ready_for_manager',
   'once Veli accepts, Ayse''s Requests lists the swap, ready for her');
--- The manager finds it by either side's date, as before (shift_exchange_range_read).
+-- Closed after the agreement, the manager finds it by either side's date, as before
+-- (shift_exchange_range_read). An open case skips the date range for a manager (BL-839),
+-- so the search is checked on the closed one.
+select pg_temp.command('ali', jsonb_build_object('action', 'close', 'case_id', tests.id('ag:case:swap'),
+  'expected_revision', pg_temp.revision(tests.id('ag:case:swap')), 'reason', 'Plans changed'));
+select ok(exists(select 1 from public.shift_exchange_cases where id = tests.id('ag:case:swap') and status <> 'open'),
+  'Ali closed the agreed swap');
 select ok(exists(select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('ag:ayse'), tests.id('ag'), true,
   tests.week(1) + 2, tests.week(1) + 2) -> 'cases') c where c ->> 'id' = tests.id('ag:case:swap')::text),
-  'Ayse finds the agreed swap by the date of the shift Veli gives');
+  'Ayse finds the closed agreed swap by the date of the shift Veli gives');
 
 -- An open shift is somebody asking already ----------------------------------------
 select tests.remember('ag:case:open', (pg_temp.command('veli', jsonb_build_object('action', 'apply',
