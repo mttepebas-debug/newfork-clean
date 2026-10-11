@@ -24,8 +24,12 @@ type WeeklyService = Pick<
 >;
 
 // The "no" contract: to somebody who is not in it the workspace is not there.
+// BL-794: the one "not a member" answer, reason included, so the web reads
+// it as no access.
 function workspaceNotFound(reply: FastifyReply) {
-  return reply.status(404).send({ error: "Workspace not found." });
+  return reply
+    .status(404)
+    .send({ error: "Workspace not found", reason: "authz.not_member" });
 }
 
 export function registerWeeklyPreferenceRoutes(

@@ -81,8 +81,36 @@ describe("availability routes", () => {
             payload: { shift },
           })
         ).statusCode,
-      ).toBe(403);
+      ).toBe(404);
       expect(service.assessShift).toHaveBeenCalledTimes(1);
+    } finally {
+      await app.close();
+    }
+  });
+  // BL-794 (E4-19): somebody else's workspace is simply not there.
+  it("answers a workspace the caller is not in with 404 authz.not_member", async () => {
+    const { app } = setup();
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${key}/availability/shift-assessment`,
+        headers: { authorization: "Bearer test" },
+        payload: {
+          shift: {
+            location_id: employee,
+            employee_id: employee,
+            job_id: key,
+            shift_type_id: null,
+            scheduled_date: "2035-01-01",
+            start_time: "12:00",
+            end_time: "16:00",
+            note: "",
+            time_basis: "explicit",
+          },
+        },
+      });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
     } finally {
       await app.close();
     }

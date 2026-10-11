@@ -41,8 +41,9 @@ export function registerAvailabilityRoutes(
         workspaceId: params.data.workspaceId,
         resolver: options.contextResolver,
       });
+      // BL-794: somebody else's workspace is simply not there (one "no").
       if (!auth.context)
-        return reply.status(403).send({ error: "Workspace access required" });
+        throw new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
       if (!options.service)
         return reply.status(503).send({ error: "Availability is unavailable" });
       try {
