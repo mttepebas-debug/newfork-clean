@@ -1278,6 +1278,9 @@ export const shiftTypeSchema = z.object({
 });
 export type ShiftType = z.infer<typeof shiftTypeSchema>;
 
+// BL-1031: one sentence wherever equal hours are refused (the database says it too).
+export const SAME_START_END_TIME_MESSAGE = "Start and end time cannot be the same.";
+
 export const shiftTypeInputSchema = shiftTypeSchema
   .pick({
     name: true,
@@ -1298,7 +1301,7 @@ export const shiftTypeInputSchema = shiftTypeSchema
       !value.default_start_time ||
       value.default_start_time !== value.default_end_time,
     {
-      message: "Start and end times must be different",
+      message: SAME_START_END_TIME_MESSAGE,
       path: ["default_end_time"],
     },
   );
