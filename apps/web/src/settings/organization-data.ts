@@ -148,15 +148,26 @@ export async function saveScheduleLogo(
     });
   message(upload.error);
 
-  const updated = await updateWorkspaceLogo(workspaceId, {
-    logo_storage_path: storagePath,
-    logo_file_name: input.file.name,
-    logo_updated_at: new Date().toISOString(),
-    schedule_logo_scale: placement.scale,
-    schedule_logo_offset_x: placement.offset_x,
-    schedule_logo_offset_y: placement.offset_y,
-    updated_at: new Date().toISOString(),
-  });
+  let updated: Workspace;
+  try {
+    updated = await updateWorkspaceLogo(workspaceId, {
+      logo_storage_path: storagePath,
+      logo_file_name: input.file.name,
+      logo_updated_at: new Date().toISOString(),
+      schedule_logo_scale: placement.scale,
+      schedule_logo_offset_x: placement.offset_x,
+      schedule_logo_offset_y: placement.offset_y,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (failure) {
+    // BL-912: nothing points at the new file; take it back out (best effort,
+    // the write's own error is the one the screen shows).
+    await client()
+      .storage.from(logoBucket)
+      .remove([storagePath])
+      .catch(() => undefined);
+    throw failure;
+  }
 
   if (current.logo_storage_path && current.logo_storage_path !== storagePath) {
     await client().storage.from(logoBucket).remove([current.logo_storage_path]);

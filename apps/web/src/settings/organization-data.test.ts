@@ -2,15 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // One write's answer, whatever chain of filters the call builds.
 const answer = vi.hoisted(() => ({ current: { data: null as unknown, error: null as unknown } }));
+// `.single()` answers from this queue first (the logo read, then its write).
+const singles = vi.hoisted(() => [] as { data: unknown; error: unknown }[]);
+const storage = vi.hoisted(() => ({ upload: vi.fn(), remove: vi.fn() }));
 vi.mock("../lib/supabase", () => {
   const chain: Record<string, unknown> = {};
   for (const step of ["from", "insert", "update", "eq", "select"]) chain[step] = () => chain;
   chain.maybeSingle = async () => answer.current;
+  chain.single = async () => singles.shift() ?? answer.current;
   chain.then = (resolve: (value: unknown) => unknown) => resolve(answer.current);
+  chain.storage = { from: () => storage };
   return { supabaseClient: chain, apiRequest: vi.fn() };
 });
 
 import {
+  saveScheduleLogo,
   saveShiftLabel,
   saveShiftType,
   setShiftLabelArchived,
@@ -61,5 +67,28 @@ describe("Settings → General: workspace name", () => {
   it("resolves when the row changed", async () => {
     answer.current = { data: [{ id: "w" }], error: null };
     await expect(updateOrganizationName("w", "Meyhouse")).resolves.toBeUndefined();
+  });
+});
+
+// BL-912: a logo uploaded but never written to the workspace was left behind
+// in storage with nothing pointing at it.
+describe("Schedule logo upload", () => {
+  it("removes the uploaded file when the workspace write fails", async () => {
+    storage.upload.mockResolvedValue({ data: {}, error: null });
+    storage.remove.mockResolvedValue({ data: [], error: null });
+    singles.push(
+      { data: { logo_storage_path: null }, error: null },
+      { data: null, error: { code: "42501", message: "permission denied" } },
+    );
+    const file = new File(["<svg/>"], "logo.svg", { type: "image/svg+xml" });
+    await expect(
+      saveScheduleLogo("w", {
+        file,
+        removeLogo: false,
+        placement: { scale: 1, offset_x: 0, offset_y: 0 },
+      }),
+    ).rejects.toThrow();
+    const uploaded = storage.upload.mock.calls[0]![0] as string;
+    expect(storage.remove).toHaveBeenCalledWith([uploaded]);
   });
 });
