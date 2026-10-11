@@ -188,6 +188,21 @@ describe("NotificationSettingsPage", () => {
     ));
   });
 
+  it("calls the whole-workspace scope Workspace, even when the server still says Organization (BL-1027)", async () => {
+    renderPage({
+      ...fixture,
+      catalog: [{
+        ...fixture.catalog[0]!,
+        policy: { ...defaultPolicy, version: 3, source: "organization_policy" },
+      }],
+    });
+    expect(await screen.findByText("Published schedules")).toBeTruthy();
+    const scope = screen.getByLabelText("Policy scope") as HTMLSelectElement;
+    expect(scope.selectedOptions[0]?.textContent).toBe("Workspace");
+    expect(screen.getByText("Workspace · v3")).toBeTruthy();
+    expect(screen.queryByText(/Organization/)).toBeNull();
+  });
+
   it("filters active notification types by category and search", async () => {
     const { container } = renderPage();
     expect(await screen.findByText("Published schedules")).toBeTruthy();
