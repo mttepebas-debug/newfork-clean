@@ -416,6 +416,8 @@ describe("weekly preference routes", () => {
         payload: method === "POST" ? (path === "/weekly" ? command : { input_mode: "time_range", onboarding_required: false, expected_revision: 0 }) : undefined,
       });
       expect(response.statusCode).toBe(404);
+      // BL-794: the one "not a member" answer, so the web reads it as no access.
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
       expect(Object.values(service).every((call) => call.mock.calls.length === 0)).toBe(true);
     } finally {
       await app.close();
