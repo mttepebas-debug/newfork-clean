@@ -226,6 +226,24 @@ describe("shared document review", () => {
     );
   });
 
+  // BL-830 (KK-180 (2)): the version heading and a file's decision read as the
+  // list does, never the stored code.
+  it("names a version's state and a file's decision in words", async () => {
+    const shown = detail();
+    shown.obligation.status = "completed";
+    shown.obligation.submitted_id = null;
+    shown.submissions[0]!.state = "superseded";
+    shown.submissions[0]!.files[0]!.decision = "discard";
+    vi.mocked(getDocument).mockResolvedValue(shown);
+    page(true);
+
+    expect(
+      await screen.findByRole("heading", { name: "Version 1 · Replaced" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Discarded")).toBeTruthy();
+    expect(screen.queryByText("discard")).toBeNull();
+  });
+
   it("requires rejection reason, disables exhausted remaining time, keeps the drawer open and advances only on Next", async () => {
     const { onClose, onNext } = page();
     const reject = await screen.findByRole("button", { name: "Reject" });
@@ -884,7 +902,7 @@ describe("a row whose unreviewed upload is hidden", () => {
     vi.mocked(getDocument).mockResolvedValue(doc);
     page();
     expect(
-      await screen.findByRole("heading", { name: "Version 1 · accepted" }),
+      await screen.findByRole("heading", { name: "Version 1 · Approved" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();

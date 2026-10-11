@@ -31,9 +31,11 @@ import { RequestError } from "../lib/request-error";
 import {
   acceptAttribute,
   acceptsUpload,
+  fileDecisionLabel,
   isObligationClosed,
   sameSignerName,
   statusLabel,
+  versionStateLabel,
 } from "./document-rules";
 
 // What a person typed into the drawer. Nothing stores it before its own
@@ -601,7 +603,7 @@ function DocumentDetailContent({
           {detail.submissions.map((version) => (
             <section key={version.id} aria-label={`Version ${version.version}`}>
               <h3>
-                Version {version.version} · {version.state.replaceAll("_", " ")}
+                Version {version.version} · {versionStateLabel(version.state)}
               </h3>
               {version.expiry_date && <p>Expires {version.expiry_date}</p>}
               {Object.entries(version.metadata).map(([key, value]) => (
@@ -667,7 +669,7 @@ function DocumentDetailContent({
                       />
                     </>
                   ) : (
-                    <span>{file.decision}</span>
+                    <span>{fileDecisionLabel(file.decision)}</span>
                   )}
                   {props.audience.selfOnly && version.state === "draft" && (
                     <button
