@@ -129,11 +129,12 @@ test("one denial closes the request, and the employee reads the note", async ({ 
   const request = await askForTimeOff(asker, employee, note);
 
   // Kadikoy denies; Besiktas never voted, and the request is closed anyway.
+  // The reason is asked in the drawer's footer (Mert, 2026-10-11).
   const ayse = await signedIn(browser, "ayse");
-  await (await review(ayse, request)).getByRole("button", { name: "Deny", exact: true }).click();
-  const confirm = ayse.getByRole("alertdialog", { name: "Deny time off?" });
-  await confirm.getByLabel(`Note for ${asker.name} (optional)`).fill("I can approve the first day only");
-  await confirm.getByRole("button", { name: "Deny", exact: true }).click();
+  const drawer = await review(ayse, request);
+  await drawer.getByRole("button", { name: "Deny", exact: true }).click();
+  await drawer.getByLabel(`Reason for ${asker.name.split(" ")[0]}`).fill("I can approve the first day only");
+  await drawer.getByRole("button", { name: "Deny request", exact: true }).click();
   await expect(ayse.getByText("Time off denied.")).toBeVisible();
   expect(statusOf(request)).toBe("denied");
 
