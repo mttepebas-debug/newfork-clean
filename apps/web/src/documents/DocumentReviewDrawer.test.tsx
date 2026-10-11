@@ -330,7 +330,10 @@ describe("shared document review", () => {
     page();
 
     expect(
-      await screen.findByText(/not asked for the documents they ask of everyone/),
+      // BL-834: in the person's words, not the rule's.
+      await screen.findByText(
+        "Owners aren't required to submit documents. Uploading is optional.",
+      ),
     ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Remove exemption" }),

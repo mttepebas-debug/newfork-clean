@@ -48,12 +48,12 @@ describe("personal list (Account › Documents)", () => {
     source_id: null,
     suspended: false,
   };
-  const renderList = (personal: boolean) =>
+  const renderList = (personal: boolean, selfOnly = true) =>
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
         <MemoryRouter>
           <EmployeeDocumentsList
-            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: true }}
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly }}
             userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
             canReview={false}
             personal={personal}
@@ -117,5 +117,62 @@ describe("personal list (Account › Documents)", () => {
     ).toBeTruthy();
     expect(screen.getByText("Try another status or clear your search.")).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: /Employee/ })).toBeTruthy();
+  });
+
+  // BL-834: a new workspace with no documents yet is not a filter miss.
+  it("says no documents yet when there are none and nothing is filtered", async () => {
+    vi.mocked(listDocuments).mockResolvedValue([] as never);
+    renderList(false);
+    expect(await screen.findByRole("heading", { name: "No documents yet" })).toBeTruthy();
+    expect(screen.getByText("Documents your team submits show up here.")).toBeTruthy();
+    expect(screen.queryByText("No documents match these filters.")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Search employee documents"), {
+      target: { value: "nobody" },
+    });
+    expect(
+      screen.getByRole("heading", { name: "No documents match these filters." }),
+    ).toBeTruthy();
+  });
+
+  // BL-831: Status sorts by weight (Needs review first, Completed last), not
+  // by the stored code.
+  it("sorts Status by weight, not alphabetically by code", async () => {
+    const row = (id: string, status: string, employee_name: string) => ({
+      ...obligation,
+      id,
+      status,
+      employee_name,
+    });
+    vi.mocked(listDocuments).mockResolvedValue([
+      row("1", "completed", "Avery"),
+      row("2", "paused", "Blake"),
+      row("3", "rejected", "Casey"),
+      row("4", "expired", "Drew"),
+      row("5", "missing", "Emery"),
+      row("6", "pending_review", "Finley"),
+    ] as never);
+    // A manager's list: the person's own list puts what they must do first.
+    renderList(false, false);
+    await screen.findByText("Avery");
+    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+    const chips = () =>
+      Array.from(document.querySelectorAll("tbody .list-chip")).map((c) => c.textContent);
+    expect(chips()).toEqual([
+      "Needs review",
+      "Missing",
+      "Expired",
+      "Rejected",
+      "Paused",
+      "Completed",
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: /Status/ }));
+    expect(chips()).toEqual([
+      "Completed",
+      "Paused",
+      "Rejected",
+      "Expired",
+      "Missing",
+      "Needs review",
+    ]);
   });
 });

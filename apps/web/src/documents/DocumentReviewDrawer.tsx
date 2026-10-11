@@ -847,8 +847,8 @@ function DocumentDetailContent({
             obligation.kind === "document" &&
             (obligation.exemption_locked ? (
               <p className="document-exemption-note">
-                An owner is not asked for the documents they ask of everyone
-                else. This one is listed here, never required.
+                Owners aren't required to submit documents. Uploading is
+                optional.
               </p>
             ) : (
               <DocumentExemptionAction
