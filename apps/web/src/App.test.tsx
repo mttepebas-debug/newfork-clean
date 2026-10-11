@@ -4368,6 +4368,35 @@ describe("App", () => {
     expect(screen.queryByText(/employee document hard conflict/)).toBeNull();
   });
 
+  // BL-976: another tab moved the edit on; the screen says so plainly and offers a
+  // reload instead of the server's "session revision stale."
+  it("says plainly that the page is out of date when another tab moved the edit on", async () => {
+    const deleteMock = vi.mocked(deleteScheduleShift);
+    deleteMock.mockReset();
+    deleteMock.mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
+      error: "session revision stale", code: "edit_session_stale",
+    }));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const badge = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>(".schedule-shift-badge");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    fireEvent.contextMenu(badge, { clientX: 36, clientY: 48 });
+    fireEvent.click(screen.getByRole("menuitem", { name: /^(Delete|Unpublish) shift$/ }));
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByText(/session revision stale/)).toBeNull();
+  });
+
   // BL-1003: with the shift window open, Ctrl+Z, Delete and paste belong to the
   // window; nothing behind it is undone, deleted or armed.
   it("keeps the grid's shortcuts off while the shift window is open", async () => {
