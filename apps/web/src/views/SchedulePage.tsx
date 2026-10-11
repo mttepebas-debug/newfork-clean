@@ -157,6 +157,13 @@ import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButt
 import { formatSchedulePasteConflictContext } from "../schedule/lib/scheduleCatalogNames";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
 import { autoFillRejectedText } from "../schedule/lib/autoFillText";
+import {
+  asksForReload,
+  autoFillApplyError,
+  scheduleEditErrorText,
+  staleEditAsScreenError,
+  UNDO_SESSION_STALE_TEXT,
+} from "../schedule/lib/scheduleEditErrorText";
 import { ScheduleDeleteSelectionDialog } from "../schedule/components/ScheduleDeleteSelectionDialog";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
 import {
@@ -1428,7 +1435,7 @@ export function SchedulePage({
       if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
       if (throwOnError) throw error;
       onError?.(error as Error);
-      const text = requestErrorText(error);
+      const text = scheduleEditErrorText(error);
       setOperationError(text);
       toast.error("Schedule change could not be saved", {
         dedupeKey: "schedule-change-save-failed",
@@ -1601,7 +1608,7 @@ export function SchedulePage({
       // nothing changed, and the person reads one plain sentence.
       // BL-1000: another tab moved the edit on; the step itself is fine.
       const message = isEditSessionStale(error)
-        ? "This page is out of date. Reload it, then press Undo again."
+        ? UNDO_SESSION_STALE_TEXT
         : error instanceof ScheduleRequestError && error.status >= 400 && error.status < 500
           ? "This step can no longer be undone."
           : requestErrorText(error);
@@ -2614,6 +2621,14 @@ export function SchedulePage({
       {operationError ? (
         <div className="schedule-operation-error" role="alert">
           {operationError}
+          {asksForReload(operationError) ? (
+            <Button
+              className="schedule-operation-retry"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </Button>
+          ) : null}
           <button
             type="button"
             aria-label="Dismiss error"
@@ -3429,7 +3444,7 @@ export function SchedulePage({
                         description: "Refresh the draft, then try again.",
                       },
                     );
-                    throw error;
+                    throw staleEditAsScreenError(error);
                   })
               : Promise.resolve()
           }
@@ -3452,6 +3467,8 @@ export function SchedulePage({
               if (result.rejected.length)
                 setOperationError(autoFillRejectedText(result.rejected.length));
               return result;
+            }, (error: unknown) => {
+              throw autoFillApplyError(error);
             })
           }
         />
