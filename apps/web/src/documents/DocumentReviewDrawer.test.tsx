@@ -203,7 +203,12 @@ describe("shared document review", () => {
     vi.mocked(reviewDocument).mockRejectedValueOnce(
       new RequestError("document changed; refresh required", undefined, undefined, 409),
     );
+    const decided = detail();
+    decided.obligation.revision = 2;
+    decided.obligation.status = "completed";
+    decided.submissions[0]!.state = "accepted";
     fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    vi.mocked(getDocument).mockResolvedValue(decided);
 
     expect(
       await screen.findByText("This document changed. You're seeing the latest version."),
@@ -213,6 +218,22 @@ describe("shared document review", () => {
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: ["document-lifecycle", "user", "workspace"],
     });
+  });
+  // A standing refusal is also a 409 ("changes are paused"); when reloading
+  // shows nothing new, the refusal's own sentence stays.
+  it("keeps a standing 409 refusal's sentence when nothing changed", async () => {
+    page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("Document is unpublished; changes are paused", undefined, undefined, 409),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Document is unpublished; changes are paused",
+    );
+    expect(
+      screen.queryByText("This document changed. You're seeing the latest version."),
+    ).toBeNull();
   });
   it("words a failed save for the person, not the server", async () => {
     page();

@@ -253,8 +253,14 @@ describe("WorkspacePage setup checklist", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
     const todos = screen.getByRole("heading", { name: "Todos" }).closest("article")!;
     expect(todos.querySelector("[inert]")?.querySelector("input")).toBeTruthy();
-    const show = screen.getByRole("button", { name: "Show Todos" });
-    expect(show.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: "Show Todos" }).querySelector("svg")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    // Showing it again keeps the typed todo: the card is not rebuilt.
+    fireEvent.change(todos.querySelector("input")!, { target: { value: "Call the plumber" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show Todos" }));
+    expect(todos.querySelector("[inert]")).toBeNull();
+    expect(todos.querySelector("input")?.value).toBe("Call the plumber");
     expect(
       screen.getByRole("button", { name: "Hide Announcements" }).querySelector("svg")
         ?.getAttribute("aria-hidden"),

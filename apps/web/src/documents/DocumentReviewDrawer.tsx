@@ -77,6 +77,8 @@ function DocumentDrawer(props: DrawerProps) {
   // Held above the content, which every revision rebuilds: uploading, removing
   // a file, deferring or someone else's change all bump the revision.
   const [typed, setTyped] = useState<TypedFields>({});
+  // BL-828: held here because the content is rebuilt for the new revision.
+  const [changed, setChanged] = useState(false);
   const query = useQuery({
     queryKey: documentQueryKey(
       props.audience,
@@ -93,6 +95,8 @@ function DocumentDrawer(props: DrawerProps) {
         detail={query.data}
         typed={typed}
         onTyped={setTyped}
+        changed={changed}
+        onChanged={setChanged}
       />
     );
   return (
@@ -130,6 +134,8 @@ function DocumentDetailContent({
   detail: DocumentDetail;
   typed: TypedFields;
   onTyped: Dispatch<SetStateAction<TypedFields>>;
+  changed: boolean;
+  onChanged: (changed: boolean) => void;
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
@@ -243,10 +249,19 @@ function DocumentDetailContent({
   // "refresh required".
   const conflict = async (failure: unknown) => {
     if (!(failure instanceof RequestError) || failure.status !== 409) return;
-    setNotice("This document changed. You're seeing the latest version.");
+    const sent = obligation.revision;
     await refresh();
+    // Some 409s are standing refusals ("changes are paused"); only a newer
+    // revision means someone changed it first. That rebuilds this content,
+    // so the line is said from above.
+    const latest = cache.getQueryData<DocumentDetail>(
+      documentQueryKey(props.audience, props.userId, props.requirementId),
+    );
+    if (latest && latest.obligation.revision !== sent) props.onChanged(true);
   };
+  const started = () => props.onChanged(false);
   const review = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: (decision: "approve" | "reject") =>
       reviewDocument(props.audience, obligation.id, {
@@ -265,6 +280,7 @@ function DocumentDetailContent({
     },
   });
   const upload = useMutation({
+    onMutate: started,
     mutationFn: (file: File) =>
       uploadDocument(props.audience, obligation.id, obligation.revision, file),
     onSuccess: async () => {
@@ -277,6 +293,7 @@ function DocumentDetailContent({
     },
   });
   const submit = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: () =>
       submitDocument(props.audience, obligation.id, {
@@ -291,6 +308,7 @@ function DocumentDetailContent({
     },
   });
   const download = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: ({
       submissionId,
@@ -301,6 +319,7 @@ function DocumentDetailContent({
     }) => downloadDocument(props.audience, obligation.id, submissionId, fileId),
   });
   const timezone = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: () =>
       setDocumentTimezone(props.audience, obligation.id, {
@@ -313,6 +332,7 @@ function DocumentDetailContent({
     },
   });
   const defer = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: () =>
       deferInitialDocument(props.audience, obligation.id, {
@@ -325,6 +345,7 @@ function DocumentDetailContent({
     },
   });
   const acknowledge = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: () =>
       acknowledgeDocument(props.audience, obligation.id, {
@@ -339,6 +360,7 @@ function DocumentDetailContent({
     },
   });
   const withdraw = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: () =>
       withdrawDocumentAcknowledgement(
@@ -349,6 +371,7 @@ function DocumentDetailContent({
     onSuccess: refresh,
   });
   const removeFile = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: (fileId: string) =>
       removeDocumentDraftFile(props.audience, obligation.id, {
@@ -359,6 +382,7 @@ function DocumentDetailContent({
     onSuccess: refresh,
   });
   const extension = useMutation({
+    onMutate: started,
     onError: conflict,
     mutationFn: () =>
       extendDocumentDeadline(props.audience, obligation.id, {
@@ -395,11 +419,11 @@ function DocumentDetailContent({
     timezone.error;
   const shownError = !error
     ? null
-    : error instanceof RequestError && error.status === 409
-      ? null
-      : error instanceof RequestError && (error.status ?? 0) >= 500
-        ? "Couldn't save. Try again."
-        : errorText(error);
+    : error instanceof RequestError && (error.status ?? 0) >= 500
+      ? error === download.error
+        ? "Couldn't open the file. Try again."
+        : "Couldn't save. Try again."
+      : errorText(error);
   const dirty =
     failedUpload !== null ||
     extensionReason !== "" ||
@@ -919,6 +943,11 @@ function DocumentDetailContent({
               </p>
             ))}
           </details>
+          {props.changed && !notice && (
+            <p role="status">
+              This document changed. You're seeing the latest version.
+            </p>
+          )}
           {notice && <p role="status">{notice}</p>}
           {shownError && (
             <p role="alert" className="form-error">
