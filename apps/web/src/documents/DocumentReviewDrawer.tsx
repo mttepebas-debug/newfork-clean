@@ -241,7 +241,8 @@ function DocumentDetailContent({
         revision: obligation.revision,
         submission_id: current!.id,
         decision,
-        reason,
+        // BL-832: a reason typed before choosing Approve is not the approval's.
+        reason: decision === "reject" ? reason : "",
         correction_period: correction,
         files,
       }),
