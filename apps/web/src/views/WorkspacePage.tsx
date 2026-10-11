@@ -443,6 +443,8 @@ function Widget({
             <ArrowRight size={15} aria-hidden />
           </Link>
         ))}
+        {/* BL-810: the box holds five at most, like Notifications. */}
+        <WidgetLink to="/app/announcements">View all announcements</WidgetLink>
       </div>
     ) : (
       <EmptyWidget text="No active announcements" />
