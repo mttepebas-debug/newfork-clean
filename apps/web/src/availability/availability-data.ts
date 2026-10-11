@@ -23,7 +23,7 @@ async function request(
   onboarding = false,
 ) {
   if (!supabaseClient)
-    throw new Error("Availability storage is not configured");
+    throw new Error("Availability couldn't be reached. Try again later.");
   const headers = new Headers(init.headers);
   headers.set(
     "Authorization",

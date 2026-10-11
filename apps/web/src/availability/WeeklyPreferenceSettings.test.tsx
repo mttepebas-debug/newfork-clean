@@ -7,9 +7,15 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { RequestError } from "../lib/request-error";
+import { loadWeeklyPreferenceSettings } from "./availability-data";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WeeklyPreferenceSettingsRead } from "@newfork/shared";
-import { WeeklyPreferenceSettings } from "./WeeklyPreferenceSettings";
+import {
+  WeeklyPreferenceSettings,
+  WeeklyPreferenceSettingsPanel,
+} from "./WeeklyPreferenceSettings";
 vi.mock("./availability-data", () => ({
   loadWeeklyPreferenceSettings: vi.fn(),
   saveWeeklyPreferenceSettings: vi.fn(),
@@ -150,5 +156,22 @@ describe("weekly preference settings", () => {
     expect((screen.getByRole("switch") as HTMLInputElement).disabled).toBe(
       true,
     );
+  });
+  // BL-798 (E4-15): the core's "Not allowed" reads as a sentence.
+  it("says the person has no access instead of the core's refusal", async () => {
+    vi.mocked(loadWeeklyPreferenceSettings).mockRejectedValue(
+      new RequestError("Not allowed", "authz.missing_permission", undefined, 403),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <WeeklyPreferenceSettingsPanel workspaceId="w" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "You don't have access to these availability settings.",
+    );
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   });
 });
