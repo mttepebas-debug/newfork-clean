@@ -196,6 +196,36 @@ describe("shared document review", () => {
     );
   });
 
+  // BL-828 (KK-180 (2)): Zeynep approves a card Mert already decided; the
+  // drawer reloads and says so instead of the server's "refresh required".
+  it("reloads the drawer and says so when the document changed meanwhile", async () => {
+    const { invalidate } = page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("document changed; refresh required", undefined, undefined, 409),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect(
+      await screen.findByText("This document changed. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("document changed; refresh required")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["document-lifecycle", "user", "workspace"],
+    });
+  });
+  it("words a failed save for the person, not the server", async () => {
+    page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("Internal server error", undefined, undefined, 500),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Couldn't save. Try again.",
+    );
+  });
+
   it("requires rejection reason, disables exhausted remaining time, keeps the drawer open and advances only on Next", async () => {
     const { onClose, onNext } = page();
     const reject = await screen.findByRole("button", { name: "Reject" });
