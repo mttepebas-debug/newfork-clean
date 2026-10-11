@@ -112,7 +112,7 @@ describe("shift type default review", () => {
       screen.getByRole("button", { name: "Save shift type" }).hasAttribute("disabled"),
     ).toBe(true);
   });
-  // BL-677 (3): a grey Save says why.
+  // BL-677 (3): a grey Save says why; BL-1031: in the Schedule editor's words.
   it("says why Save is off when start and end are the same", async () => {
     await setup();
     fireEvent.change(screen.getByLabelText("Default start"), {
@@ -121,7 +121,7 @@ describe("shift type default review", () => {
     expect(
       screen.getByRole("button", { name: "Save shift type" }).hasAttribute("disabled"),
     ).toBe(true);
-    expect(screen.getByText("Start and end times must be different.")).toBeTruthy();
+    expect(screen.getByText("Start and end time cannot be the same.")).toBeTruthy();
     expect(screen.getByLabelText("Default end").getAttribute("aria-invalid")).toBe("true");
   });
   it("preserves edits on a stale save and reloads only on the explicit discard action", async () => {
