@@ -1921,8 +1921,11 @@
   font-size: 12px;
   line-height: 1.5;
 }
-.catalog-drawer[data-initial-focus="true"] :focus,
-.catalog-drawer[data-initial-focus="true"] .job-color-control:focus-within {
+/* BL-899: only a drawer opened with the pointer hides its first ring. */
+:root:not([data-keyboard-input="true"]) .catalog-drawer[data-initial-focus="true"] :focus,
+:root:not([data-keyboard-input="true"])
+  .catalog-drawer[data-initial-focus="true"]
+  .job-color-control:focus-within {
   outline: none !important;
   box-shadow: none !important;
 }

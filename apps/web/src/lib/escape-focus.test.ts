@@ -31,4 +31,16 @@ describe("Escape focus presentation", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     expect(document.documentElement.dataset.escapeFocus).toBeUndefined();
   });
+  // BL-899: a drawer opened from the keyboard keeps its first focus ring; one
+  // opened with the pointer hides it until Tab (jobs-settings.css).
+  it("marks the page while the last input came from the keyboard", () => {
+    dispose = installEscapeFocus(window, document);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(document.documentElement.dataset.keyboardInput).toBe("true");
+    window.dispatchEvent(new Event("pointerdown"));
+    expect(document.documentElement.dataset.keyboardInput).toBeUndefined();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
+    dispose();
+    expect(document.documentElement.dataset.keyboardInput).toBeUndefined();
+  });
 });
