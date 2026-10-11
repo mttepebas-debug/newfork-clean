@@ -746,6 +746,13 @@
   .sx-filters {
     flex-direction: column;
   }
+  /* In a column the 200px basis became a 200px-tall gap under the location
+     filter (Mert, 2026-10-10); both filters take the full width instead. */
+  .sx-filters .sx-filter-location,
+  .sx-filters .sx-filter-search {
+    flex: none;
+    max-width: none;
+  }
   .sx-card,
   .sx-detail,
   .sx-root .sx-case-row {
@@ -863,4 +870,37 @@
   padding: 2px 8px;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+/* BL-995: an open shift the person's approved time off alone keeps from them.
+   It stays readable (WCAG AA); the card says why and where to ask for the hours. */
+.sx-time-off {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--theme-danger-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.sx-card-time-off {
+  background: var(--theme-surface-muted);
+  border-style: dashed;
+}
+.sx-root .sx-time-off-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--sx-border);
+  border-radius: 10px;
+  background: var(--sx-card);
+  color: var(--sx-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.sx-root .sx-time-off-action:hover {
+  background: var(--sx-tint);
+  border-color: var(--sx-green);
 }

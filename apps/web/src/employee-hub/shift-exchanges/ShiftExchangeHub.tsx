@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowLeftRight,
+  CalendarX,
   Check,
   ChevronRight,
   Clock3,
@@ -75,19 +76,48 @@ const activeApplication = (a: ExchangeApplication) =>
   a.status === "invited" || a.status === "pending_manager";
 
 
-type ConsentWarning =
-  | { fingerprint: string; time_off_intervals?: { start_at: string; end_at: string }[] }
-  | null
-  | undefined;
-
-/** BL-182: their own approved time off is given back only when they agree and a manager approves. */
-function takesTimeOff(warning: ConsentWarning) {
-  return Boolean(warning?.time_off_intervals?.length);
+function availabilityMessage(verb: "Requesting" | "Accepting") {
+  return `Conflicts with your availability. ${verb} anyway does not change your weekly preferences.`;
 }
-function consentMessage(warning: ConsentWarning, verb: "Requesting" | "Accepting") {
-  return takesTimeOff(warning)
-    ? "This is during your approved time off. If a manager approves, your time off is shortened for these hours and whoever approved it is told."
-    : `Conflicts with your availability. ${verb} anyway does not change your weekly preferences.`;
+
+/** BL-995: their approved time off alone keeps this shift from them; they ask for those hours back first. */
+function blockedByTimeOff(eligibility: ExchangeOpportunity["eligibility"]) {
+  return (
+    eligibility.status !== "eligible" &&
+    (eligibility.blockers ?? []).some((b) => b.code === "approved_time_off")
+  );
+}
+
+type ExchangeOpportunity = ExchangeReadModel["opportunities"][number];
+
+// Mert chose variant A (2026-10-10): a muted card that says why and where to ask.
+function TimeOffBlockedCard({ opportunity }: { opportunity: ExchangeOpportunity }) {
+  return (
+    <article className="sx-card sx-card-time-off">
+      <div className="sx-card-top">
+        <span className="sx-pill">
+          {opportunity.shift.employee_id ? "Cover" : "Open shift"}
+        </span>
+        <span className="sx-time-off">
+          <CalendarX size={14} />
+          On time off
+        </span>
+      </div>
+      <ExchangeShiftCard shift={opportunity.shift} />
+      <p>
+        {opportunity.shift.employee_name
+          ? `Cover for ${opportunity.shift.employee_name}`
+          : "No assigned employee"}
+      </p>
+      <p className="sx-help">
+        You have approved time off during this shift. To take it, ask to cancel
+        those hours first.
+      </p>
+      <Link className="sx-time-off-action" to="/app/employee-hub/my-availability">
+        Ask to cancel time off <ChevronRight size={16} />
+      </Link>
+    </article>
+  );
 }
 
 export function ExchangeDialog({
@@ -431,6 +461,7 @@ export function ShiftExchangeHub({
     `${shift.location_name} ${shift.job_name} ${shift.employee_name ?? ""} ${shift.scheduled_date}`
       .toLowerCase()
       .includes(search.toLowerCase());
+  const visibleOpportunities = model.opportunities.filter((o) => matches(o.shift));
   // All filters must match the same side of a swap. A date on one side
   // must not be combined with a location or name on the other side.
   const matchesCase = (item: ExchangeCase) =>
@@ -568,9 +599,14 @@ export function ShiftExchangeHub({
         <div className={`sx-list ${manager ? "job-catalog" : ""}`}>
           {!manager && view === "available" ? (
             <>
-              {model.opportunities
-                .filter((o) => matches(o.shift))
-                .map((opportunity) => {
+              {visibleOpportunities.map((opportunity) => {
+                  if (blockedByTimeOff(opportunity.eligibility))
+                    return (
+                      <TimeOffBlockedCard
+                        key={opportunity.shift.id}
+                        opportunity={opportunity}
+                      />
+                    );
                   const application = model.cases
                     .find((c) => c.id === opportunity.case_id)
                     ?.applications.find(
@@ -599,11 +635,7 @@ export function ShiftExchangeHub({
                             <Check size={14} />
                           )}
                           {opportunity.eligibility.availability_warning
-                            ? takesTimeOff(
-                                opportunity.eligibility.availability_warning,
-                              )
-                              ? "During your time off"
-                              : "Availability conflict"
+                            ? "Availability conflict"
                             : "Eligible"}
                         </span>
                       </div>
@@ -615,10 +647,7 @@ export function ShiftExchangeHub({
                       </p>
                       <p className="sx-help">
                         {opportunity.eligibility.availability_warning
-                          ? consentMessage(
-                              opportunity.eligibility.availability_warning,
-                              "Requesting",
-                            )
+                          ? availabilityMessage("Requesting")
                           : "Job and location match · No assignment blockers"}
                       </p>
                       {application ? (
@@ -675,7 +704,7 @@ export function ShiftExchangeHub({
                     </article>
                   );
                 })}
-              {!model.opportunities.filter((o) => matches(o.shift)).length && (
+              {!visibleOpportunities.length && (
                 <EmptyState
                   title="No eligible shifts right now"
                   text="No shifts match your position, locations and current assignment requirements."
@@ -1283,7 +1312,7 @@ function CaseDetail({
             {a.status === "invited" && a.eligibility?.availability_warning && (
               <p className="sx-pending">
                 <AlertTriangle size={14} />{" "}
-                {consentMessage(a.eligibility.availability_warning, "Accepting")}
+                {availabilityMessage("Accepting")}
               </p>
             )}
             {actionable && activeApplication(a) && (
@@ -1360,22 +1389,6 @@ function CaseDetail({
               “Another teammate selected”.
             </p>
           )}
-          {preview.data?.allowed &&
-            (preview.data.receiver.shortens_time_off ||
-              preview.data.giver?.shortens_time_off) && (
-              <p className="sx-pending">
-                <AlertTriangle size={14} />{" "}
-                {[
-                  preview.data.receiver.shortens_time_off && current.employee_name,
-                  preview.data.giver?.shortens_time_off &&
-                    (item.owner_name ?? "The original owner"),
-                ]
-                  .filter(Boolean)
-                  .join(" and ")}{" "}
-                agreed to work during approved time off. Approving shortens that
-                time off for these hours; whoever approved it is told.
-              </p>
-            )}
           {preview.isFetching && <p role="status">Rechecking eligibility…</p>}
           {preview.error && (
             <p className="sx-error" role="alert">
@@ -1958,10 +1971,7 @@ function CreateExchange({
                   {targetShift.availability_warning && (
                     <p className="sx-pending">
                       <AlertTriangle size={14} />{" "}
-                      {consentMessage(
-                        targetShift.availability_warning,
-                        "Requesting",
-                      )}
+                      {availabilityMessage("Requesting")}
                     </p>
                   )}
                   <p>

@@ -21,15 +21,14 @@ export const exchangeEligibilitySchema = z.object({
     "verification_required",
   ]),
   reasons: z.array(z.string()),
-  // BL-182: taking this shift gives back the employee's own approved time off
-  // for these hours; it shortens when a manager approves the transfer.
-  shortens_time_off: z.boolean().optional(),
+  // What stands in the way, by code. BL-995: approved time off is one of them,
+  // and Shift Hub shows an open shift it alone blocks as not open, and why.
+  blockers: z
+    .array(z.object({ code: z.string(), message: z.string().optional() }))
+    .optional(),
   availability_warning: z
     .object({
       fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
-      time_off_intervals: z
-        .array(z.object({ start_at: z.string(), end_at: z.string() }))
-        .optional(),
     })
     .nullable()
     .optional(),

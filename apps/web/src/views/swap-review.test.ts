@@ -7,7 +7,7 @@ import { reviewBoxes, timeOffStops, type ReviewSide, blockerLines } from "./swap
 // (Deniz takes it: the receiver); Deniz gives Friday (Ali takes it: the giver).
 const measures = { rest_gap_minutes: 720, travel_gap_minutes: null, rest_rule_minutes: 600, travel_rule_minutes: 45 };
 function side(date: string, check: Partial<NonNullable<ReviewSide["check"]>> = {}): ReviewSide {
-  return { date, check: { approval_flags: [], measures, shortens_time_off: false, ...check } };
+  return { date, check: { approval_flags: [], measures, blockers: [], ...check } };
 }
 const wednesday = "2026-10-14";
 const friday = "2026-10-16";
@@ -43,20 +43,20 @@ describe("reviewBoxes", () => {
 
   // KARARLAR §1.1 (Mert, 2026-10-09): approved time off is never given up by consent.
   it("says the person on time off can't take the shift, against the other shift's day without it", () => {
-    const boxes = reviewBoxes([side(wednesday), side(friday, { shortens_time_off: true })]);
+    const boxes = reviewBoxes([side(wednesday), side(friday, { blockers: [{ code: "approved_time_off" }] })]);
     expect(text(boxes)).toEqual([["ok: No time off / on Wednesday"], ["warn: On time off / can't take this shift"]]);
   });
 
   it("tells whether approved time off stops the swap", () => {
     expect(timeOffStops([side(wednesday), side(friday)])).toBe(false);
-    expect(timeOffStops([side(wednesday), side(friday, { shortens_time_off: true })])).toBe(true);
+    expect(timeOffStops([side(wednesday), side(friday, { blockers: [{ code: "approved_time_off" }] })])).toBe(true);
     expect(timeOffStops([{ date: wednesday, check: null }, side(friday)])).toBe(false);
   });
 
   it("keeps the rules in one order on both cards, so the boxes line up", () => {
     const boxes = reviewBoxes([
       side(wednesday, { approval_flags: [{ code: "minimum_rest", gap_minutes: 480, rule_minutes: 600 }, { code: "minimum_travel", gap_minutes: 30, rule_minutes: 45 }] }),
-      side(friday, { shortens_time_off: true }),
+      side(friday, { blockers: [{ code: "approved_time_off" }] }),
     ]);
     expect(boxes.map((card) => card.map((box) => box.rule))).toEqual([
       ["travel", "rest", "time_off"],
