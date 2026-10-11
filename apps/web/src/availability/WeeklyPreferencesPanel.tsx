@@ -83,8 +83,6 @@ function ConnectedPreferences({
           ? Number(error.status)
           : 0;
       if (status >= 400 && status < 500) attempt.current = null;
-      // BL-797: someone saved first; fetch their week so Reload can show it.
-      if (status === 409) void query.refetch();
       throw error;
     }
   }
@@ -128,6 +126,8 @@ function ConnectedPreferences({
         onSave={save}
         wizard={onboarding}
         extraAction={extraAction}
+        // BL-797: someone saved first; Reload shows their week.
+        onReload={async () => (await query.refetch()).data}
       />
     </>
   );

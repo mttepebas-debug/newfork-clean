@@ -84,10 +84,11 @@ describe("weekly preferences API panel", () => {
       .mockResolvedValueOnce(result);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText(conflictSentence);
-    await waitFor(() => expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2));
 
+    // Reload waits for Can's week before it resets the form.
     fireEvent.click(screen.getByRole("button", { name: "Reload" }));
-    expect(screen.queryByText(conflictSentence)).toBeNull();
+    await waitFor(() => expect(screen.queryByText(conflictSentence)).toBeNull());
+    expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2);
     expect(
       (screen.getByRole("switch", { name: /Monday all day unavailable/i }) as HTMLInputElement)
         .checked,
