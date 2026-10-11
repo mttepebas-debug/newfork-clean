@@ -122,7 +122,7 @@ describe("requestRows", () => {
     ]);
   });
 
-  it("keeps only the chosen request type, open and closed", () => {
+  it("keeps only the chosen tab, open and closed; shift changes are every swap, cover and open shift", () => {
     const rows = requestRows(
       [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true })],
       [
@@ -130,9 +130,9 @@ describe("requestRows", () => {
         exchange("s-done", "swap", "closed", "2026-10-01T12:00:00Z"),
         exchange("o", "open_pickup", "ready_for_manager", "2026-10-10T12:00:00Z"),
       ],
-      { ...all, type: "swap" },
+      { ...all, type: "shift_changes" },
     );
-    expect(rows.map((row) => row.id)).toEqual(["s", "s-done"]);
+    expect(rows.map((row) => row.id)).toEqual(["s", "o", "s-done"]);
   });
 
   it("filters shift changes by location, either side of a swap, and by a name", () => {
@@ -153,7 +153,8 @@ describe("requestRows", () => {
 });
 
 describe("openCounts", () => {
-  it("counts the open requests of each type and of All; closed ones are not counted", () => {
+  // Mert, 2026-10-11: two tabs, Time off and every shift change together.
+  it("counts the open requests of each tab and of All; closed ones are not counted", () => {
     const rows = requestRows(
       [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true }), closedTimeOff("t-done", "approved", "2026-10-02T09:00:00Z")],
       [
@@ -163,7 +164,7 @@ describe("openCounts", () => {
       ],
       all,
     );
-    expect(openCounts(rows)).toEqual({ all: 3, time_off: 1, swap: 1, cover: 1, open_pickup: 0 });
+    expect(openCounts(rows)).toEqual({ all: 3, time_off: 1, shift_changes: 2 });
   });
 });
 
@@ -178,8 +179,13 @@ describe("readRequestsParams", () => {
   const allowed = ["time_off", "swap", "cover", "open_pickup"] as const;
 
   it("reads the request type tab and the page from the address, All and 50 rows by default", () => {
-    expect(readRequestsParams(new URLSearchParams("type=swap&page=2&size=25"), [...allowed])).toEqual({ type: "swap", page: 2, pageSize: 25 });
+    expect(readRequestsParams(new URLSearchParams("type=shift_changes&page=2&size=25"), [...allowed])).toEqual({ type: "shift_changes", page: 2, pageSize: 25 });
     expect(readRequestsParams(new URLSearchParams(""), [...allowed])).toEqual({ type: "all", page: 1, pageSize: 50 });
+  });
+
+  it("lands an old one-type address (?type=swap, cover, open_pickup) on the shift changes tab", () => {
+    for (const type of ["swap", "cover", "open_pickup"])
+      expect(readRequestsParams(new URLSearchParams(`type=${type}`), [...allowed]).type).toBe("shift_changes");
   });
 
   it("ignores what the address cannot ask for: a type the reader may not read, an odd page size", () => {
