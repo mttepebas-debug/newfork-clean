@@ -107,6 +107,8 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       "[data-schedule-employee-card-trigger='true']",
       "[data-schedule-day-header-content='true']",
       "[data-schedule-location-filter-ids]",
+      // BL-714: the grid's logo opens its own window.
+      ".schedule-grid-logo-button",
       "[role='menu']",
       "[role='toolbar']",
       SCHEDULE_WINDOW_SELECTOR,
