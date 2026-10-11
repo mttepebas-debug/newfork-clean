@@ -20,6 +20,7 @@ import {
   getWorkspaceDashboard,
   markOwnerSetupChecklistItem,
   resolveWorkspaceTodo,
+  saveWorkspaceLayout,
 } from "../communications/communications-data";
 
 import { RequestError } from "../lib/request-error";
@@ -225,6 +226,37 @@ describe("WorkspacePage setup checklist", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to this workspace" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+
+  // BL-814 (E5-14): a dropped connection or a server failure reads as one
+  // plain sentence, never the browser's or the server's words.
+  it("words a failed page read for the person", async () => {
+    vi.mocked(getWorkspaceDashboard).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderPage();
+    expect(
+      await screen.findByText("Newfork could not finish that. Try again in a moment."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+  });
+  it("words a failed layout save for the person", async () => {
+    vi.mocked(saveWorkspaceLayout).mockRejectedValue(
+      new RequestError("Internal server error", undefined, undefined, 500),
+    );
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save layout" }));
+    expect(
+      await screen.findByText("Newfork could not finish that. Try again in a moment."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Internal server error")).toBeNull();
+  });
+  it("says the checklist could not be loaded when its read fails", async () => {
+    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderPage();
+    expect(
+      await screen.findByText("Setup checklist progress could not be loaded."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Setup checklist progress could not be saved.")).toBeNull();
   });
 
   // BL-278 (7): a failed check must not show zero shift changes waiting.
