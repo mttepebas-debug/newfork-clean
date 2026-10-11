@@ -215,7 +215,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
     const tabs = screen.getByRole("group", { name: "Request type" });
-    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["All1", "Time off1", "Swap", "Cover", "Open shift"]);
+    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["All1", "Time off1", "Shift changes"]);
     expect(within(tabs).getByRole("button", { name: /All/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("group", { name: "Request status" })).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
@@ -224,8 +224,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("keeps the request type tab in the address and moves along the tabs with the arrow keys (R2-48)", async () => {
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
-    fireEvent.click(screen.getByRole("button", { name: /^Swap/ }));
-    expect(screen.getByLabelText("Current URL").textContent).toContain("type=swap");
+    fireEvent.click(screen.getByRole("button", { name: /^Shift changes/ }));
+    expect(screen.getByLabelText("Current URL").textContent).toContain("type=shift_changes");
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
     const all = screen.getByRole("button", { name: /^All/ });
     all.focus();
@@ -270,13 +270,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(open);
     expect(await screen.findByRole("dialog", { name: "Review request" })).toBeTruthy();
   });
-  // Five tabs do not fit a phone: the row scrolls, and a faded edge says so.
+  // A tab row wider than a phone scrolls, and a faded edge says so.
   it("fades the tab row's edge where more tabs wait, and brings the chosen tab into view", async () => {
     const shown: string[] = [];
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.textContent ?? ""); };
     renderPage("/app/schedule/requests?type=open_pickup");
     const tabs = await screen.findByRole("group", { name: "Request type" });
-    await waitFor(() => expect(shown).toContain("Open shift"));
+    await waitFor(() => expect(shown).toContain("Shift changes"));
     const row = tabs.parentElement!;
     Object.defineProperty(row, "scrollWidth", { configurable: true, value: 380 });
     Object.defineProperty(row, "clientWidth", { configurable: true, value: 298 });
@@ -391,12 +391,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(getExchanges).not.toHaveBeenCalled();
   });
-  it("keeps a shift change reader to shift changes: no Time off tab, no time off list asked for", async () => {
+  // One tab to read needs no tabs: All would say the same thing.
+  it("keeps a shift change reader to shift changes: no tabs, no time off list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.shift_change_requests.read"], actions: ["workspace.read", "exchange.read"] };
     renderPage();
-    const tabs = await screen.findByRole("group", { name: "Request type" });
-    expect(within(tabs).queryByRole("button", { name: /Time off/ })).toBeNull();
-    expect(within(tabs).getByRole("button", { name: /^Swap/ })).toBeTruthy();
+    await waitFor(() => expect(getExchanges).toHaveBeenCalled());
+    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // EKRAN-02 B1: the page's door asks the core, like its tabs do.
@@ -409,8 +409,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("hides the time off queue from someone the core does not let read it", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
     renderPage();
-    const tabs = await screen.findByRole("group", { name: "Request type" });
-    expect(within(tabs).queryByRole("button", { name: /Time off/ })).toBeNull();
+    await waitFor(() => expect(getExchanges).toHaveBeenCalled());
+    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(fetchRequests).not.toHaveBeenCalled();
   });
 

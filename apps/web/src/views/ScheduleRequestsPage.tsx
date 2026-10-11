@@ -40,11 +40,12 @@ import {
   pageOf,
   readRequestsParams,
   requestRows,
-  requestTypeLabels,
   requestTypesFor,
   useRequests,
   type RequestRow,
-  type RequestTypeTab,
+  requestTabLabels,
+  requestTabsFor,
+  tabOf,
 } from "../schedule/requests-list";
 
 import { NoAccessState } from "../shell/NoAccessState";
@@ -106,7 +107,7 @@ function ScheduleRequestsPageContent() {
     [data.timeOff, data.exchanges, locationId, search],
   );
   const counts = openCounts(allRows);
-  const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => row.type === view.type), view.page, view.pageSize);
+  const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => tabOf(row.type) === view.type), view.page, view.pageSize);
   const swap = openSwap ? (data.exchanges.find((item) => item.id === openSwap.id) ?? openSwap) : null;
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
@@ -249,9 +250,8 @@ function ScheduleRequestsPageContent() {
   const timeFormat = data.timeFormat;
   const loading = data.isLoading;
   const failed = Boolean(data.failure);
-  // One type to read needs no tabs: All would say the same thing.
-  const tabs: [RequestTypeTab, string][] =
-    allowedTypes.length > 1 ? [["all", "All"], ...allowedTypes.map((type): [RequestTypeTab, string] => [type, requestTypeLabels[type]])] : [];
+  // One group to read needs no tabs: All would say the same thing.
+  const tabs = requestTabsFor(allowedTypes);
 
   return (
     <section
@@ -277,7 +277,7 @@ function ScheduleRequestsPageContent() {
               buttons[(at + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
             }}
           >
-            {tabs.map(([key, label]) => (
+            {tabs.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -288,7 +288,7 @@ function ScheduleRequestsPageContent() {
                   setView({ type: key === "all" ? null : key, page: null });
                 }}
               >
-                {label}
+                {requestTabLabels[key]}
                 {counts[key] ? <strong>{counts[key]}</strong> : null}
               </button>
             ))}
@@ -351,7 +351,7 @@ function ScheduleRequestsPageContent() {
               <Check size={22} />
             </span>
             <h2>No requests</h2>
-            <p>{view.type === "all" ? "No requests match these filters." : `No ${requestTypeLabels[view.type].toLowerCase()} requests match these filters.`}</p>
+            <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
           </div>
         ) : null}
       </div>
@@ -424,7 +424,7 @@ function ScheduleRequestsPageContent() {
 }
 
 /**
- * The type tabs' row. Five tabs do not fit a phone: the row scrolls, its edge
+ * The type tabs' row. When it is wider than a phone the row scrolls, its edge
  * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
  */
 function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
