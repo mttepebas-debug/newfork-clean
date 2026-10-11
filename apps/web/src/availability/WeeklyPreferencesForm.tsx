@@ -9,6 +9,7 @@ import {
 } from "@newfork/shared";
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
 import { useAvailabilityNavigationGuard } from "./availability-navigation";
+import { isNoAccess } from "../lib/no-access";
 
 type Props = {
   model: WeeklyPreferenceRead;
@@ -65,6 +66,8 @@ function PreferenceForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // BL-797: a refused save because someone saved first; Reload takes theirs.
+  const [conflict, setConflict] = useState(false);
   const inFlight = useRef(false);
   const current = manager ? baseline.manager : baseline.employee;
   const hasChanges = dirty || !current?.submitted;
@@ -87,6 +90,7 @@ function PreferenceForm({
     setDirty(false);
     setCopyRevision(undefined);
     setError("");
+    setConflict(false);
   }
 
   useEffect(() => {
@@ -129,10 +133,18 @@ function PreferenceForm({
       reset(next);
       setSaved(true);
     } catch (cause) {
+      setConflict(
+        Boolean(cause) &&
+          typeof cause === "object" &&
+          "status" in cause &&
+          Number(cause.status) === 409,
+      );
       setError(
-        cause instanceof Error
-          ? cause.message
-          : "Changes could not be saved. Your draft is still here.",
+        isNoAccess(cause)
+          ? "You don't have access to change this availability."
+          : cause instanceof Error
+            ? cause.message
+            : "Changes could not be saved. Your draft is still here.",
       );
     } finally {
       inFlight.current = false;
@@ -351,6 +363,18 @@ function PreferenceForm({
           {error && (
             <p className="weekly-preferences-error" role="alert">
               {error}
+              {conflict && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => reset(model)}
+                  >
+                    Reload
+                  </button>
+                </>
+              )}
             </p>
           )}
           <div className="weekly-preferences-actions">
