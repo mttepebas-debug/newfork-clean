@@ -93,6 +93,27 @@ describe("buildScheduleCellState", () => {
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId))?.availabilityMark).toBeUndefined();
   });
+  it.each([
+    ["shares its clock", "America/Los_Angeles", { kind: "time_off", ranges: [{ from: 0, to: 1440 }] }],
+    ["runs on another clock", "America/New_York", undefined],
+  ] as const)("time off reaches a location the person is not assigned to when it %s; unavailable hours do not (KARARLAR §1.1)", (_case, timezone, patioMark) => {
+    const base = model([]);
+    const changed: ScheduleReadModel = { ...base,
+      locations: base.locations.map((location) => (location.id === patioLocationId ? { ...location, timezone } : location)),
+      employees: [{ ...base.employees[0]!, location_ids: [mainLocationId],
+        weekly_availability: [{ location_id: mainLocationId, location_name: "Main", timezone: "America/Los_Angeles", week_start: base.week_start,
+          status: "ready", unavailable_intervals: [{ start_at: "2026-08-18T07:00:00Z", end_at: "2026-08-19T07:00:00Z" }],
+          leave_intervals: [{ start_at: "2026-08-19T07:00:00Z", end_at: "2026-08-20T07:00:00Z" }],
+          clock_segments: [{ start_at: "2026-08-10T07:00:00Z", end_at: "2026-08-31T07:00:00Z", offset_seconds: -7 * 3600 }],
+          days: Array.from({ length: 7 }, (_, index) => ({ date: `2026-08-${17 + index}`, has_unavailable: index === 1, all_day: index === 1 })),
+        }],
+      }] };
+    const cells = buildScheduleCellState(changed);
+    expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-19", employeeId))?.availabilityMark).toEqual({ kind: "time_off", ranges: [{ from: 0, to: 1440 }] });
+    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-19", employeeId))?.availabilityMark).toEqual(patioMark);
+    expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
+  });
+
   it("marks every cell in a multi-day all-day closure range", () => {
     const closedModel = {
       ...model([]),
