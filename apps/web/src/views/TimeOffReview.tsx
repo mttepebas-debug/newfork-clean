@@ -1,5 +1,6 @@
 import { timeOffOpenedShiftCount, type TimeOffImpactShift, type TimeOffRequest } from "@newfork/shared";
-import { useState, type ReactNode } from "react";
+import { ConfirmButton } from "@newfork/ui";
+import { useEffect, useState, type ReactNode } from "react";
 import { formatAvailabilityClock } from "../availability/AvailabilityClockInput";
 import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
@@ -13,7 +14,8 @@ type Tab = "details" | "shifts" | "activity";
  * Requests → a time off row (Mert, 2026-10-11). Details says when, why, who
  * approved where and what the Schedule loses; Shifts lists the shifts that
  * open; Activity is the history. The footer decides: Deny asks its reason in
- * place, Approve keeps the confirm for the approval that opens shifts.
+ * place (optional, as the core has it), Approve keeps the confirm for the
+ * approval that opens shifts.
  */
 export function TimeOffReview({
   request,
@@ -27,6 +29,7 @@ export function TimeOffReview({
   onApprove,
   onDeny,
   onRevoke,
+  onHold,
   shorten,
 }: {
   request: TimeOffRequest;
@@ -40,6 +43,8 @@ export function TimeOffReview({
   onApprove: () => void;
   onDeny: (reason: string) => void;
   onRevoke: () => void;
+  /** True while a reason is being written: the page keeps the drawer open (P26). */
+  onHold?: (held: boolean) => void;
   shorten?: ReactNode;
 }) {
   const [tab, setTab] = useState<Tab>("details");
@@ -52,6 +57,11 @@ export function TimeOffReview({
   const opening = progress ? timeOffOpenedShiftCount(progress) : 0;
   const zone = request.segments[0]?.time_timezone;
   const first = request.employee_name.split(" ")[0] ?? request.employee_name;
+  const held = canVote && denying && reason.trim() !== "";
+  useEffect(() => {
+    onHold?.(held);
+    return () => onHold?.(false);
+  }, [held, onHold]);
   const tabs = [
     { key: "details" as const, label: "Details" },
     ...(progress?.impact ? [{ key: "shifts" as const, label: "Shifts", count: opening }] : []),
@@ -65,7 +75,15 @@ export function TimeOffReview({
   let footer: ReactNode;
   if (canVote && denying) {
     footer = (
-      <>
+      // Esc in the reason goes back to the decision and keeps what was typed (P26).
+      <div
+        className="rd-step"
+        onKeyDown={(event) => {
+          if (event.key !== "Escape" || event.defaultPrevented || busy) return;
+          event.preventDefault();
+          setDenying(false);
+        }}
+      >
         {cancellation ? <p className="rd-foot-note">The time off stays in place.</p> : null}
         <label className="rd-field">
           <span className="rd-label">Reason for {first}</span>
@@ -75,7 +93,7 @@ export function TimeOffReview({
             maxLength={1000}
             autoFocus
             value={reason}
-            placeholder={`Only ${first} reads this.`}
+            placeholder={`Optional. Only ${first} reads this.`}
             onChange={(event) => setReason(event.target.value)}
           />
         </label>
@@ -85,17 +103,17 @@ export function TimeOffReview({
             Back
           </button>
           <div className="rd-foot-actions">
-            <button
-              type="button"
-              className="nf-button danger-button"
-              disabled={busy || !reason.trim()}
-              onClick={() => onDeny(reason.trim())}
+            <ConfirmButton
+              className="danger-button"
+              confirmLabel={cancellation ? "Confirm decline" : "Confirm deny"}
+              disabled={busy}
+              onConfirm={() => onDeny(reason.trim())}
             >
               {busy ? "Saving..." : cancellation ? "Decline cancellation" : "Deny request"}
-            </button>
+            </ConfirmButton>
           </div>
         </div>
-      </>
+      </div>
     );
   } else if (canVote) {
     footer = (

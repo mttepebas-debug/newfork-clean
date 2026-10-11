@@ -354,12 +354,19 @@
 }
 .rd-cand {
   display: grid;
-  grid-template-columns: 20px 32px minmax(0, 1fr);
+  grid-template-columns: 20px 32px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 11px 12px;
   border-top: 1px solid var(--theme-border);
+}
+/* The radio, avatar and name pick the person; Decline sits beside them, outside the label. */
+.rd-cand-pick {
+  display: contents;
   cursor: pointer;
+}
+.rd-cand.off .rd-cand-pick {
+  cursor: not-allowed;
 }
 .rd-cand:first-child {
   border-top: 0;
@@ -372,9 +379,6 @@
 }
 .rd-cand.on {
   background: var(--theme-accent-soft);
-}
-.rd-cand.off {
-  cursor: not-allowed;
 }
 .rd-cand.off .rd-row-main b {
   color: var(--theme-muted);
@@ -459,20 +463,20 @@
   font-size: 13.5px;
   font-weight: 650;
 }
-.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary-button):not(.danger-button):not(.danger-outline) {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary):not(.secondary-button):not(.danger-button):not(.danger-outline) {
   border: 1px solid var(--theme-accent);
   background: var(--theme-accent);
   color: var(--theme-on-accent);
 }
-.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary-button):not(.danger-button):not(.danger-outline):not(:disabled):hover {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary):not(.secondary-button):not(.danger-button):not(.danger-outline):not(:disabled):hover {
   background: var(--theme-accent-strong);
 }
-.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.secondary-button {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:is(.secondary, .secondary-button) {
   border: 1px solid var(--theme-muted);
   background: var(--theme-surface);
   color: var(--theme-accent-deep);
 }
-.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.secondary-button:not(:disabled):hover {
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:is(.secondary, .secondary-button):not(:disabled):hover {
   background: var(--theme-surface-muted);
 }
 .catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-button {
@@ -532,3 +536,10 @@
     min-height: 44px;
   }
 }
+
+.catalog-drawer .rd-lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rd-step { display: contents; }

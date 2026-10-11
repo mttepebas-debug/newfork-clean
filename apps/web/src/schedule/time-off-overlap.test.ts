@@ -33,9 +33,18 @@ describe("alsoOffThese", () => {
     ])).toEqual([]);
   });
 
-  it("joins one person's two requests into one line", () => {
+  it("gives one person one line, keeping days apart that are apart", () => {
+    // Maria works Oct 14: the line must not say she is off then.
     const rows = alsoOffThese(request("x", "Ethan", "2026-10-13", "2026-10-16", { status: "pending" }), [
       request("a", "Maria", "2026-10-15", "2026-10-15"),
+      request("b", "Maria", "2026-10-13", "2026-10-13"),
+    ]);
+    expect(rows.map(alsoOffDays)).toEqual(["Oct 13, Oct 15"]);
+  });
+
+  it("joins one person's days that run on", () => {
+    const rows = alsoOffThese(request("x", "Ethan", "2026-10-13", "2026-10-16", { status: "pending" }), [
+      request("a", "Maria", "2026-10-14", "2026-10-15"),
       request("b", "Maria", "2026-10-13", "2026-10-13"),
     ]);
     expect(rows.map(alsoOffDays)).toEqual(["Oct 13 – Oct 15"]);
