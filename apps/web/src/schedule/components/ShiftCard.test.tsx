@@ -256,6 +256,24 @@ describe("ShiftCard", () => {
     vi.useRealTimers();
   });
 
+  // BL-610: the drag start cancels the press, so the browser leaves focus where
+  // it was; a clicked card takes it, and Enter and Ctrl+C then reach it.
+  it("takes keyboard focus when clicked while editing", () => {
+    const onEdit = vi.fn();
+    renderShiftCard({ onEdit });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+
+    fireEvent.click(badge);
+    expect(document.activeElement).toBe(badge);
+    expect(badge.dataset.mouseFocus).toBe("true");
+    fireEvent.keyDown(document.activeElement!, { key: "Enter" });
+    expect(onEdit).toHaveBeenCalledWith(shift);
+
+    // Leaving it ends the mouse mark: a later Tab back shows the keyboard ring.
+    badge.blur();
+    expect(badge.dataset.mouseFocus).toBeUndefined();
+  });
+
   it("does not let an unpaired modifier pointerdown swallow the next normal click", () => {
     vi.useFakeTimers();
     const onFocus = vi.fn();
