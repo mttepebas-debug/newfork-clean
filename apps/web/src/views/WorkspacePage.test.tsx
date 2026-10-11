@@ -13,7 +13,7 @@ import type {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import WorkspacePage from "./WorkspacePage";
+import WorkspacePage, { dueLabel } from "./WorkspacePage";
 import {
   createWorkspaceTodo,
   getOwnerSetupChecklistProgress,
@@ -488,5 +488,19 @@ describe("WorkspacePage setup checklist", () => {
     ).toBeTruthy();
     expect(within(checklist).getAllByText("Optional visit").length).toBeGreaterThan(0);
     expect(within(checklist).queryByText(/setup complete/i)).toBeNull();
+  });
+});
+
+// BL-1013: a to-do due later read "Due 1m ago".
+describe("dueLabel", () => {
+  const now = Date.parse("2026-10-11T12:00:00Z");
+  it("says how far ahead a due time is", () => {
+    expect(dueLabel("2026-10-11T12:20:00Z", now)).toBe("Due in 20m");
+    expect(dueLabel("2026-10-11T15:00:00Z", now)).toBe("Due in 3h");
+    expect(dueLabel("2026-10-14T12:00:00Z", now)).toBe("Due in 3d");
+  });
+  it("says how long ago a due time went by", () => {
+    expect(dueLabel("2026-10-11T11:30:00Z", now)).toBe("Due 30m ago");
+    expect(dueLabel("2026-10-09T12:00:00Z", now)).toBe("Due 2d ago");
   });
 });
