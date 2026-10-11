@@ -15,8 +15,10 @@ select tests.publish_week('ag', 1, '[
   {"label": "ali-mon", "person": "ali", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"},
   {"label": "ali-tue", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "veli-wed", "person": "veli", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
+  {"label": "ali-thu", "person": "ali", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"},
   {"label": "ali-fri", "person": "ali", "loc": "K", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"},
-  {"label": "open-sat", "loc": "K", "job": "cook", "day": 5, "start": "09:00", "end": "15:00"}
+  {"label": "open-sat", "loc": "K", "job": "cook", "day": 5, "start": "09:00", "end": "15:00"},
+  {"label": "ali-sun", "person": "ali", "loc": "K", "job": "cook", "day": 6, "start": "09:00", "end": "15:00"}
 ]');
 
 create function pg_temp.command(who text, command jsonb) returns jsonb language sql as $$
@@ -59,6 +61,38 @@ select pg_temp.command('ali', jsonb_build_object('action', 'close', 'case_id', t
 select ok(pg_temp.read('ali', false, tests.id('ag:case:quiet')) is not null, 'Ali still reads his closed cover');
 select ok(pg_temp.read('ayse', true, tests.id('ag:case:quiet')) is null, 'Ayse never reads a cover that closed before anybody asked');
 
+-- The only person asking takes it back --------------------------------------------
+select tests.remember('ag:case:back', (pg_temp.command('ali', jsonb_build_object('action', 'create', 'kind', 'cover',
+  'shift_id', tests.id('ag:shift:ali-thu'))) ->> 'case_id')::uuid);
+select pg_temp.command('veli', jsonb_build_object('action', 'apply', 'shift_id', tests.id('ag:shift:ali-thu'),
+  'case_id', tests.id('ag:case:back')));
+select tests.settle();
+select is(pg_temp.read('ayse', true, tests.id('ag:case:back')) ->> 'stage', 'ready_for_manager', 'Veli asks for Thursday: Ayse reads it');
+select pg_temp.command('veli', jsonb_build_object('action', 'withdraw', 'case_id', tests.id('ag:case:back'),
+  'application_id', (select a.id from public.shift_exchange_applications a where a.case_id = tests.id('ag:case:back')),
+  'expected_revision', pg_temp.revision(tests.id('ag:case:back'))));
+select tests.settle();
+select ok(pg_temp.read('ali', false, tests.id('ag:case:back')) is not null, 'Ali still reads his open cover');
+select ok(pg_temp.read('ayse', true, tests.id('ag:case:back')) is null,
+  'once Veli takes his request back and nobody else asks, Ayse''s Requests no longer lists the cover');
+
+-- The manager declines the only person asking -------------------------------------
+-- Her own decision keeps the cover in her list, with the reason she gave.
+select tests.remember('ag:case:declined', (pg_temp.command('ali', jsonb_build_object('action', 'create', 'kind', 'cover',
+  'shift_id', tests.id('ag:shift:ali-sun'))) ->> 'case_id')::uuid);
+select pg_temp.command('veli', jsonb_build_object('action', 'apply', 'shift_id', tests.id('ag:shift:ali-sun'),
+  'case_id', tests.id('ag:case:declined')));
+select tests.settle();
+select pg_temp.command('ayse', jsonb_build_object('action', 'reject', 'case_id', tests.id('ag:case:declined'),
+  'application_id', (select a.id from public.shift_exchange_applications a where a.case_id = tests.id('ag:case:declined')),
+  'expected_revision', pg_temp.revision(tests.id('ag:case:declined')), 'reason', 'Veli is over his hours', 'private_note', ''));
+select tests.settle();
+select is((select status from public.shift_exchange_cases where id = tests.id('ag:case:declined')), 'open',
+  'the cover stays open for others to ask');
+select is((select h ->> 'message' from jsonb_array_elements(pg_temp.read('ayse', true, tests.id('ag:case:declined')) -> 'history') h
+  where h ->> 'action' = 'application_rejected'), 'Veli is over his hours',
+  'Ayse''s Requests keeps the cover she declined, with her reason');
+
 -- A swap waits for the teammate -----------------------------------------------------
 select tests.remember('ag:case:swap', (pg_temp.command('ali', jsonb_build_object('action', 'create', 'kind', 'swap',
   'shift_id', tests.id('ag:shift:ali-fri'), 'requested_shift_id', tests.id('ag:shift:veli-wed'))) ->> 'case_id')::uuid);
@@ -82,6 +116,15 @@ select ok(exists(select 1 from public.shift_exchange_cases where id = tests.id('
 select ok(exists(select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('ag:ayse'), tests.id('ag'), true,
   tests.week(1) + 2, tests.week(1) + 2) -> 'cases') c where c ->> 'id' = tests.id('ag:case:swap')::text),
   'Ayse finds the closed agreed swap by the date of the shift Veli gives');
+
+-- The closed list follows the same rule ------------------------------------------
+create function pg_temp.closed(who text, target uuid) returns boolean language sql as $$
+  select exists(select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(tests.user('ag:' || who), tests.id('ag'),
+    array['cover', 'swap']) -> 'rows') r where r ->> 'id' = target::text)
+$$;
+select ok(pg_temp.closed('ayse', tests.id('ag:case:cover')), 'Ayse''s closed list holds the cover closed after Veli asked');
+select ok(pg_temp.closed('ayse', tests.id('ag:case:swap')), 'and the swap closed after Veli accepted');
+select ok(not pg_temp.closed('ayse', tests.id('ag:case:quiet')), 'but not the cover closed before anybody asked');
 
 -- An open shift is somebody asking already ----------------------------------------
 select tests.remember('ag:case:open', (pg_temp.command('veli', jsonb_build_object('action', 'apply',

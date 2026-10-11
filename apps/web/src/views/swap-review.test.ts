@@ -85,6 +85,11 @@ describe("blockerLines", () => {
       { receiver: { reasons: [] }, giver: { reasons: ["Not assigned to this location", "Employee already has an overlapping shift."] } }, names))
       .toEqual(["Ali can't take Deniz's shift: Not assigned to this location; Employee already has an overlapping shift."]);
   });
+  it("says an open shift, which nobody holds yet", () => {
+    expect(blockerLines(["The receiving employee is not eligible for the full shift"],
+      { receiver: { reasons: ["Required document is expired."] }, giver: null }, { owner: null, other: "Emma" }))
+      .toEqual(["Emma can't take this open shift: Required document is expired."]);
+  });
   it("keeps the server's sentence when the check gives no rule", () => {
     const reason = "The receiving employee is not eligible for the full shift";
     expect(blockerLines([reason], { receiver: { reasons: [] }, giver: null }, names)).toEqual([reason]);

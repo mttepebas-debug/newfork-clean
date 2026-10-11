@@ -104,7 +104,8 @@ const NOT_ELIGIBLE = {
 export function blockerLines(
   reasons: readonly string[],
   checks: { readonly receiver: { readonly reasons: readonly string[] } | null; readonly giver: { readonly reasons: readonly string[] } | null },
-  names: { readonly owner: string; readonly other: string },
+  /** owner is null for an open shift: nobody holds it yet. */
+  names: { readonly owner: string | null; readonly other: string },
 ): string[] {
   const why = (list: readonly string[] | undefined) =>
     (list ?? []).map((text) => text.trim().replace(/\.+$/, "")).filter(Boolean).join("; ");
@@ -114,7 +115,7 @@ export function blockerLines(
     if (!side || !rules) return reason;
     // The receiver takes the owner's shift; in a swap the giver (the owner) takes the other's.
     return side === "receiver"
-      ? `${names.other} can't take ${names.owner}'s shift: ${rules}.`
-      : `${names.owner} can't take ${names.other}'s shift: ${rules}.`;
+      ? `${names.other} can't take ${names.owner ? `${names.owner}'s shift` : "this open shift"}: ${rules}.`
+      : `${names.owner ?? "The owner"} can't take ${names.other}'s shift: ${rules}.`;
   });
 }

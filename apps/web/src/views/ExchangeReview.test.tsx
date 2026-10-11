@@ -54,12 +54,13 @@ function preview(change: Partial<ExchangePreview> = {}): ExchangePreview {
 }
 const onDone = vi.fn();
 const onClose = vi.fn();
+const onHold = vi.fn();
 function renderReview(item: ExchangeCase = cover) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <ExchangeReview item={item} workspace={workspace} timeFormat="12h" onClose={onClose} onDone={onDone} />
+        <ExchangeReview item={item} workspace={workspace} timeFormat="12h" onClose={onClose} onDone={onDone} onHold={onHold} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -142,7 +143,10 @@ describe("ExchangeReview", () => {
     const send = within(footer()).getByRole("button", { name: "Close request" }) as HTMLButtonElement;
     expect(send.disabled).toBe(true);
     fireEvent.change(reason, { target: { value: "We are closed Sunday" } });
+    // Red, two clicks (CLAUDE.md §3.A.7).
     fireEvent.click(send);
+    expect(changeExchange).not.toHaveBeenCalled();
+    fireEvent.click(within(footer()).getByRole("button", { name: "Confirm close" }));
     await waitFor(() => expect(onDone).toHaveBeenCalledWith("Request closed. Noah keeps the shift."));
     expect(vi.mocked(changeExchange).mock.calls[0]![1]).toEqual({
       action: "close", case_id: caseId, expected_revision: 4, reason: "We are closed Sunday", private_note: "",
@@ -163,10 +167,89 @@ describe("ExchangeReview", () => {
     expect(await screen.findByRole("button", { name: "Give shift to Emma" })).toBeTruthy();
   });
 
-  it("tells a manager of another location who decides", () => {
+  it("shows a manager who cannot decide the buttons faded, with who decides under them (KARARLAR G1)", () => {
     renderReview({ ...cover, can_manage: false } as ExchangeCase);
-    expect(footer().textContent).toBe("Another Harbor & Vine Uptown manager, the owner or an admin decides this request.");
+    expect(within(footer()).getByRole("note").textContent).toBe("Another Harbor & Vine Uptown manager, the owner or an admin decides this request.");
+    expect((within(footer()).getByRole("button", { name: "Close request" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(footer()).getByRole("button", { name: "Pick someone" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getAllByRole("radio") as HTMLInputElement[]).every((radio) => radio.disabled)).toBe(true);
+    expect(screen.queryByRole("button", { name: /^Decline / })).toBeNull();
+  });
+
+  it("declines one person's request with a reason only they read; the others stay", async () => {
+    vi.mocked(changeExchange).mockResolvedValue({ case_id: caseId, revision: 5, status: "open" } as never);
+    renderReview();
+    fireEvent.click(screen.getByRole("button", { name: "Decline Diego Morales" }));
+    const reason = screen.getByLabelText("Reason for Diego");
+    expect(reason.getAttribute("placeholder")).toBe("Only Diego reads this.");
+    const send = within(footer()).getByRole("button", { name: "Decline Diego" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.change(reason, { target: { value: "You are off that day" } });
+    fireEvent.click(send);
+    fireEvent.click(within(footer()).getByRole("button", { name: "Confirm decline" }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("Diego's request is declined. The others can still take the shift."));
+    expect(vi.mocked(changeExchange).mock.calls[0]![1]).toEqual({
+      action: "reject", case_id: caseId, application_id: diego, expected_revision: 4, reason: "You are off that day", private_note: "",
+    });
+  });
+
+  // Train CI 38147392878: the live refresh reached the drawer before the save
+  // answered and no longer listed Diego; the message still names him.
+  it("names the declined person when a refresh drops them before the save answers", async () => {
+    let answer!: (value: unknown) => void;
+    vi.mocked(changeExchange).mockReturnValue(new Promise((resolve) => { answer = resolve; }) as never);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = (item: ExchangeCase) => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ExchangeReview item={item} workspace={workspace} timeFormat="12h" onClose={onClose} onDone={onDone} onHold={onHold} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    // Emma and Diego asked; once Diego is declined only Emma is left (train CI 38148426482).
+    const two = { ...cover, applications: cover.applications.filter((item) => item.id !== sophie) } as ExchangeCase;
+    const { rerender } = render(view(two));
+    fireEvent.click(screen.getByRole("button", { name: "Decline Diego Morales" }));
+    fireEvent.change(screen.getByLabelText("Reason for Diego"), { target: { value: "You are off that day" } });
+    fireEvent.click(within(footer()).getByRole("button", { name: "Decline Diego" }));
+    fireEvent.click(within(footer()).getByRole("button", { name: "Confirm decline" }));
+    rerender(view({ ...two, revision: 5, applications: two.applications.filter((item) => item.id !== diego) } as ExchangeCase));
+    answer({ case_id: caseId, revision: 5, status: "open" });
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("Diego's request is declined. The others can still take the shift."));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("goes back from a reason on Escape and keeps what was typed", () => {
+    renderReview();
+    fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
+    const reason = screen.getByLabelText("Reason for Noah and the people who asked");
+    fireEvent.change(reason, { target: { value: "We are closed Sunday" } });
+    expect(onHold).toHaveBeenLastCalledWith(true);
+    fireEvent.keyDown(reason, { key: "Escape" });
+    expect(screen.queryByLabelText("Reason for Noah and the people who asked")).toBeNull();
+    expect(onHold).toHaveBeenLastCalledWith(false);
+    fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
+    expect((screen.getByLabelText("Reason for Noah and the people who asked") as HTMLTextAreaElement).value).toBe("We are closed Sunday");
+  });
+
+  it("does not carry a failed give into the close step", async () => {
+    vi.mocked(changeExchange).mockRejectedValue(new Error("This request changed. Review the latest details"));
+    renderReview();
+    fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
+    const give = await screen.findByRole("button", { name: "Give shift to Emma" });
+    await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(give);
+    expect((await within(footer()).findByRole("alert")).textContent).toBe("This request changed. Review the latest details");
+    fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
+    expect(within(footer()).queryByRole("alert")).toBeNull();
+  });
+
+  it("says an open shift when the core refuses the person", async () => {
+    vi.mocked(getExchangePreview).mockResolvedValue(preview({ allowed: false,
+      reasons: ["The receiving employee is not eligible for the full shift"],
+      receiver: { status: "ineligible", reasons: ["Required document is expired."], approval_flags: [], measures } }));
+    renderReview({ ...open, applications: [cover.applications[0]!], candidate_count: 1 } as ExchangeCase);
+    expect((await screen.findByRole("alert")).textContent).toBe("Emma can't take this open shift: Required document is expired.");
   });
 
   it("says how a closed request ended", () => {
