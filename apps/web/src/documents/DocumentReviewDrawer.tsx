@@ -27,6 +27,7 @@ import {
   type DocumentAudience,
 } from "./document-data";
 import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 import {
   acceptAttribute,
   acceptsUpload,
@@ -235,7 +236,16 @@ function DocumentDetailContent({
       cache.invalidateQueries({ queryKey: ["employees", props.audience.workspaceId] }),
       cache.invalidateQueries({ queryKey: ["employee-detail", props.audience.workspaceId] }),
     ]);
+  // BL-828: a 409 means someone changed this document first (another
+  // reviewer, a new upload); reload it and say so instead of the server's
+  // "refresh required".
+  const conflict = async (failure: unknown) => {
+    if (!(failure instanceof RequestError) || failure.status !== 409) return;
+    setNotice("This document changed. You're seeing the latest version.");
+    await refresh();
+  };
   const review = useMutation({
+    onError: conflict,
     mutationFn: (decision: "approve" | "reject") =>
       reviewDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -259,9 +269,13 @@ function DocumentDetailContent({
       setFailedUpload(null);
       await refresh();
     },
-    onError: (_error, file) => setFailedUpload(file),
+    onError: async (failure, file) => {
+      setFailedUpload(file);
+      await conflict(failure);
+    },
   });
   const submit = useMutation({
+    onError: conflict,
     mutationFn: () =>
       submitDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -275,6 +289,7 @@ function DocumentDetailContent({
     },
   });
   const download = useMutation({
+    onError: conflict,
     mutationFn: ({
       submissionId,
       fileId,
@@ -284,6 +299,7 @@ function DocumentDetailContent({
     }) => downloadDocument(props.audience, obligation.id, submissionId, fileId),
   });
   const timezone = useMutation({
+    onError: conflict,
     mutationFn: () =>
       setDocumentTimezone(props.audience, obligation.id, {
         employee_revision: detail.timezone_settings!.employee_revision,
@@ -295,6 +311,7 @@ function DocumentDetailContent({
     },
   });
   const defer = useMutation({
+    onError: conflict,
     mutationFn: () =>
       deferInitialDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -306,6 +323,7 @@ function DocumentDetailContent({
     },
   });
   const acknowledge = useMutation({
+    onError: conflict,
     mutationFn: () =>
       acknowledgeDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -319,6 +337,7 @@ function DocumentDetailContent({
     },
   });
   const withdraw = useMutation({
+    onError: conflict,
     mutationFn: () =>
       withdrawDocumentAcknowledgement(
         props.audience,
@@ -328,6 +347,7 @@ function DocumentDetailContent({
     onSuccess: refresh,
   });
   const removeFile = useMutation({
+    onError: conflict,
     mutationFn: (fileId: string) =>
       removeDocumentDraftFile(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -337,6 +357,7 @@ function DocumentDetailContent({
     onSuccess: refresh,
   });
   const extension = useMutation({
+    onError: conflict,
     mutationFn: () =>
       extendDocumentDeadline(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -370,6 +391,13 @@ function DocumentDetailContent({
     submit.error ??
     download.error ??
     timezone.error;
+  const shownError = !error
+    ? null
+    : error instanceof RequestError && error.status === 409
+      ? null
+      : error instanceof RequestError && (error.status ?? 0) >= 500
+        ? "Couldn't save. Try again."
+        : errorText(error);
   const dirty =
     failedUpload !== null ||
     extensionReason !== "" ||
@@ -890,9 +918,9 @@ function DocumentDetailContent({
             ))}
           </details>
           {notice && <p role="status">{notice}</p>}
-          {error && (
+          {shownError && (
             <p role="alert" className="form-error">
-              {errorText(error)}
+              {shownError}
             </p>
           )}
         </div>
