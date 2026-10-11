@@ -61,6 +61,8 @@ const testAuth = vi.hoisted(() => ({
   role: null as TestRole | null,
   nextRole: "owner" as TestRole,
   timeFormat: "system" as "system" | "12h" | "24h",
+  // Actions the core leaves out for this sign-in (a role with a permission removed).
+  withoutActions: [] as string[],
 }));
 
 vi.mock("./auth/AuthContext", async () => {
@@ -93,6 +95,7 @@ vi.mock("./auth/AuthContext", async () => {
     // has (authz_has_permission). app_private.actor_actions lists person
     // actions the same way.
     actions: shared.authzActionKeys.filter((action) => {
+      if (testAuth.withoutActions.includes(action)) return false;
       if (action === "workspace.read") return true;
       // Every active member's own hub (scope 'own' in the core).
       if (action === "employee_hub.read" || action === "employee_hub.self") return true;
@@ -268,6 +271,7 @@ beforeEach(() => {
   window.localStorage.clear();
   testAuth.role = null;
   testAuth.nextRole = "owner";
+  testAuth.withoutActions = [];
   testAuth.timeFormat = "system";
   resetScheduleApiMocks();
   vi.mocked(authorizeScheduleExportV2).mockReset().mockResolvedValue(undefined);
@@ -1013,6 +1017,42 @@ describe("App", () => {
     expect(
       screen.queryByRole("gridcell", { name: /Unassigned total hours/ }),
     ).toBeNull();
+  });
+
+  // BL-1025 (BL-683): the call to publish soon is for whoever can publish.
+  describe("an unpublished week that starts today", () => {
+    const unpublishedThisWeek = () => {
+      vi.mocked(getScheduleReadModel).mockResolvedValue({
+        ...scheduleFixture,
+        locations: scheduleFixture.locations.map((location) => ({
+          ...location,
+          publication_status: "unpublished" as const,
+          published_at: null,
+        })),
+      });
+      window.history.pushState({}, "", `/app/schedule?date=${scheduleFixture.week_start}`);
+    };
+
+    it("tells someone who can publish to publish it soon", async () => {
+      unpublishedThisWeek();
+      testAuth.role = "owner";
+      render(<App />);
+
+      expect(
+        (await screen.findAllByRole("img", { name: /publish the schedule as soon as possible/ })).length,
+      ).toBeGreaterThan(0);
+    });
+
+    // A role whose publish permission was taken away (the core lists no schedule.publish).
+    it("does not tell someone who cannot publish to publish it", async () => {
+      unpublishedThisWeek();
+      testAuth.withoutActions = ["schedule.publish"];
+      testAuth.role = "owner";
+      render(<App />);
+
+      expect((await screen.findAllByRole("img", { name: "Unpublished" })).length).toBeGreaterThan(0);
+      expect(screen.queryByRole("img", { name: /as soon as possible/ })).toBeNull();
+    });
   });
 
   it("keeps an unpublished past schedule week read-only", async () => {
