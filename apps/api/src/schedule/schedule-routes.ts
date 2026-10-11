@@ -189,6 +189,10 @@ const applyTemplateBodySchema = mutationRevisionSchema.extend({
   mode: z.enum(["merge", "overwrite"]),
   department_keys: z.array(z.string()).nullable().optional(),
 });
+const templateApplyPreviewBodySchema = z.object({
+  template_id: z.string().uuid(),
+  department_keys: z.array(z.string()).nullable().optional(),
+});
 const applyAutoFillBodySchema = mutationRevisionSchema.extend({
   fingerprint: z.string().length(64),
   assignments: z.array(scheduleAutoFillAssignmentSchema).max(500),
@@ -931,6 +935,34 @@ export function registerScheduleRoutes(
           expectedSessionRevision: body.data.expected_session_revision,
           templateId: body.data.template_id,
           mode: body.data.mode,
+          departmentKeys: body.data.department_keys ?? null,
+        }),
+      );
+    } catch (error) {
+      return scheduleError(reply, error);
+    }
+  });
+
+  // KK-162 (BL-694): Replace's first click says how many shifts it removes.
+  app.post("/schedule/edit-sessions/:sessionId/template-apply-preview", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.templates");
+    const params = activeSessionParamsSchema.safeParse(request.params);
+    const body = templateApplyPreviewBodySchema.safeParse(request.body);
+    if (!params.success || !body.success)
+      return reply
+        .status(400)
+        .send({ error: "Valid template preview required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Schedule service is not configured" });
+    try {
+      return reply.send(
+        await options.service.previewTemplateApply({
+          actorUserId: context.userId,
+          workspaceId: context.workspace.id,
+          sessionId: params.data.sessionId,
+          templateId: body.data.template_id,
           departmentKeys: body.data.department_keys ?? null,
         }),
       );

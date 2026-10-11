@@ -14,23 +14,49 @@ import { requestErrorText } from "../../lib/request-error";
 
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
 
-/** KK-162 (BL-694): Replace asks twice; its first click says what it removes. */
+/**
+ * KK-162 (BL-694): Replace asks twice; its first click says what it removes.
+ * The database counts it (the template's locations and departments, never a
+ * started shift); without the count the warning still names what goes.
+ */
 function ReplaceShiftsButton({
-  count,
+  countRemoved,
   disabled,
   onConfirm,
 }: {
-  readonly count: number;
+  readonly countRemoved: () => Promise<number>;
   readonly disabled: boolean;
   readonly onConfirm: () => void;
 }) {
   const { armed, confirmProps } = useConfirmClick(onConfirm);
+  const [removed, setRemoved] = useState<number | "counting" | "unknown">("counting");
+  const countRemovedRef = useRef(countRemoved);
+  countRemovedRef.current = countRemoved;
+  useEffect(() => {
+    if (!armed) return undefined;
+    let current = true;
+    setRemoved("counting");
+    countRemovedRef.current().then(
+      (count) => {
+        if (current) setRemoved(count);
+      },
+      () => {
+        if (current) setRemoved("unknown");
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [armed]);
   return (
     <>
       {armed ? (
         <span className="schedule-template-replace-impact" role="status">
-          {count} {count === 1 ? "shift" : "shifts"} will be removed. Draft only,
-          not published.
+          {removed === "counting"
+            ? "Counting the shifts it removes…"
+            : removed === "unknown"
+              ? "Shifts this template covers will be removed. Draft only, not published."
+              : `${removed} ${removed === 1 ? "shift" : "shifts"} will be removed. Draft only, not published.`}
         </span>
       ) : null}
       <button
@@ -57,6 +83,7 @@ export function ScheduleTemplatesDialog({
   onRename,
   onDelete,
   onApply,
+  onPreviewReplace,
 }: {
   readonly templates: readonly ScheduleTemplateSummary[];
   readonly drafts: readonly ScheduleDraftSummary[];
@@ -80,6 +107,11 @@ export function ScheduleTemplatesDialog({
     mode: "merge" | "overwrite",
     departmentKeys: readonly string[] | null,
   ) => Promise<unknown>;
+  /** How many shifts Replace would remove, counted by the database. */
+  readonly onPreviewReplace: (
+    templateId: string,
+    departmentKeys: readonly string[] | null,
+  ) => Promise<number>;
 }) {
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? "");
   const selected = templates.find((item) => item.id === selectedId) ?? null;
@@ -258,14 +290,17 @@ export function ScheduleTemplatesDialog({
                   ) : null}
                   {hasExistingShifts ? (
                     <p className="schedule-template-apply-summary">
-                      This schedule already has shifts. Merge keeps them and
-                      adds the template on top; Overwrite clears them first.
+                      This schedule already has shifts. Add keeps them; Replace
+                      first removes the ones this template covers that
+                      haven&apos;t started.
                     </p>
                   ) : null}
                   <div className="schedule-template-apply-actions">
                     {hasExistingShifts ? (
                       <ReplaceShiftsButton
-                        count={session?.shifts.length ?? 0}
+                        countRemoved={() =>
+                          onPreviewReplace(selected.id, departmentKeysForApply)
+                        }
                         disabled={pending || !hasDepartmentSelection}
                         onConfirm={() =>
                           void run(() =>

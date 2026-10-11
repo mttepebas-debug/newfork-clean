@@ -16,6 +16,7 @@ import {
   scheduleRecentExportEventListSchema,
   scheduleExportScheduleListSchema,
   scheduleExportScheduleSchema,
+  scheduleTemplateApplyPreviewSchema,
   scheduleTemplateApplyResultSchema,
   scheduleTemplateDetailSchema,
   scheduleTemplateListSchema,
@@ -41,6 +42,7 @@ import {
   type ScheduleExportSchedule,
   type ScheduleExportSettings,
   type ScheduleRecentExportEvent,
+  type ScheduleTemplateApplyPreview,
   type ScheduleTemplateApplyResult,
   type ScheduleTemplateDetail,
   type ScheduleTemplateList,
@@ -622,6 +624,27 @@ export async function applyScheduleTemplate(
           template_id: templateId,
           mode,
           expected_session_revision: session.revision,
+          department_keys: departmentKeys,
+        }),
+      },
+    ),
+  );
+}
+
+/** KK-162 (BL-694): how many shifts Replace would remove, counted by the database. */
+export async function previewScheduleTemplateApply(
+  workspaceId: string,
+  sessionId: string,
+  templateId: string,
+  departmentKeys: readonly string[] | null = null,
+): Promise<ScheduleTemplateApplyPreview> {
+  return scheduleTemplateApplyPreviewSchema.parse(
+    await activeScheduleRequest(
+      `/schedule/edit-sessions/${sessionId}/template-apply-preview`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          template_id: templateId,
           department_keys: departmentKeys,
         }),
       },

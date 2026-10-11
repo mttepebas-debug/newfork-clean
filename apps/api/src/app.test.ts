@@ -2713,6 +2713,10 @@ describe("api app", () => {
             session: scheduleSessionMockModel(),
           };
         },
+        previewTemplateApply: async (input) => {
+          calls.push({ kind: "template-apply-preview", input });
+          return { removed_shift_count: 10 };
+        },
         previewAutoFill: async (actorUserId, workspaceId, sessionId) => {
           calls.push({
             kind: "auto-fill-preview",
@@ -2905,6 +2909,15 @@ describe("api app", () => {
         ],
       },
     });
+    const templateApplyPreview = await app.inject({
+      method: "POST",
+      url: "/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/template-apply-preview",
+      headers: { authorization: "Bearer owner-token" },
+      payload: {
+        template_id: "88000000-0000-4000-8000-000000000002",
+        department_keys: null,
+      },
+    });
     const autoFillPreview = await app.inject({
       method: "POST",
       url: "/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/auto-fill-preview",
@@ -3036,6 +3049,8 @@ describe("api app", () => {
     expect(template.statusCode).toBe(200);
     expect(unpublishPreview.statusCode).toBe(200);
     expect(applyTemplate.statusCode).toBe(200);
+    expect(templateApplyPreview.statusCode).toBe(200);
+    expect(templateApplyPreview.json()).toEqual({ removed_shift_count: 10 });
     expect(autoFillPreview.statusCode).toBe(200);
     expect(autoFillApply.statusCode).toBe(200);
     expect(bulkDelete.statusCode).toBe(200);
@@ -3161,6 +3176,16 @@ describe("api app", () => {
             "__no_department__",
           ],
         }),
+      },
+      {
+        kind: "template-apply-preview",
+        input: {
+          actorUserId: resolvedContext.userId,
+          workspaceId: resolvedContext.workspace.id,
+          sessionId: "87000000-0000-4000-8000-000000000001",
+          templateId: "88000000-0000-4000-8000-000000000002",
+          departmentKeys: null,
+        },
       },
       {
         kind: "auto-fill-preview",
@@ -3384,6 +3409,7 @@ function scheduleServiceMock(
       skipped: [],
       session: scheduleSessionMockModel(),
     }),
+    previewTemplateApply: async () => ({ removed_shift_count: 0 }),
     previewAutoFill: async () => ({
       status: "review_ready",
       workspace_id: resolvedContext.workspace.id,
