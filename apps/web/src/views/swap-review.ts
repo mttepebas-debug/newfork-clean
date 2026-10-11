@@ -21,7 +21,7 @@ export interface ReviewSide {
   /** The shift's date, yyyy-mm-dd. */
   date: string;
   /** The core's check of the person who takes this shift; null if it could not run. */
-  check: Pick<ExchangePreview["receiver"], "approval_flags" | "measures" | "shortens_time_off"> | null;
+  check: Pick<ExchangePreview["receiver"], "approval_flags" | "measures" | "blockers"> | null;
 }
 
 const order: ReviewRule[] = ["travel", "rest", "availability", "time_off"];
@@ -34,7 +34,7 @@ function fails(side: ReviewSide, rule: ReviewRule) {
   if (rule === "travel") return Boolean(flag(side, "minimum_travel"));
   if (rule === "rest") return Boolean(flag(side, "minimum_rest"));
   if (rule === "availability") return Boolean(flag(side, "availability_consent"));
-  return Boolean(side.check?.shortens_time_off);
+  return Boolean(side.check?.blockers?.some((item) => item.code === "approved_time_off"));
 }
 
 function hours(minutes: number) {
