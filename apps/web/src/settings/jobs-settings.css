@@ -192,7 +192,7 @@
   border-color: var(--theme-danger-strong);
 }
 .job-danger-button:hover:not(:disabled) {
-  background: #8e2f28;
+  background: color-mix(in srgb, var(--theme-danger-strong) 85%, black);
 }
 .job-secondary-button:hover:not(:disabled),
 .job-small-button:hover:not(:disabled) {

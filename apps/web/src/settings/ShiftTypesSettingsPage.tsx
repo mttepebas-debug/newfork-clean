@@ -166,10 +166,14 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
       savedType.default_end_time !== draft.default_end_time),
   );
   const parsedDraft = shiftTypeInputSchema.safeParse(draft);
-  const sameHours = Boolean(
-    draft.default_start_time &&
-    draft.default_start_time === draft.default_end_time,
-  );
+  // The shared schema's own refusal, not a second copy of the rule.
+  const sameHours =
+    !parsedDraft.success &&
+    parsedDraft.error.issues.some(
+      (issue) =>
+        issue.path[0] === "default_end_time" &&
+        issue.message === "Start and end times must be different",
+    );
   const canSave =
     canEdit &&
     !saveMutation.isPending &&
