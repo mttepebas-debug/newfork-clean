@@ -99,7 +99,7 @@ export function ScheduleGrid({
   readonly model: ScheduleReadModel;
   /** BL-055: the viewer's own 12h/24h choice; the workspace's when they have none. */
   readonly timeFormat?: ScheduleReadModel["settings"]["time_format"];
-  /** BL-683: false in Employee view → Schedule. A manager without the publish permission still sees the call to publish (not narrowed yet). */
+  /** BL-683, BL-1025: false where the viewer cannot publish (Employee view, a manager without publish). */
   readonly publishWarnings?: boolean;
   readonly search: URLSearchParams;
   readonly selectedDate: string;
