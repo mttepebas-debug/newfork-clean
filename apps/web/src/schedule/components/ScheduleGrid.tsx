@@ -59,6 +59,7 @@ export function ScheduleGrid({
   showShiftLabels,
   showClockTimes,
   timeFormat,
+  publishWarnings,
   showTotalHours,
   showUnassignedShifts,
   unassignedFrozen,
@@ -98,6 +99,8 @@ export function ScheduleGrid({
   readonly model: ScheduleReadModel;
   /** BL-055: the viewer's own 12h/24h choice; the workspace's when they have none. */
   readonly timeFormat?: ScheduleReadModel["settings"]["time_format"];
+  /** BL-683: false where the viewer cannot publish (Employee view → Schedule). */
+  readonly publishWarnings?: boolean;
   readonly search: URLSearchParams;
   readonly selectedDate: string;
   readonly view: ScheduleView;
@@ -455,6 +458,7 @@ export function ScheduleGrid({
         selectedDate={selectedDate}
         showTotalHours={showTotalHours}
         weekStartDate={model.week_start}
+        publishWarnings={publishWarnings}
         onDayHeaderClick={onDayHeaderClick}
         onManageLogo={onManageLogo}
         onToggleLocationFilter={toggleLocationHeaderFilter}
