@@ -122,6 +122,22 @@ describe("weekly preferences API panel", () => {
     );
     await screen.findByText("Saved");
   });
+  it("keeps the conflict and its Reload when the latest week cannot be fetched", async () => {
+    await setup();
+    fireEvent.click(screen.getByRole("switch", { name: /Monday all day unavailable/i }));
+    vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
+      Object.assign(new Error(conflictSentence), { status: 409 }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText(conflictSentence);
+    vi.mocked(loadWeeklyPreferences).mockRejectedValueOnce(new TypeError("Refresh unavailable"));
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reload" })).toHaveProperty("disabled", false),
+    );
+    expect(screen.getByText(conflictSentence)).toBeTruthy();
+  });
   it("uses a fresh save key after a definitive server conflict", async () => {
     const { result } = await setup();
     vi.mocked(saveWeeklyPreferences)

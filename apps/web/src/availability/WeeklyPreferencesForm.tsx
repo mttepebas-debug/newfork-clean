@@ -377,7 +377,13 @@ function PreferenceForm({
                     onClick={async () => {
                       setReloading(true);
                       try {
-                        reset((await onReload?.()) ?? model);
+                        if (!onReload) reset(model);
+                        else {
+                          // A failed fetch keeps the warning: resetting to
+                          // the old week would only be refused again.
+                          const latest = await onReload();
+                          if (latest) reset(latest);
+                        }
                       } finally {
                         setReloading(false);
                       }

@@ -90,7 +90,7 @@ function DocumentDrawer(props: DrawerProps) {
   if (query.data)
     return (
       <DocumentDetailContent
-        key={`${query.data.obligation.id}:${query.data.obligation.revision}`}
+        key={detailVersion(query.data)}
         {...props}
         detail={query.data}
         typed={typed}
@@ -125,6 +125,12 @@ function DocumentDrawer(props: DrawerProps) {
       </div>
     </CatalogDrawer>
   );
+}
+
+// Every revision a drawer command is checked against: the document's and,
+// for the time zone, the person's (BL-828). A new one rebuilds the content.
+function detailVersion(detail: DocumentDetail): string {
+  return `${detail.obligation.id}:${detail.obligation.revision}:${detail.timezone_settings?.employee_revision ?? ""}`;
 }
 
 function DocumentDetailContent({
@@ -249,7 +255,7 @@ function DocumentDetailContent({
   // "refresh required".
   const conflict = async (failure: unknown) => {
     if (!(failure instanceof RequestError) || failure.status !== 409) return;
-    const sent = obligation.revision;
+    const sent = detailVersion(detail);
     await refresh();
     // Some 409s are standing refusals ("changes are paused"); only a newer
     // revision means someone changed it first. That rebuilds this content,
@@ -257,7 +263,7 @@ function DocumentDetailContent({
     const latest = cache.getQueryData<DocumentDetail>(
       documentQueryKey(props.audience, props.userId, props.requirementId),
     );
-    if (latest && latest.obligation.revision !== sent) props.onChanged(true);
+    if (latest && detailVersion(latest) !== sent) props.onChanged(true);
   };
   const started = () => props.onChanged(false);
   const review = useMutation({

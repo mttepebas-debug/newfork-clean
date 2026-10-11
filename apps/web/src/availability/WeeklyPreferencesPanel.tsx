@@ -127,7 +127,10 @@ function ConnectedPreferences({
         wizard={onboarding}
         extraAction={extraAction}
         // BL-797: someone saved first; Reload shows their week.
-        onReload={async () => (await query.refetch()).data}
+        onReload={async () => {
+          const latest = await query.refetch();
+          return latest.isError ? undefined : latest.data;
+        }}
       />
     </>
   );
