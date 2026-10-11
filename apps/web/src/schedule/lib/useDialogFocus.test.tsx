@@ -112,4 +112,28 @@ describe("useDialogFocus", () => {
     expect(document.activeElement).toBe(dialog);
     expect(fireEvent.keyDown(dialog, { key: "Tab" })).toBe(false);
   });
+
+  it("brings a Tab from an unlisted spot in the window back to its stops", () => {
+    function Spot() {
+      const ref = useRef<HTMLElement>(null);
+      useDialogFocus(ref);
+      return (
+        <section ref={ref} role="dialog" aria-label="Spot">
+          <p tabIndex={-1}>Note</p>
+          <button type="button">One</button>
+          <button type="button">Two</button>
+        </section>
+      );
+    }
+    render(<Spot />);
+    const note = screen.getByText("Note");
+    note.focus();
+
+    fireEvent.keyDown(note, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Two" }));
+    note.focus();
+    fireEvent.keyDown(note, { key: "Tab" });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "One" }));
+  });
 });
+
