@@ -48,7 +48,9 @@ select ok(pg_temp.has_case(pg_temp.r(pg_temp.actor(1),false,'2030-02-01',(select
 select ok(not pg_temp.has_case(pg_temp.r(pg_temp.actor(4),false,'2030-02-01',(select cid from sx_state))),'focused detail cannot bypass employee participation');
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','close','case_id',cid,'expected_revision',1,'reason','Owner no longer needs the swap'),gen_random_uuid());
 select ok(pg_temp.has_case(pg_temp.r(pg_temp.actor(2),false,'2030-01-09')),'closed swap can be found using only the return date');
-select ok(pg_temp.has_case(pg_temp.r(pg_temp.manager(),true,'2030-01-09')),'manager finds closed swap by return date');
+-- Mert, 2026-10-11: a swap reaches a manager once the teammate accepts; this one closed before
+-- (shift_changes_reach_managers_agreed finds an agreed swap by its return date).
+select ok(not pg_temp.has_case(pg_temp.r(pg_temp.manager(),true,'2030-01-09')),'a manager does not read a swap closed before the teammate accepted');
 select ok(not pg_temp.has_case(pg_temp.r(pg_temp.actor(4),false,'2030-01-09')),'return-date search does not expose unrelated requests');
 -- Published conditions can change after closure. Filter and display must agree.
 update public.schedule_published_shifts set scheduled_date='2030-01-11' where id=pg_temp.shift(3);

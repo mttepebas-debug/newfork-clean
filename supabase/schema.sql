@@ -24976,6 +24976,12 @@ begin
   allowed:=manager_view and coalesce((c.offered_snapshot->>'location_id')::uuid=any(read_scope) or (c.kind='swap' and (c.requested_snapshot->>'location_id')::uuid=any(read_scope)),false);
   mine:=coalesce(c.owner_id=emp.id,false);
   if not allowed and not mine and not exists(select 1 from public.shift_exchange_applications where case_id=c.id and employee_id=emp.id) then continue; end if;
+  -- A swap or a cover reaches a manager once both sides agreed (Mert, 2026-10-11):
+  -- somebody asked for the shift, or the teammate accepted the swap.
+  if manager_view and c.kind<>'open_pickup' and not mine
+   and not exists(select 1 from public.shift_exchange_applications where case_id=c.id and employee_id=emp.id)
+   and not exists(select 1 from public.shift_exchange_events where workspace_id=w and case_id=c.id and action in('application_submitted','peer_accepted'))
+   then continue; end if;
   -- Repeated historical requests refer to the same published source. Resolve
   -- each source once in this read only; no cache survives the function call.
   foreach source_key in array array_remove(array[c.offered_source_id::text,c.requested_source_id::text],null) loop
