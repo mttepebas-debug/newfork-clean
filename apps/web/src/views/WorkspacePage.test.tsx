@@ -228,6 +228,20 @@ describe("WorkspacePage setup checklist", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 
+  // BL-810 (E5-09): the box shows five at most; like Notifications, it links
+  // to the whole list.
+  it("links the announcements box to all announcements", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      announcements: [
+        { id: "a9700000-0000-4000-8000-000000000021", title: "Patio opens", category: "general" },
+      ] as never,
+    });
+    renderPage();
+    const link = await screen.findByRole("link", { name: "View all announcements" });
+    expect(link.getAttribute("href")).toBe("/app/announcements");
+  });
+
   // BL-814 (E5-14): a dropped connection or a server failure reads as one
   // plain sentence, never the browser's or the server's words.
   it("words a failed page read for the person", async () => {
