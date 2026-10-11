@@ -445,7 +445,7 @@ function Widget({
             <Megaphone size={16} aria-hidden />
             <span>
               <strong>{item.title}</strong>
-              <small>{item.category}</small>
+              <small>{announcementCategoryLabel[item.category]}</small>
             </span>
             <ArrowRight size={15} aria-hidden />
           </Link>
@@ -564,6 +564,16 @@ function TodoWidget({
   );
 }
 
+/** BL-666 (3): the stored code reads as a word. */
+const announcementCategoryLabel: Record<
+  WorkspaceDashboard["announcements"][number]["category"],
+  string
+> = {
+  general: "General",
+  operations: "Operations",
+  schedule: "Schedule",
+};
+
 function TodoPreview({
   item,
   onResolve,
@@ -573,20 +583,29 @@ function TodoPreview({
   onResolve: (todoId: string) => void;
   resolving: boolean;
 }) {
+  // BL-666 (2): the due date sits next to whose it is, not instead of it.
+  const detail = [item.body, item.due_at ? dueLabel(item.due_at) : ""]
+    .filter(Boolean)
+    .join(" · ");
   const content = (
     <>
       <CheckCircle2 size={16} aria-hidden />
       <span>
         <strong>{item.title}</strong>
-        <small>
-          {item.due_at ? dueLabel(item.due_at) : item.body}
-        </small>
+        <small>{detail}</small>
       </span>
-      <ArrowRight size={15} aria-hidden />
     </>
   );
   const actionUrl = safeAppActionUrl(item.action_url);
-  if (actionUrl) return <Link to={actionUrl}>{content}</Link>;
+  // BL-666 (4): only a row that goes somewhere carries the arrow.
+  if (actionUrl) {
+    return (
+      <Link to={actionUrl}>
+        {content}
+        <ArrowRight size={15} aria-hidden />
+      </Link>
+    );
+  }
   if (!item.system_generated) {
     return (
       <div className="workspace-todo-row">
@@ -614,12 +633,14 @@ function NotificationPreview({ item }: { item: NotificationRecord }) {
         <strong>{item.title}</strong>
         <small>{relativeTime(item.created_at)}</small>
       </span>
-      <ArrowRight size={15} aria-hidden />
     </>
   );
   const actionUrl = safeAppActionUrl(item.action_url);
   return actionUrl ? (
-    <Link to={actionUrl}>{content}</Link>
+    <Link to={actionUrl}>
+      {content}
+      <ArrowRight size={15} aria-hidden />
+    </Link>
   ) : (
     <div>{content}</div>
   );

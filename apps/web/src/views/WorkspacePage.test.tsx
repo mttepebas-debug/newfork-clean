@@ -240,6 +240,10 @@ describe("WorkspacePage setup checklist", () => {
     renderPage();
     const link = await screen.findByRole("link", { name: "View all announcements" });
     expect(link.getAttribute("href")).toBe("/app/announcements");
+    // BL-666 (3): the category reads as a word, not the stored code.
+    const row = screen.getByRole("link", { name: /Patio opens/ });
+    expect(row.textContent).toContain("General");
+    expect(row.textContent).not.toContain("general");
   });
 
   // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; seven
@@ -456,6 +460,39 @@ describe("WorkspacePage setup checklist", () => {
     const todos = await screen.findByRole("heading", { name: "Todos" });
     expect(todos).toBeTruthy();
     expect(screen.getByText("Employee document expires soon")).toBeTruthy();
+    // BL-666 (2): a due date does not hide whose document it is.
+    const row = screen.getByRole("link", { name: /Employee document expires soon/ });
+    expect(row.textContent).toContain("Taylor Reed - Food handler card");
+    expect(row.textContent).toMatch(/Due (in )?\d+[mhd]( ago)?/);
+  });
+
+  // BL-666 (4): only a row that goes somewhere carries the arrow.
+  it("draws the row arrow only on todos that link somewhere", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      todos: [
+        {
+          id: "a9700000-0000-4000-8000-000000000002",
+          workspace_id: workspaceId,
+          title: "Restock napkins",
+          body: "",
+          severity: "info",
+          status: "open",
+          system_generated: false,
+          source_type: null,
+          source_id: null,
+          source_key: null,
+          employee_id: null,
+          due_at: null,
+          action_url: null,
+          created_at: "2026-09-05T12:00:00.000Z",
+        },
+      ] as never,
+    });
+    renderPage();
+    const title = await screen.findByText("Restock napkins");
+    const row = title.closest(".workspace-todo-row")!;
+    expect(row.querySelector(".lucide-arrow-right")).toBeNull();
   });
 
   it("creates manual workspace todos from the widget", async () => {
