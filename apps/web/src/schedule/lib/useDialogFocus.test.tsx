@@ -46,4 +46,70 @@ describe("useDialogFocus", () => {
     fireEvent.click(close);
     expect(document.activeElement).toBe(opener);
   });
+
+  // The Templates window folds its departments under "Only some departments".
+  it("lets Tab leave a folded section's summary, and skips what the fold hides", () => {
+    function Folded() {
+      const ref = useRef<HTMLElement>(null);
+      useDialogFocus(ref);
+      return (
+        <section ref={ref} role="dialog" aria-label="Folded">
+          <button type="button">First</button>
+          <details>
+            <summary>Only some departments</summary>
+            <input type="checkbox" aria-label="Hidden choice" />
+          </details>
+        </section>
+      );
+    }
+    render(<Folded />);
+    const first = screen.getByRole("button", { name: "First" });
+    const summary = screen.getByText("Only some departments");
+
+    summary.focus();
+    // Not the last stop: the browser moves on by itself.
+    expect(fireEvent.keyDown(summary, { key: "Tab", shiftKey: true })).toBe(true);
+    expect(document.activeElement).toBe(summary);
+
+    // Folded away, the checkbox is no stop: Shift+Tab from the start wraps to the summary.
+    first.focus();
+    fireEvent.keyDown(first, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(summary);
+    fireEvent.keyDown(summary, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+  });
+
+  it("leaves Tab to a window opened on top of it", () => {
+    function Stacked() {
+      const ref = useRef<HTMLElement>(null);
+      useDialogFocus(ref);
+      return (
+        <section ref={ref} role="dialog" aria-label="Under">
+          <button type="button">Under button</button>
+          <div role="alertdialog" aria-label="On top">
+            <button type="button">Top button</button>
+          </div>
+        </section>
+      );
+    }
+    render(<Stacked />);
+    const top = screen.getByRole("button", { name: "Top button" });
+    top.focus();
+
+    expect(fireEvent.keyDown(top, { key: "Tab" })).toBe(true);
+    expect(document.activeElement).toBe(top);
+  });
+
+  it("holds the keyboard on a window with nothing to focus", () => {
+    function Empty() {
+      const ref = useRef<HTMLElement>(null);
+      useDialogFocus(ref);
+      return <section ref={ref} role="dialog" aria-label="Empty">Saving…</section>;
+    }
+    render(<Empty />);
+    const dialog = screen.getByRole("dialog", { name: "Empty" });
+
+    expect(document.activeElement).toBe(dialog);
+    expect(fireEvent.keyDown(dialog, { key: "Tab" })).toBe(false);
+  });
 });
