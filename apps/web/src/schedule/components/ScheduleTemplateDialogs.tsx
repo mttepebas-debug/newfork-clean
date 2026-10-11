@@ -292,7 +292,7 @@ export function ScheduleTemplatesDialog({
                     <p className="schedule-template-apply-summary">
                       This schedule already has shifts. Add keeps them; Replace
                       first removes the ones this template covers that
-                      haven&apos;t started.
+                      haven't started.
                     </p>
                   ) : null}
                   <div className="schedule-template-apply-actions">

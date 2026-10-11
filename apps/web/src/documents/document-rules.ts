@@ -43,6 +43,26 @@ const statusLabels: Record<DocumentObligationStatus, string> = {
   paused: "Paused",
 };
 
+// BL-831: what needs someone first. A grace period is a missing document
+// still inside its time; the closed ones go last.
+const statusWeights: Record<DocumentObligationStatus, number> = {
+  pending_review: 0,
+  missing: 1,
+  grace: 1,
+  timezone_required: 2,
+  expired: 3,
+  rejected: 4,
+  paused: 5,
+  completed: 6,
+  exempt: 7,
+  removed: 8,
+};
+
+/** Status order for the list's Status column: most urgent first. */
+export function statusWeight(status: DocumentObligationStatus): number {
+  return statusWeights[status];
+}
+
 /** The status as a person reads it, in the list and the drawer alike. */
 export function statusLabel(
   obligation: Excusable & Pick<DocumentObligation, "approved_id">,
