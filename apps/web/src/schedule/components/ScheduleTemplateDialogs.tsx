@@ -6,9 +6,10 @@ import type {
 } from "@newfork/shared/schedule";
 import { ConfirmButton, useConfirmClick } from "@newfork/ui";
 import { Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
+import { useDialogFocus } from "../lib/useDialogFocus";
 import { requestErrorText } from "../../lib/request-error";
 
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
@@ -375,6 +376,8 @@ function Dialog({
   readonly children: ReactNode;
 }) {
   useCloseOnEscape(onClose);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef);
   return (
     <div
       className="schedule-dialog-layer"
@@ -388,6 +391,7 @@ function Dialog({
         onClick={onClose}
       />
       <section
+        ref={dialogRef}
         className="schedule-dialog"
         role="dialog"
         aria-modal="true"

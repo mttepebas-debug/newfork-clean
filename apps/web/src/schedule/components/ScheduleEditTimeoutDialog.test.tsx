@@ -21,6 +21,8 @@ describe("ScheduleEditTimeoutDialog", () => {
     );
 
     const dialog = screen.getByRole("dialog", { name: "Keep editing?" });
+    // BL-711: the keyboard lands on Continue when the window opens.
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "CONTINUE" }));
     expect(dialog.className).toContain("schedule-timeout-dialog");
     expect(screen.getByText("Time left")).toBeTruthy();
     expect(screen.getByText("150")).toBeTruthy();

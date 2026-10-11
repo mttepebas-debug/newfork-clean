@@ -26,6 +26,7 @@ import {
   ScheduleLogoFrame,
   scheduleLogoFrameAspectRatio,
 } from "./ScheduleLogoFrame";
+import { useDialogFocus } from "../lib/useDialogFocus";
 
 export interface ScheduleLogoSaveDraft {
   readonly file: File | null;
@@ -77,6 +78,8 @@ export function ScheduleLogoUploadDialog({
   readonly onSave: (draft: ScheduleLogoSaveDraft) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocus(dialogRef, open);
   const [draftFile, setDraftFile] = useState<File | null>(null);
   const [draftUrl, setDraftUrl] = useState<string | null>(null);
   const [removeLogo, setRemoveLogo] = useState(false);
@@ -147,6 +150,7 @@ export function ScheduleLogoUploadDialog({
         onClick={close}
       />
       <section
+        ref={dialogRef}
         className="schedule-logo-dialog"
         role="dialog"
         aria-modal="true"
