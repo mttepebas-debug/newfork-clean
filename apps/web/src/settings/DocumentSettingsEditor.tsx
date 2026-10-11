@@ -11,6 +11,7 @@ import {
   type DocumentEditorSection,
 } from "../documents/DocumentLifecycleFields";
 
+import { formatsLabel } from "../documents/document-rules";
 import "./document-settings-editor.css";
 
 type ValidationIssue = { path: PropertyKey[]; message: string };
@@ -391,12 +392,7 @@ export function DocumentSettingsEditor({
 
             {section === "fields" && (
               <p className="document-editor-hint">
-                Accepted uploads:{" "}
-                {value.accepted_formats
-
-                  .map((format) => format.toUpperCase())
-
-                  .join(", ")}
+                Accepted uploads: {formatsLabel(value.accepted_formats)}
               </p>
             )}
           </fieldset>
