@@ -195,6 +195,60 @@ describe("DraftDropdownMenu", () => {
     expect(styles.match(/#aeb9b4/g)).toHaveLength(1);
   });
 
+  // BL-723 (2), Mert's pick A: a past week's draft row says why it has no buttons.
+  it("marks a past week's draft rows read-only and says why", () => {
+    const onPreviewDraft = vi.fn();
+    render(
+      <DraftDropdownMenu
+        drafts={[draftA]}
+        activeDraftId={null}
+        triggerLabel="New Schedule"
+        canManageDrafts={false}
+        canStartDraft={false}
+        readOnlyNote="Past week: you can view it, not edit it."
+        onPreviewDraft={onPreviewDraft}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+        onDeleteDraft={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Draft selector: New Schedule" }),
+    );
+    const row = screen.getByRole("button", { name: "View Plan A" });
+    expect(row.querySelector("button")).toBeNull();
+    expect(
+      row.querySelector(".schedule-draft-menu-title-line")?.textContent,
+    ).toBe("Plan ARead-only");
+    // The note is part of the row's description, so a screen reader hears it.
+    expect(
+      document.getElementById(row.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toContain("Past week: you can view it, not edit it.");
+    fireEvent.click(row);
+    expect(onPreviewDraft).toHaveBeenCalledWith(draftA.id);
+  });
+
+  it("leaves an editable week's draft rows without the read-only note", () => {
+    render(
+      <DraftDropdownMenu
+        drafts={[draftA]}
+        activeDraftId={null}
+        triggerLabel="New Schedule"
+        onPreviewDraft={vi.fn()}
+        onEditDraft={vi.fn()}
+        onStartBlankDraft={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Draft selector: New Schedule" }),
+    );
+    expect(screen.queryByText("Read-only")).toBeNull();
+    expect(screen.queryByText(/Past week:/)).toBeNull();
+  });
+
   it("names the live draft and lists it last, after the other drafts", () => {
     const planB = { ...draftA, id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", name: "Plan B" };
 

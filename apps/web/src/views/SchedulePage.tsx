@@ -2345,6 +2345,9 @@ export function SchedulePage({
               !pastWeek && !gridEditSession && !isDiscardingEditSession
             }
             isStartingDraft={isDiscardingEditSession}
+            readOnlyNote={
+              pastWeek ? "Past week: you can view it, not edit it." : null
+            }
             publishedSchedule={
               publishedScheduleSummary?.published_at
                 ? {

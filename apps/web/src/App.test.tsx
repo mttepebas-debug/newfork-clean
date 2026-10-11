@@ -1094,7 +1094,9 @@ describe("App", () => {
     });
   });
 
-  it("keeps an unpublished past schedule week read-only", async () => {
+  function mockUnpublishedPastWeek(
+    drafts: Awaited<ReturnType<typeof listScheduleDrafts>>["drafts"] = [],
+  ) {
     const pastWeekStart = "2020-01-06";
     const pastFixture = scheduleFixtureForWeek(pastWeekStart);
     vi.mocked(getScheduleReadModel).mockResolvedValue({
@@ -1106,7 +1108,7 @@ describe("App", () => {
       })),
       shifts: [],
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts });
     vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
       week_start: pastWeekStart,
       week_end: "2020-01-12",
@@ -1130,6 +1132,11 @@ describe("App", () => {
       })),
     });
 
+    return pastWeekStart;
+  }
+
+  it("keeps an unpublished past schedule week read-only", async () => {
+    const pastWeekStart = mockUnpublishedPastWeek();
     window.history.pushState({}, "", `/app/schedule?date=${pastWeekStart}`);
     testAuth.role = "owner";
     render(<App />);
@@ -1147,6 +1154,28 @@ describe("App", () => {
       screen.queryByRole("button", { name: "Edit live schedule" }),
     ).toBeNull();
     expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+  });
+
+  // BL-723 (2), Mert's pick A: a past week's saved draft says why it cannot be edited.
+  it("marks a past week's saved draft read-only in the New Schedule menu", async () => {
+    const pastWeekStart = "2020-01-06";
+    const draft = { id: "99999999-9999-4999-8999-999999999995", workspace_id: scheduleFixture.workspace_id,
+      week_start: pastWeekStart, name: "Last week plan", revision: 2,
+      created_by: "88888888-8888-4888-8888-888888888888", updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2020-01-06T12:00:00Z", updated_at: "2020-01-06T12:00:00Z" };
+    mockUnpublishedPastWeek([draft]);
+
+    window.history.pushState({}, "", `/app/schedule?date=${pastWeekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
+    );
+    const row = await screen.findByRole("button", { name: `View ${draft.name}` });
+    expect(within(row).queryByRole("button")).toBeNull();
+    expect(within(row).getByText("Read-only")).toBeTruthy();
+    expect(within(row).getByText("Past week: you can view it, not edit it.")).toBeTruthy();
   });
 
   // TEL-KAPALI (KARARLAR "Schedule telefonda tamamen kapalı"): below 768 px a manager or owner has no Schedule.
