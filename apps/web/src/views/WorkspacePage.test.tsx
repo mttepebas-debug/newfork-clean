@@ -242,6 +242,35 @@ describe("WorkspacePage setup checklist", () => {
     expect(link.getAttribute("href")).toBe("/app/announcements");
   });
 
+  // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; seven
+  // hidden cards leave a line saying so; the eye icons are decoration.
+  it("keeps a hidden card's content out of reach and its eye icons decorative", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      layout: { ...dashboard.layout, hidden_widget_ids: ["todos"] },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
+    const todos = screen.getByRole("heading", { name: "Todos" }).closest("article")!;
+    expect(todos.querySelector("[inert]")?.querySelector("input")).toBeTruthy();
+    const show = screen.getByRole("button", { name: "Show Todos" });
+    expect(show.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: "Hide Announcements" }).querySelector("svg")
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
+  });
+  it("says every card is hidden instead of an empty page", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      layout: { ...dashboard.layout, hidden_widget_ids: [...dashboard.layout.widget_order] },
+    });
+    renderPage();
+    expect(
+      await screen.findByText("Every card is hidden. Use Customize to show them again."),
+    ).toBeTruthy();
+  });
+
   // BL-814 (E5-14): a dropped connection or a server failure reads as one
   // plain sentence, never the browser's or the server's words.
   it("words a failed page read for the person", async () => {
