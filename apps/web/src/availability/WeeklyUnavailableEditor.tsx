@@ -83,7 +83,7 @@ export function WeeklyUnavailableEditor({
     });
   const typeHours = (type: PreferenceShiftType) =>
     type.start_time && type.end_time
-      ? `${formatAvailabilityClock(type.start_time, timeFormat)} - ${formatAvailabilityClock(type.end_time, timeFormat)}${type.archived ? " (archived)" : ""}`
+      ? `${formatAvailabilityClock(type.start_time, timeFormat)} – ${formatAvailabilityClock(type.end_time, timeFormat)}${type.archived ? " (archived)" : ""}`
       : "Default hours need updating";
   // M3, D6: the types a day can take now; marking all of them is all day.
   const selectableTypes = shiftTypes.filter((type) => type.selectable);
@@ -194,7 +194,7 @@ export function WeeklyUnavailableEditor({
                   ) : row.ranges.length ? (
                     row.ranges.map((range) => (
                       <span key={range.start} className="weekly-preference-tag">
-                        {formatAvailabilityClock(range.start, timeFormat)} -{" "}
+                        {formatAvailabilityClock(range.start, timeFormat)} –{" "}
                         {formatAvailabilityClock(range.end, timeFormat)}
                       </span>
                     ))

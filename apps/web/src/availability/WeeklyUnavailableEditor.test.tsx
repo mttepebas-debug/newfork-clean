@@ -16,8 +16,8 @@ describe("several unavailable hours a day", () => {
   };
   it("shows every range of the day", () => {
     render(<WeeklyUnavailableEditor value={week()} shiftTypes={[]} readOnly />);
-    expect(screen.getByText("09:00 - 14:00")).toBeTruthy();
-    expect(screen.getByText("17:00 - 24:00")).toBeTruthy();
+    expect(screen.getByText("09:00 – 14:00")).toBeTruthy();
+    expect(screen.getByText("17:00 – 24:00")).toBeTruthy();
   });
   it("edits and removes one range and keeps the other", () => {
     const onChange = vi.fn();
