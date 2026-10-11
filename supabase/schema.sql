@@ -5439,12 +5439,12 @@ ALTER FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uui
 
 
 CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE
+    LANGUAGE "sql"
     SET "search_path" TO ''
     AS $$
   select c.kind = 'open_pickup' or case
     when c.status = 'open' and public.shift_exchange_live_status(shift_exchange_reached_managers.w, c.id) = 'open' then
-      exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.status = 'pending_manager')
+      exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.status in ('pending_manager', 'rejected_by_manager'))
       or exists (select 1 from public.shift_exchange_votes v where v.case_id = c.id)
     else exists (select 1 from public.shift_exchange_events e
       where e.workspace_id = shift_exchange_reached_managers.w and e.case_id = c.id
