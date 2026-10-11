@@ -40,6 +40,7 @@ import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
 import { isNoAccess } from "../lib/no-access";
+import { requestErrorText } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
@@ -114,11 +115,8 @@ export function WorkspacePage() {
   if (query.error || !query.data) {
     return (
       <PageState
-        text={
-          query.error instanceof Error
-            ? query.error.message
-            : "Workspace unavailable"
-        }
+        // BL-814: one plain sentence, never the browser's or server's words.
+        text={query.error ? requestErrorText(query.error) : "Workspace unavailable"}
         error
       />
     );
@@ -191,7 +189,7 @@ export function WorkspacePage() {
       />
       {saveMutation.error ? (
         <p className="workspace-error" role="alert">
-          {saveMutation.error.message}
+          {requestErrorText(saveMutation.error)}
         </p>
       ) : null}
       {context?.membership.role === "owner" ||
@@ -339,7 +337,9 @@ function OwnerSetupChecklist({
       </header>
       {progressQuery.error || markMutation.error ? (
         <p className="workspace-error" role="alert">
-          Setup checklist progress could not be saved.
+          {markMutation.error
+            ? "Setup checklist progress could not be saved."
+            : "Setup checklist progress could not be loaded."}
         </p>
       ) : null}
       <div className="owner-setup-checklist-list">
