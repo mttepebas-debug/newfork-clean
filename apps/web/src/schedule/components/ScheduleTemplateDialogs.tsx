@@ -4,7 +4,7 @@ import type {
   ScheduleReadModel,
   ScheduleTemplateSummary,
 } from "@newfork/shared/schedule";
-import { ConfirmButton } from "@newfork/ui";
+import { ConfirmButton, useConfirmClick } from "@newfork/ui";
 import { Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -12,6 +12,38 @@ import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { requestErrorText } from "../../lib/request-error";
 
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
+
+/** KK-162 (BL-694): Replace asks twice; its first click says what it removes. */
+function ReplaceShiftsButton({
+  count,
+  disabled,
+  onConfirm,
+}: {
+  readonly count: number;
+  readonly disabled: boolean;
+  readonly onConfirm: () => void;
+}) {
+  const { armed, confirmProps } = useConfirmClick(onConfirm);
+  return (
+    <>
+      {armed ? (
+        <span className="schedule-template-replace-impact" role="status">
+          {count} {count === 1 ? "shift" : "shifts"} will be removed. Draft only,
+          not published.
+        </span>
+      ) : null}
+      <button
+        type="button"
+        className={`danger-text${armed ? " is-armed" : ""}`}
+        disabled={disabled}
+        data-confirming={armed}
+        {...confirmProps}
+      >
+        {armed ? "Confirm replace" : "Replace current shifts"}
+      </button>
+    </>
+  );
+}
 
 export function ScheduleTemplatesDialog({
   templates,
@@ -231,11 +263,10 @@ export function ScheduleTemplatesDialog({
                   ) : null}
                   <div className="schedule-template-apply-actions">
                     {hasExistingShifts ? (
-                      <button
-                        type="button"
-                        className="danger-text"
+                      <ReplaceShiftsButton
+                        count={session?.shifts.length ?? 0}
                         disabled={pending || !hasDepartmentSelection}
-                        onClick={() =>
+                        onConfirm={() =>
                           void run(() =>
                             onApply(
                               selected.id,
@@ -244,9 +275,7 @@ export function ScheduleTemplatesDialog({
                             ),
                           )
                         }
-                      >
-                        Overwrite
-                      </button>
+                      />
                     ) : null}
                     <button
                       type="button"
@@ -262,7 +291,7 @@ export function ScheduleTemplatesDialog({
                         )
                       }
                     >
-                      {hasExistingShifts ? "Merge" : "Apply template"}
+                      {hasExistingShifts ? "Add to current shifts" : "Apply template"}
                     </button>
                   </div>
                 </>

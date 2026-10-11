@@ -252,11 +252,16 @@ describe("ScheduleTemplatesDialog", () => {
     expect(
       screen.getByText(/This schedule already has shifts/),
     ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Overwrite" }));
+    // KK-162 (BL-694): Replace asks twice and first says what it removes.
+    fireEvent.click(screen.getByRole("button", { name: "Replace current shifts" }));
+    expect(props.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText("1 shift will be removed. Draft only, not published.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm replace" }));
     await waitFor(() =>
       expect(props.onApply).toHaveBeenCalledWith(template.id, "overwrite", null),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Merge" }));
+    expect(screen.queryByText(/will be removed/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add to current shifts" }));
     await waitFor(() =>
       expect(props.onApply).toHaveBeenCalledWith(template.id, "merge", null),
     );

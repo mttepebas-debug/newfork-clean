@@ -9884,6 +9884,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: var(--theme-danger);
   color: var(--theme-on-accent);
 }
+.schedule-template-replace-impact {
+  align-self: center;
+  color: var(--theme-danger-text);
+  font-size: 13px;
+}
 .schedule-template-dialog button.primary-command {
   justify-self: end;
   border-color: var(--theme-accent);
