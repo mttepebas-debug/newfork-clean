@@ -93,9 +93,9 @@ describe("GeneralSettingsPage setup checklist controls", () => {
   }
 
   // BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
-  it("says under Organization name that Turkish-only letters are not taken, and holds Save", async () => {
+  it("says under Workspace name that Turkish-only letters are not taken, and holds Save", async () => {
     renderPage();
-    const name = screen.getByLabelText("Organization name");
+    const name = screen.getByLabelText("Workspace name");
     fireEvent.change(name, { target: { value: "Beşiktaş Grill" } });
     expect(name.getAttribute("aria-invalid")).toBe("true");
     expect(document.getElementById(name.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
@@ -104,6 +104,17 @@ describe("GeneralSettingsPage setup checklist controls", () => {
     expect(screen.getByRole("button", { name: /save changes/i })).toHaveProperty("disabled", true);
     fireEvent.change(name, { target: { value: "Besiktas Grill" } });
     expect(screen.getByRole("button", { name: /save changes/i })).toHaveProperty("disabled", false);
+  });
+
+  // BL-851: screen text says workspace, never the code's "organization".
+  it("words the page in workspace terms", async () => {
+    const { container } = renderPage();
+    fireEvent.change(screen.getByLabelText("Workspace name"), {
+      target: { value: "Besiktas Grill" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(await screen.findByText("Workspace settings saved.")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/organization/i);
   });
 
   it("hides the Workspace setup checklist from General settings", async () => {
