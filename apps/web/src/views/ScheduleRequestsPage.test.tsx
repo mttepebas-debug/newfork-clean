@@ -332,6 +332,44 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
   });
+  // Mert, 2026-10-11: a cover or an open shift opens its drawer over the list.
+  const coverCase = {
+    id: "97500000-0000-4000-8000-000000000007", kind: "cover", audience: "eligible_pool", status: "open", stage: "ready_for_manager", revision: 1,
+    created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+    shift, requested_shift: null, applications: [], candidate_count: 0, can_manage: true, is_owner: false, history: [],
+  };
+  it("opens a cover in its drawer over the list, and closes it", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage();
+    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    const drawer = await screen.findByRole("dialog", { name: "Review shift change" });
+    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Cover");
+    expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${coverCase.id}`);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review shift change" })).toBeNull());
+    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+  });
+  it("lands a manager notification link for a listed cover on its drawer, not on Shift Hub", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`);
+    expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
+  });
+  it("reads a linked cover the list does not carry and opens its drawer", async () => {
+    vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) =>
+      ({ employee_id: null, opportunities: [], own_shifts: [], cases: range?.caseId === coverCase.id ? [coverCase] : [] }) as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`);
+    expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
+    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, { caseId: coverCase.id });
+  });
+  it("lands a manager notification link for a listed swap on its review window", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
+      ...coverCase, kind: "swap", requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000007", employee_name: "Deniz Acar" },
+    }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`);
+    expect(await screen.findByRole("dialog", { name: "Swap request" })).toBeTruthy();
+    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+  });
   // EKRAN-02 C2 (H2): a swap opens its review window over the list, not Shift Hub.
   it("opens a swap in its review window over the list", async () => {
     const swapId = "97500000-0000-4000-8000-000000000003";
