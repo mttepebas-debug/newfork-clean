@@ -112,6 +112,8 @@ describe("buildScheduleCellState", () => {
     expect(cells.get(scheduleCellStateKey(mainLocationId, "2026-08-19", employeeId))?.availabilityMark).toEqual({ kind: "time_off", ranges: [{ from: 0, to: 1440 }] });
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-19", employeeId))?.availabilityMark).toEqual(patioMark);
     expect(cells.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))?.availabilityMark).toBeUndefined();
+    // Hiding availability hides preferences only; time off still spreads.
+    expect(buildScheduleCellState(changed, true).get(scheduleCellStateKey(patioLocationId, "2026-08-19", employeeId))?.availabilityMark).toEqual(patioMark);
   });
 
   it("marks every cell in a multi-day all-day closure range", () => {
