@@ -3,6 +3,7 @@ import {
   acceptAttribute,
   acceptsUpload,
   fileDecisionLabel,
+  formatsLabel,
   isObligationClosed,
   isOnFile,
   sameSignerName,
@@ -95,5 +96,12 @@ describe("versionStateLabel and fileDecisionLabel", () => {
   it("words a file's decision", () => {
     expect(fileDecisionLabel("keep")).toBe("Kept");
     expect(fileDecisionLabel("discard")).toBe("Discarded");
+  });
+});
+
+// BL-857: one spelling and one order for accepted formats everywhere.
+describe("formatsLabel", () => {
+  it("lists formats in one order with one spelling", () => {
+    expect(formatsLabel(["webp", "png", "pdf", "jpeg"])).toBe("PDF, JPEG, PNG, WebP");
   });
 });

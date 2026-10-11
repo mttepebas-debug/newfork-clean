@@ -1,4 +1,6 @@
 import {
+  documentFormatSchema,
+  type DocumentFormat,
   type DocumentObligation,
   type DocumentObligationStatus,
   type DocumentDetail,
@@ -104,4 +106,19 @@ export function fileDecisionLabel(
   decision: DocumentSubmission["files"][number]["decision"],
 ): string {
   return decision === "keep" ? "Kept" : "Discarded";
+}
+
+const formatNames: Record<DocumentFormat, string> = {
+  pdf: "PDF",
+  jpeg: "JPEG",
+  png: "PNG",
+  webp: "WebP",
+};
+
+/** Accepted formats in one order and spelling, list and editor alike (BL-857). */
+export function formatsLabel(formats: readonly DocumentFormat[]): string {
+  return documentFormatSchema.options
+    .filter((format) => formats.includes(format))
+    .map((format) => formatNames[format])
+    .join(", ");
 }
