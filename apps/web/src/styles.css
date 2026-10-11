@@ -13831,6 +13831,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .workspace-feed > a:hover {
   background: #f4f8f6;
 }
+/* BL-666 (5): "View all …" is a link, not a feed row; the row grid broke it
+   into one word per line. */
+.workspace-feed > .widget-link {
+  min-height: 38px;
+  padding: 0 14px;
+  border-bottom: 0;
+  display: flex;
+}
 .workspace-feed > .workspace-todo-row {
   grid-template-columns: minmax(0, 1fr) 32px;
 }
