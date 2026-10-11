@@ -6554,7 +6554,7 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
     const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
     fireEvent.click(await within(dialog).findByRole("button", { name: /Base week/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: /^(Merge|Apply template)$/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^(Add to current shifts|Apply template)$/ }));
 
     await waitFor(() => expect(applyScheduleTemplate).toHaveBeenCalledTimes(2));
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(2);
