@@ -378,6 +378,29 @@ describe("weekly preference routes", () => {
       await app.close();
     }
   });
+  // BL-1028: a week saved over a newer one says so with a key, so the form
+  // offers Reload for that refusal and not for any other 409.
+  it("passes the database's availability.changed key on with the 409", async () => {
+    const { app, service } = setup();
+    service.saveWeekly.mockRejectedValue(
+      rpcFailure({ message: "Availability changed. Reload before saving; your draft has not been saved.", code: "PT409", hint: "availability.changed" }),
+    );
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspace}/availability/weekly`,
+        headers: { authorization: "Bearer test", "idempotency-key": key },
+        payload: command,
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({
+        error: "Availability changed. Reload before saving; your draft has not been saved.",
+        reason: "availability.changed",
+      });
+    } finally {
+      await app.close();
+    }
+  });
   // The "no" contract: not a member is 404, any other authz.* is 403.
   it.each([
     ["authz.not_member", 404],
