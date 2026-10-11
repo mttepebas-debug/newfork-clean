@@ -63,21 +63,26 @@ export default function SchedulingSettingsPage() {
     checklistMode ? checklistDraft(defaults) : defaults,
   );
   const [draftDirty, setDraftDirty] = useState(false);
+  // BL-677 (1): once the checklist's two choices are saved, the page shows
+  // them like any other saved value instead of blanking them again.
+  const [checklistSaved, setChecklistSaved] = useState(false);
+  const blankChoices = checklistMode && !checklistSaved;
   const [saved, setSaved] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query.data || draftDirty) return;
     const parsed = schedulingSettingsInputSchema.parse(query.data);
-    setDraft(checklistMode ? checklistDraft(parsed) : parsed);
+    setDraft(blankChoices ? checklistDraft(parsed) : parsed);
     setValidationError(null);
-  }, [checklistMode, draftDirty, query.data]);
+  }, [blankChoices, draftDirty, query.data]);
 
   const mutation = useMutation({
     mutationFn: (values: SchedulingSettingsInput) =>
       saveSchedulingSettings(workspaceId, values),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey });
+      setChecklistSaved(true);
       setDraftDirty(false);
       setSaved(true);
     },
@@ -97,7 +102,7 @@ export default function SchedulingSettingsPage() {
     if (!canEdit) return;
     setSaved(false);
     setValidationError(null);
-    if (checklistMode && (!draft.week_start_day || !draft.time_format)) {
+    if (blankChoices && (!draft.week_start_day || !draft.time_format)) {
       setValidationError("Choose week start and time format before saving.");
       return;
     }
@@ -136,7 +141,7 @@ export default function SchedulingSettingsPage() {
     >
       <SettingsHeader
         icon={<CalendarClock size={21} aria-hidden />}
-        title="Scheduling"
+        title="Schedule rules"
         description="Week boundaries, publishing targets, and availability preferences."
       />
       {query.isLoading ? (
@@ -258,7 +263,9 @@ export default function SchedulingSettingsPage() {
                   type="submit"
                   disabled={
                     mutation.isPending ||
-                    (checklistMode &&
+                    // BL-677 (1): nothing changed, nothing to save.
+                    !draftDirty ||
+                    (blankChoices &&
                       (!draft.week_start_day || !draft.time_format))
                   }
                 >

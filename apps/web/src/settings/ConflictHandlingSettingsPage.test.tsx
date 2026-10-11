@@ -175,6 +175,20 @@ describe("ConflictHandlingSettingsPage", () => {
     expect(screen.getByText("Availability is a preference: you'll see a warning, never a block.")).toBeTruthy();
   });
 
+  // BL-677 (2): typing a value back to what is saved leaves nothing to save.
+  it("is no longer unsaved once a change is undone", async () => {
+    renderPage();
+    const input = (await screen.findByLabelText(
+      "Minimum travel time (minutes)",
+    )) as HTMLInputElement;
+    const saved = input.value;
+    const save = screen.getByRole("button", { name: "Save conflict rules" });
+    fireEvent.change(input, { target: { value: "45" } });
+    expect(save).toHaveProperty("disabled", false);
+    fireEvent.change(input, { target: { value: saved } });
+    expect(save).toHaveProperty("disabled", true);
+  });
+
   it("does not silently turn a cleared minimum into zero", async () => {
     renderPage();
     const input = await screen.findByLabelText(

@@ -166,6 +166,10 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
       savedType.default_end_time !== draft.default_end_time),
   );
   const parsedDraft = shiftTypeInputSchema.safeParse(draft);
+  const sameHours = Boolean(
+    draft.default_start_time &&
+    draft.default_start_time === draft.default_end_time,
+  );
   const canSave =
     canEdit &&
     !saveMutation.isPending &&
@@ -337,6 +341,8 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                       required
                       disabled={!canEdit || saveMutation.isPending}
                       value={draft.default_end_time ?? ""}
+                      aria-invalid={sameHours || undefined}
+                      aria-describedby={sameHours ? "shift-catalog-time-error" : undefined}
                       onChange={(event) =>
                         setDraft((current) => ({
                           ...current,
@@ -344,6 +350,12 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                         }))
                       }
                     />
+                    {/* BL-677 (3): the schema's refusal, said where Save went grey. */}
+                    {sameHours ? (
+                      <small className="form-error" id="shift-catalog-time-error">
+                        Start and end times must be different.
+                      </small>
+                    ) : null}
                   </div>
                 </div>
               </fieldset>
