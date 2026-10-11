@@ -12192,13 +12192,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font: inherit;
   line-height: 1.45;
 }
+/* BL-900: the danger token, not a near-copy of it. */
 .nf-button.danger-text-button {
   background: transparent;
-  color: #a04033;
+  color: var(--theme-danger-strong);
   box-shadow: none;
 }
 .nf-button.danger-button {
-  background: #a84034;
+  background: var(--theme-danger-strong);
 }
 .document-fields {
   display: grid;
