@@ -50,6 +50,24 @@ describe("ScheduleLocationHeader", () => {
     expect(onToggleLocationFilter).toHaveBeenLastCalledWith(["loc-1", "loc-2"]);
   });
 
+  // BL-713: the status is not told by the dot's color alone. Focusing the header
+  // reads it out with the location's name.
+  it("names the publication status for the keyboard and screen reader", () => {
+    render(
+      <ScheduleLocationHeader
+        location={{ ...unifiedLocation, sourceNames: [unifiedLocation.sourceNames[0]!], name: "Main Dining" }}
+        locationIndex={0}
+        daysLength={7}
+        weekStartDate="2026-09-21"
+        currentDate="2026-09-01"
+        onToggleLocationFilter={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("img", { name: "Unpublished" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "Unpublished Main Dining" })).toBeTruthy();
+  });
+
   // BL-683: the publish deadline is the manager's job; an employee looking at the
   // same week is not told to publish it.
   it("never asks an employee to publish a week whose deadline is near", () => {
