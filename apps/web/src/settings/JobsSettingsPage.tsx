@@ -31,6 +31,7 @@ import { CatalogArchiveButton, CatalogRowMenu as RowMenu } from "./CatalogRowMen
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 type View = "hierarchy" | "departments" | "jobs";
 type SortKey = "name" | "department" | "jobs" | "employees";
 /** "1 job", "2 jobs". */
@@ -451,6 +452,7 @@ export default function JobsSettingsPage() {
         <div
           className="job-view-control"
           role="tablist"
+          onKeyDown={onTabListKeyDown}
           aria-label="Jobs settings view"
         >
           {(
@@ -465,6 +467,7 @@ export default function JobsSettingsPage() {
               type="button"
               role="tab"
               aria-selected={view === value}
+              tabIndex={view === value ? 0 : -1}
               onClick={() => {
                 setEditor(null);
                 updateParams({ view: value });

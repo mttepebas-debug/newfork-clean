@@ -68,6 +68,14 @@ describe("Locations list", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
     expect(screen.getByRole("button", { name: /^Deniz/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Main/ })).toBeNull();
+    // BL-602: ← → walk the tabs; the list is one Tab stop.
+    const archived = screen.getByRole("tab", { name: "Archived" });
+    expect(archived.tabIndex).toBe(0);
+    expect(screen.getByRole("tab", { name: "Active" }).tabIndex).toBe(-1);
+    archived.focus();
+    fireEvent.keyDown(archived, { key: "ArrowLeft" });
+    expect(document.activeElement?.textContent).toBe("Active");
+    expect(screen.getByRole("button", { name: /^Main/ })).toBeTruthy();
   });
   it("says where archived locations go when there are none", async () => {
     page();

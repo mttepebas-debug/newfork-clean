@@ -33,6 +33,7 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 const emptyLocation: LocationDraft = {
   name: "",
   short_name: "",
@@ -211,6 +212,7 @@ export default function LocationsSettingsPage() {
           <div
             className="catalog-status-tabs"
             role="tablist"
+            onKeyDown={onTabListKeyDown}
             aria-label="Location status"
           >
             {(
@@ -224,6 +226,7 @@ export default function LocationsSettingsPage() {
                 type="button"
                 role="tab"
                 aria-selected={tab === value}
+                tabIndex={tab === value ? 0 : -1}
                 className={tab === value ? "active" : ""}
                 onClick={() => setTab(value)}
               >

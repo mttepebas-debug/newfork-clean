@@ -28,6 +28,7 @@ import { formatsLabel } from "../documents/document-rules";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 const defaultDraft: DocumentTypeInput = {
   title: "",
   description: "",
@@ -247,6 +248,7 @@ export default function DocumentsSettingsPage() {
               <div
                 className="catalog-status-tabs"
                 role="tablist"
+                onKeyDown={onTabListKeyDown}
                 aria-label="Document status"
               >
                 {(["all", "draft", "published", "archived"] as const).map(
@@ -256,6 +258,7 @@ export default function DocumentsSettingsPage() {
                       role="tab"
                       key={value}
                       aria-selected={status === value}
+                      tabIndex={status === value ? 0 : -1}
                       className={status === value ? "active" : ""}
                       onClick={() => setStatus(value)}
                     >
