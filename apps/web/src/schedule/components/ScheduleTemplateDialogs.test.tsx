@@ -106,6 +106,8 @@ describe("ScheduleTemplatesDialog", () => {
     renderDialog();
 
     const dialog = screen.getByRole("dialog", { name: "Schedule templates" });
+    // BL-711: the keyboard is inside the window when it opens.
+    expect(dialog.contains(document.activeElement)).toBe(true);
     expect(dialog.getAttribute("aria-describedby")).toBe(
       "schedule-template-dialog-description",
     );
