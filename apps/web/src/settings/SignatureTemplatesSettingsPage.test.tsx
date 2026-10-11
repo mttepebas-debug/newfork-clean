@@ -102,3 +102,52 @@ it("keeps the row menu open on the approval's confirm step", async () => {
   expect(menu.hasAttribute("open")).toBe(true);
   expect(screen.getByRole("button", { name: "Confirm approval" })).toBeTruthy();
 });
+
+// BL-662: a search that finds nothing is not an empty catalog.
+it("says nothing matches when a search hides every retention policy", async () => {
+  vi.mocked(listSignatureSettings).mockResolvedValue({
+    policies: [
+      {
+        id: "00000000-0000-4000-8000-000000000010",
+        workspace_id: "00000000-0000-4000-8000-000000000001",
+        name: "California payroll",
+        retention_trigger: "signed_at",
+        duration_days: 1460,
+        jurisdiction_scope: "California",
+        authority_reference: "Labor Code 226",
+        status: "draft",
+        approved_at: null,
+        archived_at: null,
+      },
+    ] as never,
+    templates: [],
+    versions: [],
+  });
+  mount();
+  fireEvent.click(await screen.findByRole("tab", { name: "Retention" }));
+  await screen.findByText("California payroll");
+  fireEvent.change(screen.getByLabelText("Search acknowledgements"), {
+    target: { value: "Texas" },
+  });
+  expect(screen.getByText("No retention policies match this view")).toBeTruthy();
+  expect(screen.queryByText("No retention policies yet")).toBeNull();
+});
+it("says nothing matches when every template is archived and archived ones are hidden", async () => {
+  vi.mocked(listSignatureSettings).mockResolvedValue({
+    policies: [],
+    templates: [
+      {
+        id: "00000000-0000-4000-8000-000000000020",
+        workspace_id: "00000000-0000-4000-8000-000000000001",
+        name: "Uniform policy",
+        archived_at: "2026-09-01T00:00:00.000Z",
+      },
+    ] as never,
+    versions: [],
+  });
+  mount();
+  expect(
+    await screen.findByText("No acknowledgement templates match this view"),
+  ).toBeTruthy();
+  expect(screen.queryByText("No acknowledgement templates yet")).toBeNull();
+});

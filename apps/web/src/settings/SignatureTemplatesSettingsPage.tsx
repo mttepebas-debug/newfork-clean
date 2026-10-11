@@ -869,6 +869,7 @@ export default function SignatureTemplatesSettingsPage() {
                 .toLowerCase()
                 .includes(search.trim().toLowerCase()),
           )}
+          hidden={data.policies.length > 0}
           canManage={canManage}
           confirmAction={confirmAction}
           setConfirmAction={setConfirmAction}
@@ -886,6 +887,7 @@ export default function SignatureTemplatesSettingsPage() {
               (showArchived || !item.archived_at) &&
               item.name.toLowerCase().includes(search.trim().toLowerCase()),
           )}
+          hidden={data.templates.length > 0}
           policies={data.policies}
           versionsFor={versionsFor}
           canManage={canManage}
@@ -1088,8 +1090,11 @@ function RetentionList({
   edit,
   approve,
   archive,
+  hidden,
 }: {
   readonly policies: SignatureRetentionPolicy[];
+  /** BL-662: some exist, but the search or Show archived hides them all. */
+  readonly hidden: boolean;
   readonly canManage: boolean;
   readonly confirmAction: {
     type: "approve" | "publish" | "unapprove" | "unpublish";
@@ -1105,6 +1110,13 @@ function RetentionList({
   readonly approve: (id: string) => void;
   readonly archive: (id: string, archived: boolean) => void;
 }) {
+  if (policies.length === 0 && hidden)
+    return (
+      <Empty
+        title="No retention policies match this view"
+        text="Try another search, or show archived ones."
+      />
+    );
   if (policies.length === 0)
     return (
       <Empty
@@ -1360,8 +1372,11 @@ function TemplateList({
   preview,
   publish,
   archive,
+  hidden,
 }: {
   readonly templates: SignatureTemplate[];
+  /** BL-662: some exist, but the search or Show archived hides them all. */
+  readonly hidden: boolean;
   readonly policies: SignatureRetentionPolicy[];
   readonly versionsFor: (id: string) => SignatureTemplateVersion[];
   readonly canManage: boolean;
@@ -1380,6 +1395,13 @@ function TemplateList({
   readonly publish: (id: string) => void;
   readonly archive: (id: string, archived: boolean) => void;
 }) {
+  if (templates.length === 0 && hidden)
+    return (
+      <Empty
+        title="No acknowledgement templates match this view"
+        text="Try another search, or show archived ones."
+      />
+    );
   if (templates.length === 0)
     return (
       <Empty
