@@ -206,12 +206,14 @@ describe("ExchangeReview", () => {
         </MemoryRouter>
       </QueryClientProvider>
     );
-    const { rerender } = render(view(cover));
+    // Emma and Diego asked; once Diego is declined only Emma is left (train CI 38148426482).
+    const two = { ...cover, applications: cover.applications.filter((item) => item.id !== sophie) } as ExchangeCase;
+    const { rerender } = render(view(two));
     fireEvent.click(screen.getByRole("button", { name: "Decline Diego Morales" }));
     fireEvent.change(screen.getByLabelText("Reason for Diego"), { target: { value: "You are off that day" } });
     fireEvent.click(within(footer()).getByRole("button", { name: "Decline Diego" }));
     fireEvent.click(within(footer()).getByRole("button", { name: "Confirm decline" }));
-    rerender(view({ ...cover, revision: 5, applications: cover.applications.filter((item) => item.id !== diego) } as ExchangeCase));
+    rerender(view({ ...two, revision: 5, applications: two.applications.filter((item) => item.id !== diego) } as ExchangeCase));
     answer({ case_id: caseId, revision: 5, status: "open" });
     await waitFor(() => expect(onDone).toHaveBeenCalledWith("Diego's request is declined. The others can still take the shift."));
     expect(screen.queryByRole("alert")).toBeNull();
