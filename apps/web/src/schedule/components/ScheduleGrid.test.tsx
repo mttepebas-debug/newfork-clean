@@ -206,6 +206,21 @@ describe("ScheduleGrid", () => {
     expect(container.querySelector('[data-availability-kind="time_off"]')).not.toBeNull();
   });
 
+  // Mert, 2026-10-10: a cell of full-day approved time off opens no Add shift;
+  // a partial day keeps it (the server still refuses any overlapping hours).
+  it.each([
+    ["the whole day", "2026-08-23T07:00:00Z", "2026-08-24T07:00:00Z", false],
+    ["part of the day", "2026-08-23T16:00:00Z", "2026-08-23T20:00:00Z", true],
+  ] as const)("time off for %s (%s to %s): Add shift shows = %s", (_label, start_at, end_at, addShows) => {
+    const marked = availabilityModel([], false);
+    const model = { ...marked, employees: marked.employees.map((employee) => ({ ...employee,
+      weekly_availability: employee.weekly_availability?.map((week) => ({ ...week, leave_intervals: [{ start_at, end_at }] })) })) };
+    const { container } = renderGrid({ model, session: editSession(model) });
+    const cell = container.querySelector('[data-availability-kind="time_off"][data-date="2026-08-23"]');
+    expect(cell).not.toBeNull();
+    expect(cell!.querySelector("[data-schedule-add-shift-control]") !== null).toBe(addShows);
+  });
+
   it.each([
     ["(a) some clash", [true, false], 1, false],
     ["(b) none clash", [false, false, false], 0, true],

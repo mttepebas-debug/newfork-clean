@@ -7,6 +7,7 @@ import {
   formatNoteBy,
   formatNoteWhen,
   formatAvailabilityMarkLine,
+  isFullDayTimeOff,
   mergeAvailabilityMarks,
   nameCellShowsAvailabilityMark,
   scheduleAvailabilityMarks,
@@ -78,6 +79,18 @@ describe("scheduleAvailabilityMarks", () => {
 
   it("reads nothing from a projection that is not ready", () => {
     expect(scheduleAvailabilityMarks(projection({ status: "unknown", days: [] })).size).toBe(0);
+  });
+});
+
+describe("isFullDayTimeOff", () => {
+  // Mert, 2026-10-10: a cell of full-day approved time off opens no Add shift.
+  it("is true only when the time off covers the whole local day", () => {
+    expect(isFullDayTimeOff({ kind: "time_off", ranges: [{ from: 0, to: 1440 }] })).toBe(true);
+    expect(isFullDayTimeOff({ kind: "time_off", ranges: [{ from: 600, to: 1440 }, { from: 0, to: 600 }] })).toBe(true);
+    expect(isFullDayTimeOff({ kind: "time_off", ranges: [{ from: 0, to: 600 }, { from: 601, to: 1440 }] })).toBe(false);
+    expect(isFullDayTimeOff({ kind: "time_off", ranges: [{ from: 540, to: 780 }] })).toBe(false);
+    expect(isFullDayTimeOff({ kind: "unavailable", windows: [{ from: 0, to: 1440 }] })).toBe(false);
+    expect(isFullDayTimeOff(null)).toBe(false);
   });
 });
 

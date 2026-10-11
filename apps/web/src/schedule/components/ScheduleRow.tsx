@@ -24,6 +24,7 @@ import type { ShiftDragState } from "../hooks/useSingleShiftPointerDrag";
 import {
   formatAvailabilityMarkDay,
   formatAvailabilityMarkLine,
+  isFullDayTimeOff,
   nameCellShowsAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
@@ -276,6 +277,8 @@ export function ScheduleRow({
           const availabilityMark = employee
             ? (derivedCellState?.availabilityMark ?? null)
             : null;
+          // Mert, 2026-10-10: full-day approved time off opens no Add shift.
+          const canAddShift = editing && !isFullDayTimeOff(availabilityMark);
           const cellKey = `${rowKey}-${location.id}-${day}`;
           const editorOwnsCell = Boolean(
             activeEditorTarget &&
@@ -410,7 +413,7 @@ export function ScheduleRow({
                 )
               }
               onDoubleClick={(event) =>
-                editing &&
+                canAddShift &&
                 (!pasteArmed || !clipboard) &&
                 onCreate(interactionLocationId, employee?.id ?? null, day, {
                   x: event.clientX,
@@ -473,7 +476,7 @@ export function ScheduleRow({
                   />
                 ),
               )}
-              {editing ? (
+              {canAddShift ? (
                 <button
                   type="button"
                   className={`schedule-cell-add-action ${
