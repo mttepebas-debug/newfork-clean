@@ -603,6 +603,9 @@ describe("Phase 8 communication pages", () => {
     expect(await screen.findByText("New memo")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Unread (2)" }).getAttribute("aria-selected")).toBe("true");
     await screen.findByRole("tab", { name: "Read (1)" });
+    // BL-602: the tab list is one Tab stop.
+    expect(screen.getByRole("tab", { name: "Unread (2)" }).tabIndex).toBe(0);
+    expect(screen.getByRole("tab", { name: "Read (1)" }).tabIndex).toBe(-1);
     expect(screen.getByRole("combobox", { name: "Notification category" })).toBeTruthy();
     for (const gone of ["Mark all read", "Select all", "Deselect all", "Unread only"])
       expect(screen.queryByText(gone)).toBeNull();

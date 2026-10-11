@@ -30,6 +30,7 @@ import { CatalogPageHeader } from "./CatalogPageHeader";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 type Category = "all" | NotificationCategory;
 type ReadTab = "unread" | "read";
 type NotificationMutationInput = {
@@ -157,6 +158,7 @@ export function NotificationsPage() {
           <div
             className="catalog-status-tabs"
             role="tablist"
+            onKeyDown={onTabListKeyDown}
             aria-label="Read state"
           >
             {(
@@ -170,6 +172,7 @@ export function NotificationsPage() {
                 type="button"
                 role="tab"
                 aria-selected={tab === value}
+                tabIndex={tab === value ? 0 : -1}
                 className={tab === value ? "active" : ""}
                 onClick={() => switchTab(value)}
               >
