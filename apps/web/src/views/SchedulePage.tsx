@@ -514,6 +514,9 @@ export function SchedulePage({
       const blockedTarget = topActionBlockedClickTargetRef.current;
       topActionBlockedClickTargetRef.current = null;
       if (!isSuppressedScheduleClickTarget(blockedTarget, target)) return;
+      // This click never reaches the page's own capture handler, which would
+      // spend the same press; spend it here, or the next click is eaten too.
+      suppressedScheduleClickTargetRef.current = null;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
