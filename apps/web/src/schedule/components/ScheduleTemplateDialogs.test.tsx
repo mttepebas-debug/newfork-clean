@@ -297,6 +297,20 @@ describe("ScheduleTemplatesDialog", () => {
     );
   });
 
+  it("counts only the departments chosen under Only some departments", async () => {
+    const props = renderDialog({ session: { ...session, shifts: [{ ...shiftFixture }] } });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Back of house" }));
+    fireEvent.click(screen.getByRole("button", { name: "Replace current shifts" }));
+
+    await waitFor(() =>
+      expect(props.onPreviewReplace).toHaveBeenCalledWith(template.id, [
+        "77777777-7777-4777-8777-777777777777",
+        TEMPLATE_NO_DEPARTMENT_KEY,
+      ]),
+    );
+  });
+
   it("still asks twice when the count cannot be read", async () => {
     const props = renderDialog({
       session: { ...session, shifts: [{ ...shiftFixture }] },

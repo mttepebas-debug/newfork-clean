@@ -42,7 +42,8 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, open = true):
         return;
       }
       const active = document.activeElement as HTMLElement | null;
-      const inside = Boolean(active && root.contains(active));
+      // A spot that is no stop (the window itself, a tabindex="-1" note) wraps too.
+      const inside = Boolean(active && elements.includes(active));
       if (event.shiftKey && (active === first || !inside)) {
         event.preventDefault();
         last.focus();
