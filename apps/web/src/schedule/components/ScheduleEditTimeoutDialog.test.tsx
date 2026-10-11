@@ -25,6 +25,10 @@ describe("ScheduleEditTimeoutDialog", () => {
     expect(screen.getByText("Time left")).toBeTruthy();
     expect(screen.getByText("150")).toBeTruthy();
     expect(screen.getByText("No activity for 15 minutes.")).toBeTruthy();
+    // BL-719: the window says what happens when the time runs out (S1).
+    expect(
+      screen.getByText("When time runs out, your changes are saved as a draft and editing ends."),
+    ).toBeTruthy();
     expect(
       dialog.querySelector<HTMLElement>(".schedule-timeout-progress span")?.style
         .width,
