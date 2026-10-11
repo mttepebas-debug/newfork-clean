@@ -38,6 +38,7 @@ import {
   listScheduleExportSchedules,
   listScheduleRecentExports,
   listScheduleTemplates,
+  applyScheduleTemplate,
   previewScheduleAutoFill,
   previewSchedulePublication,
   previewScheduleUnpublish,
@@ -4445,6 +4446,8 @@ describe("App", () => {
     fireEvent.keyDown(window, { key: "z", metaKey: true });
     fireEvent.keyDown(close, { key: "Delete" });
     fireEvent.keyDown(close, { key: "v", ctrlKey: true });
+    fireEvent.paste(close);
+    fireEvent.paste(window);
 
     expect(undoMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Paste mode on" })).toBeNull();
@@ -6516,6 +6519,46 @@ describe("App", () => {
     expect(await screen.findByText("Applied 1 shift.")).toBeTruthy();
     expect(applyScheduleAutoFill).toHaveBeenCalledTimes(2);
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText(/edit lease expired/)).toBeNull();
+  });
+
+  // BL-975 (review): applying a template after the lock lapsed picks the same
+  // edit back up and applies once more.
+  it("picks the edit back up when the lock lapsed before a template is applied", async () => {
+    const acquired = makeDefaultEditAcquireResult();
+    const template = {
+      id: "99999999-9999-4999-8999-999999999980",
+      workspace_id: scheduleFixture.workspace_id,
+      name: "Base week",
+      revision: 1,
+      shift_count: 1,
+      open_slot_count: 0,
+      created_by_name: "Development Owner",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(listScheduleTemplates).mockResolvedValue({ templates: [template] });
+    vi.mocked(applyScheduleTemplate)
+      .mockRejectedValueOnce(new ScheduleRequestError("edit lease expired", 409, {
+        error: "edit lease expired", code: "edit_lease_expired",
+      }))
+      .mockImplementationOnce(async (_workspaceId, session) => ({
+        session, applied_count: 1, skipped: [],
+      }) as never);
+    vi.mocked(acquireScheduleEditSession)
+      .mockResolvedValueOnce(acquired)
+      .mockResolvedValueOnce({ ...acquired, status: "resumed" });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
+    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Base week/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^(Merge|Apply template)$/ }));
+
+    await waitFor(() => expect(applyScheduleTemplate).toHaveBeenCalledTimes(2));
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Schedule templates" })).toBeNull());
     expect(screen.queryByText(/edit lease expired/)).toBeNull();
   });
 

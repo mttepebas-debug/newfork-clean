@@ -30,6 +30,8 @@ describe("schedule edit error text (BL-976)", () => {
 
   it("leaves every other refusal as it was", () => {
     const lapsed = conflict("edit lease expired", "edit_lease_expired");
+    const otherConflict = conflict("Review changed");
+    expect(autoFillApplyError(otherConflict)).toBe(otherConflict);
     const rule = new ScheduleRequestError("Employee is on approved time off", 400, { error: "Employee is on approved time off" });
     expect(autoFillApplyError(lapsed)).toBe(lapsed);
     expect(autoFillApplyError(rule)).toBe(rule);
