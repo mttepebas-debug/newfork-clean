@@ -1183,9 +1183,11 @@ function RetentionList({
                   ) : (
                     <button
                       type="button"
-                      onClick={() =>
-                        setConfirmAction({ type: "approve", id: policy.id })
-                      }
+                      onClick={(event) => {
+                        // BL-1010: the confirm step shows in the same open menu.
+                        event.stopPropagation();
+                        setConfirmAction({ type: "approve", id: policy.id });
+                      }}
                     >
                       Approve policy
                     </button>
@@ -1475,9 +1477,11 @@ function TemplateList({
                     ) : (
                       <button
                         type="button"
-                        onClick={() =>
-                          setConfirmAction({ type: "publish", id: template.id })
-                        }
+                        onClick={(event) => {
+                          // BL-1010: the confirm step shows in the same open menu.
+                          event.stopPropagation();
+                          setConfirmAction({ type: "publish", id: template.id });
+                        }}
                       >
                         Publish template
                       </button>
