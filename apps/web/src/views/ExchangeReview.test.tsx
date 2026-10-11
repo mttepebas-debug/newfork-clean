@@ -193,6 +193,30 @@ describe("ExchangeReview", () => {
     });
   });
 
+  // Train CI 38147392878: the live refresh reached the drawer before the save
+  // answered and no longer listed Diego; the message still names him.
+  it("names the declined person when a refresh drops them before the save answers", async () => {
+    let answer!: (value: unknown) => void;
+    vi.mocked(changeExchange).mockReturnValue(new Promise((resolve) => { answer = resolve; }) as never);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = (item: ExchangeCase) => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ExchangeReview item={item} workspace={workspace} timeFormat="12h" onClose={onClose} onDone={onDone} onHold={onHold} />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(view(cover));
+    fireEvent.click(screen.getByRole("button", { name: "Decline Diego Morales" }));
+    fireEvent.change(screen.getByLabelText("Reason for Diego"), { target: { value: "You are off that day" } });
+    fireEvent.click(within(footer()).getByRole("button", { name: "Decline Diego" }));
+    fireEvent.click(within(footer()).getByRole("button", { name: "Confirm decline" }));
+    rerender(view({ ...cover, revision: 5, applications: cover.applications.filter((item) => item.id !== diego) } as ExchangeCase));
+    answer({ case_id: caseId, revision: 5, status: "open" });
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith("Diego's request is declined. The others can still take the shift."));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("goes back from a reason on Escape and keeps what was typed", () => {
     renderReview();
     fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
