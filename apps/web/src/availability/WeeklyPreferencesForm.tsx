@@ -134,8 +134,8 @@ function PreferenceForm({
       setSaved(true);
     } catch (cause) {
       setConflict(
-        Boolean(cause) &&
-          typeof cause === "object" &&
+        typeof cause === "object" &&
+          cause !== null &&
           "status" in cause &&
           Number(cause.status) === 409,
       );
