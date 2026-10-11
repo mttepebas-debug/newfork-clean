@@ -3217,7 +3217,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #edf3f0;
 }
 .calendar-day.outside {
-  color: #87918d;
+  color: var(--theme-muted);
   font-weight: 650;
 }
 .calendar-day.in-week {
