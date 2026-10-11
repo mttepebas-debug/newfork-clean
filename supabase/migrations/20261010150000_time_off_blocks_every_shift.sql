@@ -79,7 +79,8 @@ select pg_temp.patch('public.shift_exchanges_command_service(uuid,uuid,jsonb,uui
   E'jsonb_build_object(''operation'',''swap'',''excluded'',jsonb_build_array(s->>''id'',t->>''id'')))->>''status''<>''eligible'' then raise exception ''You are not eligible for the teammate shift''', '1',
   E',private_note,created_by,owner_time_off_consent)', E',private_note,created_by)', '1',
   E'coalesce(command->>''note'',''''),actor,consent) returning', E'coalesce(command->>''note'',''''),actor) returning', '1',
-  E'consent:=public.weekly_exchange_time_off_consent(w,emp.id,s);\n', '', '2',
+  E'\n   consent:=public.weekly_exchange_time_off_consent(w,emp.id,s);', '', '1',
+  E'\n     consent:=public.weekly_exchange_time_off_consent(w,emp.id,s);', '', '1',
   E'else ''release_pickup'' end,''consent'',consent))->>''status''', E'else ''release_pickup'' end))->>''status''', '1',
   E'consent_fingerprint,time_off_consent) values(w,cid,emp.id,''pending_manager'',c.consent_fingerprint,consent)',
   E'consent_fingerprint) values(w,cid,emp.id,''pending_manager'',c.consent_fingerprint)', '1',
@@ -141,5 +142,8 @@ select pg_temp.patch('public.reconcile_notification_platform_service()', array[
 ]);
 
 drop function public.weekly_exchange_time_off_consent(uuid, uuid, jsonb);
+-- Only the consent check read these two (review @85beca7b): nothing calls them now.
+drop function public.time_off_leave_intervals(jsonb);
+drop function public.availability_json_ranges(jsonb);
 alter table public.shift_exchange_cases drop column owner_time_off_consent;
 alter table public.shift_exchange_applications drop column time_off_consent;

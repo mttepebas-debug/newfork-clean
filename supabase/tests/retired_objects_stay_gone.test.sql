@@ -213,6 +213,8 @@ insert into retired (kind, name, step) values
 -- Mert 2026-10-09); the consent each side of an exchange gave is gone.
 insert into retired (kind, name, step) values
   ('function', 'weekly_exchange_time_off_consent', 'BL-995'),
+  ('function', 'time_off_leave_intervals', 'BL-995'),
+  ('function', 'availability_json_ranges', 'BL-995'),
   ('column', 'shift_exchange_cases.owner_time_off_consent', 'BL-995'),
   ('column', 'shift_exchange_applications.time_off_consent', 'BL-995');
 -- FB-6.1.9: Settings > Roles reads through read_role_workspace_service.
