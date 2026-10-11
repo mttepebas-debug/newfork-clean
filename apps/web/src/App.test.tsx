@@ -931,7 +931,7 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "General" }, lazyRoute),
     ).toBeTruthy();
     const settingsNav = within(
-      screen.getByRole("navigation", { name: "Organization settings" }),
+      screen.getByRole("navigation", { name: "Workspace settings" }),
     );
     expect(settingsNav.getByRole("link", { name: "Schedule rules" })).toBeTruthy();
     expect(settingsNav.getByRole("link", { name: "Shift catalog" })).toBeTruthy();
