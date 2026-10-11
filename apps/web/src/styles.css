@@ -12116,6 +12116,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .organization-form-actions {
   display: flex;
   justify-content: flex-end;
+  /* BL-659: Reload rules sat glued to Save. */
+  gap: 8px;
   padding: 17px 24px;
   border-top: 1px solid var(--theme-border-subtle);
 }

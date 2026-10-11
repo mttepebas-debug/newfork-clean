@@ -444,6 +444,13 @@ describe("job assignment drawer", () => {
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(close).not.toHaveBeenCalled();
+    // BL-659: Discard throws the edits away, so it is red; Keep editing white.
+    expect(screen.getByRole("button", { name: "Discard changes" }).className).toBe(
+      "job-danger-button",
+    );
+    expect(screen.getByRole("button", { name: "Keep editing" }).className).toBe(
+      "job-secondary-button",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     cleanup();

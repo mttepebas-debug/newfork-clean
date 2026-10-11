@@ -208,6 +208,10 @@ describe("ConflictHandlingSettingsPage", () => {
       ...conflictSettings,
       conflict_rules_revision: 4,
     });
+    // BL-659: Reload throws the edits away; it is white, not a second Save.
+    expect(screen.getByRole("button", { name: "Reload rules" }).className).toContain(
+      "secondary-button",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Reload rules" }));
     await waitFor(() => expect(input).toHaveProperty("value", "30"));
   });
