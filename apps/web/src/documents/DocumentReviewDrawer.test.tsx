@@ -1201,6 +1201,34 @@ describe("download, document time zone and deadline extension", () => {
     );
     await waitFor(() => expectRefreshed(invalidate));
   });
+  // BL-828: someone changed the person's record first; the document revision
+  // is the same, the person's is newer. The drawer reloads and says so.
+  it("says the document changed when the person's record moved on before a time zone save", async () => {
+    const doc = detail();
+    doc.timezone_settings = {
+      value: "America/Chicago",
+      configured_value: "America/Chicago",
+      employee_revision: 4,
+      can_manage: true,
+    };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(setDocumentTimezone).mockRejectedValueOnce(
+      new RequestError("employee changed; refresh required", undefined, undefined, 409),
+    );
+    page();
+    fireEvent.change(await screen.findByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/Denver" },
+    });
+    const later = detail();
+    later.timezone_settings = { ...doc.timezone_settings, employee_revision: 5 };
+    vi.mocked(getDocument).mockResolvedValue(later);
+    fireEvent.click(screen.getByRole("button", { name: "Save document time zone" }));
+
+    expect(
+      await screen.findByText("This document changed. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("employee changed; refresh required")).toBeNull();
+  });
   it("hides the document time zone from whoever cannot manage it", async () => {
     const doc = detail();
     doc.timezone_settings = {
