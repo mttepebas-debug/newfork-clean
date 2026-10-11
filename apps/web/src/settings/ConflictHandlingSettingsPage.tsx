@@ -251,6 +251,7 @@ export default function ConflictHandlingSettingsPage() {
             <div className="organization-form-actions">
               <Button
                 type="button"
+                className="secondary-button"
                 onClick={async () => {
                   const result = await query.refetch();
                   if (result.data) {

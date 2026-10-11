@@ -159,6 +159,7 @@
   flex: 0 0 14px;
 }
 .job-primary-button,
+.job-danger-button,
 .job-secondary-button,
 .job-small-button {
   display: inline-flex;
@@ -182,6 +183,16 @@
 }
 .job-primary-button:hover:not(:disabled) {
   background: #205943;
+}
+/* BL-659: Discard throws the edits away: red, like ConfirmDialog's Discard
+   (KARARLAR "Discard … changes?"). */
+.job-danger-button {
+  background: var(--theme-danger-strong);
+  color: white;
+  border-color: var(--theme-danger-strong);
+}
+.job-danger-button:hover:not(:disabled) {
+  background: #8e2f28;
 }
 .job-secondary-button:hover:not(:disabled),
 .job-small-button:hover:not(:disabled) {
