@@ -6,7 +6,7 @@ import { SwapReview } from "./SwapReview";
 import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TimeOffShorten } from "./TimeOffShorten";
@@ -14,7 +14,8 @@ import { TimeOffReview } from "./TimeOffReview";
 import type { DrawerNotice } from "./RequestDrawer";
 import { alsoOffThese } from "../schedule/time-off-overlap";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
-import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
+import { ExchangeReview } from "./ExchangeReview";
+import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
@@ -103,6 +104,34 @@ function ScheduleRequestsPageContent() {
   const counts = openCounts(allRows);
   const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => tabOf(row.type) === view.type), view.page, view.pageSize);
   const swap = openSwap ? (data.exchanges.find((item) => item.id === openSwap.id) ?? openSwap) : null;
+  // A cover or an open shift opens its drawer over the list (Mert,
+  // 2026-10-11); ?case= names it, so Back closes it and a notification link
+  // lands on it. Like the swap window, it keeps the last copy it saw (P26).
+  const caseId = params.get("case") ?? "";
+  const [seenCase, setSeenCase] = useState<ExchangeCase | null>(null);
+  const inList = caseId ? data.exchanges.find((item) => item.id === caseId) : undefined;
+  // A link to a case the list does not carry reads that one case.
+  const caseRead = useQuery({
+    queryKey: ["shift-exchanges", workspaceId, "manager-case", caseId],
+    queryFn: () => getExchanges(workspaceId, true, { caseId }),
+    enabled: Boolean(caseId && canReadShift && !data.isLoading && !inList && seenCase?.id !== caseId),
+    retry: false,
+  });
+  const listedCase = inList ?? caseRead.data?.cases.find((item) => item.id === caseId) ?? null;
+  useEffect(() => {
+    if (listedCase && listedCase.kind !== "swap") setSeenCase(listedCase);
+  }, [listedCase]);
+  // A link to a listed swap opens its review window instead.
+  useEffect(() => {
+    if (listedCase?.kind !== "swap") return;
+    setOpenSwap(listedCase);
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("case");
+      return next;
+    }, { replace: true });
+  }, [listedCase, setParams]);
+  const openCase = listedCase && listedCase.kind !== "swap" ? listedCase : seenCase?.id === caseId ? seenCase : null;
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
   const selected = timeOffById.get(selectedId) ?? null;
@@ -136,10 +165,17 @@ function ScheduleRequestsPageContent() {
       { preventScrollReset: true },
     );
   }
+  function closeCase() {
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("case");
+      return next;
+    }, { replace: true });
+  }
   function openRow(row: RequestRow) {
     // A swap opens its review window over the list (H2). A cover or open
-    // shift opens its review where it lives today (Shift Hub's manager view,
-    // ?case=); that is a step the browser's Back undoes, so it is pushed.
+    // shift opens its drawer (?case=); that is a step the browser's Back
+    // undoes, so it is pushed.
     if (row.source === "exchange" && row.type === "swap") setOpenSwap(row.request);
     else if (row.source === "exchange")
       requestAvailabilityNavigation(() =>
@@ -229,9 +265,10 @@ function ScheduleRequestsPageContent() {
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
     );
-  // Shift Hub reads ?case= itself; manager notification links land here too.
-  // Its Renew swaps ?case= for ?offer=, whose form Shift Hub draws as well.
-  if ((params.has("case") || params.has("offer")) && canReadShift && context)
+  // Shift Hub draws its ?offer= form, and a ?case= the core did not hand back
+  // to this manager: it says what became of it.
+  const caseMissing = Boolean(caseId && !openCase && !listedCase && (caseRead.isSuccess || caseRead.isError));
+  if ((params.has("offer") || caseMissing) && canReadShift && context)
     return (
       <section
         className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
@@ -397,6 +434,21 @@ function ScheduleRequestsPageContent() {
           />
         </CatalogDrawer>
       )}
+      {openCase ? (
+        <CatalogDrawer label="Review shift change" className="requests-catalog-page requests-review-drawer" onClose={closeCase}>
+          <ExchangeReview
+            key={openCase.id}
+            item={openCase}
+            workspace={workspaceId}
+            timeFormat={timeFormat}
+            onClose={closeCase}
+            onDone={(message) => {
+              closeCase();
+              toast.success(message);
+            }}
+          />
+        </CatalogDrawer>
+      ) : null}
       {swap ? (
         <SwapReview
           // One window per swap: a refresh keeps a reason being typed (P26).
