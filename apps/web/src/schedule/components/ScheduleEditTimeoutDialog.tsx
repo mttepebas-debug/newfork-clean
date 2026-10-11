@@ -46,6 +46,8 @@ export function ScheduleEditTimeoutDialog({
         <section>
           <h2 id="schedule-timeout-title">Keep editing?</h2>
           <p>No activity for {idleMinutes} minutes.</p>
+          {/* BL-719 (S1): what the countdown ends in. */}
+          <p>When time runs out, your changes are saved as a draft and editing ends.</p>
           {error ? (
             <p className="schedule-timeout-error" role="alert">
               {error}
