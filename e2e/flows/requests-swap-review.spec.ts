@@ -31,13 +31,13 @@ async function openRequests(browser: Browser, person: Person): Promise<Page> {
 }
 
 // The row's name as Requests writes it: "Ali Person, Swap, Mon, Jan 15, 2029 · 9:00 AM–3:00 PM".
-function rowName(day: string) {
+function rowName(day: string, who = "Ali Person", kind = "Swap") {
   const date = new Date(`${day}T12:00:00`);
   const when = new Intl.DateTimeFormat("en-US", {
     weekday: "short", month: "short", day: "numeric",
     year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
   }).format(date);
-  return new RegExp(`^Ali Person, Swap, ${when.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+  return new RegExp(`^${who}, ${kind}, ${when.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
 }
 
 test("two managers approve a swap from its review window in Requests", async ({ browser }) => {
@@ -77,4 +77,46 @@ test("two managers approve a swap from its review window in Requests", async ({ 
   // BL-180: the shared CI machine can outrun the default poll window.
   await expect.poll(() => holder(roundLabel("ali-k-rv")), { timeout: 30_000 }).toBe("Deniz");
   expect(holder(roundLabel("deniz-b-rv"))).toBe("Ali");
+});
+
+// Requests review (Mert, 2026-10-11): Emre looks for cover; Ali and Deniz both
+// ask for his shift. Ayse declines Ali alone, with a reason only Ali reads;
+// Deniz's request stays and the cover stays in her list.
+test("a manager declines one person asking for a cover; the others stay", async ({ browser }) => {
+  const week = roundWeek(610);
+  const shift = roundLabel("emre-k-dc");
+  const caseId = sql(`
+    select tests.publish_week('${run}', ${week}, '[
+      {"label": "${shift}", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
+    ]');
+    select public.shift_exchanges_command_service(tests.user('${run}:emre'), tests.id('${run}'),
+      jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('${run}:shift:${shift}')),
+      gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
+  for (const who of ["ali", "deniz"]) {
+    sql(`select public.shift_exchanges_command_service(tests.user('${run}:${who}'), tests.id('${run}'),
+        jsonb_build_object('action', 'apply', 'shift_id', tests.id('${run}:shift:${shift}'), 'case_id', '${caseId}'),
+        gen_random_uuid());`);
+  }
+  const day = sql(`select tests.week(${week}) + 2;`);
+
+  const ayse = await openRequests(browser, "ayse");
+  await ayse.getByRole("row", { name: rowName(day, "Emre Person", "Cover") }).first().click();
+  const drawer = ayse.getByRole("dialog", { name: "Review shift change" });
+  await drawer.getByRole("button", { name: "Decline Ali Person" }).click();
+  await drawer.getByLabel("Reason for Ali").fill("You are over your hours this week");
+  await drawer.getByRole("button", { name: "Decline Ali", exact: true }).click();
+  await drawer.getByRole("button", { name: "Confirm decline" }).click();
+  await expect(ayse.getByText("Ali's request is declined. The others can still take the shift.")).toBeVisible();
+
+  await expect.poll(() => sql(`select string_agg(p.first_name || ':' || a.status, ',' order by p.first_name)
+    from public.shift_exchange_applications a join public.employee_profiles p on p.id = a.employee_id
+    where a.case_id = '${caseId}';`)).toBe("Ali:rejected_by_manager,Deniz:pending_manager");
+  // The reason reaches Ali, not Emre, whose shift it is.
+  const reason = (who: string) => sql(`select coalesce(string_agg(h ->> 'message', ','), '')
+    from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('${run}:${who}'), tests.id('${run}'), false,
+      tests.week(${week}), tests.week(${week}) + 6) -> 'cases') c
+    cross join lateral jsonb_array_elements(c -> 'history') h
+    where c ->> 'id' = '${caseId}' and h ->> 'action' = 'application_rejected';`);
+  expect(reason("ali")).toBe("You are over your hours this week");
+  expect(reason("emre")).not.toContain("over your hours");
 });

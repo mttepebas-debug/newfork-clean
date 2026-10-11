@@ -268,7 +268,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
                     {decides ? (
                       <button
                         type="button"
-                        className="nf-button secondary-button rd-small"
+                        className="nf-button danger-outline rd-small"
                         aria-label={`Decline ${application.employee_name}`}
                         disabled={decide.isPending}
                         onClick={() => setStep({ kind: "decline", id: application.id })}
