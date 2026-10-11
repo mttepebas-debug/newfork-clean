@@ -63,6 +63,8 @@ export function ScheduleLocationHeader({
         <span className="schedule-location-header-list">
           <span
             className="schedule-location-status-dot"
+            // BL-713: an image with a name, so the status is read, not only seen.
+            role="img"
             data-status={status.status}
             data-deadline={status.deadlineWarning}
             title={status.label}
@@ -83,6 +85,8 @@ export function ScheduleLocationHeader({
         <span>
           <span
             className="schedule-location-status-dot"
+            // BL-713: an image with a name, so the status is read, not only seen.
+            role="img"
             data-status={status.status}
             data-deadline={status.deadlineWarning}
             title={status.label}
