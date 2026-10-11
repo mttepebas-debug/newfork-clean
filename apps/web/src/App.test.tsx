@@ -1019,6 +1019,45 @@ describe("App", () => {
     ).toBeNull();
   });
 
+  // BL-714: a mouse press on the logo in another week opens the logo window;
+  // it used to jump the week back to today and swallow the click.
+  it("opens the logo window from another week without jumping to today", async () => {
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek("2026-08-24"));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-24");
+    testAuth.role = "owner";
+    render(<App />);
+    const logo = await screen.findByRole("button", { name: "Manage schedule logo" }, { timeout: 5000 });
+
+    fireEvent.pointerDown(logo);
+    fireEvent.click(logo);
+
+    expect(await screen.findByRole("dialog", { name: "Schedule logo" })).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("date")).toBe("2026-08-24");
+  });
+
+  // BL-714 (review): like every grid control, the logo first closes an open top
+  // menu; the next press opens the logo window (that press used to be eaten too).
+  it("closes an open draft menu before the logo opens its window", async () => {
+    window.history.pushState({}, "", "/app/schedule");
+    testAuth.role = "owner";
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
+    );
+    expect(await screen.findByRole("button", { name: "Edit live schedule" })).toBeTruthy();
+
+    const logo = screen.getByRole("button", { name: "Manage schedule logo" });
+    fireEvent.pointerDown(logo);
+    fireEvent.click(logo);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Edit live schedule" })).toBeNull());
+    expect(screen.queryByRole("dialog", { name: "Schedule logo" })).toBeNull();
+
+    const logoAgain = screen.getByRole("button", { name: "Manage schedule logo" });
+    fireEvent.pointerDown(logoAgain);
+    fireEvent.click(logoAgain);
+    expect(await screen.findByRole("dialog", { name: "Schedule logo" })).toBeTruthy();
+  });
+
   // BL-1025 (BL-683): the call to publish soon is for whoever can publish.
   describe("an unpublished week that starts today", () => {
     const unpublishedThisWeek = () => {
