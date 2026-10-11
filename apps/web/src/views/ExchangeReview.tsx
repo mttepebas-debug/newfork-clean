@@ -65,21 +65,23 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
   });
   const declined = step.kind === "decline" ? asked.find((application) => application.id === step.id) : undefined;
   const reason = step.kind === "close" ? closeReason : step.kind === "decline" ? (declineReasons[step.id] ?? "") : "";
+  // The person travels with the save: a live refresh can drop them from the
+  // list before the save answers (train CI 38147392878).
   const decide = useMutation({
-    mutationFn: (action: "approve" | "close" | "reject") =>
-      changeExchange(workspace, action === "approve"
-        ? { action, case_id: item.id, application_id: picked!.id, expected_revision: item.revision, fingerprint: preview.data?.fingerprint, reason: "", private_note: "" }
-        : action === "reject"
-          ? { action, case_id: item.id, application_id: declined!.id, expected_revision: item.revision, reason: reason.trim(), private_note: "" }
-          : { action, case_id: item.id, expected_revision: item.revision, reason: reason.trim(), private_note: "" }, key.current),
-    onSuccess: (result, action) => {
+    mutationFn: ({ action, person }: { readonly action: "approve" | "close" | "reject"; readonly person?: ExchangeCase["applications"][number] }) =>
+      changeExchange(workspace, action === "close"
+        ? { action, case_id: item.id, expected_revision: item.revision, reason: reason.trim(), private_note: "" }
+        : action === "approve"
+          ? { action, case_id: item.id, application_id: person!.id, expected_revision: item.revision, fingerprint: preview.data?.fingerprint, reason: "", private_note: "" }
+          : { action, case_id: item.id, application_id: person!.id, expected_revision: item.revision, reason: reason.trim(), private_note: "" }, key.current),
+    onSuccess: (result, { action, person }) => {
       // The decision is saved: say so now; a failing refresh after it is not its error.
       onDone(action === "close"
         ? `Request closed. ${owner ? `${owner} keeps the shift.` : "The shift stays open."}`
         : action === "reject"
-          ? `${firstName(declined!.employee_name)}'s request is declined.${asked.length > 1 ? " The others can still take the shift." : ""}`
+          ? `${firstName(person!.employee_name)}'s request is declined.${asked.length > 1 ? " The others can still take the shift." : ""}`
           : result.status === "completed"
-            ? `${firstName(picked!.employee_name)} has the shift now.${owner ? ` ${owner} is off it.` : ""}`
+            ? `${firstName(person!.employee_name)} has the shift now.${owner ? ` ${owner} is off it.` : ""}`
             : "Your approval is recorded. The other location's manager decides next.");
       void refreshExchangeSurfaces(client, workspace).catch(() => undefined);
     },
@@ -162,7 +164,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
               className="danger-button"
               confirmLabel={declined ? "Confirm decline" : "Confirm close"}
               disabled={decide.isPending || !reason.trim()}
-              onConfirm={() => decide.mutate(declined ? "reject" : "close")}
+              onConfirm={() => decide.mutate(declined ? { action: "reject", person: declined } : { action: "close" })}
             >
               {decide.isPending ? "Saving..." : declined ? `Decline ${first}` : "Close request"}
             </ConfirmButton>
@@ -185,7 +187,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
               type="button"
               className="nf-button"
               disabled={!decides || !picked || !preview.data?.allowed || preview.isFetching || decide.isPending}
-              onClick={() => decide.mutate("approve")}
+              onClick={() => decide.mutate({ action: "approve", person: picked })}
             >
               {decide.isPending ? "Saving..." : giveLabel}
             </button>
