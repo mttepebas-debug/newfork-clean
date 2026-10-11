@@ -135,6 +135,7 @@ test("one denial closes the request, and the employee reads the note", async ({ 
   await drawer.getByRole("button", { name: "Deny", exact: true }).click();
   await drawer.getByLabel(`Reason for ${asker.name.split(" ")[0]}`).fill("I can approve the first day only");
   await drawer.getByRole("button", { name: "Deny request", exact: true }).click();
+  await drawer.getByRole("button", { name: "Confirm deny", exact: true }).click();
   await expect(ayse.getByText("Time off denied.")).toBeVisible();
   expect(statusOf(request)).toBe("denied");
 

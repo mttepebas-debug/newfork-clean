@@ -16,7 +16,7 @@ import { alsoOffThese } from "../schedule/time-off-overlap";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { ExchangeReview } from "./ExchangeReview";
 import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
-import { Navigate, useSearchParams } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import {
@@ -73,6 +73,7 @@ function ScheduleRequestsPageContent() {
   const { context } = useAuth();
   const client = useQueryClient();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const workspaceId = context?.workspace.id ?? "";
   const canReadTimeOff = can(context, "requests.read");
   const canReadShift = can(context, "exchange.read");
@@ -96,6 +97,13 @@ function ScheduleRequestsPageContent() {
   const vote = useVoteOnTimeOff(workspaceId);
   const revoke = useRevokeTimeOff(workspaceId);
   const data = useRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, { locationId, search });
+  // "Also off these days" asks every request the reader reads, not the filtered list;
+  // without a filter this is the same cached read.
+  const everyone = useRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, { locationId: "", search: "" });
+  // A reason being written keeps a drawer open on Escape and the backdrop (P26).
+  const [held, setHeld] = useState(false);
+  // A drawer opened from the list is a history step: closing it steps back, so Back is never a no-op.
+  const caseStep = useRef(false);
   // Every type, so each tab can count what is still open in it.
   const allRows = useMemo(
     () => requestRows(data.timeOff, data.exchanges, { type: "all", locationId, search }),
@@ -152,6 +160,7 @@ function ScheduleRequestsPageContent() {
     });
   }
   function selectRequest(id: string) {
+    setHeld(false);
     setSelectedId(id);
     setDrawerNotice(null);
     setDenyError("");
@@ -166,6 +175,12 @@ function ScheduleRequestsPageContent() {
     );
   }
   function closeCase() {
+    setHeld(false);
+    if (caseStep.current) {
+      caseStep.current = false;
+      navigate(-1);
+      return;
+    }
     setParams((previous) => {
       const next = new URLSearchParams(previous);
       next.delete("case");
@@ -178,13 +193,14 @@ function ScheduleRequestsPageContent() {
     // undoes, so it is pushed.
     if (row.source === "exchange" && row.type === "swap") setOpenSwap(row.request);
     else if (row.source === "exchange")
-      requestAvailabilityNavigation(() =>
+      requestAvailabilityNavigation(() => {
+        caseStep.current = true;
         setParams((previous) => {
           const next = new URLSearchParams(previous);
           next.set("case", row.id);
           return next;
-        }),
-      );
+        });
+      });
     else selectRequest(row.id);
   }
   function startAct(request: TimeOffRequest, kind: Act["kind"]) {
@@ -402,12 +418,13 @@ function ScheduleRequestsPageContent() {
         <CatalogDrawer
           label="Review request"
           className="requests-catalog-page requests-review-drawer"
+          busy={held || vote.isPending || revoke.isPending}
           onClose={() => selectRequest("")}
         >
           <TimeOffReview
             key={selected.id}
             request={selected}
-            alsoOff={alsoOffThese(selected, data.timeOff)}
+            alsoOff={alsoOffThese(selected, everyone.timeOff)}
             timeFormat={timeFormat}
             notice={drawerNotice}
             busy={vote.isPending || revoke.isPending}
@@ -418,6 +435,7 @@ function ScheduleRequestsPageContent() {
             onApprove={() => startAct(selected, "approve")}
             onDeny={(reason) => void runAct({ request: selected, kind: "deny" }, reason, true)}
             onRevoke={() => startAct(selected, "revoke")}
+            onHold={setHeld}
             shorten={
               <TimeOffShorten
                 key={`${selected.id}:${selected.revision}`}
@@ -435,13 +453,14 @@ function ScheduleRequestsPageContent() {
         </CatalogDrawer>
       )}
       {openCase ? (
-        <CatalogDrawer label="Review shift change" className="requests-catalog-page requests-review-drawer" onClose={closeCase}>
+        <CatalogDrawer label="Review shift change" className="requests-catalog-page requests-review-drawer" busy={held} onClose={closeCase}>
           <ExchangeReview
             key={openCase.id}
             item={openCase}
             workspace={workspaceId}
             timeFormat={timeFormat}
             onClose={closeCase}
+            onHold={setHeld}
             onDone={(message) => {
               closeCase();
               toast.success(message);
