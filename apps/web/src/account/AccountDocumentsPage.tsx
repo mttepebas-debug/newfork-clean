@@ -8,6 +8,7 @@ import { isObligationClosed } from "../documents/document-rules";
 import { EmployeeDocumentsList } from "../documents/EmployeeDocumentsList";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
 import { AccountPageHeader } from "./components";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 
 /**
  * How many of these are still waiting on the person. A closed obligation is
@@ -56,11 +57,17 @@ export default function AccountDocumentsPage() {
         titleId="account-documents-title"
         description="Complete requests and keep track of your documents and agreements."
       />
-      <div className="requests-tabs" role="tablist" aria-label="Your documents">
+      <div
+        className="requests-tabs"
+        role="tablist"
+        aria-label="Your documents"
+        onKeyDown={onTabListKeyDown}
+      >
         <button
           type="button"
           role="tab"
           aria-selected={tab === "document"}
+          tabIndex={tab === "document" ? 0 : -1}
           className={tab === "document" ? "active" : ""}
           onClick={() => setTab("document")}
         >
@@ -70,6 +77,7 @@ export default function AccountDocumentsPage() {
           type="button"
           role="tab"
           aria-selected={tab === "acknowledgement"}
+          tabIndex={tab === "acknowledgement" ? 0 : -1}
           className={tab === "acknowledgement" ? "active" : ""}
           onClick={() => setTab("acknowledgement")}
         >

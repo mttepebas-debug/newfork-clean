@@ -49,6 +49,7 @@ import "./jobs-settings.css";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 type View = "templates" | "retention";
 
 const defaultPolicyDraft: SignatureRetentionPolicyInput = {
@@ -375,12 +376,14 @@ export default function SignatureTemplatesSettingsPage() {
             <div
               className="requests-tabs"
               role="tablist"
+              onKeyDown={onTabListKeyDown}
               aria-label="Acknowledgement settings"
             >
               <button
                 type="button"
                 role="tab"
                 aria-selected={view === "templates"}
+                tabIndex={view === "templates" ? 0 : -1}
                 className={view === "templates" ? "active" : ""}
                 onClick={() => {
                   setView("templates");
@@ -394,6 +397,7 @@ export default function SignatureTemplatesSettingsPage() {
                 type="button"
                 role="tab"
                 aria-selected={view === "retention"}
+                tabIndex={view === "retention" ? 0 : -1}
                 className={view === "retention" ? "active" : ""}
                 onClick={() => {
                   setView("retention");
