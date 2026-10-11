@@ -423,15 +423,58 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(within(row).getByTitle("Shifts that become open").textContent).toBe("1");
   });
 
-  it("shows who approved which location, what is left, the deadline and the shifts that open", async () => {
+  // Mert, 2026-10-11: the drawer speaks the Important Dates drawer's language:
+  // a header with type and status, Details · Shifts · Activity tabs.
+  it("heads the drawer with the person, the type, the status and the deadline", async () => {
     renderPage();
     const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(panel.textContent).toContain("1 of 2 locations approved");
-    expect(panel.textContent).toContain("Decide by Jan 14");
-    expect(panel.textContent).toContain("Ayşe Yılmaz");
-    expect(panel.textContent).toContain("Waiting");
-    expect(panel.textContent).toContain("Mon, Jan 15 · 3:00 PM–11:00 PM · Server");
+    const head = within(drawer).getByRole("heading", { level: 2 });
+    expect(head.textContent).toBe("Alex Kim Time off Needs review");
+    expect(drawer.textContent).toContain("Decide by Jan 14");
+    expect(within(drawer).getByRole("link", { name: /Open in Schedule/ }).getAttribute("href")).toBe("/app/schedule?date=2035-01-15&view=week");
+    expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Shifts1", "Activity"]);
+    expect(within(drawer).getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true");
+  });
+  it("shows the dates, the note, who approved which location and what is left", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).getByText("Starts").parentElement!.textContent).toBe("StartsMon, Jan 15Full day");
+    expect(within(drawer).getByText("Ends").parentElement!.textContent).toBe("EndsTue, Jan 16Full day · 2 days");
+    expect(within(drawer).getByText("Note from Alex").parentElement!.textContent).toContain("Family appointment");
+    const approvals = within(drawer).getByRole("region", { name: "Approvals" });
+    expect(approvals.textContent).toContain("1 of 2 locations");
+    const rows = within(approvals).getAllByRole("row").slice(1).map((row) => row.textContent);
+    expect(rows[0]).toMatch(/^Kadıköy.*Approved.*Ayşe Yılmaz/);
+    expect(rows[1]).toMatch(/^Beşiktaş.*Waiting/);
+    expect(within(drawer).getByRole("region", { name: "On the Schedule" }).textContent).toContain("1 shift becomes open if you approve.");
+  });
+  it("lists the shifts that open on their own tab, by location", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "See 1 shift" }));
+    expect(within(drawer).getByRole("tab", { name: /^Shifts/ }).getAttribute("aria-selected")).toBe("true");
+    const shifts = within(drawer).getByRole("region", { name: "Shifts that become open" });
+    expect(shifts.textContent).toContain("Beşiktaş");
+    expect(shifts.textContent).toContain("Mon, Jan 15 · 3:00 PM – 11:00 PM");
+    expect(shifts.textContent).toContain("Server");
+    expect(shifts.textContent).toContain("Becomes open");
+  });
+  it("says who else already has approved time off on those days", async () => {
+    read = { ...fixture, time_off_requests: [pending, {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_id: "15000000-0000-4000-8000-000000000002",
+      employee_name: "Maria Lopez", status: "approved", start_date: "2035-01-16", end_date: "2035-01-20", progress: null,
+    }] };
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).getByText("Also off these days").parentElement!.textContent).toContain("Maria Lopez (Jan 16)");
+  });
+  it("shows the request's history on the Activity tab", async () => {
+    withRequest({ events: [{ id: "98000000-0000-4000-8000-000000000001", action: "submitted", actor_name: "Alex Kim", note: "", created_at: "2035-01-09T11:00:00Z" }] });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("tab", { name: "Activity" }));
+    expect(within(drawer).getByRole("tabpanel").textContent).toContain("Submitted");
+    expect(within(drawer).getByRole("tabpanel").textContent).toContain("Alex Kim");
   });
   it("writes the decide-by time in the request's zone and names it, on any device (FB-6.3.8d)", async () => {
     // Ali asked from Istanbul; a manager in Los Angeles or Tokyo reads the same deadline.
@@ -443,8 +486,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
         expect(plain(within(row).getByText(/^Jan 14, 12:00 PM$/).textContent)).toBe("Jan 14, 12:00 PM");
         expect(within(row).getByText("Istanbul time")).toBeTruthy();
         const drawer = await openTimeOffRequest();
-        const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-        expect(plain(panel.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
+        expect(plain(drawer.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
         view.unmount();
       });
     }
@@ -452,15 +494,16 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("draws one progress layout whatever the address asks for (P04: checklist)", async () => {
     renderPage("/app/schedule/requests?progressVariant=c");
     const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(panel.className).toBe("tov");
+    const panel = within(drawer).getByRole("region", { name: "Approvals" });
+    expect(panel.className).toBe("rd-sec");
     expect(panel.querySelector("[title]")).toBeNull();
   });
   it("titles the shifts that open like the drawer's other sections", async () => {
     renderPage();
     const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(within(panel).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H2");
+    expect(within(drawer).getByRole("heading", { name: "Approvals" }).tagName).toBe("H3");
+    fireEvent.click(within(drawer).getByRole("tab", { name: /Shifts/ }));
+    expect(within(drawer).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H3");
   });
   it("does not repeat the request's pending state under every period", async () => {
     renderPage();
@@ -526,16 +569,29 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(box.textContent).toContain("Takes effect now.");
     expect(box.textContent).not.toContain("Managers at");
   });
-  it("denies with an optional note", async () => {
+  // Mert, 2026-10-11: Deny asks its reason in the drawer's footer; only the employee reads it.
+  it("denies with a reason written in the drawer", async () => {
     apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
     renderPage();
     const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Deny/ }));
-    const box = await screen.findByRole("alertdialog", { name: "Deny time off?" });
-    fireEvent.change(within(box).getByLabelText("Note for Alex Kim (optional)"), { target: { value: " I can approve Jan 15 only " } });
-    fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    const send = within(drawer).getByRole("button", { name: "Deny request" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    const reason = within(drawer).getByLabelText("Reason for Alex");
+    expect(reason.getAttribute("placeholder")).toBe("Only Alex reads this.");
+    fireEvent.change(reason, { target: { value: " I can approve Jan 15 only " } });
+    fireEvent.click(send);
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off denied."));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "I can approve Jan 15 only", expected_impact: fingerprint });
+  });
+  it("goes back from the reason to the decision without sending anything", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Back" }));
+    expect(within(drawer).getByRole("button", { name: "Approve" })).toBeTruthy();
+    expect(apiRequest).not.toHaveBeenCalled();
   });
   it("closes the box and asks for a second look when the request changed meanwhile", async () => {
     apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", undefined, undefined, 409));
@@ -552,19 +608,18 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
   });
-  it("keeps the box and its note open when the vote fails for another reason", async () => {
+  it("keeps the reason open when the vote fails for another reason", async () => {
     apiRequest.mockRejectedValueOnce(new Error("Connection lost"));
     renderPage();
     const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Deny/ }));
-    const box = await screen.findByRole("alertdialog");
-    fireEvent.change(within(box).getByRole("textbox"), { target: { value: "Short staffed" } });
-    fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
-    const alert = await within(box).findByRole("alert");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    fireEvent.change(within(drawer).getByLabelText("Reason for Alex"), { target: { value: "Short staffed" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
+    const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toBe("Connection lost");
     // QA D2: red like every other form error.
     expect(alert.className).toBe("form-error");
-    expect((within(box).getByRole("textbox") as HTMLTextAreaElement).value).toBe("Short staffed");
+    expect((within(drawer).getByLabelText("Reason for Alex") as HTMLTextAreaElement).value).toBe("Short staffed");
   });
   it("offers no Partial or Return to pending any more", async () => {
     renderPage();
@@ -606,10 +661,11 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
     renderPage();
     const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Decline/ }));
-    const box = await screen.findByRole("alertdialog", { name: "Decline cancellation?" });
-    expect(box.textContent).toContain("The time off stays in place.");
-    fireEvent.click(within(box).getByRole("button", { name: "Decline" }));
+    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Cancellation");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Decline" }));
+    expect(drawer.textContent).toContain("The time off stays in place.");
+    fireEvent.change(within(drawer).getByLabelText("Reason for Alex"), { target: { value: "Busy week" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Decline cancellation" }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancellation declined."));
   });
 

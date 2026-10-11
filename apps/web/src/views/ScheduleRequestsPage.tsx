@@ -7,19 +7,12 @@ import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Check,
-  Clock3,
-  RotateCcw,
-  Search,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Check, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
-import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
-import { TimeOffProgressPanel } from "./TimeOffProgressPanel";
+import { TimeOffReview } from "./TimeOffReview";
+import type { DrawerNotice } from "./RequestDrawer";
+import { alsoOffThese } from "../schedule/time-off-overlap";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useSearchParams } from "react-router";
@@ -51,7 +44,6 @@ import {
 import { NoAccessState } from "../shell/NoAccessState";
 import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
-type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -95,6 +87,8 @@ function ScheduleRequestsPageContent() {
   const [act, setAct] = useState<Act | null>(null);
   const [actText, setActText] = useState("");
   const [actError, setActError] = useState("");
+  // The reason a Deny written in the drawer could not send (Mert, 2026-10-11).
+  const [denyError, setDenyError] = useState("");
   const toast = useToast();
   // Said inside the drawer while it stays open (CatalogDrawer).
   const [drawerNotice, setDrawerNotice] = useState<DrawerNotice | null>(null);
@@ -131,6 +125,7 @@ function ScheduleRequestsPageContent() {
   function selectRequest(id: string) {
     setSelectedId(id);
     setDrawerNotice(null);
+    setDenyError("");
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -160,10 +155,11 @@ function ScheduleRequestsPageContent() {
     setActText("");
     setActError("");
     const progress = request.progress;
-    // A manager's plain vote needs no box; one that opens shifts, a deny
-    // (its note) and an admin's or owner's decision do (rules 6, 7, 14).
+    // A manager's plain vote needs no box; one that opens shifts, a revoke
+    // (its reason) and an admin's or owner's decision do (rules 6, 7, 14). A
+    // deny asks its reason in the drawer itself.
     const ask =
-      kind !== "approve" ||
+      kind === "revoke" ||
       Boolean(
         progress &&
           (progress.can_decide_alone ||
@@ -173,9 +169,10 @@ function ScheduleRequestsPageContent() {
     if (ask) setAct({ request, kind });
     else void runAct({ request, kind }, "");
   }
-  async function runAct(current: Act, text: string) {
+  async function runAct(current: Act, text: string, inline = false) {
     const { request, kind } = current;
     setDrawerNotice(null);
+    setDenyError("");
     try {
       let message: string;
       let closedNow = true;
@@ -211,7 +208,8 @@ function ScheduleRequestsPageContent() {
         return;
       }
       const message = error instanceof Error ? error.message : "Decision failed";
-      if (kind === "approve" && !act) setDrawerNotice({ text: message, tone: "error" });
+      if (inline) setDenyError(message);
+      else if (kind === "approve" && !act) setDrawerNotice({ text: message, tone: "error" });
       else setActError(message);
     }
   }
@@ -369,15 +367,20 @@ function ScheduleRequestsPageContent() {
           className="requests-catalog-page requests-review-drawer"
           onClose={() => selectRequest("")}
         >
-          <TimeOffDetail
+          <TimeOffReview
+            key={selected.id}
             request={selected}
+            alsoOff={alsoOffThese(selected, data.timeOff)}
             timeFormat={timeFormat}
             notice={drawerNotice}
             busy={vote.isPending || revoke.isPending}
             // ponytail: "may they revoke somewhere"; the API asks per person.
             canRevoke={can(context, "time_off.revoke")}
+            denyError={denyError}
             onClose={() => selectRequest("")}
-            onAct={(kind) => startAct(selected, kind)}
+            onApprove={() => startAct(selected, "approve")}
+            onDeny={(reason) => void runAct({ request: selected, kind: "deny" }, reason, true)}
+            onRevoke={() => startAct(selected, "revoke")}
             shorten={
               <TimeOffShorten
                 key={`${selected.id}:${selected.revision}`}
@@ -495,23 +498,14 @@ function ActDialog({
           confirm: "Revoke",
           field: "Reason",
         }
-      : kind === "deny"
-        ? {
-            title: cancellation ? "Decline cancellation?" : "Deny time off?",
-            description: cancellation
-              ? "The time off stays in place."
-              : "One denial closes the request.",
-            confirm: cancellation ? "Decline" : "Deny",
-            field: `Note for ${name} (optional)`,
-          }
-        : {
-            title: cancellation ? "Approve cancellation?" : "Approve time off?",
-            description: alone
-              ? `Takes effect now.${request.progress?.locations.length ? ` Managers at ${name}'s locations are notified.` : ""}${opensLine ? ` ${opensLine}` : ""}`
-              : opensLine,
-            confirm: "Approve",
-            field: null,
-          };
+      : {
+          title: cancellation ? "Approve cancellation?" : "Approve time off?",
+          description: alone
+            ? `Takes effect now.${request.progress?.locations.length ? ` Managers at ${name}'s locations are notified.` : ""}${opensLine ? ` ${opensLine}` : ""}`
+            : opensLine,
+          confirm: "Approve",
+          field: null,
+        };
   return (
     <ConfirmDialog
       open
@@ -533,7 +527,6 @@ function ActDialog({
             maxLength={1000}
             required={kind === "revoke"}
             value={text}
-            placeholder={kind === "deny" && !cancellation ? "e.g. I can approve Jan 11–12 only" : undefined}
             onChange={(event) => onText(event.target.value)}
           />
         </label>
@@ -543,197 +536,7 @@ function ActDialog({
   );
 }
 
-function TimeOffDetail({
-  request,
-  timeFormat,
-  notice,
-  busy,
-  canRevoke,
-  onClose,
-  onAct,
-  shorten,
-}: {
-  request: TimeOffRequest;
-  timeFormat: "12h" | "24h";
-  notice: DrawerNotice | null;
-  busy: boolean;
-  canRevoke: boolean;
-  onClose: () => void;
-  shorten?: ReactNode;
-  onAct: (kind: Act["kind"]) => void;
-}) {
-  const cancellation = request.request_type === "time_off_cancellation";
-  const progress = request.progress;
-  const canVote = Boolean(progress && (progress.can_vote || progress.can_decide_alone));
-  const approved = request.status === "approved";
-  const revocable = !cancellation && approved && canRevoke;
-  return (
-    <div className="request-detail-inner">
-      <DetailHeader
-        title={request.employee_name}
-        status={request.status}
-        onClose={onClose}
-      >
-        {notice ? (
-          <p
-            className={notice.tone ? `request-drawer-notice ${notice.tone}` : "request-drawer-notice"}
-            role={notice.tone === "error" ? "alert" : "status"}
-          >
-            {notice.text}
-          </p>
-        ) : null}
-      </DetailHeader>
-      <dl className="request-facts">
-        <div>
-          <dt>Dates</dt>
-          <dd>
-            {formatDate(request.start_date)} - {formatDate(request.end_date)}
-          </dd>
-        </div>
-        <div>
-          <dt>Submitted</dt>
-          <dd>{formatDate(request.created_at)}</dd>
-        </div>
-      </dl>
-      {cancellation ? (
-        <p>Cancellation of approved time off. The time off stays in place until this is approved.</p>
-      ) : null}
-      {request.cancellation?.pending_request_id ? (
-        <p>A cancellation request is waiting. The time off is still in effect.</p>
-      ) : null}
-      {progress ? (
-        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} zone={requestZone(request)} />
-      ) : null}
-      {request.reason ? (
-        <section>
-          <h2>Employee note</h2>
-          <p>{request.reason}</p>
-        </section>
-      ) : null}
-      <section>
-        <h2>Requested periods</h2>
-        <TimeOffPeriods
-          periods={request.segments}
-          timeFormat={timeFormat}
-          requestStatus={request.status}
-          cancellation={cancellation}
-        />
-      </section>
-      <Timeline events={request.events} timeFormat={timeFormat} />
-      {canVote ? (
-        <div className="request-decisions">
-          <button
-            className="nf-button danger"
-            disabled={busy}
-            onClick={() => onAct("deny")}
-          >
-            <X size={16} /> {cancellation ? "Decline" : "Deny"}
-          </button>
-          <button
-            className="nf-button"
-            disabled={busy || !progress?.impact}
-            onClick={() => onAct("approve")}
-          >
-            <Check size={16} /> Approve
-          </button>
-        </div>
-      ) : revocable ? (
-        <div className="request-decisions">
-          <button className="nf-button danger" disabled={busy} onClick={() => onAct("revoke")}>
-            <X size={16} /> Revoke
-          </button>
-          {shorten}
-        </div>
-      ) : (
-        <p className="view-only-note">View-only access</p>
-      )}
-    </div>
-  );
-}
-
-function DetailHeader({
-  title,
-  status,
-  onClose,
-  children,
-}: {
-  title: string;
-  status: string;
-  onClose: () => void;
-  children?: ReactNode;
-}) {
-  return (
-    <header className="request-detail-header">
-      <div>
-        <small>Request review</small>
-        <h2>{title}</h2>
-      </div>
-      <span className={`request-status status-${status.replaceAll("_", "-")}`}>
-        {statusLabel(status)}
-      </span>
-      <button
-        className="icon-button request-mobile-close"
-        aria-label="Close details"
-        onClick={onClose}
-      >
-        <X size={18} />
-      </button>
-      {children}
-    </header>
-  );
-}
-
-function Timeline({
-  events,
-  timeFormat,
-}: {
-  events: TimeOffRequest["events"];
-  timeFormat: "12h" | "24h";
-}) {
-  return (
-    <section>
-      <h2>Activity</h2>
-      <ol className="request-timeline">
-        {events.map((event) => (
-          <li key={event.id}>
-            <Clock3 size={14} />
-            <div>
-              <strong>{statusLabel(event.action)}</strong>
-              <span>
-                {event.actor_name} ·{" "}
-                {new Date(event.created_at).toLocaleString()}
-              </span>
-              {event.note ? <p>{event.note}</p> : null}
-              <TimeOffReleasedAssignments
-                assignments={event.released_assignments}
-                timeFormat={timeFormat}
-              />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
 function plural(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: value.length > 10 ? undefined : "numeric",
-  }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
-}
-function statusLabel(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 export default ScheduleRequestsPage;
-// A request is asked in one zone; every period carries it (FB-6.3.8d).
-function requestZone(request: TimeOffRequest) {
-  return request.segments[0]?.time_timezone;
-}
