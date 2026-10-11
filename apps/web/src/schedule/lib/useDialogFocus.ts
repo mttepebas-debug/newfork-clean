@@ -1,7 +1,13 @@
 import { useLayoutEffect, type RefObject } from "react";
 
 const FOCUSABLE =
-  'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]';
+  'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"], summary, [contenteditable="true"]';
+
+/** What a closed <details> folds away is no Tab stop; its summary still is. */
+function foldedAway(element: HTMLElement): boolean {
+  const fold = element.closest("details:not([open])");
+  return Boolean(fold && !fold.querySelector(":scope > summary")?.contains(element));
+}
 
 /**
  * BL-711 (WCAG 2.4.3): a Schedule window takes the keyboard when it opens
@@ -15,7 +21,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, open = true):
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusable = () =>
       Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-        (element) => !element.closest("[inert], [hidden]"),
+        (element) => !element.closest("[inert], [hidden]") && !foldedAway(element),
       );
     const initial = root.querySelector<HTMLElement>("[data-dialog-autofocus]") ?? focusable()[0];
     if (initial) initial.focus({ preventScroll: true });
@@ -36,7 +42,7 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>, open = true):
         return;
       }
       const active = document.activeElement as HTMLElement | null;
-      const inside = Boolean(active && elements.includes(active));
+      const inside = Boolean(active && root.contains(active));
       if (event.shiftKey && (active === first || !inside)) {
         event.preventDefault();
         last.focus();
