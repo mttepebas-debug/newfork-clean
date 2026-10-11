@@ -570,7 +570,7 @@ function TodoPreview({
       <span>
         <strong>{item.title}</strong>
         <small>
-          {item.due_at ? `Due ${relativeTime(item.due_at)}` : item.body}
+          {item.due_at ? dueLabel(item.due_at) : item.body}
         </small>
       </span>
       <ArrowRight size={15} aria-hidden />
@@ -659,12 +659,17 @@ function formatNow(date: Date) {
   }).format(date);
 }
 function relativeTime(iso: string) {
-  const minutes = Math.max(
-    0,
-    Math.round((Date.now() - Date.parse(iso)) / 60_000),
-  );
-  if (minutes < 60) return `${minutes || 1}m ago`;
+  return `${elapsed(Math.max(0, Date.now() - Date.parse(iso)))} ago`;
+}
+/** BL-1013: a due time still ahead reads "Due in 2h"; one gone by, "Due 2h ago". */
+export function dueLabel(iso: string, now = Date.now()) {
+  const ahead = Date.parse(iso) - now;
+  return ahead > 0 ? `Due in ${elapsed(ahead)}` : `Due ${elapsed(-ahead)} ago`;
+}
+function elapsed(ms: number) {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes || 1}m`;
   const hours = Math.round(minutes / 60);
-  return hours < 24 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
+  return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
 }
 export default WorkspacePage;
