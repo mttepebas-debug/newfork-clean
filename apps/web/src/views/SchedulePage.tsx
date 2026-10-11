@@ -998,9 +998,10 @@ export function SchedulePage({
     }
     setOperationError(null);
     try {
-      setAutoFill(await previewScheduleAutoFill(workspaceId, session.id));
+      // BL-975: a lock that lapsed (the laptop slept) is picked back up first.
+      setAutoFill(await runWithLease(() => previewScheduleAutoFill(workspaceId, session.id)));
     } catch (error) {
-      setOperationError(requestErrorText(error));
+      setOperationError(scheduleEditErrorText(error));
     }
   };
 
@@ -3414,13 +3415,13 @@ export function SchedulePage({
           }
           onApply={(templateId, mode, departmentKeys) =>
             gridEditSession
-              ? applyScheduleTemplate(
+              ? runWithLease(() => applyScheduleTemplate(
                   context.workspace.id,
                   gridEditSession,
                   templateId,
                   mode,
                   departmentKeys,
-                )
+                ))
                   .then((result) => {
                     const templateName =
                       templates.find((item) => item.id === templateId)?.name ??
@@ -3457,12 +3458,12 @@ export function SchedulePage({
           preview={autoFill}
           onClose={() => setAutoFill(null)}
           onApply={(assignments) =>
-            applyScheduleAutoFill(
+            runWithLease(() => applyScheduleAutoFill(
               context.workspace.id,
               gridEditSession,
               autoFill,
               assignments,
-            ).then((result) => {
+            )).then((result) => {
               setSession(result.session);
               if (result.rejected.length)
                 setOperationError(autoFillRejectedText(result.rejected.length));

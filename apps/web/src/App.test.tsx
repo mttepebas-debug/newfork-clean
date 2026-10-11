@@ -6440,6 +6440,70 @@ describe("App", () => {
     expect(await screen.findByText("Applied 1 shift.")).toBeTruthy();
   });
 
+  // BL-975: the lock lapsed while the review was open (the laptop slept); Apply
+  // picks the same edit back up and goes through, with no raw lock text.
+  it("picks the edit back up when the lock lapsed before auto-fill is applied", async () => {
+    const acquired = makeDefaultEditAcquireResult();
+    const preview = {
+      status: "review_ready" as const,
+      workspace_id: scheduleFixture.workspace_id,
+      session_id: acquired.session.id,
+      session_revision: acquired.session.revision,
+      fingerprint: "f".repeat(64),
+      proposals: [
+        {
+          shift_id: scheduleFixture.shifts[0]!.id,
+          location_name: scheduleFixture.locations[0]!.name,
+          job_name: scheduleFixture.jobs[0]!.name,
+          scheduled_date: scheduleFixture.week_start,
+          start_time: "16:00",
+          end_time: "22:00",
+          recommended_employee_id: scheduleFixture.employees[0]!.id,
+          candidates: [
+            {
+              employee_id: scheduleFixture.employees[0]!.id,
+              employee_name: scheduleFixture.employees[0]!.display_name,
+              scheduled_minutes: 360,
+              primary_job: true,
+              reasons: ["Primary job"],
+            },
+          ],
+        },
+      ],
+      unfilled: [],
+    };
+    const lapsed = () => new ScheduleRequestError("edit lease expired", 409, {
+      error: "edit lease expired", code: "edit_lease_expired",
+    });
+    vi.mocked(previewScheduleAutoFill).mockRejectedValueOnce(lapsed()).mockResolvedValueOnce(preview);
+    vi.mocked(applyScheduleAutoFill)
+      .mockRejectedValueOnce(lapsed())
+      .mockImplementationOnce((_workspaceId, session) =>
+        Promise.resolve({
+          status: "applied",
+          applied: [{ shift_id: scheduleFixture.shifts[0]!.id, employee_id: scheduleFixture.employees[0]!.id }],
+          rejected: [],
+          session,
+        }),
+      );
+    vi.mocked(acquireScheduleEditSession)
+      .mockResolvedValueOnce(acquired)
+      .mockResolvedValueOnce({ ...acquired, status: "resumed" })
+      .mockResolvedValueOnce({ ...acquired, status: "resumed" });
+    window.history.pushState({}, "", "/app/schedule");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: /Auto-fill/ }));
+    expect(await screen.findByRole("dialog", { name: "Review auto-fill" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply 1 assignment" }));
+
+    expect(await screen.findByText("Applied 1 shift.")).toBeTruthy();
+    expect(applyScheduleAutoFill).toHaveBeenCalledTimes(2);
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText(/edit lease expired/)).toBeNull();
+  });
+
   it("keeps organization settings unavailable to managers", async () => {
     window.history.pushState({}, "", "/app/settings/general");
     render(<App />);
