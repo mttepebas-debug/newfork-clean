@@ -20,6 +20,8 @@ type Props = {
   wizard?: boolean;
   /** A step's way on, shown after Save in the same bar (one sticky bar). */
   extraAction?: ReactNode;
+  /** BL-797: fetches the week someone saved first; Reload waits for it. */
+  onReload?: () => Promise<WeeklyPreferenceRead | undefined>;
 };
 
 // Remount on actor changes; an employee's unsaved rules must never follow a
@@ -40,6 +42,7 @@ function PreferenceForm({
   onSave,
   wizard = false,
   extraAction,
+  onReload,
 }: Props) {
   const manager = audience === "manager";
   // No reminder data (the person is a manager+, or the reader may not see
@@ -68,6 +71,7 @@ function PreferenceForm({
   const [saved, setSaved] = useState(false);
   // BL-797: a refused save because someone saved first; Reload takes theirs.
   const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const inFlight = useRef(false);
   const current = manager ? baseline.manager : baseline.employee;
   const hasChanges = dirty || !current?.submitted;
@@ -369,7 +373,15 @@ function PreferenceForm({
                   <button
                     type="button"
                     className="secondary-button"
-                    onClick={() => reset(model)}
+                    disabled={reloading}
+                    onClick={async () => {
+                      setReloading(true);
+                      try {
+                        reset((await onReload?.()) ?? model);
+                      } finally {
+                        setReloading(false);
+                      }
+                    }}
                   >
                     Reload
                   </button>

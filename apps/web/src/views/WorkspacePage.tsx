@@ -241,14 +241,11 @@ export function WorkspacePage() {
                   </div>
                 ) : null}
               </header>
-              {/* BL-813: a hidden card in Customize is a preview, not a form. */}
-              {hidden.has(id) ? (
-                <div className="workspace-widget-preview" inert>
-                  <Widget id={id} model={model} workspaceId={workspaceId} />
-                </div>
-              ) : (
+              {/* BL-813: a hidden card in Customize is a preview, not a form.
+                  One wrapper either way, so Hide / Show keeps what was typed. */}
+              <div className="workspace-widget-preview" inert={hidden.has(id)}>
                 <Widget id={id} model={model} workspaceId={workspaceId} />
-              )}
+              </div>
             </article>
           );
         })}
