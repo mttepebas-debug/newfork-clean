@@ -2197,6 +2197,7 @@ Paket 1 main'de (tren-1). Aşağıdakiler incelemenin paket dışı bıraktığ�
   - **Karar 2026-10-10 13:44Z (Mert, S5 thread'i):** Shift Hub'da izinle çakışan açık vardiya gri görünür ve nedenini söyler.
 - **BL-1022 (leave: low / do: moderate) Schedule taslağında kişinin izin işareti, farklı saat dilimindeki lokasyonun hücresine yayılmıyor; orada Add shift görünür (sunucu reddeder, veri bozulmaz).** Web'de saat dilimi motoru gerekiyor. Kaynak: a8b55626 spreadTimeOff (`apps/web/src/schedule/hooks/useCellState.ts`).
 - **BL-1023 (leave: medium / do: moderate) Requests → Closed okuması (`get_schedule_requests_closed_service`) anlaşmadan kapanan swap ve cover'ları hâlâ listeliyor.** Bugün API çağırmıyor; Closed listesi (EKRAN-02 B3) bağlanırken "iki taraf anlaşmadan müdüre ulaşmaz" kuralı (KARARLAR, Schedule → Requests, 2026-10-11) oraya da eklenmeli. Kaynak: EKRAN-02 treni, main `88c955e9`.
+  - **Kapandı 2026-10-11 (`task/ekran-02-inceleme-tren`, migration `20261011140000_agreement_is_read_from_live_applications.sql`).** Closed okuması da anlaşmayı canlı başvurulardan okuyan `app_private.shift_exchange_reached_managers`'ı soruyor.
 - **BL-1024 (leave: medium / do: moderate) İkiz sistem: eski ShiftExchangeHub müdür ekranları ve kullanılmayan CSS'i, yeni Requests çekmecelerinin yanında hâlâ duruyor.** CLAUDE.md §3.A.4: yenisi gelince eskisi silinir. Kaynak: EKRAN-02 inceleme düzeltmeleri, bulgu #14 (swap thread'i, 2026-10-11).
 
 ## Project geçişinden (PROJECT-GECIS, 2026-10-09)
