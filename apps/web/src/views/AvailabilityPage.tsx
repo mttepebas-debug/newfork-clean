@@ -149,7 +149,7 @@ export function AvailabilityPage() {
           </div>
           {model && (
             <span className="weekly-team-count" role="status">
-              {employees.length} employees
+              {employees.length} {employees.length === 1 ? "employee" : "employees"}
             </span>
           )}
         </div>

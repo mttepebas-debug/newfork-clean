@@ -165,6 +165,13 @@ describe("weekly team availability", () => {
     ).toBeTruthy();
     expect(screen.getAllByRole("columnheader")).toHaveLength(8);
   });
+  // BL-661: one person is "1 employee".
+  it("counts one employee in the singular", async () => {
+    const model = fixture();
+    vi.mocked(loadWeeklyTeam).mockResolvedValue({ ...model, employees: model.employees.slice(0, 1) });
+    renderPage();
+    expect(await screen.findByText("1 employee")).toBeTruthy();
+  });
   it("combines location, search and declaration filters without treating an empty declaration as missing", async () => {
     renderPage();
     await screen.findByText("Alex Kim");
