@@ -464,6 +464,8 @@ describe("WorkspacePage setup checklist", () => {
     const row = screen.getByRole("link", { name: /Employee document expires soon/ });
     expect(row.textContent).toContain("Taylor Reed - Food handler card");
     expect(row.textContent).toMatch(/Due (in )?\d+[mhd]( ago)?/);
+    // BL-666 (4): a row that goes somewhere keeps its arrow.
+    expect(row.querySelector(".lucide-arrow-right")).toBeTruthy();
   });
 
   // BL-666 (4): only a row that goes somewhere carries the arrow.
