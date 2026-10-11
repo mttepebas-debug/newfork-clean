@@ -2,6 +2,7 @@ import { scheduleShiftMutationInputSchema } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import {
+  notMember,
   resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
@@ -43,7 +44,7 @@ export function registerAvailabilityRoutes(
       });
       // BL-794: somebody else's workspace is simply not there (one "no").
       if (!auth.context)
-        throw new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
+        throw notMember();
       if (!options.service)
         return reply.status(503).send({ error: "Availability is unavailable" });
       try {

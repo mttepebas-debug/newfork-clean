@@ -39,7 +39,7 @@ function signedOut(): HttpError {
   return new HttpError("Sign in required", 401, { reason: "session.required" });
 }
 
-function notMember(): HttpError {
+export function notMember(): HttpError {
   return new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
 }
 
