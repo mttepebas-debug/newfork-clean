@@ -1,5 +1,6 @@
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
+  SAME_START_END_TIME_MESSAGE,
   shiftTypeInputSchema,
   type ShiftType,
   type ShiftTypeInput,
@@ -172,7 +173,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     parsedDraft.error.issues.some(
       (issue) =>
         issue.path[0] === "default_end_time" &&
-        issue.message === "Start and end times must be different",
+        issue.message === SAME_START_END_TIME_MESSAGE,
     );
   const canSave =
     canEdit &&
@@ -357,7 +358,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                     {/* BL-677 (3): the schema's refusal, said where Save went grey. */}
                     {sameHours ? (
                       <small className="form-error" id="shift-catalog-time-error">
-                        Start and end times must be different.
+                        {SAME_START_END_TIME_MESSAGE}
                       </small>
                     ) : null}
                   </div>
