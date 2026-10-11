@@ -178,6 +178,24 @@ describe("shared document review", () => {
     expect(screen.getByText("certificate.pdf")).toBeTruthy();
     expect(uploadDocument).toHaveBeenCalledOnce();
   });
+  // BL-832 (KK-180 (2)): a reason typed and then left for Approve stays out of
+  // the approval and its history line.
+  it("sends no rejection reason with an approval", async () => {
+    page();
+    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
+      target: { value: "Unreadable" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() =>
+      expect(reviewDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        "requirement",
+        expect.objectContaining({ decision: "approve", reason: "" }),
+      ),
+    );
+  });
+
   it("requires rejection reason, disables exhausted remaining time, keeps the drawer open and advances only on Next", async () => {
     const { onClose, onNext } = page();
     const reject = await screen.findByRole("button", { name: "Reject" });
