@@ -57,6 +57,8 @@ interface DraftDropdownMenuProps {
   readonly canManageDrafts?: boolean;
   readonly canStartDraft?: boolean;
   readonly isStartingDraft?: boolean;
+  /** Set when the week's drafts can be viewed but not edited; shown on each draft row. */
+  readonly readOnlyNote?: string | null;
 }
 
 export function DraftDropdownMenu({
@@ -90,6 +92,7 @@ export function DraftDropdownMenu({
   canManageDrafts = true,
   canStartDraft = true,
   isStartingDraft = false,
+  readOnlyNote = null,
 }: DraftDropdownMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -277,8 +280,18 @@ export function DraftDropdownMenu({
                               Published
                             </span>
                           ) : null}
+                          {readOnlyNote ? (
+                            <span className="schedule-draft-menu-read-only-chip">
+                              Read-only
+                            </span>
+                          ) : null}
                         </span>
                         <small>{draftMeta(draft)}</small>
+                        {readOnlyNote ? (
+                          <span className="schedule-draft-menu-read-only-note">
+                            {readOnlyNote}
+                          </span>
+                        ) : null}
                         {isPublishedDraft ? (
                           <PublishedLocationBadges
                             statuses={publishedLocationStatuses}

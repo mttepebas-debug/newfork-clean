@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MiniCalendar, type CalendarMarker } from "./MiniCalendar";
@@ -147,5 +148,31 @@ describe("MiniCalendar", () => {
         })
         .querySelector(".date-marker.important"),
     ).toBeTruthy();
+  });
+  // BL-723 (3): jsdom has no :hover, so the cascade is read from the stylesheet.
+  // The rule that comes last among equal selectors wins.
+  it("keeps the hover effect on the days of the orange week band", () => {
+    const styles = readFileSync("src/styles.css", "utf8").replace(
+      /\/\*[\s\S]*?\*\//g,
+      "",
+    );
+    const rules = [...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
+      (rule) => ({ selector: rule[1]!.trim(), body: rule[2]! }),
+    );
+    const at = (selector: string) =>
+      rules.findIndex((rule) => rule.selector === selector);
+
+    const hover = at(".calendar-day:hover");
+    const inWeek = at(".calendar-day.in-week");
+    const selected = at(".calendar-day.selected");
+    const selectedHover = at(".calendar-day.selected:hover");
+    expect(hover).toBeGreaterThan(-1);
+    expect(inWeek).toBeGreaterThan(-1);
+    // The band's day takes the same hover as every other day.
+    expect(hover).toBeGreaterThan(inWeek);
+    // The selected day keeps its own colour and shows hover with a thicker ring.
+    expect(selected).toBeGreaterThan(hover);
+    expect(selectedHover).toBeGreaterThan(selected);
+    expect(rules[selectedHover]!.body).toContain("box-shadow");
   });
 });
