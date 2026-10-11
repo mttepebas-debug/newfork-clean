@@ -16,6 +16,7 @@ import {
 } from "@newfork/shared";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
 import { requestAvailabilityNavigation } from "./availability-navigation";
+import { RequestError } from "../lib/request-error";
 
 afterEach(cleanup);
 beforeEach(() => {
@@ -423,6 +424,35 @@ describe("weekly preference form", () => {
         .getByRole("button", { name: "Monday Dinner unavailable" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
+  });
+
+  // BL-1028: the database names the kind of 409. Only "the week or its
+  // settings changed meanwhile" has a newer week to reload.
+  it.each([
+    ["availability.changed", true],
+    ["schedule.busy", false],
+  ] as const)("offers Reload for a 409 keyed %s: %s", async (reason, offered) => {
+    const onSave = vi.fn(async (): Promise<WeeklyPreferenceRead> => {
+      throw new RequestError("Not saved.", reason, undefined, 409);
+    });
+    render(
+      <WeeklyPreferencesForm
+        model={model()}
+        audience="employee"
+        onSave={onSave}
+        onReload={vi.fn()}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Not saved.",
+    );
+    expect(screen.queryByRole("button", { name: "Reload" }) !== null).toBe(
+      offered,
+    );
   });
 
   it("rejects unfinished time input and saves 24:00 as a valid end", async () => {
