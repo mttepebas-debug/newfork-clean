@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 463, last: 20261011120000_shift_changes_reach_managers_agreed.sql
--- fingerprint: sha256:6ba5b2ac76d0ee11e1eaad4e02fd228987e5dc8eddec040e1ecef8c9bce9fb2d
+-- migrations: 464, last: 20261011140000_agreement_is_read_from_live_applications.sql
+-- fingerprint: sha256:abc8b15e89bdcd20178d4ba6ce45fe4b716e91aa8797624725fde4d4415bec14
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5438,6 +5438,10 @@ end; $$;
 ALTER FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") OWNER TO "postgres";
 
 
+COMMENT ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") IS 'One shift change as the Requests lists draw it; the reader decides who may see it (EKRAN-02 A4).';
+
+
+
 CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") RETURNS boolean
     LANGUAGE "sql"
     SET "search_path" TO ''
@@ -5456,10 +5460,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") OWNER TO "postgres";
-
-
-COMMENT ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") IS 'One shift change as the Requests lists draw it; the reader decides who may see it (EKRAN-02 A4).';
-
 
 
 CREATE OR REPLACE FUNCTION "app_private"."shift_time_range"("d" "date", "s" time without time zone, "e" time without time zone, "tz" "text") RETURNS "tstzrange"
