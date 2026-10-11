@@ -288,6 +288,24 @@ describe("shared document review", () => {
   });
 });
 
+// BL-1014: the decision can move the person out of Onboarding; the Employees list
+// and the person's drawer read it again instead of keeping the old status.
+it("refreshes the Employees list and the person's drawer after a decision", async () => {
+  const { invalidate } = page();
+  fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+  await waitFor(() =>
+    expect(reviewDocument).toHaveBeenCalledWith(
+      expect.anything(),
+      "requirement",
+      expect.objectContaining({ decision: "approve" }),
+    ),
+  );
+  await waitFor(() =>
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employees", "workspace"] }),
+  );
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employee-detail", "workspace"] });
+});
+
 it("keeps paused document evidence readable while upload and review controls are absent",async()=>{
  const paused=detail();paused.obligation.status="paused";paused.obligation.publication_paused=true;
  vi.mocked(getDocument).mockResolvedValue(paused);page();

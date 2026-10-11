@@ -230,6 +230,10 @@ function DocumentDetailContent({
       }),
       // The account badge counts documents still to act on.
       cache.invalidateQueries({ queryKey: ["account-attention"] }),
+      // BL-1014: a decision can move the person out of Onboarding; the
+      // Employees list and the person's drawer show their status.
+      cache.invalidateQueries({ queryKey: ["employees", props.audience.workspaceId] }),
+      cache.invalidateQueries({ queryKey: ["employee-detail", props.audience.workspaceId] }),
     ]);
   const review = useMutation({
     mutationFn: (decision: "approve" | "reject") =>
