@@ -2443,8 +2443,15 @@
   font-weight: 400;
   color: var(--text-muted, #68746e);
 }
-.employee-field-error {
+/* BL-782, BL-971: ".employee-field small" (0,1,1) greyed the error line. */
+.employee-field-error,
+.employee-field .employee-field-error {
   color: var(--danger, #a13f30);
+}
+.employee-field input[aria-invalid="true"],
+.employee-field textarea[aria-invalid="true"],
+.employee-field select[aria-invalid="true"] {
+  border-color: var(--theme-danger-border);
 }
 .employee-form-section-title {
   margin: 0;
