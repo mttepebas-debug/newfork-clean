@@ -13,7 +13,6 @@ import { TimeOffShorten } from "./TimeOffShorten";
 import { TimeOffReview } from "./TimeOffReview";
 import type { DrawerNotice } from "./RequestDrawer";
 import { alsoOffThese } from "../schedule/time-off-overlap";
-import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { ExchangeReview } from "./ExchangeReview";
 import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
@@ -280,23 +279,6 @@ function ScheduleRequestsPageContent() {
         subject="requests"
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
-    );
-  // Shift Hub draws its ?offer= form, and a ?case= the core did not hand back
-  // to this manager: it says what became of it.
-  const caseMissing = Boolean(caseId && !openCase && !listedCase && (caseRead.isSuccess || caseRead.isError));
-  if ((params.has("offer") || caseMissing) && canReadShift && context)
-    return (
-      <section
-        className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
-        aria-labelledby="requests-title"
-      >
-        {header}
-        <ShiftExchangeHub
-          key={`${context.workspace.id}:${context.userId}`}
-          workspaceId={context.workspace.id}
-          manager
-        />
-      </section>
     );
   const timeFormat = data.timeFormat;
   const loading = data.isLoading;

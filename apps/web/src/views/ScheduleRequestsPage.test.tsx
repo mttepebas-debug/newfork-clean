@@ -426,17 +426,23 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await waitFor(() => expect(screen.queryByRole("row", { name: /Emre Person, Swap/ })).toBeNull());
     expect(screen.getByRole("dialog", { name: "Swap request" }).textContent).toContain("Emre Person ⇄ Deniz Acar");
   });
-  // Shift Hub's Renew swaps ?case= for ?offer=; its offer form opens here.
-  it("keeps Shift Hub on screen for its offer form", async () => {
+  // BL-1024: the old Shift Hub manager screen is gone; a stray ?offer= is
+  // only the employee's form (Employee Hub), so Requests stays the list.
+  it("keeps the Requests list for an old ?offer= link, not the old Shift Hub screen", async () => {
     renderPage("/app/schedule/requests?offer=22000000-0000-4000-8000-000000000004");
-    await screen.findByRole("heading", { name: "Shift changes" });
-    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
+    await screen.findByRole("group", { name: "Request type" });
+    expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Shift change queues" })).toBeNull();
   });
-  it("lands a manager notification link on its Shift Hub case", async () => {
+  // A notification link to a case the core no longer hands this manager:
+  // Requests asks for that one case and stays the list (BL-1024).
+  it("keeps the Requests list for a link to a case the core does not hand back", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
     renderPage(`/app/schedule/requests?case=${caseId}`);
-    await screen.findByRole("heading", { name: "Shift changes" });
-    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
+    await waitFor(() => expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId })));
+    await screen.findByRole("group", { name: "Request type" });
+    expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
+    expect(screen.queryByText("Request unavailable")).toBeNull();
   });
   it("keeps a time off reader to time off: no request type tabs, no shift change list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };

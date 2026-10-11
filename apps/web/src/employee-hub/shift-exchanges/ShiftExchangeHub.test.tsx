@@ -18,7 +18,6 @@ import { ShiftExchangeHub } from "./ShiftExchangeHub";
 import {
   changeExchange,
   getExchangeCandidates,
-  getExchangePreview,
   getExchanges,
 } from "./exchange-data";
 
@@ -81,7 +80,7 @@ const item: ExchangeCase = {
   })),
 };
 let model: ExchangeReadModel;
-function mount(route = "/app/employee-hub/shift-hub", manager = false) {
+function mount(route = "/app/employee-hub/shift-hub") {
   const entry = new URL(route, "https://example.test");
   // The fixture is in January 2030; date-filter tests override this explicitly.
   if (!entry.searchParams.has("from"))
@@ -93,7 +92,7 @@ function mount(route = "/app/employee-hub/shift-hub", manager = false) {
   const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[entry.pathname + entry.search]}>
-        <ShiftExchangeHub workspaceId="workspace" manager={manager} />
+        <ShiftExchangeHub workspaceId="workspace" />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -125,15 +124,6 @@ beforeEach(() => {
         employee_name: "Blake",
       },
     ],
-  });
-  vi.mocked(getExchangePreview).mockResolvedValue({
-    allowed: true,
-    fingerprint: "fresh",
-    reasons: [],
-    receiver: { status: "eligible", reasons: [] },
-    giver: null,
-    requires_other_manager: false,
-    other_applications: 2,
   });
   vi.mocked(changeExchange).mockResolvedValue({
     case_id: "case",
@@ -286,77 +276,6 @@ describe("Shift Hub outcome contracts", () => {
     );
   });
 
-  it.each(["ineligible", "unavailable"])(
-    "replaces the stale transfer summary when eligibility becomes %s during confirmation",
-    async (state) => {
-      const { client } = mount("/app/schedule/requests?case=case", true);
-      fireEvent.click(
-        await screen.findByRole("button", { name: "Review Casey" }),
-      );
-      const approve = screen.getByRole("button", {
-        name: "Approve transfer to Casey",
-      });
-      await waitFor(() =>
-        expect((approve as HTMLButtonElement).disabled).toBe(false),
-      );
-      fireEvent.click(approve);
-      const note = screen.getByLabelText(/Private manager note/);
-      fireEvent.change(note, { target: { value: "Keep this review note" } });
-      if (state === "unavailable")
-        vi.mocked(getExchangePreview).mockRejectedValue(
-          new Error("Temporary failure"),
-        );
-      else
-        vi.mocked(getExchangePreview).mockResolvedValue({
-          allowed: false,
-          fingerprint: "changed",
-          reasons: ["Position assignment ended"],
-          receiver: {
-            status: "ineligible",
-            reasons: ["Position assignment ended"],
-          },
-          giver: null,
-          requires_other_manager: false,
-          other_applications: 2,
-        });
-      await act(async () => {
-        await client.invalidateQueries({
-          queryKey: ["shift-exchanges", "workspace", "preview"],
-        });
-      });
-      await screen.findByText("Review needs updating");
-      const dialog = screen
-        .getByText("Review needs updating")
-        .closest("dialog")!;
-      expect(
-        within(dialog).queryByText(
-          /This changes the published assignment immediately/,
-        ),
-      ).toBeNull();
-      expect(
-        within(dialog).getByText(
-          state === "unavailable"
-            ? "Eligibility could not be checked. Go back and retry the check before approving."
-            : "This transfer cannot be approved with the current eligibility details. Review the reason below before trying again.",
-        ),
-      ).toBeTruthy();
-      if (state === "ineligible")
-        expect(
-          within(dialog).getByText("Position assignment ended"),
-        ).toBeTruthy();
-      expect((note as HTMLTextAreaElement).value).toBe("Keep this review note");
-      expect(
-        (
-          within(dialog).getByRole("button", {
-            name: "Confirm transfer to Casey",
-            hidden: true,
-          }) as HTMLButtonElement
-        ).disabled,
-      ).toBe(true);
-      expect(changeExchange).not.toHaveBeenCalled();
-    },
-  );
-
   it.each(["completed", "cancelled"] as const)(
     "removes the acceptance confirmation when a remote decision makes the request %s",
     async (status) => {
@@ -481,7 +400,6 @@ describe("Shift Hub outcome contracts", () => {
   it("keeps a focused request outside the date range accessible without listing or counting it", async () => {
     mount(
       "/app/employee-hub/shift-hub?case=case&from=2030-02-01&to=2030-02-02",
-      true,
     );
     const detail = await screen.findByRole("complementary", {
       name: "Request details",
@@ -490,14 +408,11 @@ describe("Shift Hub outcome contracts", () => {
     expect(within(detail).getByText("Alex Morgan")).toBeTruthy();
     expect(document.querySelectorAll(".sx-case-row")).toHaveLength(0);
     expect(
-      screen.getByText(/No requests match this stage and these filters/),
-    ).toBeTruthy();
-    expect(
       screen.getByText(
-        "0 cases ready for a decision · Every transfer needs your final approval.",
+        "No cover searches, applications or swap invitations match these filters.",
       ),
     ).toBeTruthy();
-    expect(getExchanges).toHaveBeenCalledWith("workspace", true, {
+    expect(getExchanges).toHaveBeenCalledWith("workspace", false, {
       from: "2030-02-01",
       to: "2030-02-02",
       caseId: "case",
@@ -780,147 +695,109 @@ describe("Shift Hub outcome contracts", () => {
       "Continuing my explanation",
     );
   });
-  it.each(["approve", "reject"] as const)(
-    "keeps notes and blocks %s when the selected applicant withdraws during review",
-    async (decision) => {
-      const { client } = mount("/app/schedule/requests?case=case", true);
-      fireEvent.click(
-        await screen.findByRole("button", { name: "Review Casey" }),
-      );
-      const approve = screen.getByRole("button", {
-        name: "Approve transfer to Casey",
-      });
-      await waitFor(() =>
-        expect((approve as HTMLButtonElement).disabled).toBe(false),
-      );
-      fireEvent.click(
-        decision === "approve"
-          ? approve
-          : screen.getByRole("button", { name: "Decline this application" }),
-      );
-      const note = screen.getByLabelText(/Private manager note/);
-      fireEvent.change(note, { target: { value: "Review note stays here" } });
-      if (decision === "reject") {
-        fireEvent.change(
-          screen.getByLabelText(/Reason shared with affected employees/),
-          { target: { value: "Coverage requirement" } },
-        );
-      }
-      const updated = structuredClone(model);
-      updated.cases[0]!.revision += 1;
-      updated.cases[0]!.applications[1]!.status = "withdrawn";
-      updated.cases[0]!.candidate_count = 2;
-      act(() =>
-        client.setQueriesData(
-          { queryKey: ["shift-exchanges", "workspace", "user"] },
-          updated,
-        ),
-      );
-      await screen.findByText(
-        "This application is no longer available for a decision. Close this review to see the latest result.",
-      );
-      const confirm = screen.getByRole("button", {
-        name:
-          decision === "approve" ? "Confirm transfer" : "Decline application",
+  it("shows a manager's result and keeps the owner's draft reason in an open close review", async () => {
+    const { client } = mount("/app/employee-hub/shift-hub?case=case");
+    const trigger = await screen.findByRole("button", {
+      name: "Close cover search",
+    });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const note = screen.getByLabelText(/Reason shared with affected employees/);
+    note.focus();
+    fireEvent.change(note, { target: { value: "My unfinished review" } });
+    const updated = structuredClone(model);
+    const result = updated.cases[0]!;
+    result.status = "completed";
+    result.stage = "closed";
+    result.revision += 1;
+    result.candidate_count = 0;
+    result.shift = {
+      ...result.shift,
+      employee_id: "blake",
+      employee_name: "Blake",
+    };
+    result.applications.forEach((application) => {
+      application.status =
+        application.id === "Blake" ? "approved" : "closed_other_selected";
+    });
+    act(() =>
+      client.setQueriesData(
+        { queryKey: ["shift-exchanges", "workspace", "user"] },
+        updated,
+      ),
+    );
+    await screen.findByText("Request updated");
+    const dialog = screen.getByText("Request updated").closest("dialog")!;
+    expect(
+      within(dialog).getByRole("alert", { hidden: true }).textContent,
+    ).toContain("This transfer has already been approved.");
+    expect(within(dialog).getByText("Blake")).toBeTruthy();
+    expect(
+      within(dialog).queryByText(/current owner remains responsible/),
+    ).toBeNull();
+    expect((note as HTMLTextAreaElement).value).toBe("My unfinished review");
+    expect(document.activeElement).toBe(note);
+    expect(within(dialog).getByText(/It has not been sent/)).toBeTruthy();
+    expect(
+      within(dialog).queryByRole("button", {
+        name: "Close search",
         hidden: true,
-      });
-      expect((confirm as HTMLButtonElement).disabled).toBe(true);
-      expect((note as HTMLTextAreaElement).value).toBe(
-        "Review note stays here",
-      );
-      expect(changeExchange).not.toHaveBeenCalled();
-    },
-  );
-  it.each(["approve", "reject", "close"] as const)(
-    "shows the other manager's result and preserves the draft in an open %s review",
-    async (decision) => {
-      const { client } = mount("/app/schedule/requests?case=case", true);
-      fireEvent.click(
-        await screen.findByRole("button", { name: "Review Casey" }),
-      );
-      const approve = screen.getByRole("button", {
-        name: "Approve transfer to Casey",
-      });
-      await waitFor(() =>
-        expect((approve as HTMLButtonElement).disabled).toBe(false),
-      );
-      const trigger =
-        decision === "approve"
-          ? approve
-          : screen.getByRole("button", {
-              name:
-                decision === "reject"
-                  ? "Decline this application"
-                  : "Close cover search",
-            });
-      trigger.focus();
-      fireEvent.click(trigger);
-      const note = screen.getByLabelText(/Private manager note/);
-      note.focus();
-      fireEvent.change(note, { target: { value: "My unfinished review" } });
-      const updated = structuredClone(model);
-      const result = updated.cases[0]!;
-      result.status = "completed";
-      result.stage = "closed";
-      result.revision += 1;
-      result.candidate_count = 0;
-      result.shift = {
-        ...result.shift,
-        employee_id: "blake",
-        employee_name: "Blake",
-      };
-      result.applications.forEach((application) => {
-        application.status =
-          application.id === "Blake" ? "approved" : "closed_other_selected";
-      });
-      act(() =>
-        client.setQueriesData(
-          { queryKey: ["shift-exchanges", "workspace", "user"] },
-          updated,
-        ),
-      );
-      await screen.findByText("Request updated");
-      const dialog = screen.getByText("Request updated").closest("dialog")!;
-      expect(
-        within(dialog).getByRole("alert", { hidden: true }).textContent,
-      ).toContain("This transfer has already been approved.");
-      expect(within(dialog).getByText("Blake")).toBeTruthy();
-      expect(within(dialog).queryByText(/Alex Morgan → Casey/)).toBeNull();
-      expect(
-        within(dialog).queryByText(/current owner remains responsible/),
-      ).toBeNull();
-      expect((note as HTMLTextAreaElement).value).toBe("My unfinished review");
-      expect(document.activeElement).toBe(note);
-      expect(within(dialog).getByText(/It has not been sent/)).toBeTruthy();
-      const final = within(dialog).queryByRole("button", {
-        name:
-          decision === "approve"
-            ? "Confirm transfer"
-            : decision === "reject"
-              ? "Decline application"
-              : "Close search",
+      }),
+    ).toBeNull();
+    expect(changeExchange).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "View latest result",
         hidden: true,
-      });
-      expect(final).toBeNull();
-      expect(changeExchange).not.toHaveBeenCalled();
-      fireEvent.click(
-        within(dialog).getByRole("button", {
-          name: "View latest result",
-          hidden: true,
-        }),
-      );
-      await waitFor(() =>
-        expect(document.activeElement).toBe(
-          screen.getByRole("heading", { name: "Cover request" }),
-        ),
-      );
-    },
-  );
+      }),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("heading", { name: "Cover request" }),
+      ),
+    );
+  });
+  it("closes the owner's cover search with the reason it shares", async () => {
+    mount("/app/employee-hub/shift-hub?case=case");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Close cover search" }),
+    );
+    const dialog = screen
+      .getByText("Close this search", { selector: "h2" })
+      .closest("dialog")!;
+    expect(
+      within(dialog).getByText(/All 3 active applications will close/),
+    ).toBeTruthy();
+    expect(within(dialog).queryByLabelText(/Private manager note/)).toBeNull();
+    const close = within(dialog).getByRole("button", {
+      name: "Close search",
+      hidden: true,
+    }) as HTMLButtonElement;
+    expect(close.disabled).toBe(true);
+    fireEvent.change(
+      within(dialog).getByLabelText("Reason shared with affected employees"),
+      { target: { value: "Shift covered internally" } },
+    );
+    fireEvent.click(close);
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        {
+          action: "close",
+          case_id: "case",
+          expected_revision: 4,
+          reason: "Shift covered internally",
+          private_note: "",
+        },
+        expect.any(String),
+      ),
+    );
+  });
 
   it.each(["cancelled", "expired", "invalidated"] as const)(
     "explains a %s request without claiming a transfer or inferring an unpublished owner",
     async (status) => {
-      const { client } = mount("/app/schedule/requests?case=case", true);
+      const { client } = mount("/app/employee-hub/shift-hub?case=case");
       fireEvent.click(
         await screen.findByRole("button", { name: "Close cover search" }),
       );
@@ -945,104 +822,6 @@ describe("Shift Hub outcome contracts", () => {
     },
   );
 
-  it("shows both current published owners when another manager completes the reviewed swap", async () => {
-    model.cases[0]!.kind = "swap";
-    model.cases[0]!.requested_shift = {
-      ...shift,
-      id: "return",
-      source_id: "return-source",
-      employee_id: "casey",
-      employee_name: "Casey",
-    };
-    model.cases[0]!.requested_current_published = true;
-    const { client } = mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Review Casey" }),
-    );
-    const approve = screen.getByRole("button", {
-      name: "Approve transfer to Casey",
-    });
-    await waitFor(() =>
-      expect((approve as HTMLButtonElement).disabled).toBe(false),
-    );
-    fireEvent.click(approve);
-    const updated = structuredClone(model);
-    const result = updated.cases[0]!;
-    result.status = "completed";
-    result.shift = {
-      ...result.shift,
-      employee_id: "casey",
-      employee_name: "Casey",
-    };
-    result.requested_shift = {
-      ...result.requested_shift!,
-      employee_id: "alex",
-      employee_name: "Alex Morgan",
-    };
-    result.applications.forEach((a) => {
-      a.status = a.id === "Casey" ? "approved" : "closed_other_selected";
-    });
-    act(() =>
-      client.setQueriesData(
-        { queryKey: ["shift-exchanges", "workspace", "user"] },
-        updated,
-      ),
-    );
-    await screen.findByText("Request updated");
-    const dialog = screen.getByText("Request updated").closest("dialog")!;
-    expect(
-      within(dialog).getByRole("alert", { hidden: true }).textContent,
-    ).toContain("This swap has already been approved");
-    expect(
-      [...dialog.querySelectorAll(".sx-assignment strong")].map(
-        (e) => e.textContent,
-      ),
-    ).toEqual(["Casey", "Alex Morgan"]);
-    expect(within(dialog).getByText("First shift")).toBeTruthy();
-    expect(within(dialog).getByText("Second shift")).toBeTruthy();
-    expect(changeExchange).not.toHaveBeenCalled();
-  });
-
-  it("takes a manager from a long candidate list to the review and back without choosing a replacement automatically", async () => {
-    model.cases[0]!.applications = Array.from({ length: 10 }, (_, index) => ({
-      ...item.applications[0]!,
-      id: `candidate-${index}`,
-      employee_id: `employee-${index}`,
-      employee_name: `Alexandria Montgomery-Wellington ${index + 1}`,
-    }));
-    model.cases[0]!.candidate_count = 10;
-    mount("/app/schedule/requests?case=case", true);
-    const select = await screen.findByRole("button", {
-      name: "Review Alexandria Montgomery-Wellington 1",
-    });
-    expect(getExchangePreview).not.toHaveBeenCalled();
-    fireEvent.click(select);
-    const heading = await screen.findByRole("heading", {
-      name: "Alex Morgan → Alexandria Montgomery-Wellington 1",
-    });
-    await waitFor(() => expect(document.activeElement).toBe(heading));
-    fireEvent.click(screen.getByRole("button", { name: "Back to candidates" }));
-    expect(document.activeElement).toBe(select);
-    fireEvent.click(select);
-    expect(document.activeElement).toBe(heading);
-    const approve = screen.getByRole("button", {
-      name: "Approve transfer to Alexandria Montgomery-Wellington 1",
-    });
-    await waitFor(() =>
-      expect((approve as HTMLButtonElement).disabled).toBe(false),
-    );
-    fireEvent.click(approve);
-    const confirm = screen.getByRole("button", {
-      name: "Confirm transfer to Alexandria Montgomery-Wellington 1",
-      hidden: true,
-    });
-    expect(confirm.textContent).toBe("Confirm transfer");
-    expect(
-      document.getElementById(confirm.getAttribute("aria-describedby")!)
-        ?.textContent,
-    ).toContain("Alexandria Montgomery-Wellington 1");
-    expect(changeExchange).not.toHaveBeenCalled();
-  });
   it("tells a direct request owner whose response is still needed", async () => {
     model.cases[0]!.audience = "direct";
     model.cases[0]!.stage = "awaiting_peer";
@@ -1077,10 +856,10 @@ describe("Shift Hub outcome contracts", () => {
     ).toBe("page");
     expect(screen.queryByText("Still your shift")).toBeNull();
   });
-  it("opens a closed manager case deep link in History", async () => {
+  it("opens a closed case deep link in History", async () => {
     model.employee_id = null;
     model.cases[0]!.status = "invalidated";
-    mount("/app/schedule/requests?case=case", true);
+    mount("/app/employee-hub/shift-hub?case=case");
     await screen.findByText("Current owner: Alex Morgan");
     expect(
       screen
@@ -1098,46 +877,6 @@ describe("Shift Hub outcome contracts", () => {
       screen.queryByRole("button", { name: /Approve transfer/ }),
     ).toBeNull();
     expect(screen.queryByRole("button", { name: "Accept request" })).toBeNull();
-  });
-  it("requires a deliberate candidate choice and separates rejection from closing the case", async () => {
-    model.employee_id = null;
-    model.cases[0]!.is_owner = false;
-    mount("/app/schedule/requests?case=case", true);
-    await screen.findByText("Current owner: Alex Morgan");
-    expect(
-      screen.queryByRole("button", { name: /Approve transfer/ }),
-    ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Review Casey" }));
-    await screen.findByRole("button", { name: "Approve transfer to Casey" });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Decline this application" }),
-    );
-    const dialog = screen
-      .getByText("Decline this application", { selector: "h2" })
-      .closest("dialog")!;
-    expect(within(dialog).getByText(/Only Casey’s application/)).toBeTruthy();
-    fireEvent.change(
-      within(dialog).getByLabelText("Reason shared with affected employees"),
-      { target: { value: "Coverage priority" } },
-    );
-    fireEvent.click(
-      within(dialog).getByRole("button", {
-        name: "Decline application",
-        hidden: true,
-      }),
-    );
-    await waitFor(() =>
-      expect(changeExchange).toHaveBeenCalledWith(
-        "workspace",
-        expect.objectContaining({
-          action: "reject",
-          application_id: "Casey",
-          reason: "Coverage priority",
-          expected_revision: 4,
-        }),
-        expect.any(String),
-      ),
-    );
   });
   it("does not claim a pending pickup is scheduled", async () => {
     model.employee_id = "casey";
@@ -1160,40 +899,6 @@ describe("Shift Hub outcome contracts", () => {
       ),
     );
   });
-  it("explains that no transfer occurred when approval discovers changed terms", async () => {
-    model.employee_id = null;
-    model.cases[0]!.is_owner = false;
-    vi.mocked(changeExchange).mockResolvedValue({
-      case_id: "case",
-      revision: 5,
-      status: "invalidated",
-    });
-    mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Review Casey" }),
-    );
-    const approve = await screen.findByRole("button", {
-      name: "Approve transfer to Casey",
-    });
-    await waitFor(() =>
-      expect((approve as HTMLButtonElement).disabled).toBe(false),
-    );
-    fireEvent.click(approve);
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Confirm transfer to Casey",
-        hidden: true,
-      }),
-    );
-    expect(
-      await screen.findByText(/Shift details changed. No transfer was made/),
-    ).toBeTruthy();
-    expect(
-      screen.queryByText(
-        "Manager approved the change. Schedules have been updated.",
-      ),
-    ).toBeNull();
-  });
   it("keeps a private note when closing the unfinished form is cancelled", async () => {
     model.cases = [];
     mount("/app/employee-hub/shift-hub?offer=shift");
@@ -1213,156 +918,6 @@ describe("Shift Hub outcome contracts", () => {
       (screen.getByRole("textbox", { hidden: true }) as HTMLTextAreaElement)
         .value,
     ).toBe("Please arrange cover");
-  });
-  it("blocks approval when the final server preview detects ineligibility", async () => {
-    model.employee_id = null;
-    model.cases[0]!.is_owner = false;
-    vi.mocked(getExchangePreview).mockResolvedValue({
-      allowed: false,
-      fingerprint: "changed",
-      reasons: ["The receiving employee is not eligible for the full shift"],
-      receiver: {
-        status: "ineligible",
-        reasons: ["Overlaps approved time off"],
-      },
-      giver: null,
-      requires_other_manager: false,
-      other_applications: 2,
-    });
-    mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Review Casey" }),
-    );
-    await screen.findByText(
-      "The receiving employee is not eligible for the full shift",
-    );
-    expect(
-      within(
-        screen.getByRole("region", { name: "Casey eligibility" }),
-      ).getByText("Overlaps approved time off"),
-    ).toBeTruthy();
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Approve transfer to Casey",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    expect(screen.queryByLabelText(/override/i)).toBeNull();
-  });
-  it("explains each side of an ineligible swap using the fresh manager preview", async () => {
-    model.cases[0]!.kind = "swap";
-    model.cases[0]!.requested_shift = {
-      ...shift,
-      id: "requested",
-      employee_id: "casey",
-      employee_name: "Casey",
-    };
-    vi.mocked(getExchangePreview).mockResolvedValue({
-      allowed: false,
-      fingerprint: "changed",
-      reasons: ["Both employees need a fresh eligibility review"],
-      receiver: {
-        status: "partial",
-        reasons: ["Availability covers only part of this shift"],
-      },
-      giver: {
-        status: "verification_required",
-        reasons: [
-          "Availability is not confirmed",
-          "Availability is not confirmed",
-        ],
-      },
-      requires_other_manager: false,
-      other_applications: 0,
-    });
-    mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Review Casey" }),
-    );
-    const receiver = await screen.findByRole("region", {
-      name: "Casey eligibility",
-    });
-    const giver = screen.getByRole("region", {
-      name: "Alex Morgan eligibility",
-    });
-    expect(
-      within(receiver).getByText("Availability covers only part of this shift"),
-    ).toBeTruthy();
-    expect(
-      within(receiver).getByText("Receiving the offered shift"),
-    ).toBeTruthy();
-    expect(
-      within(giver).getAllByText("Availability is not confirmed"),
-    ).toHaveLength(1);
-    expect(
-      within(giver).getByText("Receiving the requested shift"),
-    ).toBeTruthy();
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Approve transfer to Casey",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
-    expect(changeExchange).not.toHaveBeenCalled();
-  });
-  it("keeps both shift details visible in a swap confirmation and after eligibility changes", async () => {
-    model.cases[0]!.kind = "swap";
-    model.cases[0]!.requested_shift = {
-      ...shift,
-      id: "requested",
-      employee_id: "casey",
-      employee_name: "Casey",
-      location_name: "Requested location",
-    };
-    const { client } = mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Review Casey" }),
-    );
-    const approve = screen.getByRole("button", {
-      name: "Approve transfer to Casey",
-    });
-    await waitFor(() =>
-      expect((approve as HTMLButtonElement).disabled).toBe(false),
-    );
-    fireEvent.click(approve);
-    const dialog = screen
-      .getByText("Confirm your decision", { selector: "h2" })
-      .closest("dialog")!;
-    expect(within(dialog).getByText("Offered shift")).toBeTruthy();
-    expect(within(dialog).getByText("Requested shift")).toBeTruthy();
-    expect(within(dialog).getByText(/Requested location/)).toBeTruthy();
-    vi.mocked(getExchangePreview).mockResolvedValue({
-      allowed: false,
-      fingerprint: "changed",
-      reasons: ["The other employee is not eligible for the exchanged shift"],
-      receiver: { status: "eligible", reasons: [] },
-      giver: {
-        status: "partial",
-        reasons: ["Availability covers only part of this shift"],
-      },
-      requires_other_manager: false,
-      other_applications: 0,
-    });
-    await act(async () => {
-      await client.invalidateQueries({
-        queryKey: ["shift-exchanges", "workspace", "preview"],
-      });
-    });
-    expect(
-      await within(dialog).findByText(
-        "Availability covers only part of this shift",
-      ),
-    ).toBeTruthy();
-    expect(within(dialog).getByText("Requested shift")).toBeTruthy();
-    expect(
-      (
-        within(dialog).getByLabelText(
-          "Confirm transfer to Casey",
-        ) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
   });
   it("shows unpublished details as history instead of assigning responsibility", async () => {
     model.cases[0]!.status = "invalidated";

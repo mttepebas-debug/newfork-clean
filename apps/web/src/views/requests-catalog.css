@@ -34,72 +34,6 @@
   background: var(--job-bg);
   overflow: hidden;
 }
-.requests-catalog-page .request-catalog-row {
-  display: grid;
-  grid-template-columns:
-    minmax(150px, 1.3fr) minmax(155px, 1fr) minmax(100px, 0.85fr)
-    minmax(100px, 0.75fr) 80px;
-  align-items: center;
-  gap: 12px;
-}
-.requests-catalog-page button.request-catalog-button {
-  width: 100%;
-  min-height: 52px;
-  padding: 6px 14px;
-  border: 0;
-  border-bottom: 1px solid var(--job-border);
-  border-radius: 0;
-  background: var(--job-bg);
-  text-align: left;
-  color: var(--job-text);
-  box-shadow: none;
-}
-.requests-catalog-page button.request-catalog-button:last-child {
-  border-bottom: 0;
-}
-.requests-catalog-page button.request-catalog-button:hover {
-  background: var(--job-hover);
-  border-color: var(--job-border);
-}
-.requests-catalog-page .request-catalog-row > * {
-  min-width: 0;
-}
-.requests-catalog-page .request-catalog-row .job-row-identity {
-  min-height: 36px;
-}
-.request-catalog-marker {
-  display: grid;
-  place-items: center;
-  flex: 0 0 28px;
-  height: 28px;
-  background: var(--job-soft);
-  color: var(--job-accent);
-  border-radius: 5px;
-}
-.request-catalog-meta {
-  color: var(--job-muted);
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.requests-catalog-page .job-name-stack small {
-  color: var(--job-muted);
-  font-size: 11px;
-}
-.requests-catalog-page .request-status {
-  max-width: 100%;
-  width: fit-content;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: none;
-  line-height: 1.4;
-  letter-spacing: 0;
-  border: 0;
-  border-radius: 5px;
-  background: var(--job-soft);
-  color: var(--job-text);
-  white-space: normal;
-}
 .requests-catalog-page .request-conflict-count {
   display: inline-flex;
   align-items: center;
@@ -113,13 +47,7 @@
   font-size: 13px;
 }
 .requests-catalog-page
-  :is(
-    .nf-button,
-    .sx-root button:not(.request-catalog-button),
-    button.sx-primary,
-    button.sx-icon,
-    button.job-secondary-button
-  ) {
+  :is(.nf-button, button.job-secondary-button) {
   min-height: 36px;
   padding: 7px 10px;
   border: 1px solid var(--job-border);
@@ -132,11 +60,7 @@
   font-weight: 600;
 }
 .requests-catalog-page
-  :is(
-    .nf-button:not(.secondary):not(.danger),
-    .sx-root button.sx-primary,
-    button.sx-primary
-  ) {
+  .nf-button:not(.secondary):not(.danger) {
   color: var(--theme-on-accent);
   background: var(--theme-accent);
   border-color: var(--theme-accent);
@@ -224,192 +148,7 @@
   border-color: var(--job-border);
   font-size: 12px;
 }
-.requests-exchange-drawer .catalog-drawer-body {
-  padding: 16px;
-}
-/* Manager shift requests use the same catalog list; the employee hub is untouched. */
-.requests-catalog-page .sx-root,
-.requests-catalog-page.sx-root {
-  --sx-bg: var(--job-bg);
-  --sx-card: var(--job-bg);
-  --sx-ink: var(--job-text);
-  --sx-muted: var(--job-muted);
-  --sx-border: var(--job-border);
-  --sx-green: var(--job-accent);
-  --sx-tint: var(--job-soft);
-  font-size: 13px;
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-heading {
-  margin: 0 0 12px;
-}
-.requests-catalog-page
-  .request-catalog-shift-hub
-  > .sx-heading
-  :is(.sx-eyebrow, h2) {
-  display: none;
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-heading p {
-  margin: 0;
-  font-size: 12px;
-}
-.requests-catalog-page .request-catalog-shift-hub .sx-workbench {
-  display: block;
-}
-.requests-catalog-page .request-catalog-shift-hub .sx-list {
-  display: block;
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 3px;
-  width: fit-content;
-  margin: 0 0 12px;
-  border: 1px solid var(--job-border);
-  border-radius: 6px;
-  background: var(--job-subtle);
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-tabs button {
-  min-height: 30px;
-  padding: 5px 10px;
-  border: 0;
-  background: transparent;
-  border-radius: 4px;
-}
-.requests-catalog-page
-  .request-catalog-shift-hub
-  > .sx-tabs
-  button[aria-selected="true"] {
-  background: var(--job-bg);
-  color: var(--job-accent);
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 16px;
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-filters label {
-  flex: 1 1 145px;
-}
-.requests-catalog-page .request-catalog-shift-hub > .sx-filters input,
-.requests-catalog-page .request-catalog-shift-hub > .sx-filters select {
-  width: 100%;
-}
-.requests-exchange-drawer .sx-detail {
-  padding: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-}
-.requests-exchange-drawer .sx-back {
-  display: none;
-}
-.requests-exchange-drawer .sx-detail :is(h3, h4) {
-  font-size: 14px;
-  letter-spacing: 0;
-}
-.requests-exchange-drawer
-  .sx-detail
-  :is(.sx-responsibility, .sx-preview, .sx-response, .sx-candidate, .sx-shift) {
-  padding: 12px;
-  border-radius: 6px;
-}
-.requests-exchange-drawer .sx-detail :is(.sx-swap-pair, .sx-candidates) {
-  gap: 10px;
-}
-.requests-exchange-drawer .sx-time {
-  font-size: 15px;
-}
-.requests-exchange-drawer .sx-detail p {
-  font-size: 12px;
-}
-.requests-exchange-drawer .sx-root button,
-.requests-exchange-drawer button {
-  min-height: 36px;
-  border-radius: 5px;
-  font-size: 12px;
-}
-.requests-catalog-page.request-catalog-exchange-dialog {
-  position: fixed;
-  inset: 0 0 0 auto;
-  margin: 0;
-  width: 640px;
-  max-width: 100vw;
-  height: 100dvh;
-  max-height: 100dvh;
-  border: 0;
-  border-left: 1px solid var(--job-border);
-  border-radius: 0;
-  padding: 0 16px;
-  background: var(--job-bg);
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-.requests-catalog-page.request-catalog-exchange-dialog > header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  padding: 16px;
-  margin: 0 -16px 16px;
-  background: var(--job-bg);
-  border-bottom: 1px solid var(--job-border);
-}
-.requests-catalog-page.request-catalog-exchange-dialog > header h2 {
-  font-size: 16px;
-  letter-spacing: 0;
-}
-.requests-catalog-page.request-catalog-exchange-dialog > footer {
-  position: sticky;
-  bottom: 0;
-  padding: 12px 16px;
-  margin: 16px -16px 0;
-  border-top: 1px solid var(--job-border);
-  background: var(--job-bg);
-  justify-content: flex-end;
-}
-.requests-catalog-page.request-catalog-exchange-dialog .sx-field {
-  margin: 12px 0;
-  gap: 6px;
-}
-.requests-catalog-page.request-catalog-exchange-dialog .sx-shift {
-  padding: 12px;
-  border-radius: 6px;
-}
-@media (max-width: 1050px) {
-  .requests-catalog-page .request-catalog-row {
-    grid-template-columns:
-      minmax(130px, 1.2fr) minmax(130px, 1fr) minmax(95px, 0.8fr)
-      65px;
-  }
-  .requests-catalog-page .request-location-column {
-    display: none;
-  }
-}
 @media (max-width: 650px) {
-  .requests-catalog-page .request-catalog-row {
-    grid-template-columns: minmax(0, 1fr) minmax(90px, 0.8fr) minmax(
-        75px,
-        0.7fr
-      );
-    gap: 8px;
-  }
-  .requests-catalog-page .request-impact-column {
-    display: none;
-  }
-  .requests-catalog-page button.request-catalog-button {
-    padding: 8px 10px;
-  }
-  .requests-catalog-page .request-catalog-marker {
-    display: none;
-  }
-  .requests-catalog-page .request-catalog-row .job-row-name {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  .requests-catalog-page .request-catalog-row .request-status {
-    font-size: 10px;
-  }
   .requests-catalog-page .requests-tabs,
   .document-catalog-settings-page .requests-tabs {
     gap: 14px;
@@ -427,10 +166,6 @@
 .requests-catalog-page.requests-page {
   background: transparent;
   color: var(--job-text);
-}
-.requests-catalog-page .sx-actions {
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* EKRAN-02 C1: Requests as one table in the shared list language (System 1). */
