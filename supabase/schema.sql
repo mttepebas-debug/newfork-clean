@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 464, last: 20261011140000_agreement_is_read_from_live_applications.sql
--- fingerprint: sha256:abc8b15e89bdcd20178d4ba6ce45fe4b716e91aa8797624725fde4d4415bec14
+-- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
+-- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1075,13 +1075,13 @@ begin
  if nullif(btrim(apply_reason),'') is null or char_length(apply_reason)>500 then raise exception 'application reason required' using errcode='22023'; end if;
  perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text,52001));
  if target_kind='acknowledgement' then perform 1 from public.signature_template_versions where id=target_document_type_id and workspace_id=target_workspace_id for update; else perform 1 from public.document_types where id=target_document_type_id and workspace_id=target_workspace_id for update; end if; select * into d from app_private.lifecycle_definition where id=target_document_type_id and workspace_id=target_workspace_id and kind=target_kind;
- if d.id is null or d.lifecycle_revision is distinct from expected_revision then raise exception 'document type changed; refresh required' using errcode='PT409'; end if;
+ if d.id is null or d.lifecycle_revision is distinct from expected_revision then raise exception 'document type changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  -- Lock every scoped input that contributes to this preview before revalidation.
  perform 1 from public.employee_profiles e where e.workspace_id=target_workspace_id and e.archived_at is null order by e.id for update;
  perform 1 from public.employee_onboarding_cases where workspace_id=target_workspace_id order by id for update;
  perform 1 from public.employee_onboarding_requirements where workspace_id=target_workspace_id and source_id=d.id order by id for update;
  preview:=app_private.preview_lifecycle_definition(actor_user_id,target_workspace_id,d.id,target_kind);
- if preview->>'preview_token' is distinct from expected_preview_token then raise exception 'document impact changed; refresh preview' using errcode='PT409'; end if;
+ if preview->>'preview_token' is distinct from expected_preview_token then raise exception 'document impact changed; refresh preview' using errcode='PT409',hint='document.changed'; end if;
  for item in select value from jsonb_array_elements(preview->'employees') where value->>'action' in ('assign','update','reopen','remove') loop
   select m.* into member from public.workspace_memberships m join public.employee_profiles e on e.workspace_id=m.workspace_id and e.user_id=m.user_id
    where e.id=(item->>'employee_id')::uuid and m.workspace_id=target_workspace_id;
@@ -1401,7 +1401,7 @@ CREATE OR REPLACE FUNCTION "app_private"."assert_document_published"("r" "public
     AS $$
 begin
  if r.kind='document' and (r.publication_paused_at is not null or (r.source_id is not null and exists(select 1 from public.document_types d where d.id=r.source_id and d.workspace_id=r.workspace_id and d.publication_status<>'published')))
- then raise exception 'Document is unpublished; changes are paused' using errcode='PT409'; end if;
+ then raise exception 'Document is unpublished; changes are paused' using errcode='PT409',hint='document.paused'; end if;
 end;
 $$;
 
@@ -3436,7 +3436,7 @@ begin
   (new.title,new.description,new.required_at_onboarding,new.requires_review,new.accepted_formats,new.tracks_expiry,new.expiry_warning_days,new.expiry_schedule_impact,new.lifecycle_settings,new.lifecycle_revision)
   is distinct from
   (old.title,old.description,old.required_at_onboarding,old.requires_review,old.accepted_formats,old.tracks_expiry,old.expiry_warning_days,old.expiry_schedule_impact,old.lifecycle_settings,old.lifecycle_revision)
- then raise exception 'Published documents cannot be edited; unpublish first' using errcode='PT409'; end if;
+ then raise exception 'Published documents cannot be edited; unpublish first' using errcode='PT409',hint='document.published_locked'; end if;
  if old.publication_status='draft' and new.lifecycle_revision=old.lifecycle_revision and old.updated_at is distinct from now()
   and (new.title,new.description,new.required_at_onboarding,new.requires_review,new.accepted_formats,new.tracks_expiry,new.expiry_warning_days,new.expiry_schedule_impact,new.lifecycle_settings) is distinct from (old.title,old.description,old.required_at_onboarding,old.requires_review,old.accepted_formats,old.tracks_expiry,old.expiry_warning_days,old.expiry_schedule_impact,old.lifecycle_settings) then new.lifecycle_revision:=old.lifecycle_revision+1; end if;
  return new;
@@ -5321,7 +5321,7 @@ begin
   raise exception 'an owner is not asked for the documents they ask of everyone else' using errcode='42501';
  end if;
  if not make_exempt then perform app_private.assert_document_published(r); end if;
- if expected_revision is null or r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if expected_revision is null or r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if make_exempt is null or nullif(btrim(exemption_reason),'') is null or char_length(exemption_reason)>500 then raise exception 'exemption reason required' using errcode='22023'; end if;
  if r.lifecycle_exempt=make_exempt then return r.lifecycle_revision; end if;
  asked:=app_private.document_requirement_asked(r);
@@ -6726,19 +6726,19 @@ begin
   or not app_private.document_actor_can_read(actor_user_id,r.workspace_id,r.employee_id,r.lifecycle_user_id)
  then raise exception 'policy unavailable' using errcode='P0002'; end if;
  select * into evidence from public.employee_acknowledgement_envelopes where workspace_id=target_workspace_id and idempotency_key=request_idempotency_key;
- if evidence.id is not null then if evidence.withdrawn_at is not null then raise exception 'acknowledgement was withdrawn; use a new request' using errcode='PT409'; end if;
+ if evidence.id is not null then if evidence.withdrawn_at is not null then raise exception 'acknowledgement was withdrawn; use a new request' using errcode='PT409',hint='document.acknowledgement_request_reused'; end if;
   if evidence.requirement_id<>r.id or evidence.user_id<>actor_user_id or evidence.content_digest is distinct from expected_content_digest or evidence.typed_name is distinct from btrim(signer_name)
-  then raise exception 'acknowledgement request changed' using errcode='PT409'; end if;
+  then raise exception 'acknowledgement request changed' using errcode='PT409',hint='document.acknowledgement_request_reused'; end if;
   return r.lifecycle_revision;
  end if;
- if r.lifecycle_revision<>expected_revision then raise exception 'policy changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'policy changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if r.lifecycle_closed_at is not null or r.lifecycle_exempt or r.status='superseded' then raise exception 'policy request is closed' using errcode='22023'; end if;
  select concat_ws(' ',first_name,last_name) into employee_name from public.employee_profiles where id=r.employee_id and workspace_id=r.workspace_id;
  if expected_content_digest is null or r.source_snapshot->>'content_digest' is distinct from expected_content_digest
   or signer_name is null or lower(regexp_replace(btrim(signer_name),'\s+',' ','g'))<>lower(regexp_replace(btrim(employee_name),'\s+',' ','g'))
   or request_idempotency_key is null or authenticated_timestamp is null or authenticated_timestamp<now()-interval '30 minutes' or authenticated_timestamp>now()+interval '1 minute'
  then raise exception 'current content, matching full name and recent sign-in required' using errcode='22023'; end if;
- if exists(select 1 from public.employee_acknowledgement_envelopes where requirement_id=r.id and withdrawn_at is null) then raise exception 'policy already acknowledged; refresh required' using errcode='PT409'; end if;
+ if exists(select 1 from public.employee_acknowledgement_envelopes where requirement_id=r.id and withdrawn_at is null) then raise exception 'policy already acknowledged; refresh required' using errcode='PT409',hint='document.changed'; end if;
  insert into public.employee_acknowledgement_envelopes(workspace_id,employee_id,case_id,requirement_id,template_version_id,content_digest,intent_statement,typed_name,user_id,membership_id,authenticated_at,idempotency_key)
  values(r.workspace_id,r.employee_id,r.case_id,r.id,r.source_id,expected_content_digest,r.source_snapshot->>'intent_statement',btrim(signer_name),actor_user_id,c.membership_id,authenticated_timestamp,request_idempotency_key);
  update public.employee_onboarding_requirements set status='completed',completed_at=now(),deadline_at=null,paused_remaining_seconds=null,document_suspended_at=null,
@@ -9418,7 +9418,7 @@ begin
  if r.id is null or r.lifecycle_user_id is distinct from actor_user_id or not app_private.document_actor_can_read(actor_user_id,r.workspace_id,r.employee_id,r.lifecycle_user_id)
  then raise exception 'document unavailable' using errcode='P0002'; end if;
  perform app_private.assert_document_published(r);
- if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if r.kind<>'document' or r.lifecycle_settings->>'mode'<>'conditional' or r.lifecycle_closed_at is not null or r.lifecycle_exempt
   or r.submitted_document_id is not null or exists(select 1 from public.employee_document_submissions s where s.requirement_id=r.id and s.state<>'draft')
   or not exists(select 1 from public.employee_onboarding_cases c join public.workspace_memberships m on m.id=c.membership_id where c.id=r.case_id and m.status='pending_activation')
@@ -10217,7 +10217,7 @@ begin
  select * into r from public.employee_onboarding_requirements where id=target_requirement_id and workspace_id=target_workspace_id and kind in ('document','acknowledgement') for update;
  if r.id is null then raise exception 'document unavailable' using errcode='P0002'; end if;
  perform app_private.assert_document_published(r);
- if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if additional_days is null or additional_days not between 1 and 3650 or nullif(btrim(extension_reason),'') is null or char_length(extension_reason)>500 then raise exception 'extension days and reason required' using errcode='22023'; end if;
  if r.deadline_at is null or r.deadline_at<=now() or r.lifecycle_exempt or r.lifecycle_closed_at is not null or r.lifecycle_retired_at is not null
   or r.lifecycle_settings->>'mode'='optional' or r.document_suspended_at is not null or app_private.document_actor_blocked(r.lifecycle_user_id,r.workspace_id)
@@ -12941,7 +12941,7 @@ begin
  for w in select distinct x from unnest(workspaces) x where x is not null order by x loop
   if not pg_try_advisory_xact_lock(hashtextextended(w::text,921))
    or not pg_try_advisory_xact_lock(hashtextextended('availability-publication:'||w::text,0)) then
-   raise exception 'The schedule is being updated. Your changes were not saved; review and retry.' using errcode='PT409';
+   raise exception 'The schedule is being updated. Your changes were not saved; review and retry.' using errcode='PT409',hint='schedule.busy';
   end if;
  end loop;
  if tg_op='DELETE' then return old; end if; return new;
@@ -16389,7 +16389,7 @@ begin
  perform app_private.authorize(actor_user_id,target_workspace_id,'settings.documents.write');
  select * into d from public.document_types where id=target_document_type_id and workspace_id=target_workspace_id;
  if d.id is null then raise exception 'document type not found' using errcode='P0002'; end if;
- if d.archived_at is not null then raise exception 'Archived documents cannot be published; restore first' using errcode='PT409'; end if;
+ if d.archived_at is not null then raise exception 'Archived documents cannot be published; restore first' using errcode='PT409',hint='document.archived'; end if;
  perform app_private.assert_document_definition_target(actor_user_id,target_workspace_id,d.lifecycle_settings->'target');
  result:=app_private.preview_lifecycle_definition(actor_user_id,target_workspace_id,d.id,'document');
  if d.publication_status='published' then
@@ -19007,9 +19007,9 @@ begin
  if r.id is null or r.lifecycle_user_id is distinct from actor_user_id or not app_private.document_actor_can_read(actor_user_id,r.workspace_id,r.employee_id,r.lifecycle_user_id)
  then raise exception 'document unavailable' using errcode='P0002'; end if;
  perform app_private.assert_document_published(r);
- if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if r.lifecycle_closed_at is not null or r.lifecycle_exempt or r.lifecycle_retired_at is not null then raise exception 'document request is closed' using errcode='22023'; end if;
- if not exists(select 1 from public.employee_document_submissions where id=target_submission_id and requirement_id=r.id and user_id=actor_user_id and state='draft') then raise exception 'draft unavailable' using errcode='PT409'; end if;
+ if not exists(select 1 from public.employee_document_submissions where id=target_submission_id and requirement_id=r.id and user_id=actor_user_id and state='draft') then raise exception 'draft unavailable' using errcode='PT409',hint='document.changed'; end if;
  delete from public.employee_document_submission_files where submission_id=target_submission_id and file_id=target_file_id and requirement_id=r.id;
  if not found then raise exception 'draft file unavailable' using errcode='P0002'; end if;
  update public.employee_onboarding_requirements set lifecycle_revision=lifecycle_revision+1,updated_at=now() where id=r.id returning lifecycle_revision into expected_revision;
@@ -20831,10 +20831,10 @@ begin
  select * into r from public.employee_onboarding_requirements where id=target_requirement_id and workspace_id=target_workspace_id for update;
  if r.id is null then raise exception 'document unavailable' using errcode='P0002'; end if;
  perform app_private.assert_document_published(r);
- if r.lifecycle_revision<>expected_revision or r.submitted_document_id is distinct from target_submission_id then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision or r.submitted_document_id is distinct from target_submission_id then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if r.lifecycle_closed_at is not null or r.lifecycle_exempt or r.status='superseded' then raise exception 'document obligation is closed' using errcode='22023'; end if;
  select * into s from public.employee_document_submissions where id=target_submission_id and requirement_id=r.id and state in ('pending_review','accepted') for update;
- if s.id is null then raise exception 'submission changed; refresh required' using errcode='PT409'; end if;
+ if s.id is null then raise exception 'submission changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if review_decision is null or review_decision not in ('approve','reject') or correction_period is null or correction_period not in ('full','remaining')
   or (review_decision='reject' and (nullif(btrim(review_reason),'') is null or char_length(review_reason)>500)) then raise exception 'valid review decision and reason required' using errcode='22023'; end if;
  if file_decisions is null or jsonb_typeof(file_decisions)<>'array' then raise exception 'file decisions required' using errcode='22023'; end if;
@@ -21349,7 +21349,7 @@ begin
  if target_document_type_id is not null then
   select lifecycle_revision into actual_revision from public.document_types where id=target_document_type_id and workspace_id=target_workspace_id for update;
   if actual_revision is null then raise exception 'document type unavailable' using errcode='P0002'; end if;
-  if actual_revision is distinct from expected_revision then raise exception 'document type changed; refresh required' using errcode='PT409'; end if;
+  if actual_revision is distinct from expected_revision then raise exception 'document type changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  end if;
  saved_id:=public.save_document_type_service(actor_user_id,target_workspace_id,target_document_type_id,
   document_payload->>'title',coalesce(document_payload->>'description',''),settings->>'mode'='required',
@@ -21502,7 +21502,7 @@ begin
  if r.id is null or r.lifecycle_user_id is distinct from actor_user_id or not app_private.document_actor_can_read(actor_user_id,r.workspace_id,r.employee_id,r.lifecycle_user_id)
  then raise exception 'document unavailable' using errcode='P0002'; end if;
  perform app_private.assert_document_published(r);
- if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if r.lifecycle_closed_at is not null or (r.lifecycle_exempt and not r.owner_excused) or r.status='superseded' then raise exception 'document obligation is closed' using errcode='22023'; end if;
  format:=case upload_media_type when 'application/pdf' then 'pdf' when 'image/jpeg' then 'jpeg' when 'image/png' then 'png' when 'image/webp' then 'webp' end;
  if format is null or not coalesce(r.source_snapshot->'accepted_formats' ? format,false)
@@ -22556,7 +22556,7 @@ begin
  if target_template_id is not null then
   perform 1 from public.signature_templates where id=target_template_id and workspace_id=target_workspace_id for update;
   select lifecycle_revision into prior_revision from public.signature_template_versions where template_id=target_template_id and workspace_id=target_workspace_id and status='draft' for update;
-  if prior_revision is not null and prior_revision is distinct from (policy_payload->>'lifecycle_revision')::integer then raise exception 'policy draft changed; refresh required' using errcode='PT409'; end if;
+  if prior_revision is not null and prior_revision is distinct from (policy_payload->>'lifecycle_revision')::integer then raise exception 'policy draft changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  end if;
  saved_id:=public.save_signature_template_draft_service(actor_user_id,target_workspace_id,target_template_id,
   policy_payload->>'title',policy_payload->>'summary',policy_payload->>'content_text',policy_payload->>'intent_statement',policy_payload->>'locale',
@@ -23696,7 +23696,7 @@ begin
  perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text,52001));
  select * into d from public.document_types where id=target_document_type_id and workspace_id=target_workspace_id for update;
  if d.id is null then raise exception 'document type not found' using errcode='P0002'; end if;
- if d.lifecycle_revision is distinct from expected_revision or d.publication_revision is distinct from expected_publication_revision or d.publication_status=target_status then raise exception 'Document publication changed; refresh required' using errcode='PT409'; end if;
+ if d.lifecycle_revision is distinct from expected_revision or d.publication_revision is distinct from expected_publication_revision or d.publication_status=target_status then raise exception 'Document publication changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  -- Assignment mutations use this same tenant advisory lock. Lock cases before requirements, as Submit/review do.
  perform 1 from public.employee_profiles where workspace_id=target_workspace_id order by id for update;
  perform 1 from public.employee_onboarding_cases where workspace_id=target_workspace_id order by id for update;
@@ -23704,7 +23704,7 @@ begin
  perform 1 from public.departments where workspace_id=target_workspace_id order by id for share;
  perform 1 from public.employee_location_assignments where workspace_id=target_workspace_id order by id for share;
  preview:=public.preview_document_publication_service(actor_user_id,target_workspace_id,d.id);
- if preview->>'preview_token' is distinct from expected_preview_token then raise exception 'Document publication impact changed; refresh preview' using errcode='PT409'; end if;
+ if preview->>'preview_token' is distinct from expected_preview_token then raise exception 'Document publication impact changed; refresh preview' using errcode='PT409',hint='document.changed'; end if;
  if target_status='published' then
   update public.document_types set publication_status='published',publication_revision=publication_revision+1,published_at=now() where id=d.id;
   core_preview:=app_private.preview_lifecycle_definition(actor_user_id,target_workspace_id,d.id,'document');
@@ -23901,7 +23901,7 @@ begin
  select * into r from public.employee_onboarding_requirements where workspace_id=target_workspace_id and id=target_requirement_id;
  if r.id is null then raise exception 'document unavailable' using errcode='P0002'; end if;
  select * into e from public.employee_profiles where id=r.employee_id and workspace_id=r.workspace_id for update;
- if e.revision is distinct from expected_employee_revision then raise exception 'employee changed; refresh required' using errcode='PT409'; end if;
+ if e.revision is distinct from expected_employee_revision then raise exception 'employee changed; refresh required' using errcode='PT409',hint='employee.revision_conflict'; end if;
  if not (e.is_remote or e.is_excluded_from_schedule) or exists(select 1 from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id and l.archived_at is null where a.workspace_id=e.workspace_id and a.employee_id=e.id and a.ended_at is null and a.is_primary)
  then raise exception 'the active primary location controls the document timezone' using errcode='22023'; end if;
  if reference_timezone is null or not (reference_timezone='UTC' or reference_timezone~'^[A-Za-z_]+/[A-Za-z0-9_+/-]+$') or not exists(select 1 from pg_catalog.pg_timezone_names where name=reference_timezone)
@@ -25165,7 +25165,7 @@ begin
  if r.id is null or r.lifecycle_user_id is distinct from actor_user_id or not app_private.document_actor_can_read(actor_user_id,r.workspace_id,r.employee_id,r.lifecycle_user_id)
  then raise exception 'document unavailable' using errcode='P0002'; end if;
  perform app_private.assert_document_published(r);
- if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'document changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if r.lifecycle_closed_at is not null or (r.lifecycle_exempt and not r.owner_excused) or r.status='superseded' then raise exception 'document obligation is closed' using errcode='22023'; end if;
  select * into s from public.employee_document_submissions where id=target_submission_id and requirement_id=r.id and user_id=actor_user_id and state='draft' for update;
  if s.id is null or not exists(select 1 from public.employee_document_submission_files where submission_id=s.id and decision='keep') then raise exception 'a draft with retained files is required' using errcode='22023'; end if;
@@ -27070,22 +27070,22 @@ begin
  perform 1 from public.workspace_scheduling_settings where workspace_id=w for share;
  model:=public.weekly_preferences_read_service(actor,w,(command->>'employee_id')::uuid);
  prior:=model->source;
- if (command->>'expected_revision')::integer is distinct from (prior->>'revision')::integer then raise exception 'Availability changed. Reload before saving; your draft has not been saved.' using errcode='PT409'; end if;
- if (command->>'settings_revision')::integer is distinct from (model->'settings'->>'revision')::integer then raise exception 'Availability settings changed. Reload before saving.' using errcode='PT409'; end if;
+ if (command->>'expected_revision')::integer is distinct from (prior->>'revision')::integer then raise exception 'Availability changed. Reload before saving; your draft has not been saved.' using errcode='PT409',hint='availability.changed'; end if;
+ if (command->>'settings_revision')::integer is distinct from (model->'settings'->>'revision')::integer then raise exception 'Availability settings changed. Reload before saving.' using errcode='PT409',hint='availability.changed'; end if;
  if source='employee' and (command ? 'notes' or command ? 'enabled' or command ? 'copy_employee_revision') then raise exception 'Manager fields cannot be saved with employee preferences' using errcode='42501'; end if;
  if source='manager' then
   if jsonb_typeof(command->'enabled') is distinct from 'boolean' or jsonb_typeof(notes) is distinct from 'array' or jsonb_array_length(notes)<>7
    or exists(select 1 from jsonb_array_elements(notes) n where jsonb_typeof(n)<>'string' or length(n#>>'{}')>1000) then raise exception 'Include reminder state and seven valid notes' using errcode='22023'; end if;
   if command ? 'copy_employee_revision' then
    if not (model->'employee'->>'submitted')::boolean or (command->>'copy_employee_revision')::integer is distinct from (model->'employee'->>'revision')::integer
-    or pref is distinct from model->'employee'->'preference' then raise exception 'Employee preferences changed. Copy the latest saved week again.' using errcode='PT409'; end if;
+    or pref is distinct from model->'employee'->'preference' then raise exception 'Employee preferences changed. Copy the latest saved week again.' using errcode='PT409',hint='availability.changed'; end if;
    copied:=true;
   end if;
   if not (prior->>'enabled')::boolean and not (command->>'enabled')::boolean and (pref<>prior->'preference' or notes<>prior->'notes' or copied) then
    raise exception 'Turn reminders on before editing or copying' using errcode='22023'; end if;
  end if;
  if pref->>'input_mode'<>model->'settings'->>'input_mode' then
-  raise exception 'Use the current organization entry mode' using errcode='PT409'; end if;
+  raise exception 'Use the current organization entry mode' using errcode='PT409',hint='availability.changed'; end if;
  perform 1 from public.shift_types where workspace_id=w order by id for share;
  for rule in select value from jsonb_array_elements(pref->'days') loop
   select value into old_rule from jsonb_array_elements((case when copied then model->'employee' else prior end)->'preference'->'days') where value->'day'=rule->'day';
@@ -27093,7 +27093,7 @@ begin
    if not exists(select 1 from public.shift_types t where t.workspace_id=w and t.id=type_id and t.archived_at is null and t.deleted_at is null
     and t.default_start_time is not null and t.default_end_time is not null and t.default_start_time<>t.default_end_time)
     and not (coalesce(old_rule->'shift_type_ids','[]') @> jsonb_build_array(type_id) and exists(select 1 from public.weekly_preference_type_defaults d where d.workspace_id=w and d.shift_type_id=type_id)) then
-     raise exception 'A selected shift type is no longer available. Reload before saving.' using errcode='PT409'; end if;
+     raise exception 'A selected shift type is no longer available. Reload before saving.' using errcode='PT409',hint='availability.changed'; end if;
   end loop;
  end loop;
  return model;
@@ -27424,7 +27424,7 @@ begin
  perform 1 from public.workspace_scheduling_settings where workspace_id=w for update;
  model:=public.weekly_preference_settings_read_service(actor,w); prior:=model->'settings';
  if (command->>'expected_revision')::integer is distinct from (prior->>'revision')::integer then
-  raise exception 'Availability settings changed. Reload the latest settings before saving.' using errcode = 'PT409'; end if;
+  raise exception 'Availability settings changed. Reload the latest settings before saving.' using errcode = 'PT409',hint='availability.changed'; end if;
  if command->>'input_mode'='shift_type' and jsonb_array_length(model->'missing_shift_types')>0 then
   raise exception 'Complete default hours for all active shift types before using shift type availability' using errcode='22023',detail=(model->'missing_shift_types')::text; end if;
  if (command-'expected_revision') is distinct from (prior-'revision') then
@@ -27836,12 +27836,12 @@ begin
  if c.id is null or r.kind<>'acknowledgement' or r.lifecycle_user_id is distinct from actor_user_id
   or not app_private.document_actor_can_read(actor_user_id,r.workspace_id,r.employee_id,r.lifecycle_user_id)
  then raise exception 'policy unavailable' using errcode='P0002'; end if;
- if r.lifecycle_revision<>expected_revision then raise exception 'policy changed; refresh required' using errcode='PT409'; end if;
+ if r.lifecycle_revision<>expected_revision then raise exception 'policy changed; refresh required' using errcode='PT409',hint='document.changed'; end if;
  if c.submitted_at is not null or c.status<>'in_progress' or r.lifecycle_retired_at is not null
   or not exists(select 1 from public.workspace_memberships where id=c.membership_id and user_id=actor_user_id and status='pending_activation')
  then raise exception 'acknowledgement can only be withdrawn before first onboarding Submit' using errcode='22023'; end if;
  update public.employee_acknowledgement_envelopes set withdrawn_at=now() where requirement_id=r.id and user_id=actor_user_id and withdrawn_at is null returning id into evidence_id;
- if evidence_id is null then raise exception 'current acknowledgement unavailable' using errcode='PT409'; end if;
+ if evidence_id is null then raise exception 'current acknowledgement unavailable' using errcode='PT409',hint='document.changed'; end if;
  update public.employee_onboarding_requirements set status='not_started',completed_at=null,lifecycle_revision=lifecycle_revision+1,updated_at=now() where id=r.id returning lifecycle_revision into expected_revision;
  perform app_private.document_audit(r,actor_user_id,'document.policy_withdrawn',jsonb_build_object('evidence_id',evidence_id,'revision',expected_revision));
  perform app_private.document_sync_onboarding(r.id,actor_user_id);
