@@ -10,6 +10,7 @@ import {
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
 import { useAvailabilityNavigationGuard } from "./availability-navigation";
 import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 
 type Props = {
   model: WeeklyPreferenceRead;
@@ -137,11 +138,12 @@ function PreferenceForm({
       reset(next);
       setSaved(true);
     } catch (cause) {
+      // BL-1028: only "the week or its settings changed meanwhile" has a
+      // newer week to reload; the database says so with its key.
       setConflict(
-        typeof cause === "object" &&
-          cause !== null &&
-          "status" in cause &&
-          Number(cause.status) === 409,
+        cause instanceof RequestError &&
+          cause.status === 409 &&
+          cause.reason === "availability.changed",
       );
       setError(
         isNoAccess(cause)
