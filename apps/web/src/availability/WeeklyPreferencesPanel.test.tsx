@@ -80,7 +80,7 @@ describe("weekly preferences API panel", () => {
     latest.employee.submitted = true;
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(latest);
     vi.mocked(saveWeeklyPreferences)
-      .mockRejectedValueOnce(Object.assign(new Error(conflictSentence), { status: 409 }))
+      .mockRejectedValueOnce(new RequestError(conflictSentence, "availability.changed", undefined, 409))
       .mockResolvedValueOnce(result);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText(conflictSentence);
@@ -126,7 +126,7 @@ describe("weekly preferences API panel", () => {
     await setup();
     fireEvent.click(screen.getByRole("switch", { name: /Monday all day unavailable/i }));
     vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
-      Object.assign(new Error(conflictSentence), { status: 409 }),
+      new RequestError(conflictSentence, "availability.changed", undefined, 409),
     );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText(conflictSentence);
@@ -142,7 +142,7 @@ describe("weekly preferences API panel", () => {
     const { result } = await setup();
     vi.mocked(saveWeeklyPreferences)
       .mockRejectedValueOnce(
-        Object.assign(new Error(conflictSentence), { status: 409 }),
+        new RequestError(conflictSentence, "availability.changed", undefined, 409),
       )
       .mockResolvedValueOnce(result);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
