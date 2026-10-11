@@ -50,8 +50,18 @@ function client(): SupabaseClient {
   return supabaseClient;
 }
 
-function message(error: { message: string; hint?: string | null } | null): void {
+// BL-1009: the database keeps active names unique; the person reads which name is taken.
+const NAME_TAKEN: Readonly<Record<string, string>> = {
+  shift_types_workspace_active_name_idx: "A shift type with this name already exists. Choose another name.",
+  shift_labels_workspace_active_name_idx: "A label with this name already exists. Choose another name.",
+};
+
+function message(error: { code?: string; message: string; hint?: string | null } | null): void {
   if (!error) return;
+  if (error.code === "23505") {
+    const taken = Object.entries(NAME_TAKEN).find(([index]) => error.message.includes(index));
+    if (taken) throw new Error(taken[1]);
+  }
   // Settings → Jobs writes straight to the tables, so the database's refusal to
   // let go of Management or the Owner job lands here, not at the API (BL-218).
   const sentence = managementAndOwnerSentence(error.hint);
