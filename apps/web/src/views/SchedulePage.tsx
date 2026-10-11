@@ -2710,6 +2710,7 @@ export function SchedulePage({
       ) : null}
       <ScheduleGrid
         model={sortedModel}
+        timeFormat={resolveTimeInputFormat(account?.timeFormat, model.settings.time_format)}
         search={search}
         selectedDate={selectedDate}
         view={view}
