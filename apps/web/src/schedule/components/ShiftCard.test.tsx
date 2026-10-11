@@ -260,7 +260,8 @@ describe("ShiftCard", () => {
   // it was; a clicked card takes it, and Enter and Ctrl+C then reach it.
   it("takes keyboard focus when clicked while editing", () => {
     const onEdit = vi.fn();
-    renderShiftCard({ onEdit });
+    const onCopy = vi.fn();
+    renderShiftCard({ onEdit, onCopy });
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
 
     fireEvent.click(badge);
@@ -268,10 +269,31 @@ describe("ShiftCard", () => {
     expect(badge.dataset.mouseFocus).toBe("true");
     fireEvent.keyDown(document.activeElement!, { key: "Enter" });
     expect(onEdit).toHaveBeenCalledWith(shift);
+    fireEvent.keyDown(document.activeElement!, { key: "c", ctrlKey: true });
+    expect(onCopy).toHaveBeenCalledWith(shift);
 
     // Leaving it ends the mouse mark: a later Tab back shows the keyboard ring.
     badge.blur();
     expect(badge.dataset.mouseFocus).toBeUndefined();
+  });
+
+  it("leaves focus alone when clicked outside editing (Employee view, preview)", () => {
+    renderShiftCard({ editing: false });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+
+    fireEvent.click(badge);
+    expect(document.activeElement).not.toBe(badge);
+    expect(badge.dataset.mouseFocus).toBeUndefined();
+  });
+
+  it("drops the keyboard ring when a card the keyboard reached is clicked", () => {
+    renderShiftCard();
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    badge.focus();
+
+    fireEvent.click(badge);
+    expect(document.activeElement).toBe(badge);
+    expect(badge.dataset.mouseFocus).toBe("true");
   });
 
   it("does not let an unpaired modifier pointerdown swallow the next normal click", () => {
