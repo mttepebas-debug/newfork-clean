@@ -228,6 +228,9 @@ select tests.publish_week('rc', 9, '[
 select tests.remember('rc:case:ali-far', (public.shift_exchanges_command_service(tests.user('rc:ali'), tests.id('rc'),
   jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('rc:shift:ali-far')), gen_random_uuid()) ->> 'case_id')::uuid);
 -- Veli asks for it: a cover reaches the manager once somebody asked (Mert, 2026-10-11).
+-- The Food handler card from (e) would hold him back from a pickup; he is exempt here.
+update public.employee_onboarding_requirements set lifecycle_exempt = true
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('rc:veli');
 select public.shift_exchanges_command_service(tests.user('rc:veli'), tests.id('rc'),
   jsonb_build_object('action', 'apply', 'shift_id', tests.id('rc:shift:ali-far'), 'case_id', tests.id('rc:case:ali-far')), gen_random_uuid());
 select ok(exists (select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rc:ayse'), tests.id('rc'), true) -> 'cases') c
