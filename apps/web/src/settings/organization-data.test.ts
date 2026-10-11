@@ -148,6 +148,14 @@ describe("Schedule logo: the save's answer is lost", () => {
     expect(storage.remove).not.toHaveBeenCalled();
   });
 
+  it("keeps the logo file when Remove logo fails and the workspace cannot be asked", async () => {
+    singles.push({ data: logoRow(oldPath, workspaceId), error: null }, lost, lost);
+    await expect(
+      saveScheduleLogo(workspaceId, { file: null, removeLogo: true, placement }),
+    ).rejects.toThrow("Failed to fetch");
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
   it("removes the logo file once Remove logo landed, even with its answer lost", async () => {
     singles.push({ data: logoRow(oldPath, workspaceId), error: null }, lost, {
       data: logoRow(null, workspaceId),
