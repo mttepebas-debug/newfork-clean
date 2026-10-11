@@ -458,7 +458,7 @@ describe("weekly preference form", () => {
     const option = screen.getByRole("button", {
       name: "Monday Dinner unavailable",
     });
-    expect(option.getAttribute("title")).toBe("17:00 - 23:00 (archived)");
+    expect(option.getAttribute("title")).toBe("17:00 – 23:00 (archived)");
     fireEvent.click(option);
     expect(
       screen.queryByRole("button", { name: "Monday Dinner unavailable" }),
