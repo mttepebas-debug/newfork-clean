@@ -196,6 +196,9 @@ export function WorkspacePage() {
       context?.membership.role === "admin" ? (
         <OwnerSetupChecklist workspaceId={context.workspace.id} />
       ) : null}
+      {!customizing && layout.widget_order.every((id) => hidden.has(id)) ? (
+        <EmptyWidget text="Every card is hidden. Use Customize to show them again." />
+      ) : null}
       <div className="workspace-grid">
         {layout.widget_order.map((id, index) => {
           if (hidden.has(id) && !customizing) return null;
@@ -230,15 +233,22 @@ export function WorkspacePage() {
                       onClick={() => toggle(id)}
                     >
                       {hidden.has(id) ? (
-                        <Eye size={15} />
+                        <Eye size={15} aria-hidden />
                       ) : (
-                        <EyeOff size={15} />
+                        <EyeOff size={15} aria-hidden />
                       )}
                     </button>
                   </div>
                 ) : null}
               </header>
-              <Widget id={id} model={model} workspaceId={workspaceId} />
+              {/* BL-813: a hidden card in Customize is a preview, not a form. */}
+              {hidden.has(id) ? (
+                <div className="workspace-widget-preview" inert>
+                  <Widget id={id} model={model} workspaceId={workspaceId} />
+                </div>
+              ) : (
+                <Widget id={id} model={model} workspaceId={workspaceId} />
+              )}
             </article>
           );
         })}
