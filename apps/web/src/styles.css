@@ -13693,7 +13693,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .owner-setup-checklist-item small {
   margin-top: 3px;
-  color: #708078;
+  /* BL-846: #708078 was 4.16:1 at 11 px. */
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .owner-setup-checklist-status {
@@ -13806,9 +13807,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #13201a;
   font: inherit;
 }
+/* BL-847: the app's one focus ring; the faint 24% halo was 2.88:1. */
 .workspace-todo-form input:focus {
-  border-color: #7da08f;
-  outline: 2px solid rgb(125 160 143 / 24%);
+  border-color: var(--theme-focus);
+  outline: 2px solid var(--theme-focus);
   outline-offset: 1px;
 }
 .workspace-feed > a,
@@ -13847,7 +13849,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   white-space: nowrap;
 }
 .workspace-feed small {
-  color: #718078;
+  /* BL-846: #718078 was 4.15:1 at 11 px. */
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .widget-link {
