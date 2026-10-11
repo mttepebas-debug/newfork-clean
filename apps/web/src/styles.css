@@ -11881,9 +11881,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .workspace-closure-panel p {
   margin: 6px 0 0;
-  color: #66524d;
   font-size: 13px;
   line-height: 1.45;
+}
+/* BL-287: the panel's own lines only; its error line stays the one red. */
+.workspace-closure-panel p:not(.form-error) {
+  color: #66524d;
 }
 .workspace-closure-panel label {
   display: grid;
