@@ -5438,6 +5438,26 @@ end; $$;
 ALTER FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select c.kind = 'open_pickup' or case
+    when c.status = 'open' and public.shift_exchange_live_status(shift_exchange_reached_managers.w, c.id) = 'open' then
+      exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.status = 'pending_manager')
+      or exists (select 1 from public.shift_exchange_votes v where v.case_id = c.id)
+    else exists (select 1 from public.shift_exchange_events e
+      where e.workspace_id = shift_exchange_reached_managers.w and e.case_id = c.id
+        and e.action in ('application_submitted', 'peer_accepted'))
+  end
+  from public.shift_exchange_cases c
+  where c.workspace_id = shift_exchange_reached_managers.w and c.id = shift_exchange_reached_managers.cid
+$$;
+
+
+ALTER FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") OWNER TO "postgres";
+
+
 COMMENT ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") IS 'One shift change as the Requests lists draw it; the reader decides who may see it (EKRAN-02 A4).';
 
 
@@ -12539,6 +12559,10 @@ begin
         or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope))
         or c.owner_id = emp_id
         or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id))
+   -- Reached the manager only once both sides agreed (Mert, 2026-10-11), as the open list.
+   and (c.owner_id = emp_id
+        or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id)
+        or coalesce(app_private.shift_exchange_reached_managers(target_workspace_id, c.id), false))
    and (target_location_id is null or target_location_id in
         ((c.offered_snapshot ->> 'location_id')::uuid, (c.requested_snapshot ->> 'location_id')::uuid))
    and (needle = '' or concat_ws(' ', c.offered_snapshot ->> 'employee_name', c.requested_snapshot ->> 'employee_name',
@@ -24977,10 +25001,10 @@ begin
   mine:=coalesce(c.owner_id=emp.id,false);
   if not allowed and not mine and not exists(select 1 from public.shift_exchange_applications where case_id=c.id and employee_id=emp.id) then continue; end if;
   -- A swap or a cover reaches a manager once both sides agreed (Mert, 2026-10-11):
-  -- somebody asked for the shift, or the teammate accepted the swap.
-  if manager_view and c.kind<>'open_pickup' and not mine
+  -- somebody asks for the shift, or the teammate accepted the swap.
+  if manager_view and not mine
    and not exists(select 1 from public.shift_exchange_applications where case_id=c.id and employee_id=emp.id)
-   and not exists(select 1 from public.shift_exchange_events where workspace_id=w and case_id=c.id and action in('application_submitted','peer_accepted'))
+   and not coalesce(app_private.shift_exchange_reached_managers(w,c.id),false)
    then continue; end if;
   -- Repeated historical requests refer to the same published source. Resolve
   -- each source once in this read only; no cache survives the function call.
@@ -34899,6 +34923,10 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_excha
 
 
 REVOKE ALL ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") FROM PUBLIC;
 
 
 
