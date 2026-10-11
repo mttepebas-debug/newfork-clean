@@ -34,6 +34,21 @@ describe("scheduleInteractionTargets", () => {
     expect(isBlankScheduleDismissTarget(target)).toBe(false);
     expect(isSchedulePreviewFocusedShiftBlankDismissTarget(target)).toBe(false);
   });
+  // BL-714: a mouse press on the grid's logo opens the logo window; it is not a
+  // blank press, whose last layer jumps the week back to today.
+  it("treats the grid's logo button as a control, not blank schedule", () => {
+    document.body.innerHTML = `
+      <section class="schedule-page">
+        <div data-schedule-logo-slot="expanded">
+          <button type="button" class="schedule-grid-logo-frame schedule-grid-logo-button" aria-label="Manage schedule logo">
+            <img id="logo-image" alt="Meyhouse logo" />
+          </button>
+        </div>
+      </section>`;
+
+    expect(isBlankScheduleDismissTarget(document.getElementById("logo-image")!)).toBe(false);
+  });
+
   // Visual QA on G14: the save recovery sheet is a native <dialog> with no role
   // attribute, and the confirmation windows are alertdialogs. A press inside any
   // window belongs to that window; it must not run the page's dismissal cascade.
