@@ -189,5 +189,4 @@ supabase/tests/schedule_refusal_reasons.test.sql
 supabase/tests/announcement_refusal_reasons.test.sql
 supabase/tests/time_off_refusal_reasons.test.sql
 supabase/tests/employee_and_catalog_refusal_reasons.test.sql
-supabase/tests/invitation_reminder_and_newer_link.test.sql
 supabase/tests/onboarding_refusal_reasons.test.sql

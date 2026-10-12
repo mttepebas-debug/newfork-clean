@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 469, last: 20261012031000_time_off_refusals_say_why.sql
--- fingerprint: sha256:2163122b451b1bf158ae285f2c894cb99bafcffc964a4a8bc099792ce898eec0
+-- migrations: 472, last: 20261012040500_back_dated_termination_keeps_worked_shifts.sql
+-- fingerprint: sha256:34ab5cf8950636fbe3cb29ea7f9ee0b9d224d9cbb3cb0044527b476fde9cdc5b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3363,7 +3363,7 @@ begin
     -- The lock serializes this check with deletion, including employee-save commands
     -- that validated the job before they waited for deletion to finish.
     select j.deleted_at into deleted from public.jobs j where j.id=new.job_id for key share;
-    if deleted is not null then raise exception 'This job was deleted. Reload jobs before assigning it.' using errcode='PT409'; end if;
+    if deleted is not null then raise exception 'This job was deleted. Reload jobs before assigning it.' using errcode='PT409',hint='job.deleted'; end if;
   end if;
   return new;
 end; $$;
@@ -3378,7 +3378,7 @@ CREATE OR REPLACE FUNCTION "app_private"."guard_catalog_deletion_state"() RETURN
     AS $$
 begin
   if tg_op='UPDATE' and old.deleted_at is not null then
-    raise exception 'This item was deleted. Reload the catalog.' using errcode='PT409';
+    raise exception 'This item was deleted. Reload the catalog.' using errcode='PT409',hint='catalog.deleted';
   end if;
   if new.deleted_at is not null and current_user not in ('postgres','service_role') then
     raise exception 'Use the authorized catalog deletion command.' using errcode='42501';
@@ -3401,7 +3401,7 @@ declare removed timestamptz;
 begin
   if new.department_id is not null then
     select deleted_at into removed from public.departments where id=new.department_id for key share;
-    if removed is not null then raise exception 'This department was deleted. Reload departments.' using errcode='PT409'; end if;
+    if removed is not null then raise exception 'This department was deleted. Reload departments.' using errcode='PT409',hint='department.deleted'; end if;
   end if;
   return new;
 end; $$;
@@ -3418,7 +3418,7 @@ declare removed timestamptz;
 begin
   if new.ended_at is null then
     select deleted_at into removed from public.locations where id=new.location_id for key share;
-    if removed is not null then raise exception 'This location was deleted. Reload locations.' using errcode='PT409'; end if;
+    if removed is not null then raise exception 'This location was deleted. Reload locations.' using errcode='PT409',hint='location.deleted'; end if;
   end if;
   return new;
 end; $$;
@@ -8777,7 +8777,7 @@ begin
       and c.command_id = create_employee_command_service.command_id;
   if found then
     if stored.input_hash <> fingerprint then
-      raise exception 'idempotency key belongs to different employee details' using errcode = 'PT409';
+      raise exception 'idempotency key belongs to different employee details' using errcode = 'PT409', hint = 'employee.create_request_reused';
     end if;
     -- A retry hands the token out again: only while the role is still theirs to give.
     if invite_role_id is not null
@@ -26632,11 +26632,11 @@ begin
       raise exception 'Not allowed' using errcode='42501', hint='authz.' || reason, detail='employee.save'; end if;
     select * into employee from public.employee_profiles e
     where e.id=(item->>'employee_id')::uuid and e.workspace_id=target_workspace_id for update;
-    if employee.archived_at is not null then raise exception 'An employee was archived. Reload the employee list.' using errcode='PT409'; end if;
+    if employee.archived_at is not null then raise exception 'An employee was archived. Reload the employee list.' using errcode='PT409',hint='employee.archived'; end if;
     select exists(select 1 from public.employee_job_assignments a where a.employee_id=employee.id
       and a.job_id=target_job_id and a.ended_at is null) into actual;
     if actual<>(item->>'assigned')::boolean and employee.revision<>(item->>'expected_revision')::integer then
-      raise exception 'Employee % changed. Reload employees and review your pending changes.',employee.employee_code using errcode='PT409';
+      raise exception 'Employee % changed. Reload employees and review your pending changes.',employee.employee_code using errcode='PT409',hint='employee.revision_conflict';
     end if;
   end loop;
   for item in select value from jsonb_array_elements(assignment_changes) order by value->>'employee_id' loop
@@ -26736,7 +26736,7 @@ begin
     -- A successful request can be retried with the same original values.
     if desired is distinct from actual then
       if expected_job is distinct from actual then
-        raise exception 'Job details changed. Reload the latest job and review your draft.' using errcode = 'PT409';
+        raise exception 'Job details changed. Reload the latest job and review your draft.' using errcode = 'PT409', hint = 'job.changed';
       end if;
       if selected_department_id is not null and selected_department_id is distinct from target.department_id then
         select * into department from public.departments d
