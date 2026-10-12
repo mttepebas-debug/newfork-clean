@@ -99,12 +99,12 @@ select is(
 -- decision paths went (FB-6.3.7), 161 after announcements and important dates moved to the
 -- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6), 100 after the Schedule
 -- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it), 83 after Shift Hub's
--- (FB-6.4 A2), 82 after Settings > Roles' "not eligible for a lower role" (GUVENLIK-A GA-2), 68 after
+-- (FB-6.4 A2), 82 after Settings > Roles' "not eligible for a lower role" (GUVENLIK-A GA-2), 67 after
 -- Settings > Roles and Notifications asked the core (BL-276). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 68, 'refusals without an authz hint only go down'
+  '<=', 67, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or

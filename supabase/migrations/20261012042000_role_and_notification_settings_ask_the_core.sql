@@ -76,7 +76,9 @@ select pg_temp.patch('public.save_workspace_role_service(uuid,uuid,uuid,text,tex
  if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when target_role_id is not null and not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;$a$, '1',
   -- An admin hands on only what the core says the admin holds.
   $a$not public.service_actor_has_permission(actor_user_id,target_workspace_id,k))$a$,
-  $a$not k = any ((select (app_private.actor(actor_user_id,target_workspace_id)).permissions)::text[]))$a$, '1'
+  $a$not k = any ((select (app_private.actor(actor_user_id,target_workspace_id)).permissions)::text[]))$a$, '1',
+  $a$'Cannot grant access beyond your own permissions' using errcode='42501';$a$,
+  $a$'Cannot grant access beyond your own permissions' using errcode='42501',hint='authz.missing_permission';$a$, '1'
 ]);
 
 select pg_temp.patch('public.delete_workspace_role_service(uuid,uuid,uuid)', array[
