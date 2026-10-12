@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 468, last: 20261012042000_role_and_notification_settings_ask_the_core.sql
--- fingerprint: sha256:f89c9bdc9f679267f4ebc47ec20f3ccf76daa6debed81725c946534eda0478a2
+-- fingerprint: sha256:87e08f7d9fcba6a53abacf02c0da96034bc966ea0aeef505f0a2584075162b1b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -23043,7 +23043,7 @@ begin
  if role_access_class<>'admin' and normalized && array['roles.manage','workspace.manage'] then raise exception 'Protected management access denied' using errcode='42501'; end if;
  if role_access_class='employee' and exists(select 1 from unnest(normalized) k where k not in (select p.key from public.permissions p where p.employee_eligible)) then raise exception 'Employee roles are limited to personal access' using errcode='42501'; end if;
  -- Admin delegation cannot manufacture permissions it does not itself hold.
- if actor_class='admin' and exists(select 1 from unnest(normalized) k where not k = any ((select (app_private.actor(actor_user_id,target_workspace_id)).permissions)::text[])) then raise exception 'Cannot grant access beyond your own permissions' using errcode='42501'; end if;
+ if actor_class='admin' and exists(select 1 from unnest(normalized) k where not k = any ((select (app_private.actor(actor_user_id,target_workspace_id)).permissions)::text[])) then raise exception 'Cannot grant access beyond your own permissions' using errcode='42501',hint='authz.missing_permission'; end if;
  if exists(select 1 from app_private.role_permission_dependencies d where d.permission_key=any(normalized) and not d.required_key=any(normalized)) then raise exception 'Permission set requires dependent read access' using errcode='22023'; end if;
  if target_role_id is null then
   insert into public.workspace_roles(workspace_id,name,description,access_class,sort_order,created_by) values(target_workspace_id,btrim(role_name),btrim(coalesce(role_description,'')),role_access_class,100,actor_user_id) returning id into saved;

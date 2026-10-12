@@ -164,7 +164,7 @@ select is(pg_temp.answer(format('select public.delete_workspace_role_service(%L,
   '42501 authz.out_of_scope', 'a role that is not there is out of scope') from ids;
 -- An admin hands on only what the Admin role holds today.
 delete from public.workspace_role_permissions where role_id = (select admin_role from ids) and permission_key = 'schedule.export';
-select is(pg_temp.save_role(admin_user, null, 'manager', pg_temp.manager_keys()), '42501 (no hint)',
+select is(pg_temp.save_role(admin_user, null, 'manager', pg_temp.manager_keys()), '42501 authz.missing_permission',
   'an admin role without schedule.export cannot put it on a manager role') from ids;
 select is(pg_temp.save_role(owner_user, null, 'manager', pg_temp.manager_keys()), 'ok', 'the owner still can') from ids;
 select is(app_private.can_edit_role(owner_user, w, spare_role), true, 'the owner may edit the spare role') from ids;
@@ -182,6 +182,32 @@ select is(pg_temp.holds(employee_user, 'settings.jobs.read'), false, 'an employe
 select is(pg_temp.holds(stranger_user, 'settings.jobs.read'), false, 'somebody from another workspace holds nothing here') from ids;
 select is(tests.as_browser(admin_user, format('update public.workspaces set name = name where id = %L', w)), 1,
   'an admin still renames the workspace through the browser') from ids;
+
+-- A member missing a required document holds nothing, as with the old helper.
+select tests.world('nd');
+select tests.person('nd', 'dora', 'manager', array['K'], array['cook']);
+-- ponytail: the deadline is moved into the past by hand, as in schedule_asks_the_core.
+create temporary table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(tests.user('nd:owner'), tests.id('nd'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(tests.user('nd:owner'), tests.id('nd'), id);
+select public.set_document_publication_service(tests.user('nd:owner'), tests.id('nd'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+create function pg_temp.dora_holds(key text) returns boolean language sql as $$
+ select tests.as_browser(tests.user('nd:dora'), format('select 1 where public.workspace_has_permission(%L, %L)', tests.id('nd'), key)) > 0
+$$;
+select is(pg_temp.dora_holds('schedule.read'), true, 'a manager with the document still due holds schedule.read');
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('nd:dora');
+select is(pg_temp.dora_holds('schedule.read'), false, 'past the deadline without it, nothing');
 
 -- 6. A closed workspace says no, where the old helper said yes.
 update public.workspaces set lifecycle_status = 'suspended' where id = tests.id('ns');
