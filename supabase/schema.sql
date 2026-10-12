@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 473, last: 20261012041500_termination_tells_location_managers.sql
--- fingerprint: sha256:2416e4bcd3616441d4bb62df7577a064ca4a06d064c0077398495a086b908045
+-- migrations: 474, last: 20261012041600_this_week_is_the_locations_week.sql
+-- fingerprint: sha256:c7d19a8a554099681a8087a8f45429375e799d9b8dc224c4c7861689ca57aed8
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3612,7 +3612,7 @@ CREATE OR REPLACE FUNCTION "app_private"."important_date_closure_impact"("w" "uu
     select day.location_id, day.closed_date
     from app_private.closure_days(w, kind::public.important_date_type, starts, ends,
       recurrence::public.important_date_recurrence, coalesce(location_ids, '{}')) day
-    where day.closed_date >= public.schedule_current_week_start_service(w)
+    where day.closed_date >= public.schedule_current_week_start_service(w, array[day.location_id])
     except
     select day.location_id, day.closed_date
     from app_private.closure_days(w, stored.type, stored.starts_on, stored.ends_on, stored.recurrence,
@@ -5284,6 +5284,31 @@ $$;
 ALTER FUNCTION "app_private"."schedule_week_availability"("target_workspace_id" "uuid", "target_week_start" "date", "target_employee_ids" "uuid"[], "target_location_ids" "uuid"[], "with_reminders" boolean) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."schedule_week_start_at"("w" "uuid", "places" "uuid"[], "instant" timestamp with time zone) RETURNS "date"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case settings.week_start_day
+    when 'sunday' then local.today - extract(dow from local.today)::integer
+    else local.today - (extract(isodow from local.today)::integer - 1)
+  end
+  from public.workspace_scheduling_settings settings
+  cross join lateral (
+    -- The westernmost place's date: the week is not past while any place is still in it.
+    select coalesce(
+      (select min((instant at time zone location.timezone)::date) from public.locations location
+       where location.workspace_id = w and location.id = any(places)),
+      (select min((instant at time zone location.timezone)::date) from public.locations location
+       where location.workspace_id = w and app_private.location_is_live(location)),
+      (instant at time zone 'UTC')::date) as today
+  ) local
+  where settings.workspace_id = w;
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_week_start_at"("w" "uuid", "places" "uuid"[], "instant" timestamp with time zone) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."scope_set"("actor" "uuid", "w" "uuid", "action" "text") RETURNS "uuid"[]
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -6833,7 +6858,26 @@ declare
   session_draft_id uuid;
   recovery_draft_id uuid;
 begin
-  current_week_start := public.schedule_current_week_start_service(target_workspace_id);
+  perform public.availability_lock_workspace(target_workspace_id);
+
+  -- Where this person may edit: the live locations the core gives.
+  manageable := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.edit');
+  select coalesce(array_agg(location.id order by location.id), '{}') into manageable
+  from public.locations location
+  where location.workspace_id = target_workspace_id
+    and location.archived_at is null
+    and location.id = any(manageable);
+  select coalesce(array_agg(distinct requested order by requested), '{}') into effective
+  from unnest(coalesce(target_location_ids, manageable)) requested
+  where requested = any(manageable);
+  if cardinality(effective) = 0 then
+    -- Nothing here to edit: asked of no place, the core answers with the
+    -- person's reason (no permission, blocked) or out_of_scope.
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.edit', target_locations => array[null]::uuid[]);
+  end if;
+
+  -- A past week never opens; "this week" is the one these places are in (S-01).
+  current_week_start := public.schedule_current_week_start_service(target_workspace_id, effective);
   if current_week_start is not null and target_week_start < current_week_start then
     raise exception '%', jsonb_build_object(
       'status', 'past_edit_blocked',
@@ -6851,24 +6895,6 @@ begin
       ),
       'current_week_start', current_week_start
     )::text using errcode = 'P0001';
-  end if;
-
-  perform public.availability_lock_workspace(target_workspace_id);
-
-  -- Where this person may edit: the live locations the core gives.
-  manageable := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.edit');
-  select coalesce(array_agg(location.id order by location.id), '{}') into manageable
-  from public.locations location
-  where location.workspace_id = target_workspace_id
-    and location.archived_at is null
-    and location.id = any(manageable);
-  select coalesce(array_agg(distinct requested order by requested), '{}') into effective
-  from unnest(coalesce(target_location_ids, manageable)) requested
-  where requested = any(manageable);
-  if cardinality(effective) = 0 then
-    -- Nothing here to edit: asked of no place, the core answers with the
-    -- person's reason (no permission, blocked) or out_of_scope.
-    perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.edit', target_locations => array[null]::uuid[]);
   end if;
 
   select * into own_session
@@ -16968,7 +16994,9 @@ begin
   if target_draft.id is null then
     raise exception 'schedule draft not found' using errcode = 'P0002';
   end if;
-  if target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id) then
+  -- S-01: each place publishes up to its own line.
+  if exists (select 1 from unnest(target_location_ids) place
+             where target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id, array[place])) then
     return app_private.schedule_publication_changes_since_start(public.weekly_schedule_publication_preflight(
       jsonb_build_object(
         'status', 'past_week_closed', 'workspace_id', target_workspace_id,
@@ -17281,7 +17309,8 @@ begin
     'locations', location_payload
   );
   reviewed := unsigned_payload || jsonb_build_object(
-    'status', case when target_week_start < public.schedule_current_week_start_service(target_workspace_id)
+    'status', case when exists (select 1 from unnest(target_location_ids) place
+      where target_week_start < public.schedule_current_week_start_service(target_workspace_id, array[place]))
       then 'past_week_closed' else 'unpublish_ready' end,
     'fingerprint', encode(extensions.digest(convert_to(unsigned_payload::text, 'UTF8'), 'sha256'), 'hex')
   );
@@ -18438,7 +18467,7 @@ begin
           date_row.note, date_row.affects_scheduling, date_row.archived_at, date_row.status, date_row.revision,
           date_row.created_by, coalesce(author.display_name, 'Workspace member') as author_name,
           date_row.updated_at,
-          app_private.important_date_is_past(date_row, line) as is_past,
+          app_private.important_date_is_past(date_row, own.since) as is_past,
           (select location.name from public.locations location
            where location.id = date_row.location_id and location.workspace_id = date_row.workspace_id) as location_name,
           (select coalesce(jsonb_agg(coalesce(location.name, 'Archived location') order by location.sort_order nulls last, location.name, listed.n), '[]'::jsonb)
@@ -18446,16 +18475,18 @@ begin
            left join public.locations location
              on location.id = listed.id and location.workspace_id = date_row.workspace_id
             and location.deleted_at is null) as location_names,
-          control.allowed and not app_private.important_date_is_past(date_row, line) and date_row.archived_at is null as can_edit,
-          control.allowed and not app_private.important_date_is_past(date_row, line) and date_row.archived_at is null and date_row.status = 'published' as can_unpublish,
-          control.allowed and not app_private.important_date_is_past(date_row, line) and date_row.archived_at is null and date_row.status = 'unpublished' as can_republish,
-          control.allowed and not app_private.important_date_is_past(date_row, line) and date_row.archived_at is null as can_archive,
-          control.allowed and not app_private.important_date_is_past(date_row, line) and date_row.archived_at is not null as can_restore
+          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null as can_edit,
+          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null and date_row.status = 'published' as can_unpublish,
+          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null and date_row.status = 'unpublished' as can_republish,
+          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null as can_archive,
+          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is not null as can_restore
         from public.important_dates date_row
         left join public.user_profiles author on author.user_id = date_row.created_by
         cross join lateral (
           select app_private.communication_reason(reader, target_workspace_id, 'important_date',
             date_row.location_ids, date_row.created_by) is null allowed) control
+        cross join lateral (
+          select public.schedule_current_week_start_service(target_workspace_id, date_row.location_ids) as since) own
         -- important_date_visible, with the reader's state read once for the list.
         where date_row.workspace_id = target_workspace_id
           and (control.allowed or app_private.important_date_out_to(reader, date_row))
@@ -21938,7 +21969,8 @@ CREATE OR REPLACE FUNCTION "public"."save_important_date_service"("actor_user_id
 declare
   item public.important_dates;
   before public.important_dates;
-  line date := public.schedule_current_week_start_service(target_workspace_id);
+  line date;
+  before_line date;
   content_changed boolean := true;
   untouched boolean := false;
   was public.important_dates;
@@ -21987,13 +22019,17 @@ begin
     target_affects_scheduling := true;
   end if;
 
+  -- S-01: each version by its own places; an empty list is the whole workspace.
+  line := public.schedule_current_week_start_service(target_workspace_id, target_location_ids);
+  before_line := public.schedule_current_week_start_service(target_workspace_id, before.location_ids);
+
   -- K11. A save that changes nothing touches nothing.
   if before.id is not null then
     untouched := (before.title, before.type::text, before.starts_on, before.ends_on, before.recurrence::text, before.note,
       before.affects_scheduling, before.location_ids)
       is not distinct from (btrim(target_title), target_type, target_starts_on, target_ends_on, target_recurrence,
       coalesce(target_note, ''), coalesce(target_affects_scheduling, true), target_location_ids);
-    if not untouched and app_private.important_date_is_past(before, line) then
+    if not untouched and app_private.important_date_is_past(before, before_line) then
       perform app_private.important_date_refuse_past();
     end if;
   end if;
@@ -22027,7 +22063,7 @@ begin
   if before.id is not null and not untouched then
     -- The history keeps the version as it was, not the part left ahead.
     was := before;
-    before := app_private.important_date_keep_past(before, line);
+    before := app_private.important_date_keep_past(before, before_line);
   end if;
 
   if target_important_date_id is null then
@@ -22685,7 +22721,7 @@ begin
   end if;
 
   reach := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.edit');
-  current_week_start := public.schedule_current_week_start_service(target_workspace_id);
+  current_week_start := public.schedule_current_week_start_service(target_workspace_id, target_session.location_ids);
 
   if current_week_start is not null and target_session.week_start < current_week_start then
     select coalesce(jsonb_agg(jsonb_build_object(
@@ -22724,6 +22760,99 @@ begin
       ));
     end if;
   else
+    -- S-01: the lock is per location. A place that has left the week keeps
+    -- what it has: its published shifts and the shifts of the draft this edit
+    -- came from may ride along untouched; anything new, changed, moved away or
+    -- removed there is refused, by name, and the other places still save.
+    select coalesce(jsonb_agg(finding.x order by finding.scheduled_date, finding.start_time, finding.id), '[]'::jsonb)
+    into blocked_findings
+    from (
+      select shift.id, shift.scheduled_date, shift.start_time, jsonb_build_object(
+        'op_type', coalesce(shift.pending_op_type, case when kept.id is null then 'create' else 'update' end),
+        'shift_id', shift.id,
+        'scheduled_date', to_char(shift.scheduled_date, 'YYYY-MM-DD'),
+        'location_name', coalesce(location.name, 'Unknown location'),
+        'employee_name', coalesce(
+          nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
+          nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
+        ),
+        'reason', 'past_week',
+        'severity', 'blocked'
+      ) as x
+      from public.schedule_edit_session_shifts shift
+      left join public.schedule_draft_shifts kept
+        on kept.draft_id = target_session.source_draft_id
+       and kept.id = shift.id
+      -- The place that has left the week: where the shift came from (its
+      -- source draft row, or any current publication of the week holding it,
+      -- by either id a published copy keeps), else where it is now. A shift
+      -- moved out of a closed place changes that place too.
+      left join lateral (
+        select place.id
+        from (
+          select 1 as n, kept.location_id as id
+          union all
+          select 1, published.location_id
+          from public.schedule_published_shifts published
+          join public.schedule_location_publications publication
+            on publication.id = published.publication_id
+           and publication.status = 'current'
+           and publication.week_start = target_session.week_start
+          where published.workspace_id = target_workspace_id
+            and shift.source_published_shift_id in (published.source_shift_id, published.id)
+          union all
+          select 2, shift.location_id
+        ) place
+        where place.id is not null
+          and target_session.week_start
+            < public.schedule_current_week_start_service(target_workspace_id, array[place.id])
+        order by place.n, place.id
+        limit 1
+      ) closed on true
+      left join public.locations location
+        on location.id = closed.id
+       and location.workspace_id = shift.workspace_id
+      left join public.employee_profiles employee
+        on employee.id = shift.employee_id
+       and employee.workspace_id = shift.workspace_id
+      where shift.session_id = target_session_id
+        and shift.workspace_id = target_workspace_id
+        and (shift.pending_op_type is not null
+          or (shift.source_published_shift_id is null and (kept.id is null or kept.revision <> shift.revision)))
+        and shift.location_id = any(reach)
+        and closed.id is not null
+      union all
+      -- A shift of the source draft taken out of the edit at such a place.
+      select kept.id, kept.scheduled_date, kept.start_time, jsonb_build_object(
+        'op_type', 'delete',
+        'shift_id', kept.id,
+        'scheduled_date', to_char(kept.scheduled_date, 'YYYY-MM-DD'),
+        'location_name', coalesce(location.name, 'Unknown location'),
+        'employee_name', coalesce(
+          nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
+          nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
+        ),
+        'reason', 'past_week',
+        'severity', 'blocked'
+      )
+      from public.schedule_draft_shifts kept
+      left join public.locations location
+        on location.id = kept.location_id
+       and location.workspace_id = kept.workspace_id
+      left join public.employee_profiles employee
+        on employee.id = kept.employee_id
+       and employee.workspace_id = kept.workspace_id
+      where kept.draft_id = target_session.source_draft_id
+        and kept.workspace_id = target_workspace_id
+        and kept.location_id = any(target_session.location_ids)
+        and kept.location_id = any(reach)
+        and target_session.week_start
+          < public.schedule_current_week_start_service(target_workspace_id, array[kept.location_id])
+        and not exists (
+          select 1 from public.schedule_edit_session_shifts shift
+          where shift.session_id = target_session_id and shift.id = kept.id)
+    ) finding;
+
     select coalesce(jsonb_agg(jsonb_build_object(
       'op_type', shift.pending_op_type,
       'shift_id', shift.id,
@@ -23288,20 +23417,15 @@ end; $$;
 ALTER FUNCTION "public"."schedule_availability_read_projection"("actor" "uuid", "w" "uuid", "s" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid") RETURNS "date"
+CREATE OR REPLACE FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "date"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select case settings.week_start_day
-    when 'sunday' then current_date - extract(dow from current_date)::integer
-    else current_date - (extract(isodow from current_date)::integer - 1)
-  end
-  from public.workspace_scheduling_settings settings
-  where settings.workspace_id = target_workspace_id;
+  select app_private.schedule_week_start_at(target_workspace_id, target_location_ids, now());
 $$;
 
 
-ALTER FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid", "target_location_ids" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."schedule_draft_has_hard_document_conflicts_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_week_start" "date", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[] DEFAULT NULL::"uuid"[], "include_no_department" boolean DEFAULT true) RETURNS boolean
@@ -24010,7 +24134,7 @@ CREATE OR REPLACE FUNCTION "public"."set_important_date_state_service"("actor_us
 declare
   item public.important_dates;
   before public.important_dates;
-  line date := public.schedule_current_week_start_service(target_workspace_id);
+  line date;
   was public.important_dates;
   impact jsonb;
   opened jsonb := '[]';
@@ -24029,6 +24153,7 @@ begin
   if target_action not in ('unpublish', 'republish', 'archive', 'restore') then
     raise exception 'valid important date action required' using errcode = '22023';
   end if;
+  line := public.schedule_current_week_start_service(target_workspace_id, before.location_ids);
   if app_private.important_date_is_past(before, line) then
     perform app_private.important_date_refuse_past();
   end if;
@@ -34914,6 +35039,10 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_week_availability"("target_worksp
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."schedule_week_start_at"("w" "uuid", "places" "uuid"[], "instant" timestamp with time zone) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."scope_set"("actor" "uuid", "w" "uuid", "action" "text") FROM PUBLIC;
 
 
@@ -36464,8 +36593,8 @@ REVOKE ALL ON FUNCTION "public"."schedule_availability_read_projection"("actor" 
 
 
 
-REVOKE ALL ON FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid", "target_location_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."schedule_current_week_start_service"("target_workspace_id" "uuid", "target_location_ids" "uuid"[]) TO "service_role";
 
 
 
