@@ -311,11 +311,9 @@
 .announcement-drawer :is(input[type="date"], input[type="time"], input[type="datetime-local"]) {
   font-variant-numeric: tabular-nums;
 }
-/* Start time and End time read centered in their box (Mert, 2026-10-12): the
-   clock button keeps its place on the right, and the extra left padding
-   matches its width so the time sits in the middle of the whole box. */
-.announcement-drawer .ad-when input[type="time"] {
-  padding-left: 38px;
+/* Typed times read centered in their box (Mert, 2026-10-12), in the
+   workspace's 12h or 24h clock. */
+.announcement-drawer .ad-clock {
   text-align: center;
 }
 .announcement-drawer input::-webkit-calendar-picker-indicator {
@@ -417,9 +415,17 @@
   cursor: pointer;
 }
 .announcement-drawer .ad-publish-row .ad-input {
-  width: 232px;
+  width: 148px;
   max-width: 100%;
   height: 30px;
+}
+.announcement-drawer .ad-publish-row .ad-clock {
+  width: 100px;
+}
+.announcement-drawer .ad-publish-boxes {
+  display: inline-flex;
+  gap: 6px;
+  max-width: 100%;
 }
 /* A wrong publish time (Mert, 2026-10-12): the box turns red and one quiet
    line sits right under it, in a gap kept a little wider for it, so the
@@ -640,6 +646,10 @@
 .announcement-drawer .ad-times input::-webkit-calendar-picker-indicator {
   display: none;
 }
+.announcement-drawer :is(.ad-times, .ad-shift-edit) input[aria-invalid="true"] {
+  border-color: var(--theme-danger);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
 .announcement-drawer .ad-times input:focus {
   outline: 2px solid var(--theme-focus);
   outline-offset: 0;
@@ -705,6 +715,30 @@
   box-shadow:
     0 0 0 1px var(--theme-border-strong),
     0 1px 2px color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+/* A shift's choice: buttons as wide as their words; the chosen one wears its
+   outcome, Remove red, Open shift amber, Keep green (Mert, 2026-10-12). */
+.announcement-drawer .ad-shift-acts .ad-seg {
+  display: inline-flex;
+}
+.announcement-drawer .ad-shift-acts .ad-seg button {
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"][data-tone="red"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"][data-tone="amber"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+  box-shadow: 0 0 0 1px var(--theme-warning-border);
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"][data-tone="green"] {
+  background: var(--theme-selected);
+  color: var(--theme-accent-deep);
+  box-shadow: 0 0 0 1px var(--theme-accent);
 }
 .announcement-drawer .ad-seg button:disabled {
   color: var(--theme-muted);
@@ -1045,6 +1079,7 @@
   background: var(--theme-surface);
   color: var(--theme-text);
   font: inherit;
+  text-align: center;
   color-scheme: light;
 }
 .announcement-drawer .ad-back-head {

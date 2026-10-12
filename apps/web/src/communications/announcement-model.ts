@@ -61,20 +61,18 @@ const minutesOf = (clock: string) => {
   return (hour ?? 0) * 60 + (minute ?? 0);
 };
 
-/** "3:00 PM" or "15:00"; `bare` drops the AM/PM. */
-export function clockText(clock: string, timeFormat: TimeFormat, bare = false): string {
+/** "3:00 PM" or "15:00", in the workspace's clock. */
+export function clockText(clock: string, timeFormat: TimeFormat): string {
   const total = minutesOf(clock) % 1440;
   const hour = Math.floor(total / 60);
   const minute = String(total % 60).padStart(2, "0");
   if (timeFormat === "24h") return `${String(hour).padStart(2, "0")}:${minute}`;
-  return `${hour % 12 || 12}:${minute}${bare ? "" : hour < 12 ? " AM" : " PM"}`;
+  return `${hour % 12 || 12}:${minute} ${hour < 12 ? "AM" : "PM"}`;
 }
 
-/** "10:00 AM–3:00 PM", or "3:00–4:00 PM" when both are on the same side of noon. */
+/** "4:00 PM–10:00 PM" or "16:00–22:00": both ends name their half (Mert, 2026-10-12). */
 export function hoursText(from: string, until: string, timeFormat: TimeFormat): string {
-  if (timeFormat === "24h") return `${clockText(from, timeFormat)}–${clockText(until, timeFormat)}`;
-  const sameHalf = minutesOf(from) % 1440 < 720 === minutesOf(until) % 1440 < 720;
-  return `${clockText(from, timeFormat, sameHalf)}–${clockText(until, timeFormat)}`;
+  return `${clockText(from, timeFormat)}–${clockText(until, timeFormat)}`;
 }
 
 /** Closing at or before opening runs into the next day. */

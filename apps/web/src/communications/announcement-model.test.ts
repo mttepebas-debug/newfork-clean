@@ -56,9 +56,13 @@ describe("announcement wording", () => {
     expect(dayText("2026-11-26", true)).toBe("Thu, Nov 26, 2026");
     expect(rangeText("2026-11-26", "2026-11-26")).toBe("Thu, Nov 26");
     expect(rangeText("2026-11-26", "2026-11-27")).toBe("Thu, Nov 26 – Fri, Nov 27");
-    expect(hoursText("15:00", "16:00", "12h")).toBe("3:00–4:00 PM");
+    // Both ends name their half, even on the same side of noon (Mert, 2026-10-12).
+    expect(hoursText("16:00", "22:00", "12h")).toBe("4:00 PM–10:00 PM");
     expect(hoursText("10:00", "15:00", "12h")).toBe("10:00 AM–3:00 PM");
-    expect(hoursText("10:00", "15:00", "24h")).toBe("10:00–15:00");
+    expect(hoursText("00:30", "08:00", "12h")).toBe("12:30 AM–8:00 AM");
+    // The workspace's 24h clock: no AM/PM, two-digit hours.
+    expect(hoursText("16:00", "22:00", "24h")).toBe("16:00–22:00");
+    expect(hoursText("09:00", "15:00", "24h")).toBe("09:00–15:00");
   });
 
   it("reads a post's clock in its own zone, both ways", () => {

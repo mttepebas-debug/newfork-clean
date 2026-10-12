@@ -14,7 +14,7 @@ import {
 import { acknowledgeAnnouncement } from "./communications-data";
 import "./announcement-drawer.css";
 
-/** "Your 3:00–4:00 PM shift was removed" and the like. */
+/** "Your 3:00 PM–4:00 PM shift was removed" and the like. */
 export function myShiftSentence(change: AnnouncementShiftChange, timeFormat: TimeFormat): string {
   const time =
     change.start_time && change.end_time ? hoursText(change.start_time, change.end_time, timeFormat) : "";

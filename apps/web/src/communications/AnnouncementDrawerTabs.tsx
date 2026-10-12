@@ -12,6 +12,7 @@ import type {
 import { Button } from "@newfork/ui";
 import { X } from "lucide-react";
 import { Fragment, useState, type ReactNode } from "react";
+import { AvailabilityClockInput } from "../availability/AvailabilityClockInput";
 import {
   announcementCategories,
   closesNextDay,
@@ -105,6 +106,7 @@ export function DetailsTab({
   locations,
   preview,
   publishing,
+  timeFormat,
 }: {
   idPrefix: string;
   draft: AnnouncementDraft;
@@ -117,6 +119,8 @@ export function DetailsTab({
   problemAt: ProblemAt;
   locations: WhereLocation[];
   preview: AnnouncementPreview | undefined;
+  /** The workspace's 12h or 24h clock (Settings → Schedule). */
+  timeFormat: TimeFormat;
   /** Schedule for later, while it hasn't gone out. */
   publishing: ReactNode;
 }) {
@@ -314,31 +318,32 @@ export function DetailsTab({
           <FieldError id={id("ends-error")} message={endError} />
         </div>
         <div className="ad-field">
-          <input
-            type="time"
-            className="ad-input"
-            aria-label="Start time"
+          <AvailabilityClockInput
+            className="ad-input ad-clock"
+            label="Start time"
             value={draft.event_from ?? ""}
+            timeFormat={timeFormat}
+            placeholder={allDay ? "" : undefined}
             disabled={frozen || allDay}
-            onChange={(event) => {
-              const from = event.target.value;
+            onChange={(from) => {
               if (from) update((current) => ({ ...current, event_from: from }));
             }}
           />
         </div>
         <div className="ad-field">
-          <input
-            type="time"
-            className="ad-input"
-            aria-label="End time"
+          <AvailabilityClockInput
+            className="ad-input ad-clock"
+            label="End time"
             value={draft.event_until ?? ""}
+            timeFormat={timeFormat}
+            placeholder={allDay ? "" : undefined}
             disabled={frozen || allDay}
-            data-field="event_until"
-            onChange={(event) => {
-              const until = event.target.value;
+            field="event_until"
+            invalid={Boolean(untilError)}
+            describedBy={untilError ? id("until-error") : undefined}
+            onChange={(until) => {
               if (until) update((current) => ({ ...current, event_until: until }));
             }}
-            {...invalid(untilError, id("until-error"))}
           />
           <FieldError id={id("until-error")} message={untilError} />
         </div>
@@ -352,6 +357,7 @@ export function DetailsTab({
         locations={locations}
         preview={preview}
         problemAt={problemAt}
+        timeFormat={timeFormat}
       />
       {publishing}
       <div className="ad-field ad-message">
@@ -419,6 +425,7 @@ function LocationsTable({
   locations,
   preview,
   problemAt,
+  timeFormat,
 }: {
   idPrefix: string;
   draft: AnnouncementDraft;
@@ -428,6 +435,7 @@ function LocationsTable({
   locations: WhereLocation[];
   preview: AnnouncementPreview | undefined;
   problemAt: ProblemAt;
+  timeFormat: TimeFormat;
 }) {
   const rows = new Map(draft.locations.map((row) => [row.location_id, row]));
   const allChecked = locations.length > 1 && locations.every((location) => rows.has(location.id));
@@ -557,13 +565,12 @@ function LocationsTable({
                   )}
                   {row?.day === "short" && (
                     <span className="ad-times">
-                      <input
-                        type="time"
-                        aria-label={`${location.name} opens`}
+                      <AvailabilityClockInput
+                        label={`${location.name} opens`}
                         value={row.opens ?? ""}
+                        timeFormat={timeFormat}
                         disabled={frozen || !location.canChangeHours}
-                        onChange={(event) => {
-                          const opens = event.target.value;
+                        onChange={(opens) => {
                           if (opens)
                             update((current) => ({
                               ...current,
@@ -574,13 +581,12 @@ function LocationsTable({
                         }}
                       />
                       –
-                      <input
-                        type="time"
-                        aria-label={`${location.name} closes`}
+                      <AvailabilityClockInput
+                        label={`${location.name} closes`}
                         value={row.closes ?? ""}
+                        timeFormat={timeFormat}
                         disabled={frozen || !location.canChangeHours}
-                        onChange={(event) => {
-                          const closes = event.target.value;
+                        onChange={(closes) => {
                           if (closes)
                             update((current) => ({
                               ...current,
@@ -639,20 +645,25 @@ export function PublishingRow({
   minWall,
   locked,
   problem,
+  timeFormat,
   onLater,
   onWall,
 }: {
   idPrefix: string;
   later: boolean;
   laterBlocked: boolean;
+  /** "2026-11-26T09:00", or a half: "2026-11-26T" / "T09:00". */
   publishWall: string;
   minWall: string;
   locked: boolean;
   problem: string | undefined;
+  timeFormat: TimeFormat;
   onLater: (later: boolean) => void;
   onWall: (wall: string) => void;
 }) {
   const errorId = `${idPrefix}-publish-error`;
+  // A day box and a clock box, so the time reads in the workspace's 12h or 24h clock.
+  const [day = "", clock = ""] = publishWall.split("T");
   return (
     <div className="ad-flag ad-publish-row" data-focus="pub">
       <label className="ad-publish-label">
@@ -665,17 +676,30 @@ export function PublishingRow({
         <b>Schedule for later</b>
       </label>
       <span className="ad-publish-at">
-        <input
-          type="datetime-local"
-          className="ad-input"
-          aria-label="Publish on"
-          value={publishWall}
-          min={minWall}
-          disabled={locked || !later}
-          data-field="publish_at"
-          onChange={(event) => onWall(event.target.value)}
-          {...invalid(problem, errorId)}
-        />
+        <span className="ad-publish-boxes">
+          <input
+            type="date"
+            className="ad-input"
+            aria-label="Publish on"
+            value={day}
+            min={minWall.slice(0, 10)}
+            disabled={locked || !later}
+            data-field="publish_at"
+            onChange={(event) => onWall(`${event.target.value}T${clock}`)}
+            {...invalid(problem, errorId)}
+          />
+          <AvailabilityClockInput
+            className="ad-input ad-clock"
+            label="Publish at"
+            value={clock}
+            timeFormat={timeFormat}
+            placeholder={later ? undefined : ""}
+            disabled={locked || !later}
+            invalid={Boolean(problem)}
+            describedBy={problem ? errorId : undefined}
+            onChange={(next) => onWall(`${day}T${next}`)}
+          />
+        </span>
         <FieldError id={errorId} message={problem} />
       </span>
       {laterBlocked && <span className="ad-hint">It starts today, so it goes out when you publish.</span>}
@@ -1213,10 +1237,11 @@ function ShiftRow({
   const time = hoursText(shift.start_time, shift.end_time, timeFormat);
   const edited = choice.choice === "edit" ? choice : null;
   const fit = shift.reason === "over" ? fitToHours(shift) : null;
-  const options: { value: "remove" | "open" | "keep"; label: string; tone?: string }[] = [
+  // The chosen button wears its outcome: Remove red, Open shift amber, Keep green (Mert, 2026-10-12).
+  const options: { value: "remove" | "open" | "keep"; label: string; tone: string }[] = [
     { value: "remove", label: "Remove", tone: "red" },
-    ...(shift.employee_id ? [{ value: "open" as const, label: "Open shift" }] : []),
-    { value: "keep", label: "Keep" },
+    ...(shift.employee_id ? [{ value: "open" as const, label: "Open shift", tone: "amber" }] : []),
+    { value: "keep", label: "Keep", tone: "green" },
   ];
   const pressed = choice.choice === "edit" ? "keep" : choice.choice;
   return (
@@ -1292,24 +1317,22 @@ function ShiftRow({
         <div className="ad-shift-edit">
           <label>
             <span>Starts</span>
-            <input
-              type="time"
-              aria-label="New start"
+            <AvailabilityClockInput
+              label="New start"
               value={edited?.from ?? shift.start_time}
-              onChange={(event) => {
-                const from = event.target.value;
+              timeFormat={timeFormat}
+              onChange={(from) => {
                 if (from) onChoice({ choice: "edit", from, until: edited?.until ?? shift.end_time });
               }}
             />
           </label>
           <label>
             <span>Ends</span>
-            <input
-              type="time"
-              aria-label="New end"
+            <AvailabilityClockInput
+              label="New end"
               value={edited?.until ?? shift.end_time}
-              onChange={(event) => {
-                const until = event.target.value;
+              timeFormat={timeFormat}
+              onChange={(until) => {
                 if (until) onChoice({ choice: "edit", from: edited?.from ?? shift.start_time, until });
               }}
             />
