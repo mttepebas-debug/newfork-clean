@@ -111,6 +111,16 @@ select public.accept_employee_invitation_by_id_service(tests.user('h:leo'), test
 select is((select p.display_name from public.user_profiles p where p.user_id = tests.user('h:leo')), 'Leo Person',
   'accepting an invitation opens the account row with the name on the employee record');
 
+-- Only a membership that can open the app opens a row: suspended and removed do not.
+select tests.person('h', 'nora', 'employee', array['K'], array['cook'], 'pending');
+delete from public.user_profiles where user_id = tests.user('h:nora');
+update public.employee_profiles set user_id = tests.user('h:nora') where id = tests.id('h:nora');
+insert into public.workspace_memberships (workspace_id, user_id, role, status, all_locations)
+values (tests.id('h'), tests.user('h:nora'), 'employee', 'suspended', false);
+update public.workspace_memberships set status = 'removed' where workspace_id = tests.id('h') and user_id = tests.user('h:nora');
+select is((select count(*)::integer from public.user_profiles p where p.user_id = tests.user('h:nora')), 0,
+  'a suspended or removed membership opens no account row');
+
 -- A row that exists is never renamed by a membership.
 update public.user_profiles set display_name = 'Olcay O.' where user_id = pg_temp.u('owner');
 update public.workspace_memberships set status = 'active' where user_id = pg_temp.u('owner') and workspace_id = tests.id('h');

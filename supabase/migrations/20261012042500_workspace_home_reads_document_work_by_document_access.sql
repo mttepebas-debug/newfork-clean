@@ -86,7 +86,29 @@ after insert or update of user_id, status on public.workspace_memberships
 for each row execute function app_private.every_member_has_an_account_row();
 
 -- Members without a row today (Mert's local Meyhouse admin, half-finished
--- owner setups) get one; nothing is deleted.
+-- owner setups) get one; nothing is deleted. A new row has no phone, and the
+-- account is the phone's only source (KK-7): account_phone_reaches_employee_records
+-- would clear a phone a record kept from before KK-7. Such a person stops the
+-- migration instead of losing the number silently.
+do $phones$
+declare
+  kept integer;
+begin
+  select count(distinct member.user_id) into kept
+  from public.workspace_memberships member
+  join public.employee_profiles record
+    on record.workspace_id = member.workspace_id and record.user_id = member.user_id and record.archived_at is null
+  join public.employee_private_profiles private_record
+    on private_record.employee_id = record.id and private_record.workspace_id = record.workspace_id
+  where member.status in ('active', 'pending_activation')
+    and private_record.phone is not null
+    and not exists (select 1 from public.user_profiles profile where profile.user_id = member.user_id);
+  if kept > 0 then
+    raise exception 'KK-179: % member(s) without an account row keep a phone on their record; ask before it is cleared', kept;
+  end if;
+end
+$phones$;
+
 select app_private.open_account_row(member.user_id, member.workspace_id)
 from public.workspace_memberships member
 where member.status in ('active', 'pending_activation')
