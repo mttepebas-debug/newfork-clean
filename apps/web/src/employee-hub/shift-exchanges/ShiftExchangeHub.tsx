@@ -30,6 +30,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { ConfirmButton } from "@newfork/ui";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
@@ -1077,6 +1078,17 @@ function CaseDetail({
       setWorking(false);
     }
   };
+  // The decision window's last button sends the decision it was opened for.
+  const decide = (action: "approve" | "reject" | "close") =>
+    void command({
+      action,
+      case_id: item.id,
+      ...(current && action !== "close" ? { application_id: current.id } : {}),
+      expected_revision: item.revision,
+      fingerprint: preview.data?.fingerprint,
+      reason,
+      private_note: privateNote,
+    });
   return (
     <>
       <div className="sx-detail-heading">
@@ -1601,51 +1613,50 @@ function CaseDetail({
             >
               {requestEnded ? "View latest result" : "Back"}
             </button>
-            {!requestEnded && (
-              <button
-                className="sx-primary"
-                aria-describedby={decisionDescriptionId}
-                aria-label={
-                  decision === "approve" &&
-                  current &&
-                  !preview.data?.requires_other_manager
-                    ? `Confirm transfer to ${current?.employee_name}`
-                    : undefined
-                }
-                disabled={
-                  working ||
-                  !actionable ||
-                  (decision !== "close" && !current) ||
-                  (decision !== "approve" && !reason.trim()) ||
-                  (decision === "approve" &&
-                    (!preview.data?.allowed ||
-                      preview.isFetching ||
-                      preview.isError ||
-                      !current))
-                }
-                onClick={() =>
-                  void command({
-                    action: decision,
-                    case_id: item.id,
-                    ...(current && decision !== "close"
-                      ? { application_id: current.id }
-                      : {}),
-                    expected_revision: item.revision,
-                    fingerprint: preview.data?.fingerprint,
-                    reason,
-                    private_note: privateNote,
-                  })
-                }
-              >
-                {decision === "approve"
-                  ? preview.data?.requires_other_manager
+            {!requestEnded &&
+              (decision === "approve" ? (
+                <button
+                  className="sx-primary"
+                  aria-describedby={decisionDescriptionId}
+                  aria-label={
+                    current && !preview.data?.requires_other_manager
+                      ? `Confirm transfer to ${current?.employee_name}`
+                      : undefined
+                  }
+                  disabled={
+                    working ||
+                    !actionable ||
+                    !current ||
+                    !preview.data?.allowed ||
+                    preview.isFetching ||
+                    preview.isError
+                  }
+                  onClick={() => decide(decision)}
+                >
+                  {preview.data?.requires_other_manager
                     ? "Record my approval"
-                    : "Confirm transfer"
-                  : decision === "reject"
-                    ? "Decline application"
-                    : "Close search"}
-              </button>
-            )}
+                    : "Confirm transfer"}
+                </button>
+              ) : (
+                // Declining and closing take something away: red, two clicks (BL-748).
+                <ConfirmButton
+                  unstyled
+                  className="sx-danger"
+                  aria-describedby={decisionDescriptionId}
+                  confirmLabel={
+                    decision === "reject" ? "Confirm decline" : "Confirm close"
+                  }
+                  disabled={
+                    working ||
+                    !actionable ||
+                    (decision === "reject" && !current) ||
+                    !reason.trim()
+                  }
+                  onConfirm={() => decide(decision)}
+                >
+                  {decision === "reject" ? "Decline application" : "Close search"}
+                </ConfirmButton>
+              ))}
           </footer>
         </ExchangeDialog>
       )}

@@ -64,6 +64,14 @@
 .sx-root button.sx-primary:hover:not(:disabled) {
   background: var(--theme-accent-deep);
 }
+/* A decision that takes something away (decline, close): red, two clicks (UI-09, UI-12). */
+.sx-root button.sx-danger,
+.sx-root button.sx-danger:hover:not(:disabled) {
+  color: var(--theme-on-accent);
+  background: var(--theme-danger-strong);
+  border-color: var(--theme-danger-strong);
+  font-weight: 600;
+}
 .sx-root h2,
 .sx-root h3,
 .sx-root h4,

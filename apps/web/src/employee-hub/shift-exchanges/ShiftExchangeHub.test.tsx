@@ -1120,12 +1120,17 @@ describe("Shift Hub outcome contracts", () => {
       within(dialog).getByLabelText("Reason shared with affected employees"),
       { target: { value: "Coverage priority" } },
     );
-    fireEvent.click(
-      within(dialog).getByRole("button", {
-        name: "Decline application",
-        hidden: true,
-      }),
-    );
+    const decline = within(dialog).getByRole("button", {
+      name: "Decline application",
+      hidden: true,
+    });
+    // BL-748: declining is destructive, so it is red and asks twice.
+    expect(decline.className).toBe("sx-danger");
+    fireEvent.click(decline);
+    expect(changeExchange).not.toHaveBeenCalled();
+    expect(decline.textContent).toBe("Confirm decline");
+    expect(decline.className).toBe("sx-danger is-armed");
+    fireEvent.click(decline);
     await waitFor(() =>
       expect(changeExchange).toHaveBeenCalledWith(
         "workspace",
@@ -1138,6 +1143,45 @@ describe("Shift Hub outcome contracts", () => {
         expect.any(String),
       ),
     );
+  });
+  it("closes a search only on the second click of the red button", async () => {
+    mount("/app/schedule/requests?case=case", true);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Close cover search" }),
+    );
+    const dialog = screen
+      .getByText("Close this search", { selector: "h2" })
+      .closest("dialog")!;
+    fireEvent.change(
+      within(dialog).getByLabelText("Reason shared with affected employees"),
+      { target: { value: "Shift is no longer needed" } },
+    );
+    const close = within(dialog).getByRole("button", {
+      name: "Close search",
+      hidden: true,
+    });
+    expect(close.className).toBe("sx-danger");
+    fireEvent.click(close);
+    expect(changeExchange).not.toHaveBeenCalled();
+    expect(close.textContent).toBe("Confirm close");
+    // Escape on the armed button only disarms; the window stays open.
+    expect(fireEvent.keyDown(close, { key: "Escape" })).toBe(false);
+    expect(close.textContent).toBe("Close search");
+    expect(dialog.isConnected).toBe(true);
+    fireEvent.click(close);
+    fireEvent.click(close);
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        expect.objectContaining({
+          action: "close",
+          case_id: "case",
+          reason: "Shift is no longer needed",
+        }),
+        expect.any(String),
+      ),
+    );
+    expect(changeExchange).toHaveBeenCalledTimes(1);
   });
   it("does not claim a pending pickup is scheduled", async () => {
     model.employee_id = "casey";

@@ -26,6 +26,9 @@ export function useConfirmClick(onConfirm: () => void, initiallyArmed = false) {
         // A held Enter repeats the click; it must not arm and confirm in one press.
         if (event.repeat) event.preventDefault();
         if (armed && event.key === "Escape") {
+          // Escape only disarms: the default goes too, or a native <dialog>
+          // around the button gets a cancel for the same key and closes.
+          event.preventDefault();
           event.stopPropagation();
           setArmed(false);
         }

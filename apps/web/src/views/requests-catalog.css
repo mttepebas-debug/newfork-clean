@@ -141,6 +141,12 @@
   background: var(--theme-accent);
   border-color: var(--theme-accent);
 }
+/* After the grey button rule on purpose: same weight, so order keeps it red. */
+.requests-catalog-page :is(.sx-root button.sx-danger, button.sx-danger) {
+  color: var(--theme-on-accent);
+  background: var(--theme-danger-strong);
+  border-color: var(--theme-danger-strong);
+}
 .requests-catalog-page .nf-button.danger {
   color: var(--job-error);
   border-color: color-mix(in srgb, var(--job-error) 25%, var(--job-border));
