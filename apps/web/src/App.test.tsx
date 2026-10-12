@@ -2279,6 +2279,42 @@ describe("App", () => {
     expect(window.location.search).toContain("mode=edit");
   });
 
+  // BL-1052: the first save lost the network, and by the time of Retry another tab
+  // moved the edit on; the retry sheet closes so the banner's Reload is in reach.
+  it("closes the retry sheet when Retry finds the edit moved on in another tab", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(new Error("Network dropped"));
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("session revision stale", 409, { error: "session revision stale", code: "edit_session_stale" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Retried after another tab" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+    expect(await screen.findByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull(),
+    );
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+  });
+
   it("picks the edit back up after a page reload instead of showing an empty draft (D-Y4)", async () => {
     const draftId = "99999999-9999-4999-8999-999999999993";
     const acquired = makeDefaultEditAcquireResult();
