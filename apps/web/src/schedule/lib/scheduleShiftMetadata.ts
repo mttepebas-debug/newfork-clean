@@ -40,21 +40,47 @@ export function isPendingRemovalShift(
 }
 
 // Mert, 2026-10-12: a shift written in a removed shift's place, over its hours
-// or with its shift type, covers it; the removal still publishes.
+// or with its shift type, covers it; the removal still publishes. Live shifts
+// nobody touched in this edit cover nothing.
 export function hideReplacedRemovedShifts<T extends ScheduleShift>(
   shifts: readonly T[],
 ): T[] {
-  const kept = shifts.filter((item) => !isPendingRemovalShift(item));
-  if (kept.length === shifts.length) return [...shifts];
+  const written = shifts.filter(isWrittenInThisEdit);
+  if (written.length === 0 || !shifts.some(isPendingRemovalShift)) return [...shifts];
   return shifts.filter(
     (item) =>
       !isPendingRemovalShift(item) ||
-      !kept.some(
+      !written.some(
         (other) =>
           shiftsOverlap(item, other) ||
           (item.shift_type_id != null && item.shift_type_id === other.shift_type_id),
       ),
   );
+}
+
+// The same rule over a whole schedule, cell by cell (person, location, day).
+export function withoutReplacedRemovedShifts<T extends ScheduleShift>(
+  shifts: readonly T[],
+): T[] {
+  if (!shifts.some(isPendingRemovalShift)) return [...shifts];
+  const cells = new Map<string, T[]>();
+  for (const item of shifts) {
+    const key = `${item.employee_id ?? ""}|${item.location_id}|${item.scheduled_date}`;
+    const cell = cells.get(key);
+    if (cell) cell.push(item);
+    else cells.set(key, [item]);
+  }
+  const shown = new Set(
+    [...cells.values()].flatMap((cell) => hideReplacedRemovedShifts(cell)),
+  );
+  return shifts.filter((item) => shown.has(item));
+}
+
+function isWrittenInThisEdit(shift: ScheduleShift): boolean {
+  const metadata = shift as ScheduleShift & ShiftPublicationMetadata;
+  if (metadata.pending_op_type === "delete") return false;
+  if (metadata.pending_op_type === "create" || metadata.pending_op_type === "update") return true;
+  return !metadata.source_published_shift_id && !metadata.locked;
 }
 
 export function isGhostScheduleShift(shift: ScheduleShift): boolean {
@@ -65,8 +91,14 @@ export function isGhostScheduleShift(shift: ScheduleShift): boolean {
 export function shiftWithDerivedWarnings(
   shift: ScheduleShift,
   cellState: ScheduleCellState | undefined,
+  { editing = false }: { readonly editing?: boolean } = {},
 ): ScheduleShift {
-  if (!cellState?.conflictingShiftIds.has(shift.id)) return shift;
+  if (!cellState?.conflictingShiftIds.has(shift.id)) {
+    // While editing, the grid's own overlap pass is the truth: the server's
+    // code is from its last read and still counts shifts removed in this edit.
+    if (!editing || !shift.warning_codes.includes("overlap")) return shift;
+    return { ...shift, warning_codes: shift.warning_codes.filter((code) => code !== "overlap") };
+  }
   if (shift.warning_codes.includes("overlap")) return shift;
   return { ...shift, warning_codes: [...shift.warning_codes, "overlap"] };
 }

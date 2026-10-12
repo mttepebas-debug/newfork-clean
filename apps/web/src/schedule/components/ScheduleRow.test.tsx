@@ -168,6 +168,25 @@ describe("ScheduleRow removed shifts while editing", () => {
     const { container } = renderRow({ shifts: [removed], totalShifts: [], selectedIds: [] });
     expect(container.querySelector('[data-shift-id="shift-removed"]')).not.toBeNull();
   });
+
+  it("keeps an open shift's removal beside untouched live open shifts, and hides it behind a new one", () => {
+    const removedOpen = { ...removed, employee_id: null } as ScheduleShift;
+    const liveOpen = { ...shift, id: "open-live", employee_id: null, source_published_shift_id: "live-2", locked: true } as ScheduleShift;
+    const { container, unmount } = renderRow({ employee: null, shifts: [removedOpen, liveOpen], totalShifts: [liveOpen], selectedIds: [] });
+    expect(container.querySelector('[data-shift-id="shift-removed"]')).not.toBeNull();
+    unmount();
+    const newOpen = { ...shift, id: "open-new", employee_id: null } as ScheduleShift;
+    const next = renderRow({ employee: null, shifts: [removedOpen, liveOpen, newOpen], totalShifts: [liveOpen, newOpen], selectedIds: [] });
+    expect(next.container.querySelector('[data-shift-id="shift-removed"]')).toBeNull();
+  });
+
+  it("never names a conflict the editing grid does not find", () => {
+    const flagged = { ...shift, warning_codes: ["overlap"] } as ScheduleShift;
+    const { container } = renderRow({ shifts: [removed, flagged], totalShifts: [flagged], selectedIds: [] });
+    const label = container.querySelector('[data-shift-id="shift-1"]')?.getAttribute("aria-label") ?? "";
+    expect(label).toContain("Dinner");
+    expect(label).not.toContain("conflict");
+  });
 });
 
 describe("ScheduleRow blank-cell interactions", () => {
