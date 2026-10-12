@@ -81,6 +81,20 @@ describe("default-hours batch review", () => {
     await waitFor(() => expect(applyScheduleDefaultHours).toHaveBeenCalledOnce());
     expect(vi.mocked(applyScheduleDefaultHours).mock.calls[0]![2]).not.toHaveProperty("acknowledge_reference_overlaps");
   });
+  // BL-1044: the key, not the sentence, sends the person back to Review.
+  it("puts the review out of date when the apply finds defaults, shifts or conflicts moved on", async () => {
+    vi.mocked(applyScheduleDefaultHours).mockRejectedValueOnce(new RequestError("Defaults, shifts or conflicts changed; review again", "schedule.default_hours_stale", undefined, 409));
+    setup(); await review(); fireEvent.click(screen.getByRole("button", { name: /Apply 1 change/ }));
+    await screen.findByText("This review is out of date. Review the selected shifts again before applying.");
+    expect(screen.queryByText("Defaults, shifts or conflicts changed; review again")).toBeNull();
+    expect((screen.getByRole("button", { name: /Apply 1 change/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+  it("shows any other refused apply as its sentence and keeps the review", async () => {
+    vi.mocked(applyScheduleDefaultHours).mockRejectedValueOnce(new RequestError("Retry key was already used for a different review", "schedule.request_key_reused", undefined, 409));
+    setup(); await review(); fireEvent.click(screen.getByRole("button", { name: /Apply 1 change/ }));
+    await screen.findByText("Retry key was already used for a different review");
+    expect(screen.queryByText("This review is out of date. Review the selected shifts again before applying.")).toBeNull();
+  });
   it("keeps the same retry key after an uncertain apply response", async () => {
     // A dropped connection, as the request layer reports it (D-O7).
     vi.mocked(applyScheduleDefaultHours).mockRejectedValueOnce(new RequestError(UNREACHABLE, undefined, undefined, 0));

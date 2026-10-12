@@ -67,6 +67,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { UNREACHABLE, UNREADABLE, ScreenError } from "../lib/request-error";
+import { scheduleRefusalReason } from "./lib/scheduleRefusalReason";
 import { scheduleExportV2AuthorizationSchema, scheduleExportV2ScopeSchema, type ScheduleExportV2Scope } from "@newfork/shared";
 
 export async function authorizeScheduleExportV2(workspaceId: string, scope: ScheduleExportV2Scope, signal?: AbortSignal): Promise<void> {
@@ -89,9 +90,7 @@ export class ScheduleRequestError extends Error {
 }
 
 function requestReason(error: unknown): unknown {
-  return error instanceof ScheduleRequestError && typeof error.body === "object" && error.body
-    ? (error.body as { reason?: unknown }).reason
-    : undefined;
+  return error instanceof ScheduleRequestError ? scheduleRefusalReason(error) : undefined;
 }
 
 function editConflictCode(error: unknown): unknown {
