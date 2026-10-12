@@ -351,6 +351,24 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     ]);
   });
 
+  it("sends somebody away from a closed workspace's Settings pages the core answers for", () => {
+    // A closed workspace: the core answers for nothing (workspace_open is
+    // false), the role still lists its keys. Before, these pages opened and
+    // every API call on them was refused; now they land at home. The only
+    // change, and a narrowing where nothing worked.
+    const context = {
+      ...contextOf({ role: "admin", permissions: settingsPermissions, locationIds: [] }),
+      actions: [],
+    };
+    expect(pages.filter((page) => routeOpenedBefore(context, page) !== canOpenSettingsPage(context, page))).toEqual([
+      "jobs",
+      "notifications",
+      "conflicts",
+      "shiftCatalog",
+      "roles",
+    ]);
+  });
+
   it("keeps Locations on its key: the core's action would shut out a Remote manager the key lets in", () => {
     const remoteManager: Persona = {
       role: "manager",
