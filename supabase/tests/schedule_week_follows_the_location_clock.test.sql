@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(26);
+select plan(36);
 
 -- BL-238: a Schedule week is "this week" or "past" by the clock of the places
 -- it is for, never by the server's UTC date. Sunday 20:00 in Los Angeles is
@@ -58,8 +58,8 @@ select is(pg_temp.at(null), '2026-10-05'::date,
   'no place named is every live location of the workspace');
 select is(pg_temp.at('{}'), '2026-10-05'::date,
   'an empty list of places is the whole workspace too');
-select is(pg_temp.at(array[gen_random_uuid()]), '2026-10-12'::date,
-  'a place that is not this workspace''s has no clock here: the UTC date answers');
+select is(pg_temp.at(array[gen_random_uuid()]), '2026-10-05'::date,
+  'a place that is not this workspace''s has no clock here: the whole workspace answers');
 
 update public.locations set archived_at = now() where id = tests.id('tz:K');
 select is(pg_temp.at(null), '2026-10-12'::date,
@@ -80,74 +80,107 @@ select is(pg_temp.now(pg_temp.k()), pg_temp.at(pg_temp.k(), now()),
 select is(pg_temp.now(), pg_temp.at(null, now()),
   'the Schedule''s "this week" for the workspace is its westernmost live place''s week right now');
 
--- 2. The Schedule asks for the places of the edit -------------------------------
+-- 2. The Schedule asks for the places of its work -----------------------------
+
+-- Kadikoy's week, and its number for tests.add_shift.
+create function pg_temp.kw() returns date language sql as $$ select public.schedule_current_week_start_service(tests.id('tz'), array[tests.id('tz:K')]) $$;
+create function pg_temp.kn() returns integer language sql as $$ select (pg_temp.kw() - tests.week(0)) / 7 $$;
+
+-- Shifts are made while Besiktas still keeps Istanbul time (a shift's zone must
+-- be a named one): an edit of Kadikoy's week with a change at each place, and
+-- both places published.
+select ok(
+  public.acquire_schedule_edit_session_service(tests.user('tz:mina'), tests.id('tz'), pg_temp.kw(), 'blank', null, pg_temp.k() || pg_temp.b())
+    -> 'session' ->> 'id' is not null,
+  'while Kadikoy is still in the week, the week opens for both places');
+select tests.remember('tz:session:kb', (select s.id from public.schedule_edit_sessions s
+  where s.workspace_id = tests.id('tz') and s.holder_user_id = tests.user('tz:mina') and s.status = 'active'));
+
+-- The lock is per place: a change at Besiktas is refused, by name.
+select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:kb'), pg_temp.kn(),
+  '{"person": "mina", "loc": "K", "job": "cook", "day": 6, "start": "22:00", "end": "23:00"}');
+select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:kb'), pg_temp.kn(),
+  '{"person": "mina", "loc": "B", "job": "cook", "day": 6, "start": "22:00", "end": "23:00"}');
+select tests.publish_week('tz', 1, '[{"label": "k1", "person": "mina", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+  {"label": "b1", "person": "mina", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}]');
+
+-- From here on Besiktas runs at least a week ahead of Kadikoy at every instant
+-- (a zone 167 hours east of UTC), so a line drawn from the wrong places shows.
+update public.locations set timezone = '<+167>-167' where id = tests.id('tz:B');
+select cmp_ok(pg_temp.now(pg_temp.b()), '>=', pg_temp.now(pg_temp.k()) + 7,
+  'Besiktas has left the week Kadikoy is in');
 
 select is(
   pg_temp.refusal(format($$select public.acquire_schedule_edit_session_service(%L, %L, %L, 'blank', null, %L)$$,
-    tests.user('tz:mina'), tests.id('tz'), pg_temp.now(pg_temp.k()) - 7, pg_temp.k())) ->> 'current_week_start',
-  pg_temp.now(pg_temp.k())::text,
-  'opening a past week of Kadikoy is refused with Kadikoy''s own week as the line');
-select ok(
-  public.acquire_schedule_edit_session_service(tests.user('tz:mina'), tests.id('tz'), pg_temp.now(pg_temp.k()), 'blank', null, pg_temp.k())
-    -> 'session' ->> 'id' is not null,
-  'Kadikoy''s own week opens for editing whatever the UTC date');
-select tests.remember('tz:session:k', (select s.id from public.schedule_edit_sessions s
-  where s.workspace_id = tests.id('tz') and s.holder_user_id = tests.user('tz:mina') and s.status = 'active'));
+    tests.user('tz:mina'), tests.id('tz'), pg_temp.kw(), pg_temp.b())) ->> 'current_week_start',
+  pg_temp.now(pg_temp.b())::text,
+  'opening Kadikoy''s week at Besiktas alone is refused: Besiktas has left it');
 select is(
   pg_temp.try(format($$select public.acquire_schedule_edit_session_service(%L, %L, %L, 'blank', null, %L)$$,
-    tests.user('tz:stranger'), tests.id('tz'), pg_temp.now(pg_temp.k()) - 7, pg_temp.k())),
+    tests.user('tz:stranger'), tests.id('tz'), pg_temp.kw() - 7, pg_temp.k())),
   '42501 authz.not_member',
   'someone who is not in the workspace hears "no" before anything about the week');
-
--- The edit's week goes past (a test can not wait for Sunday): saving says so,
--- with the line of the edit's own places.
-update public.schedule_edit_sessions set week_start = pg_temp.now(pg_temp.k()) - 7 where id = tests.id('tz:session:k');
+create function pg_temp.save(session uuid) returns jsonb language sql as $$
+  select pg_temp.refusal(format($q$select public.save_schedule_edit_session_service(%L, %L, %L, %s, %L, null, null, true)$q$,
+    tests.user('tz:mina'), tests.id('tz'), session,
+    (select s.revision from public.schedule_edit_sessions s where s.id = session), 'week ' || gen_random_uuid()))
+$$;
 select is(
-  pg_temp.refusal(format($$select public.save_schedule_edit_session_service(%L, %L, %L, %s, 'late', null, null)$$,
-    tests.user('tz:mina'), tests.id('tz'), tests.id('tz:session:k'),
-    (select s.revision from public.schedule_edit_sessions s where s.id = tests.id('tz:session:k')))) ->> 'current_week_start',
-  pg_temp.now(pg_temp.k())::text,
-  'saving an edit of Kadikoy''s past week is refused with Kadikoy''s line');
-update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:k');
+  jsonb_path_query_array(pg_temp.save(tests.id('tz:session:kb')) -> 'past_edits', '$[*].location_name'),
+  '["Besiktas"]'::jsonb,
+  'saving refuses the change at Besiktas, which has left the week, and names it');
 
--- Publishing: a draft of Kadikoy's week is open, one a week earlier is closed.
+-- Once every place has left the week, the whole week is past.
+update public.schedule_edit_sessions set week_start = pg_temp.kw() - 7 where id = tests.id('tz:session:kb');
+select is(pg_temp.save(tests.id('tz:session:kb')) ->> 'current_week_start', pg_temp.kw()::text,
+  'a week both places have left is refused at the westernmost place''s line');
+update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:kb');
+
+select tests.remember('tz:session:k', (public.acquire_schedule_edit_session_service(
+  tests.user('tz:mina'), tests.id('tz'), pg_temp.kw(), 'blank', null, pg_temp.k()) -> 'session' ->> 'id')::uuid);
+select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:k'), pg_temp.kn(),
+  '{"person": "mina", "loc": "K", "job": "cook", "day": 6, "start": "22:00", "end": "23:00"}');
+select is(pg_temp.save(tests.id('tz:session:k')), null,
+  'Kadikoy''s change in its own week saves whatever the UTC date');
+
+-- Publishing: each place up to its own line.
 insert into public.schedule_drafts (id, workspace_id, week_start, name, revision, created_by, updated_by, location_ids) values
-  (tests.remember('tz:draft:now', gen_random_uuid()), tests.id('tz'), pg_temp.now(pg_temp.k()), 'This week', 1,
-   tests.user('tz:owner'), tests.user('tz:owner'), pg_temp.k()),
-  (tests.remember('tz:draft:past', gen_random_uuid()), tests.id('tz'), pg_temp.now(pg_temp.k()) - 7, 'Last week', 1,
-   tests.user('tz:owner'), tests.user('tz:owner'), pg_temp.k());
+  (tests.remember('tz:draft:now', gen_random_uuid()), tests.id('tz'), pg_temp.kw(), 'This week', 1,
+   tests.user('tz:owner'), tests.user('tz:owner'), pg_temp.k() || pg_temp.b());
 select isnt(
   public.preview_schedule_publication_service(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:draft:now'), pg_temp.k()) ->> 'status',
   'past_week_closed',
-  'a draft of Kadikoy''s current week can be published');
+  'Kadikoy''s current week can be published at Kadikoy');
 select is(
-  public.preview_schedule_publication_service(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:draft:past'), pg_temp.k()) ->> 'status',
+  public.preview_schedule_publication_service(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:draft:now'), pg_temp.b()) ->> 'status',
   'past_week_closed',
-  'a draft of the week before is closed');
+  'the same week is closed at Besiktas');
+select is(
+  public.preview_schedule_publication_service(tests.user('tz:owner'), tests.id('tz'), tests.id('tz:draft:now'), pg_temp.k() || pg_temp.b()) ->> 'status',
+  'past_week_closed',
+  'and closed for a publish that reaches Besiktas too');
 
--- Unpublishing: Kadikoy's published week, read at its own line and a week on.
-select tests.publish_week('tz', 1, '[{"label": "k1", "person": "mina", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}]');
-create temp table tz_published as
-  select p.week_start from public.schedule_location_publications p
-  where p.workspace_id = tests.id('tz') and p.location_id = tests.id('tz:K') and p.status = 'current';
+-- Unpublishing: both places published for Kadikoy's week.
+update public.schedule_location_publications set week_start = pg_temp.kw()
+where workspace_id = tests.id('tz') and status = 'current' and week_start = tests.week(1);
 select is(
-  public.preview_schedule_unpublication_service(tests.user('tz:owner'), tests.id('tz'), (select week_start from tz_published), pg_temp.k()) ->> 'status',
+  public.preview_schedule_unpublication_service(tests.user('tz:owner'), tests.id('tz'), pg_temp.kw(), pg_temp.k()) ->> 'status',
   'unpublish_ready',
-  'a published week ahead of Kadikoy''s line can be unpublished');
-update public.schedule_location_publications set week_start = pg_temp.now(pg_temp.k()) - 7
-where workspace_id = tests.id('tz') and location_id = tests.id('tz:K') and status = 'current';
+  'Kadikoy''s published week can be unpublished at Kadikoy');
 select is(
-  public.preview_schedule_unpublication_service(tests.user('tz:owner'), tests.id('tz'), pg_temp.now(pg_temp.k()) - 7, pg_temp.k()) ->> 'status',
+  public.preview_schedule_unpublication_service(tests.user('tz:owner'), tests.id('tz'), pg_temp.kw(), pg_temp.b()) ->> 'status',
   'past_week_closed',
-  'a published week before Kadikoy''s line can not be unpublished');
+  'not at Besiktas, which has left it');
 
 -- 3. Important dates draw the same line, by their own places (K11) -----------
 
 insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by) values
   (tests.remember('tz:date:before', gen_random_uuid()), tests.id('tz'), tests.id('tz:K'), pg_temp.k(),
-   pg_temp.now(pg_temp.k()) - 1, pg_temp.now(pg_temp.k()) - 1, 'Inventory', 'event', tests.user('tz:owner')),
+   pg_temp.kw() - 1, pg_temp.kw() - 1, 'Inventory', 'event', tests.user('tz:owner')),
   (tests.remember('tz:date:on', gen_random_uuid()), tests.id('tz'), tests.id('tz:K'), pg_temp.k(),
-   pg_temp.now(pg_temp.k()), pg_temp.now(pg_temp.k()), 'Staff lunch', 'event', tests.user('tz:owner'));
+   pg_temp.kw(), pg_temp.kw(), 'Staff lunch', 'event', tests.user('tz:owner')),
+  (tests.remember('tz:date:b', gen_random_uuid()), tests.id('tz'), tests.id('tz:B'), pg_temp.b(),
+   pg_temp.now(pg_temp.b()) - 1, pg_temp.now(pg_temp.b()) - 1, 'Deep clean', 'event', tests.user('tz:owner'));
 create temp table tz_dates as
   select value as d from jsonb_array_elements(
     public.read_settings_important_dates_service(tests.user('tz:owner'), tests.id('tz')) -> 'dates');
@@ -161,6 +194,8 @@ select is((select (d ->> 'can_edit')::boolean from tz_dates where d ->> 'id' = t
   'and read-only');
 select is((select (d ->> 'is_past')::boolean from tz_dates where d ->> 'id' = tests.id('tz:date:on')::text), false,
   'a Kadikoy date on the first day of Kadikoy''s week is not');
+select is((select (d ->> 'is_past')::boolean from tz_dates where d ->> 'id' = tests.id('tz:date:b')::text), true,
+  'a Besiktas date that ended the day before Besiktas'' week is past, though Kadikoy is still before it');
 select is(
   pg_temp.try(format($$select public.set_important_date_state_service(%L, %L, %L, 'unpublish')$$,
     tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:before'))),
@@ -168,9 +203,44 @@ select is(
   'unpublishing the past Kadikoy date is refused');
 select is(
   pg_temp.try(format($$select public.set_important_date_state_service(%L, %L, %L, 'unpublish')$$,
+    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:b'))),
+  'P0001 important_date.past',
+  'and the past Besiktas one');
+select is(
+  pg_temp.try(format($$select public.set_important_date_state_service(%L, %L, %L, 'unpublish')$$,
     tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:on'))),
   'ok',
   'unpublishing the one on Kadikoy''s line goes through');
+
+-- A Besiktas date that runs across Besiktas' line moves to Kadikoy: the days
+-- already past at Besiktas stay there; at Kadikoy, still days before, the
+-- date keeps them all.
+insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by) values
+  (tests.remember('tz:date:move', gen_random_uuid()), tests.id('tz'), tests.id('tz:B'), pg_temp.b(),
+   pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) + 2, 'Patio works', 'event', tests.user('tz:owner'));
+select is(
+  pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Patio works', 'event', %L, %L, 'none', '', true, %L, %s)$$,
+    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:move'), pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) + 2,
+    pg_temp.k(), (select revision from public.important_dates where id = tests.id('tz:date:move')))),
+  'ok', 'a date running across Besiktas'' line moves to Kadikoy');
+select is(
+  (select array_agg(array[d.starts_on, d.ends_on] order by d.starts_on) from public.important_dates d
+   where d.workspace_id = tests.id('tz') and d.title = 'Patio works' and d.location_ids = pg_temp.b()),
+  array[array[pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) - 1]],
+  'its days already past at Besiktas stay at Besiktas');
+select is(
+  (select array[d.starts_on, d.ends_on] from public.important_dates d where d.id = tests.id('tz:date:move') and d.location_ids = pg_temp.k()),
+  array[pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) + 2],
+  'the date itself goes on at Kadikoy with all its days, none of them past there');
+
+-- A closed day lands on each place from that place's own line.
+select is(
+  (select jsonb_agg(day order by day ->> 'location_id', day ->> 'closed_date') from jsonb_array_elements(
+    app_private.important_date_closure_impact(tests.id('tz'), null::public.important_dates, 'closed_day',
+      pg_temp.now(pg_temp.b()) - 1, pg_temp.now(pg_temp.b()), 'none', pg_temp.k() || pg_temp.b()) -> 'days') day
+   where day ->> 'location_id' = tests.id('tz:B')::text),
+  jsonb_build_array(jsonb_build_object('location_id', tests.id('tz:B'), 'closed_date', pg_temp.now(pg_temp.b()))),
+  'a closed day on both places reaches Besiktas only from its own week on');
 
 select * from finish();
 rollback;
