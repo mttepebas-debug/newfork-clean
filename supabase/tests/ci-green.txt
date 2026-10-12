@@ -185,3 +185,4 @@ supabase/tests/onboarding_phone_is_ones_own.test.sql
 supabase/tests/shift_changes_reach_managers_agreed.test.sql
 supabase/tests/document_and_availability_refusal_reasons.test.sql
 supabase/tests/role_and_notification_refusal_reasons.test.sql
+supabase/tests/schedule_refusal_reasons.test.sql
