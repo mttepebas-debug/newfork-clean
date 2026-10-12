@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(23);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -96,6 +96,16 @@ insert into public.schedule_published_shifts (
 ) values
   ('9a000000-0000-4000-8000-000000000003', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000002', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001', current_date + 7, '10:00', '11:00', '91000000-0000-4000-8000-000000000003');
 
+-- Under way now: it started an hour ago, after the back-dated instant, and is
+-- still being worked. It stays too (K1, BL-766).
+insert into public.schedule_published_shifts (
+  id, workspace_id, location_id, publication_id, employee_id, job_id,
+  scheduled_date, start_time, end_time, source_shift_id
+) select
+  '9a000000-0000-4000-8000-000000000004', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001',
+  started::date, date_trunc('minute', started)::time, date_trunc('minute', started)::time + interval '3 hours', '91000000-0000-4000-8000-000000000004'
+from (select (now() - interval '1 hour') at time zone 'America/Los_Angeles' as started) as clock;
+
 set local role service_role;
 
 select throws_ok(
@@ -132,6 +142,7 @@ select is((select employee_id from public.schedule_published_shifts where id = '
 -- started yet is released.
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), '7a000000-0000-4000-8000-000000000001'::uuid, 'a worked shift after a back-dated effective instant stays assigned');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000003'), null, 'a shift that has not started yet becomes open');
+select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000004'), '7a000000-0000-4000-8000-000000000001'::uuid, 'a shift under way now stays assigned');
 select is((select count(*)::integer from public.employee_offboarding_shift_actions where workspace_id='2a000000-0000-4000-8000-000000000001'), 1, 'released shift has durable audit detail');
 select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'coverage_alert' and status = 'review_required'), 1, 'released shift creates a coverage alert');
 select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'compliance_review' and status = 'review_required'), 1, 'released shift creates a compliance review candidate');
