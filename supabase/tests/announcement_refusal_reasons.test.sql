@@ -54,6 +54,8 @@ select is(pg_temp.refusal($$select public.set_announcement_state_service('d9f43e
 -- Archived at its current revision, an edit is a standing no, not a reload.
 select is((public.set_announcement_state_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from announcement_state),1,'archive')->>'revision')::integer,
  2,'the owner archives the draft');
+select is(pg_temp.refusal($$select public.set_announcement_state_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from announcement_state),1,'restore')$$),
+ 'PT409 announcement.changed','a restore over a newer revision says the announcement changed');
 select is(pg_temp.refusal($$select public.save_announcement_audience_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
  (select announcement_id from announcement_state),2,'Refusal keys','Too late','general',array['employee'],array[]::uuid[],null,null,null,'{}'::uuid[],'{}'::uuid[])$$),
  'PT409 announcement.archived','an archived announcement cannot be edited, and says so');
