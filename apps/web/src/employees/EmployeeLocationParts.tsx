@@ -94,22 +94,25 @@ export function TerminateNote({
 }
 
 function hasNoLocation(employee: EmployeeSummary): boolean {
-  return employee.location_count === 0 && !employee.primary_location_name;
+  return employee.locations.length === 0;
 }
 
-/** The Employees list's location cell: primary location, or the "No location" chip. */
+/**
+ * The Employees list's location cell: the first location (the primary, else
+ * A to Z) and the count of the others, or the "No location" chip. The owner,
+ * who has no primary, reads "Kadikoy +1" (G3, BL-428).
+ */
 export function EmployeeLocationCell({ employee }: { readonly employee: EmployeeSummary }) {
+  const [first, ...others] = employee.locations;
   return (
     <span className="employee-cell-with-icon employee-location-cell">
-      {hasNoLocation(employee) ? (
+      {first === undefined ? (
         <span className="employee-chip employee-chip-warning">No location</span>
       ) : (
         <>
           <MapPin size={15} aria-hidden />
-          <span className="employee-location-name">
-            {employee.primary_location_name ?? "Unassigned"}
-          </span>
-          {employee.location_count > 1 ? <small>+{employee.location_count - 1}</small> : null}
+          <span className="employee-location-name">{first.name}</span>
+          {others.length > 0 ? <small>+{others.length}</small> : null}
         </>
       )}
     </span>
