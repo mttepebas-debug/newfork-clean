@@ -2246,6 +2246,39 @@ describe("App", () => {
     await waitFor(() => expect(window.location.search).not.toContain("mode=edit"));
   });
 
+  // BL-1052: another tab saved or changed this edit first; Save from the menu says
+  // so plainly and offers a reload, never the raw "session revision stale". A
+  // retry would send the same old revision, so no retry sheet opens.
+  it("asks for a reload when Save finds the edit moved on in another tab", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("session revision stale", 409, { error: "session revision stale", code: "edit_session_stale" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Moved on elsewhere" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+    // The edit is not ended here: the reload picks it back up (D-Y4).
+    expect(window.location.search).toContain("mode=edit");
+  });
+
   it("picks the edit back up after a page reload instead of showing an empty draft (D-Y4)", async () => {
     const draftId = "99999999-9999-4999-8999-999999999993";
     const acquired = makeDefaultEditAcquireResult();
@@ -6344,6 +6377,28 @@ describe("App", () => {
     expect(renderExportFiles).not.toHaveBeenCalled(); expect(window.location.search).toContain("mode=edit");
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+  });
+
+  // BL-1052: the Save draft window closes on a stale edit, so the banner's Reload is in reach.
+  it("closes the Save draft window and asks for a reload when another tab moved the edit on", async () => {
+    vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
+      error: "session revision stale", code: "edit_session_stale",
+    }));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Stale draft" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
   });
 
   it.each(["network", "retroactive"] as const)("ignores a late %s Save-for-Export error after the edit session expires", async kind => {

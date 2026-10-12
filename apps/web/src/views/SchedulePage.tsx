@@ -1289,6 +1289,17 @@ export function SchedulePage({
         );
         return null;
       }
+      // BL-1052: another tab moved the edit on; a retry would send the same old
+      // revision, so the page is reloaded instead (the reload picks the edit up).
+      // The Save draft window closes too, so the banner's Reload is in reach.
+      if (isEditSessionStale(error)) {
+        setOperationError(scheduleEditErrorText(error));
+        setPublishMenuDismissSignal((value) => value + 1);
+        setSaveOpen(false);
+        setExportAfterSave(false);
+        leaveScheduleDeepLink();
+        return null;
+      }
       // BL-395: the save's own sentences for a refusal; a plain one for anything else.
       const message =
         error instanceof ScheduleRequestError && error.status > 0 && error.status < 500
