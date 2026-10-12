@@ -57,7 +57,7 @@ test("a manager invites somebody at her own location, they accept, and the list 
 }) => {
   const firstName = `Inv${tag()}`;
   const name = `${firstName} Invitee`;
-  uninvitedRecord(firstName, "K");
+  const employeeId = uninvitedRecord(firstName, "K");
   const inviteeEmail = accountWithoutWorkspace(`invitee-${firstName}`);
 
   const ayse = await (await browser.newContext()).newPage();
@@ -80,6 +80,15 @@ test("a manager invites somebody at her own location, they accept, and the list 
   const link = await drawer.getByRole("link", { name: "Open acceptance link" }).getAttribute("href");
   expect(link).toContain("/invite/accept?token=");
   await expect(row.getByText("Invited", { exact: true })).toBeVisible();
+
+  // BL-1069: Access shows Ayse the invitation she sent and its buttons, though
+  // her role does not read access; it no longer offers a second Invite that
+  // would take the first link back.
+  await ayse.goto(`/app/employees?employeeId=${employeeId}&section=access`);
+  const access = ayse.getByRole("dialog", { name });
+  await expect(access.getByText("Invitation sent", { exact: true })).toBeVisible();
+  await expect(access.getByRole("button", { name: "Send reminder", exact: true })).toBeVisible();
+  await expect(access.getByText("Ready to invite", { exact: true })).toHaveCount(0);
 
   // The invited person opens the link signed out. It offers a new account
   // first; this one already has theirs, so they sign in and accept.
@@ -138,8 +147,7 @@ test("a reminder sends the same link again, and Resend's old link points to the 
     sql(`select token_hash || '|' || expires_at || '|' || resend_count from public.employee_invitations
          where employee_id = '${employeeId}' and status = 'pending';`);
 
-  // An admin: the invitation's state and its Send reminder are on Access,
-  // which a manager's role does not read (employee_access.read).
+  // An admin: the invitation's state and its Send reminder are on Access.
   const zeynep = await (await browser.newContext()).newPage();
   await signIn(zeynep, "zeynep");
   await expect(zeynep).not.toHaveURL(/\/sign-in/);

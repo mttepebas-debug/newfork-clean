@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 479, last: 20261012043500_employees_list_every_location.sql
--- fingerprint: sha256:af856afbd8dcaad01471d43e54fcd337d09fee8f934d381bbec46f1dbb61d2b6
+-- migrations: 480, last: 20261012044000_a_manager_sees_the_invitation_they_can_act_on.sql
+-- fingerprint: sha256:68d118cfa19bfd6e24ce9ff5aba728e811ef32b47d08c7a9b79231c006118779
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -10753,6 +10753,7 @@ declare
   reads_private boolean;
   reads_access boolean;
   removal app_private.authz_actions;
+  invite_rule app_private.authz_actions;
   answer jsonb;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.read', target_person => target_employee_id);
@@ -10763,6 +10764,10 @@ begin
   select * into removal from app_private.authz_actions action where action.key = 'employee.remove_from_location';
   if not found then
     raise exception 'core action employee.remove_from_location is missing' using errcode = '22023';
+  end if;
+  select * into invite_rule from app_private.authz_actions action where action.key = 'employee.invite';
+  if not found then
+    raise exception 'core action employee.invite is missing' using errcode = '22023';
   end if;
 
   select jsonb_build_object(
@@ -10865,7 +10870,11 @@ begin
       where assignment.employee_id = employee.id and assignment.ended_at is null
     ), '[]'::jsonb),
     'invitation', case
-      when invitation.id is null or not reads_access then null
+      -- Who reads access reads it; so does whoever its buttons answer to
+      -- (employee.invite, a role they may give; BL-1069).
+      when invitation.id is null or not (reads_access
+        or (app_private.authz_check(me, invite_rule, null, employee.id, null) is null
+          and app_private.can_invite_with_role(actor_user_id, target_workspace_id, invitation.role_id))) then null
       else jsonb_build_object(
         'id', invitation.id,
         'email', invitation.email,
