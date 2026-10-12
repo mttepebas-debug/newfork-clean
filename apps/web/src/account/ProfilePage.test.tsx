@@ -546,6 +546,50 @@ describe("ProfilePage", () => {
     },
   );
 
+  // BL-471: the preferred name has the same dead end as the contact above.
+  it.each([
+    ["authz.not_active", 403],
+    ["authz.workspace_closed", 403],
+    ["authz.not_member", 404],
+  ])(
+    "says a preferred name can no longer be changed where the answer is %s",
+    async (reason, status) => {
+      const second = "51000000-0000-4000-8000-000000000002";
+      vi.mocked(listAccountWorkspaces).mockResolvedValue([
+        workspace("employee"),
+        { ...workspace("employee"), id: second, name: "Ridgeline" },
+      ]);
+      vi.mocked(listOwnEmploymentRecords).mockResolvedValue([
+        contactRecord(ownedWorkspaceId, {
+          emergencyContactName: "Morgan",
+          emergencyContactRelationship: "Spouse",
+          emergencyContactPhone: "+14155550199",
+        }),
+        contactRecord(second, {
+          workspaceName: "Ridgeline",
+          emergencyContactName: "Morgan",
+          emergencyContactRelationship: "Spouse",
+          emergencyContactPhone: "+14155550199",
+        }),
+      ]);
+      vi.mocked(requestPreferredName).mockImplementation(async (workspaceId) => {
+        if (workspaceId === second)
+          throw new RequestError("Not allowed", reason, "employee.request_preferred_name", status);
+        return "published";
+      });
+      renderProfile();
+      await screen.findByDisplayValue("Morgan");
+      fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ay" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toBe(
+        "Your preferred name can no longer be changed in Ridgeline: your access there has ended or the workspace is closed.",
+      );
+      vi.mocked(requestPreferredName).mockResolvedValue("published");
+    },
+  );
+
   it("asks an owner to finish setting up a workspace before its emergency contact", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([
       { ...workspace("owner"), onboarding: { status: "incomplete" as const, currentStep: 2 } },

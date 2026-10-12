@@ -27,12 +27,15 @@ import {
   type DocumentAudience,
 } from "./document-data";
 import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 import {
   acceptAttribute,
   acceptsUpload,
+  fileDecisionLabel,
   isObligationClosed,
   sameSignerName,
   statusLabel,
+  versionStateLabel,
 } from "./document-rules";
 
 // What a person typed into the drawer. Nothing stores it before its own
@@ -74,6 +77,8 @@ function DocumentDrawer(props: DrawerProps) {
   // Held above the content, which every revision rebuilds: uploading, removing
   // a file, deferring or someone else's change all bump the revision.
   const [typed, setTyped] = useState<TypedFields>({});
+  // BL-828: held here because the content is rebuilt for the new revision.
+  const [changed, setChanged] = useState(false);
   const query = useQuery({
     queryKey: documentQueryKey(
       props.audience,
@@ -85,11 +90,13 @@ function DocumentDrawer(props: DrawerProps) {
   if (query.data)
     return (
       <DocumentDetailContent
-        key={`${query.data.obligation.id}:${query.data.obligation.revision}`}
+        key={detailVersion(query.data)}
         {...props}
         detail={query.data}
         typed={typed}
         onTyped={setTyped}
+        changed={changed}
+        onChanged={setChanged}
       />
     );
   return (
@@ -120,6 +127,23 @@ function DocumentDrawer(props: DrawerProps) {
   );
 }
 
+// A 409 that means "changed meanwhile, reload": the document's revision or,
+// for the time zone, the person's (BL-1028).
+function changedMeanwhile(failure: unknown): boolean {
+  return (
+    failure instanceof RequestError &&
+    failure.status === 409 &&
+    (failure.reason === "document.changed" ||
+      failure.reason === "employee.revision_conflict")
+  );
+}
+
+// Every revision a drawer command is checked against: the document's and,
+// for the time zone, the person's (BL-828). A new one rebuilds the content.
+function detailVersion(detail: DocumentDetail): string {
+  return `${detail.obligation.id}:${detail.obligation.revision}:${detail.timezone_settings?.employee_revision ?? ""}`;
+}
+
 function DocumentDetailContent({
   detail,
   ...props
@@ -127,6 +151,8 @@ function DocumentDetailContent({
   detail: DocumentDetail;
   typed: TypedFields;
   onTyped: Dispatch<SetStateAction<TypedFields>>;
+  changed: boolean;
+  onChanged: (changed: boolean) => void;
 }) {
   const cache = useQueryClient();
   const obligation = detail.obligation;
@@ -230,14 +256,32 @@ function DocumentDetailContent({
       }),
       // The account badge counts documents still to act on.
       cache.invalidateQueries({ queryKey: ["account-attention"] }),
+      // BL-1014: a decision can move the person out of Onboarding; the
+      // Employees list and the person's drawer show their status.
+      cache.invalidateQueries({ queryKey: ["employees", props.audience.workspaceId] }),
+      cache.invalidateQueries({ queryKey: ["employee-detail", props.audience.workspaceId] }),
     ]);
+  // BL-828, BL-1028: someone changed this document or the person first
+  // (another reviewer, a new upload); the database says so with its key.
+  // Reload and say so instead of the server's "refresh required". Any other
+  // 409 is a standing refusal ("changes are paused"): nothing to reload, its
+  // own sentence stays.
+  const conflict = async (failure: unknown) => {
+    if (!changedMeanwhile(failure)) return;
+    await refresh();
+    props.onChanged(true);
+  };
+  const started = () => props.onChanged(false);
   const review = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: (decision: "approve" | "reject") =>
       reviewDocument(props.audience, obligation.id, {
         revision: obligation.revision,
         submission_id: current!.id,
         decision,
-        reason,
+        // BL-832: a reason typed before choosing Approve is not the approval's.
+        reason: decision === "reject" ? reason : "",
         correction_period: correction,
         files,
       }),
@@ -248,15 +292,21 @@ function DocumentDetailContent({
     },
   });
   const upload = useMutation({
+    onMutate: started,
     mutationFn: (file: File) =>
       uploadDocument(props.audience, obligation.id, obligation.revision, file),
     onSuccess: async () => {
       setFailedUpload(null);
       await refresh();
     },
-    onError: (_error, file) => setFailedUpload(file),
+    onError: async (failure, file) => {
+      setFailedUpload(file);
+      await conflict(failure);
+    },
   });
   const submit = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: () =>
       submitDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -270,6 +320,8 @@ function DocumentDetailContent({
     },
   });
   const download = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: ({
       submissionId,
       fileId,
@@ -279,6 +331,8 @@ function DocumentDetailContent({
     }) => downloadDocument(props.audience, obligation.id, submissionId, fileId),
   });
   const timezone = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: () =>
       setDocumentTimezone(props.audience, obligation.id, {
         employee_revision: detail.timezone_settings!.employee_revision,
@@ -290,6 +344,8 @@ function DocumentDetailContent({
     },
   });
   const defer = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: () =>
       deferInitialDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -301,6 +357,8 @@ function DocumentDetailContent({
     },
   });
   const acknowledge = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: () =>
       acknowledgeDocument(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -314,6 +372,8 @@ function DocumentDetailContent({
     },
   });
   const withdraw = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: () =>
       withdrawDocumentAcknowledgement(
         props.audience,
@@ -323,6 +383,8 @@ function DocumentDetailContent({
     onSuccess: refresh,
   });
   const removeFile = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: (fileId: string) =>
       removeDocumentDraftFile(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -332,6 +394,8 @@ function DocumentDetailContent({
     onSuccess: refresh,
   });
   const extension = useMutation({
+    onMutate: started,
+    onError: conflict,
     mutationFn: () =>
       extendDocumentDeadline(props.audience, obligation.id, {
         revision: obligation.revision,
@@ -365,6 +429,14 @@ function DocumentDetailContent({
     submit.error ??
     download.error ??
     timezone.error;
+  const shownError =
+    !error || changedMeanwhile(error)
+      ? null
+      : error instanceof RequestError && (error.status ?? 0) >= 500
+        ? error === download.error
+          ? "Couldn't open the file. Try again."
+          : "Couldn't save. Try again."
+        : errorText(error);
   const dirty =
     failedUpload !== null ||
     extensionReason !== "" ||
@@ -568,7 +640,7 @@ function DocumentDetailContent({
           {detail.submissions.map((version) => (
             <section key={version.id} aria-label={`Version ${version.version}`}>
               <h3>
-                Version {version.version} · {version.state.replaceAll("_", " ")}
+                Version {version.version} · {versionStateLabel(version.state)}
               </h3>
               {version.expiry_date && <p>Expires {version.expiry_date}</p>}
               {Object.entries(version.metadata).map(([key, value]) => (
@@ -634,7 +706,7 @@ function DocumentDetailContent({
                       />
                     </>
                   ) : (
-                    <span>{file.decision}</span>
+                    <span>{fileDecisionLabel(file.decision)}</span>
                   )}
                   {props.audience.selfOnly && version.state === "draft" && (
                     <button
@@ -812,8 +884,8 @@ function DocumentDetailContent({
             obligation.kind === "document" &&
             (obligation.exemption_locked ? (
               <p className="document-exemption-note">
-                An owner is not asked for the documents they ask of everyone
-                else. This one is listed here, never required.
+                Owners aren't required to submit documents. Uploading is
+                optional.
               </p>
             ) : (
               <DocumentExemptionAction
@@ -884,10 +956,15 @@ function DocumentDetailContent({
               </p>
             ))}
           </details>
+          {props.changed && !notice && (
+            <p role="status">
+              This document changed. You're seeing the latest version.
+            </p>
+          )}
           {notice && <p role="status">{notice}</p>}
-          {error && (
+          {shownError && (
             <p role="alert" className="form-error">
-              {errorText(error)}
+              {shownError}
             </p>
           )}
         </div>

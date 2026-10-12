@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { requestTimeOffCancellation } from "../schedule/requests-data";
+import { isStaleTimeOff, requestTimeOffCancellation } from "../schedule/requests-data";
 import { formatTimeOffInstant } from "./time-off-split";
 import { timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { cancellationSelectionError, TimeOffCancellationHours, type CancellationChoice } from "./TimeOffCancellationHours";
@@ -51,6 +51,9 @@ export function TimeOffCancellation({ request, workspaceId, timeFormat, onChange
       setDraft(null); setSelected([]); setEditing([]); setReason(""); setNotice("Cancellation requested. Your approved leave stays in effect until a manager accepts the cancellation.");
       void client.invalidateQueries({ queryKey: ["schedule-requests", workspaceId] }); onChanged();
     },
+    // BL-1043: the approved leave changed meanwhile (the database's key):
+    // reload it, and the form says so in its own words.
+    onError: error => { if (isStaleTimeOff(error)) onChanged(); },
   });
   function begin() {
     const periods = request.periods?.flatMap(p => p.time_timezone ? (p.effective_intervals ?? [])
@@ -95,10 +98,10 @@ export function TimeOffCancellation({ request, workspaceId, timeFormat, onChange
           }}>Add another time range</button>
         </div>)}
         <label>Cancellation note<textarea maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
-        {stale ? <p role="alert">The approved leave changed. Close this form and review the current hours before continuing.</p> : null}
+        {stale || isStaleTimeOff(mutation.error) ? <p role="alert">The approved leave changed. Close this form and review the current hours before continuing.</p> : null}
         {selectionError ? <p role="alert">{selectionError}</p> : null}
         {unfinished ? <p>Apply or discard the hours being edited before sending.</p> : null}
-        {mutation.error ? <p role="alert">{mutation.error.message}</p> : null}
+        {mutation.error && !isStaleTimeOff(mutation.error) ? <p role="alert">{mutation.error.message}</p> : null}
         <button type="submit" disabled={stale || Boolean(selectionError) || unfinished}>Send cancellation request</button>
         <button type="button" onClick={() => { returnToLaunch.current = true; setDraft(null); }}>Keep approved leave</button>
       </fieldset>

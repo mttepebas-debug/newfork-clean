@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import LocationsSettingsPage from "./LocationsSettingsPage";
 import { formatUsPhone, usLettersMessage } from "@newfork/shared";
 import { listLocations, saveLocation } from "./organization-data";
+import { RequestError } from "../lib/request-error";
 
 const state = vi.hoisted(() => ({ canEdit: true }));
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: {
@@ -41,6 +42,19 @@ describe("Locations table", () => {
   });
 });
 
+// BL-664 (1): an empty address part leaves no stray comma.
+describe("Locations address", () => {
+  it("joins only the parts that are filled in", async () => {
+    vi.mocked(listLocations).mockResolvedValue([
+      { ...current, street_address: "", city: "Oakland", region: "CA", postal_code: "" },
+    ]);
+    page();
+    await screen.findByRole("button", { name: /^Deniz/ });
+    expect(screen.getAllByText("Oakland, CA").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/^,/)).toBeNull();
+  });
+});
+
 // Locations A (Mert 2026-10-07): the shared list language.
 describe("Locations list", () => {
   it("has a list header, Active / Archived tabs and New location at the end of the filter row", async () => {
@@ -55,6 +69,14 @@ describe("Locations list", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
     expect(screen.getByRole("button", { name: /^Deniz/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Main/ })).toBeNull();
+    // BL-602: ← → walk the tabs; the list is one Tab stop.
+    const archived = screen.getByRole("tab", { name: "Archived" });
+    expect(archived.tabIndex).toBe(0);
+    expect(screen.getByRole("tab", { name: "Active" }).tabIndex).toBe(-1);
+    archived.focus();
+    fireEvent.keyDown(archived, { key: "ArrowLeft" });
+    expect(document.activeElement?.textContent).toBe("Active");
+    expect(screen.getByRole("button", { name: /^Main/ })).toBeTruthy();
   });
   it("says where archived locations go when there are none", async () => {
     page();
@@ -121,6 +143,21 @@ describe("Location short name editor", () => {
     fireEvent.click(save());
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "This short name is already used in this workspace. Choose another one.");
     expect(screen.getByLabelText("Short name")).toHaveProperty("value", "MN");
+  });
+  // BL-1045: by its key, a location deleted meanwhile; the list loads again
+  // and the sentence stays with the draft. A refusal without the key reloads nothing.
+  it.each([
+    [new RequestError("This item was deleted. Reload the catalog.", "catalog.deleted", undefined, 409), 2],
+    [new Error("This short name is already used in this workspace. Choose another one."), 1],
+  ])("reloads the list only for a location deleted meanwhile (%s)", async (refusal, reads) => {
+    vi.mocked(saveLocation).mockRejectedValue(refusal);
+    page();
+    fireEvent.click(await screen.findByRole("button", { name: /^Main/ }));
+    fireEvent.change(screen.getByLabelText("Location name"), { target: { value: "Main street" } });
+    fireEvent.click(save());
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", refusal.message);
+    await waitFor(() => expect(listLocations).toHaveBeenCalledTimes(reads));
+    expect(screen.getByLabelText("Location name")).toHaveProperty("value", "Main street");
   });
   it("keeps readonly locations readonly", async () => {
     state.canEdit = false; page();

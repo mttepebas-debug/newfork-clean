@@ -1,6 +1,6 @@
 // WORKFLOW-V2 (S-106, Mert's #12 as the controller ruled it 2026-10-08): the e2e quarantine list.
 // A known e2e red that is red on main too does not stop the train: the coordinator adds that test to
-// e2e/karantina.txt (a BL number, at most MAX_DAYS days) on coord/kayit, the run skips it and CI stays green.
+// e2e/karantina.txt (a BL number, at most MAX_DAYS days) on coord/kayit2, the run skips it and CI stays green.
 // e2e/playwright.config.ts turns the live entries into Playwright's grepInvert.
 // Line format: `<a part of the test title> | BL-<no> | <YYYY-MM-DD start> | <YYYY-MM-DD end>`; `#` starts a comment.
 

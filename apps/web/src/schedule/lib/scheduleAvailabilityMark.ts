@@ -56,6 +56,17 @@ export function scheduleAvailabilityMarks(projection: Projection): Map<string, S
   return marks;
 }
 
+/** Approved time off over the whole local day (Mert, 2026-10-10: its cell opens no Add shift). */
+export function isFullDayTimeOff(mark: ScheduleAvailabilityMark | null): boolean {
+  if (mark?.kind !== "time_off") return false;
+  let reached = 0;
+  for (const range of [...mark.ranges].sort((left, right) => left.from - right.from)) {
+    if (range.from > reached) return false;
+    reached = Math.max(reached, range.to);
+  }
+  return reached >= 1440;
+}
+
 const sameRange = (left: AvailabilityRange, right: AvailabilityRange) => left.from === right.from && left.to === right.to;
 
 /** One cell can gather several source locations; time off wins. */

@@ -10,6 +10,7 @@ import {
   loadWeeklyPreferenceSettings,
   saveWeeklyPreferenceSettings,
 } from "./availability-data";
+import { isNoAccess } from "../lib/no-access";
 import "./weekly-preferences.css";
 
 export function WeeklyPreferenceSettingsPanel({
@@ -59,14 +60,20 @@ function ConnectedSettings({ workspaceId }: { workspaceId: string }) {
     query.error && typeof query.error === "object" && "status" in query.error
       ? Number(query.error.status)
       : 0;
+  // BL-798: the core's "no" reads as a sentence; retrying cannot change it.
+  const noAccess = isNoAccess(query.error);
   const error = query.isError ? (
-    <p role="alert">{query.error.message}</p>
+    <p role="alert">
+      {noAccess
+        ? "You don't have access to these availability settings."
+        : query.error.message}
+    </p>
   ) : null;
   if (!query.data || [401, 403, 404].includes(status))
     return (
       <section className="weekly-preferences-panel">
         {error ?? <p role="status">Loading availability settings...</p>}
-        {error && (
+        {error && !noAccess && (
           <button type="button" onClick={() => void query.refetch()}>
             Retry
           </button>

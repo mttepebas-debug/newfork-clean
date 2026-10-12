@@ -163,6 +163,30 @@ describe("Document guided editor", () => {
     );
     expect(getDocumentTargetOptions).toHaveBeenCalledTimes(1);
   });
+  // BL-857: Step 2 names the formats as the list does, and pages fields only
+  // when there is more than one page of them.
+  it("names formats as the list does and pages fields only when they overflow", () => {
+    const draft = initial();
+    draft.accepted_formats = ["webp", "pdf"];
+    mount(<Harness draft={draft} />);
+    next();
+    expect(screen.getByText("Accepted uploads: PDF, WebP")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Next fields" })).toBeNull();
+    for (let i = 0; i < 3; i += 1)
+      fireEvent.click(screen.getByRole("button", { name: /Add field/ }));
+    expect(screen.getByRole("button", { name: "Next fields" })).toBeTruthy();
+  });
+
+  // BL-664 (3): the review list says the requirement in words; CSS no longer
+  // capitalizes each word ("Manager Approval").
+  it("words the requirement in the review list", () => {
+    const { container } = mount();
+    const review = container.querySelector(".document-editor-review")!;
+    expect(review.textContent).toContain("Conditional");
+    expect(review.textContent).not.toContain("conditional");
+    expect(review.textContent).toContain("Manager approval");
+  });
+
   it("uses Schedule All semantics for each group and applies intersection on filter edits", async () => {
     vi.mocked(getDocumentTargetOptions).mockResolvedValue({
       ...options,

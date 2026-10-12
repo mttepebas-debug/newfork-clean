@@ -4,18 +4,18 @@
 //                  so no report is lost to a missed notification or a compacted context.
 //   session-start  SessionStart (startup, resume, clear, compact): the top of DURUM.md back into the context.
 // Both read the hook JSON on stdin and never fail the session (exit 0). settings.json is shared by every
-// session, so the CLI writes under CLAUDE_PROJECT_DIR only in the coordinator's checkout (branch coord/kayit).
+// session, so the CLI writes under CLAUDE_PROJECT_DIR only in the coordinator's checkout (branch coord/kayit2).
 // A folder off that branch that still has DURUM.md is the coordinator's checkout caught mid-rebase or on a
 // detached HEAD: its agent report goes to <OPS_DIR>/gunluk-yedek/<day>/ instead of being lost, and the
 // coordinator moves it into the daily log later. Anywhere else the CLI does nothing (session-start gives no
-// DURUM.md off coord/kayit). Secrets in an agent's message are masked before it is written.
+// DURUM.md off coord/kayit2). Secrets in an agent's message are masked before it is written.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { OPS_DIR, redact } from "./ops.mjs";
 
-const COORD_BRANCH = "coord/kayit";
+const COORD_BRANCH = "coord/kayit2";
 export function isCoordinatorCheckout(dir) {
   try {
     return execFileSync("git", ["-C", dir, "branch", "--show-current"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 }).trim() === COORD_BRANCH;

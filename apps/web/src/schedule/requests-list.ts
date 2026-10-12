@@ -19,7 +19,19 @@ export const requestTypeLabels: Record<RequestType, string> = {
   cover: "Cover",
   open_pickup: "Open shift",
 };
-export type RequestTypeTab = "all" | RequestType;
+// Two tabs (Mert, 2026-10-11): Time off, and every shift change (swap, cover,
+// open shift) together; the Type column still names each row's kind. All
+// stays first when the reader has both.
+export type RequestTypeTab = "all" | "time_off" | "shift_changes";
+export const shiftChangeTypes: readonly RequestType[] = ["swap", "cover", "open_pickup"];
+export const tabOf = (type: RequestType): Exclude<RequestTypeTab, "all"> => (type === "time_off" ? "time_off" : "shift_changes");
+export const requestTabLabels: Record<RequestTypeTab, string> = { all: "All", time_off: "Time off", shift_changes: "Shift changes" };
+
+/** The tabs a reader gets: All, then one per group they may read; one group needs no tabs. */
+export function requestTabsFor(allowed: readonly RequestType[]): RequestTypeTab[] {
+  const groups = (["time_off", "shift_changes"] as const).filter((tab) => allowed.some((type) => tabOf(type) === tab));
+  return groups.length > 1 ? ["all", ...groups] : [];
+}
 export type RequestState = "needs_review" | "in_progress" | "closed";
 export const requestPageSizes = [25, 50, 100] as const;
 export type RequestPageSize = (typeof requestPageSizes)[number];
@@ -111,7 +123,7 @@ export function requestRows(
     }
   }
   for (const request of exchanges) {
-    if ((filters.type !== "all" && filters.type !== request.kind) || !exchangeMatches(request, filters)) continue;
+    if ((filters.type !== "all" && filters.type !== tabOf(request.kind)) || !exchangeMatches(request, filters)) continue;
     const state = exchangeState(request);
     rows.push({
       source: "exchange",
@@ -128,22 +140,25 @@ export function requestRows(
 
 /** Each type tab's number, and All's: the requests still open. */
 export function openCounts(rows: readonly RequestRow[]): Record<RequestTypeTab, number> {
-  const counts: Record<RequestTypeTab, number> = { all: 0, time_off: 0, swap: 0, cover: 0, open_pickup: 0 };
+  const counts: Record<RequestTypeTab, number> = { all: 0, time_off: 0, shift_changes: 0 };
   for (const row of rows) {
     if (row.state === "closed") continue;
     counts.all += 1;
-    counts[row.type] += 1;
+    counts[tabOf(row.type)] += 1;
   }
   return counts;
 }
 
 /** Type tab and page as the address keeps them; anything else falls back. */
 export function readRequestsParams(params: URLSearchParams, allowed: readonly RequestType[]) {
-  const type = params.get("type");
+  const asked = params.get("type");
+  // An old one-type address (?type=swap) lands on the shift changes tab.
+  const type = asked && (shiftChangeTypes as readonly string[]).includes(asked) ? "shift_changes" : asked;
+  const tabs = requestTabsFor(allowed);
   const page = Number(params.get("page"));
   const size = Number(params.get("size"));
   return {
-    type: (allowed.includes(type as RequestType) ? type : "all") as RequestTypeTab,
+    type: (tabs.includes(type as RequestTypeTab) ? type : "all") as RequestTypeTab,
     page: Number.isInteger(page) && page > 0 ? page : 1,
     pageSize: (requestPageSizes as readonly number[]).includes(size) ? (size as RequestPageSize) : 50,
   };

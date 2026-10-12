@@ -176,41 +176,28 @@ describe("Shift Hub outcome contracts", () => {
     );
   });
 
-  it("tells an employee that a shift inside their approved time off shortens it (BL-182)", async () => {
-    const fingerprint = "b".repeat(64);
+  it("shows a shift their approved time off blocks as not open, and where to ask for the hours (BL-995)", async () => {
     model.cases = [];
     model.opportunities = [
       {
         case_id: null,
         shift: { ...shift, employee_id: null, employee_name: null },
         eligibility: {
-          status: "eligible",
-          reasons: [],
-          shortens_time_off: true,
-          availability_warning: {
-            fingerprint,
-            time_off_intervals: [
-              { start_at: "2030-01-09T15:00:00Z", end_at: "2030-01-09T19:00:00Z" },
-            ],
-          },
+          status: "ineligible",
+          reasons: ["Approved time off overlaps this shift"],
+          blockers: [{ code: "approved_time_off", message: "Approved time off overlaps this shift" }],
         },
       },
     ];
     mount("/app/employee-hub/shift-hub?hub_view=available");
-    const request = await screen.findByRole("button", { name: "Request anyway" });
-    expect(screen.getByText("During your time off")).toBeTruthy();
-    expect(screen.getByText(/your time off is shortened for these hours/)).toBeTruthy();
-    expect(screen.queryByText(/Conflicts with your availability/)).toBeNull();
-    fireEvent.click(request);
-    await waitFor(() =>
-      expect(changeExchange).toHaveBeenCalledWith(
-        "workspace",
-        { action: "apply", shift_id: "shift", availability_fingerprint: fingerprint },
-        expect.any(String),
-      ),
-    );
+    expect(await screen.findByText("On time off")).toBeTruthy();
+    expect(screen.getByText(/To take it, ask to cancel those hours first/)).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /Ask to cancel time off/ }).getAttribute("href"),
+    ).toBe("/app/employee-hub/my-availability");
+    expect(screen.queryByRole("button", { name: /Request/ })).toBeNull();
+    expect(screen.queryByText("No eligible shifts right now")).toBeNull();
   });
-
   it("requires an explicit Accept anyway action for an invited employee own conflict", async () => {
     const fingerprint = "b".repeat(64);
     const request = model.cases[0]!;
@@ -1133,12 +1120,17 @@ describe("Shift Hub outcome contracts", () => {
       within(dialog).getByLabelText("Reason shared with affected employees"),
       { target: { value: "Coverage priority" } },
     );
-    fireEvent.click(
-      within(dialog).getByRole("button", {
-        name: "Decline application",
-        hidden: true,
-      }),
-    );
+    const decline = within(dialog).getByRole("button", {
+      name: "Decline application",
+      hidden: true,
+    });
+    // BL-748: declining is destructive, so it is red and asks twice.
+    expect(decline.className).toBe("sx-danger");
+    fireEvent.click(decline);
+    expect(changeExchange).not.toHaveBeenCalled();
+    expect(decline.textContent).toBe("Confirm decline");
+    expect(decline.className).toBe("sx-danger is-armed");
+    fireEvent.click(decline);
     await waitFor(() =>
       expect(changeExchange).toHaveBeenCalledWith(
         "workspace",
@@ -1151,6 +1143,45 @@ describe("Shift Hub outcome contracts", () => {
         expect.any(String),
       ),
     );
+  });
+  it("closes a search only on the second click of the red button", async () => {
+    mount("/app/schedule/requests?case=case", true);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Close cover search" }),
+    );
+    const dialog = screen
+      .getByText("Close this search", { selector: "h2" })
+      .closest("dialog")!;
+    fireEvent.change(
+      within(dialog).getByLabelText("Reason shared with affected employees"),
+      { target: { value: "Shift is no longer needed" } },
+    );
+    const close = within(dialog).getByRole("button", {
+      name: "Close search",
+      hidden: true,
+    });
+    expect(close.className).toBe("sx-danger");
+    fireEvent.click(close);
+    expect(changeExchange).not.toHaveBeenCalled();
+    expect(close.textContent).toBe("Confirm close");
+    // Escape on the armed button only disarms: its default is prevented, so
+    // the browser sends the window no cancel (jsdom never sends one).
+    expect(fireEvent.keyDown(close, { key: "Escape" })).toBe(false);
+    expect(close.textContent).toBe("Close search");
+    fireEvent.click(close);
+    fireEvent.click(close);
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        expect.objectContaining({
+          action: "close",
+          case_id: "case",
+          reason: "Shift is no longer needed",
+        }),
+        expect.any(String),
+      ),
+    );
+    expect(changeExchange).toHaveBeenCalledTimes(1);
   });
   it("does not claim a pending pickup is scheduled", async () => {
     model.employee_id = "casey";
@@ -1262,27 +1293,6 @@ describe("Shift Hub outcome contracts", () => {
       ).disabled,
     ).toBe(true);
     expect(screen.queryByLabelText(/override/i)).toBeNull();
-  });
-  it("tells the manager that approving shortens the taker's approved time off (BL-182)", async () => {
-    model.employee_id = null;
-    model.cases[0]!.is_owner = false;
-    vi.mocked(getExchangePreview).mockResolvedValue({
-      allowed: true,
-      fingerprint: "current",
-      reasons: [],
-      receiver: { status: "eligible", reasons: [], shortens_time_off: true },
-      giver: null,
-      requires_other_manager: false,
-      other_applications: 0,
-    });
-    mount("/app/schedule/requests?case=case", true);
-    fireEvent.click(await screen.findByRole("button", { name: "Review Casey" }));
-    expect(
-      await screen.findByText(/Casey agreed to work during approved time off/),
-    ).toBeTruthy();
-    expect(
-      (screen.getByRole("button", { name: "Approve transfer to Casey" }) as HTMLButtonElement).disabled,
-    ).toBe(false);
   });
   it("explains each side of an ineligible swap using the fresh manager preview", async () => {
     model.cases[0]!.kind = "swap";

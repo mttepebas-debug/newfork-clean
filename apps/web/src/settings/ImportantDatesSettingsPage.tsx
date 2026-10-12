@@ -18,6 +18,7 @@ import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { importantDateTypeLabels } from "../lib/importantDateTypes";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 const typeLabels = importantDateTypeLabels;
 
 const typeOptions = Object.entries(typeLabels) as readonly [
@@ -143,6 +144,7 @@ export default function ImportantDatesSettingsPage() {
           <div
             className="catalog-status-tabs"
             role="tablist"
+            onKeyDown={onTabListKeyDown}
             aria-label="Important date status"
           >
             {(
@@ -157,6 +159,7 @@ export default function ImportantDatesSettingsPage() {
                 type="button"
                 role="tab"
                 aria-selected={tab === value}
+                tabIndex={tab === value ? 0 : -1}
                 className={tab === value ? "active" : ""}
                 onClick={() => setTab(value)}
               >

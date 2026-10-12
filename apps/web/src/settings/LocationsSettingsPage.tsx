@@ -16,6 +16,7 @@ import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
 import { errorText } from "./GeneralSettingsPage";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { LocationTimezoneField } from "./LocationTimezoneField";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
@@ -33,6 +34,7 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 const emptyLocation: LocationDraft = {
   name: "",
   short_name: "",
@@ -101,13 +103,21 @@ export default function LocationsSettingsPage() {
       setEditing(null);
       setFormError(null);
     },
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: a location deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void queryClient.invalidateQueries({ queryKey });
+    },
   });
   const archiveMutation = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
       setLocationArchived(workspaceId, id, archived),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: a location deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   const openEditor = (location?: Location): void => {
@@ -211,6 +221,7 @@ export default function LocationsSettingsPage() {
           <div
             className="catalog-status-tabs"
             role="tablist"
+            onKeyDown={onTabListKeyDown}
             aria-label="Location status"
           >
             {(
@@ -224,6 +235,7 @@ export default function LocationsSettingsPage() {
                 type="button"
                 role="tab"
                 aria-selected={tab === value}
+                tabIndex={tab === value ? 0 : -1}
                 className={tab === value ? "active" : ""}
                 onClick={() => setTab(value)}
               >
@@ -523,8 +535,16 @@ function zoneLabel(location: Location): string {
   );
 }
 
+/** BL-664 (1): only the filled-in parts, so a blank one leaves no stray comma. */
 function addressText(location: Location): string {
-  return `${location.street_address}, ${location.city}, ${location.region} ${location.postal_code}`;
+  const regionLine = [location.region, location.postal_code]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+  return [location.street_address, location.city, regionLine]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 function sortText(location: Location, key: SortKey): string {

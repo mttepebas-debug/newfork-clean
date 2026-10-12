@@ -113,11 +113,14 @@ configure({ asyncUtilTimeout: 5000 });
 
 // The Requests read (GET .../schedule/requests); decisions go to apiRequest.
 // Each queue answers with its own requests: pending ones for needs_review,
-// the rest for closed.
+// the rest for closed. A search narrows them by name, as the server does.
 const fetchRequests = vi.fn(async (path: string) => {
   if (readFailure) throw requestFailure(readFailure.body, readFailure.status, "Workspace operation failed");
-  const closed = new URL(path, "http://x").searchParams.get("time_off_queue") === "closed";
-  return { ...read, time_off_requests: read.time_off_requests.filter((request) => (request.status === "pending") !== closed) };
+  const query = new URL(path, "http://x").searchParams;
+  const closed = query.get("time_off_queue") === "closed";
+  const search = (query.get("search") ?? "").toLowerCase();
+  return { ...read, time_off_requests: read.time_off_requests.filter((request) =>
+    (request.status === "pending") !== closed && request.employee_name.toLowerCase().includes(search)) };
 });
 const apiRequest = vi.fn();
 vi.mock("../lib/supabase", () => ({
@@ -215,7 +218,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
     const tabs = screen.getByRole("group", { name: "Request type" });
-    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["All1", "Time off1", "Swap", "Cover", "Open shift"]);
+    expect(within(tabs).getAllByRole("button").map((button) => button.textContent)).toEqual(["All1", "Time off1", "Shift changes"]);
     expect(within(tabs).getByRole("button", { name: /All/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("group", { name: "Request status" })).toBeNull();
     expect(screen.queryByRole("checkbox")).toBeNull();
@@ -224,8 +227,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("keeps the request type tab in the address and moves along the tabs with the arrow keys (R2-48)", async () => {
     renderPage();
     await screen.findByRole("row", { name: /Alex Kim/ });
-    fireEvent.click(screen.getByRole("button", { name: /^Swap/ }));
-    expect(screen.getByLabelText("Current URL").textContent).toContain("type=swap");
+    fireEvent.click(screen.getByRole("button", { name: /^Shift changes/ }));
+    expect(screen.getByLabelText("Current URL").textContent).toContain("type=shift_changes");
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
     const all = screen.getByRole("button", { name: /^All/ });
     all.focus();
@@ -270,13 +273,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(open);
     expect(await screen.findByRole("dialog", { name: "Review request" })).toBeTruthy();
   });
-  // Five tabs do not fit a phone: the row scrolls, and a faded edge says so.
+  // A tab row wider than a phone scrolls, and a faded edge says so.
   it("fades the tab row's edge where more tabs wait, and brings the chosen tab into view", async () => {
     const shown: string[] = [];
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.textContent ?? ""); };
     renderPage("/app/schedule/requests?type=open_pickup");
     const tabs = await screen.findByRole("group", { name: "Request type" });
-    await waitFor(() => expect(shown).toContain("Open shift"));
+    await waitFor(() => expect(shown).toContain("Shift changes"));
     const row = tabs.parentElement!;
     Object.defineProperty(row, "scrollWidth", { configurable: true, value: 380 });
     Object.defineProperty(row, "clientWidth", { configurable: true, value: 298 });
@@ -331,6 +334,57 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${caseId}`);
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+  });
+  // Mert, 2026-10-11: a cover or an open shift opens its drawer over the list.
+  const coverCase = {
+    id: "97500000-0000-4000-8000-000000000007", kind: "cover", audience: "eligible_pool", status: "open", stage: "ready_for_manager", revision: 1,
+    created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
+    shift, requested_shift: null, applications: [], candidate_count: 0, can_manage: true, is_owner: false, history: [],
+  };
+  it("opens a cover in its drawer over the list, and closes it", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage();
+    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    const drawer = await screen.findByRole("dialog", { name: "Review shift change" });
+    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Cover");
+    expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${coverCase.id}`);
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review shift change" })).toBeNull());
+    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
+  });
+  it("leaves no extra history step behind a closed cover drawer", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage("/app/schedule/requests", undefined, ["/app/workspace"]);
+    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    const drawer = await screen.findByRole("dialog", { name: "Review shift change" });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
+    await waitFor(() => expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests"));
+    // One Back leaves Requests, as it would have before the drawer opened.
+    fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
+    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+  });
+  it("lands a manager notification link for a listed cover on its drawer, not on Shift Hub", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`);
+    expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
+  });
+  it("reads a linked cover the list does not carry and opens its drawer", async () => {
+    vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) =>
+      ({ employee_id: null, opportunities: [], own_shifts: [], cases: range?.caseId === coverCase.id ? [coverCase] : [] }) as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`);
+    expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
+    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, { caseId: coverCase.id });
+  });
+  it("lands a manager notification link for a listed swap on its review window", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
+      ...coverCase, kind: "swap", requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000007", employee_name: "Deniz Acar" },
+    }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`);
+    expect(await screen.findByRole("dialog", { name: "Swap request" })).toBeTruthy();
+    // The window opens in the same effect that drops ?case=; the router commits
+    // the new URL a tick later, which a loaded CI runner can show (train 2026-10-11).
+    await waitFor(() => expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests"));
   });
   // EKRAN-02 C2 (H2): a swap opens its review window over the list, not Shift Hub.
   it("opens a swap in its review window over the list", async () => {
@@ -391,12 +445,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(getExchanges).not.toHaveBeenCalled();
   });
-  it("keeps a shift change reader to shift changes: no Time off tab, no time off list asked for", async () => {
+  // One tab to read needs no tabs: All would say the same thing.
+  it("keeps a shift change reader to shift changes: no tabs, no time off list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.shift_change_requests.read"], actions: ["workspace.read", "exchange.read"] };
     renderPage();
-    const tabs = await screen.findByRole("group", { name: "Request type" });
-    expect(within(tabs).queryByRole("button", { name: /Time off/ })).toBeNull();
-    expect(within(tabs).getByRole("button", { name: /^Swap/ })).toBeTruthy();
+    await waitFor(() => expect(getExchanges).toHaveBeenCalled());
+    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // EKRAN-02 B1: the page's door asks the core, like its tabs do.
@@ -409,8 +463,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("hides the time off queue from someone the core does not let read it", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read") };
     renderPage();
-    const tabs = await screen.findByRole("group", { name: "Request type" });
-    expect(within(tabs).queryByRole("button", { name: /Time off/ })).toBeNull();
+    await waitFor(() => expect(getExchanges).toHaveBeenCalled());
+    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
     expect(fetchRequests).not.toHaveBeenCalled();
   });
 
@@ -423,15 +477,71 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(within(row).getByTitle("Shifts that become open").textContent).toBe("1");
   });
 
-  it("shows who approved which location, what is left, the deadline and the shifts that open", async () => {
+  // Mert, 2026-10-11: the drawer speaks the Important Dates drawer's language:
+  // a header with type and status, Details · Shifts · Activity tabs.
+  it("heads the drawer with the person, the type, the status and the deadline", async () => {
     renderPage();
     const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(panel.textContent).toContain("1 of 2 locations approved");
-    expect(panel.textContent).toContain("Decide by Jan 14");
-    expect(panel.textContent).toContain("Ayşe Yılmaz");
-    expect(panel.textContent).toContain("Waiting");
-    expect(panel.textContent).toContain("Mon, Jan 15 · 3:00 PM–11:00 PM · Server");
+    const head = within(drawer).getByRole("heading", { level: 2 });
+    expect(head.textContent).toBe("Alex Kim Time off Needs review");
+    expect(drawer.textContent).toContain("Decide by Jan 14");
+    expect(within(drawer).getByRole("link", { name: /Open in Schedule/ }).getAttribute("href")).toBe("/app/schedule?date=2035-01-15&view=week");
+    expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Shifts1", "Activity"]);
+    expect(within(drawer).getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true");
+  });
+  it("shows the dates, the note, who approved which location and what is left", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).getByText("Starts").parentElement!.textContent).toBe("StartsMon, Jan 15Full day");
+    expect(within(drawer).getByText("Ends").parentElement!.textContent).toBe("EndsTue, Jan 16Full day · 2 days");
+    expect(within(drawer).getByText("Note from Alex").parentElement!.textContent).toContain("Family appointment");
+    const approvals = within(drawer).getByRole("region", { name: "Approvals" });
+    expect(approvals.textContent).toContain("1 of 2 locations");
+    const rows = within(approvals).getAllByRole("row").slice(1).map((row) => row.textContent);
+    expect(rows[0]).toMatch(/^Kadıköy.*Approved.*Ayşe Yılmaz/);
+    expect(rows[1]).toMatch(/^Beşiktaş.*Waiting/);
+    expect(within(drawer).getByRole("region", { name: "On the Schedule" }).textContent).toContain("1 shift becomes open if you approve.");
+  });
+  it("lists the shifts that open on their own tab, by location", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "See 1 shift" }));
+    expect(within(drawer).getByRole("tab", { name: /^Shifts/ }).getAttribute("aria-selected")).toBe("true");
+    const shifts = within(drawer).getByRole("region", { name: "Shifts that become open" });
+    expect(shifts.textContent).toContain("Beşiktaş");
+    expect(shifts.textContent).toContain("Mon, Jan 15 · 3:00 PM – 11:00 PM");
+    expect(shifts.textContent).toContain("Server");
+    expect(shifts.textContent).toContain("Becomes open");
+  });
+  it("says who else already has approved time off on those days", async () => {
+    read = { ...fixture, time_off_requests: [pending, {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_id: "15000000-0000-4000-8000-000000000002",
+      employee_name: "Maria Lopez", status: "approved", start_date: "2035-01-16", end_date: "2035-01-20", progress: null,
+    }] };
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    expect(within(drawer).getByText("Also off these days").parentElement!.textContent).toContain("Maria Lopez (Jan 16)");
+  });
+  it("still says who else is off while the list is searched for one person", async () => {
+    read = { ...fixture, time_off_requests: [pending, {
+      ...pending, id: "97200000-0000-4000-8000-000000000002", employee_id: "15000000-0000-4000-8000-000000000002",
+      employee_name: "Maria Lopez", status: "approved", start_date: "2035-01-16", end_date: "2035-01-20", progress: null,
+    }] };
+    renderPage();
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    fireEvent.change(screen.getByLabelText("Search requests"), { target: { value: "Alex" } });
+    await waitFor(() => expect(fetchRequests.mock.calls.some(([path]) => path.includes("search=Alex"))).toBe(true));
+    const drawer = await openTimeOffRequest();
+    await waitFor(() =>
+      expect(within(drawer).getByText("Also off these days").parentElement!.textContent).toContain("Maria Lopez (Jan 16)"));
+  });
+  it("shows the request's history on the Activity tab", async () => {
+    withRequest({ events: [{ id: "98000000-0000-4000-8000-000000000001", action: "submitted", actor_name: "Alex Kim", note: "", created_at: "2035-01-09T11:00:00Z" }] });
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("tab", { name: "Activity" }));
+    expect(within(drawer).getByRole("tabpanel").textContent).toContain("Submitted");
+    expect(within(drawer).getByRole("tabpanel").textContent).toContain("Alex Kim");
   });
   it("writes the decide-by time in the request's zone and names it, on any device (FB-6.3.8d)", async () => {
     // Ali asked from Istanbul; a manager in Los Angeles or Tokyo reads the same deadline.
@@ -443,8 +553,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
         expect(plain(within(row).getByText(/^Jan 14, 12:00 PM$/).textContent)).toBe("Jan 14, 12:00 PM");
         expect(within(row).getByText("Istanbul time")).toBeTruthy();
         const drawer = await openTimeOffRequest();
-        const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-        expect(plain(panel.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
+        expect(plain(drawer.textContent)).toContain("Decide by Jan 14, 12:00 PM Istanbul time");
         view.unmount();
       });
     }
@@ -452,15 +561,16 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("draws one progress layout whatever the address asks for (P04: checklist)", async () => {
     renderPage("/app/schedule/requests?progressVariant=c");
     const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(panel.className).toBe("tov");
+    const panel = within(drawer).getByRole("region", { name: "Approvals" });
+    expect(panel.className).toBe("rd-sec");
     expect(panel.querySelector("[title]")).toBeNull();
   });
   it("titles the shifts that open like the drawer's other sections", async () => {
     renderPage();
     const drawer = await openTimeOffRequest();
-    const panel = within(drawer).getByRole("region", { name: "Approval progress" });
-    expect(within(panel).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H2");
+    expect(within(drawer).getByRole("heading", { name: "Approvals" }).tagName).toBe("H3");
+    fireEvent.click(within(drawer).getByRole("tab", { name: /Shifts/ }));
+    expect(within(drawer).getByRole("heading", { name: "Shifts that become open" }).tagName).toBe("H3");
   });
   it("does not repeat the request's pending state under every period", async () => {
     renderPage();
@@ -526,19 +636,55 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(box.textContent).toContain("Takes effect now.");
     expect(box.textContent).not.toContain("Managers at");
   });
-  it("denies with an optional note", async () => {
+  // Mert, 2026-10-11: Deny asks its reason in the drawer's footer; only the employee reads it.
+  it("denies with a reason written in the drawer", async () => {
     apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
     renderPage();
     const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Deny/ }));
-    const box = await screen.findByRole("alertdialog", { name: "Deny time off?" });
-    fireEvent.change(within(box).getByLabelText("Note for Alex Kim (optional)"), { target: { value: " I can approve Jan 15 only " } });
-    fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    const reason = within(drawer).getByLabelText("Reason for Alex");
+    expect(reason.getAttribute("placeholder")).toBe("Optional. Only Alex reads this.");
+    fireEvent.change(reason, { target: { value: " I can approve Jan 15 only " } });
+    // Red, two clicks (CLAUDE.md §3.A.7).
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
+    expect(apiRequest).not.toHaveBeenCalled();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off denied."));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "I can approve Jan 15 only", expected_impact: fingerprint });
   });
+  it("denies without a reason, as the core allows", async () => {
+    apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off denied."));
+    expect(calls()[0]![1]).toEqual({ verdict: "deny", note: "", expected_impact: fingerprint });
+  });
+  it("goes back from a reason on Escape, keeps it, and keeps the drawer open", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    const reason = within(drawer).getByLabelText("Reason for Alex");
+    fireEvent.change(reason, { target: { value: "Short staffed" } });
+    fireEvent.keyDown(reason, { key: "Escape" });
+    expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
+    expect(within(drawer).queryByLabelText("Reason for Alex")).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    expect((within(drawer).getByLabelText("Reason for Alex") as HTMLTextAreaElement).value).toBe("Short staffed");
+  });
+  it("goes back from the reason to the decision without sending anything", async () => {
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Back" }));
+    expect(within(drawer).getByRole("button", { name: "Approve" })).toBeTruthy();
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
   it("closes the box and asks for a second look when the request changed meanwhile", async () => {
-    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", undefined, undefined, 409));
+    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", "time_off.changed", undefined, 409));
     renderPage();
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
@@ -552,19 +698,29 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
   });
-  it("keeps the box and its note open when the vote fails for another reason", async () => {
+  // BL-1043: a deadline gone by is a 409 too, but no second look answers it.
+  it("says the request was not decided in time instead of asking for a second look", async () => {
+    apiRequest.mockRejectedValueOnce(new RequestError("This request was not decided in time", "time_off.not_decided_in_time", undefined, 409));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("This request was not decided in time");
+    expect(within(drawer).queryByText("This request changed. Review it again.")).toBeNull();
+  });
+  it("keeps the reason open when the vote fails for another reason", async () => {
     apiRequest.mockRejectedValueOnce(new Error("Connection lost"));
     renderPage();
     const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Deny/ }));
-    const box = await screen.findByRole("alertdialog");
-    fireEvent.change(within(box).getByRole("textbox"), { target: { value: "Short staffed" } });
-    fireEvent.click(within(box).getByRole("button", { name: "Deny" }));
-    const alert = await within(box).findByRole("alert");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny" }));
+    fireEvent.change(within(drawer).getByLabelText("Reason for Alex"), { target: { value: "Short staffed" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Deny request" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
+    const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toBe("Connection lost");
     // QA D2: red like every other form error.
     expect(alert.className).toBe("form-error");
-    expect((within(box).getByRole("textbox") as HTMLTextAreaElement).value).toBe("Short staffed");
+    expect((within(drawer).getByLabelText("Reason for Alex") as HTMLTextAreaElement).value).toBe("Short staffed");
   });
   it("offers no Partial or Return to pending any more", async () => {
     renderPage();
@@ -606,10 +762,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     apiRequest.mockResolvedValueOnce(verdict({ status: "denied", final: true, remaining: 0 }));
     renderPage();
     const drawer = await openTimeOffRequest();
-    fireEvent.click(within(drawer).getByRole("button", { name: /Decline/ }));
-    const box = await screen.findByRole("alertdialog", { name: "Decline cancellation?" });
-    expect(box.textContent).toContain("The time off stays in place.");
-    fireEvent.click(within(box).getByRole("button", { name: "Decline" }));
+    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Cancellation");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Decline" }));
+    expect(drawer.textContent).toContain("The time off stays in place.");
+    fireEvent.change(within(drawer).getByLabelText("Reason for Alex"), { target: { value: "Busy week" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Decline cancellation" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Confirm decline" }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Cancellation declined."));
   });
 
@@ -628,6 +786,21 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(calls()[0]![1]).toMatchObject({ expected_revision: 2,
       periods: [{ segment_id: pending.segments[0]!.id, starts_at: future.start_at, ends_at: future.end_at }] });
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Alex Kim's time off is shorter/)));
+  });
+  // BL-1043: the database's key, not the server's "stale approved leave".
+  it("says a shortened leave changed meanwhile in the page's words and reloads it", async () => {
+    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
+    withRequest({ status: "approved", revision: 2, progress: null,
+      segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
+    apiRequest.mockRejectedValueOnce(new RequestError("stale approved leave; refresh before shortening it", "time_off.changed", undefined, 409));
+    renderPage();
+    await openTimeOffRequest();
+    const reads = fetchRequests.mock.calls.length;
+    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("This request changed. Review it again.");
+    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(reads));
   });
   it("offers no shortening while time off is still pending", async () => {
     renderPage();

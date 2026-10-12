@@ -3,7 +3,7 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { closedLocationSeverity, getShiftTimeBasis, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
+import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
 import { scheduleClosureCoversDate, scheduleClosureLabel } from "./lib/scheduleClosures";
@@ -88,8 +88,8 @@ function formatValidationConflictMessage(message: string): string {
     case "Shift is already there":
       return "Shift is already in this cell.";
     case "Start and end time cannot be the same":
-    case "Start and end time cannot be the same.":
-      return "Start and end time cannot be the same.";
+    case SAME_START_END_TIME_MESSAGE:
+      return SAME_START_END_TIME_MESSAGE;
     case "Shift not found":
       return "Shift could not be found.";
     case "Employee not found":
@@ -296,7 +296,7 @@ export function evaluateScheduleShiftConflicts(
   // editor's to ask for; everything else can still be checked.
   const hasAssessmentHours = Boolean(input.start_time && input.end_time);
   if (hasAssessmentHours && input.start_time === input.end_time) {
-    return ["Start and end time cannot be the same."];
+    return [SAME_START_END_TIME_MESSAGE];
   }
   const context = {
     employee_name:

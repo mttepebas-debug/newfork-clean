@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   acceptAttribute,
   acceptsUpload,
+  fileDecisionLabel,
+  formatsLabel,
   isObligationClosed,
   isOnFile,
   sameSignerName,
   statusLabel,
+  versionStateLabel,
 } from "./document-rules";
 
 describe("isObligationClosed", () => {
@@ -78,5 +81,27 @@ describe("acceptAttribute", () => {
   });
   it("is empty for no formats", () => {
     expect(acceptAttribute([])).toBe("");
+  });
+});
+
+// BL-830: the drawer's version heading and file decision, in the list's words.
+describe("versionStateLabel and fileDecisionLabel", () => {
+  it("words every version state", () => {
+    expect(versionStateLabel("draft")).toBe("Draft");
+    expect(versionStateLabel("pending_review")).toBe("Needs review");
+    expect(versionStateLabel("accepted")).toBe("Approved");
+    expect(versionStateLabel("rejected")).toBe("Rejected");
+    expect(versionStateLabel("superseded")).toBe("Replaced");
+  });
+  it("words a file's decision", () => {
+    expect(fileDecisionLabel("keep")).toBe("Kept");
+    expect(fileDecisionLabel("discard")).toBe("Discarded");
+  });
+});
+
+// BL-857: one spelling and one order for accepted formats everywhere.
+describe("formatsLabel", () => {
+  it("lists formats in one order with one spelling", () => {
+    expect(formatsLabel(["webp", "png", "pdf", "jpeg"])).toBe("PDF, JPEG, PNG, WebP");
   });
 });

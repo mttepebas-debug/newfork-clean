@@ -223,26 +223,40 @@ describe("roles routes", () => {
     expect(response.statusCode).toBe(400);
     expect(service.save).not.toHaveBeenCalled();
   });
+  // BL-1049: the database says which conflict it is; the key reaches the body.
   it.each([
-    "Role changed since you opened it. Reload before saving.",
-    "Role has member or invitation references. Resolve these dependencies before deleting.",
-  ])("reports a reviewable conflict: %s", async (message) => {
+    {
+      method: "PUT" as const,
+      message: "Role changed since you opened it. Reload before saving.",
+      reason: "role.changed",
+    },
+    {
+      method: "DELETE" as const,
+      message:
+        "Role has member or invitation references. Resolve these dependencies before deleting.",
+      reason: "role.in_use",
+    },
+  ])("reports a reviewable conflict with its key: $reason", async ({ method, message, reason }) => {
+    const refuse = vi.fn(async () => {
+      throw rpcFailure({ message, code: "PT409", hint: reason });
+    });
     const app = buildApp({
       contextResolver: { resolve: async () => context },
-      rolesService: {
-        save: vi.fn(async () => {
-          throw rpcFailure({ message, code: "PT409" });
-        }),
-        delete: vi.fn(),
-      },
+      rolesService: { save: refuse, delete: refuse },
     });
     const response = await app.inject({
-      method: "PUT",
+      method,
       url: `/v1/workspaces/${workspaceId}/roles/${roleId}`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { ...roleInput, expected_updated_at: version },
+      ...(method === "PUT"
+        ? { payload: { ...roleInput, expected_updated_at: version } }
+        : {}),
     });
     expect(response.statusCode).toBe(409);
-    expect(response.json()).toEqual({ error: message, requestId: expect.any(String) });
+    expect(response.json()).toEqual({
+      error: message,
+      reason,
+      requestId: expect.any(String),
+    });
   });
 });

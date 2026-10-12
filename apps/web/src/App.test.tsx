@@ -38,6 +38,8 @@ import {
   listScheduleExportSchedules,
   listScheduleRecentExports,
   listScheduleTemplates,
+  applyScheduleTemplate,
+  previewScheduleTemplateApply,
   previewScheduleAutoFill,
   previewSchedulePublication,
   previewScheduleUnpublish,
@@ -59,6 +61,8 @@ const testAuth = vi.hoisted(() => ({
   role: null as TestRole | null,
   nextRole: "owner" as TestRole,
   timeFormat: "system" as "system" | "12h" | "24h",
+  // Actions the core leaves out for this sign-in (a role with a permission removed).
+  withoutActions: [] as string[],
 }));
 
 vi.mock("./auth/AuthContext", async () => {
@@ -91,6 +95,7 @@ vi.mock("./auth/AuthContext", async () => {
     // has (authz_has_permission). app_private.actor_actions lists person
     // actions the same way.
     actions: shared.authzActionKeys.filter((action) => {
+      if (testAuth.withoutActions.includes(action)) return false;
       if (action === "workspace.read") return true;
       // Every active member's own hub (scope 'own' in the core).
       if (action === "employee_hub.read" || action === "employee_hub.self") return true;
@@ -266,6 +271,7 @@ beforeEach(() => {
   window.localStorage.clear();
   testAuth.role = null;
   testAuth.nextRole = "owner";
+  testAuth.withoutActions = [];
   testAuth.timeFormat = "system";
   resetScheduleApiMocks();
   vi.mocked(authorizeScheduleExportV2).mockReset().mockResolvedValue(undefined);
@@ -654,6 +660,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   renameScheduleTemplate: vi.fn(),
   deleteScheduleTemplate: vi.fn(),
   applyScheduleTemplate: vi.fn(),
+  previewScheduleTemplateApply: vi.fn(),
   previewScheduleAutoFill: vi.fn(),
   applyScheduleAutoFill: vi.fn(),
   listScheduleExportPresets: vi.fn().mockResolvedValue({
@@ -924,7 +931,7 @@ describe("App", () => {
       await screen.findByRole("heading", { name: "General" }, lazyRoute),
     ).toBeTruthy();
     const settingsNav = within(
-      screen.getByRole("navigation", { name: "Organization settings" }),
+      screen.getByRole("navigation", { name: "Workspace settings" }),
     );
     expect(settingsNav.getByRole("link", { name: "Schedule rules" })).toBeTruthy();
     expect(settingsNav.getByRole("link", { name: "Shift catalog" })).toBeTruthy();
@@ -1012,7 +1019,84 @@ describe("App", () => {
     ).toBeNull();
   });
 
-  it("keeps an unpublished past schedule week read-only", async () => {
+  // BL-714: a mouse press on the logo in another week opens the logo window;
+  // it used to jump the week back to today and swallow the click.
+  it("opens the logo window from another week without jumping to today", async () => {
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek("2026-08-24"));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-24");
+    testAuth.role = "owner";
+    render(<App />);
+    const logo = await screen.findByRole("button", { name: "Manage schedule logo" }, { timeout: 5000 });
+
+    fireEvent.pointerDown(logo);
+    fireEvent.click(logo);
+
+    expect(await screen.findByRole("dialog", { name: "Schedule logo" })).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get("date")).toBe("2026-08-24");
+  });
+
+  // BL-714 (review): like every grid control, the logo first closes an open top
+  // menu; the next press opens the logo window (that press used to be eaten too).
+  it("closes an open draft menu before the logo opens its window", async () => {
+    window.history.pushState({}, "", "/app/schedule");
+    testAuth.role = "owner";
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
+    );
+    expect(await screen.findByRole("button", { name: "Edit live schedule" })).toBeTruthy();
+
+    const logo = screen.getByRole("button", { name: "Manage schedule logo" });
+    fireEvent.pointerDown(logo);
+    fireEvent.click(logo);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Edit live schedule" })).toBeNull());
+    expect(screen.queryByRole("dialog", { name: "Schedule logo" })).toBeNull();
+
+    const logoAgain = screen.getByRole("button", { name: "Manage schedule logo" });
+    fireEvent.pointerDown(logoAgain);
+    fireEvent.click(logoAgain);
+    expect(await screen.findByRole("dialog", { name: "Schedule logo" })).toBeTruthy();
+  });
+
+  // BL-1025 (BL-683): the call to publish soon is for whoever can publish.
+  describe("an unpublished week that starts today", () => {
+    const unpublishedThisWeek = () => {
+      vi.mocked(getScheduleReadModel).mockResolvedValue({
+        ...scheduleFixture,
+        locations: scheduleFixture.locations.map((location) => ({
+          ...location,
+          publication_status: "unpublished" as const,
+          published_at: null,
+        })),
+      });
+      window.history.pushState({}, "", `/app/schedule?date=${scheduleFixture.week_start}`);
+    };
+
+    it("tells someone who can publish to publish it soon", async () => {
+      unpublishedThisWeek();
+      testAuth.role = "owner";
+      render(<App />);
+
+      expect(
+        (await screen.findAllByRole("img", { name: /publish the schedule as soon as possible/ })).length,
+      ).toBeGreaterThan(0);
+    });
+
+    // A role whose publish permission was taken away (the core lists no schedule.publish).
+    it("does not tell someone who cannot publish to publish it", async () => {
+      unpublishedThisWeek();
+      testAuth.withoutActions = ["schedule.publish"];
+      testAuth.role = "owner";
+      render(<App />);
+
+      expect((await screen.findAllByRole("img", { name: "Unpublished" })).length).toBeGreaterThan(0);
+      expect(screen.queryByRole("img", { name: /as soon as possible/ })).toBeNull();
+    });
+  });
+
+  function mockUnpublishedPastWeek(
+    drafts: Awaited<ReturnType<typeof listScheduleDrafts>>["drafts"] = [],
+  ) {
     const pastWeekStart = "2020-01-06";
     const pastFixture = scheduleFixtureForWeek(pastWeekStart);
     vi.mocked(getScheduleReadModel).mockResolvedValue({
@@ -1024,7 +1108,7 @@ describe("App", () => {
       })),
       shifts: [],
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts });
     vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
       week_start: pastWeekStart,
       week_end: "2020-01-12",
@@ -1048,6 +1132,11 @@ describe("App", () => {
       })),
     });
 
+    return pastWeekStart;
+  }
+
+  it("keeps an unpublished past schedule week read-only", async () => {
+    const pastWeekStart = mockUnpublishedPastWeek();
     window.history.pushState({}, "", `/app/schedule?date=${pastWeekStart}`);
     testAuth.role = "owner";
     render(<App />);
@@ -1065,6 +1154,28 @@ describe("App", () => {
       screen.queryByRole("button", { name: "Edit live schedule" }),
     ).toBeNull();
     expect(acquireScheduleEditSession).not.toHaveBeenCalled();
+  });
+
+  // BL-723 (2), Mert's pick A: a past week's saved draft says why it cannot be edited.
+  it("marks a past week's saved draft read-only in the New Schedule menu", async () => {
+    const pastWeekStart = "2020-01-06";
+    const draft = { id: "99999999-9999-4999-8999-999999999995", workspace_id: scheduleFixture.workspace_id,
+      week_start: pastWeekStart, name: "Last week plan", revision: 2,
+      created_by: "88888888-8888-4888-8888-888888888888", updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2020-01-06T12:00:00Z", updated_at: "2020-01-06T12:00:00Z" };
+    mockUnpublishedPastWeek([draft]);
+
+    window.history.pushState({}, "", `/app/schedule?date=${pastWeekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
+    );
+    const row = await screen.findByRole("button", { name: `View ${draft.name}` });
+    expect(within(row).queryByRole("button")).toBeNull();
+    expect(within(row).getByText("Read-only")).toBeTruthy();
+    expect(within(row).getByText("Past week: you can view it, not edit it.")).toBeTruthy();
   });
 
   // TEL-KAPALI (KARARLAR "Schedule telefonda tamamen kapalı"): below 768 px a manager or owner has no Schedule.
@@ -2135,6 +2246,75 @@ describe("App", () => {
     await waitFor(() => expect(window.location.search).not.toContain("mode=edit"));
   });
 
+  // BL-1052: another tab saved or changed this edit first; Save from the menu says
+  // so plainly and offers a reload, never the raw "session revision stale". A
+  // retry would send the same old revision, so no retry sheet opens.
+  it("asks for a reload when Save finds the edit moved on in another tab", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("session revision stale", 409, { error: "session revision stale", code: "edit_session_stale" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Moved on elsewhere" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+    // The edit is not ended here: the reload picks it back up (D-Y4).
+    expect(window.location.search).toContain("mode=edit");
+  });
+
+  // BL-1052: the first save lost the network, and by the time of Retry another tab
+  // moved the edit on; the retry sheet closes so the banner's Reload is in reach.
+  it("closes the retry sheet when Retry finds the edit moved on in another tab", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(new Error("Network dropped"));
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("session revision stale", 409, { error: "session revision stale", code: "edit_session_stale" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Retried after another tab" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+    expect(await screen.findByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull(),
+    );
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+  });
+
   it("picks the edit back up after a page reload instead of showing an empty draft (D-Y4)", async () => {
     const draftId = "99999999-9999-4999-8999-999999999993";
     const acquired = makeDefaultEditAcquireResult();
@@ -3045,6 +3225,21 @@ describe("App", () => {
         screen.queryByRole("dialog", { name: "Draft is being edited" }),
       ).toBeNull(),
     );
+  });
+
+  // BL-055: the grid's shift cards follow the person's own 12h/24h choice too.
+  it("shows shift times on the grid in the person's own 24-hour format in a 12-hour workspace", async () => {
+    testAuth.timeFormat = "24h";
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    const badge = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>(".schedule-shift-badge");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    expect(badge.textContent).toContain("16:00");
+    expect(badge.textContent).not.toContain("PM");
   });
 
   // BL-055: the shift editor's times follow the person's own 12h/24h choice
@@ -4367,6 +4562,77 @@ describe("App", () => {
     });
     expect((await screen.findAllByText("This step can no longer be undone.")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/employee document hard conflict/)).toBeNull();
+  });
+
+  // BL-976: another tab moved the edit on; the screen says so plainly and offers a
+  // reload instead of the server's "session revision stale."
+  it("says plainly that the page is out of date when another tab moved the edit on", async () => {
+    const deleteMock = vi.mocked(deleteScheduleShift);
+    deleteMock.mockReset();
+    deleteMock.mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
+      error: "session revision stale", code: "edit_session_stale",
+    }));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const badge = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>(".schedule-shift-badge");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    fireEvent.contextMenu(badge, { clientX: 36, clientY: 48 });
+    fireEvent.click(screen.getByRole("menuitem", { name: /^(Delete|Unpublish) shift$/ }));
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByText(/session revision stale/)).toBeNull();
+  });
+
+  // BL-1003: with the shift window open, Ctrl+Z, Delete and paste belong to the
+  // window; nothing behind it is undone, deleted or armed.
+  it("keeps the grid's shortcuts off while the shift window is open", async () => {
+    const undoMock = vi.mocked(undoScheduleEditSessionStep);
+    undoMock.mockReset();
+    const acquired = makeDefaultEditAcquireResult();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({
+      ...acquired, session: { ...acquired.session, undo_depth: 1 },
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    const { container } = render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+
+    const undo = await screen.findByRole("button", { name: "Undo" });
+    await waitFor(() => expect((undo as HTMLButtonElement).disabled).toBe(false));
+    const badge = await waitFor(() => {
+      const found = container.querySelector("button.schedule-shift-badge");
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    await act(async () => {
+      fireEvent.doubleClick(badge);
+      await Promise.resolve();
+    });
+    const dialog = await screen.findByRole("dialog", { name: "Edit shift" });
+    const close = within(dialog).getByRole("button", { name: "Close editor" });
+    close.focus();
+
+    fireEvent.keyDown(close, { key: "z", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+    fireEvent.keyDown(close, { key: "Delete" });
+    fireEvent.keyDown(close, { key: "v", ctrlKey: true });
+    fireEvent.paste(close);
+    fireEvent.paste(window);
+
+    expect(undoMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: "Paste mode on" })).toBeNull();
+    expect(screen.queryByText("Paste mode on")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Edit shift" })).toBeTruthy();
   });
 
   // BL-998: the server took a step that cannot come back off the list; the screen
@@ -6150,6 +6416,28 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
   });
 
+  // BL-1052: the Save draft window closes on a stale edit, so the banner's Reload is in reach.
+  it("closes the Save draft window and asks for a reload when another tab moved the edit on", async () => {
+    vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
+      error: "session revision stale", code: "edit_session_stale",
+    }));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Stale draft" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+  });
+
   it.each(["network", "retroactive"] as const)("ignores a late %s Save-for-Export error after the edit session expires", async kind => {
     let rejectSave!: (error: Error) => void;
     vi.mocked(saveScheduleDraft).mockImplementationOnce(() => new Promise((_, reject) => { rejectSave = reject; }));
@@ -6370,6 +6658,147 @@ describe("App", () => {
       ),
     );
     expect(await screen.findByText("Applied 1 shift.")).toBeTruthy();
+  });
+
+  // BL-975: the lock lapsed while the review was open (the laptop slept); Apply
+  // picks the same edit back up and goes through, with no raw lock text.
+  it("picks the edit back up when the lock lapsed before auto-fill is applied", async () => {
+    const acquired = makeDefaultEditAcquireResult();
+    const preview = {
+      status: "review_ready" as const,
+      workspace_id: scheduleFixture.workspace_id,
+      session_id: acquired.session.id,
+      session_revision: acquired.session.revision,
+      fingerprint: "f".repeat(64),
+      proposals: [
+        {
+          shift_id: scheduleFixture.shifts[0]!.id,
+          location_name: scheduleFixture.locations[0]!.name,
+          job_name: scheduleFixture.jobs[0]!.name,
+          scheduled_date: scheduleFixture.week_start,
+          start_time: "16:00",
+          end_time: "22:00",
+          recommended_employee_id: scheduleFixture.employees[0]!.id,
+          candidates: [
+            {
+              employee_id: scheduleFixture.employees[0]!.id,
+              employee_name: scheduleFixture.employees[0]!.display_name,
+              scheduled_minutes: 360,
+              primary_job: true,
+              reasons: ["Primary job"],
+            },
+          ],
+        },
+      ],
+      unfilled: [],
+    };
+    const lapsed = () => new ScheduleRequestError("edit lease expired", 409, {
+      error: "edit lease expired", code: "edit_lease_expired",
+    });
+    vi.mocked(previewScheduleAutoFill).mockRejectedValueOnce(lapsed()).mockResolvedValueOnce(preview);
+    vi.mocked(applyScheduleAutoFill)
+      .mockRejectedValueOnce(lapsed())
+      .mockImplementationOnce((_workspaceId, session) =>
+        Promise.resolve({
+          status: "applied",
+          applied: [{ shift_id: scheduleFixture.shifts[0]!.id, employee_id: scheduleFixture.employees[0]!.id }],
+          rejected: [],
+          session,
+        }),
+      );
+    vi.mocked(acquireScheduleEditSession)
+      .mockResolvedValueOnce(acquired)
+      .mockResolvedValueOnce({ ...acquired, status: "resumed" })
+      .mockResolvedValueOnce({ ...acquired, status: "resumed" });
+    window.history.pushState({}, "", "/app/schedule");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: /Auto-fill/ }));
+    expect(await screen.findByRole("dialog", { name: "Review auto-fill" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply 1 assignment" }));
+
+    expect(await screen.findByText("Applied 1 shift.")).toBeTruthy();
+    expect(applyScheduleAutoFill).toHaveBeenCalledTimes(2);
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(3);
+    expect(screen.queryByText(/edit lease expired/)).toBeNull();
+  });
+
+  // BL-975 (review): applying a template after the lock lapsed picks the same
+  // edit back up and applies once more.
+  it("picks the edit back up when the lock lapsed before a template is applied", async () => {
+    const acquired = makeDefaultEditAcquireResult();
+    const template = {
+      id: "99999999-9999-4999-8999-999999999980",
+      workspace_id: scheduleFixture.workspace_id,
+      name: "Base week",
+      revision: 1,
+      shift_count: 1,
+      open_slot_count: 0,
+      created_by_name: "Development Owner",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(listScheduleTemplates).mockResolvedValue({ templates: [template] });
+    vi.mocked(applyScheduleTemplate)
+      .mockRejectedValueOnce(new ScheduleRequestError("edit lease expired", 409, {
+        error: "edit lease expired", code: "edit_lease_expired",
+      }))
+      .mockImplementationOnce(async (_workspaceId, session) => ({
+        session, applied_count: 1, skipped: [],
+      }) as never);
+    vi.mocked(acquireScheduleEditSession)
+      .mockResolvedValueOnce(acquired)
+      .mockResolvedValueOnce({ ...acquired, status: "resumed" });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
+    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Base week/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /^(Add to current shifts|Apply template)$/ }));
+
+    await waitFor(() => expect(applyScheduleTemplate).toHaveBeenCalledTimes(2));
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Schedule templates" })).toBeNull());
+    expect(screen.queryByText(/edit lease expired/)).toBeNull();
+  });
+
+  // KK-162 (BL-694): Replace's first click shows the database's count of what
+  // goes, not the number of shifts in the edit.
+  it("asks the server how many shifts a template replace removes", async () => {
+    const template = {
+      id: "99999999-9999-4999-8999-999999999981",
+      workspace_id: scheduleFixture.workspace_id,
+      name: "Lunch week",
+      revision: 1,
+      shift_count: 1,
+      open_slot_count: 0,
+      created_by_name: "Development Owner",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(listScheduleTemplates).mockResolvedValue({ templates: [template] });
+    vi.mocked(previewScheduleTemplateApply).mockResolvedValue({ removed_shift_count: 7 });
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce(makeDefaultEditAcquireResult());
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
+    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Lunch week/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Replace current shifts" }));
+
+    expect(await within(dialog).findByText("7 shifts will be removed. Draft only, not published.")).toBeTruthy();
+    const [workspaceId, sessionId, templateId, departmentKeys] =
+      vi.mocked(previewScheduleTemplateApply).mock.calls.at(-1)!;
+    expect([workspaceId, templateId, departmentKeys]).toEqual([
+      scheduleFixture.workspace_id,
+      template.id,
+      null,
+    ]);
+    expect(sessionId).toBe(makeDefaultEditAcquireResult().session.id);
+    expect(within(dialog).getByRole("button", { name: "Confirm replace" })).toBeTruthy();
   });
 
   it("keeps organization settings unavailable to managers", async () => {

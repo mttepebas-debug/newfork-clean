@@ -16,6 +16,7 @@ import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
 import JobsSettingsPage from "./JobsSettingsPage";
 import * as api from "./jobs-management-data";
 import * as organization from "./organization-data";
+import { RequestError } from "../lib/request-error";
 
 vi.mock("./jobs-management-data", () => ({
   createDepartmentWithJobs: vi.fn(),
@@ -288,6 +289,32 @@ describe("department job entry", () => {
     ).toBe("Chef");
     expect(close).not.toHaveBeenCalled();
   });
+  // BL-1045: by its key, a department deleted meanwhile; the lists load again
+  // and the draft stays. A refusal without the key reloads nothing.
+  it.each([
+    [new RequestError("This item was deleted. Reload the catalog.", "catalog.deleted", undefined, 409), 1],
+    [new Error("Name already exists"), 0],
+  ])("reloads the lists only for an item deleted meanwhile (%s)", async (refusal, reloads) => {
+    vi.mocked(api.updateDepartmentWithJobs).mockRejectedValue(refusal);
+    const onSaved = vi.fn(async () => {});
+    const onClose = vi.fn();
+    wrap(
+      <JobCatalogEditor
+        editor={{ type: "departments", item: department }}
+        workspaceId="workspace"
+        departments={[department]}
+        jobs={[job]}
+        onClose={onClose}
+        onSaved={onSaved}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Department name"), { target: { value: "Dining" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save department" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(refusal.message);
+    expect(onSaved).toHaveBeenCalledTimes(reloads);
+    expect((screen.getByLabelText("Department name") as HTMLInputElement).value).toBe("Dining");
+    expect(onClose).not.toHaveBeenCalled();
+  });
   it("rejects duplicate active job names without making a request", async () => {
     editor({ type: "jobs", departmentId: department.id });
     fireEvent.change(screen.getByLabelText("Job name 1"), {
@@ -438,12 +465,40 @@ describe("job assignment drawer", () => {
     });
     expect(screen.getByText("0 to assign · 1 to remove")).toBeTruthy();
   });
+  // BL-1045: the database names the kind of refusal. Only "someone changed or
+  // deleted it meanwhile" has something newer to load; any other refusal
+  // keeps its sentence without a Reload latest that would change nothing.
+  it.each([
+    ["job.changed", 409, true],
+    ["employee.revision_conflict", 409, true],
+    ["employee.archived", 409, true],
+    ["job.deleted", 409, true],
+    ["department.deleted", 409, true],
+    [undefined, 400, false],
+    ["catalog.system_record", 400, false],
+  ] as const)("offers Reload latest for a refusal keyed %s: %s", async (reason, status, offered) => {
+    vi.mocked(api.saveJobDetails).mockRejectedValue(
+      new RequestError("Not saved.", reason, undefined, status),
+    );
+    drawer();
+    fireEvent.click(await screen.findByLabelText("Assign Employee 0"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Not saved.");
+    expect(screen.queryByRole("button", { name: "Reload latest" }) !== null).toBe(offered);
+  });
   it("protects dirty dismissal and disables protected/archived changes", async () => {
     const close = drawer();
     fireEvent.click(await screen.findByLabelText("Assign Employee 0"));
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(screen.getByRole("alertdialog")).toBeTruthy();
     expect(close).not.toHaveBeenCalled();
+    // BL-659: Discard throws the edits away, so it is red; Keep editing white.
+    expect(screen.getByRole("button", { name: "Discard changes" }).className).toBe(
+      "job-danger-button",
+    );
+    expect(screen.getByRole("button", { name: "Keep editing" }).className).toBe(
+      "job-secondary-button",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     cleanup();

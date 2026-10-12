@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(54);
+select plan(55);
 
 -- A refusal's code and the reason the core gives, '42501 authz.out_of_scope'
 -- (FOUNDATION-B "hayır" contract).
@@ -162,7 +162,9 @@ insert into public.employee_documents(id,workspace_id,employee_id,requirement_id
 values('a9700000-0000-4000-8000-000000000004','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001','a9700000-0000-4000-8000-000000000003',1,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/15000000-0000-4000-8000-000000000001/a9700000-0000-4000-8000-000000000003/b9700000-0000-4000-8000-000000000004.pdf','food-handler.pdf','application/pdf',1024,'accepted',current_date + 3,'a8000000-0000-4000-8000-000000000002');
 select is((public.sync_expiring_document_todos_service('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->>'opened_or_refreshed')::integer,1,'expiring accepted document creates one source-linked todo');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.employee_document.expiring' and subject_id='a9700000-0000-4000-8000-000000000004'),1,'expiring accepted document enqueues one source-linked notification');
-select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos'->0->>'body'),'Alex Kim - Food handler card','Workspace dashboard lists scoped document-expiry todo');
+select is((public.get_workspace_dashboard_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos'->0->>'body'),'Alex Kim - Food handler card','Workspace dashboard lists the document-expiry todo to whoever reads the document');
+-- KK-179 (5), BL-807: the Scoped Manager (built-in Manager, no document access) gets no notification, so no to-do either.
+select is((select count(*)::integer from jsonb_array_elements(public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos') t where t->>'source_type'='employee_document_expiry'),0,'Workspace dashboard keeps the document-expiry todo from a manager without document access');
 select is((select count(*)::integer from public.workspace_todos where source_type='employee_document_expiry' and source_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry todo sync is deduped by source');
 select is((select count(*)::integer from public.notification_outbox where type_key='people.employee_document.expiring' and subject_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry notification sync is deduped by source');
 select is(pg_temp.refusal($$select public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Employee task','',null,null)$$),'42501 authz.missing_permission','employee-only users cannot create Workspace todos: no permission');

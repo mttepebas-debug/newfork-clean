@@ -29,6 +29,7 @@ import {
   useAvailabilityNavigationGuard,
   type AvailabilityNavigationRef,
 } from "../availability/availability-navigation";
+import { RequestError } from "../lib/request-error";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import {
   deleteWorkspaceRole,
@@ -53,6 +54,8 @@ const roleDraft = (role: WorkspaceRoleRecord): WorkspaceRoleInput => ({
   permission_keys: [...role.permission_keys],
   expected_updated_at: role.updated_at,
 });
+const refusedWith = (error: unknown, reason: string) =>
+  error instanceof RequestError && error.reason === reason;
 const signature = (draft: WorkspaceRoleInput) =>
   JSON.stringify({
     ...draft,
@@ -244,6 +247,7 @@ export default function RolesSettingsPage() {
                 workspaceId={workspaceId}
                 navigationRef={navigationRef}
                 onCopy={(draft) => go("new", draft)}
+                onReload={() => queryClient.invalidateQueries({ queryKey })}
                 onChanged={async (id) => {
                   await queryClient.invalidateQueries({ queryKey });
                   await refresh();
@@ -274,6 +278,7 @@ function RoleEditor({
   workspaceId,
   navigationRef,
   onCopy,
+  onReload,
   onChanged,
 }: {
   readonly role: WorkspaceRoleRecord | null;
@@ -285,6 +290,7 @@ function RoleEditor({
   readonly workspaceId: string;
   readonly navigationRef: AvailabilityNavigationRef;
   readonly onCopy: (draft: WorkspaceRoleInput) => void;
+  readonly onReload: () => Promise<void>;
   readonly onChanged: (id?: string) => Promise<void>;
 }) {
   const [baseline, setBaseline] = useState(() =>
@@ -306,7 +312,20 @@ function RoleEditor({
       setSaved(true);
       await onChanged(id);
     },
-    onError: (err) => setError(errorText(err)),
+    onError: (err) => {
+      // BL-1049: somebody saved this role after it was opened; the database
+      // says so with its key. Drop the edit and load the saved role (the
+      // effect below takes it once the list is back), then say so.
+      if (refusedWith(err, "role.changed")) {
+        setDraft(baseline);
+        setError(
+          "This role changed since you opened it. The saved version is shown; make your change again.",
+        );
+        void onReload();
+        return;
+      }
+      setError(errorText(err));
+    },
   });
   const remove = useMutation({
     mutationFn: () => deleteWorkspaceRole(workspaceId, role!.id),
@@ -314,6 +333,9 @@ function RoleEditor({
     onError: (err) => {
       setError(errorText(err));
       setDeleteArmed(false);
+      // BL-1049: a member or an invitation took the role meanwhile; reload so
+      // the delete button knows and names the references.
+      if (refusedWith(err, "role.in_use")) void onReload();
     },
   });
   const busy = save.isPending || remove.isPending;

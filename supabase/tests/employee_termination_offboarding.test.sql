@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(20);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -82,6 +82,29 @@ insert into public.schedule_published_shifts (
 ) values
   ('9a000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001', '2026-09-01', '10:00', '11:00', '91000000-0000-4000-8000-000000000001'),
   ('9a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001', '2026-09-01', '14:00', '15:00', '91000000-0000-4000-8000-000000000002');
+-- A week ahead, so it has not started whenever this runs (K1, BL-766).
+insert into public.schedule_location_publications (
+  id, workspace_id, location_id, week_start, version_number, published_by
+) values (
+  '8a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001',
+  '4a000000-0000-4000-8000-000000000001', date_trunc('week', current_date + 7)::date, 1,
+  '1a000000-0000-4000-8000-000000000001'
+);
+insert into public.schedule_published_shifts (
+  id, workspace_id, location_id, publication_id, employee_id, job_id,
+  scheduled_date, start_time, end_time, source_shift_id
+) values
+  ('9a000000-0000-4000-8000-000000000003', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000002', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001', current_date + 7, '10:00', '11:00', '91000000-0000-4000-8000-000000000003');
+
+-- Under way now: it started an hour ago, after the back-dated instant, and is
+-- still being worked. It stays too (K1, BL-766).
+insert into public.schedule_published_shifts (
+  id, workspace_id, location_id, publication_id, employee_id, job_id,
+  scheduled_date, start_time, end_time, source_shift_id
+) select
+  '9a000000-0000-4000-8000-000000000004', '2a000000-0000-4000-8000-000000000001', '4a000000-0000-4000-8000-000000000001', '8a000000-0000-4000-8000-000000000001', '7a000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000001',
+  started::date, date_trunc('minute', started)::time, date_trunc('minute', started)::time + interval '3 hours', '91000000-0000-4000-8000-000000000004'
+from (select (now() - interval '1 hour') at time zone 'America/Los_Angeles' as started) as clock;
 
 set local role service_role;
 
@@ -97,7 +120,7 @@ select throws_ok(
 );
 set local role postgres;
 select is((select archived_at from public.employee_profiles where id = '7a000000-0000-4000-8000-000000000001'), null, 'failed termination leaves employee active');
-select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), '7a000000-0000-4000-8000-000000000001'::uuid, 'failed termination leaves future shift assigned');
+select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000003'), '7a000000-0000-4000-8000-000000000001'::uuid, 'failed termination leaves the upcoming shift assigned');
 
 set local role service_role;
 select lives_ok(
@@ -114,10 +137,13 @@ select is((select archived_at from public.employee_profiles where id = '7a000000
 select is((select status::text from public.workspace_memberships where id = '3a000000-0000-4000-8000-000000000002'), 'suspended', 'linked workspace access is suspended');
 select is((select count(*)::integer from public.employee_access_snapshots where employee_id = '7a000000-0000-4000-8000-000000000001'), 1, 'access restoration snapshot is retained');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000001'), '7a000000-0000-4000-8000-000000000001'::uuid, 'same-day shift before effective instant stays assigned');
-select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), null, 'same-day shift after effective instant becomes open');
+-- Back-dated to 1 September: the 14:00 shift that day was worked, and a
+-- published shift never changes after the fact (K1, P09). Only what has not
+-- started yet is released.
+select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000002'), '7a000000-0000-4000-8000-000000000001'::uuid, 'a worked shift after a back-dated effective instant stays assigned');
+select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000003'), null, 'a shift that has not started yet becomes open');
+select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000004'), '7a000000-0000-4000-8000-000000000001'::uuid, 'a shift under way now stays assigned');
 select is((select count(*)::integer from public.employee_offboarding_shift_actions where workspace_id='2a000000-0000-4000-8000-000000000001'), 1, 'released shift has durable audit detail');
-select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'coverage_alert' and status = 'review_required'), 1, 'released shift creates a coverage alert');
-select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'compliance_review' and status = 'review_required'), 1, 'released shift creates a compliance review candidate');
 select is((select count(*)::integer from public.employee_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination lifecycle event is recorded');
 select is((select count(*)::integer from public.audit_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination audit event is recorded');
 
@@ -133,7 +159,7 @@ select lives_ok(
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_terminations where workspace_id = '2a000000-0000-4000-8000-000000000001'), 1, 'idempotent replay does not duplicate the termination');
-select is((select count(*)::integer from public.employee_offboarding_followups where workspace_id='2a000000-0000-4000-8000-000000000001'), 2, 'idempotent replay does not duplicate follow-ups');
+-- The managers' notice for the released shift is termination_tells_location_managers (BL-768).
 
 set local role service_role;
 select throws_ok(

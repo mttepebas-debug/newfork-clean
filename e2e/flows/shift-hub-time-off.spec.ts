@@ -5,10 +5,11 @@ import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { signIn, type Person } from "../fixtures/world";
 
-// BL-182 (G9b): Ali is on approved time off on Wednesday, and Emre looks for
-// cover for his Wednesday shift. Ali may take it from Shift Hub after agreeing
-// that his time off shortens; it shortens only when Ayse approves the
-// transfer, and Zeynep, who approved the time off, is told.
+// BL-995 (KARARLAR §1.1, Mert 2026-10-09): Ali is on approved time off on
+// Wednesday, and Emre looks for cover for his Wednesday shift. Shift Hub shows
+// Ali the shift as not open to him and where to ask for those hours back; once
+// his cancellation of those hours is approved, the shift is open to him like
+// any other, and taking it shortens nothing.
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
 
@@ -48,32 +49,45 @@ test.beforeAll(() => {
   console.log(`shift-hub-time-off setup: ${Date.now() - started} ms`);
 });
 
-test("an employee takes a shift inside their approved time off and it shortens at approval", async ({ browser }) => {
-  const leaveCovers = () => sql(`select bool_or(public.time_off_effective_ranges(s.id) && tstzrange(
-      (x ->> 'starts_at')::timestamptz, (x ->> 'ends_at')::timestamptz, '[)'))
-    from public.schedule_time_off_segments s join public.schedule_time_off_requests r on r.id = s.request_id
-    cross join (select public.shift_exchange_shift(tests.id('${run}'), tests.id('${run}:shift:emre-wed6')) x) q
-    where r.employee_id = tests.id('${run}:ali') and r.request_type = 'time_off' and s.segment_date = tests.week(6) + 2;`);
+test("approved time off keeps a shift from the employee until they get those hours back", async ({ browser }) => {
+  const hub = `/app/employee-hub/shift-hub?hub_view=available&from=${day}&to=${day}`;
+  const ali = await open(browser, "ali", hub);
+  await expect(ali.getByText("On time off")).toBeVisible();
+  await expect(ali.getByText(/To take it, ask to cancel those hours first/)).toBeVisible();
+  await expect(ali.getByRole("button", { name: /^Request/ })).toHaveCount(0);
+  await ali.getByRole("link", { name: /Ask to cancel time off/ }).click();
+  await expect(ali).toHaveURL(/\/app\/employee-hub\/my-availability/);
 
-  const ali = await open(browser, "ali", `/app/employee-hub/shift-hub?hub_view=available&from=${day}&to=${day}`);
-  await expect(ali.getByText("During your time off")).toBeVisible();
-  await expect(ali.getByText(/your time off is shortened for these hours/)).toBeVisible();
-  await ali.getByRole("button", { name: "Request anyway" }).click();
+  // Ali's cancellation of those hours, approved by Zeynep, who approved the leave.
+  sql(`
+    select tests.remember('${run}:ali:cancel', (public.request_time_off_cancellation_service(tests.user('${run}:ali'), tests.id('${run}'),
+      tests.id('${run}:ali:time_off'),
+      (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('${run}:ali:time_off')),
+      (select jsonb_build_array(jsonb_build_object('segment_id', s.id, 'starts_at', x ->> 'starts_at', 'ends_at', x ->> 'ends_at'))
+       from public.schedule_time_off_segments s
+       cross join (select public.shift_exchange_shift(tests.id('${run}'), tests.id('${run}:shift:emre-wed6')) x) q
+       where s.request_id = tests.id('${run}:ali:time_off') and s.segment_date = tests.week(6) + 2),
+      'Taking Emre''s shift', gen_random_uuid()) ->> 'request_id')::uuid);
+    select public.decide_time_off_service(tests.user('${run}:zeynep'), tests.id('${run}'),
+      tests.id('${run}:ali:cancel'), 'approve', '',
+      app_private.time_off_impact(tests.id('${run}'), tests.id('${run}:ali:cancel')) ->> 'fingerprint');`);
+
+  await ali.goto(hub);
+  await expect(ali.getByText("On time off")).toHaveCount(0);
+  await ali.getByRole("button", { name: "Request to cover" }).click();
   await expect
     .poll(() => sql(`select count(*) from public.shift_exchange_applications where case_id = '${caseId}' and status = 'pending_manager';`))
     .toBe("1");
-  expect(leaveCovers()).toBe("t");
 
   const ayse = await open(browser, "ayse", `/app/schedule/requests?tab=shift-changes&case=${caseId}&from=${day}&to=${day}`);
-  await ayse.getByRole("button", { name: "Review Ali Person" }).click();
-  await expect(ayse.getByText(/agreed to work during approved time off/)).toBeVisible();
-  await ayse.getByRole("button", { name: /^Approve transfer to Ali/ }).click();
-  await ayse.getByRole("button", { name: /^Confirm transfer to Ali/ }).click();
+  // The link opens the cover's drawer in Requests; giving the shift is one step (Mert, 2026-10-11).
+  const drawer = ayse.getByRole("dialog", { name: "Review shift change" });
+  await drawer.getByRole("radio", { name: /Ali Person/ }).check();
+  await drawer.getByRole("button", { name: /^Give shift to Ali/ }).click();
   await expect
     .poll(() => sql(`select p.first_name from public.schedule_published_shifts s join public.employee_profiles p on p.id = s.employee_id
       where s.id = tests.id('${run}:shift:emre-wed6');`), { timeout: 30_000 })
     .toBe("Ali");
-  expect(leaveCovers()).toBe("f");
   expect(sql(`select count(*) from public.notification_outbox o where o.type_key = 'requests.time_off.shortened'
-    and o.payload -> 'recipient_user_ids' ? tests.user('${run}:zeynep')::text;`)).toBe("1");
+    and o.payload ->> 'request_id' = tests.id('${run}:ali:time_off')::text;`)).toBe("0");
 });

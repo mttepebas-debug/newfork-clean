@@ -77,7 +77,7 @@ $$;
 
 select is(pg_temp.keep_token_as('ayse', 'pelin'), 'allowed', 'a manager keeps the token of an invitation at their location');
 select is(pg_temp.link_as('ayse', 'pelin'), 'allowed', 'and copies its link');
-select is(pg_temp.retry_as('ayse', 'pelin'), 'P0002 ', 'a retry is asked past the permission: nothing failed to retry');
+select is(pg_temp.retry_as('ayse', 'pelin'), 'allowed', 'and sends it a reminder (BL-767: a delivered invitation is not refused)');
 select is(pg_temp.link_as('ayse', 'baris'), '42501 authz.out_of_scope', 'a manager copies no link for another location');
 select is(pg_temp.link_as('ayse', 'nobody'), '42501 authz.out_of_scope', 'somebody unknown gets the same answer');
 select is(pg_temp.retry_as('ayse', 'baris'), '42501 authz.out_of_scope', 'a manager retries no delivery for another location');

@@ -2,7 +2,6 @@ import { CatalogDrawer } from "./CatalogDrawer";
 import {
   defaultDocumentLifecycleSettings,
   documentTypeInputSchema,
-  type DocumentFormat,
   type DocumentType,
   type DocumentTypeInput,
 } from "@newfork/shared";
@@ -24,10 +23,12 @@ import {
 import "./jobs-settings.css";
 import { DocumentPublicationDialog } from "./DocumentPublicationDialog";
 import { DocumentSettingsEditor } from "./DocumentSettingsEditor";
+import { formatsLabel } from "../documents/document-rules";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { onTabListKeyDown } from "../lib/tab-list-keys";
 const defaultDraft: DocumentTypeInput = {
   title: "",
   description: "",
@@ -41,13 +42,6 @@ const defaultDraft: DocumentTypeInput = {
     ...defaultDocumentLifecycleSettings,
     assignment_scope: "all_active",
   },
-};
-
-const formatLabels: Record<DocumentFormat, string> = {
-  pdf: "PDF",
-  jpeg: "JPEG",
-  png: "PNG",
-  webp: "WebP",
 };
 
 type SortKey = "title" | "description" | "publication_status" | "published_at";
@@ -254,6 +248,7 @@ export default function DocumentsSettingsPage() {
               <div
                 className="catalog-status-tabs"
                 role="tablist"
+                onKeyDown={onTabListKeyDown}
                 aria-label="Document status"
               >
                 {(["all", "draft", "published", "archived"] as const).map(
@@ -263,6 +258,7 @@ export default function DocumentsSettingsPage() {
                       role="tab"
                       key={value}
                       aria-selected={status === value}
+                      tabIndex={status === value ? 0 : -1}
                       className={status === value ? "active" : ""}
                       onClick={() => setStatus(value)}
                     >
@@ -444,9 +440,7 @@ export default function DocumentsSettingsPage() {
                           ? ` - ${publishedAtLabel(item)}`
                           : ""}
                         {" - "}
-                        {item.accepted_formats
-                          .map((format) => formatLabels[format])
-                          .join(", ")}
+                        {formatsLabel(item.accepted_formats)}
                       </span>
                     </span>
                   </button>
@@ -466,7 +460,11 @@ export default function DocumentsSettingsPage() {
                   </span>
                   <span className="job-department-cell">
                     {publishedAtLabel(item) ? (
-                      <time dateTime={item.published_at ?? undefined}>
+                      // BL-856: the cell cuts the time off; hovering reads it whole.
+                      <time
+                        dateTime={item.published_at ?? undefined}
+                        title={publishedAtLabel(item)}
+                      >
                         {publishedAtLabel(item)}
                       </time>
                     ) : (

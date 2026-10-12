@@ -6,23 +6,17 @@ import { SwapReview } from "./SwapReview";
 import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Check,
-  Clock3,
-  RotateCcw,
-  Search,
-  X,
-} from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Check, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { TimeOffPeriods } from "../employee-hub/TimeOffPeriods";
-import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import { TimeOffShorten } from "./TimeOffShorten";
-import { TimeOffProgressPanel } from "./TimeOffProgressPanel";
+import { TimeOffReview } from "./TimeOffReview";
+import type { DrawerNotice } from "./RequestDrawer";
+import { alsoOffThese } from "../schedule/time-off-overlap";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
-import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
-import { Navigate, useSearchParams } from "react-router";
+import { ExchangeReview } from "./ExchangeReview";
+import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import {
@@ -40,17 +34,17 @@ import {
   pageOf,
   readRequestsParams,
   requestRows,
-  requestTypeLabels,
   requestTypesFor,
   useRequests,
   type RequestRow,
-  type RequestTypeTab,
+  requestTabLabels,
+  requestTabsFor,
+  tabOf,
 } from "../schedule/requests-list";
 
 import { NoAccessState } from "../shell/NoAccessState";
 import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
-type DrawerNotice = { text: string; tone?: "warning" | "error" };
 
 export function ScheduleRequestsPage() {
   const [params] = useSearchParams();
@@ -79,6 +73,7 @@ function ScheduleRequestsPageContent() {
   const { context } = useAuth();
   const client = useQueryClient();
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const workspaceId = context?.workspace.id ?? "";
   const canReadTimeOff = can(context, "requests.read");
   const canReadShift = can(context, "exchange.read");
@@ -94,20 +89,57 @@ function ScheduleRequestsPageContent() {
   const [act, setAct] = useState<Act | null>(null);
   const [actText, setActText] = useState("");
   const [actError, setActError] = useState("");
+  // The reason a Deny written in the drawer could not send (Mert, 2026-10-11).
+  const [denyError, setDenyError] = useState("");
   const toast = useToast();
   // Said inside the drawer while it stays open (CatalogDrawer).
   const [drawerNotice, setDrawerNotice] = useState<DrawerNotice | null>(null);
   const vote = useVoteOnTimeOff(workspaceId);
   const revoke = useRevokeTimeOff(workspaceId);
   const data = useRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, { locationId, search });
+  // "Also off these days" asks every request the reader reads, not the filtered list;
+  // without a filter this is the same cached read.
+  const everyone = useRequests(workspaceId, { timeOff: canReadTimeOff, shiftChanges: canReadShift }, { locationId: "", search: "" });
+  // A reason being written keeps a drawer open on Escape and the backdrop (P26).
+  const [held, setHeld] = useState(false);
+  // A drawer opened from the list is a history step: closing it steps back, so Back is never a no-op.
+  const caseStep = useRef(false);
   // Every type, so each tab can count what is still open in it.
   const allRows = useMemo(
     () => requestRows(data.timeOff, data.exchanges, { type: "all", locationId, search }),
     [data.timeOff, data.exchanges, locationId, search],
   );
   const counts = openCounts(allRows);
-  const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => row.type === view.type), view.page, view.pageSize);
+  const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => tabOf(row.type) === view.type), view.page, view.pageSize);
   const swap = openSwap ? (data.exchanges.find((item) => item.id === openSwap.id) ?? openSwap) : null;
+  // A cover or an open shift opens its drawer over the list (Mert,
+  // 2026-10-11); ?case= names it, so Back closes it and a notification link
+  // lands on it. Like the swap window, it keeps the last copy it saw (P26).
+  const caseId = params.get("case") ?? "";
+  const [seenCase, setSeenCase] = useState<ExchangeCase | null>(null);
+  const inList = caseId ? data.exchanges.find((item) => item.id === caseId) : undefined;
+  // A link to a case the list does not carry reads that one case.
+  const caseRead = useQuery({
+    queryKey: ["shift-exchanges", workspaceId, "manager-case", caseId],
+    queryFn: () => getExchanges(workspaceId, true, { caseId }),
+    enabled: Boolean(caseId && canReadShift && !data.isLoading && !inList && seenCase?.id !== caseId),
+    retry: false,
+  });
+  const listedCase = inList ?? caseRead.data?.cases.find((item) => item.id === caseId) ?? null;
+  useEffect(() => {
+    if (listedCase && listedCase.kind !== "swap") setSeenCase(listedCase);
+  }, [listedCase]);
+  // A link to a listed swap opens its review window instead.
+  useEffect(() => {
+    if (listedCase?.kind !== "swap") return;
+    setOpenSwap(listedCase);
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("case");
+      return next;
+    }, { replace: true });
+  }, [listedCase, setParams]);
+  const openCase = listedCase && listedCase.kind !== "swap" ? listedCase : seenCase?.id === caseId ? seenCase : null;
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
   const selected = timeOffById.get(selectedId) ?? null;
@@ -128,8 +160,10 @@ function ScheduleRequestsPageContent() {
     });
   }
   function selectRequest(id: string) {
+    setHeld(false);
     setSelectedId(id);
     setDrawerNotice(null);
+    setDenyError("");
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -140,29 +174,44 @@ function ScheduleRequestsPageContent() {
       { preventScrollReset: true },
     );
   }
+  function closeCase() {
+    setHeld(false);
+    if (caseStep.current) {
+      caseStep.current = false;
+      navigate(-1);
+      return;
+    }
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("case");
+      return next;
+    }, { replace: true });
+  }
   function openRow(row: RequestRow) {
     // A swap opens its review window over the list (H2). A cover or open
-    // shift opens its review where it lives today (Shift Hub's manager view,
-    // ?case=); that is a step the browser's Back undoes, so it is pushed.
+    // shift opens its drawer (?case=); that is a step the browser's Back
+    // undoes, so it is pushed.
     if (row.source === "exchange" && row.type === "swap") setOpenSwap(row.request);
     else if (row.source === "exchange")
-      requestAvailabilityNavigation(() =>
+      requestAvailabilityNavigation(() => {
+        caseStep.current = true;
         setParams((previous) => {
           const next = new URLSearchParams(previous);
           next.set("case", row.id);
           return next;
-        }),
-      );
+        });
+      });
     else selectRequest(row.id);
   }
   function startAct(request: TimeOffRequest, kind: Act["kind"]) {
     setActText("");
     setActError("");
     const progress = request.progress;
-    // A manager's plain vote needs no box; one that opens shifts, a deny
-    // (its note) and an admin's or owner's decision do (rules 6, 7, 14).
+    // A manager's plain vote needs no box; one that opens shifts, a revoke
+    // (its reason) and an admin's or owner's decision do (rules 6, 7, 14). A
+    // deny asks its reason in the drawer itself.
     const ask =
-      kind !== "approve" ||
+      kind === "revoke" ||
       Boolean(
         progress &&
           (progress.can_decide_alone ||
@@ -172,9 +221,10 @@ function ScheduleRequestsPageContent() {
     if (ask) setAct({ request, kind });
     else void runAct({ request, kind }, "");
   }
-  async function runAct(current: Act, text: string) {
+  async function runAct(current: Act, text: string, inline = false) {
     const { request, kind } = current;
     setDrawerNotice(null);
+    setDenyError("");
     try {
       let message: string;
       let closedNow = true;
@@ -210,7 +260,8 @@ function ScheduleRequestsPageContent() {
         return;
       }
       const message = error instanceof Error ? error.message : "Decision failed";
-      if (kind === "approve" && !act) setDrawerNotice({ text: message, tone: "error" });
+      if (inline) setDenyError(message);
+      else if (kind === "approve" && !act) setDrawerNotice({ text: message, tone: "error" });
       else setActError(message);
     }
   }
@@ -230,9 +281,10 @@ function ScheduleRequestsPageContent() {
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
     );
-  // Shift Hub reads ?case= itself; manager notification links land here too.
-  // Its Renew swaps ?case= for ?offer=, whose form Shift Hub draws as well.
-  if ((params.has("case") || params.has("offer")) && canReadShift && context)
+  // Shift Hub draws its ?offer= form, and a ?case= the core did not hand back
+  // to this manager: it says what became of it.
+  const caseMissing = Boolean(caseId && !openCase && !listedCase && (caseRead.isSuccess || caseRead.isError));
+  if ((params.has("offer") || caseMissing) && canReadShift && context)
     return (
       <section
         className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
@@ -249,9 +301,8 @@ function ScheduleRequestsPageContent() {
   const timeFormat = data.timeFormat;
   const loading = data.isLoading;
   const failed = Boolean(data.failure);
-  // One type to read needs no tabs: All would say the same thing.
-  const tabs: [RequestTypeTab, string][] =
-    allowedTypes.length > 1 ? [["all", "All"], ...allowedTypes.map((type): [RequestTypeTab, string] => [type, requestTypeLabels[type]])] : [];
+  // One group to read needs no tabs: All would say the same thing.
+  const tabs = requestTabsFor(allowedTypes);
 
   return (
     <section
@@ -277,7 +328,7 @@ function ScheduleRequestsPageContent() {
               buttons[(at + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length]?.focus();
             }}
           >
-            {tabs.map(([key, label]) => (
+            {tabs.map((key) => (
               <button
                 key={key}
                 type="button"
@@ -288,7 +339,7 @@ function ScheduleRequestsPageContent() {
                   setView({ type: key === "all" ? null : key, page: null });
                 }}
               >
-                {label}
+                {requestTabLabels[key]}
                 {counts[key] ? <strong>{counts[key]}</strong> : null}
               </button>
             ))}
@@ -351,7 +402,7 @@ function ScheduleRequestsPageContent() {
               <Check size={22} />
             </span>
             <h2>No requests</h2>
-            <p>{view.type === "all" ? "No requests match these filters." : `No ${requestTypeLabels[view.type].toLowerCase()} requests match these filters.`}</p>
+            <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
           </div>
         ) : null}
       </div>
@@ -367,17 +418,24 @@ function ScheduleRequestsPageContent() {
         <CatalogDrawer
           label="Review request"
           className="requests-catalog-page requests-review-drawer"
+          busy={held || vote.isPending || revoke.isPending}
           onClose={() => selectRequest("")}
         >
-          <TimeOffDetail
+          <TimeOffReview
+            key={selected.id}
             request={selected}
+            alsoOff={alsoOffThese(selected, everyone.timeOff)}
             timeFormat={timeFormat}
             notice={drawerNotice}
             busy={vote.isPending || revoke.isPending}
             // ponytail: "may they revoke somewhere"; the API asks per person.
             canRevoke={can(context, "time_off.revoke")}
+            denyError={denyError}
             onClose={() => selectRequest("")}
-            onAct={(kind) => startAct(selected, kind)}
+            onApprove={() => startAct(selected, "approve")}
+            onDeny={(reason) => void runAct({ request: selected, kind: "deny" }, reason, true)}
+            onRevoke={() => startAct(selected, "revoke")}
+            onHold={setHeld}
             shorten={
               <TimeOffShorten
                 key={`${selected.id}:${selected.revision}`}
@@ -394,6 +452,22 @@ function ScheduleRequestsPageContent() {
           />
         </CatalogDrawer>
       )}
+      {openCase ? (
+        <CatalogDrawer label="Review shift change" className="requests-catalog-page requests-review-drawer" busy={held} onClose={closeCase}>
+          <ExchangeReview
+            key={openCase.id}
+            item={openCase}
+            workspace={workspaceId}
+            timeFormat={timeFormat}
+            onClose={closeCase}
+            onHold={setHeld}
+            onDone={(message) => {
+              closeCase();
+              toast.success(message);
+            }}
+          />
+        </CatalogDrawer>
+      ) : null}
       {swap ? (
         <SwapReview
           // One window per swap: a refresh keeps a reason being typed (P26).
@@ -424,7 +498,7 @@ function ScheduleRequestsPageContent() {
 }
 
 /**
- * The type tabs' row. Five tabs do not fit a phone: the row scrolls, its edge
+ * The type tabs' row. When it is wider than a phone the row scrolls, its edge
  * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
  */
 function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
@@ -495,23 +569,14 @@ function ActDialog({
           confirm: "Revoke",
           field: "Reason",
         }
-      : kind === "deny"
-        ? {
-            title: cancellation ? "Decline cancellation?" : "Deny time off?",
-            description: cancellation
-              ? "The time off stays in place."
-              : "One denial closes the request.",
-            confirm: cancellation ? "Decline" : "Deny",
-            field: `Note for ${name} (optional)`,
-          }
-        : {
-            title: cancellation ? "Approve cancellation?" : "Approve time off?",
-            description: alone
-              ? `Takes effect now.${request.progress?.locations.length ? ` Managers at ${name}'s locations are notified.` : ""}${opensLine ? ` ${opensLine}` : ""}`
-              : opensLine,
-            confirm: "Approve",
-            field: null,
-          };
+      : {
+          title: cancellation ? "Approve cancellation?" : "Approve time off?",
+          description: alone
+            ? `Takes effect now.${request.progress?.locations.length ? ` Managers at ${name}'s locations are notified.` : ""}${opensLine ? ` ${opensLine}` : ""}`
+            : opensLine,
+          confirm: "Approve",
+          field: null,
+        };
   return (
     <ConfirmDialog
       open
@@ -533,7 +598,6 @@ function ActDialog({
             maxLength={1000}
             required={kind === "revoke"}
             value={text}
-            placeholder={kind === "deny" && !cancellation ? "e.g. I can approve Jan 11–12 only" : undefined}
             onChange={(event) => onText(event.target.value)}
           />
         </label>
@@ -543,197 +607,7 @@ function ActDialog({
   );
 }
 
-function TimeOffDetail({
-  request,
-  timeFormat,
-  notice,
-  busy,
-  canRevoke,
-  onClose,
-  onAct,
-  shorten,
-}: {
-  request: TimeOffRequest;
-  timeFormat: "12h" | "24h";
-  notice: DrawerNotice | null;
-  busy: boolean;
-  canRevoke: boolean;
-  onClose: () => void;
-  shorten?: ReactNode;
-  onAct: (kind: Act["kind"]) => void;
-}) {
-  const cancellation = request.request_type === "time_off_cancellation";
-  const progress = request.progress;
-  const canVote = Boolean(progress && (progress.can_vote || progress.can_decide_alone));
-  const approved = request.status === "approved";
-  const revocable = !cancellation && approved && canRevoke;
-  return (
-    <div className="request-detail-inner">
-      <DetailHeader
-        title={request.employee_name}
-        status={request.status}
-        onClose={onClose}
-      >
-        {notice ? (
-          <p
-            className={notice.tone ? `request-drawer-notice ${notice.tone}` : "request-drawer-notice"}
-            role={notice.tone === "error" ? "alert" : "status"}
-          >
-            {notice.text}
-          </p>
-        ) : null}
-      </DetailHeader>
-      <dl className="request-facts">
-        <div>
-          <dt>Dates</dt>
-          <dd>
-            {formatDate(request.start_date)} - {formatDate(request.end_date)}
-          </dd>
-        </div>
-        <div>
-          <dt>Submitted</dt>
-          <dd>{formatDate(request.created_at)}</dd>
-        </div>
-      </dl>
-      {cancellation ? (
-        <p>Cancellation of approved time off. The time off stays in place until this is approved.</p>
-      ) : null}
-      {request.cancellation?.pending_request_id ? (
-        <p>A cancellation request is waiting. The time off is still in effect.</p>
-      ) : null}
-      {progress ? (
-        <TimeOffProgressPanel progress={progress} timeFormat={timeFormat} zone={requestZone(request)} />
-      ) : null}
-      {request.reason ? (
-        <section>
-          <h2>Employee note</h2>
-          <p>{request.reason}</p>
-        </section>
-      ) : null}
-      <section>
-        <h2>Requested periods</h2>
-        <TimeOffPeriods
-          periods={request.segments}
-          timeFormat={timeFormat}
-          requestStatus={request.status}
-          cancellation={cancellation}
-        />
-      </section>
-      <Timeline events={request.events} timeFormat={timeFormat} />
-      {canVote ? (
-        <div className="request-decisions">
-          <button
-            className="nf-button danger"
-            disabled={busy}
-            onClick={() => onAct("deny")}
-          >
-            <X size={16} /> {cancellation ? "Decline" : "Deny"}
-          </button>
-          <button
-            className="nf-button"
-            disabled={busy || !progress?.impact}
-            onClick={() => onAct("approve")}
-          >
-            <Check size={16} /> Approve
-          </button>
-        </div>
-      ) : revocable ? (
-        <div className="request-decisions">
-          <button className="nf-button danger" disabled={busy} onClick={() => onAct("revoke")}>
-            <X size={16} /> Revoke
-          </button>
-          {shorten}
-        </div>
-      ) : (
-        <p className="view-only-note">View-only access</p>
-      )}
-    </div>
-  );
-}
-
-function DetailHeader({
-  title,
-  status,
-  onClose,
-  children,
-}: {
-  title: string;
-  status: string;
-  onClose: () => void;
-  children?: ReactNode;
-}) {
-  return (
-    <header className="request-detail-header">
-      <div>
-        <small>Request review</small>
-        <h2>{title}</h2>
-      </div>
-      <span className={`request-status status-${status.replaceAll("_", "-")}`}>
-        {statusLabel(status)}
-      </span>
-      <button
-        className="icon-button request-mobile-close"
-        aria-label="Close details"
-        onClick={onClose}
-      >
-        <X size={18} />
-      </button>
-      {children}
-    </header>
-  );
-}
-
-function Timeline({
-  events,
-  timeFormat,
-}: {
-  events: TimeOffRequest["events"];
-  timeFormat: "12h" | "24h";
-}) {
-  return (
-    <section>
-      <h2>Activity</h2>
-      <ol className="request-timeline">
-        {events.map((event) => (
-          <li key={event.id}>
-            <Clock3 size={14} />
-            <div>
-              <strong>{statusLabel(event.action)}</strong>
-              <span>
-                {event.actor_name} ·{" "}
-                {new Date(event.created_at).toLocaleString()}
-              </span>
-              {event.note ? <p>{event.note}</p> : null}
-              <TimeOffReleasedAssignments
-                assignments={event.released_assignments}
-                timeFormat={timeFormat}
-              />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
 function plural(count: number, noun: string) {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: value.length > 10 ? undefined : "numeric",
-  }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
-}
-function statusLabel(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 export default ScheduleRequestsPage;
-// A request is asked in one zone; every period carries it (FB-6.3.8d).
-function requestZone(request: TimeOffRequest) {
-  return request.segments[0]?.time_timezone;
-}

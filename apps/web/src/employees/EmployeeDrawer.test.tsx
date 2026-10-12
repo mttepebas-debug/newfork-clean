@@ -687,9 +687,11 @@ describe("EmployeeDrawer", () => {
   it("shows the normal empty state when the employee has no onboarding case", async () => {
     renderDrawer("documents", detail, null);
 
+    // BL-834: none at all reads as none yet, not as a filter miss.
     expect(
-      await screen.findByText("No documents match these filters."),
+      await screen.findByRole("heading", { name: "No documents yet" }),
     ).toBeTruthy();
+    expect(screen.getByText("Documents they submit show up here.")).toBeTruthy();
     expect(screen.queryByText("Loading onboarding...")).toBeNull();
     expect(getEmployeeOnboardingReview).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: /Accept / })).toBeNull();
@@ -1501,6 +1503,28 @@ describe("EmployeeDrawer", () => {
       );
     });
 
+    // BL-1045: by its key, a location or job deleted while the drawer was open;
+    // the lists load again and the database's sentence is shown. A refusal
+    // without such a key reloads nothing.
+    it.each([
+      ["location.deleted", "This location was deleted. Reload locations.", 2],
+      ["job.deleted", "This job was deleted. Reload jobs before assigning it.", 2],
+      ["employee.primary_job_required", "Mark one of the jobs as primary.", 1],
+    ])("reloads the locations and jobs only for one deleted meanwhile (%s)", async (reason, sentence, reads) => {
+      vi.mocked(saveEmployee).mockRejectedValueOnce(
+        new RequestError(sentence, reason, undefined, reason.endsWith(".deleted") ? 409 : 400),
+      );
+      renderDrawer("employment");
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      const before = vi.mocked(loadEmployeeReferenceData).mock.calls.length;
+      save();
+      expect(await screen.findByText(sentence)).toBeTruthy();
+      await waitFor(() =>
+        expect(vi.mocked(loadEmployeeReferenceData).mock.calls.length - before).toBe(reads - 1),
+      );
+    });
+
     // EMP-001 C3 (Done when 20): the Owner job is nobody's to tick or untick.
     const ownersRecord = {
       ...detail,
@@ -1724,7 +1748,8 @@ describe("EmployeeDrawer", () => {
     expect(screen.queryByText("Optional")).toBeNull();
   });
 
-  it("shows legal name review in the profile tab when employee changes the provisional name", async () => {
+  // A legal name awaiting review, as the profile tab shows it.
+  function renderLegalNameReview() {
     // The server gives the private contact to who may read it (KK-35 S3).
     renderDrawer("profile", {
       ...detail,
@@ -1770,6 +1795,10 @@ describe("EmployeeDrawer", () => {
         },
       ],
     });
+  }
+
+  it("shows legal name review in the profile tab when employee changes the provisional name", async () => {
+    renderLegalNameReview();
 
     expect(await screen.findByText("Legal name review")).toBeTruthy();
     fireEvent.click(
@@ -1787,6 +1816,24 @@ describe("EmployeeDrawer", () => {
           revision: 4,
         },
       ),
+    );
+  });
+
+  // BL-1046: the employee or another reviewer moved the onboarding on first.
+  it("reloads an onboarding review sent from an old copy and says so", async () => {
+    renderLegalNameReview();
+    vi.mocked(reviewEmployeeOnboarding).mockRejectedValue(
+      new RequestError("onboarding changed; refresh required", "onboarding.changed", undefined, 409),
+    );
+    expect(await screen.findByText("Legal name review")).toBeTruthy();
+    const reads = vi.mocked(getEmployeeOnboardingReview).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Accept Profile and privacy" }));
+    expect(
+      await screen.findByText("This onboarding changed meanwhile. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("onboarding changed; refresh required")).toBeNull();
+    await waitFor(() =>
+      expect(vi.mocked(getEmployeeOnboardingReview).mock.calls.length).toBeGreaterThan(reads),
     );
   });
 
@@ -1984,6 +2031,20 @@ describe("EmployeeDrawer", () => {
         "Employee terminated. 2 published shifts released.",
       ),
     ).toBeTruthy();
+  });
+
+  it("says a back-dated termination releases only shifts that have not started", async () => {
+    renderDrawer("employment");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Terminate employee" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Terminate employee" });
+    // A worked shift stays with who worked it, whatever the date (K1, BL-766).
+    expect(dialog.textContent).toContain(
+      "Published shifts that haven't started yet will become open",
+    );
+    expect(dialog.textContent).not.toContain("at or after the effective time");
   });
 });
 

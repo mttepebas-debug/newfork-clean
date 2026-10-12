@@ -86,8 +86,10 @@ values (
   '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'
 );
 
+-- The membership above already opened the account row (KK-179 (2)); the seed names it.
 insert into public.user_profiles (user_id, display_name)
-values ('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'Local Owner');
+values ('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'Local Owner')
+on conflict (user_id) do update set display_name = excluded.display_name;
 
 insert into public.user_preferences (user_id, theme)
 values ('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'system');
@@ -132,7 +134,8 @@ set confirmation_token = '', recovery_token = '',
 where id = 'b0000000-0000-4000-8000-000000000001';
 
 insert into public.user_profiles (user_id, display_name)
-values ('b0000000-0000-4000-8000-000000000001', 'External Owner');
+values ('b0000000-0000-4000-8000-000000000001', 'External Owner')
+on conflict (user_id) do update set display_name = excluded.display_name;
 
 insert into public.user_preferences (user_id, theme)
 values ('b0000000-0000-4000-8000-000000000001', 'system');
@@ -246,7 +249,8 @@ update auth.users set confirmation_token = '', recovery_token = '',
 where id = 'e44f1741-9d58-4e38-8a62-3bc1c27bcd21';
 
 insert into public.user_profiles (user_id, display_name)
-values ('e44f1741-9d58-4e38-8a62-3bc1c27bcd21', 'Local Employee');
+values ('e44f1741-9d58-4e38-8a62-3bc1c27bcd21', 'Local Employee')
+on conflict (user_id) do update set display_name = excluded.display_name;
 insert into public.user_preferences (user_id, theme)
 values ('e44f1741-9d58-4e38-8a62-3bc1c27bcd21', 'system');
 insert into public.workspace_memberships (
@@ -429,7 +433,8 @@ update auth.users set confirmation_token = '', recovery_token = '',
 where id = 'a6000000-0000-4000-8000-000000000001';
 
 insert into public.user_profiles (user_id, display_name)
-values ('a6000000-0000-4000-8000-000000000001', 'Alex Kim');
+values ('a6000000-0000-4000-8000-000000000001', 'Alex Kim')
+on conflict (user_id) do update set display_name = excluded.display_name;
 insert into public.user_preferences (user_id, theme)
 values ('a6000000-0000-4000-8000-000000000001', 'system');
 insert into public.workspace_memberships (

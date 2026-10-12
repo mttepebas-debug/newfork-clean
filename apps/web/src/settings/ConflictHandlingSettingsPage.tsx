@@ -109,8 +109,11 @@ export default function ConflictHandlingSettingsPage() {
     draft!.conflict_rules_revision !== query.data!.conflict_rules_revision;
 
   const update = (patch: Partial<ScheduleConflictSettings>) => {
-    setDraft((value) => (value ? { ...value, ...patch } : value));
-    setDirty(true);
+    if (!draft) return;
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    // BL-677 (2): a change undone leaves nothing unsaved.
+    setDirty(JSON.stringify(next) !== JSON.stringify(query.data));
     setValidation(null);
     mutation.reset();
   };
@@ -251,6 +254,7 @@ export default function ConflictHandlingSettingsPage() {
             <div className="organization-form-actions">
               <Button
                 type="button"
+                className="secondary-button"
                 onClick={async () => {
                   const result = await query.refetch();
                   if (result.data) {

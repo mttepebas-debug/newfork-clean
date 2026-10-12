@@ -1,5 +1,5 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
-import { HttpError } from "../http-error";
+import { HttpError, rpcFailure } from "../http-error";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import type { CommunicationService } from "./communication-service";
@@ -421,6 +421,23 @@ describe("communication routes", () => {
       expect(response.json()).toMatchObject({ reason: "authz.out_of_scope" });
       await app.close();
     });
+
+    // BL-1047: a write over a newer revision says so with a key, so the editor
+    // can tell "changed meanwhile" from "archived, cannot be edited".
+    it.each(routes.filter(([name]) => name !== "list" && name !== "acknowledgement"))(
+      "passes the database's announcement.changed key on with the %s 409",
+      async (_name, method, verb, url, payload) => {
+        const service = communicationServiceMock();
+        vi.mocked(service[method]).mockRejectedValue(
+          rpcFailure({ message: "stale announcement revision", code: "PT409", hint: "announcement.changed" }),
+        );
+        const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+        const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer manager-token" }, payload });
+        expect(response.statusCode).toBe(409);
+        expect(response.json()).toMatchObject({ reason: "announcement.changed" });
+        await app.close();
+      },
+    );
 
     it.each(routes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, method, verb, url, payload) => {
       const service = communicationServiceMock();

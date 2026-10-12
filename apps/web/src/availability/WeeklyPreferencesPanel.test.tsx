@@ -14,6 +14,7 @@ import {
 } from "@newfork/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WeeklyPreferencesPanel } from "./WeeklyPreferencesPanel";
+import { RequestError } from "../lib/request-error";
 import {
   loadWeeklyPreferences,
   saveWeeklyPreferences,
@@ -66,7 +67,39 @@ async function setup() {
   await screen.findByRole("button", { name: "Save" });
   return { result, client };
 }
+const conflictSentence =
+  "Availability changed. Reload before saving; your draft has not been saved.";
 describe("weekly preferences API panel", () => {
+  // BL-797 (E4-14): Can saved Ali's week first; Ayşe's Save is refused. One
+  // press of Reload shows Can's week and her next Save goes through.
+  it("offers Reload after a conflict and saves against the latest week", async () => {
+    const { result } = await setup();
+    fireEvent.click(screen.getByRole("switch", { name: /Monday all day unavailable/i }));
+    const latest = model();
+    latest.employee.revision = 3;
+    latest.employee.submitted = true;
+    vi.mocked(loadWeeklyPreferences).mockResolvedValue(latest);
+    vi.mocked(saveWeeklyPreferences)
+      .mockRejectedValueOnce(new RequestError(conflictSentence, "availability.changed", undefined, 409))
+      .mockResolvedValueOnce(result);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText(conflictSentence);
+
+    // Reload waits for Can's week before it resets the form.
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(screen.queryByText(conflictSentence)).toBeNull());
+    expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2);
+    expect(
+      (screen.getByRole("switch", { name: /Monday all day unavailable/i }) as HTMLInputElement)
+        .checked,
+    ).toBe(false);
+    fireEvent.click(screen.getByRole("switch", { name: /Monday all day unavailable/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]![1]).toEqual(
+      expect.objectContaining({ expected_revision: 3 }),
+    );
+  });
   it("refreshes this workspace's Schedule projection after a successful preference save", async () => {
     const { result, client } = await setup();
     const invalidate = vi.spyOn(client, "invalidateQueries");
@@ -89,15 +122,31 @@ describe("weekly preferences API panel", () => {
     );
     await screen.findByText("Saved");
   });
+  it("keeps the conflict and its Reload when the latest week cannot be fetched", async () => {
+    await setup();
+    fireEvent.click(screen.getByRole("switch", { name: /Monday all day unavailable/i }));
+    vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
+      new RequestError(conflictSentence, "availability.changed", undefined, 409),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText(conflictSentence);
+    vi.mocked(loadWeeklyPreferences).mockRejectedValueOnce(new TypeError("Refresh unavailable"));
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Reload" })).toHaveProperty("disabled", false),
+    );
+    expect(screen.getByText(conflictSentence)).toBeTruthy();
+  });
   it("uses a fresh save key after a definitive server conflict", async () => {
     const { result } = await setup();
     vi.mocked(saveWeeklyPreferences)
       .mockRejectedValueOnce(
-        Object.assign(new Error("Pending requests changed"), { status: 409 }),
+        new RequestError(conflictSentence, "availability.changed", undefined, 409),
       )
       .mockResolvedValueOnce(result);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await screen.findByText("Pending requests changed");
+    await screen.findByText(conflictSentence);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledTimes(2));
     expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]![2]).not.toBe(
@@ -132,5 +181,32 @@ describe("weekly preferences API panel", () => {
     });
     await screen.findByText("Access removed");
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
+  // BL-798 (E4-15): the core's "Not allowed" reads as a sentence for the
+  // person, without a Retry that cannot help.
+  it("says the person has no access instead of the core's refusal", async () => {
+    vi.mocked(loadWeeklyPreferences).mockRejectedValue(
+      new RequestError("Not allowed", "authz.out_of_scope", undefined, 404),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <WeeklyPreferencesPanel workspaceId={w} audience="manager" employeeId="x" />
+      </QueryClientProvider>,
+    );
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "You don't have access to this availability.",
+    );
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+  it("words a refused save for the person when access was removed", async () => {
+    await setup();
+    vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
+      new RequestError("Not allowed", "authz.missing_permission", undefined, 403),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(
+      await screen.findByText("You don't have access to change this availability."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Not allowed")).toBeNull();
   });
 });

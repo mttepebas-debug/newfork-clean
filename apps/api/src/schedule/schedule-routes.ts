@@ -189,6 +189,10 @@ const applyTemplateBodySchema = mutationRevisionSchema.extend({
   mode: z.enum(["merge", "overwrite"]),
   department_keys: z.array(z.string()).nullable().optional(),
 });
+const templateApplyPreviewBodySchema = z.object({
+  template_id: z.string().uuid(),
+  department_keys: z.array(z.string()).nullable().optional(),
+});
 const applyAutoFillBodySchema = mutationRevisionSchema.extend({
   fingerprint: z.string().length(64),
   assignments: z.array(scheduleAutoFillAssignmentSchema).max(500),
@@ -939,6 +943,34 @@ export function registerScheduleRoutes(
     }
   });
 
+  // KK-162 (BL-694): Replace's first click says how many shifts it removes.
+  app.post("/schedule/edit-sessions/:sessionId/template-apply-preview", async (request, reply) => {
+    const context = authorize(await activeActor(request, options), "schedule.templates");
+    const params = activeSessionParamsSchema.safeParse(request.params);
+    const body = templateApplyPreviewBodySchema.safeParse(request.body);
+    if (!params.success || !body.success)
+      return reply
+        .status(400)
+        .send({ error: "Valid template preview required" });
+    if (!options.service)
+      return reply
+        .status(503)
+        .send({ error: "Schedule service is not configured" });
+    try {
+      return reply.send(
+        await options.service.previewTemplateApply({
+          actorUserId: context.userId,
+          workspaceId: context.workspace.id,
+          sessionId: params.data.sessionId,
+          templateId: body.data.template_id,
+          departmentKeys: body.data.department_keys ?? null,
+        }),
+      );
+    } catch (error) {
+      return scheduleError(reply, error);
+    }
+  });
+
   // S2 (KK-171): Undo takes the edit's last step back on the server.
   app.post("/schedule/edit-sessions/:sessionId/undo", async (request, reply) => {
     const context = authorize(await activeActor(request, options), "schedule.edit");
@@ -1440,10 +1472,11 @@ function scheduleError(reply: FastifyReply, error: unknown) {
   // Only this explicit rejection may enter the client's assessment/retry path
   // (the database raises it as PT409; PostgREST retries 40001 on its own).
   // Other serialization failures still require a fresh edit session.
+  // BL-1044: the database names it in the hint; the sentence may change.
   if (
     error instanceof HttpError &&
     error.pgCode === "PT409" &&
-    error.message === "Review the current availability assessment before saving"
+    error.reason === "schedule.availability_review_required"
   )
     return reply.status(409).send({
       error: error.message,

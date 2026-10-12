@@ -4,7 +4,7 @@ import type {
 } from "@newfork/shared/schedule";
 import { scheduleShiftSchema } from "@newfork/shared/schedule";
 import { ConfirmButton, useToast } from "@newfork/ui";
-import type { ShiftAvailabilityAssessment } from "@newfork/shared";
+import { SAME_START_END_TIME_MESSAGE, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../lib/closedDayAnswer";
 import { ChevronDown, Minus, Plus, Trash2, X } from "lucide-react";
@@ -1174,7 +1174,7 @@ function getShiftTimeValidationMessage(
     return "Enter start and end time.";
   }
   if (startTime === endTime) {
-    return "Start and end time cannot be the same.";
+    return SAME_START_END_TIME_MESSAGE;
   }
   return null;
 }

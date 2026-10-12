@@ -33,6 +33,7 @@ import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
 import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 type StatusFilter = "all" | "draft" | "scheduled" | "published";
@@ -515,6 +516,21 @@ function comparable(draft: AnnouncementInput) {
     job_ids: [...(draft.job_ids ?? [])].sort(),
   });
 }
+// BL-1047: the database says which refusal a 409 is with its key. Someone
+// changed the announcement since this editor opened it (an edit, publish or
+// archive elsewhere), so the editor's revision is old; or it was archived and
+// cannot be edited. Either way the list is reloaded behind the drawer.
+const refusalSentence: Record<string, string> = {
+  "announcement.changed":
+    "This announcement was changed by someone else. Close it and open it again to see the current version.",
+  "announcement.archived":
+    "This announcement was archived and can no longer be edited.",
+};
+function keyedRefusal(error: unknown): string | null {
+  return error instanceof RequestError && error.status === 409 && error.reason
+    ? (refusalSentence[error.reason] ?? null)
+    : null;
+}
 function AnnouncementEditor({
   item,
   model,
@@ -550,6 +566,9 @@ function AnnouncementEditor({
         expected_revision: initialItem?.revision ?? null,
         announcement: announcementInputSchema.parse(draft),
       }),
+    onError: async (error) => {
+      if (keyedRefusal(error)) await refresh();
+    },
     onSuccess: async () => {
       await refresh();
       onDone(
@@ -568,6 +587,9 @@ function AnnouncementEditor({
         action,
         initialItem!.revision,
       ),
+    onError: async (error) => {
+      if (keyedRefusal(error)) await refresh();
+    },
     onSuccess: async (result, action) => {
       await refresh();
       onDone(
@@ -805,7 +827,9 @@ function AnnouncementEditor({
           )}
           {(save.error || transition.error) && (
             <p className="form-error" role="alert">
-              {save.error?.message ?? transition.error?.message}
+              {save.error
+                ? (keyedRefusal(save.error) ?? save.error.message)
+                : (keyedRefusal(transition.error) ?? transition.error?.message)}
             </p>
           )}
         </div>

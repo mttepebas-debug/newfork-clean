@@ -178,6 +178,115 @@ describe("shared document review", () => {
     expect(screen.getByText("certificate.pdf")).toBeTruthy();
     expect(uploadDocument).toHaveBeenCalledOnce();
   });
+  // BL-832 (KK-180 (2)): a reason typed and then left for Approve stays out of
+  // the approval and its history line.
+  it("sends no rejection reason with an approval", async () => {
+    page();
+    fireEvent.change(await screen.findByLabelText("Rejection reason"), {
+      target: { value: "Unreadable" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+
+    await waitFor(() =>
+      expect(reviewDocument).toHaveBeenCalledWith(
+        expect.anything(),
+        "requirement",
+        expect.objectContaining({ decision: "approve", reason: "" }),
+      ),
+    );
+  });
+
+  // BL-828 (KK-180 (2)): Zeynep approves a card Mert already decided; the
+  // drawer reloads and says so instead of the server's "refresh required".
+  it("reloads the drawer and says so when the document changed meanwhile", async () => {
+    const { invalidate } = page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("document changed; refresh required", "document.changed", undefined, 409),
+    );
+    const decided = detail();
+    decided.obligation.revision = 2;
+    decided.obligation.status = "completed";
+    decided.submissions[0]!.state = "accepted";
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    vi.mocked(getDocument).mockResolvedValue(decided);
+
+    expect(
+      await screen.findByText("This document changed. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("document changed; refresh required")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["document-lifecycle", "user", "workspace"],
+    });
+  });
+  // BL-1028: the database names the kind of 409. "Changed meanwhile" says so
+  // even when the reload looks the same, and never shows the server's sentence.
+  it("says the document changed by its key, whatever the reload brings", async () => {
+    page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("document changed; refresh required", "document.changed", undefined, 409),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect(
+      await screen.findByText("This document changed. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("document changed; refresh required")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+  // A standing refusal is also a 409 ("changes are paused"); nothing changed,
+  // so there is nothing to reload and the refusal's own sentence stays, even
+  // when somebody else's change lands at the same time.
+  it("keeps a standing 409 refusal's sentence and claims no change", async () => {
+    const { invalidate } = page();
+    const later = detail();
+    later.obligation.revision = 2;
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("Document is unpublished; changes are paused", "document.paused", undefined, 409),
+    );
+    vi.mocked(getDocument).mockResolvedValueOnce(detail()).mockResolvedValue(later);
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Document is unpublished; changes are paused",
+    );
+    expect(
+      screen.queryByText("This document changed. You're seeing the latest version."),
+    ).toBeNull();
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ["document-lifecycle", "user", "workspace"],
+    });
+  });
+  it("words a failed save for the person, not the server", async () => {
+    page();
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("Internal server error", undefined, undefined, 500),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Couldn't save. Try again.",
+    );
+  });
+
+  // BL-830 (KK-180 (2)): the version heading and a file's decision read as the
+  // list does, never the stored code.
+  it("names a version's state and a file's decision in words", async () => {
+    const shown = detail();
+    shown.obligation.status = "completed";
+    shown.obligation.submitted_id = null;
+    shown.submissions[0]!.state = "superseded";
+    shown.submissions[0]!.files[0]!.decision = "discard";
+    vi.mocked(getDocument).mockResolvedValue(shown);
+    page(true);
+
+    expect(
+      await screen.findByRole("heading", { name: "Version 1 · Replaced" }),
+    ).toBeTruthy();
+    expect(screen.getByText("Discarded")).toBeTruthy();
+    expect(screen.queryByText("discard")).toBeNull();
+  });
+
   it("requires rejection reason, disables exhausted remaining time, keeps the drawer open and advances only on Next", async () => {
     const { onClose, onNext } = page();
     const reject = await screen.findByRole("button", { name: "Reject" });
@@ -264,7 +373,10 @@ describe("shared document review", () => {
     page();
 
     expect(
-      await screen.findByText(/not asked for the documents they ask of everyone/),
+      // BL-834: in the person's words, not the rule's.
+      await screen.findByText(
+        "Owners aren't required to submit documents. Uploading is optional.",
+      ),
     ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Remove exemption" }),
@@ -286,6 +398,24 @@ describe("shared document review", () => {
     ).toBeNull();
     expect(screen.getByLabelText("Upload document")).toBeTruthy();
   });
+});
+
+// BL-1014: the decision can move the person out of Onboarding; the Employees list
+// and the person's drawer read it again instead of keeping the old status.
+it("refreshes the Employees list and the person's drawer after a decision", async () => {
+  const { invalidate } = page();
+  fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+  await waitFor(() =>
+    expect(reviewDocument).toHaveBeenCalledWith(
+      expect.anything(),
+      "requirement",
+      expect.objectContaining({ decision: "approve" }),
+    ),
+  );
+  await waitFor(() =>
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employees", "workspace"] }),
+  );
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ["employee-detail", "workspace"] });
 });
 
 it("keeps paused document evidence readable while upload and review controls are absent",async()=>{
@@ -818,7 +948,7 @@ describe("a row whose unreviewed upload is hidden", () => {
     vi.mocked(getDocument).mockResolvedValue(doc);
     page();
     expect(
-      await screen.findByRole("heading", { name: "Version 1 · accepted" }),
+      await screen.findByRole("heading", { name: "Version 1 · Approved" }),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reject" })).toBeNull();
@@ -1092,6 +1222,34 @@ describe("download, document time zone and deadline extension", () => {
       }),
     );
     await waitFor(() => expectRefreshed(invalidate));
+  });
+  // BL-828: someone changed the person's record first; the document revision
+  // is the same, the person's is newer. The drawer reloads and says so.
+  it("says the document changed when the person's record moved on before a time zone save", async () => {
+    const doc = detail();
+    doc.timezone_settings = {
+      value: "America/Chicago",
+      configured_value: "America/Chicago",
+      employee_revision: 4,
+      can_manage: true,
+    };
+    vi.mocked(getDocument).mockResolvedValue(doc);
+    vi.mocked(setDocumentTimezone).mockRejectedValueOnce(
+      new RequestError("employee changed; refresh required", "employee.revision_conflict", undefined, 409),
+    );
+    page();
+    fireEvent.change(await screen.findByRole("combobox", { name: "Time zone" }), {
+      target: { value: "America/Denver" },
+    });
+    const later = detail();
+    later.timezone_settings = { ...doc.timezone_settings, employee_revision: 5 };
+    vi.mocked(getDocument).mockResolvedValue(later);
+    fireEvent.click(screen.getByRole("button", { name: "Save document time zone" }));
+
+    expect(
+      await screen.findByText("This document changed. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("employee changed; refresh required")).toBeNull();
   });
   it("hides the document time zone from whoever cannot manage it", async () => {
     const doc = detail();

@@ -18,8 +18,7 @@ select tests.role('s', 'catalog lead', 'manager', array(
   from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('s') and r.system_key = 'manager'
-) || array['settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-           'documents.read']);
+) || array['settings.jobs.read', 'settings.shift_catalog.read', 'documents.read']);
 select tests.person('s', 'lale', 'catalog lead', array['K'], array['cook']);
 select tests.person('s', 'nuri', 'catalog lead', null, null);
 select tests.person('s', 'emre', 'employee', array['K'], array['cook']);
@@ -85,20 +84,22 @@ select is(
 
 select is(
   array(select r.name || ': ' || pg_temp.answer(r.name, tests.user('s:lale'), tests.id('s'))
-        from reader r where r.name <> 'read_role_workspace_service' order by 1),
-  array(select r.name || ': allowed' from reader r where r.name <> 'read_role_workspace_service' order by 1),
+        from reader r where r.name not in ('read_role_workspace_service', 'list_settings_locations_service') order by 1),
+  array(select r.name || ': allowed' from reader r
+        where r.name not in ('read_role_workspace_service', 'list_settings_locations_service') order by 1),
   'a manager whose role holds the read permissions reads the catalog pages'
 );
+-- Settings > Locations is for owners and admins only, no manager role may hold
+-- its read (Mert 2026-10-12, BL-176; organization_settings_stay_with_owner_and_admin).
 select is(
-  array(select l ->> 'name' from jsonb_array_elements(
-    public.list_settings_locations_service(tests.user('s:lale'), tests.id('s'))) l),
-  array['Kadikoy'],
-  'a manager reads only the locations they work at'
+  pg_temp.answer('list_settings_locations_service', tests.user('s:lale'), tests.id('s')),
+  '42501 authz.missing_permission',
+  'a manager is refused Settings > Locations, where they work too'
 );
 select is(
   pg_temp.answer('list_settings_locations_service', tests.user('s:nuri'), tests.id('s')),
-  '42501 authz.out_of_scope',
-  'a manager who works nowhere reads no location'
+  '42501 authz.missing_permission',
+  'and so is a manager who works nowhere'
 );
 select is(
   pg_temp.answer('read_settings_jobs_service', tests.user('s:nuri'), tests.id('s')),

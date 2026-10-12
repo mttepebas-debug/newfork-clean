@@ -74,8 +74,12 @@ describe("ConfirmButton", () => {
     );
     const button = screen.getByRole("button");
 
+    // An unarmed button leaves Escape alone (a window may close on it).
+    expect(fireEvent.keyDown(button, { key: "Escape" })).toBe(true);
     fireEvent.click(button);
-    fireEvent.keyDown(button, { key: "Escape" });
+    // Armed, Escape only disarms: its default goes too, or a native <dialog>
+    // around the button gets a cancel for the same key and closes.
+    expect(fireEvent.keyDown(button, { key: "Escape" })).toBe(false);
     expect(button.textContent).toBe("Revoke");
 
     fireEvent.click(button);

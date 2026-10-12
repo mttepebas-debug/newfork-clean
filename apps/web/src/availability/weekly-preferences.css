@@ -56,9 +56,11 @@
 .weekly-settings-options label svg {
   flex-shrink: 0;
 }
+/* BL-842: the page's other choices (Week starts on, Time format) mark the
+   pick in light green with green text; white on grey was ~1.05:1. */
 .weekly-settings-options label[data-selected="true"] {
-  background: var(--wp-bg);
-  box-shadow: 0 1px 3px #00000012;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-strong);
 }
 .weekly-settings-options label:focus-within {
   outline: 2px solid var(--wp-accent);

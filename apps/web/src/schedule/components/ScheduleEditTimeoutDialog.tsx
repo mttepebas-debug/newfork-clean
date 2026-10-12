@@ -1,4 +1,5 @@
-import type { JSX } from "react";
+import { useRef, type JSX } from "react";
+import { useDialogFocus } from "../lib/useDialogFocus";
 
 export interface ScheduleEditTimeoutDialogProps {
   readonly open: boolean;
@@ -23,6 +24,8 @@ export function ScheduleEditTimeoutDialog({
   onContinue,
   onSaveDraft,
 }: ScheduleEditTimeoutDialogProps): JSX.Element | null {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialogRef, open);
   const progressPercent = Math.max(
     0,
     Math.min(100, (secondsRemaining / countdownSeconds) * 100),
@@ -33,6 +36,7 @@ export function ScheduleEditTimeoutDialog({
   return (
     <div className="schedule-dialog-layer" role="presentation">
       <div
+        ref={dialogRef}
         className="schedule-timeout-dialog"
         role="dialog"
         aria-modal="true"
@@ -46,6 +50,8 @@ export function ScheduleEditTimeoutDialog({
         <section>
           <h2 id="schedule-timeout-title">Keep editing?</h2>
           <p>No activity for {idleMinutes} minutes.</p>
+          {/* BL-719 (S1): what the countdown ends in. */}
+          <p>When time runs out, your changes are saved as a draft and editing ends.</p>
           {error ? (
             <p className="schedule-timeout-error" role="alert">
               {error}
@@ -58,6 +64,7 @@ export function ScheduleEditTimeoutDialog({
             <button
               type="button"
               className="primary"
+              data-dialog-autofocus
               disabled={isSaving}
               onClick={onContinue}
             >

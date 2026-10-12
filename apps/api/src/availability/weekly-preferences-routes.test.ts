@@ -378,6 +378,29 @@ describe("weekly preference routes", () => {
       await app.close();
     }
   });
+  // BL-1028: a week saved over a newer one says so with a key, so the form
+  // offers Reload for that refusal and not for any other 409.
+  it("passes the database's availability.changed key on with the 409", async () => {
+    const { app, service } = setup();
+    service.saveWeekly.mockRejectedValue(
+      rpcFailure({ message: "Availability changed. Reload before saving; your draft has not been saved.", code: "PT409", hint: "availability.changed" }),
+    );
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspace}/availability/weekly`,
+        headers: { authorization: "Bearer test", "idempotency-key": key },
+        payload: command,
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({
+        error: "Availability changed. Reload before saving; your draft has not been saved.",
+        reason: "availability.changed",
+      });
+    } finally {
+      await app.close();
+    }
+  });
   // The "no" contract: not a member is 404, any other authz.* is 403.
   it.each([
     ["authz.not_member", 404],
@@ -416,6 +439,8 @@ describe("weekly preference routes", () => {
         payload: method === "POST" ? (path === "/weekly" ? command : { input_mode: "time_range", onboarding_required: false, expected_revision: 0 }) : undefined,
       });
       expect(response.statusCode).toBe(404);
+      // BL-794: the one "not a member" answer, so the web reads it as no access.
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
       expect(Object.values(service).every((call) => call.mock.calls.length === 0)).toBe(true);
     } finally {
       await app.close();

@@ -122,18 +122,18 @@ describe("post-commit shift exchange inbox delivery", () => {
   });
 });
 
-describe("approved time off in an exchange (BL-182)", () => {
-  it("keeps the shortening flag and the agreed hours on the way to the screen", async () => {
+describe("approved time off in an exchange (BL-995)", () => {
+  it("carries the time-off blocker to the screen", async () => {
     const eligibility = {
-      status: "eligible",
-      reasons: ["Position and location match", "No assignment blockers"],
-      shortens_time_off: true,
+      status: "ineligible",
+      reasons: ["Approved time off overlaps this shift"],
+      blockers: [{ code: "approved_time_off", message: "Approved time off overlaps this shift" }],
     };
     mocks.rpc.mockResolvedValueOnce({
       data: {
-        allowed: true,
+        allowed: false,
         fingerprint: "abc",
-        reasons: [],
+        reasons: ["The receiving employee is not eligible for the full shift"],
         receiver: eligibility,
         giver: null,
         requires_other_manager: false,
@@ -142,6 +142,9 @@ describe("approved time off in an exchange (BL-182)", () => {
       error: null,
     });
     const preview = await service().preview(actor, workspace, caseId, caseId);
-    expect(preview.receiver.shortens_time_off).toBe(true);
+    expect(preview.receiver.blockers).toEqual([
+      { code: "approved_time_off", message: "Approved time off overlaps this shift" },
+    ]);
+    expect(preview.receiver).not.toHaveProperty("shortens_time_off");
   });
 });

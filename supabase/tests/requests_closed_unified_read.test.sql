@@ -93,6 +93,12 @@ cross join lateral (select pg_temp.snap(case when s.kind = 'open_pickup' then nu
   case when s.n in (39, 40, 60) then 'B' else 'K' end, dd.d) snap) o
 cross join lateral (select case when s.kind = 'swap' then pg_temp.snap('veli', 'K', dd.d) end snap) r
 where s.kind <> 'time_off';
+-- Every seeded swap and cover reached the managers: somebody asked or the teammate
+-- accepted before it closed (Mert, 2026-10-11; shift_changes_reach_managers_agreed).
+insert into public.shift_exchange_events (workspace_id, case_id, action, created_at)
+select tests.id('rc'), s.id, case when s.kind = 'swap' then 'peer_accepted' else 'application_submitted' end,
+  s.closed_at - interval '12 hours'
+from rc_seed s where s.kind in ('swap', 'cover');
 
 -- The expected order: newest decision first, then kind, then id.
 create temporary table rc_expected as
@@ -225,6 +231,12 @@ select tests.publish_week('rc', 9, '[
 ]');
 select tests.remember('rc:case:ali-far', (public.shift_exchanges_command_service(tests.user('rc:ali'), tests.id('rc'),
   jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', tests.id('rc:shift:ali-far')), gen_random_uuid()) ->> 'case_id')::uuid);
+-- Veli asks for it: a cover reaches the manager once somebody asked (Mert, 2026-10-11).
+-- The Food handler card from (e) would hold him back from a pickup; he is exempt here.
+update public.employee_onboarding_requirements set lifecycle_exempt = true
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('rc:veli');
+select public.shift_exchanges_command_service(tests.user('rc:veli'), tests.id('rc'),
+  jsonb_build_object('action', 'apply', 'shift_id', tests.id('rc:shift:ali-far'), 'case_id', tests.id('rc:case:ali-far')), gen_random_uuid());
 select ok(exists (select 1 from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('rc:ayse'), tests.id('rc'), true) -> 'cases') c
   where c ->> 'id' = tests.id('rc:case:ali-far')::text and c ->> 'status' = 'open'),
   'Ayse''s list holds Ali''s open cover nine weeks out');

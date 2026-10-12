@@ -234,7 +234,8 @@
 .notification-settings input:focus-visible,
 .notification-settings select:focus-visible,
 .notification-settings summary:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, .32);
+  /* BL-664 (4): the app's one focus ring, not a faint blue halo. */
+  outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }
 

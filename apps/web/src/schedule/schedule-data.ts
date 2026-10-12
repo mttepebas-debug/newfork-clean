@@ -16,6 +16,7 @@ import {
   scheduleRecentExportEventListSchema,
   scheduleExportScheduleListSchema,
   scheduleExportScheduleSchema,
+  scheduleTemplateApplyPreviewSchema,
   scheduleTemplateApplyResultSchema,
   scheduleTemplateDetailSchema,
   scheduleTemplateListSchema,
@@ -41,6 +42,7 @@ import {
   type ScheduleExportSchedule,
   type ScheduleExportSettings,
   type ScheduleRecentExportEvent,
+  type ScheduleTemplateApplyPreview,
   type ScheduleTemplateApplyResult,
   type ScheduleTemplateDetail,
   type ScheduleTemplateList,
@@ -65,6 +67,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { UNREACHABLE, UNREADABLE, ScreenError } from "../lib/request-error";
+import { scheduleRefusalReason } from "./lib/scheduleRefusalReason";
 import { scheduleExportV2AuthorizationSchema, scheduleExportV2ScopeSchema, type ScheduleExportV2Scope } from "@newfork/shared";
 
 export async function authorizeScheduleExportV2(workspaceId: string, scope: ScheduleExportV2Scope, signal?: AbortSignal): Promise<void> {
@@ -87,9 +90,7 @@ export class ScheduleRequestError extends Error {
 }
 
 function requestReason(error: unknown): unknown {
-  return error instanceof ScheduleRequestError && typeof error.body === "object" && error.body
-    ? (error.body as { reason?: unknown }).reason
-    : undefined;
+  return error instanceof ScheduleRequestError ? scheduleRefusalReason(error) : undefined;
 }
 
 function editConflictCode(error: unknown): unknown {
@@ -622,6 +623,27 @@ export async function applyScheduleTemplate(
           template_id: templateId,
           mode,
           expected_session_revision: session.revision,
+          department_keys: departmentKeys,
+        }),
+      },
+    ),
+  );
+}
+
+/** KK-162 (BL-694): how many shifts Replace would remove, counted by the database. */
+export async function previewScheduleTemplateApply(
+  workspaceId: string,
+  sessionId: string,
+  templateId: string,
+  departmentKeys: readonly string[] | null = null,
+): Promise<ScheduleTemplateApplyPreview> {
+  return scheduleTemplateApplyPreviewSchema.parse(
+    await activeScheduleRequest(
+      `/schedule/edit-sessions/${sessionId}/template-apply-preview`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          template_id: templateId,
           department_keys: departmentKeys,
         }),
       },

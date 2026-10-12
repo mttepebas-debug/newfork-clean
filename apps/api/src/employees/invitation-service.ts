@@ -155,28 +155,35 @@ export function createEmployeeInvitationService(
         },
       );
       if (error) throw rpcFailure(error);
-      if (!data) throw new HttpError("Failed invitation not found", 404);
+      if (!data) throw new HttpError("Open invitation not found", 404);
       const row = data as {
         id?: unknown;
         email?: unknown;
         token?: unknown;
         expires_at?: unknown;
+        reminder?: unknown;
+        attempt?: unknown;
       };
       if (
         typeof row.id !== "string" ||
         typeof row.email !== "string" ||
         typeof row.token !== "string" ||
-        typeof row.expires_at !== "string"
+        typeof row.expires_at !== "string" ||
+        typeof row.reminder !== "boolean" ||
+        typeof row.attempt !== "number"
       ) {
         throw new Error("Invitation retry state is invalid");
       }
       const developmentUrl = `${options.appUrl.replace(/\/$/, "")}/invite/accept?token=${row.token}`;
       try {
+        // Same link, its own email: the first email's key is the id alone,
+        // and the provider drops a repeated key as a duplicate (BL-767).
         await deliverInvitation(
           options,
           row.email,
           developmentUrl,
-          `employee-invite/${row.id}`,
+          `employee-invite/${row.id}/${row.attempt}`,
+          row.reminder ? "reminder" : "invitation",
         );
         await markDelivery(client, {
           actorUserId: input.actorUserId,
@@ -321,20 +328,31 @@ export async function deliverInvitation(
   email: string,
   url: string,
   idempotencyKey?: string,
+  kind: "invitation" | "reminder" = "invitation",
 ): Promise<void> {
   if (!options.resendApiKey) {
     if (options.production)
       throw new Error("Employee invitation delivery is not configured");
     return;
   }
+  const link = `<p><a href="${escapeHtml(url)}">Accept invitation</a></p>`;
   await sendResendEmail({
     apiKey: options.resendApiKey,
     failure: "Invitation delivery failed",
     message: {
       from: options.emailFrom ?? "Newfork <onboarding@newfork.app>",
       to: email,
-      subject: "Join your Newfork workspace",
-      html: `<p>You have been invited to your team's Newfork workspace.</p><p><a href="${escapeHtml(url)}">Accept invitation</a></p><p>This link expires in seven days.</p>`,
+      ...(kind === "reminder"
+        ? {
+            // The same link as before; a reminder does not move its expiry
+            // (KARARLAR Employees S2).
+            subject: "Reminder: join your Newfork workspace",
+            html: `<p>Your team is still waiting for you on Newfork.</p>${link}<p>This is the same link as before. It still expires seven days after it was first sent.</p>`,
+          }
+        : {
+            subject: "Join your Newfork workspace",
+            html: `<p>You have been invited to your team's Newfork workspace.</p>${link}<p>This link expires in seven days.</p>`,
+          }),
       idempotencyKey,
     },
   });

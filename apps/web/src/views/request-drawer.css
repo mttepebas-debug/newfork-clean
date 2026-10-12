@@ -1,0 +1,545 @@
+/* Requests drawers (Mert, 2026-10-11): the Important Dates drawer's language.
+   Header with type and status, underline tabs, hairline sections, a footer
+   that holds the decision. Light theme only; colors from --theme-*. */
+.catalog-drawer .rd {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.rd-head {
+  flex: none;
+  display: grid;
+  gap: 4px;
+  padding: 18px 16px 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+.rd-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.catalog-drawer .rd-head h2 {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--theme-text);
+  overflow-wrap: anywhere;
+}
+.rd-type {
+  border-radius: 6px;
+  padding: 2px 8px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+.rd-chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.rd-chip.warn {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.rd-chip.ok {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+.rd-chip.red {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.rd-chip.grey {
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+}
+.rd-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-muted-strong);
+  cursor: pointer;
+}
+.rd-close:hover {
+  background: var(--theme-surface-muted);
+}
+.catalog-drawer .rd-sub {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+}
+.rd-sub a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--theme-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.catalog-drawer .rd-head .request-drawer-notice {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+  font-size: 12px;
+  font-weight: 700;
+}
+.catalog-drawer .rd-head .request-drawer-notice.warning {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.catalog-drawer .rd-head .request-drawer-notice.error {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.rd-tabs {
+  display: flex;
+  gap: 18px;
+  margin-top: 10px;
+  overflow-x: auto;
+}
+.rd-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 8px 0 10px;
+  color: var(--theme-muted-strong);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rd-tabs button[aria-selected="true"] {
+  color: var(--theme-text);
+  border-color: var(--theme-accent);
+}
+.rd-badge {
+  margin-left: 4px;
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+  font-size: 11px;
+}
+.rd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 16px;
+}
+.rd-sec {
+  display: grid;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--theme-border);
+}
+.rd-sec:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.rd-sec-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.catalog-drawer .rd-sec-head h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--theme-text);
+}
+.rd-sec-head > span {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.rd-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.rd-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.rd-label {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.rd-value {
+  color: var(--theme-text);
+}
+.rd-value small {
+  display: block;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.catalog-drawer .rd-note {
+  margin: 0;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.catalog-drawer .rd-note.warn {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.catalog-drawer .rd-info {
+  margin: 0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--theme-note) 9%, var(--theme-surface));
+  color: var(--theme-note);
+  font-size: 13px;
+  font-weight: 600;
+}
+.catalog-drawer .rd-quote {
+  margin: 0;
+  border-left: 3px solid var(--theme-border-strong);
+  padding: 2px 0 2px 10px;
+  color: var(--theme-text-body);
+}
+.rd-locs {
+  width: 100%;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-size: 14px;
+}
+.rd-locs th,
+.rd-locs td {
+  padding: 9px 12px;
+  text-align: left;
+  vertical-align: middle;
+  border-top: 1px solid var(--theme-border);
+}
+.rd-locs thead th {
+  border-top: 0;
+  background: var(--theme-list-head);
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.rd-locs tbody th {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.rd-locs .rd-who {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.rd-locs .rd-who-phone {
+  display: none;
+}
+.rd-group {
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.rd-group-head {
+  padding: 8px 12px;
+  background: var(--theme-surface-soft);
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.rd-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+.rd-group-head + .rd-row,
+.rd-row:first-child {
+  border-top: 0;
+}
+.rd-group-head + .rd-row {
+  border-top: 1px solid var(--theme-border);
+}
+.rd-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.rd-avatar.empty {
+  background: none;
+  border: 1.5px dashed var(--theme-border-strong);
+}
+.rd-row-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.rd-row-main b {
+  color: var(--theme-text);
+  font-size: 13.5px;
+}
+.rd-row-main > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.rd-shift {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+}
+.rd-shift-day {
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.rd-shift-time {
+  color: var(--theme-text);
+  font-size: 18px;
+  font-weight: 650;
+}
+.rd-shift-meta {
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+}
+.rd-cand {
+  display: grid;
+  grid-template-columns: 20px 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+/* The radio, avatar and name pick the person; Decline sits beside them, outside the label. */
+.rd-cand-pick {
+  display: contents;
+  cursor: pointer;
+}
+.rd-cand.off .rd-cand-pick {
+  cursor: not-allowed;
+}
+.rd-cand:first-child {
+  border-top: 0;
+}
+.rd-cand input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--theme-accent);
+}
+.rd-cand.on {
+  background: var(--theme-accent-soft);
+}
+.rd-cand.off .rd-row-main b {
+  color: var(--theme-muted);
+}
+.rd-cand:focus-within {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+.catalog-drawer .rd-empty {
+  margin: 0;
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+.catalog-drawer .rd-refusals {
+  padding-left: 28px;
+}
+.rd-activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+.rd-activity li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 13px;
+}
+.rd-activity i {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--theme-border-strong);
+}
+.rd-activity b {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.rd-activity span {
+  display: block;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.rd-foot {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  max-height: 60%;
+  overflow-y: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+.rd-foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.rd-foot-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.catalog-drawer .rd-foot-note {
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+}
+/* The drawer opens inside the Requests page, whose requests-catalog.css styles every
+   .nf-button under it. These rules reach one level deeper so the drawer keeps the
+   app's button roles: green acts, white backs out, red closes or denies. */
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary):not(.secondary-button):not(.danger-button):not(.danger-outline) {
+  border: 1px solid var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:not(.secondary):not(.secondary-button):not(.danger-button):not(.danger-outline):not(:disabled):hover {
+  background: var(--theme-accent-strong);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:is(.secondary, .secondary-button) {
+  border: 1px solid var(--theme-muted);
+  background: var(--theme-surface);
+  color: var(--theme-accent-deep);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button:is(.secondary, .secondary-button):not(:disabled):hover {
+  background: var(--theme-surface-muted);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-button {
+  border: 1px solid var(--theme-danger-strong);
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.rd-small {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-outline {
+  border: 1px solid var(--theme-danger-border);
+  background: var(--theme-surface);
+  color: var(--theme-danger-strong);
+}
+.catalog-drawer .rd :is(.rd-body, .rd-foot) .nf-button.danger-outline.is-armed {
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+}
+.rd-textarea {
+  width: 100%;
+  min-height: 74px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font: inherit;
+  resize: vertical;
+}
+.rd-foot .view-only-note {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .rd-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rd-locs .rd-who {
+    display: none;
+  }
+  .rd-locs .rd-who-phone {
+    display: block;
+    color: var(--theme-muted);
+    font-size: 12.5px;
+    font-weight: 400;
+  }
+  .rd-foot-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rd-foot-actions {
+    margin-left: 0;
+  }
+  .rd-foot-actions .nf-button,
+  .rd-foot-row > .nf-button {
+    flex: 1;
+    min-height: 44px;
+  }
+}
+
+.catalog-drawer .rd-lock {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rd-step { display: contents; }

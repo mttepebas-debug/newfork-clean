@@ -6,6 +6,7 @@ import {
   saveWeeklyPreferences,
 } from "./availability-data";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
+import { isNoAccess } from "../lib/no-access";
 
 type Props = {
   workspaceId: string;
@@ -89,16 +90,22 @@ function ConnectedPreferences({
     query.error && typeof query.error === "object" && "status" in query.error
       ? Number(query.error.status)
       : 0;
+  // BL-798: the core's "no" reads as a sentence; retrying cannot change it.
+  const noAccess = isNoAccess(query.error);
   const readError = query.isError ? (
     <div role="alert">
       <p>
-        {query.error instanceof Error
-          ? query.error.message
-          : "Availability could not be loaded."}
+        {noAccess
+          ? "You don't have access to this availability."
+          : query.error instanceof Error
+            ? query.error.message
+            : "Availability could not be loaded."}
       </p>
-      <button type="button" onClick={() => void query.refetch()}>
-        Retry
-      </button>
+      {noAccess ? null : (
+        <button type="button" onClick={() => void query.refetch()}>
+          Retry
+        </button>
+      )}
     </div>
   ) : null;
   if (
@@ -119,6 +126,11 @@ function ConnectedPreferences({
         onSave={save}
         wizard={onboarding}
         extraAction={extraAction}
+        // BL-797: someone saved first; Reload shows their week.
+        onReload={async () => {
+          const latest = await query.refetch();
+          return latest.isError ? undefined : latest.data;
+        }}
       />
     </>
   );

@@ -1,7 +1,12 @@
 import {
+  documentFormatSchema,
+  type DocumentFormat,
   type DocumentObligation,
   type DocumentObligationStatus,
+  type DocumentDetail,
 } from "@newfork/shared";
+
+type DocumentSubmission = DocumentDetail["submissions"][number];
 
 /** Closed obligation: statuses in which the employee can no longer act on it; the manager's review decision is gated by the same three. */
 export function isObligationClosed(status: DocumentObligationStatus): boolean {
@@ -40,6 +45,26 @@ const statusLabels: Record<DocumentObligationStatus, string> = {
   paused: "Paused",
 };
 
+// BL-831: what needs someone first. A grace period is a missing document
+// still inside its time; the closed ones go last.
+const statusWeights: Record<DocumentObligationStatus, number> = {
+  pending_review: 0,
+  missing: 1,
+  grace: 1,
+  timezone_required: 2,
+  expired: 3,
+  rejected: 4,
+  paused: 5,
+  completed: 6,
+  exempt: 7,
+  removed: 8,
+};
+
+/** Status order for the list's Status column: most urgent first. */
+export function statusWeight(status: DocumentObligationStatus): number {
+  return statusWeights[status];
+}
+
 /** The status as a person reads it, in the list and the drawer alike. */
 export function statusLabel(
   obligation: Excusable & Pick<DocumentObligation, "approved_id">,
@@ -61,4 +86,39 @@ export function acceptAttribute(
   return formats
     .map((f) => (f === "jpeg" ? ".jpg,.jpeg" : `.${f}`))
     .join(",");
+}
+
+const versionStateLabels: Record<DocumentSubmission["state"], string> = {
+  draft: "Draft",
+  pending_review: "Needs review",
+  accepted: "Approved",
+  rejected: "Rejected",
+  superseded: "Replaced",
+};
+
+/** A version's state as the drawer heading reads it, in the list's words (BL-830). */
+export function versionStateLabel(state: DocumentSubmission["state"]): string {
+  return versionStateLabels[state];
+}
+
+/** A reviewer's decision on one file, once made (BL-830). */
+export function fileDecisionLabel(
+  decision: DocumentSubmission["files"][number]["decision"],
+): string {
+  return decision === "keep" ? "Kept" : "Discarded";
+}
+
+const formatNames: Record<DocumentFormat, string> = {
+  pdf: "PDF",
+  jpeg: "JPEG",
+  png: "PNG",
+  webp: "WebP",
+};
+
+/** Accepted formats in one order and spelling, list and editor alike (BL-857). */
+export function formatsLabel(formats: readonly DocumentFormat[]): string {
+  return documentFormatSchema.options
+    .filter((format) => formats.includes(format))
+    .map((format) => formatNames[format])
+    .join(", ");
 }

@@ -15,11 +15,13 @@ async function openSchedule(browser: Browser, person: Person): Promise<Page> {
   return page;
 }
 
-// This week in round 0; a later week per --repeat-each round, since the
-// sessions a round leaves open would meet the next round (BL-203).
+// Next week in round 0; a later week per --repeat-each round, since the
+// sessions a round leaves open would meet the next round (BL-203). Never this
+// week: on a Sunday evening here the workspace (Istanbul) is already on Monday,
+// and this computer's week is a past week there, closed to editing (BL-1051).
 function roundDate(): string {
   const day = new Date();
-  day.setDate(day.getDate() + 7 * round());
+  day.setDate(day.getDate() + 7 * (1 + round()));
   return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
 }
 

@@ -7,7 +7,7 @@
 //   ci                     pushes train/<stamp> and waits for its GitHub Actions run: the full check, once (WORKFLOW-V2)
 //   push                   origin main fast-forwarded to the train, only when ci was green for that very sha
 //   apply-local            the train's new migrations into the shared local database, holding db for this step only
-//   run <branch[@sha]…>    build → ci → push → apply-local; coord/kayit rides along when main lacks its commits
+//   run <branch[@sha]…>    build → ci → push → apply-local; coord/kayit2 rides along when main lacks its commits
 // The push runs inside this script, so scripts/guard.mjs never sees it; the same rules (fast-forward only, a green
 // CI) hold here and land in the guard's audit.log. NF_OVERRIDE="<reason>" in front of a step passes a lock or CI
 // check (origin/main saved first; never a non-fast-forward push) and is logged.
@@ -92,8 +92,8 @@ function migrationChanges(repo, commits, onMain) {
 // Commits whose change main does not have yet, oldest first (`git cherry` matches rebased copies by patch).
 const ahead = (repo, ref) => listed(git(repo, ["cherry", BASE, ref])).filter((l) => l.startsWith("+ ")).map((l) => l.slice(2));
 
-const COORD_BRANCH = "coord/kayit"; // the coordinator's records (spec §7.3)
-// Record files (guard.mjs isRecordFile) a branch's own commits change; only coord/kayit may carry them (spec §10).
+const COORD_BRANCH = "coord/kayit2"; // the coordinator's records (spec §7.3)
+// Record files (guard.mjs isRecordFile) a branch's own commits change; only coord/kayit2 may carry them (spec §10).
 function recordFiles(repo, commits) {
   const files = new Set();
   for (const c of commits)
@@ -559,7 +559,7 @@ function coordBranch(repo) {
 
 export function run(ctx, args) {
   const names = [...args];
-  tryGit(ctx.repo, ["fetch", "-q", "origin"]); // coord/kayit as origin has it now
+  tryGit(ctx.repo, ["fetch", "-q", "origin"]); // coord/kayit2 as origin has it now
   const coord = coordBranch(ctx.repo);
   if (coord && !names.some((n) => n.split("@")[0] === COORD_BRANCH)) names.push(coord);
   if (!names.length) return { code: 1, lines: ["trene girecek dal yok"] };
@@ -649,7 +649,7 @@ const realExec = (trainDir) => ({
 });
 
 const USAGE = [
-  "usage: node scripts/train.mjs run <dal[@sha]…>   (build → ci → push → apply-local; coord/kayit kendiliğinden)",
+  "usage: node scripts/train.mjs run <dal[@sha]…>   (build → ci → push → apply-local; coord/kayit2 kendiliğinden)",
   "       node scripts/train.mjs plan|build <dal[@sha]…>",
   "       node scripts/train.mjs ci|push|apply-local",
   '       NF_OVERRIDE="<gerekçe>" önüne: kilit ya da CI kontrolünü aşar (origin/main önce yedeklenir, audit.log); fast-forward olmayan push asla',

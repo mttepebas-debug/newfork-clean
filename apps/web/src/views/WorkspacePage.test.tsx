@@ -13,13 +13,14 @@ import type {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import WorkspacePage from "./WorkspacePage";
+import WorkspacePage, { dueLabel } from "./WorkspacePage";
 import {
   createWorkspaceTodo,
   getOwnerSetupChecklistProgress,
   getWorkspaceDashboard,
   markOwnerSetupChecklistItem,
   resolveWorkspaceTodo,
+  saveWorkspaceLayout,
 } from "../communications/communications-data";
 
 import { RequestError } from "../lib/request-error";
@@ -227,6 +228,90 @@ describe("WorkspacePage setup checklist", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 
+  // BL-810 (E5-09): the box shows five at most; like Notifications, it links
+  // to the whole list.
+  it("links the announcements box to all announcements", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      announcements: [
+        { id: "a9700000-0000-4000-8000-000000000021", title: "Patio opens", category: "general" },
+      ] as never,
+    });
+    renderPage();
+    const link = await screen.findByRole("link", { name: "View all announcements" });
+    expect(link.getAttribute("href")).toBe("/app/announcements");
+    // BL-666 (3): the category reads as a word, not the stored code.
+    const row = screen.getByRole("link", { name: /Patio opens/ });
+    expect(row.textContent).toContain("General");
+    expect(row.textContent).not.toContain("general");
+  });
+
+  // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; seven
+  // hidden cards leave a line saying so; the eye icons are decoration.
+  it("keeps a hidden card's content out of reach and its eye icons decorative", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      layout: { ...dashboard.layout, hidden_widget_ids: ["todos"] },
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
+    const todos = screen.getByRole("heading", { name: "Todos" }).closest("article")!;
+    expect(todos.querySelector("[inert]")?.querySelector("input")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Show Todos" }).querySelector("svg")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    // Showing it again keeps the typed todo: the card is not rebuilt.
+    fireEvent.change(todos.querySelector("input")!, { target: { value: "Call the plumber" } });
+    fireEvent.click(screen.getByRole("button", { name: "Show Todos" }));
+    expect(todos.querySelector("[inert]")).toBeNull();
+    expect(todos.querySelector("input")?.value).toBe("Call the plumber");
+    expect(
+      screen.getByRole("button", { name: "Hide Announcements" }).querySelector("svg")
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
+  });
+  it("says every card is hidden instead of an empty page", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      layout: { ...dashboard.layout, hidden_widget_ids: [...dashboard.layout.widget_order] },
+    });
+    renderPage();
+    expect(
+      await screen.findByText("Every card is hidden. Use Customize to show them again."),
+    ).toBeTruthy();
+  });
+
+  // BL-814 (E5-14): a dropped connection or a server failure reads as one
+  // plain sentence, never the browser's or the server's words.
+  it("words a failed page read for the person", async () => {
+    vi.mocked(getWorkspaceDashboard).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderPage();
+    expect(
+      await screen.findByText("Newfork could not finish that. Try again in a moment."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+  });
+  it("words a failed layout save for the person", async () => {
+    vi.mocked(saveWorkspaceLayout).mockRejectedValue(
+      new RequestError("Internal server error", undefined, undefined, 500),
+    );
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save layout" }));
+    expect(
+      await screen.findByText("Newfork could not finish that. Try again in a moment."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Internal server error")).toBeNull();
+  });
+  it("says the checklist could not be loaded when its read fails", async () => {
+    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValue(new TypeError("Failed to fetch"));
+    renderPage();
+    expect(
+      await screen.findByText("Setup checklist progress could not be loaded."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Setup checklist progress could not be saved.")).toBeNull();
+  });
+
   // BL-278 (7): a failed check must not show zero shift changes waiting.
   it("does not show zero shift changes when they could not be checked", async () => {
     currentContext = { ...context, actions: [...context.actions, "exchange.read"] };
@@ -375,6 +460,41 @@ describe("WorkspacePage setup checklist", () => {
     const todos = await screen.findByRole("heading", { name: "Todos" });
     expect(todos).toBeTruthy();
     expect(screen.getByText("Employee document expires soon")).toBeTruthy();
+    // BL-666 (2): a due date does not hide whose document it is.
+    const row = screen.getByRole("link", { name: /Employee document expires soon/ });
+    expect(row.textContent).toContain("Taylor Reed - Food handler card");
+    expect(row.textContent).toMatch(/Due (in )?\d+[mhd]( ago)?/);
+    // BL-666 (4): a row that goes somewhere keeps its arrow.
+    expect(row.querySelector(".lucide-arrow-right")).toBeTruthy();
+  });
+
+  // BL-666 (4): only a row that goes somewhere carries the arrow.
+  it("draws the row arrow only on todos that link somewhere", async () => {
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      todos: [
+        {
+          id: "a9700000-0000-4000-8000-000000000002",
+          workspace_id: workspaceId,
+          title: "Restock napkins",
+          body: "",
+          severity: "info",
+          status: "open",
+          system_generated: false,
+          source_type: null,
+          source_id: null,
+          source_key: null,
+          employee_id: null,
+          due_at: null,
+          action_url: null,
+          created_at: "2026-09-05T12:00:00.000Z",
+        },
+      ] as never,
+    });
+    renderPage();
+    const title = await screen.findByText("Restock napkins");
+    const row = title.closest(".workspace-todo-row")!;
+    expect(row.querySelector(".lucide-arrow-right")).toBeNull();
   });
 
   it("creates manual workspace todos from the widget", async () => {
@@ -488,5 +608,19 @@ describe("WorkspacePage setup checklist", () => {
     ).toBeTruthy();
     expect(within(checklist).getAllByText("Optional visit").length).toBeGreaterThan(0);
     expect(within(checklist).queryByText(/setup complete/i)).toBeNull();
+  });
+});
+
+// BL-1013: a to-do due later read "Due 1m ago".
+describe("dueLabel", () => {
+  const now = Date.parse("2026-10-11T12:00:00Z");
+  it("says how far ahead a due time is", () => {
+    expect(dueLabel("2026-10-11T12:20:00Z", now)).toBe("Due in 20m");
+    expect(dueLabel("2026-10-11T15:00:00Z", now)).toBe("Due in 3h");
+    expect(dueLabel("2026-10-14T12:00:00Z", now)).toBe("Due in 3d");
+  });
+  it("says how long ago a due time went by", () => {
+    expect(dueLabel("2026-10-11T11:30:00Z", now)).toBe("Due 30m ago");
+    expect(dueLabel("2026-10-09T12:00:00Z", now)).toBe("Due 2d ago");
   });
 });

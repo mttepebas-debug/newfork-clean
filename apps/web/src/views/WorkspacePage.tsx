@@ -40,6 +40,7 @@ import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
 import { isNoAccess } from "../lib/no-access";
+import { requestErrorText } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
@@ -114,11 +115,8 @@ export function WorkspacePage() {
   if (query.error || !query.data) {
     return (
       <PageState
-        text={
-          query.error instanceof Error
-            ? query.error.message
-            : "Workspace unavailable"
-        }
+        // BL-814: one plain sentence, never the browser's or server's words.
+        text={query.error ? requestErrorText(query.error) : "Workspace unavailable"}
         error
       />
     );
@@ -191,12 +189,15 @@ export function WorkspacePage() {
       />
       {saveMutation.error ? (
         <p className="workspace-error" role="alert">
-          {saveMutation.error.message}
+          {requestErrorText(saveMutation.error)}
         </p>
       ) : null}
       {context?.membership.role === "owner" ||
       context?.membership.role === "admin" ? (
         <OwnerSetupChecklist workspaceId={context.workspace.id} />
+      ) : null}
+      {!customizing && layout.widget_order.every((id) => hidden.has(id)) ? (
+        <EmptyWidget text="Every card is hidden. Use Customize to show them again." />
       ) : null}
       <div className="workspace-grid">
         {layout.widget_order.map((id, index) => {
@@ -232,15 +233,19 @@ export function WorkspacePage() {
                       onClick={() => toggle(id)}
                     >
                       {hidden.has(id) ? (
-                        <Eye size={15} />
+                        <Eye size={15} aria-hidden />
                       ) : (
-                        <EyeOff size={15} />
+                        <EyeOff size={15} aria-hidden />
                       )}
                     </button>
                   </div>
                 ) : null}
               </header>
-              <Widget id={id} model={model} workspaceId={workspaceId} />
+              {/* BL-813: a hidden card in Customize is a preview, not a form.
+                  One wrapper either way, so Hide / Show keeps what was typed. */}
+              <div className="workspace-widget-preview" inert={hidden.has(id)}>
+                <Widget id={id} model={model} workspaceId={workspaceId} />
+              </div>
             </article>
           );
         })}
@@ -339,7 +344,9 @@ function OwnerSetupChecklist({
       </header>
       {progressQuery.error || markMutation.error ? (
         <p className="workspace-error" role="alert">
-          Setup checklist progress could not be saved.
+          {markMutation.error
+            ? "Setup checklist progress could not be saved."
+            : "Setup checklist progress could not be loaded."}
         </p>
       ) : null}
       <div className="owner-setup-checklist-list">
@@ -438,11 +445,13 @@ function Widget({
             <Megaphone size={16} aria-hidden />
             <span>
               <strong>{item.title}</strong>
-              <small>{item.category}</small>
+              <small>{announcementCategoryLabel[item.category]}</small>
             </span>
             <ArrowRight size={15} aria-hidden />
           </Link>
         ))}
+        {/* BL-810: the box holds five at most, like Notifications. */}
+        <WidgetLink to="/app/announcements">View all announcements</WidgetLink>
       </div>
     ) : (
       <EmptyWidget text="No active announcements" />
@@ -555,6 +564,16 @@ function TodoWidget({
   );
 }
 
+/** BL-666 (3): the stored code reads as a word. */
+const announcementCategoryLabel: Record<
+  WorkspaceDashboard["announcements"][number]["category"],
+  string
+> = {
+  general: "General",
+  operations: "Operations",
+  schedule: "Schedule",
+};
+
 function TodoPreview({
   item,
   onResolve,
@@ -564,20 +583,29 @@ function TodoPreview({
   onResolve: (todoId: string) => void;
   resolving: boolean;
 }) {
+  // BL-666 (2): the due date sits next to whose it is, not instead of it.
+  const detail = [item.body, item.due_at ? dueLabel(item.due_at) : ""]
+    .filter(Boolean)
+    .join(" · ");
   const content = (
     <>
       <CheckCircle2 size={16} aria-hidden />
       <span>
         <strong>{item.title}</strong>
-        <small>
-          {item.due_at ? `Due ${relativeTime(item.due_at)}` : item.body}
-        </small>
+        <small>{detail}</small>
       </span>
-      <ArrowRight size={15} aria-hidden />
     </>
   );
   const actionUrl = safeAppActionUrl(item.action_url);
-  if (actionUrl) return <Link to={actionUrl}>{content}</Link>;
+  // BL-666 (4): only a row that goes somewhere carries the arrow.
+  if (actionUrl) {
+    return (
+      <Link to={actionUrl}>
+        {content}
+        <ArrowRight size={15} aria-hidden />
+      </Link>
+    );
+  }
   if (!item.system_generated) {
     return (
       <div className="workspace-todo-row">
@@ -605,12 +633,14 @@ function NotificationPreview({ item }: { item: NotificationRecord }) {
         <strong>{item.title}</strong>
         <small>{relativeTime(item.created_at)}</small>
       </span>
-      <ArrowRight size={15} aria-hidden />
     </>
   );
   const actionUrl = safeAppActionUrl(item.action_url);
   return actionUrl ? (
-    <Link to={actionUrl}>{content}</Link>
+    <Link to={actionUrl}>
+      {content}
+      <ArrowRight size={15} aria-hidden />
+    </Link>
   ) : (
     <div>{content}</div>
   );
@@ -659,12 +689,17 @@ function formatNow(date: Date) {
   }).format(date);
 }
 function relativeTime(iso: string) {
-  const minutes = Math.max(
-    0,
-    Math.round((Date.now() - Date.parse(iso)) / 60_000),
-  );
-  if (minutes < 60) return `${minutes || 1}m ago`;
+  return `${elapsed(Math.max(0, Date.now() - Date.parse(iso)))} ago`;
+}
+/** BL-1013: a due time still ahead reads "Due in 2h"; one gone by, "Due 2h ago". */
+export function dueLabel(iso: string, now = Date.now()) {
+  const ahead = Date.parse(iso) - now;
+  return ahead > 0 ? `Due in ${elapsed(ahead)}` : `Due ${elapsed(-ahead)} ago`;
+}
+function elapsed(ms: number) {
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes || 1}m`;
   const hours = Math.round(minutes / 60);
-  return hours < 24 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
+  return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
 }
 export default WorkspacePage;

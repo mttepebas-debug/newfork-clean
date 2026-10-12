@@ -459,7 +459,7 @@ export function LifecycleAssignmentFields({
               }
             />
 
-            <span>Restrict organization access after the delivery period</span>
+            <span>Restrict workspace access after the delivery period</span>
           </label>
 
           {!compact &&
@@ -584,7 +584,8 @@ export function LifecycleAssignmentFields({
             ) : null,
           )}
 
-          {compact && (
+          {/* BL-857: arrows only when the fields run past one page. */}
+          {compact && lastFieldPage > 0 && (
             <div className="document-editor-pagination">
               <span>{settings.extra_fields.length} fields</span>
 

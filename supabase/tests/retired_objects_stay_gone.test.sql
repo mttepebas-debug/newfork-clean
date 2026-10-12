@@ -209,6 +209,14 @@ insert into retired (kind, name, step) values
   ('function', 'stamp_weekly_reminder_disable', 'BL-186'),
   ('column', 'manager_weekly_reminders.last_disabled_at', 'BL-186'),
   ('trigger', 'manager_weekly_reminders.weekly_reminder_disable_stamp', 'BL-186');
+-- BL-995: approved time off is never given up to take a shift (KARARLAR §1.1,
+-- Mert 2026-10-09); the consent each side of an exchange gave is gone.
+insert into retired (kind, name, step) values
+  ('function', 'weekly_exchange_time_off_consent', 'BL-995'),
+  ('function', 'time_off_leave_intervals', 'BL-995'),
+  ('function', 'availability_json_ranges', 'BL-995'),
+  ('column', 'shift_exchange_cases.owner_time_off_consent', 'BL-995'),
+  ('column', 'shift_exchange_applications.time_off_consent', 'BL-995');
 -- FB-6.1.9: Settings > Roles reads through read_role_workspace_service.
 insert into retired (kind, name, step) values
   ('function', 'read_role_workspace', 'FB-6.1.9');
@@ -355,6 +363,10 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'manager_note_follows_role', 'AVAIL-002'),
   ('trigger', 'workspace_memberships.manager_note_follows_role', 'AVAIL-002');
+-- BL-768 (KK-174): a termination's follow-up is the location managers' notice;
+-- the follow-up rows nobody read go.
+insert into retired (kind, name, step) values
+  ('table', 'employee_offboarding_followups', 'BL-768');
 
 -- FB-6.4 A1: one eligibility engine (app_private.eligibility) for swap, pickup and cover.
 insert into retired (kind, name, step) values
@@ -376,6 +388,10 @@ insert into retired (kind, name, step) values
   ('function_signature', 'public.set_important_date_state_service(uuid, uuid, uuid, text, uuid[], text)', 'EKRAN-08'),
   ('function_signature', 'app_private.important_date_closure_impact(uuid, public.important_dates, text, date, date, text, uuid[])', 'EKRAN-08'),
   ('function_signature', 'app_private.important_date_close_shifts(uuid, public.important_dates, jsonb, uuid[])', 'EKRAN-08');
+-- BL-238: "this week" is asked of the places it is for; the workspace-only
+-- form, which read the server's UTC date, goes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.schedule_current_week_start_service(uuid)', 'BL-238');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

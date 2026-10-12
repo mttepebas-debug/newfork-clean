@@ -134,6 +134,11 @@ it("composes exclusive status, requirement and search filters and keeps publishe
     "dateTime",
     "2026-09-17T15:04:00.000Z",
   );
+  // BL-856: the narrow column cuts the time; hovering reads it whole.
+  expect(within(row).getByRole("time").title).toBe(
+    within(row).getByRole("time").textContent,
+  );
+  expect(within(row).getByRole("time").title).toMatch(/2026, \d+:\d\d [AP]M$/);
   fireEvent.click(row);
   expect(
     screen.getByRole("dialog", { name: "Edit Published safety" }),

@@ -40,6 +40,13 @@ export function isTextEditingTarget(target: EventTarget | null): boolean {
   );
 }
 
+/** BL-1003: a key pressed inside a window or menu belongs to it, not to the grid behind. */
+export function isScheduleLayerTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(
+    target.closest("[role='dialog'], [role='alertdialog'], [aria-modal='true']"),
+  );
+}
+
 export function closeScheduleMenu(target: HTMLElement): void {
   target.closest("details")?.removeAttribute("open");
 }
@@ -100,6 +107,8 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       "[data-schedule-employee-card-trigger='true']",
       "[data-schedule-day-header-content='true']",
       "[data-schedule-location-filter-ids]",
+      // BL-714: the grid's logo opens its own window.
+      ".schedule-grid-logo-button",
       "[role='menu']",
       "[role='toolbar']",
       SCHEDULE_WINDOW_SELECTOR,

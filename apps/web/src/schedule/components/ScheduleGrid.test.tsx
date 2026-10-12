@@ -206,6 +206,37 @@ describe("ScheduleGrid", () => {
     expect(container.querySelector('[data-availability-kind="time_off"]')).not.toBeNull();
   });
 
+  // Mert, 2026-10-10: a cell of full-day approved time off opens no Add shift;
+  // a partial day keeps it (the server still refuses any overlapping hours).
+  it.each([
+    ["the whole day", "2026-08-23T07:00:00Z", "2026-08-24T07:00:00Z", false],
+    ["part of the day", "2026-08-23T16:00:00Z", "2026-08-23T20:00:00Z", true],
+  ] as const)("time off for %s (%s to %s): Add shift shows = %s", (_label, start_at, end_at, addShows) => {
+    const marked = availabilityModel([], false);
+    const model = { ...marked, employees: marked.employees.map((employee) => ({ ...employee,
+      weekly_availability: employee.weekly_availability?.map((week) => ({ ...week, leave_intervals: [{ start_at, end_at }] })) })) };
+    const { container } = renderGrid({ model, session: editSession(model) });
+    const cell = container.querySelector('[data-availability-kind="time_off"][data-date="2026-08-23"]');
+    expect(cell).not.toBeNull();
+    expect(cell!.querySelector("[data-schedule-add-shift-control]") !== null).toBe(addShows);
+  });
+
+  // Time off belongs to the person, not a location (KARARLAR §1.1): the read
+  // model only projects the locations they work at, yet another location's
+  // section must not offer the day either.
+  it("full-day time off opens no Add shift in a location the person is not assigned to", () => {
+    const patioId = "11111111-1111-4111-8111-111111111112";
+    const marked = availabilityModel([], false);
+    const model = { ...marked, locations: [...marked.locations, { ...marked.locations[0]!, id: patioId, name: "Patio", sort_order: 1 }] };
+    const { container } = renderGrid({ model, session: { ...editSession(model), location_ids: [locationId, patioId] } });
+    const cell = (id: string) => container.querySelector(`.schedule-cell[data-display-location-id="${id}"][data-employee-id="${employeeId}"][data-date="2026-08-23"]`);
+    const free = container.querySelector(`.schedule-cell[data-display-location-id="${patioId}"][data-employee-id="${employeeId}"][data-date="2026-08-22"]`);
+    expect(free?.querySelector("[data-schedule-add-shift-control]")).not.toBeNull();
+    expect(cell(locationId)?.getAttribute("data-availability-kind")).toBe("time_off");
+    expect(cell(patioId)?.getAttribute("data-availability-kind")).toBe("time_off");
+    expect(cell(patioId)!.querySelector("[data-schedule-add-shift-control]")).toBeNull();
+  });
+
   it.each([
     ["(a) some clash", [true, false], 1, false],
     ["(b) none clash", [false, false, false], 0, true],

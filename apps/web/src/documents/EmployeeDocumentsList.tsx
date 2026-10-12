@@ -19,7 +19,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { DocumentReviewDrawer } from "./DocumentReviewDrawer";
-import { statusLabel } from "./document-rules";
+import { statusLabel, statusWeight } from "./document-rules";
 import "./documents.css";
 
 const statusLabels = {
@@ -103,9 +103,11 @@ export function EmployeeDocumentsList(props: {
         const order = actionable(a) - actionable(b);
         if (order) return order;
       }
-      return (
-        (sort.descending ? -1 : 1) * a[sort.key].localeCompare(b[sort.key])
-      );
+      const order =
+        sort.key === "status"
+          ? statusWeight(a.status) - statusWeight(b.status)
+          : a[sort.key].localeCompare(b[sort.key]);
+      return (sort.descending ? -1 : 1) * order;
     });
   const currentIndex = visible.findIndex((r) => r.id === selected?.id);
   const nextIndex =
@@ -114,6 +116,9 @@ export function EmployeeDocumentsList(props: {
   // Nothing asked of this person here: one line says so, no empty table.
   const nothingAsked =
     personal && !query.isLoading && !query.error && items.length === 0;
+  // BL-834: nothing here at all is not a filter miss.
+  const noneYet =
+    items.length === 0 && filter === "all" && !search.trim() && !location && !type;
   const sortBy = (key: typeof sort.key) =>
     setSort((s) => ({ key, descending: s.key === key && !s.descending }));
   return (
@@ -277,8 +282,27 @@ export function EmployeeDocumentsList(props: {
             ))}
           </tbody>
         </table>
+        {/* BL-855: where the rows go, not under the empty table. */}
+        {query.isLoading && <p className="settings-state">Loading documents…</p>}
+        {query.error && !isNoAccess(query.error) && (
+          <p className="settings-state error" role="alert">
+            {errorText(query.error)}
+          </p>
+        )}
         {!query.isLoading && !query.error && !visible.length && (
-          personal ? (
+          noneYet ? (
+            <div className="catalog-table-empty">
+              <span className="catalog-table-empty-icon" aria-hidden>
+                <FileText size={22} />
+              </span>
+              <h2>No documents yet</h2>
+              <p>
+                {props.employeeId
+                  ? "Documents they submit show up here."
+                  : "Documents your team submits show up here."}
+              </p>
+            </div>
+          ) : personal ? (
             <div className="employee-documents-empty is-compact">
               <strong>No documents match these filters.</strong>
             </div>
@@ -294,17 +318,12 @@ export function EmployeeDocumentsList(props: {
         )}
       </div>
       </>}
-      {query.isLoading && <p className="settings-state">Loading documents…</p>}
-      {query.error && (isNoAccess(query.error) ? (
+      {query.error && isNoAccess(query.error) && (
         <NoAccessState
           subject="these documents"
           homeHref={noAccessHomePath(context, "/app/employees/documents")}
         />
-      ) : (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
-      ))}
+      )}
       {selected && (
         <DocumentReviewDrawer
           audience={props.audience}

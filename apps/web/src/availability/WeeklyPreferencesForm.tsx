@@ -9,6 +9,8 @@ import {
 } from "@newfork/shared";
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
 import { useAvailabilityNavigationGuard } from "./availability-navigation";
+import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 
 type Props = {
   model: WeeklyPreferenceRead;
@@ -19,6 +21,8 @@ type Props = {
   wizard?: boolean;
   /** A step's way on, shown after Save in the same bar (one sticky bar). */
   extraAction?: ReactNode;
+  /** BL-797: fetches the week someone saved first; Reload waits for it. */
+  onReload?: () => Promise<WeeklyPreferenceRead | undefined>;
 };
 
 // Remount on actor changes; an employee's unsaved rules must never follow a
@@ -39,6 +43,7 @@ function PreferenceForm({
   onSave,
   wizard = false,
   extraAction,
+  onReload,
 }: Props) {
   const manager = audience === "manager";
   // No reminder data (the person is a manager+, or the reader may not see
@@ -65,6 +70,9 @@ function PreferenceForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // BL-797: a refused save because someone saved first; Reload takes theirs.
+  const [conflict, setConflict] = useState(false);
+  const [reloading, setReloading] = useState(false);
   const inFlight = useRef(false);
   const current = manager ? baseline.manager : baseline.employee;
   const hasChanges = dirty || !current?.submitted;
@@ -87,6 +95,7 @@ function PreferenceForm({
     setDirty(false);
     setCopyRevision(undefined);
     setError("");
+    setConflict(false);
   }
 
   useEffect(() => {
@@ -129,10 +138,19 @@ function PreferenceForm({
       reset(next);
       setSaved(true);
     } catch (cause) {
+      // BL-1028: only "the week or its settings changed meanwhile" has a
+      // newer week to reload; the database says so with its key.
+      setConflict(
+        cause instanceof RequestError &&
+          cause.status === 409 &&
+          cause.reason === "availability.changed",
+      );
       setError(
-        cause instanceof Error
-          ? cause.message
-          : "Changes could not be saved. Your draft is still here.",
+        isNoAccess(cause)
+          ? "You don't have access to change this availability."
+          : cause instanceof Error
+            ? cause.message
+            : "Changes could not be saved. Your draft is still here.",
       );
     } finally {
       inFlight.current = false;
@@ -351,6 +369,32 @@ function PreferenceForm({
           {error && (
             <p className="weekly-preferences-error" role="alert">
               {error}
+              {conflict && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={reloading}
+                    onClick={async () => {
+                      setReloading(true);
+                      try {
+                        if (!onReload) reset(model);
+                        else {
+                          // A failed fetch keeps the warning: resetting to
+                          // the old week would only be refused again.
+                          const latest = await onReload();
+                          if (latest) reset(latest);
+                        }
+                      } finally {
+                        setReloading(false);
+                      }
+                    }}
+                  >
+                    Reload
+                  </button>
+                </>
+              )}
             </p>
           )}
           <div className="weekly-preferences-actions">

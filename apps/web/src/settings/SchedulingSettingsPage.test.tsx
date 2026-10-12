@@ -143,6 +143,14 @@ describe("SchedulingSettingsPage checklist mode", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "24-hour" }));
     expect(saveButton).toHaveProperty("disabled", false);
+    // The server holds what was saved; the next read answers with it.
+    vi.mocked(saveSchedulingSettings).mockImplementation(async () => {
+      vi.mocked(loadSchedulingSettings).mockResolvedValue({
+        ...settings,
+        week_start_day: "sunday",
+        time_format: "24h",
+      });
+    });
     fireEvent.click(saveButton);
 
     await waitFor(() =>
@@ -154,6 +162,10 @@ describe("SchedulingSettingsPage checklist mode", () => {
         }),
       ),
     );
+    // BL-677 (1): once saved, the two choices stay shown, not blank again.
+    await screen.findByText("Scheduling rules saved.");
+    expect(screen.getByRole("radio", { name: "Sunday" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("radio", { name: "24-hour" })).toHaveProperty("checked", true);
   });
 
   it("saves the time off decision window with the other rules (FB-6.3.6)", async () => {
@@ -183,7 +195,14 @@ describe("SchedulingSettingsPage checklist mode", () => {
     const saveButton = await screen.findByRole("button", {
       name: /save rules/i,
     });
-    expect(saveButton).toHaveProperty("disabled", false);
+    // BL-677 (1): the page is named as the menu names it; Save waits for a change.
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Schedule rules");
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("radio", { name: "Monday" }) as HTMLInputElement).checked,
+      ).toBe(true),
+    );
+    expect(saveButton).toHaveProperty("disabled", true);
     expect(
       screen.getByRole("region", { name: "Schedule basics" }),
     ).toBeTruthy();

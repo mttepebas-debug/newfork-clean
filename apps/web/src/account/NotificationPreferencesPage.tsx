@@ -15,6 +15,7 @@ import "./notification-preferences.css";
 
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
+import { RequestError } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 type Entry = NotificationUserPreferencesResponse["catalog"][number];
 type Drafts = Record<string, NotificationChannelPreference>;
@@ -45,6 +46,12 @@ function checkedFor(entry: Entry, channel: NotificationChannel, draft: Notificat
   if (control?.locked && control.reason_code === "organization_policy_denied") return false;
   return draft[channel] !== "disabled";
 }
+// The database's key for "saved from an old version" (BL-1049).
+function changedElsewhere(error: unknown) {
+  return error instanceof RequestError && error.reason === "notification.preference_changed";
+}
+const changedElsewhereLine =
+  "Your notification choices changed elsewhere. The latest ones are shown; make your change again.";
 function MasterToggle({ label, checked, mixed, disabled, onChange }: {
   label: string; checked: boolean; mixed: boolean; disabled: boolean; onChange: (value: boolean) => void;
 }) {
@@ -79,6 +86,14 @@ export default function NotificationPreferencesPage() {
       dirtyRef.current = false;
       setBaseline(drafts);
       setSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ["notification-preferences", account?.userId ?? context?.userId, workspaceId] });
+    },
+    // BL-1049: somebody (this person in another tab) saved first. Drop the
+    // edit and load the latest choices; the line below says so.
+    onError: async (error) => {
+      if (!changedElsewhere(error)) return;
+      dirtyRef.current = false;
+      setDrafts(baseline);
       await queryClient.invalidateQueries({ queryKey: ["notification-preferences", account?.userId ?? context?.userId, workspaceId] });
     },
   });
@@ -140,7 +155,8 @@ export default function NotificationPreferencesPage() {
     {query.isLoading ? <p>Loading preferences</p> : null}
     {isNoAccess(query.error) ? <NoAccessState subject="this workspace's notifications"
       homeHref={noAccessHomePath(context, "/account/preferences/notifications")} />
-      : query.error || mutation.error ? <p className="form-error" role="alert">{(query.error ?? mutation.error)?.message}</p> : null}
+      : query.error || mutation.error ? <p className="form-error" role="alert">{query.error?.message
+        ?? (changedElsewhere(mutation.error) ? changedElsewhereLine : mutation.error?.message)}</p> : null}
     <div className="notification-preference-list" aria-label="Workspace notification channels">
       <div className="notification-matrix-header notification-matrix-grid">
         <span aria-hidden="true" />

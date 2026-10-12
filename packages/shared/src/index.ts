@@ -473,6 +473,8 @@ export const invitationPreviewStateSchema = z.enum([
   "valid",
   "expired",
   "revoked",
+  // Revoked because a newer invitation went to the same address (K7).
+  "replaced",
   "declined",
   "accepted",
   "workspace_unavailable",
@@ -1328,6 +1330,9 @@ export const shiftTypeSchema = z.object({
 });
 export type ShiftType = z.infer<typeof shiftTypeSchema>;
 
+// BL-1031: one sentence wherever equal hours are refused (the database says it too).
+export const SAME_START_END_TIME_MESSAGE = "Start and end time cannot be the same.";
+
 export const shiftTypeInputSchema = shiftTypeSchema
   .pick({
     name: true,
@@ -1348,7 +1353,7 @@ export const shiftTypeInputSchema = shiftTypeSchema
       !value.default_start_time ||
       value.default_start_time !== value.default_end_time,
     {
-      message: "Start and end times must be different",
+      message: SAME_START_END_TIME_MESSAGE,
       path: ["default_end_time"],
     },
   );
@@ -2226,6 +2231,14 @@ export type ScheduleTemplateApplyResult = z.infer<
   typeof scheduleTemplateApplyResultSchema
 >;
 
+/** KK-162 (BL-694): what Replace would remove, counted by the database. */
+export const scheduleTemplateApplyPreviewSchema = z.object({
+  removed_shift_count: z.coerce.number().int().nonnegative(),
+});
+export type ScheduleTemplateApplyPreview = z.infer<
+  typeof scheduleTemplateApplyPreviewSchema
+>;
+
 export const scheduleAutoFillCandidateSchema = z.object({
   employee_id: z.string().uuid(),
   employee_name: z.string().trim().min(1).max(161),
@@ -2585,6 +2598,14 @@ export const employeeDisplayStatusSchema = z.enum([
 ]);
 export type EmployeeDisplayStatus = z.infer<typeof employeeDisplayStatusSchema>;
 
+export const employeeAssignmentSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  primary: z.boolean(),
+  archived: z.boolean(),
+});
+export type EmployeeAssignment = z.infer<typeof employeeAssignmentSchema>;
+
 export const employeeSummarySchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -2597,9 +2618,11 @@ export const employeeSummarySchema = z.object({
   display_name: z.string().trim().min(1).max(161),
   invitation_email: z.string().email().nullable(),
   start_date: z.string().date().nullable(),
-  primary_location_id: z.string().uuid().nullable(),
-  primary_location_name: z.string().nullable(),
-  location_count: z.coerce.number().int().nonnegative(),
+  /**
+   * Every location they work at, the primary first, then A to Z (BL-436): the
+   * list filters on "works here" and names the first one (BL-428).
+   */
+  locations: z.array(employeeAssignmentSchema.pick({ id: true, name: true, primary: true })),
   primary_job_id: z.string().uuid().nullable(),
   primary_job_name: z.string().nullable(),
   job_count: z.coerce.number().int().nonnegative(),
@@ -2609,14 +2632,6 @@ export const employeeSummarySchema = z.object({
   revision: z.coerce.number().int().positive(),
 });
 export type EmployeeSummary = z.infer<typeof employeeSummarySchema>;
-
-export const employeeAssignmentSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().trim().min(1).max(120),
-  primary: z.boolean(),
-  archived: z.boolean(),
-});
-export type EmployeeAssignment = z.infer<typeof employeeAssignmentSchema>;
 
 /**
  * What the Employees drawer picks from (BL-231): the locations the person may
@@ -2645,6 +2660,9 @@ export const employeeEventSchema = z.object({
 export type EmployeeEvent = z.infer<typeof employeeEventSchema>;
 
 export const employeeDetailSchema = employeeSummarySchema.extend({
+  primary_location_id: z.string().uuid().nullable(),
+  primary_location_name: z.string().nullable(),
+  location_count: z.coerce.number().int().nonnegative(),
   user_id: z.string().uuid().nullable(),
   account_email: z.string().email().nullable().optional(),
   internal_note: z.string().max(1000),

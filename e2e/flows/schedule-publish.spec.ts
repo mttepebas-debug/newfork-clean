@@ -27,7 +27,7 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   // The "On call" tag has to exist in the workspace catalog before the quick
   // editor can offer it; only an admin/owner manages the catalog.
   const zeynep = await openPage(browser, "zeynep", "/app/settings/scheduling/shift-labels");
-  await zeynep.getByRole("button", { name: "Add shift label", exact: true }).click();
+  await zeynep.getByRole("button", { name: "New shift label", exact: true }).click();
   await zeynep.getByLabel("Name").fill(tag);
   await zeynep.getByRole("button", { name: "Save shift label", exact: true }).click();
   await expect(zeynep.getByRole("button", { name: `Edit ${tag}`, exact: true })).toBeVisible();

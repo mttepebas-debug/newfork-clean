@@ -34,6 +34,8 @@ describe("ScheduleLogoUploadDialog", () => {
     );
 
     const dialog = screen.getByRole("dialog", { name: "Schedule logo" });
+    // BL-711: the keyboard is inside the window when it opens.
+    expect(dialog.contains(document.activeElement)).toBe(true);
     const title = within(dialog).getByText("Schedule logo");
     const image = within(dialog).getByRole("img", { name: "Downtown logo" });
     const referenceFrame = screen.getByTestId(

@@ -51,11 +51,9 @@ test("a two-location swap completes after both managers approve", async ({ brows
   const day = sql(`select tests.week(${week}) + 1;`);
   const casePath = `/app/schedule/requests?tab=shift-changes&case=${caseId}&from=${day}&to=${day}`;
 
+  // The link opens the swap's review window in Requests (Mert, 2026-10-11).
   const ayse = await openSchedule(browser, "ayse", casePath);
-  // The case opens from the link; the decision buttons belong to a candidate.
-  await ayse.getByRole("button", { name: "Review Deniz Person", exact: true }).click();
-  await ayse.getByRole("button", { name: "Approve my location", exact: true }).click();
-  await ayse.getByRole("button", { name: "Record my approval", exact: true }).click();
+  await ayse.getByRole("dialog", { name: "Swap request" }).getByRole("button", { name: "Approve", exact: true }).click();
   // Kadikoy's vote is recorded; nobody's shift has moved yet.
   await expect
     .poll(() => sql(`select count(*) from public.shift_exchange_votes where case_id = '${caseId}';`))
@@ -63,9 +61,7 @@ test("a two-location swap completes after both managers approve", async ({ brows
   expect(holder(roundLabel("ali-k"))).toBe("Ali");
 
   const mehmet = await openSchedule(browser, "mehmet", casePath);
-  await mehmet.getByRole("button", { name: "Review Deniz Person", exact: true }).click();
-  await mehmet.getByRole("button", { name: /^Approve transfer to Deniz/ }).click();
-  await mehmet.getByRole("button", { name: /^Confirm transfer to Deniz/ }).click();
+  await mehmet.getByRole("dialog", { name: "Swap request" }).getByRole("button", { name: "Approve", exact: true }).click();
   // BL-180: on the shared CI machine (three self-hosted runners on one box)
   // the click-to-commit round trip can occasionally outrun the default 15s
   // poll window; this only widens the wait, the awaited value is unchanged.

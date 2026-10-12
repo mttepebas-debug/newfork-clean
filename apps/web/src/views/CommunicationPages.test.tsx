@@ -490,6 +490,60 @@ describe("Phase 8 communication pages", () => {
     );
   });
 
+  // BL-1047: the database says which refusal with its key; the editor says it
+  // in words and never shows the database's own "stale announcement revision".
+  it.each([
+    ["save", "announcement.changed", "This announcement was changed by someone else. Close it and open it again to see the current version."],
+    ["save", "announcement.archived", "This announcement was archived and can no longer be edited."],
+    ["publish", "announcement.changed", "This announcement was changed by someone else. Close it and open it again to see the current version."],
+    ["archive", "announcement.changed", "This announcement was changed by someone else. Close it and open it again to see the current version."],
+  ] as const)("says what a %s refused with %s means and reloads the list", async (action, reason, sentence) => {
+    const draft = announcement({ id: "a8200000-0000-4000-8000-000000000031", title: "Patio opens", status: "draft" });
+    vi.mocked(getAnnouncements).mockClear();
+    vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: true, locations: [], announcements: [draft] });
+    const refusal = new RequestError(
+      reason === "announcement.archived" ? "announcement can no longer be edited" : "stale announcement revision",
+      reason,
+      undefined,
+      409,
+    );
+    vi.mocked(saveAnnouncement).mockRejectedValue(refusal);
+    vi.mocked(transitionAnnouncement).mockRejectedValue(refusal);
+    renderRoute(`/app/announcements/${draft.id}`, <AnnouncementsPage />, "/app/announcements/:announcementId");
+    const editor = await screen.findByRole("dialog", { name: "Edit announcement" });
+    const loads = vi.mocked(getAnnouncements).mock.calls.length;
+
+    if (action === "save") {
+      fireEvent.change(within(editor).getByLabelText("Message"), { target: { value: "Opens at noon." } });
+      fireEvent.click(within(editor).getByRole("button", { name: "Save changes" }));
+    } else if (action === "publish") {
+      fireEvent.click(within(editor).getByRole("button", { name: "Publish" }));
+    } else {
+      fireEvent.click(within(editor).getByRole("button", { name: "Archive" }));
+      fireEvent.click(within(editor).getByRole("button", { name: "Confirm archive" }));
+    }
+
+    expect((await within(editor).findByRole("alert")).textContent).toBe(sentence);
+    expect(editor.textContent).not.toContain(refusal.message);
+    await waitFor(() => expect(vi.mocked(getAnnouncements).mock.calls.length).toBeGreaterThan(loads));
+  });
+
+  it("keeps the sentence of a refusal the editor has no words for", async () => {
+    const draft = announcement({ id: "a8200000-0000-4000-8000-000000000032", title: "Patio closes", status: "draft" });
+    vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: true, locations: [], announcements: [draft] });
+    renderRoute(`/app/announcements/${draft.id}`, <AnnouncementsPage />, "/app/announcements/:announcementId");
+    const editor = await screen.findByRole("dialog", { name: "Edit announcement" });
+    for (const refusal of [
+      new RequestError("This announcement has expired", undefined, undefined, 400),
+      new RequestError("Request conflicts with the current state", undefined, undefined, 409),
+      new RequestError("Some other conflict", "announcement.something_new", undefined, 409),
+    ]) {
+      vi.mocked(transitionAnnouncement).mockRejectedValueOnce(refusal);
+      fireEvent.click(within(editor).getByRole("button", { name: "Publish" }));
+      await waitFor(() => expect(within(editor).getByRole("alert").textContent).toBe(refusal.message));
+    }
+  });
+
   it("offers Archive, not Delete, in the row menu (Mert 2026-10-03, BL-543)", async () => {
     const item = announcement({ id: "a8200000-0000-4000-8000-000000000024", title: "Menu tasting", status: "published" });
     vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: true, locations: [], announcements: [item] });
@@ -603,6 +657,9 @@ describe("Phase 8 communication pages", () => {
     expect(await screen.findByText("New memo")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Unread (2)" }).getAttribute("aria-selected")).toBe("true");
     await screen.findByRole("tab", { name: "Read (1)" });
+    // BL-602: the tab list is one Tab stop.
+    expect(screen.getByRole("tab", { name: "Unread (2)" }).tabIndex).toBe(0);
+    expect(screen.getByRole("tab", { name: "Read (1)" }).tabIndex).toBe(-1);
     expect(screen.getByRole("combobox", { name: "Notification category" })).toBeTruthy();
     for (const gone of ["Mark all read", "Select all", "Deselect all", "Unread only"])
       expect(screen.queryByText(gone)).toBeNull();

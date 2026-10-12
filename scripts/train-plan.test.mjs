@@ -117,7 +117,7 @@ test("plan: foresees a conflict (branch skipped, exit 2) and a schema.sql-only c
   assert.equal(fs.existsSync(w.ctx.trainDir), false);
 });
 
-test("plan: a task branch whose own commits touch a record file stops the train; coord/kayit does not", () => {
+test("plan: a task branch whose own commits touch a record file stops the train; coord/kayit2 does not", () => {
   w.branch("task/rec", ["code", { "docs/a.md": "a\n" }], ["records too", { "docs/plan/KARARLAR.md": "# Kararlar\n" }]);
   const r = plan(w.ctx, ["task/rec"]);
   assert.equal(r.code, 1, text(r));
@@ -125,20 +125,20 @@ test("plan: a task branch whose own commits touch a record file stops the train;
   const e = auditLines().at(-1);
   assert.equal(e.event, "train-blocked");
   assert.equal(e.step, "plan");
-  w.branch("coord/kayit", ["records", { "docs/plan/KARARLAR.md": "# Kararlar\n", "DURUM.md": "# Durum\n" }]);
-  const c = plan(w.ctx, ["coord/kayit"]);
+  w.branch("coord/kayit2", ["records", { "docs/plan/KARARLAR.md": "# Kararlar\n", "DURUM.md": "# Durum\n" }]);
+  const c = plan(w.ctx, ["coord/kayit2"]);
   assert.equal(c.code, 0, text(c));
   assert.doesNotMatch(text(c), /kayıt dosyasına dokunuyor/);
 });
 
-test("plan: a task branch adding a quarantine line stops the train; coord/kayit carries it (S-106)", () => {
+test("plan: a task branch adding a quarantine line stops the train; coord/kayit2 carries it (S-106)", () => {
   const line = "employee hub tomorrow | BL-1 | 2026-10-08 | 2026-10-09\n";
   w.branch("task/kq", ["quarantine", { "e2e/karantina.txt": line }]);
   const r = plan(w.ctx, ["task/kq"]);
   assert.equal(r.code, 1, text(r));
   assert.match(text(r), /ENGEL: task\/kq: kayıt dosyasına dokunuyor: e2e\/karantina\.txt/);
-  w.branch("coord/kayit", ["quarantine", { "e2e/karantina.txt": line }]);
-  const c = plan(w.ctx, ["coord/kayit"]);
+  w.branch("coord/kayit2", ["quarantine", { "e2e/karantina.txt": line }]);
+  const c = plan(w.ctx, ["coord/kayit2"]);
   assert.equal(c.code, 0, text(c));
   assert.doesNotMatch(text(c), /kayıt dosyasına dokunuyor/);
 });

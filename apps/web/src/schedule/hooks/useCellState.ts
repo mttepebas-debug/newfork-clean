@@ -59,6 +59,7 @@ export function buildScheduleCellState(model: ScheduleReadModel, hideAvailabilit
         ensureCell(cells, scheduleCellStateKey(location.location_id, date, employee.id)).availabilityMark = mark;
       }
     }
+    spreadTimeOff(cells, model.locations, employee);
   }
 
   for (const closure of model.closures) {
@@ -208,6 +209,30 @@ function ensureCell(
   };
   cells.set(key, next);
   return next;
+}
+
+// Time off is the person's, not a location's (KARARLAR §1.1), but the read
+// model projects only the locations they work at. Another grid location gets
+// the same marks when it shares a projection's clock; preference marks stay put.
+function spreadTimeOff(
+  cells: Map<string, MutableScheduleCellState>,
+  locations: ScheduleReadModel["locations"],
+  employee: ScheduleReadModel["employees"][number],
+): void {
+  const projections = employee.weekly_availability ?? [];
+  const projected = new Set(projections.map((projection) => projection.location_id));
+  for (const location of locations) {
+    if (projected.has(location.id)) continue;
+    const source = projections.find(
+      (projection) => projection.status === "ready" && projection.timezone === location.timezone,
+    );
+    if (!source) continue;
+    for (const [date, mark] of scheduleAvailabilityMarks(source)) {
+      if (mark.kind !== "time_off") continue;
+      const cell = ensureCell(cells, scheduleCellStateKey(location.id, date, employee.id));
+      cell.availabilityMark = mergeAvailabilityMarks(cell.availabilityMark, mark);
+    }
+  }
 }
 
 function markConflict(

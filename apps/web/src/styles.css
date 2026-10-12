@@ -2443,8 +2443,15 @@
   font-weight: 400;
   color: var(--text-muted, #68746e);
 }
-.employee-field-error {
+/* BL-782, BL-971: ".employee-field small" (0,1,1) greyed the error line. */
+.employee-field-error,
+.employee-field .employee-field-error {
   color: var(--danger, #a13f30);
+}
+.employee-field input[aria-invalid="true"],
+.employee-field textarea[aria-invalid="true"],
+.employee-field select[aria-invalid="true"] {
+  border-color: var(--theme-danger-border);
 }
 .employee-form-section-title {
   margin: 0;
@@ -3212,17 +3219,18 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 700;
   line-height: 1;
 }
-.calendar-day:hover {
-  z-index: 2;
-  background: #edf3f0;
-}
 .calendar-day.outside {
-  color: #87918d;
+  color: var(--theme-muted);
   font-weight: 650;
 }
 .calendar-day.in-week {
   background: #f4d7a7;
   color: #272d2b;
+}
+/* After .in-week, so the orange band's days light up on hover like the rest (BL-723). */
+.calendar-day:hover {
+  z-index: 2;
+  background: #edf3f0;
 }
 .calendar-day.selected {
   z-index: 3;
@@ -3230,6 +3238,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #17201d;
   box-shadow: inset 0 0 0 1px #28312e;
   font-weight: 800;
+}
+/* The selected day keeps its colour; hover thickens its ring. */
+.calendar-day.selected:hover {
+  box-shadow: inset 0 0 0 2px #28312e;
 }
 .calendar-picker-grid {
   display: grid;
@@ -3894,6 +3906,23 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-success);
   font-size: 12px;
   font-weight: 500;
+}
+.schedule-draft-menu-read-only-chip {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+/* --theme-muted-strong: the row turns --theme-surface-muted on hover. */
+.schedule-draft-menu-read-only-note {
+  margin-top: 1px;
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
 }
 .schedule-draft-menu-published-chip svg {
   width: 12px;
@@ -4943,6 +4972,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   touch-action: none;
   user-select: none;
 }
+/* BL-610 (WCAG 2.4.7): the keyboard can reach the bar, so it shows where it is.
+   Inset: the track clips anything drawn outside it. */
+.schedule-horizontal-nav-track:focus-visible {
+  outline: 2px solid var(--schedule-focus-ring-color);
+  outline-offset: -2px;
+}
 .schedule-horizontal-nav-rail {
   position: absolute;
   top: 50%;
@@ -5512,7 +5547,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-employee-cell span {
   display: block;
   margin-top: 5px;
-  color: #78827e;
+  color: var(--theme-text-secondary);
   font-size: 10px;
 }
 .schedule-employee-cell[data-unassigned="true"] {
@@ -5937,7 +5972,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
     opacity var(--schedule-motion-fast) ease;
 }
 .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-action,
-.schedule-cell[data-editing="true"]:focus-within > .schedule-cell-add-action {
+/* BL-610: a card the mouse focused does not keep its cell's add strip open. */
+.schedule-cell[data-editing="true"]:focus-within:not(:has([data-mouse-focus="true"]))
+  > .schedule-cell-add-action {
   opacity: 1;
   pointer-events: auto;
 }
@@ -6150,6 +6187,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-badge:focus-visible {
   outline: 2px solid var(--schedule-focus-ring-color);
   outline-offset: 1px;
+}
+/* BL-610: a card the mouse focused shows its selection, not the keyboard ring. */
+.schedule-shift-badge[data-mouse-focus="true"]:focus-visible {
+  outline: none;
 }
 /* A ghost is the real card switched off: same frame and layout, one dead gray
    with a fine sparse hatch whatever its type, job or place. No opacity, so the
@@ -9891,6 +9932,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: var(--theme-danger);
   color: var(--theme-on-accent);
 }
+.schedule-template-replace-impact {
+  align-self: center;
+  color: var(--theme-danger-text);
+  font-size: 13px;
+}
 .schedule-template-dialog button.primary-command {
   justify-self: end;
   border-color: var(--theme-accent);
@@ -11864,9 +11910,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .workspace-closure-panel p {
   margin: 6px 0 0;
-  color: #66524d;
   font-size: 13px;
   line-height: 1.45;
+}
+/* BL-287: the panel's own lines only; its error line stays the one red. */
+.workspace-closure-panel p:not(.form-error) {
+  color: #66524d;
 }
 .workspace-closure-panel label {
   display: grid;
@@ -12099,6 +12148,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .organization-form-actions {
   display: flex;
   justify-content: flex-end;
+  /* BL-659: Reload rules sat glued to Save. */
+  gap: 8px;
   padding: 17px 24px;
   border-top: 1px solid var(--theme-border-subtle);
 }
@@ -12170,13 +12221,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font: inherit;
   line-height: 1.45;
 }
+/* BL-900: the danger token, not a near-copy of it. */
 .nf-button.danger-text-button {
   background: transparent;
-  color: #a04033;
+  color: var(--theme-danger-strong);
   box-shadow: none;
 }
 .nf-button.danger-button {
-  background: #a84034;
+  background: var(--theme-danger-strong);
 }
 .document-fields {
   display: grid;
@@ -13676,7 +13728,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .owner-setup-checklist-item small {
   margin-top: 3px;
-  color: #708078;
+  /* BL-846: #708078 was 4.16:1 at 11 px. */
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .owner-setup-checklist-status {
@@ -13717,6 +13770,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .workspace-widget.is-hidden {
   opacity: 0.5;
   border-style: dashed;
+}
+.workspace-widget-preview {
+  display: contents;
 }
 .workspace-widget > header {
   min-height: 48px;
@@ -13789,9 +13845,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #13201a;
   font: inherit;
 }
+/* BL-847: the app's one focus ring; the faint 24% halo was 2.88:1. */
 .workspace-todo-form input:focus {
-  border-color: #7da08f;
-  outline: 2px solid rgb(125 160 143 / 24%);
+  border-color: var(--theme-focus);
+  outline: 2px solid var(--theme-focus);
   outline-offset: 1px;
 }
 .workspace-feed > a,
@@ -13808,6 +13865,14 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 .workspace-feed > a:hover {
   background: #f4f8f6;
+}
+/* BL-666 (5): "View all …" is a link, not a feed row; the row grid broke it
+   into one word per line. */
+.workspace-feed > .widget-link {
+  min-height: 38px;
+  padding: 0 14px;
+  border-bottom: 0;
+  display: flex;
 }
 .workspace-feed > .workspace-todo-row {
   grid-template-columns: minmax(0, 1fr) 32px;
@@ -13830,7 +13895,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   white-space: nowrap;
 }
 .workspace-feed small {
-  color: #718078;
+  /* BL-846: #718078 was 4.15:1 at 11 px. */
+  color: var(--theme-muted);
   font-size: 11px;
 }
 .widget-link {

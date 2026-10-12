@@ -7,20 +7,31 @@ import { EmployeeLocationCell, EmployeeLocationChips } from "./EmployeeLocationP
 // column and under the name on the phone. EMP-001: that is the only chip; a
 // manager manages where they are assigned, which the column already says.
 
+const kadikoy = { id: "11000000-0000-4000-8000-000000000001", name: "Kadikoy", primary: true };
+const besiktas = { id: "11000000-0000-4000-8000-000000000002", name: "Besiktas", primary: false };
+const moda = { id: "11000000-0000-4000-8000-000000000003", name: "Moda", primary: false };
 const row = (patch: Partial<EmployeeSummary>) =>
   ({
-    primary_location_name: "Kadikoy",
-    location_count: 1,
+    locations: [kadikoy],
     ...patch,
   }) as EmployeeSummary;
-const nowhere = row({ primary_location_name: null, location_count: 0 });
+const nowhere = row({ locations: [] });
 
 describe("the Employees list's location cell", () => {
   it("shows where they work, with the count of the others, and no chip", () => {
-    const { container } = render(<EmployeeLocationCell employee={row({ location_count: 3 })} />);
+    const { container } = render(<EmployeeLocationCell employee={row({ locations: [kadikoy, besiktas, moda] })} />);
     expect(screen.getByText("Kadikoy")).toBeTruthy();
     expect(screen.getByText("+2")).toBeTruthy();
     expect(container.querySelectorAll(".employee-chip")).toHaveLength(0);
+  });
+
+  it("names the first location for somebody with no primary, the owner: Kadikoy +1, never Unassigned (BL-428, G3)", () => {
+    const { container } = render(
+      <EmployeeLocationCell employee={row({ locations: [{ ...besiktas }, { ...kadikoy, primary: false }] })} />,
+    );
+    expect(container.querySelector(".employee-location-name")?.textContent).toBe("Besiktas");
+    expect(screen.getByText("+1")).toBeTruthy();
+    expect(screen.queryByText("Unassigned")).toBeNull();
   });
 
   it("says No location for somebody assigned nowhere, and nothing else", () => {

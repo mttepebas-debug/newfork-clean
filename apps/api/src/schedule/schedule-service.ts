@@ -29,6 +29,7 @@ import {
   scheduleExportScheduleListSchema,
   scheduleExportScheduleSchema,
   legacyScheduleShiftListSchema,
+  scheduleTemplateApplyPreviewSchema,
   scheduleTemplateApplyResultSchema,
   scheduleTemplateDetailSchema,
   scheduleTemplateListSchema,
@@ -58,6 +59,7 @@ import {
   type SchedulePendingOpMutationResult,
   type SchedulePublicationStatus,
   type ScheduleRecentExportEvent,
+  type ScheduleTemplateApplyPreview,
   type ScheduleTemplateApplyResult,
   type ScheduleTemplateDetail,
   type ScheduleTemplateList,
@@ -320,6 +322,14 @@ export interface ScheduleReadService {
     mode: "merge" | "overwrite";
     departmentKeys: readonly string[] | null;
   }): Promise<ScheduleTemplateApplyResult>;
+  /** KK-162 (BL-694): how many shifts Replace would remove from the edit. */
+  previewTemplateApply(input: {
+    actorUserId: string;
+    workspaceId: string;
+    sessionId: string;
+    templateId: string;
+    departmentKeys: readonly string[] | null;
+  }): Promise<ScheduleTemplateApplyPreview>;
   previewAutoFill(
     actorUserId: string,
     workspaceId: string,
@@ -972,6 +982,20 @@ export function createScheduleReadService(options: {
         targets: ["draft_shifts", "pending_ops", "edit_lock"],
       });
       return result;
+    },
+    async previewTemplateApply(input) {
+      const { data, error } = await client.rpc(
+        "preview_schedule_template_apply_service",
+        {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_session_id: input.sessionId,
+          target_template_id: input.templateId,
+          department_keys: input.departmentKeys,
+        },
+      );
+      if (error) throw rpcFailure(error);
+      return scheduleTemplateApplyPreviewSchema.parse(data);
     },
     async previewAutoFill(actorUserId, workspaceId, sessionId) {
       const { data, error } = await client.rpc(

@@ -25,6 +25,7 @@ import { JobColorInput } from "./JobCatalogEditor";
 import { jobInputSchema } from "@newfork/shared";
 import { LetterRuleError, letterRuleProps } from "../shell/us-text";
 import { listJobs } from "./organization-data";
+import { isChangedMeanwhile } from "../lib/catalog-refusals";
 
 type Pending = { before: boolean; assigned: boolean; revision: number };
 export function JobAssignmentsDrawer({
@@ -82,6 +83,8 @@ export function JobAssignmentsDrawer({
   const [discard, setDiscard] = useState(false);
   const [deleteLocked, setDeleteLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // BL-1045: Reload latest only when the refusal says something newer exists.
+  const [reloadable, setReloadable] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const query: JobAssignmentQuery = {
@@ -183,7 +186,10 @@ export function JobAssignmentsDrawer({
       await refresh();
       if (createMode) onCreatedJob?.(result.job);
     },
-    onError: (cause) => setError(errorText(cause)),
+    onError: (cause) => {
+      setError(errorText(cause));
+      setReloadable(isChangedMeanwhile(cause));
+    },
   });
   const busy = save.isPending || bulkBusy || deleteLocked;
   const rows = data.data?.employees ?? [];
@@ -271,6 +277,7 @@ export function JobAssignmentsDrawer({
       );
     } catch (cause) {
       setError(errorText(cause));
+      setReloadable(false);
     } finally {
       setBulkBusy(false);
     }
@@ -446,7 +453,7 @@ export function JobAssignmentsDrawer({
               role={error ? "alert" : "status"}
             >
               {error ?? notice}
-              {error && (
+              {error && reloadable && (
                 <button
                   type="button"
                   disabled={busy}
@@ -678,7 +685,7 @@ export function JobAssignmentsDrawer({
                 </button>
                 <button
                   type="button"
-                  className="job-primary-button"
+                  className="job-danger-button"
                   disabled={busy}
                   onClick={onClose}
                 >

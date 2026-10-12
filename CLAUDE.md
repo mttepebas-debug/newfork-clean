@@ -53,7 +53,7 @@ Bu repoda çalışan her oturumun ve ajanın ortak kuralı. Mert'in (ürün sahi
 
 ## 5. İş akışı
 ### Roller
-İş Claude Projects'te yürür (Mert, 2026-10-09; `KARARLAR.md` S-116). Eski yerel koordinatör oturumu (`newfork-wt/coord`, dal `coord/kayit`, `/oto`, `/durum`) emeklidir.
+İş Claude Projects'te yürür (Mert, 2026-10-09; `KARARLAR.md` S-116). Eski yerel koordinatör oturumu (`newfork-wt/coord`, dal `coord/kayit2`, `/oto`, `/durum`) emeklidir.
 - **Koordinatör:** Project'in proje sohbetindeki Claude'u. Mert'in proje sohbetindeki muhatabı; kod yazmaz. İsteği daraltır, her işe bir thread açar, sırayı ve işçi sınırını tutar, sonucu doğrular, `DURUM.md`'yi yazar, treni Remote Control thread'ine koşturur.
 - **Thread** (işçi): bir iş, uçtan uca; Mert'le kendi thread'inde konuşur. İki türü var:
   - **Bulut thread'i:** GitHub repo'sunun kendi kopyası, Linux. Kod, lint, typecheck, birim test ve dal push'u yapar. Yerel DB, kilit, `test:db`, e2e ve tren yoktur; `lock.mjs` ve `train.mjs` orada çıkış 3 ile durur. Bunlara gereken adım Remote Control thread'ine gider.
@@ -97,6 +97,7 @@ Bu repoda çalışan her oturumun ve ajanın ortak kuralı. Mert'in (ürün sahi
 | `docs/plan/EKRAN-PLANI.md`, `docs/plan/ekranlar/` | Yol haritası ve Mert'in onayladığı ekran kapsamları |
 | Klasör `CLAUDE.md`'leri | O klasörün teknik tuzakları; koordinatör işçinin "Ders" satırından yazar |
 | `e2e/karantina.txt` | Bilinen e2e kırmızılarının karantina listesi (S-106); guard ve tren işçi dalını reddeder |
+| PAGES (`/mnt/project-files/PAGES`, `README.md`, `ENVANTER.md`) | Uygulamanın tam haritası: route başına numaralı Artifact, sayfa → parça → senaryo. Kodun dokunduğu her sayfa, parça (çekmece, pencere, sekme, ortak bileşen) ve durum, işi yapan thread tarafından aynı işin sonunda PAGES sayfasında ve Artifact klasör dizininde güncellenir ya da eklenir; haritada olmayan sayfa, parça ya da senaryo görülürse eklenir (proje talimatı #11) |
 - **Kayıt yükü** (Mert, 2026-10-08): ayrı karar kaydı (`DURUM.md` "Senin yerine verdiğim kararlar", gerekirse `KARARLAR.md`) yalnız Mert'in yerine verilen ürün ya da ekran kararı, para ve canlı için; gündelik kararlar (iş sırası, model, test, dal) thread'de tek satır. Mert'in bir thread'de verdiği ürün kararı o thread'in dalında `KARARLAR.md`'ye girer.
 - Claude'un hafızası yalnız Mert ve ortam bilgisi tutar; kural buraya, karar `KARARLAR.md`'ye.
 - `docs/archive/` kural değildir, okunmaz.

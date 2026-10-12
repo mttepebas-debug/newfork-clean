@@ -21,10 +21,16 @@ describe("ScheduleEditTimeoutDialog", () => {
     );
 
     const dialog = screen.getByRole("dialog", { name: "Keep editing?" });
+    // BL-711: the keyboard lands on Continue when the window opens.
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "CONTINUE" }));
     expect(dialog.className).toContain("schedule-timeout-dialog");
     expect(screen.getByText("Time left")).toBeTruthy();
     expect(screen.getByText("150")).toBeTruthy();
     expect(screen.getByText("No activity for 15 minutes.")).toBeTruthy();
+    // BL-719: the window says what happens when the time runs out (S1).
+    expect(
+      screen.getByText("When time runs out, your changes are saved as a draft and editing ends."),
+    ).toBeTruthy();
     expect(
       dialog.querySelector<HTMLElement>(".schedule-timeout-progress span")?.style
         .width,

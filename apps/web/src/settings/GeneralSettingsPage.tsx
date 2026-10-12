@@ -116,7 +116,7 @@ export default function GeneralSettingsPage() {
       <SettingsHeader
         icon={<Building2 size={21} aria-hidden />}
         title="General"
-        description="Organization identity used across navigation, invitations, and shared workspaces."
+        description="Workspace identity used across navigation and invitations."
       />
       <form className="organization-form" onSubmit={submit}>
         <div className="organization-form-row organization-logo-row">
@@ -146,10 +146,9 @@ export default function GeneralSettingsPage() {
         </div>
         <div className="organization-form-row">
           <div>
-            <label htmlFor="organization-name">Organization name</label>
+            <label htmlFor="organization-name">Workspace name</label>
             <p>
-              Changing the display name does not change the organization ID or
-              access.
+              Changing the name does not change anyone's access.
             </p>
           </div>
           <div>
@@ -181,7 +180,7 @@ export default function GeneralSettingsPage() {
         ) : null}
         {saved ? (
           <p className="form-success" role="status">
-            Organization settings saved.
+            Workspace settings saved.
           </p>
         ) : null}
         <div className="organization-form-actions">

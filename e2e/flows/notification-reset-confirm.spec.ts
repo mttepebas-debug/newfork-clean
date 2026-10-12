@@ -26,6 +26,6 @@ test("Reset all policies takes a second click before anything is reset", async (
   expect(resets).toHaveLength(0);
 
   await confirm.click();
-  await expect(page.getByRole("status").filter({ hasText: /notification policies reset\.$/ })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /notification polic(y|ies) reset\.$/ })).toBeVisible();
   expect(resets).toHaveLength(1);
 });

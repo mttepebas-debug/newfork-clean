@@ -101,7 +101,7 @@ describe("SwapReview", () => {
   // KARARLAR §1.1 (Mert, 2026-10-09): a swap onto approved time off is never approved.
   it("keeps Approve off and says why when the swap lands on approved time off", async () => {
     vi.mocked(getExchangePreview).mockResolvedValue(preview({
-      receiver: { status: "eligible", reasons: [], approval_flags: [], measures, shortens_time_off: true },
+      receiver: { status: "ineligible", reasons: ["Approved time off overlaps this shift"], approval_flags: [], measures, blockers: [{ code: "approved_time_off" }] },
     }));
     renderReview();
     const cards = await screen.findAllByRole("group");

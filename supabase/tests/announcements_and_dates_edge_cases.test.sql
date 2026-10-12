@@ -312,15 +312,16 @@ select is((select count(*)::integer from jsonb_array_elements(public.read_import
   'KK-92 b: the owner sees every version');
 
 -- 10. Two people editing at once: the later save is refused (KK-92 c) ----------------------------
+-- An announcement's refusal names its key (BL-1047); an important date's has none yet (BL-1048).
 
 select tests.remember('r:ann:rev', pg_temp.save_ann('owner', array['K'], 'Revisioned'));
 select is(pg_temp.try(format($$select public.save_announcement_audience_service(%L, %L, %L, null, 'Changed', 'Body', 'general',
     array['employee'], %L::uuid[], null, null, null, '{}', '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.locs(array['K']))),
-  'PT409 ', 'KK-92 c: an announcement change that names no revision is refused');
+  'PT409 announcement.changed', 'KK-92 c: an announcement change that names no revision is refused');
 select is(pg_temp.try(format($$select public.save_announcement_audience_service(%L, %L, %L, %s, 'Changed', 'Body', 'general',
     array['employee'], %L::uuid[], null, null, null, '{}', '{}')$$, pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'),
     pg_temp.rev(tests.id('r:ann:rev')) - 1, pg_temp.locs(array['K']))),
-  'PT409 ', 'KK-92 c: so is one made on an old revision');
+  'PT409 announcement.changed', 'KK-92 c: so is one made on an old revision');
 select tests.remember('r:date:rev', pg_temp.save_date('owner', array['K'], 'Revisioned date'));
 select pg_temp.save_date('owner', array['K'], 'Revisioned date, saved once', id => tests.id('r:date:rev'));
 select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Saved twice', 'event', '2026-12-25', '2026-12-25',
@@ -332,7 +333,7 @@ select is(pg_temp.try(format($$select public.save_important_date_service(%L, %L,
   'PT409 ', 'KK-92 c: so is one that names no revision');
 select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, %L, %L, %s, 'archive')$$,
     pg_temp.u('owner'), tests.id('r'), tests.id('r:ann:rev'), pg_temp.rev(tests.id('r:ann:rev')) - 1)),
-  'PT409 ', 'KK-92 c: archiving an announcement on an old revision is refused too');
+  'PT409 announcement.changed', 'KK-92 c: archiving an announcement on an old revision is refused too');
 
 -- BL-958: no lasting conflict is refused with 40001. PostgREST takes 40001 for
 -- a passing conflict and runs the same request again, forever, holding one of

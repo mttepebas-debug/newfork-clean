@@ -9,6 +9,7 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 - Config `npx supabase status -o env` okur: "did not print …" yerel Supabase kapalı demektir.
 - `signIn` girişi beklemez: ardından `expect(page).not.toHaveURL(/\/sign-in/)` ya da `signInAs`.
 - Sunucu kuralı ekranı atlayıp `tokenOf(person)` ile API'den sınanır (`ownership-transfer-password.spec.ts`). Kayıt e-postası Mailpit'te (`E2E_MAILPIT_URL`).
+- API'nin Resend e-postası (davet, parola sıfırlama, hesap kurtarma) Mailpit'e düşmez: bağlantı GoTrue admin `POST /auth/v1/admin/generate_link` ile üretilir, `hashed_token` cevabın üst düzeyinde (`flows/password-reset.spec.ts`).
 - "Hayır" kontrolünün yanına bir "evet" konur. Yerleşik Manager'da belge izni yok (BL-560); belge müdürü `documentManagerRole()` ile kurulur, yoksa 403 yanlış nedenden gelir.
 - Kendiliğinden yönlenen sayfada (onboarding sihirbazı) DB değil adres beklenir (`toHaveURL`); CI'daki kırmızı buydu. Toast her zaman çıkmaz (BL-561): kararı DB'den bekle.
 - `ConfirmButton`: iki ayrı `getByRole("button", { name, exact: true })` ("Remove…" → "Confirm remove…", 3,2 sn'de söner). `<select>`: `getByRole("combobox")`. `toContainText` gizli Tooltip metnini de okur: `{ useInnerText: true }`.

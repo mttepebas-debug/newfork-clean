@@ -11,6 +11,7 @@ import {
   type DocumentEditorSection,
 } from "../documents/DocumentLifecycleFields";
 
+import { formatsLabel } from "../documents/document-rules";
 import "./document-settings-editor.css";
 
 type ValidationIssue = { path: PropertyKey[]; message: string };
@@ -37,6 +38,16 @@ function issueSection(issue: ValidationIssue): DocumentEditorSection {
 
   return "details";
 }
+
+/** BL-664 (3): the review list says the mode in words, as the select does. */
+const requirementLabel: Record<
+  NonNullable<DocumentTypeInput["lifecycle_settings"]>["mode"],
+  string
+> = {
+  optional: "Optional",
+  required: "Required",
+  conditional: "Conditional",
+};
 
 export function DocumentSettingsEditor({
   value,
@@ -391,12 +402,7 @@ export function DocumentSettingsEditor({
 
             {section === "fields" && (
               <p className="document-editor-hint">
-                Accepted uploads:{" "}
-                {value.accepted_formats
-
-                  .map((format) => format.toUpperCase())
-
-                  .join(", ")}
+                Accepted uploads: {formatsLabel(value.accepted_formats)}
               </p>
             )}
           </fieldset>
@@ -407,8 +413,12 @@ export function DocumentSettingsEditor({
                 <dt>Requirement</dt>
 
                 <dd>
-                  {value.lifecycle_settings?.mode ??
-                    (value.required_at_onboarding ? "required" : "optional")}
+                  {
+                    requirementLabel[
+                      value.lifecycle_settings?.mode ??
+                        (value.required_at_onboarding ? "required" : "optional")
+                    ]
+                  }
                 </dd>
               </div>
 

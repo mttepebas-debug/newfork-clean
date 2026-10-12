@@ -14,6 +14,7 @@ import {
   permissionsForRole,
   workspaceRoleRecordSchema,
 } from "@newfork/shared";
+import { RequestError } from "../lib/request-error";
 import RolesSettingsPage from "./RolesSettingsPage";
 import {
   deleteWorkspaceRole,
@@ -224,6 +225,102 @@ describe("RolesSettingsPage", () => {
       manager.id,
     );
     expect(refresh).not.toHaveBeenCalled();
+  });
+  // BL-1049: the database says the role was saved meanwhile with its key; the
+  // editor drops the edit, loads the saved role and says so.
+  it("loads the saved role when somebody changed it meanwhile", async () => {
+    const savedMeanwhile = {
+      ...manager,
+      updated_at: "2026-09-14T10:00:00Z",
+      permission_keys: manager.permission_keys.filter(
+        (key) => key !== "schedule.publish",
+      ),
+    };
+    vi.mocked(loadRoleWorkspace)
+      .mockResolvedValueOnce({
+        permissions: catalog,
+        roles: [owner, admin, manager, employee],
+      })
+      .mockResolvedValue({
+        permissions: catalog,
+        roles: [owner, admin, savedMeanwhile, employee],
+      });
+    vi.mocked(saveWorkspaceRole)
+      .mockRejectedValueOnce(
+        new RequestError(
+          "Role changed since you opened it. Reload before saving.",
+          "role.changed",
+          undefined,
+          409,
+        ),
+      )
+      .mockResolvedValue(manager.id);
+    mount(`/app/settings/roles/${manager.id}`);
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^Schedule\s/ }),
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "Schedule Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This role changed since you opened it. The saved version is shown; make your change again.",
+    );
+    await waitFor(() => expect(loadRoleWorkspace).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("checkbox", { name: "Publishing Edit" }),
+      ).toHaveProperty("checked", false),
+    );
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toHaveProperty("disabled", true);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Publishing Edit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(saveWorkspaceRole).toHaveBeenLastCalledWith(
+        manager.workspace_id,
+        expect.objectContaining({
+          expected_updated_at: savedMeanwhile.updated_at,
+        }),
+        manager.id,
+      ),
+    );
+  });
+  it("reloads the role's references when the database says it is still in use", async () => {
+    const custom = {
+      ...manager,
+      system_key: null,
+      name: "Floor lead",
+      blocking_member_count: 0,
+      blocking_invite_count: 0,
+      deletable: true,
+    };
+    vi.mocked(loadRoleWorkspace)
+      .mockResolvedValueOnce({ permissions: catalog, roles: [custom] })
+      .mockResolvedValue({
+        permissions: catalog,
+        roles: [{ ...custom, blocking_member_count: 1, deletable: false }],
+      });
+    vi.mocked(deleteWorkspaceRole).mockRejectedValueOnce(
+      new RequestError(
+        "Role has member or invitation references. Resolve these dependencies before deleting.",
+        "role.in_use",
+        undefined,
+        409,
+      ),
+    );
+    mount(`/app/settings/roles/${custom.id}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Delete role" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Resolve these dependencies before deleting.",
+    );
+    await waitFor(() => expect(loadRoleWorkspace).toHaveBeenCalledTimes(2));
+    fireEvent.click(await screen.findByRole("button", { name: "Delete role" }));
+    expect(
+      await screen.findByText(/1 member references and 0 invitation references/),
+    ).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Confirm delete" })).toBeNull();
+    expect(deleteWorkspaceRole).toHaveBeenCalledTimes(1);
   });
   it("guards role switching", async () => {
     mount();

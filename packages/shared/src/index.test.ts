@@ -1992,6 +1992,19 @@ describe("scheduling settings schemas", () => {
       }),
     ).toThrow();
   });
+  // BL-1031: Settings and the Schedule editor refuse equal hours in one sentence.
+  it("refuses equal default hours in the Schedule editor's words", () => {
+    const result = shiftTypeInputSchema.safeParse({
+      name: "Invalid",
+      color: "#7B5EA7",
+      default_start_time: "09:00",
+      default_end_time: "09:00",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      "Start and end time cannot be the same.",
+    ]);
+  });
 });
 
 describe("important date schemas", () => {

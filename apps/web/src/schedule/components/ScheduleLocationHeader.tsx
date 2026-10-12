@@ -14,6 +14,7 @@ export function ScheduleLocationHeader({
   weekStartDate,
   // A group of several locations has no zone of its own: the device's calendar.
   currentDate = todayIn(location.timezone),
+  publishWarnings = true,
   onToggleLocationFilter,
 }: {
   readonly location: ScheduleGridLocationGroup;
@@ -21,12 +22,15 @@ export function ScheduleLocationHeader({
   readonly daysLength: number;
   readonly weekStartDate: string;
   readonly currentDate?: string;
+  /** BL-683: false for a viewer who cannot publish (an employee): no deadline call to action. */
+  readonly publishWarnings?: boolean;
   readonly onToggleLocationFilter: (locationIds: readonly string[]) => void;
 }) {
   const status = getLocationPublicationStatus(
     location,
     weekStartDate,
     currentDate,
+    publishWarnings,
   );
   const toggle = (
     locationIds: readonly string[],
@@ -59,6 +63,8 @@ export function ScheduleLocationHeader({
         <span className="schedule-location-header-list">
           <span
             className="schedule-location-status-dot"
+            // BL-713: an image with a name, so the status is read, not only seen.
+            role="img"
             data-status={status.status}
             data-deadline={status.deadlineWarning}
             title={status.label}
@@ -79,6 +85,8 @@ export function ScheduleLocationHeader({
         <span>
           <span
             className="schedule-location-status-dot"
+            // BL-713: an image with a name, so the status is read, not only seen.
+            role="img"
             data-status={status.status}
             data-deadline={status.deadlineWarning}
             title={status.label}
@@ -95,6 +103,7 @@ function getLocationPublicationStatus(
   location: ScheduleGridLocationGroup,
   weekStartDate: string,
   currentDate: string,
+  publishWarnings: boolean,
 ): {
   readonly status: "published" | "unpublished";
   readonly deadlineWarning: boolean;
@@ -110,6 +119,7 @@ function getLocationPublicationStatus(
 
   const daysUntilStart = daysUntilWeekStart(weekStartDate, currentDate);
   const deadlineWarning =
+    publishWarnings &&
     daysUntilStart <= PUBLISH_DEADLINE_WARNING_DAYS &&
     daysUntilStart > -SCHEDULE_WEEK_LENGTH_DAYS;
   return {

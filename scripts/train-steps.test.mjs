@@ -268,11 +268,11 @@ test("run: a red CI stops before push; main does not move", () => {
   assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), before);
 });
 
-test("run: coord/kayit rides along while it holds commits main lacks, and not after", () => {
-  w.branch("coord/kayit", ["records", { "DURUM.md": "# Durum\n" }]);
+test("run: coord/kayit2 rides along while it holds commits main lacks, and not after", () => {
+  w.branch("coord/kayit2", ["records", { "DURUM.md": "# Durum\n" }]);
   const r = run(w.ctx, []);
   assert.equal(r.code, 0, text(r));
-  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit"]);
+  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit2"]);
   const again = run({ ...w.ctx, now: () => new Date("2026-10-08T11:00:00Z") }, []);
   assert.equal(again.code, 1);
   assert.match(text(again), /trene girecek dal yok/);
@@ -343,13 +343,13 @@ test("apply-local: waits its turn while another session holds db, then applies o
   assert.equal(lock("db").free, true);
 });
 
-test("run: coord/kayit only on origin (no local branch) still rides along", () => {
-  w.branch("coord/kayit", ["records", { "DURUM.md": "# Durum\n" }]);
-  git(w.repo, "push", "-q", "origin", "coord/kayit");
-  git(w.repo, "branch", "-q", "-D", "coord/kayit");
+test("run: coord/kayit2 only on origin (no local branch) still rides along", () => {
+  w.branch("coord/kayit2", ["records", { "DURUM.md": "# Durum\n" }]);
+  git(w.repo, "push", "-q", "origin", "coord/kayit2");
+  git(w.repo, "branch", "-q", "-D", "coord/kayit2");
   const r = run(w.ctx, []);
   assert.equal(r.code, 0, text(r));
-  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit"]);
+  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit2"]);
 });
 
 test("build: branches that change nothing in the end make no train", () => {
@@ -422,16 +422,16 @@ test("apply-local: a wait that runs out names what kept it: the holder, or a tic
   assert.equal(lock("db").free, true);
 });
 
-test("run: fetches origin first, so a coord/kayit another clone pushed since the last fetch rides along", () => {
+test("run: fetches origin first, so a coord/kayit2 another clone pushed since the last fetch rides along", () => {
   const other = path.join(w.dir, "other");
   git(w.dir, "clone", "-q", w.origin, other);
-  git(other, "checkout", "-q", "-b", "coord/kayit");
+  git(other, "checkout", "-q", "-b", "coord/kayit2");
   write(other, "DURUM.md", "# Durum\n");
   git(other, "add", "DURUM.md");
   git(other, "-c", "user.email=o@test", "-c", "user.name=O", "commit", "-q", "-m", "records");
-  git(other, "push", "-q", "origin", "coord/kayit");
-  assert.equal(git(w.repo, "branch", "-a", "--list", "*coord/kayit*"), ""); // not fetched yet
+  git(other, "push", "-q", "origin", "coord/kayit2");
+  assert.equal(git(w.repo, "branch", "-a", "--list", "*coord/kayit2*"), ""); // not fetched yet
   const r = run(w.ctx, []);
   assert.equal(r.code, 0, text(r));
-  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit"]);
+  assert.deepEqual(state().included.map((b) => b.name), ["coord/kayit2"]);
 });

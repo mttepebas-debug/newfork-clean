@@ -61,6 +61,7 @@ import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRo
 import {
   applyScheduleAutoFill,
   applyScheduleTemplate,
+  previewScheduleTemplateApply,
   bulkDeleteShifts,
   createScheduleTemplate,
   createScheduleShift,
@@ -157,6 +158,13 @@ import { SCHEDULE_ACTION_BUTTON_CLASS } from "../schedule/lib/scheduleActionButt
 import { formatSchedulePasteConflictContext } from "../schedule/lib/scheduleCatalogNames";
 import { templateAppliedDescription } from "../schedule/lib/templateApplyMessage";
 import { autoFillRejectedText } from "../schedule/lib/autoFillText";
+import {
+  asksForReload,
+  autoFillApplyError,
+  scheduleEditErrorText,
+  staleEditAsScreenError,
+  UNDO_SESSION_STALE_TEXT,
+} from "../schedule/lib/scheduleEditErrorText";
 import { ScheduleDeleteSelectionDialog } from "../schedule/components/ScheduleDeleteSelectionDialog";
 import { resolveScheduleShiftSelectionIds } from "../schedule/lib/scheduleShiftSelection";
 import {
@@ -210,6 +218,7 @@ import {
   isScheduleEditFocusedShiftBlankDismissTarget,
   isScheduleGridCellActivationTarget,
   isScheduleInteractionSurface,
+  isScheduleLayerTarget,
   isSchedulePreviewFocusedShiftBlankDismissTarget,
   isScheduleSurfaceTarget,
   isSuppressedScheduleClickTarget,
@@ -505,6 +514,9 @@ export function SchedulePage({
       const blockedTarget = topActionBlockedClickTargetRef.current;
       topActionBlockedClickTargetRef.current = null;
       if (!isSuppressedScheduleClickTarget(blockedTarget, target)) return;
+      // This click never reaches the page's own capture handler, which would
+      // spend the same press; spend it here, or the next click is eaten too.
+      suppressedScheduleClickTargetRef.current = null;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -990,9 +1002,10 @@ export function SchedulePage({
     }
     setOperationError(null);
     try {
-      setAutoFill(await previewScheduleAutoFill(workspaceId, session.id));
+      // BL-975: a lock that lapsed (the laptop slept) is picked back up first.
+      setAutoFill(await runWithLease(() => previewScheduleAutoFill(workspaceId, session.id)));
     } catch (error) {
-      setOperationError(requestErrorText(error));
+      setOperationError(scheduleEditErrorText(error));
     }
   };
 
@@ -1276,6 +1289,19 @@ export function SchedulePage({
         );
         return null;
       }
+      // BL-1052: another tab moved the edit on; a retry would send the same old
+      // revision, so the page is reloaded instead (the reload picks the edit up).
+      // The Save draft window and a retry sheet left by an earlier failure close
+      // too, so the banner's Reload is in reach.
+      if (isEditSessionStale(error)) {
+        setSaveRecovery(null);
+        setOperationError(scheduleEditErrorText(error));
+        setPublishMenuDismissSignal((value) => value + 1);
+        setSaveOpen(false);
+        setExportAfterSave(false);
+        leaveScheduleDeepLink();
+        return null;
+      }
       // BL-395: the save's own sentences for a refusal; a plain one for anything else.
       const message =
         error instanceof ScheduleRequestError && error.status > 0 && error.status < 500
@@ -1427,7 +1453,7 @@ export function SchedulePage({
       if (!isSameEditSession(mutationContext, currentMutationContext.current)) return null;
       if (throwOnError) throw error;
       onError?.(error as Error);
-      const text = requestErrorText(error);
+      const text = scheduleEditErrorText(error);
       setOperationError(text);
       toast.error("Schedule change could not be saved", {
         dedupeKey: "schedule-change-save-failed",
@@ -1600,7 +1626,7 @@ export function SchedulePage({
       // nothing changed, and the person reads one plain sentence.
       // BL-1000: another tab moved the edit on; the step itself is fine.
       const message = isEditSessionStale(error)
-        ? "This page is out of date. Reload it, then press Undo again."
+        ? UNDO_SESSION_STALE_TEXT
         : error instanceof ScheduleRequestError && error.status >= 400 && error.status < 500
           ? "This step can no longer be undone."
           : requestErrorText(error);
@@ -1696,6 +1722,9 @@ export function SchedulePage({
         dismissOneScheduleLayerRef.current();
         return;
       }
+      // BL-1003: while the shift window or another window is open, the grid's
+      // shortcuts wait; Ctrl+Z there must not undo an edit behind it.
+      if (editor || isScheduleLayerTarget(event.target)) return;
       if (
         (event.ctrlKey || event.metaKey) &&
         event.key.toLowerCase() === "a" &&
@@ -1745,7 +1774,7 @@ export function SchedulePage({
       }
     };
     const handleCopy = (event: ClipboardEvent) => {
-      if (!gridEditSession) return;
+      if (!gridEditSession || editor || isScheduleLayerTarget(event.target)) return;
       const currentSelectedIds = selectedIdsRef.current;
       if (isTextEditingTarget(event.target) || !currentSelectedIds.length)
         return;
@@ -1754,7 +1783,7 @@ export function SchedulePage({
       event.stopPropagation();
     };
     const handlePaste = (event: ClipboardEvent) => {
-      if (!gridEditSession) return;
+      if (!gridEditSession || editor || isScheduleLayerTarget(event.target)) return;
       if (isTextEditingTarget(event.target)) return;
       event.preventDefault();
       event.stopPropagation();
@@ -1771,6 +1800,7 @@ export function SchedulePage({
   }, [
     clipboard,
     copySelectedShifts,
+    editor,
     findEditableShift,
     removeSelected,
     requestDeleteSelected,
@@ -2328,6 +2358,9 @@ export function SchedulePage({
               !pastWeek && !gridEditSession && !isDiscardingEditSession
             }
             isStartingDraft={isDiscardingEditSession}
+            readOnlyNote={
+              pastWeek ? "Past week: you can view it, not edit it." : null
+            }
             publishedSchedule={
               publishedScheduleSummary?.published_at
                 ? {
@@ -2609,6 +2642,14 @@ export function SchedulePage({
       {operationError ? (
         <div className="schedule-operation-error" role="alert">
           {operationError}
+          {asksForReload(operationError) ? (
+            <Button
+              className="schedule-operation-retry"
+              onClick={() => window.location.reload()}
+            >
+              Reload
+            </Button>
+          ) : null}
           <button
             type="button"
             aria-label="Dismiss error"
@@ -2689,6 +2730,8 @@ export function SchedulePage({
       ) : null}
       <ScheduleGrid
         model={sortedModel}
+        timeFormat={resolveTimeInputFormat(account?.timeFormat, model.settings.time_format)}
+        publishWarnings={canPublishSchedule}
         search={search}
         selectedDate={selectedDate}
         view={view}
@@ -3392,15 +3435,25 @@ export function SchedulePage({
                 throw error;
               })
           }
+          onPreviewReplace={(templateId, departmentKeys) =>
+            gridEditSession
+              ? previewScheduleTemplateApply(
+                  context.workspace.id,
+                  gridEditSession.id,
+                  templateId,
+                  departmentKeys,
+                ).then((preview) => preview.removed_shift_count)
+              : Promise.reject(new Error("No edit is open"))
+          }
           onApply={(templateId, mode, departmentKeys) =>
             gridEditSession
-              ? applyScheduleTemplate(
+              ? runWithLease(() => applyScheduleTemplate(
                   context.workspace.id,
                   gridEditSession,
                   templateId,
                   mode,
                   departmentKeys,
-                )
+                ))
                   .then((result) => {
                     const templateName =
                       templates.find((item) => item.id === templateId)?.name ??
@@ -3424,7 +3477,7 @@ export function SchedulePage({
                         description: "Refresh the draft, then try again.",
                       },
                     );
-                    throw error;
+                    throw staleEditAsScreenError(error);
                   })
               : Promise.resolve()
           }
@@ -3437,16 +3490,18 @@ export function SchedulePage({
           preview={autoFill}
           onClose={() => setAutoFill(null)}
           onApply={(assignments) =>
-            applyScheduleAutoFill(
+            runWithLease(() => applyScheduleAutoFill(
               context.workspace.id,
               gridEditSession,
               autoFill,
               assignments,
-            ).then((result) => {
+            )).then((result) => {
               setSession(result.session);
               if (result.rejected.length)
                 setOperationError(autoFillRejectedText(result.rejected.length));
               return result;
+            }, (error: unknown) => {
+              throw autoFillApplyError(error);
             })
           }
         />
