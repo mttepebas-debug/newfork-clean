@@ -6,7 +6,10 @@ import { RefreshCw, User } from "lucide-react";
 import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
 import { ScheduleTopBar } from "../schedule/components/ScheduleTopBar";
 import { addDays, formatPeriod } from "../schedule/lib/scheduleDateTime";
-import { dismissNextScheduleSearchLayer } from "../schedule/lib/scheduleDismissal";
+import {
+  dismissNextScheduleSearchLayer,
+  newestScheduleFilterKey,
+} from "../schedule/lib/scheduleDismissal";
 import {
   isBlankScheduleDismissTarget,
   isMatchingScheduleLocationHeaderTarget,
@@ -94,9 +97,11 @@ export function EmployeeScheduleBoard({
   function navigate(values: Record<string, string | null>) {
     setParams((previous) => {
       const next = new URLSearchParams(previous);
-      Object.entries(values).forEach(([key, value]) =>
-        value ? next.set(key, value) : next.delete(key),
-      );
+      // A changed filter becomes the newest one; Esc takes it off first.
+      Object.entries(values).forEach(([key, value]) => {
+        next.delete(key);
+        if (value) next.set(key, value);
+      });
       return next;
     });
   }
@@ -134,9 +139,8 @@ export function EmployeeScheduleBoard({
   const isCurrentViewPeriod =
     view === "day" ? selectedDate === today : model.week_start === currentWeekStart;
 
-  // Dropdown first, then the search layers in their fixed order:
-  // hide unscheduled -> shift type/job/employee filters -> locations ->
-  // day view -> a week other than the current one.
+  // Dropdown first, then the filters one at a time, newest first, then day
+  // view, then a week other than the current one.
   const dismissOneLayer = (
     preserveMatchingLocationHeader = false,
     preserveSearchFilters = false,
@@ -148,13 +152,11 @@ export function EmployeeScheduleBoard({
     // Read from the router, not window.location: the ref below is reassigned
     // every render, so these params are always the current ones.
     const liveSearch = new URLSearchParams(params);
-    if (preserveMatchingLocationHeader && liveSearch.has("locations")) {
-      const higherPrioritySearchLayer =
-        liveSearch.get("hideUnscheduled") === "true" ||
-        liveSearch.has("shiftTypes") ||
-        liveSearch.has("jobs") ||
-        liveSearch.has("employees");
-      if (!higherPrioritySearchLayer) return false;
+    if (
+      preserveMatchingLocationHeader &&
+      newestScheduleFilterKey(liveSearch) === "locations"
+    ) {
+      return false;
     }
     if (preserveSearchFilters) return false;
     const dismissal = dismissNextScheduleSearchLayer({
