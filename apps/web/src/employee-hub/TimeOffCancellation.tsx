@@ -98,10 +98,10 @@ export function TimeOffCancellation({ request, workspaceId, timeFormat, onChange
           }}>Add another time range</button>
         </div>)}
         <label>Cancellation note<textarea maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
-        {stale ? <p role="alert">The approved leave changed. Close this form and review the current hours before continuing.</p> : null}
+        {stale || isStaleTimeOff(mutation.error) ? <p role="alert">The approved leave changed. Close this form and review the current hours before continuing.</p> : null}
         {selectionError ? <p role="alert">{selectionError}</p> : null}
         {unfinished ? <p>Apply or discard the hours being edited before sending.</p> : null}
-        {mutation.error && !(stale && isStaleTimeOff(mutation.error)) ? <p role="alert">{mutation.error.message}</p> : null}
+        {mutation.error && !isStaleTimeOff(mutation.error) ? <p role="alert">{mutation.error.message}</p> : null}
         <button type="submit" disabled={stale || Boolean(selectionError) || unfinished}>Send cancellation request</button>
         <button type="button" onClick={() => { returnToLaunch.current = true; setDraft(null); }}>Keep approved leave</button>
       </fieldset>

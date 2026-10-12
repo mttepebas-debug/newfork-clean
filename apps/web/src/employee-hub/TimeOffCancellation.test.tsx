@@ -187,6 +187,9 @@ describe("approved leave cancellation", () => {
     const ui = setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
     fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
     await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+    // Before the reload lands and after it, never the server's sentence.
+    expect(screen.getAllByRole("alert").map(alert => alert.textContent)).toEqual([
+      "The approved leave changed. Close this form and review the current hours before continuing."]);
     ui.rerender(ui.view({ ...request, revision: 3 }));
     expect(screen.getAllByRole("alert").map(alert => alert.textContent)).toEqual([
       "The approved leave changed. Close this form and review the current hours before continuing."]);
