@@ -27,6 +27,7 @@ import {
   renderScheduleBadgeWidthMeasurer,
   useUniformScheduleBadgeWidth,
 } from "../hooks/useScheduleBadgeMeasurements";
+import { useKeepScrollThroughDrag } from "../hooks/useKeepScrollThroughDrag";
 import {
   buildDisplayScheduleCellState,
   useScheduleCellState,
@@ -281,6 +282,7 @@ export function ScheduleGrid({
     }
     return null;
   }, [filtered.locations, filtered.shifts, presetDrag.dragState, shiftDrag.dragState]);
+  useKeepScrollThroughDrag({ active: Boolean(dragRule), gridRef });
   const { employeeRowGroups, rows } = useMemo(() => {
     if (!dragRule) return { employeeRowGroups: allEmployeeRowGroups, rows: allRows };
     const canTake = (employee: (typeof allRows)[number]) =>
