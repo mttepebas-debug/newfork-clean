@@ -188,7 +188,8 @@ insert into persona values
   ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}');
 -- The manager role an owner starts with holds none of the Settings read
 -- permissions below (important_dates.read aside); an owner may grant them to a
--- manager-type role (settings_reads_ask_the_core.test.sql).
+-- manager-type role (settings_reads_ask_the_core.test.sql), all but
+-- settings.locations.read, which stays with owners and admins (BL-176).
 update persona set permissions_removed = permissions_removed || array[
   'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
   'roles.read', 'documents.read',
@@ -823,9 +824,9 @@ begin
     return 'allow';
 
   when 'settings.locations.read', 'employee.references.read' then
-    -- Owner and admins read every location, a manager only where they work
-    -- (REUSE "Ürün kuralları": Locations'ta yalnız kendi lokasyonları); the
-    -- Employees drawer's pickers the same (BL-231).
+    -- Owner and admins read every location; the Employees drawer's pickers
+    -- (BL-231) give a manager the locations where they work. No manager role
+    -- holds settings.locations.read (Mert 2026-10-12, BL-176).
     if t.locs is null then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;

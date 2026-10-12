@@ -367,8 +367,9 @@ export function expected<A extends TargetedAuthzAction>(
 
     case "settings.locations.read":
     case "employee.references.read":
-      // Owner and admins every location, a manager where they work; the
-      // Employees drawer's pickers the same (BL-231).
+      // Owner and admins every location; the Employees drawer's pickers give
+      // a manager where they work (BL-231). No manager role holds
+      // settings.locations.read (Mert 2026-10-12, BL-176).
       return atPlace();
 
     case "settings.jobs.read":

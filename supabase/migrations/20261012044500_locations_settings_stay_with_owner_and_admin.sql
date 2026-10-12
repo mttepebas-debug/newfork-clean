@@ -8,12 +8,15 @@
 -- (packages/shared/src/role-permissions.ts reads custom_grantable).
 --
 -- Nothing is deleted: a manager or employee role that holds it stops the
--- migration instead (measured 2026-10-12: none).
+-- migration instead (measured 2026-10-12: none). One block, the table locked
+-- first: no role save slips in between the check and the change (the Supabase
+-- CLI runs each top-level statement on its own).
 
 do $guard$
 declare
   holding integer;
 begin
+  lock table public.workspace_role_permissions in share mode;
   select count(*) into holding
   from public.workspace_role_permissions grant_row
   join public.workspace_roles role on role.id = grant_row.role_id
@@ -22,9 +25,8 @@ begin
   if holding > 0 then
     raise exception 'BL-176: % manager or employee role(s) hold settings.locations.read; ask before it is taken off', holding;
   end if;
+  update public.permissions
+  set custom_grantable = false
+  where key = 'settings.locations.read';
 end
 $guard$;
-
-update public.permissions
-set custom_grantable = false
-where key = 'settings.locations.read';
