@@ -1,8 +1,9 @@
 import { Navigate, useLocation } from "react-router";
 import { lazy } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { ActionRoute } from "../auth/ActionRoute";
 import { can } from "../auth/can";
+import { canOpenSettingsPage } from "../settings/settings-access";
+import { SettingsPageRoute } from "../settings/SettingsPageRoute";
 const DocumentsSettingsPage = lazy(
   () => import("../settings/DocumentsSettingsPage"),
 );
@@ -15,7 +16,7 @@ export function DocumentsSettingsRoute() {
   const employeeLink =
     search.has("requirement") ||
     ["employees", "employee-documents"].includes(search.get("view") ?? "") ||
-    (!can(context, "settings.documents.read") && can(context, "documents.read"));
+    (!canOpenSettingsPage(context, "documents") && can(context, "documents.read"));
   if (employeeLink)
     return (
       <Navigate
@@ -24,8 +25,8 @@ export function DocumentsSettingsRoute() {
       />
     );
   return (
-    <ActionRoute action="settings.documents.read">
+    <SettingsPageRoute page="documents">
       <DocumentsSettingsPage />
-    </ActionRoute>
+    </SettingsPageRoute>
   );
 }

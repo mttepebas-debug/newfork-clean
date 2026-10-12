@@ -9,6 +9,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ActionRoute } from "./auth/ActionRoute";
 import { DesktopOnlyRoute } from "./auth/DesktopOnlyRoute";
 import { PermissionRoute } from "./auth/PermissionRoute";
+import { SettingsPageRoute } from "./settings/SettingsPageRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
 import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
@@ -464,72 +465,65 @@ export function App() {
                   <Route
                     path="general"
                     element={
-                      <PermissionRoute anyOf={["settings.general.read"]}>
+                      <SettingsPageRoute page="general">
                         <GeneralSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="locations"
                     element={
-                      <PermissionRoute anyOf={["settings.locations.read"]}>
+                      <SettingsPageRoute page="locations">
                         <LocationsSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="jobs"
                     element={
-                      <PermissionRoute anyOf={["settings.jobs.read"]}>
+                      <SettingsPageRoute page="jobs">
                         <JobsSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="notifications"
                     element={
-                      <PermissionRoute
-                        anyOf={[
-                          "notifications.settings.read",
-                          "notifications.settings.write",
-                        ]}
-                      >
+                      <SettingsPageRoute page="notifications">
                         <NotificationSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling"
                     element={
-                      <PermissionRoute anyOf={["settings.schedule_rules.read"]}>
+                      <SettingsPageRoute page="scheduling">
                         <SchedulingSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling/conflicts"
                     element={
-                      <PermissionRoute
-                        anyOf={["schedule.conflict_rules.manage"]}
-                      >
+                      <SettingsPageRoute page="conflicts">
                         <ConflictHandlingSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling/shift-types"
                     element={
-                      <PermissionRoute anyOf={["settings.shift_catalog.read"]}>
+                      <SettingsPageRoute page="shiftCatalog">
                         <ShiftCatalogSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling/shift-labels"
                     element={
-                      <PermissionRoute anyOf={["settings.shift_catalog.read"]}>
+                      <SettingsPageRoute page="shiftCatalog">
                         <ShiftCatalogSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
@@ -556,17 +550,17 @@ export function App() {
                   <Route
                     path="roles"
                     element={
-                      <PermissionRoute anyOf={["roles.read"]}>
+                      <SettingsPageRoute page="roles">
                         <RolesSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="roles/:roleId"
                     element={
-                      <PermissionRoute anyOf={["roles.read"]}>
+                      <SettingsPageRoute page="roles">
                         <RolesSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
@@ -576,9 +570,9 @@ export function App() {
                   <Route
                     path="acknowledgements"
                     element={
-                      <ActionRoute action="settings.signature_templates.read">
+                      <SettingsPageRoute page="acknowledgements">
                         <SignatureTemplatesSettingsPage />
-                      </ActionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
