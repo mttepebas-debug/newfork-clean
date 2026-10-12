@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 483, last: 20261012210000_a_new_edit_sets_a_left_edit_aside.sql
--- fingerprint: sha256:f4bbaae66d8cfdfcd0081146007f95526170b40740fbeefcca7c6a9c8a7b5092
+-- migrations: 484, last: 20261012224500_announcement_hours_name_both_halves.sql
+-- fingerprint: sha256:66b6a8033d317e6a495428e0aaf983e0b9609ca14c31bfb611625e32949f7e60
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1501,7 +1501,6 @@ CREATE OR REPLACE FUNCTION "app_private"."announcement_hours_text"("starts" time
     AS $$
   select case
     when fmt = '24h' then to_char(starts, 'HH24:MI') || '–' || to_char(ends, 'HH24:MI')
-    when (starts < time '12:00') = (ends < time '12:00') then to_char(starts, 'FMHH12:MI') || '–' || to_char(ends, 'FMHH12:MI AM')
     else to_char(starts, 'FMHH12:MI AM') || '–' || to_char(ends, 'FMHH12:MI AM') end
 $$;
 
