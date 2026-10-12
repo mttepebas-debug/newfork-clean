@@ -305,7 +305,7 @@ export function SchedulePage({
     recoverLease,
     runWithLease,
     endClosedEdit,
-    release: releaseEditSession,
+    discardOnLeave: discardEditOnLeave,
     setAside: setAsideEditSession,
     idleSeconds,
     keepEditing,
@@ -1275,7 +1275,7 @@ export function SchedulePage({
   const leaveWithoutSaving = () => {
     const departure = leaveGuard.take();
     const leftDraftId = session?.source_draft_id ?? null;
-    releaseEditSession();
+    discardEditOnLeave();
     invalidateScheduleCaches(leftDraftId);
     departure?.();
   };

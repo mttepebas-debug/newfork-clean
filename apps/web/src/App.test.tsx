@@ -26,6 +26,7 @@ import {
   createScheduleShifts,
   deleteScheduleExportSchedule,
   deleteScheduleShift,
+  autosaveScheduleEditSession,
   discardScheduleEditSession,
   undoScheduleEditSessionStep,
   fetchPendingOps,
@@ -2432,6 +2433,7 @@ describe("App", () => {
 
     it("lets go of an edit with nothing unsaved without asking", async () => {
       vi.mocked(discardScheduleEditSession).mockClear();
+      vi.mocked(autosaveScheduleEditSession).mockClear();
       window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
       render(<App />);
       await signInAs("owner");
@@ -2441,10 +2443,12 @@ describe("App", () => {
       fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
       expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
       expect(screen.queryByRole("alertdialog")).toBeNull();
-      // Its lock no longer keeps the week from other managers.
-      await waitFor(() => expect(discardScheduleEditSession).toHaveBeenCalledWith(
+      // Its lock no longer keeps the week from other managers; work in another
+      // tab of the same edit, if any, is kept, never thrown away.
+      await waitFor(() => expect(autosaveScheduleEditSession).toHaveBeenCalledWith(
         scheduleFixture.workspace_id, makeDefaultEditAcquireResult().session.id,
       ));
+      expect(discardScheduleEditSession).not.toHaveBeenCalled();
     }, 30000);
   });
 

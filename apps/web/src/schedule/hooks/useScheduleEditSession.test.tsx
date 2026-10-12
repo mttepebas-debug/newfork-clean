@@ -298,32 +298,36 @@ describe("useScheduleEditSession", () => {
     expect(recovered).toEqual(session);
   });
   // Mert 2026-10-12: leaving and starting another edit never leave an edit behind.
-  it("lets go of an edit with nothing unsaved when the page goes away", async () => {
+  it("lets go of the edit when the page goes away, keeping any unsaved work", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    hook.unmount();
+
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+  });
+
+  // The same edit open in another tab: this page has not heard of its new
+  // shift yet (the heartbeat brings it), so the server decides what to keep.
+  it("never throws away an edit this page thinks is clean when the page goes away", async () => {
     const hook = renderEditSession();
     vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session: { ...session, dirty: false } });
     await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
 
     hook.unmount();
 
-    expect(discardScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
-  });
-
-  it("keeps an edit with unsaved work open when the page goes away (it was asked about first)", async () => {
-    const hook = renderEditSession();
-    await startEditing(hook);
-
-    hook.unmount();
-
     expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
   });
 
-  it("closes the edit on release and opens the next one only after it is closed", async () => {
+  it("throws the edit away on Discard and leave and opens the next one only after it is closed", async () => {
     let closed!: () => void;
     vi.mocked(discardScheduleEditSession).mockImplementationOnce(() => new Promise((resolve) => { closed = () => resolve(undefined); }));
     const hook = renderEditSession();
     await startEditing(hook);
 
-    act(() => hook.result.current.release());
+    act(() => hook.result.current.discardOnLeave());
     expect(hook.result.current.session).toBeNull();
     expect(discardScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
 
@@ -351,15 +355,17 @@ describe("useScheduleEditSession", () => {
     expect(hook.onEnded).not.toHaveBeenCalled();
   });
 
-  it("just lets go of an edit with nothing unsaved when another edit is started", async () => {
+  it("lets the server keep or close an edit this page thinks is clean when another edit is started", async () => {
     const hook = renderEditSession();
     vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session: { ...session, dirty: false } });
     await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+    vi.mocked(autosaveScheduleEditSession).mockResolvedValueOnce({ status: "nothing_to_save", draft_id: null, draft_name: null });
 
     await act(() => hook.result.current.setAside());
 
-    expect(autosaveScheduleEditSession).not.toHaveBeenCalled();
-    expect(discardScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    expect(hook.onAutoSaved).not.toHaveBeenCalled();
     expect(hook.result.current.session).toBeNull();
   });
 
