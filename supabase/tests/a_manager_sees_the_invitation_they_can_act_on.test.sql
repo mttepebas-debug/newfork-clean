@@ -20,6 +20,12 @@ select tests.person('v', 'pia', 'employee', array['B'], array['cook'], 'pending'
 select tests.person('v', 'mia', 'manager', array['B'], array['cook'], 'pending');
 -- At Kadikoy only, where Ayse does not manage.
 select tests.person('v', 'cem', 'employee', array['K'], array['cook'], 'pending');
+-- Joined as an employee, a manager at Besiktas since: a fellow manager of Ayse,
+-- whose (accepted) invitation is into a role Ayse may give.
+select tests.person('v', 'mo', 'employee', array['B'], array['cook']);
+update public.workspace_memberships set role_id = (
+  select r.id from public.workspace_roles r where r.workspace_id = tests.id('v') and r.system_key = 'manager')
+where workspace_id = tests.id('v') and user_id = tests.user('v:mo');
 -- A manager role that reads people but does not invite them.
 select tests.role('v', 'Desk', 'manager', array['workspace.read', 'employees.read']);
 select tests.person('v', 'can', 'Desk', array['B'], array['cook']);
@@ -58,6 +64,11 @@ select is(pg_temp.invitation('ayse', 'pia') ->> 'status', 'pending', 'waiting');
 
 select is(pg_temp.invitation('ayse', 'mia'), 'null'::jsonb,
   'an invitation into a role Ayse cannot give (Manager) stays hidden: its buttons are not hers');
+select is(app_private.can_invite_with_role(tests.user('v:ayse'), tests.id('v'),
+    (select i.role_id from public.employee_invitations i where i.id = tests.id('v:mo:invitation'))),
+  true, 'Mo was invited into a role Ayse may give');
+select is(pg_temp.invitation('ayse', 'mo'), 'null'::jsonb,
+  'but Mo is a fellow manager now, whom Ayse may not invite: his invitation stays hidden from her');
 select is(pg_temp.invitation('can', 'pia'), 'null'::jsonb,
   'a manager whose role does not invite reads no invitation');
 select throws_ok(
