@@ -87,8 +87,8 @@ describe("Settings pages show the no-access card when the API refuses their read
   // The card sits in the shift catalog's tab panel: the page title and the
   // Shift types | Shift labels switch stay, so the other tab is still reachable.
   it.each([
-    ["Shift types", ShiftTypesSettingsPage, "shift types"],
-    ["Shift labels", ShiftLabelsSettingsPage, "shift labels"],
+    ["Shift catalog", ShiftTypesSettingsPage, "shift types"],
+    ["Shift catalog", ShiftLabelsSettingsPage, "shift labels"],
   ] as Array<[string, ComponentType, string]>)("%s keeps its title and tabs around the card", async (title, Page, subject) => {
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -101,6 +101,6 @@ describe("Settings pages show the no-access card when the API refuses their read
     expect(screen.getByRole("heading", { name: title })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Shift types" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Shift labels" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Add shift/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /(Add|New) shift/ })).toBeNull();
   });
 });

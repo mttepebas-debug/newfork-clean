@@ -1,6 +1,39 @@
+import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
+import { CatalogPageHeader } from "../views/CatalogPageHeader";
 
 type CatalogTab = "types" | "labels";
+
+/** Shift catalog, design A (Mert 2026-10-12): one page in the shared list
+ * language, Shift types and Shift labels as its tabs. */
+export function ShiftCatalogHeader({ titleId }: { titleId: string }) {
+  return (
+    <CatalogPageHeader
+      eyebrow="SETTINGS"
+      title="Shift catalog"
+      titleId={titleId}
+      description="Shift types and labels used across the Schedule."
+    />
+  );
+}
+
+/** The tab row, with the filter row under it when the list is ready. */
+export function ShiftCatalogToolbar({
+  disabled = false,
+  children,
+}: {
+  disabled?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="job-catalog-toolbar catalog-toolbar">
+      <div className="catalog-toolbar-status-row">
+        <ShiftCatalogTabs disabled={disabled} />
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export function ShiftCatalogTabs({ disabled = false }: { disabled?: boolean }) {
   const location = useLocation();
@@ -13,7 +46,7 @@ export function ShiftCatalogTabs({ disabled = false }: { disabled?: boolean }) {
 
   return (
     <div
-      className="shift-catalog-tabs requests-tabs"
+      className="catalog-status-tabs"
       role="tablist"
       aria-label="Shift catalog sections"
       onKeyDown={(event) => {
