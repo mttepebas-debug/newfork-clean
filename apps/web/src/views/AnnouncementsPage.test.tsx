@@ -324,7 +324,10 @@ describe("Announcement drawer (EKRAN-08)", () => {
     await waitFor(() =>
       expect(within(drawer).getByRole("tab", { name: "Locations & publishing" }).getAttribute("aria-selected")).toBe("true"),
     );
+    // The box is always there; it opens only with Schedule for later.
+    expect((within(drawer).getByLabelText("Publish on") as HTMLInputElement).disabled).toBe(true);
     fireEvent.click(within(drawer).getByRole("checkbox", { name: "Schedule for later" }));
+    expect((within(drawer).getByLabelText("Publish on") as HTMLInputElement).disabled).toBe(false);
     fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
     const message = await within(drawer).findByText(pastTime.message);
     const box = within(drawer).getByLabelText("Publish on");

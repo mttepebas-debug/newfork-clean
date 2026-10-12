@@ -345,9 +345,6 @@
   max-width: 100%;
   height: 30px;
 }
-.announcement-drawer .ad-publish-row + .ad-error {
-  margin-top: -6px;
-}
 /* A wrong publish time (Mert, 2026-10-12): the box turns red and one quiet
    line sits right under it, in a gap kept a little wider for it, so Show on
    the Schedule never moves. */
