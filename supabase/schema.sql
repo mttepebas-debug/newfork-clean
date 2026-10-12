@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 467, last: 20261012041000_this_week_is_the_locations_week.sql
--- fingerprint: sha256:1834c55221aa04a76ce848032c3bcf7a639a8d2a72e806775a9029690e771d0c
+-- fingerprint: sha256:4abcaca0fccb241c35a7d17c4f17b520bdfa328c40963c495de5f12bb203924c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22700,34 +22700,72 @@ begin
     end if;
   else
     -- S-01: the lock is per location. A place that has left the week keeps
-    -- what it has: only its published shifts, untouched, may ride along; the
-    -- other places still save.
-    select coalesce(jsonb_agg(jsonb_build_object(
-      'op_type', shift.pending_op_type,
-      'shift_id', shift.id,
-      'scheduled_date', to_char(shift.scheduled_date, 'YYYY-MM-DD'),
-      'location_name', coalesce(location.name, 'Unknown location'),
-      'employee_name', coalesce(
-        nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
-        nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
-      ),
-      'reason', 'past_week',
-      'severity', 'blocked'
-    ) order by shift.scheduled_date, shift.start_time, shift.id), '[]'::jsonb)
+    -- what it has: its published shifts and the shifts of the draft this edit
+    -- came from may ride along untouched; anything new, changed or removed
+    -- there is refused, by name, and the other places still save.
+    select coalesce(jsonb_agg(finding.x order by finding.scheduled_date, finding.start_time, finding.id), '[]'::jsonb)
     into blocked_findings
-    from public.schedule_edit_session_shifts shift
-    left join public.locations location
-      on location.id = shift.location_id
-     and location.workspace_id = shift.workspace_id
-    left join public.employee_profiles employee
-      on employee.id = shift.employee_id
-     and employee.workspace_id = shift.workspace_id
-    where shift.session_id = target_session_id
-      and shift.workspace_id = target_workspace_id
-      and (shift.pending_op_type is not null or shift.source_published_shift_id is null)
-      and shift.location_id = any(reach)
-      and target_session.week_start
-        < public.schedule_current_week_start_service(target_workspace_id, array[shift.location_id]);
+    from (
+      select shift.id, shift.scheduled_date, shift.start_time, jsonb_build_object(
+        'op_type', coalesce(shift.pending_op_type, case when kept.id is null then 'create' else 'update' end),
+        'shift_id', shift.id,
+        'scheduled_date', to_char(shift.scheduled_date, 'YYYY-MM-DD'),
+        'location_name', coalesce(location.name, 'Unknown location'),
+        'employee_name', coalesce(
+          nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
+          nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
+        ),
+        'reason', 'past_week',
+        'severity', 'blocked'
+      ) as x
+      from public.schedule_edit_session_shifts shift
+      left join public.schedule_draft_shifts kept
+        on kept.draft_id = target_session.source_draft_id
+       and kept.id = shift.id
+      left join public.locations location
+        on location.id = shift.location_id
+       and location.workspace_id = shift.workspace_id
+      left join public.employee_profiles employee
+        on employee.id = shift.employee_id
+       and employee.workspace_id = shift.workspace_id
+      where shift.session_id = target_session_id
+        and shift.workspace_id = target_workspace_id
+        and (shift.pending_op_type is not null
+          or (shift.source_published_shift_id is null and (kept.id is null or kept.revision <> shift.revision)))
+        and shift.location_id = any(reach)
+        and target_session.week_start
+          < public.schedule_current_week_start_service(target_workspace_id, array[shift.location_id])
+      union all
+      -- A shift of the source draft taken out of the edit at such a place.
+      select kept.id, kept.scheduled_date, kept.start_time, jsonb_build_object(
+        'op_type', 'delete',
+        'shift_id', kept.id,
+        'scheduled_date', to_char(kept.scheduled_date, 'YYYY-MM-DD'),
+        'location_name', coalesce(location.name, 'Unknown location'),
+        'employee_name', coalesce(
+          nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
+          nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
+        ),
+        'reason', 'past_week',
+        'severity', 'blocked'
+      )
+      from public.schedule_draft_shifts kept
+      left join public.locations location
+        on location.id = kept.location_id
+       and location.workspace_id = kept.workspace_id
+      left join public.employee_profiles employee
+        on employee.id = kept.employee_id
+       and employee.workspace_id = kept.workspace_id
+      where kept.draft_id = target_session.source_draft_id
+        and kept.workspace_id = target_workspace_id
+        and kept.location_id = any(target_session.location_ids)
+        and kept.location_id = any(reach)
+        and target_session.week_start
+          < public.schedule_current_week_start_service(target_workspace_id, array[kept.location_id])
+        and not exists (
+          select 1 from public.schedule_edit_session_shifts shift
+          where shift.session_id = target_session_id and shift.id = kept.id)
+    ) finding;
 
     select coalesce(jsonb_agg(jsonb_build_object(
       'op_type', shift.pending_op_type,

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(42);
 
 -- BL-238: a Schedule week is "this week" or "past" by the clock of the places
 -- it is for, never by the server's UTC date. Sunday 20:00 in Los Angeles is
@@ -85,24 +85,39 @@ select is(pg_temp.now(), pg_temp.at(null, now()),
 -- Kadikoy's week, and its number for tests.add_shift.
 create function pg_temp.kw() returns date language sql as $$ select public.schedule_current_week_start_service(tests.id('tz'), array[tests.id('tz:K')]) $$;
 create function pg_temp.kn() returns integer language sql as $$ select (pg_temp.kw() - tests.week(0)) / 7 $$;
+create function pg_temp.open(source text, draft uuid default null) returns uuid language sql as $$
+  select (public.acquire_schedule_edit_session_service(tests.user('tz:mina'), tests.id('tz'), pg_temp.kw(),
+    source::public.schedule_edit_source, draft, pg_temp.k() || pg_temp.b()) -> 'session' ->> 'id')::uuid
+$$;
+create function pg_temp.save(session uuid) returns jsonb language sql as $$
+  select pg_temp.refusal(format($q$select public.save_schedule_edit_session_service(%L, %L, %L, %s, %L, null, null, true)$q$,
+    tests.user('tz:mina'), tests.id('tz'), session,
+    (select s.revision from public.schedule_edit_sessions s where s.id = session), 'week ' || gen_random_uuid()))
+$$;
+create function pg_temp.findings(refusal jsonb) returns jsonb language sql as $$
+  select coalesce(jsonb_agg(jsonb_build_array(f ->> 'location_name', f ->> 'op_type') order by f ->> 'location_name', f ->> 'op_type'), '[]')
+  from jsonb_array_elements(refusal -> 'past_edits') f
+$$;
+create function pg_temp.at_b(session uuid) returns uuid language sql as $$
+  select s.id from public.schedule_edit_session_shifts s where s.session_id = session and s.location_id = tests.id('tz:B')
+$$;
+-- Besiktas' clock: a week ahead, or back on Los Angeles time while a test
+-- changes a shift there (a shift's checks want a named zone).
+create function pg_temp.b_zone(zone text) returns void language sql as $$
+  update public.locations set timezone = zone where id = tests.id('tz:B')
+$$;
 
--- Shifts are made while Besiktas still keeps Istanbul time (a shift's zone must
--- be a named one): an edit of Kadikoy's week with a change at each place, and
--- both places published.
-select ok(
-  public.acquire_schedule_edit_session_service(tests.user('tz:mina'), tests.id('tz'), pg_temp.kw(), 'blank', null, pg_temp.k() || pg_temp.b())
-    -> 'session' ->> 'id' is not null,
-  'while Kadikoy is still in the week, the week opens for both places');
-select tests.remember('tz:session:kb', (select s.id from public.schedule_edit_sessions s
-  where s.workspace_id = tests.id('tz') and s.holder_user_id = tests.user('tz:mina') and s.status = 'active'));
-
--- The lock is per place: a change at Besiktas is refused, by name.
-select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:kb'), pg_temp.kn(),
-  '{"person": "mina", "loc": "K", "job": "cook", "day": 6, "start": "22:00", "end": "23:00"}');
-select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:kb'), pg_temp.kn(),
-  '{"person": "mina", "loc": "B", "job": "cook", "day": 6, "start": "22:00", "end": "23:00"}');
-select tests.publish_week('tz', 1, '[{"label": "k1", "person": "mina", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-  {"label": "b1", "person": "mina", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}]');
+-- Shifts are made while both places keep Los Angeles time (a shift's zone must
+-- be a named one): Kadikoy's week published at both places, and a new edit of
+-- it with a new shift at each place.
+update public.locations set timezone = 'America/Los_Angeles' where id = tests.id('tz:B');
+select tests.publish_week('tz', pg_temp.kn(), '[{"label": "k2", "person": "mina", "loc": "K", "job": "cook", "day": 6, "start": "22:00", "end": "22:15"},
+  {"label": "b2", "person": "mina", "loc": "B", "job": "cook", "day": 6, "start": "22:30", "end": "22:45"}]');
+select tests.remember('tz:session:blank', pg_temp.open('blank'));
+select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:blank'), pg_temp.kn(),
+  '{"person": "mina", "loc": "K", "job": "cook", "day": 6, "start": "23:00", "end": "23:10"}');
+select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:blank'), pg_temp.kn(),
+  '{"person": "mina", "loc": "B", "job": "cook", "day": 6, "start": "23:20", "end": "23:30"}');
 
 -- From here on Besiktas runs at least a week ahead of Kadikoy at every instant
 -- (a zone 167 hours east of UTC), so a line drawn from the wrong places shows.
@@ -120,28 +135,63 @@ select is(
     tests.user('tz:stranger'), tests.id('tz'), pg_temp.kw() - 7, pg_temp.k())),
   '42501 authz.not_member',
   'someone who is not in the workspace hears "no" before anything about the week');
-create function pg_temp.save(session uuid) returns jsonb language sql as $$
-  select pg_temp.refusal(format($q$select public.save_schedule_edit_session_service(%L, %L, %L, %s, %L, null, null, true)$q$,
-    tests.user('tz:mina'), tests.id('tz'), session,
-    (select s.revision from public.schedule_edit_sessions s where s.id = session), 'week ' || gen_random_uuid()))
-$$;
-select is(
-  jsonb_path_query_array(pg_temp.save(tests.id('tz:session:kb')) -> 'past_edits', '$[*].location_name'),
-  '["Besiktas"]'::jsonb,
-  'saving refuses the change at Besiktas, which has left the week, and names it');
 
+-- The lock is per place. A new shift at Besiktas is refused, by name.
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:blank'))), '[["Besiktas", "create"]]'::jsonb,
+  'saving refuses the new shift at Besiktas, which has left the week, and names it');
 -- Once every place has left the week, the whole week is past.
-update public.schedule_edit_sessions set week_start = pg_temp.kw() - 7 where id = tests.id('tz:session:kb');
-select is(pg_temp.save(tests.id('tz:session:kb')) ->> 'current_week_start', pg_temp.kw()::text,
+update public.schedule_edit_sessions set week_start = pg_temp.kw() - 7 where id = tests.id('tz:session:blank');
+select is(pg_temp.save(tests.id('tz:session:blank')) ->> 'current_week_start', pg_temp.kw()::text,
   'a week both places have left is refused at the westernmost place''s line');
-update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:kb');
+update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:blank');
 
-select tests.remember('tz:session:k', (public.acquire_schedule_edit_session_service(
-  tests.user('tz:mina'), tests.id('tz'), pg_temp.kw(), 'blank', null, pg_temp.k()) -> 'session' ->> 'id')::uuid);
-select tests.add_shift(tests.user('tz:mina'), 'tz', tests.id('tz:session:k'), pg_temp.kn(),
-  '{"person": "mina", "loc": "K", "job": "cook", "day": 6, "start": "22:00", "end": "23:00"}');
-select is(pg_temp.save(tests.id('tz:session:k')), null,
-  'Kadikoy''s change in its own week saves whatever the UTC date');
+-- An edit of the published week: Besiktas' published shift rides along
+-- untouched while Kadikoy changes; changing or removing it is refused.
+select tests.remember('tz:session:pub', pg_temp.open('published'));
+select ok(tests.id('tz:session:pub') is not null and pg_temp.at_b(tests.id('tz:session:pub')) is not null,
+  'while Kadikoy is still in the week, the published week opens at both places');
+update public.schedule_edit_session_shifts set start_time = '22:05', pending_op_type = 'update', revision = revision + 1
+where session_id = tests.id('tz:session:pub') and location_id = tests.id('tz:K');
+select is(pg_temp.save(tests.id('tz:session:pub')), null,
+  'Kadikoy''s change saves, with Besiktas'' published shift untouched beside it');
+select tests.remember('tz:draft:saved', (select d.id from public.schedule_drafts d
+  where d.workspace_id = tests.id('tz') and d.week_start = pg_temp.kw() and d.created_by = tests.user('tz:mina') and d.archived_at is null
+  order by d.created_at desc limit 1));
+
+select tests.remember('tz:session:pub2', pg_temp.open('published'));
+select pg_temp.b_zone('America/Los_Angeles');
+update public.schedule_edit_session_shifts set start_time = '22:35', pending_op_type = 'update', revision = revision + 1
+where id = pg_temp.at_b(tests.id('tz:session:pub2'));
+select pg_temp.b_zone('<+167>-167');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:pub2'))), '[["Besiktas", "update"]]'::jsonb,
+  'changing Besiktas'' published shift is refused');
+select pg_temp.b_zone('America/Los_Angeles');
+update public.schedule_edit_session_shifts set start_time = '22:30', pending_op_type = 'delete'
+where id = pg_temp.at_b(tests.id('tz:session:pub2'));
+select pg_temp.b_zone('<+167>-167');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:pub2'))), '[["Besiktas", "delete"]]'::jsonb,
+  'and so is removing it');
+update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:pub2');
+
+-- An edit of the saved draft: its Besiktas shift rides along untouched;
+-- changing or taking it out is refused.
+select tests.remember('tz:session:draft', pg_temp.open('draft', tests.id('tz:draft:saved')));
+select ok(pg_temp.at_b(tests.id('tz:session:draft')) is not null, 'the draft opens with its Besiktas shift');
+select is(pg_temp.save(tests.id('tz:session:draft')), null,
+  'the draft saves again with its Besiktas shift untouched');
+select tests.remember('tz:session:draft2', pg_temp.open('draft', tests.id('tz:draft:saved')));
+select pg_temp.b_zone('America/Los_Angeles');
+update public.schedule_edit_session_shifts set start_time = '22:35', revision = revision + 1
+where id = pg_temp.at_b(tests.id('tz:session:draft2'));
+select pg_temp.b_zone('<+167>-167');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:draft2'))), '[["Besiktas", "update"]]'::jsonb,
+  'changing the draft''s Besiktas shift is refused');
+select pg_temp.b_zone('America/Los_Angeles');
+delete from public.schedule_edit_session_shifts where id = pg_temp.at_b(tests.id('tz:session:draft2'));
+select pg_temp.b_zone('<+167>-167');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:draft2'))), '[["Besiktas", "delete"]]'::jsonb,
+  'and so is taking it out of the draft');
+update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:draft2');
 
 -- Publishing: each place up to its own line.
 insert into public.schedule_drafts (id, workspace_id, week_start, name, revision, created_by, updated_by, location_ids) values
@@ -160,9 +210,7 @@ select is(
   'past_week_closed',
   'and closed for a publish that reaches Besiktas too');
 
--- Unpublishing: both places published for Kadikoy's week.
-update public.schedule_location_publications set week_start = pg_temp.kw()
-where workspace_id = tests.id('tz') and status = 'current' and week_start = tests.week(1);
+-- Unpublishing: the week published at both places above.
 select is(
   public.preview_schedule_unpublication_service(tests.user('tz:owner'), tests.id('tz'), pg_temp.kw(), pg_temp.k()) ->> 'status',
   'unpublish_ready',
