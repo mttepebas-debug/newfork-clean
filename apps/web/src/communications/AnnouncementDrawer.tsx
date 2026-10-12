@@ -220,8 +220,11 @@ function AnnouncementEditor({
   const bodyRef = useRef<HTMLDivElement>(null);
   const timeFormat = list.time_format;
   const status = record?.display_status ?? null;
-  const readOnly = record !== null && (!record.can_edit || status === "archived");
   const past = status === "past";
+  // A past post never changes (can_edit is false), yet whoever may archive it
+  // still gets Archive: read-only with one action, not a reader's view.
+  const readOnly =
+    record !== null && (status === "archived" || (!record.can_edit && !(past && record.can_archive)));
   const locked = readOnly || past;
   const started = record !== null && hasStarted(record);
   const [initial] = useState(() =>

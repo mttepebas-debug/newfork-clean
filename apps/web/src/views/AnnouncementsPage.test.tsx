@@ -317,6 +317,9 @@ describe("Announcement drawer (EKRAN-08)", () => {
         starts_on: "2026-06-01",
         ends_on: "2026-08-31",
         revision: 4,
+        // As the server sends a past post: nothing to change, Archive allowed.
+        can_edit: false,
+        can_archive: true,
       }),
     );
     vi.mocked(setAnnouncementState).mockResolvedValue({
