@@ -193,3 +193,4 @@ supabase/tests/onboarding_refusal_reasons.test.sql
 supabase/tests/termination_tells_location_managers.test.sql
 supabase/tests/schedule_week_follows_the_location_clock.test.sql
 supabase/tests/invitation_reminder_and_newer_link.test.sql
+supabase/tests/role_and_notification_settings_ask_the_core.test.sql

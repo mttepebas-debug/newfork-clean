@@ -43,11 +43,11 @@ select cmp_ok(
 -- the to-do list's own role reading (42 -> 41), FB-6.3.3 the time-off notice
 -- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
 -- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26),
--- FB-6.4 A2 the three Schedule helpers (26 -> 23).
+-- FB-6.4 A2 the three Schedule helpers (26 -> 23), BL-276 the notification policy writes (23 -> 21).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 23, 'functions with their own scope or rank logic only go down'
+  '<=', 21, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
@@ -99,11 +99,12 @@ select is(
 -- decision paths went (FB-6.3.7), 161 after announcements and important dates moved to the
 -- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6), 100 after the Schedule
 -- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it), 83 after Shift Hub's
--- (FB-6.4 A2), 82 after Settings > Roles' "not eligible for a lower role" (GUVENLIK-A GA-2). Target 0.
+-- (FB-6.4 A2), 82 after Settings > Roles' "not eligible for a lower role" (GUVENLIK-A GA-2), 68 after
+-- Settings > Roles and Notifications asked the core (BL-276). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 82, 'refusals without an authz hint only go down'
+  '<=', 68, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
@@ -125,7 +126,7 @@ select is(
     'schedule.templates', 'schedule.templates.read', 'settings.availability.read', 'settings.availability.write',
     'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',
     'settings.important_dates.read', 'settings.jobs.read', 'settings.jobs.write', 'settings.locations.read',
-    'settings.locations.write', 'settings.notifications.read', 'settings.notifications.write',
+    'settings.locations.write', 'settings.notifications.read', 'settings.notifications.test', 'settings.notifications.write',
     'settings.organization.write', 'settings.people', 'settings.people.read', 'settings.roles.read',
     'settings.roles.write',
     'settings.scheduling.write', 'settings.shift_catalog.read', 'settings.signature_templates.read',
@@ -136,22 +137,21 @@ select is(
 );
 
 -- The old permission helper: FB-6.6 took documents, signature templates and
--- onboarding off it (30 -> 11), AVAIL-002 the availability settings (11 -> 10).
--- What still asks it only goes down, and nothing
--- in those areas starts again.
+-- onboarding off it (30 -> 11), AVAIL-002 the availability settings (11 -> 10),
+-- BL-276 Settings > Roles, Settings > Notifications and the RLS helper (10 -> 3).
+-- The setup checklist's three wait for who sees the checklist (SORULAR Soru-16,
+-- BL-808); when they move, the helper goes. Nothing else starts asking it.
 select is(
   array(
     select p.proname::text from pg_proc p
     where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
       and p.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\('
-      and (p.proname ~ '(document|onboarding|signature|lifecycle)'
-           or (select count(*) from pg_proc q
-               where q.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
-                 and q.prosrc ~ '(^|[^_a-z])service_actor_has_permission\s*\(') > 10)
+      and p.proname not in ('get_owner_setup_checklist_progress_service', 'mark_owner_setup_checklist_item_service',
+        'set_owner_setup_checklist_closed_service')
     order by 1
   ),
   '{}'::text[],
-  'the old permission helper is asked by at most 10 functions, none about documents or onboarding'
+  'the old permission helper is asked by the three setup checklist services alone'
 );
 
 -- Every document, signature template and employee onboarding entry point asks
