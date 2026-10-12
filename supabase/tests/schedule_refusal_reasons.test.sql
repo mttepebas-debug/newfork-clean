@@ -20,7 +20,10 @@ exception when others then
 end;
 $$;
 
--- Every PT409 the Schedule functions raise carries one of the known keys.
+-- Every PT409 these Schedule functions raise in their own bodies carries one of
+-- the known keys. Helpers they call from other areas are not listed here: the
+-- shift exchange guard (shift_exchange_assert_session) is keyed with shift
+-- exchanges (BL-1042), the catalog deletion guards with Settings (BL-1045).
 create temp table refusal_functions as
 select p.oid, n.nspname||'.'||p.proname fn
 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
@@ -39,7 +42,7 @@ where m[1] ~* 'PT409';
 select is((select count(distinct fn)::int from refusal_functions),20,'every listed Schedule function exists');
 select ok((select count(*)>=50 from refusal_raises),'the PT409 refusals are found in the function bodies');
 select is((select coalesce(array_agg(distinct fn order by fn),'{}') from refusal_raises where statement !~* 'hint'),'{}'::text[],
- 'no Schedule PT409 is raised without a reason key');
+ 'no listed Schedule function raises a PT409 without a reason key');
 select is((select coalesce(array_agg(distinct key order by key),'{}') from (select (regexp_match(statement,$re$hint\s*=\s*'([^']*)'$re$,'i'))[1] key from refusal_raises) k
  where key is null or key not in ('schedule.edit_session_closed','schedule.edit_lease_expired','schedule.edit_session_stale','schedule.draft_being_edited',
   'schedule.nothing_to_undo','schedule.auto_fill_stale','schedule.default_hours_stale','schedule.request_key_reused','schedule.template_changed',
