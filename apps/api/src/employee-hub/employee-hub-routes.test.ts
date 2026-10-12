@@ -1,6 +1,7 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
+import { rpcFailure } from "../http-error";
 import type { EmployeeHubService } from "./employee-hub-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -70,6 +71,17 @@ describe("employee hub routes", () => {
     const submit = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/time-off`, headers: { authorization: "Bearer token" }, payload: { location_id: locationId, dates: ["2035-01-15"] } });
     expect(submit.statusCode).toBe(404);
     expect(service.actOnRequest).toHaveBeenCalledTimes(1); await app.close();
+  });
+  // BL-1043: a withdrawal on an old picture of the request says so with its key.
+  it("passes the database's time_off.changed key on with a withdrawal's 409", async () => {
+    const service = employeeHubServiceMock();
+    vi.mocked(service.actOnRequest).mockRejectedValue(rpcFailure({ message: "stale time off request", code: "PT409", hint: "time_off.changed" }));
+    const app = buildApp({ contextResolver: { resolve: async () => activeContext }, employeeHubService: service });
+    const response = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/employee-hub/request-action`, headers: { authorization: "Bearer token" },
+      payload: { request_id: requestId, kind: "time_off", action: "cancel", expected_revision: 1 } });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ reason: "time_off.changed" });
+    await app.close();
   });
   it("binds the schedule board to the authenticated actor and requires a calendar date", async () => {
     const service = employeeHubServiceMock();
