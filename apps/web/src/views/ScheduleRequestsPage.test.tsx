@@ -570,6 +570,37 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     answer({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] });
     expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
   });
+  it("does not call a request unavailable from an earlier visit's answer while offline", async () => {
+    onlineManager.setOnline(false);
+    try {
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false, networkMode: "always" } } });
+      client.setQueryDefaults(["shift-exchanges", workspaceId, "manager-case"], { networkMode: "online" });
+      client.setQueryData(["shift-exchanges", workspaceId, "manager-case", missingCaseId], { employee_id: null, opportunities: [], own_shifts: [], cases: [] });
+      renderPage(`/app/schedule/requests?case=${missingCaseId}`, client);
+      await screen.findByText("Loading request...");
+      expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+  it("reads a linked request again even when an earlier visit's answer is still fresh", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    client.setQueryData(["shift-exchanges", workspaceId, "manager-case", coverCase.id], { employee_id: null, opportunities: [], own_shifts: [], cases: [] });
+    vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) =>
+      ({ employee_id: null, opportunities: [], own_shifts: [], cases: range?.caseId ? [coverCase] : [] }) as unknown as Awaited<ReturnType<typeof getExchanges>>);
+    renderPage(`/app/schedule/requests?case=${coverCase.id}`, client);
+    expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
+  });
+  it.each([403, 404])("calls a request the API refuses with %i unavailable", async (status) => {
+    vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) => {
+      if (range?.caseId) throw new RequestError("Refused", "authz.out_of_scope", undefined, status);
+      return { employee_id: null, cases: [], opportunities: [], own_shifts: [] } as unknown as Awaited<ReturnType<typeof getExchanges>>;
+    });
+    renderPage(`/app/schedule/requests?case=${missingCaseId}`);
+    await screen.findByRole("heading", { name: "Request unavailable" });
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
   // The message is the page's answer to the link: focus goes to it, and it is
   // not read out as a live region with its button inside.
   it("moves focus to the message about a linked request", async () => {

@@ -124,6 +124,10 @@ function ScheduleRequestsPageContent() {
     queryFn: () => getExchanges(workspaceId, true, { caseId }),
     enabled: Boolean(caseId && canReadShift && !data.isLoading && !inList && seenCase?.id !== caseId),
     retry: false,
+    // Every visit asks again, also when the read waits for the list: an
+    // earlier visit's answer is not this one's.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const listedCase = inList ?? caseRead.data?.cases.find((item) => item.id === caseId) ?? null;
   useEffect(() => {
@@ -147,8 +151,9 @@ function ScheduleRequestsPageContent() {
   // help. Any other failed read is an outage: it offers to read again.
   const caseUnread = Boolean(caseId && !openCase && !listedCase);
   const caseRefused = caseRead.error instanceof RequestError && [400, 403, 404].includes(caseRead.error.status ?? 0);
-  // An answer kept from an earlier visit counts only once this visit has read again.
-  const caseAnswered = caseRead.isSuccess && (caseRead.isFetchedAfterMount || !caseRead.isFetching);
+  // An answer kept from an earlier visit counts only once this visit has read
+  // again (offline, that read waits: the page says it is reading).
+  const caseAnswered = caseRead.isSuccess && caseRead.isFetchedAfterMount;
   const caseMissing = caseUnread && (caseAnswered || (caseRead.isError && caseRefused));
   const caseFailed = caseUnread && caseRead.isError && !caseRefused;
   // Reading that one case (or waiting for the network to read it): the list
