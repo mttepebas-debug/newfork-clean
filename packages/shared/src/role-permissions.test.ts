@@ -27,6 +27,8 @@ const ownerAndAdminOnly: readonly Permission[] = [
   "settings.general.manage",
   "settings.jobs.manage",
   "settings.locations.manage",
+  // Settings > Locations is for owners and admins only (Mert 2026-10-12, BL-176).
+  "settings.locations.read",
   "settings.schedule_rules.manage",
   "settings.shift_catalog.manage",
   "workspace.manage",
@@ -52,7 +54,6 @@ describe("what Settings > Roles offers each kind of role (GUVENLIK-A GA-2)", () 
     expect(keys).toEqual(
       expect.arrayContaining([
         "settings.general.read",
-        "settings.locations.read",
         "settings.jobs.read",
         "settings.shift_catalog.read",
         "settings.schedule_rules.read",
@@ -62,7 +63,8 @@ describe("what Settings > Roles offers each kind of role (GUVENLIK-A GA-2)", () 
       ]),
     );
     const areas = groups.flatMap((group) => group.areas);
-    expect(areas.find((area) => area.id === "locations")?.edit).toEqual([]);
+    // No Locations row at all: neither its View nor its Edit (BL-176).
+    expect(areas.map((area) => area.id)).not.toContain("locations");
     expect(areas.map((area) => area.id)).not.toContain("conflict-rules");
     expect(areas.map((area) => area.id)).not.toContain("roles");
   });

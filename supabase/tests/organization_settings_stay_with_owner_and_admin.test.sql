@@ -6,17 +6,20 @@ select plan(9);
 -- organizasyon ayarı yazma izni verilemez": the organization-wide Edit
 -- permissions and roles.read stay with the owner and admin roles. Settings >
 -- Roles cannot put them on a manager or employee role, not even when the role
--- already carries one; the organization reads stay grantable (K14 S1).
+-- already carries one; the organization reads stay grantable (K14 S1), but for
+-- Locations: only owners and admins open Settings > Locations, no manager
+-- (Mert 2026-10-12, BL-176).
 
 select tests.world('os');
 select tests.person('os', 'zeynep', 'admin', array['K', 'B'], array['cook']);
 select tests.person('os', 'ayse', 'manager', array['K'], array['cook']);
 
--- The ten permissions with the reads each one needs (Invitations & access Edit
+-- The eleven permissions with the reads each one needs (Invitations & access Edit
 -- needs roles.read, so it stays with owner and admin too).
 create temporary table os_org (key text primary key, needs text[]);
 insert into os_org values
   ('settings.general.manage', array['settings.general.read']),
+  ('settings.locations.read', array[]::text[]),
   ('settings.locations.manage', array['settings.locations.read']),
   ('settings.jobs.manage', array['settings.jobs.read']),
   ('settings.shift_catalog.manage', array['settings.shift_catalog.read']),
@@ -60,10 +63,10 @@ select is(
 
 select is(
   pg_temp.save(tests.user('os:owner'), 'manager',
-    array['settings.general.read', 'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
+    array['settings.general.read', 'settings.jobs.read', 'settings.shift_catalog.read',
           'settings.schedule_rules.read', 'documents.read', 'notifications.settings.read']),
   'ok',
-  'the organization reads stay grantable to a manager role (K14 S1)');
+  'the other organization reads stay grantable to a manager role (K14 S1)');
 
 -- A role that already carries one (written before this rule) is not let through on its next save.
 select tests.role('os', 'Old grant', 'manager', array['workspace.read', 'settings.general.read']);
@@ -91,8 +94,8 @@ select is(
   (select count(distinct p.permission_key)::integer from public.workspace_role_permissions p
    join public.workspace_roles r on r.id = p.role_id
    where r.workspace_id = tests.id('os') and r.system_key = 'admin' and p.permission_key in (select key from os_org)),
-  10,
-  'the admin role holds all ten');
+  11,
+  'the admin role holds all eleven');
 
 select is(
   (select count(*)::integer from public.workspace_role_permissions p

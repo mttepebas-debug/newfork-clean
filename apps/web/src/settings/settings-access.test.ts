@@ -40,14 +40,16 @@ const settingsPermissions = [
 type SettingsPermission = (typeof settingsPermissions)[number];
 
 /**
- * Not grantable to a manager-class role: GA-2, migration
- * 20261008133054_organization_settings_stay_with_owner_and_admin
+ * Not grantable to a manager-class role: GA-2, migrations
+ * 20261008133054_organization_settings_stay_with_owner_and_admin and
+ * 20261012044500_locations_settings_stay_with_owner_and_admin
  * (custom_grantable = false, save_workspace_role_service refuses them).
  */
 const ownerAndAdminOnly: readonly SettingsPermission[] = [
   "schedule.conflict_rules.manage",
   "roles.read",
   "notifications.settings.write",
+  "settings.locations.read",
 ];
 
 interface Persona {
@@ -293,8 +295,8 @@ function describePersona(persona: Persona) {
 
 describe("Settings gates ask the core and open what the keys opened (BL-176)", () => {
   it("builds every kind of person the database allows", () => {
-    // 1 owner + 1536 admin roles + 2 × 256 manager roles + 1 employee.
-    expect(everybody).toHaveLength(1 + 1536 + 512 + 1);
+    // 1 owner + 1536 admin roles + 2 × 128 manager roles + 1 employee.
+    expect(everybody).toHaveLength(1 + 1536 + 256 + 1);
   });
 
   it.each(pages)("opens the %s route for exactly the same people", (page) => {
@@ -369,16 +371,15 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     ]);
   });
 
-  it("keeps Locations on its key: the core's action would shut out a Remote manager the key lets in", () => {
-    const remoteManager: Persona = {
+  it("opens Locations to owners and admins only: no manager role may hold its key (Mert 2026-10-12, BL-176)", () => {
+    const managerWithEveryRead = contextOf({
       role: "manager",
-      permissions: ["settings.locations.read"],
-      locationIds: [],
-    };
-    const context = contextOf(remoteManager);
-    expect(context.permissions).toContain("settings.locations.read");
-    expect(context.actions).not.toContain("settings.locations.read");
-    expect(canOpenSettingsPage(context, "locations")).toBe(true);
+      permissions: settingsPermissions.filter((permission) => !ownerAndAdminOnly.includes(permission)),
+      locationIds: [homeLocation],
+    });
+    expect(canOpenSettingsPage(managerWithEveryRead, "locations")).toBe(false);
+    const remoteAdmin = contextOf({ role: "admin", permissions: ["settings.locations.read"], locationIds: [] });
+    expect(canOpenSettingsPage(remoteAdmin, "locations")).toBe(true);
   });
 });
 
