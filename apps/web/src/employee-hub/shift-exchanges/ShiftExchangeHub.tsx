@@ -822,6 +822,9 @@ function CaseDetail({
   );
   const actionable = item.status === "open" && canWrite;
   const requestEnded = item.status !== "open";
+  // An owner cancels a swap; a cover search is closed.
+  const swap = item.kind === "swap";
+  const swapPartner = item.requested_shift?.employee_name ?? null;
   const command = async (action: ExchangeCommand) => {
     if (working) return;
     setWorking(true);
@@ -1114,7 +1117,13 @@ function CaseDetail({
       </Link>
       {closing && (
         <ExchangeDialog
-          title={requestEnded ? "Request updated" : "Close this search"}
+          title={
+            requestEnded
+              ? "Request updated"
+              : swap
+                ? "Cancel this swap request"
+                : "Close this search"
+          }
           onClose={() => setClosing(false)}
           fallbackFocus={detailHeading}
           busy={working}
@@ -1127,7 +1136,17 @@ function CaseDetail({
               ? item.status === "completed"
                 ? `This ${item.kind === "swap" ? "swap" : "transfer"} has already been approved. This review cannot change the result. Current published assignments are shown below.`
                 : `This request is no longer open (${caseStatusLabels[item.status].toLowerCase()}). This review cannot change the result. Check the current assignments below.`
-              : `All ${item.candidate_count} active applications will close. The current owner remains responsible.`}
+              : swap
+                ? swapPartner
+                  ? `Your swap request with ${swapPartner} ends. You both keep your own shifts.`
+                  : "Your swap request ends. You keep your shift."
+                : `${
+                    item.candidate_count === 0
+                      ? "Nobody has applied yet."
+                      : item.candidate_count === 1
+                        ? "The 1 active application will close."
+                        : `All ${item.candidate_count} active applications will close.`
+                  } The current owner remains responsible.`}
           </p>
           <div
             className={`sx-decision-shifts ${item.requested_shift ? "sx-swap-pair" : ""}`}
@@ -1185,12 +1204,12 @@ function CaseDetail({
               {requestEnded ? "View latest result" : "Back"}
             </button>
             {!requestEnded && (
-              // Closing takes the search away: red, two clicks (BL-748).
+              // Closing or cancelling takes the request away: red, two clicks (BL-748).
               <ConfirmButton
                 unstyled
                 className="sx-danger"
                 aria-describedby={decisionDescriptionId}
-                confirmLabel="Confirm close"
+                confirmLabel={swap ? "Confirm cancel" : "Confirm close"}
                 disabled={working || !actionable || !reason.trim()}
                 onConfirm={() =>
                   void command({
@@ -1202,7 +1221,7 @@ function CaseDetail({
                   })
                 }
               >
-                Close search
+                {swap ? "Cancel request" : "Close search"}
               </ConfirmButton>
             )}
           </footer>

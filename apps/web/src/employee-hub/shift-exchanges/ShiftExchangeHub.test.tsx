@@ -805,6 +805,71 @@ describe("Shift Hub outcome contracts", () => {
     expect(changeExchange).toHaveBeenCalledTimes(1);
   });
 
+  // A swap is cancelled, not a search closed: the window says what ends and
+  // who keeps which shift.
+  it("cancels the owner's swap request in a swap's own words", async () => {
+    model.cases[0] = {
+      ...model.cases[0]!,
+      kind: "swap",
+      audience: "direct",
+      requested_current_published: true,
+      requested_shift: {
+        ...shift,
+        id: "other",
+        source_id: "other-source",
+        employee_id: "blake",
+        employee_name: "Blake",
+      },
+    };
+    mount("/app/employee-hub/shift-hub?case=case");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Cancel swap request" }),
+    );
+    const dialog = screen
+      .getByText("Cancel this swap request", { selector: "h2" })
+      .closest("dialog")!;
+    expect(
+      within(dialog).getByText(
+        "Your swap request with Blake ends. You both keep your own shifts.",
+      ),
+    ).toBeTruthy();
+    expect(within(dialog).queryByText(/search|applications/)).toBeNull();
+    fireEvent.change(
+      within(dialog).getByLabelText("Reason shared with affected employees"),
+      { target: { value: "Plans changed" } },
+    );
+    const cancel = within(dialog).getByRole("button", {
+      name: "Cancel request",
+      hidden: true,
+    });
+    expect(cancel.className).toBe("sx-danger");
+    fireEvent.click(cancel);
+    expect(cancel.textContent).toBe("Confirm cancel");
+    expect(changeExchange).not.toHaveBeenCalled();
+    fireEvent.click(cancel);
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        expect.objectContaining({ action: "close", case_id: "case", reason: "Plans changed" }),
+        expect.any(String),
+      ),
+    );
+  });
+  it.each([
+    [0, "Nobody has applied yet. The current owner remains responsible."],
+    [1, "The 1 active application will close. The current owner remains responsible."],
+    [2, "All 2 active applications will close. The current owner remains responsible."],
+  ])("counts %i application(s) in a sentence that reads right", async (count, sentence) => {
+    model.cases[0]!.candidate_count = count;
+    mount("/app/employee-hub/shift-hub?case=case");
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Close cover search" }),
+    );
+    const dialog = screen
+      .getByText("Close this search", { selector: "h2" })
+      .closest("dialog")!;
+    expect(within(dialog).getByText(sentence)).toBeTruthy();
+  });
   it.each(["cancelled", "expired", "invalidated"] as const)(
     "explains a %s request without claiming a transfer or inferring an unpublished owner",
     async (status) => {
