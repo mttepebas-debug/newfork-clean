@@ -1,36 +1,57 @@
 {
-  "stamp": "20261010T1658Z",
-  "branch": "train/20261010T1658Z",
-  "identity": "koordinator/tren-20261010T1658Z",
-  "base": "1d58ff510f7962df647ef2cc85007b6611863755",
-  "head": "bb6f3497489e7ee6a75b0ee4065f8531276f01eb",
+  "stamp": "20261012T0256Z",
+  "branch": "train/20261012T0256Z",
+  "identity": "koordinator/tren-20261012T0256Z",
+  "base": "8e787e4f10fec2dea170e481c57a81f0cef7bca1",
+  "head": "f6c0df17b3299474ad3f1683c9e5504080168ab1",
   "included": [
     {
       "name": "coord/kayit2",
-      "ref": "02cf363921700382200fa8c7967e63175ade2ab7",
+      "ref": "04aea5e93bdb5389983d3ed11b750ffdcb542d7b",
       "commits": [
-        "d6d4154b80e1d5f080dc0b95fe2bfd8ae6501ed2",
-        "02cf363921700382200fa8c7967e63175ade2ab7"
+        "a3e4be9ae67e9a08b49c011a5945abb5f54ff4a9",
+        "1b8e8c3c944e1ee080bc996db19d1120fc9adafe",
+        "025d018a25330423db20e2ae0dd16578e7241de3",
+        "cf6e8f27f00bb93073f97e848e9dcd7221a3e68a",
+        "7f6873a26e711e5aa6fae766d4f55180e688988e",
+        "681399f44e8d4fa44a0ec16d2ff69f7cb42813c7",
+        "09a2690aa3b7d9c959951561dd3de84a9b822fc1",
+        "8b58ea0d6e66270b63a73d81aaf1ab5e7b0114f0",
+        "e5cb0cc43e4a5a8f1432eba0f9b7a6d97c97124c",
+        "bf9b88e77480b83de3dc6da3e927d53da891ee70",
+        "04aea5e93bdb5389983d3ed11b750ffdcb542d7b"
       ],
       "migrations": []
+    },
+    {
+      "name": "task/bl-1028-tren",
+      "ref": "b527ec83fccea489cf328dfd2ead99d680536150",
+      "commits": [
+        "8425bab70a87bbad4fe353e54b0edabdc92e77e2",
+        "102799074a0b86640e6da4fd5aa9928d21fb70ef",
+        "6df7c7f9da463142c0d310026211a8ac259bd275",
+        "6d5441e8750600b6079e7a6e28bf4d57865c9725",
+        "b527ec83fccea489cf328dfd2ead99d680536150"
+      ],
+      "migrations": [
+        "20261011221500_document_and_availability_refusals_say_why.sql"
+      ]
     }
   ],
   "skipped": [],
-  "newMigrations": [],
+  "newMigrations": [
+    "20261011221500_document_and_availability_refusals_say_why.sql"
+  ],
   "applied": [],
   "strayInSharedDb": [],
   "ci": {
     "ok": true,
-    "head": "bb6f3497489e7ee6a75b0ee4065f8531276f01eb",
-    "run": 38069835203,
+    "head": "f6c0df17b3299474ad3f1683c9e5504080168ab1",
+    "run": 38197775748,
     "conclusion": "success",
     "docsOnly": false,
     "failedJobs": [],
-    "at": "2026-10-10T17:11:45.009Z"
+    "at": "2026-10-12T03:10:20.176Z"
   },
-  "pushed": {
-    "at": "2026-10-10T17:11:48.714Z",
-    "before": "1d58ff510f7962df647ef2cc85007b6611863755",
-    "after": "bb6f3497489e7ee6a75b0ee4065f8531276f01eb"
-  }
+  "pushed": null
 }
