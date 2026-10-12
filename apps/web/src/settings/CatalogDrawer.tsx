@@ -1,10 +1,8 @@
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { foldedAway, TAB_STOP_SELECTOR } from "../shell/tabStops";
 import { TOAST_LAYER_ATTRIBUTE } from "../shell/toastLayer";
 import "./jobs-settings.css";
-
-const focusableSelector =
-  'button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]';
 
 /** Shared modal shell; forms supply their header, scrollable body and footer. */
 export function CatalogDrawer({
@@ -97,12 +95,13 @@ export function CatalogDrawer({
           const scope =
             root.querySelector<HTMLElement>("[data-discard]") ?? root;
           const elements = Array.from(
-            scope.querySelectorAll<HTMLElement>(focusableSelector),
+            scope.querySelectorAll<HTMLElement>(TAB_STOP_SELECTOR),
           ).filter(
             (element) =>
               element.getClientRects().length > 0 &&
               !element.closest("[inert]") &&
-              !element.matches(":disabled"),
+              !element.matches(":disabled") &&
+              !foldedAway(element),
           );
           const first = elements[0],
             last = elements.at(-1);
