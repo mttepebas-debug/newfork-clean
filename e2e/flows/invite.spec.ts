@@ -86,7 +86,8 @@ test("a manager invites somebody at her own location, they accept, and the list 
   // would take the first link back.
   await ayse.goto(`/app/employees?employeeId=${employeeId}&section=access`);
   const access = ayse.getByRole("dialog", { name });
-  await expect(access.getByText("Invitation sent", { exact: true })).toBeVisible();
+  // The state card's title (the summary list below repeats it).
+  await expect(access.getByRole("strong").filter({ hasText: /^Invitation sent$/ })).toBeVisible();
   await expect(access.getByRole("button", { name: "Send reminder", exact: true })).toBeVisible();
   await expect(access.getByText("Ready to invite", { exact: true })).toHaveCount(0);
 
