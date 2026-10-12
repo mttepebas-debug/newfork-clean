@@ -50,6 +50,7 @@ import {
   saveOwnerOnboarding,
   supabaseClient,
 } from "../lib/supabase";
+import { RequestError } from "../lib/request-error";
 import {
   listDepartments,
   loadDepartmentsAndJobs,
@@ -167,6 +168,23 @@ export default function OwnerOnboardingPage() {
 
   const workspaceId = context?.workspace.id;
   const ownerOnboardingRevision = context?.onboarding.revision ?? null;
+
+  // BL-1046: the setup moved on in another tab or window. Read it again and
+  // say so; the next save goes on the latest revision.
+  const setupFailed = async (cause: unknown, fallback: string): Promise<void> => {
+    if (
+      cause instanceof RequestError &&
+      cause.status === 409 &&
+      cause.reason === "workspace.onboarding_changed"
+    ) {
+      await refresh();
+      setError(
+        "Your setup changed in another tab or window. You're seeing the latest version; check it and save again.",
+      );
+      return;
+    }
+    setError(cause instanceof Error ? cause.message : fallback);
+  };
 
 
   useEffect(() => {
@@ -336,11 +354,7 @@ export default function OwnerOnboardingPage() {
       setStep(2);
       await refresh();
     } catch (saveError: unknown) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Workspace setup could not be saved",
-      );
+      await setupFailed(saveError, "Workspace setup could not be saved");
     } finally {
       setSubmitting(false);
     }
@@ -413,11 +427,7 @@ export default function OwnerOnboardingPage() {
       setSuccess(wasEditing ? "Location updated" : "Location added");
       await refresh();
     } catch (saveError: unknown) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "The location could not be saved",
-      );
+      await setupFailed(saveError, "The location could not be saved");
     } finally {
       setSubmitting(false);
     }
@@ -439,11 +449,7 @@ export default function OwnerOnboardingPage() {
       setSuccess(null);
       await refresh();
     } catch (saveError: unknown) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Location setup could not be continued",
-      );
+      await setupFailed(saveError, "Location setup could not be continued");
     } finally {
       setSubmitting(false);
     }
@@ -508,11 +514,7 @@ export default function OwnerOnboardingPage() {
       setSuccess("Job added");
       await refresh();
     } catch (saveError: unknown) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "The job could not be saved",
-      );
+      await setupFailed(saveError, "The job could not be saved");
     } finally {
       setSubmitting(false);
     }
@@ -694,11 +696,7 @@ export default function OwnerOnboardingPage() {
       setSuccess(null);
       await refresh();
     } catch (saveError: unknown) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Team structure setup could not be continued",
-      );
+      await setupFailed(saveError, "Team structure setup could not be continued");
     } finally {
       setSubmitting(false);
     }
@@ -782,11 +780,7 @@ export default function OwnerOnboardingPage() {
       await refresh();
       navigate("/app/workspace", { replace: true });
     } catch (saveError: unknown) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Setup could not be completed",
-      );
+      await setupFailed(saveError, "Setup could not be completed");
     } finally {
       setSubmitting(false);
     }

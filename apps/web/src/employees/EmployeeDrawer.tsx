@@ -759,7 +759,18 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       }
       setError(null);
     },
-    onError: (cause) => setError(errorMessage(cause)),
+    onError: async (cause) => {
+      if (!isOnboardingChanged(cause)) {
+        setError(errorMessage(cause));
+        return;
+      }
+      // The employee or another reviewer moved the onboarding on first
+      // (BL-1046): read it again and say so; the next decision goes on it.
+      await queryClient.invalidateQueries({
+        queryKey: ["employee-onboarding-review", workspaceId, props.employeeId],
+      });
+      setError("This onboarding changed meanwhile. You're seeing the latest version.");
+    },
   });
 
   const busy =
@@ -3665,6 +3676,15 @@ function isRevisionConflict(error: unknown): boolean {
     error instanceof RequestError &&
     error.status === 409 &&
     error.reason === "employee.revision_conflict"
+  );
+}
+
+/** The onboarding under review moved on: PT409 with `onboarding.changed` (BL-1046). */
+function isOnboardingChanged(error: unknown): boolean {
+  return (
+    error instanceof RequestError &&
+    error.status === 409 &&
+    error.reason === "onboarding.changed"
   );
 }
 

@@ -1726,7 +1726,8 @@ describe("EmployeeDrawer", () => {
     expect(screen.queryByText("Optional")).toBeNull();
   });
 
-  it("shows legal name review in the profile tab when employee changes the provisional name", async () => {
+  // A legal name awaiting review, as the profile tab shows it.
+  function renderLegalNameReview() {
     // The server gives the private contact to who may read it (KK-35 S3).
     renderDrawer("profile", {
       ...detail,
@@ -1772,6 +1773,10 @@ describe("EmployeeDrawer", () => {
         },
       ],
     });
+  }
+
+  it("shows legal name review in the profile tab when employee changes the provisional name", async () => {
+    renderLegalNameReview();
 
     expect(await screen.findByText("Legal name review")).toBeTruthy();
     fireEvent.click(
@@ -1789,6 +1794,24 @@ describe("EmployeeDrawer", () => {
           revision: 4,
         },
       ),
+    );
+  });
+
+  // BL-1046: the employee or another reviewer moved the onboarding on first.
+  it("reloads an onboarding review sent from an old copy and says so", async () => {
+    renderLegalNameReview();
+    vi.mocked(reviewEmployeeOnboarding).mockRejectedValue(
+      new RequestError("onboarding changed; refresh required", "onboarding.changed", undefined, 409),
+    );
+    expect(await screen.findByText("Legal name review")).toBeTruthy();
+    const reads = vi.mocked(getEmployeeOnboardingReview).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Accept Profile and privacy" }));
+    expect(
+      await screen.findByText("This onboarding changed meanwhile. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("onboarding changed; refresh required")).toBeNull();
+    await waitFor(() =>
+      expect(vi.mocked(getEmployeeOnboardingReview).mock.calls.length).toBeGreaterThan(reads),
     );
   });
 
