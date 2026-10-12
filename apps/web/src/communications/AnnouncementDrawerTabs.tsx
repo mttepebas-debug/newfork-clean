@@ -543,55 +543,57 @@ export function WhereTab({
                   </label>
                 </span>
                 <span role="cell" className="ad-loc-day">
-                  {row ? (
-                    <DaySeg
-                      label={`${location.name} that day`}
-                      value={row.day}
-                      disabled={frozen || !location.canChangeHours}
-                      onChange={(day) => setDay(location.id, day)}
-                    />
-                  ) : (
-                    <span className="ad-muted">Not included</span>
-                  )}
-                  {row?.day === "short" && (
-                    <span className="ad-times">
-                      <input
-                        type="time"
-                        aria-label={`${location.name} opens`}
-                        value={row.opens ?? ""}
+                  <span className="ad-day-stack">
+                    {row ? (
+                      <DaySeg
+                        label={`${location.name} that day`}
+                        value={row.day}
                         disabled={frozen || !location.canChangeHours}
-                        onChange={(event) => {
-                          const opens = event.target.value;
-                          if (opens)
-                            update((current) => ({
-                              ...current,
-                              locations: current.locations.map((item) =>
-                                item.location_id === location.id ? { ...item, opens } : item,
-                              ),
-                            }));
-                        }}
+                        onChange={(day) => setDay(location.id, day)}
                       />
-                      –
-                      <input
-                        type="time"
-                        aria-label={`${location.name} closes`}
-                        value={row.closes ?? ""}
-                        disabled={frozen || !location.canChangeHours}
-                        onChange={(event) => {
-                          const closes = event.target.value;
-                          if (closes)
-                            update((current) => ({
-                              ...current,
-                              locations: current.locations.map((item) =>
-                                item.location_id === location.id ? { ...item, closes } : item,
-                              ),
-                            }));
-                        }}
-                      />
-                      {row.opens && row.closes && closesNextDay(row.opens, row.closes) && (
-                        <span className="ad-next-day">next day</span>
-                      )}
-                    </span>
+                    ) : (
+                      <span className="ad-muted">Not included</span>
+                    )}
+                    {row?.day === "short" && (
+                      <span className="ad-times">
+                        <input
+                          type="time"
+                          aria-label={`${location.name} opens`}
+                          value={row.opens ?? ""}
+                          disabled={frozen || !location.canChangeHours}
+                          onChange={(event) => {
+                            const opens = event.target.value;
+                            if (opens)
+                              update((current) => ({
+                                ...current,
+                                locations: current.locations.map((item) =>
+                                  item.location_id === location.id ? { ...item, opens } : item,
+                                ),
+                              }));
+                          }}
+                        />
+                        –
+                        <input
+                          type="time"
+                          aria-label={`${location.name} closes`}
+                          value={row.closes ?? ""}
+                          disabled={frozen || !location.canChangeHours}
+                          onChange={(event) => {
+                            const closes = event.target.value;
+                            if (closes)
+                              update((current) => ({
+                                ...current,
+                                locations: current.locations.map((item) =>
+                                  item.location_id === location.id ? { ...item, closes } : item,
+                                ),
+                              }));
+                          }}
+                        />
+                      </span>
+                    )}
+                  </span>
+                  {row?.day === "short" && row.opens && row.closes && closesNextDay(row.opens, row.closes) && (
+                    <span className="ad-next-day">next day</span>
                   )}
                 </span>
                 <span role="cell" className="ad-loc-impact" data-tone={counts.removed ? "red" : undefined}>
