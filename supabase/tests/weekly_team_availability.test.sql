@@ -35,8 +35,9 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select w,emp,loc,owner_id from wt_fixture union all select w,emp,other_loc,owner_id from wt_fixture
  union all select w,hidden_emp,other_loc,owner_id from wt_fixture union all select w,undeclared,loc,owner_id from wt_fixture;
--- The manager works at West through their own employee record, so they are one
--- of the people working there (KARARLAR M2; "Müsaitlik okuma = bildirim alıcıları").
+-- The manager works at West through their own employee record. Only an employee
+-- enters availability (M13), so that record is never listed and never counted as
+-- a week not submitted (KK-178, S-32; BL-789).
 update wt_fixture f set manager_record=tests.works_at(m.id, f.loc)
  from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.manager;
 create function pg_temp.team_ids(reader uuid, ws uuid) returns jsonb language sql as $$
@@ -55,8 +56,17 @@ insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,
  select w,emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(hidden_type)),array['secret manager note','','','','','',''],1,owner_id from wt_fixture;
 
 select lives_ok($$select public.weekly_team_read_service(manager,w) from wt_fixture$$,'scoped manager reads team');
-select is(pg_temp.team_ids(manager,w),pg_temp.ids(emp,undeclared,manager_record),'scoped manager sees the people working at their location, their own record included') from wt_fixture;
-select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,undeclared,manager_record),'all-location owner also sees unassigned employee') from wt_fixture;
+select is(pg_temp.team_ids(manager,w),pg_temp.ids(emp,undeclared),'scoped manager sees the employees working at their location, not their own manager record') from wt_fixture;
+select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,undeclared),'all-location owner also sees unassigned employee, and no manager') from wt_fixture;
+-- An admin with an employee record at West is not listed either; a person not yet
+-- joined (no account, so no role above employee) still is.
+insert into auth.users(id,email) select gen_random_uuid(),'weekly-team-admin@example.test';
+insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
+ select f.w,u.id,'admin'::public.workspace_role,true from wt_fixture f,auth.users u where u.email='weekly-team-admin@example.test';
+select tests.works_at(m.id,f.loc) from wt_fixture f join public.workspace_memberships m on m.workspace_id=f.w
+ join auth.users u on u.id=m.user_id and u.email='weekly-team-admin@example.test';
+select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,undeclared),'an admin working at West is not listed') from wt_fixture;
+select is(pg_temp.team_ids(manager,w),pg_temp.ids(emp,undeclared),'nor shown to the West manager') from wt_fixture;
 select is(public.weekly_team_read_service(manager,w)->'locations',jsonb_build_array(jsonb_build_object('id',loc,'name','West')),'location list does not disclose other location') from wt_fixture;
 select is(pg_temp.team_row(manager,w,emp)->'location_ids',jsonb_build_array(loc),'multi-location employee returns only visible location ids') from wt_fixture;
 select is(pg_temp.team_row(manager,w,emp)->>'submitted','true','explicit fully available week is submitted') from wt_fixture;
@@ -90,6 +100,6 @@ select is(pg_temp.team_row(manager,w,undeclared)->'preference'->>'input_mode','s
 delete from public.workspace_role_permissions p using public.workspace_memberships m where p.role_id=m.role_id and m.user_id=(select manager from wt_fixture) and p.permission_key in ('availability.read','availability.manage');
 select throws_ok($$select public.weekly_team_read_service(manager,w) from wt_fixture$$,'42501',null,'manager without availability read is denied');
 update public.employee_profiles set archived_at=now() where id=(select emp from wt_fixture);
-select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(hidden_emp,unassigned,undeclared,manager_record),'archived employee excluded') from wt_fixture;
+select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(hidden_emp,unassigned,undeclared),'archived employee excluded') from wt_fixture;
 select * from finish();
 rollback;
