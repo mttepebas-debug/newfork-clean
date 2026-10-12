@@ -56,6 +56,11 @@ const NAME_TAKEN: Readonly<Record<string, string>> = {
   shift_labels_workspace_active_name_idx: "A label with this name already exists. Choose another name.",
 };
 
+// The shape of a machine key the database raises in `hint` ("catalog.deleted"),
+// as the API reads it (apps/api/src/http-error.ts); Postgres's own hints are
+// sentences.
+const REASON_KEY = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
+
 function message(error: { code?: string; message: string; hint?: string | null } | null): void {
   if (!error) return;
   if (error.code === "23505") {
@@ -65,7 +70,12 @@ function message(error: { code?: string; message: string; hint?: string | null }
   // Settings → Jobs writes straight to the tables, so the database's refusal to
   // let go of Management or the Owner job lands here, not at the API (BL-218).
   const sentence = managementAndOwnerSentence(error.hint);
-  throw sentence ? new RequestError(sentence, error.hint ?? undefined) : new Error(error.message);
+  if (sentence) throw new RequestError(sentence, error.hint ?? undefined);
+  // BL-1045: any other refusal the database keyed keeps its key, so the screen
+  // can tell "deleted meanwhile, reload" from a standing no. The sentence stays.
+  if (error.hint && REASON_KEY.test(error.hint))
+    throw new RequestError(error.message, error.hint, undefined, error.code === "PT409" ? 409 : undefined);
+  throw new Error(error.message);
 }
 
 const logoBucket = "workspace-logos";
@@ -326,7 +336,7 @@ export async function saveLocation(
 function locationMessage({
   error,
 }: {
-  error: { code?: string; message: string } | null;
+  error: { code?: string; message: string; hint?: string | null } | null;
 }): void {
   if (
     error?.code === "23505" &&

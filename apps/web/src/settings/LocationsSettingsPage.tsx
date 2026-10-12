@@ -16,6 +16,7 @@ import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
 import { errorText } from "./GeneralSettingsPage";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { LocationTimezoneField } from "./LocationTimezoneField";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
@@ -102,13 +103,21 @@ export default function LocationsSettingsPage() {
       setEditing(null);
       setFormError(null);
     },
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: a location deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void queryClient.invalidateQueries({ queryKey });
+    },
   });
   const archiveMutation = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
       setLocationArchived(workspaceId, id, archived),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: a location deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void queryClient.invalidateQueries({ queryKey });
+    },
   });
 
   const openEditor = (location?: Location): void => {

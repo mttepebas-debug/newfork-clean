@@ -19,7 +19,12 @@ vi.mock("../lib/supabase", () => {
   return { supabaseClient: chain, apiRequest: vi.fn() };
 });
 
+import type { LocationInput } from "@newfork/shared";
+import { RequestError } from "../lib/request-error";
 import {
+  saveDepartment,
+  saveJob,
+  saveLocation,
   saveScheduleLogo,
   saveShiftLabel,
   saveShiftType,
@@ -164,6 +169,47 @@ describe("Schedule logo: the save's answer is lost", () => {
     const saved = await saveScheduleLogo(workspaceId, { file: null, removeLogo: true, placement });
     expect(saved.logo_url).toBeNull();
     expect(storage.remove).toHaveBeenCalledWith([oldPath]);
+  });
+});
+
+// BL-1045: Settings → Locations and Jobs write straight to the tables, so the
+// database's key reaches the screen here or nowhere. A catalog item deleted
+// meanwhile says so by its key; the sentence stays the database's own.
+describe("Settings → Locations and Jobs: a refusal keeps its key", () => {
+  beforeEach(() => {
+    answer.current = { data: null, error: null };
+    singles.length = 0;
+  });
+
+  const refusal = (message: string, hint: string) => ({ code: "PT409", message, hint });
+  const location: LocationInput = {
+    name: "West", short_name: "WS", phone: null, street_address: "1 Road", city: "City",
+    region: "CA", postal_code: "90012", country_code: "US", timezone: "America/Los_Angeles",
+  };
+
+  it("keeps catalog.deleted on a location edited after it was deleted", async () => {
+    answer.current = { data: null, error: refusal("This item was deleted. Reload the catalog.", "catalog.deleted") };
+    const failure = await saveLocation("w", location, "id").catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(RequestError);
+    expect(failure).toMatchObject({ message: "This item was deleted. Reload the catalog.", reason: "catalog.deleted", status: 409 });
+  });
+
+  it("keeps catalog.deleted on a department and department.deleted on a job", async () => {
+    answer.current = { data: null, error: refusal("This item was deleted. Reload the catalog.", "catalog.deleted") };
+    await expect(saveDepartment("w", { name: "Bar", color: "#123456" }, "id")).rejects.toMatchObject({ reason: "catalog.deleted", status: 409 });
+    answer.current = { data: null, error: refusal("This department was deleted. Reload departments.", "department.deleted") };
+    await expect(saveJob("w", { name: "Cook", color: "#123456", department_id: null }, "id")).rejects.toMatchObject({
+      message: "This department was deleted. Reload departments.",
+      reason: "department.deleted",
+      status: 409,
+    });
+  });
+
+  it("carries no key when the database gave none", async () => {
+    answer.current = { data: null, error: { code: "P0001", message: "Something else", hint: null } };
+    const failure = await saveDepartment("w", { name: "Bar", color: "#123456" }, "id").catch((error: unknown) => error);
+    expect(failure).not.toBeInstanceOf(RequestError);
+    expect((failure as Error).message).toBe("Something else");
   });
 });
 

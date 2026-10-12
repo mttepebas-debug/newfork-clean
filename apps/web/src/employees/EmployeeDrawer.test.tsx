@@ -1503,6 +1503,28 @@ describe("EmployeeDrawer", () => {
       );
     });
 
+    // BL-1045: by its key, a location or job deleted while the drawer was open;
+    // the lists load again and the database's sentence is shown. A refusal
+    // without such a key reloads nothing.
+    it.each([
+      ["location.deleted", "This location was deleted. Reload locations.", 2],
+      ["job.deleted", "This job was deleted. Reload jobs before assigning it.", 2],
+      ["employee.primary_job_required", "Mark one of the jobs as primary.", 1],
+    ])("reloads the locations and jobs only for one deleted meanwhile (%s)", async (reason, sentence, reads) => {
+      vi.mocked(saveEmployee).mockRejectedValueOnce(
+        new RequestError(sentence, reason, undefined, reason.endsWith(".deleted") ? 409 : 400),
+      );
+      renderDrawer("employment");
+      await employeeLoaded();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      const before = vi.mocked(loadEmployeeReferenceData).mock.calls.length;
+      save();
+      expect(await screen.findByText(sentence)).toBeTruthy();
+      await waitFor(() =>
+        expect(vi.mocked(loadEmployeeReferenceData).mock.calls.length - before).toBe(reads - 1),
+      );
+    });
+
     // EMP-001 C3 (Done when 20): the Owner job is nobody's to tick or untick.
     const ownersRecord = {
       ...detail,
