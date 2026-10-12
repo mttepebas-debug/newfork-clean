@@ -10,7 +10,7 @@ import type {
 } from "@newfork/shared";
 import { Button, ConfirmButton, useToast } from "@newfork/ui";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { isNoAccess } from "../lib/no-access";
@@ -24,28 +24,31 @@ import {
   draftToSend,
   failureReason,
   hasStarted,
+  headerLine,
   isWizard,
   mainAction,
   momentText,
   newDraft,
   nextStepAfter,
+  onDrawerTabs,
   plural,
+  shiftBadge,
+  shiftBand,
   shownProblems,
   statusLabels,
   statusTones,
   stepBefore,
+  wizardSteps,
   zonedMoment,
   zonedWall,
   type DrawerTab,
 } from "./announcement-model";
 import {
-  AcknowledgedTab,
   AudienceTab,
   DetailsTab,
   HistoryTab,
-  PublishingSection,
+  PublishingRow,
   ShiftsTab,
-  WhereTab,
   type WhereLocation,
 } from "./AnnouncementDrawerTabs";
 import {
@@ -67,10 +70,12 @@ export const announcementQueryKeys = [
 ] as const;
 
 /**
- * The one announcement drawer (EKRAN-08, prototype v11): Details, Locations &
- * publishing, Audience, Shifts, Acknowledged, History. A new post or a draft
- * walks the tabs with Next; the server's preview says what keeps it from going
- * out and which shifts its days reach.
+ * The one announcement drawer (EKRAN-08, prototype v11 with the Important Date
+ * drawer's look, Mert 2026-10-12): Details (locations and publishing too),
+ * Audience (who acknowledged too), Shifts only when a shift is reached, History
+ * once it was published. A new post or a draft walks the tabs with Next; the
+ * server's preview says what keeps it from going out and which shifts its days
+ * reach.
  */
 export function AnnouncementDrawer({
   workspaceId,
@@ -274,7 +279,7 @@ function AnnouncementEditor({
   const settledInput = previewInput(settled);
   const preview = useQuery({
     queryKey: previewQueryKey(settledInput),
-    queryFn: () => previewAnnouncement(workspaceId, settledInput),
+    queryFn: async () => onDrawerTabs(await previewAnnouncement(workspaceId, settledInput)),
     enabled: !locked,
     placeholderData: keepPreviousData,
     retry: false,
@@ -289,7 +294,7 @@ function AnnouncementEditor({
     const input = previewInput(composed);
     return client.fetchQuery({
       queryKey: previewQueryKey(input),
-      queryFn: () => previewAnnouncement(workspaceId, input),
+      queryFn: async () => onDrawerTabs(await previewAnnouncement(workspaceId, input)),
       staleTime: 15_000,
     });
   };
@@ -368,7 +373,7 @@ function AnnouncementEditor({
       } else if (action === "bring_back") {
         onStay("shifts", `${plural(bringBack.length, "shift")} back on the Schedule. Each person got one notice.`);
       } else {
-        onStay("acks", `Reminder sent to ${plural(result.told, "person", "people")} who haven't acknowledged.`);
+        onStay("aud", `Reminder sent to ${plural(result.told, "person", "people")} who haven't acknowledged.`);
       }
     },
     onError: (error) => {
@@ -381,51 +386,42 @@ function AnnouncementEditor({
   // ---------- tabs ----------
   const counts = preview.data?.counts;
   const recipients = locked ? (record?.recipient_count ?? 0) : (preview.data?.recipient_count ?? record?.recipient_count ?? 0);
-  const shiftBadge =
-    status === "unpublished"
-      ? (preview.data?.bring_back.length ?? 0)
-      : counts
-        ? counts.removed + counts.edited + counts.opened
-        : 0;
+  // What the Shifts tab would list: the shifts this post's days reach, the
+  // ones that may come back, or (a post nobody can change) what it changed.
+  const reached = locked || status === "unpublished" ? null : (counts ?? null);
+  const bringBack = locked ? 0 : (preview.data?.bring_back.length ?? 0);
+  const changedShifts = locked ? (record?.changes ?? []).filter((item) => !item.brought_back_at).length : 0;
+  const badge = shiftBadge(reached, bringBack, changedShifts);
+  const band = locked ? null : shiftBand(reached, bringBack);
   const tabs: { id: DrawerTab; label: ReactNode; name: string }[] = [
     { id: "details", label: "Details", name: "Details" },
-    { id: "where", label: "Locations & publishing", name: "Locations & publishing" },
     {
       id: "aud",
       label: (
         <>
-          Audience <span className="ad-tab-count">{recipients}</span>
+          Audience <span className="ad-badge">{recipients}</span>
         </>
       ),
       name: "Audience",
     },
-    {
+  ];
+  if (badge)
+    tabs.push({
       id: "shifts",
       label: (
         <>
-          Shifts
-          {shiftBadge > 0 && <span className="ad-badge">{shiftBadge}</span>}
-        </>
-      ),
-      name: "Shifts",
-    },
-  ];
-  if (record?.ask_ack && record.status === "published")
-    tabs.push({
-      id: "acks",
-      label: (
-        <>
-          Acknowledged{" "}
-          <span className="ad-tab-count">
-            {record.acknowledged_count ?? 0}/{record.respondent_count ?? 0}
+          Shifts{" "}
+          <span className="ad-badge" data-tone={badge.warn ? "warn" : undefined}>
+            {badge.count}
           </span>
         </>
       ),
-      name: "Acknowledged",
+      name: "Shifts",
     });
-  if (record) tabs.push({ id: "history", label: "History", name: "History" });
+  if (record?.published_at) tabs.push({ id: "history", label: "History", name: "History" });
+  const steps = wizardSteps(Boolean(badge));
   const current = tabs.some((item) => item.id === tab) ? tab : "details";
-  const errorTabs = new Set(shown.map((problem) => problem.tab));
+  const errorTabs = new Set<string>(shown.map((problem) => problem.tab));
   const showMissing = (target: DrawerTab, from: AnnouncementPreview) => {
     setTab(target);
     setTriedTabs((previous) => new Set(previous).add(target));
@@ -433,19 +429,19 @@ function AnnouncementEditor({
     if (first) setFocusField(first.field);
   };
   const openTab = async (target: DrawerTab) => {
-    const gap = stepBefore(wizard, draft, problems, target);
+    const gap = stepBefore(wizard, steps, problems, target);
     if (!gap) {
       setTab(target);
       return;
     }
     showMissing(gap, preview.data ?? (await ensurePreview()));
   };
-  const nextTab = nextStepAfter(wizard, draft, current);
+  const nextTab = nextStepAfter(wizard, steps, current);
   const goNext = async () => {
     setChecking(true);
     try {
       const fresh = await ensurePreview();
-      if (fresh.problems.some((problem) => problem.tab === current)) showMissing(current as DrawerTab, fresh);
+      if (fresh.problems.some((problem) => problem.tab === current)) showMissing(current, fresh);
       else if (nextTab) setTab(nextTab);
     } catch (error) {
       setFailure(refusalText(error));
@@ -461,7 +457,7 @@ function AnnouncementEditor({
         setTried(true);
         setArmed(false);
         const first = fresh.problems[0]!;
-        setTab(first.tab);
+        setTab(first.tab as DrawerTab);
         setFocusField(first.field);
         return;
       }
@@ -687,15 +683,13 @@ function AnnouncementEditor({
                 )}
                 {draft.on_important_dates && <span className="ad-chip">On Important Dates</span>}
               </h2>
-              <p className="ad-sub">
-                Share news with your team. Add it to Important Dates or the Schedule when it&apos;s about a day.
-              </p>
+              <p className="ad-sub">{headerLine(draft)}</p>
             </div>
             <CloseButton onClose={onClose} disabled={save.isPending || change.isPending} />
           </div>
           <div className="ad-tabs" role="tablist" aria-label="Announcement sections">
             {tabs.map((item) => {
-              const gap = stepBefore(wizard, draft, problems, item.id);
+              const gap = stepBefore(wizard, steps, problems, item.id);
               const gapName = gap ? tabs.find((other) => other.id === gap)?.name : undefined;
               return (
                 <button
@@ -710,7 +704,7 @@ function AnnouncementEditor({
                   onClick={() => void openTab(item.id)}
                 >
                   {item.label}
-                  {errorTabs.has(item.id as "details" | "where" | "aud") && (
+                  {errorTabs.has(item.id) && (
                     <span className="ad-error-dot" title="Something here needs a fix">
                       <span className="sr-only">, needs a fix</span>
                     </span>
@@ -745,37 +739,26 @@ function AnnouncementEditor({
               needsDate={needsDate}
               today={today}
               problemAt={problemAt}
-            />
-          )}
-          {current === "where" && (
-            <WhereTab
-              draft={draft}
-              update={update}
-              locked={locked}
-              started={started}
               locations={whereLocations}
               preview={locked ? undefined : preview.data}
-              problemAt={problemAt}
-              onShowShifts={() => setTab("shifts")}
               publishing={
-                <PublishingSection
-                  idPrefix={idPrefix}
-                  status={status}
-                  publishedText={record?.published_at ? momentText(record.published_at, zone, timeFormat) : null}
-                  later={later}
-                  laterBlocked={laterBlocked}
-                  publishWall={publishWall}
-                  minWall={zonedWall(new Date().toISOString(), zone)}
-                  locked={locked}
-                  problem={problemAt("publish_at")}
-                  onSchedule={draft.on_schedule}
-                  onLater={(next) => {
-                    setLater(next);
-                    setArmed(false);
-                  }}
-                  onWall={setPublishWall}
-                  onOnSchedule={(checked) => update((value) => ({ ...value, on_schedule: checked }))}
-                />
+                status !== "published" &&
+                status !== "past" && (
+                  <PublishingRow
+                    idPrefix={idPrefix}
+                    later={later}
+                    laterBlocked={laterBlocked}
+                    publishWall={publishWall}
+                    minWall={zonedWall(new Date().toISOString(), zone)}
+                    locked={locked}
+                    problem={problemAt("publish_at")}
+                    onLater={(next) => {
+                      setLater(next);
+                      setArmed(false);
+                    }}
+                    onWall={setPublishWall}
+                  />
+                )
               }
             />
           )}
@@ -791,6 +774,17 @@ function AnnouncementEditor({
               recipientCount={recipients}
               shiftPeople={shiftPeople}
               problem={problemAt("people")}
+              acks={
+                record?.ask_ack && record.status === "published"
+                  ? {
+                      people: record.acknowledgements ?? [],
+                      zone,
+                      timeFormat,
+                      busy,
+                      onRemind: () => change.mutate({ action: "remind" }),
+                    }
+                  : undefined
+              }
             />
           )}
           {current === "shifts" && (
@@ -807,18 +801,26 @@ function AnnouncementEditor({
               onBringBack={(ids) => change.mutate({ action: "bring_back", bringBack: ids })}
             />
           )}
-          {current === "acks" && record && (
-            <AcknowledgedTab
-              record={record}
-              zone={zone}
-              timeFormat={timeFormat}
-              busy={busy}
-              onRemind={() => change.mutate({ action: "remind" })}
-            />
-          )}
           {current === "history" && record && <HistoryTab record={record} zone={zone} timeFormat={timeFormat} />}
         </div>
         <footer className="ad-foot">
+          {band && (
+            <div className="ad-band" data-tone={band.tone} role="status">
+              {band.tone === "warn" ? (
+                <AlertTriangle size={16} aria-hidden />
+              ) : band.tone === "ok" ? (
+                <CheckCircle2 size={16} aria-hidden />
+              ) : (
+                <Info size={16} aria-hidden />
+              )}
+              <span>{band.text}</span>
+              {current !== "shifts" && badge && (
+                <button type="button" className="ad-band-link" onClick={() => void openTab("shifts")}>
+                  Review shifts
+                </button>
+              )}
+            </div>
+          )}
           {failure && (
             <p className="ad-foot-error" role="alert">
               {failure}

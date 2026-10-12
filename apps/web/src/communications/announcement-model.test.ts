@@ -10,23 +10,28 @@ import {
   draftToSend,
   failureReason,
   fitToHours,
+  headerLine,
   historyStep,
   hoursText,
   inListTab,
+  locationImpact,
   mainAction,
   momentText,
   newDraft,
   nextSort,
   nextStepAfter,
   nextYearDay,
+  onDrawerTabs,
   publishedOn,
   rangeText,
   repeatOptions,
+  shiftBadge,
+  shiftBand,
   shiftReason,
-  shiftSummary,
   shownProblems,
   sortRecords,
   stepBefore,
+  wizardSteps,
   zonedMoment,
   zonedWall,
 } from "./announcement-model";
@@ -196,17 +201,78 @@ describe("the drawer", () => {
     expect(mainAction("published", false, null)).toMatchObject({ intent: "save", label: "Save changes" });
   });
 
-  it("walks Details, Locations, Audience, and Shifts only when hours change", () => {
-    const open = { locations: [{ location_id: downtown, day: "open" as const, opens: null, closes: null }] };
-    const closed = { locations: [{ location_id: downtown, day: "closed" as const, opens: null, closes: null }] };
-    expect(nextStepAfter(true, open, "where")).toBe("aud");
-    expect(nextStepAfter(true, open, "aud")).toBeNull();
-    expect(nextStepAfter(true, closed, "aud")).toBe("shifts");
-    expect(nextStepAfter(false, open, "details")).toBeNull();
+  it("walks Details and Audience, and Shifts only when a shift is reached", () => {
+    expect(wizardSteps(false)).toEqual(["details", "aud"]);
+    expect(wizardSteps(true)).toEqual(["details", "aud", "shifts"]);
+    expect(nextStepAfter(true, wizardSteps(false), "details")).toBe("aud");
+    expect(nextStepAfter(true, wizardSteps(false), "aud")).toBeNull();
+    expect(nextStepAfter(true, wizardSteps(true), "aud")).toBe("shifts");
+    expect(nextStepAfter(false, wizardSteps(true), "details")).toBeNull();
     const titleMissing: AnnouncementProblem = { tab: "details", field: "title", code: "title_required", message: "Add a title.", required: true };
-    expect(stepBefore(true, closed, [titleMissing], "shifts")).toBe("details");
-    expect(stepBefore(true, closed, [titleMissing], "details")).toBeNull();
-    expect(stepBefore(false, closed, [titleMissing], "shifts")).toBeNull();
+    expect(stepBefore(true, wizardSteps(true), [titleMissing], "shifts")).toBe("details");
+    expect(stepBefore(true, wizardSteps(true), [titleMissing], "details")).toBeNull();
+    expect(stepBefore(false, wizardSteps(true), [titleMissing], "shifts")).toBeNull();
+  });
+
+  it("puts the server's Locations & publishing problems on Details, where those fields now are", () => {
+    const where: AnnouncementProblem = { tab: "where", field: "publish_at", code: "publish_time_past", message: "Pick a time after now.", required: false };
+    const people: AnnouncementProblem = { tab: "aud", field: "people", code: "nobody", message: "Add someone.", required: true };
+    const preview = { problems: [where, people] } as unknown as Parameters<typeof onDrawerTabs>[0];
+    expect(onDrawerTabs(preview).problems.map((problem) => problem.tab)).toEqual(["details", "aud"]);
+    const clean = { problems: [people] } as unknown as Parameters<typeof onDrawerTabs>[0];
+    expect(onDrawerTabs(clean)).toBe(clean);
+  });
+
+  it("writes the line under the title: type, date, Every year", () => {
+    const post = { category: "holiday" as const, category_other: null, starts_on: "2027-07-04", ends_on: "2027-07-04", recurrence: "date" as const };
+    expect(headerLine(post)).toBe("Holiday · Sun, Jul 4, 2027 · Every year");
+    expect(headerLine({ ...post, category: "event", starts_on: "2026-12-24", ends_on: "2026-12-26", recurrence: "none" })).toBe(
+      "Event · Thu, Dec 24 – Sat, Dec 26, 2026",
+    );
+    expect(headerLine({ ...post, starts_on: "2026-12-31", ends_on: "2027-01-01", recurrence: "nth" })).toBe(
+      "Holiday · Thu, Dec 31, 2026 – Fri, Jan 1, 2027 · Every year",
+    );
+    expect(headerLine({ ...post, category: "general", starts_on: null, ends_on: null, recurrence: "none" })).toBe("General");
+    expect(headerLine({ ...post, category: "other", category_other: " Repair ", starts_on: null, ends_on: null, recurrence: "none" })).toBe(
+      "Repair",
+    );
+  });
+
+  it("counts the shifts its days reach on the Shifts tab, yellow when one changes", () => {
+    expect(shiftBadge({ removed: 2, edited: 0, opened: 0, kept: 4 }, 0, 0)).toEqual({ count: 6, warn: true });
+    expect(shiftBadge({ removed: 0, edited: 0, opened: 0, kept: 3 }, 0, 0)).toEqual({ count: 3, warn: false });
+    expect(shiftBadge(null, 2, 0)).toEqual({ count: 2, warn: false });
+    expect(shiftBadge(null, 0, 5)).toEqual({ count: 5, warn: false });
+    expect(shiftBadge({ removed: 0, edited: 0, opened: 0, kept: 0 }, 0, 0)).toBeNull();
+    expect(shiftBadge(null, 0, 0)).toBeNull();
+  });
+
+  it("says over the buttons what happens to the shifts, and nothing when none is reached", () => {
+    expect(shiftBand({ removed: 2, edited: 0, opened: 0, kept: 4 }, 0)).toEqual({ tone: "warn", text: "2 shifts will be removed · 4 kept" });
+    expect(shiftBand({ removed: 1, edited: 1, opened: 2, kept: 0 }, 0)?.text).toBe("1 shift will be removed · 1 shortened · 2 become open");
+    expect(shiftBand({ removed: 0, edited: 0, opened: 1, kept: 1 }, 0)?.text).toBe("1 shift will become an open shift · 1 kept");
+    expect(shiftBand({ removed: 0, edited: 2, opened: 0, kept: 0 }, 0)?.text).toBe("2 shifts will be shortened");
+    expect(shiftBand({ removed: 0, edited: 0, opened: 0, kept: 3 }, 0)).toEqual({ tone: "ok", text: "No shift changes · 3 kept" });
+    expect(shiftBand(null, 3)).toEqual({ tone: "calm", text: "3 removed shifts can come back" });
+    expect(shiftBand({ removed: 0, edited: 0, opened: 0, kept: 0 }, 0)).toBeNull();
+  });
+
+  it("writes each location's shift line: red when one goes, amber when one opens or shortens", () => {
+    const closed = { day: "closed" as const };
+    expect(locationImpact(null, true, [])).toEqual({ text: "—" });
+    expect(locationImpact({ day: "open" }, true, [])).toEqual({ text: "Usual hours" });
+    expect(locationImpact(closed, false, null)).toEqual({ text: "Pick a day" });
+    expect(locationImpact(closed, true, null)).toEqual({ text: "" });
+    expect(locationImpact(closed, true, [])).toEqual({ text: "All fit" });
+    expect(locationImpact(closed, true, [{ outcome: "removed" }, { outcome: "removed" }, { outcome: "kept" }])).toEqual({
+      text: "2 removed · 1 kept",
+      tone: "red",
+    });
+    expect(locationImpact(closed, true, [{ outcome: "opened" }, { outcome: "edited" }])).toEqual({
+      text: "1 shortened · 1 open",
+      tone: "amber",
+    });
+    expect(locationImpact(closed, true, [{ outcome: "kept" }])).toEqual({ text: "1 kept" });
   });
 
   it("shows an empty required field only after a try; a wrong value at once", () => {
@@ -222,8 +288,6 @@ describe("the drawer", () => {
     expect(shiftReason(shift)).toBe("Starts 2 h before opening, runs 1.5 h past closing");
     expect(fitToHours(shift)).toEqual({ from: "10:00", until: "15:00" });
     expect(shiftReason({ ...shift, reason: "closed" })).toBe("Location closed");
-    expect(shiftSummary({ removed: 3, edited: 1, opened: 2, kept: 0 })).toBe("3 shifts removed, 1 shortened, 2 open");
-    expect(shiftSummary({ removed: 0, edited: 1, opened: 0, kept: 2 })).toBe("1 shift shortened, 2 kept");
   });
 
   it("writes History steps, with the failure's reason", () => {
