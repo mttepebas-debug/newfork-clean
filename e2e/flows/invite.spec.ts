@@ -137,13 +137,15 @@ test("a reminder sends the same link again, and Resend's old link points to the 
     sql(`select token_hash || '|' || expires_at || '|' || resend_count from public.employee_invitations
          where employee_id = '${employeeId}' and status = 'pending';`);
 
-  const ayse = await (await browser.newContext()).newPage();
-  await signIn(ayse, "ayse");
-  await expect(ayse).not.toHaveURL(/\/sign-in/);
-  await ayse.goto("/app/employees");
-  const row = ayse.getByRole("row", { name: new RegExp(name) });
+  // An admin: the invitation's state and its Send reminder are on Access,
+  // which a manager's role does not read (employee_access.read).
+  const zeynep = await (await browser.newContext()).newPage();
+  await signIn(zeynep, "zeynep");
+  await expect(zeynep).not.toHaveURL(/\/sign-in/);
+  await zeynep.goto("/app/employees");
+  const row = zeynep.getByRole("row", { name: new RegExp(name) });
   await row.getByText(name, { exact: true }).click();
-  let drawer = ayse.getByRole("dialog", { name });
+  let drawer = zeynep.getByRole("dialog", { name });
   await drawer.getByLabel("E-mail").fill(`${firstName.toLowerCase()}@world.test`);
   await drawer.getByLabel("Invite role").selectOption({ label: "Employee" });
   await drawer.getByRole("button", { name: "Invite", exact: true }).click();
@@ -152,8 +154,8 @@ test("a reminder sends the same link again, and Resend's old link points to the 
   const [hash, expires, sent] = pending().split("|");
   expect(sent).toBe("0");
 
-  await ayse.goto(`/app/employees?employeeId=${employeeId}&section=access`);
-  drawer = ayse.getByRole("dialog", { name });
+  await zeynep.goto(`/app/employees?employeeId=${employeeId}&section=access`);
+  drawer = zeynep.getByRole("dialog", { name });
   await drawer.getByRole("button", { name: "Send reminder", exact: true }).click();
   // The drawer hands the reminder's link over, as the email would carry it.
   await expect(drawer.getByRole("link", { name: "Open acceptance link" })).toHaveAttribute("href", firstLink!);
