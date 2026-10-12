@@ -426,17 +426,72 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await waitFor(() => expect(screen.queryByRole("row", { name: /Emre Person, Swap/ })).toBeNull());
     expect(screen.getByRole("dialog", { name: "Swap request" }).textContent).toContain("Emre Person ⇄ Deniz Acar");
   });
-  // Shift Hub's Renew swaps ?case= for ?offer=; its offer form opens here.
-  it("keeps Shift Hub on screen for its offer form", async () => {
+  // BL-1024: the old Shift Hub manager screen is gone; a stray ?offer= is
+  // only the employee's form (Employee Hub), so Requests stays the list.
+  it("keeps the Requests list for an old ?offer= link, not the old Shift Hub screen", async () => {
     renderPage("/app/schedule/requests?offer=22000000-0000-4000-8000-000000000004");
-    await screen.findByRole("heading", { name: "Shift changes" });
-    expect(screen.queryByRole("group", { name: "Request type" })).toBeNull();
+    await screen.findByRole("group", { name: "Request type" });
+    expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Shift change queues" })).toBeNull();
   });
-  it("lands a manager notification link on its Shift Hub case", async () => {
+  // A notification link to a case the core no longer hands this manager (a
+  // closed location, a narrower scope): Requests says so in its own empty
+  // state, where the table was, and one button brings the list back (BL-1024;
+  // Mert, 2026-10-12: variant D and its sentence).
+  it("says a request is no longer available in place of the table, then brings the list back", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
+    const empty = { employee_id: null, cases: [], opportunities: [], own_shifts: [] };
+    let answer: (value: typeof empty) => void = () => {};
+    const listed = vi.mocked(getExchanges).getMockImplementation();
+    vi.mocked(getExchanges).mockImplementation((workspace, manager, range) =>
+      range?.caseId ? new Promise((resolve) => { answer = resolve; }) : listed!(workspace, manager, range));
     renderPage(`/app/schedule/requests?case=${caseId}`);
-    await screen.findByRole("heading", { name: "Shift changes" });
-    expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId }));
+    await waitFor(() => expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId })));
+    // Reading the linked request: the list does not flash in first.
+    await screen.findByText("Loading request...");
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    answer(empty);
+    await screen.findByRole("heading", { name: "Request unavailable" });
+    expect(screen.getByText("This request is no longer available.")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
+    // Tabs and filters stay: the page is still Requests.
+    expect(screen.getByRole("group", { name: "Request type" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show all requests" }));
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
+    expect(screen.getByLabelText("Current URL").textContent).not.toContain("case=");
+    // The button is gone, so focus lands on the list that took its place.
+    await waitFor(() => expect(document.activeElement?.classList.contains("requests-table-wrap")).toBe(true));
+  });
+  // A failed read is not a missing request: it says so and reads again.
+  it("offers to read a linked request again when reading it failed, without calling it unavailable", async () => {
+    const caseId = "97500000-0000-4000-8000-000000000001";
+    const empty = { employee_id: null, cases: [], opportunities: [], own_shifts: [] };
+    vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) => {
+      if (range?.caseId) throw new Error("Network down");
+      return empty;
+    });
+    renderPage(`/app/schedule/requests?case=${caseId}`);
+    await screen.findByRole("heading", { name: "Request could not load" });
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
+    expect(screen.queryByText("This request is no longer available.")).toBeNull();
+    let answer: (value: typeof empty) => void = () => {};
+    vi.mocked(getExchanges).mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    // While it reads again it says so, and the list does not flash in between.
+    await screen.findByText("Loading request...");
+    expect(screen.queryByRole("heading", { name: "Request could not load" })).toBeNull();
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    answer(empty);
+    await screen.findByRole("heading", { name: "Request unavailable" });
+  });
+  it("never says a request is unavailable to a time off reader who follows a shift change link", async () => {
+    activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };
+    renderPage("/app/schedule/requests?case=97500000-0000-4000-8000-000000000001");
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    expect(getExchanges).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
   });
   it("keeps a time off reader to time off: no request type tabs, no shift change list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };

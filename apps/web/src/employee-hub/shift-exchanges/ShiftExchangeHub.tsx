@@ -1,6 +1,4 @@
-import { usePhoneWidth } from "../../lib/usePhoneWidth";
 import { todayIn } from "../../lib/today";
-import { CatalogDrawer } from "../../settings/CatalogDrawer";
 import type {
   ExchangeApplication,
   ExchangeCase,
@@ -39,7 +37,6 @@ import {
   changeExchange,
   ExchangeError,
   getExchangeCandidates,
-  getExchangePreview,
   getExchanges,
   refreshExchangeSurfaces,
 } from "./exchange-data";
@@ -126,14 +123,12 @@ export function ExchangeDialog({
   children,
   onClose,
   fallbackFocus,
-  catalog = false,
   busy = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   fallbackFocus?: RefObject<HTMLElement | null>;
-  catalog?: boolean;
   busy?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -151,7 +146,7 @@ export function ExchangeDialog({
   return createPortal(
     <dialog
       ref={ref}
-      className={`sx-dialog sx-root ${catalog ? "jobs-settings-page requests-catalog-page request-catalog-exchange-dialog" : ""}`}
+      className="sx-dialog sx-root"
       aria-labelledby={titleId}
       onKeyDown={(event) => {
         if (event.key !== "Tab") return;
@@ -307,13 +302,7 @@ function useExchangeAction(workspace: string) {
   return { mutation, notice, setNotice };
 }
 
-export function ShiftExchangeHub({
-  workspaceId,
-  manager = false,
-}: {
-  workspaceId: string;
-  manager?: boolean;
-}) {
+export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
   const { context } = useAuth();
   const [params, setParams] = useSearchParams();
   const search = params.get("q") ?? "";
@@ -329,13 +318,12 @@ export function ShiftExchangeHub({
       "shift-exchanges",
       workspaceId,
       context?.userId,
-      manager,
       from,
       to,
       focusedCase,
     ],
     queryFn: () =>
-      getExchanges(workspaceId, manager, { from, to, caseId: focusedCase }),
+      getExchanges(workspaceId, false, { from, to, caseId: focusedCase }),
     refetchInterval: 60_000,
     refetchOnReconnect: "always",
   });
@@ -431,29 +419,14 @@ export function ShiftExchangeHub({
     (selected
       ? selected.status !== "open"
         ? "history"
-        : !manager
-          ? "requests"
-          : selected.stage === "seeking_candidates"
-            ? "finding"
-            : selected.stage === "awaiting_peer"
-              ? "peer"
-              : "ready"
-      : manager
-        ? "ready"
-        : "available");
+        : "requests"
+      : "available");
   const offering = params.has("offer");
-  const tabs: [string, string][] = manager
-    ? [
-        ["ready", "Ready for review"],
-        ["finding", "Finding cover"],
-        ["peer", "Awaiting response"],
-        ["history", "History"],
-      ]
-    : [
-        ["available", "Available"],
-        ["requests", "My requests"],
-        ["history", "History"],
-      ];
+  const tabs: [string, string][] = [
+    ["available", "Available"],
+    ["requests", "My requests"],
+    ["history", "History"],
+  ];
   const canWrite = online && !mutation.isPending;
   const matches = (shift: ExchangeShift) =>
     shift.scheduled_date >= from &&
@@ -468,12 +441,6 @@ export function ShiftExchangeHub({
   const matchesCase = (item: ExchangeCase) =>
     matches(item.shift) ||
     (item.requested_shift != null && matches(item.requested_shift));
-  const readyCount = model.cases.filter(
-    (item) =>
-      matchesCase(item) &&
-      item.status === "open" &&
-      ["ready_for_manager", "awaiting_other_manager"].includes(item.stage),
-  ).length;
   const locations = Array.from(
     new Map(
       [
@@ -490,17 +457,9 @@ export function ShiftExchangeHub({
         matchesCase(item) &&
         (view === "history"
           ? item.status !== "open"
-          : item.status === "open" &&
-            (!manager ||
-              (view === "ready" &&
-                ["ready_for_manager", "awaiting_other_manager"].includes(
-                  item.stage,
-                )) ||
-              (view === "finding" && item.stage === "seeking_candidates") ||
-              (view === "peer" && item.stage === "awaiting_peer"))),
+          : item.status === "open"),
     )
     .sort((a, b) => {
-      if (manager) return a.expires_at.localeCompare(b.expires_at);
       const priority = (c: ExchangeCase) =>
         c.applications.some(
           (a) => a.employee_id === model.employee_id && a.status === "invited",
@@ -515,20 +474,9 @@ export function ShiftExchangeHub({
     });
   return (
     <div
-      className={`sx-root ${manager ? "request-catalog-shift-hub" : ""} ${selected ? "sx-reading-detail" : ""}`}
+      className={`sx-root ${selected ? "sx-reading-detail" : ""}`}
     >
       {/* The employee page title comes from the shared catalog header. */}
-      {manager && (
-        <div className="sx-heading">
-          <div>
-            <p className="sx-eyebrow">TEAM SCHEDULE</p>
-            <h2>Shift changes</h2>
-            <p>
-              {`${readyCount} ${readyCount === 1 ? "case" : "cases"} ready for a decision · Every transfer needs your final approval.`}
-            </p>
-          </div>
-        </div>
-      )}
       {!online && (
         <p className="sx-banner" role="status">
           You’re offline. Showing the last loaded requests. Reconnect to make
@@ -556,7 +504,7 @@ export function ShiftExchangeHub({
       )}
       <nav
         className="sx-tabs"
-        aria-label={manager ? "Shift change queues" : "Shift Hub views"}
+        aria-label="Shift Hub views"
       >
         {tabs.map(([key, label]) => (
           <button
@@ -565,7 +513,6 @@ export function ShiftExchangeHub({
             onClick={() => navigate({ hub_view: key, case: null })}
           >
             {label}
-            {key === "ready" && <span>{readyCount}</span>}
           </button>
         ))}
       </nav>
@@ -595,10 +542,10 @@ export function ShiftExchangeHub({
         </label>
       </div>
       <div
-        className={`sx-workbench ${selected ? "sx-has-detail" : ""} ${manager ? "sx-manager" : ""}`}
+        className={`sx-workbench ${selected ? "sx-has-detail" : ""}`}
       >
-        <div className={`sx-list ${manager ? "job-catalog" : ""}`}>
-          {!manager && view === "available" ? (
+        <div className="sx-list">
+          {view === "available" ? (
             <>
               {visibleOpportunities.map((opportunity) => {
                   if (blockedByTimeOff(opportunity.eligibility))
@@ -714,120 +661,57 @@ export function ShiftExchangeHub({
             </>
           ) : (
             <>
-              {manager && (
-                <div className="job-column-headings request-catalog-row">
-                  <span>Employee / request</span>
-                  <span>Shift</span>
-                  <span className="request-location-column">
-                    Location / job
+              {cases.map((item) => (
+                <button
+                  className={`sx-card sx-case-row ${selected?.id === item.id ? "sx-selected" : ""}`}
+                  key={item.id}
+                  onClick={() => navigate({ case: item.id })}
+                >
+                  <span
+                    className={`sx-pill ${item.status === "completed" ? "sx-done" : ""}`}
+                  >
+                    {item.status === "open"
+                      ? stageLabels[item.stage]
+                      : item.status === "completed"
+                        ? "Approved"
+                        : item.status === "invalidated"
+                          ? "Shift changed"
+                          : caseStatusLabels[item.status]}
                   </span>
-                  <span>Status</span>
-                  <span className="request-impact-column">Candidates</span>
-                </div>
-              )}
-              {cases.map((item) =>
-                manager ? (
-                  <button
-                    type="button"
-                    className="job-catalog-row request-catalog-row request-catalog-button"
-                    key={item.id}
-                    onClick={() => navigate({ case: item.id })}
-                  >
-                    <span className="job-row-identity">
-                      <span className="request-catalog-marker">
-                        <ArrowLeftRight size={16} />
-                      </span>
-                      <span className="job-name-stack">
-                        <span
-                          className="job-row-name"
-                          title={item.owner_name ?? "Open shift"}
-                        >
-                          {item.owner_name ?? "Open shift"}
-                        </span>
-                        <small>
-                          {item.kind === "swap"
-                            ? "Shift swap"
-                            : item.owner_name
-                              ? "Cover request"
-                              : "Open shift pickup"}
-                        </small>
-                      </span>
-                    </span>
-                    <span className="request-catalog-meta">
-                      {item.shift.scheduled_date}
-                      <br />
-                      {item.shift.start_time?.slice(0, 5) ?? "—"} –{" "}
-                      {item.shift.end_time?.slice(0, 5) ?? "—"}
-                    </span>
-                    <span
-                      className="request-catalog-meta request-location-column"
-                      title={`${item.shift.location_name} · ${item.shift.job_name}`}
-                    >
-                      {item.shift.location_name}
-                      <br />
-                      {item.shift.job_name}
-                    </span>
-                    <span className="request-status">
-                      {item.status === "open"
-                        ? stageLabels[item.stage]
-                        : caseStatusLabels[item.status]}
-                    </span>
-                    <span className="request-catalog-meta request-impact-column">
-                      {item.candidate_count}
-                    </span>
-                  </button>
-                ) : (
-                  <button
-                    className={`sx-card sx-case-row ${selected?.id === item.id ? "sx-selected" : ""}`}
-                    key={item.id}
-                    onClick={() => navigate({ case: item.id })}
-                  >
-                    <span
-                      className={`sx-pill ${item.status === "completed" ? "sx-done" : ""}`}
-                    >
-                      {item.status === "open"
-                        ? stageLabels[item.stage]
-                        : item.status === "completed"
-                          ? "Approved"
-                          : item.status === "invalidated"
-                            ? "Shift changed"
-                            : caseStatusLabels[item.status]}
-                    </span>
-                    <ExchangeShiftCard
-                      shift={
-                        matches(item.shift) ? item.shift : item.requested_shift!
-                      }
-                      label={
-                        matches(item.shift) ? undefined : "Requested in return"
-                      }
-                    />
+                  <ExchangeShiftCard
+                    shift={
+                      matches(item.shift) ? item.shift : item.requested_shift!
+                    }
+                    label={
+                      matches(item.shift) ? undefined : "Requested in return"
+                    }
+                  />
+                  <span>
+                    {item.kind === "swap"
+                      ? "Shift swap"
+                      : item.owner_name
+                        ? `Cover for ${item.owner_name}`
+                        : "Open shift pickup"}
+                  </span>
+                  <span className="sx-case-footer">
                     <span>
-                      {item.kind === "swap"
-                        ? "Shift swap"
-                        : item.owner_name
-                          ? `Cover for ${item.owner_name}`
-                          : "Open shift pickup"}
-                    </span>
-                    <span className="sx-case-footer">
-                      <span>
-                        <Users size={15} />
-                        {manager || item.is_owner
-                          ? `${item.candidate_count} ${item.candidate_count === 1 ? "candidate" : "candidates"}`
-                          : item.applications.find(
+                      <Users size={15} />
+                      {item.is_owner
+                        ? `${item.candidate_count} ${item.candidate_count === 1 ? "candidate" : "candidates"}`
+                        : item.applications.find(
+                              (a) => a.employee_id === model.employee_id,
+                            )
+                          ? statusLabels[
+                              item.applications.find(
                                 (a) => a.employee_id === model.employee_id,
-                              )
-                            ? statusLabels[
-                                item.applications.find(
-                                  (a) => a.employee_id === model.employee_id,
-                                )!.status
-                              ]
-                            : "View request"}
-                      </span>
-                      <ChevronRight size={18} />
+                              )!.status
+                            ]
+                          : "View request"}
                     </span>
-                  </button>
-                ),
-              )}
+                    <ChevronRight size={18} />
+                  </span>
+                </button>
+              ))}
               {!cases.length && (
                 <EmptyState
                   title={
@@ -838,9 +722,7 @@ export function ShiftExchangeHub({
                   text={
                     view === "history"
                       ? "No past requests match these filters. Try another date range or location."
-                      : manager
-                        ? "No requests match this stage and these filters. Try another date range or location."
-                        : "No cover searches, applications or swap invitations match these filters."
+                      : "No cover searches, applications or swap invitations match these filters."
                   }
                 />
               )}
@@ -848,43 +730,35 @@ export function ShiftExchangeHub({
           )}
         </div>
         {selected && (
-          <ManagerRequestSurface
-            manager={manager}
-            busy={mutation.isPending}
-            onClose={() => navigate({ case: null, hub_view: view })}
+          <aside
+            ref={detailRef}
+            tabIndex={-1}
+            className="sx-detail"
+            aria-label="Request details"
           >
-            <aside
-              ref={detailRef}
-              tabIndex={-1}
-              className="sx-detail"
-              aria-label="Request details"
+            <button
+              className="sx-back"
+              onClick={() => navigate({ case: null, hub_view: view })}
             >
-              <button
-                className="sx-back"
-                onClick={() => navigate({ case: null, hub_view: view })}
-              >
-                <ArrowLeft size={17} /> Back to requests
-              </button>
-              {!matchesCase(selected) && (
-                <p className="sx-banner" role="status">
-                  This request is outside your list filters. Its details are
-                  still available here.
-                </p>
-              )}
-              <CaseDetail
-                key={selected.id}
-                item={selected}
-                model={model}
-                manager={manager}
-                canWrite={canWrite}
-                workspace={workspaceId}
-                run={(command) => mutation.mutateAsync(command)}
-                onRenew={() =>
-                  navigate({ offer: selected.shift.id, case: null })
-                }
-              />
-            </aside>
-          </ManagerRequestSurface>
+              <ArrowLeft size={17} /> Back to requests
+            </button>
+            {!matchesCase(selected) && (
+              <p className="sx-banner" role="status">
+                This request is outside your list filters. Its details are
+                still available here.
+              </p>
+            )}
+            <CaseDetail
+              key={selected.id}
+              item={selected}
+              model={model}
+              canWrite={canWrite}
+              run={(command) => mutation.mutateAsync(command)}
+              onRenew={() =>
+                navigate({ offer: selected.shift.id, case: null })
+              }
+            />
+          </aside>
         )}
         {params.has("case") && !selected && (
           <aside className="sx-detail">
@@ -924,171 +798,44 @@ function EmptyState({ title, text }: { title: string; text: string }) {
   );
 }
 
-function ExchangeEligibilityDetails({
-  preview,
-  receiverName,
-  giverName,
-  showSummary = true,
-}: {
-  preview: Awaited<ReturnType<typeof getExchangePreview>>;
-  receiverName: string;
-  giverName: string;
-  showSummary?: boolean;
-}) {
-  const checks = [
-    {
-      name: receiverName,
-      check: preview.receiver,
-      label: "Receiving the offered shift",
-    },
-    {
-      name: giverName,
-      check: preview.giver,
-      label: "Receiving the requested shift",
-    },
-  ];
-  const detailReasons = new Set(
-    checks.flatMap(({ check }) =>
-      check && check.status !== "eligible"
-        ? check.reasons.map((reason) => reason.trim())
-        : [],
-    ),
-  );
-  const summary = [...new Set(preview.reasons)].filter(
-    (reason) => !detailReasons.has(reason.trim()),
-  );
-  return (
-    <>
-      {showSummary && summary.length > 0 && (
-        <ul className="sx-error">
-          {summary.map((reason) => (
-            <li key={reason}>{reason}</li>
-          ))}
-        </ul>
-      )}
-      {checks.map(({ name, check, label }) => {
-        if (!check || check.status === "eligible") return null;
-        const reasons = [
-          ...new Set(
-            check.reasons.map((reason) => reason.trim()).filter(Boolean),
-          ),
-        ];
-        if (!reasons.length) return null;
-        return (
-          <section
-            className="sx-eligibility-detail"
-            aria-label={`${name} eligibility`}
-            key={label}
-          >
-            <strong>{name}</strong>
-            <p className="sx-help">{label}</p>
-            <ul>
-              {reasons.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
-    </>
-  );
-}
-
 function CaseDetail({
   item,
   model,
-  manager,
   canWrite,
-  workspace,
   run,
   onRenew,
 }: {
   item: ExchangeCase;
   model: ExchangeReadModel;
-  manager: boolean;
   canWrite: boolean;
-  workspace: string;
   run: (command: ExchangeCommand) => Promise<unknown>;
   onRenew: () => void;
 }) {
-  const phone = usePhoneWidth();
   const [working, setWorking] = useState(false);
-  const [candidate, setCandidate] = useState("");
-  const [decision, setDecision] = useState<
-    "approve" | "reject" | "close" | null
-  >(null);
+  const [closing, setClosing] = useState(false);
   const [reason, setReason] = useState("");
-  const [privateNote, setPrivateNote] = useState("");
   const [error, setError] = useState("");
-  const reviewHeading = useRef<HTMLHeadingElement>(null);
   const detailHeading = useRef<HTMLHeadingElement>(null);
-  const selectedReviewButton = useRef<HTMLButtonElement>(null);
-  const reviewTitleId = useId();
   const decisionDescriptionId = useId();
-  useEffect(() => {
-    // Reviewing is explicit navigation to a decision summary. Keep background
-    // eligibility refreshes from moving focus or interrupting a manager's work.
-    if (candidate) {
-      reviewHeading.current?.focus();
-      reviewHeading.current?.scrollIntoView?.({ block: "start" });
-    }
-  }, [candidate]);
-  const current = item.applications.find(
-    (a) => a.id === candidate && activeApplication(a),
-  );
   const own = item.applications.filter(
     (a) => a.employee_id === model.employee_id,
   );
-  const preview = useQuery({
-    queryKey: [
-      "shift-exchanges",
-      workspace,
-      "preview",
-      item.id,
-      candidate,
-      item.revision,
-    ],
-    queryFn: () => getExchangePreview(workspace, item.id, candidate),
-    enabled:
-      manager &&
-      Boolean(current?.status === "pending_manager") &&
-      item.can_manage &&
-      item.status === "open",
-    retry: false,
-  });
-  const actionable =
-    item.status === "open" && canWrite && (!manager || item.can_manage);
+  const actionable = item.status === "open" && canWrite;
   const requestEnded = item.status !== "open";
-  const reviewBlocked =
-    decision === "approve" &&
-    Boolean(current) &&
-    (preview.isError || preview.data?.allowed === false);
   const command = async (action: ExchangeCommand) => {
     if (working) return;
     setWorking(true);
     setError("");
     try {
       await run(action);
-      setDecision(null);
+      setClosing(false);
       setReason("");
-      setPrivateNote("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to update request");
     } finally {
       setWorking(false);
     }
   };
-  // The decision window's last button sends the decision it was opened for.
-  const decide = (action: "approve" | "reject" | "close") =>
-    void command({
-      action,
-      case_id: item.id,
-      ...(current && action !== "close" ? { application_id: current.id } : {}),
-      expected_revision: item.revision,
-      fingerprint: preview.data?.fingerprint,
-      reason,
-      private_note: privateNote,
-    });
   return (
     <>
       <div className="sx-detail-heading">
@@ -1116,8 +863,7 @@ function CaseDetail({
           employee consent is required.
         </p>
       )}
-      {!manager &&
-        item.status !== "open" &&
+      {item.status !== "open" &&
         item.status !== "completed" &&
         item.current_published !== false &&
         model.own_shifts.some(
@@ -1127,7 +873,7 @@ function CaseDetail({
             Start a new cover or swap request
           </button>
         )}
-      {item.private_note && (manager || item.is_owner) && (
+      {item.private_note && item.is_owner && (
         <section className="sx-preview">
           <h4>Private note for the manager</h4>
           <p>{item.private_note}</p>
@@ -1144,11 +890,9 @@ function CaseDetail({
             item.requested_shift
               ? item.status !== "open"
                 ? "First shift"
-                : manager
-                  ? "Offered shift"
-                  : item.owner_id === model.employee_id
-                    ? "You give"
-                    : "You receive"
+                : item.owner_id === model.employee_id
+                  ? "You give"
+                  : "You receive"
               : undefined
           }
         />
@@ -1162,35 +906,25 @@ function CaseDetail({
             label={
               item.status !== "open"
                 ? "Second shift"
-                : manager
-                  ? "Requested in return"
-                  : item.owner_id === model.employee_id
-                    ? "You receive"
-                    : "You give"
+                : item.owner_id === model.employee_id
+                  ? "You receive"
+                  : "You give"
             }
           />
         )}
       </div>
       {item.requested_shift && (
         <p className="sx-help">
-          {item.status !== "open"
-            ? "First / second"
-            : manager
-              ? "Offered / returned"
-              : "Give / receive"}
+          {item.status !== "open" ? "First / second" : "Give / receive"}
           :{" "}
           {shiftHours(
-            item.status !== "open" ||
-              item.owner_id === model.employee_id ||
-              manager
+            item.status !== "open" || item.owner_id === model.employee_id
               ? item.shift
               : item.requested_shift,
           ).toFixed(1)}
           h /{" "}
           {shiftHours(
-            item.status !== "open" ||
-              item.owner_id === model.employee_id ||
-              manager
+            item.status !== "open" || item.owner_id === model.employee_id
               ? item.requested_shift
               : item.shift,
           ).toFixed(1)}
@@ -1209,7 +943,7 @@ function CaseDetail({
           · {item.shift.timezone}
         </p>
       )}
-      {manager || item.is_owner ? (
+      {item.is_owner ? (
         <section className="sx-candidates">
           <h4>
             {item.status === "open"
@@ -1218,18 +952,13 @@ function CaseDetail({
           </h4>
           {item.status === "open" && (
             <p className="sx-help">
-              {manager
-                ? "Select a candidate to check eligibility and review the change."
-                : item.audience === "direct"
+              {item.audience === "direct"
                   ? "Your teammate must accept before your manager can approve. Until final approval, each shift stays with its current owner."
                   : "Your manager chooses the replacement. You don’t need to accept individual applications."}
             </p>
           )}
           {item.applications.map((a) => (
-            <div
-              className={`sx-candidate ${candidate === a.id ? "sx-selected" : ""}`}
-              key={a.id}
-            >
+            <div className="sx-candidate" key={a.id}>
               <div className="sx-avatar" aria-hidden>
                 {a.employee_name
                   .split(" ")
@@ -1260,40 +989,7 @@ function CaseDetail({
                       : "Recheck needed"}
                   </span>
                 )}
-                {manager &&
-                  a.eligibility?.status !== "eligible" &&
-                  a.eligibility && (
-                    <details>
-                      <summary>Review eligibility</summary>
-                      <ul>
-                        {a.eligibility.reasons.map((r) => (
-                          <li key={r}>{r}</li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
               </div>
-              {manager &&
-                item.can_manage &&
-                item.status === "open" &&
-                activeApplication(a) && (
-                  <button
-                    ref={candidate === a.id ? selectedReviewButton : undefined}
-                    aria-pressed={candidate === a.id}
-                    aria-label={`Review ${a.employee_name}`}
-                    onClick={() => {
-                      setCandidate(a.id);
-                      if (candidate === a.id) {
-                        reviewHeading.current?.focus();
-                        reviewHeading.current?.scrollIntoView?.({
-                          block: "start",
-                        });
-                      }
-                    }}
-                  >
-                    {candidate === a.id ? "Selected" : "Review"}
-                  </button>
-                )}
             </div>
           ))}
           {!item.applications.length && (
@@ -1304,165 +1000,97 @@ function CaseDetail({
           )}
         </section>
       ) : null}
-      {!manager &&
-        own.map((a) => (
-          <section key={a.id} className="sx-response">
-            <h4>{statusLabels[a.status]}</h4>
-            {a.reason && <p>{a.reason}</p>}
-            {a.status === "pending_manager" && (
-              <p>
-                Not added to your schedule yet. Your manager makes the final
-                decision.
-              </p>
-            )}
-            {a.status === "invited" && (
-              <p>
-                Accepting sends this request to the manager. Your current
-                responsibilities stay in place.
-              </p>
-            )}
-            {a.status === "invited" && a.eligibility?.availability_warning && (
-              <p className="sx-pending">
-                <AlertTriangle size={14} />{" "}
-                {availabilityMessage("Accepting")}
-              </p>
-            )}
-            {actionable && activeApplication(a) && (
-              <div className="sx-actions">
-                {a.status === "invited" ? (
-                  <>
-                    <button
-                      className="sx-primary"
-                      onClick={() =>
-                        void command({
-                          action: "accept",
-                          case_id: item.id,
-                          application_id: a.id,
-                          expected_revision: item.revision,
-                          ...(a.eligibility?.availability_warning
-                            ? {
-                                availability_fingerprint:
-                                  a.eligibility.availability_warning
-                                    .fingerprint,
-                              }
-                            : {}),
-                        })
-                      }
-                    >
-                      {a.eligibility?.availability_warning
-                        ? "Accept anyway"
-                        : "Accept request"}
-                    </button>
-                    <button
-                      onClick={() =>
-                        void command({
-                          action: "decline",
-                          case_id: item.id,
-                          application_id: a.id,
-                          expected_revision: item.revision,
-                        })
-                      }
-                    >
-                      Decline
-                    </button>
-                  </>
-                ) : (
+      {own.map((a) => (
+        <section key={a.id} className="sx-response">
+          <h4>{statusLabels[a.status]}</h4>
+          {a.reason && <p>{a.reason}</p>}
+          {a.status === "pending_manager" && (
+            <p>
+              Not added to your schedule yet. Your manager makes the final
+              decision.
+            </p>
+          )}
+          {a.status === "invited" && (
+            <p>
+              Accepting sends this request to the manager. Your current
+              responsibilities stay in place.
+            </p>
+          )}
+          {a.status === "invited" && a.eligibility?.availability_warning && (
+            <p className="sx-pending">
+              <AlertTriangle size={14} />{" "}
+              {availabilityMessage("Accepting")}
+            </p>
+          )}
+          {actionable && activeApplication(a) && (
+            <div className="sx-actions">
+              {a.status === "invited" ? (
+                <>
+                  <button
+                    className="sx-primary"
+                    onClick={() =>
+                      void command({
+                        action: "accept",
+                        case_id: item.id,
+                        application_id: a.id,
+                        expected_revision: item.revision,
+                        ...(a.eligibility?.availability_warning
+                          ? {
+                              availability_fingerprint:
+                                a.eligibility.availability_warning
+                                  .fingerprint,
+                            }
+                          : {}),
+                      })
+                    }
+                  >
+                    {a.eligibility?.availability_warning
+                      ? "Accept anyway"
+                      : "Accept request"}
+                  </button>
                   <button
                     onClick={() =>
                       void command({
-                        action: "withdraw",
+                        action: "decline",
                         case_id: item.id,
                         application_id: a.id,
                         expected_revision: item.revision,
                       })
                     }
                   >
-                    Withdraw{" "}
-                    {item.audience === "direct" ? "acceptance" : "request"}
+                    Decline
                   </button>
-                )}
-              </div>
-            )}
-          </section>
-        ))}
-      {manager && current && item.status === "open" && (
-        <section className="sx-preview" aria-labelledby={reviewTitleId}>
-          <p className="sx-eyebrow">IF APPROVED</p>
-          <h4 id={reviewTitleId} ref={reviewHeading} tabIndex={-1}>
-            {item.owner_name ?? "Open shift"} → {current.employee_name}
-          </h4>
-          <p>
-            Same time, location and position.
-            {item.kind === "swap" && " Both shifts transfer together."}
-          </p>
-          {preview.data && (
-            <p>
-              {preview.data.other_applications} other applications will close as
-              “Another teammate selected”.
-            </p>
+                </>
+              ) : (
+                <button
+                  onClick={() =>
+                    void command({
+                      action: "withdraw",
+                      case_id: item.id,
+                      application_id: a.id,
+                      expected_revision: item.revision,
+                    })
+                  }
+                >
+                  Withdraw{" "}
+                  {item.audience === "direct" ? "acceptance" : "request"}
+                </button>
+              )}
+            </div>
           )}
-          {preview.isFetching && <p role="status">Rechecking eligibility…</p>}
-          {preview.error && (
-            <p className="sx-error" role="alert">
-              {preview.error.message}
-            </p>
-          )}
-          {preview.data?.requires_other_manager && (
-            <p className="sx-pending">
-              Another location’s manager must also approve. Your approval alone
-              will not change either assignment.
-            </p>
-          )}
-          {preview.data && !preview.data.allowed && !preview.isError && (
-            <ExchangeEligibilityDetails
-              preview={preview.data}
-              receiverName={current.employee_name}
-              giverName={item.owner_name ?? "Original owner"}
-            />
-          )}
-          <div className="sx-actions">
-            <button
-              className="sx-primary"
-              disabled={
-                !actionable ||
-                !preview.data?.allowed ||
-                preview.isFetching ||
-                preview.isError ||
-                current.status !== "pending_manager"
-              }
-              onClick={() => setDecision("approve")}
-            >
-              {preview.data?.requires_other_manager
-                ? "Approve my location"
-                : `Approve transfer to ${current.employee_name}`}
-            </button>
-            <button
-              disabled={!actionable}
-              onClick={() => setDecision("reject")}
-            >
-              Decline this application
-            </button>
-          </div>
-          <button
-            className="sx-text-button"
-            onClick={() => selectedReviewButton.current?.focus()}
-          >
-            Back to candidates
-          </button>
         </section>
+      ))}
+      {item.status === "open" && item.is_owner && (
+        <button
+          className="sx-text-button"
+          disabled={!canWrite}
+          onClick={() => setClosing(true)}
+        >
+          {item.kind === "swap"
+            ? "Cancel swap request"
+            : "Close cover search"}
+        </button>
       )}
-      {item.status === "open" &&
-        (item.is_owner || (manager && item.can_manage)) && (
-          <button
-            className="sx-text-button"
-            disabled={!canWrite}
-            onClick={() => setDecision("close")}
-          >
-            {item.kind === "swap"
-              ? "Cancel swap request"
-              : "Close cover search"}
-          </button>
-        )}
       {error && (
         <p className="sx-error" role="alert">
           {error}
@@ -1481,70 +1109,26 @@ function CaseDetail({
           ))}
         </ol>
       </details>
-      {manager && phone ? null : (
-        <Link
-          className="sx-text-link"
-          to={manager ? "/app/schedule" : "/app/employee-hub/schedule"}
-        >
-          View current schedule <ChevronRight size={15} />
-        </Link>
-      )}
-      {decision && (
+      <Link className="sx-text-link" to="/app/employee-hub/schedule">
+        View current schedule <ChevronRight size={15} />
+      </Link>
+      {closing && (
         <ExchangeDialog
-          title={
-            requestEnded
-              ? "Request updated"
-              : reviewBlocked
-                ? "Review needs updating"
-                : decision === "approve"
-                  ? "Confirm your decision"
-                  : decision === "reject"
-                    ? "Decline this application"
-                    : "Close this search"
-          }
-          onClose={() => setDecision(null)}
+          title={requestEnded ? "Request updated" : "Close this search"}
+          onClose={() => setClosing(false)}
           fallbackFocus={detailHeading}
-          catalog={manager}
           busy={working}
         >
           <p
             id={decisionDescriptionId}
-            role={
-              requestEnded ||
-              reviewBlocked ||
-              (decision !== "close" && !current)
-                ? "alert"
-                : undefined
-            }
+            role={requestEnded ? "alert" : undefined}
           >
             {requestEnded
               ? item.status === "completed"
                 ? `This ${item.kind === "swap" ? "swap" : "transfer"} has already been approved. This review cannot change the result. Current published assignments are shown below.`
                 : `This request is no longer open (${caseStatusLabels[item.status].toLowerCase()}). This review cannot change the result. Check the current assignments below.`
-              : decision !== "close" && !current
-                ? "This application is no longer available for a decision. Close this review to see the latest result."
-                : reviewBlocked
-                  ? preview.isError
-                    ? "Eligibility could not be checked. Go back and retry the check before approving."
-                    : "This transfer cannot be approved with the current eligibility details. Review the reason below before trying again."
-                  : decision === "approve"
-                    ? `${item.owner_name ?? "Open shift"} → ${current?.employee_name}. ${preview.data?.requires_other_manager ? "Assignments remain unchanged until the other manager approves." : "This changes the published assignment immediately."}`
-                    : decision === "reject"
-                      ? `Only ${current?.employee_name}’s application will be declined. Other candidates remain available.`
-                      : `All ${item.candidate_count} active applications will close. The current owner remains responsible.`}
+              : `All ${item.candidate_count} active applications will close. The current owner remains responsible.`}
           </p>
-          {reviewBlocked &&
-            !requestEnded &&
-            !preview.isError &&
-            preview.data &&
-            current && (
-              <ExchangeEligibilityDetails
-                preview={preview.data}
-                receiverName={current.employee_name}
-                giverName={item.owner_name ?? "Original owner"}
-                showSummary={!error}
-              />
-            )}
           <div
             className={`sx-decision-shifts ${item.requested_shift ? "sx-swap-pair" : ""}`}
           >
@@ -1573,33 +1157,20 @@ function CaseDetail({
               />
             )}
           </div>
-          {requestEnded && Boolean(reason || privateNote) && (
+          {requestEnded && Boolean(reason) && (
             <p className="sx-help">
               Your draft note is still here. It has not been sent.
             </p>
           )}
-          {decision !== "approve" && (
-            <label className="sx-field">
-              Reason shared with affected employees
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                maxLength={1000}
-                placeholder="Give a short, clear reason"
-              />
-            </label>
-          )}
-          {manager && (
-            <label className="sx-field">
-              Private manager note{" "}
-              <span className="sx-help">Not shared with employees</span>
-              <textarea
-                value={privateNote}
-                onChange={(e) => setPrivateNote(e.target.value)}
-                maxLength={1000}
-              />
-            </label>
-          )}
+          <label className="sx-field">
+            Reason shared with affected employees
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              maxLength={1000}
+              placeholder="Give a short, clear reason"
+            />
+          </label>
           {error && (
             <p className="sx-error" role="alert">
               {error}
@@ -1609,54 +1180,31 @@ function CaseDetail({
             <button
               className={requestEnded ? "sx-primary" : undefined}
               disabled={working}
-              onClick={() => setDecision(null)}
+              onClick={() => setClosing(false)}
             >
               {requestEnded ? "View latest result" : "Back"}
             </button>
-            {!requestEnded &&
-              (decision === "approve" ? (
-                <button
-                  className="sx-primary"
-                  aria-describedby={decisionDescriptionId}
-                  aria-label={
-                    current && !preview.data?.requires_other_manager
-                      ? `Confirm transfer to ${current?.employee_name}`
-                      : undefined
-                  }
-                  disabled={
-                    working ||
-                    !actionable ||
-                    !current ||
-                    !preview.data?.allowed ||
-                    preview.isFetching ||
-                    preview.isError
-                  }
-                  onClick={() => decide(decision)}
-                >
-                  {preview.data?.requires_other_manager
-                    ? "Record my approval"
-                    : "Confirm transfer"}
-                </button>
-              ) : (
-                // Declining and closing take something away: red, two clicks (BL-748).
-                <ConfirmButton
-                  unstyled
-                  className="sx-danger"
-                  aria-describedby={decisionDescriptionId}
-                  confirmLabel={
-                    decision === "reject" ? "Confirm decline" : "Confirm close"
-                  }
-                  disabled={
-                    working ||
-                    !actionable ||
-                    (decision === "reject" && !current) ||
-                    !reason.trim()
-                  }
-                  onConfirm={() => decide(decision)}
-                >
-                  {decision === "reject" ? "Decline application" : "Close search"}
-                </ConfirmButton>
-              ))}
+            {!requestEnded && (
+              // Closing takes the search away: red, two clicks (BL-748).
+              <ConfirmButton
+                unstyled
+                className="sx-danger"
+                aria-describedby={decisionDescriptionId}
+                confirmLabel="Confirm close"
+                disabled={working || !actionable || !reason.trim()}
+                onConfirm={() =>
+                  void command({
+                    action: "close",
+                    case_id: item.id,
+                    expected_revision: item.revision,
+                    reason,
+                    private_note: "",
+                  })
+                }
+              >
+                Close search
+              </ConfirmButton>
+            )}
           </footer>
         </ExchangeDialog>
       )}
@@ -2033,57 +1581,5 @@ function CreateExchange({
         </form>
       )}
     </ExchangeDialog>
-  );
-}
-
-function ManagerRequestSurface({
-  manager,
-  busy,
-  onClose,
-  children,
-}: {
-  manager: boolean;
-  busy: boolean;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  if (!manager) return <>{children}</>;
-  return (
-    <CatalogDrawer
-      label="Review shift change"
-      className="requests-catalog-page requests-exchange-drawer sx-root"
-      busy={busy}
-      onClose={onClose}
-    >
-      <div className="job-catalog-editor">
-        <div className="job-editor-title">
-          <div>
-            <h2>Shift change</h2>
-            <p>Review assignments, candidates, and the proposed change.</p>
-          </div>
-          <button
-            type="button"
-            className="job-icon-button"
-            disabled={busy}
-            aria-label="Close shift request"
-            onClick={onClose}
-          >
-            <X size={17} />
-          </button>
-        </div>
-        <div className="catalog-drawer-body">{children}</div>
-        <div className="job-editor-footer">
-          <span />
-          <button
-            type="button"
-            className="job-secondary-button"
-            disabled={busy}
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </CatalogDrawer>
   );
 }

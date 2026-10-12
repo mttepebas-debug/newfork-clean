@@ -7,13 +7,12 @@ import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, RotateCcw, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Check, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TimeOffShorten } from "./TimeOffShorten";
 import { TimeOffReview } from "./TimeOffReview";
 import type { DrawerNotice } from "./RequestDrawer";
 import { alsoOffThese } from "../schedule/time-off-overlap";
-import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { ExchangeReview } from "./ExchangeReview";
 import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
@@ -140,6 +139,23 @@ function ScheduleRequestsPageContent() {
     }, { replace: true });
   }, [listedCase, setParams]);
   const openCase = listedCase && listedCase.kind !== "swap" ? listedCase : seenCase?.id === caseId ? seenCase : null;
+  // A link to a case the core does not hand back (its location closed, or no
+  // longer this manager's): Requests' own empty state says so where the table
+  // was (BL-1024; Mert, 2026-10-12). Out of scope reads empty, so a failed read
+  // is an outage, not a missing request: it offers to read again.
+  const caseUnread = Boolean(caseId && !openCase && !listedCase);
+  const caseMissing = caseUnread && caseRead.isSuccess;
+  const caseFailed = caseUnread && caseRead.isError;
+  // Reading that one case: the list does not flash in before the answer.
+  const caseChecking = caseUnread && !caseMissing && !caseFailed && caseRead.isFetching;
+  // "Show all requests" goes away with the message: focus lands on the list.
+  const listWrap = useRef<HTMLDivElement>(null);
+  const [focusList, setFocusList] = useState(false);
+  useEffect(() => {
+    if (!focusList || caseMissing) return;
+    listWrap.current?.focus();
+    setFocusList(false);
+  }, [focusList, caseMissing]);
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
   const selected = timeOffById.get(selectedId) ?? null;
@@ -281,23 +297,6 @@ function ScheduleRequestsPageContent() {
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
     );
-  // Shift Hub draws its ?offer= form, and a ?case= the core did not hand back
-  // to this manager: it says what became of it.
-  const caseMissing = Boolean(caseId && !openCase && !listedCase && (caseRead.isSuccess || caseRead.isError));
-  if ((params.has("offer") || caseMissing) && canReadShift && context)
-    return (
-      <section
-        className="settings-page jobs-settings-page requests-catalog-page requests-page requests-shift-hub"
-        aria-labelledby="requests-title"
-      >
-        {header}
-        <ShiftExchangeHub
-          key={`${context.workspace.id}:${context.userId}`}
-          workspaceId={context.workspace.id}
-          manager
-        />
-      </section>
-    );
   const timeFormat = data.timeFormat;
   const loading = data.isLoading;
   const failed = Boolean(data.failure);
@@ -379,40 +378,83 @@ function ScheduleRequestsPageContent() {
         </div>
       </div>
 
-      <div className="employee-table-wrap requests-table-wrap">
-        {/* Three reads make one list: it is drawn once all of them answered. */}
-        <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
-        <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
-        {loading ? <p className="settings-state">Loading requests...</p> : null}
-        {!loading && failed ? (
+      {caseMissing ? (
+        <div className="employee-table-wrap requests-table-wrap">
+          <div className="catalog-table-empty" role="status">
+            <span className="catalog-table-empty-icon" aria-hidden>
+              <ArrowLeftRight size={22} />
+            </span>
+            <h2>Request unavailable</h2>
+            <p>This request is no longer available.</p>
+            <button
+              type="button"
+              className="nf-button secondary"
+              onClick={() => {
+                setFocusList(true);
+                closeCase();
+              }}
+            >
+              Show all requests
+            </button>
+          </div>
+        </div>
+      ) : caseFailed ? (
+        <div className="employee-table-wrap requests-table-wrap">
           <div className="catalog-table-empty" role="alert">
             <span className="catalog-table-empty-icon" aria-hidden>
               <AlertTriangle size={22} />
             </span>
-            <h2>Requests could not load</h2>
+            <h2>Request could not load</h2>
             <p>Check your connection and try again.</p>
-            <button type="button" className="nf-button secondary" onClick={data.retry}>
+            <button type="button" className="nf-button secondary" onClick={() => void caseRead.refetch()}>
               <RotateCcw size={16} aria-hidden /> Try again
             </button>
           </div>
-        ) : null}
-        {!loading && !failed && !page.rows.length ? (
-          <div className="catalog-table-empty">
-            <span className="catalog-table-empty-icon" aria-hidden>
-              <Check size={22} />
-            </span>
-            <h2>No requests</h2>
-            <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
+        </div>
+      ) : caseChecking ? (
+        <div className="employee-table-wrap requests-table-wrap">
+          <p className="settings-state" role="status">
+            Loading request...
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>
+            {/* Three reads make one list: it is drawn once all of them answered. */}
+            <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
+            <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
+            {loading ? <p className="settings-state">Loading requests...</p> : null}
+            {!loading && failed ? (
+              <div className="catalog-table-empty" role="alert">
+                <span className="catalog-table-empty-icon" aria-hidden>
+                  <AlertTriangle size={22} />
+                </span>
+                <h2>Requests could not load</h2>
+                <p>Check your connection and try again.</p>
+                <button type="button" className="nf-button secondary" onClick={data.retry}>
+                  <RotateCcw size={16} aria-hidden /> Try again
+                </button>
+              </div>
+            ) : null}
+            {!loading && !failed && !page.rows.length ? (
+              <div className="catalog-table-empty">
+                <span className="catalog-table-empty-icon" aria-hidden>
+                  <Check size={22} />
+                </span>
+                <h2>No requests</h2>
+                <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
-      <ListPagination
-        total={page.total}
-        page={page.page}
-        pageSize={view.pageSize}
-        onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
-        onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
-      />
+          <ListPagination
+            total={page.total}
+            page={page.page}
+            pageSize={view.pageSize}
+            onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
+            onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
+          />
+        </>
+      )}
 
       {selected && (
         <CatalogDrawer
