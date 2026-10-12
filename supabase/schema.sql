@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 466, last: 20261012024500_role_and_notification_refusals_say_why.sql
--- fingerprint: sha256:0974d91c33bd2e0b3ab3c0dec9ff41141637c460686c0afdf5bec9fa932bf38b
+-- migrations: 468, last: 20261012042000_role_and_notification_settings_ask_the_core.sql
+-- fingerprint: sha256:f89c9bdc9f679267f4ebc47ec20f3ccf76daa6debed81725c946534eda0478a2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1828,7 +1828,7 @@ CREATE OR REPLACE FUNCTION "app_private"."can_edit_role"("actor" "uuid", "w" "uu
  select exists(select 1 from public.workspace_memberships m join public.workspace_roles ar on ar.id=m.role_id
  left join public.workspace_roles target on target.id=rid and target.workspace_id=w
  where m.user_id=actor and m.workspace_id=w and m.status='active' and m.role_id is distinct from rid
- and public.service_actor_has_permission(actor,w,'roles.manage')
+ and app_private.authz_reason(actor,w,'settings.roles.write') is null
  and (rid is null or (target.id is not null and target.access_class<>'owner'))
  and (ar.access_class='owner' or (ar.access_class='admin' and (rid is null or target.access_class in ('manager','employee')))));
 $$;
@@ -6514,7 +6514,11 @@ CREATE OR REPLACE FUNCTION "app_private"."workspace_has_permission"("target_work
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
- select public.service_actor_has_permission(auth.uid(),target_workspace_id,target_permission);
+  select coalesce((
+    select state.status = 'active' and state.workspace_open and not state.document_blocked
+      and target_permission = any (state.permissions)
+    from app_private.actor((select auth.uid()), target_workspace_id) state
+  ), false);
 $$;
 
 
@@ -9710,7 +9714,8 @@ CREATE OR REPLACE FUNCTION "public"."delete_workspace_role_service"("actor_user_
 declare target public.workspace_roles;
 begin
  perform pg_advisory_xact_lock(hashtextextended('roles:'||target_workspace_id::text,0));
- if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501'; end if;
+ perform app_private.authorize(actor_user_id,target_workspace_id,'settings.roles.write');
+ if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;
  select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
  if target.system_key is not null then raise exception 'Built-in roles cannot be deleted' using errcode='42501'; end if;
  if exists(select 1 from public.workspace_memberships where role_id=target_role_id) or exists(select 1 from public.employee_invitations where role_id=target_role_id) or exists(select 1 from public.employee_access_snapshots where role_id=target_role_id) then raise exception 'Role has member or invitation references. Resolve these dependencies before deleting.' using errcode='PT409',hint='role.in_use'; end if;
@@ -11617,18 +11622,10 @@ declare
   location_rows jsonb;
   audit_rows jsonb;
 begin
-  if not (
-    public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.read')
-    or public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.write')
-  ) then
-    raise exception 'notification settings read access required' using errcode = '42501';
-  end if;
+  -- The write needs the read (role_permission_dependencies), so the read is the door.
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.read');
 
-  can_write := public.service_actor_has_permission(
-    actor_user_id,
-    target_workspace_id,
-    'notifications.settings.write'
-  );
+  can_write := app_private.authz_reason(actor_user_id, target_workspace_id, 'settings.notifications.write') is null;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'type_key', entry.type_key,
@@ -16563,11 +16560,9 @@ declare
   decision jsonb;
   requested_actor_user_id uuid := actor_user_id;
 begin
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.test_send') then
-    raise exception 'notification test-send access required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.test');
   if target_recipient_user_id is not null and target_recipient_user_id <> actor_user_id then
-    raise exception 'notification preview recipient must be current actor' using errcode = '42501';
+    raise exception 'notification preview recipient must be current actor' using errcode = '42501', hint = 'authz.out_of_scope';
   end if;
   select * into catalog_row
   from public.notification_catalog entry
@@ -19965,21 +19960,10 @@ CREATE OR REPLACE FUNCTION "public"."reset_notification_policies_service"("actor
     SET "search_path" TO ''
     AS $$
 declare
-  membership_row public.workspace_memberships%rowtype;
   policy_row public.notification_org_policies%rowtype;
   affected_count integer := 0;
 begin
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.write') then
-    raise exception 'notification settings write access required' using errcode = '42501';
-  end if;
-  select * into membership_row
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active';
-  if membership_row.id is null or not membership_row.all_locations then
-    raise exception 'organization-wide notification scope required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.write');
   if char_length(btrim(coalesce(target_reason, ''))) not between 3 and 500 then
     raise exception 'notification policy reason required' using errcode = '22023';
   end if;
@@ -22049,16 +22033,13 @@ CREATE OR REPLACE FUNCTION "public"."save_notification_policy_service"("actor_us
     AS $$
 declare
   catalog_row public.notification_catalog%rowtype;
-  membership_row public.workspace_memberships%rowtype;
   existing public.notification_org_policies%rowtype;
   saved public.notification_org_policies%rowtype;
   scoped_role_id uuid;
   scoped_location_id uuid;
   scope_name text;
 begin
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.write') then
-    raise exception 'notification settings write access required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.write');
   if char_length(btrim(coalesce(target_reason, ''))) not between 3 and 500 then
     raise exception 'notification policy reason required' using errcode = '22023';
   end if;
@@ -22084,30 +22065,24 @@ begin
     raise exception 'mandatory in-app notification cannot be disabled' using errcode = '22023';
   end if;
 
-  select * into membership_row
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active';
-
   if target_scope_kind = 'global' then
-    if target_scope_id is not null or not membership_row.all_locations then
-      raise exception 'organization-wide notification scope required' using errcode = '42501';
+    if target_scope_id is not null then
+      raise exception 'notification policy scope is invalid' using errcode = '22023';
     end if;
     scope_name := 'Organization';
   elsif target_scope_kind = 'role' then
-    if target_scope_id is null or not membership_row.all_locations then
-      raise exception 'organization-wide notification scope required' using errcode = '42501';
+    if target_scope_id is null then
+      raise exception 'notification policy scope is invalid' using errcode = '22023';
     end if;
     select role_row.id, role_row.name into scoped_role_id, scope_name
     from public.workspace_roles role_row
     where role_row.workspace_id = target_workspace_id and role_row.id = target_scope_id;
     if scoped_role_id is null then
-      raise exception 'notification role scope not found' using errcode = '42501';
+      raise exception 'notification role scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
     end if;
   elsif target_scope_kind = 'location' then
     if target_scope_id is null then
-      raise exception 'notification location scope not found' using errcode = '42501';
+      raise exception 'notification location scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
     end if;
     select location.id, location.name into scoped_location_id, scope_name
     from public.locations location
@@ -22115,15 +22090,7 @@ begin
       and location.id = target_scope_id
       and location.archived_at is null;
     if scoped_location_id is null then
-      raise exception 'notification location scope not found' using errcode = '42501';
-    end if;
-    if not membership_row.all_locations and not exists (
-      select 1 from public.membership_location_scopes scope
-      where scope.workspace_id = target_workspace_id
-        and scope.membership_id = membership_row.id
-        and scope.location_id = scoped_location_id
-    ) then
-      raise exception 'notification location scope access denied' using errcode = '42501';
+      raise exception 'notification location scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
     end if;
   else
     raise exception 'notification policy scope is invalid' using errcode = '22023';
@@ -23060,7 +23027,8 @@ declare target public.workspace_roles; saved uuid; normalized text[]; actor_clas
 begin
  -- Serialize role editors, including concurrent actor-grant changes.
  perform pg_advisory_xact_lock(hashtextextended('roles:'||target_workspace_id::text,0));
- if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501'; end if;
+ perform app_private.authorize(actor_user_id,target_workspace_id,'settings.roles.write');
+ if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when target_role_id is not null and not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;
  select role into actor_class from public.workspace_memberships where user_id=actor_user_id and workspace_id=target_workspace_id and status='active';
  if target_role_id is not null then
   select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
@@ -23075,7 +23043,7 @@ begin
  if role_access_class<>'admin' and normalized && array['roles.manage','workspace.manage'] then raise exception 'Protected management access denied' using errcode='42501'; end if;
  if role_access_class='employee' and exists(select 1 from unnest(normalized) k where k not in (select p.key from public.permissions p where p.employee_eligible)) then raise exception 'Employee roles are limited to personal access' using errcode='42501'; end if;
  -- Admin delegation cannot manufacture permissions it does not itself hold.
- if actor_class='admin' and exists(select 1 from unnest(normalized) k where not public.service_actor_has_permission(actor_user_id,target_workspace_id,k)) then raise exception 'Cannot grant access beyond your own permissions' using errcode='42501'; end if;
+ if actor_class='admin' and exists(select 1 from unnest(normalized) k where not k = any ((select (app_private.actor(actor_user_id,target_workspace_id)).permissions)::text[])) then raise exception 'Cannot grant access beyond your own permissions' using errcode='42501'; end if;
  if exists(select 1 from app_private.role_permission_dependencies d where d.permission_key=any(normalized) and not d.required_key=any(normalized)) then raise exception 'Permission set requires dependent read access' using errcode='22023'; end if;
  if target_role_id is null then
   insert into public.workspace_roles(workspace_id,name,description,access_class,sort_order,created_by) values(target_workspace_id,btrim(role_name),btrim(coalesce(role_description,'')),role_access_class,100,actor_user_id) returning id into saved;

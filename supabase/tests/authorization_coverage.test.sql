@@ -152,7 +152,7 @@ insert into service_class values
   ('preview_important_date_closure_service', 'important_date.write'),
   ('preview_employee_document_assignments_service', 'employee.save'),
   ('preview_employee_invitation_service', 'exempt:token'),
-  ('preview_notification_policy_service', 'settings.notifications.write'),
+  ('preview_notification_policy_service', 'settings.notifications.test'),
   ('preview_policy_definition_apply_service', 'settings.documents.write'),
   ('preview_schedule_auto_fill_service', 'schedule.edit'),
   ('preview_schedule_default_hours_service', 'schedule.edit'),

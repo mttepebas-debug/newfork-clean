@@ -71,7 +71,7 @@ select is(
 select throws_ok(
   $$select public.get_notification_settings_service('e2100000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000001')$$,
   '42501',
-  'notification settings read access required',
+  'Not allowed',
   'an employee without settings permission cannot read organization policy'
 );
 
