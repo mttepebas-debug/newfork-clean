@@ -1175,7 +1175,7 @@ begin
   end if;
 
   if expected_revision is not null and current_revision <> expected_revision then
-    raise exception 'owner onboarding revision conflict' using errcode = 'PT409';
+    raise exception 'owner onboarding revision conflict' using errcode = 'PT409', hint = 'workspace.onboarding_changed';
   end if;
 
   if mark_complete and not exists (
@@ -13462,7 +13462,7 @@ begin
     raise exception 'onboarding unavailable' using errcode = 'P0002';
   end if;
   if target_case.revision <> expected_revision then
-    raise exception 'onboarding changed; refresh required' using errcode = 'PT409';
+    raise exception 'onboarding changed; refresh required' using errcode = 'PT409', hint = 'onboarding.changed';
   end if;
 
   select membership.* into target_membership
@@ -20904,7 +20904,7 @@ begin
   where onboarding.workspace_id = target_workspace_id
     and onboarding.employee_id = target_employee_id
   for update of onboarding;
-  if target_case.id is null or target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = 'PT409'; end if;
+  if target_case.id is null or target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = 'PT409', hint = 'onboarding.changed'; end if;
   select employee.user_id into target_employee_user_id
   from public.employee_profiles employee
   where employee.id = target_employee_id
@@ -21022,7 +21022,7 @@ begin
   select 1 from public.employee_onboarding_requirements r where r.id=target_requirement_id
    and r.workspace_id=target_workspace_id and r.employee_id=target_employee_id and r.kind='availability'
  ) then raise exception 'Weekly availability is confirmed by the employee and does not require review' using errcode='22023'; end if;
- if exists(select 1 from public.employee_onboarding_requirements r where r.id=target_requirement_id and r.kind='document') then raise exception 'Review the submitted document version in Documents' using errcode='PT409'; end if;
+ if exists(select 1 from public.employee_onboarding_requirements r where r.id=target_requirement_id and r.kind='document') then raise exception 'Review the submitted document version in Documents' using errcode='PT409',hint='onboarding.review_in_documents'; end if;
  return public.review_employee_onboarding_before_availability_service(actor_user_id,target_workspace_id,target_employee_id,
   review_action,target_requirement_id,review_reason,expected_revision,production_ready);
 end; $$;
@@ -21550,7 +21550,7 @@ begin
   where onboarding.id = app_private.employee_onboarding_case_id(target_user_id, target_workspace_id)
   for update;
   if target_case.id is null then raise exception 'onboarding unavailable' using errcode = 'P0002'; end if;
-  if target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = 'PT409'; end if;
+  if target_case.revision <> expected_revision then raise exception 'onboarding changed; refresh required' using errcode = 'PT409', hint = 'onboarding.changed'; end if;
   if target_case.status in ('submitted', 'approved', 'cancelled') then raise exception 'onboarding cannot be edited' using errcode = '22023'; end if;
 
   select * into employee
@@ -25215,7 +25215,7 @@ begin
   for update;
 
   if target_case.id is null or target_case.revision <> expected_revision then
-    raise exception 'onboarding changed; refresh required' using errcode = 'PT409';
+    raise exception 'onboarding changed; refresh required' using errcode = 'PT409', hint = 'onboarding.changed';
   end if;
   if exists(select 1 from public.employee_onboarding_requirements r where r.case_id=target_case.id and app_private.document_initial_action_missing(r)) then raise exception 'Submit conditional documents or give an initial reason' using errcode='23514'; end if;
   if exists (
