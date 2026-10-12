@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 467, last: 20261012041000_this_week_is_the_locations_week.sql
--- fingerprint: sha256:849412d5ca77b53d32beac6ecbd1b0b1b8233392d47cad6ea08b92fa6472e0eb
+-- fingerprint: sha256:1834c55221aa04a76ce848032c3bcf7a639a8d2a72e806775a9029690e771d0c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5295,11 +5295,12 @@ CREATE OR REPLACE FUNCTION "app_private"."schedule_week_start_at"("w" "uuid", "p
   from public.workspace_scheduling_settings settings
   cross join lateral (
     -- The westernmost place's date: the week is not past while any place is still in it.
-    select coalesce(min((instant at time zone location.timezone)::date), (instant at time zone 'UTC')::date) as today
-    from public.locations location
-    where location.workspace_id = w
-      and case when cardinality(places) > 0 then location.id = any(places)
-               else app_private.location_is_live(location) end
+    select coalesce(
+      (select min((instant at time zone location.timezone)::date) from public.locations location
+       where location.workspace_id = w and location.id = any(places)),
+      (select min((instant at time zone location.timezone)::date) from public.locations location
+       where location.workspace_id = w and app_private.location_is_live(location)),
+      (instant at time zone 'UTC')::date) as today
   ) local
   where settings.workspace_id = w;
 $$;
@@ -16932,7 +16933,9 @@ begin
   if target_draft.id is null then
     raise exception 'schedule draft not found' using errcode = 'P0002';
   end if;
-  if target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id, target_location_ids) then
+  -- S-01: each place publishes up to its own line.
+  if exists (select 1 from unnest(target_location_ids) place
+             where target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id, array[place])) then
     return app_private.schedule_publication_changes_since_start(public.weekly_schedule_publication_preflight(
       jsonb_build_object(
         'status', 'past_week_closed', 'workspace_id', target_workspace_id,
@@ -17245,7 +17248,8 @@ begin
     'locations', location_payload
   );
   reviewed := unsigned_payload || jsonb_build_object(
-    'status', case when target_week_start < public.schedule_current_week_start_service(target_workspace_id, target_location_ids)
+    'status', case when exists (select 1 from unnest(target_location_ids) place
+      where target_week_start < public.schedule_current_week_start_service(target_workspace_id, array[place]))
       then 'past_week_closed' else 'unpublish_ready' end,
     'fingerprint', encode(extensions.digest(convert_to(unsigned_payload::text, 'UTF8'), 'sha256'), 'hex')
   );
@@ -21905,6 +21909,7 @@ declare
   item public.important_dates;
   before public.important_dates;
   line date;
+  before_line date;
   content_changed boolean := true;
   untouched boolean := false;
   was public.important_dates;
@@ -21953,11 +21958,9 @@ begin
     target_affects_scheduling := true;
   end if;
 
-  -- S-01: the places the date reaches before and after this save; an empty
-  -- list is the whole workspace.
-  line := public.schedule_current_week_start_service(target_workspace_id,
-    case when cardinality(before.location_ids) = 0 or cardinality(target_location_ids) = 0 then null
-      else before.location_ids || target_location_ids end);
+  -- S-01: each version by its own places; an empty list is the whole workspace.
+  line := public.schedule_current_week_start_service(target_workspace_id, target_location_ids);
+  before_line := public.schedule_current_week_start_service(target_workspace_id, before.location_ids);
 
   -- K11. A save that changes nothing touches nothing.
   if before.id is not null then
@@ -21965,8 +21968,7 @@ begin
       before.affects_scheduling, before.location_ids)
       is not distinct from (btrim(target_title), target_type, target_starts_on, target_ends_on, target_recurrence,
       coalesce(target_note, ''), coalesce(target_affects_scheduling, true), target_location_ids);
-    if not untouched and app_private.important_date_is_past(before,
-      public.schedule_current_week_start_service(target_workspace_id, before.location_ids)) then
+    if not untouched and app_private.important_date_is_past(before, before_line) then
       perform app_private.important_date_refuse_past();
     end if;
   end if;
@@ -22000,7 +22002,7 @@ begin
   if before.id is not null and not untouched then
     -- The history keeps the version as it was, not the part left ahead.
     was := before;
-    before := app_private.important_date_keep_past(before, line);
+    before := app_private.important_date_keep_past(before, before_line);
   end if;
 
   if target_important_date_id is null then
@@ -22697,6 +22699,36 @@ begin
       ));
     end if;
   else
+    -- S-01: the lock is per location. A place that has left the week keeps
+    -- what it has: only its published shifts, untouched, may ride along; the
+    -- other places still save.
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'op_type', shift.pending_op_type,
+      'shift_id', shift.id,
+      'scheduled_date', to_char(shift.scheduled_date, 'YYYY-MM-DD'),
+      'location_name', coalesce(location.name, 'Unknown location'),
+      'employee_name', coalesce(
+        nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
+        nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
+      ),
+      'reason', 'past_week',
+      'severity', 'blocked'
+    ) order by shift.scheduled_date, shift.start_time, shift.id), '[]'::jsonb)
+    into blocked_findings
+    from public.schedule_edit_session_shifts shift
+    left join public.locations location
+      on location.id = shift.location_id
+     and location.workspace_id = shift.workspace_id
+    left join public.employee_profiles employee
+      on employee.id = shift.employee_id
+     and employee.workspace_id = shift.workspace_id
+    where shift.session_id = target_session_id
+      and shift.workspace_id = target_workspace_id
+      and (shift.pending_op_type is not null or shift.source_published_shift_id is null)
+      and shift.location_id = any(reach)
+      and target_session.week_start
+        < public.schedule_current_week_start_service(target_workspace_id, array[shift.location_id]);
+
     select coalesce(jsonb_agg(jsonb_build_object(
       'op_type', shift.pending_op_type,
       'shift_id', shift.id,

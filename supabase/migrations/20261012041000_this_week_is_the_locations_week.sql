@@ -6,19 +6,23 @@
 -- save and the publish, and the important dates of that week locked early.
 --
 -- KARARLAR S-01: the line is the location's time zone (locations.timezone),
--- never the manager's; a week that reaches several places is past only once
--- every one of them has left it. One helper draws it; each caller names the
--- places of its work:
---   opening an edit        the places the edit opens on (now checked after the
---                          core has said which those are)
---   saving an edit         the edit's places
---   publish / unpublish    the places asked for
---   an important date      its own places; a save that moves it, the places
---                          before and after; a closed day's impact, each day
---                          at its own place
+-- never the manager's; the lock is per location, and a week that reaches
+-- several places is past only once every one of them has left it. One helper
+-- draws the line for a set of places (the westernmost one's week); each caller
+-- names the places of its work:
+--   opening an edit        the places it opens on: it opens while any of them
+--                          is still in the week (checked after the core has
+--                          said which places those are)
+--   saving an edit         the edit's places for the week; each shift also at
+--                          its own place: a place that has left the week keeps
+--                          its published shifts, anything else there is refused
+--   publish / unpublish    each place asked for, at its own line
+--   an important date      its own places; a save that moves it keeps the past
+--                          of its old places and starts at its new places'
+--                          line; a closed day's impact, each day at its place
 --   Settings > Important dates "locked_before"  the whole workspace
--- No place named, or an empty list, is every live location of the workspace;
--- a workspace with no location left falls back to the UTC date.
+-- No place named, or none of this workspace's, is every live location of the
+-- workspace; a workspace with no location left falls back to the UTC date.
 --
 -- The callers change on the definitions the database holds
 -- (pg_get_functiondef): each anchor must be found exactly as often as
@@ -38,11 +42,12 @@ as $$
   from public.workspace_scheduling_settings settings
   cross join lateral (
     -- The westernmost place's date: the week is not past while any place is still in it.
-    select coalesce(min((instant at time zone location.timezone)::date), (instant at time zone 'UTC')::date) as today
-    from public.locations location
-    where location.workspace_id = w
-      and case when cardinality(places) > 0 then location.id = any(places)
-               else app_private.location_is_live(location) end
+    select coalesce(
+      (select min((instant at time zone location.timezone)::date) from public.locations location
+       where location.workspace_id = w and location.id = any(places)),
+      (select min((instant at time zone location.timezone)::date) from public.locations location
+       where location.workspace_id = w and app_private.location_is_live(location)),
+      (instant at time zone 'UTC')::date) as today
   ) local
   where settings.workspace_id = w;
 $$;
@@ -137,17 +142,60 @@ $a$, '1'
 
 select pg_temp.patch('public.save_schedule_edit_session_service(uuid,uuid,uuid,integer,text,uuid,integer,boolean)', array[
   'current_week_start := public.schedule_current_week_start_service(target_workspace_id);',
-  'current_week_start := public.schedule_current_week_start_service(target_workspace_id, target_session.location_ids);', '1'
+  'current_week_start := public.schedule_current_week_start_service(target_workspace_id, target_session.location_ids);', '1',
+$a$    end if;
+  else
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'op_type', shift.pending_op_type,
+$a$,
+$a$    end if;
+  else
+    -- S-01: the lock is per location. A place that has left the week keeps
+    -- what it has: only its published shifts, untouched, may ride along; the
+    -- other places still save.
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'op_type', shift.pending_op_type,
+      'shift_id', shift.id,
+      'scheduled_date', to_char(shift.scheduled_date, 'YYYY-MM-DD'),
+      'location_name', coalesce(location.name, 'Unknown location'),
+      'employee_name', coalesce(
+        nullif(trim(concat_ws(' ', nullif(employee.preferred_name, ''), employee.last_name)), ''),
+        nullif(trim(concat_ws(' ', employee.first_name, employee.last_name)), '')
+      ),
+      'reason', 'past_week',
+      'severity', 'blocked'
+    ) order by shift.scheduled_date, shift.start_time, shift.id), '[]'::jsonb)
+    into blocked_findings
+    from public.schedule_edit_session_shifts shift
+    left join public.locations location
+      on location.id = shift.location_id
+     and location.workspace_id = shift.workspace_id
+    left join public.employee_profiles employee
+      on employee.id = shift.employee_id
+     and employee.workspace_id = shift.workspace_id
+    where shift.session_id = target_session_id
+      and shift.workspace_id = target_workspace_id
+      and (shift.pending_op_type is not null or shift.source_published_shift_id is null)
+      and shift.location_id = any(reach)
+      and target_session.week_start
+        < public.schedule_current_week_start_service(target_workspace_id, array[shift.location_id]);
+
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'op_type', shift.pending_op_type,
+$a$, '1'
 ]);
 
 select pg_temp.patch('public.preview_schedule_publication_service(uuid,uuid,uuid,uuid[],uuid[],boolean)', array[
-  'target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id)',
-  'target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id, target_location_ids)', '1'
+  'if target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id) then',
+  '-- S-01: each place publishes up to its own line.
+  if exists (select 1 from unnest(target_location_ids) place
+             where target_draft.week_start < public.schedule_current_week_start_service(target_workspace_id, array[place])) then', '1'
 ]);
 
 select pg_temp.patch('public.preview_schedule_unpublication_service(uuid,uuid,date,uuid[])', array[
-  'target_week_start < public.schedule_current_week_start_service(target_workspace_id)',
-  'target_week_start < public.schedule_current_week_start_service(target_workspace_id, target_location_ids)', '1'
+  'case when target_week_start < public.schedule_current_week_start_service(target_workspace_id)',
+  'case when exists (select 1 from unnest(target_location_ids) place
+      where target_week_start < public.schedule_current_week_start_service(target_workspace_id, array[place]))', '1'
 ]);
 
 -- Important dates (K11): each date is past by its own places' week; the page's
@@ -163,24 +211,24 @@ $a$            date_row.location_ids, date_row.created_by) is null allowed) cont
 $a$, '1'
 ]);
 
--- A save reads the date's own line to say it is past, and the line of every
--- place it reaches, before and after the save, for what it keeps and moves.
+-- A save reads the date's old places to say it is past and to keep what is
+-- past there; the version it writes starts from its new places' line.
 select pg_temp.patch('public.save_important_date_service(uuid,uuid,uuid,text,text,date,date,text,text,boolean,uuid[],integer,uuid[],text)', array[
   'line date := public.schedule_current_week_start_service(target_workspace_id);',
-  'line date;', '1',
+  'line date;
+  before_line date;', '1',
 $a$  -- K11. A save that changes nothing touches nothing.
 $a$,
-$a$  -- S-01: the places the date reaches before and after this save; an empty
-  -- list is the whole workspace.
-  line := public.schedule_current_week_start_service(target_workspace_id,
-    case when cardinality(before.location_ids) = 0 or cardinality(target_location_ids) = 0 then null
-      else before.location_ids || target_location_ids end);
+$a$  -- S-01: each version by its own places; an empty list is the whole workspace.
+  line := public.schedule_current_week_start_service(target_workspace_id, target_location_ids);
+  before_line := public.schedule_current_week_start_service(target_workspace_id, before.location_ids);
 
   -- K11. A save that changes nothing touches nothing.
 $a$, '1',
   'if not untouched and app_private.important_date_is_past(before, line) then',
-  'if not untouched and app_private.important_date_is_past(before,
-      public.schedule_current_week_start_service(target_workspace_id, before.location_ids)) then', '1'
+  'if not untouched and app_private.important_date_is_past(before, before_line) then', '1',
+  'before := app_private.important_date_keep_past(before, line);',
+  'before := app_private.important_date_keep_past(before, before_line);', '1'
 ]);
 
 select pg_temp.patch('public.set_important_date_state_service(uuid,uuid,uuid,text,uuid[],text)', array[
