@@ -249,7 +249,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
     vi.mocked(getAnnouncements).mockResolvedValue(list());
     vi.mocked(previewAnnouncement).mockImplementation(async (_ws, input) =>
       input.announcement.title.trim()
-        ? preview({ counts: { removed: 2, edited: 0, opened: 0, kept: 0, quiet: 0 } })
+        ? preview({ counts: { removed: 2, edited: 0, opened: 0, kept: 4, quiet: 0 } })
         : preview({ problems: [titleMissing] }),
     );
     vi.mocked(saveAnnouncement).mockResolvedValue({
@@ -265,7 +265,12 @@ describe("Announcement drawer (EKRAN-08)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New" }));
     const drawer = screen.getByRole("dialog", { name: "New announcement" });
     expect(within(drawer).getByRole("tab", { name: "Details" }).getAttribute("aria-selected")).toBe("true");
-    expect(within(drawer).queryByRole("tab", { name: "History" })).toBeNull();
+    // Shifts waits for a shift to reach; History for a publish.
+    await waitFor(() =>
+      expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Audience 4"]),
+    );
+    // The locations sit on Details: the one this person writes for starts checked.
+    expect((within(drawer).getByRole("checkbox", { name: "Downtown" }) as HTMLInputElement).checked).toBe(true);
     // Nothing is red before a try.
     expect(within(drawer).queryByText("Add a title.")).toBeNull();
 
@@ -276,14 +281,17 @@ describe("Announcement drawer (EKRAN-08)", () => {
     fireEvent.change(within(drawer).getByLabelText("Title"), { target: { value: " Patio closes early " } });
     fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
     await waitFor(() =>
-      expect(within(drawer).getByRole("tab", { name: "Locations & publishing" }).getAttribute("aria-selected")).toBe("true"),
-    );
-    // The one location this person writes for starts checked.
-    expect((within(drawer).getByRole("checkbox", { name: "Downtown" }) as HTMLInputElement).checked).toBe(true);
-    fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
-    await waitFor(() =>
       expect(within(drawer).getByRole("tab", { name: /Audience/ }).getAttribute("aria-selected")).toBe("true"),
     );
+    // Six shifts reached, two removed: a yellow count and the band over the buttons.
+    const shiftsTab = await within(drawer).findByRole("tab", { name: "Shifts 6" });
+    expect(shiftsTab.querySelector(".ad-badge")?.getAttribute("data-tone")).toBe("warn");
+    const band = drawer.querySelector(".ad-band") as HTMLElement;
+    expect(band.getAttribute("data-tone")).toBe("warn");
+    expect(band.textContent).toBe("2 shifts will be removed · 4 kept" + "Review shifts");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(shiftsTab.getAttribute("aria-selected")).toBe("true"));
+    expect(within(drawer).queryByRole("button", { name: "Review shifts" })).toBeNull();
 
     fireEvent.click(within(drawer).getByRole("button", { name: "Publish" }));
     expect(await within(drawer).findByRole("button", { name: "Remove 2 shifts and publish?" })).toBeTruthy();
@@ -304,7 +312,47 @@ describe("Announcement drawer (EKRAN-08)", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Published. 4 people told; 2 shifts changed."));
   });
 
-  it("says a past publish time right under its red box, in the gap above Show on the Schedule", async () => {
+  it("lays Details out like the Important Date drawer: line, three boxes, When with All day, locations, publish time, Message last", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview());
+    renderList();
+    fireEvent.click(await screen.findByRole("button", { name: "New" }));
+    const drawer = screen.getByRole("dialog", { name: "New announcement" });
+    expect(drawer.querySelector(".ad-sub")?.textContent).toBe("General");
+    fireEvent.change(within(drawer).getByLabelText("Category"), { target: { value: "holiday" } });
+    fireEvent.change(within(drawer).getByLabelText(/^Starts/), { target: { value: "2099-07-04" } });
+    fireEvent.change(within(drawer).getByLabelText("Repeats"), { target: { value: "date" } });
+    expect(drawer.querySelector(".ad-sub")?.textContent).toBe("Holiday · Sat, Jul 4, 2099 · Every year");
+
+    // All day starts checked; the times are there but closed until it's cleared.
+    const allDay = within(drawer).getByRole("checkbox", { name: "All day" }) as HTMLInputElement;
+    expect(allDay.checked).toBe(true);
+    const from = within(drawer).getByLabelText("Start time") as HTMLInputElement;
+    expect(from.disabled).toBe(true);
+    fireEvent.click(allDay);
+    expect(from.disabled).toBe(false);
+    expect(from.value).toBe("15:00");
+    expect((within(drawer).getByLabelText("End time") as HTMLInputElement).value).toBe("16:00");
+
+    // Open · Short hours · Closed, in that order, and the shift line at the row's end.
+    expect(
+      within(within(drawer).getByRole("group", { name: "Downtown that day" }))
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Open", "Short hours", "Closed"]);
+    expect(drawer.querySelector(".ad-loc .ad-loc-impact")?.textContent).toBe("Usual hours");
+
+    // Show on the Schedule sits with the other two boxes; Message is the last field.
+    const panel = within(drawer).getByRole("tabpanel");
+    const boxes = [...panel.querySelectorAll(".ad-flags input")].map((box) => box.closest("label")?.querySelector("b")?.textContent);
+    expect(boxes).toEqual(["Add to Important Dates", "Add to Calendar", "Show on the Schedule"]);
+    expect(within(drawer).getByRole("checkbox", { name: "Schedule for later" })).toBeTruthy();
+    const fields = [...panel.querySelectorAll("input, textarea, select")];
+    expect(fields.at(-1)).toBe(within(drawer).getByLabelText("Message"));
+    expect(within(drawer).queryByRole("tab", { name: /Locations/ })).toBeNull();
+  });
+
+  it("says a past publish time right under its red box, in the gap above the Message", async () => {
     const pastTime: AnnouncementProblem = {
       tab: "where",
       field: "publish_at",
@@ -320,22 +368,81 @@ describe("Announcement drawer (EKRAN-08)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "New" }));
     const drawer = screen.getByRole("dialog", { name: "New announcement" });
     fireEvent.change(within(drawer).getByLabelText("Title"), { target: { value: "Patio closes early" } });
-    fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
-    await waitFor(() =>
-      expect(within(drawer).getByRole("tab", { name: "Locations & publishing" }).getAttribute("aria-selected")).toBe("true"),
-    );
     // The box is always there; it opens only with Schedule for later.
     expect((within(drawer).getByLabelText("Publish on") as HTMLInputElement).disabled).toBe(true);
     fireEvent.click(within(drawer).getByRole("checkbox", { name: "Schedule for later" }));
     expect((within(drawer).getByLabelText("Publish on") as HTMLInputElement).disabled).toBe(false);
+    // The server still files it under the old Locations & publishing tab: Next stays on Details.
     fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
     const message = await within(drawer).findByText(pastTime.message);
+    expect(within(drawer).getByRole("tab", { name: /^Details/ }).getAttribute("aria-selected")).toBe("true");
     const box = within(drawer).getByLabelText("Publish on");
     expect(box.getAttribute("aria-invalid")).toBe("true");
     expect(box.getAttribute("aria-describedby")).toBe(message.id);
     // Right under the box, inside the row; the row itself stays its usual colour.
     expect(box.nextElementSibling).toBe(message);
     expect(message.closest(".ad-publish-row")?.getAttribute("data-bad")).toBeNull();
+  });
+
+  it("shows History only once published, and who acknowledged inside Audience", async () => {
+    const id = "a8200000-0000-4000-8000-000000000081";
+    const asked = {
+      user_id: "d1000000-0000-4000-8000-000000000001",
+      employee_id: null,
+      name: "Ali Kaya",
+      job_name: "Server",
+      job_ids: [],
+      department_ids: [],
+      location_ids: [downtown],
+      location_name: "Downtown",
+    };
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview({ recipient_count: 2 }));
+    vi.mocked(getAnnouncement).mockResolvedValue(
+      detail({
+        id,
+        title: "Uniform policy",
+        status: "published",
+        display_status: "published",
+        published_at: "2026-10-10T16:00:00.000Z",
+        ask_ack: true,
+        recipient_count: 2,
+        respondent_count: 2,
+        acknowledged_count: 1,
+        locations: [
+          { location_id: downtown, name: "Downtown", short_name: "Downtown", timezone: "America/Los_Angeles", archived: false, day: "open", opens: null, closes: null },
+        ],
+        acknowledgements: [
+          { ...asked, acknowledged_at: "2026-10-11T17:30:00.000Z" },
+          { ...asked, user_id: "d1000000-0000-4000-8000-000000000002", name: "Bea Lane", acknowledged_at: null },
+        ],
+      }),
+    );
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Uniform policy" });
+    await waitFor(() =>
+      expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Audience 2", "History"]),
+    );
+    fireEvent.click(within(drawer).getByRole("tab", { name: /Audience/ }));
+    const who = within(drawer).getByRole("region", { name: "Who gets it" });
+    expect(who.textContent).toContain("1 of 2 acknowledged");
+    expect(within(who).getByRole("button", { name: "Remind 1 person" })).toBeTruthy();
+    expect(within(who).getByText("Not yet · 1")).toBeTruthy();
+    expect(within(who).getByText("Acknowledged · 1")).toBeTruthy();
+    expect(drawer.querySelector(".ad-band")).toBeNull();
+  });
+
+  it("keeps History away from a post that never went out", async () => {
+    const id = "a8200000-0000-4000-8000-000000000082";
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview());
+    vi.mocked(getAnnouncement).mockResolvedValue(
+      detail({ id, title: "Patio menu", status: "scheduled", display_status: "scheduled", publish_at: "2099-01-01T17:00:00.000Z" }),
+    );
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Patio menu" });
+    await waitFor(() => expect(previewAnnouncement).toHaveBeenCalled());
+    expect(within(drawer).getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Audience 4"]);
   });
 
   it("keeps a past post read-only: no date error, no preview, only Archive and Close", async () => {

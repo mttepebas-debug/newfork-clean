@@ -56,14 +56,13 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   sql(`select tests.person('${run}', '${label}', 'manager', array['K'], array['cook']);`);
   const handeEmail = sql(`select tests.password('${run}:${label}', '${world.password}');`);
 
-  // Ayse writes it in the drawer (EKRAN-08). Her only location is checked
-  // from the start, and Besiktas is not on offer (K1).
+  // Ayse writes it in the drawer (EKRAN-08). Details holds the locations: her
+  // only one is checked from the start, and Besiktas is not on offer (K1).
   const ayse = await openAs(browser, "ayse", "/app/announcements");
   await ayse.getByRole("button", { name: "New", exact: true }).click();
   const editor = ayse.getByRole("dialog", { name: "New announcement" });
   await editor.getByLabel("Title", { exact: true }).fill(title);
   await editor.getByLabel("Message", { exact: true }).fill("Count the walk-in before close.");
-  await editor.getByRole("button", { name: "Next", exact: true }).click();
   await expect(editor.getByRole("checkbox", { name: "Kadikoy", exact: true })).toBeChecked();
   await expect(editor.getByRole("checkbox", { name: "Besiktas", exact: true })).toHaveCount(0);
   await editor.getByRole("button", { name: "Save draft", exact: true }).click();
@@ -74,7 +73,6 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   // publishes it.
   await activeRow(ayse, title).click();
   const draft = ayse.getByRole("dialog", { name: title });
-  await draft.getByRole("button", { name: "Next", exact: true }).click();
   await expect(draft.getByRole("checkbox", { name: "Kadikoy", exact: true })).toBeChecked();
   await draft.getByRole("button", { name: "Next", exact: true }).click();
   await draft.getByRole("checkbox", { name: /^Ask people to acknowledge/ }).check();

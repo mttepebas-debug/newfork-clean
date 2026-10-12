@@ -11,7 +11,7 @@ import type {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
   announcementCategories,
   closesNextDay,
@@ -20,12 +20,12 @@ import {
   historyStep,
   hoursText,
   initials,
+  locationImpact,
   momentText,
   nextYearDay,
   plural,
   repeatOptions,
   shiftReason,
-  shiftSummary,
   type TimeFormat,
 } from "./announcement-model";
 
@@ -51,16 +51,19 @@ export function Flag({
   hint,
   checked,
   disabled,
+  compact = false,
   onChange,
 }: {
   label: string;
   hint: string;
   checked: boolean;
   disabled?: boolean;
+  /** Three in a row on Details: the hint is the box's tooltip and its screen-reader text. */
+  compact?: boolean;
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="ad-flag">
+    <label className="ad-flag" data-compact={compact || undefined} title={compact ? hint : undefined}>
       <input
         type="checkbox"
         checked={checked}
@@ -69,49 +72,26 @@ export function Flag({
       />
       <span>
         <b>{label}</b>
-        <span className="ad-hint">{hint}</span>
+        <span className={compact ? "sr-only" : "ad-hint"}>{hint}</span>
       </span>
     </label>
   );
 }
 
-const dayOptions: { value: AnnouncementDay; label: string; tone: string }[] = [
-  { value: "open", label: "Open", tone: "green" },
-  { value: "closed", label: "Closed", tone: "red" },
-  { value: "short", label: "Short hours", tone: "amber" },
-];
-
-function DaySeg({
-  label,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: AnnouncementDay | null;
-  disabled: boolean;
-  onChange: (day: AnnouncementDay) => void;
-}) {
-  return (
-    <span className="ad-seg" role="group" aria-label={label}>
-      {dayOptions.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          data-tone={option.tone}
-          aria-pressed={value === option.value}
-          disabled={disabled}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </span>
-  );
-}
-
 // ---------- Details ----------
 
+export type WhereLocation = {
+  id: string;
+  name: string;
+  canChangeHours: boolean;
+};
+
+/**
+ * Details holds the whole post, as the Important Date drawer A + L1 does
+ * (Mert, 2026-10-12): title, category and repeat, where it shows, when, the
+ * locations with that day's hours, the publish time, and the message last,
+ * filling what room is left.
+ */
 export function DetailsTab({
   idPrefix,
   draft,
@@ -122,6 +102,9 @@ export function DetailsTab({
   needsDate,
   today,
   problemAt,
+  locations,
+  preview,
+  publishing,
 }: {
   idPrefix: string;
   draft: AnnouncementDraft;
@@ -132,6 +115,10 @@ export function DetailsTab({
   needsDate: boolean;
   today: string;
   problemAt: ProblemAt;
+  locations: WhereLocation[];
+  preview: AnnouncementPreview | undefined;
+  /** Schedule for later, while it hasn't gone out. */
+  publishing: ReactNode;
 }) {
   const id = (name: string) => `${idPrefix}-${name}`;
   const titleError = problemAt("title");
@@ -143,6 +130,7 @@ export function DetailsTab({
   const nextDay =
     draft.recurrence !== "none" && draft.starts_on ? nextYearDay(draft.starts_on, draft.recurrence) : null;
   const frozen = locked || started;
+  const allDay = draft.event_from === null;
   return (
     <>
       <div className="ad-field">
@@ -183,7 +171,31 @@ export function DetailsTab({
             ))}
           </select>
         </div>
-        {draft.category === "other" && (
+        <div className="ad-field">
+          <span className="ad-label-row">
+            <label htmlFor={id("repeat")}>Repeats</label>
+            {nextDay && <span className="ad-next">Next: {dayText(nextDay, true)}</span>}
+          </span>
+          <select
+            id={id("repeat")}
+            className="ad-input"
+            value={draft.recurrence}
+            disabled={frozen || !draft.starts_on}
+            onChange={(event) => {
+              const recurrence = event.target.value as AnnouncementDraft["recurrence"];
+              update((current) => ({ ...current, recurrence }));
+            }}
+          >
+            {repeats.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {draft.category === "other" && (
+        <div className="ad-two">
           <div className="ad-field">
             <label htmlFor={id("other")}>Category name</label>
             <input
@@ -202,26 +214,11 @@ export function DetailsTab({
             />
             <FieldError id={id("other-error")} message={otherError} />
           </div>
-        )}
-      </div>
-      <div className="ad-field">
-        <label htmlFor={id("body")}>Message</label>
-        <textarea
-          id={id("body")}
-          className="ad-input"
-          rows={3}
-          maxLength={5000}
-          placeholder="Share the details your team needs."
-          value={draft.body}
-          disabled={locked}
-          onChange={(event) => {
-            const body = event.target.value;
-            update((current) => ({ ...current, body }));
-          }}
-        />
-      </div>
+        </div>
+      )}
       <div className="ad-flags">
         <Flag
+          compact
           label="Add to Important Dates"
           hint={canWriteDates ? "Lists it on the Important Dates page" : "Your role can't add to Important Dates"}
           checked={draft.on_important_dates}
@@ -235,180 +232,206 @@ export function DetailsTab({
           }
         />
         <Flag
+          compact
           label="Add to Calendar"
           hint="Marks the day in the Schedule calendar"
           checked={draft.on_calendar}
           disabled={locked}
           onChange={(checked) => update((current) => ({ ...current, on_calendar: checked }))}
         />
+        <Flag
+          compact
+          label="Show on the Schedule"
+          hint="A chip on its day in the Schedule"
+          checked={draft.on_schedule}
+          disabled={locked}
+          onChange={(checked) => update((current) => ({ ...current, on_schedule: checked }))}
+        />
       </div>
-      <section className="ad-section" data-focus="when" aria-label="When">
-        <div className="ad-section-head">
-          <span className="ad-when">
-            <b>When</b>
-            {!needsDate && <span className="ad-optional">Optional · after it ends it moves to Past</span>}
-          </span>
-          {!frozen &&
-            (draft.event_from ? (
-              <button
-                type="button"
-                className="ad-link"
-                data-tone="red"
-                onClick={() => update((current) => ({ ...current, event_from: null, event_until: null }))}
-              >
-                Remove time
-              </button>
-            ) : (
-              <span className="ad-add-time">
-                <span className="ad-muted">All day</span>
-                <button
-                  type="button"
-                  className="ad-link"
-                  onClick={() =>
-                    update((current) => ({ ...current, event_from: "15:00", event_until: "16:00" }))
-                  }
-                >
-                  + Add time
-                </button>
-              </span>
-            ))}
-        </div>
-        <div className="ad-two">
-          <div className="ad-field">
-            <label htmlFor={id("starts")}>Starts</label>
-            <input
-              id={id("starts")}
-              type="date"
-              className="ad-input"
-              min={started ? undefined : today}
-              value={draft.starts_on ?? ""}
-              disabled={frozen}
-              data-field="starts_on"
-              onChange={(event) => {
-                const starts = event.target.value || null;
-                update((current) => {
-                  const ends = !current.ends_on || (starts && current.ends_on < starts) ? starts : current.ends_on;
-                  const recurrence = repeatOptions(starts).some((option) => option.value === current.recurrence)
-                    ? current.recurrence
-                    : "none";
-                  return { ...current, starts_on: starts, ends_on: ends, recurrence };
-                });
-              }}
-              {...invalid(startError, id("starts-error"))}
-            />
-            <FieldError id={id("starts-error")} message={startError} />
-          </div>
-          <div className="ad-field">
-            <label htmlFor={id("ends")}>Ends</label>
-            <input
-              id={id("ends")}
-              type="date"
-              className="ad-input"
-              min={started ? today : (draft.starts_on ?? today)}
-              value={draft.ends_on ?? ""}
-              disabled={locked}
-              data-field="ends_on"
-              onChange={(event) => {
-                const ends = event.target.value || null;
-                update((current) => ({ ...current, ends_on: ends }));
-              }}
-              {...invalid(endError, id("ends-error"))}
-            />
-            <FieldError id={id("ends-error")} message={endError} />
-          </div>
-        </div>
-        {draft.event_from !== null && (
-          <div className="ad-two">
-            <div className="ad-field">
-              <label htmlFor={id("from")}>Start time</label>
-              <input
-                id={id("from")}
-                type="time"
-                className="ad-input"
-                value={draft.event_from ?? ""}
-                disabled={frozen}
-                onChange={(event) => {
-                  const from = event.target.value;
-                  if (from) update((current) => ({ ...current, event_from: from }));
-                }}
-              />
-            </div>
-            <div className="ad-field">
-              <label htmlFor={id("until")}>End time</label>
-              <input
-                id={id("until")}
-                type="time"
-                className="ad-input"
-                value={draft.event_until ?? ""}
-                disabled={frozen}
-                data-field="event_until"
-                onChange={(event) => {
-                  const until = event.target.value;
-                  if (until) update((current) => ({ ...current, event_until: until }));
-                }}
-                {...invalid(untilError, id("until-error"))}
-              />
-              <FieldError id={id("until-error")} message={untilError} />
-            </div>
-          </div>
-        )}
+      <div className="ad-when" data-focus="when" role="group" aria-label="When">
         <div className="ad-field">
-          <label htmlFor={id("repeat")}>Repeats</label>
-          <select
-            id={id("repeat")}
+          <span className="ad-label-row">
+            <label htmlFor={id("starts")}>Starts</label>
+            {!needsDate && <span className="ad-optional">Optional</span>}
+          </span>
+          <input
+            id={id("starts")}
+            type="date"
             className="ad-input"
-            value={draft.recurrence}
-            disabled={frozen || !draft.starts_on}
+            min={started ? undefined : today}
+            value={draft.starts_on ?? ""}
+            disabled={frozen}
+            data-field="starts_on"
             onChange={(event) => {
-              const recurrence = event.target.value as AnnouncementDraft["recurrence"];
-              update((current) => ({ ...current, recurrence }));
+              const starts = event.target.value || null;
+              update((current) => {
+                const ends = !current.ends_on || (starts && current.ends_on < starts) ? starts : current.ends_on;
+                const recurrence = repeatOptions(starts).some((option) => option.value === current.recurrence)
+                  ? current.recurrence
+                  : "none";
+                return { ...current, starts_on: starts, ends_on: ends, recurrence };
+              });
             }}
-          >
-            {repeats.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          {nextDay && <span className="ad-next">Next: {dayText(nextDay, true)}</span>}
+            {...invalid(startError, id("starts-error"))}
+          />
+          <FieldError id={id("starts-error")} message={startError} />
         </div>
-      </section>
+        <div className="ad-field">
+          <span className="ad-label-row">
+            <label htmlFor={id("ends")}>Ends</label>
+            {/* Checked by default; the times open when it's cleared (Mert, 2026-10-12). */}
+            <label className="ad-check">
+              <input
+                type="checkbox"
+                checked={allDay}
+                disabled={frozen}
+                onChange={(event) => {
+                  const whole = event.target.checked;
+                  update((current) => ({
+                    ...current,
+                    event_from: whole ? null : "15:00",
+                    event_until: whole ? null : "16:00",
+                  }));
+                }}
+              />
+              All day
+            </label>
+          </span>
+          <input
+            id={id("ends")}
+            type="date"
+            className="ad-input"
+            min={started ? today : (draft.starts_on ?? today)}
+            value={draft.ends_on ?? ""}
+            disabled={locked}
+            data-field="ends_on"
+            onChange={(event) => {
+              const ends = event.target.value || null;
+              update((current) => ({ ...current, ends_on: ends }));
+            }}
+            {...invalid(endError, id("ends-error"))}
+          />
+          <FieldError id={id("ends-error")} message={endError} />
+        </div>
+        <div className="ad-field">
+          <input
+            type="time"
+            className="ad-input"
+            aria-label="Start time"
+            value={draft.event_from ?? ""}
+            disabled={frozen || allDay}
+            onChange={(event) => {
+              const from = event.target.value;
+              if (from) update((current) => ({ ...current, event_from: from }));
+            }}
+          />
+        </div>
+        <div className="ad-field">
+          <input
+            type="time"
+            className="ad-input"
+            aria-label="End time"
+            value={draft.event_until ?? ""}
+            disabled={frozen || allDay}
+            data-field="event_until"
+            onChange={(event) => {
+              const until = event.target.value;
+              if (until) update((current) => ({ ...current, event_until: until }));
+            }}
+            {...invalid(untilError, id("until-error"))}
+          />
+          <FieldError id={id("until-error")} message={untilError} />
+        </div>
+      </div>
+      <LocationsTable
+        idPrefix={idPrefix}
+        draft={draft}
+        update={update}
+        frozen={frozen}
+        locked={locked}
+        locations={locations}
+        preview={preview}
+        problemAt={problemAt}
+      />
+      {publishing}
+      <div className="ad-field ad-message">
+        <label htmlFor={id("body")}>Message</label>
+        <textarea
+          id={id("body")}
+          className="ad-input"
+          maxLength={5000}
+          placeholder="Share the details your team needs."
+          value={draft.body}
+          disabled={locked}
+          onChange={(event) => {
+            const body = event.target.value;
+            update((current) => ({ ...current, body }));
+          }}
+        />
+      </div>
     </>
   );
 }
 
-// ---------- Locations & publishing ----------
+const dayOptions: { value: AnnouncementDay; label: string }[] = [
+  { value: "open", label: "Open" },
+  { value: "short", label: "Short hours" },
+  { value: "closed", label: "Closed" },
+];
 
-export type WhereLocation = {
-  id: string;
-  name: string;
-  canChangeHours: boolean;
-};
+/** Open · Short hours · Closed, each with its coloured dot (the reference's L1 buttons). */
+function DaySeg({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: AnnouncementDay | null;
+  disabled: boolean;
+  onChange: (day: AnnouncementDay) => void;
+}) {
+  return (
+    <span className="ad-seg" role="group" aria-label={label}>
+      {dayOptions.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          data-day={option.value}
+          aria-pressed={value === option.value}
+          disabled={disabled}
+          onClick={() => onChange(option.value)}
+        >
+          <span className="ad-dot" aria-hidden />
+          {option.label}
+        </button>
+      ))}
+    </span>
+  );
+}
 
-export function WhereTab({
+function LocationsTable({
+  idPrefix,
   draft,
   update,
+  frozen,
   locked,
-  started,
   locations,
   preview,
   problemAt,
-  publishing,
-  onShowShifts,
 }: {
+  idPrefix: string;
   draft: AnnouncementDraft;
   update: Update;
+  frozen: boolean;
   locked: boolean;
-  started: boolean;
   locations: WhereLocation[];
   preview: AnnouncementPreview | undefined;
   problemAt: ProblemAt;
-  publishing: ReactNode;
-  onShowShifts: () => void;
 }) {
-  const frozen = locked || started;
   const rows = new Map(draft.locations.map((row) => [row.location_id, row]));
   const allChecked = locations.length > 1 && locations.every((location) => rows.has(location.id));
+  const someChecked = !allChecked && locations.some((location) => rows.has(location.id));
   const allDays = new Set(locations.map((location) => rows.get(location.id)?.day));
   const allDay = allDays.size === 1 ? ([...allDays][0] ?? null) : null;
   const hoursAnywhere = locations.every((location) => location.canChangeHours);
@@ -420,25 +443,89 @@ export function WhereTab({
         row.location_id === locationId ? withDay(row, day) : row,
       ),
     }));
-  const listed = preview?.shifts ?? [];
+  const listed = preview?.shifts ?? null;
+  const labelId = `${idPrefix}-locations`;
   return (
-    <>
-      <section className="ad-section ad-section-first" data-focus="locs" aria-label="Locations and hours">
-        <div className="ad-section-head">
-          <b>Locations &amp; hours</b>
+    <div className="ad-field" data-focus="locs">
+      <span className="ad-label" id={labelId}>
+        Locations
+      </span>
+      <div className="ad-locs" role="table" aria-labelledby={labelId}>
+        <div className="ad-loc-head" role="row">
+          <span role="columnheader">
+            {locations.length > 1 ? (
+              <label className="ad-loc-name">
+                <input
+                  type="checkbox"
+                  checked={allChecked}
+                  ref={(element) => {
+                    if (element) element.indeterminate = someChecked;
+                  }}
+                  disabled={frozen}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    update((current) => ({
+                      ...current,
+                      locations: checked
+                        ? [
+                            ...current.locations,
+                            ...locations
+                              .filter((location) => !rows.has(location.id))
+                              .map((location) => ({
+                                location_id: location.id,
+                                day: "open" as const,
+                                opens: null,
+                                closes: null,
+                              })),
+                          ]
+                        : current.locations.filter(
+                            (row) => !locations.some((location) => location.id === row.location_id),
+                          ),
+                    }));
+                  }}
+                />
+                All locations
+              </label>
+            ) : (
+              "Location"
+            )}
+          </span>
+          <span role="columnheader">
+            {allChecked && !frozen && hoursAnywhere ? (
+              <DaySeg
+                label="All locations that day"
+                value={allDay}
+                disabled={false}
+                onChange={(day) =>
+                  update((current) => ({
+                    ...current,
+                    locations: current.locations.map((row) => withDay(row, day)),
+                  }))
+                }
+              />
+            ) : (
+              "That day"
+            )}
+          </span>
+          <span role="columnheader" className="ad-loc-impact">
+            Shifts
+          </span>
         </div>
-        <p className="ad-desc">
-          Pick the locations this is about. If it changes their opening hours, set them here and shifts follow.
-          The time on Details is only the event&apos;s own time.
-        </p>
-        <div className="ad-locs" role="table" aria-label="Locations">
-          <div className="ad-loc-head" role="row">
-            <span role="columnheader">
-              {locations.length > 1 ? (
+        {locations.map((location) => {
+          const row = rows.get(location.id);
+          const error = problemAt(`location:${location.id}`);
+          const impact = locationImpact(
+            row ?? null,
+            Boolean(draft.starts_on),
+            listed && listed.filter((shift) => shift.location_id === location.id),
+          );
+          return (
+            <div key={location.id} role="row" className="ad-loc" data-off={!row} data-bad={Boolean(error)}>
+              <span role="cell">
                 <label className="ad-loc-name">
                   <input
                     type="checkbox"
-                    checked={allChecked}
+                    checked={Boolean(row)}
                     disabled={frozen}
                     onChange={(event) => {
                       const checked = event.target.checked;
@@ -447,188 +534,91 @@ export function WhereTab({
                         locations: checked
                           ? [
                               ...current.locations,
-                              ...locations
-                                .filter((location) => !rows.has(location.id))
-                                .map((location) => ({
-                                  location_id: location.id,
-                                  day: "open" as const,
-                                  opens: null,
-                                  closes: null,
-                                })),
+                              { location_id: location.id, day: "open", opens: null, closes: null },
                             ]
-                          : current.locations.filter(
-                              (row) => !locations.some((location) => location.id === row.location_id),
-                            ),
+                          : current.locations.filter((item) => item.location_id !== location.id),
                       }));
                     }}
                   />
-                  All locations
+                  {location.name}
                 </label>
-              ) : (
-                "Location"
-              )}
-            </span>
-            <span role="columnheader">
-              {allChecked && !frozen && hoursAnywhere ? (
-                <DaySeg
-                  label="All locations that day"
-                  value={allDay}
-                  disabled={false}
-                  onChange={(day) =>
-                    update((current) => ({
-                      ...current,
-                      locations: current.locations.map((row) => withDay(row, day)),
-                    }))
-                  }
-                />
-              ) : (
-                "That day"
-              )}
-            </span>
-            <span role="columnheader" className="ad-loc-impact">
-              Shifts
-            </span>
-          </div>
-          {locations.map((location) => {
-            const row = rows.get(location.id);
-            const error = problemAt(`location:${location.id}`);
-            const here = listed.filter((shift) => shift.location_id === location.id);
-            const counts = { removed: 0, edited: 0, opened: 0, kept: 0 };
-            for (const shift of here) counts[shift.outcome] += 1;
-            const bits = [
-              counts.removed && `${counts.removed} removed`,
-              counts.edited && `${counts.edited} shortened`,
-              counts.opened && `${counts.opened} open`,
-              counts.kept && `${counts.kept} kept`,
-            ].filter(Boolean);
-            const impact = !row
-              ? ""
-              : row.day === "open"
-                ? "Usual hours"
-                : !draft.starts_on
-                  ? "Pick a day"
-                  : !preview
-                    ? ""
-                    : bits.length
-                      ? bits.join(" · ")
-                      : "No shifts change";
-            return (
-              <div
-                key={location.id}
-                role="row"
-                className="ad-loc"
-                data-off={!row}
-                data-bad={Boolean(error)}
-              >
-                <span role="cell">
-                  <label className="ad-loc-name">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(row)}
-                      disabled={frozen}
-                      onChange={(event) => {
-                        const checked = event.target.checked;
-                        update((current) => ({
-                          ...current,
-                          locations: checked
-                            ? [
-                                ...current.locations,
-                                { location_id: location.id, day: "open", opens: null, closes: null },
-                              ]
-                            : current.locations.filter((item) => item.location_id !== location.id),
-                        }));
-                      }}
+              </span>
+              <span role="cell" className="ad-loc-day">
+                <span className="ad-day-stack">
+                  {row ? (
+                    <DaySeg
+                      label={`${location.name} that day`}
+                      value={row.day}
+                      disabled={frozen || !location.canChangeHours}
+                      onChange={(day) => setDay(location.id, day)}
                     />
-                    {location.name}
-                  </label>
-                </span>
-                <span role="cell" className="ad-loc-day">
-                  <span className="ad-day-stack">
-                    {row ? (
-                      <DaySeg
-                        label={`${location.name} that day`}
-                        value={row.day}
+                  ) : (
+                    <span className="ad-muted">Not included</span>
+                  )}
+                  {row?.day === "short" && (
+                    <span className="ad-times">
+                      <input
+                        type="time"
+                        aria-label={`${location.name} opens`}
+                        value={row.opens ?? ""}
                         disabled={frozen || !location.canChangeHours}
-                        onChange={(day) => setDay(location.id, day)}
+                        onChange={(event) => {
+                          const opens = event.target.value;
+                          if (opens)
+                            update((current) => ({
+                              ...current,
+                              locations: current.locations.map((item) =>
+                                item.location_id === location.id ? { ...item, opens } : item,
+                              ),
+                            }));
+                        }}
                       />
-                    ) : (
-                      <span className="ad-muted">Not included</span>
-                    )}
-                    {row?.day === "short" && (
-                      <span className="ad-times">
-                        <input
-                          type="time"
-                          aria-label={`${location.name} opens`}
-                          value={row.opens ?? ""}
-                          disabled={frozen || !location.canChangeHours}
-                          onChange={(event) => {
-                            const opens = event.target.value;
-                            if (opens)
-                              update((current) => ({
-                                ...current,
-                                locations: current.locations.map((item) =>
-                                  item.location_id === location.id ? { ...item, opens } : item,
-                                ),
-                              }));
-                          }}
-                        />
-                        –
-                        <input
-                          type="time"
-                          aria-label={`${location.name} closes`}
-                          value={row.closes ?? ""}
-                          disabled={frozen || !location.canChangeHours}
-                          onChange={(event) => {
-                            const closes = event.target.value;
-                            if (closes)
-                              update((current) => ({
-                                ...current,
-                                locations: current.locations.map((item) =>
-                                  item.location_id === location.id ? { ...item, closes } : item,
-                                ),
-                              }));
-                          }}
-                        />
-                      </span>
-                    )}
-                  </span>
-                  {row?.day === "short" && row.opens && row.closes && closesNextDay(row.opens, row.closes) && (
-                    <span className="ad-next-day">next day</span>
+                      –
+                      <input
+                        type="time"
+                        aria-label={`${location.name} closes`}
+                        value={row.closes ?? ""}
+                        disabled={frozen || !location.canChangeHours}
+                        onChange={(event) => {
+                          const closes = event.target.value;
+                          if (closes)
+                            update((current) => ({
+                              ...current,
+                              locations: current.locations.map((item) =>
+                                item.location_id === location.id ? { ...item, closes } : item,
+                              ),
+                            }));
+                        }}
+                      />
+                    </span>
                   )}
                 </span>
-                <span role="cell" className="ad-loc-impact" data-tone={counts.removed ? "red" : undefined}>
-                  {impact}
-                </span>
-                {error && (
-                  <span className="ad-loc-error">
-                    <FieldError message={error} />
-                  </span>
+                {row?.day === "short" && row.opens && row.closes && closesNextDay(row.opens, row.closes) && (
+                  <span className="ad-next-day">next day</span>
                 )}
-              </div>
-            );
-          })}
-        </div>
-        {lockedHours && (
-          <p className="ad-note">Your role can&apos;t change opening hours. Checked locations keep their usual hours.</p>
-        )}
-        {preview && preview.quiet_count > 0 && (
-          <p className="ad-note">
-            {plural(preview.quiet_count, "shift")} in a week that isn&apos;t published yet follow the same defaults,
-            without a shift notice.
-          </p>
-        )}
-        {listed.length > 0 && !locked && (
-          <p className="ad-note" data-tone="warn">
-            {shiftSummary(preview!.counts)}. Review them in the{" "}
-            <button type="button" className="ad-link" onClick={onShowShifts}>
-              Shifts
-            </button>{" "}
-            tab.
-          </p>
-        )}
-      </section>
-      {publishing}
-    </>
+              </span>
+              <span role="cell" className="ad-loc-impact" data-tone={impact.tone}>
+                {impact.text}
+              </span>
+              {error && (
+                <span className="ad-loc-error">
+                  <FieldError message={error} />
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {lockedHours && (
+        <p className="ad-note">Your role can&apos;t change opening hours. Checked locations keep their usual hours.</p>
+      )}
+      {preview && preview.quiet_count > 0 && (
+        <p className="ad-note">
+          {plural(preview.quiet_count, "shift")} in a week that isn&apos;t published yet follow the same defaults,
+          without a shift notice.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -640,86 +630,68 @@ function withDay(
   return { ...row, day, opens: null, closes: null };
 }
 
-export function PublishingSection({
+/** Schedule for later: the box is always there and opens only when checked (Mert, 2026-10-12). */
+export function PublishingRow({
   idPrefix,
-  status,
-  publishedText,
   later,
   laterBlocked,
   publishWall,
   minWall,
   locked,
   problem,
-  onSchedule,
   onLater,
   onWall,
-  onOnSchedule,
 }: {
   idPrefix: string;
-  status: string | null;
-  publishedText: string | null;
   later: boolean;
   laterBlocked: boolean;
   publishWall: string;
   minWall: string;
   locked: boolean;
   problem: string | undefined;
-  onSchedule: boolean;
   onLater: (later: boolean) => void;
   onWall: (wall: string) => void;
-  onOnSchedule: (checked: boolean) => void;
 }) {
   const errorId = `${idPrefix}-publish-error`;
   return (
-    <section className="ad-section" data-focus="pub" aria-label="Publishing">
-      <div className="ad-section-head">
-        <b>Publishing</b>
-      </div>
-      {status === "published" || status === "past" ? (
-        <p className="ad-desc">{publishedText ? `Published ${publishedText}.` : "Published."}</p>
-      ) : (
-        <>
-          <div className="ad-flag ad-publish-row">
-            <label className="ad-publish-label">
-              <input
-                type="checkbox"
-                checked={later}
-                disabled={locked || laterBlocked}
-                onChange={(event) => onLater(event.target.checked)}
-              />
-              <b>Schedule for later</b>
-            </label>
-            {/* Always shown; it opens only with Schedule for later (Mert, 2026-10-12). */}
-            <span className="ad-publish-at">
-              <input
-                type="datetime-local"
-                className="ad-input"
-                aria-label="Publish on"
-                value={publishWall}
-                min={minWall}
-                disabled={locked || !later}
-                data-field="publish_at"
-                onChange={(event) => onWall(event.target.value)}
-                {...invalid(problem, errorId)}
-              />
-              <FieldError id={errorId} message={problem} />
-            </span>
-            {laterBlocked && <span className="ad-hint">It starts today, so it goes out when you publish.</span>}
-          </div>
-        </>
-      )}
-      <Flag
-        label="Show on the Schedule"
-        hint="A chip on its day in the Schedule"
-        checked={onSchedule}
-        disabled={locked}
-        onChange={onOnSchedule}
-      />
-    </section>
+    <div className="ad-flag ad-publish-row" data-focus="pub">
+      <label className="ad-publish-label">
+        <input
+          type="checkbox"
+          checked={later}
+          disabled={locked || laterBlocked}
+          onChange={(event) => onLater(event.target.checked)}
+        />
+        <b>Schedule for later</b>
+      </label>
+      <span className="ad-publish-at">
+        <input
+          type="datetime-local"
+          className="ad-input"
+          aria-label="Publish on"
+          value={publishWall}
+          min={minWall}
+          disabled={locked || !later}
+          data-field="publish_at"
+          onChange={(event) => onWall(event.target.value)}
+          {...invalid(problem, errorId)}
+        />
+        <FieldError id={errorId} message={problem} />
+      </span>
+      {laterBlocked && <span className="ad-hint">It starts today, so it goes out when you publish.</span>}
+    </div>
   );
 }
 
 // ---------- Audience ----------
+
+export type Acknowledgements = {
+  people: NonNullable<AnnouncementDetail["acknowledgements"]>;
+  zone: string;
+  timeFormat: TimeFormat;
+  busy: boolean;
+  onRemind: () => void;
+};
 
 export function AudienceTab({
   draft,
@@ -732,6 +704,7 @@ export function AudienceTab({
   recipientCount,
   shiftPeople,
   problem,
+  acks,
 }: {
   draft: AnnouncementDraft;
   update: Update;
@@ -744,6 +717,8 @@ export function AudienceTab({
   recipientCount: number;
   shiftPeople: { user_id: string; name: string; meta: string }[];
   problem: string | undefined;
+  /** A published post that asks to acknowledge: who has and who hasn't (Mert, 2026-10-12). */
+  acks?: Acknowledgements;
 }) {
   const [filter, setFilter] = useState({ location: "", department: "", job: "" });
   const [unpicked, setUnpicked] = useState<Set<string>>(new Set());
@@ -765,10 +740,35 @@ export function AudienceTab({
   const locationOptions = list.locations.filter((location) =>
     pool.some((person) => person.location_ids.includes(location.id)),
   );
+  const asked = acks?.people ?? [];
+  const askedIds = new Set(asked.map((person) => person.user_id));
+  // Someone asked to acknowledge reads under Not yet or Acknowledged instead.
   const added = draft.people
     .map((id) => people.get(id) ?? null)
-    .filter((person): person is AnnouncementPerson => person !== null && !atChecked(person));
-  const unknownAdded = draft.people.filter((id) => !people.has(id)).length;
+    .filter(
+      (person): person is AnnouncementPerson =>
+        person !== null && !atChecked(person) && !askedIds.has(person.user_id),
+    );
+  const unknownAdded = draft.people.filter((id) => !people.has(id) && !askedIds.has(id)).length;
+  const notYet = asked.filter((person) => !person.acknowledged_at);
+  const done = asked.filter((person) => person.acknowledged_at);
+  const removeButton = (person: { user_id: string; name: string }) =>
+    !locked &&
+    draft.people.includes(person.user_id) && (
+      <button
+        type="button"
+        className="ad-remove"
+        aria-label={`Remove ${person.name}`}
+        onClick={() =>
+          update((current) => ({
+            ...current,
+            people: current.people.filter((id) => id !== person.user_id),
+          }))
+        }
+      >
+        <X size={14} aria-hidden />
+      </button>
+    );
   const meta = (person: AnnouncementPerson) =>
     [person.job_name, person.location_name].filter(Boolean).join(" · ");
   const reset = (next: typeof filter) => {
@@ -877,6 +877,24 @@ export function AudienceTab({
         <section className="ad-pane" aria-label="Who gets it">
           <div className="ad-pane-head">
             <b>Who gets it · {recipientCount}</b>
+            {acks && (
+              <div className="ad-ack-sum">
+                <span>
+                  <span className="ad-strong">
+                    {done.length} of {asked.length}
+                  </span>{" "}
+                  acknowledged
+                </span>
+                <Button
+                  type="button"
+                  className="secondary-button"
+                  disabled={!notYet.length || acks.busy}
+                  onClick={acks.onRemind}
+                >
+                  {notYet.length ? `Remind ${plural(notYet.length, "person", "people")}` : "Everyone acknowledged"}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="ad-people">
             {problem && (
@@ -921,21 +939,7 @@ export function AudienceTab({
                       {person.name}
                       <span className="ad-meta">{meta(person)}</span>
                     </span>
-                    {!locked && (
-                      <button
-                        type="button"
-                        className="ad-remove"
-                        aria-label={`Remove ${person.name}`}
-                        onClick={() =>
-                          update((current) => ({
-                            ...current,
-                            people: current.people.filter((id) => id !== person.user_id),
-                          }))
-                        }
-                      >
-                        <X size={14} aria-hidden />
-                      </button>
-                    )}
+                    {removeButton(person)}
                   </div>
                 ))}
                 {unknownAdded > 0 && (
@@ -960,11 +964,47 @@ export function AudienceTab({
                 ))}
               </>
             )}
-            {!checkedLocations.length && !added.length && !unknownAdded && !shiftPeople.length && !problem && (
-              <div className="ad-empty">
-                Nobody yet. Add people on the left, or check a location on Locations &amp; publishing.
-              </div>
+            {(
+              [
+                ["Not yet", notYet],
+                ["Acknowledged", done],
+              ] as const
+            ).map(
+              ([group, members]) =>
+                members.length > 0 && (
+                  <Fragment key={group}>
+                    <div className="ad-group">
+                      <span>
+                        {group} · {members.length}
+                      </span>
+                    </div>
+                    {members.map((person) => (
+                      <div className="ad-person" key={person.user_id}>
+                        <span>
+                          {person.name}
+                          <span className="ad-meta">{meta(person)}</span>
+                        </span>
+                        {person.acknowledged_at ? (
+                          <span className="ad-ok" title={momentText(person.acknowledged_at, acks!.zone, acks!.timeFormat)}>
+                            ✓ {momentText(person.acknowledged_at, acks!.zone, acks!.timeFormat)}
+                          </span>
+                        ) : (
+                          <span className="ad-not-yet">Not yet</span>
+                        )}
+                        {removeButton(person)}
+                      </div>
+                    ))}
+                  </Fragment>
+                ),
             )}
+            {!checkedLocations.length &&
+              !added.length &&
+              !unknownAdded &&
+              !shiftPeople.length &&
+              !asked.length &&
+              !problem && (
+                <div className="ad-empty">Nobody yet. Add people on the left, or check a location on Details.</div>
+              )}
           </div>
         </section>
       </div>
@@ -1023,11 +1063,10 @@ export function ShiftsTab({
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const backRows = preview?.bring_back ?? [];
-  if (status === "past")
-    return <div className="ad-empty-tab">This is over. Its shifts don&apos;t change anymore.</div>;
+  // The tab shows only when a shift is reached (Mert, 2026-10-12), so each
+  // branch below has something to list.
   if (changes) {
     const live = changes.filter((change) => !change.brought_back_at);
-    if (!live.length) return <div className="ad-empty-tab">No shifts changed.</div>;
     return (
       <section className="ad-shift-group" aria-label="Changed shifts">
         <div className="ad-shift-group-head">
@@ -1067,15 +1106,6 @@ export function ShiftsTab({
       />
     );
   const hours = draft.locations.some((row) => row.day !== "open");
-  if (!hours && !backRows.length)
-    return (
-      <div className="ad-empty-tab">
-        No hours change, so no shifts change.
-        <span>Set Closed or Short hours on Locations &amp; publishing to change shifts.</span>
-      </div>
-    );
-  if (hours && !draft.starts_on)
-    return <div className="ad-empty-tab">Pick the day on Details to see the shifts.</div>;
   const shifts = preview?.shifts ?? [];
   const counts = preview?.counts ?? { removed: 0, edited: 0, opened: 0, kept: 0, quiet: 0 };
   const groups: { key: string; items: AnnouncementImpactShift[] }[] = [];
@@ -1410,71 +1440,6 @@ function BringBack({
         </div>
       )}
     </section>
-  );
-}
-
-// ---------- Acknowledged ----------
-
-export function AcknowledgedTab({
-  record,
-  zone,
-  timeFormat,
-  busy,
-  onRemind,
-}: {
-  record: AnnouncementDetail;
-  zone: string;
-  timeFormat: TimeFormat;
-  busy: boolean;
-  onRemind: () => void;
-}) {
-  const people = record.acknowledgements ?? [];
-  const yes = people.filter((person) => person.acknowledged_at);
-  const no = people.filter((person) => !person.acknowledged_at);
-  return (
-    <>
-      <div className="ad-ack-sum">
-        <div>
-          <div className="ad-big">
-            {yes.length} of {people.length}
-          </div>
-          <div className="ad-muted">acknowledged</div>
-        </div>
-        <Button type="button" className="secondary-button" disabled={!no.length || busy} onClick={onRemind}>
-          {no.length ? `Remind ${plural(no.length, "person", "people")}` : "Everyone acknowledged"}
-        </Button>
-      </div>
-      <div className="ad-table" role="table" aria-label="Who acknowledged">
-        <div className="ad-tr" role="row" data-head>
-          <span role="columnheader">Person</span>
-          <span role="columnheader">Status</span>
-          <span role="columnheader" className="ad-tr-third">
-            Location
-          </span>
-        </div>
-        {[...no, ...yes].map((person) => (
-          <div className="ad-tr" role="row" key={person.user_id}>
-            <span role="cell">
-              {person.name}
-              {person.job_name && <span className="ad-meta">{person.job_name}</span>}
-            </span>
-            <span role="cell">
-              {person.acknowledged_at ? (
-                <>
-                  <span className="ad-ok">✓ Acknowledged</span>
-                  <span className="ad-meta">{momentText(person.acknowledged_at, zone, timeFormat)}</span>
-                </>
-              ) : (
-                <span className="ad-not-yet">Not yet</span>
-              )}
-            </span>
-            <span role="cell" className="ad-tr-third ad-muted">
-              {person.location_name ?? ""}
-            </span>
-          </div>
-        ))}
-      </div>
-    </>
   );
 }
 

@@ -1,8 +1,10 @@
 import type {
   AnnouncementCategory,
+  AnnouncementDay,
   AnnouncementDetail,
   AnnouncementDisplayStatus,
   AnnouncementDraft,
+  AnnouncementImpactShift,
   AnnouncementIntent,
   AnnouncementList,
   AnnouncementPreview,
@@ -361,7 +363,35 @@ export function announcementCategoryText(record: Pick<AnnouncementRecord, "categ
 
 // ---------- the drawer's draft ----------
 
-export type DrawerTab = "details" | "where" | "aud" | "shifts" | "acks" | "history";
+/**
+ * Details holds the locations and publishing too; Shifts shows only when a
+ * shift is reached and History only once it was published (Mert, 2026-10-12).
+ */
+export type DrawerTab = "details" | "aud" | "shifts" | "history";
+
+/** The server still names the old Locations & publishing tab; its fields live on Details now. */
+export function onDrawerTabs(preview: AnnouncementPreview): AnnouncementPreview {
+  if (!preview.problems.some((problem) => problem.tab === "where")) return preview;
+  return {
+    ...preview,
+    problems: preview.problems.map((problem) => (problem.tab === "where" ? { ...problem, tab: "details" } : problem)),
+  };
+}
+
+/** Under the drawer's title: "Holiday · Sun, Jul 4, 2027 · Every year". */
+export function headerLine(
+  draft: Pick<AnnouncementDraft, "category" | "category_other" | "starts_on" | "ends_on" | "recurrence">,
+): string {
+  const parts = [announcementCategoryLabel(draft.category, draft.category_other)];
+  const { starts_on: start } = draft;
+  if (start) {
+    const end = draft.ends_on && draft.ends_on !== start ? draft.ends_on : null;
+    if (!end) parts.push(dayText(start, true));
+    else parts.push(`${dayText(start, start.slice(0, 4) !== end.slice(0, 4))} – ${dayText(end, true)}`);
+  }
+  if (draft.recurrence !== "none") parts.push("Every year");
+  return parts.join(" · ");
+}
 
 /** The post as the drawer edits it, from what the server stored. */
 export function draftFromRecord(record: AnnouncementDetail): AnnouncementDraft {
@@ -478,32 +508,25 @@ export function isWizard(status: AnnouncementDisplayStatus | null): boolean {
   return status === null || status === "draft";
 }
 
-export function wizardSteps(draft: Pick<AnnouncementDraft, "locations">): DrawerTab[] {
-  return ["details", "where", "aud", ...(changesHours(draft) ? (["shifts"] as const) : [])];
+export function wizardSteps(shifts: boolean): DrawerTab[] {
+  return ["details", "aud", ...(shifts ? (["shifts"] as const) : [])];
 }
 
 /** The first earlier step that still needs something, which keeps `tab` locked. */
 export function stepBefore(
   wizard: boolean,
-  draft: Pick<AnnouncementDraft, "locations">,
+  steps: readonly DrawerTab[],
   problems: readonly AnnouncementProblem[],
   tab: DrawerTab,
 ): DrawerTab | null {
   if (!wizard) return null;
-  const steps = wizardSteps(draft);
-  let index = steps.indexOf(tab);
-  if (index < 0 && tab === "shifts") index = steps.length;
+  const index = steps.indexOf(tab);
   if (index < 0) return null;
   return steps.slice(0, index).find((step) => problems.some((problem) => problem.tab === step)) ?? null;
 }
 
-export function nextStepAfter(
-  wizard: boolean,
-  draft: Pick<AnnouncementDraft, "locations">,
-  tab: DrawerTab,
-): DrawerTab | null {
+export function nextStepAfter(wizard: boolean, steps: readonly DrawerTab[], tab: DrawerTab): DrawerTab | null {
   if (!wizard) return null;
-  const steps = wizardSteps(draft);
   const index = steps.indexOf(tab);
   return index >= 0 && index < steps.length - 1 ? steps[index + 1]! : null;
 }
@@ -547,15 +570,72 @@ export function mainAction(
     : { intent: "publish", label: "Publish", verb: "publish" };
 }
 
-/** "3 shifts removed, 1 shortened, 2 open, 1 kept". */
-export function shiftSummary(counts: Pick<AnnouncementPreview["counts"], "removed" | "edited" | "opened" | "kept">): string {
-  const parts: string[] = [];
-  if (counts.removed) parts.push(`${plural(counts.removed, "shift")} removed`);
-  if (counts.edited) parts.push(`${counts.edited} shortened`);
-  if (counts.opened) parts.push(`${counts.opened} open`);
-  if (counts.kept) parts.push(`${counts.kept} kept`);
-  if (parts.length && !counts.removed) parts[0] = parts[0]!.replace(/^(\d+) /, (_, n: string) => `${n} ${n === "1" ? "shift" : "shifts"} `);
-  return parts.join(", ");
+type ShiftCounts = Pick<AnnouncementPreview["counts"], "removed" | "edited" | "opened" | "kept">;
+
+/**
+ * The Shifts tab's count: every shift its days reach (the reference's round
+ * badge, Mert 2026-10-12), yellow when one is removed, shortened or opened.
+ * No count, no Shifts tab.
+ */
+export function shiftBadge(
+  counts: ShiftCounts | null,
+  bringBack: number,
+  changed: number,
+): { count: number; warn: boolean } | null {
+  const count = (counts ? counts.removed + counts.edited + counts.opened + counts.kept : 0) + bringBack + changed;
+  if (!count) return null;
+  return { count, warn: counts !== null && counts.removed + counts.edited + counts.opened > 0 };
+}
+
+/** The band over the drawer's buttons: "2 shifts will be removed · 4 kept"; none when no shift is reached. */
+export function shiftBand(
+  counts: ShiftCounts | null,
+  bringBack: number,
+): { tone: "warn" | "ok" | "calm"; text: string } | null {
+  if (counts && counts.removed + counts.edited + counts.opened + counts.kept > 0) {
+    if (!(counts.removed + counts.edited + counts.opened))
+      return { tone: "ok", text: `No shift changes · ${counts.kept} kept` };
+    const parts: string[] = [];
+    if (counts.removed) parts.push(`${plural(counts.removed, "shift")} will be removed`);
+    if (counts.edited)
+      parts.push(parts.length ? `${counts.edited} shortened` : `${plural(counts.edited, "shift")} will be shortened`);
+    if (counts.opened)
+      parts.push(
+        parts.length
+          ? `${counts.opened} become${counts.opened === 1 ? "s" : ""} open`
+          : `${plural(counts.opened, "shift")} will become ${counts.opened === 1 ? "an open shift" : "open shifts"}`,
+      );
+    if (counts.kept) parts.push(`${counts.kept} kept`);
+    return { tone: "warn", text: parts.join(" · ") };
+  }
+  if (bringBack) return { tone: "calm", text: `${plural(bringBack, "removed shift")} can come back` };
+  return null;
+}
+
+/** A location row's shift line, at the right of its day. */
+export function locationImpact(
+  row: { day: AnnouncementDay } | null,
+  hasDay: boolean,
+  shifts: readonly { outcome: AnnouncementImpactShift["outcome"] }[] | null,
+): { text: string; tone?: "red" | "amber" } {
+  if (!row) return { text: "—" };
+  if (row.day === "open") return { text: "Usual hours" };
+  if (!hasDay) return { text: "Pick a day" };
+  if (!shifts) return { text: "" };
+  if (!shifts.length) return { text: "All fit" };
+  const counts = { removed: 0, edited: 0, opened: 0, kept: 0 };
+  for (const shift of shifts) counts[shift.outcome] += 1;
+  const text = [
+    counts.removed && `${counts.removed} removed`,
+    counts.edited && `${counts.edited} shortened`,
+    counts.opened && `${counts.opened} open`,
+    counts.kept && `${counts.kept} kept`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (counts.removed) return { text, tone: "red" };
+  if (counts.edited || counts.opened) return { text, tone: "amber" };
+  return { text };
 }
 
 /** Why a listed shift is listed. */
