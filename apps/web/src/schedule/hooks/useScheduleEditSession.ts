@@ -23,12 +23,20 @@ export const EDIT_NOT_RECONNECTED =
 const EDIT_REFUSED = "You can no longer edit this schedule, so your edit closed.";
 export const EDIT_ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
 
-// An edit let go of as the page goes away (release) is closed before the page,
-// mounted again, asks for an edit: otherwise the new page could pick up the
-// very edit being closed.
+// An edit let go of as the page goes away is closed before the page, mounted
+// again, asks for an edit: otherwise the new page could pick up the very edit
+// being closed. Only the person's own "Discard and leave" throws work away;
+// any other letting go keeps it (Mert 2026-10-12): the same edit may be open
+// in another tab whose unsaved work this page has not heard of yet, so the
+// server decides, and unsaved work becomes an "Auto-save" draft. If keeping
+// fails the edit stays open: picking it back up resumes it, and a new edit
+// sets it aside into an "Auto-save" draft once its lock runs out.
 let releasing: Promise<unknown> = Promise.resolve();
-function releaseEdit(workspaceId: string, sessionId: string) {
-  releasing = discardScheduleEditSession(workspaceId, sessionId).catch(() => undefined);
+function letGo(workspaceId: string, sessionId: string, how: "keep" | "discard") {
+  releasing = (how === "keep"
+    ? autosaveScheduleEditSession(workspaceId, sessionId)
+    : discardScheduleEditSession(workspaceId, sessionId)
+  ).catch(() => undefined);
 }
 
 export interface ScheduleLockConflict {
@@ -232,15 +240,15 @@ export function useScheduleEditSession({
   }, []);
 
   /**
-   * Lets go of the edit here and now (the person left it, or discarded it on
-   * the way out). Fire and forget: the page is going away.
+   * "Discard and leave": throws the edit away here and now. Fire and forget:
+   * the page is going away.
    */
-  const release = useCallback(() => {
+  const discardOnLeave = useCallback(() => {
     const current = sessionRef.current;
     if (!workspaceId || !current) return;
     sessionRef.current = null;
     setSession(null);
-    releaseEdit(workspaceId, current.id);
+    letGo(workspaceId, current.id, "discard");
   }, [workspaceId]);
 
   /**
@@ -251,23 +259,19 @@ export function useScheduleEditSession({
   const setAside = useCallback(async () => {
     const current = sessionRef.current;
     if (!workspaceId || !current) return;
-    if (!current.dirty) {
-      release();
-      return;
-    }
     const result = await autosaveScheduleEditSession(workspaceId, current.id);
     if (sessionRef.current?.id === current.id) {
       sessionRef.current = null;
       setSession(null);
     }
     if (result.status === "saved") callbacks.current.onAutoSaved?.(result.draft_name);
-  }, [workspaceId, release]);
+  }, [workspaceId]);
 
-  // Leaving the page lets go of an edit with nothing unsaved, so its lock does
-  // not keep the draft from others; unsaved work is asked about before leaving.
+  // Leaving the page lets go of the edit, so its lock does not keep the draft
+  // from others; whatever is unsaved, here or in another tab, is kept.
   useEffect(() => () => {
     const current = sessionRef.current;
-    if (workspaceId && current && !current.dirty) releaseEdit(workspaceId, current.id);
+    if (workspaceId && current) letGo(workspaceId, current.id, "keep");
   }, [workspaceId]);
 
   /**
@@ -337,7 +341,7 @@ export function useScheduleEditSession({
     recoverLease,
     runWithLease,
     endClosedEdit,
-    release,
+    discardOnLeave,
     setAside,
     idleSeconds,
     keepEditing,
