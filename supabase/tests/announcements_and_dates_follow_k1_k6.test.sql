@@ -369,6 +369,10 @@ select is(pg_temp.try($$select public.get_announcement_service(pg_temp.u('hande'
   '42501 authz.out_of_scope', 'K3: a peer manager at the same location does not open a post about no place');
 select is(pg_temp.try($$select pg_temp.set_state('hande', tests.id('m:ann:ayse-to-rita'), 'unpublish')$$),
   '42501 authz.out_of_scope', 'K3: nor unpublish it');
+select ok(exists (
+    select 1 from jsonb_array_elements(public.get_schedule_read_model_service(pg_temp.u('ayse'), tests.id('m'), current_date + 30) -> 'important_dates') d
+    where d ->> 'title' = 'Ayse to Rita'),
+  'K1: its author finds it on her Schedule');
 select ok(not exists (
     select 1 from jsonb_array_elements(public.get_schedule_read_model_service(pg_temp.u('hande'), tests.id('m'), current_date + 30) -> 'important_dates') d
     where d ->> 'title' = 'Ayse to Rita'),
