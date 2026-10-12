@@ -4,9 +4,9 @@ import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { signIn } from "../fixtures/world";
 
-// FB-6.7 (Mert 2026-10-03, BL-543): an announcement's row menu says Archive,
-// not Delete, because it always archived. Archive opens the announcement with
-// a red "Confirm archive" armed; only that second click archives it.
+// FB-6.7 (Mert 2026-10-03, BL-543) and EKRAN-08: an announcement is archived,
+// never deleted. In the drawer, Archive arms a red "Archive it?"; only that
+// second click archives it, and it waits under the Archived tab.
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
 
@@ -26,28 +26,33 @@ test("Archive on an announcement takes two clicks and moves it to Archived", asy
   await zeynep.goto("/app/announcements");
 
   // A draft of her own to archive.
-  await zeynep.getByRole("button", { name: "New announcement" }).click();
-  const editor = zeynep.getByRole("dialog", { name: "Add announcement" });
-  await editor.getByLabel("Title").fill(title);
-  await editor.getByLabel("Message").fill("The patio stays closed for repairs this week.");
-  await editor.getByRole("button", { name: "Save draft" }).click();
-  const table = zeynep.getByRole("table", { name: "Announcements" });
-  await expect(table.getByText(title, { exact: true })).toBeVisible();
+  await zeynep.getByRole("button", { name: "New", exact: true }).click();
+  const editor = zeynep.getByRole("dialog", { name: "New announcement" });
+  await editor.getByLabel("Title", { exact: true }).fill(title);
+  await editor.getByLabel("Message", { exact: true }).fill("The patio stays closed for repairs this week.");
+  await editor.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  const active = zeynep.getByRole("table", { name: "Active announcements" });
+  await expect(active.getByText(title, { exact: true })).toBeVisible();
   expect(archivedAt()).toBe("active");
 
-  // First click: the row menu's Archive (no Delete any more) opens the
-  // announcement with "Confirm archive" armed; nothing is archived yet.
-  await zeynep.getByRole("button", { name: `Actions for ${title}`, exact: true }).click();
-  await expect(zeynep.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
-  await zeynep.getByRole("button", { name: "Archive", exact: true }).click();
-  const confirm = zeynep.getByRole("button", { name: "Confirm archive", exact: true });
+  // First click: the drawer's Archive arms "Archive it?"; nothing is
+  // archived yet, and there is no Delete.
+  await active.getByText(title, { exact: true }).click();
+  const drawer = zeynep.getByRole("dialog", { name: title });
+  await expect(drawer.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
+  await drawer.getByRole("button", { name: "Archive", exact: true }).click();
+  const confirm = drawer.getByRole("button", { name: "Archive it?", exact: true });
   await expect(confirm).toBeVisible();
   expect(archivedAt()).toBe("active");
 
   // Second click archives it: it leaves the list and waits under Archived.
   await confirm.click();
   await expect.poll(archivedAt).not.toBe("active");
-  await expect(table.getByText(title, { exact: true })).toHaveCount(0);
-  await zeynep.getByRole("tab", { name: "Archived" }).click();
-  await expect(table.getByText(title, { exact: true })).toBeVisible();
+  await expect(drawer).toHaveCount(0);
+  await expect(active.getByText(title, { exact: true })).toHaveCount(0);
+  await zeynep.getByRole("tab", { name: "Archived", exact: true }).click();
+  await expect(
+    zeynep.getByRole("table", { name: "Archived announcements" }).getByText(title, { exact: true }),
+  ).toBeVisible();
 });
