@@ -2009,6 +2009,20 @@ describe("EmployeeDrawer", () => {
       ),
     ).toBeTruthy();
   });
+
+  it("says a back-dated termination releases only shifts that have not started", async () => {
+    renderDrawer("employment");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Terminate employee" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Terminate employee" });
+    // A worked shift stays with who worked it, whatever the date (K1, BL-766).
+    expect(dialog.textContent).toContain(
+      "Published shifts that haven't started yet will become open",
+    );
+    expect(dialog.textContent).not.toContain("at or after the effective time");
+  });
 });
 
 describe("employee assignment document impact", () => {

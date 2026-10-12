@@ -1876,8 +1876,10 @@ function EmployeeTerminationDialog({
             ) : null}
           </label>
           <p className="employee-termination-warning">
-            Access will be suspended. Published shifts starting at or after the
-            effective time will become open and create manager follow-ups.
+            {/* The effective time can be in the past; a worked shift stays
+                with who worked it (K1, BL-766). */}
+            Access will be suspended. Published shifts that haven't started yet
+            will become open and create manager follow-ups.
           </p>
           {!timezoneOptions.length ? (
             <p className="employee-drawer-error" role="alert">
