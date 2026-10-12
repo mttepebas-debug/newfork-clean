@@ -1291,8 +1291,10 @@ export function SchedulePage({
       }
       // BL-1052: another tab moved the edit on; a retry would send the same old
       // revision, so the page is reloaded instead (the reload picks the edit up).
-      // The Save draft window closes too, so the banner's Reload is in reach.
+      // The Save draft window and a retry sheet left by an earlier failure close
+      // too, so the banner's Reload is in reach.
       if (isEditSessionStale(error)) {
+        setSaveRecovery(null);
         setOperationError(scheduleEditErrorText(error));
         setPublishMenuDismissSignal((value) => value + 1);
         setSaveOpen(false);
