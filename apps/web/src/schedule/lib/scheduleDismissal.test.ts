@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   clearFocusedShiftSearchFilters,
   dismissNextScheduleSearchLayer,
+  newestScheduleFilterKey,
+  withScheduleSearchValue,
 } from "./scheduleDismissal";
 
 function dismiss(search: string, modelWeekStart = "2026-09-07") {
@@ -42,37 +44,81 @@ describe("dismissNextScheduleSearchLayer", () => {
     expect(first?.search.get("view")).toBe("day");
   });
 
-  it("dismisses layered schedule filters in the reference priority order", () => {
-    const first = dismiss(
-      "date=2026-09-10&view=day&hideUnscheduled=true&locations=loc-1&shiftTypes=st-1&jobs=job-1&employees=emp-1",
-    );
+  // Mert, 2026-10-12: Esc and a blank press take the top bar's filters off one
+  // at a time, the newest first.
+  it("takes filters off one at a time, newest first", () => {
+    let search = "date=2026-09-10&view=day&hideUnscheduled=true&locations=loc-1&shiftTypes=st-1&jobs=job-1&employees=emp-1";
+    const removed: string[] = [];
+    for (let step = 0; step < 5; step += 1) {
+      const before = new URLSearchParams(search);
+      const result = dismiss(search);
+      expect(result).not.toBeNull();
+      const gone = [...before.keys()].filter((key) => !result!.search.has(key));
+      expect(gone).toHaveLength(1);
+      removed.push(gone[0]!);
+      expect(result!.search.get("view")).toBe("day");
+      search = result!.search.toString();
+    }
+    expect(removed).toEqual(["employees", "jobs", "shiftTypes", "locations", "hideUnscheduled"]);
 
-    expect(first?.search.get("hideUnscheduled")).toBeNull();
+    const weekly = dismiss(search);
+    expect(weekly?.search.get("view")).toBe("week");
+    expect(weekly?.search.get("date")).toBe("2026-09-10");
+    expect(dismiss(weekly?.search.toString() ?? "")).toBeNull();
+  });
+
+  it("follows the order filters were applied in, not a fixed order", () => {
+    let search = new URLSearchParams("date=2026-09-10");
+    search = withScheduleSearchValue(search, "jobs", "job-1");
+    search = withScheduleSearchValue(search, "hideUnscheduled", "true");
+    search = withScheduleSearchValue(search, "locations", "loc-1");
+    // Changing the job again makes it the newest filter.
+    search = withScheduleSearchValue(search, "jobs", "job-1,job-2");
+
+    expect(newestScheduleFilterKey(search)).toBe("jobs");
+    const first = dismiss(search.toString());
+    expect(first?.search.has("jobs")).toBe(false);
     expect(first?.search.get("locations")).toBe("loc-1");
-    expect(first?.search.get("shiftTypes")).toBe("st-1");
-    expect(first?.search.get("jobs")).toBe("job-1");
-    expect(first?.search.get("employees")).toBe("emp-1");
-    expect(first?.search.get("view")).toBe("day");
-    expect(first?.clearFocusedShift).toBe(false);
+    expect(first?.search.get("hideUnscheduled")).toBe("true");
 
     const second = dismiss(first?.search.toString() ?? "");
-    expect(second?.search.get("locations")).toBe("loc-1");
-    expect(second?.search.has("shiftTypes")).toBe(false);
-    expect(second?.search.has("jobs")).toBe(false);
-    expect(second?.search.has("employees")).toBe(false);
-    expect(second?.search.get("view")).toBe("day");
-    expect(second?.clearFocusedShift).toBe(true);
+    expect(second?.search.has("locations")).toBe(false);
+    expect(second?.search.get("hideUnscheduled")).toBe("true");
+  });
 
-    const third = dismiss(second?.search.toString() ?? "");
-    expect(third?.search.has("locations")).toBe(false);
-    expect(third?.search.get("view")).toBe("day");
+  it("takes a focused badge's shift type and job off in one step", () => {
+    const result = dismissNextScheduleSearchLayer({
+      search: new URLSearchParams("date=2026-09-10&locations=loc-1&shiftTypes=st-1&jobs=job-1"),
+      modelWeekStart: "2026-09-07",
+      currentWeekStart: "2026-09-07",
+      today: "2026-09-10",
+      focusedShift: true,
+    });
 
-    const fourth = dismiss(third?.search.toString() ?? "");
-    expect(fourth?.search.get("view")).toBe("week");
-    expect(fourth?.search.get("date")).toBe("2026-09-10");
+    expect(result?.search.has("shiftTypes")).toBe(false);
+    expect(result?.search.has("jobs")).toBe(false);
+    expect(result?.search.get("locations")).toBe("loc-1");
+    expect(result?.clearFocusedShift).toBe(true);
+  });
 
-    const fifth = dismiss(fourth?.search.toString() ?? "");
-    expect(fifth).toBeNull();
+  it("keeps a badge's focus while a newer filter goes first", () => {
+    const result = dismissNextScheduleSearchLayer({
+      search: new URLSearchParams("date=2026-09-10&shiftTypes=st-1&jobs=job-1&locations=loc-1"),
+      modelWeekStart: "2026-09-07",
+      currentWeekStart: "2026-09-07",
+      today: "2026-09-10",
+      focusedShift: true,
+    });
+
+    expect(result?.search.has("locations")).toBe(false);
+    expect(result?.search.get("jobs")).toBe("job-1");
+    expect(result?.clearFocusedShift).toBe(false);
+  });
+
+  it("ignores an off Hide Unscheduled value", () => {
+    expect(
+      newestScheduleFilterKey(new URLSearchParams("jobs=job-1&hideUnscheduled=false")),
+    ).toBe("jobs");
   });
 
   it("resets a non-current weekly period only after filters and daily view", () => {

@@ -227,6 +227,8 @@ import {
 import {
   clearFocusedShiftSearchFilters,
   dismissNextScheduleSearchLayer,
+  newestScheduleFilterKey,
+  withScheduleSearchValue,
 } from "../schedule/lib/scheduleDismissal";
 import { useConfirmDialog } from "../shell/ConfirmDialog";
 
@@ -782,11 +784,13 @@ export function SchedulePage({
       setQueryIds("locations", locationIds);
       return;
     }
-    const next = new URLSearchParams(search);
+    const next = withScheduleSearchValue(
+      search,
+      "locations",
+      locationIds.join(",") || null,
+    );
     next.set("date", date);
     next.set("view", "day");
-    if (locationIds.length) next.set("locations", locationIds.join(","));
-    else next.delete("locations");
     setSearch(next);
   };
   const setLayout = (value: "separate" | "unified") => {
@@ -796,22 +800,24 @@ export function SchedulePage({
     setSearch(next);
   };
   const toggleHideUnscheduled = () => {
-    const next = new URLSearchParams(search);
-    if (hideUnscheduled) next.delete("hideUnscheduled");
-    else next.set("hideUnscheduled", "true");
-    setSearch(next);
+    setSearch(
+      withScheduleSearchValue(
+        search,
+        "hideUnscheduled",
+        hideUnscheduled ? null : "true",
+      ),
+    );
   };
   const setQueryIds = (param: string, ids: readonly string[]) => {
-    const next = new URLSearchParams(search);
-    if (ids.length) next.set(param, ids.join(","));
-    else next.delete(param);
-    setSearch(next);
+    setSearch(withScheduleSearchValue(search, param, ids.join(",") || null));
   };
   const focusShiftBadge = (shift: ScheduleShift) => {
-    const next = new URLSearchParams(search);
-    if (shift.shift_type_id) next.set("shiftTypes", shift.shift_type_id);
-    else next.delete("shiftTypes");
-    next.set("jobs", shift.job_id);
+    // The focus is the newest filter, so Esc takes it off first.
+    const next = withScheduleSearchValue(
+      withScheduleSearchValue(search, "shiftTypes", shift.shift_type_id),
+      "jobs",
+      shift.job_id,
+    );
     next.delete("employees");
     setSearch(next);
     setFocusedShiftId(shift.id);
@@ -2108,7 +2114,9 @@ export function SchedulePage({
       closeTopActionSurfaces();
       return true;
     }
-    const liveSearch = new URLSearchParams(window.location.search);
+    // Read from the router, not window.location: this function is reassigned
+    // every render, so these params are always the current ones.
+    const liveSearch = new URLSearchParams(search);
     if (conflict) {
       setConflict(null);
       return true;
@@ -2161,13 +2169,11 @@ export function SchedulePage({
       updateSelectedIds([]);
       return true;
     }
-    if (preserveMatchingLocationHeader && liveSearch.has("locations")) {
-      const higherPrioritySearchLayer =
-        liveSearch.get("hideUnscheduled") === "true" ||
-        liveSearch.has("shiftTypes") ||
-        liveSearch.has("jobs") ||
-        liveSearch.has("employees");
-      if (!higherPrioritySearchLayer) return false;
+    if (
+      preserveMatchingLocationHeader &&
+      newestScheduleFilterKey(liveSearch) === "locations"
+    ) {
+      return false;
     }
     if (preserveSearchFilters) return false;
     const dismissal = dismissNextScheduleSearchLayer({
@@ -2175,6 +2181,7 @@ export function SchedulePage({
       modelWeekStart: model.week_start,
       currentWeekStart: currentWeek,
       today,
+      focusedShift: Boolean(focusedShiftId),
     });
     if (!dismissal) return false;
     setSearch(dismissal.search);
