@@ -360,5 +360,24 @@ select is(pg_temp.week_posts('veli'), array['Rita later', 'Rita private'],
 select is(pg_temp.week_posts('zeynep'), array['Rita later', 'Rita private'],
   'K1: so does an admin''s');
 
+-- A manager's own post about no place stays hers: her peer at the same
+-- location neither opens it nor finds it on the Schedule; once she is no
+-- longer a manager it is not hers to change either.
+select tests.remember('m:ann:ayse-to-rita', pg_temp.publish('ayse', '{}', 'Ayse to Rita',
+  jsonb_build_object('people', jsonb_build_array(pg_temp.u('rita')), 'on_schedule', true)));
+select is(pg_temp.try($$select public.get_announcement_service(pg_temp.u('hande'), tests.id('m'), tests.id('m:ann:ayse-to-rita'))$$),
+  '42501 authz.out_of_scope', 'K3: a peer manager at the same location does not open a post about no place');
+select is(pg_temp.try($$select pg_temp.set_state('hande', tests.id('m:ann:ayse-to-rita'), 'unpublish')$$),
+  '42501 authz.out_of_scope', 'K3: nor unpublish it');
+select ok(not exists (
+    select 1 from jsonb_array_elements(public.get_schedule_read_model_service(pg_temp.u('hande'), tests.id('m'), current_date + 30) -> 'important_dates') d
+    where d ->> 'title' = 'Ayse to Rita'),
+  'K3: nor finds it on the Schedule');
+-- ponytail: the role changes by hand; the rule under test is the post's, not the role change's.
+update public.workspace_memberships m set role_id = (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'employee')
+where m.workspace_id = tests.id('m') and m.user_id = pg_temp.u('ayse');
+select is(pg_temp.try($$select pg_temp.set_state('ayse', tests.id('m:ann:ayse-to-rita'), 'unpublish')$$),
+  '42501 authz.out_of_scope', 'K1: once she is an employee, her own post about no place is not hers to unpublish');
+
 select * from finish();
 rollback;

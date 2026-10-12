@@ -2776,8 +2776,9 @@ $t$,
           select 1 from public.announcement_locations target
           join public.locations location on location.id = target.location_id and location.archived_at is null
           where target.announcement_id = item.id)
+          -- The reader is a scalar subquery: worked out once per read, not per record.
           and (app_private.announcement_reaches(item, actor_user_id)
-            or app_private.announcement_reason(app_private.actor(actor_user_id, target_workspace_id),
+            or app_private.announcement_reason((select app_private.actor(actor_user_id, target_workspace_id)),
                  app_private.announcement_places(item.id), item.created_by, app_private.announcement_dates(item)) is null)
       ) place
       where item.workspace_id = target_workspace_id and item.status in ('published', 'scheduled')
