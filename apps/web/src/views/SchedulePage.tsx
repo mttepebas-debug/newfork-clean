@@ -30,6 +30,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -126,6 +127,7 @@ import {
   EDIT_IDLE_WARNING_MS,
 } from "../schedule/hooks/useEditIdleTimer";
 import { EDIT_ENDED_AWAY, EDIT_NOT_RECONNECTED, useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
+import { useScheduleLeaveGuard } from "../schedule/hooks/useScheduleLeaveGuard";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
@@ -303,6 +305,8 @@ export function SchedulePage({
     recoverLease,
     runWithLease,
     endClosedEdit,
+    release: releaseEditSession,
+    setAside: setAsideEditSession,
     idleSeconds,
     keepEditing,
   } = useScheduleEditSession({
@@ -762,12 +766,18 @@ export function SchedulePage({
     }
   }, [editor]);
 
+  // Leaving the page with unsaved work asks first; closing the tab keeps the
+  // browser's own warning (useScheduleLeaveGuard).
+  const leaveGuard = useScheduleLeaveGuard(hasUnsavedChanges);
+  // The page the person chose, held while the Save draft window is open.
+  const leaveAfterSaveRef = useRef<(() => void) | null>(null);
+  const [departureAfterSave, setDepartureAfterSave] = useState<(() => void) | null>(null);
+  // Runs once the window has closed: a link clicked under an open window is not followed.
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [hasUnsavedChanges]);
+    if (!departureAfterSave || saveOpen) return;
+    setDepartureAfterSave(null);
+    departureAfterSave();
+  }, [departureAfterSave, saveOpen]);
 
   const changePeriod = (days: number) => {
     const next = new URLSearchParams(search);
@@ -1143,12 +1153,25 @@ export function SchedulePage({
     [setScheduleMode, setSearch, updateSelectedIds],
   );
 
+  // resume: picking an edit back up (a reload in edit mode). Anything else is a
+  // new edit asked for from a menu, which never brings back one that was left.
   const acquire = async (
     source: "blank" | "published" | "draft",
     draftId: string | null = null,
     preserveFilters = false,
+    resume = false,
   ) => {
     if (!context || !query.data || pastWeek) return;
+    // A new edit of another week closes the one held for its own week (KK-164):
+    // its unsaved work is kept as an "Auto-save" draft, as on idle (S1).
+    if (!resume && session && session.week_start !== query.data.week_start) {
+      try {
+        await setAsideEditSession();
+      } catch (error) {
+        setOperationError(requestErrorText(error));
+        return;
+      }
+    }
     const allLocationIds = query.data.locations.map((item) => item.id);
     const filteredLocationIds = validIds(search.get("locations"), allLocationIds);
     // The filtered locations, or every location the person may edit.
@@ -1161,6 +1184,7 @@ export function SchedulePage({
       source,
       draftId,
       editLocationIds,
+      resume,
     );
     if (!result) return;
     if (result.status === "conflict") return;
@@ -1188,7 +1212,7 @@ export function SchedulePage({
       setScheduleMode("preview", activeDraftId);
       return;
     }
-    void acquire(activeDraftId ? "draft" : "published", activeDraftId, true).then((resumed) => {
+    void acquire(activeDraftId ? "draft" : "published", activeDraftId, true, true).then((resumed) => {
       if (!resumed) setScheduleMode("preview", activeDraftId);
     });
   });
@@ -1245,6 +1269,30 @@ export function SchedulePage({
       return;
     }
     setDiscardConfirmOpen(true);
+  };
+
+  // Leaving the page: the work goes, the edit closes, the chosen page opens.
+  const leaveWithoutSaving = () => {
+    const departure = leaveGuard.take();
+    const leftDraftId = session?.source_draft_id ?? null;
+    releaseEditSession();
+    invalidateScheduleCaches(leftDraftId);
+    departure?.();
+  };
+  // Leaving the page: the Save draft window opens on the edit's own week; once
+  // the draft is saved the chosen page opens. Closing the window stays here.
+  const saveBeforeLeaving = () => {
+    if (!session) return;
+    leaveAfterSaveRef.current = leaveGuard.take();
+    if (query.data?.week_start !== session.week_start) {
+      setSearch((current) => {
+        const next = new URLSearchParams(current);
+        next.set("date", session.week_start);
+        return next;
+      }, { replace: true });
+    }
+    setExportAfterSave(false);
+    setSaveOpen(true);
   };
 
   const saveDraftFromMenu = async (
@@ -3185,11 +3233,19 @@ export function SchedulePage({
         onConfirm={() => void removeSelected()}
       />
       {confirmDialog}
-      <ScheduleDiscardEditDialog
+      <ScheduleEditExitDialog
         open={discardConfirmOpen && Boolean(session)}
-        isDiscarding={isDiscardingEditSession}
+        busy={isDiscardingEditSession}
         onCancel={() => setDiscardConfirmOpen(false)}
-        onConfirm={discardEditSession}
+        onDiscard={discardEditSession}
+      />
+      <ScheduleEditExitDialog
+        open={leaveGuard.open && Boolean(session)}
+        leaving
+        busy={leaveGuard.restoringHistory}
+        onCancel={leaveGuard.stay}
+        onDiscard={leaveWithoutSaving}
+        onSave={saveBeforeLeaving}
       />
       <RetroactiveEditDialog
         open={retroactiveEditState.open}
@@ -3209,7 +3265,7 @@ export function SchedulePage({
           }
           busy={saveBusy}
           description={exportAfterSave ? "Export is available in preview mode. Save this working copy as a draft to continue." : undefined}
-          onClose={() => { if (!saveBusy) { setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
+          onClose={() => { if (!saveBusy) { leaveAfterSaveRef.current = null; setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
           onSave={(name, draft) => {
             if (saveBusy) return;
             const savingContext = currentMutationContext.current;
@@ -3220,6 +3276,9 @@ export function SchedulePage({
                 setSaveOpen(false);
                 if (exportAfterSave) setExportOpen(true);
                 setExportAfterSave(false);
+                const departure = leaveAfterSaveRef.current;
+                leaveAfterSaveRef.current = null;
+                if (departure) setDepartureAfterSave(() => departure);
               }).finally(() => {
                 if (currentMutationContext.current === savingContext) setSaveBusy(false);
               });
@@ -3564,17 +3623,26 @@ function scheduleShiftFromPasteInput(
   };
 }
 
-function ScheduleDiscardEditDialog({
+// The Schedule edit's way out: Discard on the edit strip, and leaving the page
+// with unsaved work (Mert 2026-10-12), which also offers Save draft.
+function ScheduleEditExitDialog({
   open,
-  isDiscarding,
+  leaving = false,
+  busy,
   onCancel,
-  onConfirm,
+  onDiscard,
+  onSave,
 }: {
   readonly open: boolean;
-  readonly isDiscarding: boolean;
+  /** Asked on the way to another page: the question names the departure and offers Save draft. */
+  readonly leaving?: boolean;
+  readonly busy: boolean;
   readonly onCancel: () => void;
-  readonly onConfirm: () => void;
+  readonly onDiscard: () => void;
+  readonly onSave?: () => void;
 }) {
+  const titleId = useId();
+  const descriptionId = useId();
   return open ? (
     <div className="schedule-discard-layer" role="presentation">
       <button
@@ -3585,37 +3653,47 @@ function ScheduleDiscardEditDialog({
       />
       <section
         className="schedule-discard-dialog"
-        data-schedule-discard-edit-dialog="true"
+        data-schedule-discard-edit-dialog={leaving ? undefined : "true"}
+        data-schedule-leave-edit-dialog={leaving ? "true" : undefined}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="schedule-discard-edit-title"
-        aria-describedby="schedule-discard-edit-description"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
       >
         <header>
           <span aria-hidden>
             <AlertTriangle size={18} />
           </span>
           <div>
-            <h2 id="schedule-discard-edit-title">Discard unsaved changes?</h2>
-            <p id="schedule-discard-edit-description">
-              This closes the edit session and returns to the live weekly
-              schedule. Unsaved schedule changes will be removed.
+            <h2 id={titleId}>
+              {leaving ? "Save changes before leaving?" : "Discard unsaved changes?"}
+            </h2>
+            <p id={descriptionId}>
+              {leaving
+                ? "You have unsaved schedule changes. Save them as a draft, or discard them and leave."
+                : "This closes the edit session and returns to the live weekly schedule. Unsaved schedule changes will be removed."}
             </p>
           </div>
         </header>
         <footer>
-          <button type="button" onClick={onCancel} disabled={isDiscarding}>
+          <button type="button" onClick={onCancel} disabled={busy && !leaving}>
             Keep editing
           </button>
           <button
             type="button"
             className="danger"
-            onClick={onConfirm}
-            disabled={isDiscarding}
+            onClick={onDiscard}
+            disabled={busy}
           >
             <X size={15} aria-hidden />
-            {isDiscarding ? "Discarding..." : "Discard"}
+            {leaving ? "Discard and leave" : busy ? "Discarding..." : "Discard"}
           </button>
+          {leaving && onSave ? (
+            <button type="button" className="save" onClick={onSave} disabled={busy}>
+              <Save size={15} aria-hidden />
+              Save draft
+            </button>
+          ) : null}
         </footer>
       </section>
     </div>

@@ -23,6 +23,14 @@ export const EDIT_NOT_RECONNECTED =
 const EDIT_REFUSED = "You can no longer edit this schedule, so your edit closed.";
 export const EDIT_ENDED_AWAY = "Your edit ended while you were away. Open the schedule again to keep editing.";
 
+// An edit let go of as the page goes away (release) is closed before the page,
+// mounted again, asks for an edit: otherwise the new page could pick up the
+// very edit being closed.
+let releasing: Promise<unknown> = Promise.resolve();
+function releaseEdit(workspaceId: string, sessionId: string) {
+  releasing = discardScheduleEditSession(workspaceId, sessionId).catch(() => undefined);
+}
+
 export interface ScheduleLockConflict {
   readonly sessionId?: string;
   readonly holderName: string;
@@ -101,13 +109,18 @@ export function useScheduleEditSession({
   });
 
   const acquireRequestRef = useRef<symbol | null>(null);
-  /** Takes (or resumes) the edit lock; null when the answer is stale or failed. */
+  /**
+   * Takes (or resumes) the edit lock; null when the answer is stale or failed.
+   * resume false: a new edit asked for from a menu, which never brings back an
+   * edit of the person's that was left open (it becomes an "Auto-save" draft).
+   */
   const acquire = useCallback(
     async (
       weekStart: string,
       source: ScheduleEditSource,
       draftId: string | null,
       locationIds: readonly string[] | null,
+      resume = true,
     ): Promise<ScheduleEditAcquireResult | null> => {
       if (!workspaceId) return null;
       const requestId = Symbol(
@@ -117,12 +130,14 @@ export function useScheduleEditSession({
       );
       acquireRequestRef.current = requestId;
       try {
+        await releasing;
         const result = await acquireScheduleEditSession(
           workspaceId,
           weekStart,
           source,
           draftId,
           locationIds,
+          resume,
         );
         if (acquireRequestRef.current !== requestId) return null;
         if (result.status === "conflict") {
@@ -178,6 +193,7 @@ export function useScheduleEditSession({
         current.source_kind,
         current.source_draft_id,
         current.location_ids,
+        true,
       );
     } catch {
       return null;
@@ -214,6 +230,45 @@ export function useScheduleEditSession({
     setSession(null);
     callbacks.current.onEnded();
   }, []);
+
+  /**
+   * Lets go of the edit here and now (the person left it, or discarded it on
+   * the way out). Fire and forget: the page is going away.
+   */
+  const release = useCallback(() => {
+    const current = sessionRef.current;
+    if (!workspaceId || !current) return;
+    sessionRef.current = null;
+    setSession(null);
+    releaseEdit(workspaceId, current.id);
+  }, [workspaceId]);
+
+  /**
+   * Closes the edit without asking because the person started another one:
+   * unsaved work becomes an "Auto-save" draft (S1), an edit with nothing
+   * unsaved just lets go of its lock. Throws when the work could not be kept.
+   */
+  const setAside = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!workspaceId || !current) return;
+    if (!current.dirty) {
+      release();
+      return;
+    }
+    const result = await autosaveScheduleEditSession(workspaceId, current.id);
+    if (sessionRef.current?.id === current.id) {
+      sessionRef.current = null;
+      setSession(null);
+    }
+    if (result.status === "saved") callbacks.current.onAutoSaved?.(result.draft_name);
+  }, [workspaceId, release]);
+
+  // Leaving the page lets go of an edit with nothing unsaved, so its lock does
+  // not keep the draft from others; unsaved work is asked about before leaving.
+  useEffect(() => () => {
+    const current = sessionRef.current;
+    if (workspaceId && current && !current.dirty) releaseEdit(workspaceId, current.id);
+  }, [workspaceId]);
 
   /**
    * Runs a change; if its lock lapsed, picks the edit back up and tries once
@@ -282,6 +337,8 @@ export function useScheduleEditSession({
     recoverLease,
     runWithLease,
     endClosedEdit,
+    release,
+    setAside,
     idleSeconds,
     keepEditing,
   };

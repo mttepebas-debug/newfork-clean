@@ -11,7 +11,8 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
-import { AvailabilityDraftScope, requestAvailabilityNavigation, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { AvailabilityDraftScope, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { loadWeeklyPreferences } from "../availability/availability-data";
 import { TimeOffHourFields, defaultTimeOffHours, type TimeOffHours } from "../employee-hub/TimeOffHourFields";
 import { TimeOffDateFields, type TimeOffDateDraft, type TimeOffDateDrafts } from "../employee-hub/TimeOffDateFields";
@@ -207,7 +208,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   const active = timeOff ? "time-off" : "availability";
   function select(id: typeof active) {
     if (id === active) return;
-    requestAvailabilityNavigation(() => {
+    requestAppNavigation(() => {
       const search = new URLSearchParams(location.search);
       search.delete("tab");
       search.set("section", id);
