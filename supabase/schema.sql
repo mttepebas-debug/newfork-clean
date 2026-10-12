@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
--- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
+-- migrations: 466, last: 20261012030000_time_off_refusals_say_why.sql
+-- fingerprint: sha256:fb430eb19832f5f194cf9f10976cccd56e3100bce2992dbd6c07a255fb9c601e
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5790,14 +5790,14 @@ begin
   select * into r from public.schedule_time_off_requests where id = rid and workspace_id = w for update;
   -- Whoever got here first closed it (a withdrawal, a last vote, the job).
   if r.status <> 'pending' then
-    raise exception 'This request is already closed' using errcode = 'PT409';
+    raise exception 'This request is already closed' using errcode = 'PT409', hint = 'time_off.changed';
   end if;
   if verdict = 'approve' and r.request_type = 'time_off_cancellation' then
     select p.* into parent from public.time_off_cancellation_links cl
     join public.schedule_time_off_requests p on p.id = cl.parent_request_id and p.workspace_id = cl.workspace_id
     where cl.request_id = rid and cl.workspace_id = w for update of p;
     if parent.status <> 'approved' then
-      raise exception 'The time off this cancellation is about has changed; refresh' using errcode = 'PT409';
+      raise exception 'The time off this cancellation is about has changed; refresh' using errcode = 'PT409', hint = 'time_off.changed';
     end if;
   end if;
   update public.schedule_time_off_segments
@@ -6113,7 +6113,7 @@ begin
     insert into public.time_off_assignment_releases(workspace_id, request_id, decision_revision, published_shift_id, before_assignment, actor_user_id)
     values (w, rid, decision, (s ->> 'id')::uuid, s, who);
     update public.schedule_published_shifts set employee_id = null where workspace_id = w and id = (s ->> 'id')::uuid and employee_id = person;
-    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = 'PT409'; end if;
+    if not found then raise exception 'A published shift changed before it could be opened; try again' using errcode = 'PT409', hint = 'time_off.changed'; end if;
     changes := changes || jsonb_build_array(s || jsonb_build_object('new_employee_id', null));
   end loop;
   if jsonb_array_length(changes) > 0 then
@@ -9321,11 +9321,11 @@ begin
   end if;
   if verdict is null or verdict not in ('approve', 'deny') then raise exception 'Choose approve or deny' using errcode = '22023'; end if;
   if char_length(btrim(coalesce(note, ''))) > 1000 then raise exception 'The note can be at most 1000 characters' using errcode = '22023'; end if;
-  if r.status <> 'pending' then raise exception 'This request is already closed' using errcode = 'PT409'; end if;
-  if r.decide_by is not null and r.decide_by <= now() then raise exception 'This request was not decided in time' using errcode = 'PT409'; end if;
+  if r.status <> 'pending' then raise exception 'This request is already closed' using errcode = 'PT409', hint = 'time_off.changed'; end if;
+  if r.decide_by is not null and r.decide_by <= now() then raise exception 'This request was not decided in time' using errcode = 'PT409', hint = 'time_off.not_decided_in_time'; end if;
   pictured := app_private.time_off_impact(w, rid);
   if expected_impact is distinct from pictured ->> 'fingerprint' then
-    raise exception 'The shifts this time off affects have changed. Review them again' using errcode = 'PT409';
+    raise exception 'The shifts this time off affects have changed. Review them again' using errcode = 'PT409', hint = 'time_off.changed';
   end if;
 
   if alone_why is null then
@@ -10022,7 +10022,7 @@ employee:=public.employee_hub_actor_service(actor_user_id,target_workspace_id);
   if target_kind='time_off' and target_action='cancel' then
     select * into time_request from public.schedule_time_off_requests where id=target_request_id and workspace_id=target_workspace_id and employee_id=employee.id for update;
     if time_request.id is null then raise exception 'time off request not found' using errcode='P0002'; end if;
-    if time_request.revision<>target_expected_revision or time_request.status<>'pending' then raise exception 'stale time off request' using errcode = 'PT409'; end if;
+    if time_request.revision<>target_expected_revision or time_request.status<>'pending' then raise exception 'stale time off request' using errcode = 'PT409', hint = 'time_off.changed'; end if;
     update public.schedule_time_off_requests set status='revoked',revision=revision+1,updated_at=now() where id=time_request.id returning * into time_request;
     insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note) values(target_workspace_id,time_request.id,'revoked',actor_user_id,'Cancelled by employee');
     return jsonb_build_object('status','cancelled','request_id',time_request.id,'revision',time_request.revision);
@@ -19720,11 +19720,11 @@ begin
   command := jsonb_build_object('kind', 'cancellation', 'parent', parent_id, 'revision', expected_revision, 'reason', btrim(coalesce(reason, '')), 'periods', periods);
   select * into prior from public.time_off_commands c where c.workspace_id = w and c.actor_user_id = actor and c.operation_id = request_time_off_cancellation_service.operation_id;
   if found then
-    if prior.input <> command then raise exception 'This request key was used for a different cancellation' using errcode = 'PT409'; end if;
+    if prior.input <> command then raise exception 'This request key was used for a different cancellation' using errcode = 'PT409', hint = 'time_off.request_reused'; end if;
     return prior.result;
   end if;
   if expected_revision is null or parent.revision <> expected_revision or parent.request_type <> 'time_off' or parent.status <> 'approved' then
-    raise exception 'stale approved leave; refresh before requesting cancellation' using errcode = 'PT409'; end if;
+    raise exception 'stale approved leave; refresh before requesting cancellation' using errcode = 'PT409', hint = 'time_off.changed'; end if;
   if exists (select 1 from public.time_off_cancellation_links cl join public.schedule_time_off_requests cr on cr.id = cl.request_id
     where cl.parent_request_id = parent.id and cr.status = 'pending') then
     raise exception 'A cancellation request is already pending for this leave' using errcode = '23514'; end if;
@@ -21111,7 +21111,7 @@ begin
   perform app_private.time_off_authorize(actor, w, 'time_off.revoke', r.employee_id);
   if said = '' or char_length(said) > 1000 then raise exception 'Say why the time off is revoked (at most 1000 characters)' using errcode = '22023'; end if;
   if expected_revision is null or r.revision <> expected_revision or r.status <> 'approved' then
-    raise exception 'This time off changed; refresh before revoking it' using errcode = 'PT409'; end if;
+    raise exception 'This time off changed; refresh before revoking it' using errcode = 'PT409', hint = 'time_off.changed'; end if;
 
   select coalesce(range_agg(s.span), '{}') into taken
   from (select unnest(public.time_off_effective_ranges(x.id)) * tstzrange(null, now(), '[)') span
@@ -25066,11 +25066,11 @@ begin
  command:=jsonb_build_object('kind','shorten','request_id',rid,'expected_revision',expected_revision,'periods',periods,'note',btrim(coalesce(note,'')));
  select * into prior from public.time_off_commands c where c.workspace_id=w and c.actor_user_id=actor and c.operation_id=shorten_time_off_service.operation_id;
  if found then
-  if prior.input<>command then raise exception 'This request key was used for a different change' using errcode = 'PT409'; end if;
+  if prior.input<>command then raise exception 'This request key was used for a different change' using errcode = 'PT409', hint = 'time_off.request_reused'; end if;
   return prior.result;
  end if;
  if expected_revision is null or parent.revision<>expected_revision or parent.status <> 'approved' then
-  raise exception 'stale approved leave; refresh before shortening it' using errcode = 'PT409'; end if;
+  raise exception 'stale approved leave; refresh before shortening it' using errcode = 'PT409', hint = 'time_off.changed'; end if;
  if jsonb_typeof(periods) is distinct from 'array' or jsonb_array_length(periods) not between 1 and 124 then
   raise exception 'Choose up to 124 periods of approved hours' using errcode='22023'; end if;
  if char_length(btrim(coalesce(note,'')))>1000 then raise exception 'The note can be at most 1000 characters' using errcode='22023'; end if;
@@ -25301,7 +25301,7 @@ begin
   command := jsonb_build_object('kind', 'request', 'periods', periods, 'reason', btrim(coalesce(reason, '')), 'expected_timezone', expected_timezone);
   select * into prior from public.time_off_commands c where c.workspace_id = w and c.actor_user_id = actor and c.operation_id = submit_time_off_service.operation_id;
   if found then
-    if prior.input <> command then raise exception 'This request key was used for different time-off hours' using errcode = 'PT409'; end if;
+    if prior.input <> command then raise exception 'This request key was used for different time-off hours' using errcode = 'PT409', hint = 'time_off.request_reused'; end if;
     return prior.result;
   end if;
   if jsonb_typeof(periods) is distinct from 'array' then raise exception 'Enter the requested time-off periods' using errcode = '22023'; end if;
@@ -25312,7 +25312,7 @@ begin
   if zone_name is null then
     zone_name := expected_timezone;
   elsif expected_timezone is distinct from zone_name then
-    raise exception 'The time zone of your location changed. Review the hours in the current time zone before sending' using errcode = 'PT409';
+    raise exception 'The time zone of your location changed. Review the hours in the current time zone before sending' using errcode = 'PT409', hint = 'time_off.timezone_changed';
   end if;
 
   for period in select value from jsonb_array_elements(periods) loop
