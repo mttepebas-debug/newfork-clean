@@ -1164,10 +1164,10 @@ describe("Shift Hub outcome contracts", () => {
     fireEvent.click(close);
     expect(changeExchange).not.toHaveBeenCalled();
     expect(close.textContent).toBe("Confirm close");
-    // Escape on the armed button only disarms; the window stays open.
+    // Escape on the armed button only disarms: its default is prevented, so
+    // the browser sends the window no cancel (jsdom never sends one).
     expect(fireEvent.keyDown(close, { key: "Escape" })).toBe(false);
     expect(close.textContent).toBe("Close search");
-    expect(dialog.isConnected).toBe(true);
     fireEvent.click(close);
     fireEvent.click(close);
     await waitFor(() =>
