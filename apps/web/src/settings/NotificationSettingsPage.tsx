@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { RequestError } from "../lib/request-error";
 import { SettingsHeader, errorText } from "./GeneralSettingsPage";
 import {
   getNotificationSettings,
@@ -82,13 +83,18 @@ export default function NotificationSettingsPage() {
         delete next[policy.type_key];
         return next;
       });
-      const message = errorText(saveError);
+      // BL-1049: the database says the policy moved on with its key; the
+      // sentence is not read. The latest version is loaded to review.
+      const changedElsewhere =
+        saveError instanceof RequestError &&
+        saveError.reason === "notification.policy_changed";
       setError(
-        message.includes("stale") || message.includes("conflict")
+        changedElsewhere
           ? "This policy changed elsewhere. Your optimistic edit was rolled back; review the latest version and try again."
-          : `${message}. Your optimistic edit was rolled back.`,
+          : `${errorText(saveError)}. Your optimistic edit was rolled back.`,
       );
       setStatus(null);
+      if (changedElsewhere) void queryClient.invalidateQueries({ queryKey });
     },
   });
 
