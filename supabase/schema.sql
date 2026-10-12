@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 466, last: 20261012031500_employee_and_catalog_refusals_say_why.sql
--- fingerprint: sha256:ef678c006830a8c3ed82d2e6c3b1c556c8b56d78465a90d64cd0b011bf8f599c
+-- migrations: 468, last: 20261012041500_termination_tells_location_managers.sql
+-- fingerprint: sha256:3bd63fa23d98c7b10286a722d0730c704211b48b281054f97f9c0f82cfb8a12c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5639,6 +5639,67 @@ $$;
 
 
 ALTER FUNCTION "app_private"."sync_workspace_lifecycle_with_onboarding"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."termination_notify_shifts_unassigned"("actor" "uuid", "w" "uuid", "tid" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare fmt text; person_name text; g record;
+begin
+ fmt := case when (select s.time_format from public.workspace_scheduling_settings s where s.workspace_id = w) = '24h'
+  then 'HH24:MI' else 'FMHH12:MI AM' end;
+ select coalesce(nullif(e.preferred_name, ''), e.first_name) into person_name
+  from public.employee_terminations t join public.employee_profiles e on e.id = t.employee_id and e.workspace_id = t.workspace_id
+  where t.id = tid and t.workspace_id = w;
+ -- One notice per set of people who manage the same open shifts.
+ for g in
+  with opened as (
+   select a.location_id, l.name location_name, p.scheduled_date, p.start_time, p.end_time
+   from public.employee_offboarding_shift_actions a
+   join public.schedule_published_shifts p on p.id = a.shift_id and p.workspace_id = w
+   join public.locations l on l.id = a.location_id and l.workspace_id = w
+   where a.workspace_id = w and a.termination_id = tid
+  ), managers as (
+   -- Suspended by now, the person who left is not among them.
+   select m.user_id from public.workspace_memberships m
+   where m.workspace_id = w and m.status = 'active' and m.user_id is distinct from actor
+    and (app_private.actor(m.user_id, w)).class = 'manager'
+  ), told as (
+   select mg.user_id, o.* from managers mg join opened o
+    on app_private.authz_reason(mg.user_id, w, 'schedule.edit', array[o.location_id]) is null
+  ), per_person as (
+   select t.user_id, count(*)::integer n, min(t.scheduled_date) first_day,
+    to_jsonb(array_agg(distinct t.location_id)) location_ids,
+    -- "Sat, Oct 18, 10:00 AM–4:00 PM (Kadikoy)": the start day only, also past midnight.
+    array_agg(to_char(t.scheduled_date, 'Dy, Mon FMDD') || ', ' || to_char(t.start_time, fmt) || '–' || to_char(t.end_time, fmt)
+     || ' (' || t.location_name || ')' order by t.scheduled_date, t.start_time, t.location_name) shift_lines
+   from told t group by t.user_id
+  ), worded as (
+   -- At most three shifts, then "+N more".
+   select p.*, array_to_string(p.shift_lines[1:3], '; ')
+     || case when cardinality(p.shift_lines) > 3 then '; +' || (cardinality(p.shift_lines) - 3) || ' more' else '' end lines
+   from per_person p
+  )
+  select n, first_day, location_ids, lines, array_agg(user_id order by user_id) recipients
+  from worded group by n, first_day, location_ids, lines
+ loop
+  perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'schedule.termination.shifts_unassigned', 1, actor,
+   'employee_terminations', tid::text,
+   jsonb_build_object('termination_id', tid, 'location_ids', g.location_ids, 'recipient_user_ids', to_jsonb(g.recipients),
+    'audience_contract', 'termination_location_managers', 'category', 'schedule',
+    'title', left(coalesce(person_name, 'A teammate') || '''s ' || case when g.n = 1 then 'shift is unassigned' else g.n || ' shifts are unassigned' end, 160),
+    'body', g.lines,
+    'safe_preview', 'A termination left shifts open.',
+    'action_url', '/app/schedule?date=' || g.first_day::text,
+    'group_key', 'employee_terminations:' || tid::text),
+   now());
+ end loop;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."termination_notify_shifts_unassigned"("actor" "uuid", "w" "uuid", "tid" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."time_off_alone_deciders"("w" "uuid", "person" "uuid") RETURNS "uuid"[]
@@ -25907,15 +25968,8 @@ begin
     and action.shift_id = shift.id
     and action.workspace_id = shift.workspace_id;
 
-  insert into public.employee_offboarding_followups (
-    workspace_id, termination_id, shift_id, location_id, kind, context
-  )
-  select action.workspace_id, action.termination_id, action.shift_id,
-    action.location_id, kind.value,
-    jsonb_build_object('shift_start_at', action.shift_start_at, 'employee_id', target_employee_id)
-  from public.employee_offboarding_shift_actions action
-  cross join (values ('coverage_alert'), ('compliance_review')) as kind(value)
-  where action.termination_id = v_termination_id;
+  -- The managers of each location where a shift opened hear which (KK-174).
+  perform app_private.termination_notify_shifts_unassigned(actor_user_id, target_workspace_id, v_termination_id);
 
   update public.employee_profiles
   set archived_at = resolved_effective_at, archived_by = actor_user_id,
@@ -28467,25 +28521,6 @@ ALTER TABLE "public"."employee_name_settings" OWNER TO "postgres";
 COMMENT ON TABLE "public"."employee_name_settings" IS 'How a workspace answers a preferred name. Not the onboarding approval setting, which lives in employee_onboarding_settings.';
 
 
-
-CREATE TABLE IF NOT EXISTS "public"."employee_offboarding_followups" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "termination_id" "uuid" NOT NULL,
-    "shift_id" "uuid" NOT NULL,
-    "location_id" "uuid" NOT NULL,
-    "kind" "text" NOT NULL,
-    "status" "text" DEFAULT 'review_required'::"text" NOT NULL,
-    "context" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "employee_offboarding_followups_kind_check" CHECK (("kind" = ANY (ARRAY['coverage_alert'::"text", 'compliance_review'::"text"]))),
-    CONSTRAINT "employee_offboarding_followups_status_check" CHECK (("status" = 'review_required'::"text"))
-);
-
-
-ALTER TABLE "public"."employee_offboarding_followups" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."employee_offboarding_shift_actions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -30386,16 +30421,6 @@ ALTER TABLE ONLY "public"."employee_location_assignments"
 
 ALTER TABLE ONLY "public"."employee_name_settings"
     ADD CONSTRAINT "employee_name_settings_pkey" PRIMARY KEY ("workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."employee_offboarding_followups"
-    ADD CONSTRAINT "employee_offboarding_followups_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."employee_offboarding_followups"
-    ADD CONSTRAINT "employee_offboarding_followups_termination_id_shift_id_kind_key" UNIQUE ("termination_id", "shift_id", "kind");
 
 
 
@@ -32448,21 +32473,6 @@ ALTER TABLE ONLY "public"."employee_name_settings"
 
 
 
-ALTER TABLE ONLY "public"."employee_offboarding_followups"
-    ADD CONSTRAINT "employee_offboarding_followups_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."employee_offboarding_followups"
-    ADD CONSTRAINT "employee_offboarding_followups_shift_id_workspace_id_fkey" FOREIGN KEY ("shift_id", "workspace_id") REFERENCES "public"."schedule_published_shifts"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."employee_offboarding_followups"
-    ADD CONSTRAINT "employee_offboarding_followups_termination_id_workspace_id_fkey" FOREIGN KEY ("termination_id", "workspace_id") REFERENCES "public"."employee_terminations"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
 ALTER TABLE ONLY "public"."employee_offboarding_shift_actions"
     ADD CONSTRAINT "employee_offboarding_shift_ac_previous_employee_id_workspa_fkey" FOREIGN KEY ("previous_employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE RESTRICT;
 
@@ -33834,9 +33844,6 @@ ALTER TABLE "public"."employee_location_assignments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."employee_name_settings" ENABLE ROW LEVEL SECURITY;
 
 
-ALTER TABLE "public"."employee_offboarding_followups" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."employee_offboarding_shift_actions" ENABLE ROW LEVEL SECURITY;
 
 
@@ -34955,6 +34962,10 @@ REVOKE ALL ON FUNCTION "app_private"."stored_primary_job"("target_employee_id" "
 
 
 REVOKE ALL ON FUNCTION "app_private"."sync_workspace_lifecycle_with_onboarding"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."termination_notify_shifts_unassigned"("actor" "uuid", "w" "uuid", "tid" "uuid") FROM PUBLIC;
 
 
 
@@ -37040,10 +37051,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_location_
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_name_settings" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_offboarding_followups" TO "service_role";
 
 
 

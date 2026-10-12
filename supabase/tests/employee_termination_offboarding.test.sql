@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(20);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -144,8 +144,6 @@ select is((select employee_id from public.schedule_published_shifts where id = '
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000003'), null, 'a shift that has not started yet becomes open');
 select is((select employee_id from public.schedule_published_shifts where id = '9a000000-0000-4000-8000-000000000004'), '7a000000-0000-4000-8000-000000000001'::uuid, 'a shift under way now stays assigned');
 select is((select count(*)::integer from public.employee_offboarding_shift_actions where workspace_id='2a000000-0000-4000-8000-000000000001'), 1, 'released shift has durable audit detail');
-select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'coverage_alert' and status = 'review_required'), 1, 'released shift creates a coverage alert');
-select is((select count(*)::integer from public.employee_offboarding_followups where kind = 'compliance_review' and status = 'review_required'), 1, 'released shift creates a compliance review candidate');
 select is((select count(*)::integer from public.employee_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination lifecycle event is recorded');
 select is((select count(*)::integer from public.audit_events where workspace_id = '2a000000-0000-4000-8000-000000000001' and action = 'employee.terminated'), 1, 'termination audit event is recorded');
 
@@ -161,7 +159,7 @@ select lives_ok(
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_terminations where workspace_id = '2a000000-0000-4000-8000-000000000001'), 1, 'idempotent replay does not duplicate the termination');
-select is((select count(*)::integer from public.employee_offboarding_followups where workspace_id='2a000000-0000-4000-8000-000000000001'), 2, 'idempotent replay does not duplicate follow-ups');
+-- The managers' notice for the released shift is termination_tells_location_managers (BL-768).
 
 set local role service_role;
 select throws_ok(
