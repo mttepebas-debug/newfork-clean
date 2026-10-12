@@ -452,6 +452,31 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await screen.findByRole("row", { name: /Alex Kim/ });
     expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
     expect(screen.getByLabelText("Current URL").textContent).not.toContain("case=");
+    // The button is gone, so focus lands on the list that took its place.
+    await waitFor(() => expect(document.activeElement?.classList.contains("requests-table-wrap")).toBe(true));
+  });
+  // A failed read is not a missing request: it says so and reads again.
+  it("offers to read a linked request again when reading it failed, without calling it unavailable", async () => {
+    const caseId = "97500000-0000-4000-8000-000000000001";
+    const empty = { employee_id: null, cases: [], opportunities: [], own_shifts: [] };
+    vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) => {
+      if (range?.caseId) throw new Error("Network down");
+      return empty;
+    });
+    renderPage(`/app/schedule/requests?case=${caseId}`);
+    await screen.findByRole("heading", { name: "Request could not load" });
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
+    expect(screen.queryByText("This request is no longer available.")).toBeNull();
+    vi.mocked(getExchanges).mockResolvedValue(empty);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await screen.findByRole("heading", { name: "Request unavailable" });
+  });
+  it("never says a request is unavailable to a time off reader who follows a shift change link", async () => {
+    activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };
+    renderPage("/app/schedule/requests?case=97500000-0000-4000-8000-000000000001");
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    expect(getExchanges).not.toHaveBeenCalled();
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
   });
   it("keeps a time off reader to time off: no request type tabs, no shift change list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };

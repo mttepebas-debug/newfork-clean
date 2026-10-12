@@ -139,6 +139,21 @@ function ScheduleRequestsPageContent() {
     }, { replace: true });
   }, [listedCase, setParams]);
   const openCase = listedCase && listedCase.kind !== "swap" ? listedCase : seenCase?.id === caseId ? seenCase : null;
+  // A link to a case the core does not hand back (its location closed, or no
+  // longer this manager's): Requests' own empty state says so where the table
+  // was (BL-1024; Mert, 2026-10-12). Out of scope reads empty, so a failed read
+  // is an outage, not a missing request: it offers to read again.
+  const caseUnread = Boolean(caseId && !openCase && !listedCase);
+  const caseMissing = caseUnread && caseRead.isSuccess;
+  const caseFailed = caseUnread && caseRead.isError;
+  // "Show all requests" goes away with the message: focus lands on the list.
+  const listWrap = useRef<HTMLDivElement>(null);
+  const [focusList, setFocusList] = useState(false);
+  useEffect(() => {
+    if (!focusList || caseMissing) return;
+    listWrap.current?.focus();
+    setFocusList(false);
+  }, [focusList, caseMissing]);
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
   const selected = timeOffById.get(selectedId) ?? null;
@@ -285,10 +300,6 @@ function ScheduleRequestsPageContent() {
   const failed = Boolean(data.failure);
   // One group to read needs no tabs: All would say the same thing.
   const tabs = requestTabsFor(allowedTypes);
-  // A link to a case the core does not hand back (its location closed, or no
-  // longer this manager's): Requests' own empty state says so where the table
-  // was (BL-1024; Mert, 2026-10-12).
-  const caseMissing = Boolean(caseId && !openCase && !listedCase && (caseRead.isSuccess || caseRead.isError));
 
   return (
     <section
@@ -373,14 +384,34 @@ function ScheduleRequestsPageContent() {
             </span>
             <h2>Request unavailable</h2>
             <p>This request is no longer available.</p>
-            <button type="button" className="nf-button secondary" onClick={closeCase}>
+            <button
+              type="button"
+              className="nf-button secondary"
+              onClick={() => {
+                setFocusList(true);
+                closeCase();
+              }}
+            >
               Show all requests
+            </button>
+          </div>
+        </div>
+      ) : caseFailed ? (
+        <div className="employee-table-wrap requests-table-wrap">
+          <div className="catalog-table-empty" role="alert">
+            <span className="catalog-table-empty-icon" aria-hidden>
+              <AlertTriangle size={22} />
+            </span>
+            <h2>Request could not load</h2>
+            <p>Check your connection and try again.</p>
+            <button type="button" className="nf-button secondary" onClick={() => void caseRead.refetch()}>
+              <RotateCcw size={16} aria-hidden /> Try again
             </button>
           </div>
         </div>
       ) : (
         <>
-          <div className="employee-table-wrap requests-table-wrap">
+          <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>
             {/* Three reads make one list: it is drawn once all of them answered. */}
             <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
             <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
