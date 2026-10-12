@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 467, last: 20261012041000_this_week_is_the_locations_week.sql
--- fingerprint: sha256:4abcaca0fccb241c35a7d17c4f17b520bdfa328c40963c495de5f12bb203924c
+-- fingerprint: sha256:4630c20b4b4abb6ea2ea97b73aea77db08f655d72b106bfd901a27a0f4b42532
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22701,8 +22701,8 @@ begin
   else
     -- S-01: the lock is per location. A place that has left the week keeps
     -- what it has: its published shifts and the shifts of the draft this edit
-    -- came from may ride along untouched; anything new, changed or removed
-    -- there is refused, by name, and the other places still save.
+    -- came from may ride along untouched; anything new, changed, moved away or
+    -- removed there is refused, by name, and the other places still save.
     select coalesce(jsonb_agg(finding.x order by finding.scheduled_date, finding.start_time, finding.id), '[]'::jsonb)
     into blocked_findings
     from (
@@ -22722,8 +22722,32 @@ begin
       left join public.schedule_draft_shifts kept
         on kept.draft_id = target_session.source_draft_id
        and kept.id = shift.id
+      -- Where a published copy stood: a shift moved out of a place that has
+      -- left the week changes that place too.
+      left join lateral (
+        select published.location_id
+        from public.schedule_published_shifts published
+        join public.schedule_location_publications publication
+          on publication.id = published.publication_id
+         and publication.status = 'current'
+         and publication.week_start = target_session.week_start
+        where published.workspace_id = target_workspace_id
+          and published.source_shift_id = shift.source_published_shift_id
+        limit 1
+      ) origin on true
+      -- The place that has left the week: where the shift came from, else
+      -- where it is now.
+      left join lateral (
+        select place.id
+        from (values (1, coalesce(kept.location_id, origin.location_id)), (2, shift.location_id)) place(n, id)
+        where place.id is not null
+          and target_session.week_start
+            < public.schedule_current_week_start_service(target_workspace_id, array[place.id])
+        order by place.n
+        limit 1
+      ) closed on true
       left join public.locations location
-        on location.id = shift.location_id
+        on location.id = closed.id
        and location.workspace_id = shift.workspace_id
       left join public.employee_profiles employee
         on employee.id = shift.employee_id
@@ -22733,8 +22757,7 @@ begin
         and (shift.pending_op_type is not null
           or (shift.source_published_shift_id is null and (kept.id is null or kept.revision <> shift.revision)))
         and shift.location_id = any(reach)
-        and target_session.week_start
-          < public.schedule_current_week_start_service(target_workspace_id, array[shift.location_id])
+        and closed.id is not null
       union all
       -- A shift of the source draft taken out of the edit at such a place.
       select kept.id, kept.scheduled_date, kept.start_time, jsonb_build_object(

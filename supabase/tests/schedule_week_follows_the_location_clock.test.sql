@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(44);
 
 -- BL-238: a Schedule week is "this week" or "past" by the clock of the places
 -- it is for, never by the server's UTC date. Sunday 20:00 in Los Angeles is
@@ -171,6 +171,12 @@ where id = pg_temp.at_b(tests.id('tz:session:pub2'));
 select pg_temp.b_zone('<+167>-167');
 select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:pub2'))), '[["Besiktas", "delete"]]'::jsonb,
   'and so is removing it');
+select pg_temp.b_zone('America/Los_Angeles');
+update public.schedule_edit_session_shifts set location_id = tests.id('tz:K'), pending_op_type = 'update', revision = revision + 1
+where id = pg_temp.at_b(tests.id('tz:session:pub2'));
+select pg_temp.b_zone('<+167>-167');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:pub2'))), '[["Besiktas", "update"]]'::jsonb,
+  'and so is moving it to Kadikoy, whose week is still open');
 update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:pub2');
 
 -- An edit of the saved draft: its Besiktas shift rides along untouched;
@@ -187,7 +193,14 @@ select pg_temp.b_zone('<+167>-167');
 select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:draft2'))), '[["Besiktas", "update"]]'::jsonb,
   'changing the draft''s Besiktas shift is refused');
 select pg_temp.b_zone('America/Los_Angeles');
-delete from public.schedule_edit_session_shifts where id = pg_temp.at_b(tests.id('tz:session:draft2'));
+update public.schedule_edit_session_shifts set start_time = '22:30', location_id = tests.id('tz:K'), revision = revision + 1
+where id = pg_temp.at_b(tests.id('tz:session:draft2'));
+select pg_temp.b_zone('<+167>-167');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:draft2'))), '[["Besiktas", "update"]]'::jsonb,
+  'and so is moving it to Kadikoy');
+select pg_temp.b_zone('America/Los_Angeles');
+delete from public.schedule_edit_session_shifts where session_id = tests.id('tz:session:draft2') and id = (
+  select d.id from public.schedule_draft_shifts d where d.draft_id = tests.id('tz:draft:saved') and d.location_id = tests.id('tz:B'));
 select pg_temp.b_zone('<+167>-167');
 select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:draft2'))), '[["Besiktas", "delete"]]'::jsonb,
   'and so is taking it out of the draft');
