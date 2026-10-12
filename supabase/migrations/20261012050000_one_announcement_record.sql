@@ -196,8 +196,8 @@ alter table public.announcements
   add constraint announcements_event_time_check check ((event_from is null) = (event_until is null)),
   add constraint announcements_recurrence_check check (recurrence in ('none', 'date', 'nth', 'last')),
   add constraint announcements_repeats_from_key unique (repeats_from),
-  add constraint announcements_repeats_from_fkey foreign key (repeats_from)
-    references public.announcements (id) on delete set null;
+  add constraint announcements_repeats_from_fkey foreign key (repeats_from, workspace_id)
+    references public.announcements (id, workspace_id) on delete set null (repeats_from);
 
 -- A checked location's day: Open (usual hours), Closed (the whole business
 -- day) or Short hours (Opens to Closes, Closes at most 6:00 AM the next day).
