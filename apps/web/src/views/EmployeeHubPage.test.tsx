@@ -290,7 +290,13 @@ describe("EmployeeHubPage", () => {
     vi.mocked(getAnnouncements).mockResolvedValue({
       workspace_id: workspaceId,
       can_manage: false,
+      can_write_dates: false,
+      can_read_dates: false,
+      time_format: "12h",
       locations: [],
+      people: [],
+      departments: [],
+      jobs: [],
       announcements: [],
     });
     vi.mocked(getEmployeePersonalTasks).mockResolvedValue([]);

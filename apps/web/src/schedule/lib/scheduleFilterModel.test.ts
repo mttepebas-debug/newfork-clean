@@ -68,49 +68,8 @@ const model = {
       shift_type_id: "type-2",
     },
   ],
-  closures: [
-    {
-      id: "closure-1",
-      closed_date: "2026-08-17",
-      title: "Maintenance",
-      is_all_day: true,
-    },
-    {
-      id: "closure-2",
-      closed_date: "2026-08-17",
-      title: "Private event",
-      is_all_day: true,
-    },
-    {
-      id: "closure-3",
-      closed_date: "2026-08-20",
-      title: "Christmas Eve",
-      is_all_day: false,
-      kind: "short",
-      window_start: "10:00",
-      window_end: "15:00",
-    },
-  ],
-  important_dates: [
-    {
-      id: "important-1",
-      location_id: null,
-      title: "Anniversary",
-      type: "event",
-      starts_on: "2026-08-18",
-      ends_on: "2026-08-19",
-      recurrence: "none",
-    },
-    {
-      id: "important-2",
-      location_id: null,
-      title: "Holiday",
-      type: "holiday",
-      starts_on: "2025-07-04",
-      ends_on: "2025-07-04",
-      recurrence: "annual",
-    },
-  ],
+  closures: [],
+  important_dates: [],
 } as unknown as ScheduleReadModel;
 
 describe("scheduleFilterModel", () => {
@@ -214,40 +173,47 @@ describe("scheduleFilterModel", () => {
     expect(setQueryIds).toHaveBeenCalledWith("locations", []);
   });
 
-  // A day with short hours is not a closed day; its important date marks it (EKRAN-08).
-  it("creates merged closure markers for the mini calendar", () => {
-    expect(createScheduleCalendarMarkers(model.closures)).toEqual([
-      {
-        date: "2026-08-17",
-        kind: "closed",
-        title: "Maintenance, Private event",
-      },
-    ]);
-  });
-
-  it("adds important date ranges and annual recurrence metadata to mini-calendar markers", () => {
+  // Add to Calendar (EKRAN-08): published or over, with a day; red where it
+  // closes a location this Schedule shows.
+  it("marks the days of posts with Add to Calendar on the mini calendar", () => {
+    const place = (location_id: string, name: string, day: "open" | "closed" | "short") => ({
+      location_id,
+      name,
+      short_name: name,
+      timezone: "America/Los_Angeles",
+      archived: false,
+      day,
+      opens: null,
+      closes: null,
+    });
+    const post = {
+      title: "Restaurant Week",
+      on_calendar: true,
+      starts_on: "2026-08-18",
+      ends_on: "2026-08-19",
+      display_status: "published" as const,
+      locations: [place("loc-1", "Main Dining", "open")],
+    };
     expect(
-      createScheduleCalendarMarkers(model.closures, model.important_dates),
+      createScheduleCalendarMarkers(
+        [
+          post,
+          { ...post, title: "Labor Day", starts_on: "2026-09-07", ends_on: null, display_status: "past",
+            locations: [place("loc-1", "Main Dining", "closed"), place("loc-2", "Patio", "closed")] },
+          // Not marked: no Add to Calendar, no day, not out yet.
+          { ...post, title: "Quiet", on_calendar: false },
+          { ...post, title: "Someday", starts_on: null },
+          { ...post, title: "Scheduled", display_status: "scheduled" },
+          // Closed only where this Schedule does not look: green.
+          { ...post, title: "Patio party", starts_on: "2026-08-21", ends_on: null,
+            locations: [place("loc-3", "Bar", "closed")] },
+        ],
+        ["loc-1", "loc-2"],
+      ),
     ).toEqual([
-      {
-        date: "2026-08-17",
-        kind: "closed",
-        title: "Maintenance, Private event",
-      },
-      {
-        date: "2026-08-18",
-        endDate: "2026-08-19",
-        kind: "important",
-        title: "Event: Anniversary",
-        recurrence: "none",
-      },
-      {
-        date: "2025-07-04",
-        endDate: "2025-07-04",
-        kind: "important",
-        title: "Holiday: Holiday",
-        recurrence: "annual",
-      },
+      { date: "2026-08-18", endDate: "2026-08-19", kind: "important", title: "Restaurant Week" },
+      { date: "2026-09-07", endDate: null, kind: "closed", title: "Labor Day (Main Dining, Patio closed)" },
+      { date: "2026-08-21", endDate: null, kind: "important", title: "Patio party" },
     ]);
   });
 

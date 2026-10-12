@@ -8,20 +8,17 @@ describe("scheduleClosures", () => {
     expect(scheduleClosureCoversDate({ closed_date: "2026-08-17" }, "2026-08-18")).toBe(false);
   });
 
-  it("names a closed day, a closed span and short hours (EKRAN-08)", () => {
-    expect(scheduleClosureLabel({ kind: "closed", window_start: null, window_end: null })).toEqual({
+  it("names a Closed day and Short hours (EKRAN-08)", () => {
+    expect(scheduleClosureLabel({ kind: "closed", opens: null, closes: null })).toEqual({
       text: "Closed",
       hours: null,
     });
-    expect(scheduleClosureLabel({ kind: "closed", window_start: "13:00", window_end: "17:00" }).text).toBe(
-      "Closed 1p–5p",
-    );
-    expect(scheduleClosureLabel({ kind: "short", window_start: "10:00", window_end: "15:30" })).toEqual({
+    expect(scheduleClosureLabel({ kind: "short", opens: "10:00", closes: "15:30" })).toEqual({
       text: "Short hours 10a–3:30p",
       hours: "10a–3:30p",
     });
-    expect(scheduleClosureLabel({ kind: "short", window_start: "17:00", window_end: "24:00" }, "24h").text).toBe(
-      "Short hours 17:00–00:00",
+    expect(scheduleClosureLabel({ kind: "short", opens: "17:00", closes: "02:00" }, "24h").text).toBe(
+      "Short hours 17:00–02:00",
     );
   });
 });

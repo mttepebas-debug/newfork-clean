@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { listDocumentTypes } from "../settings/documents-data";
 import {
   listDepartments,
-  listImportantDates,
   listJobs,
   listLocations,
   listShiftLabels,
@@ -25,7 +24,6 @@ const reads: Array<[string, () => Promise<unknown>, string, unknown]> = [
   ["Jobs (both, one request)", () => loadDepartmentsAndJobs(workspace), "jobs", { departments: [], jobs: [] }],
   ["Shift types", () => listShiftTypes(workspace), "shift-types", []],
   ["Shift labels", () => listShiftLabels(workspace), "shift-labels", []],
-  ["Important dates", () => listImportantDates(workspace), "important-dates", { dates: [], locations: [] }],
   ["Roles", () => loadRoleWorkspace(workspace), "roles", { permissions: [], roles: [] }],
   ["Documents", () => listDocumentTypes(workspace), "document-types", []],
   ["Acknowledgements", () => listSignatureSettings(workspace), "acknowledgements", { policies: [], templates: [], versions: [] }],

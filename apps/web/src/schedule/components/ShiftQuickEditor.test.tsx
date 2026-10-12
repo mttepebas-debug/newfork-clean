@@ -1159,8 +1159,8 @@ describe("ShiftQuickEditor", () => {
           closed_date: model.week_start,
           is_all_day: true,
           kind: "closed",
-          window_start: null,
-          window_end: null,
+          opens: null,
+          closes: null,
         },
       ],
     };

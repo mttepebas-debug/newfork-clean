@@ -95,6 +95,7 @@ export function ScheduleGrid({
   organizationLogoUrl,
   organizationLogoPlacement,
   onManageLogo,
+  onOpenPost,
 }: {
   readonly model: ScheduleReadModel;
   /** BL-055: the viewer's own 12h/24h choice; the workspace's when they have none. */
@@ -177,6 +178,8 @@ export function ScheduleGrid({
   readonly organizationLogoUrl: string | null;
   readonly organizationLogoPlacement: ScheduleLogoPlacement | null;
   readonly onManageLogo?: () => void;
+  /** A day header's post chip opens the post (EKRAN-08). */
+  readonly onOpenPost?: (announcementId: string) => void;
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const showAvailabilityMarks = showAvailability && Boolean(session);
@@ -462,6 +465,7 @@ export function ScheduleGrid({
         publishWarnings={publishWarnings}
         onDayHeaderClick={onDayHeaderClick}
         onManageLogo={onManageLogo}
+        onOpenPost={onOpenPost}
         onToggleLocationFilter={toggleLocationHeaderFilter}
       />
       <ScheduleGridBody

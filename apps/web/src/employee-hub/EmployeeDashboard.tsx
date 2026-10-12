@@ -423,7 +423,7 @@ export function EmployeeDashboard({
           <RecentChanges workspaceId={model.workspace_id} />
         )}
         {context?.permissions.includes("announcements.read") && (
-          <Announcements workspaceId={model.workspace_id} now={now} />
+          <Announcements workspaceId={model.workspace_id} />
         )}
         <section className="eh-card eh-team">
           <CardHeading icon={<Users size={18} />} title="Your team" />

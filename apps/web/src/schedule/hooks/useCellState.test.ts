@@ -127,8 +127,21 @@ describe("buildScheduleCellState", () => {
           title: "Renovation",
           is_all_day: true,
           kind: "closed",
-          window_start: null,
-          window_end: null,
+          opens: null,
+          closes: null,
+          status: "published",
+        },
+        {
+          id: "99999999-9999-4999-8999-999999999993",
+          location_id: patioLocationId,
+          closed_date: "2026-08-18",
+          title: "Inventory",
+          is_all_day: true,
+          kind: "closed",
+          opens: null,
+          closes: null,
+          // Scheduled: the cell stays open until the post goes out (EKRAN-08).
+          status: "scheduled",
         },
       ],
     } satisfies ScheduleReadModel;
@@ -143,8 +156,9 @@ describe("buildScheduleCellState", () => {
         ?.closedTitle,
     ).toBe("Renovation");
     expect(
-      state.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId)),
-    ).toBeUndefined();
+      state.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))
+        ?.isClosedAllDay ?? false,
+    ).toBe(false);
   });
 
   it("leaves the cell open on short hours; the day header and the editor say them (EKRAN-08)", () => {
@@ -158,8 +172,9 @@ describe("buildScheduleCellState", () => {
           title: "Christmas Eve",
           is_all_day: false,
           kind: "short",
-          window_start: "10:00",
-          window_end: "15:00",
+          opens: "10:00",
+          closes: "15:00",
+          status: "published",
         },
       ],
     } satisfies ScheduleReadModel;

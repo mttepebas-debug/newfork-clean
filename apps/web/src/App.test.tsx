@@ -3014,8 +3014,8 @@ describe("App", () => {
           title: "Inventory day",
           is_all_day: false,
           kind: "short",
-          window_start: "10:00",
-          window_end: "15:00",
+          opens: "10:00",
+          closes: "15:00",
         },
       ],
     } satisfies ScheduleReadModel;

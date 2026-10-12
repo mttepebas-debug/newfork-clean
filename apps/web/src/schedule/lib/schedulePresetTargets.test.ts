@@ -71,8 +71,8 @@ describe("schedulePresetTargets", () => {
           closed_date: "2026-08-17",
           is_all_day: true,
           kind: "closed",
-          window_start: null,
-          window_end: null,
+          opens: null,
+          closes: null,
         },
       ],
     } as unknown as ScheduleReadModel;
@@ -83,7 +83,7 @@ describe("schedulePresetTargets", () => {
     });
   });
 
-  it("warns before preset creation when the preset's hours fall in a closed span (EKRAN-08)", () => {
+  it("warns before preset creation when the preset's hours run past short hours (EKRAN-08)", () => {
     const closedModel = {
       ...model,
       closures: [
@@ -92,16 +92,16 @@ describe("schedulePresetTargets", () => {
           closed_date: "2026-08-17",
           title: "Inventory",
           is_all_day: false,
-          kind: "closed",
-          window_start: "15:00",
-          window_end: "24:00",
+          kind: "short",
+          opens: "09:00",
+          closes: "15:00",
         },
       ],
     } as unknown as ScheduleReadModel;
 
     expect(validatePresetCreateTarget(closedModel, target, true)).toEqual({
       allowed: true,
-      warning: "Location is closed 3p–12a: Inventory. Requested: Dinner / Server at Main Dining.",
+      warning: "Location has short hours for Inventory: open 9a–3p only. Requested: Dinner / Server at Main Dining.",
     });
     expect(
       validatePresetCreateTarget(

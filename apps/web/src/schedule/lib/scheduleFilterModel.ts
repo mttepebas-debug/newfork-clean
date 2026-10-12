@@ -1,3 +1,4 @@
+import type { AnnouncementRecord } from "@newfork/shared";
 import type {
   ScheduleLocation,
   SchedulePublicationStatus,
@@ -8,60 +9,37 @@ import type {
 import type { CalendarMarker } from "../components/MiniCalendar";
 import type { ScheduleFilterChipView } from "../components/ScheduleFilterCommandStrip";
 import { matchesScheduleEmployeeFilters } from "./employeeEligibility";
-import { importantDateTypeLabels } from "../../lib/importantDateTypes";
 
+/** The posts the Schedule calendar marks: published or over, with Add to Calendar and a day. */
+export type ScheduleCalendarPost = Pick<
+  AnnouncementRecord,
+  "title" | "on_calendar" | "starts_on" | "ends_on" | "display_status" | "locations"
+>;
+
+/**
+ * The Schedule calendar's dots (EKRAN-08): the days of a post with Add to
+ * Calendar, green; red where it closes a location this Schedule shows. The
+ * calendar joins the posts that share a day.
+ */
 export function createScheduleCalendarMarkers(
-  closures: ScheduleReadModel["closures"],
-  importantDates: ScheduleReadModel["important_dates"] = [],
+  posts: readonly ScheduleCalendarPost[],
+  locationIds: readonly string[],
 ): CalendarMarker[] {
-  const markersByDate = new Map<string, CalendarMarker>();
-
-  const addMarker = (marker: CalendarMarker): void => {
-    const existing = markersByDate.get(marker.date);
-    if (existing) {
-      markersByDate.set(marker.date, {
-        ...existing,
-        endDate: existing.endDate ?? marker.endDate,
-        kind:
-          existing.kind === "closed" || marker.kind === "closed"
-            ? "closed"
-            : "important",
-        title:
-          existing.title === marker.title
-            ? existing.title
-            : `${existing.title}, ${marker.title}`,
-        color: existing.color ?? marker.color,
-        recurrence:
-          existing.recurrence === "annual" || marker.recurrence === "annual"
-            ? "annual"
-            : (existing.recurrence ?? marker.recurrence),
-      });
-      return;
-    }
-    markersByDate.set(marker.date, marker);
-  };
-
-  // A closed span or short hours is not a closed day; its date marker says it (EKRAN-08).
-  for (const closure of closures) {
-    if (!closure.is_all_day) continue;
-    addMarker({
-      date: closure.closed_date,
-      kind: "closed",
-      title: closure.title,
-    });
-  }
-
-  for (const importantDate of importantDates) {
-    addMarker({
-      date: importantDate.starts_on,
-      endDate: importantDate.ends_on,
-      kind: "important",
-      title: `${importantDateTypeLabels[importantDate.type]}: ${importantDate.title}`,
-      recurrence: importantDate.recurrence,
-    });
-  }
-
-  return [...markersByDate.values()];
+  return posts.flatMap((post) => {
+    if (!post.on_calendar || !post.starts_on) return [];
+    if (post.display_status !== "published" && post.display_status !== "past") return [];
+    const closedAt = post.locations
+      .filter((place) => place.day === "closed" && locationIds.includes(place.location_id))
+      .map((place) => place.name);
+    return [
+      {
+        date: post.starts_on,
+        endDate: post.ends_on,
+        kind: closedAt.length ? "closed" : "important",
+        title: closedAt.length ? `${post.title} (${closedAt.join(", ")} closed)` : post.title,
+      } satisfies CalendarMarker,
+    ];
+  });
 }
 
 export function createScheduleFilterChips({

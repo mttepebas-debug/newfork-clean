@@ -247,9 +247,6 @@ export function formatScheduleConflictMessage(
     if (reason.scope === "short_hours" && hours) {
       return `Location has short hours${closureReason ? ` for ${closureReason}` : ""}: open ${hours} only.${targetEvidence(reason)}`.trim();
     }
-    if (reason.scope === "hours" && hours) {
-      return `Location is closed ${hours}${closureReason ? `: ${closureReason}` : ""}.${targetEvidence(reason)}`.trim();
-    }
     const base = closureReason
       ? `Location is closed: ${closureReason}.`
       : "Location is closed all day.";
@@ -317,7 +314,8 @@ export function evaluateScheduleShiftConflicts(
   if (!model.locations.some(location => location.id === input.location_id) || !model.jobs.some(job => job.id === input.job_id) ||
     (input.shift_type_id && !model.shift_types.some(type => type.id === input.shift_type_id))) return ["The location, job or shift type is no longer available."];
 
-  // EKRAN-08: a closed day, a closed span or short hours the shift runs past.
+  // EKRAN-08: a Closed day, or Short hours the shift runs past; a scheduled
+  // post's day asks too, before it goes out.
   const closure = model.closures.find(
     (candidate) =>
       candidate.location_id === input.location_id &&
@@ -328,7 +326,7 @@ export function evaluateScheduleShiftConflicts(
     reasons.push({
       ...context,
       type: "closed_day",
-      scope: closure.is_all_day ? "all_day" : closure.kind === "short" ? "short_hours" : "hours",
+      scope: closure.kind === "short" ? "short_hours" : "all_day",
       reason: closure.title,
       hours: scheduleClosureLabel(closure).hours,
     });

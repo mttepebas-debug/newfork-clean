@@ -1,7 +1,11 @@
 import { todayIn } from "../lib/today";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
+
+import { can } from "../auth/can";
+import { useAuth } from "../auth/AuthContext";
+import { useScheduleCalendarPosts } from "../schedule/hooks/useScheduleCalendarPosts";
 import { RefreshCw, User } from "lucide-react";
 import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
 import { ScheduleTopBar } from "../schedule/components/ScheduleTopBar";
@@ -36,6 +40,12 @@ export function EmployeeScheduleBoard({
   readonly organizationName: string;
 }) {
   const [params, setParams] = useSearchParams();
+  const { context } = useAuth();
+  const go = useNavigate();
+  const calendarPosts = useScheduleCalendarPosts(
+    workspaceId,
+    can(context, "announcement.read"),
+  );
   const [layout, setLayout] = useState<"separate" | "unified">("separate");
   const [showShiftType, setShowShiftType] = useState(true);
   const [showShiftLabels, setShowShiftLabels] = useState(true);
@@ -216,8 +226,8 @@ export function EmployeeScheduleBoard({
         selectedDate={selectedDate}
         weekStartDay={model.week_start_day}
         calendarMarkers={createScheduleCalendarMarkers(
-          model.closures,
-          model.important_dates,
+          calendarPosts,
+          model.locations.map((item) => item.id),
         )}
         layout={layout}
         onLayoutChange={setLayout}
@@ -314,6 +324,9 @@ export function EmployeeScheduleBoard({
         useDefaultTimesForScheduling={false}
         employeeSortMode={employeeSortMode}
         session={null}
+        onOpenPost={(announcementId) =>
+          go(`/app/announcements/${announcementId}`)
+        }
         dragDisabled
         focusedShiftId={null}
         selectedIds={[]}

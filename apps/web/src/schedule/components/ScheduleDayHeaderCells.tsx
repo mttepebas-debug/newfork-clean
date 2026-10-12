@@ -17,6 +17,7 @@ export function ScheduleDayHeaderCells({
   timeFormat = "12h",
   todayDate,
   onDayHeaderClick,
+  onOpenPost,
 }: {
   readonly closures: ScheduleReadModel["closures"];
   readonly days: readonly string[];
@@ -29,6 +30,7 @@ export function ScheduleDayHeaderCells({
     date: string,
     locationIds: readonly string[],
   ) => void;
+  readonly onOpenPost?: (announcementId: string) => void;
 }) {
   return (
     <>
@@ -41,18 +43,17 @@ export function ScheduleDayHeaderCells({
               location.sourceIds.includes(item.location_id) &&
               scheduleClosureCoversDate(item, day),
           );
-          const allDayClosures = dayClosures.filter((item) => item.is_all_day);
+          // A Closed day that is out shades the column when every location
+          // in it is closed; a scheduled one is only its dashed chip (EKRAN-08).
+          const allDayClosures = dayClosures.filter(
+            (item) => item.kind === "closed" && item.status !== "scheduled",
+          );
           const allSourcesClosed =
             location.sourceIds.length > 0 &&
             location.sourceIds.every((sourceId) =>
               allDayClosures.some((item) => item.location_id === sourceId),
             );
-          // Closed spans and short hours (EKRAN-08); a whole closed day shows
-          // only when every location in the group is closed.
-          const partialClosures = allSourcesClosed
-            ? []
-            : dayClosures.filter((item) => !item.is_all_day);
-          const importantDateItems = dedupeImportantDates(
+          const posts = dedupePosts(
             importantDates.filter(
               (item) =>
                 scheduleImportantDateCoversDate(item, day) &&
@@ -79,9 +80,10 @@ export function ScheduleDayHeaderCells({
                 onDayHeaderClick(day, location.sourceIds);
               }}
               closure={allSourcesClosed ? allDayClosures[0] : null}
-              partialClosures={partialClosures}
+              posts={posts}
               timeFormat={timeFormat}
-              importantDates={importantDateItems}
+              timezone={location.timezone || undefined}
+              onOpenPost={onOpenPost}
             />
           );
         });
@@ -90,16 +92,16 @@ export function ScheduleDayHeaderCells({
   );
 }
 
-function dedupeImportantDates(
+// One chip per post: a post at two locations of a group shows once, Closed
+// before Short hours before an open day.
+function dedupePosts(
   items: readonly ScheduleReadModel["important_dates"][number][],
 ): ScheduleReadModel["important_dates"] {
-  const seen = new Set<string>();
-  const result: ScheduleReadModel["important_dates"] = [];
+  const weight = { closed: 0, short: 1, open: 2 } as const;
+  const byId = new Map<string, ScheduleReadModel["important_dates"][number]>();
   for (const item of items) {
-    const key = `${item.type}|${item.title}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(item);
+    const seen = byId.get(item.id);
+    if (!seen || weight[item.day] < weight[seen.day]) byId.set(item.id, item);
   }
-  return result;
+  return [...byId.values()];
 }

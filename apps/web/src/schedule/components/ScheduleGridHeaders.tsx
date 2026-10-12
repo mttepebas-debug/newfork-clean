@@ -22,6 +22,7 @@ export function ScheduleGridHeaders({
   publishWarnings,
   onDayHeaderClick,
   onManageLogo,
+  onOpenPost,
   onToggleLocationFilter,
 }: {
   readonly closures: ScheduleReadModel["closures"];
@@ -42,6 +43,7 @@ export function ScheduleGridHeaders({
     locationIds: readonly string[],
   ) => void;
   readonly onManageLogo?: () => void;
+  readonly onOpenPost?: (announcementId: string) => void;
   readonly onToggleLocationFilter: (locationIds: readonly string[]) => void;
 }) {
   return (
@@ -110,6 +112,7 @@ export function ScheduleGridHeaders({
         selectedDate={selectedDate}
         timeFormat={timeFormat}
         onDayHeaderClick={onDayHeaderClick}
+        onOpenPost={onOpenPost}
       />
       {showTotalHours ? (
         <div

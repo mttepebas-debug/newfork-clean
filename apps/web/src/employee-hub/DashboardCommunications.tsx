@@ -73,13 +73,7 @@ export function RecentChanges({ workspaceId }: { workspaceId: string }) {
     </section>
   );
 }
-export function Announcements({
-  workspaceId,
-  now,
-}: {
-  workspaceId: string;
-  now: Date;
-}) {
+export function Announcements({ workspaceId }: { workspaceId: string }) {
   const { context } = useAuth();
   const query = useQuery({
     queryKey: ["announcements", workspaceId, context?.userId, "hub-preview"],
@@ -89,9 +83,8 @@ export function Announcements({
   const items =
     query.data?.announcements
       .filter(
-        (item) =>
-          item.status === "published" &&
-          (!item.expires_at || Date.parse(item.expires_at) > now.getTime()),
+        // Past posts move to the Past tab (EKRAN-08).
+        (item) => item.display_status === "published",
       )
       .slice(0, 2) ?? [];
   return (

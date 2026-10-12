@@ -252,7 +252,7 @@ describe("schedule conflict port", () => {
         },
         closures: [{
           id: "66000000-0000-4000-8000-000000000002", location_id: locationId, closed_date: "2026-08-19",
-          title: "Inventory", is_all_day: true, kind: "closed", window_start: null, window_end: null,
+          title: "Inventory", is_all_day: true, kind: "closed", opens: null, closes: null, status: "published",
         }],
       } as ScheduleReadModel,
       [],
@@ -274,8 +274,9 @@ describe("schedule conflict port", () => {
               title: "Renovation",
               is_all_day: true,
               kind: "closed",
-              window_start: null,
-              window_end: null,
+              opens: null,
+              closes: null,
+              status: "published",
             },
           ],
         },
@@ -288,16 +289,17 @@ describe("schedule conflict port", () => {
     );
   });
 
-  it("asks for shifts that run past a location's short hours or into a closed span (EKRAN-08)", () => {
+  it("asks for shifts that run past a location's short hours, past midnight too (EKRAN-08)", () => {
     const day = {
       id: "66000000-0000-4000-8000-000000000002",
       location_id: locationId,
       closed_date: "2026-08-19",
       is_all_day: false,
+      kind: "short" as const,
     };
-    const short = { ...day, title: "Christmas Eve", kind: "short" as const, window_start: "10:00", window_end: "15:00" };
-    const span = { ...day, title: "Inventory", kind: "closed" as const, window_start: "13:00", window_end: "17:00" };
-    const check = (closure: typeof short | typeof span, start_time: string, end_time: string) =>
+    const short = { ...day, title: "Christmas Eve", opens: "10:00", closes: "15:00", status: "published" as const };
+    const late = { ...day, title: "Late night", opens: "17:00", closes: "02:00", status: "scheduled" as const };
+    const check = (closure: typeof short | typeof late, start_time: string, end_time: string) =>
       formatScheduleConflictMessages(
         evaluateScheduleShiftConflicts(
           { ...model, closures: [closure] },
@@ -310,13 +312,14 @@ describe("schedule conflict port", () => {
       "Location has short hours for Christmas Eve: open 10a–3p only. Requested: Server at Dining Room.",
     ]);
     expect(check(short, "10:00", "15:00")).toEqual([]);
-    expect(check(span, "16:00", "20:00")).toEqual([
-      "Location is closed 1p–5p: Inventory. Requested: Server at Dining Room.",
+    // A scheduled post's hours ask too: the shift would land on them.
+    expect(check(late, "18:00", "01:30")).toEqual([]);
+    expect(check(late, "16:00", "22:00")).toEqual([
+      "Location has short hours for Late night: open 5p–2a only. Requested: Server at Dining Room.",
     ]);
-    expect(check(span, "17:00", "22:00")).toEqual([]);
     expect(
       evaluateScheduleShiftConflicts(
-        { ...model, closures: [span] },
+        { ...model, closures: [short] },
         [],
         input({ employee_id: null, scheduled_date: "2026-08-20", start_time: "16:00", end_time: "20:00" }),
       ),

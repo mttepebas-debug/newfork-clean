@@ -26,12 +26,11 @@ export type LabStateId =
   | "blocked"
   | "active"
   | "closed"
-  | "partialClosed"
   | "unavailable"
   | "overlap"
   | "today"
   | "viewed"
-  | "important"
+  | "posts"
   | "disabled"
   | "published"
   | "unpublished"
@@ -795,22 +794,13 @@ export const labTargets: readonly LabTargetDefinition[] = [
     "Lock icon shown for a fully closed location day.",
   ),
   target(
-    "dayHeaderImportant",
+    "dayHeaderPost",
     "headers",
-    "Important-date icon",
-    ".schedule-day-header-important",
-    iconGroups,
-    baseState,
-    "Calendar icon shown for an important date.",
-  ),
-  target(
-    "dayHeaderPartialClosed",
-    "headers",
-    "Partial-closure count",
-    ".schedule-day-header-partial-closed",
+    "Post chip",
+    ".schedule-day-post",
     allBoxGroups,
     baseState,
-    "Count of shift types closed for only part of a location day.",
+    "A post with Show on the Schedule: Closed red, Short hours amber, scheduled dashed.",
   ),
   target(
     "dayHeader",
@@ -826,11 +816,10 @@ export const labTargets: readonly LabTargetDefinition[] = [
       "today",
       "viewed",
       "closed",
-      "partialClosed",
-      "important",
+      "posts",
       "clickable",
     ],
-    "Day/date header and its viewed, today, closed, partial-closure, and important states.",
+    "Day/date header and its viewed, today, closed, and post-chip states.",
   ),
   target(
     "employeeHeader",
@@ -1145,12 +1134,6 @@ export const labStates: readonly LabStateDefinition[] = [
     "Closed-day or closed-cell appearance.",
   ),
   state(
-    "partialClosed",
-    "Partially closed",
-    '[data-partial-closed="true"]',
-    "Day with one or more closed shift types.",
-  ),
-  state(
     "unavailable",
     "Unavailable",
     '[data-availability-kind="unavailable"]',
@@ -1170,10 +1153,10 @@ export const labStates: readonly LabStateDefinition[] = [
     "Selected date header state.",
   ),
   state(
-    "important",
-    "Important",
-    '[data-important="true"]',
-    "Important-date header state.",
+    "posts",
+    "Posts",
+    '[data-posts="true"]',
+    "Day header with posts shown on the Schedule.",
   ),
   state("disabled", "Disabled", ":disabled", "Disabled control state."),
   state(
