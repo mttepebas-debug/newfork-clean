@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
--- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
+-- migrations: 466, last: 20261012043500_employees_list_every_location.sql
+-- fingerprint: sha256:3a73888d2c722ec03c87a4e13589b61eaade675839ae8f87e102fc75cee45e82
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -13548,7 +13548,7 @@ $$;
 ALTER FUNCTION "public"."list_employee_document_lifecycle_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "self_only" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "primary_location_id" "uuid", "primary_location_name" "text", "location_count" bigint, "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "role_name" "text", "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
+CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "locations" "jsonb", "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "role_name" "text", "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -13573,9 +13573,14 @@ begin
       employee.first_name, employee.last_name, employee.preferred_name,
       concat_ws(' ', coalesce(nullif(employee.preferred_name, ''), employee.first_name), employee.last_name) as display_name,
       employee.invitation_email, employee.start_date,
-      primary_location.location_id as primary_location_id,
-      location.name as primary_location_name,
-      (select count(*) from public.employee_location_assignments a where a.employee_id = employee.id and a.ended_at is null) as location_count,
+      -- Every location they work at, the primary first, then A to Z (BL-436).
+      coalesce((
+        select jsonb_agg(jsonb_build_object('id', place.id, 'name', place.name, 'primary', assignment.is_primary)
+          order by assignment.is_primary desc, lower(place.name), place.id)
+        from public.employee_location_assignments assignment
+        join public.locations place on place.id = assignment.location_id
+        where assignment.employee_id = employee.id and assignment.ended_at is null
+      ), '[]'::jsonb) as locations,
       primary_job.job_id as primary_job_id, listed_job.name as primary_job_name,
       (select count(*) from public.employee_job_assignments a where a.employee_id = employee.id and a.ended_at is null) as job_count,
       role.name as role_name,
@@ -13589,8 +13594,6 @@ begin
       end as display_status,
       employee.archived_at, employee.revision
     from public.employee_profiles employee
-    left join public.employee_location_assignments primary_location on primary_location.employee_id = employee.id and primary_location.ended_at is null and primary_location.is_primary
-    left join public.locations location on location.id = primary_location.location_id
     left join public.employee_job_assignments primary_job on primary_job.employee_id = employee.id and primary_job.ended_at is null and primary_job.is_primary
     -- The job the list names: the stored primary; failing that the Owner job
     -- (the owner's, never stored as primary), then the first job in the
@@ -13628,7 +13631,7 @@ begin
         directory.preferred_name,
         directory.employee_code,
         directory.invitation_email,
-        directory.primary_location_name,
+        (select string_agg(place ->> 'name', ' ') from jsonb_array_elements(directory.locations) place),
         directory.primary_job_name
       ) ilike '%' || btrim(search_text) || '%'
     )

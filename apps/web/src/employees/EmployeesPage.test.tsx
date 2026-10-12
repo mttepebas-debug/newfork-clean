@@ -51,9 +51,7 @@ const employees = [
     display_name: "Alex Kim",
     invitation_email: "alex@example.test",
     start_date: "2027-01-05",
-    primary_location_id: "11000000-0000-4000-8000-000000000001",
-    primary_location_name: "Main Dining",
-    location_count: 1,
+    locations: [{ id: "11000000-0000-4000-8000-000000000001", name: "Main Dining", primary: true }],
     primary_job_id: "22000000-0000-4000-8000-000000000001",
     primary_job_name: "Server",
     job_count: 1,
@@ -72,9 +70,7 @@ const employees = [
     display_name: "Blair Patel",
     invitation_email: null,
     start_date: null,
-    primary_location_id: "11000000-0000-4000-8000-000000000002",
-    primary_location_name: "Patio",
-    location_count: 1,
+    locations: [{ id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: true }],
     primary_job_id: "22000000-0000-4000-8000-000000000002",
     primary_job_name: "Host",
     job_count: 1,
@@ -265,14 +261,76 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
   });
 
   it("keeps the chosen location in the list when the tab has nobody there (L11)", async () => {
-    renderPage(`/app/employees?location=${employees[0]!.primary_location_id}`);
+    renderPage(`/app/employees?location=${employees[0]!.locations[0]!.id}`);
     expect(await screen.findByText("Alex Kim")).toBeTruthy();
     vi.mocked(listEmployees).mockResolvedValue([employees[1]!]);
     fireEvent.click(screen.getByRole("button", { name: "Invited" }));
     await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "invited"));
     const select = screen.getByRole("combobox", { name: "Filter employees by location" }) as HTMLSelectElement;
-    await waitFor(() => expect(select.value).toBe(employees[0]!.primary_location_id));
+    await waitFor(() => expect(select.value).toBe(employees[0]!.locations[0]!.id));
     expect(within(select).getByRole("option", { name: "Main Dining" })).toBeTruthy();
+  });
+
+  // BL-436 / K6: the filter means "works here", not "works here first".
+  const mainDining = employees[0]!.locations[0]!;
+  const patio = employees[1]!.locations[0]!;
+  const casey = {
+    ...employees[0]!,
+    id: "15000000-0000-4000-8000-000000000003",
+    employee_code: "NF-003",
+    first_name: "Casey",
+    last_name: "Owner",
+    display_name: "Casey Owner",
+    // The owner works everywhere with no primary.
+    locations: [{ ...mainDining, primary: false }, { ...patio, primary: false }],
+  };
+  const drew = {
+    ...employees[0]!,
+    id: "15000000-0000-4000-8000-000000000004",
+    employee_code: "NF-004",
+    first_name: "Drew",
+    last_name: "Lee",
+    display_name: "Drew Lee",
+    // Works at Patio first and at Rooftop, where nobody else works.
+    locations: [patio, { id: "11000000-0000-4000-8000-000000000003", name: "Rooftop", primary: false }],
+  };
+  const remote = {
+    ...employees[0]!,
+    id: "15000000-0000-4000-8000-000000000005",
+    employee_code: "NF-005",
+    first_name: "Remy",
+    last_name: "Stone",
+    display_name: "Remy Stone",
+    locations: [],
+  };
+  const team = [...employees, casey, drew, remote];
+  const names = () => team.map((person) => person.display_name).filter((name) => screen.queryByText(name));
+
+  it("lists everybody who works at the chosen location, the owner and a second location included (BL-436)", async () => {
+    renderPage(`/app/employees?location=${patio.id}`, team);
+    expect(await screen.findByText("Blair Patel")).toBeTruthy();
+    expect(names()).toEqual(["Blair Patel", "Casey Owner", "Drew Lee"]);
+  });
+
+  it("offers a location somebody works at only as a second one (BL-436)", async () => {
+    renderPage("/app/employees", team);
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    const select = screen.getByRole("combobox", { name: "Filter employees by location" }) as HTMLSelectElement;
+    expect([...select.options].map((option) => option.text)).toEqual([
+      "All locations",
+      "Main Dining",
+      "Patio",
+      "Rooftop",
+      "No location",
+    ]);
+    fireEvent.change(select, { target: { value: "11000000-0000-4000-8000-000000000003" } });
+    await waitFor(() => expect(names()).toEqual(["Drew Lee"]));
+  });
+
+  it("lists who works nowhere under No location (K6)", async () => {
+    renderPage("/app/employees?location=none", team);
+    expect(await screen.findByText("Remy Stone")).toBeTruthy();
+    expect(names()).toEqual(["Remy Stone"]);
   });
 
   it("says No matching employees on an empty status tab, not No employees yet (L26)", async () => {

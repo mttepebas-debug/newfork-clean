@@ -60,8 +60,8 @@ select is(
    from public.list_employees_service(tests.user('d:owner'), tests.id('d'), false, '', 'all', 200, 0) e
    where e.id = tests.id('d:selin')),
   array['archived_at', 'display_name', 'display_status', 'employee_code', 'first_name', 'id',
-    'invitation_email', 'job_count', 'last_name', 'location_count', 'preferred_name',
-    'primary_job_id', 'primary_job_name', 'primary_location_id', 'primary_location_name',
+    'invitation_email', 'job_count', 'last_name', 'locations', 'preferred_name',
+    'primary_job_id', 'primary_job_name',
     'revision', 'role_name', 'start_date', 'workspace_id'],
   'a list row carries exactly these columns');
 

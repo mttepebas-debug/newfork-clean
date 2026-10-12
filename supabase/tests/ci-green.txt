@@ -184,3 +184,4 @@ supabase/tests/schedule_read_model_important_dates.test.sql
 supabase/tests/onboarding_phone_is_ones_own.test.sql
 supabase/tests/shift_changes_reach_managers_agreed.test.sql
 supabase/tests/document_and_availability_refusal_reasons.test.sql
+supabase/tests/employees_list_every_location.test.sql
