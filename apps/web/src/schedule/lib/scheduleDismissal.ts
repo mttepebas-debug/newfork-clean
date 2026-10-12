@@ -71,11 +71,8 @@ export function dismissNextScheduleSearchLayer({
       focusedShift && (newest === "shiftTypes" || newest === "jobs");
     if (focusStep) FOCUSED_SHIFT_KEYS.forEach((key) => next.delete(key));
     else next.delete(newest);
-    return {
-      search: next,
-      clearFocusedShift:
-        focusStep || (FOCUSED_SHIFT_KEYS as readonly string[]).includes(newest),
-    };
+    // A filter added on top of a focus goes alone; the focus stays.
+    return { search: next, clearFocusedShift: focusStep };
   }
   if (next.get("view") === "day") {
     next.set("view", "week");

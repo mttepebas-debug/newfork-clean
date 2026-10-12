@@ -115,6 +115,21 @@ describe("dismissNextScheduleSearchLayer", () => {
     expect(result?.clearFocusedShift).toBe(false);
   });
 
+  it("keeps a badge's focus when an employee filter added on top of it goes", () => {
+    const result = dismissNextScheduleSearchLayer({
+      search: new URLSearchParams("date=2026-09-10&shiftTypes=st-1&jobs=job-1&employees=emp-1"),
+      modelWeekStart: "2026-09-07",
+      currentWeekStart: "2026-09-07",
+      today: "2026-09-10",
+      focusedShift: true,
+    });
+
+    expect(result?.search.has("employees")).toBe(false);
+    expect(result?.search.get("shiftTypes")).toBe("st-1");
+    expect(result?.search.get("jobs")).toBe("job-1");
+    expect(result?.clearFocusedShift).toBe(false);
+  });
+
   it("ignores an off Hide Unscheduled value", () => {
     expect(
       newestScheduleFilterKey(new URLSearchParams("jobs=job-1&hideUnscheduled=false")),

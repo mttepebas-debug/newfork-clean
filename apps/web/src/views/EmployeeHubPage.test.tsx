@@ -447,6 +447,33 @@ describe("EmployeeHubPage", () => {
     );
   });
 
+  // Mert, 2026-10-12: Esc takes the newest filter off first. Changing the
+  // employee filter makes it newer than the location filter set before it.
+  it("takes the most recently changed board filter off first", async () => {
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage(
+      "/app/employee-hub/schedule?date=2026-08-24&employees=15000000-0000-4000-8000-000000000001,15000000-0000-4000-8000-000000000002&locations=11000000-0000-4000-8000-000000000001",
+    );
+    const rowNames = () =>
+      Array.from(
+        document.querySelectorAll(".schedule-employee-name-button"),
+      ).map((element) => element.textContent);
+
+    await waitFor(() => expect(rowNames()).toContain("Jordy Lee"));
+    fireEvent.click(
+      document.querySelector<HTMLElement>('[data-topbar-filter-trigger="employees"]')!,
+    );
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Jordy Lee" }));
+    await waitFor(() => expect(rowNames()).not.toContain("Alex Kim"));
+
+    // The first Escape closes the open filter menu, the second takes off the
+    // employee filter (the newest), not the location filter.
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() => expect(rowNames()).toContain("Alex Kim"));
+  });
+
   it("opens the picked calendar day even from week view", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
     renderPage("/app/employee-hub/schedule?date=2026-08-24");

@@ -9,6 +9,7 @@ import { addDays, formatPeriod } from "../schedule/lib/scheduleDateTime";
 import {
   dismissNextScheduleSearchLayer,
   newestScheduleFilterKey,
+  withScheduleSearchValue,
 } from "../schedule/lib/scheduleDismissal";
 import {
   isBlankScheduleDismissTarget,
@@ -96,13 +97,11 @@ export function EmployeeScheduleBoard({
 
   function navigate(values: Record<string, string | null>) {
     setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      // A changed filter becomes the newest one; Esc takes it off first.
-      Object.entries(values).forEach(([key, value]) => {
-        next.delete(key);
-        if (value) next.set(key, value);
-      });
-      return next;
+      // Each changed filter becomes the newest one, the one Esc takes off first.
+      return Object.entries(values).reduce(
+        (next, [key, value]) => withScheduleSearchValue(next, key, value),
+        new URLSearchParams(previous),
+      );
     });
   }
 
