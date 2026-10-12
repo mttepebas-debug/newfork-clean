@@ -188,3 +188,4 @@ supabase/tests/role_and_notification_refusal_reasons.test.sql
 supabase/tests/schedule_refusal_reasons.test.sql
 supabase/tests/announcement_refusal_reasons.test.sql
 supabase/tests/time_off_refusal_reasons.test.sql
+supabase/tests/employee_and_catalog_refusal_reasons.test.sql
