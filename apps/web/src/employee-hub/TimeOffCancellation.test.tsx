@@ -5,7 +5,7 @@ import type { EmployeeHubReadModel } from "@newfork/shared";
 import { TimeOffCancellation } from "./TimeOffCancellation";
 import { TimeOffPeriods } from "./TimeOffPeriods";
 import { requestTimeOffCancellation } from "../schedule/requests-data";
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { RequestError } from "../lib/request-error";
 vi.mock("../schedule/requests-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../schedule/requests-data")>()),
@@ -145,11 +145,11 @@ describe("approved leave cancellation", () => {
     fireEvent.click(screen.getByRole("button",{name:"Request leave cancellation"}));
     fireEvent.change(screen.getByLabelText("Cancellation note"),{target:{value:"Keep my cancellation draft"}});
     const navigate = vi.fn();
-    act(()=>requestAvailabilityNavigation(navigate));
+    act(()=>requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button",{name:"Stay here"}));
     expect(screen.getByLabelText("Cancellation note")).toHaveProperty("value","Keep my cancellation draft");
     expect(navigate).not.toHaveBeenCalled();
-    act(()=>requestAvailabilityNavigation(navigate));
+    act(()=>requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button",{name:"Discard and leave"}));
     expect(screen.queryByLabelText("Cancellation note")).toBeNull();
     expect(navigate).toHaveBeenCalledOnce(); expect(requestTimeOffCancellation).not.toHaveBeenCalled();

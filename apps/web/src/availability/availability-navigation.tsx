@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { registerEmployeeHistoryGuard } from "../employees/employee-history-guard";
+import { useLeaveInterception, type Leave } from "../shell/leave-guard";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 
 type DraftState = { dirty: boolean; busy: boolean; onDiscard?: () => void };
@@ -23,13 +23,6 @@ export const timeOffNavigationLabels: GuardLabels = {
   saving: "Saving time off", discard: "Discard time off changes?", saved: "Time off saved",
   unsaved: "Your unsent request and review details will be lost. Approved leave and published assignments stay in place.",
 };
-type Leave = (navigate: () => void) => void;
-const applicationGuards = new Set<Leave>();
-export function requestAvailabilityNavigation(navigate: () => void) {
-  const guards = [...applicationGuards];
-  const next = (index: number) => index < guards.length ? guards[index]!(() => next(index + 1)) : navigate();
-  next(0);
-}
 const DraftScope = createContext<{
   register: (id: string, state: DraftState) => () => void;
   requestLeave: Leave;
@@ -116,10 +109,9 @@ function useStandaloneAvailabilityGuard({
   // Read the live registry for actions so the old busy state cannot intercept
   // the very next click or keep a completed form's departure pending.
   const readLatest = useCallback(() => latest.current.readState?.() ?? latest.current, []);
-  const bypass = useRef(false);
   const pending = useRef<(() => void) | null>(null);
   const [open, setOpen] = useState(false);
-  const [restoringHistory, setRestoringHistory] = useState(false);
+  const bypass = useRef(false);
   const requestLeave = useCallback((navigate: () => void) => {
     const current = readLatest();
     if (bypass.current || (!current.dirty && !current.busy)) {
@@ -146,93 +138,15 @@ function useStandaloneAvailabilityGuard({
     };
   }, [navigationRef, requestLeave]);
 
-  const active = dirty || busy || open;
-  useEffect(() => {
-    if (!active) return;
-    const guarded: Leave = navigate => requestLeave(() => { bypass.current = true; navigate(); });
-    applicationGuards.add(guarded);
-    return () => { applicationGuards.delete(guarded); };
-  }, [active,requestLeave]);
-  useEffect(() => {
-    if (!active) {
-      bypass.current = false;
-      return;
-    }
-    const index = Number(window.history.state?.idx ?? 0);
-    let restoring = false;
-    const pop = (event: PopStateEvent) => {
-      if (bypass.current) return;
-      if (restoring) {
-        restoring = false;
-        setRestoringHistory(false);
-        event.stopImmediatePropagation();
-        return;
-      }
-      const nextIndex = Number(event.state?.idx ?? index);
-      const delta = nextIndex - index;
-      if (!delta) return;
-      // This registered listener runs before BrowserRouter. Restore the entry
-      // first so declining navigation cannot unmount or reset the draft.
-      event.stopImmediatePropagation();
-      restoring = true;
-      setRestoringHistory(true);
-      window.history.go(-delta);
-      requestLeave(() => {
-        bypass.current = true;
-        window.history.go(delta);
-      });
-    };
-    const follow = (event: MouseEvent) => {
-      if (
-        bypass.current ||
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        event.altKey
-      )
-        return;
-      const anchor = (
-        event.target as Element | null
-      )?.closest<HTMLAnchorElement>("a[href]");
-      if (
-        !anchor ||
-        anchor.hasAttribute("download") ||
-        (anchor.target && anchor.target !== "_self")
-      )
-        return;
-      const url = new URL(anchor.href, window.location.href);
-      if (
-        !["http:", "https:"].includes(url.protocol) ||
-        (url.origin === window.location.origin &&
-          url.pathname === window.location.pathname &&
-          url.search === window.location.search)
-      )
-        return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      requestAvailabilityNavigation(() => {
-        bypass.current = true;
-        window.location.assign(url.href);
-      });
-    };
-    const unload = (event: BeforeUnloadEvent) => {
+  const restoringHistory = useLeaveInterception({
+    active: dirty || busy || open,
+    requestLeave,
+    warnOnUnload: () => {
       const current = readLatest();
-      if (bypass.current || (!current.dirty && !current.busy))
-        return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const unregister = registerEmployeeHistoryGuard(pop);
-    document.addEventListener("click", follow, true);
-    window.addEventListener("beforeunload", unload);
-    return () => {
-      unregister();
-      document.removeEventListener("click", follow, true);
-      window.removeEventListener("beforeunload", unload);
-    };
-  }, [active, requestLeave, readLatest]);
+      return current.dirty || current.busy;
+    },
+    bypass,
+  });
 
   return (
     <ConfirmDialog

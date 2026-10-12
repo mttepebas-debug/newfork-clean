@@ -18,6 +18,7 @@ import {
   selectActiveWorkspace,
   supabaseClient,
 } from "../lib/supabase";
+import { requestAppNavigation } from "./leave-guard";
 import { roleLabel } from "./prebiz/PreBiz";
 
 /**
@@ -157,7 +158,8 @@ export function WorkspaceSwitcher({
                   role="menuitem"
                   className="workspace-switcher-item"
                   disabled={switchingId !== null}
-                  onClick={() => void switchTo(workspace)}
+                  // Unsaved work on the page is asked about before anything switches.
+                  onClick={() => requestAppNavigation(() => void switchTo(workspace))}
                 >
                   <span className="workspace-switcher-text">
                     <strong>{workspace.name}</strong>
@@ -191,7 +193,7 @@ export function WorkspaceSwitcher({
                     className="pb-btn pb-btn-primary workspace-switcher-answer"
                     onClick={() => {
                       setOpen(false);
-                      navigate(hubPath);
+                      requestAppNavigation(() => navigate(hubPath));
                     }}
                   >
                     Answer
