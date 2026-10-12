@@ -242,6 +242,15 @@ Bugün iki ayrı yer var: Templates düğmesi bir pencere açıyor, ayrıca `/ap
 | T5 | Tek yüzey: `/app/schedule/templates` sayfası kalkar, her şey Templates penceresinde | iki yüzey | sayfa adresini bilen biri boşa düşer |
 `Dayanak: tasks/BL-038.md (ARGE önerileri) + ILKELER P20 (tek yer, sade); T5 için yok — yeni karar`. Kaçış: "Önce sohbette konuşalım".
 
+### Soru-30. Privacy sayfası "encrypted SSN field" diyor; ürün SSN toplamıyor. Ne yapılsın? (BL-1092)
+- **Bugün:** `/privacy` sayfası verileri anlatırken "encrypted SSN field" diyor; ürün kuralı SSN toplanmaz (CLAUDE.md §1). Ekran görüntüsünden görüldü, gerçek uygulamada doğrulanmadı. Örnek: bir restoran sahibi Privacy'yi okuyunca çalışanlarından SSN istendiğini sanar.
+- **(a) Metinden SSN cümlesi çıkar; sayfa "SSN toplanmaz" der. (Önerilen)**
+  Dayanak: CLAUDE.md §1 ("SSN toplanmaz").
+- **(b) Metin yalnız çıkarılır, SSN hiç anılmaz.**
+- **(c) Başka bir alan kastediliyordu; doğru alan adıyla yeniden yazılır.**
+- Yazarak cevap vereceğim
+- Kaynak: PAGES giriş/hesap haritası (koordinatör beslemesi, 2026-10-12).
+
 ## Tur 7 — görsel, varyantı hazır olanlar (hat durdurmuyor)
 
 ### Soru-20. Görsel — Schedule üst çubuğu dar pencerede
