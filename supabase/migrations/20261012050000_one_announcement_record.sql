@@ -491,8 +491,9 @@ $$;
 -- Who may change a record about these places, written by author: the
 -- announcement rule (K1, K3); with a change in hours or a place on Important
 -- Dates, the important date rule too (Mert, 2026-10-12: a lead with only
--- Announcements can do neither). A record about no place yet: whoever may
--- write one somewhere. Null, or the reason.
+-- Announcements can do neither). A record about no place (a new one, or one
+-- only for people with no location): its own author, while they may write
+-- one somewhere; anyone else needs the workspace-wide rule. Null, or the reason.
 create function app_private.announcement_reason(state app_private.actor_state, places uuid[], author uuid, dates boolean)
 returns text
 language plpgsql stable security definer
@@ -505,7 +506,7 @@ declare
 begin
   foreach kind in array case when dates then array['announcement', 'important_date'] else array['announcement'] end loop
     reason := app_private.communication_reason(state, state.workspace_id, kind, coalesce(places, '{}'), author);
-    if reason is not null and cardinality(coalesce(places, '{}')) = 0 then
+    if reason is not null and cardinality(coalesce(places, '{}')) = 0 and author = state.user_id then
       select * into strict narrow from app_private.authz_actions a where a.key = kind || '.write';
       if exists (select 1 from public.locations location
                  where location.workspace_id = state.workspace_id and location.archived_at is null
@@ -2750,9 +2751,10 @@ $t$,
     ), '[]'::jsonb)
 $t$,
   $t$    -- Records on the Schedule that touch the week, published or scheduled (a
-    -- manager sees what is coming), one row per reachable checked location; a
-    -- record for no location is everyone's (B-7). A yearly record's next year
-    -- is its own record.
+    -- manager sees what is coming), one row per reachable checked location. A
+    -- record about no live location (only for people added by hand) is on the
+    -- week of whoever it is out to or may change it, never everyone's. A yearly
+    -- record's next year is its own record.
     'important_dates', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', item.id, 'location_id', place.location_id, 'title', item.title,
@@ -2774,6 +2776,9 @@ $t$,
           select 1 from public.announcement_locations target
           join public.locations location on location.id = target.location_id and location.archived_at is null
           where target.announcement_id = item.id)
+          and (app_private.announcement_reaches(item, actor_user_id)
+            or app_private.announcement_reason(app_private.actor(actor_user_id, target_workspace_id),
+                 app_private.announcement_places(item.id), item.created_by, app_private.announcement_dates(item)) is null)
       ) place
       where item.workspace_id = target_workspace_id and item.status in ('published', 'scheduled')
         and item.archived_at is null and item.on_schedule and item.starts_on is not null

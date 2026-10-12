@@ -319,5 +319,46 @@ select is(
   array['ayse', 'can', 'hande', 'kaan', 'owner', 'zeynep'],
   'BL-532: Pia''s Kadikoy invitation cancelled tells the Kadikoy managers, the admins and the owner; not the Besiktas manager');
 
+-- 13. K1, K3: a post only for people with no location is its author's and the wide writers' -----
+-- Rita is a Remote manager: no location. A post Veli (Besiktas) sends only to
+-- her is about no place; Ayse (Kadikoy) may write somewhere, which lets her
+-- start her own post before choosing where, never take over Veli's.
+
+select tests.person('m', 'rita', 'manager', '{}'::text[], array['cook']);
+select tests.remember('m:ann:to-rita', pg_temp.publish('veli', '{}', 'Rita private',
+  jsonb_build_object('people', jsonb_build_array(pg_temp.u('rita')), 'on_schedule', true)));
+select ok(not pg_temp.sees('ayse', tests.id('m:ann:to-rita')),
+  'K3: a post only for a Remote manager is not on another location''s manager''s list');
+select is(pg_temp.try($$select public.get_announcement_service(pg_temp.u('ayse'), tests.id('m'), tests.id('m:ann:to-rita'))$$),
+  '42501 authz.out_of_scope', 'K3: nor does that manager open it');
+select is(pg_temp.try($$select pg_temp.save('ayse', tests.id('m:ann:to-rita'), pg_temp.payload('{}', 'Rita private, edited',
+    jsonb_build_object('people', jsonb_build_array(pg_temp.u('rita'), pg_temp.u('emre')))), 'save')$$),
+  '42501 authz.out_of_scope', 'K3: nor change it');
+select is(pg_temp.try($$select pg_temp.set_state('ayse', tests.id('m:ann:to-rita'), 'unpublish')$$),
+  '42501 authz.out_of_scope', 'K3: nor unpublish it');
+select is(public.get_announcement_service(pg_temp.u('veli'), tests.id('m'), tests.id('m:ann:to-rita')) ->> 'can_edit', 'true',
+  'K1: its author still changes it');
+select is(public.get_announcement_service(pg_temp.u('zeynep'), tests.id('m'), tests.id('m:ann:to-rita')) ->> 'can_edit', 'true',
+  'K1: and so does an admin, who writes for the whole workspace');
+select ok(pg_temp.sees('rita', tests.id('m:ann:to-rita')), 'K24: Rita reads it');
+
+-- The Schedule: a post about no place is on a manager's week only when it is
+-- out to them or theirs to change; a scheduled one only when theirs to change.
+select tests.remember('m:ann:to-rita-later', pg_temp.draft('veli', '{}', 'Rita later',
+  jsonb_build_object('people', jsonb_build_array(pg_temp.u('rita')), 'on_schedule', true)));
+select pg_temp.save('veli', tests.id('m:ann:to-rita-later'), pg_temp.payload('{}', 'Rita later',
+  jsonb_build_object('people', jsonb_build_array(pg_temp.u('rita')), 'on_schedule', true, 'publish_at', now() + interval '2 days')), 'schedule');
+create function pg_temp.week_posts(person text) returns text[] language sql as $$
+  select coalesce(array_agg(d ->> 'title' order by d ->> 'title'), '{}')
+  from jsonb_array_elements(public.get_schedule_read_model_service(pg_temp.u(person), tests.id('m'), current_date + 30) -> 'important_dates') d
+  where d ->> 'title' in ('Rita private', 'Rita later')
+$$;
+select is(pg_temp.week_posts('ayse'), '{}'::text[],
+  'K3: another location''s manager''s Schedule leaves out a post only for a Remote manager, published or scheduled');
+select is(pg_temp.week_posts('veli'), array['Rita later', 'Rita private'],
+  'K1: its author''s Schedule shows both');
+select is(pg_temp.week_posts('zeynep'), array['Rita later', 'Rita private'],
+  'K1: so does an admin''s');
+
 select * from finish();
 rollback;

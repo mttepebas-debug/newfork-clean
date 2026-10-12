@@ -5,7 +5,8 @@ select * from no_plan();
 -- B-7 / BL-701 (EKRAN-01 DB-4), EKRAN-08 one record: the Schedule's dates come
 -- from the read model, scoped and dated there, not filtered by the API. A post
 -- with "Show on Schedule" shows on the week it touches, once per checked
--- location the reader reaches; a post for no location is everyone's. Drafts,
+-- location the reader reaches; a post for no location (only for people added
+-- by hand) is on the week of whoever it is out to or may change it. Drafts,
 -- unpublished and archived posts, and posts not on the Schedule, stay off the
 -- grid; a scheduled one shows to the manager before it is out. A yearly post's
 -- next year is its own post, so an old year shows only on its own days. The
@@ -53,7 +54,7 @@ create function pg_temp.board(who text) returns table (title text, location text
 $$;
 
 select pg_temp.post('Both', '{"K": {}, "B": {}}', tests.week(1) + 2, tests.week(1) + 2);
-select pg_temp.post('Everyone', '{}', tests.week(1), tests.week(1) + 1, '{"people": ["ali"]}');
+select pg_temp.post('Ali only', '{}', tests.week(1), tests.week(1) + 1, '{"people": ["ali"]}');
 select pg_temp.post('Ayse only', '{}', tests.week(1), tests.week(1), '{"people": ["ayse"]}');
 select pg_temp.post('Besiktas', '{"B": {}}', tests.week(1) + 3, tests.week(1) + 3);
 select pg_temp.post('Spans in', '{"K": {}}', tests.week(1) - 3, tests.week(1));
@@ -69,12 +70,12 @@ select pg_temp.post('Last year', '{"K": {}}', (tests.week(1) + 4 - interval '1 y
   '{"recurrence": "date"}');
 
 select results_eq($$select * from pg_temp.seen('owner')$$,
-  $$values ('Ayse only', '-'), ('Besiktas', 'B'), ('Both', 'B'), ('Both', 'K'), ('Coming', 'K'), ('Everyone', '-'), ('No end', 'K'),
+  $$values ('Ali only', '-'), ('Ayse only', '-'), ('Besiktas', 'B'), ('Both', 'B'), ('Both', 'K'), ('Coming', 'K'), ('No end', 'K'),
     ('Spans in', 'K')$$,
   'the owner sees each post once per location, the one for no location once, one reaching into the week, a scheduled one');
 select results_eq($$select * from pg_temp.seen('ayse')$$,
-  $$values ('Ayse only', '-'), ('Both', 'K'), ('Coming', 'K'), ('Everyone', '-'), ('No end', 'K'), ('Spans in', 'K')$$,
-  'Ayse sees Kadikoy''s rows and the one for everyone, never Besiktas''s');
+  $$values ('Ayse only', '-'), ('Both', 'K'), ('Coming', 'K'), ('No end', 'K'), ('Spans in', 'K')$$,
+  'Ayse sees Kadikoy''s rows and the one sent to her; never Besiktas''s, nor the owner''s note only for Ali');
 select is((select d - 'id' - 'publish_at' from jsonb_array_elements(public.get_schedule_read_model_service(tests.user('id:ayse'),
     tests.id('id'), tests.week(1)) -> 'important_dates') d where d ->> 'title' = 'Both'),
   jsonb_build_object('location_id', tests.id('id:K'), 'title', 'Both', 'category', 'general', 'category_other', null,
@@ -88,7 +89,7 @@ select is((select jsonb_build_object('status', d ->> 'status', 'day', d ->> 'day
   'the scheduled one says it is coming, when it goes out, and that Kadikoy is closed');
 
 select results_eq($$select * from pg_temp.board('ali')$$,
-  $$values ('Both', 'K'), ('Everyone', '-'), ('No end', 'K'), ('Spans in', 'K')$$,
+  $$values ('Ali only', '-'), ('Both', 'K'), ('No end', 'K'), ('Spans in', 'K')$$,
   'Ali''s board shows what is out to him: Kadikoy''s posts and the one he was added to by hand; nothing scheduled, '
   'nothing of Besiktas''s, not one for someone else');
 
