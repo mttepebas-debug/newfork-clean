@@ -467,8 +467,14 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await screen.findByRole("heading", { name: "Request could not load" });
     expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
     expect(screen.queryByText("This request is no longer available.")).toBeNull();
-    vi.mocked(getExchanges).mockResolvedValue(empty);
+    let answer: (value: typeof empty) => void = () => {};
+    vi.mocked(getExchanges).mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    // While it reads again it says so, and the list does not flash in between.
+    await screen.findByText("Loading request...");
+    expect(screen.queryByRole("heading", { name: "Request could not load" })).toBeNull();
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    answer(empty);
     await screen.findByRole("heading", { name: "Request unavailable" });
   });
   it("never says a request is unavailable to a time off reader who follows a shift change link", async () => {

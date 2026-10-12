@@ -146,6 +146,8 @@ function ScheduleRequestsPageContent() {
   const caseUnread = Boolean(caseId && !openCase && !listedCase);
   const caseMissing = caseUnread && caseRead.isSuccess;
   const caseFailed = caseUnread && caseRead.isError;
+  // Reading that one case: the list does not flash in before the answer.
+  const caseChecking = caseUnread && !caseMissing && !caseFailed && caseRead.isFetching;
   // "Show all requests" goes away with the message: focus lands on the list.
   const listWrap = useRef<HTMLDivElement>(null);
   const [focusList, setFocusList] = useState(false);
@@ -409,9 +411,20 @@ function ScheduleRequestsPageContent() {
             </button>
           </div>
         </div>
+      ) : caseChecking ? (
+        <div className="employee-table-wrap requests-table-wrap">
+          <p className="settings-state" role="status">
+            Loading request...
+          </p>
+        </div>
       ) : (
         <>
-          <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>
+          <div
+            className="employee-table-wrap requests-table-wrap"
+            ref={listWrap}
+            tabIndex={-1}
+            aria-labelledby="requests-title"
+          >
             {/* Three reads make one list: it is drawn once all of them answered. */}
             <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
             <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
