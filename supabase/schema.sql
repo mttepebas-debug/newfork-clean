@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 466, last: 20261012031500_employee_and_catalog_refusals_say_why.sql
--- fingerprint: sha256:ef678c006830a8c3ed82d2e6c3b1c556c8b56d78465a90d64cd0b011bf8f599c
+-- migrations: 467, last: 20261012040000_invitation_reminder_and_newer_link.sql
+-- fingerprint: sha256:1bdd640f23735acba87bf00f9bbf2314a7a0443cdc7692f2ab3d916f8fc269b3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -14805,6 +14805,7 @@ CREATE OR REPLACE FUNCTION "public"."load_employee_invitation_retry_service"("ac
 declare
   invitation_row public.employee_invitations%rowtype;
   recovered_token text;
+  reminder boolean;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.invite', target_person => target_employee_id);
 
@@ -14820,8 +14821,8 @@ begin
      and not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invitation_row.role_id) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
   end if;
-  if invitation_row.id is null or invitation_row.delivery_status <> 'failed' then
-    raise exception 'failed invitation not found' using errcode = 'P0002';
+  if invitation_row.id is null then
+    raise exception 'open invitation not found' using errcode = 'P0002';
   end if;
   if invitation_row.expires_at <= now() then
     raise exception 'invitation expired; use Resend' using errcode = '22023';
@@ -14841,6 +14842,10 @@ begin
       using errcode = '22023';
   end if;
 
+  -- A failed first email is sent again as it was; anything else already
+  -- reached (or is reaching) the person, so this one is a reminder.
+  reminder := invitation_row.delivery_status <> 'failed';
+
   update public.employee_invitations
   set resend_count = resend_count + 1,
       updated_at = now()
@@ -14856,15 +14861,21 @@ begin
     target_workspace_id,
     target_employee_id,
     actor_user_id,
-    'employee.invitation_delivery_retry_started',
-    'Employee invitation delivery retry started'
+    case when reminder
+      then 'employee.invitation_reminder_started'
+      else 'employee.invitation_delivery_retry_started' end,
+    case when reminder
+      then 'Employee invitation reminder started'
+      else 'Employee invitation delivery retry started' end
   );
 
   return jsonb_build_object(
     'id', invitation_row.id,
     'email', invitation_row.email,
     'token', recovered_token,
-    'expires_at', invitation_row.expires_at
+    'expires_at', invitation_row.expires_at,
+    'reminder', reminder,
+    'attempt', invitation_row.resend_count + 1
   );
 end;
 $$;
@@ -16485,6 +16496,17 @@ CREATE OR REPLACE FUNCTION "public"."preview_employee_invitation_service"("invit
           when invitation.status = 'pending'::public.employee_invitation_status
                and invitation.expires_at <= now()
             then 'expired'
+          when invitation.status = 'revoked'::public.employee_invitation_status
+               and exists (
+                 select 1
+                 from public.employee_invitations newer
+                 where newer.employee_id = invitation.employee_id
+                   and newer.workspace_id = invitation.workspace_id
+                   and newer.email = invitation.email
+                   and newer.status = 'pending'::public.employee_invitation_status
+                   and newer.id <> invitation.id
+               )
+            then 'replaced'
           when invitation.status <> 'pending'::public.employee_invitation_status
             then invitation.status::text
           when workspace.lifecycle_status <> 'active'::public.workspace_lifecycle_status
@@ -16501,7 +16523,7 @@ CREATE OR REPLACE FUNCTION "public"."preview_employee_invitation_service"("invit
       )
       from public.employee_invitations invitation
       join public.workspaces workspace on workspace.id = invitation.workspace_id
-      where invitation.token_hash = invitation_token_hash
+      where invitation.token_hash = preview_employee_invitation_service.invitation_token_hash
       limit 1
     ),
     jsonb_build_object('state', 'not_found')
