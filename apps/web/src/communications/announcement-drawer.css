@@ -311,6 +311,13 @@
 .announcement-drawer :is(input[type="date"], input[type="time"], input[type="datetime-local"]) {
   font-variant-numeric: tabular-nums;
 }
+/* Start time and End time read centered in their box (Mert, 2026-10-12): the
+   clock button keeps its place on the right, and the extra left padding
+   matches its width so the time sits in the middle of the whole box. */
+.announcement-drawer .ad-when input[type="time"] {
+  padding-left: 38px;
+  text-align: center;
+}
 .announcement-drawer input::-webkit-calendar-picker-indicator {
   opacity: 0.5;
   cursor: pointer;
@@ -621,11 +628,12 @@
   height: 32px;
   border: 1px solid var(--theme-border-strong);
   border-radius: 6px;
-  padding: 0 6px 0 8px;
+  padding: 0 6px;
   background: var(--theme-surface);
   color: var(--theme-text);
   font: inherit;
   font-size: 13px;
+  text-align: center;
   color-scheme: light;
 }
 /* No clock button: the time is typed, and the box keeps its full text size. */
