@@ -4034,7 +4034,7 @@ describe("App", () => {
     expect(app.getByRole("dialog", { name: "Edit shift" })).toBeTruthy();
   });
 
-  it("dismisses schedule topbar menus and active filters one blank click at a time", async () => {
+  it("dismisses schedule topbar menus and active filters one blank click at a time, newest first", async () => {
     window.history.pushState(
       {},
       "",
@@ -4059,25 +4059,22 @@ describe("App", () => {
     );
     expect(window.location.search).toContain("hideUnscheduled=true");
 
-    fireEvent.pointerDown(page!);
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("hideUnscheduled=true"),
-    );
-    expect(window.location.search).toContain("shiftTypes=");
-
-    fireEvent.pointerDown(page!);
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("shiftTypes="),
-    );
-    expect(window.location.search).not.toContain("jobs=");
-    expect(window.location.search).not.toContain("employees=");
-    expect(window.location.search).toContain("locations=");
-
-    fireEvent.pointerDown(page!);
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("locations="),
-    );
-    expect(window.location.search).toContain("view=day");
+    // Mert, 2026-10-12: one filter per press, the newest first.
+    const filters = () =>
+      ["hideUnscheduled", "locations", "shiftTypes", "jobs", "employees"].filter(
+        (key) => new URLSearchParams(window.location.search).has(key),
+      );
+    for (const expected of [
+      ["hideUnscheduled", "locations", "shiftTypes", "jobs"],
+      ["hideUnscheduled", "locations", "shiftTypes"],
+      ["hideUnscheduled", "locations"],
+      ["hideUnscheduled"],
+      [],
+    ]) {
+      fireEvent.pointerDown(page!);
+      await waitFor(() => expect(filters()).toEqual(expected));
+      expect(window.location.search).toContain("view=day");
+    }
 
     fireEvent.pointerDown(page!);
     await waitFor(() => expect(window.location.search).toContain("view=week"));
