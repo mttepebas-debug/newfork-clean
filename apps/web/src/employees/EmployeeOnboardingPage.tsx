@@ -611,6 +611,9 @@ function ProfileStep({
     onError: (error) => {
       if (error instanceof RequestError && error.reason === "onboarding.phone_in_use")
         void queryClient.invalidateQueries({ queryKey: ["my-onboarding-phone"] });
+      // What was typed stays; the next Save goes on the latest revision.
+      if (onboardingChanged(error))
+        void queryClient.invalidateQueries({ queryKey: ["my-employee-onboarding", workspaceId] });
     },
   });
   const submit = (event: FormEvent) => {
@@ -933,9 +936,14 @@ function ReviewStep({
   readonly onOpen: (path: string) => void;
 }) {
   const { workspaceId = "" } = useParams();
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: () => submitMyOnboarding(workspaceId, model.revision),
     onSuccess: onSaved,
+    onError: (error) => {
+      if (onboardingChanged(error))
+        void queryClient.invalidateQueries({ queryKey: ["my-employee-onboarding", workspaceId] });
+    },
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -1237,7 +1245,23 @@ function requirementPath(requirement: EmployeeOnboardingRequirement): string {
   return `/welcome/acknowledgements/${requirement.id}`;
 }
 
+/**
+ * The onboarding moved on since this page read it, in another tab or by the
+ * manager's review (BL-1046): reload it, and the next try goes on the latest.
+ */
+function onboardingChanged(error: unknown): boolean {
+  return (
+    error instanceof RequestError &&
+    error.status === 409 &&
+    error.reason === "onboarding.changed"
+  );
+}
+
+const onboardingChangedMessage =
+  "Your onboarding changed meanwhile. You're seeing the latest version; check it and try again.";
+
 function errorMessage(error: unknown): string {
+  if (onboardingChanged(error)) return onboardingChangedMessage;
   if (error instanceof RequestError && error.reason === "onboarding.phone_in_use")
     return phoneInUseMessage;
   if (error instanceof RequestError && error.reason === "onboarding.emergency_is_own_phone")
