@@ -270,8 +270,6 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
   - Telefon yalnız rakam, +1 sabit, (xxx) xxx-xxxx maskesi.
   - E-posta workspace içinde tekil; çakışma yazarken uyarılır.
   - **Kanıt ve işaret 2026-10-05 (prototip P turu; P2, P5 D-14; `6326f23a`, KK-142): e-posta tekilliği ve telefon maskesi ölçüldü, ikisi de yok.** E-posta: Employees çekmecesi yalnız biçime bakıyor ("Enter a valid email address.", `apps/web/src/employees/EmployeeDrawer.tsx:2893`, `:1195`); API'de çakışma kontrolü yok; veritabanında e-posta üzerinde tekil indeks yok (`supabase/migrations`'ta arama boş). Yerel veride çakışan çiftler var (E-9004/E-9100 ve E-9005/E-9039; P2 ölçümü). Telefon: Account → Profile serbest metin, uluslararası ipucu "Outside the US or Canada, start with + and the country code." (`apps/web/src/account/ProfilePage.tsx:507-523`). İşaret: leave medium → high, do moderate → risky (koordinatör kabul etti, KK-142, 2026-10-05; yerelde çift kayıt oluştu, tekil kısıt veri şeklidir).
-  - **Tazelik 2026-10-07 (EKRAN-16 keşfi, `fb9ced47`):** geçerli, iki kurulumda ölçüldü (E16-19).
-  - **Kapandı 2026-10-07 (`9e7abc62`, main CI 37636794750 yeşil; EKRAN-03 oturumu, KK-219).** Tek kaynak `packages/shared/src/us-forms.ts` (harf kuralı, telefon), tek alan `apps/web/src/shell/UsPhoneInput.tsx`; Account, owner / çalışan kurulumu, Employees, Locations, Jobs, General aynı parçayı kullanıyor; API aynı şemayla reddediyor. Kalan: okuma toleransları §2.A.5'e aykırı → BL-969.
 
   Ölçüm 2026-10-01 (`8a131c58` üstü, `task/karar-001`):
   - Harf kuralı yalnız lokasyon kısa adında var (`packages/shared/src/location-short-name.test.ts`; o da yalnız A-Z, José'yi de reddeder).
@@ -281,6 +279,8 @@ Kaynak: `docs/plan/research/bl070-2026-09-23/`. Yalnız karara bağlı olmayan, 
   Neden önemli: Ayşe, José Peña'yı davet ederken bugün hangi alanın neyi kabul ettiği belli değil. Kural ile kod ayrışıyor. Neden bekledi: KARAR-001 karar kaydı işi, ürün kodu değişmez.
   - **Program 2026-10-01 (kayıt oturumu, besleme #30): G17** (kişi kaydı ve davet formları; başlarken ekranlar başka gruplara değiyorsa bölünür). Kaynak: KARAR-001 (`ac75d1e9`).
   - **Tazelik 2026-10-06 (`9146ba6b`, BACKLOG-TAZELIK-RE): geçerli** — e-posta tekil indeksi yok; aynı workspace'te 2 yinelenen çift (SELECT); telefon ipucu `ProfilePage.tsx:523` · sınıf: salt hata düzeltmesi · dilim: A2+B2
+  - **Tazelik 2026-10-07 (EKRAN-16 keşfi, `fb9ced47`):** geçerli, iki kurulumda ölçüldü (E16-19).
+  - **Kapandı 2026-10-07 (`9e7abc62`, main CI 37636794750 yeşil; EKRAN-03 oturumu, KK-219).** Tek kaynak `packages/shared/src/us-forms.ts` (harf kuralı, telefon), tek alan `apps/web/src/shell/UsPhoneInput.tsx`; Account, owner / çalışan kurulumu, Employees, Locations, Jobs, General aynı parçayı kullanıyor; API aynı şemayla reddediyor. Kalan: okuma toleransları §2.A.5'e aykırı → BL-969.
 
 ## Kayıt bakımı (2026-09-25)
 - **BL-501 (leave: low / do: safe) Plan belgelerinde bayat satırlar.** Kod okuyan oturum bu satırları bugünün gerçeği sanıp yanlış dayanak kurabilir. Satırlar:
