@@ -689,28 +689,23 @@ export function PublishingSection({
               />
               <b>Schedule for later</b>
             </label>
-            {later ? (
-              <span className="ad-publish-at">
-                <input
-                  type="datetime-local"
-                  className="ad-input"
-                  aria-label="Publish on"
-                  value={publishWall}
-                  min={minWall}
-                  disabled={locked}
-                  data-field="publish_at"
-                  onChange={(event) => onWall(event.target.value)}
-                  {...invalid(problem, errorId)}
-                />
-                <FieldError id={errorId} message={problem} />
-              </span>
-            ) : (
-              <span className="ad-hint">
-                {laterBlocked ? "It starts today, so it goes out when you publish." : "Off: it goes out when you publish."}
-              </span>
-            )}
+            {/* Always shown; it opens only with Schedule for later (Mert, 2026-10-12). */}
+            <span className="ad-publish-at">
+              <input
+                type="datetime-local"
+                className="ad-input"
+                aria-label="Publish on"
+                value={publishWall}
+                min={minWall}
+                disabled={locked || !later}
+                data-field="publish_at"
+                onChange={(event) => onWall(event.target.value)}
+                {...invalid(problem, errorId)}
+              />
+              <FieldError id={errorId} message={problem} />
+            </span>
+            {laterBlocked && <span className="ad-hint">It starts today, so it goes out when you publish.</span>}
           </div>
-          {!later && <FieldError id={errorId} message={problem} />}
         </>
       )}
       <Flag
