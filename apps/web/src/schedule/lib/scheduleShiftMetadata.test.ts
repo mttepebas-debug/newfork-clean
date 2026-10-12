@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ScheduleCellState } from "../hooks/useCellState";
 import {
+  hideReplacedRemovedShifts,
   isGhostScheduleShift,
   publicationStateForShift,
   shiftWithDerivedWarnings,
@@ -76,5 +77,51 @@ describe("scheduleShiftMetadata", () => {
     expect(
       shiftWithDerivedWarnings(shift, cellState(["other"])),
     ).toBe(shift);
+  });
+});
+
+// Mert, 2026-10-12: a removed live shift stays behind the shift written in its
+// place: the same cell, hours that meet, or the same shift type.
+describe("hideReplacedRemovedShifts", () => {
+  const cellShift = (id: string, patch: Record<string, unknown> = {}) =>
+    ({
+      id,
+      shift_type_id: "type-lunch",
+      scheduled_date: "2026-08-17",
+      start_time: "11:00",
+      end_time: "16:00",
+      warning_codes: [],
+      ...patch,
+    }) as unknown as ScheduleShift;
+  const removed = cellShift("removed", { source_published_shift_id: "live-1", pending_op_type: "delete" });
+  const ids = (shifts: readonly ScheduleShift[]) => shifts.map((item) => item.id);
+
+  it("hides a removed shift behind one whose hours meet it", () => {
+    const next = cellShift("new", { shift_type_id: "type-dinner", start_time: "15:00", end_time: "22:00" });
+    expect(ids(hideReplacedRemovedShifts([removed, next]))).toEqual(["new"]);
+  });
+
+  it("hides a removed shift behind one of the same shift type at other hours", () => {
+    const next = cellShift("new", { start_time: "17:00", end_time: "22:00" });
+    expect(ids(hideReplacedRemovedShifts([removed, next]))).toEqual(["new"]);
+  });
+
+  it("hides a removed shift behind one written over its hours across midnight", () => {
+    const late = cellShift("removed-late", {
+      source_published_shift_id: "live-2", pending_op_type: "delete", shift_type_id: null, start_time: "22:00", end_time: "02:00",
+    });
+    const next = cellShift("new", { shift_type_id: null, start_time: "23:30", end_time: "03:00" });
+    expect(ids(hideReplacedRemovedShifts([late, next]))).toEqual(["new"]);
+  });
+
+  it("keeps a removed shift when nothing took its place", () => {
+    const other = cellShift("other", { shift_type_id: "type-dinner", start_time: "17:00", end_time: "22:00" });
+    expect(ids(hideReplacedRemovedShifts([removed, other]))).toEqual(["removed", "other"]);
+    expect(ids(hideReplacedRemovedShifts([removed]))).toEqual(["removed"]);
+  });
+
+  it("never hides a removed shift behind another removed one", () => {
+    const alsoRemoved = cellShift("removed-2", { source_published_shift_id: "live-3", pending_op_type: "delete" });
+    expect(ids(hideReplacedRemovedShifts([removed, alsoRemoved]))).toEqual(["removed", "removed-2"]);
   });
 });

@@ -6,6 +6,7 @@ import type {
 import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
+import { isPendingRemovalShift } from "./lib/scheduleShiftMetadata";
 import { formatTime, formatWeekdayDate } from "./lib/scheduleDateTime";
 
 export type ScheduleConflictReason =
@@ -403,6 +404,7 @@ export function evaluateScheduleShiftConflicts(
   const overlapping = shifts.filter(
     (shift) =>
       shift.id !== excludeShiftId &&
+      !isPendingRemovalShift(shift) &&
       shift.employee_id === input.employee_id &&
       hasAssessmentHours &&
       intervalsOverlap(shift),
