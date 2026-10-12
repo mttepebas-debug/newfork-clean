@@ -100,7 +100,8 @@ begin
     on record.workspace_id = member.workspace_id and record.user_id = member.user_id and record.archived_at is null
   join public.employee_private_profiles private_record
     on private_record.employee_id = record.id and private_record.workspace_id = record.workspace_id
-  where member.status in ('active', 'pending_activation')
+  -- suspended too: coming back to active would open the row then.
+  where member.status in ('active', 'pending_activation', 'suspended')
     and private_record.phone is not null
     and not exists (select 1 from public.user_profiles profile where profile.user_id = member.user_id);
   if kept > 0 then
