@@ -440,8 +440,17 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   // Mert, 2026-10-12: variant D and its sentence).
   it("says a request is no longer available in place of the table, then brings the list back", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
+    const empty = { employee_id: null, cases: [], opportunities: [], own_shifts: [] };
+    let answer: (value: typeof empty) => void = () => {};
+    const listed = vi.mocked(getExchanges).getMockImplementation();
+    vi.mocked(getExchanges).mockImplementation((workspace, manager, range) =>
+      range?.caseId ? new Promise((resolve) => { answer = resolve; }) : listed!(workspace, manager, range));
     renderPage(`/app/schedule/requests?case=${caseId}`);
     await waitFor(() => expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId })));
+    // Reading the linked request: the list does not flash in first.
+    await screen.findByText("Loading request...");
+    expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
+    answer(empty);
     await screen.findByRole("heading", { name: "Request unavailable" });
     expect(screen.getByText("This request is no longer available.")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();

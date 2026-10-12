@@ -419,12 +419,7 @@ function ScheduleRequestsPageContent() {
         </div>
       ) : (
         <>
-          <div
-            className="employee-table-wrap requests-table-wrap"
-            ref={listWrap}
-            tabIndex={-1}
-            aria-labelledby="requests-title"
-          >
+          <div className="employee-table-wrap requests-table-wrap" ref={listWrap} tabIndex={-1}>
             {/* Three reads make one list: it is drawn once all of them answered. */}
             <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
             <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
