@@ -190,3 +190,4 @@ supabase/tests/announcement_refusal_reasons.test.sql
 supabase/tests/time_off_refusal_reasons.test.sql
 supabase/tests/employee_and_catalog_refusal_reasons.test.sql
 supabase/tests/onboarding_refusal_reasons.test.sql
+supabase/tests/termination_tells_location_managers.test.sql
