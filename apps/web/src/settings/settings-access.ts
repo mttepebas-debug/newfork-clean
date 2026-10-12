@@ -11,9 +11,9 @@ import { holdsPermission } from "../auth/PermissionRoute";
  * context.actions). A permission key only where the core has no action for the
  * page yet, or its action reaches fewer people than the key does today (BL-176):
  * - General and Schedule rules: no read action in app_private.authz_actions.
- * - Locations: settings.locations.read is a set action, so a manager with no
- *   location (Remote) gets no answer from the core, though the key opens the
- *   page and RLS lists every location to them.
+ * - Locations: settings.locations.read is a set action (per location); only
+ *   owners and admins hold its key, no manager role may (Mert 2026-10-12,
+ *   BL-176), so the key is the page's gate.
  */
 type SettingsGate =
   | { readonly action: AuthzAction }
