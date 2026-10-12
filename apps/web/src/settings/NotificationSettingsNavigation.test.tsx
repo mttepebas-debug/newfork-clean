@@ -10,16 +10,19 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import SettingsHomeRedirect from "./SettingsHomeRedirect";
 import SettingsLayout from "./SettingsLayout";
-import { PermissionRoute } from "../auth/PermissionRoute";
+import { SettingsPageRoute } from "./SettingsPageRoute";
 
 let permissions: ActiveWorkspaceContext["permissions"] = [
   "notifications.settings.read",
 ];
+// What the core answers this admin for those permissions (context.actions).
+let actions: ActiveWorkspaceContext["actions"] = ["settings.notifications.read"];
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       permissions,
+      actions,
       membership: { role: "admin", status: "active" },
     },
   }),
@@ -28,6 +31,7 @@ vi.mock("../auth/AuthContext", () => ({
 describe("notification settings navigation", () => {
   it("lets a notification settings reader enter Settings from the left rail", () => {
     permissions = ["notifications.settings.read"];
+    actions = ["settings.notifications.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/general"]}>
         <Routes>
@@ -46,6 +50,7 @@ describe("notification settings navigation", () => {
 
   it("uses notification settings as the settings landing page for a reader", async () => {
     permissions = ["notifications.settings.read"];
+    actions = ["settings.notifications.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings"]}>
         <Routes>
@@ -65,6 +70,7 @@ describe("notification settings navigation", () => {
 
   it("shows independently granted settings without other organization links", () => {
     permissions = ["settings.locations.read"];
+    actions = ["settings.locations.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings"]}>
         <Routes>
@@ -85,6 +91,7 @@ describe("notification settings navigation", () => {
       "settings.schedule_rules.read",
       "settings.shift_catalog.read",
     ];
+    actions = ["settings.shift_catalog.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/scheduling/shift-types"]}>
         <Routes>
@@ -108,6 +115,7 @@ describe("notification settings navigation", () => {
 
   it("lets the conflict permission alone enter Settings and load its direct route", async () => {
     permissions = ["schedule.conflict_rules.manage"];
+    actions = ["settings.conflict_rules.write"];
     render(
       <MemoryRouter
         initialEntries={["/app/settings/scheduling/conflicts"]}
@@ -117,9 +125,9 @@ describe("notification settings navigation", () => {
             <Route
               path="scheduling/conflicts"
               element={
-                <PermissionRoute anyOf={["schedule.conflict_rules.manage"]}>
+                <SettingsPageRoute page="conflicts">
                   <p>Conflict handling route</p>
-                </PermissionRoute>
+                </SettingsPageRoute>
               }
             />
           </Route>
@@ -137,6 +145,7 @@ describe("notification settings navigation", () => {
 
   it("uses Conflict handling as the Settings landing page for its permission alone", async () => {
     permissions = ["schedule.conflict_rules.manage"];
+    actions = ["settings.conflict_rules.write"];
     render(
       <MemoryRouter initialEntries={["/app/settings"]}>
         <Routes>
@@ -159,6 +168,7 @@ describe("notification settings navigation", () => {
       "settings.schedule_rules.read",
       "settings.shift_catalog.read",
     ];
+    actions = ["settings.shift_catalog.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/scheduling/shift-labels"]}>
         <Routes>
@@ -182,6 +192,7 @@ describe("notification settings navigation", () => {
 
   it("removes Important Dates from the Settings rail", () => {
     permissions = ["settings.general.read", "important_dates.read"];
+    actions = ["settings.important_dates.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/general"]}>
         <Routes>
@@ -197,6 +208,7 @@ describe("notification settings navigation", () => {
 
   it("redirects legacy Settings Important Dates routes to the top-level app surface", async () => {
     permissions = ["settings.general.read", "important_dates.read"];
+    actions = ["settings.important_dates.read"];
     render(
       <MemoryRouter initialEntries={["/app/settings/important-dates"]}>
         <Routes>
