@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
-import { draftName, roundLabel, roundWeek, signIn } from "../fixtures/world";
+import { draftName, emailOf, roundLabel, roundWeek, signIn } from "../fixtures/world";
 
 // EKRAN-01, Mert 2026-10-12 ("Sor + tek kural"): Ayse leaves Schedule edit
 // mode with unsaved work and is asked first (Keep editing / Discard and leave
-// / Save draft), whether she uses the sidebar or Back. With nothing unsaved
+// / Save draft), whether she uses the sidebar or the browser's Back / Forward. With nothing unsaved
 // she leaves without a word.
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
@@ -15,6 +15,15 @@ const NOTE = "Ayse has not saved this";
 
 function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
+}
+
+/** How Ayse's latest edit of the week ended (or "active"), once it has. */
+async function editEnds(week: number, status: string) {
+  await expect.poll(() => sql(`
+    select s.status from public.schedule_edit_sessions s
+    join auth.users u on u.id = s.holder_user_id
+    where u.email = '${emailOf("ayse")}' and s.week_start = tests.week(${roundWeek(week)})
+    order by s.created_at desc limit 1;`)).toBe(status);
 }
 
 const employeesLink = (page: Page) =>
@@ -63,6 +72,7 @@ test("leaving with unsaved changes asks; Keep editing stays, Discard and leave g
   await expect(question(ayse)).toHaveCount(0);
   expect(ayse.url()).toBe(schedule);
   await expect(ayse.locator('[data-shift-badge][data-has-note="true"]')).toHaveCount(1);
+  await editEnds(503, "active");
 
   // Forward to the page she came from asks too, and keeps her on Schedule meanwhile.
   await ayse.goForward();
@@ -70,6 +80,7 @@ test("leaving with unsaved changes asks; Keep editing stays, Discard and leave g
   expect(ayse.url()).toBe(schedule);
   await question(ayse).getByRole("button", { name: "Discard and leave" }).click();
   await expect(ayse).toHaveURL(/\/app\/employees/);
+  await editEnds(503, "discarded");
 });
 
 test("Save draft on the way out saves the work, then leaves", async ({ browser }) => {
@@ -93,4 +104,6 @@ test("leaving with nothing unsaved does not ask", async ({ browser }) => {
   await employeesLink(ayse).click();
   await expect(ayse).toHaveURL(/\/app\/employees/);
   await expect(question(ayse)).toHaveCount(0);
+  // Its lock no longer keeps the week from others.
+  await editEnds(505, "expired");
 });
