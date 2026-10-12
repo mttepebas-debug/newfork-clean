@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(44);
 
 -- BL-238: a Schedule week is "this week" or "past" by the clock of the places
 -- it is for, never by the server's UTC date. Sunday 20:00 in Los Angeles is
@@ -8,7 +8,7 @@ select plan(45);
 -- week she was looking at was past and could not change it.
 -- Rules: KARARLAR S-01 (the location's time zone; a week reaching several
 -- places is past only once all of them have left it), "Geçmiş hafta kilidi",
--- K11 (an important date's past lock is the same line).
+-- EKRAN-08 (a post is Past by the clock of its own places).
 
 select tests.world('tz');
 select tests.person('tz', 'mina', 'manager', array['K', 'B'], array['cook']);
@@ -240,75 +240,63 @@ select is(
   'past_week_closed',
   'not at Besiktas, which has left it');
 
--- 3. Important dates draw the same line, by their own places (K11) -----------
+-- 3. A post is Past by the clock of its own places (Z1, Z4; EKRAN-08) -----------
+-- Kadikoy keeps Los Angeles time, Besiktas Istanbul's again.
 
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by) values
-  (tests.remember('tz:date:before', gen_random_uuid()), tests.id('tz'), tests.id('tz:K'), pg_temp.k(),
-   pg_temp.kw() - 1, pg_temp.kw() - 1, 'Inventory', 'event', tests.user('tz:owner')),
-  (tests.remember('tz:date:on', gen_random_uuid()), tests.id('tz'), tests.id('tz:K'), pg_temp.k(),
-   pg_temp.kw(), pg_temp.kw(), 'Staff lunch', 'event', tests.user('tz:owner')),
-  (tests.remember('tz:date:b', gen_random_uuid()), tests.id('tz'), tests.id('tz:B'), pg_temp.b(),
-   pg_temp.now(pg_temp.b()) - 1, pg_temp.now(pg_temp.b()) - 1, 'Deep clean', 'event', tests.user('tz:owner'));
-create temp table tz_dates as
-  select value as d from jsonb_array_elements(
-    public.read_settings_important_dates_service(tests.user('tz:owner'), tests.id('tz')) -> 'dates');
-select is(
-  public.read_settings_important_dates_service(tests.user('tz:owner'), tests.id('tz')) ->> 'locked_before',
-  pg_temp.now()::text,
-  'Settings > Important dates reads the workspace''s line');
-select is((select (d ->> 'is_past')::boolean from tz_dates where d ->> 'id' = tests.id('tz:date:before')::text), true,
-  'a Kadikoy date that ended the day before Kadikoy''s week is past');
-select is((select (d ->> 'can_edit')::boolean from tz_dates where d ->> 'id' = tests.id('tz:date:before')::text), false,
-  'and read-only');
-select is((select (d ->> 'is_past')::boolean from tz_dates where d ->> 'id' = tests.id('tz:date:on')::text), false,
-  'a Kadikoy date on the first day of Kadikoy''s week is not');
-select is((select (d ->> 'is_past')::boolean from tz_dates where d ->> 'id' = tests.id('tz:date:b')::text), true,
-  'a Besiktas date that ended the day before Besiktas'' week is past, though Kadikoy is still before it');
-select is(
-  pg_temp.try(format($$select public.set_important_date_state_service(%L, %L, %L, 'unpublish')$$,
-    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:before'))),
-  'P0001 important_date.past',
-  'unpublishing the past Kadikoy date is refused');
-select is(
-  pg_temp.try(format($$select public.set_important_date_state_service(%L, %L, %L, 'unpublish')$$,
-    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:b'))),
-  'P0001 important_date.past',
-  'and the past Besiktas one');
-select is(
-  pg_temp.try(format($$select public.set_important_date_state_service(%L, %L, %L, 'unpublish')$$,
-    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:on'))),
-  'ok',
-  'unpublishing the one on Kadikoy''s line goes through');
+update public.locations set timezone = 'Europe/Istanbul' where id = tests.id('tz:B');
+create function pg_temp.span(first_day date, last_day date, rows jsonb, event_from time default null,
+  event_until time default null) returns text language sql as $$
+  select s.starts_at at time zone 'UTC' || ' - ' || s.ends_at at time zone 'UTC'
+  from app_private.announcement_span(tests.id('tz'), first_day, last_day, event_from, event_until, 'UTC', rows) s
+$$;
+create function pg_temp.row_at(place uuid, day text default 'open', opens text default null, closes text default null)
+returns jsonb language sql as $$
+  select jsonb_build_object('location_id', place, 'day', day, 'opens', opens, 'closes', closes)
+$$;
+select is(pg_temp.span('2026-10-11', '2026-10-11', jsonb_build_array(pg_temp.row_at(tests.id('tz:K')))),
+  '2026-10-11 07:00:00 - 2026-10-12 07:00:00', 'a Kadikoy post on Oct 11 runs from Kadikoy''s midnight to the next');
+select is(pg_temp.span('2026-10-11', '2026-10-11', jsonb_build_array(pg_temp.row_at(tests.id('tz:K')), pg_temp.row_at(tests.id('tz:B')))),
+  '2026-10-10 21:00:00 - 2026-10-12 07:00:00',
+  'at both places it starts with Besiktas'' midnight and is over only once Kadikoy has left the day too');
+select is(pg_temp.span('2026-10-11', '2026-10-11', jsonb_build_array(pg_temp.row_at(tests.id('tz:B'), 'short', '18:00', '02:00'))),
+  '2026-10-10 21:00:00 - 2026-10-11 23:00:00', 'short hours that close at 2:00 AM run to 2:00 AM the next day');
+select is(pg_temp.span('2026-10-11', '2026-10-11', jsonb_build_array(pg_temp.row_at(tests.id('tz:K'))), '09:00', '11:00'),
+  '2026-10-11 16:00:00 - 2026-10-11 18:00:00', 'an event time is the place''s own clock');
+select is(pg_temp.span('2026-10-11', '2026-10-11', jsonb_build_array(pg_temp.row_at(tests.id('tz:K'), 'closed')), '09:00', '11:00'),
+  '2026-10-11 07:00:00 - 2026-10-12 07:00:00', 'a change in hours takes the whole day, whatever the event time says');
+select is(pg_temp.span('2026-10-11', '2026-10-12', '[]'), '2026-10-11 00:00:00 - 2026-10-13 00:00:00',
+  'a post for no place keeps its own clock');
 
--- A Besiktas date that runs across Besiktas' line moves to Kadikoy: the days
--- already past at Besiktas stay there; at Kadikoy, still days before, the
--- date keeps them all.
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by) values
-  (tests.remember('tz:date:move', gen_random_uuid()), tests.id('tz'), tests.id('tz:B'), pg_temp.b(),
-   pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) + 2, 'Patio works', 'event', tests.user('tz:owner'));
+create function pg_temp.post(title text, place uuid, last_day date) returns uuid language plpgsql as $$
+declare made uuid;
+begin
+  insert into public.announcements (workspace_id, title, body, status, starts_on, ends_on, time_zone, created_by, updated_by,
+    published_by, published_at)
+  values (tests.id('tz'), title, '', 'published', last_day - 1, last_day, 'UTC', tests.user('tz:owner'), tests.user('tz:owner'),
+    tests.user('tz:owner'), now() - interval '3 days')
+  returning id into made;
+  insert into public.announcement_locations (workspace_id, announcement_id, location_id, day) values (tests.id('tz'), made, place, 'open');
+  return made;
+end;
+$$;
+create function pg_temp.shown(id uuid) returns text language sql as $$
+  select a ->> 'display_status' from jsonb_array_elements(public.get_announcements_service(tests.user('tz:owner'), tests.id('tz'))
+    -> 'announcements') a where (a ->> 'id')::uuid = id
+$$;
+select tests.remember('tz:ann:k-yesterday', pg_temp.post('Inventory', tests.id('tz:K'), (now() at time zone 'America/Los_Angeles')::date - 1));
+select tests.remember('tz:ann:k-today', pg_temp.post('Staff lunch', tests.id('tz:K'), (now() at time zone 'America/Los_Angeles')::date));
+select tests.remember('tz:ann:b-yesterday', pg_temp.post('Deep clean', tests.id('tz:B'), (now() at time zone 'Europe/Istanbul')::date - 1));
+select is(pg_temp.shown(tests.id('tz:ann:k-yesterday')), 'past', 'a Kadikoy post that ended on Kadikoy''s yesterday is Past');
+select is(pg_temp.shown(tests.id('tz:ann:k-today')), 'published', 'one that ends on Kadikoy''s today is still out');
+select is(pg_temp.shown(tests.id('tz:ann:b-yesterday')), 'past', 'a Besiktas post that ended on Besiktas'' yesterday is Past');
 select is(
-  pg_temp.try(format($$select public.save_important_date_service(%L, %L, %L, 'Patio works', 'event', %L, %L, 'none', '', true, %L, %s)$$,
-    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:date:move'), pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) + 2,
-    pg_temp.k(), (select revision from public.important_dates where id = tests.id('tz:date:move')))),
-  'ok', 'a date running across Besiktas'' line moves to Kadikoy');
+  pg_temp.try(format($$select public.set_announcement_state_service(%L, %L, %L, 1, 'unpublish')$$,
+    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:ann:k-yesterday'))),
+  'PT409 announcement.read_only', 'unpublishing the past Kadikoy post is refused: a past post can only be archived');
 select is(
-  (select array_agg(array[d.starts_on, d.ends_on] order by d.starts_on) from public.important_dates d
-   where d.workspace_id = tests.id('tz') and d.title = 'Patio works' and d.location_ids = pg_temp.b()),
-  array[array[pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) - 1]],
-  'its days already past at Besiktas stay at Besiktas');
-select is(
-  (select array[d.starts_on, d.ends_on] from public.important_dates d where d.id = tests.id('tz:date:move') and d.location_ids = pg_temp.k()),
-  array[pg_temp.now(pg_temp.b()) - 2, pg_temp.now(pg_temp.b()) + 2],
-  'the date itself goes on at Kadikoy with all its days, none of them past there');
-
--- A closed day lands on each place from that place's own line.
-select is(
-  (select jsonb_agg(day order by day ->> 'location_id', day ->> 'closed_date') from jsonb_array_elements(
-    app_private.important_date_closure_impact(tests.id('tz'), null::public.important_dates, 'closed_day',
-      pg_temp.now(pg_temp.b()) - 1, pg_temp.now(pg_temp.b()), 'none', pg_temp.k() || pg_temp.b()) -> 'days') day
-   where day ->> 'location_id' = tests.id('tz:B')::text),
-  jsonb_build_array(jsonb_build_object('location_id', tests.id('tz:B'), 'closed_date', pg_temp.now(pg_temp.b()))),
-  'a closed day on both places reaches Besiktas only from its own week on');
+  pg_temp.try(format($$select public.set_announcement_state_service(%L, %L, %L, 1, 'unpublish')$$,
+    tests.user('tz:owner'), tests.id('tz'), tests.id('tz:ann:k-today'))),
+  'ok', 'unpublishing the one still on at Kadikoy goes through');
 
 select * from finish();
 rollback;

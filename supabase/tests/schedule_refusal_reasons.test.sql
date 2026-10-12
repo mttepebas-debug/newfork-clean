@@ -78,8 +78,7 @@ select is(pg_temp.refusal($$select public.apply_schedule_auto_fill_service(owner
 
 -- The availability review: an assignment on a closed day saved with an old
 -- assessment names the review, which the API used to find by its sentence.
-insert into public.important_dates(id,workspace_id,location_id,location_ids,starts_on,ends_on,title,type,created_by)
-select gen_random_uuid(),w,k,array[k],week1,week1,'Closed','closed_day',owner_id from sr;
+select tests.closed_day(w,array[k],week1,week1,owner_id) from sr;
 select is(pg_temp.refusal($$select public.mutate_schedule_edit_shift_service(owner_id,w,(session->>'id')::uuid,
   (select revision from public.schedule_edit_sessions where id=(session->>'id')::uuid),'create',gen_random_uuid(),null,
   jsonb_build_object('location_id',k,'employee_id',alex,'job_id',cook,'scheduled_date',week1,'time_basis','explicit','start_time','09:00','end_time','13:00',

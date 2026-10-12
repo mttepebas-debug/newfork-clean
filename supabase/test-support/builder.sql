@@ -714,6 +714,31 @@ as $$
     and (location is null or a.location_id = location);
 $$;
 
+-- A published announcement that closes these locations from starts to ends,
+-- for tests about what the Schedule does on a closed day.
+-- ponytail: straight into the tables, past the drawer's shift choices; that
+-- flow has its own tests (closed_days_reach_the_shifts).
+create or replace function tests.closed_day(w uuid, location_ids uuid[], starts date, ends date, author uuid,
+  target_id uuid default null, title text default 'Closed')
+returns uuid
+language plpgsql
+set search_path = ''
+as $$
+declare
+  made uuid;
+begin
+  insert into public.announcements (id, workspace_id, title, body, category, status, starts_on, ends_on, on_schedule,
+    on_important_dates, time_zone, created_by, updated_by, published_by, published_at)
+  values (coalesce(target_id, gen_random_uuid()), w, title, '', 'holiday', 'published', starts, ends, true, true,
+    coalesce((select l.timezone from public.locations l where l.id = location_ids[1]), 'America/Los_Angeles'),
+    author, author, author, now())
+  returning id into made;
+  insert into public.announcement_locations (workspace_id, announcement_id, location_id, day)
+  select w, made, place, 'closed' from unnest(location_ids) place;
+  return made;
+end;
+$$;
+
 revoke all on all functions in schema tests from public;
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

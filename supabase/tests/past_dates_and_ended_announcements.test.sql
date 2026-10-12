@@ -2,17 +2,20 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select * from no_plan();
 
--- FB-6.7 C: an important date in the past is read-only like a past Schedule
--- week, and a change to one that runs into the past only changes what is
--- ahead (K11); a past closed day stays on the Schedule (KK-97); an
--- announcement past its end leaves the inboxes and reads as expired (K12); a
--- scheduled one that could not go out says so (KK-98).
--- Rules: KARARLAR "Duyurular ve önemli tarihler" K11, K12; KK-97, KK-98.
+-- EKRAN-08 (one record): a post whose last day is over is Past. A past post is
+-- read-only and can only be archived (Mert, 2026-10-12); a past closed day
+-- stays on the Schedule (KK-97); a past post leaves the inboxes and stays in
+-- the lists as Past (K12); a started post keeps its days, its locations and its
+-- repeat, and only its text, boxes, people and Ends change; a yearly post that
+-- went Past opens next year's (K22); a scheduled post that couldn't go out says
+-- why and tells whoever scheduled it, the owner when they are gone (K21,
+-- KK-98); acknowledgements stay unless the writer asks again (K27).
 
 -- 1. The world ------------------------------------------------------------------------
 
 select tests.world('p');
 select tests.person('p', 'ayse', 'manager', array['K'], array['cook']);
+select tests.person('p', 'mina', 'manager', array['K'], array['cook']);
 select tests.person('p', 'emre', 'employee', array['K'], array['cook']);
 
 create function pg_temp.try(statement text) returns text language plpgsql as $$
@@ -30,116 +33,127 @@ create function pg_temp.u(person text) returns uuid language sql as $$
   select tests.user('p:' || person)
 $$;
 
--- The first day of the Schedule's editable week: the line K11 draws.
-create function pg_temp.b() returns date language sql as $$
-  select public.schedule_current_week_start_service(tests.id('p'))
+create function pg_temp.rev(id uuid) returns integer language sql as $$
+  select a.revision from public.announcements a where a.id = rev.id
 $$;
 
-create function pg_temp.save_date(person text, title text, id uuid default null,
-  starts date default current_date + 60, ends date default null, kind text default 'event',
-  recurrence text default 'none') returns uuid language sql as $$
-  select (public.save_important_date_service(pg_temp.u(person), tests.id('p'), id, title, kind, starts,
-    coalesce(ends, starts), recurrence, '', array[tests.id('p:K')],
-    (select d.revision from public.important_dates d where d.id = save_date.id), true, null, null, '{}') ->> 'important_date_id')::uuid
+-- The drawer's fields for a post at Kadikoy; extra overrides any of them.
+create function pg_temp.payload(title text, starts date default current_date + 10, ends date default null,
+  extra jsonb default '{}') returns jsonb language sql as $$
+  select jsonb_build_object('title', title, 'body', title || ' body', 'starts_on', starts, 'ends_on', ends,
+    'locations', jsonb_build_array(jsonb_build_object('location_id', tests.id('p:K'), 'day', 'open'))) || extra
 $$;
 
-create function pg_temp.set_date(person text, id uuid, action text) returns jsonb language sql as $$
-  select public.set_important_date_state_service(pg_temp.u(person), tests.id('p'), id, action)
+create function pg_temp.save(person text, id uuid, p jsonb, intent text) returns jsonb language sql as $$
+  select public.save_announcement_service(pg_temp.u(person), tests.id('p'), id, pg_temp.rev(id), p, intent)
 $$;
 
--- A date written while its days were still ahead: put in place directly, the
--- way an older save left it.
-create function pg_temp.old_date(title text, starts date, ends date, kind text default 'event',
-  recurrence text default 'none', closed boolean default false) returns uuid language sql as $$
-  insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note,
-    location_days, location_ids, location_id, created_by, updated_by)
-  values (tests.id('p'), title, kind::public.important_date_type, starts, ends,
-    recurrence::public.important_date_recurrence, '',
-    case when closed then jsonb_build_object(tests.id('p:K')::text, '{"status": "closed"}'::jsonb) else '{}' end,
-    array[tests.id('p:K')], tests.id('p:K'),
-    pg_temp.u('owner'), pg_temp.u('owner'))
-  returning id
+create function pg_temp.post(person text, p jsonb) returns uuid language sql as $$
+  select (pg_temp.save(person, null, p, 'draft') ->> 'announcement_id')::uuid
+$$;
+
+create function pg_temp.publish(person text, p jsonb) returns uuid language plpgsql as $$
+declare made uuid := pg_temp.post(person, p);
+begin
+  perform pg_temp.save(person, made, p, 'publish');
+  return made;
+end;
+$$;
+
+create function pg_temp.set_state(person text, id uuid, action text) returns jsonb language sql as $$
+  select public.set_announcement_state_service(pg_temp.u(person), tests.id('p'), id, pg_temp.rev(id), action)
 $$;
 
 create function pg_temp.listed(person text, id uuid) returns jsonb language sql as $$
-  select d from jsonb_array_elements(public.read_settings_important_dates_service(pg_temp.u(person), tests.id('p')) -> 'dates') d
-  where (d ->> 'id')::uuid = id
+  select a from jsonb_array_elements(public.get_announcements_service(pg_temp.u(person), tests.id('p')) -> 'announcements') a
+  where (a ->> 'id')::uuid = id
 $$;
 
--- 2. K11: nobody writes a day before the editable week ------------------------------------
+-- ponytail: the transaction's now() is fixed, so a post's days are moved back
+-- by hand; the rules under test are what the reads and the release make of it.
+create function pg_temp.move_back(id uuid, starts date, ends date) returns void language sql as $$
+  update public.announcements set starts_on = starts, ends_on = ends where announcements.id = move_back.id
+$$;
 
-select is(pg_temp.try($$select pg_temp.save_date('owner', 'Last month''s tasting', starts => pg_temp.b() - 30)$$),
-  'P0001 important_date.past', 'K11: the owner cannot add a date that is already past');
-select is(pg_temp.try($$select pg_temp.save_date('owner', 'Half past', starts => pg_temp.b() - 3, ends => pg_temp.b() + 3)$$),
-  'P0001 important_date.past', 'K11: nor one that starts before this week');
-select is(pg_temp.try($$select pg_temp.save_date('owner', 'This week', starts => pg_temp.b(), ends => pg_temp.b() + 1)$$),
-  'ok', 'K11: a date in this week is still the owner''s to add (the Schedule''s line)');
+-- 2. Past posts are read-only; only Archive -------------------------------------------
 
-select tests.remember('p:date:past', pg_temp.old_date('Inventory day', pg_temp.b() - 20, pg_temp.b() - 20));
-select is(pg_temp.try(format($$select pg_temp.save_date('owner', 'Inventory day, renamed', id => %L, starts => %L)$$,
-  tests.id('p:date:past'), pg_temp.b() - 20)), 'P0001 important_date.past',
-  'K11: last month''s "Inventory day" is read-only, even to the owner');
-select is(pg_temp.try(format($$select pg_temp.set_date('owner', %L, 'archive')$$, tests.id('p:date:past'))),
-  'P0001 important_date.past', 'K11: it cannot be archived');
-select is(pg_temp.try(format($$select pg_temp.set_date('owner', %L, 'unpublish')$$, tests.id('p:date:past'))),
-  'P0001 important_date.past', 'K11: nor unpublished');
-select is(pg_temp.listed('owner', tests.id('p:date:past')) ->> 'is_past', 'true', 'K11: Settings reads it as past');
-select is(pg_temp.listed('owner', tests.id('p:date:past')) ->> 'can_edit', 'false', 'K11: nobody may edit it');
-select is(pg_temp.listed('owner', tests.id('p:date:past')) ->> 'can_archive', 'false', 'K11: nor archive it');
-select is((public.read_settings_important_dates_service(pg_temp.u('owner'), tests.id('p')) ->> 'locked_before')::date,
-  pg_temp.b(), 'K11: Settings is told where the line is, to keep the date picker off past days');
+select is(pg_temp.try($$select pg_temp.publish('owner', pg_temp.payload('Last month''s tasting', current_date - 30))$$),
+  '22023 announcement.start_past', 'a new post cannot start before today');
+select is(pg_temp.try($$select pg_temp.post('owner', pg_temp.payload('Old idea', current_date - 30))$$),
+  'ok', 'a draft may hold any day: it needs only a title');
 
--- A week-long date that began last week: the days already gone stay as they
--- were, the change starts this week.
-select tests.remember('p:date:week', pg_temp.old_date('Inventory week', pg_temp.b() - 3, pg_temp.b() + 3));
-select is(pg_temp.try(format($$select pg_temp.save_date('owner', 'Stock count', id => %L, starts => %L, ends => %L)$$,
-  tests.id('p:date:week'), pg_temp.b() - 3, pg_temp.b() + 3)), 'ok',
-  'K11: the owner renames a date that began last week');
-select is((select (d.title, d.starts_on, d.ends_on)::text from public.important_dates d where d.id = tests.id('p:date:week')),
-  ('Stock count', pg_temp.b(), pg_temp.b() + 3)::text, 'K11: the change covers this week on');
-select is((select count(*)::integer from public.important_dates d where d.workspace_id = tests.id('p')
-           and d.title = 'Inventory week' and d.starts_on = pg_temp.b() - 3 and d.ends_on = pg_temp.b() - 1
-           and d.recurrence = 'none' and d.status = 'published'), 1,
-  'K11: last week''s days stay "Inventory week", as they were');
-select is((select c.before ->> 'starts_on' from public.important_date_changes c where c.important_date_id = tests.id('p:date:week')
-           and c.action = 'updated'), (pg_temp.b() - 3)::text, 'K11: its history keeps the date as it was, from last week');
-select is(pg_temp.try(format($$select pg_temp.save_date('owner', 'Stock count', id => %L, starts => %L, ends => %L)$$,
-  tests.id('p:date:week'), pg_temp.b() - 1, pg_temp.b() + 3)), 'P0001 important_date.past',
-  'K11: moving its start to a past day is refused');
+select tests.remember('p:ann:past', pg_temp.publish('owner', pg_temp.payload('Inventory day')));
+select pg_temp.move_back(tests.id('p:ann:past'), current_date - 20, current_date - 20);
+select is(pg_temp.listed('owner', tests.id('p:ann:past')) ->> 'display_status', 'past', 'last month''s "Inventory day" is Past');
+select is(pg_temp.listed('owner', tests.id('p:ann:past')) ->> 'can_edit', 'false', 'nobody may edit it, not even the owner');
+select is(pg_temp.listed('owner', tests.id('p:ann:past')) ->> 'can_unpublish', 'false', 'nor unpublish it');
+select is(pg_temp.listed('owner', tests.id('p:ann:past')) ->> 'can_archive', 'true', 'the owner may archive it');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('Inventory day, renamed', current_date - 20), 'save')$$,
+  tests.id('p:ann:past'))), 'PT409 announcement.read_only', 'a save on it is refused as read-only');
+select is(pg_temp.try(format($$select pg_temp.set_state('owner', %L, 'unpublish')$$, tests.id('p:ann:past'))),
+  'PT409 announcement.read_only', 'so is Unpublish');
+select is(pg_temp.try(format($$select public.preview_announcement_service(pg_temp.u('owner'), tests.id('p'), %L, '{}')$$,
+  tests.id('p:ann:past'))), 'PT409 announcement.read_only', 'and its drawer has nothing to check');
+select is(pg_temp.set_state('owner', tests.id('p:ann:past'), 'archive') ->> 'display_status', 'archived', 'Archive is the one way out');
+select is(pg_temp.try(format($$select pg_temp.set_state('owner', %L, 'archive')$$, tests.id('p:ann:past'))),
+  'PT409 announcement.read_only', 'an archived post is done');
 
--- A yearly date: past years keep their own record, the change starts with
--- this year's day.
-select tests.remember('p:date:yearly', pg_temp.old_date('Founders day', (pg_temp.b() + 3 - interval '1 year')::date,
-  (pg_temp.b() + 3 - interval '1 year')::date, recurrence => 'annual'));
-select is(pg_temp.try(format($$select pg_temp.save_date('owner', 'Founders night', id => %L, starts => %L, recurrence => 'annual')$$,
-  tests.id('p:date:yearly'), (pg_temp.b() + 3 - interval '1 year')::date)), 'ok', 'K11: the owner renames a yearly date');
-select is((select (d.title, d.starts_on, d.recurrence::text)::text from public.important_dates d where d.id = tests.id('p:date:yearly')),
-  ('Founders night', pg_temp.b() + 3, 'annual')::text, 'K11: the yearly date now starts with this year''s day');
-select is((select count(*)::integer from public.important_dates d where d.workspace_id = tests.id('p')
-           and d.title = 'Founders day' and d.starts_on = (pg_temp.b() + 3 - interval '1 year')::date and d.recurrence = 'none'), 1,
-  'K11: last year''s day stays "Founders day", a record of its own');
-select tests.remember('p:date:new-yearly', pg_temp.save_date('owner', 'Opening day', starts => (pg_temp.b() + 5 - interval '2 years')::date,
-  recurrence => 'annual'));
-select is((select d.starts_on from public.important_dates d where d.id = tests.id('p:date:new-yearly')), pg_temp.b() + 5,
-  'K11: a new yearly date given its first, past year starts with this year''s day');
+-- A post that has started: its text, boxes, people and Ends change; its days,
+-- locations, event time and repeat stay.
+select tests.remember('p:ann:week', pg_temp.publish('owner', pg_temp.payload('Inventory week', current_date + 10, current_date + 14)));
+select pg_temp.move_back(tests.id('p:ann:week'), current_date - 2, current_date + 4);
+select is(pg_temp.listed('owner', tests.id('p:ann:week')) ->> 'display_status', 'published', 'a post that began two days ago is still out');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('Stock count', current_date - 2, current_date + 6), 'save')$$,
+  tests.id('p:ann:week'))), 'ok', 'the owner renames it and moves its Ends');
+select is((select (a.title, a.starts_on, a.ends_on)::text from public.announcements a where a.id = tests.id('p:ann:week')),
+  ('Stock count', current_date - 2, current_date + 6)::text, 'the change is in place: one record, its start as it was');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('Stock count', current_date - 1, current_date + 6), 'save')$$,
+  tests.id('p:ann:week'))), '22023 announcement.started_locked', 'its start cannot move once it has started');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('Stock count', current_date - 2, current_date + 6,
+  jsonb_build_object('locations', jsonb_build_array(jsonb_build_object('location_id', tests.id('p:K'), 'day', 'closed')))), 'save')$$,
+  tests.id('p:ann:week'))), '22023 announcement.started_locked', 'nor can what it does to the location');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('Stock count', current_date - 2, current_date - 2), 'save')$$,
+  tests.id('p:ann:week'))), '22023 announcement.ends_past', 'and Ends cannot go before today');
 
-select tests.remember('p:date:ahead', pg_temp.save_date('owner', 'Menu tasting'));
-select pg_temp.save_date('owner', 'Menu tasting, moved', id => tests.id('p:date:ahead'), starts => current_date + 61);
-select is((select count(*)::integer from public.important_dates d where d.workspace_id = tests.id('p') and d.title like 'Menu tasting%'), 1,
-  'K11: a date wholly ahead changes in place');
+-- A post wholly ahead changes in place.
+select tests.remember('p:ann:ahead', pg_temp.publish('owner', pg_temp.payload('Menu tasting', current_date + 60)));
+select pg_temp.save('owner', tests.id('p:ann:ahead'), pg_temp.payload('Menu tasting, moved', current_date + 61), 'save');
+select is((select count(*)::integer from public.announcements a where a.workspace_id = tests.id('p') and a.title like 'Menu tasting%'), 1,
+  'a post wholly ahead changes in place');
 
--- 3. KK-97: a closed day stays on the Schedule after its week has passed ---------------------
+-- 3. A yearly post that went Past opens next year's ------------------------------------
 
-select tests.remember('p:date:closed-past', pg_temp.old_date('Water cut', pg_temp.b() - 6, pg_temp.b() - 6, kind => 'holiday', closed => true));
+select tests.remember('p:ann:yearly', pg_temp.publish('owner', pg_temp.payload('Founders day', current_date + 10, null,
+  '{"recurrence": "date"}')));
+select pg_temp.move_back(tests.id('p:ann:yearly'), current_date - 3, current_date - 3);
+select app_private.announcement_release(tests.id('p'));
+select is((select (a.title, a.starts_on, a.status::text, a.recurrence)::text from public.announcements a
+           where a.repeats_from = tests.id('p:ann:yearly')),
+  ('Founders day', (current_date - 3 + interval '1 year')::date, 'scheduled', 'date')::text,
+  'K22: last year''s "Founders day" went Past and next year''s is scheduled on the same date');
+select ok((select a.publish_at < (select m.starts_at from app_private.announcement_moments(a) m) from public.announcements a
+           where a.repeats_from = tests.id('p:ann:yearly')), 'K22: it goes out before its day starts');
+select is((select a.scheduled_by from public.announcements a where a.repeats_from = tests.id('p:ann:yearly')), pg_temp.u('owner'),
+  'K22: with the authority of whoever published this year''s');
+select is(pg_temp.listed('owner', tests.id('p:ann:yearly')) ->> 'display_status', 'past', 'this year''s stays Past, a record of its own');
+select app_private.announcement_release(tests.id('p'));
+select is((select count(*)::integer from public.announcements a where a.repeats_from = tests.id('p:ann:yearly')), 1,
+  'the next minute opens no second copy');
+
+-- 4. KK-97: a past closed day stays on the Schedule -------------------------------------
+
+select tests.remember('p:ann:closed-past', tests.closed_day(tests.id('p'), array[tests.id('p:K')], current_date - 6, current_date - 6,
+  pg_temp.u('owner'), title => 'Water cut'));
 select is((select count(*)::integer from public.schedule_closures c where c.workspace_id = tests.id('p')
-           and c.location_id = tests.id('p:K') and c.closed_date = pg_temp.b() - 6), 1,
+           and c.location_id = tests.id('p:K') and c.closed_date = current_date - 6), 1,
   'KK-97: last week''s closed day still closes that day on the Schedule');
-select is((public.get_schedule_read_model_service(pg_temp.u('owner'), tests.id('p'), pg_temp.b() - 6) -> 'closures' -> 0 ->> 'title'),
-  'Water cut', 'KK-97: the Schedule''s read of last week shows it');
-select is(pg_temp.try(format($$select pg_temp.set_date('owner', %L, 'archive')$$, tests.id('p:date:closed-past'))),
-  'P0001 important_date.past', 'KK-97: and it is locked (K11)');
+select is((select c ->> 'title' from jsonb_array_elements(
+    public.get_schedule_read_model_service(pg_temp.u('owner'), tests.id('p'), current_date - 6) -> 'closures') c
+  where (c ->> 'closed_date')::date = current_date - 6), 'Water cut', 'KK-97: the Schedule''s read of that week shows it');
+select is(pg_temp.try(format($$select pg_temp.set_state('owner', %L, 'unpublish')$$, tests.id('p:ann:closed-past'))),
+  'PT409 announcement.read_only', 'KK-97: it is Past, so it cannot be unpublished');
 
--- 4. K12: an announcement past its end leaves the inboxes ---------------------------------
+-- 5. K12: a post past its end leaves the inboxes and stays in the lists as Past ---------
 
 create function pg_temp.deliver() returns void language plpgsql as $$
 declare queued uuid;
@@ -164,135 +178,121 @@ create function pg_temp.has_notice(person text, subject uuid) returns boolean la
       and item.visibility_state = 'visible')
 $$;
 
-create function pg_temp.listed_ann(person text, id uuid) returns jsonb language sql as $$
-  select a from jsonb_array_elements(public.get_announcements_service(pg_temp.u(person), tests.id('p')) -> 'announcements') a
-  where (a ->> 'id')::uuid = id
+create function pg_temp.notices_to(person text, subject uuid) returns integer language sql as $$
+  select count(*)::integer from public.notification_outbox o
+  where o.subject_id = subject::text and o.payload -> 'recipient_user_ids' ? pg_temp.u(person)::text
 $$;
 
-create function pg_temp.publish_ann(person text, id uuid) returns jsonb language sql as $$
-  select public.publish_announcement_service(pg_temp.u(person), tests.id('p'), id,
-    (select a.revision from public.announcements a where a.id = publish_ann.id))
-$$;
-
-select tests.remember('p:ann:tasting', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
-  'New menu tasting', 'Tasting on Friday', 'general', array['employee'], array[tests.id('p:K')], null,
-  now() + interval '1 day', null, '{}', '{}') ->> 'announcement_id')::uuid);
-select pg_temp.publish_ann('ayse', tests.id('p:ann:tasting'));
+select tests.remember('p:ann:tasting', pg_temp.publish('ayse', pg_temp.payload('New menu tasting', current_date + 1, current_date + 2)));
 select pg_temp.deliver();
 select ok(pg_temp.has_notice('emre', tests.id('p:ann:tasting')), 'K12: while it runs, Emre has the notice');
-select is(pg_temp.listed_ann('emre', tests.id('p:ann:tasting')) ->> 'recipient_count', null,
-  'D3: Emre is not told how many it reached');
-select is((pg_temp.listed_ann('ayse', tests.id('p:ann:tasting')) ->> 'recipient_count')::integer, 2,
-  'B1: Ayse sees how many it is out to: Emre and the owner (K5), not herself (KK-89)');
--- ponytail: its end comes by hand; the rule under test is the release's.
-update public.announcements set publish_at = now() - interval '1 hour', published_at = now() - interval '1 hour',
-  expires_at = now() - interval '1 minute' where id = tests.id('p:ann:tasting');
+select is(pg_temp.listed('emre', tests.id('p:ann:tasting')) ->> 'recipient_count', null, 'D3: Emre is not told how many it reached');
+select is((pg_temp.listed('ayse', tests.id('p:ann:tasting')) ->> 'recipient_count')::integer, 3,
+  'K24: Ayse sees how many it is out to: Mina, Emre and the owner, who work at Kadikoy; not herself (KK-89)');
+select pg_temp.move_back(tests.id('p:ann:tasting'), current_date - 3, current_date - 2);
 select app_private.announcement_release(tests.id('p'));
 select ok(not pg_temp.has_notice('emre', tests.id('p:ann:tasting')), 'K12: past its end, it leaves Emre''s inbox');
 select is((select cardinality(a.delivered_to) from public.announcements a where a.id = tests.id('p:ann:tasting')), 0,
   'K12: nobody holds it any more');
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:tasting')) ->> 'display_status', 'expired',
-  'K12: Ayse, who wrote it, sees it as expired');
-select is(pg_temp.listed_ann('owner', tests.id('p:ann:tasting')) ->> 'display_status', 'expired',
-  'K12: so does the owner');
-select is(pg_temp.listed_ann('emre', tests.id('p:ann:tasting')), null, 'K12: Emre no longer sees it');
+select is(pg_temp.listed('ayse', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: Ayse, who wrote it, sees it as Past');
+select is(pg_temp.listed('owner', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: so does the owner');
+select is(pg_temp.listed('emre', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: Emre finds it under Past');
 select is((select count(*)::integer from public.notification_outbox o where o.subject_id = tests.id('p:ann:tasting')::text
            and o.status in ('pending', 'retry')), 0, 'K12: the release tells nobody again');
 select app_private.announcement_release(tests.id('p'));
 select is((select count(*)::integer from public.notification_outbox o where o.subject_id = tests.id('p:ann:tasting')::text
            and o.status in ('pending', 'retry')), 0, 'K12: nor does the next minute');
 
--- D4: the owner's announcement at Kadikoy ran out; Ayse, Kadikoy's manager,
--- may not change it (K2) and still sees it as expired.
-select tests.remember('p:ann:owner', (public.save_announcement_audience_service(pg_temp.u('owner'), tests.id('p'), null, null,
-  'Owner note', 'From the owner', 'general', array['employee'], array[tests.id('p:K')], null,
-  now() + interval '1 day', null, '{}', '{}') ->> 'announcement_id')::uuid);
-select pg_temp.publish_ann('owner', tests.id('p:ann:owner'));
-update public.announcements set publish_at = now() - interval '1 hour', published_at = now() - interval '1 hour',
-  expires_at = now() - interval '1 minute' where id = tests.id('p:ann:owner');
-select app_private.announcement_release(tests.id('p'));
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:owner')) ->> 'can_edit', 'false', 'K12: Ayse may not change the owner''s');
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:owner')) ->> 'display_status', 'expired',
-  'K12: but she manages Kadikoy and sees it expired');
+-- D4: the owner's post at Kadikoy ran out; Ayse, Kadikoy's manager, may not
+-- change it (K2) and still sees it as Past.
+select tests.remember('p:ann:owner', pg_temp.publish('owner', pg_temp.payload('Owner note', current_date + 1)));
+select pg_temp.move_back(tests.id('p:ann:owner'), current_date - 2, current_date - 2);
+select is(pg_temp.listed('ayse', tests.id('p:ann:owner')) ->> 'can_archive', 'false', 'K2: Ayse may not archive the owner''s');
+select is(pg_temp.listed('ayse', tests.id('p:ann:owner')) ->> 'display_status', 'past', 'K12: but she sees it Past');
 
-select tests.remember('p:ann:open-ended', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
-  'Open ended', 'No end', 'general', array['employee'], array[tests.id('p:K')], null, null, null, '{}', '{}') ->> 'announcement_id')::uuid);
-select pg_temp.publish_ann('ayse', tests.id('p:ann:open-ended'));
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:open-ended')) ->> 'display_status', 'published',
-  'K12: one without an end stays published');
+select tests.remember('p:ann:open-ended', pg_temp.publish('ayse', pg_temp.payload('Open ended', null)));
+select is(pg_temp.listed('ayse', tests.id('p:ann:open-ended')) ->> 'display_status', 'published',
+  'K12: one without a day stays published');
 
--- 5. KK-98: a scheduled announcement that could not go out says so -----------------------
+-- 6. KK-98, K21: a scheduled post that could not go out says so -------------------------
 
-select tests.remember('p:ann:due', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
-  'Due at nine', 'Morning brief', 'general', array['employee'], array[tests.id('p:K')], now() + interval '1 hour',
-  null, null, '{}', '{}') ->> 'announcement_id')::uuid);
-select pg_temp.publish_ann('ayse', tests.id('p:ann:due'));
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'display_status', 'scheduled', 'KK-98: it waits for nine');
+create function pg_temp.schedule(person text, title text, starts date) returns uuid language plpgsql as $$
+declare
+  p jsonb := pg_temp.payload(title, starts) || jsonb_build_object('publish_at', now() + interval '1 hour');
+  made uuid := pg_temp.post(person, p);
+begin
+  perform pg_temp.save(person, made, p, 'schedule');
+  return made;
+end;
+$$;
+
+-- Something broke while it went out: it stays scheduled and goes out at the next try.
+select tests.remember('p:ann:due', pg_temp.schedule('ayse', 'Due at nine', current_date + 10));
+select is(pg_temp.listed('ayse', tests.id('p:ann:due')) ->> 'display_status', 'scheduled', 'KK-98: it waits for nine');
 update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:due');
 -- ponytail: the outbox refuses this one notice inside the test only; the rule
--- under test is what the release does when publishing fails.
+-- under test is what the release does when publishing breaks.
 do $$ begin
   execute format('alter table public.notification_outbox add constraint past_dates_refuses check (subject_id <> %L) not valid',
     tests.id('p:ann:due')::text);
 end $$;
 select app_private.announcement_release(tests.id('p'));
-alter table public.notification_outbox drop constraint past_dates_refuses;
 select is((select a.status::text from public.announcements a where a.id = tests.id('p:ann:due')), 'scheduled',
   'KK-98: it did not go out');
 select ok((select a.release_error from public.announcements a where a.id = tests.id('p:ann:due')) like '%past_dates_refuses%',
   'KK-98: the error is kept with it');
-select ok(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'publish_failed_at' is not null, 'KK-98: and when it failed');
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'display_status', 'publish_failed',
-  'KK-98: Ayse, who wrote it, sees that it could not be published');
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'publish_error_code', 'failed',
-  'KK-98: and why, as a code the screen words');
-select is(pg_temp.listed_ann('owner', tests.id('p:ann:due')) ->> 'display_status', 'publish_failed', 'KK-98: so does the owner');
-select is(pg_temp.listed_ann('emre', tests.id('p:ann:due')), null, 'KK-98: Emre sees nothing of it');
-select public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), tests.id('p:ann:due'),
-  (select a.revision from public.announcements a where a.id = tests.id('p:ann:due')),
-  'Due at nine', 'Morning brief', 'general', array['employee'], array[tests.id('p:K')], now() - interval '1 minute',
-  null, null, '{}', '{}');
-select is((select a.release_error from public.announcements a where a.id = tests.id('p:ann:due')), null,
-  'KK-98: saving it again clears the error');
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:due')) ->> 'display_status', 'published',
-  'KK-98: and it goes out at the next try');
+select is(pg_temp.listed('ayse', tests.id('p:ann:due')) ->> 'display_status', 'scheduled',
+  'KK-98: a break that is not about the post is tried again at each read, so it still reads Scheduled');
+alter table public.notification_outbox drop constraint past_dates_refuses;
+select is(pg_temp.listed('ayse', tests.id('p:ann:due')) ->> 'display_status', 'published', 'KK-98: and it goes out at the next try');
+select is((select a.release_error from public.announcements a where a.id = tests.id('p:ann:due')), null, 'KK-98: with the error gone');
 
--- D4: a release refused by the core reads as not allowed, not as a plain failure.
-select tests.remember('p:ann:refused', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
-  'Refused', 'Refused body', 'general', array['employee'], array[tests.id('p:K')], now() + interval '1 hour',
-  null, null, '{}', '{}') ->> 'announcement_id')::uuid);
-select pg_temp.publish_ann('ayse', tests.id('p:ann:refused'));
-update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:refused');
--- ponytail: a trigger stands in for a refusal; the rule under test is how the list names it.
-create function pg_temp.refuse() returns trigger language plpgsql as $$
-begin
-  if new.subject_id = tests.id('p:ann:refused')::text then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope';
-  end if;
-  return new;
-end;
-$$;
-create trigger past_dates_refuses before insert on public.notification_outbox for each row execute function pg_temp.refuse();
+-- Its day came first: Couldn't publish, too late; Ayse, who scheduled it, hears it.
+select tests.remember('p:ann:late', pg_temp.schedule('ayse', 'Too late', current_date + 10));
+select pg_temp.move_back(tests.id('p:ann:late'), current_date - 1, current_date + 1);
+update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:late');
 select app_private.announcement_release(tests.id('p'));
-drop trigger past_dates_refuses on public.notification_outbox;
-select is(pg_temp.listed_ann('ayse', tests.id('p:ann:refused')) ->> 'publish_error_code', 'not_allowed',
-  'KK-98: a release the core refused reads "not_allowed"');
+select is(pg_temp.listed('ayse', tests.id('p:ann:late')) ->> 'display_status', 'publish_failed',
+  'K21: it started before it could go out: Couldn''t publish');
+select is(pg_temp.listed('ayse', tests.id('p:ann:late')) ->> 'publish_error_code', 'too_late', 'K21: and why, as a code the screen words');
+select is(pg_temp.listed('owner', tests.id('p:ann:late')) ->> 'display_status', 'publish_failed', 'K21: the owner sees the same');
+select is(pg_temp.listed('emre', tests.id('p:ann:late')), null, 'K21: Emre sees nothing of it');
+select is(pg_temp.notices_to('ayse', tests.id('p:ann:late')), 1, 'K21: Ayse, who scheduled it, is told once');
+select app_private.announcement_release(tests.id('p'));
+select is(pg_temp.notices_to('ayse', tests.id('p:ann:late')), 1, 'K21: and not again the next minute');
+select is(pg_temp.try(format($$select pg_temp.save('ayse', %L, pg_temp.payload('Too late', current_date + 3)
+  || jsonb_build_object('publish_at', now() + interval '1 hour'), 'schedule')$$, tests.id('p:ann:late'))), 'ok',
+  'KK-98: Ayse picks a new day and schedules it again');
+select is(pg_temp.listed('ayse', tests.id('p:ann:late')) ->> 'display_status', 'scheduled', 'KK-98: which clears the failure');
 
--- 6. B2: the content changed since Emre acknowledged it (K4) -------------------------------
+-- Whoever scheduled it lost access: Couldn't publish, not allowed; the owner hears it.
+select tests.remember('p:ann:refused', pg_temp.schedule('mina', 'Refused', current_date + 10));
+select public.remove_employee_access_service(pg_temp.u('owner'), tests.id('p'), tests.id('p:mina'));
+select tests.settle();
+update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:refused');
+select app_private.announcement_release(tests.id('p'));
+select is(pg_temp.listed('owner', tests.id('p:ann:refused')) ->> 'publish_error_code', 'not_allowed',
+  'K21: a release the core refused reads "not_allowed"');
+select is(pg_temp.notices_to('owner', tests.id('p:ann:refused')), 1, 'K21: Mina is gone, so the owner is told');
+select is(pg_temp.notices_to('mina', tests.id('p:ann:refused')), 0, 'K21: and not Mina');
 
-select tests.remember('p:ann:rules', (public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), null, null,
-  'House rules', 'Version one', 'general', array['employee'], array[tests.id('p:K')], null, null, null, '{}', '{}') ->> 'announcement_id')::uuid);
-select pg_temp.publish_ann('ayse', tests.id('p:ann:rules'));
+-- 7. K27: acknowledgements stay unless the writer asks again ----------------------------
+
+select tests.remember('p:ann:rules', pg_temp.publish('ayse', pg_temp.payload('House rules', null, null, '{"ask_ack": true}')));
 select public.acknowledge_announcement_service(pg_temp.u('emre'), tests.id('p'), tests.id('p:ann:rules'));
-select is(pg_temp.listed_ann('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'false',
-  'B2: Emre has acknowledged the current text');
-select public.save_announcement_audience_service(pg_temp.u('ayse'), tests.id('p'), tests.id('p:ann:rules'),
-  (select a.revision from public.announcements a where a.id = tests.id('p:ann:rules')),
-  'House rules', 'Version two', 'general', array['employee'], array[tests.id('p:K')], null, null, null, '{}', '{}');
-select is(pg_temp.listed_ann('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'true',
-  'B2: after the text changes, Emre is told it changed since he acknowledged');
+select isnt(pg_temp.listed('emre', tests.id('p:ann:rules')) ->> 'acknowledged_at', null, 'Emre acknowledged the house rules');
+select pg_temp.save('ayse', tests.id('p:ann:rules'), pg_temp.payload('House rules', null, null,
+  '{"ask_ack": true, "body": "Version two"}'), 'save');
+select isnt(pg_temp.listed('emre', tests.id('p:ann:rules')) ->> 'acknowledged_at', null,
+  'K27: a new text alone keeps his acknowledgement');
+select pg_temp.save('ayse', tests.id('p:ann:rules'), pg_temp.payload('House rules', null, null,
+  '{"ask_ack": true, "body": "Version three", "reset_acknowledgements": true}'), 'save');
+select is(pg_temp.listed('emre', tests.id('p:ann:rules')) ->> 'acknowledged_at', null,
+  'K27: Ayse asks everyone again: his acknowledgement is cleared');
+select is(pg_temp.listed('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'true',
+  'B2: and he is told it changed since he acknowledged');
 select public.acknowledge_announcement_service(pg_temp.u('emre'), tests.id('p'), tests.id('p:ann:rules'));
-select is(pg_temp.listed_ann('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'false',
+select is(pg_temp.listed('emre', tests.id('p:ann:rules')) ->> 'content_changed_since_acknowledged', 'false',
   'B2: once he acknowledges the new text, it no longer says so');
 
 select * from finish();

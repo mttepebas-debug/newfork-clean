@@ -91,8 +91,7 @@ select is((preview->>'blocked_count')::integer,0,'new hours in marked unavailabl
 select is(preview->'shifts'->0->'after_assessment'->>'operation','allowed','and need no confirmation') from dhr;
 select ok((preview->'shifts'->0->'after_assessment'->>'has_availability_conflict')::boolean,'the review still shows the availability warning') from dhr;
 -- Require confirmation still guards the other rules: the day closes (closed_location = confirm).
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
- select 'afa70000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], (week)::date, (week)::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), actor from dhr;
+select tests.closed_day(w, array[loc]::uuid[], (week)::date, (week)::date, actor, 'afa70000-0000-4000-8000-000000000020'::uuid) from dhr;
 update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
 select is(preview->'shifts'->0->'after_assessment'->>'operation','warning_requires_override','soft policy requires a fresh override') from dhr;
 update dhr set command=command||jsonb_build_object('overrides',jsonb_build_array(jsonb_build_object('shift_id',named,'note','Reviewed the new service reference hours')));

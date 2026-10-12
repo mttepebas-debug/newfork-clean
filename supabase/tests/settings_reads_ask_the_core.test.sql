@@ -3,7 +3,8 @@ create extension if not exists pgtap with schema extensions;
 select * from no_plan();
 
 -- The eight Settings pages read through the API (FB-6.1.9): Locations, Jobs,
--- Shift types, Shift labels, Important dates, Roles, Documents and
+-- Shift types, Shift labels, Important dates (a page under Announcements since
+-- EKRAN-08, still read with its Settings permission), Roles, Documents and
 -- Acknowledgements. Each page has one entry point, and each entry point asks
 -- the authorization core first, so somebody who may not read the page gets
 -- 42501 with an authz.* hint instead of an empty list. Who may read what, cell
@@ -34,15 +35,22 @@ insert into public.shift_types (workspace_id, name, default_start_time, default_
 values (tests.id('s'), 'Close', '17:00', '01:00', 1),
        (tests.id('s'), 'Open', '09:00', '15:00', 0);
 select tests.shift_label('s', 'Training');
-insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, location_ids)
-values (tests.id('s'), 'Inventory', 'event', tests.week(1), tests.week(1),
-        array[tests.id('s:K'), tests.id('s:B')]);
+-- ponytail: a post on Important Dates put in place directly; writing one is the
+-- announcement tests' job (EKRAN-08: Important Dates is a page under Announcements).
+with made as (
+  insert into public.announcements (workspace_id, title, body, category, status, starts_on, ends_on, on_important_dates,
+    time_zone, created_by, updated_by, published_by, published_at)
+  values (tests.id('s'), 'Inventory', '', 'event', 'published', tests.week(1), tests.week(1), true, 'Europe/Istanbul',
+    tests.user('s:owner'), tests.user('s:owner'), tests.user('s:owner'), now())
+  returning id)
+insert into public.announcement_locations (workspace_id, announcement_id, location_id, day)
+select tests.id('s'), made.id, place, 'open' from made, unnest(array[tests.id('s:K'), tests.id('s:B')]) place;
 
 create temporary table reader (name text primary key);
 insert into reader values
   ('list_settings_locations_service'), ('read_settings_jobs_service'),
   ('list_settings_shift_types_service'), ('list_settings_shift_labels_service'),
-  ('read_settings_important_dates_service'), ('read_role_workspace_service'),
+  ('get_important_dates_service'), ('read_role_workspace_service'),
   ('list_settings_document_types_service'), ('read_signature_settings_service');
 
 -- What one call answers: 'allowed', or the refusal as '<sqlstate> <hint>'.
@@ -175,23 +183,22 @@ select is(
   'Settings > Shift labels reads the labels'
 );
 
--- ponytail: compared as a set; the table stores location_ids in its own order.
 select is(
-  (select array(select n from jsonb_array_elements_text(d -> 'location_names') n order by n)
+  (select array(select l ->> 'name' from jsonb_array_elements(d -> 'locations') l order by 1)
    from jsonb_array_elements(
-     public.read_settings_important_dates_service(tests.user('s:lale'), tests.id('s')) -> 'dates') d),
+     public.get_important_dates_service(tests.user('s:lale'), tests.id('s')) -> 'dates') d),
   array['Besiktas', 'Kadikoy'],
   'an important date names its locations, even one the reader does not work at'
 );
 select is(
   array(select l ->> 'name' from jsonb_array_elements(
-    public.read_settings_important_dates_service(tests.user('s:lale'), tests.id('s')) -> 'locations') l),
+    public.get_announcements_service(tests.user('s:lale'), tests.id('s')) -> 'locations') l),
   array['Kadikoy'],
-  'the location picker offers a manager the locations they may add a date for'
+  'the drawer''s location list offers a manager the locations they may write a post for'
 );
 select is(
   array(select l ->> 'name' from jsonb_array_elements(
-    public.read_settings_important_dates_service(tests.user('s:owner'), tests.id('s')) -> 'locations') l),
+    public.get_announcements_service(tests.user('s:owner'), tests.id('s')) -> 'locations') l),
   array['Besiktas', 'Kadikoy'],
   'and the owner every location'
 );
