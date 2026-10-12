@@ -5,6 +5,7 @@ import type {
 
 import type { ShiftPublicationState } from "../components/ScheduleContextMenu";
 import type { ScheduleCellState } from "../hooks/useCellState";
+import { shiftsOverlap } from "./scheduleShiftInterval";
 
 type GhostShiftMetadata = {
   readonly ghost?: boolean;
@@ -30,6 +31,30 @@ export function publicationStateForShift(
   if (metadata.pending_op_type === "delete") return "staged-removed";
   if (metadata.pending_op_type === "update") return "unlocked-modified";
   return "locked";
+}
+
+export function isPendingRemovalShift(
+  shift: ScheduleShift | ScheduleEditableShift,
+): boolean {
+  return (shift as ScheduleShift & ShiftPublicationMetadata).pending_op_type === "delete";
+}
+
+// Mert, 2026-10-12: a shift written in a removed shift's place, over its hours
+// or with its shift type, covers it; the removal still publishes.
+export function hideReplacedRemovedShifts<T extends ScheduleShift>(
+  shifts: readonly T[],
+): T[] {
+  const kept = shifts.filter((item) => !isPendingRemovalShift(item));
+  if (kept.length === shifts.length) return [...shifts];
+  return shifts.filter(
+    (item) =>
+      !isPendingRemovalShift(item) ||
+      !kept.some(
+        (other) =>
+          shiftsOverlap(item, other) ||
+          (item.shift_type_id != null && item.shift_type_id === other.shift_type_id),
+      ),
+  );
 }
 
 export function isGhostScheduleShift(shift: ScheduleShift): boolean {

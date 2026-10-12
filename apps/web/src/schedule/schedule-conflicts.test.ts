@@ -325,6 +325,13 @@ describe("schedule conflict port", () => {
     const separate = evaluateScheduleShiftConflicts(model, [existing], input({ shift_type_id: shiftTypeId, time_basis: "explicit", start_time: "18:00", end_time: "20:00" }));
     expect(separate).not.toEqual(expect.arrayContaining([expect.objectContaining({ severity: "block" })]));
   });
+  // Mert, 2026-10-12: a live shift removed while editing is on its way out;
+  // a new shift over its hours is no conflict.
+  it("never counts a shift removed while editing as an overlap", () => {
+    const removed = { ...model.shifts[0]!, source_published_shift_id: "live-1", pending_op_type: "delete" as const };
+    expect(evaluateScheduleShiftConflicts(model, [removed], input({ time_basis: "explicit" })))
+      .not.toEqual(expect.arrayContaining([expect.objectContaining({ type: "time_overlap" })]));
+  });
   it("blocks zero-length clock ranges before assignment checks", () => {
     expect(
       formatScheduleConflictMessages(
