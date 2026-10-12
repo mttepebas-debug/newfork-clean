@@ -135,6 +135,38 @@ describe("ExchangeReview", () => {
     expect((screen.getByRole("button", { name: "Give shift to Emma" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  // Covered in the old manager Shift Hub until it went (BL-1024): a failed
+  // eligibility check keeps the give off and says so.
+  it("keeps the button off and says so when eligibility could not be checked", async () => {
+    vi.mocked(getExchangePreview).mockRejectedValue(new Error("Network down"));
+    renderReview();
+    fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
+    expect((await screen.findByRole("alert")).textContent).toBe("Eligibility could not be checked. Close and try again.");
+    expect((screen.getByRole("button", { name: "Give shift to Emma" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(changeExchange).not.toHaveBeenCalled();
+  });
+  // The person picked withdraws while the drawer is open: the give goes off
+  // rather than sending a decision for someone who is no longer asking.
+  it("turns the give off when the picked person withdraws during the review", async () => {
+    const { rerender } = renderReview();
+    fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
+    const give = await screen.findByRole("button", { name: "Give shift to Emma" });
+    await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
+    const withdrawn = {
+      ...cover, revision: 5,
+      applications: cover.applications.map((one) => (one.id === emma ? { ...one, status: "withdrawn" } : one)),
+    } as unknown as ExchangeCase;
+    rerender(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter>
+          <ExchangeReview item={withdrawn} workspace={workspace} timeFormat="12h" onClose={onClose} onDone={onDone} onHold={onHold} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByRole("radio", { name: /Emma Wilson/ })).toBeNull();
+    expect((screen.getByRole("button", { name: "Pick someone" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(changeExchange).not.toHaveBeenCalled();
+  });
   it("closes the request with a reason the people involved read", async () => {
     vi.mocked(changeExchange).mockResolvedValue({ case_id: caseId, revision: 5, status: "cancelled" } as never);
     renderReview();
