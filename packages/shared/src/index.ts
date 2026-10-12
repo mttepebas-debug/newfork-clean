@@ -473,6 +473,8 @@ export const invitationPreviewStateSchema = z.enum([
   "valid",
   "expired",
   "revoked",
+  // Revoked because a newer invitation went to the same address (K7).
+  "replaced",
   "declined",
   "accepted",
   "workspace_unavailable",
