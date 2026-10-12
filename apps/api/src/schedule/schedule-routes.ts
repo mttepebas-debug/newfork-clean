@@ -108,6 +108,9 @@ const acquireBodySchema = z.object({
   source_draft_id: z.string().uuid().nullable().default(null),
   // The locations to edit; none named means every location the person may edit.
   location_ids: z.array(z.string().uuid()).min(1).max(200).nullable().default(null),
+  // False when the person asks for a new edit from a menu: an edit of theirs
+  // that was left open (its lock ran out) is set aside, never brought back.
+  resume: z.boolean().default(true),
 });
 const activeSessionBodySchema = z.object({
   session_id: z.string().uuid(),
@@ -455,6 +458,7 @@ export function registerScheduleRoutes(
           sourceKind: body.data.source_kind,
           sourceDraftId: body.data.source_draft_id,
           locationIds: body.data.location_ids,
+          resume: body.data.resume,
         }),
       );
     } catch (error) {
