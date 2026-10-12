@@ -332,10 +332,12 @@ select ok(pg_temp.has_notice('emre', tests.id('r:ann:narrow2')), 'BL-534: it rea
 
 -- 11. Unpublish keeps the days already gone on the Schedule (K11) ------------------------------
 
-select tests.remember('r:ann:running', tests.closed_day(tests.id('r'), array[tests.id('r:K')], current_date - 1, current_date + 2,
+-- Days count from Moda's own today (Istanbul), not the database's: from 21:00 UTC they differ.
+select tests.remember('r:ann:running', tests.closed_day(tests.id('r'), array[tests.id('r:K')],
+  (now() at time zone 'Europe/Istanbul')::date - 1, (now() at time zone 'Europe/Istanbul')::date + 2,
   pg_temp.u('owner'), title => 'Water cut'));
 select pg_temp.set_state('owner', tests.id('r:ann:running'), 'unpublish');
-select is((select array_agg(c.closed_date - current_date order by c.closed_date) from public.schedule_closures c
+select is((select array_agg(c.closed_date - (now() at time zone 'Europe/Istanbul')::date order by c.closed_date) from public.schedule_closures c
            where c.announcement_id = tests.id('r:ann:running')), array[-1],
   'K11: unpublished while it runs, yesterday stays closed on the Schedule; the days ahead open');
 select is(pg_temp.try($$select pg_temp.publish('owner', array['K'], 'Last Tuesday closed', jsonb_build_object('starts_on', current_date - 6,
