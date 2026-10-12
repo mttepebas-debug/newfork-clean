@@ -363,6 +363,10 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'manager_note_follows_role', 'AVAIL-002'),
   ('trigger', 'workspace_memberships.manager_note_follows_role', 'AVAIL-002');
+-- BL-768 (KK-174): a termination's follow-up is the location managers' notice;
+-- the follow-up rows nobody read go.
+insert into retired (kind, name, step) values
+  ('table', 'employee_offboarding_followups', 'BL-768');
 
 -- FB-6.4 A1: one eligibility engine (app_private.eligibility) for swap, pickup and cover.
 insert into retired (kind, name, step) values
