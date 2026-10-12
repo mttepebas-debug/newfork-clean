@@ -111,14 +111,6 @@ const navItems: readonly NavItem[] = [
     roles: ["owner", "admin", "manager"],
   },
   {
-    to: "/app/important-dates",
-    label: "Important Dates",
-    icon: CalendarDays,
-    anyOf: ["important_dates.read"],
-    section: "management",
-    roles: ["owner", "admin", "manager"],
-  },
-  {
     to: "/app/employee-hub",
     label: "Home",
     icon: Home,
@@ -158,6 +150,16 @@ const navItems: readonly NavItem[] = [
     anyOf: ["announcements.read"],
     section: "shared",
   },
+  // A child page of Announcements (EKRAN-08): one record, Important Dates among the posts.
+  {
+    to: "/app/announcements/important-dates",
+    label: "Important Dates",
+    icon: CalendarDays,
+    anyOf: ["important_dates.read"],
+    section: "shared",
+    parentTo: "/app/announcements",
+    roles: ["owner", "admin", "manager"],
+  },
   {
     to: "/app/notifications",
     label: "Notifications",
@@ -194,7 +196,7 @@ export function AppShell() {
     setOwner: setSidebarPanelOwner,
   }), [sidebarPanelTarget, sidebarPanelCollapsed]);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
-    () => new Set(["/app/schedule", "/app/employees"]),
+    () => new Set(["/app/schedule", "/app/employees", "/app/announcements"]),
   );
   const location = useLocation();
   const phone = usePhoneWidth();
@@ -328,6 +330,10 @@ export function AppShell() {
               (candidate) => candidate.parentTo === item.to,
             );
             const hasChildren = children.length > 0;
+            // A parent whose child page is open is not the open page itself.
+            const childActive = children.some((child) =>
+              isRailItemActive(location.pathname, child.to),
+            );
             const isExpanded =
               hasChildren &&
               (expandedNavGroups.has(item.to) ||
@@ -348,11 +354,11 @@ export function AppShell() {
                     }`
                   }
                   to={item.to}
-                  end={item.exact}
+                  end={item.exact || childActive}
                   aria-label={collapsed ? item.label : undefined}
                   data-rail-peek={collapsed ? "" : undefined}
                   data-rail-active={
-                    collapsed && isNavItemActive(location.pathname, item)
+                    collapsed && !childActive && isNavItemActive(location.pathname, item)
                       ? "true"
                       : undefined
                   }

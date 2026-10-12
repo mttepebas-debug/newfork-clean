@@ -368,8 +368,8 @@ describe("AppShell notification badge", () => {
       "Requests",
       "Employees",
       "Availability",
-      "Important Dates",
       "Announcements",
+      "Important Dates",
       "Notifications",
     ]);
   });

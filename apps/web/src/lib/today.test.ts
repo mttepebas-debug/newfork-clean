@@ -42,7 +42,7 @@ describe("todayIn", () => {
     // BL-353: these read the device's calendar by hand.
     "src/schedule/components/ScheduleDayHeaderCells.tsx",
     "src/schedule/components/MiniCalendar.tsx",
-    "src/settings/ImportantDatesSettingsPage.tsx",
+    "src/communications/AnnouncementDrawer.tsx",
     "src/views/SchedulePage.tsx",
     "src/dev/EmployeeOnboardingPreview.tsx",
   ])("%s takes today from todayIn", (file) => {

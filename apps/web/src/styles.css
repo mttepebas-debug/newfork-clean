@@ -90,6 +90,10 @@
   /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
      never reads as a status, a warning or a selection. 7.6:1 on white. */
   --theme-note: #2f4fa3;
+  /* Scheduled, "Now 3–4 PM" and other quiet info (EKRAN-08 announcements).
+     #234a7a on #e8eff8 is 8.2:1. */
+  --theme-info-soft: #e8eff8;
+  --theme-info-text: #234a7a;
   /* List pages (DOC-TABLE, KARARLAR Genel → "Liste sayfalarının ortak dili"):
      table frame, column-heading row, body cell ink, the line between
      Availability day headings, and the faint "—" / disabled ink. */
@@ -12237,15 +12241,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .form-field.field-wide {
   grid-column: span 2;
 }
-.important-date-fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  padding: 20px;
-}
-.important-date-note-field {
-  grid-column: span 2;
-}
 
 .availability-page {
   box-sizing: border-box;
@@ -12801,12 +12796,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .shift-type-fields,
-  .important-date-fields {
+  .shift-type-fields {
     grid-template-columns: 1fr;
-  }
-  .important-date-note-field {
-    grid-column: auto;
   }
   .scheduling-setting-row {
     grid-template-columns: 1fr;
