@@ -196,3 +196,4 @@ supabase/tests/invitation_reminder_and_newer_link.test.sql
 supabase/tests/role_and_notification_settings_ask_the_core.test.sql
 supabase/tests/weekly_unchanged_save_is_quiet.test.sql
 supabase/tests/employees_list_every_location.test.sql
+supabase/tests/workspace_home_reads_by_the_right_rule.test.sql
