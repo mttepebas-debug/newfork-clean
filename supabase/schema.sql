@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
--- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
+-- migrations: 466, last: 20261012030000_schedule_refusals_say_why.sql
+-- fingerprint: sha256:c4979700cfd96388613e4598ec066338426a0026e0d5c81725f09145b901a1d5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7210,9 +7210,9 @@ begin
   if jsonb_typeof(assignments)<>'array' then raise exception 'auto-fill assignments must be an array' using errcode='22023'; end if;
   select * into target_session from public.schedule_edit_sessions s where s.id=target_session_id and s.workspace_id=target_workspace_id for update;
   if target_session.id is null or target_session.holder_user_id<>actor_user_id then raise exception 'edit session not found' using errcode='P0002'; end if;
-  if target_session.revision<>expected_session_revision then raise exception 'stale auto-fill preview' using errcode = 'PT409'; end if;
+  if target_session.revision<>expected_session_revision then raise exception 'stale auto-fill preview' using errcode = 'PT409', hint = 'schedule.auto_fill_stale'; end if;
   preview:=public.preview_schedule_auto_fill_service(actor_user_id,target_workspace_id,target_session_id);
-  if preview->>'fingerprint'<>expected_fingerprint then raise exception 'stale auto-fill preview' using errcode = 'PT409'; end if;
+  if preview->>'fingerprint'<>expected_fingerprint then raise exception 'stale auto-fill preview' using errcode = 'PT409', hint = 'schedule.auto_fill_stale'; end if;
   for assignment in select value from jsonb_array_elements(assignments) loop
     select value into proposal from jsonb_array_elements(preview->'proposals') where value->>'shift_id'=assignment->>'shift_id';
     employee:=(assignment->>'employee_id')::uuid;
@@ -7246,14 +7246,14 @@ begin
  perform public.get_schedule_edit_session_service(actor,w,sid);
  select * into prior from public.schedule_default_hours_reviews where workspace_id=w and actor_id=actor and operation_id=key;
  if found then
-  if prior.session_id<>sid or prior.command<>command then raise exception 'Retry key was already used for a different review' using errcode = 'PT409'; end if;
+  if prior.session_id<>sid or prior.command<>command then raise exception 'Retry key was already used for a different review' using errcode = 'PT409', hint = 'schedule.request_key_reused'; end if;
   return public.get_schedule_edit_session_service(actor,w,sid);
  end if;
  -- Settings uses atomic row updates. Hold these source rows while reviewing and
  -- applying so a changed default cannot slip between the two operations.
  perform 1 from public.shift_types t where t.workspace_id=w and t.id in(select s.shift_type_id from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id in(select value::uuid from jsonb_array_elements_text(command->'shift_ids'))) order by t.id for share;
  review:=public.preview_schedule_default_hours_service(actor,w,sid,command);
- if review->>'fingerprint' is distinct from command->>'fingerprint' then raise exception 'Defaults, shifts or conflicts changed; review again' using errcode = 'PT409'; end if;
+ if review->>'fingerprint' is distinct from command->>'fingerprint' then raise exception 'Defaults, shifts or conflicts changed; review again' using errcode = 'PT409', hint = 'schedule.default_hours_stale'; end if;
  if (review->>'blocked_count')::integer>0 or (review->>'changed_count')::integer=0 then raise exception 'Resolve blocked shifts or choose changed defaults before applying' using errcode='23514'; end if;
  if exists(select 1 from jsonb_array_elements(review->'shifts') x where (x->>'can_apply')::boolean
   and x->'after_assessment'->>'operation'='warning_requires_override'
@@ -9129,7 +9129,7 @@ begin
   where c.workspace_id=w and c.actor_user_id=actor and c.idempotency_key=request_key;
  if found then
   if receipt.session_id is distinct from sid or receipt.expected_revision is distinct from expected_revision or receipt.shifts is distinct from shifts then
-   raise exception 'Request key already used for a different batch' using errcode = 'PT409'; end if;
+   raise exception 'Request key already used for a different batch' using errcode = 'PT409', hint = 'schedule.request_key_reused'; end if;
   return public.get_schedule_edit_session_service(actor,w,sid);
  end if;
  if session.revision is distinct from expected_revision then
@@ -9693,7 +9693,7 @@ begin
      where s.template_id = target_template_id and s.workspace_id = target_workspace_id))
  end);
  delete from public.schedule_templates where id=target_template_id and workspace_id=target_workspace_id and revision=expected_revision returning name into old_name;
- if old_name is null then raise exception 'schedule template revision stale' using errcode = 'PT409'; end if;
+ if old_name is null then raise exception 'schedule template revision stale' using errcode = 'PT409', hint = 'schedule.template_changed'; end if;
  insert into public.schedule_template_events(workspace_id,template_id,template_name,action,actor_user_id) values(target_workspace_id,target_template_id,old_name,'deleted',actor_user_id);
  return jsonb_build_object('status','deleted','template_id',target_template_id);
 end;
@@ -15584,7 +15584,7 @@ begin
     if previous->>'time_basis'='type_default' and
       (nullif(payload->>'start_time','')::time,nullif(payload->>'end_time','')::time) is distinct from
       (nullif(previous->>'start_time','')::time,nullif(previous->>'end_time','')::time) then
-      raise exception 'Refresh the schedule before changing reference hours' using errcode = 'PT409';
+      raise exception 'Refresh the schedule before changing reference hours' using errcode = 'PT409', hint = 'schedule.reference_hours_changed';
     end if;
     basis:=previous->>'time_basis'; snap:=previous->'time_snapshot';
   else snap:=payload->'time_snapshot'; end if;
@@ -15603,7 +15603,7 @@ begin
     end if;
     if snap is not null and snap<>'null'::jsonb and
       ((snap->>'start_time')::time,(snap->>'end_time')::time) is distinct from (ver.start_time,ver.end_time) then
-      raise exception 'Shift default hours changed; refresh the reference before saving' using errcode = 'PT409';
+      raise exception 'Shift default hours changed; refresh the reference before saving' using errcode = 'PT409', hint = 'schedule.reference_hours_changed';
     end if;
     if previous is not null and payload->>'location_id'=previous->>'location_id' then
       tz:=coalesce(nullif(previous->>'time_timezone',''),tz);
@@ -16254,7 +16254,7 @@ begin
  if emp is null then
    if a->>'operation'='warning_requires_override' and s->>'availability_assessment_fingerprint' is distinct from
     public.assess_weekly_shift_availability(w,emp,s-'id'-'source_shift_id')->>'fingerprint' then
-    raise exception 'Review the current availability assessment before saving' using errcode='PT409';
+    raise exception 'Review the current availability assessment before saving' using errcode='PT409', hint='schedule.availability_review_required';
    end if;
    if a->>'operation'='warning_requires_override' then
     insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata)
@@ -16270,7 +16270,7 @@ begin
  if a->>'operation'='warning_requires_override' then
   preview:=public.assess_weekly_shift_availability(w,emp,s-'id'-'source_shift_id');
   if s->>'availability_assessment_fingerprint' is distinct from preview->>'fingerprint' then
-   raise exception 'Review the current availability assessment before saving' using errcode='PT409'; end if;
+   raise exception 'Review the current availability assessment before saving' using errcode='PT409', hint='schedule.availability_review_required'; end if;
  end if;
  update public.schedule_availability_overrides set revoked_at=now() where workspace_id=w and shift_id=logical_id and revoked_at is null;
  if a->>'operation'='warning_requires_override' then
@@ -16719,7 +16719,7 @@ begin
   raise exception 'Choose dates within this schedule week' using errcode='22023'; end if;
  if (select count(*) from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id=any(ids)
   and s.scheduled_date between starts and ends and coalesce(s.pending_op_type,'')<>'delete')<>cardinality(ids) then
-  raise exception 'Selected shifts changed or are outside these dates' using errcode = 'PT409'; end if;
+  raise exception 'Selected shifts changed or are outside these dates' using errcode = 'PT409', hint = 'schedule.default_hours_stale'; end if;
  perform app_private.authorize(actor, w, 'schedule.edit', target_locations => array(
   select distinct s.location_id from public.schedule_edit_session_shifts s where s.workspace_id=w and s.session_id=sid and s.id=any(ids)));
  edit_scope:=app_private.scope_set(actor, w, 'schedule.edit');
@@ -17995,7 +17995,7 @@ begin
     'notification_event_id', notification_event_id,
     'notification_enqueued_count', cardinality(normalized_recipient_ids)
   );
-exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409';
+exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409', hint='schedule.publication_changed';
 end;
 $$;
 
@@ -19227,7 +19227,7 @@ begin
  end);
  update public.schedule_templates set name=btrim(target_name),revision=revision+1,updated_by=actor_user_id,updated_at=now()
  where id=target_template_id and workspace_id=target_workspace_id and revision=expected_revision;
- if not found then raise exception 'schedule template revision stale' using errcode = 'PT409'; end if;
+ if not found then raise exception 'schedule template revision stale' using errcode = 'PT409', hint = 'schedule.template_changed'; end if;
  insert into public.schedule_template_events(workspace_id,template_id,template_name,action,actor_user_id,detail)
  values(target_workspace_id,target_template_id,btrim(target_name),'renamed',actor_user_id,jsonb_build_object('previous_name',old_name));
  return public.get_schedule_template_service(actor_user_id,target_workspace_id,target_template_id);
@@ -22847,7 +22847,7 @@ begin
      and draft_shift.workspace_id = target_workspace_id;
 
   return result;
-exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409';
+exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409', hint='schedule.edit_session_stale';
 end;
 $$;
 
@@ -26418,7 +26418,7 @@ begin
     'publication_ids', to_jsonb(publication_ids),
     'unpublished_at', effective_unpublished_at
   );
-exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409';
+exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409', hint='schedule.publication_changed';
 end;
 $$;
 
@@ -27035,7 +27035,7 @@ begin
  select * into previous from public.workspace_scheduling_settings where workspace_id=target_workspace_id for update;
  if not found then raise exception 'Scheduling settings not found'; end if;
  if settings ?| conflict_keys and (settings->>'conflict_rules_revision')::integer is distinct from previous.conflict_rules_revision then
-  raise exception 'Conflict rules changed. Reload the current rules before saving.' using errcode='PT409';
+  raise exception 'Conflict rules changed. Reload the current rules before saving.' using errcode='PT409', hint='schedule.rules_changed';
  end if;
  -- Partial calls preserve every omitted field. Revision is stamped by trigger.
  select * into proposed from jsonb_populate_record(previous,settings);
