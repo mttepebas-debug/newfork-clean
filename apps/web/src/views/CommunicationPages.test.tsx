@@ -531,11 +531,17 @@ describe("Phase 8 communication pages", () => {
   it("keeps the sentence of a refusal the editor has no words for", async () => {
     const draft = announcement({ id: "a8200000-0000-4000-8000-000000000032", title: "Patio closes", status: "draft" });
     vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: true, locations: [], announcements: [draft] });
-    vi.mocked(transitionAnnouncement).mockRejectedValue(new RequestError("This announcement has expired", undefined, undefined, 400));
     renderRoute(`/app/announcements/${draft.id}`, <AnnouncementsPage />, "/app/announcements/:announcementId");
     const editor = await screen.findByRole("dialog", { name: "Edit announcement" });
-    fireEvent.click(within(editor).getByRole("button", { name: "Publish" }));
-    expect((await within(editor).findByRole("alert")).textContent).toBe("This announcement has expired");
+    for (const refusal of [
+      new RequestError("This announcement has expired", undefined, undefined, 400),
+      new RequestError("Request conflicts with the current state", undefined, undefined, 409),
+      new RequestError("Some other conflict", "announcement.something_new", undefined, 409),
+    ]) {
+      vi.mocked(transitionAnnouncement).mockRejectedValueOnce(refusal);
+      fireEvent.click(within(editor).getByRole("button", { name: "Publish" }));
+      await waitFor(() => expect(within(editor).getByRole("alert").textContent).toBe(refusal.message));
+    }
   });
 
   it("offers Archive, not Delete, in the row menu (Mert 2026-10-03, BL-543)", async () => {
