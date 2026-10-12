@@ -25896,7 +25896,7 @@ begin
    and location.workspace_id = shift.workspace_id
   where shift.workspace_id = target_workspace_id
     and shift.employee_id = target_employee_id
-    and (shift.scheduled_date + shift.start_time) at time zone location.timezone >= resolved_effective_at;
+    and (shift.scheduled_date + shift.start_time) at time zone location.timezone >= greatest(resolved_effective_at, now());
 
   get diagnostics released_count = row_count;
 
