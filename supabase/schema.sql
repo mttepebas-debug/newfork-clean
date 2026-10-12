@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 475, last: 20261012041700_invitation_reminder_and_newer_link.sql
--- fingerprint: sha256:20846d2bafe9ac1221f10fdaf3cde5c2b8643066ef26649c063ff62ade2a8ad1
+-- migrations: 479, last: 20261012043500_employees_list_every_location.sql
+-- fingerprint: sha256:af856afbd8dcaad01471d43e54fcd337d09fee8f934d381bbec46f1dbb61d2b6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1828,7 +1828,7 @@ CREATE OR REPLACE FUNCTION "app_private"."can_edit_role"("actor" "uuid", "w" "uu
  select exists(select 1 from public.workspace_memberships m join public.workspace_roles ar on ar.id=m.role_id
  left join public.workspace_roles target on target.id=rid and target.workspace_id=w
  where m.user_id=actor and m.workspace_id=w and m.status='active' and m.role_id is distinct from rid
- and public.service_actor_has_permission(actor,w,'roles.manage')
+ and app_private.authz_reason(actor,w,'settings.roles.write') is null
  and (rid is null or (target.id is not null and target.access_class<>'owner'))
  and (ar.access_class='owner' or (ar.access_class='admin' and (rid is null or target.access_class in ('manager','employee')))));
 $$;
@@ -3236,6 +3236,22 @@ $_$;
 ALTER FUNCTION "app_private"."ensure_owner_employee_profile"("target_workspace_id" "uuid", "owner_user_id" "uuid", "owner_first_name" "text", "owner_middle_name" "text", "owner_last_name" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."every_member_has_an_account_row"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if new.status in ('active', 'pending_activation') then
+    perform app_private.open_account_row(new.user_id, new.workspace_id);
+  end if;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."every_member_has_an_account_row"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") RETURNS "text"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -4484,6 +4500,39 @@ $$;
 
 
 ALTER FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."open_account_row"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  insert into public.user_profiles (user_id, display_name)
+  select
+    account.id,
+    left(coalesce(
+      nullif(btrim(account.raw_user_meta_data ->> 'display_name'), ''),
+      nullif(btrim(account.raw_user_meta_data ->> 'full_name'), ''),
+      (select nullif(btrim(record.first_name || ' ' || record.last_name), '')
+       from public.employee_profiles record
+       where record.workspace_id = target_workspace_id
+         and record.user_id = account.id
+         and record.archived_at is null
+       order by record.created_at
+       limit 1),
+      nullif(btrim(split_part(account.email, '@', 1)), ''),
+      'Team member'
+    ), 100)
+  from auth.users account
+  where account.id = target_user_id
+    and not exists (
+      select 1 from public.account_deletion_requests deletion
+      where deletion.user_id = account.id and deletion.status = 'completed'
+    )
+  on conflict (user_id) do nothing;
+$$;
+
+
+ALTER FUNCTION "app_private"."open_account_row"("target_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."open_owner_record_to_everything"("target_workspace_id" "uuid", "owner_employee_id" "uuid", "actor_user_id" "uuid") RETURNS "void"
@@ -6600,7 +6649,11 @@ CREATE OR REPLACE FUNCTION "app_private"."workspace_has_permission"("target_work
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
- select public.service_actor_has_permission(auth.uid(),target_workspace_id,target_permission);
+  select coalesce((
+    select state.status = 'active' and state.workspace_open and not state.document_blocked
+      and target_permission = any (state.permissions)
+    from app_private.actor((select auth.uid()), target_workspace_id) state
+  ), false);
 $$;
 
 
@@ -9797,7 +9850,8 @@ CREATE OR REPLACE FUNCTION "public"."delete_workspace_role_service"("actor_user_
 declare target public.workspace_roles;
 begin
  perform pg_advisory_xact_lock(hashtextextended('roles:'||target_workspace_id::text,0));
- if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501'; end if;
+ perform app_private.authorize(actor_user_id,target_workspace_id,'settings.roles.write');
+ if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;
  select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
  if target.system_key is not null then raise exception 'Built-in roles cannot be deleted' using errcode='42501'; end if;
  if exists(select 1 from public.workspace_memberships where role_id=target_role_id) or exists(select 1 from public.employee_invitations where role_id=target_role_id) or exists(select 1 from public.employee_access_snapshots where role_id=target_role_id) then raise exception 'Role has member or invitation references. Resolve these dependencies before deleting.' using errcode='PT409',hint='role.in_use'; end if;
@@ -11704,18 +11758,10 @@ declare
   location_rows jsonb;
   audit_rows jsonb;
 begin
-  if not (
-    public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.read')
-    or public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.write')
-  ) then
-    raise exception 'notification settings read access required' using errcode = '42501';
-  end if;
+  -- The write needs the read (role_permission_dependencies), so the read is the door.
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.read');
 
-  can_write := public.service_actor_has_permission(
-    actor_user_id,
-    target_workspace_id,
-    'notifications.settings.write'
-  );
+  can_write := app_private.authz_reason(actor_user_id, target_workspace_id, 'settings.notifications.write') is null;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'type_key', entry.type_key,
@@ -12792,19 +12838,21 @@ CREATE OR REPLACE FUNCTION "public"."get_workspace_dashboard_service"("actor_use
 declare
   me app_private.actor_state := app_private.actor(actor_user_id, target_workspace_id);
   read_rule app_private.authz_actions;
+  documents_rule app_private.authz_actions;
   schedule_places uuid[];
   result jsonb;
 begin
   -- Workspace home is the to-do list's page: one gate (KK-32, KK-34).
   perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.todos');
   select * into read_rule from app_private.authz_actions r where r.key = 'employee.read';
+  select * into documents_rule from app_private.authz_actions r where r.key = 'documents.read';
   schedule_places := app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.read');
 
   perform public.sync_expiring_document_todos_service(target_workspace_id);
 
   select jsonb_build_object(
     'workspace_id', target_workspace_id,
-    'display_name', coalesce(profile.display_name, 'Manager'),
+    'display_name', profile.display_name,
     'metrics', jsonb_build_object(
       'today_shift_count', (
         select count(*)
@@ -12870,7 +12918,10 @@ begin
           and todo.status = 'open'::public.workspace_todo_status
           and (
             todo.employee_id is null
-            or app_private.authz_check(me, read_rule, null, todo.employee_id, null) is null
+            -- KK-179 (5): a document to-do is read like its notification.
+            or app_private.authz_check(me,
+                 case when todo.source_type = 'employee_document_expiry' then documents_rule else read_rule end,
+                 null, todo.employee_id, null) is null
           )
         order by todo.due_at nulls last, todo.created_at, todo.id
         limit 5
@@ -13635,7 +13686,7 @@ $$;
 ALTER FUNCTION "public"."list_employee_document_lifecycle_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "self_only" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "primary_location_id" "uuid", "primary_location_name" "text", "location_count" bigint, "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "role_name" "text", "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
+CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "locations" "jsonb", "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "role_name" "text", "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -13660,9 +13711,14 @@ begin
       employee.first_name, employee.last_name, employee.preferred_name,
       concat_ws(' ', coalesce(nullif(employee.preferred_name, ''), employee.first_name), employee.last_name) as display_name,
       employee.invitation_email, employee.start_date,
-      primary_location.location_id as primary_location_id,
-      location.name as primary_location_name,
-      (select count(*) from public.employee_location_assignments a where a.employee_id = employee.id and a.ended_at is null) as location_count,
+      -- Every location they work at, the primary first, then A to Z (BL-436).
+      coalesce((
+        select jsonb_agg(jsonb_build_object('id', place.id, 'name', place.name, 'primary', assignment.is_primary)
+          order by assignment.is_primary desc, lower(place.name), place.id)
+        from public.employee_location_assignments assignment
+        join public.locations place on place.id = assignment.location_id
+        where assignment.employee_id = employee.id and assignment.ended_at is null
+      ), '[]'::jsonb) as locations,
       primary_job.job_id as primary_job_id, listed_job.name as primary_job_name,
       (select count(*) from public.employee_job_assignments a where a.employee_id = employee.id and a.ended_at is null) as job_count,
       role.name as role_name,
@@ -13676,8 +13732,6 @@ begin
       end as display_status,
       employee.archived_at, employee.revision
     from public.employee_profiles employee
-    left join public.employee_location_assignments primary_location on primary_location.employee_id = employee.id and primary_location.ended_at is null and primary_location.is_primary
-    left join public.locations location on location.id = primary_location.location_id
     left join public.employee_job_assignments primary_job on primary_job.employee_id = employee.id and primary_job.ended_at is null and primary_job.is_primary
     -- The job the list names: the stored primary; failing that the Owner job
     -- (the owner's, never stored as primary), then the first job in the
@@ -13715,7 +13769,7 @@ begin
         directory.preferred_name,
         directory.employee_code,
         directory.invitation_email,
-        directory.primary_location_name,
+        (select string_agg(place ->> 'name', ' ') from jsonb_array_elements(directory.locations) place),
         directory.primary_job_name
       ) ilike '%' || btrim(search_text) || '%'
     )
@@ -16672,11 +16726,9 @@ declare
   decision jsonb;
   requested_actor_user_id uuid := actor_user_id;
 begin
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.test_send') then
-    raise exception 'notification test-send access required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.test');
   if target_recipient_user_id is not null and target_recipient_user_id <> actor_user_id then
-    raise exception 'notification preview recipient must be current actor' using errcode = '42501';
+    raise exception 'notification preview recipient must be current actor' using errcode = '42501', hint = 'authz.out_of_scope';
   end if;
   select * into catalog_row
   from public.notification_catalog entry
@@ -20079,21 +20131,10 @@ CREATE OR REPLACE FUNCTION "public"."reset_notification_policies_service"("actor
     SET "search_path" TO ''
     AS $$
 declare
-  membership_row public.workspace_memberships%rowtype;
   policy_row public.notification_org_policies%rowtype;
   affected_count integer := 0;
 begin
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.write') then
-    raise exception 'notification settings write access required' using errcode = '42501';
-  end if;
-  select * into membership_row
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active';
-  if membership_row.id is null or not membership_row.all_locations then
-    raise exception 'organization-wide notification scope required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.write');
   if char_length(btrim(coalesce(target_reason, ''))) not between 3 and 500 then
     raise exception 'notification policy reason required' using errcode = '22023';
   end if;
@@ -22168,16 +22209,13 @@ CREATE OR REPLACE FUNCTION "public"."save_notification_policy_service"("actor_us
     AS $$
 declare
   catalog_row public.notification_catalog%rowtype;
-  membership_row public.workspace_memberships%rowtype;
   existing public.notification_org_policies%rowtype;
   saved public.notification_org_policies%rowtype;
   scoped_role_id uuid;
   scoped_location_id uuid;
   scope_name text;
 begin
-  if not public.service_actor_has_permission(actor_user_id, target_workspace_id, 'notifications.settings.write') then
-    raise exception 'notification settings write access required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.write');
   if char_length(btrim(coalesce(target_reason, ''))) not between 3 and 500 then
     raise exception 'notification policy reason required' using errcode = '22023';
   end if;
@@ -22203,30 +22241,24 @@ begin
     raise exception 'mandatory in-app notification cannot be disabled' using errcode = '22023';
   end if;
 
-  select * into membership_row
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active';
-
   if target_scope_kind = 'global' then
-    if target_scope_id is not null or not membership_row.all_locations then
-      raise exception 'organization-wide notification scope required' using errcode = '42501';
+    if target_scope_id is not null then
+      raise exception 'notification policy scope is invalid' using errcode = '22023';
     end if;
     scope_name := 'Organization';
   elsif target_scope_kind = 'role' then
-    if target_scope_id is null or not membership_row.all_locations then
-      raise exception 'organization-wide notification scope required' using errcode = '42501';
+    if target_scope_id is null then
+      raise exception 'notification policy scope is invalid' using errcode = '22023';
     end if;
     select role_row.id, role_row.name into scoped_role_id, scope_name
     from public.workspace_roles role_row
     where role_row.workspace_id = target_workspace_id and role_row.id = target_scope_id;
     if scoped_role_id is null then
-      raise exception 'notification role scope not found' using errcode = '42501';
+      raise exception 'notification role scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
     end if;
   elsif target_scope_kind = 'location' then
     if target_scope_id is null then
-      raise exception 'notification location scope not found' using errcode = '42501';
+      raise exception 'notification location scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
     end if;
     select location.id, location.name into scoped_location_id, scope_name
     from public.locations location
@@ -22234,15 +22266,7 @@ begin
       and location.id = target_scope_id
       and location.archived_at is null;
     if scoped_location_id is null then
-      raise exception 'notification location scope not found' using errcode = '42501';
-    end if;
-    if not membership_row.all_locations and not exists (
-      select 1 from public.membership_location_scopes scope
-      where scope.workspace_id = target_workspace_id
-        and scope.membership_id = membership_row.id
-        and scope.location_id = scoped_location_id
-    ) then
-      raise exception 'notification location scope access denied' using errcode = '42501';
+      raise exception 'notification location scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
     end if;
   else
     raise exception 'notification policy scope is invalid' using errcode = '22023';
@@ -23272,7 +23296,8 @@ declare target public.workspace_roles; saved uuid; normalized text[]; actor_clas
 begin
  -- Serialize role editors, including concurrent actor-grant changes.
  perform pg_advisory_xact_lock(hashtextextended('roles:'||target_workspace_id::text,0));
- if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501'; end if;
+ perform app_private.authorize(actor_user_id,target_workspace_id,'settings.roles.write');
+ if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when target_role_id is not null and not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;
  select role into actor_class from public.workspace_memberships where user_id=actor_user_id and workspace_id=target_workspace_id and status='active';
  if target_role_id is not null then
   select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
@@ -23287,7 +23312,7 @@ begin
  if role_access_class<>'admin' and normalized && array['roles.manage','workspace.manage'] then raise exception 'Protected management access denied' using errcode='42501'; end if;
  if role_access_class='employee' and exists(select 1 from unnest(normalized) k where k not in (select p.key from public.permissions p where p.employee_eligible)) then raise exception 'Employee roles are limited to personal access' using errcode='42501'; end if;
  -- Admin delegation cannot manufacture permissions it does not itself hold.
- if actor_class='admin' and exists(select 1 from unnest(normalized) k where not public.service_actor_has_permission(actor_user_id,target_workspace_id,k)) then raise exception 'Cannot grant access beyond your own permissions' using errcode='42501'; end if;
+ if actor_class='admin' and exists(select 1 from unnest(normalized) k where not k = any ((select (app_private.actor(actor_user_id,target_workspace_id)).permissions)::text[])) then raise exception 'Cannot grant access beyond your own permissions' using errcode='42501',hint='authz.missing_permission'; end if;
  if exists(select 1 from app_private.role_permission_dependencies d where d.permission_key=any(normalized) and not d.required_key=any(normalized)) then raise exception 'Permission set requires dependent read access' using errcode='22023'; end if;
  if target_role_id is null then
   insert into public.workspace_roles(workspace_id,name,description,access_class,sort_order,created_by) values(target_workspace_id,btrim(role_name),btrim(coalesce(role_description,'')),role_access_class,100,actor_user_id) returning id into saved;
@@ -27821,7 +27846,8 @@ begin
  where d is distinct from (select value from jsonb_array_elements(prior->'preference'->'days') where value->'day'=d->'day');
  summary:=case when source='manager' then 'Manager reminders updated.' else 'Weekly availability updated. '||case when changed_days is null then 'Week confirmed.' else 'Changed days: '||changed_days||'.' end end;
  insert into public.employee_events(workspace_id,employee_id,actor_user_id,action,summary) values(w,emp,actor,case when source='manager' then 'manager_reminders_updated' else 'weekly_availability_updated' end,summary);
- if source='employee' then
+ -- A save that changes no day is news only the first time (S-32, KK-178).
+ if source='employee' and (changed_days is not null or not coalesce((prior->>'submitted')::boolean,false)) then
   select coalesce(array_agg(m.user_id),'{}') into recipients from public.workspace_memberships m where m.workspace_id=w and m.status='active' and m.user_id<>actor
    and public.weekly_preference_manager_scope(m.user_id,w,emp,'availability.read');
   perform public.enqueue_notification_outbox_service(w,event,'availability.weekly_updated',1,actor,'weekly_availability',emp::text,
@@ -27994,7 +28020,13 @@ begin
   from public.employee_profiles e
   join public.workspace_scheduling_settings s on s.workspace_id=e.workspace_id
   left join public.employee_weekly_preferences p on p.workspace_id=e.workspace_id and p.employee_id=e.id
-  where e.workspace_id=w and e.archived_at is null and (
+  -- Only an employee enters availability (M13): nobody ranking above one is
+  -- listed, nor counted as a week not submitted (KK-178). Somebody not joined
+  -- yet has no account to rank by: the role they were last invited with says.
+  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id)
+   and (e.user_id is not null or coalesce((select app_private.authz_rank(r.access_class)=app_private.authz_rank('employee')
+    from public.employee_invitations i join public.workspace_roles r on r.id=i.role_id and r.workspace_id=i.workspace_id
+    where i.workspace_id=w and i.employee_id=e.id order by i.created_at desc,i.id desc limit 1),true)) and (
    exists(select 1 from public.employee_location_assignments a join scope l on l.id=a.location_id
     where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)
    or (not exists(select 1 from public.employee_location_assignments a where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)
@@ -32094,6 +32126,10 @@ CREATE OR REPLACE TRIGGER "enqueue_workspace_retention_purge_job_trigger" AFTER 
 
 
 
+CREATE OR REPLACE TRIGGER "every_member_has_an_account_row" AFTER INSERT OR UPDATE OF "user_id", "status" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."every_member_has_an_account_row"();
+
+
+
 CREATE OR REPLACE TRIGGER "forget_undo_steps" AFTER UPDATE OF "status" ON "public"."schedule_edit_sessions" FOR EACH ROW WHEN (("new"."status" <> 'active'::"public"."schedule_edit_session_status")) EXECUTE FUNCTION "app_private"."forget_schedule_edit_undo_steps"();
 
 
@@ -34732,6 +34768,10 @@ REVOKE ALL ON FUNCTION "app_private"."ensure_owner_employee_profile"("target_wor
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."every_member_has_an_account_row"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") FROM PUBLIC;
 
 
@@ -34956,6 +34996,10 @@ REVOKE ALL ON FUNCTION "app_private"."notify_document_audit"() FROM PUBLIC;
 
 
 REVOKE ALL ON FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."open_account_row"("target_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 
 
 
