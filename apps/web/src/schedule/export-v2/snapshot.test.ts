@@ -156,12 +156,19 @@ describe("Export v2 immutable preview projection", () => {
     const value = input();
     value.display = { ...display, showTotalHours: true };
     value.search.set("locations", "loc-a");
-    value.model.closures = [{ id: "closed", location_id: "loc-a", closed_date: "2026-09-14", end_date: null, title: "Maintenance", is_all_day: true, shift_type_ids: [] }];
-    value.model.important_dates = [{ id: "special", location_id: null, title: "Opening", type: "event", starts_on: "2026-09-14", ends_on: "2026-09-14", recurrence: "none" }];
+    const post = { id: "special", location_id: null, title: "Opening", category: "event" as const, category_other: null, starts_on: "2026-09-14", ends_on: "2026-09-14",
+      status: "published" as const, publish_at: null, day: "open" as const, opens: null, closes: null, event_from: null, event_until: null };
+    value.model.closures = [
+      { id: "closed", location_id: "loc-a", closed_date: "2026-09-14", title: "Maintenance", is_all_day: true, kind: "closed", opens: null, closes: null, status: "published" },
+      // A printed week is what employees see: nothing scheduled (EKRAN-08).
+      { id: "later", location_id: "loc-a", closed_date: "2026-09-15", title: "Inventory", is_all_day: true, kind: "closed", opens: null, closes: null, status: "scheduled" },
+    ];
+    value.model.important_dates = [post, { ...post, location_id: "loc-a" }, { ...post, id: "soon", title: "Inventory", starts_on: "2026-09-15", ends_on: "2026-09-15", status: "scheduled", day: "closed" }];
     const result = ready(value);
     expect(result.totals?.week).toBe("8h / 11h");
     expect(result.rows[0]?.total).toBe("4h / 7h");
-    expect(result.dayDecorations?.find(day => day.locationId === null && day.date === "2026-09-14")).toMatchObject({ closed: true, lines: ["Closed: Maintenance", "event: Opening"] });
+    expect(result.dayDecorations?.find(day => day.locationId === null && day.date === "2026-09-14")).toMatchObject({ closed: true, lines: ["Closed: Maintenance", "Opening"] });
+    expect(result.dayDecorations?.find(day => day.locationId === null && day.date === "2026-09-15")).toMatchObject({ closed: false, lines: [] });
     expect(ready({ ...value, display }).totals).toBeUndefined();
   });
 });

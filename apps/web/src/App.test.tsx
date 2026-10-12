@@ -2994,7 +2994,7 @@ describe("App", () => {
     }
   });
 
-  it("blocks preset shift badges when a partial closure covers that shift type", async () => {
+  it("blocks preset shift badges when the location's short hours leave out the preset's hours", async () => {
     const partialClosedFixture = {
       ...scheduleFixture,
       settings: {
@@ -3011,10 +3011,11 @@ describe("App", () => {
           id: "aaaaaaaa-0000-4000-8000-000000000001",
           location_id: scheduleFixture.locations[0]!.id,
           closed_date: "2026-08-17",
-          end_date: null,
-          title: "No dinner service",
+          title: "Inventory day",
           is_all_day: false,
-          shift_type_ids: [scheduleFixture.shift_types[0]!.id],
+          kind: "short",
+          opens: "10:00",
+          closes: "15:00",
         },
       ],
     } satisfies ScheduleReadModel;
@@ -3047,7 +3048,7 @@ describe("App", () => {
     // The toast lives in its own layer under <body>, outside the app container (BL-515).
     expect(await screen.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      screen.getByText(/Location is closed for Dinner\./),
+      screen.getByText(/Location has short hours for Inventory day: open 10a–3p only\./),
     ).toBeTruthy();
     expect(createScheduleShift).not.toHaveBeenCalled();
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();

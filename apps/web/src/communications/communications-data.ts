@@ -1,8 +1,12 @@
 import { requestFailure } from "../lib/request-error";
 import {
+  announcementDetailSchema,
   announcementListSchema,
-  announcementMutationSchema,
+  announcementPreviewSchema,
+  announcementSavedSchema,
+  announcementStateResultSchema,
   communicationSavedResultSchema,
+  importantDateListSchema,
   notificationCategorySchema,
   notificationInboxSchema,
   ownerSetupChecklistItemIdSchema,
@@ -10,7 +14,9 @@ import {
   workspaceDashboardSchema,
   workspaceManualTodoInputSchema,
   workspaceTodoSchema,
-  type AnnouncementInput,
+  type AnnouncementDraft,
+  type AnnouncementIntent,
+  type AnnouncementStateAction,
   type NotificationAction,
   type NotificationCategory,
   type OwnerSetupChecklistItemId,
@@ -127,19 +133,76 @@ export async function getAnnouncements(workspaceId: string) {
     await request(workspaceId, "/communications/announcements"),
   );
 }
+export async function getAnnouncement(
+  workspaceId: string,
+  announcementId: string,
+) {
+  return announcementDetailSchema.parse(
+    await request(
+      workspaceId,
+      `/communications/announcements/${announcementId}`,
+    ),
+  );
+}
+/** Important Dates, under Announcements (EKRAN-08). */
+export async function getImportantDates(workspaceId: string) {
+  return importantDateListSchema.parse(
+    await request(workspaceId, "/communications/important-dates"),
+  );
+}
+/** What keeps it from going out, and which shifts the new days reach. */
+export async function previewAnnouncement(
+  workspaceId: string,
+  input: {
+    announcement_id: string | null;
+    intent: AnnouncementIntent;
+    announcement: AnnouncementDraft;
+  },
+) {
+  return announcementPreviewSchema.parse(
+    await request(workspaceId, "/communications/announcements/preview", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  );
+}
+/** Save draft, Schedule, Publish, or Save changes. */
 export async function saveAnnouncement(
   workspaceId: string,
   input: {
     announcement_id: string | null;
     expected_revision: number | null;
-    announcement: AnnouncementInput;
+    intent: AnnouncementIntent;
+    announcement: AnnouncementDraft;
   },
 ) {
-  return announcementMutationSchema.parse(
+  return announcementSavedSchema.parse(
     await request(workspaceId, "/communications/announcements", {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  );
+}
+/** Unschedule, Unpublish, Archive, Bring back, Remind. */
+export async function setAnnouncementState(
+  workspaceId: string,
+  announcementId: string,
+  action: AnnouncementStateAction,
+  expectedRevision: number,
+  bringBack: readonly string[] = [],
+) {
+  return announcementStateResultSchema.parse(
+    await request(
+      workspaceId,
+      `/communications/announcements/${announcementId}/${action.replace("_", "-")}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          expected_revision: expectedRevision,
+          bring_back: bringBack,
+        }),
+      },
+    ),
   );
 }
 export async function acknowledgeAnnouncement(
@@ -150,24 +213,6 @@ export async function acknowledgeAnnouncement(
     workspaceId,
     `/communications/announcements/${announcementId}/acknowledge`,
     { method: "POST" },
-  );
-}
-export async function transitionAnnouncement(
-  workspaceId: string,
-  announcementId: string,
-  // Publish also republishes an unpublished one (FB-6.7).
-  action: "publish" | "unpublish" | "archive" | "restore",
-  expectedRevision: number,
-) {
-  return announcementMutationSchema.parse(
-    await request(
-      workspaceId,
-      `/communications/announcements/${announcementId}/${action}`,
-      {
-        method: "POST",
-        body: JSON.stringify({ expected_revision: expectedRevision }),
-      },
-    ),
   );
 }
 export async function getNotifications(

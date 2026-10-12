@@ -181,6 +181,8 @@ import {
   usePersistentScheduleEmployeeSortMode,
   usePersistentScheduleUiBoolean,
 } from "../schedule/store/scheduleUiStore";
+import { can } from "../auth/can";
+import { useScheduleCalendarPosts } from "../schedule/hooks/useScheduleCalendarPosts";
 import {
   createLocationPublicationChipStatuses,
   createScheduleCalendarMarkers,
@@ -285,6 +287,10 @@ export function SchedulePage({
     view,
   );
   const gates = scheduleGates(context);
+  const calendarPosts = useScheduleCalendarPosts(
+    context?.workspace.id ?? null,
+    can(context, "announcement.read"),
+  );
   const canExportSchedules = gates.export;
   const {
     session,
@@ -2085,8 +2091,10 @@ export function SchedulePage({
     (item) => item.status === "published" && item.published_at,
   );
   const calendarMarkers = createScheduleCalendarMarkers(
-    model.closures,
-    model.important_dates,
+    calendarPosts,
+    selectedLocationIds.length
+      ? selectedLocationIds
+      : model.locations.map((item) => item.id),
   );
   const toggleCurrentViewPeriod = () => {
     if (!isCurrentViewPeriod) {
@@ -2773,6 +2781,9 @@ export function SchedulePage({
           gates.manageLogo
             ? () => setLogoOpen(true)
             : undefined
+        }
+        onOpenPost={(announcementId) =>
+          navigate(`/app/announcements/${announcementId}`)
         }
         onOpenEmployeeCard={(employeeId) => {
           if (!gates.openEmployee) return;

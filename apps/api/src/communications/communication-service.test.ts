@@ -5,45 +5,47 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 
 describe("communication service notification bridge", () => {
-  it("rejects unsafe action URLs returned from announcement RPC projections", async () => {
-    const rpc = vi.fn().mockResolvedValue({
-      data: {
-        workspace_id: workspaceId,
-        can_manage: false,
-        locations: [],
-        announcements: [
-          {
-            id: "a8200000-0000-4000-8000-000000000001",
-            workspace_id: workspaceId,
-            title: "Service briefing",
-            body: "Doors open at four.",
-            category: "operations",
-            status: "published",
-            audience_roles: ["employee"],
-            location_ids: [],
-            location_names: [],
-            publish_at: null,
-            published_at: "2026-09-05T12:00:00.000Z",
-            expires_at: null,
-            action_url: "https://outside.example/announcement",
-            author_name: "Taylor",
-            revision: 1,
-            created_at: "2026-09-05T12:00:00.000Z",
-            updated_at: "2026-09-05T12:00:00.000Z",
-            read_at: null,
-            can_edit: false,
-            can_publish: false,
-            can_archive: false,
-          },
-        ],
-      },
-      error: null,
-    });
+  it("hands the drawer to the one save service with its intent, and the preview its intent in the payload (EKRAN-08)", async () => {
+    const announcementId = "a8200000-0000-4000-8000-000000000001";
+    const draft = {
+      title: "Closed for inventory", body: "", category: "other" as const, category_other: "Inventory",
+      starts_on: "2027-01-04", ends_on: null, event_from: null, event_until: null, recurrence: "none" as const,
+      on_important_dates: true, on_calendar: false, on_schedule: true, ask_ack: false, publish_at: null,
+      locations: [{ location_id: announcementId, day: "closed" as const, opens: null, closes: null }],
+      people: [], choices: {}, fingerprint: "f", bring_back: [],
+    };
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({
+        data: {
+          problems: [], fingerprint: "f", shifts: [], hidden_count: 0, quiet_count: 0,
+          counts: { removed: 0, edited: 0, opened: 0, kept: 0, quiet: 0 }, bring_back: [],
+          time_zone: "America/Los_Angeles", starts_at: null, ends_at: null, recipient_count: 2,
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "published", display_status: "published", announcement_id: announcementId, revision: 1,
+          recipient_count: 2, shift_changes: 0, brought_back: 0,
+        },
+        error: null,
+      });
     const service = createCommunicationServiceWithClient({ rpc });
 
-    await expect(
-      service.getAnnouncements({ actorUserId: userId, workspaceId }),
-    ).rejects.toThrow("Action URL must stay inside the app");
+    await service.previewAnnouncement({ actorUserId: userId, workspaceId, announcementId: null, intent: "publish", announcement: draft });
+    const saved = await service.saveAnnouncement({
+      actorUserId: userId, workspaceId, announcementId: null, expectedRevision: null, intent: "publish", announcement: draft,
+    });
+
+    expect(rpc).toHaveBeenNthCalledWith(1, "preview_announcement_service", {
+      actor_user_id: userId, target_workspace_id: workspaceId, target_announcement_id: null,
+      target_payload: { ...draft, intent: "publish" },
+    });
+    expect(rpc).toHaveBeenNthCalledWith(2, "save_announcement_service", {
+      actor_user_id: userId, target_workspace_id: workspaceId, target_announcement_id: null,
+      target_expected_revision: null, target_payload: draft, target_intent: "publish",
+    });
+    expect(saved.recipient_count).toBe(2);
   });
 
   it("rejects unsafe action URLs returned from notification RPC projections", async () => {

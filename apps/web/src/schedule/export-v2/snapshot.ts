@@ -4,6 +4,7 @@ import { formatScheduleBadgeTimeRange, formatScheduleShiftBadgeTitle, formatShif
 import { buildScheduleCellState, orderScheduleCellShifts, scheduleCellStateKey } from "../hooks/useCellState";
 import { scheduleJobName, scheduleShiftTypeOf } from "../lib/scheduleCatalogNames";
 import { scheduleClosureCoversDate } from "../lib/scheduleClosures";
+import { schedulePostChipText } from "../components/DayHeaderCell";
 import { scheduleImportantDateCoversDate } from "../importantDateCoverage";
 import { addDays } from "../lib/scheduleDateTime";
 import { createSortedScheduleModel, type ScheduleEmployeeSortMode } from "../lib/scheduleEmployeeSort";
@@ -172,13 +173,16 @@ export function createScheduleExportSnapshot(input: {
   )));
   const scopes = [{ id: null, ids: filtered.locations.map(location => location.id) }, ...filtered.locations.map(location => ({ id: location.id, ids: [location.id] }))];
   const dayDecorations = scopes.flatMap(scope => dates.map(date => {
-    const closures = model.closures.filter(item => scope.ids.includes(item.location_id) && scheduleClosureCoversDate(item, date));
-    const allClosed = scope.ids.every(id => closures.some(item => item.location_id === id && item.is_all_day));
-    const partial = new Set(closures.flatMap(item => item.shift_type_ids)).size;
-    const important = [...new Set(model.important_dates.filter(item => scheduleImportantDateCoversDate(item, date) &&
-      (item.location_id === null || scope.ids.includes(item.location_id))).map(item => `${item.type}: ${item.title}`))];
-    return { locationId: scope.id, date, closed: closures.some(item => item.is_all_day), lines: [
-      ...(allClosed ? [`Closed: ${closures.find(item => item.is_all_day)?.title ?? "Closed"}`] : partial ? [`Closed for ${partial} shift types`] : []), ...important,
+    // A printed week is what employees see: nothing scheduled (EKRAN-08).
+    const closures = model.closures.filter(item => item.status !== "scheduled" && item.kind === "closed" &&
+      scope.ids.includes(item.location_id) && scheduleClosureCoversDate(item, date));
+    const allClosed = scope.ids.every(id => closures.some(item => item.location_id === id));
+    const posts = [...new Map(model.important_dates.filter(item => item.status === "published" && scheduleImportantDateCoversDate(item, date) &&
+      (item.location_id === null || scope.ids.includes(item.location_id))).map(item => [item.id, item])).values()];
+    const closedBy = closures.find(item => !posts.some(post => post.id === item.announcement_id));
+    return { locationId: scope.id, date, closed: closures.length > 0, lines: [
+      ...(allClosed && closedBy ? [`Closed: ${closedBy.title}`] : []),
+      ...posts.map(post => schedulePostChipText(post, model.settings.time_format)),
     ] };
   }));
   const totals = display.showTotalHours ? {

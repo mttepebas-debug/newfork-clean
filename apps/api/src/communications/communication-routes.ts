@@ -1,5 +1,7 @@
 import {
-  announcementInputSchema,
+  announcementDraftSchema,
+  announcementIntentSchema,
+  announcementStateActionSchema,
   notificationActionSchema,
   ownerSetupChecklistItemIdSchema,
   workspaceLayoutInputSchema,
@@ -24,19 +26,26 @@ const announcementParams = workspaceParams.extend({
 const todoParams = workspaceParams.extend({
   todoId: z.string().uuid(),
 });
+const announcementPreviewBody = z.object({
+  announcement_id: z.string().uuid().nullable().default(null),
+  intent: announcementIntentSchema,
+  announcement: announcementDraftSchema,
+});
 const announcementSaveBody = z
   .object({
     announcement_id: z.string().uuid().nullable().default(null),
     expected_revision: z.number().int().positive().nullable().default(null),
-    announcement: announcementInputSchema,
+    intent: announcementIntentSchema,
+    announcement: announcementDraftSchema,
   })
   // A change names the revision it was made on (P11): the second of two saves
   // is refused, not lost.
   .refine((body) => body.announcement_id === null || body.expected_revision !== null, {
     path: ["expected_revision"],
   });
-const revisionBody = z.object({
+const stateBody = z.object({
   expected_revision: z.number().int().positive(),
+  bring_back: z.array(z.string().uuid()).max(500).default([]),
 });
 const setupChecklistPatchBody = z.object({
   itemId: ownerSetupChecklistItemIdSchema.optional(),
@@ -99,6 +108,71 @@ export function registerCommunicationRoutes(
     },
   );
 
+  // Important Dates sits under Announcements: every published post on it
+  // (settings.important_dates.read, asked in the database).
+  app.get(
+    "/v1/workspaces/:workspaceId/communications/important-dates",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid workspace required" });
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service) return unavailable(reply);
+      return reply.send(await options.service.getImportantDates(actor(context)));
+    },
+  );
+
+  app.get(
+    "/v1/workspaces/:workspaceId/communications/announcements/:announcementId",
+    async (request, reply) => {
+      const params = announcementParams.safeParse(request.params);
+      if (!params.success)
+        return reply.status(400).send({ error: "Valid announcement required" });
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service) return unavailable(reply);
+      return reply.send(
+        await options.service.getAnnouncement({
+          ...actor(context),
+          announcementId: params.data.announcementId,
+        }),
+      );
+    },
+  );
+
+  // The drawer as it is filled in: its problems, the shifts it would change
+  // and how many people get it. Nothing is written.
+  app.post(
+    "/v1/workspaces/:workspaceId/communications/announcements/preview",
+    async (request, reply) => {
+      const params = workspaceParams.safeParse(request.params);
+      const body = announcementPreviewBody.safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply.status(400).send({ error: "Valid announcement required" });
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service) return unavailable(reply);
+      return reply.send(
+        await options.service.previewAnnouncement({
+          ...actor(context),
+          announcementId: body.data.announcement_id,
+          intent: body.data.intent,
+          announcement: body.data.announcement,
+        }),
+      );
+    },
+  );
+
   app.post(
     "/v1/workspaces/:workspaceId/communications/announcements",
     async (request, reply) => {
@@ -118,20 +192,21 @@ export function registerCommunicationRoutes(
           ...actor(context),
           announcementId: body.data.announcement_id,
           expectedRevision: body.data.expected_revision,
+          intent: body.data.intent,
           announcement: body.data.announcement,
         }),
       );
     },
   );
 
-  // Publish also republishes an unpublished one (K4); the other three are
-  // its states (Mert, 2026-10-02).
-  for (const action of ["publish", "unpublish", "archive", "restore"] as const) {
+  // Unschedule, Unpublish, Archive, Bring back, Remind; Publish and Save
+  // changes are the save above (EKRAN-08).
+  for (const action of announcementStateActionSchema.options) {
     app.post(
-      `/v1/workspaces/:workspaceId/communications/announcements/:announcementId/${action}`,
+      `/v1/workspaces/:workspaceId/communications/announcements/:announcementId/${action.replace("_", "-")}`,
       async (request, reply) => {
         const params = announcementParams.safeParse(request.params);
-        const body = revisionBody.safeParse(request.body);
+        const body = stateBody.safeParse(request.body);
         if (!params.success || !body.success)
           return reply
             .status(400)
@@ -142,15 +217,14 @@ export function registerCommunicationRoutes(
           options.contextResolver,
         );
         if (!options.service) return unavailable(reply);
-        const input = {
-          ...actor(context),
-          announcementId: params.data.announcementId,
-          expectedRevision: body.data.expected_revision,
-        };
         return reply.send(
-          action === "publish"
-            ? await options.service.publishAnnouncement(input)
-            : await options.service.setAnnouncementState({ ...input, action }),
+          await options.service.setAnnouncementState({
+            ...actor(context),
+            announcementId: params.data.announcementId,
+            expectedRevision: body.data.expected_revision,
+            action,
+            bringBack: body.data.bring_back,
+          }),
         );
       },
     );

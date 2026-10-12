@@ -40,8 +40,7 @@ update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'jo
 -- for the batch's own valid acceptance below, Friday (the 19th) for the O1
 -- fix's second, independent conflict. Availability is only a warning since
 -- BL-186, so a closure carries the acceptance these checks are about.
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select gen_random_uuid(), w, loc, array[loc]::uuid[], (d)::date, (d)::date, 'Closed', 'closed_day', owner_id from ws cross join unnest(array['2035-01-15'::date,'2035-01-19'::date]) d;
+select tests.closed_day(w, array[loc]::uuid[], (d)::date, (d)::date, owner_id) from ws cross join unnest(array['2035-01-15'::date,'2035-01-19'::date]) d;
 update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');
 update ws set batch=jsonb_build_array(payload,payload||'{"scheduled_date":"2035-01-16"}');
 create function pg_temp.create_batch(p jsonb default null,k uuid default null) returns jsonb language sql as $$
@@ -91,8 +90,7 @@ select is(pg_temp.refusal_hint($$select pg_temp.create_batch(null,gen_random_uui
 select public.mutate_schedule_edit_shift_service(s.manager,s.w,s.session,e.revision,'create',gen_random_uuid(),null,s.payload||'{"scheduled_date":"2035-01-17"}',gen_random_uuid())->>'revision'
  from ws s join public.schedule_edit_sessions e on e.id=s.session;
 select is((pg_temp.create_batch()->>'revision')::integer,(select revision from public.schedule_edit_sessions where id=(select session from ws)),'retry returns current state instead of overwriting later edits');
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select gen_random_uuid(), w, loc, array[loc]::uuid[], ('2035-01-18')::date, ('2035-01-18')::date, 'Closed', 'closed_day', owner_id from ws;
+select tests.closed_day(w, array[loc]::uuid[], ('2035-01-18')::date, ('2035-01-18')::date, owner_id) from ws;
 update ws s set original_revision=e.revision,request_key=gen_random_uuid(),payload=payload||'{"scheduled_date":"2035-01-18"}' from public.schedule_edit_sessions e where e.id=s.session;
 select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'PT409',null,'confirm policy cannot use an earlier conflict fingerprint');
 update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');

@@ -497,7 +497,7 @@ $$, array[
   'apply_schedule_template_service', 'add_schedule_pending_op_service', 'remove_schedule_pending_op_service',
   -- not a step: the shifts an edit opens with; a swap, its restore or a closed day (schedule_edit_undo_barrier)
   'acquire_schedule_edit_session_service', 'shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service',
-  'important_date_close_shifts',
+  'announcement_apply', 'announcement_bring_back',
   -- the edit closes: its history goes
   'save_schedule_edit_session_service', 'discard_schedule_edit_session_service',
   -- Undo itself
@@ -509,9 +509,10 @@ select is((select count(*)::integer from pg_proc where
     (proname = 'acquire_schedule_edit_session_service'
       and prosrc like '%set_config(''app.schedule_edit_widening'', ''on'', true)%'
       and prosrc like '%set_config(''app.schedule_edit_widening'', '''', true)%')
-    or (proname in ('shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service', 'important_date_close_shifts')
+    or (proname in ('shift_exchange_rebase_drafts', 'shift_exchange_schedule_recovery_service', 'announcement_apply',
+                    'announcement_bring_back')
       and prosrc like '%schedule_edit_undo_barrier()%')),
-  4, 'and each one that is not a step clears itself out of the history');
+  5, 'and each one that is not a step clears itself out of the history');
 
 -- EKRAN-01 B3: an edit whose lock ran out while it stayed open (a laptop that
 -- slept) is a lapsed lease, which the screen may pick back up.

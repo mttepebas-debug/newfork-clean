@@ -331,16 +331,20 @@ begin
     jsonb_set(public.empty_weekly_preference('time_range'), '{days,5,all_day}', 'true'),
     1, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 
-  -- A closed day is an important date (FB-6.7, BL-530); the Schedule reads its
-  -- closures from the published ones.
-  insert into public.important_dates (
-    id, workspace_id, location_id, location_ids, title, type, starts_on, ends_on,
-    affects_scheduling, status, created_by, updated_by
+  -- A closed day is a published announcement whose location is Closed that
+  -- day (FB-6.7, BL-530, EKRAN-08); the Schedule reads its closures from it.
+  insert into public.announcements (
+    id, workspace_id, title, body, category, status, starts_on, ends_on, on_schedule, on_important_dates,
+    time_zone, published_at, published_by, created_by, updated_by
   ) values (
     '19000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
-    '11000000-0000-4000-8000-000000000002', array['11000000-0000-4000-8000-000000000002']::uuid[],
-    'Private event setup', 'closed_day', schedule_week + 3, schedule_week + 3,
-    true, 'published', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+    'Private event setup', '', 'event', 'published', schedule_week + 3, schedule_week + 3, true, true,
+    'America/Los_Angeles', now(), 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5',
+    'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+  );
+  insert into public.announcement_locations (workspace_id, announcement_id, location_id, day) values (
+    '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '19000000-0000-4000-8000-000000000001',
+    '11000000-0000-4000-8000-000000000002', 'closed'
   );
 
   -- The demo week. Removed on 2026-09-22 because it no longer loaded under the

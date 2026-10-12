@@ -68,7 +68,6 @@ import {
   type LegacyScheduleShiftList,
   type UpdateSchedulePendingOpInput,
   type UpdateScheduleExportScheduleInput,
-  importantDateCoversDate,
 } from "@newfork/shared/schedule";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -462,51 +461,12 @@ export function createScheduleReadService(options: {
             )
             .filter((id: string | null): id is string => Boolean(id))
         : [];
-      const weekStart =
-        "week_start" in readModelPayload &&
-        typeof readModelPayload.week_start === "string"
-          ? readModelPayload.week_start
-          : targetDate;
-      const weekEnd = addDaysIso(weekStart, 6);
-      // The RPC has established the actor's scope. These independent reads
-      // share that scope and need not add three sequential network waits.
-      const [closuresResult, importantDatesResult, shortNamesResult] = await Promise.all([
-        allowedLocationIds.length
-          ? client
-            .from("schedule_closures")
-            .select(
-              "id,location_id,closed_date,end_date,title,is_all_day,shift_type_ids",
-            )
-            // One workspace's closed days are walked, not every workspace's.
-            .eq("workspace_id", workspaceId)
-            .in("location_id", allowedLocationIds)
-            // One row per closed day (FB-6.7, BL-530): this week's days only.
-            .lte("closed_date", weekEnd)
-            .gte("closed_date", weekStart)
-            .order("closed_date")
-            .order("title")
-          : Promise.resolve({ data: [], error: null }),
-        client
-          .from("important_dates")
-          .select(
-            "id,location_id,location_ids,title,type,starts_on,ends_on,recurrence",
-          )
-          .eq("workspace_id", workspaceId)
-          .is("archived_at", null)
-          // An unpublished date is hidden from the Schedule (FB-6.7).
-          .eq("status", "published")
-          .eq("affects_scheduling", true)
-          .order("starts_on")
-          .order("title"),
-        allowedLocationIds.length
-          ? client.from("locations").select("id,short_name")
-              .eq("workspace_id", workspaceId).in("id", allowedLocationIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-      const { data: closures, error: closuresError } = closuresResult;
-      const { data: importantDates, error: importantDatesError } = importantDatesResult;
-      if (closuresError) throw rpcFailure(closuresError);
-      if (importantDatesError) throw rpcFailure(importantDatesError);
+      // The read model brings the week's closures and important dates, scoped
+      // and dated there (BL-701); only the locations' short names are read here.
+      const shortNamesResult = allowedLocationIds.length
+        ? await client.from("locations").select("id,short_name")
+            .eq("workspace_id", workspaceId).in("id", allowedLocationIds)
+        : { data: [], error: null };
       if (shortNamesResult.error) throw rpcFailure(shortNamesResult.error);
       const shortNames = new Map((shortNamesResult.data ?? []).map((location) => [location.id, location.short_name]));
       return scheduleReadModelSchema.parse({
@@ -519,21 +479,6 @@ export function createScheduleReadService(options: {
         // DRAG-API: the read model's own settings (time format, conflict rules, travel and rest
         // minutes) pass through; the drag colours and K17 read the rules from here.
         settings: readModelPayload.settings,
-        closures: closures ?? [],
-        important_dates: (importantDates ?? [])
-          .flatMap((date) => {
-            // Preserve the per-location schedule contract without duplicating stored dates.
-            const locationIds: string[] =
-              date.location_ids ?? (date.location_id ? [date.location_id] : []);
-            return locationIds.length
-              ? locationIds
-                  .filter((id) => allowedLocationIds.includes(id))
-                  .map((location_id) => ({ ...date, location_id }))
-              : [date];
-          })
-          .filter((date) =>
-            importantDateTouchesRange(date, weekStart, weekEnd),
-          ),
       });
     },
     async listDrafts(actorUserId, workspaceId, weekStart) {
@@ -1295,12 +1240,6 @@ async function recoverDocumentPublicationConflicts(
   });
 }
 
-function addDaysIso(iso: string, days: number): string {
-  const date = new Date(`${iso}T12:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
 async function broadcastScheduleInvalidation(
   client: SupabaseClient,
   payload: ScheduleInvalidationPayload,
@@ -1366,32 +1305,4 @@ function removeUndefinedFields(input: object): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(input).filter(([, value]) => value !== undefined),
   );
-}
-
-function importantDateTouchesRange(
-  importantDate: {
-    readonly starts_on: string;
-    readonly ends_on: string;
-    readonly recurrence?: string | null;
-  },
-  start: string,
-  end: string,
-): boolean {
-  if (importantDate.recurrence === "annual") {
-    return datesInRange(start, end).some((date) =>
-      importantDateCoversDate(importantDate, date),
-    );
-  }
-  return importantDate.starts_on <= end && start <= importantDate.ends_on;
-}
-
-function datesInRange(start: string, end: string): string[] {
-  const dates: string[] = [];
-  const cursor = new Date(`${start}T12:00:00.000Z`);
-  const last = new Date(`${end}T12:00:00.000Z`);
-  while (cursor <= last) {
-    dates.push(cursor.toISOString().slice(0, 10));
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
-  }
-  return dates;
 }

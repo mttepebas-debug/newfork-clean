@@ -414,20 +414,28 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('requests.read', 'time_off', 'schedule.time_off_requests.manage', false, true,
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_requests_service($1, $2, 'needs_review')
        -> 'time_off_requests') r where (r ->> 'id')::uuid = $3)$$),
-  -- One location (FB-6.7 K1); a blank location is no location, never everywhere.
+  -- One location (FB-6.7 K1); a blank location, or another workspace's, is
+  -- the same no as one out of reach. A post on Important Dates asks the
+  -- important date rule too (EKRAN-08).
   ('announcement.write', 'location', 'announcements.manage', false, false,
-   $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
-       array[$3], null, null, null, '{}', '{}') is not null$$),
+   $$select public.save_announcement_service($1, $2, null, null, jsonb_build_object('title', 'Probe',
+       'locations', jsonb_build_array(jsonb_build_object('location_id', coalesce($3, gen_random_uuid()), 'day', 'open'))),
+       'draft') is not null$$),
   ('important_date.write', 'location', 'important_dates.manage', false, false,
-   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '', false,
-       array[$3], null) is not null$$),
-  -- The whole workspace (K1); several locations ask the same rule.
+   $$select public.save_announcement_service($1, $2, null, null, jsonb_build_object('title', 'Probe',
+       'starts_on', tests.week(0), 'on_important_dates', true,
+       'locations', jsonb_build_array(jsonb_build_object('location_id', coalesce($3, gen_random_uuid()), 'day', 'open'))),
+       'draft') is not null$$),
+  -- Several locations (K1): every live location of the workspace at once.
   ('announcement.write_wide', 'workspace', 'announcements.manage', false, false,
-   $$select public.save_announcement_audience_service($1, $2, null, null, 'Probe', 'Body', 'general', array['employee'],
-       '{}', null, null, null, '{}', '{}') is not null$$),
+   $$select public.save_announcement_service($1, $2, null, null, jsonb_build_object('title', 'Probe',
+       'locations', (select jsonb_agg(jsonb_build_object('location_id', l.id, 'day', 'open')) from public.locations l
+                     where l.workspace_id = $2 and l.archived_at is null)), 'draft') is not null$$),
   ('important_date.write_wide', 'workspace', 'important_dates.manage', false, false,
-   $$select public.save_important_date_service($1, $2, null, 'Probe', 'event', tests.week(0), tests.week(0), 'none', '', false,
-       '{}', null) is not null$$);
+   $$select public.save_announcement_service($1, $2, null, null, jsonb_build_object('title', 'Probe',
+       'starts_on', tests.week(0), 'on_important_dates', true,
+       'locations', (select jsonb_agg(jsonb_build_object('location_id', l.id, 'day', 'open')) from public.locations l
+                     where l.workspace_id = $2 and l.archived_at is null)), 'draft') is not null$$);
 
 -- A draft or a template with several locations, and the locations a publish
 -- or an export names (FB-6.1 .4). The export and the publish preview are asked
@@ -470,7 +478,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.list_settings_shift_types_service($1, $2) is not null
      and public.list_settings_shift_labels_service($1, $2) is not null$$),
   ('settings.important_dates.read', 'workspace', 'important_dates.read', false, false,
-   $$select public.read_settings_important_dates_service($1, $2) is not null$$),
+   $$select public.get_important_dates_service($1, $2) is not null$$),
   ('settings.roles.read', 'workspace', 'roles.read', false, false,
    $$select public.read_role_workspace_service($1, $2) is not null$$),
   ('settings.documents.read', 'workspace', 'documents.read', false, false,

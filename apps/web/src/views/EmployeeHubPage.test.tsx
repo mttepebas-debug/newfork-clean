@@ -30,6 +30,7 @@ import {
   changeEmployeePersonalTask,
 } from "../employee-hub/employee-hub-data";
 
+import { record } from "../communications/announcement-fixtures.test-util";
 import { RequestError } from "../lib/request-error";
 import { todayIn } from "../lib/today";
 import { inDeviceZone, plain } from "../employee-hub/device-zone.testing";
@@ -281,6 +282,7 @@ describe("EmployeeHubPage", () => {
     });
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [] });
     context.permissions = ["workspace.read", "schedule.read"];
+    context.actions = [];
     vi.mocked(getNotifications).mockResolvedValue({
       workspace_id: workspaceId,
       unread_count: 0,
@@ -290,7 +292,13 @@ describe("EmployeeHubPage", () => {
     vi.mocked(getAnnouncements).mockResolvedValue({
       workspace_id: workspaceId,
       can_manage: false,
+      can_write_dates: false,
+      can_read_dates: false,
+      time_format: "12h",
       locations: [],
+      people: [],
+      departments: [],
+      jobs: [],
       announcements: [],
     });
     vi.mocked(getEmployeePersonalTasks).mockResolvedValue([]);
@@ -317,6 +325,7 @@ describe("EmployeeHubPage", () => {
       "notifications.read",
       "announcements.read",
     ];
+    context.actions = ["announcement.read"];
     vi.mocked(getNotifications).mockRejectedValue(
       new Error("Updates unavailable"),
     );
@@ -331,6 +340,57 @@ describe("EmployeeHubPage", () => {
     );
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
     expect(screen.getByLabelText("New personal reminder")).toBeTruthy();
+  });
+  // EKRAN-08: dated posts show under Coming up, for the person's own location; the rest stay Team notices.
+  it("lists published Important Dates under Coming up and keeps them out of Team notices", async () => {
+    context.actions = ["announcement.read"];
+    const thanksgiving = record({
+      id: "a8200000-0000-4000-8000-000000000091",
+      title: "Thanksgiving",
+      category: "holiday",
+      status: "published",
+      display_status: "published",
+      on_important_dates: true,
+      starts_on: "2026-11-26",
+      ends_on: "2026-11-26",
+      locations: [
+        {
+          location_id: fixture.locations[0]!.id,
+          name: "Main Dining",
+          short_name: "Main Dining",
+          timezone: "America/Los_Angeles",
+          archived: false,
+          day: "closed",
+          opens: null,
+          closes: null,
+        },
+      ],
+    });
+    const notice = record({
+      id: "a8200000-0000-4000-8000-000000000092",
+      title: "New coffee",
+      body: "Try the oat latte.",
+      status: "published",
+      display_status: "published",
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue({
+      workspace_id: workspaceId,
+      can_manage: false,
+      can_write_dates: false,
+      can_read_dates: true,
+      time_format: "12h",
+      locations: [],
+      people: [],
+      departments: [],
+      jobs: [],
+      announcements: [notice, thanksgiving],
+    });
+    renderPage();
+    const line = await screen.findByText("Main Dining closed · Thu, Nov 26");
+    expect(line.closest("a")?.getAttribute("href")).toBe(`/app/announcements/${thanksgiving.id}`);
+    const notices = screen.getByText("Team notices").closest("section")!;
+    expect(notices.textContent).toContain("New coffee");
+    expect(notices.textContent).not.toContain("Thanksgiving");
   });
   it("creates a persisted personal reminder and completes it only after server confirmation", async () => {
     const task = {

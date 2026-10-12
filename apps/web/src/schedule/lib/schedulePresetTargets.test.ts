@@ -69,9 +69,10 @@ describe("schedulePresetTargets", () => {
         {
           location_id: "loc-1",
           closed_date: "2026-08-17",
-          end_date: null,
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          opens: null,
+          closes: null,
         },
       ],
     } as unknown as ScheduleReadModel;
@@ -82,24 +83,33 @@ describe("schedulePresetTargets", () => {
     });
   });
 
-  it("warns before preset creation on partial closure for the shift type", () => {
+  it("warns before preset creation when the preset's hours run past short hours (EKRAN-08)", () => {
     const closedModel = {
       ...model,
       closures: [
         {
           location_id: "loc-1",
           closed_date: "2026-08-17",
-          end_date: null,
+          title: "Inventory",
           is_all_day: false,
-          shift_type_ids: ["type-1"],
+          kind: "short",
+          opens: "09:00",
+          closes: "15:00",
         },
       ],
     } as unknown as ScheduleReadModel;
 
     expect(validatePresetCreateTarget(closedModel, target, true)).toEqual({
       allowed: true,
-      warning: "Location is closed for Dinner. Requested: Dinner / Server at Main Dining.",
+      warning: "Location has short hours for Inventory: open 9a–3p only. Requested: Dinner / Server at Main Dining.",
     });
+    expect(
+      validatePresetCreateTarget(
+        closedModel,
+        { ...target, preset: { ...target.preset, startTime: "09:00", endTime: "15:00" } },
+        true,
+      ),
+    ).toEqual({ allowed: true });
   });
 
   it("blocks preset creation with invalid default times", () => {

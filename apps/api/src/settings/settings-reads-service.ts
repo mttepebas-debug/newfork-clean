@@ -12,7 +12,6 @@ const serviceFunction: Record<SettingsReadKind, string> = {
   jobs: "read_settings_jobs_service",
   "shift-types": "list_settings_shift_types_service",
   "shift-labels": "list_settings_shift_labels_service",
-  "important-dates": "read_settings_important_dates_service",
   roles: "read_role_workspace_service",
   "document-types": "list_settings_document_types_service",
   acknowledgements: "read_signature_settings_service",

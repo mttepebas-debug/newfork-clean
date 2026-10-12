@@ -43,6 +43,7 @@ import { isNoAccess } from "../lib/no-access";
 import { requestErrorText } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { announcementCategoryLabel } from "../lib/announcementCategories";
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
   operations: "Today",
   pending_requests: "Pending requests",
@@ -445,7 +446,7 @@ function Widget({
             <Megaphone size={16} aria-hidden />
             <span>
               <strong>{item.title}</strong>
-              <small>{announcementCategoryLabel[item.category]}</small>
+              <small>{announcementCategoryLabel(item.category, item.category_other)}</small>
             </span>
             <ArrowRight size={15} aria-hidden />
           </Link>
@@ -563,16 +564,6 @@ function TodoWidget({
     </div>
   );
 }
-
-/** BL-666 (3): the stored code reads as a word. */
-const announcementCategoryLabel: Record<
-  WorkspaceDashboard["announcements"][number]["category"],
-  string
-> = {
-  general: "General",
-  operations: "Operations",
-  schedule: "Schedule",
-};
 
 function TodoPreview({
   item,

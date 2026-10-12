@@ -90,6 +90,10 @@
   /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
      never reads as a status, a warning or a selection. 7.6:1 on white. */
   --theme-note: #2f4fa3;
+  /* Scheduled, "Now 3–4 PM" and other quiet info (EKRAN-08 announcements).
+     #234a7a on #e8eff8 is 8.2:1. */
+  --theme-info-soft: #e8eff8;
+  --theme-info-text: #234a7a;
   /* List pages (DOC-TABLE, KARARLAR Genel → "Liste sayfalarının ortak dili"):
      table frame, column-heading row, body cell ink, the line between
      Availability day headings, and the faint "—" / disabled ink. */
@@ -5459,12 +5463,62 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-on-accent);
   box-shadow: 0 1px 2px rgba(23, 32, 51, 0.18);
 }
-.schedule-day-header .schedule-day-header-partial-closed {
+/* EKRAN-08: posts with Show on the Schedule. The header grows a line for them. */
+.schedule-grid-scroll:has(.schedule-day-header[data-posts="true"]) {
+  --schedule-day-header-height: 66px;
+}
+.schedule-day-header .schedule-day-header-posts {
+  display: flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 3px;
   margin-top: 1px;
-  color: #6b746f;
-  font-size: 9px;
+}
+.schedule-day-header .schedule-day-post {
+  min-width: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: var(--theme-surface-muted);
+  color: #3f4c47;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.schedule-day-header button.schedule-day-post {
+  cursor: pointer;
+}
+.schedule-day-header button.schedule-day-post:hover {
+  box-shadow: inset 0 0 0 1px var(--theme-border-strong);
+}
+.schedule-day-header button.schedule-day-post:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+.schedule-day-header .schedule-day-post[data-day="closed"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.schedule-day-header .schedule-day-post[data-day="short"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+/* Scheduled: managers only, until it goes out. */
+.schedule-day-header .schedule-day-post[data-scheduled="true"] {
+  background: var(--theme-surface);
+  color: #4d5955;
+  outline: 1px dashed #7c8883;
+  outline-offset: -1px;
+}
+.schedule-day-header .schedule-day-post-more {
+  flex: none;
+  color: var(--theme-muted-strong);
+  font-size: 10px;
   font-weight: 750;
-  line-height: 1;
 }
 .schedule-day-header[data-closed="true"] {
   background: #fbf1ef;
@@ -12187,15 +12241,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .form-field.field-wide {
   grid-column: span 2;
 }
-.important-date-fields {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  padding: 20px;
-}
-.important-date-note-field {
-  grid-column: span 2;
-}
 
 .availability-page {
   box-sizing: border-box;
@@ -12751,12 +12796,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
     grid-template-columns: 1fr;
     gap: 14px;
   }
-  .shift-type-fields,
-  .important-date-fields {
+  .shift-type-fields {
     grid-template-columns: 1fr;
-  }
-  .important-date-note-field {
-    grid-column: auto;
   }
   .scheduling-setting-row {
     grid-template-columns: 1fr;

@@ -248,9 +248,7 @@
   .job-catalog-row
   :is(
     .job-department-cell,
-    .announcement-audience-cell,
-    .announcement-date-cell,
-    .important-date-date-cell
+    .announcement-date-cell
   ) {
   color: var(--theme-list-cell-text);
   font-size: 13px;
@@ -269,14 +267,6 @@
   border-radius: 4px;
   outline: 2px solid var(--theme-focus);
   outline-offset: -2px;
-}
-/* Important Dates → Archived: the tab already says archived; rows keep full
-   ink instead of the disabled-button fade. */
-.important-dates-catalog-page.list-page
-  .job-catalog-row[data-archived="true"]
-  .job-row-identity:disabled {
-  color: var(--theme-text);
-  opacity: 1;
 }
 
 /* Status chip. */
@@ -308,6 +298,14 @@
 .list-chip[data-tone="red"] {
   background: var(--theme-danger-soft);
   color: var(--theme-danger-strong);
+}
+.list-chip[data-tone="blue"] {
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+}
+.list-chip[data-tone="past"] {
+  background: var(--theme-border-subtle);
+  color: var(--theme-list-head-text);
 }
 
 /* Empty table: heading row stays, soft ground below. */
