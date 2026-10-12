@@ -9,9 +9,10 @@ import { useAuth } from "./AuthContext";
 import { appLandingPath } from "./resolveLanding";
 
 /**
- * Does their role list this permission key. Old: a route asks the core
- * (`can()`, ActionRoute); this stays only where the core has no matching
- * action yet (BL-176).
+ * Does their role list this permission key. Legacy: a new gate asks the core
+ * (`can()`, ActionRoute). Only PermissionRoute and settings-access.ts call
+ * this, where the core has no matching action yet (BL-176); a new caller is a
+ * new raw-key gate (CLAUDE.md §3.A.1).
  */
 export function holdsPermission(
   context: ActiveWorkspaceContext,
