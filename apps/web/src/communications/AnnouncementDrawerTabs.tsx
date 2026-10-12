@@ -679,7 +679,7 @@ export function PublishingSection({
         <p className="ad-desc">{publishedText ? `Published ${publishedText}.` : "Published."}</p>
       ) : (
         <>
-          <div className="ad-flag ad-publish-row" data-bad={Boolean(problem)}>
+          <div className="ad-flag ad-publish-row">
             <label className="ad-publish-label">
               <input
                 type="checkbox"
@@ -690,24 +690,27 @@ export function PublishingSection({
               <b>Schedule for later</b>
             </label>
             {later ? (
-              <input
-                type="datetime-local"
-                className="ad-input"
-                aria-label="Publish on"
-                value={publishWall}
-                min={minWall}
-                disabled={locked}
-                data-field="publish_at"
-                onChange={(event) => onWall(event.target.value)}
-                {...invalid(problem, errorId)}
-              />
+              <span className="ad-publish-at">
+                <input
+                  type="datetime-local"
+                  className="ad-input"
+                  aria-label="Publish on"
+                  value={publishWall}
+                  min={minWall}
+                  disabled={locked}
+                  data-field="publish_at"
+                  onChange={(event) => onWall(event.target.value)}
+                  {...invalid(problem, errorId)}
+                />
+                <FieldError id={errorId} message={problem} />
+              </span>
             ) : (
               <span className="ad-hint">
                 {laterBlocked ? "It starts today, so it goes out when you publish." : "Off: it goes out when you publish."}
               </span>
             )}
           </div>
-          <FieldError id={errorId} message={problem} />
+          {!later && <FieldError id={errorId} message={problem} />}
         </>
       )}
       <Flag

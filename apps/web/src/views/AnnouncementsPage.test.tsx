@@ -304,6 +304,37 @@ describe("Announcement drawer (EKRAN-08)", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Published. 4 people told; 2 shifts changed."));
   });
 
+  it("says a past publish time right under its red box, in the gap above Show on the Schedule", async () => {
+    const pastTime: AnnouncementProblem = {
+      tab: "where",
+      field: "publish_at",
+      code: "publish_time_past",
+      message: "Pick a time after now (Mon, Oct 12, 1:13 PM).",
+      required: false,
+    };
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockImplementation(async (_ws, input) =>
+      input.intent === "schedule" ? preview({ problems: [pastTime] }) : preview(),
+    );
+    renderList();
+    fireEvent.click(await screen.findByRole("button", { name: "New" }));
+    const drawer = screen.getByRole("dialog", { name: "New announcement" });
+    fireEvent.change(within(drawer).getByLabelText("Title"), { target: { value: "Patio closes early" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
+    await waitFor(() =>
+      expect(within(drawer).getByRole("tab", { name: "Locations & publishing" }).getAttribute("aria-selected")).toBe("true"),
+    );
+    fireEvent.click(within(drawer).getByRole("checkbox", { name: "Schedule for later" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
+    const message = await within(drawer).findByText(pastTime.message);
+    const box = within(drawer).getByLabelText("Publish on");
+    expect(box.getAttribute("aria-invalid")).toBe("true");
+    expect(box.getAttribute("aria-describedby")).toBe(message.id);
+    // Right under the box, inside the row; the row itself stays its usual colour.
+    expect(box.nextElementSibling).toBe(message);
+    expect(message.closest(".ad-publish-row")?.getAttribute("data-bad")).toBeNull();
+  });
+
   it("keeps a past post read-only: no date error, no preview, only Archive and Close", async () => {
     const id = "a8200000-0000-4000-8000-000000000031";
     vi.mocked(getAnnouncements).mockResolvedValue(list());
