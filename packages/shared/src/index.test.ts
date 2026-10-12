@@ -20,8 +20,9 @@ import {
   employeeOnboardingSchema,
   employeeOnboardingProfileSchema,
   healthResponseSchema,
-  importantDateHistorySchema,
-  importantDateInputSchema,
+  announcementDetailSchema,
+  announcementDraftSchema,
+  announcementPreviewSchema,
   jobDetailsChangesSchema,
   jobInputSchema,
   jobSchema,
@@ -108,26 +109,49 @@ describe("account schemas", () => {
 describe("workspace communication schemas", () => {
   const announcement = {
     id: "a8200000-0000-4000-8000-000000000001",
-    workspace_id: workspaceId,
     title: "Service briefing",
     body: "Doors open at four.",
-    category: "operations",
+    category: "staff_meeting",
+    category_other: null,
     status: "published",
-    audience_roles: ["employee"],
-    location_ids: [],
-    location_names: [],
+    display_status: "published",
+    publish_error_code: null,
+    starts_on: null,
+    ends_on: null,
+    event_from: null,
+    event_until: null,
+    recurrence: "none",
+    on_important_dates: false,
+    on_calendar: false,
+    on_schedule: false,
+    ask_ack: true,
+    time_zone: "America/Los_Angeles",
     publish_at: null,
-    published_at: "2026-09-05T12:00:00.000Z",
-    expires_at: null,
-    action_url: "/app/announcements/a8200000-0000-4000-8000-000000000001",
+    published_at: "2026-09-05T12:00:00+00:00",
+    unpublished_at: null,
+    archived_at: null,
+    starts_at: null,
+    ends_at: null,
+    locations: [],
+    author_user_id: null,
     author_name: "Taylor",
     revision: 1,
-    created_at: "2026-09-05T12:00:00.000Z",
-    updated_at: "2026-09-05T12:00:00.000Z",
-    read_at: null,
+    content_revision: 1,
+    created_at: "2026-09-05T12:00:00+00:00",
+    updated_at: "2026-09-05T12:00:00+00:00",
+    repeats_from: null,
     can_edit: false,
-    can_publish: false,
-    can_cancel: false,
+    can_unschedule: false,
+    can_unpublish: false,
+    can_archive: false,
+    asked_to_acknowledge: true,
+    acknowledged_at: null,
+    content_changed_since_acknowledged: false,
+    respondent_count: null,
+    acknowledged_count: null,
+    recipient_count: null,
+    shift_change_count: null,
+    my_changes: [],
   } as const;
 
   const notification = {
@@ -186,15 +210,23 @@ describe("workspace communication schemas", () => {
     }
   });
 
-  it("rejects unsafe announcement and notification action links", () => {
-    expect(
-      announcementListSchema.parse({
-        workspace_id: workspaceId,
-        can_manage: false,
-        locations: [],
-        announcements: [announcement],
-      }).announcements[0]!.action_url,
-    ).toBe(announcement.action_url);
+  it("reads an announcement as the list sends it, and rejects unsafe notification links", () => {
+    const list = announcementListSchema.parse({
+      workspace_id: workspaceId,
+      can_manage: false,
+      can_write_dates: false,
+      can_read_dates: true,
+      time_format: "12h",
+      locations: [],
+      people: [],
+      departments: [],
+      jobs: [],
+      announcements: [announcement],
+    });
+    expect(list.announcements[0]).toMatchObject({ category: "staff_meeting", asked_to_acknowledge: true });
+    expect(() =>
+      announcementListSchema.parse({ ...list, announcements: [{ ...announcement, category: "operations" }] }),
+    ).toThrow();
     expect(
       notificationInboxSchema.parse({
         workspace_id: workspaceId,
@@ -204,19 +236,6 @@ describe("workspace communication schemas", () => {
       }).notifications[0]!.action_url,
     ).toBe(notification.action_url);
 
-    expect(() =>
-      announcementListSchema.parse({
-        workspace_id: workspaceId,
-        can_manage: false,
-        locations: [],
-        announcements: [
-          {
-            ...announcement,
-            action_url: "https://outside.example/announcement",
-          },
-        ],
-      }),
-    ).toThrow("Action URL must stay inside the app");
     expect(() =>
       notificationInboxSchema.parse({
         workspace_id: workspaceId,
@@ -682,8 +701,8 @@ describe("shared contracts", () => {
           title: "Renovation",
           is_all_day: true,
           kind: "closed",
-          window_start: null,
-          window_end: null,
+          opens: null,
+          closes: null,
         },
       ],
       important_dates: [
@@ -691,10 +710,17 @@ describe("shared contracts", () => {
           id: "70000000-0000-4000-8000-000000000001",
           location_id: locationId,
           title: "Anniversary",
-          type: "event",
+          category: "celebration",
+          category_other: null,
           starts_on: "2026-08-18",
           ends_on: "2026-08-18",
-          recurrence: "annual",
+          status: "published",
+          publish_at: null,
+          day: "open",
+          opens: null,
+          closes: null,
+          event_from: "18:00",
+          event_until: "21:00",
         },
       ],
       ghost_shifts: [
@@ -739,7 +765,7 @@ describe("shared contracts", () => {
     expect(parsed.shift_labels?.[0]?.name).toBe("Training");
     expect(parsed.closures[0]?.kind).toBe("closed");
     expect(parsed.important_dates[0]?.title).toBe("Anniversary");
-    expect(parsed.important_dates[0]?.recurrence).toBe("annual");
+    expect(parsed.important_dates[0]?.event_from).toBe("18:00");
   });
 
   it("reads a location's short hours on an important date (EKRAN-08)", () => {
@@ -761,32 +787,37 @@ describe("shared contracts", () => {
           title: "Christmas Eve",
           is_all_day: false,
           kind: "short",
-          window_start: "10:00",
-          window_end: "15:00",
+          opens: "10:00",
+          closes: "15:00",
+          status: "scheduled",
+          publish_at: "2026-12-20T17:00:00+00:00",
+          on_schedule: true,
+          announcement_id: "70000000-0000-4000-8000-000000000003",
         },
       ],
       referenced_jobs: [],
       referenced_shift_types: [],
     });
 
-    expect(parsed.closures[0]).toMatchObject({ kind: "short", window_start: "10:00", window_end: "15:00" });
+    expect(parsed.closures[0]).toMatchObject({ kind: "short", opens: "10:00", closes: "15:00", status: "scheduled" });
   });
 
   it("finds the shifts a closed or short day reaches, as app_private.closure_covers does", () => {
-    const allDay = { kind: "closed" as const, window_start: null, window_end: null };
-    const afternoon = { kind: "closed" as const, window_start: "13:00", window_end: "17:00" };
-    const short = { kind: "short" as const, window_start: "10:00", window_end: "15:00" };
+    const closed = { kind: "closed" as const, opens: null, closes: null };
+    const short = { kind: "short" as const, opens: "10:00", closes: "15:00" };
+    const late = { kind: "short" as const, opens: "17:00", closes: "02:00" };
 
-    expect(scheduleClosureCoversShift(allDay, "09:00", "17:00")).toBe(true);
-    expect(scheduleClosureCoversShift(allDay, null, null)).toBe(true);
-    expect(scheduleClosureCoversShift(afternoon, "09:00", "13:00")).toBe(false);
-    expect(scheduleClosureCoversShift(afternoon, "12:00", "14:00")).toBe(true);
-    expect(scheduleClosureCoversShift(afternoon, "22:00", "02:00")).toBe(false);
+    // Closed reaches every shift that starts that day.
+    expect(scheduleClosureCoversShift(closed, "09:00", "17:00")).toBe(true);
+    expect(scheduleClosureCoversShift(closed, null, null)).toBe(true);
+    // Short hours reach a shift with any part outside them.
     expect(scheduleClosureCoversShift(short, "10:00", "15:00")).toBe(false);
     expect(scheduleClosureCoversShift(short, "07:00", "09:00")).toBe(true);
     expect(scheduleClosureCoversShift(short, "12:00", "18:00")).toBe(true);
     expect(scheduleClosureCoversShift(short, "14:00", "01:00")).toBe(true);
-    expect(scheduleClosureCoversShift({ ...short, window_end: "24:00" }, "12:00", "00:00")).toBe(false);
+    // Closing past midnight closes the next day.
+    expect(scheduleClosureCoversShift(late, "18:00", "01:30")).toBe(false);
+    expect(scheduleClosureCoversShift(late, "18:00", "03:00")).toBe(true);
   });
 
   // BL-959: public.schedule_closures names each closed day md5(...)::uuid, which
@@ -810,8 +841,8 @@ describe("shared contracts", () => {
           title: "Staff training",
           is_all_day: true,
           kind: "closed",
-          window_start: null,
-          window_end: null,
+          opens: null,
+          closes: null,
         },
       ],
       referenced_jobs: [],
@@ -2007,60 +2038,70 @@ describe("scheduling settings schemas", () => {
   });
 });
 
-describe("important date schemas", () => {
+describe("announcement draft schemas (EKRAN-08)", () => {
   const kadikoy = "34000000-0000-4000-8000-000000000001";
+  const shift = "34000000-0000-4000-8000-000000000009";
   const base = {
-    location_id: kadikoy,
-    location_ids: [kadikoy],
     title: "Christmas Eve",
-    type: "holiday",
+    body: "",
+    category: "holiday",
+    category_other: null,
     starts_on: "2027-12-24",
-    ends_on: "2027-12-24",
-    recurrence: "annual",
-    note: "",
-    all_day: true,
-    start_time: null,
-    end_time: null,
-    location_days: {},
+    ends_on: null,
+    event_from: null,
+    event_until: null,
+    recurrence: "date",
+    on_important_dates: true,
+    on_calendar: false,
+    on_schedule: true,
+    ask_ack: false,
+    publish_at: null,
+    locations: [{ location_id: kadikoy, day: "short", opens: "10:00", closes: "15:00" }],
+    people: [],
   };
 
-  it("accepts a holiday with short hours at one location (EKRAN-08)", () => {
+  it("accepts a holiday with short hours at one location, and late closing the next day", () => {
+    expect(announcementDraftSchema.parse(base)).toMatchObject({ choices: {}, bring_back: [] });
     expect(
-      importantDateInputSchema.parse({
-        ...base,
-        location_days: { [kadikoy]: { status: "short", opens: "10:00", closes: "15:00" } },
-      }),
-    ).toMatchObject({ title: "Christmas Eve", location_days: { [kadikoy]: { status: "short" } } });
+      announcementDraftSchema.parse({ ...base, locations: [{ location_id: kadikoy, day: "short", opens: "17:00", closes: "02:00" }] })
+        .locations[0],
+    ).toMatchObject({ closes: "02:00" });
   });
 
-  it("knows only Holiday and Event: closing is a location's day", () => {
-    expect(() => importantDateInputSchema.parse({ ...base, type: "closed_day" })).toThrow();
-    expect(() => importantDateInputSchema.parse({ ...base, type: "blackout" })).toThrow();
+  it("knows the eight categories and the four repeats", () => {
+    expect(() => announcementDraftSchema.parse({ ...base, category: "closed_day" })).toThrow();
+    expect(() => announcementDraftSchema.parse({ ...base, recurrence: "annual" })).toThrow();
   });
 
-  it("refuses short hours that close before they open, and a day for a location left out", () => {
-    expect(() =>
-      importantDateInputSchema.parse({ ...base, location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } }),
-    ).toThrow("Closes must be after opens.");
-    expect(() =>
-      importantDateInputSchema.parse({ ...base, location_days: { "34000000-0000-4000-8000-000000000002": { status: "closed" } } }),
-    ).toThrow("A location's day needs the location chosen");
+  it("takes new hours for a shift only with both times", () => {
+    expect(
+      announcementDraftSchema.parse({ ...base, choices: { [shift]: { choice: "edit", from: "10:00", until: "15:00" } } }).choices,
+    ).toEqual({ [shift]: { choice: "edit", from: "10:00", until: "15:00" } });
+    expect(() => announcementDraftSchema.parse({ ...base, choices: { [shift]: { choice: "edit", from: "10:00" } } })).toThrow();
+    expect(() => announcementDraftSchema.parse({ ...base, choices: { [shift]: { choice: "close" } } })).toThrow();
   });
 
-  it("gives hours only to a date that is not all day (B13)", () => {
-    expect(() => importantDateInputSchema.parse({ ...base, start_time: "09:00", end_time: "17:00" })).toThrow("An all-day date has no hours");
-    expect(() => importantDateInputSchema.parse({ ...base, all_day: false, start_time: "17:00", end_time: "09:00" })).toThrow(
-      "End time must be after the start time",
-    );
-    expect(importantDateInputSchema.parse({ ...base, all_day: false, start_time: "13:00", end_time: "17:00" })).toMatchObject({
-      start_time: "13:00",
+  it("reads the preview's problems and the shifts it would change", () => {
+    const preview = announcementPreviewSchema.parse({
+      problems: [{ tab: "where", field: `location:${kadikoy}`, code: "hours_taken", message: "Taken.", required: false }],
+      fingerprint: "abc",
+      shifts: [{
+        id: shift, source_id: shift, location_id: kadikoy, location_name: "Kadikoy", scheduled_date: "2027-12-24",
+        employee_id: null, employee_user_id: null, employee_name: null, job_id: null, job_name: "Unassigned position",
+        start_time: "16:00", end_time: "22:00", day: "short", opens: "10:00", closes: "15:00", reason: "after_close",
+        started: false, tied: false, changed_in_schedule: false, default: "remove", choice: "remove", from: null, until: null,
+        outcome: "removed",
+      }],
+      hidden_count: 0,
+      quiet_count: 0,
+      counts: { removed: 1, edited: 0, opened: 0, kept: 0, quiet: 0 },
+      bring_back: [],
+      time_zone: "Europe/Istanbul",
+      starts_at: "2027-12-23T21:00:00+00:00",
+      ends_at: "2027-12-24T21:00:00+00:00",
+      recipient_count: 3,
     });
-  });
-
-  it("rejects inverted date ranges", () => {
-    expect(() => importantDateInputSchema.parse({ ...base, starts_on: "2027-05-03", ends_on: "2027-05-01" })).toThrow(
-      "End date must be on or after the start date",
-    );
+    expect(preview.shifts[0]?.reason).toBe("after_close");
   });
 });
 
@@ -2282,16 +2323,29 @@ describe("publish finding: an approved shift change the draft would undo (BL-198
   });
 });
 
-describe("important date history", () => {
-  it("accepts a change the reader may not see, with who and when masked (K6)", () => {
-    const hidden = {
-      id: "70000000-0000-4000-8000-000000000001", action: "created", changed_at: null,
-      actor_user_id: null, actor_name: null, before: null, after: { hidden: true },
-    };
-    const parsed = importantDateHistorySchema.parse({
-      important_date_id: "70000000-0000-4000-8000-000000000002", author_user_id: null, author_name: "Workspace member",
-      changes: [hidden],
+describe("announcement history", () => {
+  it("reads History newest on top, with who did it and what it told", () => {
+    const parsed = announcementDetailSchema.parse({
+      ...{
+        id: "70000000-0000-4000-8000-000000000002", title: "Inspection", body: "", category: "inspection", category_other: null,
+        status: "published", display_status: "published", publish_error_code: null, starts_on: "2027-03-02", ends_on: null,
+        event_from: null, event_until: null, recurrence: "none", on_important_dates: true, on_calendar: false,
+        on_schedule: false, ask_ack: false, time_zone: "America/Los_Angeles", publish_at: null,
+        published_at: "2027-03-01T17:00:00+00:00", unpublished_at: null, archived_at: null,
+        starts_at: "2027-03-02T08:00:00+00:00", ends_at: "2027-03-03T08:00:00+00:00", locations: [],
+        author_user_id: null, author_name: "Workspace member", revision: 2, content_revision: 1,
+        created_at: "2027-03-01T16:00:00+00:00", updated_at: "2027-03-01T17:00:00+00:00", repeats_from: null,
+        can_edit: true, can_unschedule: false, can_unpublish: true, can_archive: false, asked_to_acknowledge: false,
+        acknowledged_at: null, content_changed_since_acknowledged: false, respondent_count: null, acknowledged_count: null,
+        recipient_count: 4, shift_change_count: 0, my_changes: [],
+      },
+      history: [
+        { id: "70000000-0000-4000-8000-000000000005", action: "published", detail: { told: 4 },
+          changed_at: "2027-03-01T17:00:00+00:00", actor_user_id: null, actor_name: "Taylor" },
+        { id: "70000000-0000-4000-8000-000000000004", action: "created", detail: {},
+          changed_at: "2027-03-01T16:00:00+00:00", actor_user_id: null, actor_name: null },
+      ],
     });
-    expect(parsed.changes[0]).toEqual(hidden);
+    expect(parsed.history?.map((entry) => entry.action)).toEqual(["published", "created"]);
   });
 });

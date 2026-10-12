@@ -93,9 +93,11 @@ describe("createScheduleReadService read model", () => {
     // The id public.schedule_closures gave Oct 28 on the local database (EKRAN-08 D4): an
     // md5 made into a uuid (BL-959).
     const closedDay = { id: "c6717f17-012c-8945-cc5c-fca50e875fae", location_id: locationId, closed_date: "2026-10-28",
-      title: "Staff training", is_all_day: false, kind: "short", window_start: "10:00", window_end: "15:00" };
+      title: "Staff training", is_all_day: false, kind: "short", opens: "10:00", closes: "15:00", status: "published",
+      publish_at: null, on_schedule: true, announcement_id: "70000000-0000-4000-8000-000000000001" };
     const importantDate = { id: "70000000-0000-4000-8000-000000000001", location_id: locationId, title: "Staff training",
-      type: "event", starts_on: "2026-10-28", ends_on: "2026-10-28", recurrence: "none" };
+      category: "staff_meeting", category_other: null, starts_on: "2026-10-28", ends_on: "2026-10-28", status: "published",
+      publish_at: null, day: "short", opens: "10:00", closes: "15:00", event_from: null, event_until: null };
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-10-26", week_start_day: "monday",
       locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
       departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
@@ -113,8 +115,8 @@ describe("createScheduleReadService read model", () => {
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
     const result = await service.getReadModel(actorUserId, workspaceId, "2026-10-26");
     expect(tables).not.toContain("schedule_closures");
-    expect(tables).not.toContain("important_dates");
-    expect(result.closures).toEqual([expect.objectContaining({ id: closedDay.id, kind: "short", window_start: "10:00", window_end: "15:00" })]);
+    expect(tables).not.toContain("announcements");
+    expect(result.closures).toEqual([expect.objectContaining({ id: closedDay.id, kind: "short", opens: "10:00", closes: "15:00" })]);
     expect(result.important_dates.map((date) => date.title)).toEqual(["Staff training"]);
   });
   it("hands the Schedule Management's and Owner's system keys and the stored primary job (BL-218)", async () => {

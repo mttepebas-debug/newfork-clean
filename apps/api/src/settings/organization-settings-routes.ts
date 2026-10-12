@@ -12,7 +12,6 @@ import {
 } from "../auth/workspace-context";
 import type { OrganizationSettingsService } from "./organization-settings-service";
 import { registerJobsManagementRoutes } from "./jobs-management-routes";
-import { registerImportantDatesRoutes } from "./important-dates-routes";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const shiftTypeReorderBody = z.object({
@@ -31,10 +30,6 @@ export function registerOrganizationSettingsRoutes(
 ) {
   registerJobsManagementRoutes(app, {
     service: options.service?.jobs ?? null,
-    contextResolver: options.contextResolver,
-  });
-  registerImportantDatesRoutes(app, {
-    service: options.service?.importantDates ?? null,
     contextResolver: options.contextResolver,
   });
   app.get("/v1/workspaces/:workspaceId/scheduling-settings/conflicts", async (request, reply) => {
