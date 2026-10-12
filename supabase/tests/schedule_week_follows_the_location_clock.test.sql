@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(45);
 
 -- BL-238: a Schedule week is "this week" or "past" by the clock of the places
 -- it is for, never by the server's UTC date. Sunday 20:00 in Los Angeles is
@@ -177,6 +177,13 @@ where id = pg_temp.at_b(tests.id('tz:session:pub2'));
 select pg_temp.b_zone('<+167>-167');
 select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:pub2'))), '[["Besiktas", "update"]]'::jsonb,
   'and so is moving it to Kadikoy, whose week is still open');
+-- A copy put back by a shift-exchange recovery keeps the published row's own id.
+update public.schedule_edit_session_shifts shift set source_published_shift_id = published.id
+from public.schedule_published_shifts published
+where shift.session_id = tests.id('tz:session:pub2') and published.source_shift_id = shift.source_published_shift_id
+  and published.location_id = tests.id('tz:B');
+select is(pg_temp.findings(pg_temp.save(tests.id('tz:session:pub2'))), '[["Besiktas", "update"]]'::jsonb,
+  'and so is moving a copy a shift-exchange recovery put back');
 update public.schedule_edit_sessions set status = 'discarded' where id = tests.id('tz:session:pub2');
 
 -- An edit of the saved draft: its Besiktas shift rides along untouched;

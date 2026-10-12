@@ -174,28 +174,30 @@ $a$    end if;
       left join public.schedule_draft_shifts kept
         on kept.draft_id = target_session.source_draft_id
        and kept.id = shift.id
-      -- Where a published copy stood: a shift moved out of a place that has
-      -- left the week changes that place too.
-      left join lateral (
-        select published.location_id
-        from public.schedule_published_shifts published
-        join public.schedule_location_publications publication
-          on publication.id = published.publication_id
-         and publication.status = 'current'
-         and publication.week_start = target_session.week_start
-        where published.workspace_id = target_workspace_id
-          and published.source_shift_id = shift.source_published_shift_id
-        limit 1
-      ) origin on true
-      -- The place that has left the week: where the shift came from, else
-      -- where it is now.
+      -- The place that has left the week: where the shift came from (its
+      -- source draft row, or any current publication of the week holding it,
+      -- by either id a published copy keeps), else where it is now. A shift
+      -- moved out of a closed place changes that place too.
       left join lateral (
         select place.id
-        from (values (1, coalesce(kept.location_id, origin.location_id)), (2, shift.location_id)) place(n, id)
+        from (
+          select 1 as n, kept.location_id as id
+          union all
+          select 1, published.location_id
+          from public.schedule_published_shifts published
+          join public.schedule_location_publications publication
+            on publication.id = published.publication_id
+           and publication.status = 'current'
+           and publication.week_start = target_session.week_start
+          where published.workspace_id = target_workspace_id
+            and shift.source_published_shift_id in (published.source_shift_id, published.id)
+          union all
+          select 2, shift.location_id
+        ) place
         where place.id is not null
           and target_session.week_start
             < public.schedule_current_week_start_service(target_workspace_id, array[place.id])
-        order by place.n
+        order by place.n, place.id
         limit 1
       ) closed on true
       left join public.locations location
