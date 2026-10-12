@@ -12,6 +12,7 @@ import { useAuth } from "../auth/AuthContext";
 import { JobColorInput } from "./JobCatalogEditor";
 import "./jobs-settings.css";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { ShiftCatalogList } from "./ShiftCatalogList";
@@ -61,13 +62,21 @@ export default function ShiftLabelsSettingsPage() {
       setEditing(null);
       setFormError(null);
     },
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: an item deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void refresh();
+    },
   });
   const archiveMutation = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
       setShiftLabelArchived(workspaceId, id, archived),
     onSuccess: refresh,
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: an item deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void refresh();
+    },
   });
   const reorderMutation = useMutation({
     mutationFn: (ids: readonly string[]) =>

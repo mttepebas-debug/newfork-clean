@@ -17,6 +17,7 @@ import {
 import type { Department, Job } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import {
   loadDepartmentsAndJobs,
   setDepartmentArchived,
@@ -154,7 +155,11 @@ export default function JobsSettingsPage() {
       setFormError(null);
       await refresh();
     },
-    onError: (cause) => setFormError(errorText(cause)),
+    // BL-1045: an item deleted meanwhile leaves the list; its sentence stays.
+    onError: (cause) => {
+      setFormError(errorText(cause));
+      if (isGoneMeanwhile(cause)) void refresh();
+    },
   });
   function openEditor(next: CatalogEditor) {
     setFormError(null);

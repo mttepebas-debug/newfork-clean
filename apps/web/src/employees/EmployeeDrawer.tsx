@@ -58,6 +58,7 @@ import { can } from "../auth/can";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { NoAccessState } from "../shell/NoAccessState";
 import { FieldNote } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
@@ -448,6 +449,14 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     Boolean(detail.data) &&
     !(allowed?.terminate ?? false) &&
     (detail.data?.locations.some((location) => location.removable) ?? false);
+  // BL-1045: a location or job deleted while the drawer was open; by its key,
+  // the lists load again so it leaves the pickers. The sentence stays.
+  const reloadGoneReferences = (cause: unknown) => {
+    if (isGoneMeanwhile(cause))
+      void queryClient.invalidateQueries({
+        queryKey: ["employee-reference-data", workspaceId],
+      });
+  };
   const createMutation = useMutation({
     mutationFn: (command: EmployeeCreateCommand) =>
       createEmployee(workspaceId, command),
@@ -471,6 +480,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       setError(errorMessage(cause));
       const status = "status" in cause ? Number(cause.status) : 0;
       setUncertainCreate(![400, 401, 403, 404, 409, 422].includes(status));
+      reloadGoneReferences(cause);
     },
     onSettled: () => {
       submittingCreateRef.current = false;
@@ -547,6 +557,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     onError: async (cause) => {
       if (!isRevisionConflict(cause) || !props.employeeId) {
         setError(errorMessage(cause));
+        reloadGoneReferences(cause);
         return;
       }
       // Someone else saved first (BL-781): read the record again, keep what
