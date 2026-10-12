@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
--- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
+-- migrations: 466, last: 20261012043000_availability_lists_employees_and_quiet_resaves.sql
+-- fingerprint: sha256:6db18a7f1287d38c2dcf06f61bcb800d226b096948814742e342dd4f61bea8b2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -27620,7 +27620,8 @@ begin
  where d is distinct from (select value from jsonb_array_elements(prior->'preference'->'days') where value->'day'=d->'day');
  summary:=case when source='manager' then 'Manager reminders updated.' else 'Weekly availability updated. '||case when changed_days is null then 'Week confirmed.' else 'Changed days: '||changed_days||'.' end end;
  insert into public.employee_events(workspace_id,employee_id,actor_user_id,action,summary) values(w,emp,actor,case when source='manager' then 'manager_reminders_updated' else 'weekly_availability_updated' end,summary);
- if source='employee' then
+ -- A save that changes no day is news only the first time (S-32, KK-178).
+ if source='employee' and (changed_days is not null or not coalesce((prior->>'submitted')::boolean,false)) then
   select coalesce(array_agg(m.user_id),'{}') into recipients from public.workspace_memberships m where m.workspace_id=w and m.status='active' and m.user_id<>actor
    and public.weekly_preference_manager_scope(m.user_id,w,emp,'availability.read');
   perform public.enqueue_notification_outbox_service(w,event,'availability.weekly_updated',1,actor,'weekly_availability',emp::text,
@@ -27793,7 +27794,9 @@ begin
   from public.employee_profiles e
   join public.workspace_scheduling_settings s on s.workspace_id=e.workspace_id
   left join public.employee_weekly_preferences p on p.workspace_id=e.workspace_id and p.employee_id=e.id
-  where e.workspace_id=w and e.archived_at is null and (
+  -- Only an employee enters availability (M13): nobody ranking above one is
+  -- listed, nor counted as a week not submitted (KK-178).
+  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id) and (
    exists(select 1 from public.employee_location_assignments a join scope l on l.id=a.location_id
     where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)
    or (not exists(select 1 from public.employee_location_assignments a where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)
