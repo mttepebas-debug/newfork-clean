@@ -87,5 +87,16 @@ select throws_ok(
   format('select * from public.list_employees_service(%L, %L)', tests.user('el:emre'), tests.id('el')),
   '42501', null, 'an employee still may not list the team');
 
+-- 6. Ended and archived ----------------------------------------------------------------
+-- Last, as they change the world. A location they were taken off is gone from
+-- the row; an archived one stays, as it stays on the drawer's list until the
+-- person is taken off it.
+
+update public.employee_location_assignments set ended_at = now()
+where employee_id = tests.id('el:ali') and location_id = tests.id('el:K');
+select is(pg_temp.places('owner', 'ali'), array['Besiktas*'], 'a location Ali was taken off leaves his row');
+update public.locations set archived_at = now() where id = tests.id('el:B');
+select is(pg_temp.places('owner', 'emre'), array['Besiktas*'], 'an archived location stays on the row while he is on it');
+
 select * from finish();
 rollback;
