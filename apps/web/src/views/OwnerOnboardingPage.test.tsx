@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import OwnerOnboardingPage from "./OwnerOnboardingPage";
+import { RequestError } from "../lib/request-error";
 import {
   loadEmployeeReferenceData,
   saveEmployee,
@@ -256,6 +257,39 @@ describe("OwnerOnboardingPage", () => {
         .getByRole("progressbar", { name: "Steps done" })
         .getAttribute("aria-valuenow"),
     ).toBe("1");
+  });
+
+  // BL-1046: setup saved from a tab that fell behind. The page reads the setup
+  // again and says so, instead of "owner onboarding revision conflict".
+  it("reloads setup saved over a newer one and says so", async () => {
+    vi.mocked(saveOwnerOnboarding).mockRejectedValue(
+      new RequestError(
+        "owner onboarding revision conflict",
+        "workspace.onboarding_changed",
+        undefined,
+        409,
+      ),
+    );
+    renderPage();
+    fireEvent.change(await screen.findByLabelText("First name"), {
+      target: { value: "Taylor" },
+    });
+    fireEvent.change(screen.getByLabelText("Last name"), {
+      target: { value: "Owner" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(
+      await screen.findByText(
+        "Your setup changed in another tab or window. You're seeing the latest version; check it and save again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("owner onboarding revision conflict")).toBeNull();
+    expect(authState.refresh).toHaveBeenCalled();
+    // Still on the same step: nothing moved on.
+    expect(
+      screen.getByRole("heading", { name: "Name your workspace" }),
+    ).toBeTruthy();
   });
 
   // Creating an account is an email and a password; the name is asked here,
