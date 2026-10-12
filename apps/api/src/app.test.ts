@@ -1853,7 +1853,7 @@ describe("api app", () => {
       contextResolver: { resolve: async () => resolvedContext },
       scheduleService: scheduleServiceMock({
         acquireSession: async (input) => {
-          calls.push(`${input.sourceKind}:${input.weekStart}`);
+          calls.push(`${input.sourceKind}:${input.weekStart}:${input.resume}`);
           return { status: "acquired", session: scheduleSessionMockModel() };
         },
       }),
@@ -1870,7 +1870,22 @@ describe("api app", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json().status).toBe("acquired");
-    expect(calls).toEqual(["published:2026-08-17"]);
+    // Picking an edit back up is the default; a menu asks for a new one.
+    const fresh = await app.inject({
+      method: "POST",
+      url: "/schedule/edit-lock/acquire",
+      headers: { authorization: "Bearer owner-token" },
+      payload: { week_start: "2026-08-17", source_kind: "blank", resume: false },
+    });
+    expect(fresh.statusCode).toBe(200);
+    const malformed = await app.inject({
+      method: "POST",
+      url: "/schedule/edit-lock/acquire",
+      headers: { authorization: "Bearer owner-token" },
+      payload: { week_start: "2026-08-17", source_kind: "blank", resume: "no" },
+    });
+    expect(malformed.statusCode).toBe(400);
+    expect(calls).toEqual(["published:2026-08-17:true", "blank:2026-08-17:false"]);
   });
 
   it("requires an idempotency key and forwards shift revisions", async () => {

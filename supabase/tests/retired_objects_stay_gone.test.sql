@@ -422,6 +422,10 @@ select 'function_signature', name, 'EKRAN-08' from unnest(array[
 -- form, which read the server's UTC date, goes.
 insert into retired (kind, name, step) values
   ('function_signature', 'public.schedule_current_week_start_service(uuid)', 'BL-238');
+-- A new edit says whether it may pick up an edit that was left open; the
+-- form without that answer goes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.acquire_schedule_edit_session_service(uuid, uuid, date, public.schedule_edit_source, uuid, uuid[])', 'EKRAN-01');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
