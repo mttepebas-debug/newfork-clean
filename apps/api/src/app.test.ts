@@ -1851,15 +1851,18 @@ describe("api app", () => {
     expect(revisions).toEqual([3]);
   });
 
+  // BL-1044: the availability review is told apart by its key, not its sentence.
   it.each([
-    ["Review the current availability assessment before saving", "PT409", 409, "availability_review_required"],
-    ["Edit session revision is stale", "PT409", 409, undefined],
-    ["Employee already has an overlapping shift", "23514", 400, undefined],
-    ["Schedule location access denied", "42501", 403, undefined],
-  ])("classifies fast-save rejection: %s", async (message, code, statusCode, status) => {
+    ["Review the current availability assessment before saving", "PT409", "schedule.availability_review_required", 409, "availability_review_required"],
+    ["The assessment moved on", "PT409", "schedule.availability_review_required", 409, "availability_review_required"],
+    ["Review the current availability assessment before saving", "PT409", undefined, 409, undefined],
+    ["Edit session revision is stale", "PT409", undefined, 409, undefined],
+    ["Employee already has an overlapping shift", "23514", undefined, 400, undefined],
+    ["Schedule location access denied", "42501", undefined, 403, undefined],
+  ])("classifies fast-save rejection: %s (%s %s)", async (message, code, hint, statusCode, status) => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw rpcFailure({ message, code }); } }),
+      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw rpcFailure({ message, code, hint }); } }),
     });
     const response = await app.inject({
       method: "POST",
@@ -1873,6 +1876,26 @@ describe("api app", () => {
     });
     expect(response.statusCode).toBe(statusCode);
     expect(response.json().status).toBe(status);
+    await app.close();
+  });
+
+  // BL-1044: auto-fill's and the templates' 409s carry the database's key, so
+  // the screens read the key instead of the sentence or the bare status.
+  it.each([
+    ["auto-fill apply", "applyAutoFill", "POST", "/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/auto-fill-apply",
+      { expected_session_revision: 2, fingerprint: "c".repeat(64), assignments: [] }, "stale auto-fill preview", "schedule.auto_fill_stale"],
+    ["template rename", "renameTemplate", "PATCH", "/schedule/templates/88000000-0000-4000-8000-000000000002",
+      { name: "Week", expected_revision: 1 }, "schedule template revision stale", "schedule.template_changed"],
+    ["template delete", "deleteTemplate", "DELETE", "/schedule/templates/88000000-0000-4000-8000-000000000002",
+      { expected_revision: 1 }, "schedule template revision stale", "schedule.template_changed"],
+  ] as const)("passes the %s refusal's key on with the 409", async (_label, method, verb, url, payload, message, hint) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({ [method]: async () => { throw rpcFailure({ message, code: "PT409", hint }); } }),
+    });
+    const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer owner-token" }, payload });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: message, reason: hint });
     await app.close();
   });
 
