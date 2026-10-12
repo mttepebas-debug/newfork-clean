@@ -1376,6 +1376,50 @@ describe("api app", () => {
     ]);
   });
 
+  // BL-1046: the welcome steps reload only when the database says the
+  // onboarding moved on; the key travels with the 409.
+  it("passes the onboarding.changed key on with the 409 of every own step", async () => {
+    const changed = () => {
+      throw rpcFailure({ message: "onboarding changed; refresh required", code: "PT409", hint: "onboarding.changed" });
+    };
+    const service = onboardingServiceMock({ saveProfile: changed, submit: changed, leave: changed });
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const headers = { authorization: "Bearer pending-member-token" };
+    const responses = await Promise.all([
+      app.inject({
+        method: "PATCH",
+        url: "/v1/me/onboarding/profile",
+        headers,
+        payload: {
+          revision: 1,
+          profile: {
+            legal_first_name: "Taylor",
+            legal_last_name: "Reed",
+            phone: "+13105550100",
+            street_address: "1 Main St",
+            city: "Los Angeles",
+            region: "CA",
+            postal_code: "90012",
+            country_code: "US",
+            date_of_birth: "1990-01-01",
+            emergency_contact_name: "Morgan Reed",
+            emergency_contact_relationship: "Sibling",
+            emergency_contact_email: "",
+            emergency_contact_phone: "+13105550101",
+            share_phone_with_teammates: false,
+            share_email_with_teammates: false,
+          },
+        },
+      }),
+      app.inject({ method: "POST", url: "/v1/me/onboarding/submit", headers, payload: { revision: 1 } }),
+      app.inject({ method: "POST", url: "/v1/me/onboarding/leave", headers, payload: { revision: 1 } }),
+    ]);
+    for (const response of responses) {
+      expect(response.statusCode, response.body).toBe(409);
+      expect(response.json()).toMatchObject({ reason: "onboarding.changed" });
+    }
+  });
+
   // TEL-2: the onboarding screen asks while the number is typed.
   it("answers whether a typed onboarding phone is somebody else's", async () => {
     const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -1688,6 +1732,30 @@ describe("api app", () => {
       reviewInput,
     );
   });
+
+  // BL-1046: "changed meanwhile" and "review it in Documents" are told apart by key.
+  it.each(["onboarding.changed", "onboarding.review_in_documents"])(
+    "passes the %s key of a manager onboarding review on with the 409",
+    async (hint) => {
+      const service = onboardingServiceMock({
+        review: async () => {
+          throw rpcFailure({ message: "refused", code: "PT409", hint });
+        },
+      });
+      const app = buildApp({
+        contextResolver: { resolve: async () => resolvedContext },
+        onboardingService: service,
+      });
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${resolvedContext.workspace.id}/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/onboarding/review`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { action: "activate", requirementId: null, reason: "", revision: 1 },
+      });
+      expect(response.statusCode, response.body).toBe(409);
+      expect(response.json()).toMatchObject({ reason: hint });
+    },
+  );
 
   it("serves reference-style Schedule reads from active workspace context", async () => {
     const calls: unknown[] = [];

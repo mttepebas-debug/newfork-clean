@@ -262,7 +262,11 @@ describe("workspace account routes", () => {
 
   it("returns conflict when owner onboarding revision is stale", async () => {
     const saveOwnerOnboarding = vi.fn(async () => {
-      throw rpcFailure({ message: "owner onboarding revision conflict", code: "40001" });
+      throw rpcFailure({
+        message: "owner onboarding revision conflict",
+        code: "PT409",
+        hint: "workspace.onboarding_changed",
+      });
     });
     const app = buildApp({
       contextResolver: { resolve: async () => context },
@@ -286,6 +290,8 @@ describe("workspace account routes", () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({
       error: "owner onboarding revision conflict",
+      // BL-1046: the setup screen reloads on this key, not on the sentence.
+      reason: "workspace.onboarding_changed",
       requestId: expect.any(String),
     });
     expect(saveOwnerOnboarding).toHaveBeenCalledWith(accessToken, {
