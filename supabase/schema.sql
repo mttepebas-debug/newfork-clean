@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
--- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
+-- migrations: 466, last: 20261012030000_announcement_refusals_say_why.sql
+-- fingerprint: sha256:c7701bc0233067103f8fd58d8586eff14e4ba4af70c0d987578c92fad910b3e2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17715,7 +17715,7 @@ begin
     item.created_by, app_private.announcement_places(item.id));
   if item.revision is distinct from target_expected_revision or item.archived_at is not null
      or item.status not in ('draft', 'scheduled', 'unpublished') then
-    raise exception 'stale announcement revision' using errcode = 'PT409';
+    raise exception 'stale announcement revision' using errcode = 'PT409', hint = 'announcement.changed';
   end if;
 
   if item.expires_at is not null and item.expires_at <= now() then
@@ -21247,10 +21247,10 @@ begin
     returning * into item;
   else
     if before.revision is distinct from target_expected_revision then
-      raise exception 'stale announcement revision' using errcode = 'PT409';
+      raise exception 'stale announcement revision' using errcode = 'PT409', hint = 'announcement.changed';
     end if;
     if before.archived_at is not null then
-      raise exception 'announcement can no longer be edited' using errcode = 'PT409';
+      raise exception 'announcement can no longer be edited' using errcode = 'PT409', hint = 'announcement.archived';
     end if;
     content_changed := (before.title, before.body, before.category::text, before.action_url)
       is distinct from (btrim(target_title), btrim(target_body), target_category, target_action_url);
@@ -23656,7 +23656,7 @@ begin
      or (target_action = 'unpublish' and (item.archived_at is not null or item.status not in ('scheduled', 'published')))
      or (target_action = 'archive' and item.archived_at is not null)
      or (target_action = 'restore' and item.archived_at is null) then
-    raise exception 'stale announcement revision' using errcode = 'PT409';
+    raise exception 'stale announcement revision' using errcode = 'PT409', hint = 'announcement.changed';
   end if;
 
   if target_action in ('unpublish', 'archive') then
