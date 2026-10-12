@@ -64,6 +64,7 @@ describe("notification catalog governance", () => {
       "20260908110000_notification_platform_core.sql",
       "20260908175000_document_expiry_schedule_conflict_preview.sql",
       "20260914115233_account_security_deletion_lifecycle.sql",
+      "20261012041500_termination_tells_location_managers.sql",
     ];
     const catalogSeedSection = catalogSeedMigrations
       .flatMap((migration) => {
