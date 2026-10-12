@@ -8,13 +8,14 @@ import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from 
 import { useToast } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeftRight, Check, RotateCcw, Search } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { TimeOffShorten } from "./TimeOffShorten";
 import { TimeOffReview } from "./TimeOffReview";
 import type { DrawerNotice } from "./RequestDrawer";
 import { alsoOffThese } from "../schedule/time-off-overlap";
 import { ExchangeReview } from "./ExchangeReview";
 import { getExchanges, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
+import { RequestError } from "../lib/request-error";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
@@ -141,21 +142,35 @@ function ScheduleRequestsPageContent() {
   const openCase = listedCase && listedCase.kind !== "swap" ? listedCase : seenCase?.id === caseId ? seenCase : null;
   // A link to a case the core does not hand back (its location closed, or no
   // longer this manager's): Requests' own empty state says so where the table
-  // was (BL-1024; Mert, 2026-10-12). Out of scope reads empty, so a failed read
-  // is an outage, not a missing request: it offers to read again.
+  // was (BL-1024; Mert, 2026-10-12). Out of scope reads empty, and an id the
+  // API refuses outright (a garbled link) is as gone: trying again cannot
+  // help. Any other failed read is an outage: it offers to read again.
   const caseUnread = Boolean(caseId && !openCase && !listedCase);
-  const caseMissing = caseUnread && caseRead.isSuccess;
-  const caseFailed = caseUnread && caseRead.isError;
-  // Reading that one case: the list does not flash in before the answer.
-  const caseChecking = caseUnread && !caseMissing && !caseFailed && caseRead.isFetching;
+  const caseRefused = caseRead.error instanceof RequestError && [400, 403, 404].includes(caseRead.error.status ?? 0);
+  // An answer kept from an earlier visit counts only once this visit has read again.
+  const caseAnswered = caseRead.isSuccess && (caseRead.isFetchedAfterMount || !caseRead.isFetching);
+  const caseMissing = caseUnread && (caseAnswered || (caseRead.isError && caseRefused));
+  const caseFailed = caseUnread && caseRead.isError && !caseRefused;
+  // Reading that one case (or waiting for the network to read it): the list
+  // does not flash in before the answer.
+  const caseChecking = caseUnread && !caseMissing && !caseFailed && (caseRead.isFetching || caseRead.isPaused);
+  // A drawer closed with the browser's Back leaves no step for closeCase to undo.
+  useEffect(() => {
+    if (!caseId) caseStep.current = false;
+  }, [caseId]);
+  // The message is the page's answer to the link, so focus goes to it.
+  const caseNoticeHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (caseMissing || caseFailed) caseNoticeHeading.current?.focus({ preventScroll: true });
+  }, [caseMissing, caseFailed]);
   // "Show all requests" goes away with the message: focus lands on the list.
   const listWrap = useRef<HTMLDivElement>(null);
   const [focusList, setFocusList] = useState(false);
   useEffect(() => {
-    if (!focusList || caseMissing) return;
-    listWrap.current?.focus();
+    if (!focusList || caseUnread) return;
+    listWrap.current?.focus({ preventScroll: true });
     setFocusList(false);
-  }, [focusList, caseMissing]);
+  }, [focusList, caseUnread]);
   const timeOffById = new Map<string, TimeOffRequest>();
   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
   const selected = timeOffById.get(selectedId) ?? null;
@@ -169,6 +184,9 @@ function ScheduleRequestsPageContent() {
             if (value) next.set(key, value);
             else next.delete(key);
           }
+          // A tab, filter or search used beside an unavailable request
+          // means the list: the message gives way to it.
+          if (caseUnread) next.delete("case");
           return next;
         },
         { replace: true },
@@ -197,6 +215,16 @@ function ScheduleRequestsPageContent() {
       navigate(-1);
       return;
     }
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete("case");
+      return next;
+    }, { replace: true });
+  }
+  // Clears an unavailable request's link where it stands: it opened no
+  // drawer, so there is no step of ours for Back to undo.
+  function showAllRequests() {
+    caseStep.current = false;
     setParams((previous) => {
       const next = new URLSearchParams(previous);
       next.delete("case");
@@ -378,44 +406,44 @@ function ScheduleRequestsPageContent() {
         </div>
       </div>
 
-      {caseMissing ? (
+      {caseMissing || caseFailed || caseChecking ? (
         <div className="employee-table-wrap requests-table-wrap">
-          <div className="catalog-table-empty" role="status">
-            <span className="catalog-table-empty-icon" aria-hidden>
-              <ArrowLeftRight size={22} />
-            </span>
-            <h2>Request unavailable</h2>
-            <p>This request is no longer available.</p>
-            <button
-              type="button"
-              className="nf-button secondary"
-              onClick={() => {
-                setFocusList(true);
-                closeCase();
-              }}
-            >
-              Show all requests
-            </button>
-          </div>
-        </div>
-      ) : caseFailed ? (
-        <div className="employee-table-wrap requests-table-wrap">
-          <div className="catalog-table-empty" role="alert">
-            <span className="catalog-table-empty-icon" aria-hidden>
-              <AlertTriangle size={22} />
-            </span>
-            <h2>Request could not load</h2>
-            <p>Check your connection and try again.</p>
-            <button type="button" className="nf-button secondary" onClick={() => void caseRead.refetch()}>
-              <RotateCcw size={16} aria-hidden /> Try again
-            </button>
-          </div>
-        </div>
-      ) : caseChecking ? (
-        <div className="employee-table-wrap requests-table-wrap">
-          <p className="settings-state" role="status">
-            Loading request...
-          </p>
+          {caseMissing ? (
+            <TableEmpty
+              icon={<ArrowLeftRight size={22} />}
+              title="Request unavailable"
+              text="This request is no longer available."
+              headingRef={caseNoticeHeading}
+              action={
+                <button
+                  type="button"
+                  className="nf-button secondary"
+                  onClick={() => {
+                    setFocusList(true);
+                    showAllRequests();
+                  }}
+                >
+                  Show all requests
+                </button>
+              }
+            />
+          ) : caseFailed ? (
+            <TableEmpty
+              icon={<AlertTriangle size={22} />}
+              title="Request could not load"
+              text="Check your connection and try again."
+              headingRef={caseNoticeHeading}
+              action={
+                <button type="button" className="nf-button secondary" onClick={() => void caseRead.refetch()}>
+                  <RotateCcw size={16} aria-hidden /> Try again
+                </button>
+              }
+            />
+          ) : (
+            <p className="settings-state" role="status">
+              Loading request...
+            </p>
+          )}
         </div>
       ) : (
         <>
@@ -425,25 +453,24 @@ function ScheduleRequestsPageContent() {
             <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
             {loading ? <p className="settings-state">Loading requests...</p> : null}
             {!loading && failed ? (
-              <div className="catalog-table-empty" role="alert">
-                <span className="catalog-table-empty-icon" aria-hidden>
-                  <AlertTriangle size={22} />
-                </span>
-                <h2>Requests could not load</h2>
-                <p>Check your connection and try again.</p>
-                <button type="button" className="nf-button secondary" onClick={data.retry}>
-                  <RotateCcw size={16} aria-hidden /> Try again
-                </button>
-              </div>
+              <TableEmpty
+                role="alert"
+                icon={<AlertTriangle size={22} />}
+                title="Requests could not load"
+                text="Check your connection and try again."
+                action={
+                  <button type="button" className="nf-button secondary" onClick={data.retry}>
+                    <RotateCcw size={16} aria-hidden /> Try again
+                  </button>
+                }
+              />
             ) : null}
             {!loading && !failed && !page.rows.length ? (
-              <div className="catalog-table-empty">
-                <span className="catalog-table-empty-icon" aria-hidden>
-                  <Check size={22} />
-                </span>
-                <h2>No requests</h2>
-                <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
-              </div>
+              <TableEmpty
+                icon={<Check size={22} />}
+                title="No requests"
+                text={view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}
+              />
             ) : null}
           </div>
           <ListPagination
@@ -543,6 +570,30 @@ function ScheduleRequestsPageContent() {
  * The type tabs' row. When it is wider than a phone the row scrolls, its edge
  * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
  */
+/** What stands where the table was: an icon, a heading, a sentence, maybe one button. */
+function TableEmpty({ icon, title, text, action, role, headingRef }: {
+  readonly icon: ReactNode;
+  readonly title: string;
+  readonly text: string;
+  readonly action?: ReactNode;
+  readonly role?: "alert";
+  /** Set when the page moves focus to the message. */
+  readonly headingRef?: RefObject<HTMLHeadingElement | null>;
+}) {
+  return (
+    <div className="catalog-table-empty" role={role}>
+      <span className="catalog-table-empty-icon" aria-hidden>
+        {icon}
+      </span>
+      <h2 ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+        {title}
+      </h2>
+      <p>{text}</p>
+      {action}
+    </div>
+  );
+}
+
 function TabRow({ chosen, children }: { chosen: string; children: ReactNode }) {
   const row = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState<"left" | "right" | "both" | null>(null);

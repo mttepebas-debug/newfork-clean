@@ -128,6 +128,13 @@
 .requests-catalog-page label {
   font-size: 12px;
 }
+/* The page moves focus to a linked request's message, and to the list that
+   replaces it, so a screen reader starts there; neither is a control, so
+   neither draws a ring (BL-1024). */
+.requests-catalog-page
+  :is(.catalog-table-empty h2, .requests-table-wrap)[tabindex="-1"]:focus {
+  outline: 0;
+}
 /* A mouse press leaves no ring; the keyboard keeps the shared focus ring (C1). */
 .requests-catalog-page
   :is(button, summary, [tabindex]):focus:not(:focus-visible) {
