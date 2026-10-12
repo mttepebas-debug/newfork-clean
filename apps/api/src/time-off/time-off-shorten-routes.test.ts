@@ -67,6 +67,19 @@ describe("A manager shortens approved time off (BL-127)", () => {
     await built.close();
   });
 
+  // BL-1043: "the leave changed meanwhile" says so with its key.
+  it("passes the database's time_off key on with the 409", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { code: "PT409", message: "stale approved leave; refresh before shortening it", hint: "time_off.changed" },
+    }));
+    const built = app(timeOffShortenService({ rpc }));
+    const response = await post(built, change);
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ reason: "time_off.changed" });
+    await built.close();
+  });
+
   it("refuses a change without approved hours before asking anybody", async () => {
     const shorten = vi.fn();
     const built = app({ shorten });
