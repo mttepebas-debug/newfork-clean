@@ -208,7 +208,7 @@ import {
 import { resolveScheduleDeleteShiftIds } from "../schedule/lib/scheduleDeleteSelection";
 import { scheduleClosureCoversDate } from "../schedule/lib/scheduleClosures";
 import { parseRetroactiveEditError } from "../schedule/lib/retroactiveEditRecovery";
-import { publicationStateForShift } from "../schedule/lib/scheduleShiftMetadata";
+import { publicationStateForShift, withoutReplacedRemovedShifts } from "../schedule/lib/scheduleShiftMetadata";
 import { toScheduleShiftMutation } from "../schedule/lib/scheduleShiftMutation";
 import {
   SCHEDULE_WINDOW_SELECTOR,
@@ -670,7 +670,8 @@ export function SchedulePage({
       { ...query.data, shifts: effectiveShifts },
       search,
     );
-    return filtered.shifts
+    // A removal hidden behind its replacement is not on screen to select.
+    return withoutReplacedRemovedShifts(filtered.shifts)
       .filter(
         (shift) => view === "week" || shift.scheduled_date === selectedDate,
       )

@@ -332,6 +332,17 @@ describe("schedule conflict port", () => {
     expect(evaluateScheduleShiftConflicts(model, [removed], input({ time_basis: "explicit" })))
       .not.toEqual(expect.arrayContaining([expect.objectContaining({ type: "time_overlap" })]));
   });
+  it("never measures rest or travel time from a shift removed while editing", () => {
+    const rested = { ...model, settings: { ...model.settings, minimum_rest_minutes: 600, minimum_travel_minutes: 600 } };
+    const earlier = { ...model.shifts[0]!, start_time: "09:00", end_time: "13:00", time_basis: "explicit" as const };
+    const neighborTypes = (shifts: Parameters<typeof evaluateScheduleShiftConflicts>[1]) =>
+      evaluateScheduleShiftConflicts(rested, shifts, input({ time_basis: "explicit" }))
+        .map((reason) => (typeof reason === "string" ? reason : String(reason.type)))
+        .filter((type) => ["minimum_rest", "minimum_travel", "assessment_unknown"].includes(type));
+    expect(neighborTypes([earlier])).not.toEqual([]);
+    const removed = { ...earlier, source_published_shift_id: "live-1", pending_op_type: "delete" as const };
+    expect(neighborTypes([removed])).toEqual([]);
+  });
   it("blocks zero-length clock ranges before assignment checks", () => {
     expect(
       formatScheduleConflictMessages(

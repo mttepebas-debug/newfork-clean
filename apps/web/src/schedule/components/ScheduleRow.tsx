@@ -444,7 +444,7 @@ export function ScheduleRow({
                 ) : (
                   <ShiftCard
                     key={shift.id}
-                    shift={shiftWithDerivedWarnings(shift, derivedCellState)}
+                    shift={shiftWithDerivedWarnings(shift, derivedCellState, { editing })}
                     availabilityMark={availabilityMark}
                     job={scheduleJobName(catalog, shift.job_id) ?? "Shift"}
                     type={scheduleShiftTypeOf(catalog, shift.shift_type_id)}

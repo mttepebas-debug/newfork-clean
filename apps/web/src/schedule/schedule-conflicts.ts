@@ -426,7 +426,7 @@ export function evaluateScheduleShiftConflicts(
     });
   }
 
-  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && shift.employee_id === input.employee_id)) {
+  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && !isPendingRemovalShift(shift) && shift.employee_id === input.employee_id)) {
     const other = weeklyTargetInterval(employee, neighbor);
     if (!targetInterval || !other) {
       reasons.push({ type: "assessment_unknown", severity: "confirm", message: "Other assignment hours need checking." });
