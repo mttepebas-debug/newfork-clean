@@ -128,6 +128,24 @@ describe("employee create service", () => {
       message: managementAndOwnerRefusals["employee.management_primary"],
     });
   });
+  // BL-1045: a request key replayed with other details is a standing refusal;
+  // the key says so, so nobody mistakes it for "changed meanwhile".
+  it("passes the database's employee.create_request_reused key on with the 409", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: null,
+      error: {
+        code: "PT409",
+        message: "idempotency key belongs to different employee details",
+        hint: "employee.create_request_reused",
+      },
+    });
+    await expect(
+      createEmployeeCreateService(options).create(id, id, { ...command, invite_role_id: null }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      reason: "employee.create_request_reused",
+    });
+  });
   it("keeps Add employee's missing-primary refusal key and sentence (BL-218 .3b)", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: null,

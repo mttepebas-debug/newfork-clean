@@ -739,7 +739,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(apiRequest).not.toHaveBeenCalled();
   });
   it("closes the box and asks for a second look when the request changed meanwhile", async () => {
-    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", undefined, undefined, 409));
+    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects changed.", "time_off.changed", undefined, 409));
     renderPage();
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
@@ -752,6 +752,16 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.getByRole("dialog", { name: "Review request" })).toBe(drawer);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
+  });
+  // BL-1043: a deadline gone by is a 409 too, but no second look answers it.
+  it("says the request was not decided in time instead of asking for a second look", async () => {
+    apiRequest.mockRejectedValueOnce(new RequestError("This request was not decided in time", "time_off.not_decided_in_time", undefined, 409));
+    renderPage();
+    const drawer = await openTimeOffRequest();
+    fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Approve" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("This request was not decided in time");
+    expect(within(drawer).queryByText("This request changed. Review it again.")).toBeNull();
   });
   it("keeps the reason open when the vote fails for another reason", async () => {
     apiRequest.mockRejectedValueOnce(new Error("Connection lost"));
@@ -831,6 +841,21 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(calls()[0]![1]).toMatchObject({ expected_revision: 2,
       periods: [{ segment_id: pending.segments[0]!.id, starts_at: future.start_at, ends_at: future.end_at }] });
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Alex Kim's time off is shorter/)));
+  });
+  // BL-1043: the database's key, not the server's "stale approved leave".
+  it("says a shortened leave changed meanwhile in the page's words and reloads it", async () => {
+    const future = { start_at: "2099-08-17T14:00:00.000Z", end_at: "2099-08-17T18:00:00.000Z" };
+    withRequest({ status: "approved", revision: 2, progress: null,
+      segments: [{ ...pending.segments[0]!, start_time: "10:00:00", end_time: "14:00:00", status: "approved", time_timezone: "UTC", effective_intervals: [future] }] });
+    apiRequest.mockRejectedValueOnce(new RequestError("stale approved leave; refresh before shortening it", "time_off.changed", undefined, 409));
+    renderPage();
+    await openTimeOffRequest();
+    const reads = fetchRequests.mock.calls.length;
+    fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("This request changed. Review it again.");
+    await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(reads));
   });
   it("offers no shortening while time off is still pending", async () => {
     renderPage();

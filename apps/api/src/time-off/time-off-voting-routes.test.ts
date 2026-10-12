@@ -123,6 +123,16 @@ describe.each(endpoints)("$name (FB-6.3.5)", (endpoint) => {
     await built.close();
   });
 
+  // BL-1043: the key says which 409 this is, so the screen looks again only
+  // when the request changed and not, say, for a request key sent twice.
+  it("passes the database's time_off key on with the 409", async () => {
+    const built = app(fails({ code: "PT409", message: "This request is already closed", hint: "time_off.changed" }));
+    const response = await post(built, endpoint.path, endpoint.body);
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: "This request is already closed", reason: "time_off.changed" });
+    await built.close();
+  });
+
   it("refuses an invalid body before asking anybody", async () => {
     const rpc = answers(endpoint.data);
     const built = app(rpc);

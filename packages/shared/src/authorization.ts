@@ -67,6 +67,7 @@ export const authzActionKeys = [
   "settings.locations.read",
   "settings.locations.write",
   "settings.notifications.read",
+  "settings.notifications.test",
   "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
@@ -158,6 +159,7 @@ export const targetedAuthzActions = {
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
   "settings.conflict_rules.write": { permission: "schedule.conflict_rules.manage" },
+  "settings.notifications.test": { permission: "notifications.test_send" },
   "settings.locations.read": { permission: "settings.locations.read" },
   "settings.jobs.read": { permission: "settings.jobs.read" },
   "settings.shift_catalog.read": { permission: "settings.shift_catalog.read" },
@@ -357,6 +359,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.roles.write":
     case "settings.scheduling.write":
     case "settings.conflict_rules.write":
+    case "settings.notifications.test":
     case "settings.people":
     case "audit.read":
       // Managers read the catalog; they never write organization settings.
@@ -364,8 +367,9 @@ export function expected<A extends TargetedAuthzAction>(
 
     case "settings.locations.read":
     case "employee.references.read":
-      // Owner and admins every location, a manager where they work; the
-      // Employees drawer's pickers the same (BL-231).
+      // Owner and admins every location; the Employees drawer's pickers give
+      // a manager where they work (BL-231). No manager role holds
+      // settings.locations.read (Mert 2026-10-12, BL-176).
       return atPlace();
 
     case "settings.jobs.read":

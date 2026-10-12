@@ -201,7 +201,7 @@ describe("shared document review", () => {
   it("reloads the drawer and says so when the document changed meanwhile", async () => {
     const { invalidate } = page();
     vi.mocked(reviewDocument).mockRejectedValueOnce(
-      new RequestError("document changed; refresh required", undefined, undefined, 409),
+      new RequestError("document changed; refresh required", "document.changed", undefined, 409),
     );
     const decided = detail();
     decided.obligation.revision = 2;
@@ -219,13 +219,32 @@ describe("shared document review", () => {
       queryKey: ["document-lifecycle", "user", "workspace"],
     });
   });
-  // A standing refusal is also a 409 ("changes are paused"); when reloading
-  // shows nothing new, the refusal's own sentence stays.
-  it("keeps a standing 409 refusal's sentence when nothing changed", async () => {
+  // BL-1028: the database names the kind of 409. "Changed meanwhile" says so
+  // even when the reload looks the same, and never shows the server's sentence.
+  it("says the document changed by its key, whatever the reload brings", async () => {
     page();
     vi.mocked(reviewDocument).mockRejectedValueOnce(
-      new RequestError("Document is unpublished; changes are paused", undefined, undefined, 409),
+      new RequestError("document changed; refresh required", "document.changed", undefined, 409),
     );
+    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+
+    expect(
+      await screen.findByText("This document changed. You're seeing the latest version."),
+    ).toBeTruthy();
+    expect(screen.queryByText("document changed; refresh required")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+  // A standing refusal is also a 409 ("changes are paused"); nothing changed,
+  // so there is nothing to reload and the refusal's own sentence stays, even
+  // when somebody else's change lands at the same time.
+  it("keeps a standing 409 refusal's sentence and claims no change", async () => {
+    const { invalidate } = page();
+    const later = detail();
+    later.obligation.revision = 2;
+    vi.mocked(reviewDocument).mockRejectedValueOnce(
+      new RequestError("Document is unpublished; changes are paused", "document.paused", undefined, 409),
+    );
+    vi.mocked(getDocument).mockResolvedValueOnce(detail()).mockResolvedValue(later);
     fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe(
@@ -234,6 +253,9 @@ describe("shared document review", () => {
     expect(
       screen.queryByText("This document changed. You're seeing the latest version."),
     ).toBeNull();
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ["document-lifecycle", "user", "workspace"],
+    });
   });
   it("words a failed save for the person, not the server", async () => {
     page();
@@ -1213,7 +1235,7 @@ describe("download, document time zone and deadline extension", () => {
     };
     vi.mocked(getDocument).mockResolvedValue(doc);
     vi.mocked(setDocumentTimezone).mockRejectedValueOnce(
-      new RequestError("employee changed; refresh required", undefined, undefined, 409),
+      new RequestError("employee changed; refresh required", "employee.revision_conflict", undefined, 409),
     );
     page();
     fireEvent.change(await screen.findByRole("combobox", { name: "Time zone" }), {

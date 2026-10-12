@@ -1472,10 +1472,11 @@ function scheduleError(reply: FastifyReply, error: unknown) {
   // Only this explicit rejection may enter the client's assessment/retry path
   // (the database raises it as PT409; PostgREST retries 40001 on its own).
   // Other serialization failures still require a fresh edit session.
+  // BL-1044: the database names it in the hint; the sentence may change.
   if (
     error instanceof HttpError &&
     error.pgCode === "PT409" &&
-    error.message === "Review the current availability assessment before saving"
+    error.reason === "schedule.availability_review_required"
   )
     return reply.status(409).send({
       error: error.message,

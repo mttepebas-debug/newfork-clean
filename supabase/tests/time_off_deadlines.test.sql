@@ -83,7 +83,7 @@ select public.update_scheduling_settings_service(tests.user('td:owner'), tests.i
 
 select pg_temp.due(tests.id('td:emre:1'), now() - interval '1 minute');
 select is(pg_temp.refusal(format($$select pg_temp.decide('ayse', %L, 'approve')$$, tests.id('td:emre:1'))),
-  'PT409', 'after the deadline nobody can decide it, even before the job has run');
+  'PT409 time_off.not_decided_in_time', 'after the deadline nobody can decide it, even before the job has run');
 select is(pg_temp.status(tests.id('td:emre:1')), 'pending', 'it is still open until the job runs');
 select app_private.time_off_sweep();
 select is(pg_temp.status(tests.id('td:emre:1')), 'denied', 'the job turns it down');
@@ -170,7 +170,7 @@ select is(pg_temp.told(tests.id('td:ali:11'), 'schedule.time_off.shifts_opened')
 
 select is(pg_temp.refusal(format($$select app_private.time_off_finalize(%L, %L, 'deny', null, 'late', false, true)$$,
     tests.id('td'), tests.id('td:emre:1'))),
-  'PT409', 'a request already closed is not closed again (a late job, a last vote)');
+  'PT409 time_off.changed', 'a request already closed is not closed again (a late job, a last vote)');
 select is(pg_temp.refusal(format($$select app_private.time_off_reason(%L, %L, 'time_off.no_such_action')$$,
     tests.user('td:owner'), tests.id('td'))),
   '22023', 'an action the core does not know is refused, not allowed');

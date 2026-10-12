@@ -40,6 +40,7 @@ export const notificationCatalogEntrySchema = z.object({
     "employee_document_expiry_reviewers",
     "workspace_employee_access_managers",
     "availability_scoped_recipients",
+    "termination_location_managers",
   ]),
   action_route_contract: z.object({
     route: z.string().regex(/^\/app(?:\/|$)/),
@@ -272,6 +273,29 @@ export const notificationCatalog = {
     template_key: "schedule.published.v1",
     mandatory_in_app: false,
   }),
+  // BL-768 (KK-174): a termination that opens published shifts tells the
+  // managers of their locations which ones.
+  "schedule.termination.shifts_unassigned": activeEntry({
+    type_key: "schedule.termination.shifts_unassigned",
+    category: "schedule",
+    severity: "action_required",
+    sensitivity: "confidential",
+    supported_channels: [...inAppOnly],
+    default_cadence: "immediate",
+    audience_contract: "termination_location_managers",
+    action_route_contract: {
+      route: "/app/schedule",
+      allowed_query_keys: ["date"],
+    },
+    dedupe_policy: {
+      strategy: "keep_first",
+      scope: "event_recipient",
+      key_fields: ["event_id", "recipient_user_id"],
+    },
+    retention_class: "sensitive_30d",
+    template_key: "schedule.termination.shifts_unassigned.v1",
+    mandatory_in_app: false,
+  }),
   "people.employee_document.expiring": activeEntry({
     type_key: "people.employee_document.expiring",
     category: "people",
@@ -307,6 +331,7 @@ export const notificationCatalogSeed = [
   ["requests.time_off.status_changed", 1, "active"],
   ["requests.time_off.submitted", 1, "active"],
   ["schedule.published", 1, "active"],
+  ["schedule.termination.shifts_unassigned", 1, "active"],
   ["security.account_invitation_cancelled", 1, "active"],
 ] as const;
 
@@ -321,6 +346,7 @@ export const notificationTemplateManifest = [
   "requests.time_off.status_changed.v1",
   "requests.time_off.submitted.v1",
   "schedule.published.v1",
+  "schedule.termination.shifts_unassigned.v1",
 ] as const;
 
 export type NotificationProducerInventoryEntry = {
@@ -415,6 +441,14 @@ export const notificationProducerInventory: readonly NotificationProducerInvento
       source_migration: "20260908112000_notification_outbox_relay.sql",
       source_function: "publish_schedule_draft_service",
       source_statement: "schedule-published-outbox-enqueue",
+      integration_status: "outbox_v1",
+    },
+    {
+      producer_id: "termination-shifts-unassigned",
+      type_key: "schedule.termination.shifts_unassigned",
+      source_migration: "20261012041500_termination_tells_location_managers.sql",
+      source_function: "termination_notify_shifts_unassigned",
+      source_statement: "termination-shifts-unassigned-outbox-enqueue",
       integration_status: "outbox_v1",
     },
   ];

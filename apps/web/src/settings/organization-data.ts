@@ -56,6 +56,11 @@ const NAME_TAKEN: Readonly<Record<string, string>> = {
   shift_labels_workspace_active_name_idx: "A label with this name already exists. Choose another name.",
 };
 
+// The shape of a machine key the database raises in `hint` ("catalog.deleted"),
+// as the API reads it (apps/api/src/http-error.ts); Postgres's own hints are
+// sentences.
+const REASON_KEY = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
+
 function message(error: { code?: string; message: string; hint?: string | null } | null): void {
   if (!error) return;
   if (error.code === "23505") {
@@ -65,7 +70,12 @@ function message(error: { code?: string; message: string; hint?: string | null }
   // Settings → Jobs writes straight to the tables, so the database's refusal to
   // let go of Management or the Owner job lands here, not at the API (BL-218).
   const sentence = managementAndOwnerSentence(error.hint);
-  throw sentence ? new RequestError(sentence, error.hint ?? undefined) : new Error(error.message);
+  if (sentence) throw new RequestError(sentence, error.hint ?? undefined);
+  // BL-1045: any other refusal the database keyed keeps its key, so the screen
+  // can tell "deleted meanwhile, reload" from a standing no. The sentence stays.
+  if (error.hint && REASON_KEY.test(error.hint))
+    throw new RequestError(error.message, error.hint, undefined, error.code === "PT409" ? 409 : undefined);
+  throw new Error(error.message);
 }
 
 const logoBucket = "workspace-logos";
@@ -112,20 +122,31 @@ export async function saveScheduleLogo(
   const current = await loadWorkspaceLogo(workspaceId);
 
   if (input.removeLogo) {
+    let removed: Workspace;
+    try {
+      removed = await updateWorkspaceLogo(workspaceId, {
+        logo_storage_path: null,
+        logo_file_name: null,
+        logo_updated_at: null,
+        schedule_logo_scale: defaultScheduleLogoPlacement.scale,
+        schedule_logo_offset_x: defaultScheduleLogoPlacement.offset_x,
+        schedule_logo_offset_y: defaultScheduleLogoPlacement.offset_y,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (failure) {
+      // BL-1033: the file goes only once the workspace stopped pointing at it.
+      const row = current.logo_storage_path
+        ? await rowAfterFailedWrite(workspaceId, null)
+        : "not-saved";
+      if (typeof row === "string") throw failure;
+      removed = row;
+    }
     if (current.logo_storage_path) {
       await client()
         .storage.from(logoBucket)
         .remove([current.logo_storage_path]);
     }
-    return updateWorkspaceLogo(workspaceId, {
-      logo_storage_path: null,
-      logo_file_name: null,
-      logo_updated_at: null,
-      schedule_logo_scale: defaultScheduleLogoPlacement.scale,
-      schedule_logo_offset_x: defaultScheduleLogoPlacement.offset_x,
-      schedule_logo_offset_y: defaultScheduleLogoPlacement.offset_y,
-      updated_at: new Date().toISOString(),
-    });
+    return removed;
   }
 
   if (!input.file) {
@@ -160,13 +181,19 @@ export async function saveScheduleLogo(
       updated_at: new Date().toISOString(),
     });
   } catch (failure) {
-    // BL-912: nothing points at the new file; take it back out (best effort,
-    // the write's own error is the one the screen shows).
-    await client()
-      .storage.from(logoBucket)
-      .remove([storagePath])
-      .catch(() => undefined);
-    throw failure;
+    const row = await rowAfterFailedWrite(workspaceId, storagePath);
+    // The workspace may already show this file: keep it.
+    if (row === "unknown") throw failure;
+    if (row === "not-saved") {
+      // BL-912: nothing points at the new file; take it back out (best effort,
+      // the write's own error is the one the screen shows).
+      await client()
+        .storage.from(logoBucket)
+        .remove([storagePath])
+        .catch(() => undefined);
+      throw failure;
+    }
+    updated = row;
   }
 
   if (current.logo_storage_path && current.logo_storage_path !== storagePath) {
@@ -175,16 +202,35 @@ export async function saveScheduleLogo(
   return updated;
 }
 
-async function loadWorkspaceLogo(workspaceId: string): Promise<{
-  readonly logo_storage_path: string | null;
-}> {
+const logoColumns =
+  "id,name,logo_storage_path,logo_file_name,logo_updated_at,schedule_logo_scale,schedule_logo_offset_x,schedule_logo_offset_y";
+
+async function loadWorkspaceLogo(workspaceId: string): Promise<LogoRow> {
   const { data, error } = await client()
     .from("workspaces")
-    .select("logo_storage_path")
+    .select(logoColumns)
     .eq("id", workspaceId)
     .single();
   message(error);
-  return { logo_storage_path: data?.logo_storage_path ?? null };
+  if (!data) throw new Error("Organization settings were not found");
+  return data;
+}
+
+// BL-1033: a write can land and its answer still be lost on the way back, so
+// after a failure the row decides before any file is touched. It points at
+// `path`: the save landed. It points elsewhere: it did not. It cannot be
+// read: nobody knows, and no file is removed.
+async function rowAfterFailedWrite(
+  workspaceId: string,
+  path: string | null,
+): Promise<Workspace | "not-saved" | "unknown"> {
+  let row: LogoRow;
+  try {
+    row = await loadWorkspaceLogo(workspaceId);
+  } catch {
+    return "unknown";
+  }
+  return row.logo_storage_path === path ? workspaceFromLogoRow(row) : "not-saved";
 }
 
 async function updateWorkspaceLogo(
@@ -195,16 +241,14 @@ async function updateWorkspaceLogo(
     .from("workspaces")
     .update(values)
     .eq("id", workspaceId)
-    .select(
-      "id,name,logo_storage_path,logo_file_name,logo_updated_at,schedule_logo_scale,schedule_logo_offset_x,schedule_logo_offset_y",
-    )
+    .select(logoColumns)
     .single();
   message(error);
   if (!data) throw new Error("Organization settings were not found");
   return workspaceFromLogoRow(data);
 }
 
-function workspaceFromLogoRow(row: {
+type LogoRow = {
   readonly id: string;
   readonly name: string;
   readonly logo_storage_path: string | null;
@@ -213,7 +257,9 @@ function workspaceFromLogoRow(row: {
   readonly schedule_logo_scale: number | null;
   readonly schedule_logo_offset_x: number | null;
   readonly schedule_logo_offset_y: number | null;
-}): Workspace {
+};
+
+function workspaceFromLogoRow(row: LogoRow): Workspace {
   const logo_url = row.logo_storage_path
     ? client().storage.from(logoBucket).getPublicUrl(row.logo_storage_path).data
         .publicUrl
@@ -290,7 +336,7 @@ export async function saveLocation(
 function locationMessage({
   error,
 }: {
-  error: { code?: string; message: string } | null;
+  error: { code?: string; message: string; hint?: string | null } | null;
 }): void {
   if (
     error?.code === "23505" &&

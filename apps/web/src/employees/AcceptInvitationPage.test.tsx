@@ -109,6 +109,7 @@ describe("AcceptInvitationPage", () => {
   it.each([
     ["expired", "This link doesn't work anymore"],
     ["revoked", "This invitation was withdrawn"],
+    ["replaced", "A newer invitation was sent to you"],
     ["declined", "You declined this invitation"],
     ["accepted", "You have already joined Northstar"],
     ["workspace_unavailable", "Northstar isn't open right now"],
@@ -132,6 +133,26 @@ describe("AcceptInvitationPage", () => {
       ).toBeTruthy();
     },
   );
+
+  // BL-922: Resend takes the old invitation back; its link points to the
+  // newer email instead of saying the person was not wanted (K7).
+  it("sends the old link of a replaced invitation to the latest email", async () => {
+    vi.mocked(previewEmployeeInvitation).mockResolvedValue({
+      state: "replaced",
+      workspaceName: "Northstar",
+      emailHint: "ne**********@example.test",
+      expiresAt: "2026-09-12T12:00:00.000Z",
+    });
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "A newer invitation was sent to you",
+      }),
+    ).toBeTruthy();
+    expect(screen.getByText("Open the latest email.")).toBeTruthy();
+    expect(screen.queryByText(/withdrawn|cancelled/i)).toBeNull();
+  });
 
   it("tells an account with an unconfirmed email to confirm it first", async () => {
     vi.mocked(acceptEmployeeInvitation).mockRejectedValue(

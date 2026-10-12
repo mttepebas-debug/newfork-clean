@@ -1376,6 +1376,50 @@ describe("api app", () => {
     ]);
   });
 
+  // BL-1046: the welcome steps reload only when the database says the
+  // onboarding moved on; the key travels with the 409.
+  it("passes the onboarding.changed key on with the 409 of every own step", async () => {
+    const changed = () => {
+      throw rpcFailure({ message: "onboarding changed; refresh required", code: "PT409", hint: "onboarding.changed" });
+    };
+    const service = onboardingServiceMock({ saveProfile: changed, submit: changed, leave: changed });
+    const app = buildApp({ contextResolver: null, onboardingService: service });
+    const headers = { authorization: "Bearer pending-member-token" };
+    const responses = await Promise.all([
+      app.inject({
+        method: "PATCH",
+        url: "/v1/me/onboarding/profile",
+        headers,
+        payload: {
+          revision: 1,
+          profile: {
+            legal_first_name: "Taylor",
+            legal_last_name: "Reed",
+            phone: "+13105550100",
+            street_address: "1 Main St",
+            city: "Los Angeles",
+            region: "CA",
+            postal_code: "90012",
+            country_code: "US",
+            date_of_birth: "1990-01-01",
+            emergency_contact_name: "Morgan Reed",
+            emergency_contact_relationship: "Sibling",
+            emergency_contact_email: "",
+            emergency_contact_phone: "+13105550101",
+            share_phone_with_teammates: false,
+            share_email_with_teammates: false,
+          },
+        },
+      }),
+      app.inject({ method: "POST", url: "/v1/me/onboarding/submit", headers, payload: { revision: 1 } }),
+      app.inject({ method: "POST", url: "/v1/me/onboarding/leave", headers, payload: { revision: 1 } }),
+    ]);
+    for (const response of responses) {
+      expect(response.statusCode, response.body).toBe(409);
+      expect(response.json()).toMatchObject({ reason: "onboarding.changed" });
+    }
+  });
+
   // TEL-2: the onboarding screen asks while the number is typed.
   it("answers whether a typed onboarding phone is somebody else's", async () => {
     const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -1689,6 +1733,30 @@ describe("api app", () => {
     );
   });
 
+  // BL-1046: "changed meanwhile" and "review it in Documents" are told apart by key.
+  it.each(["onboarding.changed", "onboarding.review_in_documents"])(
+    "passes the %s key of a manager onboarding review on with the 409",
+    async (hint) => {
+      const service = onboardingServiceMock({
+        review: async () => {
+          throw rpcFailure({ message: "refused", code: "PT409", hint });
+        },
+      });
+      const app = buildApp({
+        contextResolver: { resolve: async () => resolvedContext },
+        onboardingService: service,
+      });
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${resolvedContext.workspace.id}/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/onboarding/review`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { action: "activate", requirementId: null, reason: "", revision: 1 },
+      });
+      expect(response.statusCode, response.body).toBe(409);
+      expect(response.json()).toMatchObject({ reason: hint });
+    },
+  );
+
   it("serves reference-style Schedule reads from active workspace context", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
@@ -1851,15 +1919,18 @@ describe("api app", () => {
     expect(revisions).toEqual([3]);
   });
 
+  // BL-1044: the availability review is told apart by its key, not its sentence.
   it.each([
-    ["Review the current availability assessment before saving", "PT409", 409, "availability_review_required"],
-    ["Edit session revision is stale", "PT409", 409, undefined],
-    ["Employee already has an overlapping shift", "23514", 400, undefined],
-    ["Schedule location access denied", "42501", 403, undefined],
-  ])("classifies fast-save rejection: %s", async (message, code, statusCode, status) => {
+    ["Review the current availability assessment before saving", "PT409", "schedule.availability_review_required", 409, "availability_review_required"],
+    ["The assessment moved on", "PT409", "schedule.availability_review_required", 409, "availability_review_required"],
+    ["Review the current availability assessment before saving", "PT409", undefined, 409, undefined],
+    ["Edit session revision is stale", "PT409", undefined, 409, undefined],
+    ["Employee already has an overlapping shift", "23514", undefined, 400, undefined],
+    ["Schedule location access denied", "42501", undefined, 403, undefined],
+  ])("classifies fast-save rejection: %s (%s %s)", async (message, code, hint, statusCode, status) => {
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw rpcFailure({ message, code }); } }),
+      scheduleService: scheduleServiceMock({ mutateShift: async () => { throw rpcFailure({ message, code, hint }); } }),
     });
     const response = await app.inject({
       method: "POST",
@@ -1873,6 +1944,26 @@ describe("api app", () => {
     });
     expect(response.statusCode).toBe(statusCode);
     expect(response.json().status).toBe(status);
+    await app.close();
+  });
+
+  // BL-1044: auto-fill's and the templates' 409s carry the database's key, so
+  // the screens read the key instead of the sentence or the bare status.
+  it.each([
+    ["auto-fill apply", "applyAutoFill", "POST", "/schedule/edit-sessions/87000000-0000-4000-8000-000000000001/auto-fill-apply",
+      { expected_session_revision: 2, fingerprint: "c".repeat(64), assignments: [] }, "stale auto-fill preview", "schedule.auto_fill_stale"],
+    ["template rename", "renameTemplate", "PATCH", "/schedule/templates/88000000-0000-4000-8000-000000000002",
+      { name: "Week", expected_revision: 1 }, "schedule template revision stale", "schedule.template_changed"],
+    ["template delete", "deleteTemplate", "DELETE", "/schedule/templates/88000000-0000-4000-8000-000000000002",
+      { expected_revision: 1 }, "schedule template revision stale", "schedule.template_changed"],
+  ] as const)("passes the %s refusal's key on with the 409", async (_label, method, verb, url, payload, message, hint) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => resolvedContext },
+      scheduleService: scheduleServiceMock({ [method]: async () => { throw rpcFailure({ message, code: "PT409", hint }); } }),
+    });
+    const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer owner-token" }, payload });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: message, reason: hint });
     await app.close();
   });
 

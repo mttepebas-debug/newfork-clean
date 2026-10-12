@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, RotateCcw, Search, Send, ShieldCheck } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { RequestError } from "../lib/request-error";
 import { SettingsHeader, errorText } from "./GeneralSettingsPage";
 import {
   getNotificationSettings,
@@ -82,13 +83,18 @@ export default function NotificationSettingsPage() {
         delete next[policy.type_key];
         return next;
       });
-      const message = errorText(saveError);
+      // BL-1049: the database says the policy moved on with its key; the
+      // sentence is not read. The latest version is loaded to review.
+      const changedElsewhere =
+        saveError instanceof RequestError &&
+        saveError.reason === "notification.policy_changed";
       setError(
-        message.includes("stale") || message.includes("conflict")
+        changedElsewhere
           ? "This policy changed elsewhere. Your optimistic edit was rolled back; review the latest version and try again."
-          : `${message}. Your optimistic edit was rolled back.`,
+          : `${errorText(saveError)}. Your optimistic edit was rolled back.`,
       );
       setStatus(null);
+      if (changedElsewhere) void queryClient.invalidateQueries({ queryKey });
     },
   });
 
@@ -293,7 +299,7 @@ export default function NotificationSettingsPage() {
               setError(null);
             }}
           >
-            <option value="global">Organization</option>
+            <option value="global">{WORKSPACE_SCOPE_LABEL}</option>
             <optgroup label="Roles">
               {data.roles.map((role) => <option key={role.id} value={`role:${role.id}`}>{role.name}</option>)}
             </optgroup>
@@ -382,7 +388,7 @@ export default function NotificationSettingsPage() {
                 </label>
               </div>
               <dl className="notification-policy-metadata">
-                <div><dt>Policy source</dt><dd>{effective.source === "catalog_default" ? "Catalog default" : `${effective.scope.name} · v${effective.version}`}</dd></div>
+                <div><dt>Policy source</dt><dd>{effective.source === "catalog_default" ? "Catalog default" : `${scopeLabel(effective.scope)} · v${effective.version}`}</dd></div>
                 <div><dt>Audience</dt><dd>{display?.audienceLabel ?? "Workspace members selected by policy"}</dd></div>
                 <div><dt>Requirement</dt><dd>{entry.mandatory_in_app ? "Always shown in app" : "Can be managed"}</dd></div>
               </dl>
@@ -483,8 +489,15 @@ export default function NotificationSettingsPage() {
   );
 }
 
+// The server still names the whole-workspace scope "Organization"; the screen says "workspace".
+const WORKSPACE_SCOPE_LABEL = "Workspace";
+
+function scopeLabel(scope: { kind: string; name: string }) {
+  return scope.kind === "global" ? WORKSPACE_SCOPE_LABEL : scope.name;
+}
+
 function parseScope(value: string, data: NotificationSettingsResponse) {
-  if (value === "global") return { kind: "global" as const, id: null, name: "Organization" };
+  if (value === "global") return { kind: "global" as const, id: null, name: WORKSPACE_SCOPE_LABEL };
   const [kind, id] = value.split(":") as ["role" | "location", string];
   const items = kind === "role" ? data.roles : data.locations;
   return { kind, id, name: items.find((item) => item.id === id)?.name ?? "Unknown scope" };

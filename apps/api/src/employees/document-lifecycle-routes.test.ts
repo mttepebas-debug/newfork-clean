@@ -80,7 +80,7 @@ describe("document routes", () => {
     expect((await app.inject(request)).statusCode).toBe(400);
     expect(service.review).not.toHaveBeenCalled();
     service.review.mockRejectedValue(
-      rpcFailure({ message: "document changed; refresh required", code: "PT409" }),
+      rpcFailure({ message: "document changed; refresh required", code: "PT409", hint: "document.changed" }),
     );
     const response = await app.inject({
       ...request,
@@ -91,6 +91,8 @@ describe("document routes", () => {
       },
     });
     expect(response.statusCode).toBe(409);
+    // BL-1028: the key tells the drawer this one means "reload", not a standing no.
+    expect(response.json()).toMatchObject({ reason: "document.changed" });
     expect(service.review.mock.calls[0]?.[3]).toMatchObject({
       revision: 1,
       submission_id: submission,

@@ -127,6 +127,17 @@ function DocumentDrawer(props: DrawerProps) {
   );
 }
 
+// A 409 that means "changed meanwhile, reload": the document's revision or,
+// for the time zone, the person's (BL-1028).
+function changedMeanwhile(failure: unknown): boolean {
+  return (
+    failure instanceof RequestError &&
+    failure.status === 409 &&
+    (failure.reason === "document.changed" ||
+      failure.reason === "employee.revision_conflict")
+  );
+}
+
 // Every revision a drawer command is checked against: the document's and,
 // for the time zone, the person's (BL-828). A new one rebuilds the content.
 function detailVersion(detail: DocumentDetail): string {
@@ -250,20 +261,15 @@ function DocumentDetailContent({
       cache.invalidateQueries({ queryKey: ["employees", props.audience.workspaceId] }),
       cache.invalidateQueries({ queryKey: ["employee-detail", props.audience.workspaceId] }),
     ]);
-  // BL-828: a 409 means someone changed this document first (another
-  // reviewer, a new upload); reload it and say so instead of the server's
-  // "refresh required".
+  // BL-828, BL-1028: someone changed this document or the person first
+  // (another reviewer, a new upload); the database says so with its key.
+  // Reload and say so instead of the server's "refresh required". Any other
+  // 409 is a standing refusal ("changes are paused"): nothing to reload, its
+  // own sentence stays.
   const conflict = async (failure: unknown) => {
-    if (!(failure instanceof RequestError) || failure.status !== 409) return;
-    const sent = detailVersion(detail);
+    if (!changedMeanwhile(failure)) return;
     await refresh();
-    // Some 409s are standing refusals ("changes are paused"); only a newer
-    // revision means someone changed it first. That rebuilds this content,
-    // so the line is said from above.
-    const latest = cache.getQueryData<DocumentDetail>(
-      documentQueryKey(props.audience, props.userId, props.requirementId),
-    );
-    if (latest && detailVersion(latest) !== sent) props.onChanged(true);
+    props.onChanged(true);
   };
   const started = () => props.onChanged(false);
   const review = useMutation({
@@ -423,13 +429,14 @@ function DocumentDetailContent({
     submit.error ??
     download.error ??
     timezone.error;
-  const shownError = !error
-    ? null
-    : error instanceof RequestError && (error.status ?? 0) >= 500
-      ? error === download.error
-        ? "Couldn't open the file. Try again."
-        : "Couldn't save. Try again."
-      : errorText(error);
+  const shownError =
+    !error || changedMeanwhile(error)
+      ? null
+      : error instanceof RequestError && (error.status ?? 0) >= 500
+        ? error === download.error
+          ? "Couldn't open the file. Try again."
+          : "Couldn't save. Try again."
+        : errorText(error);
   const dirty =
     failedUpload !== null ||
     extensionReason !== "" ||

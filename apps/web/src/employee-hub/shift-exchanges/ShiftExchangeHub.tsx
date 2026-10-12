@@ -28,6 +28,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { ConfirmButton } from "@newfork/ui";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
@@ -1184,11 +1185,14 @@ function CaseDetail({
               {requestEnded ? "View latest result" : "Back"}
             </button>
             {!requestEnded && (
-              <button
-                className="sx-primary"
+              // Closing takes the search away: red, two clicks (BL-748).
+              <ConfirmButton
+                unstyled
+                className="sx-danger"
                 aria-describedby={decisionDescriptionId}
+                confirmLabel="Confirm close"
                 disabled={working || !actionable || !reason.trim()}
-                onClick={() =>
+                onConfirm={() =>
                   void command({
                     action: "close",
                     case_id: item.id,
@@ -1199,7 +1203,7 @@ function CaseDetail({
                 }
               >
                 Close search
-              </button>
+              </ConfirmButton>
             )}
           </footer>
         </ExchangeDialog>

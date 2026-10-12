@@ -159,6 +159,33 @@ describe("notification preferences page", () => {
     })] }));
   });
 
+  // BL-1049: the database says the preference moved on with its key; the page
+  // loads the latest choices instead of printing "stale ... version".
+  it("reloads the latest choices when they changed elsewhere", async () => {
+    const before = preferencesFixture();
+    before.preferences[0]!.channel_preferences = { in_app: "enabled" };
+    const after = preferencesFixture();
+    after.preferences[0]!.channel_preferences = { in_app: "disabled" };
+    after.preferences[0]!.version = 2;
+    vi.mocked(getNotificationPreferences).mockReset();
+    vi.mocked(getNotificationPreferences).mockResolvedValueOnce(before).mockResolvedValue(after);
+    vi.mocked(saveNotificationPreferences).mockRejectedValueOnce(
+      new RequestError("stale notification preference version", "notification.preference_changed", undefined, 409),
+    );
+    renderPage();
+    const toggle = await screen.findByRole("checkbox", { name: "Schedule In-app" });
+    await waitFor(() => expect(toggle).toHaveProperty("checked", true));
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(
+      "Your notification choices changed elsewhere. The latest ones are shown; make your change again.",
+    );
+    await waitFor(() => expect(getNotificationPreferences).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Schedule In-app" })).toHaveProperty("checked", false));
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+  });
+
   it("inherits category choices but writes only the editable channel at type scope", async () => {
     const fixture = preferencesFixture();
     fixture.preferences = [{ ...fixture.preferences[0]!, preference_scope: "category", scope_key: "schedule",

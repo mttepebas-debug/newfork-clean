@@ -33,3 +33,106 @@ describe("CatalogDrawer", () => {
     expect(inert(screen.getByText("Page button"))).toBe(true);
   });
 });
+
+describe("CatalogDrawer keyboard (BL-960)", () => {
+  // jsdom lays nothing out; give every element a box so it counts as shown.
+  function withLayout() {
+    return vi
+      .spyOn(HTMLElement.prototype, "getClientRects")
+      .mockReturnValue([{}] as unknown as DOMRectList);
+  }
+
+  function renderPicker() {
+    render(
+      <CatalogDrawer label="Important date" onClose={vi.fn()}>
+        <input aria-label="Title" />
+        <details>
+          <summary aria-label="Select locations">All locations</summary>
+          <label>
+            <input type="checkbox" /> Downtown
+          </label>
+        </details>
+        <input aria-label="Starts" />
+        <button type="button">Save</button>
+      </CatalogDrawer>,
+    );
+  }
+
+  it("lets Tab leave a summary for the next field instead of wrapping to the top", () => {
+    const layout = withLayout();
+    renderPicker();
+    const summary = screen.getByLabelText("Select locations");
+    summary.focus();
+
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    summary.dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(summary);
+    layout.mockRestore();
+  });
+
+  it("lets Shift+Tab leave a summary for the field before it", () => {
+    const layout = withLayout();
+    renderPicker();
+    const summary = screen.getByLabelText("Select locations");
+    summary.focus();
+
+    const back = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    summary.dispatchEvent(back);
+
+    expect(back.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(summary);
+    layout.mockRestore();
+  });
+
+  it("still wraps from Save to Title, skipping what a closed picker folds away", () => {
+    const layout = withLayout();
+    renderPicker();
+    const save = screen.getByRole("button", { name: "Save" });
+    save.focus();
+
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    save.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText("Title"));
+
+    const back = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    screen.getByLabelText("Title").dispatchEvent(back);
+    expect(back.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(save);
+    layout.mockRestore();
+  });
+
+  it("does not count a closed picker's options as the last stop", () => {
+    const layout = withLayout();
+    render(
+      <CatalogDrawer label="Important date" onClose={vi.fn()}>
+        <input aria-label="Title" />
+        <details>
+          <summary aria-label="Select locations">All locations</summary>
+          <input type="checkbox" aria-label="Downtown" />
+        </details>
+      </CatalogDrawer>,
+    );
+    const summary = screen.getByLabelText("Select locations");
+    summary.focus();
+
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    summary.dispatchEvent(tab);
+
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText("Title"));
+    layout.mockRestore();
+  });
+});

@@ -778,6 +778,16 @@ describe("Shift Hub outcome contracts", () => {
       within(dialog).getByLabelText("Reason shared with affected employees"),
       { target: { value: "Shift covered internally" } },
     );
+    // BL-748: closing takes the search away, so it is red and asks twice.
+    expect(close.className).toBe("sx-danger");
+    fireEvent.click(close);
+    expect(changeExchange).not.toHaveBeenCalled();
+    expect(close.textContent).toBe("Confirm close");
+    // Escape on the armed button only disarms: its default is prevented, so
+    // the browser sends the window no cancel (jsdom never sends one).
+    expect(fireEvent.keyDown(close, { key: "Escape" })).toBe(false);
+    expect(close.textContent).toBe("Close search");
+    fireEvent.click(close);
     fireEvent.click(close);
     await waitFor(() =>
       expect(changeExchange).toHaveBeenCalledWith(
@@ -792,6 +802,7 @@ describe("Shift Hub outcome contracts", () => {
         expect.any(String),
       ),
     );
+    expect(changeExchange).toHaveBeenCalledTimes(1);
   });
 
   it.each(["cancelled", "expired", "invalidated"] as const)(

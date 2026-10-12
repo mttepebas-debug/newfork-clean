@@ -1,5 +1,6 @@
 import { requestErrorText, ScreenError } from "../../lib/request-error";
-import { isEditSessionStale, ScheduleRequestError } from "../schedule-data";
+import { isEditSessionStale } from "../schedule-data";
+import { scheduleRefusalReason } from "./scheduleRefusalReason";
 
 /** BL-976: another tab or window moved the edit on; the change itself may be fine. */
 export const EDIT_SESSION_STALE_TEXT =
@@ -28,14 +29,13 @@ export function staleEditAsScreenError(error: unknown): unknown {
 }
 
 /**
- * BL-976: auto-fill's apply refuses with a bare 409 when the preview no longer
- * matches the edit; the database names it only by its sentence (no hint), so
- * that sentence alone is translated and any other 409 still reads as it was.
+ * BL-976: auto-fill's apply refuses when the preview no longer matches the
+ * edit; BL-1044: the database names that refusal schedule.auto_fill_stale, so
+ * the key alone is translated and any other refusal still reads as it was.
  */
 export function autoFillApplyError(error: unknown): unknown {
   if (isEditSessionStale(error)) return new ScreenError(EDIT_SESSION_STALE_TEXT);
-  return error instanceof ScheduleRequestError && error.status === 409 &&
-    error.message === "stale auto-fill preview"
+  return scheduleRefusalReason(error) === "schedule.auto_fill_stale"
     ? new ScreenError(AUTO_FILL_STALE_TEXT)
     : error;
 }

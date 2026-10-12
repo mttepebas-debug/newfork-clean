@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Scissors } from "lucide-react";
 import type { TimeOffRequest } from "@newfork/shared";
-import { shortenTimeOff } from "../schedule/requests-data";
+import { isStaleTimeOff, shortenTimeOff, timeOffKeys } from "../schedule/requests-data";
 import { formatTimeOffInstant } from "../employee-hub/time-off-split";
 import {
   cancellationSelectionError,
@@ -20,6 +20,7 @@ import "../employee-hub/time-off.css";
 export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
   request: TimeOffRequest; workspaceId: string; timeFormat: "12h" | "24h"; onDone: (message: string) => void;
 }) {
+  const client = useQueryClient();
   const [periods, setPeriods] = useState<CancellationChoice[] | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [editing, setEditing] = useState<string[]>([]);
@@ -40,6 +41,10 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
     onSuccess: () => {
       setPeriods(null);
       onDone(`${request.employee_name}'s time off is shorter. They and whoever approved it were told.`);
+    },
+    // BL-1043: the leave changed meanwhile (the database's key): reload it.
+    onError: (error) => {
+      if (isStaleTimeOff(error)) void client.invalidateQueries({ queryKey: timeOffKeys.requests(workspaceId) });
     },
   });
   function begin() {
@@ -68,7 +73,7 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
       <label>Note for {request.employee_name}<textarea maxLength={1000} value={note} onChange={event => setNote(event.target.value)} /></label>
       {choices.length && selectionError ? <p role="alert">{selectionError}</p> : null}
       {unfinished ? <p>Apply or discard the hours being edited first.</p> : null}
-      {mutation.error ? <p role="alert">{mutation.error.message}</p> : null}
+      {mutation.error ? <p role="alert">{isStaleTimeOff(mutation.error) ? "This request changed. Review it again." : mutation.error.message}</p> : null}
       <button type="submit" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
       <button type="button" onClick={() => setPeriods(null)}>Keep time off</button>
     </fieldset>

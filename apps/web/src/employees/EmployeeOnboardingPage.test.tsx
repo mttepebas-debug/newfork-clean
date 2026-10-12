@@ -725,6 +725,64 @@ describe("EmployeeOnboardingPage", () => {
     expect(await screen.findByText(sentence)).toBeTruthy();
   });
 
+  // BL-1046: the onboarding moved on since the page read it (another tab, the
+  // manager's review). It reloads, says so, and keeps what was typed; the next
+  // Save goes on the latest revision.
+  it("reloads a profile saved over a newer onboarding, keeps what was typed and saves on the latest", async () => {
+    vi.mocked(getMyOnboarding)
+      .mockResolvedValueOnce(onboarding)
+      .mockResolvedValue({ ...onboarding, revision: 3 });
+    vi.mocked(saveMyOnboardingProfile)
+      .mockRejectedValueOnce(
+        new RequestError("onboarding changed; refresh required", "onboarding.changed", undefined, 409),
+      )
+      .mockResolvedValue(4);
+    renderProfileStep();
+    await fillProfileAndSave();
+    expect(
+      await screen.findByText(
+        "Your onboarding changed meanwhile. You're seeing the latest version; check it and try again.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("onboarding changed; refresh required")).toBeNull();
+    await waitFor(() => expect(getMyOnboarding).toHaveBeenCalledTimes(2));
+    expect((screen.getByLabelText("Full name") as HTMLInputElement).value).toBe("Morgan Reed");
+    fireEvent.click(screen.getByRole("button", { name: /save and continue/i }));
+    await waitFor(() =>
+      expect(saveMyOnboardingProfile).toHaveBeenLastCalledWith(
+        onboarding.workspace_id,
+        expect.objectContaining({ legal_first_name: "Taylor", emergency_contact_name: "Morgan Reed" }),
+        3,
+      ),
+    );
+  });
+
+  it("reloads onboarding sent from an old copy and says so", async () => {
+    const ready = {
+      ...onboarding,
+      first_actionable_path: "/welcome/review",
+      requirements: [{ ...onboarding.requirements[0]!, status: "completed" as const }],
+    };
+    vi.mocked(getMyOnboarding).mockResolvedValueOnce(ready).mockResolvedValue({ ...ready, revision: 2 });
+    vi.mocked(submitMyOnboarding).mockRejectedValue(
+      new RequestError("onboarding changed; refresh required", "onboarding.changed", undefined, 409),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/review"]}>
+          <OnboardingRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: /send for review/i }));
+    expect(
+      await screen.findByText(
+        "Your onboarding changed meanwhile. You're seeing the latest version; check it and try again.",
+      ),
+    ).toBeTruthy();
+    await waitFor(() => expect(getMyOnboarding).toHaveBeenCalledTimes(2));
+  });
+
   it.each([["Legal first name"], ["Preferred name"], ["Street address"], ["City"]])(
     "says under %s that Turkish-only letters are not taken, and does not move on",
     async (label) => {

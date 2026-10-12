@@ -17,6 +17,7 @@ import {
 } from "./jobs-management-data";
 import { saveJob } from "./organization-data";
 import { errorText } from "./GeneralSettingsPage";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 
 export type CatalogEditor = {
@@ -209,7 +210,12 @@ export function JobCatalogEditor({
       }
       onClose();
     },
-    onError: (cause) => setError(errorText(cause)),
+    // BL-1045: a department or job deleted meanwhile leaves the lists; the
+    // sentence stays with the draft.
+    onError: (cause) => {
+      setError(errorText(cause));
+      if (isGoneMeanwhile(cause)) void onSaved();
+    },
   });
   const canSave =
     canEdit &&

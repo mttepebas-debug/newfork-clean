@@ -11,7 +11,9 @@ insert into public.workspace_memberships(id,workspace_id,user_id,role,status) va
  ('75000000-0000-4000-8000-000000000201','75000000-0000-4000-8000-000000000101','75000000-0000-4000-8000-000000000001','owner','active');
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,invitation_email,created_by) values
  ('75000000-0000-4000-8000-000000000301','75000000-0000-4000-8000-000000000101','75000000-0000-4000-8000-000000000001','E-7501','Test','Person','avatar-self@example.test','75000000-0000-4000-8000-000000000001');
-insert into public.user_profiles(user_id,display_name) values ('75000000-0000-4000-8000-000000000001','Test Person');
+-- The owner membership above opened the account row (KK-179 (2)); this names it.
+insert into public.user_profiles(user_id,display_name) values ('75000000-0000-4000-8000-000000000001','Test Person')
+on conflict (user_id) do update set display_name = excluded.display_name;
 select public.initialize_employee_onboarding_service('75000000-0000-4000-8000-000000000001');
 select is(public.save_employee_onboarding_profile_service('75000000-0000-4000-8000-000000000001',
  '{"legal_first_name":"Test","legal_last_name":"Person","phone":"4155550123","emergency_contact_name":"Example","emergency_contact_relationship":"Friend","emergency_contact_phone":"+14155550100"}'::jsonb,1),2,

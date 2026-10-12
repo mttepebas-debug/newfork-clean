@@ -106,6 +106,25 @@ describe("ScheduleTemplatesPage", () => {
     ).toBe("Standard week");
   });
 
+  // BL-1044: the key says another tab changed the template; any other 409 does not.
+  it.each([
+    ["schedule.template_changed", "This template changed. Refresh and try again."],
+    [undefined, "The template could not be renamed. Try again."],
+  ])("words a refused rename by its key (%s)", async (reason, sentence) => {
+    const { ScheduleRequestError } = await vi.importActual<typeof ScheduleDataModule>("../schedule/schedule-data");
+    listTemplatesMock.mockResolvedValue(templateList);
+    renameTemplateMock.mockRejectedValue(
+      new ScheduleRequestError("schedule template revision stale", 409, { error: "schedule template revision stale", ...(reason ? { reason } : {}) }),
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Rename template Standard week" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Template name" }), { target: { value: "Lunch week" } });
+    fireEvent.click(screen.getByRole("button", { name: "Rename" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(sentence);
+  });
+
   it("renames templates with the expected revision", async () => {
     listTemplatesMock.mockResolvedValue(templateList);
     renameTemplateMock.mockResolvedValue({

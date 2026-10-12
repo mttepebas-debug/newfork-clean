@@ -11,8 +11,8 @@ import {
   UNDO_SESSION_STALE_TEXT,
 } from "./scheduleEditErrorText";
 
-const conflict = (error: string, code?: string) =>
-  new ScheduleRequestError(error, 409, code ? { error, code } : { error });
+const conflict = (error: string, code?: string, reason?: string) =>
+  new ScheduleRequestError(error, 409, { error, ...(code ? { code } : {}), ...(reason ? { reason } : {}) });
 
 describe("schedule edit error text (BL-976)", () => {
   it("never shows the server's words for an edit another tab moved on", () => {
@@ -22,10 +22,13 @@ describe("schedule edit error text (BL-976)", () => {
     expect(requestErrorText(autoFillApplyError(stale))).toBe(EDIT_SESSION_STALE_TEXT);
   });
 
-  it("words auto-fill's bare 409 as a review that went out of date", () => {
-    const error = autoFillApplyError(conflict("stale auto-fill preview"));
+  // BL-1044: the key decides, not the sentence.
+  it("words auto-fill's stale-review refusal as a review that went out of date", () => {
+    const error = autoFillApplyError(conflict("The review moved on", undefined, "schedule.auto_fill_stale"));
     expect(error).toBeInstanceOf(ScreenError);
     expect(requestErrorText(error)).toBe(AUTO_FILL_STALE_TEXT);
+    const unkeyed = conflict("stale auto-fill preview");
+    expect(autoFillApplyError(unkeyed)).toBe(unkeyed);
   });
 
   it("leaves every other refusal as it was", () => {

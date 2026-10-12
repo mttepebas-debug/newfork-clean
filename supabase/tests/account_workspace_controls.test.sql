@@ -20,7 +20,9 @@ insert into public.workspace_memberships(id,workspace_id,user_id,role,status) va
 ('a5500000-0000-4000-8000-000000000206','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000006','admin','active'),
 ('a5500000-0000-4000-8000-000000000207','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000007','admin','suspended'),
 ('a5500000-0000-4000-8000-000000000208','a5500000-0000-4000-8000-000000000102','a5500000-0000-4000-8000-000000000008','owner','active');
-insert into public.user_profiles(user_id, display_name) values ('a5500000-0000-4000-8000-000000000002','Eligible Admin'),('a5500000-0000-4000-8000-000000000005','Incomplete Admin');
+-- The memberships above opened the account rows (KK-179 (2)); these name two of them.
+insert into public.user_profiles(user_id, display_name) values ('a5500000-0000-4000-8000-000000000002','Eligible Admin'),('a5500000-0000-4000-8000-000000000005','Incomplete Admin')
+on conflict (user_id) do update set display_name = excluded.display_name;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 values ('a5500000-0000-4000-8000-000000000301','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000005','E-9999','Incomplete','Admin','a5500000-0000-4000-8000-000000000001');
 -- The eligible admin's onboarding filed a legal name; ownership only goes to

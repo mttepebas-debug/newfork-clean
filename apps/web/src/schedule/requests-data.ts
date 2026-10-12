@@ -77,8 +77,9 @@ export async function shortenTimeOff(workspaceId: string, requestId: string, cha
 }
 
 // FB-6.3: time off asked for, voted on and revoked. Each endpoint asks the
-// authorization core; a 409 means the screen is stale (closed, past its
-// deadline, or the shifts it affects changed): refetch and show it again.
+// authorization core; a 409 keyed time_off.changed means the screen is stale
+// (closed, or it or the shifts it affects changed): refetch and show it again.
+// Any other 409 is a standing no with its own sentence (BL-1043).
 export const timeOffKeys = {
   /** Every Requests > Time off page; the page adds its filters after these two. */
   requests: (workspaceId: string) => ["schedule-requests", workspaceId] as const,
@@ -104,9 +105,13 @@ export async function revokeTimeOff(workspaceId: string, requestId: string, revo
   return timeOffRevokeResultSchema.parse(await timeOffApi(workspaceId, `/${requestId}/revoke`, revoke));
 }
 
-/** The screen acted on an old picture of the request: refetch, then ask again. */
+/**
+ * The screen acted on an old picture of the request: refetch, then ask again.
+ * The database says so with its key (BL-1043); a deadline gone by or a request
+ * key sent twice is a 409 too, and reloading does not answer those.
+ */
 export function isStaleTimeOff(error: unknown): boolean {
-  return error instanceof RequestError && error.status === 409;
+  return error instanceof RequestError && error.status === 409 && error.reason === "time_off.changed";
 }
 
 function useTimeOffMutation<Variables, Result>(workspaceId: string, run: (variables: Variables) => Promise<Result>) {

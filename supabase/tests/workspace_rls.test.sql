@@ -25,8 +25,10 @@ values
   ('30000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000003', 'owner', 'active'),
   ('30000000-0000-4000-8000-000000000006', '20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'employee', 'suspended');
 
+-- The owner membership above opened the account row (KK-179 (2)); this names it.
 insert into public.user_profiles (user_id, display_name)
-values ('10000000-0000-4000-8000-000000000001', 'Test Owner');
+values ('10000000-0000-4000-8000-000000000001', 'Test Owner')
+on conflict (user_id) do update set display_name = excluded.display_name;
 
 insert into public.user_preferences (user_id, theme)
 values ('10000000-0000-4000-8000-000000000001', 'system');

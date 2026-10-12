@@ -3219,10 +3219,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 700;
   line-height: 1;
 }
-.calendar-day:hover {
-  z-index: 2;
-  background: #edf3f0;
-}
 .calendar-day.outside {
   color: var(--theme-muted);
   font-weight: 650;
@@ -3231,12 +3227,21 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #f4d7a7;
   color: #272d2b;
 }
+/* After .in-week, so the orange band's days light up on hover like the rest (BL-723). */
+.calendar-day:hover {
+  z-index: 2;
+  background: #edf3f0;
+}
 .calendar-day.selected {
   z-index: 3;
   background: #d79d54;
   color: #17201d;
   box-shadow: inset 0 0 0 1px #28312e;
   font-weight: 800;
+}
+/* The selected day keeps its colour; hover thickens its ring. */
+.calendar-day.selected:hover {
+  box-shadow: inset 0 0 0 2px #28312e;
 }
 .calendar-picker-grid {
   display: grid;
@@ -3901,6 +3906,23 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-success);
   font-size: 12px;
   font-weight: 500;
+}
+.schedule-draft-menu-read-only-chip {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid var(--theme-border);
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+/* --theme-muted-strong: the row turns --theme-surface-muted on hover. */
+.schedule-draft-menu-read-only-note {
+  margin-top: 1px;
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
 }
 .schedule-draft-menu-published-chip svg {
   width: 12px;

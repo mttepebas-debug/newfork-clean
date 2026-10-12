@@ -363,6 +363,10 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'manager_note_follows_role', 'AVAIL-002'),
   ('trigger', 'workspace_memberships.manager_note_follows_role', 'AVAIL-002');
+-- BL-768 (KK-174): a termination's follow-up is the location managers' notice;
+-- the follow-up rows nobody read go.
+insert into retired (kind, name, step) values
+  ('table', 'employee_offboarding_followups', 'BL-768');
 
 -- FB-6.4 A1: one eligibility engine (app_private.eligibility) for swap, pickup and cover.
 insert into retired (kind, name, step) values
@@ -374,6 +378,10 @@ insert into retired (kind, name, step) values
   ('function', 'schedule_actor_can_manage_service', 'FB-6.4'),
   ('function', 'schedule_actor_can_publish_service', 'FB-6.4'),
   ('function', 'schedule_actor_has_capability_service', 'FB-6.4');
+-- BL-238: "this week" is asked of the places it is for; the workspace-only
+-- form, which read the server's UTC date, goes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.schedule_current_week_start_service(uuid)', 'BL-238');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

@@ -188,6 +188,21 @@ describe("NotificationSettingsPage", () => {
     ));
   });
 
+  it("calls the whole-workspace scope Workspace, even when the server still says Organization (BL-1027)", async () => {
+    renderPage({
+      ...fixture,
+      catalog: [{
+        ...fixture.catalog[0]!,
+        policy: { ...defaultPolicy, version: 3, source: "organization_policy" },
+      }],
+    });
+    expect(await screen.findByText("Published schedules")).toBeTruthy();
+    const scope = screen.getByLabelText("Policy scope") as HTMLSelectElement;
+    expect(scope.selectedOptions[0]?.textContent).toBe("Workspace");
+    expect(screen.getByText("Workspace · v3")).toBeTruthy();
+    expect(screen.queryByText(/Organization/)).toBeNull();
+  });
+
   it("filters active notification types by category and search", async () => {
     const { container } = renderPage();
     expect(await screen.findByText("Published schedules")).toBeTruthy();
@@ -272,12 +287,18 @@ describe("NotificationSettingsPage", () => {
     expect(await screen.findByText("Notification policy saved.")).toBeTruthy();
   });
 
-  it("announces a conflict and rolls the optimistic state back", async () => {
+  it("announces a conflict, rolls the optimistic state back and reloads the policies", async () => {
     vi.mocked(saveNotificationPolicy).mockRejectedValueOnce(
-      new Error("notification policy stale version"),
+      new RequestError(
+        "notification policy stale version",
+        "notification.policy_changed",
+        undefined,
+        409,
+      ),
     );
     renderPage();
     await screen.findByText("Published schedules");
+    const loads = vi.mocked(getNotificationSettings).mock.calls.length;
     fireEvent.click(screen.getByLabelText("Published schedules enabled"));
     fireEvent.change(screen.getByLabelText("Reason for Published schedules"), {
       target: { value: "Pause publication notices" },
@@ -291,6 +312,28 @@ describe("NotificationSettingsPage", () => {
       "checked",
       true,
     );
+    // BL-1049: "review the latest version" has the latest version to review.
+    await waitFor(() =>
+      expect(vi.mocked(getNotificationSettings).mock.calls.length).toBeGreaterThan(loads),
+    );
+  });
+
+  // BL-1049: the screen reads the database's key, not words in its sentence.
+  it("keeps a refusal's own sentence when it carries no changed-elsewhere key", async () => {
+    vi.mocked(saveNotificationPolicy).mockRejectedValueOnce(
+      new RequestError("This channel conflicts with the stale schedule rule", undefined, undefined, 400),
+    );
+    renderPage();
+    await screen.findByText("Published schedules");
+    fireEvent.click(screen.getByLabelText("Published schedules enabled"));
+    fireEvent.change(screen.getByLabelText("Reason for Published schedules"), {
+      target: { value: "Pause publication notices" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Published schedules" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("This channel conflicts with the stale schedule rule");
+    expect(alert.textContent).not.toContain("changed elsewhere");
   });
 
   it("runs a preview-only test and can reset the visible category", async () => {

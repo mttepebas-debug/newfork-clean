@@ -43,8 +43,8 @@ select lives_ok(
 );
 select is(pg_temp.works_at('emre'), '{}'::text[], 'the record stays, with no location');
 select is(
-  (select e.location_count from public.list_employees_service(tests.user('m:owner'), tests.id('m'), false, 'Emre', 'all', 10, 0) e),
-  0::bigint,
+  (select jsonb_array_length(e.locations) from public.list_employees_service(tests.user('m:owner'), tests.id('m'), false, 'Emre', 'all', 10, 0) e),
+  0,
   'the owner still lists the record, with no location'
 );
 select ok(
