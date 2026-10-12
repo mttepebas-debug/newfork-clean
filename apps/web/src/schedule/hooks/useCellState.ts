@@ -7,6 +7,8 @@ import {
   type ScheduleAvailabilityMark,
 } from "../lib/scheduleAvailabilityMark";
 import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
+import { shiftsOverlap, timeMinutes } from "../lib/scheduleShiftInterval";
+import { isPendingRemovalShift } from "../lib/scheduleShiftMetadata";
 
 export interface ScheduleCellState {
   readonly ghostShifts: readonly ScheduleShift[];
@@ -86,8 +88,9 @@ export function buildScheduleCellState(model: ScheduleReadModel, hideAvailabilit
   const ghostLocationNames = new Map(
     (model.ghost_shifts ?? []).map((ghost) => [ghost.location_id, ghost.location_name]),
   );
+  // A shift removed while editing is gone once published: no ghost, no overlap.
   const assigned = [
-    ...model.shifts.filter((shift) => shift.employee_id),
+    ...model.shifts.filter((shift) => shift.employee_id && !isPendingRemovalShift(shift)),
     ...outOfScope,
   ];
   const byEmployeeDate = new Map<string, ScheduleShift[]>();
@@ -316,28 +319,6 @@ function outOfScopeShift(
 
 function locationName(model: ScheduleReadModel, locationId: string): string | null {
   return model.locations.find((location) => location.id === locationId)?.name ?? null;
-}
-
-function shiftsOverlap(left: ScheduleShift, right: ScheduleShift): boolean {
-  return (
-    datedInterval(left.scheduled_date, left.start_time, left.end_time).start <
-      datedInterval(right.scheduled_date, right.start_time, right.end_time).end &&
-    datedInterval(right.scheduled_date, right.start_time, right.end_time).start <
-      datedInterval(left.scheduled_date, left.start_time, left.end_time).end
-  );
-}
-
-function datedInterval(date: string, start: string, end: string) {
-  const day = Math.round(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
-  const startMinutes = day * 1_440 + timeMinutes(start);
-  let endMinutes = day * 1_440 + timeMinutes(end);
-  if (endMinutes <= startMinutes) endMinutes += 1_440;
-  return { start: startMinutes, end: endMinutes };
-}
-
-function timeMinutes(value: string): number {
-  const [hour = 0, minute = 0] = value.split(":").map(Number);
-  return hour * 60 + minute;
 }
 
 function compareDisplayShiftItems(

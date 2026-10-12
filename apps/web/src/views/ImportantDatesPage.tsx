@@ -1,6 +1,6 @@
 import type { AnnouncementRecord } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Search } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -36,6 +36,7 @@ export function ImportantDatesPage() {
   const workspaceId = context?.workspace.id ?? "";
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [adding, setAdding] = useState(false);
+  const [search, setSearch] = useState("");
   const dates = useQuery({
     queryKey: ["important-dates", workspaceId],
     queryFn: () => getImportantDates(workspaceId),
@@ -54,10 +55,12 @@ export function ImportantDatesPage() {
   if (isNoAccess(dates.error))
     return <NoAccessState subject="important dates" homeHref={noAccessHomePath(context, base)} />;
   const timeFormat = dates.data?.time_format ?? "12h";
+  const needle = search.trim().toLowerCase();
   const rows = (dates.data?.dates ?? [])
     .filter((record) =>
       tab === "upcoming" ? record.display_status === "published" : record.display_status === "past",
     )
+    .filter((record) => !needle || `${record.title} ${record.body}`.toLowerCase().includes(needle))
     .sort(
       (a, b) =>
         (a.starts_on ?? "").localeCompare(b.starts_on ?? "") * (tab === "past" ? -1 : 1) ||
@@ -102,11 +105,18 @@ export function ImportantDatesPage() {
             ))}
           </div>
         </div>
-        {dates.data?.can_write && (
-          <div className="catalog-toolbar-filter-row">
-            <ListAddButton label="New" onClick={() => setAdding(true)} />
-          </div>
-        )}
+        <div className="catalog-toolbar-filter-row">
+          <label className="job-search toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label="Search important dates"
+              placeholder="Search important dates"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          {dates.data?.can_write && <ListAddButton label="New" onClick={() => setAdding(true)} />}
+        </div>
       </div>
       {dates.isLoading && <p className="settings-state">Loading important dates...</p>}
       {dates.error && (

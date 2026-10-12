@@ -292,6 +292,27 @@ describe("buildScheduleCellState", () => {
     expect(patioCell?.conflictingShiftIds.has("shift-patio")).toBe(true);
   });
 
+  // Mert, 2026-10-12: a shift removed while editing makes no overlap and no
+  // ghost; it is on its way out.
+  it("leaves a shift removed while editing out of overlaps and ghosts", () => {
+    const removed = {
+      ...shift({ id: "shift-removed", location_id: mainLocationId, start_time: "09:00", end_time: "13:00" }),
+      source_published_shift_id: "live-1",
+      pending_op_type: "delete",
+    } as ScheduleShift;
+    const state = buildScheduleCellState(
+      model([
+        removed,
+        shift({ id: "shift-new", location_id: mainLocationId, start_time: "10:00", end_time: "14:00" }),
+      ]),
+    );
+
+    const mainCell = state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
+    const patioCell = state.get(scheduleCellStateKey(patioLocationId, "2026-08-17", employeeId));
+    expect(mainCell?.hasOverlap ?? false).toBe(false);
+    expect(patioCell?.ghostShifts.map((ghost) => ghost.id)).toEqual(["shift-new"]);
+  });
+
   it("merges source location cell state into unified display cells", () => {
     const state = buildScheduleCellState(
       model([

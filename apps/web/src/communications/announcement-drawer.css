@@ -531,17 +531,28 @@
   gap: 8px;
   min-width: 0;
 }
+/* The Short hours times sit under Open / Closed / Short hours and are never
+   wider than them (Mert, 2026-10-12): the stack takes the buttons' width, the
+   times fill it without adding to it. */
+.announcement-drawer .ad-day-stack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .announcement-drawer .ad-times {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 6px;
+  width: 0;
+  min-width: 100%;
   color: var(--theme-muted-strong);
   font-size: 12.5px;
 }
 .announcement-drawer .ad-times input {
   box-sizing: border-box;
-  width: 118px;
+  width: 100%;
+  min-width: 0;
   height: 32px;
   border: 1px solid var(--theme-border-strong);
   border-radius: 6px;
@@ -551,6 +562,10 @@
   font: inherit;
   font-size: 13px;
   color-scheme: light;
+}
+/* No clock button: the time is typed, and the box keeps its full text size. */
+.announcement-drawer .ad-times input::-webkit-calendar-picker-indicator {
+  display: none;
 }
 .announcement-drawer .ad-times input:focus {
   outline: 2px solid var(--theme-focus);

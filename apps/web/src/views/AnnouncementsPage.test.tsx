@@ -508,6 +508,46 @@ describe("Important Dates (EKRAN-08)", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
     expect(titles()).toEqual(["Labor Day"]);
   });
+
+  it("searches by words like Announcements, with New right after the search bar", async () => {
+    const dated = (id: string, title: string, starts_on: string, body = "") =>
+      record({ id, title, body, category: "holiday", status: "published", display_status: "published", starts_on, ends_on: starts_on, on_important_dates: true });
+    vi.mocked(getImportantDates).mockResolvedValue({
+      workspace_id: workspaceId,
+      time_format: "12h",
+      can_write: true,
+      dates: [
+        dated("a8200000-0000-4000-8000-000000000091", "Christmas", "2026-12-25"),
+        dated("a8200000-0000-4000-8000-000000000092", "Thanksgiving", "2026-11-26", "Turkey dinner for the team"),
+      ],
+    });
+    const path = "/app/announcements/important-dates";
+    renderAt(path, <ImportantDatesPage />, [path]);
+    await screen.findByRole("table", { name: "Important dates" });
+    const titles = () =>
+      within(screen.getByRole("table", { name: "Important dates" }))
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.querySelector(".important-date-title")?.firstChild?.textContent);
+    const search = screen.getByLabelText("Search important dates");
+    const label = search.closest("label");
+    expect(label?.className).toContain("toolbar-search");
+    expect(label?.nextElementSibling).toBe(screen.getByRole("button", { name: "New" }));
+    fireEvent.change(search, { target: { value: "turkey" } });
+    expect(titles()).toEqual(["Thanksgiving"]);
+    fireEvent.change(search, { target: { value: "christ" } });
+    expect(titles()).toEqual(["Christmas"]);
+    fireEvent.change(search, { target: { value: "nothing" } });
+    expect(screen.getByText("No dates here.")).toBeTruthy();
+  });
+
+  it("keeps the search bar for a reader who can't add dates", async () => {
+    vi.mocked(getImportantDates).mockResolvedValue({ workspace_id: workspaceId, time_format: "12h", can_write: false, dates: [] });
+    const path = "/app/announcements/important-dates";
+    renderAt(path, <ImportantDatesPage />, [path]);
+    expect(await screen.findByLabelText("Search important dates")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "New" })).toBeNull();
+  });
 });
 
 function loc(location_id: string, name: string, day: "open" | "closed" | "short" = "open") {

@@ -6,6 +6,7 @@ import type {
 import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
+import { isPendingRemovalShift } from "./lib/scheduleShiftMetadata";
 import { scheduleClosureCoversDate, scheduleClosureLabel } from "./lib/scheduleClosures";
 import { formatTime, formatWeekdayDate } from "./lib/scheduleDateTime";
 
@@ -393,6 +394,7 @@ export function evaluateScheduleShiftConflicts(
   const overlapping = shifts.filter(
     (shift) =>
       shift.id !== excludeShiftId &&
+      !isPendingRemovalShift(shift) &&
       shift.employee_id === input.employee_id &&
       hasAssessmentHours &&
       intervalsOverlap(shift),
@@ -414,7 +416,7 @@ export function evaluateScheduleShiftConflicts(
     });
   }
 
-  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && shift.employee_id === input.employee_id)) {
+  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && !isPendingRemovalShift(shift) && shift.employee_id === input.employee_id)) {
     const other = weeklyTargetInterval(employee, neighbor);
     if (!targetInterval || !other) {
       reasons.push({ type: "assessment_unknown", severity: "confirm", message: "Other assignment hours need checking." });
