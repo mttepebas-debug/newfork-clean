@@ -741,6 +741,7 @@ function AnnouncementEditor({
               problemAt={problemAt}
               locations={whereLocations}
               preview={locked ? undefined : preview.data}
+              timeFormat={timeFormat}
               publishing={
                 status !== "published" &&
                 status !== "past" && (
@@ -752,6 +753,7 @@ function AnnouncementEditor({
                     minWall={zonedWall(new Date().toISOString(), zone)}
                     locked={locked}
                     problem={problemAt("publish_at")}
+                    timeFormat={timeFormat}
                     onLater={(next) => {
                       setLater(next);
                       setArmed(false);

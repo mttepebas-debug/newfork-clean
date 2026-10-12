@@ -3,6 +3,7 @@ import type {
   AnnouncementDetail,
   AnnouncementList,
   AnnouncementPreview,
+  AnnouncementImpactShift,
   AnnouncementProblem,
   AnnouncementRecord,
 } from "@newfork/shared";
@@ -331,8 +332,8 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(from.disabled).toBe(true);
     fireEvent.click(allDay);
     expect(from.disabled).toBe(false);
-    expect(from.value).toBe("15:00");
-    expect((within(drawer).getByLabelText("End time") as HTMLInputElement).value).toBe("16:00");
+    expect(from.value).toBe("3:00 PM");
+    expect((within(drawer).getByLabelText("End time") as HTMLInputElement).value).toBe("4:00 PM");
 
     // Open · Short hours · Closed, in that order, and the shift line at the row's end.
     expect(
@@ -350,6 +351,57 @@ describe("Announcement drawer (EKRAN-08)", () => {
     const fields = [...panel.querySelectorAll("input, textarea, select")];
     expect(fields.at(-1)).toBe(within(drawer).getByLabelText("Message"));
     expect(within(drawer).queryByRole("tab", { name: /Locations/ })).toBeNull();
+  });
+
+  it("reads every time in the workspace's 24h clock and colours a shift's choice by its outcome", async () => {
+    const shift: AnnouncementImpactShift = {
+      id: "c1000000-0000-4000-8000-000000000001",
+      source_id: "c1000000-0000-4000-8000-000000000002",
+      location_id: downtown,
+      location_name: "Downtown",
+      scheduled_date: "2099-07-04",
+      employee_id: "c1000000-0000-4000-8000-000000000003",
+      employee_user_id: "c1000000-0000-4000-8000-000000000004",
+      employee_name: "Maria Lopez",
+      job_id: null,
+      job_name: "Server",
+      start_time: "16:00",
+      end_time: "22:00",
+      day: "closed",
+      opens: null,
+      closes: null,
+      reason: "closed",
+      started: false,
+      tied: false,
+      changed_in_schedule: false,
+      default: "remove",
+      choice: "remove",
+      from: null,
+      until: null,
+      outcome: "removed",
+    };
+    vi.mocked(getAnnouncements).mockResolvedValue(list({ time_format: "24h" }));
+    vi.mocked(previewAnnouncement).mockResolvedValue(
+      preview({ shifts: [shift], counts: { removed: 1, edited: 0, opened: 0, kept: 0, quiet: 0 } }),
+    );
+    renderList();
+    fireEvent.click(await screen.findByRole("button", { name: "New" }));
+    const drawer = screen.getByRole("dialog", { name: "New announcement" });
+    fireEvent.click(within(drawer).getByRole("checkbox", { name: "All day" }));
+    expect((within(drawer).getByLabelText("Start time") as HTMLInputElement).value).toBe("15:00");
+    expect((within(drawer).getByLabelText("End time") as HTMLInputElement).value).toBe("16:00");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Short hours" }));
+    expect((within(drawer).getByLabelText("Downtown opens") as HTMLInputElement).value).toMatch(/^\d{2}:\d{2}$/);
+
+    fireEvent.click(await within(drawer).findByRole("tab", { name: /^Shifts/ }));
+    expect(within(drawer).getByText("16:00–22:00")).toBeTruthy();
+    const choice = within(drawer).getByRole("group", { name: "What happens to Maria Lopez's shift" });
+    const pressed = () => within(choice).getByRole("button", { pressed: true });
+    expect([pressed().textContent, pressed().getAttribute("data-tone")]).toEqual(["Remove", "red"]);
+    fireEvent.click(within(choice).getByRole("button", { name: "Open shift" }));
+    expect([pressed().textContent, pressed().getAttribute("data-tone")]).toEqual(["Open shift", "amber"]);
+    fireEvent.click(within(choice).getByRole("button", { name: "Keep" }));
+    expect([pressed().textContent, pressed().getAttribute("data-tone")]).toEqual(["Keep", "green"]);
   });
 
   it("says a past publish time right under its red box, in the gap above the Message", async () => {
@@ -377,10 +429,13 @@ describe("Announcement drawer (EKRAN-08)", () => {
     const message = await within(drawer).findByText(pastTime.message);
     expect(within(drawer).getByRole("tab", { name: /^Details/ }).getAttribute("aria-selected")).toBe("true");
     const box = within(drawer).getByLabelText("Publish on");
-    expect(box.getAttribute("aria-invalid")).toBe("true");
-    expect(box.getAttribute("aria-describedby")).toBe(message.id);
-    // Right under the box, inside the row; the row itself stays its usual colour.
-    expect(box.nextElementSibling).toBe(message);
+    const clock = within(drawer).getByLabelText("Publish at");
+    for (const field of [box, clock]) {
+      expect(field.getAttribute("aria-invalid")).toBe("true");
+      expect(field.getAttribute("aria-describedby")).toBe(message.id);
+    }
+    // Right under the day and clock boxes, inside the row; the row itself stays its usual colour.
+    expect(box.closest(".ad-publish-boxes")?.nextElementSibling).toBe(message);
     expect(message.closest(".ad-publish-row")?.getAttribute("data-bad")).toBeNull();
   });
 
