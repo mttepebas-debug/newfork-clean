@@ -853,6 +853,17 @@ describe("EmployeeHubPage", () => {
       }),
     );
   });
+
+  // BL-1043: a request decided meanwhile says so in the page's words and
+  // reloads, instead of the server's "stale time off request".
+  it("reloads and says the request changed when the database says so", async () => {
+    vi.mocked(actOnEmployeeRequest).mockRejectedValueOnce(new RequestError("stale time off request", "time_off.changed", undefined, 409));
+    renderPage("/app/employee-hub/my-availability?section=time-off");
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel request" }));
+    const reads = vi.mocked(getEmployeeHub).mock.calls.length;
+    expect((await screen.findByRole("alert")).textContent).toBe("This request changed. Review it again.");
+    await waitFor(() => expect(vi.mocked(getEmployeeHub).mock.calls.length).toBeGreaterThan(reads));
+  });
 });
 
 describe("no access (FB-6.1.9)", () => {

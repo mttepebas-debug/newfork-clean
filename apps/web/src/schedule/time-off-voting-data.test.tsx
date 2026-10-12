@@ -55,8 +55,12 @@ describe("time-off voting calls (FB-6.3.5)", () => {
     await expect(voteOnTimeOff(w, rid, { verdict: "approve", note: "", expected_impact: fingerprint })).rejects.toThrow();
   });
 
-  it("tells a stale screen (409) from a refusal", () => {
-    expect(isStaleTimeOff(new RequestError("This request is already closed", undefined, undefined, 409))).toBe(true);
+  // BL-1043: the database's key decides, not the status alone.
+  it("tells a stale screen (409 time_off.changed) from a refusal", () => {
+    expect(isStaleTimeOff(new RequestError("This request is already closed", "time_off.changed", undefined, 409))).toBe(true);
+    expect(isStaleTimeOff(new RequestError("This request was not decided in time", "time_off.not_decided_in_time", undefined, 409))).toBe(false);
+    expect(isStaleTimeOff(new RequestError("This request key was used for different time-off hours", "time_off.request_reused", undefined, 409))).toBe(false);
+    expect(isStaleTimeOff(new RequestError("This request is already closed", undefined, undefined, 409))).toBe(false);
     expect(isStaleTimeOff(new RequestError("Not allowed", "authz.rank", "time_off.decide", 403))).toBe(false);
     expect(isStaleTimeOff(new Error("boom"))).toBe(false);
   });
@@ -73,7 +77,7 @@ describe("time-off voting hooks (FB-6.3.5)", () => {
   it("a vote refreshes the Requests queue and Employee Hub, also when it was stale", async () => {
     const { Wrapper, invalidate } = wrapper();
     const { result } = renderHook(() => useVoteOnTimeOff(w), { wrapper: Wrapper });
-    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects have changed. Review them again", undefined, undefined, 409));
+    apiRequest.mockRejectedValueOnce(new RequestError("The shifts this time off affects have changed. Review them again", "time_off.changed", undefined, 409));
     await act(async () => { await result.current.mutateAsync({ requestId: rid, verdict: { verdict: "approve", note: "", expected_impact: fingerprint } }).catch(() => undefined); });
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(isStaleTimeOff(result.current.error)).toBe(true);
