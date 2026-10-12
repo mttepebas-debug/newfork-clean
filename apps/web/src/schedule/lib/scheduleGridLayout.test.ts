@@ -12,6 +12,7 @@ import {
   createScheduleGridTemplateColumns,
   scheduleGridFitDayWidth,
   scheduleGridFitsVisibleDays,
+  scheduleGridWeeklyLocationWidths,
   resolveScheduleInteractionLocationId,
 } from "./scheduleGridLayout";
 
@@ -239,6 +240,46 @@ describe("scheduleGridLayout", () => {
     expect(
       scheduleGridFitsVisibleDays({ ...week, showTotalHours: true, width: 975 }),
     ).toBe(false);
+  });
+
+  it("puts each location's whole week on one screen while its cards' words fit", () => {
+    // 1440 window, box 1135, two locations side by side: Downtown's cards
+    // used to keep their one-line 146px and its week ran 400px off screen.
+    // Seven days share 935px; the employee column keeps its 200px.
+    expect(
+      scheduleGridWeeklyLocationWidths({ width: 1135, showTotalHours: false }),
+    ).toEqual({ day: 935 / 7, employee: 200 });
+    // A pinned card needs 138px for "Dishwasher": the employee column gives
+    // up 31px so the week still fits (169 + 7 x 138 = 1135).
+    expect(
+      scheduleGridWeeklyLocationWidths({
+        width: 1135,
+        showTotalHours: false,
+        dayWidth: 138,
+      }),
+    ).toEqual({ day: 138, employee: 169 });
+    // The totals column keeps its 120px at the end of the last week.
+    expect(
+      scheduleGridWeeklyLocationWidths({ width: 1615, showTotalHours: true }),
+    ).toEqual({ day: 185, employee: 200 });
+    // Below a 144px employee column the week scrolls with full-width cards.
+    expect(
+      scheduleGridWeeklyLocationWidths({
+        width: 975,
+        showTotalHours: false,
+        dayWidth: 138,
+      }),
+    ).toBeNull();
+    expect(
+      scheduleGridWeeklyLocationWidths({ width: 0, showTotalHours: false }),
+    ).toBeNull();
+    expect(
+      createScheduleGridTemplateColumns({
+        columns: 14,
+        locationWidths: { day: 138, employee: 169 },
+        showTotalHours: true,
+      }),
+    ).toBe("169px repeat(14, 138px) 120px");
   });
 
   it("counts visible body and filler rows", () => {
