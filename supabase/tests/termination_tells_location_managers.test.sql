@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(19);
 
 -- BL-768, KK-174: ending someone's employment opens the published shifts they
 -- have not started yet. The managers of each location where a shift opened
@@ -89,7 +89,46 @@ select lives_ok(
   'the owner ends Emre''s employment');
 select is((select count(*)::integer from pg_temp.notices()), 2, 'Emre had no shift ahead: nobody is told');
 
--- 4. The notice is the follow-up; the rows nobody read are gone, and the
+-- 4. A manager who may end employment ends Kemal's (whoever ends it is a
+-- manager where the shifts open). Today's scope model (M2) lets no manager
+-- end anybody's employment; M4, where a manager reaches the whole
+-- workspace, does, so the rule is held for the day the model allows it. Deniz is told nothing; Mert, who
+-- manages both locations, hears of both shifts in one notice; Selin, a manager
+-- whose role may not edit the Schedule, hears nothing.
+select tests.role('tm', 'lead', 'manager', array(
+  select p.permission_key from public.workspace_role_permissions p join public.workspace_roles r on r.id = p.role_id
+  where r.workspace_id = tests.id('tm') and r.system_key::text = 'manager') || array['employees.read', 'employees.archive']);
+select tests.role('tm', 'no-schedule', 'manager', array(
+  select p.permission_key from public.workspace_role_permissions p join public.workspace_roles r on r.id = p.role_id
+  where r.workspace_id = tests.id('tm') and r.system_key::text = 'manager'
+    and p.permission_key not in ('schedule.manage', 'schedule.publish', 'schedule.templates.manage')));
+select tests.person('tm', 'deniz', 'lead', array['K', 'B'], array['cook']);
+select tests.person('tm', 'mert', 'manager', array['K', 'B'], array['cook']);
+select tests.person('tm', 'selin', 'no-schedule', array['K'], array['cook']);
+select tests.person('tm', 'kemal', 'employee', array['K', 'B'], array['cook']);
+select tests.publish_week('tm', 2, '[
+  {"label": "kemal-k", "person": "kemal", "loc": "K", "job": "cook", "day": 0, "start": "10:00", "end": "16:00"},
+  {"label": "kemal-b", "person": "kemal", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "13:00"}
+]');
+update app_private.authz_settings set scope_model = 'M4';
+select lives_ok(
+  format($$select public.terminate_employee_service(%L, %L, %L, localtimestamp, 'Europe/Istanbul', 'Employment ended', gen_random_uuid())$$,
+    tests.user('tm:deniz'), tests.id('tm'), tests.id('tm:kemal')),
+  'Deniz, a manager at both locations who may end employment, ends Kemal''s');
+update app_private.authz_settings set scope_model = 'M2';
+create temporary table kemal_notices as
+  select o.* from pg_temp.notices() o
+  where o.subject_id = (select t.id::text from public.employee_terminations t where t.employee_id = tests.id('tm:kemal'));
+select is((select count(*)::integer from kemal_notices o where o.payload -> 'recipient_user_ids' ? tests.user('tm:deniz')::text), 0,
+  'Deniz, who ended it, is told nothing');
+select is((select count(*)::integer from kemal_notices o where o.payload -> 'recipient_user_ids' ? tests.user('tm:mert')::text), 1,
+  'Mert, who manages both locations, gets one notice');
+select is((select o.payload ->> 'title' from kemal_notices o where o.payload -> 'recipient_user_ids' ? tests.user('tm:mert')::text),
+  'Kemal''s 2 shifts are unassigned', 'and it counts both shifts');
+select is((select count(*)::integer from kemal_notices o where o.payload -> 'recipient_user_ids' ? tests.user('tm:selin')::text), 0,
+  'Selin, whose role may not edit the Schedule, is told nothing');
+
+-- 5. The notice is the follow-up; the rows nobody read are gone, and the
 -- notification check finds its producer and template.
 select ok(
   to_regclass('public.employee_offboarding_followups') is null
