@@ -1,7 +1,7 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
-import { rpcFailure } from "../http-error";
+import { replyWithError, rpcFailure } from "../http-error";
 import { registerNotificationSettingsRoutes } from "./notification-settings-routes";
 import type { NotificationSettingsService } from "./notification-settings-service";
 
@@ -172,6 +172,63 @@ describe("notification settings routes", () => {
     });
 
     expect(response.statusCode).toBe(409);
+  });
+
+  // BL-1049: the stale policy and the stale personal preference each pass the
+  // database's key on, so the screens stop reading "stale" out of the sentence.
+  it.each([
+    {
+      reason: "notification.policy_changed",
+      message: "notification policy stale version",
+      url: `/v1/workspaces/${workspaceId}/notification-settings`,
+      payload: {
+        type_key: "schedule.published",
+        schema_version: 1,
+        scope: { kind: "global", id: null },
+        expected_version: 2,
+        enabled: true,
+        allowed_channels: ["in_app"],
+        cadence: "immediate",
+        reason: "Resume organization delivery",
+      },
+    },
+    {
+      reason: "notification.preference_changed",
+      message: "stale notification preference version",
+      url: `/v1/workspaces/${workspaceId}/me/notification-preferences`,
+      payload: {
+        updates: [
+          {
+            preference_scope: "category",
+            scope_key: "schedule",
+            channel_preferences: { in_app: "disabled" },
+            cadence: null,
+            timezone: "America/Los_Angeles",
+            quiet_hours: null,
+            safe_preview_enabled: true,
+            expected_version: 3,
+          },
+        ],
+      },
+    },
+  ])("passes the database's $reason key on with the 409", async ({ reason, message, url, payload }) => {
+    const refuse = async () => {
+      throw rpcFailure({ message, code: "PT409", hint: reason });
+    };
+    const app = build({
+      save: refuse,
+      saveUserPreferences: refuse,
+    } as unknown as NotificationSettingsService);
+    app.setErrorHandler(replyWithError);
+    const response = await app.inject({
+      method: "PATCH",
+      url,
+      headers: { authorization: "Bearer valid-token" },
+      payload,
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: message, reason });
   });
 
   it("supports category resets for writers", async () => {
