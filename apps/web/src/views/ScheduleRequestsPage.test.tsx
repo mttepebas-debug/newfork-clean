@@ -434,15 +434,24 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
     expect(screen.queryByRole("navigation", { name: "Shift change queues" })).toBeNull();
   });
-  // A notification link to a case the core no longer hands this manager:
-  // Requests asks for that one case and stays the list (BL-1024).
-  it("keeps the Requests list for a link to a case the core does not hand back", async () => {
+  // A notification link to a case the core no longer hands this manager (a
+  // closed location, a narrower scope): Requests says so in its own empty
+  // state, where the table was, and one button brings the list back (BL-1024;
+  // Mert, 2026-10-12: variant D and its sentence).
+  it("says a request is no longer available in place of the table, then brings the list back", async () => {
     const caseId = "97500000-0000-4000-8000-000000000001";
     renderPage(`/app/schedule/requests?case=${caseId}`);
     await waitFor(() => expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId })));
-    await screen.findByRole("group", { name: "Request type" });
+    await screen.findByRole("heading", { name: "Request unavailable" });
+    expect(screen.getByText("This request is no longer available.")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
-    expect(screen.queryByText("Request unavailable")).toBeNull();
+    // Tabs and filters stay: the page is still Requests.
+    expect(screen.getByRole("group", { name: "Request type" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show all requests" }));
+    await screen.findByRole("row", { name: /Alex Kim/ });
+    expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
+    expect(screen.getByLabelText("Current URL").textContent).not.toContain("case=");
   });
   it("keeps a time off reader to time off: no request type tabs, no shift change list asked for", async () => {
     activeContext = { ...context, permissions: ["workspace.read", "schedule.time_off_requests.read"], actions: ["workspace.read", "requests.read"] };

@@ -7,7 +7,7 @@ import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Check, RotateCcw, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Check, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { TimeOffShorten } from "./TimeOffShorten";
 import { TimeOffReview } from "./TimeOffReview";
@@ -285,6 +285,10 @@ function ScheduleRequestsPageContent() {
   const failed = Boolean(data.failure);
   // One group to read needs no tabs: All would say the same thing.
   const tabs = requestTabsFor(allowedTypes);
+  // A link to a case the core does not hand back (its location closed, or no
+  // longer this manager's): Requests' own empty state says so where the table
+  // was (BL-1024; Mert, 2026-10-12).
+  const caseMissing = Boolean(caseId && !openCase && !listedCase && (caseRead.isSuccess || caseRead.isError));
 
   return (
     <section
@@ -361,40 +365,57 @@ function ScheduleRequestsPageContent() {
         </div>
       </div>
 
-      <div className="employee-table-wrap requests-table-wrap">
-        {/* Three reads make one list: it is drawn once all of them answered. */}
-        <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
-        <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
-        {loading ? <p className="settings-state">Loading requests...</p> : null}
-        {!loading && failed ? (
-          <div className="catalog-table-empty" role="alert">
+      {caseMissing ? (
+        <div className="employee-table-wrap requests-table-wrap">
+          <div className="catalog-table-empty" role="status">
             <span className="catalog-table-empty-icon" aria-hidden>
-              <AlertTriangle size={22} />
+              <ArrowLeftRight size={22} />
             </span>
-            <h2>Requests could not load</h2>
-            <p>Check your connection and try again.</p>
-            <button type="button" className="nf-button secondary" onClick={data.retry}>
-              <RotateCcw size={16} aria-hidden /> Try again
+            <h2>Request unavailable</h2>
+            <p>This request is no longer available.</p>
+            <button type="button" className="nf-button secondary" onClick={closeCase}>
+              Show all requests
             </button>
           </div>
-        ) : null}
-        {!loading && !failed && !page.rows.length ? (
-          <div className="catalog-table-empty">
-            <span className="catalog-table-empty-icon" aria-hidden>
-              <Check size={22} />
-            </span>
-            <h2>No requests</h2>
-            <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
+        </div>
+      ) : (
+        <>
+          <div className="employee-table-wrap requests-table-wrap">
+            {/* Three reads make one list: it is drawn once all of them answered. */}
+            <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
+            <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
+            {loading ? <p className="settings-state">Loading requests...</p> : null}
+            {!loading && failed ? (
+              <div className="catalog-table-empty" role="alert">
+                <span className="catalog-table-empty-icon" aria-hidden>
+                  <AlertTriangle size={22} />
+                </span>
+                <h2>Requests could not load</h2>
+                <p>Check your connection and try again.</p>
+                <button type="button" className="nf-button secondary" onClick={data.retry}>
+                  <RotateCcw size={16} aria-hidden /> Try again
+                </button>
+              </div>
+            ) : null}
+            {!loading && !failed && !page.rows.length ? (
+              <div className="catalog-table-empty">
+                <span className="catalog-table-empty-icon" aria-hidden>
+                  <Check size={22} />
+                </span>
+                <h2>No requests</h2>
+                <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </div>
-      <ListPagination
-        total={page.total}
-        page={page.page}
-        pageSize={view.pageSize}
-        onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
-        onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
-      />
+          <ListPagination
+            total={page.total}
+            page={page.page}
+            pageSize={view.pageSize}
+            onPageChange={(next) => setView({ page: next > 1 ? String(next) : null })}
+            onPageSizeChange={(size) => setView({ size: size === 50 ? null : String(size), page: null })}
+          />
+        </>
+      )}
 
       {selected && (
         <CatalogDrawer
