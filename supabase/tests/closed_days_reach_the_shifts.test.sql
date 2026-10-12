@@ -237,7 +237,7 @@ select is(pg_temp.notices('ali', tests.id('c:post:monday')),
   array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | You''re off the 9:00 AM–5:00 PM shift; it''s now open for others'],
   'B1: Ali hears once: Kadikoy is closed, and he is off his shift');
 select is(pg_temp.notices('emre', tests.id('c:post:monday')),
-  array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | Your 1:00–5:00 PM shift was removed'],
+  array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | Your 1:00 PM–5:00 PM shift was removed'],
   'B1: Emre hears once that his shift was removed');
 select is(pg_temp.notices('can', tests.id('c:post:monday')),
   array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | Inventory closed'],
@@ -476,7 +476,7 @@ select is((select to_char(p.start_time, 'HH24:MI') || '-' || to_char(p.end_time,
 select ok(not pg_temp.published('dina_w3'), 'V3: Dina''s shift after closing is removed by default');
 select is(pg_temp.holder('can_w3'), tests.id('c:can'), 'V3: Can''s was never in question');
 select is(pg_temp.notices('ali', tests.id('c:post:short')),
-  array['Kadikoy has short hours on ' || pg_temp.day_text(tests.week(3)) || ' (10:00 AM–3:00 PM) | Your shift is now 12:00–3:00 PM'],
+  array['Kadikoy has short hours on ' || pg_temp.day_text(tests.week(3)) || ' (10:00 AM–3:00 PM) | Your shift is now 12:00 PM–3:00 PM'],
   'B1: Ali hears that Kadikoy has short hours and his shift''s new hours');
 select is((select jsonb_build_object('kind', c.kind, 'all_day', c.is_all_day, 'opens', c.opens, 'closes', c.closes)
            from public.schedule_closures c where c.announcement_id = tests.id('c:post:short')),
@@ -544,6 +544,14 @@ select ok(pg_temp.read_shift('ali_tue') -> 'warning_codes' ? 'availability', 'K1
 select is(pg_temp.read_shift('ali_tue') ->> 'availability_changed_after_publish', 'true',
   'K18: and that it came after publishing');
 select is(pg_temp.holder('ali_tue'), tests.id('c:ali'), 'K18: the shift itself stays his');
+
+-- Both ends name their half, even on the same side of noon (Mert, 2026-10-12).
+select is(app_private.announcement_hours_text('16:00', '22:00', '12h'), '4:00 PM–10:00 PM',
+  'Hours: a 12h workspace writes AM/PM on both ends');
+select is(app_private.announcement_hours_text('00:30', '08:00', '12h'), '12:30 AM–8:00 AM',
+  'Hours: the morning too');
+select is(app_private.announcement_hours_text('16:00', '22:00', '24h'), '16:00–22:00',
+  'Hours: a 24h workspace writes no AM/PM');
 
 select * from finish();
 rollback;

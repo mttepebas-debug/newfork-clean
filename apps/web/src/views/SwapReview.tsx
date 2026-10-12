@@ -76,7 +76,7 @@ function ShiftCard({ shift, from, to, boxes, timeFormat }: {
         <MapPin size={12} aria-hidden />
         <span className="swap-review-place-name">{shift.location_name}</span>
       </span>
-      <span>{shift.start_time && shift.end_time ? clockRange(shift.start_time, shift.end_time, timeFormat, { bothHalves: true }) : "Hours not set"}</span>
+      <span>{shift.start_time && shift.end_time ? clockRange(shift.start_time, shift.end_time, timeFormat, { spaced: true }) : "Hours not set"}</span>
       <span className="swap-review-hand">
         {from} <i aria-hidden>→</i> {to}
       </span>
