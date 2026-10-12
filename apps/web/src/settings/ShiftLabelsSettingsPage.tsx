@@ -6,14 +6,14 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Tags, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { JobColorInput } from "./JobCatalogEditor";
 import "./jobs-settings.css";
-import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { errorText } from "./GeneralSettingsPage";
 import { isGoneMeanwhile } from "../lib/catalog-refusals";
-import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
+import { ShiftCatalogHeader, ShiftCatalogToolbar } from "./ShiftCatalogTabs";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { ShiftCatalogList } from "./ShiftCatalogList";
 import {
@@ -47,7 +47,6 @@ export default function ShiftLabelsSettingsPage() {
     queryFn: () => listShiftLabels(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<ShiftLabel | "new" | null>(null);
   const [draft, setDraft] = useState<ShiftLabelInput>(defaultDraft);
   const [formError, setFormError] = useState<string | null>(null);
@@ -135,19 +134,11 @@ export default function ShiftLabelsSettingsPage() {
   if (isNoAccess(query.error))
     return (
       <section
-        className="settings-page jobs-settings-page shift-catalog-settings-page"
+        className="settings-page jobs-settings-page shift-catalog-settings-page list-page"
         aria-labelledby="shift-labels-settings-title"
       >
-        <SettingsHeader
-          icon={<Tags size={21} aria-hidden />}
-          title="Shift labels"
-          description="Reusable badge tags such as Training, Close, Expo, or Lead Server."
-          action={
-            <div className="shift-catalog-header-actions">
-              <ShiftCatalogTabs />
-            </div>
-          }
-        />
+        <ShiftCatalogHeader titleId="shift-labels-settings-title" />
+        <ShiftCatalogToolbar />
         <NoAccessState
           subject="shift labels"
           homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-labels")}
@@ -156,33 +147,13 @@ export default function ShiftLabelsSettingsPage() {
     );
   return (
     <section
-      className="settings-page jobs-settings-page shift-catalog-settings-page"
+      className="settings-page jobs-settings-page shift-catalog-settings-page list-page"
       aria-labelledby="shift-labels-settings-title"
     >
-      <SettingsHeader
-        icon={<Tags size={21} aria-hidden />}
-        title="Shift labels"
-        description="Reusable badge tags such as Training, Close, Expo, or Lead Server."
-        action={
-          <div className="shift-catalog-header-actions">
-            <ShiftCatalogTabs
-              disabled={saveMutation.isPending || deleteLocked}
-            />
-            <Button
-              className="job-primary-button"
-              type="button"
-              disabled={!canEdit || saveMutation.isPending || deleteLocked}
-              onClick={() => openEditor()}
-            >
-              <Plus size={16} aria-hidden />
-              Add shift label
-            </Button>
-          </div>
-        }
-      />
+      <ShiftCatalogHeader titleId="shift-labels-settings-title" />
       {editing ? (
         <CatalogDrawer
-          label={editing === "new" ? "Add shift label" : `Edit ${editing.name}`}
+          label={editing === "new" ? "New shift label" : `Edit ${editing.name}`}
           className="shift-catalog-settings-page"
           onClose={() => setEditing(null)}
           busy={saveMutation.isPending || deleteLocked}
@@ -191,7 +162,7 @@ export default function ShiftLabelsSettingsPage() {
             className="job-catalog-editor"
             onSubmit={submit}
             aria-label={
-              editing === "new" ? "Add shift label" : `Edit ${editing.name}`
+              editing === "new" ? "New shift label" : `Edit ${editing.name}`
             }
           >
             <div className="job-editor-title">
@@ -284,24 +255,31 @@ export default function ShiftLabelsSettingsPage() {
           </form>
         </CatalogDrawer>
       ) : null}
-      {!editing && formError ? (
-        <p className="settings-state error" role="alert">
-          {formError}
-        </p>
-      ) : null}
-      {query.isLoading ? (
-        <p className="settings-state">Loading shift labels...</p>
-      ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
-      ) : null}
-      {!query.isLoading && !query.error && (
+      {query.isLoading || query.error ? (
+        <>
+          <ShiftCatalogToolbar disabled={saveMutation.isPending || deleteLocked} />
+          {query.isLoading ? (
+            <p className="settings-state">Loading shift labels...</p>
+          ) : (
+            <p className="settings-state error" role="alert">
+              {errorText(query.error)}
+            </p>
+          )}
+        </>
+      ) : (
         <ShiftCatalogList
           items={items}
-          showArchived={showArchived}
-          onArchivedChange={setShowArchived}
+          canEdit={canEdit}
+          onAdd={() => openEditor()}
+          addDisabled={saveMutation.isPending || deleteLocked}
+          tabsDisabled={saveMutation.isPending || deleteLocked}
+          notice={
+            !editing && formError ? (
+              <p className="settings-state error" role="alert">
+                {formError}
+              </p>
+            ) : null
+          }
           onEdit={openEditor}
           onMove={move}
           onArchive={(item) =>

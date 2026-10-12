@@ -11,7 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ShiftType } from "@newfork/shared";
 import ShiftTypesSettingsPage from "./ShiftTypesSettingsPage";
 import { MemoryRouter } from "react-router";
-import { listShiftTypes, saveShiftType } from "./organization-data";
+import {
+  listShiftTypes,
+  saveShiftType,
+  setShiftTypeArchived,
+} from "./organization-data";
 const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const type: ShiftType = {
   id: "afa60000-0000-4000-8000-000000000001",
@@ -25,13 +29,14 @@ const type: ShiftType = {
   sort_order: 0,
   archived_at: null,
 };
+const auth = vi.hoisted(() => ({ manage: true }));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       workspace: { id: workspace },
       permissions: [
         "settings.shift_catalog.read",
-        "settings.shift_catalog.manage",
+        ...(auth.manage ? ["settings.shift_catalog.manage"] : []),
       ],
     },
   }),
@@ -44,6 +49,7 @@ vi.mock("./organization-data", () => ({
 }));
 beforeEach(() => {
   vi.clearAllMocks();
+  auth.manage = true;
   vi.mocked(listShiftTypes).mockResolvedValue([type]);
   vi.mocked(saveShiftType).mockResolvedValue();
 });
@@ -214,7 +220,7 @@ describe("shift type default review", () => {
       screen.getByRole("button", { name: "Discard draft and reload latest" }),
     );
     await waitFor(() => expect(listShiftTypes).toHaveBeenCalledTimes(2));
-    fireEvent.click(screen.getByRole("button", { name: "Add shift type" }));
+    fireEvent.click(screen.getByRole("button", { name: "New shift type" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Dinner" },
     });
@@ -246,7 +252,7 @@ describe("shift type default review", () => {
     ).toBe(true);
     expect(
       screen
-        .getByRole("button", { name: "Add shift type" })
+        .getByRole("button", { name: "New shift type" })
         .hasAttribute("disabled"),
     ).toBe(true);
     resolve();
@@ -281,5 +287,140 @@ describe("shift type default review", () => {
         screen.queryByRole("heading", { name: "Edit shift type" }),
       ).toBeNull(),
     );
+  });
+});
+
+// Shift catalog, design A (Mert 2026-10-12): the shared list language.
+describe("shift catalog list", () => {
+  function renderList() {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <MemoryRouter initialEntries={["/app/settings/scheduling/shift-types"]}>
+        <QueryClientProvider client={client}>
+          <ShiftTypesSettingsPage />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+  }
+  const close: ShiftType = {
+    ...type,
+    id: "afa60000-0000-4000-8000-000000000002",
+    name: "Close",
+    default_start_time: "22:30",
+    default_end_time: "02:00",
+    crosses_midnight: true,
+    sort_order: 1,
+  };
+  const brunch: ShiftType = {
+    ...type,
+    id: "afa60000-0000-4000-8000-000000000003",
+    name: "Brunch",
+    sort_order: 2,
+    archived_at: "2026-10-01T12:00:00Z",
+  };
+
+  it("heads the page Shift catalog with its tabs, a full search and New at the end", async () => {
+    const { container } = renderList();
+    await screen.findByRole("button", { name: "Edit Lunch" });
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Shift catalog",
+    );
+    expect(container.querySelector(".catalog-page-eyebrow")?.textContent).toBe(
+      "SETTINGS",
+    );
+    expect(container.querySelector("section")?.classList).toContain(
+      "list-page",
+    );
+    expect(
+      screen.getByRole("tab", { name: "Shift types" }).getAttribute(
+        "aria-selected",
+      ),
+    ).toBe("true");
+    const filterRow = container.querySelector(".catalog-toolbar-filter-row");
+    expect(filterRow?.querySelector("input")?.getAttribute("aria-label")).toBe(
+      "Search shift types",
+    );
+    expect(filterRow?.lastElementChild?.textContent).toBe("New shift type");
+    // No status filter and no "Show archived" box (Mert: "dropdown filtreyi kaldır").
+    expect(container.querySelector("select")).toBeNull();
+    expect(screen.queryByText("Show archived")).toBeNull();
+    expect(container.querySelector(".catalog-page-actions")).toBeNull();
+  });
+
+  it("closes the list with archived types, marked Archived and restorable", async () => {
+    vi.mocked(listShiftTypes).mockResolvedValue([brunch, type, close]);
+    vi.mocked(setShiftTypeArchived).mockResolvedValue(undefined);
+    renderList();
+    await screen.findByRole("button", { name: "Edit Brunch" });
+    const names = [
+      ...document.querySelectorAll(".job-catalog-row .job-row-name"),
+    ].map((name) => name.textContent);
+    expect(names).toEqual(["Lunch", "Close", "Brunch"]);
+    const archivedRow = screen
+      .getByRole("button", { name: "Edit Brunch" })
+      .closest(".job-catalog-row")!;
+    expect(archivedRow.getAttribute("data-archived")).toBe("true");
+    expect(archivedRow.textContent).toContain("Archived");
+    fireEvent.click(screen.getByRole("button", { name: "Actions for Brunch" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore Brunch" }));
+    await waitFor(() =>
+      expect(setShiftTypeArchived).toHaveBeenCalledWith(
+        workspace,
+        brunch.id,
+        false,
+      ),
+    );
+  });
+
+  it("keeps archived types last under a column sort", async () => {
+    vi.mocked(listShiftTypes).mockResolvedValue([type, close, brunch]);
+    renderList();
+    await screen.findByRole("button", { name: "Edit Brunch" });
+    fireEvent.click(screen.getByRole("button", { name: "Sort by Shift type" }));
+    const names = [
+      ...document.querySelectorAll(".job-catalog-row .job-row-name"),
+    ].map((name) => name.textContent);
+    expect(names).toEqual(["Close", "Lunch", "Brunch"]);
+  });
+
+  it("writes the phone card line with the hours and their length", async () => {
+    vi.mocked(listShiftTypes).mockResolvedValue([type, close]);
+    renderList();
+    await screen.findByRole("button", { name: "Edit Close" });
+    const lines = [
+      ...document.querySelectorAll(".shift-catalog-card-line"),
+    ].map((line) => line.textContent);
+    expect(lines).toEqual([
+      "12:00 PM – 4:00 PM · 4 h",
+      "10:30 PM – 2:00 AM · Ends next day · 3 h 30 min",
+    ]);
+  });
+
+  it("says the catalog is empty, and that a search found nothing", async () => {
+    vi.mocked(listShiftTypes).mockResolvedValue([]);
+    const first = renderList();
+    expect(
+      await screen.findByRole("heading", { name: "No shift types yet" }),
+    ).toBeTruthy();
+    first.unmount();
+    vi.mocked(listShiftTypes).mockResolvedValue([type]);
+    renderList();
+    await screen.findByRole("button", { name: "Edit Lunch" });
+    fireEvent.change(screen.getByLabelText("Search shift types"), {
+      target: { value: "brunch" },
+    });
+    expect(
+      screen.getByRole("heading", { name: "No shift types match your search." }),
+    ).toBeTruthy();
+  });
+
+  it("shows a reader the list without New or row actions", async () => {
+    auth.manage = false;
+    renderList();
+    await screen.findByRole("button", { name: "Edit Lunch" });
+    expect(screen.queryByRole("button", { name: "New shift type" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Actions for Lunch" })).toBeNull();
   });
 });
