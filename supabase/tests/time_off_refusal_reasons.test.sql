@@ -102,5 +102,15 @@ select is(pg_temp.refusal(format($$select public.request_time_off_cancellation_s
    tests.user('tor:ali'), tests.id('tor'), tests.id('tor:ali:time_off'), (select revision from leave), (select periods from leave), (select key from cancel))),
  'PT409 time_off.request_reused', 'a cancellation key sent again with another note is a standing no');
 
+-- A manager's shortening key sent again with another note is a standing no too.
+create temp table cut as select gen_random_uuid() key;
+create function pg_temp.shorten(note text) returns jsonb language sql as $$
+ select public.shorten_time_off_service(tests.user('tor:mia'), tests.id('tor'), tests.id('tor:ali:time_off'),
+  (select revision from leave), (select periods from leave), note, (select key from cut))
+$$;
+select pg_temp.shorten('Covering a sick call');
+select is(pg_temp.refusal($$select pg_temp.shorten('Another note')$$),
+ 'PT409 time_off.request_reused', 'a shortening key sent again with another note is a standing no');
+
 select * from finish();
 rollback;
