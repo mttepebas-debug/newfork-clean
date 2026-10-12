@@ -67,6 +67,7 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest("[data-schedule-employee-card-trigger='true']") ||
     target.closest("[data-schedule-top-bar]") ||
     target.closest("[data-schedule-filter-command-strip]") ||
+    target.closest("[data-schedule-horizontal-nav]") ||
     target.closest(".schedule-topbar-dismiss-layer") ||
     target.closest("[data-topbar-filter-content]") ||
     target.closest("[data-shift-quick-editor-content]") ||
@@ -95,6 +96,8 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
     [
       "[data-schedule-top-bar]",
       "[data-schedule-filter-command-strip]",
+      // Mert, 2026-10-12: the bottom navigation bar only scrolls the grid.
+      "[data-schedule-horizontal-nav]",
       ".schedule-topbar-dismiss-layer",
       "[data-topbar-filter-content]",
       "[data-shift-quick-editor-content]",
@@ -207,6 +210,7 @@ export function isSchedulePreviewFocusedShiftBlankDismissTarget(
       "[data-schedule-day-header-content='true']",
       "[data-schedule-top-bar]",
       "[data-schedule-filter-command-strip]",
+      "[data-schedule-horizontal-nav]",
       "[role='menu']",
       "[role='toolbar']",
       SCHEDULE_WINDOW_SELECTOR,
