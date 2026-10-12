@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 466, last: 20261012043000_availability_lists_employees_and_quiet_resaves.sql
--- fingerprint: sha256:6db18a7f1287d38c2dcf06f61bcb800d226b096948814742e342dd4f61bea8b2
+-- fingerprint: sha256:e0f24a50dac307600bed15d7c61cdf24acd9bd942fa4a9c86a76ed8e1c7845ed
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -27795,8 +27795,12 @@ begin
   join public.workspace_scheduling_settings s on s.workspace_id=e.workspace_id
   left join public.employee_weekly_preferences p on p.workspace_id=e.workspace_id and p.employee_id=e.id
   -- Only an employee enters availability (M13): nobody ranking above one is
-  -- listed, nor counted as a week not submitted (KK-178).
-  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id) and (
+  -- listed, nor counted as a week not submitted (KK-178). Somebody not joined
+  -- yet has no account to rank by: the role they were last invited with says.
+  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id)
+   and (e.user_id is not null or coalesce((select app_private.authz_rank(r.access_class)=app_private.authz_rank('employee')
+    from public.employee_invitations i join public.workspace_roles r on r.id=i.role_id and r.workspace_id=i.workspace_id
+    where i.workspace_id=w and i.employee_id=e.id order by i.created_at desc,i.id desc limit 1),true)) and (
    exists(select 1 from public.employee_location_assignments a join scope l on l.id=a.location_id
     where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)
    or (not exists(select 1 from public.employee_location_assignments a where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)

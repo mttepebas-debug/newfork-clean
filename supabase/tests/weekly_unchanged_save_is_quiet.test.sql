@@ -57,6 +57,8 @@ select ok((select payload->'recipient_user_ids' @> jsonb_build_array(f.owner_id,
 select is((pg_temp.save(open_week)->'model'->'employee'->>'revision'),'2','an unchanged week still saves') from wq_week;
 select is(pg_temp.told(),1::bigint,'an unchanged save tells nobody');
 select is((select count(*) from public.weekly_preference_events e join wq_fixture f on e.workspace_id=f.w),2::bigint,'the history keeps the unchanged save');
+select is((select count(*) from public.employee_events e join wq_fixture f on e.workspace_id=f.w and e.employee_id=f.emp
+ where e.summary='Weekly availability updated. Week confirmed.'),2::bigint,'and the person''s history says the week was confirmed again');
 
 -- 3. A changed day is news again, and says which day.
 select is((pg_temp.save(tuesday_evening)->'model'->'employee'->>'revision'),'3','a changed week saves') from wq_week;

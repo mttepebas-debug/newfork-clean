@@ -3,7 +3,7 @@
 --   BL-789  the team list showed managers, admins and the owner with a working
 --           employee record, always as "Not submitted", and counted them in
 --           "N employees". Only people who rank as employees are listed now;
---           somebody not yet joined (no account) still ranks as one.
+--           somebody not yet joined ranks by the role they were invited with.
 --   BL-790  a save that changed no day sent every manager, admin and the owner
 --           an "Availability updated · Week confirmed." notification. Only the
 --           first save of a week, or a save that changes a day, tells them now.
@@ -35,8 +35,12 @@ $patch$;
 select pg_temp.patch('public.weekly_team_read_service(uuid,uuid)', array[
   E'  where e.workspace_id=w and e.archived_at is null and (\n',
   E'  -- Only an employee enters availability (M13): nobody ranking above one is\n'
-  || E'  -- listed, nor counted as a week not submitted (KK-178).\n'
-  || E'  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id) and (\n', '1'
+  || E'  -- listed, nor counted as a week not submitted (KK-178). Somebody not joined\n'
+  || E'  -- yet has no account to rank by: the role they were last invited with says.\n'
+  || E'  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id)\n'
+  || E'   and (e.user_id is not null or coalesce((select app_private.authz_rank(r.access_class)=app_private.authz_rank(''employee'')\n'
+  || E'    from public.employee_invitations i join public.workspace_roles r on r.id=i.role_id and r.workspace_id=i.workspace_id\n'
+  || E'    where i.workspace_id=w and i.employee_id=e.id order by i.created_at desc,i.id desc limit 1),true)) and (\n', '1'
 ]);
 
 select pg_temp.patch('public.weekly_preferences_save_service(uuid,uuid,jsonb,uuid)', array[
