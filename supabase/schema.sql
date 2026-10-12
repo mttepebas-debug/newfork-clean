@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 465, last: 20261011221500_document_and_availability_refusals_say_why.sql
--- fingerprint: sha256:aae53f370324a0ee6d37485ec8d1ef298f48e49c73c60da1f9dd11bad1f8b4ab
+-- migrations: 466, last: 20261012024500_role_and_notification_refusals_say_why.sql
+-- fingerprint: sha256:0974d91c33bd2e0b3ab3c0dec9ff41141637c460686c0afdf5bec9fa932bf38b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -9713,7 +9713,7 @@ begin
  if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501'; end if;
  select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
  if target.system_key is not null then raise exception 'Built-in roles cannot be deleted' using errcode='42501'; end if;
- if exists(select 1 from public.workspace_memberships where role_id=target_role_id) or exists(select 1 from public.employee_invitations where role_id=target_role_id) or exists(select 1 from public.employee_access_snapshots where role_id=target_role_id) then raise exception 'Role has member or invitation references. Resolve these dependencies before deleting.' using errcode='PT409'; end if;
+ if exists(select 1 from public.workspace_memberships where role_id=target_role_id) or exists(select 1 from public.employee_invitations where role_id=target_role_id) or exists(select 1 from public.employee_access_snapshots where role_id=target_role_id) then raise exception 'Role has member or invitation references. Resolve these dependencies before deleting.' using errcode='PT409',hint='role.in_use'; end if;
  delete from public.workspace_roles where id=target_role_id;
  insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata) values(target_workspace_id,actor_user_id,'role.deleted','workspace_role',target_role_id::text,jsonb_build_object('name',target.name));
 end; $$;
@@ -22140,7 +22140,7 @@ begin
   if (existing.id is null and target_expected_version is not null)
     or (existing.id is not null and target_expected_version is null)
     or (existing.id is not null and existing.version <> target_expected_version) then
-    raise exception 'notification policy stale version' using errcode = 'PT409';
+    raise exception 'notification policy stale version' using errcode = 'PT409', hint = 'notification.policy_changed';
   end if;
 
   if existing.id is null then
@@ -22346,7 +22346,7 @@ begin
 
     if existing.id is not null then
       if expected_version is null or existing.version <> expected_version then
-        raise exception 'stale notification preference version' using errcode = 'PT409';
+        raise exception 'stale notification preference version' using errcode = 'PT409', hint = 'notification.preference_changed';
       end if;
       update public.notification_user_preferences
       set channel_preferences = existing.channel_preferences || requested_channel_preferences,
@@ -23064,7 +23064,7 @@ begin
  select role into actor_class from public.workspace_memberships where user_id=actor_user_id and workspace_id=target_workspace_id and status='active';
  if target_role_id is not null then
   select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
-  if expected_updated_at is null or expected_updated_at<>target.updated_at then raise exception 'Role changed since you opened it. Reload before saving.' using errcode='PT409'; end if;
+  if expected_updated_at is null or expected_updated_at<>target.updated_at then raise exception 'Role changed since you opened it. Reload before saving.' using errcode='PT409',hint='role.changed'; end if;
   if role_access_class<>target.access_class then raise exception 'Existing role experience cannot change' using errcode='22023'; end if;
  elsif role_access_class not in ('manager','employee') then raise exception 'Custom roles require a manager or employee experience' using errcode='42501'; end if;
  if role_name is null or char_length(btrim(role_name)) not between 1 and 64 or char_length(coalesce(role_description,''))>240 then raise exception 'Valid role details required' using errcode='22023'; end if;
