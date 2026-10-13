@@ -157,22 +157,6 @@
   color: var(--theme-warning);
 }
 
-/* Announcements › Important Dates. */
-.announcement-crumb {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--theme-muted-strong);
-  font-size: 13px;
-}
-.announcement-crumb a {
-  color: var(--theme-accent);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
 /* What an employee reads: one row per post. */
 .announcement-reader-list {
   border: 1px solid var(--theme-list-frame);

@@ -802,7 +802,7 @@ describe("What an employee reads (EKRAN-08)", () => {
 });
 
 describe("Important Dates (EKRAN-08)", () => {
-  it("lists published dates in calendar order under Announcements, past ones on their own tab", async () => {
+  it("lists published dates in calendar order, past ones on their own tab, with no breadcrumb on top", async () => {
     const dated = (id: string, title: string, starts_on: string, display_status: "published" | "past", locations = [] as ReturnType<typeof loc>[]) =>
       record({
         id,
@@ -837,7 +837,9 @@ describe("Important Dates (EKRAN-08)", () => {
         .map((row) => row.querySelector(".important-date-title")?.firstChild?.textContent);
     expect(titles()).toEqual(["Thanksgiving", "Christmas"]);
     expect(within(table).getByText("Downtown closed")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Announcements" }).getAttribute("href")).toBe("/app/announcements");
+    // No "Announcements › Important Dates" line on top (Mert 2026-10-13).
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Announcements" })).toBeNull();
     expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
     // The phone's cards: same order; the days, then the kind and what that day means.
     const cards = () =>
