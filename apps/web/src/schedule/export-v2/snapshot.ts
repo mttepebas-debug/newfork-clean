@@ -12,6 +12,7 @@ import { filterScheduleModel } from "../lib/scheduleFilterModel";
 import { createScheduleGridDays } from "../lib/scheduleGridLayout";
 import { createScheduleGridViewModel } from "../lib/scheduleGridViewModel";
 import { buildScheduleHourTotalValue, formatHourTotalValue } from "../lib/scheduleHourTotals";
+import { isPendingRemovalShift } from "../lib/scheduleShiftMetadata";
 
 export type ExportSource =
   | { readonly kind: "draft"; readonly id: string; readonly revision: number; readonly name: string }
@@ -113,7 +114,10 @@ export function createScheduleExportSnapshot(input: {
   if (!input.source || !input.requestedSourceKey || input.requestedSourceKey !== input.resolvedSourceKey) {
     return { status: "blocked", reason: "source" };
   }
-  const { model, display } = input;
+  const { display } = input;
+  // A shift the open edit removes is not part of the schedule being handed out:
+  // it leaves the paper and the hour totals, even where the grid still shows it struck through.
+  const model = { ...input.model, shifts: input.model.shifts.filter(shift => !isPendingRemovalShift(shift)) };
   const filtered = filterScheduleModel(createSortedScheduleModel(model, display.employeeSortMode), input.search);
   if (!filtered.locations.length) return { status: "blocked", reason: "locations" };
   const missing = filtered.locations.filter(location => !locationShortNameSchema.safeParse(location.short_name).success);
