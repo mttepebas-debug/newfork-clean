@@ -6103,25 +6103,33 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-cell[data-availability-kind="time_off"] {
   background-color: var(--theme-time-off-soft);
 }
+/* The thin red edge is always there (Mert, 2026-10-13). It is an outline
+   inside :where(), so any drop colour a dragged shift brings replaces it. */
+.schedule-cell:where([data-availability-kind="time_off"]) {
+  outline: 1px solid color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+  outline-offset: -1px;
+}
 .schedule-cell[data-availability-kind="time_off"]:not(:has(.schedule-shift-badge))::before {
   content: "Time off";
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  color: var(--theme-danger-text);
+  color: var(--theme-text);
   font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   pointer-events: none;
 }
-/* Hover and drag over time off (Mert, 2026-10-09, item 16 A "calm"): a darker
-   edge and darker words on hover; while a shift is dragged over it, the red
-   frame stays and one line under the words says why it will not land. The
-   part-day "Add shift" layer covers the words instead of printing over them. */
-.schedule-cell[data-availability-kind="time_off"]:hover {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+/* Hover and drag over time off: the black words turn red under the mouse
+   (Mert, 2026-10-13); while a shift is dragged over it, the red frame stays
+   and one line under the words says why it will not land (Mert, 2026-10-09,
+   item 16). The part-day "Add shift" layer covers the words instead of
+   printing over them. */
+/* Editing gives an empty cell a cream hover; time off keeps its own colour. */
+.schedule-cell[data-editing="true"][data-availability-kind="time_off"]:hover {
+  background-color: var(--theme-time-off-soft);
 }
 .schedule-cell[data-availability-kind="time_off"]:hover::before {
   color: var(--theme-danger-strong);
