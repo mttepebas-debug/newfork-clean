@@ -95,7 +95,7 @@ function SourceTable({ result, canManageLocations }: ExportSettingsPanelProps) {
         <strong>Add location short names before exporting.</strong>
         <span>{result.locationNames?.join(", ")}</span>
         {canManageLocations ? <Link to="/app/settings/locations">Open Location Settings</Link> : <span>Ask a workspace manager to add them.</span>}
-      </> : <span>{result.reason === "edit" ? "Save a draft to export this schedule." : result.reason === "locations" ? "No locations are available to export." : "Waiting for the current preview…"}</span>}
+      </> : <span>{result.reason === "locations" ? "No locations are available to export." : "Waiting for the current preview…"}</span>}
     </div>;
   }
   const { source, dates, locations, rows, shifts } = result.snapshot;
@@ -103,7 +103,8 @@ function SourceTable({ result, canManageLocations }: ExportSettingsPanelProps) {
   const employees = rows.filter(row => row.id !== null).length;
   const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
   const cells: [string, ReactNode][] = [
-    ["Source", <span className={`export-v2-state${source.kind === "draft" ? " is-draft" : ""}`}>{source.kind === "draft" ? `Draft · ${source.name}` : "Published"}</span>],
+    ["Source", <span className={`export-v2-state${source.kind === "published" ? "" : " is-draft"}`}>{
+      source.kind === "draft" ? `Draft · ${source.name}` : source.kind === "edit_session" ? "Editing · not saved" : "Published"}</span>],
     ["Range", `${first === last ? formatDateNumber(first) : `${formatDateNumber(first)} – ${formatDateNumber(last)}`}, ${new Date(`${last}T12:00:00Z`).getUTCFullYear()}`],
     ["Scope", `${plural(locations.length, "location")} · ${plural(employees, "employee")} · ${plural(shifts.length, "shift")}`],
   ];

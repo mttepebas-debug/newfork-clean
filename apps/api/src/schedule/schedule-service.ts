@@ -155,6 +155,12 @@ export interface ScheduleReadService {
     workspaceId: string,
     sessionId: string,
   ): Promise<ScheduleEditSession>;
+  /** Reads the person's own open edit without touching its lease (Export of what is on screen). */
+  getEditSession?(
+    actorUserId: string,
+    workspaceId: string,
+    sessionId: string,
+  ): Promise<ScheduleEditSession>;
   mutateShift(input: {
     actorUserId: string;
     workspaceId: string;
@@ -525,6 +531,18 @@ export function createScheduleReadService(options: {
     async heartbeat(actorUserId, workspaceId, sessionId) {
       const { data, error } = await client.rpc(
         "heartbeat_schedule_edit_session_service",
+        {
+          actor_user_id: actorUserId,
+          target_workspace_id: workspaceId,
+          target_session_id: sessionId,
+        },
+      );
+      if (error) throw rpcFailure(error);
+      return scheduleEditSessionSchema.parse(data);
+    },
+    async getEditSession(actorUserId, workspaceId, sessionId) {
+      const { data, error } = await client.rpc(
+        "get_schedule_edit_session_service",
         {
           actor_user_id: actorUserId,
           target_workspace_id: workspaceId,

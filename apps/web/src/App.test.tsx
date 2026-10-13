@@ -318,6 +318,19 @@ function scheduleFixtureForWeek(weekStart: string): ScheduleReadModel {
   };
 }
 
+/** An edit with unsaved work: leaving it asks to save first. */
+function unsavedEdit() {
+  const acquired = makeDefaultEditAcquireResult();
+  return { ...acquired, session: { ...acquired.session, dirty: true } };
+}
+/** The Save draft window (not the Publish menu): leaving an unsaved edit asks to save it first. */
+async function openSaveDraftWindow() {
+  fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+  fireEvent.click(within(
+    await screen.findByRole("alertdialog", { name: "Save changes before leaving?" }),
+  ).getByRole("button", { name: "Save draft" }));
+}
+
 async function openPublishedScheduleEditor(
   app: Pick<typeof screen, "findByRole" | "getByRole"> = screen,
 ) {
@@ -6443,42 +6456,24 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "Export settings" })).toBeTruthy();
   });
 
-  it("prompts Save draft for edit-mode Export, and cancellation keeps the working copy", async () => {
+  // Mert 2026-10-12: Export never asks for a save; while editing it exports the grid as it is now.
+  it("opens Export straight from an open edit, exports it unsaved and keeps editing", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
     await signInAs("owner");
     await openPublishedScheduleEditor();
     fireEvent.click(await screen.findByRole("button", { name: "Export" }));
-    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
-    expect(within(dialog).getByText(/Export is available in preview mode/)).toBeTruthy();
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
-    expect(authorizeScheduleExportV2).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    const panel = await screen.findByRole("region", { name: "Export settings" });
+    expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
+    await waitFor(() => expect(within(panel).getByText("Editing · not saved")).toBeTruthy());
+    await clickReadyButton(within(panel), "Download PDF");
+    await waitFor(() => expect(downloadExportFile).toHaveBeenCalledOnce());
+    const session = makeDefaultEditAcquireResult().session;
+    expect(authorizeScheduleExportV2).toHaveBeenCalledWith(scheduleFixture.workspace_id,
+      expect.objectContaining({ source: { kind: "edit_session", id: session.id, revision: session.revision } }), expect.anything());
+    expect(saveScheduleDraft).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
     expect(window.location.search).toContain("mode=edit");
-  });
-
-  it("opens Export v2 only after a successful Save draft and reads the saved preview", async () => {
-    const saved = { id: "99999999-9999-4999-8999-999999999999", workspace_id: scheduleFixture.workspace_id,
-      week_start: scheduleFixture.week_start, name: "Export draft", revision: 1,
-      created_by: "88888888-8888-4888-8888-888888888888", updated_by: "88888888-8888-4888-8888-888888888888",
-      created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:00:00Z" };
-    vi.mocked(saveScheduleDraft).mockImplementationOnce(async () => {
-      vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [saved] }); return saved;
-    });
-    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
-    render(<App />);
-    await signInAs("owner");
-    await openPublishedScheduleEditor();
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
-    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
-    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: saved.name } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
-    const panel = await screen.findByRole("region", { name: "Export settings" });
-    await waitFor(() => expect(within(panel).getByText(/Export draft/)).toBeTruthy());
-    expect(window.location.search).not.toContain("mode=edit");
-    expect(fetchScheduleDraftShifts).toHaveBeenCalledWith(scheduleFixture.workspace_id, scheduleFixture.week_start, saved.id, [scheduleFixture.locations[0]!.id]);
-    expect(renderExportFiles).not.toHaveBeenCalled();
   });
 
   it("keeps Export v2 settings open when switching from published to another saved preview", async () => {
@@ -6501,17 +6496,17 @@ describe("App", () => {
     await waitFor(() => expect(renderExportFiles).toHaveBeenCalledWith(expect.objectContaining({ source: { kind: "draft", id: draft.id, revision: 2, name: draft.name } }), expect.objectContaining({ format: "xlsx" })));
   });
 
-  it("does not open Export v2 or emit output after Save draft fails", async () => {
+  it("keeps the edit open after a failed Save draft", async () => {
     vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new Error("Network dropped"));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await openPublishedScheduleEditor(); await openSaveDraftWindow();
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Failed draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
     await screen.findByRole("dialog", { name: "Schedule save failed" });
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
-    expect(renderExportFiles).not.toHaveBeenCalled(); expect(window.location.search).toContain("mode=edit");
+    expect(window.location.search).toContain("mode=edit");
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
   });
@@ -6521,9 +6516,10 @@ describe("App", () => {
     vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
       error: "session revision stale", code: "edit_session_stale",
     }));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await openPublishedScheduleEditor(); await openSaveDraftWindow();
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Stale draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
@@ -6534,25 +6530,25 @@ describe("App", () => {
     expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
     expect(screen.queryByText(/session revision stale/i)).toBeNull();
   });
 
-  it.each(["network", "retroactive"] as const)("ignores a late %s Save-for-Export error after the edit session expires", async kind => {
+  it.each(["network", "retroactive"] as const)("ignores a late %s Save draft error after the edit session expires", async kind => {
     let rejectSave!: (error: Error) => void;
     vi.mocked(saveScheduleDraft).mockImplementationOnce(() => new Promise((_, reject) => { rejectSave = reject; }));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await openPublishedScheduleEditor(); await openSaveDraftWindow();
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
-    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Expired export draft" } });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Expired draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
     await waitFor(() => expect(saveScheduleDraft).toHaveBeenCalledOnce());
     expect(exportSaveIdleHarness.expire).toBeTypeOf("function");
     await act(async () => { exportSaveIdleHarness.expire!(); });
     expect(window.location.search).not.toContain("mode=edit");
     expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
-    await act(async () => rejectSave(kind === "network" ? new Error("Late failed export save") :
+    await act(async () => rejectSave(kind === "network" ? new Error("Late failed save") :
       new ScheduleRequestError("Late retroactive edit", 409, {
         status: "past_shift_edit_requires_ack", past_edits: [{ op_type: "update", shift_id: scheduleFixture.shifts[0]!.id,
           scheduled_date: "2026-08-17", location_name: "Main Dining", employee_name: "Alex Rivera", reason: "shift_started", severity: "warning" }],
@@ -6560,22 +6556,21 @@ describe("App", () => {
       })));
     expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "This changes shifts that already ran" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
-    expect(renderExportFiles).not.toHaveBeenCalled();
     expect(saveScheduleDraft).toHaveBeenCalledOnce();
   });
 
-  it("does not let an expired Export save unlock or replace a newer pending save", async () => {
+  it("does not let an expired save unlock or replace a newer pending save", async () => {
     let rejectOld!: (error: Error) => void, rejectNew!: (error: Error) => void;
     vi.mocked(saveScheduleDraft)
       .mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
       .mockImplementationOnce(() => new Promise((_, reject) => { rejectNew = reject; }));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
     for (const name of ["Expired draft", "Current draft"]) {
       // The fixture deliberately resumes the same session id/revision: an old
       // operation must still be stale after the intervening preview state.
-      await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      await openPublishedScheduleEditor(); await openSaveDraftWindow();
       const dialog = await screen.findByRole("dialog", { name: "Save draft" });
       fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: name } });
       await clickReadyButton(within(dialog), "Save draft");
@@ -6590,7 +6585,6 @@ describe("App", () => {
     await act(async () => rejectNew(new Error("Current request error")));
     expect(screen.getByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
     expect(screen.queryByText("Expired request error")).toBeNull();
-    expect(renderExportFiles).not.toHaveBeenCalled();
   });
 
   it("lands manager sign-ins on Workspace by default", async () => {

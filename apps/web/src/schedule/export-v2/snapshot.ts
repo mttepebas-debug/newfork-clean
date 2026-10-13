@@ -15,7 +15,9 @@ import { buildScheduleHourTotalValue, formatHourTotalValue } from "../lib/schedu
 
 export type ExportSource =
   | { readonly kind: "draft"; readonly id: string; readonly revision: number; readonly name: string }
-  | { readonly kind: "published" };
+  | { readonly kind: "published" }
+  // An open edit as it is on screen, not saved yet; draftName is the draft it started from, if any.
+  | { readonly kind: "edit_session"; readonly id: string; readonly revision: number; readonly draftName: string | null };
 
 export interface ExportGridDisplay {
   readonly layout: "separate" | "unified";
@@ -86,7 +88,7 @@ export interface ScheduleExportSnapshot {
 
 export type SnapshotResult =
   | { readonly status: "ready"; readonly snapshot: ScheduleExportSnapshot }
-  | { readonly status: "blocked"; readonly reason: "edit" | "loading" | "source" | "locations" | "short_names"; readonly locationNames?: readonly string[] };
+  | { readonly status: "blocked"; readonly reason: "loading" | "source" | "locations" | "short_names"; readonly locationNames?: readonly string[] };
 
 /**
  * Call with the same effective model/search/settings used by ScheduleGrid.
@@ -95,7 +97,6 @@ export type SnapshotResult =
  * This projection does not grant schedule.export permission; delivery must recheck it.
  */
 export function createScheduleExportSnapshot(input: {
-  readonly mode: "edit" | "preview";
   readonly loading: boolean;
   readonly requestedSourceKey: string;
   readonly resolvedSourceKey: string | null;
@@ -108,7 +109,6 @@ export function createScheduleExportSnapshot(input: {
   readonly display: ExportGridDisplay;
   readonly focusedShiftId: string | null;
 }): SnapshotResult {
-  if (input.mode === "edit") return { status: "blocked", reason: "edit" };
   if (input.loading) return { status: "blocked", reason: "loading" };
   if (!input.source || !input.requestedSourceKey || input.requestedSourceKey !== input.resolvedSourceKey) {
     return { status: "blocked", reason: "source" };

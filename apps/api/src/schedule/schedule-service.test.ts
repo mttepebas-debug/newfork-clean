@@ -157,6 +157,19 @@ describe("createScheduleReadService read model", () => {
 // S1: when the idle countdown ends the edit is kept as an "Auto-save" draft.
 // S2 (KK-171): Undo takes the edit's last step back on the server.
 describe("createScheduleReadService undo", () => {
+  it("reads the person's own open edit for Export without touching the lease or telling anyone", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: scheduleSessionModel(), error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    const session = await service.getEditSession!(actorUserId, workspaceId, "87000000-0000-4000-8000-000000000001");
+
+    expect(session.revision).toBe(3);
+    expect(mocks.rpc).toHaveBeenCalledWith("get_schedule_edit_session_service", {
+      actor_user_id: actorUserId, target_workspace_id: workspaceId, target_session_id: "87000000-0000-4000-8000-000000000001",
+    });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
   it("asks the server to take the last step back and tells the edit's locations", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { ...scheduleSessionModel(), revision: 4, undo_depth: 2 }, error: null });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });

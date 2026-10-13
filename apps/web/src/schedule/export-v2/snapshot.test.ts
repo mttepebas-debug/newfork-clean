@@ -32,7 +32,7 @@ function model(): ScheduleReadModel {
   };
 }
 function input() {
-  return { mode: "preview" as const, loading: false, requestedSourceKey: "draft:one:1",
+  return { loading: false, requestedSourceKey: "draft:one:1",
     resolvedSourceKey: "draft:one:1", source: { kind: "draft" as const, id: "one", revision: 1, name: "My draft" },
     model: model(), workspaceName: "Workspace", selectedDate: "2026-09-14", view: "week" as const,
     search: new URLSearchParams(), display, focusedShiftId: null };
@@ -88,7 +88,6 @@ describe("Export v2 immutable preview projection", () => {
     expect(ready(value).shifts.find(item => item.id === "hidden")).toMatchObject({ time: null, start: null, end: null });
   });
   it.each([
-    [{ mode: "edit" as const }, "edit"],
     [{ loading: true }, "loading"],
     [{ resolvedSourceKey: "draft:previous:4" }, "source"],
     [{ source: null }, "source"],

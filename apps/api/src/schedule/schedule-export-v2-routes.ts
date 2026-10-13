@@ -19,9 +19,13 @@ export function registerScheduleExportV2Routes(app: FastifyInstance, options: {
     if (!service) return reply.code(503).send({ error: "Schedule export authorization is unavailable" });
     const scope = body.data;
     try {
-      const [model, drafts] = await Promise.all([
+      const editSessionSource = scope.source.kind === "edit_session" ? scope.source : null;
+      if (editSessionSource && !service.getEditSession) return reply.code(503).send({ error: "Schedule export authorization is unavailable" });
+      const [model, drafts, edit] = await Promise.all([
         service.getReadModel(context.userId, workspaceId, scope.week_start),
         scope.source.kind === "draft" ? service.listDrafts(context.userId, workspaceId, scope.week_start) : null,
+        // Only the person's own open edit can be read; the core refuses anyone else's.
+        editSessionSource ? service.getEditSession!(context.userId, workspaceId, editSessionSource.id) : null,
       ]);
       if (model.workspace_id !== workspaceId || model.week_start !== scope.week_start) {
         return reply.code(409).send({ error: "The schedule week changed. Refresh the current preview." });
@@ -42,10 +46,18 @@ export function registerScheduleExportV2Routes(app: FastifyInstance, options: {
         }
         if (draft.revision !== source.revision) return reply.code(409).send({ error: "The draft changed. Refresh the current preview before exporting." });
       }
-      const shifts = scope.source.kind === "draft"
-        ? (await service.listWeeklyShifts({ actorUserId: context.userId, workspaceId, weekStart: scope.week_start,
-          locationIds: scope.ghost_shift_ids?.length ? [...allowedLocations.keys()] : scope.location_ids, draftId: scope.source.id, includeLive: false })).shifts
-        : model.shifts;
+      if (edit) {
+        if (edit.workspace_id !== workspaceId || edit.week_start !== scope.week_start || edit.revision !== editSessionSource?.revision) {
+          return reply.code(409).send({ error: "The edit changed. Refresh the current preview before exporting." });
+        }
+      }
+      // An edit covers its own locations; the rest of the week (cross-location references) is what is published.
+      const shifts: readonly { id: string; location_id: string; scheduled_date: string; employee_id: string | null }[] = edit
+        ? [...edit.shifts, ...model.shifts.filter(shift => !edit.location_ids.includes(shift.location_id))]
+        : scope.source.kind === "draft"
+          ? (await service.listWeeklyShifts({ actorUserId: context.userId, workspaceId, weekStart: scope.week_start,
+            locationIds: scope.ghost_shift_ids?.length ? [...allowedLocations.keys()] : scope.location_ids, draftId: scope.source.id, includeLive: false })).shifts
+          : model.shifts;
       const locations = new Set(scope.location_ids), dates = new Set(scope.dates), employees = new Set(scope.employee_ids);
       const allowedShifts = new Set(shifts.filter(shift => locations.has(shift.location_id) && dates.has(shift.scheduled_date) &&
         (shift.employee_id === null || employees.has(shift.employee_id))).map(shift => shift.id));
