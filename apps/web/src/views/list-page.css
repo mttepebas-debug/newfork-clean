@@ -358,6 +358,19 @@
   .employees-page.list-page.list-page .employee-people-wrap {
     overflow-x: hidden;
     overflow-y: auto;
+    scrollbar-width: none;
+  }
+  /* A phone is touch: no scrollbar, and no room kept for one at the right,
+     so the cards reach the same 16 px gutter on both sides (Mert 2026-10-13). */
+  .employees-page.list-page.list-page .employee-people-wrap::-webkit-scrollbar {
+    display: none;
+  }
+  .app-main:has(> .employees-page .employee-people-wrap) {
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
+  }
+  .app-main:has(> .employees-page .employee-people-wrap)::-webkit-scrollbar {
+    display: none;
   }
   .employees-page.list-page.list-page .employee-people-wrap > .employee-table {
     display: none;
