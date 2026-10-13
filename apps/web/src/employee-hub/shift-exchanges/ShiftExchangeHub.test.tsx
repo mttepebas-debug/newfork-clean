@@ -516,6 +516,25 @@ describe("Shift Hub outcome contracts", () => {
     );
   });
 
+  it("names the first view Available Shifts and marks the open view", async () => {
+    mount("/app/employee-hub/shift-hub");
+    const views = await screen.findByRole("navigation", {
+      name: "Shift Hub views",
+    });
+    const tabs = within(views).getAllByRole("button");
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Available Shifts",
+      "My requests",
+      "History",
+    ]);
+    expect(tabs[0]!.getAttribute("aria-current")).toBe("page");
+    fireEvent.click(tabs[2]!);
+    await waitFor(() =>
+      expect(tabs[2]!.getAttribute("aria-current")).toBe("page"),
+    );
+    expect(tabs[0]!.getAttribute("aria-current")).toBeNull();
+  });
+
   it.each(["direct", "swap"] as const)(
     "keeps the note and blocks a %s request when the selected match disappears",
     async (mode) => {

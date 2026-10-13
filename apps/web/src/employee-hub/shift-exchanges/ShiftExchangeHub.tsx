@@ -423,7 +423,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       : "available");
   const offering = params.has("offer");
   const tabs: [string, string][] = [
-    ["available", "Available"],
+    ["available", "Available Shifts"],
     ["requests", "My requests"],
     ["history", "History"],
   ];
