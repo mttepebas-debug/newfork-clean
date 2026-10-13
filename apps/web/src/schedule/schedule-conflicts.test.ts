@@ -8,6 +8,7 @@ import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessage,
   formatScheduleConflictMessages,
+  scheduleConflictShortLabel,
 } from "./schedule-conflicts";
 
 const locationId = "11000000-0000-4000-8000-000000000001";
@@ -352,6 +353,56 @@ describe("schedule conflict port", () => {
     const removed = { ...earlier, source_published_shift_id: "live-1", pending_op_type: "delete" as const };
     expect(neighborTypes([removed])).toEqual([]);
   });
+  // Mert, 2026-10-13: a ghost is the person's own shift at another location;
+  // whatever reaches its hours is a hard overlap, wherever it is written.
+  describe("a shift the person works at a location this grid does not reach", () => {
+    const harborId = "11000000-0000-4000-8000-000000000009";
+    const ghost = {
+      id: "56000000-0000-4000-8000-000000000001",
+      employee_id: employeeId,
+      location_id: harborId,
+      location_name: "Harbor",
+      scheduled_date: "2026-08-19",
+      start_time: "15:00",
+      end_time: "21:00",
+      crosses_midnight: false,
+      job_id: jobId,
+      job_name: "Server",
+      shift_type_id: null,
+      shift_type_name: "Dinner",
+      label_ids: [],
+      label_names: [],
+    };
+    const withGhost = (patch: Partial<typeof ghost> = {}) => ({ ...model, ghost_shifts: [{ ...ghost, ...patch }] });
+    const overlaps = (reasons: ReturnType<typeof evaluateScheduleShiftConflicts>) =>
+      reasons.filter((reason) => typeof reason !== "string" && reason.type === "time_overlap");
+
+    it("blocks any hours it shares, explicit or a preset's default hours", () => {
+      for (const time_basis of ["explicit", "type_default"] as const) {
+        const reasons = evaluateScheduleShiftConflicts(withGhost(), [], input({ time_basis }));
+        expect(overlaps(reasons)).toEqual([
+          expect.objectContaining({
+            severity: "block",
+            conflicting_shifts: [expect.objectContaining({ id: ghost.id, location_name: "Harbor", shift_type_label: "Dinner" })],
+          }),
+        ]);
+      }
+    });
+    it("names the ghost's place in the message", () => {
+      expect(formatScheduleConflictMessages(evaluateScheduleShiftConflicts(withGhost(), [], input({ time_basis: "explicit" }))))
+        .toEqual(expect.arrayContaining([expect.stringContaining("at Harbor")]));
+    });
+    it("leaves hours it does not reach, other days and other people alone", () => {
+      expect(overlaps(evaluateScheduleShiftConflicts(withGhost({ start_time: "08:00", end_time: "16:00" }), [], input()))).toEqual([]);
+      expect(overlaps(evaluateScheduleShiftConflicts(withGhost({ scheduled_date: "2026-08-20" }), [], input()))).toEqual([]);
+      expect(overlaps(evaluateScheduleShiftConflicts(withGhost({ employee_id: "44000000-0000-4000-8000-000000000002" }), [], input()))).toEqual([]);
+      expect(overlaps(evaluateScheduleShiftConflicts(withGhost(), [], input({ employee_id: null })))).toEqual([]);
+    });
+    it("reaches past midnight like the card does", () => {
+      const late = withGhost({ scheduled_date: "2026-08-18", start_time: "22:00", end_time: "02:00", crosses_midnight: true });
+      expect(overlaps(evaluateScheduleShiftConflicts(late, [], input({ start_time: "01:00", end_time: "05:00" })))).toHaveLength(1);
+    });
+  });
   it("blocks zero-length clock ranges before assignment checks", () => {
     expect(
       formatScheduleConflictMessages(
@@ -408,5 +459,38 @@ describe("availability warnings from the server's assessment", () => {
       .toBe("A manager's note for this day: School mornings.");
     expect(formatScheduleConflictMessage({ type: "note", note: "" }))
       .toBe("The assignment overlaps hours a manager noted for this person.");
+  });
+});
+
+// Mert, 2026-10-13: under a dragged card a blocked cell says why in one or
+// two words; the whole sentence stays in the message after the drop.
+describe("the short word under a dragged card", () => {
+  it.each([
+    [{ type: "time_overlap" }, "Overlaps"],
+    [{ type: "reference_time_overlap" }, "Overlaps"],
+    [{ type: "time_off" }, "Time off"],
+    [{ type: "closed_day", scope: "all_day" }, "Closed"],
+    [{ type: "closed_day", scope: "short_hours" }, "Short hours"],
+    [{ type: "location_assignment" }, "Not assigned"],
+    [{ type: "job_assignment" }, "Not assigned"],
+    [{ type: "shift_type_assignment" }, "Not assigned"],
+    [{ type: "employee_excluded" }, "Excluded"],
+    [{ type: "named_duplicate" }, "Duplicate"],
+    [{ type: "named_shift_duplicate" }, "Duplicate"],
+    [{ type: "minimum_rest" }, "Rest time"],
+    [{ type: "minimum_travel" }, "Travel time"],
+    [{ type: "availability" }, "Unavailable"],
+    [{ type: "something_new" }, "Not allowed"],
+    ["Start and end time cannot be the same.", "Check hours"],
+    ["Employee not found", "Not allowed"],
+  ] as const)("%j reads %s", (reason, label) => {
+    expect(scheduleConflictShortLabel(reason)).toBe(label);
+  });
+  it("is never more than two short words", () => {
+    for (const type of ["time_overlap", "time_off", "closed_day", "location_assignment", "employee_excluded", "minimum_travel", "x"]) {
+      const label = scheduleConflictShortLabel({ type });
+      expect(label.split(" ").length).toBeLessThanOrEqual(2);
+      expect(label.length).toBeLessThanOrEqual(12);
+    }
   });
 });

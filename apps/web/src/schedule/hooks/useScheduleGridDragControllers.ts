@@ -16,6 +16,7 @@ import {
   formatScheduleConflictMessages,
   type ScheduleConflictReason,
   scheduleConflictSeverity,
+  scheduleConflictShortLabel,
 } from "../schedule-conflicts";
 import { scheduleJobName } from "../lib/scheduleCatalogNames";
 import { formatTime } from "../lib/scheduleDateTime";
@@ -31,7 +32,7 @@ import { useShiftTypePresetPointerDrag } from "./useShiftTypePresetPointerDrag";
 function dropConflictEvaluation(reasons: readonly ScheduleConflictReason[]): ShiftDropEvaluation {
   const blockers = reasons.filter(reason => scheduleConflictSeverity(reason) === "block");
   const messages = formatScheduleConflictMessages(blockers.length ? blockers : reasons);
-  if (blockers.length) return { allowed: false, reason: messages[0], messages, targetStatus: "blocked" };
+  if (blockers.length) return { allowed: false, reason: messages[0], shortReason: scheduleConflictShortLabel(blockers[0]!), messages, targetStatus: "blocked" };
   if (messages.length) return { allowed: true, reason: messages[0], messages, targetStatus: "warning" };
   return { allowed: true, targetStatus: "allowed" };
 }
@@ -73,12 +74,9 @@ export function evaluateScheduleShiftDropTarget({
     shift.location_id === target.locationId &&
     shift.employee_id === target.employeeId &&
     shift.scheduled_date === target.date;
-  if (sameTarget)
-    return {
-      allowed: false,
-      reason: "Drop on a different cell to move the shift.",
-      targetStatus: "blocked",
-    };
+  // Letting go over its own cell puts the shift back: the cell the drag
+  // starts on stays plain (Mert, 2026-10-13).
+  if (sameTarget) return { allowed: false, targetStatus: null };
 
   return dropConflictEvaluation(
     [...evaluateScheduleShiftConflicts(
@@ -214,6 +212,7 @@ export function evaluateScheduleShiftGroupDropTarget({
   return {
     allowed: false,
     reason: blockedMembers[0]?.reason ?? "The group cannot be moved here.",
+    ...(blockedMembers[0]?.shortReason ? { shortReason: blockedMembers[0].shortReason } : {}),
     ...(messages.length > 0 ? { messages } : {}),
     targetStatus: "blocked",
     members,
@@ -249,6 +248,7 @@ export function evaluateSchedulePresetDropTarget({
     : {
         allowed: false,
         reason: validation.reason,
+        shortReason: validation.shortReason,
         targetStatus: "blocked",
       };
 }

@@ -285,7 +285,7 @@ export function ScheduleGrid({
     }
     return null;
   }, [filtered.locations, filtered.shifts, presetDrag.dragState, shiftDrag.dragState]);
-  useKeepScrollThroughDrag({ active: Boolean(dragRule), gridRef });
+  const { grab: grabDragSource } = useKeepScrollThroughDrag({ active: Boolean(dragRule), gridRef });
   const { employeeRowGroups, rows } = useMemo(() => {
     if (!dragRule) return { employeeRowGroups: allEmployeeRowGroups, rows: allRows };
     const canTake = (employee: (typeof allRows)[number]) =>
@@ -332,6 +332,7 @@ export function ScheduleGrid({
     }
     const shift = filtered.shifts.find((item) => item.id === shiftId);
     setActivePointerShiftLocationId(shift?.location_id ?? null);
+    grabDragSource(event.currentTarget);
     shiftDrag.onShiftPointerDown(shiftId, event);
   };
   const handleShiftMouseDown = (
@@ -352,6 +353,7 @@ export function ScheduleGrid({
     }
     const shift = filtered.shifts.find((item) => item.id === shiftId);
     setActivePointerShiftLocationId(shift?.location_id ?? null);
+    grabDragSource(event.currentTarget);
     shiftDrag.onShiftMouseDown(shiftId, event);
   };
   const handleEdit = (
@@ -494,8 +496,14 @@ export function ScheduleGrid({
         onOpenEmployeeCard={onOpenEmployeeCard}
         onPaste={onPaste}
         onPresetCreate={onPresetCreate}
-        onPresetMouseDown={presetDrag.onPresetMouseDown}
-        onPresetPointerDown={presetDrag.onPresetPointerDown}
+        onPresetMouseDown={(preset, event) => {
+          grabDragSource(event.currentTarget);
+          presetDrag.onPresetMouseDown(preset, event);
+        }}
+        onPresetPointerDown={(preset, event) => {
+          grabDragSource(event.currentTarget);
+          presetDrag.onPresetPointerDown(preset, event);
+        }}
         onDragOverCell={setDragOverCell}
         onSelect={onSelect}
         onShiftContextMenu={onShiftContextMenu}
