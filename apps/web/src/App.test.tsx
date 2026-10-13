@@ -912,7 +912,14 @@ describe("App", () => {
           .filter((child) => child.tagName.toLowerCase() !== "svg")
           .at(-1)?.textContent,
     );
-    expect(footerLinks).toEqual(["Settings", "Employee view", "Account", "Sign out"]);
+    // The workspace switcher is the first footer row (Mert 2026-10-13).
+    expect(footerLinks).toEqual([
+      "Meyhouse",
+      "Settings",
+      "Employee view",
+      "Account",
+      "Sign out",
+    ]);
   }, 40000);
 
   // Each first visit to a lazy route transforms its module graph; under a

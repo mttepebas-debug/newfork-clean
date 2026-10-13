@@ -2936,93 +2936,63 @@ select:focus-visible {
   gap: 10px;
   padding: 8px 12px;
 }
-.organization-context-slot {
-  min-width: 0;
-}
-.workspace-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-/* The workspace name becomes a control only when there is a second workspace
-   or an invitation waiting; with one workspace it stays the plain name above. */
+/* The workspace switcher is the footer row above Settings, sized like its
+   neighbours (Mert 2026-10-13). Its menu opens upwards inside the sidebar, or
+   to the right of the collapsed rail, so the sidebar edge never cuts it. */
 .workspace-switcher {
   position: relative;
-  flex-grow: 1;
 }
 .workspace-switcher-trigger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  min-height: 36px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--theme-text);
-  font: inherit;
+  font-family: inherit;
   text-align: left;
-  cursor: pointer;
 }
 .workspace-switcher-trigger:hover,
 .workspace-switcher-trigger[aria-expanded="true"] {
-  border-color: var(--theme-border);
-  background: var(--theme-surface);
+  background: var(--theme-surface-muted);
+}
+.workspace-switcher-trigger:focus-visible {
+  outline: 3px solid var(--theme-focus);
+  outline-offset: 2px;
 }
 .workspace-switcher-trigger .workspace-name {
+  min-width: 0;
   flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-/* A number that means "you owe someone an answer", not "something is new". */
-.workspace-switcher-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--theme-danger);
+.workspace-switcher-trigger > svg {
+  color: var(--theme-muted);
+}
+.workspace-switcher-trigger[aria-expanded="true"] .rail-flyout {
+  display: none;
+}
+.workspace-switcher-tile {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--theme-accent);
   color: var(--theme-on-accent);
   font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.workspace-switcher-mark {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.workspace-switcher-mark .workspace-switcher-count {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 9px;
-  height: 9px;
-  padding: 0;
+  font-weight: 750;
+  line-height: 1;
 }
 .workspace-switcher-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   left: 0;
-  z-index: 40;
+  z-index: 120;
   width: 264px;
   padding: 8px;
   border: 1px solid var(--theme-border);
   border-radius: 10px;
   background: var(--theme-surface);
   box-shadow: 0 16px 40px rgb(22 35 30 / 14%);
+}
+.app-shell[data-sidebar-collapsed="true"] .workspace-switcher-menu {
+  bottom: 0;
+  left: calc(100% + 8px);
 }
 .workspace-switcher-label {
   margin: 6px 0 4px;
