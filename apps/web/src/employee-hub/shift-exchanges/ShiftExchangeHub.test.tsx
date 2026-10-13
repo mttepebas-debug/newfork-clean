@@ -560,6 +560,41 @@ describe("Shift Hub outcome contracts", () => {
         .querySelector(".sx-tab-count"),
     ).toBeNull();
   });
+  it("counts the open shifts I can take on the Available Shifts tab", async () => {
+    model.employee_id = "blake";
+    model.cases[0]!.is_owner = false;
+    const open = (id: string, date: string, caseId: string | null = null) => ({
+      case_id: caseId,
+      shift: { ...shift, id, scheduled_date: date, employee_id: null, employee_name: null },
+      eligibility: { status: "eligible" as const, reasons: [] },
+    });
+    model.opportunities = [
+      open("takeable", "2030-01-09"),
+      // Outside the selected dates: still one I can take.
+      open("later", "2030-03-02"),
+      // Already asked for: it waits on a manager, not on me.
+      open("applied", "2030-01-10", "case"),
+      {
+        ...open("time-off", "2030-01-11"),
+        eligibility: {
+          status: "ineligible",
+          reasons: ["Approved time off overlaps this shift"],
+          blockers: [{ code: "approved_time_off" }],
+        },
+      },
+    ];
+    mount("/app/employee-hub/shift-hub?hub_view=history");
+    const views = await screen.findByRole("navigation", {
+      name: "Shift Hub views",
+    });
+    const available = within(views).getByRole("button", {
+      name: "Available Shifts, 2 you can take",
+    });
+    expect(available.querySelector(".sx-tab-count")?.textContent).toBe("2");
+    expect(
+      available.querySelector(".sx-tab-count")?.getAttribute("aria-hidden"),
+    ).toBe("true");
+  });
   it("shows no count when nothing waits for my answer", async () => {
     mount("/app/employee-hub/shift-hub");
     const views = await screen.findByRole("navigation", {

@@ -436,6 +436,17 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
         (a) => a.employee_id === model.employee_id && a.status === "invited",
       ),
   ).length;
+  const myApplication = (opportunity: ExchangeOpportunity) =>
+    model.cases
+      .find((c) => c.id === opportunity.case_id)
+      ?.applications.find(
+        (a) => a.employee_id === model.employee_id && activeApplication(a),
+      );
+  // The same for open shifts: the ones I can still ask for, whatever the
+  // filters show. Time off blocks a shift; one I asked for waits on a manager.
+  const takeable = model.opportunities.filter(
+    (o) => !blockedByTimeOff(o.eligibility) && !myApplication(o),
+  ).length;
   const canWrite = online && !mutation.isPending;
   const matches = (shift: ExchangeShift) =>
     shift.scheduled_date >= from &&
@@ -516,14 +527,17 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
         aria-label="Shift Hub views"
       >
         {tabs.map(([key, label]) => {
-          const count = key === "requests" ? awaitingMe : 0;
+          const count =
+            key === "requests" ? awaitingMe : key === "available" ? takeable : 0;
           return (
             <button
               key={key}
               className={count ? "sx-tab-counted" : undefined}
               aria-label={
                 count
-                  ? `${label}, ${count} ${count === 1 ? "needs" : "need"} your answer`
+                  ? key === "available"
+                    ? `${label}, ${count} you can take`
+                    : `${label}, ${count} ${count === 1 ? "needs" : "need"} your answer`
                   : undefined
               }
               aria-current={view === key ? "page" : undefined}
@@ -578,13 +592,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
                         opportunity={opportunity}
                       />
                     );
-                  const application = model.cases
-                    .find((c) => c.id === opportunity.case_id)
-                    ?.applications.find(
-                      (a) =>
-                        a.employee_id === model.employee_id &&
-                        activeApplication(a),
-                    );
+                  const application = myApplication(opportunity);
                   return (
                     <article className="sx-card" key={opportunity.shift.id}>
                       <div className="sx-card-top">
