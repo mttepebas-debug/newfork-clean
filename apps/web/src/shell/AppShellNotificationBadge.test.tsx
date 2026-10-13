@@ -204,6 +204,8 @@ describe("AppShell notification badge", () => {
         ?.getAttribute("data-sidebar-collapsed"),
     ).toBe("true");
     expect(container.querySelector(".app-sidebar")).toBeTruthy();
+    // The 64px rail has no room for the name; the footer row keeps its initial.
+    expect(container.querySelector(".sidebar-workspace-name")).toBeNull();
 
     const expandMenuButton = screen.getByRole("button", {
       name: "Expand menu",
@@ -354,7 +356,7 @@ describe("AppShell notification badge", () => {
 
     expect(await screen.findByText("Workspace route")).toBeTruthy();
     // The switcher is the footer row above Settings (Mert 2026-10-13); the
-    // top row keeps only the menu button.
+    // top row keeps the menu button and the plain workspace name.
     const footerRows = Array.from(
       container.querySelectorAll(".sidebar-footer > *"),
     );
@@ -363,6 +365,10 @@ describe("AppShell notification badge", () => {
       footerRows[0]?.querySelector(".workspace-name")?.textContent,
     ).toBe("Meyhouse");
     expect(container.querySelector(".sidebar-tools .workspace-switcher")).toBeNull();
+    expect(
+      container.querySelector(".sidebar-tools .sidebar-workspace-name")
+        ?.textContent,
+    ).toBe("Meyhouse");
     const labels = Array.from(
       container.querySelectorAll(".sidebar-nav .nav-item"),
     ).map((item) => item.textContent);

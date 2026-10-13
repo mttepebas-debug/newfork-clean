@@ -322,6 +322,13 @@ export function AppShell() {
               <span className="rail-flyout">Expand menu</span>
             ) : null}
           </button>
+          {/* The name says where the person is; switching lives in the footer
+              row above Settings (Mert 2026-10-13). */}
+          {collapsed ? null : (
+            <strong className="sidebar-workspace-name">
+              {context.workspace.name}
+            </strong>
+          )}
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
