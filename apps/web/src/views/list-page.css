@@ -358,19 +358,6 @@
   .employees-page.list-page.list-page .employee-people-wrap {
     overflow-x: hidden;
     overflow-y: auto;
-    scrollbar-width: none;
-  }
-  /* A phone is touch: no scrollbar, and no room kept for one at the right,
-     so the cards reach the same 16 px gutter on both sides (Mert 2026-10-13). */
-  .employees-page.list-page.list-page .employee-people-wrap::-webkit-scrollbar {
-    display: none;
-  }
-  .app-main:has(> .employees-page .employee-people-wrap) {
-    scrollbar-gutter: auto;
-    scrollbar-width: none;
-  }
-  .app-main:has(> .employees-page .employee-people-wrap)::-webkit-scrollbar {
-    display: none;
   }
   .employees-page.list-page.list-page .employee-people-wrap > .employee-table {
     display: none;
@@ -396,15 +383,11 @@
   .list-page.list-page > .catalog-page-header p {
     white-space: normal;
   }
-  /* Tabs that do not fit scroll sideways without a bar under them (Mert
-     2026-10-13, Employees). */
+  /* Tabs that do not fit scroll sideways; no bar under them, as nowhere on a
+     phone (styles.css, Mert 2026-10-13). */
   .list-page.list-page .catalog-toolbar-status-row {
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;
-  }
-  .list-page.list-page .catalog-toolbar-status-row::-webkit-scrollbar {
-    display: none;
   }
   .list-page.list-page .catalog-status-tabs {
     width: auto;
