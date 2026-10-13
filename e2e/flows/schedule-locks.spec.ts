@@ -27,7 +27,7 @@ function roundDate(): string {
 
 async function startBlankEdit(page: Page) {
   await page.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
-  await page.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await page.getByRole("button", { name: "Blank schedule", exact: true }).click();
 }
 
 async function editDraft(page: Page, name: string) {

@@ -5,10 +5,11 @@
  */
 export const SCHEDULE_WINDOW_SELECTOR = "dialog, [role='dialog'], [role='alertdialog']";
 
-// The Schedule's top action menus and windows (Publish, drafts, export).
+// The Schedule's top action menus and windows (Publish, the New Schedule window and its row menus).
 const SCHEDULE_TOP_ACTION_SURFACE_SELECTOR = [
   "[data-schedule-top-action-trigger]",
   ".schedule-draft-menu",
+  ".new-schedule-window-menu",
   ".schedule-save-menu-anchor",
   ".schedule-save-draft-menu",
   ".schedule-action-menu",
@@ -81,8 +82,7 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest(".schedule-action-menu") ||
     target.closest(".schedule-published-menu") ||
     target.closest(".schedule-export-panel") ||
-    target.closest(".schedule-export-dialog") ||
-    target.closest(".schedule-template-dialog"),
+    target.closest(".schedule-export-dialog"),
   );
 }
 
@@ -121,7 +121,6 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       ".schedule-published-menu",
       ".schedule-export-panel",
       ".schedule-export-dialog",
-      ".schedule-template-dialog",
     ].join(","),
   );
 }
@@ -218,7 +217,6 @@ export function isSchedulePreviewFocusedShiftBlankDismissTarget(
       ".schedule-published-menu",
       ".schedule-export-panel",
       ".schedule-export-dialog",
-      ".schedule-template-dialog",
     ].join(","),
   );
 }

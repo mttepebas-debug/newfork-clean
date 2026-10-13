@@ -8,9 +8,9 @@ import type { ScheduleExportSnapshot, SnapshotResult } from "./snapshot";
 import { requestErrorText } from "../../lib/request-error";
 
 /** Mount keyed by user/workspace. All schedule data and blob URLs live only in memory. */
-export function ExportController({ userId, workspaceId, result, onClose, canManageLocations, sourceError }: {
+export function ExportController({ userId, workspaceId, result, canManageLocations, sourceError }: {
   readonly userId: string; readonly workspaceId: string; readonly result: SnapshotResult;
-  readonly onClose: () => void; readonly canManageLocations: boolean; readonly sourceError?: string | null;
+  readonly canManageLocations: boolean; readonly sourceError?: string | null;
 }) {
   const preferenceKey = exportPreferencesKey(userId, workspaceId);
   const [preferences, setPreferences] = useState<ExportPreferences>(() => {
@@ -137,7 +137,7 @@ export function ExportController({ userId, workspaceId, result, onClose, canMana
   const currentPreview = preview;
   const previewLoading = result.status === "ready" && preview?.key !== inputKey;
   const panelProps = {
-    result, preferences, onChange: changePreferences, onReset: () => changePreferences({ ...defaultExportPreferences }), onClose, onPreview: openPreview,
+    result, preferences, onChange: changePreferences, onPreview: openPreview,
     onExport: () => preferences.destination === "print" && preferences.format !== "xlsx" ? openPreview() : void runDownload(),
     busy, error: sourceError ?? error, canManageLocations,
     footer: downloads ? <div className="export-v2-downloads"><p>Last generated files{downloads.files.length > 1 ? ". If your browser blocks multiple downloads, save each file below." : ""}</p>

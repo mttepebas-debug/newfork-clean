@@ -17,8 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
-import { AppSidebarPanelContext } from "./AppSidebarPanel";
+import { useEffect, useState, type ComponentType } from "react";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation } from "react-router";
@@ -198,15 +197,6 @@ export function AppShell() {
   useAccountNotificationRealtime(account?.userId ?? context?.userId);
   useExchangeRealtime(context);
   const [collapsed, setCollapsed] = useState(false);
-  const [sidebarPanelOwner, setSidebarPanelOwner] = useState<string | null>(null);
-  const [sidebarPanelCollapsed, setSidebarPanelCollapsed] = useState(false);
-  const [sidebarPanelTarget, setSidebarPanelTarget] = useState<HTMLDivElement | null>(null);
-  const sidebarPanelHost = useMemo(() => ({
-    target: sidebarPanelTarget,
-    collapsed: sidebarPanelCollapsed,
-    setCollapsed: setSidebarPanelCollapsed,
-    setOwner: setSidebarPanelOwner,
-  }), [sidebarPanelTarget, sidebarPanelCollapsed]);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
     () => new Set(["/app/schedule", "/app/employees", "/app/announcements"]),
   );
@@ -298,14 +288,12 @@ export function AppShell() {
       void signOut();
     });
   return (
-    <AppSidebarPanelContext.Provider value={sidebarPanelHost}>
     <div
       className="app-shell"
-      data-sidebar-collapsed={sidebarPanelOwner ? sidebarPanelCollapsed : collapsed}
+      data-sidebar-collapsed={collapsed}
       data-employee-shell={employeeShell}
     >
       <aside className="app-sidebar" aria-label="Application sidebar">
-        {sidebarPanelOwner ? <div className="app-sidebar-panel-host" ref={setSidebarPanelTarget} /> : <>
         <div className="sidebar-tools">
           <button
             className={`icon-button${collapsed ? " rail-peek-item" : ""}`}
@@ -519,7 +507,6 @@ export function AppShell() {
             </span>
           </button>
         </div>
-        </>}
       </aside>
       <main className="app-main">
         <Outlet />
@@ -536,7 +523,6 @@ export function AppShell() {
         />
       )}
     </div>
-    </AppSidebarPanelContext.Provider>
   );
 }
 

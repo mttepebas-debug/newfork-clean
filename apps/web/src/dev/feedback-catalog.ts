@@ -15,7 +15,6 @@ export type ToastEntry = {
 };
 
 const schedule = "src/views/SchedulePage.tsx";
-const templates = "src/views/ScheduleTemplatesPage.tsx";
 const editor = "src/schedule/components/shift-window/useShiftEditor.tsx";
 const dropReview = "src/schedule/hooks/useScheduleDropReview.ts";
 const drag = "src/schedule/hooks/useScheduleGridDragControllers.ts";
@@ -65,9 +64,9 @@ export const toastCatalog: readonly ToastEntry[] = [
 
   // Templates
   { id: "template-saved", screen: "Schedule · templates", source: schedule, tone: "success", title: "Template saved", description: "Summer weekdays", trigger: "Save the week as a template" },
-  { id: "template-renamed", screen: "Schedule · templates", source: templates, tone: "success", title: "Template renamed", description: "Summer weekdays (patio)", trigger: "Rename a template" },
-  { id: "template-deleted", screen: "Schedule · templates", source: templates, tone: "success", title: "Template deleted", description: "Summer weekdays", trigger: "Delete a template" },
-  { id: "template-delete-failed", screen: "Schedule · templates", source: templates, tone: "error", title: "Template could not be deleted", description: "This template changed. Refresh and try again.", trigger: "Delete fails" },
+  { id: "template-renamed", screen: "Schedule · templates", source: schedule, tone: "success", title: "Template renamed", description: "Summer weekdays (patio)", trigger: "Rename a template" },
+  { id: "template-deleted", screen: "Schedule · templates", source: schedule, tone: "success", title: "Template deleted", description: "Summer weekdays", trigger: "Delete a template" },
+  { id: "template-delete-failed", screen: "Schedule · templates", source: schedule, tone: "error", title: "Template could not be deleted", description: "This template changed. Refresh and try again.", trigger: "Delete fails" },
   { id: "template-applied", screen: "Schedule · templates", source: schedule, tone: "success", title: "Template applied", description: "Summer weekdays: 22 shifts added.", trigger: "Apply a template to the draft" },
   { id: "template-applied-archived-label", screen: "Schedule · templates", source: schedule, tone: "warning", title: "Template applied", description: "Summer weekdays: 2 shifts added. Standby is archived, so 2 shifts were added without it.", trigger: "Apply a template whose shifts carry an archived label" },
   { id: "template-apply-failed", screen: "Schedule · templates", source: schedule, tone: "error", title: "Template could not be applied", description: "Refresh the draft, then try again.", trigger: "Apply fails" },

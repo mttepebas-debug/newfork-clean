@@ -29,7 +29,7 @@ async function openPage(browser: Browser, person: Person, path: string): Promise
 
 async function startBlankEdit(page: Page) {
   await page.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
-  await page.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await page.getByRole("button", { name: "Blank schedule", exact: true }).click();
 }
 
 // A blank draft starts truly empty; publishing it over an already-published

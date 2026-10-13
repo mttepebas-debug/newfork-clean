@@ -41,7 +41,9 @@ test("exports an open edit as it is on screen, without saving it", async ({ brow
   await expect(editor).toHaveCount(0);
   const draftsBefore = drafts();
 
-  await page.getByRole("button", { name: "Export", exact: true }).click();
+  // Export is a tab of the New Schedule window (Mert, 2026-10-12).
+  await page.getByRole("button", { name: /^Draft selector:/ }).click();
+  await page.getByRole("tab", { name: "Export", exact: true }).click();
   const panel = page.getByRole("region", { name: "Export settings" });
   await expect(panel).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Save draft" })).toHaveCount(0);

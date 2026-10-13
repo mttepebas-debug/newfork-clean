@@ -254,10 +254,10 @@ describe("UnpublishScheduleDialog", () => {
     expect(padding("\.schedule-unpublish-dialog > header")).toBe("20px 24px");
     expect(padding("\.schedule-unpublish-body")).toBe("20px 24px");
 
-    const closeSizes = ["UnpublishScheduleDialog", "SaveDraftDialog", "PublishScheduleDialog", "ScheduleTemplateDialogs"].map(
+    const closeSizes = ["UnpublishScheduleDialog", "SaveDraftDialog", "PublishScheduleDialog"].map(
       (file) => /<X size=\{(\d+)\}/.exec(readFileSync(`src/schedule/components/${file}.tsx`, "utf8"))?.[1],
     );
-    expect(closeSizes).toEqual(["18", "18", "18", "18"]);
+    expect(closeSizes).toEqual(["18", "18", "18"]);
   });
 
   it("marks the consequences as warnings, not as green checks (BL-306)", () => {
