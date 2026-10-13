@@ -1,0 +1,115 @@
+/* The New Schedule window (Mert, 2026-10-12, design B): Schedules, Templates and
+   Export as tabs under the New Schedule button. Light theme only, --theme-* tokens,
+   the top bar's 12-13px type and 5px corners. */
+.schedule-draft-menu { position: relative; }
+.new-schedule-window { position: absolute; top: calc(100% + 6px); right: 0; z-index: 90; display: flex; flex-direction: column; width: min(490px, calc(100vw - 24px)); max-height: min(700px, calc(100vh - 110px)); overflow: hidden; border-radius: 10px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%); color: var(--theme-text); font-size: 13px; text-align: left; }
+/* Schedules and Templates share one width, so switching tabs never moves the window (Mert, 2026-10-12 17:00 PT). */
+.new-schedule-window[data-tab="export"] { width: min(980px, calc(100vw - 24px)); }
+.new-schedule-window :is(button, input, select) { font: inherit; }
+.new-schedule-window :is(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
+
+/* Head: tabs on the left, the green button and Close on the right */
+.new-schedule-window-head { display: flex; flex: none; align-items: stretch; gap: 10px; padding: 0 10px 0 8px; border-bottom: 1px solid var(--theme-border-subtle); }
+.new-schedule-window-tabs { display: flex; flex: 1; min-width: 0; gap: 4px; }
+.new-schedule-window-tabs button { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 46px; padding: 0 8px; border: 0; background: none; color: var(--theme-text-secondary); font-size: 13.5px; font-weight: 650; cursor: pointer; }
+.new-schedule-window-tabs button:hover, .new-schedule-window-tabs button[aria-selected="true"] { color: var(--theme-text); }
+.new-schedule-window-tabs button[aria-selected="true"]::after { content: ""; position: absolute; right: 6px; bottom: -1px; left: 6px; height: 2px; border-radius: 2px; background: var(--theme-accent); }
+.new-schedule-window-count { display: inline-grid; min-width: 18px; height: 18px; place-items: center; padding: 0 5px; border-radius: 9px; background: var(--theme-surface-muted); color: var(--theme-text-secondary); font-size: 11px; font-weight: 700; }
+.new-schedule-window-tools { display: inline-flex; align-self: center; align-items: center; gap: 6px; }
+/* "Blank schedule" and "Save template" share one width: the green button stays put when the tab changes (Mert, 2026-10-12 18:29 PT). */
+.nf-button.new-schedule-window-main { display: inline-flex; width: 138px; min-height: 32px; align-items: center; justify-content: flex-start; gap: 6px; padding: 0 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+
+.new-schedule-window-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 4px 14px 12px; }
+.new-schedule-window[data-tab="export"] .new-schedule-window-body { padding-top: 12px; }
+.new-schedule-window-empty { margin: 12px 2px; color: var(--theme-muted); font-size: 12px; }
+.new-schedule-window-note { margin: 0; color: var(--theme-text-secondary); font-size: 12px; line-height: 1.45; }
+.new-schedule-window-body > .new-schedule-window-note { margin: 8px 0 4px; }
+.new-schedule-window-error { margin: 8px 0 0; padding: 8px 10px; border-radius: 6px; background: var(--theme-danger-surface); color: var(--theme-danger-text); font-size: 12px; }
+.new-schedule-window-editing { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 4px; padding: 8px 10px; border-radius: 6px; background: var(--theme-warning-surface); color: var(--theme-warning-text); font-size: 12px; line-height: 1.45; }
+.new-schedule-window-editing svg { flex: none; margin-top: 2px; }
+/* Notes and forms take the window's width instead of widening it. */
+.new-schedule-window :is(.new-schedule-window-section, .new-schedule-window-use, .new-schedule-window-editing, .new-schedule-window-error, .new-schedule-window-impact) { contain: inline-size; }
+
+/* Rows: Schedules and Templates in one compact list (Mert, 2026-10-12 17:00 PT) */
+.new-schedule-window-rows { display: grid; margin: 0; padding: 0; list-style: none; column-gap: 6px; }
+.new-schedule-window-rows.is-templates { grid-template-columns: minmax(0, 1fr) auto auto; }
+.new-schedule-window-rows.is-schedules { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+.new-schedule-window-rows li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 40px; margin: 0 -6px; padding: 3px 6px; border-bottom: 1px solid var(--theme-border-subtle); }
+.new-schedule-window-rows li:last-child { border-bottom: 0; }
+.new-schedule-window-rows li[data-clickable="true"] { cursor: pointer; }
+.new-schedule-window-rows li[data-clickable="true"]:hover { background: var(--theme-surface-soft); }
+.new-schedule-window-rows li[data-viewing="true"] { background: var(--theme-selected); }
+.new-schedule-window-rows li > .new-schedule-window-rename { grid-column: 1 / -1; }
+.new-schedule-window-name { display: grid; grid-template-columns: auto minmax(0, 1fr); min-width: 0; align-items: center; column-gap: 8px; }
+.new-schedule-window-name > svg { grid-row: span 2; color: var(--theme-text-secondary); }
+.new-schedule-window-name > svg.is-live, .new-schedule-window-name small .is-live { color: var(--theme-published); }
+.new-schedule-window-name small .is-live { font-weight: 700; }
+.new-schedule-window-name b { min-width: 0; overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.new-schedule-window-name small { overflow: hidden; color: var(--theme-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.new-schedule-window-open { display: flex; min-width: 0; align-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--theme-text); text-align: left; cursor: pointer; }
+.new-schedule-window-open:disabled { cursor: default; }
+.new-schedule-window-open em { flex: none; color: var(--theme-accent); font-size: 11px; font-style: normal; font-weight: 700; }
+.new-schedule-window-num { padding-left: 6px; color: var(--theme-muted); font-size: 11.5px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.new-schedule-window-num b { color: var(--theme-text); font-size: 13px; font-weight: 650; }
+
+/* Small buttons */
+.new-schedule-window-icon { display: inline-flex; min-width: 28px; height: 28px; align-items: center; justify-content: center; gap: 5px; padding: 0 6px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-text-secondary); font-size: 12px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+.new-schedule-window-icon:hover:not(:disabled) { background: var(--theme-surface-muted); color: var(--theme-text); }
+.new-schedule-window-icon:disabled { opacity: .45; cursor: not-allowed; }
+.new-schedule-window-icon.is-danger { color: var(--theme-danger); }
+.new-schedule-window-icon.is-danger:hover:not(:disabled) { background: var(--theme-danger-soft); color: var(--theme-danger-strong); }
+.new-schedule-window-icon.is-danger[data-confirming="true"] { background: var(--theme-danger); color: var(--theme-on-accent); }
+.new-schedule-window-button { display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 11px; border-radius: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.new-schedule-window-button:disabled { opacity: .5; cursor: not-allowed; }
+.secondary-button.new-schedule-window-button { border-color: var(--theme-border-control); color: var(--theme-text); }
+.new-schedule-window-rows li > .secondary-button.new-schedule-window-button { margin-right: 2px; }
+.new-schedule-window-danger { border: 1px solid var(--theme-danger); background: var(--theme-surface); color: var(--theme-danger); }
+.new-schedule-window-danger:hover:not(:disabled) { background: var(--theme-danger-soft); }
+.new-schedule-window-danger.is-armed, .new-schedule-window-danger.is-armed:hover:not(:disabled) { background: var(--theme-danger); color: var(--theme-on-accent); }
+.new-schedule-window-back { display: inline-flex; align-items: center; gap: 5px; height: 30px; margin: 6px 0 8px -6px; padding: 0 8px; border: 0; border-radius: 5px; background: none; color: var(--theme-text-secondary); font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.new-schedule-window-back:hover { background: var(--theme-surface-muted); color: var(--theme-text); }
+
+/* A template row's ⋯ menu: on <body>, so the window's scroll never cuts it */
+.new-schedule-window-menu { position: fixed; z-index: 130; display: grid; min-width: 190px; padding: 5px; border-radius: 8px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 8%), 0 12px 28px -10px rgb(15 23 42 / 30%); }
+.new-schedule-window-menu > button { display: flex; width: 100%; min-height: 32px; align-items: center; gap: 9px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-text); font: inherit; font-size: 12.5px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; }
+.new-schedule-window-menu > button:hover:not(:disabled) { background: var(--theme-surface-muted); }
+.new-schedule-window-menu > button svg { flex: none; color: var(--theme-text-secondary); }
+.new-schedule-window-menu > button:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: -2px; }
+.new-schedule-window-menu > .new-schedule-window-menu-danger, .new-schedule-window-menu > .new-schedule-window-menu-danger svg { color: var(--theme-danger); }
+.new-schedule-window-menu > .new-schedule-window-menu-danger:hover:not(:disabled) { background: var(--theme-danger-soft); }
+.new-schedule-window-menu > .new-schedule-window-menu-danger[data-confirming="true"], .new-schedule-window-menu > .new-schedule-window-menu-danger[data-confirming="true"] svg { background: var(--theme-danger); color: var(--theme-on-accent); }
+
+/* Save template, Rename */
+.new-schedule-window-section { margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--theme-border-subtle); }
+.new-schedule-window-section h3 { margin: 0 0 8px; color: var(--theme-muted); font-size: 10.5px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.new-schedule-window-rename { display: flex; flex: 1; align-items: center; gap: 6px; }
+.new-schedule-window-rename input, .new-schedule-window-form :is(input:not([type="checkbox"]), select) { flex: 1; min-width: 0; height: 32px; padding: 0 9px; border: 1px solid var(--theme-border-control); border-radius: 5px; background: var(--theme-surface); color: var(--theme-text); font-size: 13px; }
+.new-schedule-window-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.new-schedule-window-form > label:not(.new-schedule-window-check) { display: grid; gap: 5px; }
+.new-schedule-window-form > label > span { color: var(--theme-text-secondary); font-size: 12px; font-weight: 650; }
+.new-schedule-window-check { display: flex; grid-column: 1 / -1; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.new-schedule-window-check input, .new-schedule-window-departments input, .new-schedule-window-target input { width: 16px; height: 16px; margin: 0; accent-color: var(--theme-accent); }
+.new-schedule-window-form :is(.new-schedule-window-error, .new-schedule-window-actions) { grid-column: 1 / -1; }
+.new-schedule-window-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.new-schedule-window-actions.is-start { justify-content: flex-start; }
+.new-schedule-window-actions .nf-button.new-schedule-window-button { min-height: 34px; padding: 0 14px; }
+
+/* Use */
+.new-schedule-window-use { display: grid; gap: 10px; padding-bottom: 2px; }
+.new-schedule-window-use > p { margin: 0; font-size: 13px; line-height: 1.5; }
+.new-schedule-window-impact { flex-basis: 100%; order: 10; color: var(--theme-danger-text); font-size: 12px; font-weight: 650; }
+.new-schedule-window-departments { padding: 8px 10px; border: 1px solid var(--theme-border-subtle); border-radius: 6px; }
+.new-schedule-window-departments summary { color: var(--theme-text-secondary); font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.new-schedule-window-departments > div { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; }
+.new-schedule-window-departments label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+.new-schedule-window-departments .new-schedule-window-note { margin-top: 6px; }
+.new-schedule-window-target { display: grid; gap: 2px; margin: 0; padding: 0; border: 0; }
+.new-schedule-window-target legend { margin-bottom: 6px; padding: 0; font-size: 13px; font-weight: 700; }
+.new-schedule-window-target label { display: flex; min-height: 34px; align-items: center; gap: 8px; padding: 0 8px; border-radius: 5px; font-size: 12.5px; cursor: pointer; }
+.new-schedule-window-target label:hover { background: var(--theme-surface-soft); }
+.new-schedule-window-target label:has(input:checked) { background: var(--theme-selected); }
+.new-schedule-window-target span { min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.new-schedule-window-target svg { flex: none; color: var(--theme-text-secondary); }
+.new-schedule-window-target svg.is-live { color: var(--theme-published); }
+.new-schedule-window-target small { color: var(--theme-accent); font-size: 11px; font-weight: 700; }
+.new-schedule-window-target small.is-live { color: var(--theme-published); }
