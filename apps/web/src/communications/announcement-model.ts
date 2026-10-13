@@ -251,27 +251,38 @@ export function publishedOn(
   return { at: record.published_at, planned: false };
 }
 
-export type SortKey = "status" | "title" | "published_on";
+export type SortKey = "status" | "title" | "category" | "starts" | "ends" | "published_on";
 export type ListSort = { key: SortKey; direction: 1 | -1 };
 export const defaultSort: ListSort = { key: "published_on", direction: -1 };
 
 /** The first press sorts A to Z (dates: newest first); the next one turns it around. */
 export function nextSort(current: ListSort, key: SortKey): ListSort {
   if (current.key === key) return { key, direction: current.direction === 1 ? -1 : 1 };
-  return { key, direction: key === "published_on" ? -1 : 1 };
+  return { key, direction: dateKeys.has(key) ? -1 : 1 };
 }
+
+const dateKeys: ReadonlySet<SortKey> = new Set(["starts", "ends", "published_on"]);
 
 const publishedMoment = (record: AnnouncementRecord) => {
   const at = publishedOn(record).at;
   return at ? Date.parse(at) : null;
 };
 
+/** The moment a sort by date compares: published, first day, or last day. */
+function sortMoment(record: AnnouncementRecord, key: SortKey): number | null {
+  if (key === "published_on") return publishedMoment(record);
+  const day = key === "starts" ? record.starts_on : (record.ends_on ?? record.starts_on);
+  return day ? Date.parse(`${day}T00:00:00Z`) : null;
+}
+
 /** Empty dates stay at the bottom either way; ties go newest first. */
 export function sortRecords(rows: readonly AnnouncementRecord[], sort: ListSort): AnnouncementRecord[] {
   const text = (record: AnnouncementRecord) =>
     sort.key === "status"
       ? statusLabels[record.display_status].toLowerCase()
-      : (record.title || "Untitled").toLowerCase();
+      : sort.key === "category"
+        ? announcementCategoryText(record).toLowerCase()
+        : (record.title || "Untitled").toLowerCase();
   const byMoment = (a: AnnouncementRecord, b: AnnouncementRecord) => {
     const x = publishedMoment(a);
     const y = publishedMoment(b);
@@ -281,9 +292,9 @@ export function sortRecords(rows: readonly AnnouncementRecord[], sort: ListSort)
     return y - x;
   };
   return [...rows].sort((a, b) => {
-    if (sort.key === "published_on") {
-      const x = publishedMoment(a);
-      const y = publishedMoment(b);
+    if (dateKeys.has(sort.key)) {
+      const x = sortMoment(a, sort.key);
+      const y = sortMoment(b, sort.key);
       if (x === null || y === null) {
         if (x !== y) return x === null ? 1 : -1;
       } else if (x !== y) return (x - y) * sort.direction;
@@ -300,23 +311,9 @@ export function sortRecords(rows: readonly AnnouncementRecord[], sort: ListSort)
 type DayLocation = Pick<AnnouncementRecord["locations"][number], "name" | "short_name" | "day" | "opens" | "closes">;
 const placeName = (location: DayLocation) => location.short_name || location.name;
 
-/** "Downtown closed", "Harbor 10:00 AM–3:00 PM", "Uptown usual hours". */
-export function locationDayText(location: DayLocation, timeFormat: TimeFormat): string {
-  if (location.day === "closed") return `${placeName(location)} closed`;
-  if (location.day === "short" && location.opens && location.closes)
-    return `${placeName(location)} ${hoursText(location.opens, location.closes, timeFormat)}`;
-  return `${placeName(location)} usual hours`;
-}
-
-/** What the day is at each location; or the event's time; or "All day". */
-export function dayLine(
-  record: Pick<AnnouncementRecord, "locations" | "event_from" | "event_until">,
-  timeFormat: TimeFormat,
-): string {
-  const parts = record.locations.filter((location) => !location.archived).map((location) => locationDayText(location, timeFormat));
-  if (parts.length) return parts.join(" · ");
-  if (record.event_from && record.event_until) return hoursText(record.event_from, record.event_until, timeFormat);
-  return "All day";
+/** "Thu, Nov 26" for an all-day date, "Thu, Nov 26 · 3:00 PM" when it has a time. */
+export function momentLabel(day: string, clock: string | null, timeFormat: TimeFormat): string {
+  return clock ? `${dayText(day)} · ${clockText(clock, timeFormat)}` : dayText(day);
 }
 
 /** Closed somewhere (red), shorter hours somewhere (amber), or neither. */

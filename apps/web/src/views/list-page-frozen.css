@@ -1,0 +1,90 @@
+/* Frozen list pages (Mert 2026-10-13, Availability first, then "Hepsinde
+   sabit"): the heading, the tabs, the filter row and the column headings stay
+   in place; only the list scrolls, inside the table frame. Schedule's shape:
+   the page fills its scrolling area (.app-main, or .settings-content in
+   Settings) and the frame takes what is left, no taller than its rows; a
+   pagination bar or "Load more" under the frame stays in view below it.
+   A window shorter than 560 px scrolls the whole page as before (a phone held
+   sideways would otherwise keep almost nothing for the list).
+   Selectors carry `.list-page` three times so a page's own sheet (loaded
+   later, at most `.x.list-page.list-page .frame`) cannot undo the frame. */
+@media (min-height: 560px) {
+  :is(
+      .availability-page,
+      .employees-page,
+      .requests-page,
+      .notifications-page,
+      .announcements-page,
+      .document-catalog-settings-page
+    ).list-page.list-page {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+  :is(
+      .availability-page,
+      .employees-page,
+      .requests-page,
+      .notifications-page,
+      .announcements-page,
+      .document-catalog-settings-page
+    ).list-page.list-page
+    > *,
+  .employee-documents-page.list-page.list-page > .employee-documents-list > * {
+    flex: 0 0 auto;
+  }
+  /* The frame: scrolls up and down. Sideways stays each page's own (Employees
+     never scrolls sideways on a phone). */
+  :is(
+      .employees-page,
+      .requests-page,
+      .notifications-page,
+      .document-catalog-settings-page
+    ).list-page.list-page.list-page
+    > :is(.employee-table-wrap, .job-catalog),
+  .employee-documents-page.list-page.list-page.list-page
+    > .employee-documents-list
+    > .employee-table-wrap,
+  /* Announcements and Important Dates: the table on a desktop, the cards on a
+     phone, an employee's reading list; Announcements' Active and Past tables
+     share one scrolling body (.list-frozen-body), each heading row pinned
+     while its table passes. */
+  .announcements-page.list-page.list-page.list-page
+    > :is(
+      .job-catalog,
+      .list-cards,
+      .announcement-reader-list,
+      .list-frozen-body
+    ) {
+    /* Holds what is placed absolutely in the list (an .sr-only label), so it
+       scrolls with the list instead of lengthening the page. */
+    position: relative;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow-y: auto;
+  }
+  .list-frozen-body > .announcement-list-heading:first-child {
+    margin-top: 4px;
+  }
+  /* Availability's week is wider than a phone: its frame scrolls both ways. */
+  .availability-page.list-page.list-page.list-page > .weekly-team-scroll {
+    position: relative;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow: auto;
+  }
+
+  /* Column headings stay at the top of the frame. Employees, Requests,
+     Notifications and Employees → Documents already pin theirs
+     (.employee-table th). */
+  .list-page.list-page .weekly-team-table thead th,
+  .list-page.list-page .job-catalog > .catalog-column-headings {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .list-page.list-page .weekly-team-table thead tr > :first-child {
+    z-index: 3;
+  }
+}

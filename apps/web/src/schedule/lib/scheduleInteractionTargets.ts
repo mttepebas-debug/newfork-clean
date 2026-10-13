@@ -78,7 +78,6 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest(SCHEDULE_WINDOW_SELECTOR) ||
     target.closest(".schedule-topbar") ||
     target.closest(".schedule-edit-banner") ||
-    target.closest(".schedule-quick-editor") ||
     target.closest(".schedule-action-menu") ||
     target.closest(".schedule-published-menu") ||
     target.closest(".schedule-export-panel") ||
@@ -118,7 +117,6 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       ".schedule-cell-paste",
       ".schedule-topbar",
       ".schedule-edit-banner",
-      ".schedule-quick-editor",
       ".schedule-action-menu",
       ".schedule-published-menu",
       ".schedule-export-panel",
@@ -216,7 +214,6 @@ export function isSchedulePreviewFocusedShiftBlankDismissTarget(
       SCHEDULE_WINDOW_SELECTOR,
       ".schedule-topbar",
       ".schedule-edit-banner",
-      ".schedule-quick-editor",
       ".schedule-action-menu",
       ".schedule-published-menu",
       ".schedule-export-panel",

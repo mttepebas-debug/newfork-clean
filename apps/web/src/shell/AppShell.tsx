@@ -52,6 +52,8 @@ interface NavItem {
   readonly parentTo?: string;
   readonly roles?: readonly ("owner" | "admin" | "manager" | "employee")[];
   readonly exact?: boolean;
+  /** A computer-only page: the sidebar lists it, the phone bar does not. */
+  readonly desktopOnly?: boolean;
 }
 
 const navItems: readonly NavItem[] = [
@@ -83,6 +85,16 @@ const navItems: readonly NavItem[] = [
     section: "management",
     parentTo: "/app/schedule",
     roles: ["owner", "admin", "manager"],
+  },
+  {
+    to: "/app/schedule/lineup",
+    label: "Lineup",
+    icon: ClipboardList,
+    anyOf: ["schedule.read"],
+    section: "management",
+    parentTo: "/app/schedule",
+    roles: ["owner", "admin", "manager"],
+    desktopOnly: true,
   },
   {
     to: "/app/employees",
@@ -310,10 +322,13 @@ export function AppShell() {
               <span className="rail-flyout">Expand menu</span>
             ) : null}
           </button>
-          <WorkspaceSwitcher
-            workspaceName={context.workspace.name}
-            collapsed={collapsed}
-          />
+          {/* The name says where the person is; switching lives in the footer
+              row above Settings (Mert 2026-10-13). */}
+          {collapsed ? null : (
+            <strong className="sidebar-workspace-name">
+              {context.workspace.name}
+            </strong>
+          )}
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
@@ -417,6 +432,10 @@ export function AppShell() {
         </nav>
 
         <div className="sidebar-footer">
+          <WorkspaceSwitcher
+            workspaceName={context.workspace.name}
+            collapsed={collapsed}
+          />
           {canViewSettings ? (
             <NavLink
               className={({ isActive }) =>
@@ -509,7 +528,7 @@ export function AppShell() {
       {employeeShell ? null : (
         <ManagementMobileNav
           links={[
-            ...visibleNavItems.filter((item) => item.section !== "employee"),
+            ...visibleNavItems.filter((item) => item.section !== "employee" && !item.desktopOnly),
             ...(canViewSettings ? [settingsNavItem] : []),
             ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}

@@ -18,3 +18,48 @@ describe("list page table frame", () => {
     expect(clipping.map(([, selector]) => selector!.trim())).toEqual([]);
   });
 });
+
+describe("list pages on a phone", () => {
+  const css = readFileSync("src/views/list-page.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const media = "@media (max-width: 720px) {";
+  const phone = css.slice(css.indexOf(media) + media.length);
+  const body = (selector: string) =>
+    [...phone.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, head]) => head!.trim() === selector)
+      .map(([, , rule]) => rule!)
+      .join(";");
+
+  // A bar sat under the status tabs, and one at the right of every phone
+  // page (Mert 2026-10-13: "bütün mobil tasarımlarımız"). One shared rule.
+  it("shows no scrollbar anywhere on a phone", () => {
+    const shared = readFileSync("src/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const phoneRule = /@media \(max-width: 720px\) \{\s*\*\s*\{\s*scrollbar-width:\s*none !important;\s*\}\s*\*::-webkit-scrollbar\s*\{\s*display:\s*none !important;\s*\}\s*\}/;
+    expect(shared).toMatch(phoneRule);
+  });
+
+  // The table scrolled sideways and up and down at once (Mert 2026-10-13).
+  it("swaps the Employees table for its cards, scrolling only up and down (G2)", () => {
+    const wrap = ".employees-page.list-page.list-page .employee-people-wrap";
+    expect(body(wrap)).toMatch(/overflow-x\s*:\s*hidden/);
+    expect(body(wrap)).toMatch(/overflow-y\s*:\s*auto/);
+    // Empty too: the table's wide header would scroll sideways.
+    expect(body(`${wrap} > .employee-table`)).toMatch(/display\s*:\s*none/);
+  });
+
+  it("runs Employees to both edges and swaps in the short add label", () => {
+    expect(body(".employees-page.list-page.list-page")).toMatch(/padding-inline\s*:\s*16px/);
+    expect(body(".employees-page.list-page.list-page")).toMatch(/margin-inline\s*:\s*0/);
+    expect(body(".list-add-button .list-add-long")).toMatch(/display\s*:\s*none/);
+    expect(body(".list-add-button .list-add-short")).toMatch(/display\s*:\s*inline/);
+  });
+});
+
+describe("Employees location cell", () => {
+  // The name dropped under its pin on a narrow column (Mert 2026-10-13).
+  it("keeps the pin and the name on one line", () => {
+    const css = readFileSync("src/employees/employee-location-parts.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = (selector: string) => new RegExp(`(^|\\})\\s*${selector.replace(/\./g, "\\.")}\\s*\\{([^}]*)\\}`).exec(css)?.[2] ?? "";
+    expect(rule(".employee-location-cell")).toMatch(/flex-wrap\s*:\s*nowrap/);
+    expect(rule(".employee-location-name")).toMatch(/white-space\s*:\s*nowrap/);
+  });
+});

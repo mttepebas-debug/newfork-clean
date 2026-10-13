@@ -214,14 +214,13 @@
   min-height: 84px;
   max-height: 200px;
 }
+/* The label stays on top of its box; the box takes the rest of the room. */
 .announcement-drawer .ad-message textarea.ad-input {
-  flex: 1 1 auto;
   min-height: 62px;
   resize: none;
 }
-.announcement-drawer .ad-message {
-  display: flex;
-  flex-direction: column;
+.announcement-drawer .ad-field.ad-message {
+  grid-template-rows: auto minmax(0, 1fr);
 }
 /* Audience: the one list takes the room the drawer has; acknowledge stays last. */
 .announcement-drawer .ad-body[data-tab="aud"] {
@@ -232,8 +231,11 @@
 .announcement-drawer .ad-body[data-tab="aud"] > * {
   flex: none;
 }
+/* A field's label, box and error stack from the top: when an error grows one
+   field, the box beside it stays on the same line (Mert 2026-10-13). */
 .announcement-drawer .ad-field {
   display: grid;
+  align-content: start;
   gap: 6px;
   min-width: 0;
 }
@@ -441,6 +443,7 @@
 .announcement-drawer .ad-when {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 8px 12px;
 }
 .announcement-drawer .ad-optional {

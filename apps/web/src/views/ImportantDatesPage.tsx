@@ -2,16 +2,16 @@ import type { AnnouncementRecord } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Search } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { AnnouncementDrawer } from "../communications/AnnouncementDrawer";
 import { AnnouncementReader } from "../communications/AnnouncementReader";
 import {
   announcementCategoryText,
-  dayLine,
   dayTone,
   isUnderway,
+  momentLabel,
   rangeText,
   statusLabels,
   statusTones,
@@ -73,11 +73,6 @@ export function ImportantDatesPage() {
       className="settings-page jobs-settings-page announcements-page important-dates-page list-page"
       aria-labelledby="important-dates-title"
     >
-      <nav className="announcement-crumb" aria-label="Breadcrumb">
-        <Link to="/app/announcements">Announcements</Link>
-        <span aria-hidden>›</span>
-        <span aria-current="page">Important Dates</span>
-      </nav>
       <CatalogPageHeader
         eyebrow="THE RIGHT UPDATE. THE RIGHT PEOPLE."
         title="Important Dates"
@@ -128,10 +123,11 @@ export function ImportantDatesPage() {
       {dates.data && (
         <div className="job-catalog important-dates-table" role="table" aria-label="Important dates">
           <div className="job-column-headings catalog-column-headings important-date-row" role="row">
-            <span role="columnheader">Important date</span>
-            <span role="columnheader">That day</span>
             <span role="columnheader">Status</span>
+            <span role="columnheader">Important date</span>
+            <span role="columnheader">Category</span>
             <span role="columnheader">Starts</span>
+            <span role="columnheader">Ends</span>
           </div>
           {rows.length ? (
             rows.map((record) => (
@@ -153,7 +149,6 @@ export function ImportantDatesPage() {
             <DateCard
               key={record.id}
               record={record}
-              timeFormat={timeFormat}
               onOpen={() => navigate(`${base}/${record.id}`, { preventScrollReset: true })}
             />
           ))}
@@ -182,6 +177,7 @@ export function ImportantDatesPage() {
   );
 }
 
+/** Status · Important date · Category · Starts · Ends (Mert 2026-10-13). */
 function DateRow({
   record,
   timeFormat,
@@ -192,6 +188,10 @@ function DateRow({
   onOpen: () => void;
 }) {
   const tone = dayTone(record);
+  const starts = record.starts_on ? momentLabel(record.starts_on, record.event_from, timeFormat) : null;
+  const ends = record.starts_on
+    ? momentLabel(record.ends_on ?? record.starts_on, record.event_until, timeFormat)
+    : null;
   return (
     <div
       className="job-catalog-row important-date-row"
@@ -200,26 +200,6 @@ function DateRow({
         if (!(event.target as HTMLElement).closest("button")) onOpen();
       }}
     >
-      <div role="cell">
-        <button className="job-row-identity" type="button" onClick={onOpen}>
-          <span className="announcement-row-icon" aria-hidden>
-            <CalendarDays size={16} />
-          </span>
-          <span className="job-name-stack">
-            <span className="job-row-name important-date-title">
-              {record.title}
-              <span className="announcement-day-chip">{announcementCategoryText(record)}</span>
-              {record.recurrence !== "none" && <span className="announcement-day-chip">Every year</span>}
-            </span>
-            <span className="announcement-row-preview">
-              {record.starts_on ? rangeText(record.starts_on, record.ends_on) : ""}
-            </span>
-          </span>
-        </button>
-      </div>
-      <div role="cell" className="announcement-date-cell important-date-day">
-        {dayLine(record, timeFormat)}
-      </div>
       <div role="cell" className="announcement-status-cell">
         <span className="announcement-status">
           <span className="list-chip" data-tone={statusTones[record.display_status]}>
@@ -228,10 +208,33 @@ function DateRow({
           {isUnderway(record) && <small>Today</small>}
         </span>
       </div>
+      <div role="cell">
+        <button className="job-row-identity" type="button" onClick={onOpen}>
+          <span className="announcement-row-icon" aria-hidden>
+            <CalendarDays size={16} />
+          </span>
+          <span className="job-name-stack">
+            <span className="job-row-name important-date-title">
+              {record.title}
+              {record.recurrence !== "none" && <span className="announcement-day-chip">Every year</span>}
+            </span>
+          </span>
+        </button>
+      </div>
+      <div role="cell" className="announcement-date-cell important-date-category">
+        {announcementCategoryText(record)}
+      </div>
       <div role="cell" className="announcement-date-cell">
-        {record.starts_on && (
+        {starts && (
           <span className="announcement-day-chip" data-tone={tone ?? undefined}>
-            {rangeText(record.starts_on, record.ends_on)}
+            {starts}
+          </span>
+        )}
+      </div>
+      <div role="cell" className="announcement-date-cell">
+        {ends && (
+          <span className="announcement-day-chip" data-tone={tone ?? undefined}>
+            {ends}
           </span>
         )}
       </div>
@@ -239,16 +242,8 @@ function DateRow({
   );
 }
 
-/** Phone: the shared list card; the days first, then the kind and what that day means. */
-function DateCard({
-  record,
-  timeFormat,
-  onOpen,
-}: {
-  record: AnnouncementRecord;
-  timeFormat: "12h" | "24h";
-  onOpen: () => void;
-}) {
+/** Phone: the shared list card; the days first, then the kind. */
+function DateCard({ record, onOpen }: { record: AnnouncementRecord; onOpen: () => void }) {
   const status = statusLabels[record.display_status];
   const days = [
     isUnderway(record) ? "Today" : "",
@@ -267,7 +262,7 @@ function DateCard({
           {status}
         </span>
       }
-      lines={[days || null, `${announcementCategoryText(record)} · ${dayLine(record, timeFormat)}`]}
+      lines={[days || null, announcementCategoryText(record)]}
       onOpen={onOpen}
     />
   );

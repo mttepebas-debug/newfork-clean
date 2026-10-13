@@ -22,10 +22,11 @@ import { requestAppNavigation } from "./leave-guard";
 import { roleLabel } from "./prebiz/PreBiz";
 
 /**
- * Where the account is, and where else it could be. One workspace has nothing
- * to switch to, so it stays a name; a second one turns the name into a control.
- * An invitation waiting for an answer appears here too, which is how the app
- * mentions it without interrupting the work in front of the person.
+ * Where the account is, and where else it could be: the sidebar row above
+ * Settings (Mert 2026-10-13). It is a control even with one workspace, so the
+ * place to switch is always in the same spot; the menu opens upwards from the
+ * row, or to the right of the collapsed rail. An invitation waiting for an
+ * answer is listed here too; its count stays on the Account row below.
  */
 export function WorkspaceSwitcher({
   workspaceName,
@@ -58,9 +59,6 @@ export function WorkspaceSwitcher({
   const elsewhere = [...ready, ...unfinished].filter(
     (workspace) => workspace.id !== context?.workspace.id,
   );
-  // A number here means somebody is waiting for an answer, not that something
-  // happened. It closes when the invitation is answered, not when it is seen.
-  const waiting = invitations.length;
 
   useEffect(() => {
     if (!open) return;
@@ -100,40 +98,28 @@ export function WorkspaceSwitcher({
     }
   };
 
-  // Nothing to switch to and nobody waiting: the name is all there is to say.
-  if (elsewhere.length === 0 && waiting === 0)
-    return (
-      <div className="organization-context-slot">
-        <strong className="workspace-name">{workspaceName}</strong>
-      </div>
-    );
-
-  if (collapsed)
-    return (
-      <Link
-        className="workspace-switcher-mark"
-        to={hubPath}
-        aria-label={`${workspaceName} — choose a workspace`}
-      >
-        {workspaceName.slice(0, 1).toUpperCase()}
-        {waiting > 0 ? <span className="workspace-switcher-count" /> : null}
-      </Link>
-    );
-
   return (
-    <div className="organization-context-slot workspace-switcher" ref={container}>
+    <div className="workspace-switcher" ref={container}>
       <button
         type="button"
-        className="workspace-switcher-trigger"
+        className={`nav-item workspace-switcher-trigger${
+          collapsed ? " rail-peek-item" : ""
+        }`}
+        aria-label={`${workspaceName}, switch workspace`}
         aria-expanded={open}
         aria-haspopup="menu"
+        data-rail-peek={collapsed ? "" : undefined}
         onClick={() => setOpen((value) => !value)}
       >
-        <strong className="workspace-name">{workspaceName}</strong>
-        {waiting > 0 ? (
-          <span className="workspace-switcher-count">{waiting}</span>
-        ) : null}
-        <ChevronsUpDown size={15} aria-hidden />
+        <span className="nav-icon-frame">
+          <span className="workspace-switcher-tile" aria-hidden>
+            {workspaceName.slice(0, 1).toUpperCase()}
+          </span>
+        </span>
+        <span className={collapsed ? "rail-flyout" : "workspace-name"}>
+          {workspaceName}
+        </span>
+        {collapsed ? null : <ChevronsUpDown size={15} aria-hidden />}
       </button>
       {open ? (
         <div className="workspace-switcher-menu" role="menu">

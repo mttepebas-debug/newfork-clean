@@ -2,6 +2,7 @@ import { Button } from "@newfork/ui";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import "./list-page.css";
+import "./list-page-frozen.css";
 
 export function CatalogPageHeader({
   eyebrow,
@@ -35,17 +36,36 @@ export function CatalogPageHeader({
  * (KARARLAR Genel → "Liste sayfalarının ortak dili"). */
 export function ListAddButton({
   label,
+  shortLabel,
   onClick,
   disabled,
 }: {
   readonly label: string;
+  /** What a phone shows instead ("Add"); the button keeps `label` as its name. */
+  readonly shortLabel?: string;
   readonly onClick: () => void;
   readonly disabled?: boolean;
 }) {
   return (
-    <Button className="list-add-button list-add-action" disabled={disabled} onClick={onClick}>
+    <Button
+      className="list-add-button list-add-action"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={shortLabel ? label : undefined}
+    >
       <Plus size={14} strokeWidth={2} aria-hidden />
-      {label}
+      {shortLabel ? (
+        <>
+          <span className="list-add-long" aria-hidden>
+            {label}
+          </span>
+          <span className="list-add-short" aria-hidden>
+            {shortLabel}
+          </span>
+        </>
+      ) : (
+        label
+      )}
     </Button>
   );
 }

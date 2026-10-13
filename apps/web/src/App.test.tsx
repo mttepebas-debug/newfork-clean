@@ -912,7 +912,14 @@ describe("App", () => {
           .filter((child) => child.tagName.toLowerCase() !== "svg")
           .at(-1)?.textContent,
     );
-    expect(footerLinks).toEqual(["Settings", "Employee view", "Account", "Sign out"]);
+    // The workspace switcher is the first footer row (Mert 2026-10-13).
+    expect(footerLinks).toEqual([
+      "Meyhouse",
+      "Settings",
+      "Employee view",
+      "Account",
+      "Sign out",
+    ]);
   }, 40000);
 
   // Each first visit to a lazy route transforms its module graph; under a
@@ -3815,6 +3822,8 @@ describe("App", () => {
         name: "Show times on badge",
       }) as HTMLInputElement;
 
+      // A real click moves the cursor out of Start time, where the window put it.
+      act(() => within(dialog).getByRole("button", { name: "Brunch" }).focus());
       fireEvent.click(within(dialog).getByRole("button", { name: "Brunch" }));
 
       await waitFor(() => expect(startTimeInput.value).toBe("10:00 AM"));
@@ -4433,13 +4442,14 @@ describe("App", () => {
     });
     expect(employeeSelect).toHaveProperty(
       "textContent",
-      expect.stringContaining("Unassigned"),
+      expect.stringContaining("Open"),
     );
     fireEvent.click(employeeSelect);
     expect(
       within(dialog).queryByRole("option", { name: "Alex Rivera" }),
     ).toBeNull();
-    fireEvent.click(within(dialog).getByRole("option", { name: "Unassigned" }));
+    // Mert, 2026-10-12: the unassigned choice reads "Open".
+    fireEvent.click(within(dialog).getByRole("option", { name: "Open" }));
     fireEvent.click(within(dialog).getByRole("combobox", { name: "Job" }));
     fireEvent.click(within(dialog).getByRole("option", { name: "Host" }));
     await waitFor(() =>
@@ -4449,7 +4459,7 @@ describe("App", () => {
     );
     expect(
       within(dialog).getByRole("combobox", { name: "Employee" }),
-    ).toHaveProperty("textContent", expect.stringContaining("Unassigned"));
+    ).toHaveProperty("textContent", expect.stringContaining("Open"));
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Increase count" }),
     );

@@ -27,6 +27,7 @@ import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
 import { listEmployees } from "./employee-data";
 import { EmployeeLocationCell, EmployeeLocationChips } from "./EmployeeLocationParts";
+import { ListCard, ListCards } from "../views/ListCards";
 import {
   employeeSectionSchema,
   type EmployeeDisplayStatus,
@@ -364,6 +365,7 @@ export default function EmployeesPage() {
           {!archived && canCreate ? (
             <ListAddButton
               label="Add employee"
+              shortLabel="Add"
               onClick={() =>
                 setParams(
                   nextParams({
@@ -378,7 +380,7 @@ export default function EmployeesPage() {
         </div>
       </div>
 
-      <div className="employee-table-wrap">
+      <div className="employee-table-wrap employee-people-wrap">
         <table className="employee-table">
           <colgroup>
             {visibleColumns.map((column) => (
@@ -447,6 +449,12 @@ export default function EmployeesPage() {
             ))}
           </tbody>
         </table>
+        <EmployeeCards
+          employees={pageEmployees}
+          onOpen={(id) =>
+            updateParams({ employeeId: id, mode: null, section: "profile" })
+          }
+        />
         {employees.isLoading ? (
           <p className="employees-state">Loading employees...</p>
         ) : null}
@@ -636,6 +644,70 @@ function EmployeeColumnPicker({
         </div>
       ) : null}
     </div>
+  );
+}
+
+const employeeStatusTones: Record<EmployeeDisplayStatus, string> = {
+  not_invited: "gray",
+  active: "green",
+  invited: "amber",
+  onboarding: "amber",
+  needs_attention: "red",
+  archived: "gray",
+};
+
+/** "Kadikoy +1", as in the list's location column, or "No location" (K6). */
+function employeeLocationText(employee: EmployeeSummary): string {
+  const [first, ...others] = employee.locations;
+  if (first === undefined) return "No location";
+  return others.length > 0 ? `${first.name} +${others.length}` : first.name;
+}
+
+function employeeJobText(employee: EmployeeSummary): string {
+  const job = employee.primary_job_name ?? "Unassigned";
+  return employee.job_count > 1 ? `${job} +${employee.job_count - 1}` : job;
+}
+
+/**
+ * Phone: one card per person instead of the table (G2, Mert 2026-10-07): the
+ * name, under it where and what they work ("Kadikoy +1 · Cook"), the status at
+ * the right. The list then scrolls only up and down (Mert 2026-10-13: "scroll
+ * aynı anda birden fazla yöne gidemesin"). list-cards.css shows it on a phone only.
+ */
+function EmployeeCards({
+  employees,
+  onOpen,
+}: {
+  readonly employees: readonly EmployeeSummary[];
+  readonly onOpen: (id: string) => void;
+}) {
+  if (employees.length === 0) return null;
+  return (
+    <ListCards label="Employees">
+      {employees.map((employee) => {
+        const status = filterLabel(employee.display_status);
+        const where = employeeLocationText(employee);
+        const job = employeeJobText(employee);
+        return (
+          <ListCard
+            key={employee.id}
+            label={`${employee.display_name}, ${status}, ${where}, ${job}`}
+            mark={employee.display_name.slice(0, 1).toUpperCase()}
+            title={<span>{employee.display_name}</span>}
+            status={
+              <span
+                className="list-chip"
+                data-tone={employeeStatusTones[employee.display_status]}
+              >
+                {status}
+              </span>
+            }
+            lines={[`${where} · ${job}`]}
+            onOpen={() => onOpen(employee.id)}
+          />
+        );
+      })}
+    </ListCards>
   );
 }
 

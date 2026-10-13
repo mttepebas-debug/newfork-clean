@@ -153,9 +153,12 @@ describe("Announcements list (EKRAN-08)", () => {
     record({
       id: "a8200000-0000-4000-8000-000000000003",
       title: "Fire drill",
+      category: "inspection",
       status: "published",
       display_status: "published",
       published_at: "2026-10-05T16:00:00.000Z",
+      starts_on: "2026-10-20",
+      ends_on: "2026-10-21",
     }),
     record({
       id: "a8200000-0000-4000-8000-000000000004",
@@ -172,7 +175,7 @@ describe("Announcements list (EKRAN-08)", () => {
     }),
   ];
 
-  it("shows Status, Announcement and Published on, with Active over Past and Archived on its own tab", async () => {
+  it("shows Status, Announcement, Category, Starts, Ends and Published on, with Active over Past and Archived on its own tab", async () => {
     vi.mocked(getAnnouncements).mockResolvedValue(list({ announcements: posts }));
     renderList();
     const active = await screen.findByRole("table", { name: "Active announcements" });
@@ -180,8 +183,22 @@ describe("Announcements list (EKRAN-08)", () => {
     expect(within(active).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "Status",
       "Announcement",
+      "Category",
+      "Starts",
+      "Ends",
       "Published on",
     ]);
+    // The same column order as Important Dates (Mert 2026-10-13); a post with no days shows dashes.
+    const drill = within(active).getAllByRole("row")[2]!;
+    expect(within(drill).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "Published",
+      "Fire drill",
+      "Inspection",
+      "Tue, Oct 20",
+      "Wed, Oct 21",
+      "Mon, Oct 5",
+    ]);
+    expect(within(within(active).getAllByRole("row")[3]!).getAllByLabelText("No date")).toHaveLength(2);
     // Newest first; a draft's empty date stays at the bottom.
     expect(rowTitles(active)).toEqual(["Wine night", "Fire drill", "Patio menu"]);
     expect(rowTitles(past)).toEqual(["Summer hours"]);
@@ -207,6 +224,13 @@ describe("Announcements list (EKRAN-08)", () => {
       "Wine night",
       "Patio menu",
       "Fire drill",
+    ]);
+
+    fireEvent.click(within(active).getByRole("button", { name: "Starts" }));
+    expect(rowTitles(screen.getByRole("table", { name: "Active announcements" }))).toEqual([
+      "Fire drill",
+      "Wine night",
+      "Patio menu",
     ]);
 
     fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
@@ -239,6 +263,33 @@ describe("Announcements list (EKRAN-08)", () => {
     fireEvent.change(screen.getByLabelText("Search announcements"), { target: { value: "nothing" } });
     expect(screen.queryByText("Harbor update")).toBeNull();
     expect(screen.queryByRole("list", { name: "Active announcements" })).toBeNull();
+  });
+
+  it("gives the phone a status list in place of the tabs, with the same counts and the same rows", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue(
+      list({
+        announcements: [
+          record({ id: "a8200000-0000-4000-8000-000000000014", title: "Live one", status: "published", display_status: "published", published_at: "2026-10-10T16:00:00.000Z" }),
+          record({ id: "a8200000-0000-4000-8000-000000000015", title: "Still a draft" }),
+          record({ id: "a8200000-0000-4000-8000-000000000016", title: "Put away", status: "published", display_status: "archived", archived_at: "2026-09-01T16:00:00.000Z" }),
+        ],
+      }),
+    );
+    renderList();
+    const status = (await screen.findByLabelText("Show announcements")) as HTMLSelectElement;
+    expect([...status.options].map((option) => option.textContent)).toEqual([
+      "All statuses",
+      "Draft (1)",
+      "Scheduled",
+      "Published",
+      "Archived",
+    ]);
+    fireEvent.change(status, { target: { value: "archived" } });
+    expect(screen.getByRole("tab", { name: "Archived" }).getAttribute("aria-selected")).toBe("true");
+    expect(within(screen.getByRole("list", { name: "Archived announcements" })).getByText("Put away")).toBeTruthy();
+    expect(screen.queryByText("Live one")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Draft (1)" }));
+    expect(status.value).toBe("draft");
   });
 
   it("draws one shared list card per post for the phone: mark, title, status, kind and day, the text's start", async () => {
@@ -775,7 +826,7 @@ describe("What an employee reads (EKRAN-08)", () => {
 });
 
 describe("Important Dates (EKRAN-08)", () => {
-  it("lists published dates in calendar order under Announcements, past ones on their own tab", async () => {
+  it("lists published dates in calendar order, past ones on their own tab, with no breadcrumb on top", async () => {
     const dated = (id: string, title: string, starts_on: string, display_status: "published" | "past", locations = [] as ReturnType<typeof loc>[]) =>
       record({
         id,
@@ -809,17 +860,37 @@ describe("Important Dates (EKRAN-08)", () => {
         .slice(1)
         .map((row) => row.querySelector(".important-date-title")?.firstChild?.textContent);
     expect(titles()).toEqual(["Thanksgiving", "Christmas"]);
-    expect(within(table).getByText("Downtown closed")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Announcements" }).getAttribute("href")).toBe("/app/announcements");
+    // Status · Important date · Category · Starts · Ends; no "That day" (Mert 2026-10-13).
+    expect(within(table).getAllByRole("columnheader").map((heading) => heading.textContent)).toEqual([
+      "Status",
+      "Important date",
+      "Category",
+      "Starts",
+      "Ends",
+    ]);
+    expect(within(table).queryByText("That day")).toBeNull();
+    expect(within(table).queryByText("Downtown closed")).toBeNull();
+    const thanksgiving = within(table).getAllByRole("row")[1]!;
+    expect(within(thanksgiving).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "Published",
+      "Thanksgiving",
+      "Holiday",
+      "Thu, Nov 26",
+      "Thu, Nov 26",
+    ]);
+    // No "Announcements › Important Dates" line on top (Mert 2026-10-13).
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Announcements" })).toBeNull();
     expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
-    // The phone's cards: same order; the days, then the kind and what that day means.
+    // The phone's cards: same order; the days, then the kind.
     const cards = () =>
       within(screen.getByRole("list", { name: "Important dates" }))
         .getAllByRole("button")
         .map((card) => card.getAttribute("aria-label"));
     expect(cards()).toEqual(["Thanksgiving, Thu, Nov 26, Published", "Christmas, Fri, Dec 25, Published"]);
     const card = within(screen.getByRole("button", { name: "Thanksgiving, Thu, Nov 26, Published" }));
-    expect(card.getByText("Holiday · Downtown closed")).toBeTruthy();
+    expect(card.getByText("Holiday")).toBeTruthy();
+    expect(card.queryByText(/Downtown closed/)).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
     expect(titles()).toEqual(["Labor Day"]);
     expect(cards()).toEqual(["Labor Day, Mon, Sep 7, Past"]);

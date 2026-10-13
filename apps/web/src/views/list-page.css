@@ -322,7 +322,51 @@
   color: var(--theme-text-secondary);
 }
 
+/* A shorter add label ("Add") shows on a phone only. */
+.list-add-button .list-add-short {
+  display: none;
+}
+
 @media (max-width: 720px) {
+  .list-add-button .list-add-long {
+    display: none;
+  }
+  .list-add-button .list-add-short {
+    display: inline;
+  }
+  /* Employees runs to both edges with the 16 px gutter; search and "+ Add"
+     share one row, Add at the right edge (Mert 2026-10-13). */
+  .employees-page.list-page.list-page {
+    width: auto;
+    box-sizing: border-box;
+    margin-inline: 0;
+    padding-inline: 16px;
+  }
+  .employees-page.list-page.list-page .catalog-toolbar .toolbar-search {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 calc(100% - 120px);
+  }
+  .employees-page.list-page.list-page .catalog-toolbar .list-add-button {
+    flex: 0 0 auto;
+  }
+  /* Employees (not Employees → Documents): people are cards on a phone (G2),
+     so the list scrolls only up and down, never sideways too (Mert
+     2026-10-13). The table stays out on a phone even when the list is empty:
+     its 780 px header would scroll sideways under the empty line. The frame
+     is kept only around the empty or loading line. */
+  .employees-page.list-page.list-page .employee-people-wrap {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .employees-page.list-page.list-page .employee-people-wrap > .employee-table {
+    display: none;
+  }
+  .employees-page.list-page.list-page .employee-people-wrap:has(> .list-cards) {
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
   .list-page.list-page > .catalog-page-header {
     height: auto;
     min-height: 0;
@@ -339,6 +383,8 @@
   .list-page.list-page > .catalog-page-header p {
     white-space: normal;
   }
+  /* Tabs that do not fit scroll sideways; no bar under them, as nowhere on a
+     phone (styles.css, Mert 2026-10-13). */
   .list-page.list-page .catalog-toolbar-status-row {
     overflow-x: auto;
     overflow-y: hidden;

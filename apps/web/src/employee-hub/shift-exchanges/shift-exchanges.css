@@ -1,3 +1,11 @@
+/* Mert 2026-10-13: no page scroll bar while Shift Hub is open; the page still
+   scrolls by wheel, touch and keyboard. */
+main.app-main:has(.sx-root) {
+  scrollbar-width: none;
+}
+main.app-main:has(.sx-root)::-webkit-scrollbar {
+  display: none;
+}
 /* The Shift Hub reads the app's own theme tokens (R2-47); light theme only. */
 .sx-root {
   --sx-bg: var(--theme-page);
@@ -96,26 +104,61 @@
   color: var(--sx-muted);
   margin-bottom: 8px;
 }
-/* The catalog page header above already draws the separator line. */
+/* Tabs: underlined, on a 1 px line, like the list pages' tabs
+   (views/list-page.css). */
 .sx-tabs {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--theme-border);
 }
-.sx-root .sx-tabs button {
+.sx-root .sx-tabs button,
+.sx-root .sx-tabs button:hover:not(:disabled) {
+  min-height: 40px;
+  height: 40px;
+  flex: none;
+  margin-bottom: -1px;
+  padding: 8px 12px;
   border: 0;
-  background: transparent;
-  color: var(--sx-muted);
-  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--theme-muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 .sx-root .sx-tabs button[aria-current="page"] {
-  color: var(--sx-green);
-  background: var(--sx-tint);
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-text);
+  font-weight: 600;
 }
-.sx-tabs span {
-  border-radius: 20px;
-  padding: 1px 7px;
-  background: var(--sx-card);
+.sx-root .sx-tabs button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+/* The count of requests waiting for my answer: a small red badge at the
+   tab's top right, like the menu's unread count. */
+.sx-root .sx-tabs button.sx-tab-counted {
+  position: relative;
+  padding-right: 24px;
+}
+.sx-tab-count {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
 }
 .sx-filters {
   display: flex;
@@ -705,13 +748,6 @@
   .sx-detail,
   .sx-root .sx-case-row {
     padding: 16px;
-  }
-  .sx-tabs {
-    gap: 2px;
-  }
-  .sx-root .sx-tabs button {
-    padding-inline: 10px;
-    font-size: 0.8125rem;
   }
   .sx-root button {
     min-height: 48px;
