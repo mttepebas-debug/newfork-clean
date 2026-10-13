@@ -3462,6 +3462,19 @@ button.workspace-switcher-item:hover:not(:disabled) {
   scrollbar-gutter: stable;
   background: #f6f7f5;
 }
+/* A phone is a touch screen: no page, list, drawer or menu shows a scrollbar,
+   and none keeps a stripe for one, so content reaches the 16 px gutter on both
+   sides (Mert 2026-10-13: "bütün mobil tasarımlarımız"). Scrolling itself is
+   unchanged. One rule for every scroll box; !important so a box's own
+   "thin" or "stable" setting cannot bring one back. */
+@media (max-width: 720px) {
+  * {
+    scrollbar-width: none !important;
+  }
+  *::-webkit-scrollbar {
+    display: none !important;
+  }
+}
 .workspace-page {
   min-width: 900px;
   padding: 28px 32px;

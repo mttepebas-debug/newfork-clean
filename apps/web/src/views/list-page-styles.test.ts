@@ -29,10 +29,12 @@ describe("list pages on a phone", () => {
       .map(([, , rule]) => rule!)
       .join(";");
 
-  // A bar sat under the status tabs that did not fit (Mert 2026-10-13, Employees).
-  it("scrolls status tabs without a scrollbar", () => {
-    expect(body(".list-page.list-page .catalog-toolbar-status-row")).toMatch(/scrollbar-width\s*:\s*none/);
-    expect(body(".list-page.list-page .catalog-toolbar-status-row::-webkit-scrollbar")).toMatch(/display\s*:\s*none/);
+  // A bar sat under the status tabs, and one at the right of every phone
+  // page (Mert 2026-10-13: "bütün mobil tasarımlarımız"). One shared rule.
+  it("shows no scrollbar anywhere on a phone", () => {
+    const shared = readFileSync("src/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const phoneRule = /@media \(max-width: 720px\) \{\s*\*\s*\{\s*scrollbar-width:\s*none !important;\s*\}\s*\*::-webkit-scrollbar\s*\{\s*display:\s*none !important;\s*\}\s*\}/;
+    expect(shared).toMatch(phoneRule);
   });
 
   // The table scrolled sideways and up and down at once (Mert 2026-10-13).
@@ -40,10 +42,6 @@ describe("list pages on a phone", () => {
     const wrap = ".employees-page.list-page.list-page .employee-people-wrap";
     expect(body(wrap)).toMatch(/overflow-x\s*:\s*hidden/);
     expect(body(wrap)).toMatch(/overflow-y\s*:\s*auto/);
-    // Touch screen: no scrollbar and no room kept for one (Mert 2026-10-13).
-    expect(body(wrap)).toMatch(/scrollbar-width\s*:\s*none/);
-    expect(body(`${wrap}::-webkit-scrollbar`)).toMatch(/display\s*:\s*none/);
-    expect(body(".app-main:has(> .employees-page .employee-people-wrap)")).toMatch(/scrollbar-gutter\s*:\s*auto/);
     // Empty too: the table's wide header would scroll sideways.
     expect(body(`${wrap} > .employee-table`)).toMatch(/display\s*:\s*none/);
   });
