@@ -364,6 +364,7 @@ export default function EmployeesPage() {
           {!archived && canCreate ? (
             <ListAddButton
               label="Add employee"
+              shortLabel="Add"
               onClick={() =>
                 setParams(
                   nextParams({

@@ -322,7 +322,34 @@
   color: var(--theme-text-secondary);
 }
 
+/* A shorter add label ("Add") shows on a phone only. */
+.list-add-button .list-add-short {
+  display: none;
+}
+
 @media (max-width: 720px) {
+  .list-add-button .list-add-long {
+    display: none;
+  }
+  .list-add-button .list-add-short {
+    display: inline;
+  }
+  /* Employees runs to both edges with the 16 px gutter; search and "+ Add"
+     share one row, Add at the right edge (Mert 2026-10-13). */
+  .employees-page.list-page.list-page {
+    width: auto;
+    box-sizing: border-box;
+    margin-inline: 0;
+    padding-inline: 16px;
+  }
+  .employees-page.list-page.list-page .catalog-toolbar .toolbar-search {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 calc(100% - 120px);
+  }
+  .employees-page.list-page.list-page .catalog-toolbar .list-add-button {
+    flex: 0 0 auto;
+  }
   .list-page.list-page > .catalog-page-header {
     height: auto;
     min-height: 0;
@@ -339,9 +366,15 @@
   .list-page.list-page > .catalog-page-header p {
     white-space: normal;
   }
+  /* Tabs that do not fit scroll sideways without a bar under them (Mert
+     2026-10-13, Employees). */
   .list-page.list-page .catalog-toolbar-status-row {
     overflow-x: auto;
     overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .list-page.list-page .catalog-toolbar-status-row::-webkit-scrollbar {
+    display: none;
   }
   .list-page.list-page .catalog-status-tabs {
     width: auto;
