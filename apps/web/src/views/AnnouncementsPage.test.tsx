@@ -487,6 +487,74 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(drawer.querySelector(".ad-band")).toBeNull();
   });
 
+  // Audience C (Mert, 2026-10-12): one list; "+ Add people" opens a search in its place, nobody is picked until
+  // checked, picks survive a new search, and "Ask people to acknowledge" stays last.
+  it("builds the audience in one list: Add people opens a search and adds only who you check", async () => {
+    const id = "a8200000-0000-4000-8000-000000000083";
+    const person = (n: number, name: string, job: string) => ({
+      user_id: `d2000000-0000-4000-8000-00000000000${n}`,
+      employee_id: null,
+      name,
+      job_name: job,
+      job_ids: [],
+      department_ids: [],
+      location_ids: [harbor],
+      location_name: "Harbor",
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue(
+      list({ people: [person(1, "Ana Diaz", "Server"), person(2, "Ben Cole", "Cook"), person(3, "Cy Park", "Server")] }),
+    );
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview());
+    vi.mocked(getAnnouncement).mockResolvedValue(
+      detail({
+        id,
+        title: "Patio menu",
+        locations: [
+          { location_id: downtown, name: "Downtown", short_name: "Downtown", timezone: "America/Los_Angeles", archived: false, day: "open", opens: null, closes: null },
+        ],
+      }),
+    );
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Patio menu" });
+    await waitFor(() => expect(previewAnnouncement).toHaveBeenCalled());
+    fireEvent.click(within(drawer).getByRole("tab", { name: /Audience/ }));
+    const who = within(drawer).getByRole("region", { name: "Who gets it" });
+    expect(within(drawer).queryByRole("region", { name: "Add people" })).toBeNull();
+    expect(within(drawer).queryByRole("combobox")).toBeNull();
+    expect(who.textContent).toContain("Downtown");
+    expect(who.textContent).toContain("Everyone there · 4 people");
+    const body = drawer.querySelector(".ad-body") as HTMLElement;
+    expect(body.lastElementChild?.textContent).toContain("Ask people to acknowledge");
+
+    fireEvent.click(within(who).getByRole("button", { name: "Add people" }));
+    const search = within(who).getByRole("searchbox", { name: "Search people" });
+    const boxes = () => within(who).getAllByRole("checkbox").filter((box) => box.getAttribute("aria-label") !== "Select all");
+    expect(boxes().map((box) => (box as HTMLInputElement).checked)).toEqual([false, false, false]);
+    expect((within(who).getByRole("button", { name: "Add" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(search, { target: { value: "server" } });
+    expect(boxes().map((box) => box.closest("label")?.textContent)).toEqual([
+      expect.stringContaining("Ana Diaz"),
+      expect.stringContaining("Cy Park"),
+    ]);
+    fireEvent.click(within(who).getByRole("checkbox", { name: /Ana Diaz/ }));
+    fireEvent.change(search, { target: { value: "ben" } });
+    fireEvent.click(within(who).getByRole("checkbox", { name: /Ben Cole/ }));
+    expect(who.textContent).toContain("2 selected");
+    fireEvent.click(within(who).getByRole("button", { name: "Add 2 people" }));
+
+    expect(within(who).queryByRole("searchbox")).toBeNull();
+    expect(within(who).getByText("Added here · 2")).toBeTruthy();
+    expect(within(who).getByRole("button", { name: "Remove Ana Diaz" })).toBeTruthy();
+    expect(within(who).getByRole("button", { name: "Remove Ben Cole" })).toBeTruthy();
+    expect(within(who).queryByText("Cy Park")).toBeNull();
+
+    fireEvent.click(within(who).getByRole("button", { name: "Add people" }));
+    fireEvent.click(within(who).getByRole("checkbox", { name: /Cy Park/ }));
+    fireEvent.click(within(who).getByRole("button", { name: "Cancel" }));
+    expect(within(who).queryByText("Cy Park")).toBeNull();
+  });
+
   it("keeps History away from a post that never went out", async () => {
     const id = "a8200000-0000-4000-8000-000000000082";
     vi.mocked(getAnnouncements).mockResolvedValue(list());
@@ -571,7 +639,10 @@ describe("Announcement drawer (EKRAN-08)", () => {
     });
     renderList(`/app/announcements/${id}`);
     const drawer = await screen.findByRole("dialog", { name: "Fire drill" });
-    expect(within(drawer).getByText("Archive: unpublish first")).toBeTruthy();
+    // No "Archive: unpublish first" line (Mert, 2026-10-12): Unpublish and the green button only.
+    const footer = drawer.querySelector(".ad-foot") as HTMLElement;
+    expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual(["Unpublish", "Save changes"]);
+    expect(within(drawer).queryByText(/unpublish first/)).toBeNull();
     fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish" }));
     expect(setAnnouncementState).not.toHaveBeenCalled();
     fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish and tell 12 people?" }));
