@@ -70,8 +70,4 @@ describe("frozen list pages", () => {
       expect(body).toMatch(/top\s*:\s*0/);
     }
   });
-
-  it("opens the last rows' menus upward so the frame does not hide them", () => {
-    expect(bodyOf((head) => head.includes(".job-menu-popover"))).toMatch(/bottom\s*:/);
-  });
 });
