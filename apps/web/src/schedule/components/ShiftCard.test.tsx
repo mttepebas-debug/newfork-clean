@@ -668,6 +668,9 @@ describe("GhostShiftCard", () => {
     // Mert, 2026-10-13 (ghost look I): the real card at half strength, in
     // its own type color.
     expect(badge.style.getPropertyValue("--shift-color")).toBe(shiftType.color);
+    // Mert, 2026-10-13: the location pin a little bigger.
+    const pin = screen.getByRole("button", { name: "Location: Patio" }).querySelector("svg");
+    expect(pin?.getAttribute("width")).toBe("14");
   });
 
   it("falls back to the real card's color when the type has none", () => {

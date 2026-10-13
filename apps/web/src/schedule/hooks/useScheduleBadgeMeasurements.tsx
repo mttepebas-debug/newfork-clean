@@ -245,7 +245,37 @@ export function readMeasuredHeight(
   return Number.isFinite(height) && height > 0 ? Math.ceil(height) : 0;
 }
 
+/** Room between a card's top corner mark ("!", icons) and NEW below it. */
+export const CORNER_MARK_GAP_PX = 6;
+
+// A short card grows until its top corner mark and NEW sit apart (Mert,
+// 2026-10-13: the "!" and NEW touched on a short card). Layout heights, so a
+// "!" growing under the mouse does not move the row.
+function cornerMarksHeight(badge: HTMLElement): number {
+  const top = badge.querySelector<HTMLElement>(".schedule-shift-badge-markers");
+  const bottom = badge.querySelector<HTMLElement>(".schedule-shift-new-mark");
+  if (!top || !bottom || !top.offsetHeight || !bottom.offsetHeight) return 0;
+  const px = (value: string) => {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const card = getComputedStyle(badge);
+  return Math.ceil(
+    px(card.borderTopWidth) +
+      px(getComputedStyle(top).top) +
+      top.offsetHeight +
+      CORNER_MARK_GAP_PX +
+      bottom.offsetHeight +
+      px(getComputedStyle(bottom).bottom) +
+      px(card.borderBottomWidth),
+  );
+}
+
 export function measureBadgeIntrinsicHeight(badge: HTMLElement): number {
+  return Math.max(measureBadgeWordsHeight(badge), cornerMarksHeight(badge));
+}
+
+function measureBadgeWordsHeight(badge: HTMLElement): number {
   const content = badge.querySelector<HTMLElement>(
     "[data-shift-badge-content]",
   );
