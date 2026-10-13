@@ -64,6 +64,9 @@ describe("useScheduleDrafts", () => {
           updated_by: "33333333-3333-4333-8333-333333333333",
           created_at: "2026-05-05T10:00:00.000Z",
           updated_at: "2026-05-05T10:00:00.000Z",
+          updated_by_name: "Olcay Owner",
+          shift_count: 0,
+          paid_minutes: 0,
         },
         {
           id: "22222222-2222-4222-8222-222222222222",
@@ -75,8 +78,12 @@ describe("useScheduleDrafts", () => {
           updated_by: "33333333-3333-4333-8333-333333333333",
           created_at: "2026-05-05T11:00:00.000Z",
           updated_at: "2026-05-05T11:00:00.000Z",
+          updated_by_name: "Olcay Owner",
+          shift_count: 0,
+          paid_minutes: 0,
         },
       ],
+      published: { shift_count: 0, paid_minutes: 0 },
     });
 
     const { result } = renderHook(
