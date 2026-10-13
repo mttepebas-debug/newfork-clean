@@ -20,6 +20,7 @@ import { getAnnouncements, getImportantDates } from "../communications/communica
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
+import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
@@ -146,6 +147,18 @@ export function ImportantDatesPage() {
           )}
         </div>
       )}
+      {dates.data && rows.length > 0 && (
+        <ListCards label="Important dates">
+          {rows.map((record) => (
+            <DateCard
+              key={record.id}
+              record={record}
+              timeFormat={timeFormat}
+              onOpen={() => navigate(`${base}/${record.id}`, { preventScrollReset: true })}
+            />
+          ))}
+        </ListCards>
+      )}
       {drawerOpen && list.data?.can_manage && (
         <AnnouncementDrawer
           key={adding ? "new" : announcementId}
@@ -223,6 +236,40 @@ function DateRow({
         )}
       </div>
     </div>
+  );
+}
+
+/** Phone: the shared list card; the days first, then the kind and what that day means. */
+function DateCard({
+  record,
+  timeFormat,
+  onOpen,
+}: {
+  record: AnnouncementRecord;
+  timeFormat: "12h" | "24h";
+  onOpen: () => void;
+}) {
+  const status = statusLabels[record.display_status];
+  const days = [
+    isUnderway(record) ? "Today" : "",
+    record.starts_on ? rangeText(record.starts_on, record.ends_on) : "",
+    record.recurrence !== "none" ? "Every year" : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <ListCard
+      label={[record.title, days, status].filter(Boolean).join(", ")}
+      mark={<CalendarDays size={16} />}
+      title={<span>{record.title}</span>}
+      status={
+        <span className="list-chip" data-tone={statusTones[record.display_status]}>
+          {status}
+        </span>
+      }
+      lines={[days || null, `${announcementCategoryText(record)} · ${dayLine(record, timeFormat)}`]}
+      onOpen={onOpen}
+    />
   );
 }
 

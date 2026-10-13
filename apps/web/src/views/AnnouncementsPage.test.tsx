@@ -229,12 +229,45 @@ describe("Announcements list (EKRAN-08)", () => {
       }),
     );
     renderList();
-    expect(await screen.findByText("Downtown update")).toBeTruthy();
+    const table = await screen.findByRole("table", { name: "Active announcements" });
+    expect(within(table).getByText("Downtown update")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Filter announcements by location"), { target: { value: harbor } });
     expect(screen.queryByText("Downtown update")).toBeNull();
-    expect(screen.getByText("Harbor update")).toBeTruthy();
+    expect(within(table).getByText("Harbor update")).toBeTruthy();
+    // The phone's cards follow the same filters.
+    expect(within(screen.getByRole("list", { name: "Active announcements" })).getByText("Harbor update")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search announcements"), { target: { value: "nothing" } });
     expect(screen.queryByText("Harbor update")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Active announcements" })).toBeNull();
+  });
+
+  it("draws one shared list card per post for the phone: mark, title, status, kind and day, the text's start", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue(
+      list({
+        announcements: [
+          record({
+            id: "a8200000-0000-4000-8000-000000000013",
+            title: "Thanksgiving",
+            body: "Downtown is closed all day.",
+            category: "holiday",
+            status: "published",
+            display_status: "published",
+            published_at: "2026-10-10T16:00:00.000Z",
+            on_important_dates: true,
+            starts_on: "2026-11-26",
+            ends_on: "2026-11-26",
+          }),
+        ],
+      }),
+    );
+    renderList();
+    const cards = await screen.findByRole("list", { name: "Active announcements" });
+    const card = within(cards).getByRole("button", { name: "Thanksgiving, on Important Dates, Published, Thu, Nov 26" });
+    expect(within(card).getByText("Published").className).toBe("list-chip");
+    expect(within(card).getByText("Holiday · Thu, Nov 26")).toBeTruthy();
+    expect(within(card).getByText("Downtown is closed all day.")).toBeTruthy();
+    fireEvent.click(card);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
   });
 
   it("shows the no-access card when the API refuses", async () => {
@@ -699,13 +732,20 @@ describe("What an employee reads (EKRAN-08)", () => {
     });
     vi.mocked(getAnnouncements).mockResolvedValue(list({ can_manage: false, announcements: [asked, plain, ended] }));
     renderList();
-    const askedRow = await screen.findByRole("button", { name: /Uniform policy/ });
+    await screen.findByRole("list", { name: "Current announcements" });
+    const desktop = within(document.querySelector<HTMLElement>(".announcement-reader-list")!);
+    const askedRow = desktop.getByRole("button", { name: /Uniform policy/ });
     expect(within(askedRow).getByText("Acknowledge")).toBeTruthy();
-    expect(within(screen.getByRole("button", { name: /New coffee/ })).queryByText("Acknowledge")).toBeNull();
+    expect(within(desktop.getByRole("button", { name: /New coffee/ })).queryByText("Acknowledge")).toBeNull();
+    // The phone's cards say the same.
+    const cards = within(screen.getByRole("list", { name: "Current announcements" }));
+    expect(within(cards.getByRole("button", { name: "Uniform policy, Acknowledge" })).getByText("Acknowledge")).toBeTruthy();
+    expect(within(cards.getByRole("button", { name: "New coffee" })).queryByText("Acknowledge")).toBeNull();
     expect(screen.queryByText("Summer hours")).toBeNull();
     expect(screen.queryByRole("button", { name: "New" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
-    expect(screen.getByText("Summer hours")).toBeTruthy();
+    expect(desktop.getByText("Summer hours")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Past announcements" })).toBeTruthy();
   });
 
   it("acknowledges from the reader drawer", async () => {
@@ -772,8 +812,17 @@ describe("Important Dates (EKRAN-08)", () => {
     expect(within(table).getByText("Downtown closed")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Announcements" }).getAttribute("href")).toBe("/app/announcements");
     expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
+    // The phone's cards: same order; the days, then the kind and what that day means.
+    const cards = () =>
+      within(screen.getByRole("list", { name: "Important dates" }))
+        .getAllByRole("button")
+        .map((card) => card.getAttribute("aria-label"));
+    expect(cards()).toEqual(["Thanksgiving, Thu, Nov 26, Published", "Christmas, Fri, Dec 25, Published"]);
+    const card = within(screen.getByRole("button", { name: "Thanksgiving, Thu, Nov 26, Published" }));
+    expect(card.getByText("Holiday · Downtown closed")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
     expect(titles()).toEqual(["Labor Day"]);
+    expect(cards()).toEqual(["Labor Day, Mon, Sep 7, Past"]);
   });
 
   it("searches by words like Announcements, with New right after the search bar", async () => {
