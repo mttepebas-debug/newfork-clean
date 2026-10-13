@@ -95,11 +95,12 @@ describe("Export v2 read-only server authorization", () => {
     // An edit from another workspace is not this export's edit.
     getEditSession.mockResolvedValueOnce({ id: id(10), workspace_id: id(99), week_start: scope.week_start, revision: 4, location_ids: [id(3)], shifts: [] });
     expect((await post(payload)).statusCode).toBe(409);
-    // Not the person's edit: the core refuses it (42501), the route fails closed and nothing leaks.
-    getEditSession.mockRejectedValueOnce(rpcFailure({ message: "edit session belongs to someone else", code: "42501", hint: "authz.out_of_scope" }));
+    // The core refuses the edit (42501, e.g. edit rights taken away): the route fails closed and nothing leaks.
+    getEditSession.mockRejectedValueOnce(rpcFailure({ message: "schedule.edit refused", code: "42501", hint: "authz.out_of_scope" }));
     const refused = await post(payload); expect(refused.statusCode).toBe(503);
-    expect(refused.body).not.toContain("someone else"); expect(refused.body).not.toContain("authz.");
-    getEditSession.mockRejectedValueOnce(new Error("edit session not found"));
+    expect(refused.body).not.toContain("refused"); expect(refused.body).not.toContain("authz.");
+    // Someone else's edit: the database answers as if it did not exist (P0002), the same closed answer.
+    getEditSession.mockRejectedValueOnce(rpcFailure({ message: "edit session not found", code: "P0002" }));
     const missing = await post(payload); expect(missing.statusCode).toBe(503); expect(missing.body).not.toContain("edit session not found");
     await app.close();
   });

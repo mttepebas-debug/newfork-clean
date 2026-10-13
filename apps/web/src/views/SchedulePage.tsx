@@ -649,7 +649,8 @@ export function SchedulePage({
   const previewSource = usePreviewSource({
     workspaceId: context?.workspace.id ?? null, model: query.data, modelVersion: query.dataUpdatedAt,
     activeDraftId, editSession: gridEditSession ? { id: gridEditSession.id, revision: gridEditSession.revision, sourceDraftId: gridEditSession.source_draft_id } : null,
-    editing: isEditMode,
+    // The grid shows the edit as soon as it is held, a render before the mode follows.
+    editing: isEditMode || Boolean(gridEditSession),
     loading: query.isFetching || query.isPlaceholderData || Boolean(activeDraftId && draftsQuery.isFetching),
     drafts: draftsQuery.data?.drafts, onMissingDraft: clearMissingDraftPreview,
   });
@@ -1920,13 +1921,15 @@ export function SchedulePage({
       // Only a step still on its way to the server (a drop being saved) is not there yet; Export waits for that.
       loading: previewSource.loading || dropReview.optimisticOps.length > 0,
       requestedSourceKey: previewSource.requestedKey, resolvedSourceKey: previewSource.resolvedKey,
-      source: previewSource.source, model: { ...query.data, shifts: effectiveShifts },
+      // An open edit exports its own rows, as the server holds and checks them. Its pending
+      // steps are those same rows listed again, so they are not laid over them a second time.
+      source: previewSource.source, model: { ...query.data, shifts: gridEditSession?.shifts ?? effectiveShifts },
       workspaceName: context.workspace.name, selectedDate, view, search, focusedShiftId,
       display: { layout, employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
         showUnassignedShifts, showRoleSeparators, showTotalHours },
     });
   }, [exportOpen, query.data, context, previewSource.loading, previewSource.source, dropReview.optimisticOps.length, previewSource.requestedKey,
-    previewSource.resolvedKey, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
+    previewSource.resolvedKey, gridEditSession?.shifts, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
     employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
     showUnassignedShifts, showRoleSeparators, showTotalHours]);
 

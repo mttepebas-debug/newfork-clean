@@ -6485,6 +6485,36 @@ describe("App", () => {
     expect(window.location.search).toContain("mode=edit");
   });
 
+  it("exports a shift added in the open edit once, with its real id (S18)", async () => {
+    // The added shift is a row of the edit; the server also lists it as the edit's pending "create".
+    const acquired = unsavedEdit();
+    const base = acquired.session.shifts[0]!;
+    const added = { ...base, id: "abababab-abab-4bab-8bab-abababababab", scheduled_date: "2026-08-18", pending_op_type: "create" as const };
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue({ ...acquired, session: { ...acquired.session, shifts: [...acquired.session.shifts, added] } });
+    vi.mocked(fetchPendingOps).mockResolvedValue({ pending_ops: [{
+      id: added.id, location_id: added.location_id, week_start: scheduleFixture.week_start, op_type: "create",
+      target_shift_id: null, target_draft_id: null,
+      payload: { location_id: added.location_id, employee_id: added.employee_id, job_id: added.job_id, shift_type_id: added.shift_type_id,
+        scheduled_date: added.scheduled_date, start_time: added.start_time, end_time: added.end_time },
+      created_by: "88888888-8888-4888-8888-888888888888", created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:01:00Z",
+    }] });
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    await waitFor(() => expect(fetchPendingOps).toHaveBeenCalled());
+    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    const panel = await screen.findByRole("region", { name: "Export settings" });
+    await clickReadyButton(within(panel), "Download PDF");
+    await waitFor(() => expect(downloadExportFile).toHaveBeenCalledOnce());
+    const exported = vi.mocked(renderExportFiles).mock.calls.at(-1)![0].shifts.map((shift) => shift.id);
+    expect(exported.filter((id) => id === added.id)).toHaveLength(1);
+    expect(exported.some((id) => id.startsWith("pending:"))).toBe(false);
+    const scope = vi.mocked(authorizeScheduleExportV2).mock.calls.at(-1)![1];
+    expect(scope.shift_ids).toContain(added.id);
+    expect(scope.shift_ids.some((id) => id.startsWith("pending:"))).toBe(false);
+  });
+
   it("keeps Export v2 settings open when switching from published to another saved preview", async () => {
     const draft = { id: "99999999-9999-4999-8999-999999999996", workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start, name: "Alternate export draft", revision: 2,
