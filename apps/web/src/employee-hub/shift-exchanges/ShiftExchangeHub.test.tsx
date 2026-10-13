@@ -535,6 +535,39 @@ describe("Shift Hub outcome contracts", () => {
     expect(tabs[0]!.getAttribute("aria-current")).toBeNull();
   });
 
+  it("counts the requests waiting for my answer on the My requests tab", async () => {
+    model.employee_id = "blake";
+    model.cases[0]!.is_owner = false;
+    model.cases[0]!.applications[0]!.status = "invited";
+    const closed = structuredClone(model.cases[0]!);
+    closed.id = "closed";
+    closed.status = "expired";
+    model.cases.push(closed);
+    mount("/app/employee-hub/shift-hub");
+    const views = await screen.findByRole("navigation", {
+      name: "Shift Hub views",
+    });
+    const mine = within(views).getByRole("button", {
+      name: "My requests, 1 needs your answer",
+    });
+    expect(mine.querySelector(".sx-tab-count")?.textContent).toBe("1");
+    expect(mine.querySelector(".sx-tab-count")?.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+    expect(
+      within(views)
+        .getByRole("button", { name: "Available Shifts" })
+        .querySelector(".sx-tab-count"),
+    ).toBeNull();
+  });
+  it("shows no count when nothing waits for my answer", async () => {
+    mount("/app/employee-hub/shift-hub");
+    const views = await screen.findByRole("navigation", {
+      name: "Shift Hub views",
+    });
+    expect(views.querySelector(".sx-tab-count")).toBeNull();
+  });
+
   it.each(["direct", "swap"] as const)(
     "keeps the note and blocks a %s request when the selected match disappears",
     async (mode) => {
