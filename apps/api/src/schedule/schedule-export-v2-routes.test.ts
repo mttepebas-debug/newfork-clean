@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import type { ActiveWorkspaceContext, ScheduleReadModel, ScheduleExportV2Scope } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
-import { replyWithError } from "../http-error";
+import { replyWithError, rpcFailure } from "../http-error";
 import { registerScheduleExportV2Routes } from "./schedule-export-v2-routes";
 import type { ScheduleReadService } from "./schedule-service";
 
@@ -92,9 +92,29 @@ describe("Export v2 read-only server authorization", () => {
     expect((await post({ ...payload, shift_ids: [id(5)] })).statusCode).toBe(409);
     getEditSession.mockResolvedValueOnce({ id: id(10), workspace_id: id(2), week_start: "2026-09-21", revision: 4, location_ids: [id(3)], shifts: [] });
     expect((await post(payload)).statusCode).toBe(409);
-    // Not the person's edit (or a closed one): the core refuses it, and nothing leaks.
+    // An edit from another workspace is not this export's edit.
+    getEditSession.mockResolvedValueOnce({ id: id(10), workspace_id: id(99), week_start: scope.week_start, revision: 4, location_ids: [id(3)], shifts: [] });
+    expect((await post(payload)).statusCode).toBe(409);
+    // Not the person's edit: the core refuses it (42501), the route fails closed and nothing leaks.
+    getEditSession.mockRejectedValueOnce(rpcFailure({ message: "edit session belongs to someone else", code: "42501", hint: "authz.out_of_scope" }));
+    const refused = await post(payload); expect(refused.statusCode).toBe(503);
+    expect(refused.body).not.toContain("someone else"); expect(refused.body).not.toContain("authz.");
     getEditSession.mockRejectedValueOnce(new Error("edit session not found"));
-    const refused = await post(payload); expect(refused.statusCode).toBe(503); expect(refused.body).not.toContain("edit session not found");
+    const missing = await post(payload); expect(missing.statusCode).toBe(503); expect(missing.body).not.toContain("edit session not found");
+    await app.close();
+  });
+  it("in an open edit, its own locations come from the edit and the other locations from what is published", async () => {
+    const { app, post, getReadModel } = setup();
+    const payload = { ...scope, shift_ids: [id(7)], source: { kind: "edit_session", id: id(10), revision: 4 } };
+    // Published shift 5 sits at the edited location, so the edit replaced it: no longer exportable.
+    expect((await post({ ...payload, shift_ids: [id(5)] })).statusCode).toBe(409);
+    // Published shift 9 sits at another location the edit does not cover: still a cross-location reference.
+    const other = { ...model.shifts[0]!, id: id(9), location_id: id(8) };
+    getReadModel.mockResolvedValue({ ...model, locations: [...model.locations, { id: id(8), short_name: null }], shifts: [...model.shifts, other] });
+    expect((await post({ ...payload, ghost_shift_ids: [id(9)] })).statusCode).toBe(200);
+    expect((await post({ ...payload, ghost_shift_ids: [id(99)] })).statusCode).toBe(403);
+    // A published shift at the edited location is not a reference either.
+    expect((await post({ ...payload, ghost_shift_ids: [id(5)] })).statusCode).toBe(403);
     await app.close();
   });
   it("fails closed on revoked permissions, missing short names or a failing source read", async () => {
