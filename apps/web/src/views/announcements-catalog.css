@@ -240,6 +240,14 @@
    "telefonda liste sayfaları kart satırıyla"), as on Requests. A table or list
    that has rows steps aside for its cards; an empty one stays for its line. */
 @media (max-width: 720px) {
+  /* The page reaches both edges of a phone with the 16 px gutter (Mert
+     2026-10-13: "sağa sola dayansın"). */
+  .announcements-page.list-page.list-page {
+    width: auto;
+    box-sizing: border-box;
+    margin-inline: 0;
+    padding-inline: 16px;
+  }
   .announcements-page .job-catalog .job-column-headings {
     display: none;
   }
