@@ -68,7 +68,8 @@ select tests.publish_week('dz', 1, '[
   {"label": "mon", "person": "ali", "loc": "K", "job": "cook", "day": 0, "start": "08:00", "end": "16:00"}
 ]');
 select tests.person('dc', 'berk', 'manager', array['B'], array['cook']);
-select tests.remember('dc:kadikoy-only', tests.publish_week('dc', 3, '[
+-- Derya opens it: her edit covers Kadikoy only, so the draft is tied to Kadikoy alone.
+select tests.remember('dc:kadikoy-only', tests.publish_week_as(tests.user('dc:derya'), 'dc', 3, '[
   {"label": "k3", "person": "ali", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "13:00"}
 ]'));
 
