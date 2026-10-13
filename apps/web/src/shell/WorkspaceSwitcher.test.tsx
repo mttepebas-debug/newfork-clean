@@ -74,7 +74,9 @@ describe("WorkspaceSwitcher", () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([meyhouse]);
     renderSwitcher();
 
-    const trigger = await screen.findByRole("button", { name: /Meyhouse/ });
+    const trigger = await screen.findByRole("button", {
+      name: "Meyhouse, switch workspace",
+    });
     expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
     fireEvent.click(trigger);
 

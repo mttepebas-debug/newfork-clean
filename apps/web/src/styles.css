@@ -2936,6 +2936,13 @@ select:focus-visible {
   gap: 10px;
   padding: 8px 12px;
 }
+.sidebar-workspace-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
 /* The workspace switcher is the footer row above Settings, sized like its
    neighbours (Mert 2026-10-13). Its menu opens upwards inside the sidebar, or
    to the right of the collapsed rail, so the sidebar edge never cuts it. */
@@ -2949,10 +2956,6 @@ select:focus-visible {
 .workspace-switcher-trigger:hover,
 .workspace-switcher-trigger[aria-expanded="true"] {
   background: var(--theme-surface-muted);
-}
-.workspace-switcher-trigger:focus-visible {
-  outline: 3px solid var(--theme-focus);
-  outline-offset: 2px;
 }
 .workspace-switcher-trigger .workspace-name {
   min-width: 0;

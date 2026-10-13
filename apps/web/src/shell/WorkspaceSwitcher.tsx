@@ -105,7 +105,7 @@ export function WorkspaceSwitcher({
         className={`nav-item workspace-switcher-trigger${
           collapsed ? " rail-peek-item" : ""
         }`}
-        aria-label={collapsed ? `${workspaceName}, switch workspace` : undefined}
+        aria-label={`${workspaceName}, switch workspace`}
         aria-expanded={open}
         aria-haspopup="menu"
         data-rail-peek={collapsed ? "" : undefined}
