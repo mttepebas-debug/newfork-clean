@@ -238,7 +238,7 @@ import { useConfirmDialog } from "../shell/ConfirmDialog";
 
 type SaveRecoveryIntent =
   | {
-      readonly kind: "save" | "save-and-export";
+      readonly kind: "save";
       readonly name: string;
       readonly force: boolean;
       readonly targetDraftId: string | null | undefined;
@@ -343,7 +343,6 @@ export function SchedulePage({
   const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
   const [, setEditorDirty] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [exportAfterSave, setExportAfterSave] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
@@ -398,7 +397,6 @@ export function SchedulePage({
   useEffect(() => {
     setSaveBusy(false);
     setSaveOpen(false);
-    setExportAfterSave(false);
     setSaveRecovery(null);
     setRetroactiveEditOpen(false);
   }, [mutationContext, setRetroactiveEditOpen]);
@@ -650,15 +648,20 @@ export function SchedulePage({
   }, [setScheduleMode]);
   const previewSource = usePreviewSource({
     workspaceId: context?.workspace.id ?? null, model: query.data, modelVersion: query.dataUpdatedAt,
-    activeDraftId, editing: isEditMode || Boolean(gridEditSession),
+    activeDraftId, editSession: gridEditSession ? { id: gridEditSession.id, revision: gridEditSession.revision, sourceDraftId: gridEditSession.source_draft_id } : null,
+    editing: isEditMode,
     loading: query.isFetching || query.isPlaceholderData || Boolean(activeDraftId && draftsQuery.isFetching),
     drafts: draftsQuery.data?.drafts, onMissingDraft: clearMissingDraftPreview,
   });
   useEffect(() => {
-    if (isEditMode || gridEditSession || !canExportSchedules) setExportOpen(false);
-  }, [isEditMode, gridEditSession, canExportSchedules]);
+    // Export shows what is on the grid; entering or leaving edit changes that, so an open Export closes.
+    setExportOpen(false);
+  }, [isEditMode]);
   useEffect(() => {
-    setExportOpen(false); setExportAfterSave(false); setSaveOpen(false);
+    if (!canExportSchedules) setExportOpen(false);
+  }, [canExportSchedules]);
+  useEffect(() => {
+    setExportOpen(false); setSaveOpen(false);
   }, [context?.workspace.id, context?.userId]);
   const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision);
   const displayedPendingOps = useMemo(
@@ -1043,11 +1046,6 @@ export function SchedulePage({
     setTopbarDropdownOpen(false);
     setTopbarDismissSignal(current => current + 1);
     closeTopActionSurfaces("export");
-    if (isEditMode || session) {
-      setExportAfterSave(true);
-      setSaveOpen(true);
-      return;
-    }
     setExportOpen(true);
   };
 
@@ -1291,7 +1289,6 @@ export function SchedulePage({
         return next;
       }, { replace: true });
     }
-    setExportAfterSave(false);
     setSaveOpen(true);
   };
 
@@ -1299,7 +1296,7 @@ export function SchedulePage({
     name: string,
     force: boolean,
     targetDraftId: string | null | undefined,
-    recoveryKind: "save" | "save-and-publish" | "save-and-export" = "save",
+    recoveryKind: "save" | "save-and-publish" = "save",
   ) => {
     if (!context || !session) return null;
     const savingContext = currentMutationContext.current;
@@ -1359,7 +1356,6 @@ export function SchedulePage({
         setOperationError(scheduleEditErrorText(error));
         setPublishMenuDismissSignal((value) => value + 1);
         setSaveOpen(false);
-        setExportAfterSave(false);
         leaveScheduleDeepLink();
         return null;
       }
@@ -1438,9 +1434,6 @@ export function SchedulePage({
       );
       if (result) {
         setSaveRecovery(null);
-        if (intent.kind === "save-and-export") {
-          setSaveOpen(false); setExportAfterSave(false); setExportOpen(true);
-        }
         if (intent.kind === "save-and-publish") {
           setPublishDraftOverride(result);
           setPublishOpen(true);
@@ -1456,15 +1449,11 @@ export function SchedulePage({
   };
 
   const keepEditingAfterSaveFailure = () => {
-    if (saveRecovery?.intent.kind === "save-and-export") {
-      setSaveOpen(false);
-      setExportAfterSave(false);
-    }
     setSaveRecovery(null);
   };
 
   const discardAfterSaveFailure = () => {
-    setSaveRecovery(null); setSaveOpen(false); setExportAfterSave(false);
+    setSaveRecovery(null); setSaveOpen(false);
     discardEditSession();
   };
 
@@ -1927,14 +1916,15 @@ export function SchedulePage({
     if (!exportOpen) return { status: "blocked", reason: "source" };
     if (!query.data || !context) return { status: "blocked", reason: "loading" };
     return createScheduleExportSnapshot({
-      mode: isEditMode || gridEditSession ? "edit" : "preview", loading: previewSource.loading,
+      // An edit still saving a step is not what the server has yet; Export waits for it.
+      loading: previewSource.loading || displayedPendingOps.length > 0,
       requestedSourceKey: previewSource.requestedKey, resolvedSourceKey: previewSource.resolvedKey,
       source: previewSource.source, model: { ...query.data, shifts: effectiveShifts },
       workspaceName: context.workspace.name, selectedDate, view, search, focusedShiftId,
       display: { layout, employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
         showUnassignedShifts, showRoleSeparators, showTotalHours },
     });
-  }, [exportOpen, query.data, context, isEditMode, gridEditSession, previewSource.loading, previewSource.requestedKey,
+  }, [exportOpen, query.data, context, previewSource.loading, previewSource.source, displayedPendingOps.length, previewSource.requestedKey,
     previewSource.resolvedKey, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
     employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
     showUnassignedShifts, showRoleSeparators, showTotalHours]);
@@ -2192,7 +2182,6 @@ export function SchedulePage({
     }
     if (saveOpen) {
       if (saveBusy) return true;
-      setExportAfterSave(false);
       setSaveOpen(false);
       return true;
     }
@@ -3263,18 +3252,15 @@ export function SchedulePage({
             ) ?? null
           }
           busy={saveBusy}
-          description={exportAfterSave ? "Export is available in preview mode. Save this working copy as a draft to continue." : undefined}
-          onClose={() => { if (!saveBusy) { leaveAfterSaveRef.current = null; setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
+          onClose={() => { if (!saveBusy) { leaveAfterSaveRef.current = null; setSaveOpen(false); leaveScheduleDeepLink(); } }}
           onSave={(name, draft) => {
             if (saveBusy) return;
             const savingContext = currentMutationContext.current;
             setSaveBusy(true);
-            void saveDraftFromMenu(name, Boolean(draft), draft?.id, exportAfterSave ? "save-and-export" : "save")
+            void saveDraftFromMenu(name, Boolean(draft), draft?.id, "save")
               .then(saved => {
                 if (!saved) return;
                 setSaveOpen(false);
-                if (exportAfterSave) setExportOpen(true);
-                setExportAfterSave(false);
                 const departure = leaveAfterSaveRef.current;
                 leaveAfterSaveRef.current = null;
                 if (departure) setDepartureAfterSave(() => departure);
@@ -3583,7 +3569,7 @@ export function SchedulePage({
           }
         />
       ) : null}
-      {exportOpen && canExportSchedules && context && !isEditMode && !gridEditSession ? (
+      {exportOpen && canExportSchedules && context ? (
         <ExportController key={`${context.userId}:${context.workspace.id}`} userId={context.userId}
           workspaceId={context.workspace.id} result={exportSnapshot} onClose={closeExport}
           canManageLocations={gates.manageLocations} sourceError={previewSource.error} />

@@ -7,7 +7,7 @@ export function exportAuthorizationScope(snapshot: ScheduleExportSnapshot): Sche
   return { week_start: snapshot.weekStart, dates: [...snapshot.dates], location_ids: snapshot.locations.map(location => location.id),
     employee_ids: snapshot.rows.flatMap(row => row.id ? [row.id] : []), shift_ids: snapshot.shifts.map(shift => shift.id),
     ...(snapshot.ghosts?.length ? { ghost_shift_ids: [...new Set(snapshot.ghosts.map(shift => shift.id))] } : {}),
-    source: snapshot.source.kind === "draft" ? { kind: "draft", id: snapshot.source.id, revision: snapshot.source.revision } : { kind: "published" } };
+    source: snapshot.source.kind === "published" ? { kind: "published" } : { kind: snapshot.source.kind, id: snapshot.source.id, revision: snapshot.source.revision } };
 }
 export async function renderExportFiles(snapshot: ScheduleExportSnapshot, preferences: ExportPreferences): Promise<readonly ExportFile[]> {
   if (preferences.format === "xlsx") {

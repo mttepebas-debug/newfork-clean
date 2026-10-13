@@ -1,7 +1,7 @@
 import type { Content, TableCell, TDocumentDefinitions } from "pdfmake/interfaces";
 import type { ExportPreferences } from "./preferences";
 import { exportShiftLines } from "./badge-text";
-import type { ExportEmployeeRow, ExportShift, ScheduleExportSnapshot } from "./snapshot";
+import type { ExportEmployeeRow, ExportShift, ExportSource, ScheduleExportSnapshot } from "./snapshot";
 
 export function lightBadgeColor(color: string): string {
   const hex = /^#[0-9a-f]{6}$/i.test(color) ? color.slice(1) : "54736a";
@@ -10,8 +10,14 @@ export function lightBadgeColor(color: string): string {
 export function dayHeading(date: string): string {
   return new Intl.DateTimeFormat("en", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
 }
+/** What the file says it shows. An unsaved edit reads as a draft; the file carries no "not saved" note. */
+export function exportSourceTitle(source: ExportSource): string {
+  if (source.kind === "draft") return `Draft: ${source.name}`;
+  if (source.kind === "edit_session") return source.draftName ? `Draft: ${source.draftName}` : "Draft";
+  return "Published";
+}
 export function exportSubtitle(snapshot: ScheduleExportSnapshot): string {
-  return `${snapshot.dates[0]}${snapshot.dates.length > 1 ? ` – ${snapshot.dates.at(-1)}` : ""} · ${snapshot.source.kind === "draft" ? `Draft: ${snapshot.source.name}` : "Published"}`;
+  return `${snapshot.dates[0]}${snapshot.dates.length > 1 ? ` – ${snapshot.dates.at(-1)}` : ""} · ${exportSourceTitle(snapshot.source)}`;
 }
 /** Human-readable heading shared by PDF, Excel sheets and the preview page. */
 export function exportTitleLines(snapshot: ScheduleExportSnapshot, locations: readonly { readonly name: string }[]): { title: string; subtitle: string } {
@@ -19,7 +25,7 @@ export function exportTitleLines(snapshot: ScheduleExportSnapshot, locations: re
   const year = new Date(`${last}T12:00:00Z`).getUTCFullYear();
   const range = `${dayHeading(first)}${first === last ? "" : ` – ${dayHeading(last)}`}, ${year}`;
   return { title: locations.map(location => location.name).join(" + "),
-    subtitle: `${snapshot.source.kind === "draft" ? `Draft: ${snapshot.source.name}` : "Published"} · ${range}` };
+    subtitle: `${exportSourceTitle(snapshot.source)} · ${range}` };
 }
 
 export function exportCellShifts(snapshot: ScheduleExportSnapshot, row: ExportEmployeeRow, locationIds: readonly string[], date: string, includeGhosts = snapshot.layout === "separate"): ExportShift[] {
