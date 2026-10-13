@@ -109,7 +109,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
   }
 
   const hours = item.shift.start_time && item.shift.end_time
-    ? clockRange(item.shift.start_time, item.shift.end_time, timeFormat, { bothHalves: true })
+    ? clockRange(item.shift.start_time, item.shift.end_time, timeFormat, { spaced: true })
     : "Hours not set";
   const day = formatTimeOffDay(item.shift.scheduled_date);
   const refusals = preview.data && !preview.data.allowed && picked

@@ -13,7 +13,7 @@ import { useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import "./account.css";
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { AccountAvatar } from "./AccountAvatar";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
@@ -118,12 +118,12 @@ export default function AccountLayout() {
             <button
               type="button"
               className="account-nav-item"
-              onClick={() => requestAvailabilityNavigation(() => navigate("/app"))}
+              onClick={() => requestAppNavigation(() => navigate("/app"))}
             >
               <ArrowLeft size={17} aria-hidden /> Back to workspace
             </button>
           ) : null}
-          <button type="button" className="account-nav-item" onClick={() => requestAvailabilityNavigation(() => void signOut())}>
+          <button type="button" className="account-nav-item" onClick={() => requestAppNavigation(() => void signOut())}>
             <LogOut size={17} aria-hidden /> Sign out
           </button>
         </div>

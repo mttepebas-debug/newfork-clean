@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PreferencesPage from "./PreferencesPage";
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 
 let account: AccountProfile | null;
 const updateAccount = vi.fn(async () => undefined);
@@ -54,11 +54,11 @@ describe("PreferencesPage", () => {
     render(<PreferencesPage />);
     fireEvent.change(dateFormat(), { target: { value: "YYYY-MM-DD" } });
     const navigate = vi.fn();
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
     expect(navigate).not.toHaveBeenCalled();
     expect(dateFormat().value).toBe("YYYY-MM-DD");
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
     expect(dateFormat().value).toBe("system");
     expect(navigate).toHaveBeenCalledOnce();

@@ -41,6 +41,8 @@ export {
   schedulePublishScheduleConflictsResultSchema,
   schedulePublishStaleBaselineResultSchema,
   scheduleReadModelSchema,
+  scheduleClosureCoversShift,
+  scheduleClosureSchema,
   scheduleRequestsReadModelSchema,
   scheduleShiftMutationInputSchema,
   shiftLabelInputSchema,
@@ -69,6 +71,7 @@ export type {
   ScheduleAutoFillApplyResult,
   ScheduleAutoFillAssignment,
   ScheduleAutoFillPreview,
+  ScheduleClosure,
   ScheduleDraftList,
   ScheduleDraftDeleteResult,
   ScheduleDraftSummary,
@@ -119,35 +122,3 @@ export type {
   UpdateSchedulePendingOpInput,
   UpdateScheduleExportScheduleInput,
 } from "./index";
-
-// Does an important date fall on this day? The Schedule's day strip, its
-// export and the API read it the way public.schedule_closures closes a day
-// (KK-92 d): a yearly date from its first year to two years after today, and
-// 29 February on 28 February in a year without it.
-// ponytail: a yearly range is at most a year long (two years are checked).
-export function importantDateCoversDate(
-  item: { readonly starts_on: string; readonly ends_on: string; readonly recurrence?: string | null },
-  day: string,
-  today: string = new Date().toISOString().slice(0, 10),
-): boolean {
-  if (item.recurrence !== "annual") {
-    return item.starts_on <= day && day <= item.ends_on;
-  }
-  const first = yearOf(item.starts_on);
-  const last = Math.max(yearOf(today) + 2, first);
-  return [yearOf(day) - 1, yearOf(day)].some((year) =>
-    year >= first && year <= last &&
-    inYear(item.starts_on, year - first) <= day && day <= inYear(item.ends_on, year - first),
-  );
-}
-
-function yearOf(iso: string): number {
-  return Number(iso.slice(0, 4));
-}
-
-function inYear(iso: string, years: number): string {
-  const year = yearOf(iso) + years;
-  const monthDay = iso.slice(5, 10);
-  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-  return `${year}-${monthDay === "02-29" && !leap ? "02-28" : monthDay}`;
-}

@@ -26,6 +26,7 @@ import {
   createScheduleShifts,
   deleteScheduleExportSchedule,
   deleteScheduleShift,
+  autosaveScheduleEditSession,
   discardScheduleEditSession,
   undoScheduleEditSessionStep,
   fetchPendingOps,
@@ -2329,7 +2330,8 @@ describe("App", () => {
 
     await waitFor(() =>
       expect(acquireScheduleEditSession).toHaveBeenCalledWith(
-        scheduleFixture.workspace_id, scheduleFixture.week_start, "draft", draftId, null,
+        // A reload picks the edit back up (resume).
+        scheduleFixture.workspace_id, scheduleFixture.week_start, "draft", draftId, null, true,
       ),
     );
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
@@ -2360,6 +2362,95 @@ describe("App", () => {
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
     expect(discardScheduleEditSession).not.toHaveBeenCalled();
   }, 20000);
+
+  // Mert 2026-10-12: leaving Schedule with unsaved edit work asks first.
+  describe("leaving an edit for another page", () => {
+    const dirtyEdit = () => {
+      const acquired = makeDefaultEditAcquireResult();
+      return { ...acquired, session: { ...acquired.session, dirty: true } };
+    };
+    const lazyRoute = { timeout: 15000 };
+
+    it("asks before the sidebar leaves; Keep editing stays, Discard and leave closes the edit and goes", async () => {
+      vi.mocked(discardScheduleEditSession).mockClear();
+      vi.mocked(acquireScheduleEditSession).mockResolvedValue(dirtyEdit());
+      window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+      render(<App />);
+      await signInAs("owner");
+      await openPublishedScheduleEditor();
+      expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      const question = await screen.findByRole("alertdialog", { name: "Save changes before leaving?" });
+      expect(window.location.pathname).toBe("/app/schedule");
+      fireEvent.click(within(question).getByRole("button", { name: "Keep editing" }));
+      expect(screen.queryByRole("alertdialog", { name: "Save changes before leaving?" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+      expect(discardScheduleEditSession).not.toHaveBeenCalled();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      fireEvent.click(within(
+        await screen.findByRole("alertdialog", { name: "Save changes before leaving?" }),
+      ).getByRole("button", { name: "Discard and leave" }));
+      expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
+      expect(discardScheduleEditSession).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id, dirtyEdit().session.id,
+      );
+    }, 30000);
+
+    it("saves the work as a draft, then opens the chosen page", async () => {
+      const savedDraft = {
+        id: "99999999-9999-4999-8999-999999999981",
+        workspace_id: scheduleFixture.workspace_id,
+        week_start: scheduleFixture.week_start,
+        name: "Before leaving",
+        revision: 1,
+        created_by: "88888888-8888-4888-8888-888888888888",
+        updated_by: "88888888-8888-4888-8888-888888888888",
+        created_at: "2026-08-17T12:00:00Z",
+        updated_at: "2026-08-17T12:09:00Z",
+      };
+      vi.mocked(saveScheduleDraft).mockResolvedValueOnce(savedDraft);
+      vi.mocked(acquireScheduleEditSession).mockResolvedValue(dirtyEdit());
+      window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+      render(<App />);
+      await signInAs("owner");
+      await openPublishedScheduleEditor();
+      expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      fireEvent.click(within(
+        await screen.findByRole("alertdialog", { name: "Save changes before leaving?" }),
+      ).getByRole("button", { name: "Save draft" }));
+      const saveWindow = screen.getByRole("dialog", { name: "Save draft" });
+      expect(window.location.pathname).toBe("/app/schedule");
+      fireEvent.change(within(saveWindow).getByLabelText("Draft name"), { target: { value: savedDraft.name } });
+      fireEvent.click(within(saveWindow).getByRole("button", { name: "Save draft" }));
+
+      expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
+      expect(saveScheduleDraft).toHaveBeenCalledTimes(1);
+    }, 30000);
+
+    it("lets go of an edit with nothing unsaved without asking", async () => {
+      vi.mocked(discardScheduleEditSession).mockClear();
+      vi.mocked(autosaveScheduleEditSession).mockClear();
+      window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+      render(<App />);
+      await signInAs("owner");
+      await openPublishedScheduleEditor();
+      expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      // Its lock no longer keeps the week from other managers; work in another
+      // tab of the same edit, if any, is kept, never thrown away.
+      await waitFor(() => expect(autosaveScheduleEditSession).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id, makeDefaultEditAcquireResult().session.id,
+      ));
+      expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    }, 30000);
+  });
 
   it("leaves edit mode for good on Discard; the reload resume does not take the lock again", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
@@ -2994,7 +3085,7 @@ describe("App", () => {
     }
   });
 
-  it("blocks preset shift badges when a partial closure covers that shift type", async () => {
+  it("blocks preset shift badges when the location's short hours leave out the preset's hours", async () => {
     const partialClosedFixture = {
       ...scheduleFixture,
       settings: {
@@ -3011,10 +3102,11 @@ describe("App", () => {
           id: "aaaaaaaa-0000-4000-8000-000000000001",
           location_id: scheduleFixture.locations[0]!.id,
           closed_date: "2026-08-17",
-          end_date: null,
-          title: "No dinner service",
+          title: "Inventory day",
           is_all_day: false,
-          shift_type_ids: [scheduleFixture.shift_types[0]!.id],
+          kind: "short",
+          opens: "10:00",
+          closes: "15:00",
         },
       ],
     } satisfies ScheduleReadModel;
@@ -3047,7 +3139,7 @@ describe("App", () => {
     // The toast lives in its own layer under <body>, outside the app container (BL-515).
     expect(await screen.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      screen.getByText(/Location is closed for Dinner\./),
+      screen.getByText(/Location has short hours for Inventory day: open 10a–3p only\./),
     ).toBeTruthy();
     expect(createScheduleShift).not.toHaveBeenCalled();
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();
@@ -3207,6 +3299,8 @@ describe("App", () => {
         "draft",
         kitchenPlan.id,
         null,
+        // A new edit from the menu never brings back one that was left.
+        false,
       ),
     );
     expect(

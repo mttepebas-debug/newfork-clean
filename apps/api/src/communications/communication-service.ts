@@ -1,14 +1,24 @@
 import {
+  announcementDetailSchema,
   announcementListSchema,
-  announcementMutationSchema,
+  announcementPreviewSchema,
+  announcementSavedSchema,
+  announcementStateResultSchema,
+  importantDateListSchema,
   notificationInboxSchema,
   ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
   workspaceManualTodoInputSchema,
   workspaceTodoSchema,
-  type AnnouncementInput,
+  type AnnouncementDetail,
+  type AnnouncementDraft,
+  type AnnouncementIntent,
   type AnnouncementList,
+  type AnnouncementPreview,
+  type AnnouncementSaved,
   type AnnouncementStateAction,
+  type AnnouncementStateResult,
+  type ImportantDateList,
   type NotificationAction,
   type NotificationInbox,
   type OwnerSetupChecklistItemId,
@@ -45,20 +55,32 @@ const notificationInboxRpcSchema = notificationInboxSchema
 
 export interface CommunicationService {
   getAnnouncements(input: ActorInput): Promise<AnnouncementList>;
+  /** One post for the drawer; people, shifts, acknowledgements and History for whoever may change it. */
+  getAnnouncement(input: ActorInput & { announcementId: string }): Promise<AnnouncementDetail>;
+  /** Important Dates, under Announcements. */
+  getImportantDates(input: ActorInput): Promise<ImportantDateList>;
+  /** What keeps the drawer from going out and the shifts it would change; writes nothing. */
+  previewAnnouncement(
+    input: ActorInput & { announcementId: string | null; intent: AnnouncementIntent; announcement: AnnouncementDraft },
+  ): Promise<AnnouncementPreview>;
+  /** Save draft, Schedule, Publish, or Save changes. */
   saveAnnouncement(
     input: ActorInput & {
       announcementId: string | null;
       expectedRevision: number | null;
-      announcement: AnnouncementInput;
+      intent: AnnouncementIntent;
+      announcement: AnnouncementDraft;
     },
-  ): Promise<z.infer<typeof announcementMutationSchema>>;
-  publishAnnouncement(
-    input: ActorInput & { announcementId: string; expectedRevision: number },
-  ): Promise<z.infer<typeof announcementMutationSchema>>;
-  /** Unpublish, archive or restore; republish is publishAnnouncement. */
+  ): Promise<AnnouncementSaved>;
+  /** Unschedule, Unpublish, Archive, Bring back, Remind. */
   setAnnouncementState(
-    input: ActorInput & { announcementId: string; expectedRevision: number; action: AnnouncementStateAction },
-  ): Promise<z.infer<typeof announcementMutationSchema>>;
+    input: ActorInput & {
+      announcementId: string;
+      expectedRevision: number;
+      action: AnnouncementStateAction;
+      bringBack: string[];
+    },
+  ): Promise<AnnouncementStateResult>;
   acknowledgeAnnouncement(
     input: ActorInput & { announcementId: string },
   ): Promise<z.infer<typeof acknowledgedResultSchema>>;
@@ -136,41 +158,47 @@ export function createCommunicationServiceWithClient(
         await rpc("get_announcements_service", actorArgs(input)),
       );
     },
-    async saveAnnouncement(input) {
-      return announcementMutationSchema.parse(
-        await rpc("save_announcement_audience_service", {
+    async getAnnouncement(input) {
+      return announcementDetailSchema.parse(
+        await rpc("get_announcement_service", {
           ...actorArgs(input),
           target_announcement_id: input.announcementId,
-          target_expected_revision: input.expectedRevision,
-          target_title: input.announcement.title,
-          target_body: input.announcement.body,
-          target_category: input.announcement.category,
-          target_audience_roles: input.announcement.audience_roles,
-          target_location_ids: input.announcement.location_ids,
-          target_department_ids: input.announcement.department_ids ?? [],
-          target_job_ids: input.announcement.job_ids ?? [],
-          target_publish_at: input.announcement.publish_at,
-          target_expires_at: input.announcement.expires_at,
-          target_action_url: input.announcement.action_url,
         }),
       );
     },
-    async publishAnnouncement(input) {
-      return announcementMutationSchema.parse(
-        await rpc("publish_announcement_service", {
+    async getImportantDates(input) {
+      return importantDateListSchema.parse(
+        await rpc("get_important_dates_service", actorArgs(input)),
+      );
+    },
+    async previewAnnouncement(input) {
+      return announcementPreviewSchema.parse(
+        await rpc("preview_announcement_service", {
+          ...actorArgs(input),
+          target_announcement_id: input.announcementId,
+          target_payload: { ...input.announcement, intent: input.intent },
+        }),
+      );
+    },
+    async saveAnnouncement(input) {
+      return announcementSavedSchema.parse(
+        await rpc("save_announcement_service", {
           ...actorArgs(input),
           target_announcement_id: input.announcementId,
           target_expected_revision: input.expectedRevision,
+          target_payload: input.announcement,
+          target_intent: input.intent,
         }),
       );
     },
     async setAnnouncementState(input) {
-      return announcementMutationSchema.parse(
+      return announcementStateResultSchema.parse(
         await rpc("set_announcement_state_service", {
           ...actorArgs(input),
           target_announcement_id: input.announcementId,
           target_expected_revision: input.expectedRevision,
           target_action: input.action,
+          target_bring_back: input.bringBack,
         }),
       );
     },

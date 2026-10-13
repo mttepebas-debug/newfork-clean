@@ -1,33 +1,24 @@
-import type { ScheduleReadModel } from "@newfork/shared/schedule";
 import { describe, expect, it } from "vitest";
 
-import { scheduleClosureCoversDate } from "./scheduleClosures";
-
-const closure = {
-  closed_date: "2026-08-17",
-  end_date: "2026-08-19",
-} as ScheduleReadModel["closures"][number];
+import { scheduleClosureCoversDate, scheduleClosureLabel } from "./scheduleClosures";
 
 describe("scheduleClosures", () => {
-  it("matches dates inside an inclusive closure range", () => {
-    expect(scheduleClosureCoversDate(closure, "2026-08-17")).toBe(true);
-    expect(scheduleClosureCoversDate(closure, "2026-08-18")).toBe(true);
-    expect(scheduleClosureCoversDate(closure, "2026-08-19")).toBe(true);
-    expect(scheduleClosureCoversDate(closure, "2026-08-20")).toBe(false);
+  it("covers only the closure's own day", () => {
+    expect(scheduleClosureCoversDate({ closed_date: "2026-08-17" }, "2026-08-17")).toBe(true);
+    expect(scheduleClosureCoversDate({ closed_date: "2026-08-17" }, "2026-08-18")).toBe(false);
   });
 
-  it("uses closed date when end date is missing", () => {
-    expect(
-      scheduleClosureCoversDate(
-        { ...closure, end_date: null },
-        "2026-08-17",
-      ),
-    ).toBe(true);
-    expect(
-      scheduleClosureCoversDate(
-        { ...closure, end_date: null },
-        "2026-08-18",
-      ),
-    ).toBe(false);
+  it("names a Closed day and Short hours (EKRAN-08)", () => {
+    expect(scheduleClosureLabel({ kind: "closed", opens: null, closes: null })).toEqual({
+      text: "Closed",
+      hours: null,
+    });
+    expect(scheduleClosureLabel({ kind: "short", opens: "10:00", closes: "15:30" })).toEqual({
+      text: "Short hours 10a–3:30p",
+      hours: "10a–3:30p",
+    });
+    expect(scheduleClosureLabel({ kind: "short", opens: "17:00", closes: "02:00" }, "24h").text).toBe(
+      "Short hours 17:00–02:00",
+    );
   });
 });

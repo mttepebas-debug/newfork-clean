@@ -1,0 +1,1542 @@
+/* Announcement drawer and reader (EKRAN-08, prototype v11, Mert 2026-10-12;
+   the Important Date drawer A + L1's badge, line, band, day buttons and All day,
+   Mert 2026-10-12 afternoon). Header with status, underline tabs, a footer that
+   holds the action. Light theme only; colours from --theme-*. The drawer sits
+   under .jobs-settings-page (CatalogDrawer), so rules reach in with two classes. */
+.announcement-drawer .ad {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* ---------- header and tabs ---------- */
+.announcement-drawer .ad-head {
+  flex: none;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+/* The reader's header keeps its room; the editor's sits tighter over its tabs. */
+.announcement-drawer .ad-head-plain {
+  padding-top: 18px;
+  padding-bottom: 14px;
+}
+.announcement-drawer .ad-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.announcement-drawer .ad-head-text {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+  min-width: 0;
+}
+.announcement-drawer .ad-title {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-text);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.announcement-drawer .ad-title-large {
+  font-size: 22px;
+}
+/* Type · date · Every year, under the title. */
+.announcement-drawer .ad-sub {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+.announcement-drawer .ad-close {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-muted-strong);
+}
+.announcement-drawer .ad-close:hover:not(:disabled) {
+  background: var(--theme-surface-muted);
+}
+.announcement-drawer .ad-status,
+.announcement-drawer .ad-chip,
+.announcement-drawer .ad-pill,
+.announcement-drawer .ad-tag,
+.announcement-drawer .ad-next-day {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.announcement-drawer .ad-status {
+  padding: 0 9px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-status[data-tone="green"] {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+.announcement-drawer .ad-status[data-tone="blue"] {
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+}
+.announcement-drawer .ad-status[data-tone="red"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.announcement-drawer .ad-status[data-tone="past"] {
+  background: var(--theme-border-subtle);
+  color: var(--theme-list-head-text);
+}
+.announcement-drawer .ad-chip {
+  padding: 0 8px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-chip[data-tone="blue"] {
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+}
+.announcement-drawer .ad-tabs {
+  display: flex;
+  gap: 18px;
+  margin-top: 6px;
+  overflow-x: auto;
+}
+.announcement-drawer .ad-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 8px 0 10px;
+  color: var(--theme-muted-strong);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-tabs button[aria-selected="true"] {
+  border-color: var(--theme-accent);
+  color: var(--theme-text);
+}
+.announcement-drawer .ad-tabs button[aria-disabled="true"] {
+  color: var(--theme-text-faint);
+  cursor: not-allowed;
+}
+/* jobs-settings.css drops the ring on [role="tab"]; the drawer keeps one. */
+.announcement-drawer .ad-tabs button[role="tab"]:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+/* A tab's round count; yellow when a shift is removed, shortened or opened. */
+.announcement-drawer .ad-badge {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.announcement-drawer .ad-badge[data-tone="warn"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.announcement-drawer .ad-error-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-radius: 50%;
+  background: var(--theme-danger);
+}
+
+/* ---------- body ---------- */
+.announcement-drawer .ad-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  /* Rows keep their content's height and the body scrolls: without it a long
+     Shifts list squeezes every group to an equal, clipped share. */
+  grid-auto-rows: max-content;
+  gap: 14px;
+  padding: 16px;
+}
+.announcement-drawer .ad-body > p {
+  margin: 0;
+}
+/* Details: everything stacks; the Message takes what room is left. */
+.announcement-drawer .ad-body[data-tab="details"] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.announcement-drawer .ad-body[data-tab="details"] > * {
+  flex: none;
+}
+.announcement-drawer .ad-body[data-tab="details"] > .ad-message {
+  flex: 1 1 auto;
+  min-height: 84px;
+  max-height: 200px;
+}
+.announcement-drawer .ad-message textarea.ad-input {
+  flex: 1 1 auto;
+  min-height: 62px;
+  resize: none;
+}
+.announcement-drawer .ad-message {
+  display: flex;
+  flex-direction: column;
+}
+/* Audience: the two lists take the room the drawer has. */
+.announcement-drawer .ad-body[data-tab="aud"] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.announcement-drawer .ad-body[data-tab="aud"] > * {
+  flex: none;
+}
+.announcement-drawer .ad-body[data-tab="aud"] > .ad-audience {
+  flex: 1 1 auto;
+  min-height: 240px;
+  grid-template-rows: minmax(0, 1fr);
+}
+.announcement-drawer .ad-body[data-tab="aud"] .ad-people {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+.announcement-drawer .ad-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.announcement-drawer :is(.ad-field > label, .ad-label-row > label, .ad-label) {
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.announcement-drawer .ad-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+}
+/* All day, at the right of Ends: checked by default (Mert, 2026-10-12). */
+.announcement-drawer .ad-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  cursor: pointer;
+}
+.announcement-drawer .ad-check:has(input:disabled) {
+  color: var(--theme-muted);
+  cursor: default;
+}
+.announcement-drawer .ad-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+  color-scheme: light;
+}
+.announcement-drawer textarea.ad-input {
+  height: auto;
+  padding: 8px 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.announcement-drawer .ad-input:focus {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 0;
+  border-color: var(--theme-focus);
+}
+.announcement-drawer .ad-input:disabled {
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted);
+}
+.announcement-drawer .ad-input[aria-invalid="true"] {
+  border-color: var(--theme-danger);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
+.announcement-drawer :is(input[type="date"], input[type="time"], input[type="datetime-local"]) {
+  font-variant-numeric: tabular-nums;
+}
+/* Typed times read centered in their box (Mert, 2026-10-12), in the
+   workspace's 12h or 24h clock. */
+.announcement-drawer .ad-clock {
+  text-align: center;
+}
+.announcement-drawer input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+}
+.announcement-drawer input::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.85;
+}
+.announcement-drawer .ad-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+.announcement-drawer .ad-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--theme-danger-strong);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.announcement-drawer .ad-error::before {
+  content: "!";
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.announcement-drawer .ad-flags {
+  display: grid;
+  gap: 6px;
+}
+/* Add to Important Dates · Add to Calendar · Show on the Schedule, side by side. */
+.announcement-drawer .ad-body[data-tab="details"] .ad-flags {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.announcement-drawer .ad-flag[data-compact] {
+  gap: 8px;
+  padding: 7px 9px;
+  font-size: 13px;
+  line-height: 1.3;
+}
+.announcement-drawer .ad-flag {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: var(--theme-surface-soft);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.announcement-drawer .ad-flag:has(input:checked) {
+  border-color: color-mix(in srgb, var(--theme-accent) 40%, var(--theme-surface));
+  background: color-mix(in srgb, var(--theme-accent-soft) 40%, var(--theme-surface));
+}
+.announcement-drawer .ad-flag:has(input:disabled) {
+  cursor: default;
+}
+.announcement-drawer .ad-flag > span {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+}
+.announcement-drawer .ad-flag b {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.announcement-drawer .ad-hint {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-publish-row {
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  min-height: 38px;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  cursor: default;
+}
+.announcement-drawer .ad-publish-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+}
+.announcement-drawer .ad-publish-row .ad-input {
+  width: 148px;
+  max-width: 100%;
+  height: 30px;
+}
+.announcement-drawer .ad-publish-row .ad-clock {
+  width: 100px;
+}
+.announcement-drawer .ad-publish-boxes {
+  display: inline-flex;
+  gap: 6px;
+  max-width: 100%;
+}
+/* A wrong publish time (Mert, 2026-10-12): the box turns red and one quiet
+   line sits right under it, in a gap kept a little wider for it, so the
+   Message under it never moves. */
+.announcement-drawer .ad-publish-at {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+.announcement-drawer .ad-publish-at .ad-error {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 1px;
+  display: block;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 15px;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-publish-at .ad-error::before {
+  content: none;
+}
+.announcement-drawer .ad-when {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+.announcement-drawer .ad-optional {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 500;
+}
+.announcement-drawer .ad-muted {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--theme-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.announcement-drawer .ad-link[data-tone="red"] {
+  color: var(--theme-danger-strong);
+}
+.announcement-drawer .ad-link:disabled {
+  opacity: 1;
+  color: var(--theme-text-faint);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+.announcement-drawer .ad-next {
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+}
+.announcement-drawer .ad-desc {
+  display: block;
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.announcement-drawer .ad-meta {
+  display: block;
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+.announcement-drawer .ad-strong {
+  color: var(--theme-text);
+  font-weight: 700;
+}
+
+/* ---------- notes and banners ---------- */
+.announcement-drawer .ad-note {
+  margin: 0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.announcement-drawer .ad-note[data-tone="warn"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.announcement-drawer .ad-note[data-tone="red"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-text);
+}
+.announcement-drawer .ad-note[data-tone="blue"] {
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+}
+.announcement-drawer .ad-note[data-tone="green"] {
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+  font-weight: 600;
+}
+.announcement-drawer .ad-readonly {
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.announcement-drawer .ad-empty-tab {
+  border-radius: 9px;
+  padding: 22px 12px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  text-align: center;
+}
+.announcement-drawer .ad-empty-tab span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+}
+
+/* ---------- Locations (on Details) ---------- */
+.announcement-drawer .ad-locs {
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.announcement-drawer :is(.ad-loc-head, .ad-loc) {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr) 120px;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+}
+.announcement-drawer .ad-loc-head {
+  background: var(--theme-list-head);
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.announcement-drawer .ad-loc-head :is(.ad-loc-name, .ad-seg) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+.announcement-drawer .ad-loc {
+  border-top: 1px solid var(--theme-border);
+}
+/* Not included: the row greys out (L1). */
+.announcement-drawer .ad-loc[data-off="true"] {
+  background: var(--theme-surface-soft);
+}
+.announcement-drawer .ad-loc[data-off="true"] .ad-loc-name {
+  color: var(--theme-muted-strong);
+  font-weight: 500;
+}
+.announcement-drawer .ad-loc[data-bad="true"] {
+  background: var(--theme-danger-surface);
+}
+.announcement-drawer .ad-loc-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.announcement-drawer .ad-loc-day {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+/* The Short hours times sit under Open / Short hours / Closed and are never
+   wider than them (Mert, 2026-10-12): the stack takes the buttons' width, the
+   times fill it without adding to it. */
+.announcement-drawer .ad-day-stack {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+.announcement-drawer .ad-times {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  width: 0;
+  min-width: 100%;
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-times input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: center;
+  color-scheme: light;
+}
+/* No clock button: the time is typed, and the box keeps its full text size. */
+.announcement-drawer .ad-times input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+.announcement-drawer :is(.ad-times, .ad-shift-edit) input[aria-invalid="true"] {
+  border-color: var(--theme-danger);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
+.announcement-drawer .ad-times input:focus {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 0;
+  border-color: var(--theme-focus);
+}
+.announcement-drawer .ad-next-day {
+  padding: 0 7px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+/* "2 removed · 4 kept": red when a shift goes, amber when one opens or shortens. */
+.announcement-drawer .ad-loc-impact {
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.announcement-drawer .ad-loc-impact[data-tone] {
+  font-weight: 650;
+}
+.announcement-drawer .ad-loc-impact[data-tone="red"] {
+  color: var(--theme-danger);
+}
+.announcement-drawer .ad-loc-impact[data-tone="amber"] {
+  color: var(--theme-warning);
+}
+.announcement-drawer .ad-loc-error {
+  grid-column: 1 / -1;
+}
+/* Open · Short hours · Closed with their dots (the reference's L1 buttons, Mert 2026-10-12). */
+.announcement-drawer .ad-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  min-width: 0;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  padding: 2px;
+  background: var(--theme-surface-muted);
+}
+.announcement-drawer .ad-seg button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 4px;
+  background: transparent;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"] {
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  box-shadow:
+    0 0 0 1px var(--theme-border-strong),
+    0 1px 2px color-mix(in srgb, var(--theme-text) 8%, transparent);
+}
+/* A shift's choice: buttons as wide as their words; the chosen one wears its
+   outcome, Remove red, Open shift amber, Keep green (Mert, 2026-10-12). */
+.announcement-drawer .ad-shift-acts .ad-seg {
+  display: inline-flex;
+}
+.announcement-drawer .ad-shift-acts .ad-seg button {
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"][data-tone="red"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"][data-tone="amber"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+  box-shadow: 0 0 0 1px var(--theme-warning-border);
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"][data-tone="green"] {
+  background: var(--theme-selected);
+  color: var(--theme-accent-deep);
+  box-shadow: 0 0 0 1px var(--theme-accent);
+}
+.announcement-drawer .ad-seg button:disabled {
+  color: var(--theme-muted);
+  opacity: 0.6;
+  cursor: default;
+}
+.announcement-drawer .ad-seg button[aria-pressed="true"]:disabled {
+  opacity: 1;
+}
+.announcement-drawer .ad-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.announcement-drawer [data-day="open"] .ad-dot {
+  background: var(--theme-accent);
+}
+.announcement-drawer [data-day="short"] .ad-dot {
+  background: var(--theme-warning-border);
+}
+.announcement-drawer [data-day="closed"] .ad-dot {
+  background: var(--theme-danger);
+}
+
+/* ---------- Audience ---------- */
+.announcement-drawer .ad-audience {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.announcement-drawer .ad-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.announcement-drawer .ad-pane-head {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--theme-border);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-pane-head b {
+  color: var(--theme-text);
+  font-size: 13.5px;
+}
+.announcement-drawer .ad-filters {
+  display: grid;
+  gap: 6px;
+}
+.announcement-drawer .ad-filters select {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 30px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 4px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 12.5px;
+  color-scheme: light;
+}
+.announcement-drawer .ad-people {
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.announcement-drawer .ad-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--theme-border-subtle);
+  font-size: 13px;
+}
+.announcement-drawer .ad-person:first-child,
+.announcement-drawer .ad-group + .ad-person {
+  border-top: 0;
+}
+.announcement-drawer label.ad-person {
+  cursor: pointer;
+}
+.announcement-drawer .ad-person-all {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--theme-surface-soft);
+  font-weight: 650;
+}
+.announcement-drawer .ad-remove {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--theme-muted);
+}
+.announcement-drawer .ad-remove:hover {
+  background: var(--theme-surface-muted);
+}
+.announcement-drawer .ad-group {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px 4px;
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.announcement-drawer .ad-group .ad-link {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.announcement-drawer .ad-empty {
+  padding: 20px 14px;
+  color: var(--theme-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.announcement-drawer .ad-pane-error {
+  padding: 10px;
+  border-bottom: 1px solid var(--theme-danger-soft);
+  background: var(--theme-danger-surface);
+}
+.announcement-drawer .ad-pane-foot {
+  margin-top: auto;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+.announcement-drawer .ad-pane-foot .nf-button {
+  width: 100%;
+}
+
+/* ---------- Shifts ---------- */
+.announcement-drawer .ad-sums {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.announcement-drawer .ad-sum {
+  display: grid;
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: var(--theme-surface-soft);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+.announcement-drawer .ad-sum b {
+  color: var(--theme-text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.announcement-drawer .ad-sum[data-tone="red"] {
+  border-color: color-mix(in srgb, var(--theme-danger) 22%, var(--theme-surface));
+  background: var(--theme-danger-soft);
+}
+.announcement-drawer .ad-sum[data-tone="red"] b {
+  color: var(--theme-danger-strong);
+}
+.announcement-drawer .ad-sum[data-tone="blue"] {
+  border-color: color-mix(in srgb, var(--theme-info-text) 22%, var(--theme-surface));
+  background: var(--theme-info-soft);
+}
+.announcement-drawer .ad-sum[data-tone="blue"] b {
+  color: var(--theme-info-text);
+}
+.announcement-drawer .ad-sum[data-zero="true"] {
+  border-color: var(--theme-border);
+  background: var(--theme-surface);
+}
+.announcement-drawer .ad-sum[data-zero="true"] b {
+  color: var(--theme-muted-strong);
+}
+.announcement-drawer .ad-shift-group,
+.announcement-drawer .ad-back {
+  border: 1px solid var(--theme-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.announcement-drawer .ad-shift-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--theme-surface-soft);
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.announcement-drawer .ad-dot-before::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--theme-muted);
+  font-weight: 400;
+}
+.announcement-drawer .ad-pill {
+  padding: 1px 8px;
+  font-size: 11.5px;
+}
+.announcement-drawer .ad-pill[data-tone="red"] {
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-strong);
+}
+.announcement-drawer .ad-pill[data-tone="amber"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+.announcement-drawer .ad-shift-count {
+  margin-left: auto;
+  font-weight: 600;
+}
+.announcement-drawer .ad-shift {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 150px 210px;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+.announcement-drawer .ad-shift[data-locked="true"] {
+  background: var(--theme-surface-soft);
+}
+.announcement-drawer .ad-shift[data-locked="true"] .ad-shift-who b {
+  color: var(--theme-muted-strong);
+}
+.announcement-drawer .ad-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.announcement-drawer .ad-shift-who {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.announcement-drawer .ad-shift-who b {
+  color: var(--theme-text);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.announcement-drawer .ad-shift-who span {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.announcement-drawer .ad-shift-time {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+}
+.announcement-drawer .ad-shift-time b {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.announcement-drawer .ad-why {
+  color: var(--theme-warning);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.announcement-drawer .ad-strike {
+  color: var(--theme-muted);
+  text-decoration: line-through;
+}
+.announcement-drawer .ad-shift-time b.ad-strike {
+  color: var(--theme-muted);
+}
+.announcement-drawer .ad-tag {
+  padding: 0 7px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.announcement-drawer .ad-tag[data-tone="blue"] {
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+}
+.announcement-drawer .ad-shift-acts {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+.announcement-drawer .ad-shift-more {
+  display: flex;
+  gap: 12px;
+}
+.announcement-drawer .ad-shift-more .ad-link {
+  font-size: 12px;
+}
+.announcement-drawer .ad-shift-edit {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border-radius: 7px;
+  padding: 8px;
+  background: var(--theme-surface-soft);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-shift-edit label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.announcement-drawer .ad-shift-edit input {
+  box-sizing: border-box;
+  width: 110px;
+  height: 32px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  text-align: center;
+  color-scheme: light;
+}
+.announcement-drawer .ad-back-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--theme-surface-soft);
+}
+.announcement-drawer .ad-back-head b {
+  color: var(--theme-text);
+  font-size: 14px;
+}
+.announcement-drawer .ad-back-head .ad-desc {
+  margin-top: 4px;
+}
+.announcement-drawer .ad-back-head .ad-link {
+  white-space: nowrap;
+}
+.announcement-drawer .ad-back-row {
+  display: grid;
+  grid-template-columns: 18px 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+.announcement-drawer label.ad-back-row {
+  cursor: pointer;
+}
+.announcement-drawer .ad-back-row[data-locked="true"] {
+  background: var(--theme-surface-soft);
+  cursor: default;
+}
+.announcement-drawer .ad-back-name {
+  min-width: 0;
+}
+.announcement-drawer .ad-back-name b {
+  display: block;
+  color: var(--theme-text);
+  font-size: 13.5px;
+}
+.announcement-drawer .ad-back-name > span {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-back-name .ad-tag {
+  margin-left: 4px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+}
+.announcement-drawer .ad-back-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-border);
+}
+
+/* ---------- Acknowledged, inside Who gets it ---------- */
+.announcement-drawer .ad-ack-sum {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-ack-sum .nf-button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-person :is(.ad-ok, .ad-not-yet) {
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-person :is(.ad-ok, .ad-not-yet) + .ad-remove {
+  margin-left: 0;
+}
+.announcement-drawer .ad-ok {
+  color: var(--theme-accent);
+  font-weight: 650;
+}
+.announcement-drawer .ad-not-yet {
+  color: var(--theme-warning);
+  font-weight: 600;
+}
+
+/* ---------- History: newest on top, arrows point up ---------- */
+.announcement-drawer .ad-history {
+  margin: 0;
+  padding: 4px 0 0;
+  list-style: none;
+}
+.announcement-drawer .ad-history > li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0 0 26px;
+}
+.announcement-drawer .ad-history > li[data-last="true"] {
+  padding-bottom: 0;
+}
+.announcement-drawer .ad-history-dot {
+  width: 8px;
+  height: 8px;
+  margin: 5px 0 0 2px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  box-shadow: 0 0 0 4px var(--theme-accent-soft);
+}
+.announcement-drawer .ad-history > li[data-bad="true"] .ad-history-dot {
+  background: var(--theme-danger);
+  box-shadow: 0 0 0 4px var(--theme-danger-soft);
+}
+.announcement-drawer .ad-history > li:not([data-last="true"])::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  bottom: 3px;
+  left: 5.25px;
+  width: 1.5px;
+  background: var(--theme-border-hover);
+}
+.announcement-drawer .ad-history > li:not([data-last="true"])::after {
+  content: "";
+  position: absolute;
+  top: 21px;
+  left: 2px;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--theme-border-hover);
+  border-left: 4px solid transparent;
+}
+.announcement-drawer .ad-history > li > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-size: 13px;
+}
+.announcement-drawer .ad-history strong {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.announcement-drawer .ad-history small {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.announcement-drawer .ad-history-more {
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+}
+.announcement-drawer .ad-history-changes summary {
+  width: fit-content;
+  color: var(--theme-accent-deep);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.announcement-drawer .ad-history-changes ul {
+  display: grid;
+  gap: 3px;
+  margin: 6px 0 0;
+  padding-left: 16px;
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+}
+
+/* ---------- reader ---------- */
+.announcement-drawer .ad-reader-body {
+  margin: 0;
+  color: var(--theme-text-body);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.announcement-drawer .ad-reader-day {
+  margin: 0;
+  font-size: 13.5px;
+}
+.announcement-drawer .ad-yours {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--theme-surface-soft);
+  font-size: 13.5px;
+}
+.announcement-drawer .ad-yours[data-tone="blue"] {
+  border-color: color-mix(in srgb, var(--theme-info-text) 30%, var(--theme-surface));
+  background: color-mix(in srgb, var(--theme-info-soft) 50%, var(--theme-surface));
+}
+.announcement-drawer .ad-yours[data-tone="red"] {
+  border-color: color-mix(in srgb, var(--theme-danger) 30%, var(--theme-surface));
+  background: var(--theme-danger-surface);
+}
+.announcement-drawer .ad-yours-head {
+  color: var(--theme-muted-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.announcement-drawer .ad-acked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-accent);
+  font-weight: 650;
+}
+
+/* ---------- footer ---------- */
+.announcement-drawer .ad-foot {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+/* What happens to the shifts, over the buttons (Mert, 2026-10-12): yellow when
+   one is removed, shortened or opened; only when a shift is reached. */
+.announcement-drawer .ad-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  margin: -12px -16px 0;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--theme-border);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.announcement-drawer .ad-band > svg {
+  flex: none;
+}
+.announcement-drawer .ad-band > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.announcement-drawer .ad-band[data-tone="warn"] {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+.announcement-drawer .ad-band[data-tone="ok"] {
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+}
+.announcement-drawer .ad-band[data-tone="calm"] {
+  background: var(--theme-surface-soft);
+  color: var(--theme-muted-strong);
+}
+.announcement-drawer .ad-band-link {
+  flex: none;
+  height: 28px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.announcement-drawer .ad-band-link:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.announcement-drawer .ad-foot-error {
+  margin: 0;
+  border-radius: 7px;
+  padding: 7px 10px;
+  background: var(--theme-danger-surface);
+  color: var(--theme-danger-strong);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.announcement-drawer .ad-foot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+.announcement-drawer .ad-foot-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.announcement-drawer .ad-foot-right {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Buttons keep the app's roles: green acts, white backs out, red removes. */
+.announcement-drawer .ad .nf-button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.announcement-drawer .ad .nf-button:disabled,
+.announcement-drawer .ad .nf-button[data-dim="true"] {
+  opacity: 1;
+  background: color-mix(in srgb, var(--theme-accent) 38%, var(--theme-surface));
+  color: var(--theme-on-accent);
+  cursor: not-allowed;
+}
+.announcement-drawer .ad .nf-button.secondary-button:disabled {
+  border-color: var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text-faint);
+}
+.announcement-drawer .ad .nf-button.danger-button:not(.is-armed) {
+  border: 1px solid color-mix(in srgb, var(--theme-danger) 45%, var(--theme-surface));
+  background: var(--theme-surface);
+  color: var(--theme-danger-strong);
+}
+.announcement-drawer .ad .nf-button.danger-button:not(.is-armed):hover:not(:disabled) {
+  background: var(--theme-danger-soft);
+}
+.announcement-drawer .ad .nf-button.danger-button:disabled {
+  opacity: 0.55;
+}
+.announcement-drawer .ad .nf-button.danger-button.is-armed {
+  border: 1px solid var(--theme-danger-strong);
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+}
+
+/* The drawer's own checkbox look (Mert 2026-10-12): light box, green tick.
+   Only here; other screens keep the browser's box. */
+.announcement-drawer input[type="checkbox"] {
+  flex: none;
+  display: inline-grid;
+  place-content: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--theme-border-control);
+  border-radius: 4px;
+  background: var(--theme-surface);
+  vertical-align: middle;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.announcement-drawer input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  clip-path: polygon(14% 44%, 0 62%, 42% 100%, 100% 18%, 84% 4%, 40% 66%);
+  background: var(--theme-accent);
+}
+.announcement-drawer input[type="checkbox"]:checked {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent-soft);
+}
+.announcement-drawer input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+/* All locations with only some checked: a dash (L1). */
+.announcement-drawer input[type="checkbox"]:indeterminate {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent-soft);
+}
+.announcement-drawer input[type="checkbox"]:indeterminate::before {
+  height: 2px;
+  transform: scale(1);
+  clip-path: none;
+}
+.announcement-drawer input[type="checkbox"]:disabled {
+  border-color: var(--theme-border-strong);
+  background: var(--theme-surface-muted);
+  cursor: not-allowed;
+}
+.announcement-drawer input[type="checkbox"]:checked:disabled {
+  border-color: color-mix(in srgb, var(--theme-accent) 40%, var(--theme-surface));
+  background: color-mix(in srgb, var(--theme-accent-soft) 50%, var(--theme-surface));
+}
+.announcement-drawer input[type="checkbox"]:checked:disabled::before {
+  background: color-mix(in srgb, var(--theme-accent) 55%, var(--theme-surface));
+}
+.announcement-drawer input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 640px) {
+  .announcement-drawer .ad-two,
+  .announcement-drawer .ad-audience,
+  .announcement-drawer .ad-body[data-tab="details"] .ad-flags {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .announcement-drawer .ad-body[data-tab="aud"] {
+    display: grid;
+  }
+  .announcement-drawer .ad-body[data-tab="aud"] .ad-people,
+  .announcement-drawer .ad-people {
+    max-height: 220px;
+  }
+  .announcement-drawer .ad-loc-head {
+    display: none;
+  }
+  .announcement-drawer .ad-loc {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .announcement-drawer .ad-loc-day {
+    grid-column: 1 / -1;
+  }
+  .announcement-drawer .ad-loc .ad-loc-impact {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .announcement-drawer .ad-sums {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .announcement-drawer .ad-shift {
+    grid-template-columns: 30px minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .announcement-drawer .ad-shift-acts,
+  .announcement-drawer .ad-shift-edit {
+    grid-column: 1 / -1;
+  }
+  .announcement-drawer .ad-back-row {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+  .announcement-drawer .ad-back-row .ad-avatar {
+    display: none;
+  }
+  .announcement-drawer .ad-foot-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .announcement-drawer .ad-foot-left,
+  .announcement-drawer .ad-foot-right {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .announcement-drawer .ad-foot-right .nf-button,
+  .announcement-drawer .ad-foot-left .nf-button {
+    flex: 1;
+    min-height: 44px;
+  }
+  .announcement-drawer .ad-foot-right .nf-button:last-child {
+    flex-basis: 100%;
+    order: -1;
+  }
+}

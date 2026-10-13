@@ -7,7 +7,6 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import DocumentsSettingsPage from "./DocumentsSettingsPage";
-import ImportantDatesSettingsPage from "./ImportantDatesSettingsPage";
 import JobsSettingsPage from "./JobsSettingsPage";
 import LocationsSettingsPage from "./LocationsSettingsPage";
 import RolesSettingsPage from "./RolesSettingsPage";
@@ -23,7 +22,7 @@ const context = {
   membership: { role: "manager", status: "active", allLocations: false },
   // Enough to open every page, so only the API's answer decides.
   permissions: [
-    "settings.locations.read", "settings.jobs.read", "settings.shift_catalog.read", "important_dates.read",
+    "settings.locations.read", "settings.jobs.read", "settings.shift_catalog.read",
     "roles.read", "documents.read", "employees.read",
   ],
   // Pages gated by can() read the core's answer instead.
@@ -42,7 +41,6 @@ vi.mock("./organization-data", async (original) => ({
   loadDepartmentsAndJobs: vi.fn(async () => { throw refused(); }),
   listShiftTypes: vi.fn(async () => { throw refused(); }),
   listShiftLabels: vi.fn(async () => { throw refused(); }),
-  listImportantDates: vi.fn(async () => { throw refused(); }),
 }));
 vi.mock("./roles-data", async (original) => ({
   ...(await original<typeof import("./roles-data")>()),
@@ -62,7 +60,6 @@ const pages: Array<[string, ComponentType, string]> = [
   ["Jobs", JobsSettingsPage, "positions"],
   ["Shift types", ShiftTypesSettingsPage, "shift types"],
   ["Shift labels", ShiftLabelsSettingsPage, "shift labels"],
-  ["Important dates", ImportantDatesSettingsPage, "important dates"],
   ["Roles", RolesSettingsPage, "roles"],
   ["Documents", DocumentsSettingsPage, "document settings"],
   ["Acknowledgements", SignatureTemplatesSettingsPage, "acknowledgements"],

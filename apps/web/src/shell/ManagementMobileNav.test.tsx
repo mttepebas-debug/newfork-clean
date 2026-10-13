@@ -110,8 +110,8 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(names(morePages())).toEqual([
       "Documents",
       "Availability",
-      "Important Dates",
       "Announcements",
+      "Important Dates",
       "Notifications",
       "Settings",
       "Account",

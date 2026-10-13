@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+
+import type { ScheduleReadModel } from "@newfork/shared/schedule";
 
 import { ScheduleDayHeaderCells } from "./ScheduleDayHeaderCells";
 
@@ -29,78 +31,85 @@ const locationGroups = [
   },
 ];
 
-const closures = [
-  {
-    id: "closure-1",
-    location_id: "loc-2",
-    closed_date: "2026-08-18",
-    end_date: null,
-    title: "Private event",
-    is_all_day: true,
-    shift_type_ids: [],
-  },
-  {
-    id: "closure-2",
-    location_id: "loc-1",
-    closed_date: "2026-08-19",
-    end_date: null,
-    title: "Lunch closed",
+const closure = (
+  id: string,
+  location_id: string,
+  closed_date: string,
+  extra: Partial<ScheduleReadModel["closures"][number]> = {},
+): ScheduleReadModel["closures"][number] => ({
+  id,
+  location_id,
+  closed_date,
+  title: "Weather",
+  is_all_day: true,
+  kind: "closed",
+  opens: null,
+  closes: null,
+  status: "published",
+  ...extra,
+});
+
+const closures: ScheduleReadModel["closures"] = [
+  closure("closure-1", "loc-2", "2026-08-18", { title: "Private event" }),
+  closure("closure-2", "loc-1", "2026-08-19", {
+    title: "Christmas Eve",
     is_all_day: false,
-    shift_type_ids: ["type-1", "type-2", "type-1"],
-  },
-  {
-    id: "closure-3",
-    location_id: "loc-2",
-    closed_date: "2026-08-19",
-    end_date: null,
-    title: "Weather",
-    is_all_day: true,
-    shift_type_ids: [],
-  },
-  {
-    id: "closure-4",
-    location_id: "loc-3",
-    closed_date: "2026-08-19",
-    end_date: null,
-    title: "Weather",
-    is_all_day: true,
-    shift_type_ids: [],
-  },
+    kind: "short",
+    opens: "10:00",
+    closes: "15:00",
+  }),
+  closure("closure-3", "loc-2", "2026-08-19"),
+  closure("closure-4", "loc-3", "2026-08-19"),
+  // Scheduled: only its dashed chip until it goes out.
+  closure("closure-5", "loc-1", "2026-08-18", { status: "scheduled" }),
 ];
 
-const importantDates = [
-  {
-    id: "important-1",
-    location_id: null,
-    title: "Anniversary",
-    type: "event" as const,
-    starts_on: "2026-08-18",
-    ends_on: "2026-08-18",
-    recurrence: "none" as const,
-  },
-  {
-    id: "important-2",
-    location_id: "loc-3",
-    title: "Bar Buyout",
-    type: "event" as const,
-    starts_on: "2026-08-18",
-    ends_on: "2026-08-18",
-    recurrence: "none" as const,
-  },
-  {
-    id: "important-3",
-    location_id: "loc-2",
-    title: "Bar Buyout",
-    type: "event" as const,
-    starts_on: "2026-08-18",
-    ends_on: "2026-08-18",
-    recurrence: "none" as const,
-  },
+const post = (
+  id: string,
+  location_id: string | null,
+  title: string,
+  extra: Partial<ScheduleReadModel["important_dates"][number]> = {},
+): ScheduleReadModel["important_dates"][number] => ({
+  id,
+  location_id,
+  title,
+  category: "event",
+  category_other: null,
+  starts_on: "2026-08-18",
+  ends_on: "2026-08-18",
+  status: "published",
+  publish_at: null,
+  day: "open",
+  opens: null,
+  closes: null,
+  event_from: null,
+  event_until: null,
+  ...extra,
+});
+
+const importantDates: ScheduleReadModel["important_dates"] = [
+  post("important-1", null, "Anniversary"),
+  // One post at two locations of a group: one chip, its Closed row first.
+  post("important-2", "loc-3", "Bar Buyout"),
+  post("important-2", "loc-2", "Bar Buyout", { day: "closed" }),
+  post("important-3", "loc-1", "Christmas Eve", {
+    starts_on: "2026-08-19",
+    ends_on: "2026-08-19",
+    day: "short",
+    opens: "10:00",
+    closes: "15:00",
+  }),
+  post("important-4", "loc-1", "Inspection", {
+    status: "scheduled",
+    publish_at: "2026-08-10T16:00:00Z",
+    day: "closed",
+  }),
 ];
 
 describe("ScheduleDayHeaderCells", () => {
-  it("renders day headers per location group with closures and important dates", () => {
+  it("renders day headers per location group with Closed days and post chips (EKRAN-08)", () => {
     const onDayHeaderClick = vi.fn();
+    const onOpenPost = vi.fn();
     render(
       <ScheduleDayHeaderCells
         closures={closures}
@@ -110,6 +119,7 @@ describe("ScheduleDayHeaderCells", () => {
         selectedDate="2026-08-19"
         todayDate="2026-08-18"
         onDayHeaderClick={onDayHeaderClick}
+        onOpenPost={onOpenPost}
       />,
     );
 
@@ -118,10 +128,14 @@ describe("ScheduleDayHeaderCells", () => {
       name: "View Tue Aug 18, Main Dining",
     });
     expect(mainToday.getAttribute("data-today")).toBe("true");
-    expect(mainToday.getAttribute("data-important")).toBe("true");
+    expect(mainToday.getAttribute("data-posts")).toBe("true");
+    // A scheduled Closed day does not shade the column yet.
+    expect(mainToday.getAttribute("data-closed")).toBe("false");
     expect(mainToday.getAttribute("data-schedule-location-filter-ids")).toBe(
       "loc-1",
     );
+    expect(within(mainToday).getByRole("button").textContent).toBe("Anniversary");
+    expect(within(mainToday).getByLabelText("1 more: Closed · announces Aug 10").textContent).toBe("+1");
 
     const patioPartiallyClosed = screen.getByRole("columnheader", {
       name: "View Tue Aug 18, Patio + Bar",
@@ -133,18 +147,16 @@ describe("ScheduleDayHeaderCells", () => {
     expect(patioPartiallyClosed.getAttribute("data-location-boundary")).toBe(
       "start",
     );
-    expect(
-      screen.getByLabelText(
-        "Important: Event: Anniversary · Event: Bar Buyout",
-      ),
-    ).toBeTruthy();
+    expect(within(patioPartiallyClosed).getByRole("button").textContent).toBe("Anniversary");
+    expect(within(patioPartiallyClosed).getByLabelText("1 more: Closed · Bar Buyout")).toBeTruthy();
 
-    const partialClosed = screen.getByRole("columnheader", {
+    const shortHours = screen.getByRole("columnheader", {
       name: "View Wed Aug 19, Main Dining",
     });
-    expect(partialClosed.getAttribute("data-viewed")).toBe("true");
-    expect(partialClosed.getAttribute("data-partial-closed")).toBe("true");
-    expect(screen.getByLabelText("Closed for 2 shift types")).toBeTruthy();
+    expect(shortHours.getAttribute("data-viewed")).toBe("true");
+    fireEvent.click(within(shortHours).getByRole("button", { name: "Short hours 10a–3p · Christmas Eve" }));
+    expect(onOpenPost).toHaveBeenCalledWith("important-3");
+    expect(onDayHeaderClick).not.toHaveBeenCalled();
 
     const patioFullyClosed = screen.getByRole("columnheader", {
       name: "View Wed Aug 19, Patio + Bar",
@@ -152,7 +164,7 @@ describe("ScheduleDayHeaderCells", () => {
     expect(patioFullyClosed.getAttribute("data-closed")).toBe("true");
     expect(patioFullyClosed.getAttribute("data-location-boundary")).toBeNull();
 
-    fireEvent.click(partialClosed);
+    fireEvent.click(shortHours);
     expect(onDayHeaderClick).toHaveBeenCalledWith("2026-08-19", ["loc-1"]);
   });
 

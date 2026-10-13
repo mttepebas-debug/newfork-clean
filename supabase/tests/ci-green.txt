@@ -180,6 +180,7 @@ supabase/tests/workspace_box_shows_live_announcements.test.sql
 supabase/tests/published_shift_rechecks_time_off.test.sql
 supabase/tests/publish_stays_in_its_draft.test.sql
 supabase/tests/schedule_bulk_paths_keep_rest.test.sql
+supabase/tests/schedule_new_edit_sets_left_edit_aside.test.sql
 supabase/tests/schedule_read_model_important_dates.test.sql
 supabase/tests/onboarding_phone_is_ones_own.test.sql
 supabase/tests/shift_changes_reach_managers_agreed.test.sql

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 481, last: 20261012044500_locations_settings_stay_with_owner_and_admin.sql
--- fingerprint: sha256:f792f5f079d3bd854734a01ffb1b0a8bf562bb7a677b3f1ef247028b57ef5d9d
+-- migrations: 484, last: 20261012224500_announcement_hours_name_both_halves.sql
+-- fingerprint: sha256:66b6a8033d317e6a495428e0aaf983e0b9609ca14c31bfb611625e32949f7e60
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -77,8 +77,13 @@ ALTER TYPE "app_private"."actor_state" OWNER TO "postgres";
 
 CREATE TYPE "public"."announcement_category" AS ENUM (
     'general',
-    'operations',
-    'schedule'
+    'holiday',
+    'event',
+    'busy_day',
+    'celebration',
+    'inspection',
+    'staff_meeting',
+    'other'
 );
 
 
@@ -166,26 +171,6 @@ CREATE TYPE "public"."employee_onboarding_requirement_status" AS ENUM (
 
 
 ALTER TYPE "public"."employee_onboarding_requirement_status" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."important_date_recurrence" AS ENUM (
-    'none',
-    'annual'
-);
-
-
-ALTER TYPE "public"."important_date_recurrence" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."important_date_type" AS ENUM (
-    'holiday',
-    'event',
-    'blackout',
-    'closed_day'
-);
-
-
-ALTER TYPE "public"."important_date_type" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."notification_category" AS ENUM (
@@ -880,28 +865,41 @@ CREATE TABLE IF NOT EXISTS "public"."announcements" (
     "body" "text" NOT NULL,
     "category" "public"."announcement_category" DEFAULT 'general'::"public"."announcement_category" NOT NULL,
     "status" "public"."announcement_status" DEFAULT 'draft'::"public"."announcement_status" NOT NULL,
-    "audience_roles" "public"."workspace_role"[] DEFAULT ARRAY['owner'::"public"."workspace_role", 'admin'::"public"."workspace_role", 'manager'::"public"."workspace_role", 'employee'::"public"."workspace_role"] NOT NULL,
     "publish_at" timestamp with time zone,
     "published_at" timestamp with time zone,
-    "expires_at" timestamp with time zone,
-    "action_url" "text",
     "revision" integer DEFAULT 1 NOT NULL,
     "created_by" "uuid" NOT NULL,
     "updated_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "department_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    "job_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
     "archived_at" timestamp with time zone,
     "content_revision" integer DEFAULT 1 NOT NULL,
     "delivered_to" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
     "release_failed_at" timestamp with time zone,
     "release_error" "text",
     "acknowledged_before" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    CONSTRAINT "announcements_action_url_check" CHECK ((("action_url" IS NULL) OR (("char_length"("action_url") <= 500) AND ("action_url" ~ '^/app(/|$)'::"text")))),
-    CONSTRAINT "announcements_audience_roles_check" CHECK ((("cardinality"("audience_roles") >= 1) AND ("cardinality"("audience_roles") <= 4))),
-    CONSTRAINT "announcements_body_check" CHECK ((("char_length"("btrim"("body")) >= 1) AND ("char_length"("btrim"("body")) <= 5000))),
-    CONSTRAINT "announcements_check" CHECK ((("expires_at" IS NULL) OR ("publish_at" IS NULL) OR ("expires_at" > "publish_at"))),
+    "category_other" "text",
+    "starts_on" "date",
+    "ends_on" "date",
+    "event_from" time without time zone,
+    "event_until" time without time zone,
+    "recurrence" "text" DEFAULT 'none'::"text" NOT NULL,
+    "on_important_dates" boolean DEFAULT false NOT NULL,
+    "on_calendar" boolean DEFAULT false NOT NULL,
+    "on_schedule" boolean DEFAULT false NOT NULL,
+    "ask_ack" boolean DEFAULT false NOT NULL,
+    "time_zone" "text" NOT NULL,
+    "scheduled_by" "uuid",
+    "published_by" "uuid",
+    "repeats_from" "uuid",
+    "shift_choices" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "choices_saved_at" timestamp with time zone,
+    "unpublished_at" timestamp with time zone,
+    CONSTRAINT "announcements_body_check" CHECK (("char_length"("body") <= 5000)),
+    CONSTRAINT "announcements_category_other_check" CHECK ((("category_other" IS NULL) OR (("category" = 'other'::"public"."announcement_category") AND (("char_length"("btrim"("category_other")) >= 1) AND ("char_length"("btrim"("category_other")) <= 40))))),
+    CONSTRAINT "announcements_days_check" CHECK ((("ends_on" IS NULL) OR ("starts_on" IS NULL) OR ("ends_on" >= "starts_on"))),
+    CONSTRAINT "announcements_event_time_check" CHECK ((("event_from" IS NULL) = ("event_until" IS NULL))),
+    CONSTRAINT "announcements_recurrence_check" CHECK (("recurrence" = ANY (ARRAY['none'::"text", 'date'::"text", 'nth'::"text", 'last'::"text"]))),
     CONSTRAINT "announcements_revision_check" CHECK (("revision" > 0)),
     CONSTRAINT "announcements_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 120)))
 );
@@ -910,78 +908,1378 @@ CREATE TABLE IF NOT EXISTS "public"."announcements" (
 ALTER TABLE "public"."announcements" OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."announcement_deliver"("item" "public"."announcements", "recipients" "uuid"[]) RETURNS "void"
+CREATE OR REPLACE FUNCTION "app_private"."announcement_apply"("actor" "uuid", "item" "public"."announcements", "impact" "jsonb") RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
-  event_id uuid := gen_random_uuid();
+  w uuid := item.workspace_id;
+  s jsonb;
+  q jsonb;
+  snap jsonb;
+  shift public.schedule_published_shifts;
+  places uuid[];
+  before jsonb;
+  told integer := 0;
+  touched uuid[] := '{}';
+  other record;
 begin
-  if cardinality(recipients) = 0 then
-    return;
+  places := array(
+    select (x ->> 'location_id')::uuid from jsonb_array_elements(impact -> 'shifts') x where x ->> 'outcome' <> 'kept'
+    union select (x ->> 'location_id')::uuid from jsonb_array_elements(impact -> 'quiet') x);
+  if cardinality(places) = 0 then
+    return 0;
   end if;
-  perform public.enqueue_notification_outbox_service(
-    item.workspace_id, event_id, 'communications.announcement.available', 1, item.updated_by,
-    'announcement', item.id::text,
-    jsonb_build_object(
-      'correlation_id', event_id,
-      'announcement_id', item.id,
-      'announcement_revision', item.revision,
-      'content_revision', item.content_revision,
-      'location_ids', to_jsonb(app_private.announcement_places(item.id)),
-      'recipient_user_ids', to_jsonb(recipients),
-      'audience_contract', 'announcement_targeted_members',
-      'category', 'announcement',
-      'title', item.title,
-      'body', left(item.body, 2000),
-      'safe_preview', 'A new announcement is available.',
-      'action_url', coalesce(item.action_url, '/app/announcements/' || item.id::text),
-      'group_key', 'announcement:' || item.id::text,
-      'visible_at', coalesce(item.published_at, now())),
-    now());
+  perform app_private.authorize(actor, w, 'schedule.edit', target_locations => places);
+
+  for s in select x from jsonb_array_elements(impact -> 'shifts') x where x ->> 'outcome' <> 'kept' loop
+    select * into shift from public.schedule_published_shifts published
+    where published.workspace_id = w and published.id = (s ->> 'id')::uuid for update;
+    snap := public.shift_exchange_shift(w, shift.id);
+    if shift.id is null or snap is null then
+      raise exception 'A shift on these days changed. Review the shifts again.'
+        using errcode = 'PT409', hint = 'announcement.shifts_changed';
+    end if;
+    before := jsonb_build_object(
+      'published', to_jsonb(shift) - 'crosses_midnight' - 'availability_snapshot',
+      'drafts', coalesce((
+        select jsonb_agg(to_jsonb(copy) - 'crosses_midnight') from public.schedule_draft_shifts copy
+        where copy.workspace_id = w and copy.id in (shift.source_shift_id, shift.id)
+          and public.shift_exchange_edit_matches(to_jsonb(copy), snap)), '[]'::jsonb),
+      'edits', coalesce((
+        select jsonb_agg(to_jsonb(copy) - 'crosses_midnight') from public.schedule_edit_session_shifts copy
+        where copy.workspace_id = w and (copy.id in (shift.source_shift_id, shift.id) or copy.source_published_shift_id = shift.id)
+          and copy.pending_op_type is distinct from 'delete' and public.shift_exchange_edit_matches(to_jsonb(copy), snap)), '[]'::jsonb));
+
+    if s ->> 'outcome' = 'removed' then
+      if (s ->> 'tied')::boolean then
+        raise exception 'This shift is tied to an offboarding or a time-off decision and can''t be removed.'
+          using errcode = 'PT409', hint = 'announcement.shift_tied';
+      end if;
+      with gone as (
+        delete from public.schedule_edit_session_shifts copy
+        where copy.workspace_id = w and (copy.id in (shift.source_shift_id, shift.id) or copy.source_published_shift_id = shift.id)
+          and copy.pending_op_type is distinct from 'delete' and public.shift_exchange_edit_matches(to_jsonb(copy), snap)
+        returning copy.session_id)
+      update public.schedule_edit_sessions set revision = revision + 1 where id in (select session_id from gone);
+      with gone as (
+        delete from public.schedule_draft_shifts copy
+        where copy.workspace_id = w and copy.id in (shift.source_shift_id, shift.id)
+          and public.shift_exchange_edit_matches(to_jsonb(copy), snap)
+        returning copy.draft_id)
+      update public.schedule_drafts set revision = revision + 1, updated_at = now() where id in (select draft_id from gone);
+      delete from public.schedule_published_shifts where id = shift.id;
+    elsif s ->> 'outcome' = 'opened' then
+      update public.schedule_published_shifts set employee_id = null where id = shift.id;
+      perform public.shift_exchange_reconcile_batch(actor, w, jsonb_build_array(snap || jsonb_build_object('new_employee_id', null)));
+    else
+      begin
+        update public.schedule_published_shifts
+        set start_time = (s ->> 'from')::time, end_time = (s ->> 'until')::time, time_basis = 'explicit', time_snapshot = null
+        where id = shift.id;
+      exception when check_violation then
+        raise exception '% can''t work %: it overlaps another shift or approved time off.',
+          coalesce(snap ->> 'employee_name', 'This open shift'),
+          app_private.announcement_hours_text((s ->> 'from')::time, (s ->> 'until')::time, app_private.announcement_time_format(w))
+          using errcode = 'PT409', hint = 'announcement.shift_conflict';
+      end;
+      with moved as (
+        update public.schedule_draft_shifts copy
+        set start_time = (s ->> 'from')::time, end_time = (s ->> 'until')::time, time_basis = 'explicit', time_snapshot = null,
+            revision = copy.revision + 1, updated_at = now()
+        where copy.workspace_id = w and copy.id in (shift.source_shift_id, shift.id)
+          and public.shift_exchange_edit_matches(to_jsonb(copy), snap)
+        returning copy.draft_id)
+      update public.schedule_drafts set revision = revision + 1, updated_at = now() where id in (select draft_id from moved);
+      with moved as (
+        update public.schedule_edit_session_shifts copy
+        set start_time = (s ->> 'from')::time, end_time = (s ->> 'until')::time, time_basis = 'explicit', time_snapshot = null,
+            revision = copy.revision + 1, updated_at = now()
+        where copy.workspace_id = w and (copy.id in (shift.source_shift_id, shift.id) or copy.source_published_shift_id = shift.id)
+          and copy.pending_op_type is distinct from 'delete' and public.shift_exchange_edit_matches(to_jsonb(copy), snap)
+        returning copy.session_id)
+      update public.schedule_edit_sessions set revision = revision + 1 where id in (select session_id from moved);
+    end if;
+
+    insert into public.announcement_shift_changes (workspace_id, announcement_id, source_shift_id, published_shift_id,
+      location_id, scheduled_date, employee_id, outcome, before, after_start, after_end, actor_user_id)
+    values (w, item.id, shift.source_shift_id, shift.id, shift.location_id, shift.scheduled_date, shift.employee_id,
+      s ->> 'outcome', before,
+      case when s ->> 'outcome' = 'edited' then (s ->> 'from')::time end,
+      case when s ->> 'outcome' = 'edited' then (s ->> 'until')::time end, actor);
+    touched := touched || shift.source_shift_id;
+    told := told + 1;
+  end loop;
+
+  -- A draft week's own shifts follow the default without a word (V6, B4).
+  for q in select x from jsonb_array_elements(impact -> 'quiet') x loop
+    before := jsonb_build_object(
+      'drafts', coalesce((
+        select jsonb_agg(to_jsonb(copy) - 'crosses_midnight') from public.schedule_draft_shifts copy
+        join public.schedule_drafts draft on draft.id = copy.draft_id and draft.archived_at is null
+        where copy.workspace_id = w and copy.id = (q ->> 'id')::uuid), '[]'::jsonb),
+      'edits', coalesce((
+        select jsonb_agg(to_jsonb(copy) - 'crosses_midnight') from public.schedule_edit_session_shifts copy
+        join public.schedule_edit_sessions session on session.id = copy.session_id and session.status = 'active'
+        where copy.workspace_id = w and copy.id = (q ->> 'id')::uuid and copy.source_published_shift_id is null
+          and copy.pending_op_type is distinct from 'delete'), '[]'::jsonb));
+    with gone as (
+      delete from public.schedule_edit_session_shifts copy
+      where copy.workspace_id = w and copy.id = (q ->> 'id')::uuid and copy.source_published_shift_id is null
+        and copy.pending_op_type is distinct from 'delete'
+        and exists (select 1 from public.schedule_edit_sessions session where session.id = copy.session_id and session.status = 'active')
+      returning copy.session_id)
+    update public.schedule_edit_sessions set revision = revision + 1 where id in (select session_id from gone);
+    with gone as (
+      delete from public.schedule_draft_shifts copy
+      where copy.workspace_id = w and copy.id = (q ->> 'id')::uuid
+        and exists (select 1 from public.schedule_drafts draft where draft.id = copy.draft_id and draft.archived_at is null)
+      returning copy.draft_id)
+    update public.schedule_drafts set revision = revision + 1, updated_at = now() where id in (select draft_id from gone);
+    insert into public.announcement_shift_changes (workspace_id, announcement_id, source_shift_id, location_id,
+      scheduled_date, employee_id, outcome, before, silent, actor_user_id)
+    values (w, item.id, (q ->> 'id')::uuid, (q ->> 'location_id')::uuid, (q ->> 'scheduled_date')::date,
+      (q ->> 'employee_id')::uuid, 'removed', before, true, actor);
+  end loop;
+
+  -- DB-1c: Undo does not take these back.
+  perform app_private.schedule_edit_undo_barrier();
+  -- V8: a swap, cover or open shift request on a changed shift closes; both sides hear.
+  if cardinality(touched) > 0 then
+    for other in
+      select c.id from public.shift_exchange_cases c
+      where c.workspace_id = w and c.status = 'open'
+        and (c.offered_source_id = any (touched) or c.requested_source_id = any (touched))
+    loop
+      update public.shift_exchange_cases set status = 'invalidated', revision = revision + 1, updated_at = now() where id = other.id;
+      update public.shift_exchange_applications set status = 'invalidated', updated_at = now()
+      where case_id = other.id and status in ('invited', 'pending_manager');
+      perform public.shift_exchange_emit(actor, w, other.id, null, 'invalidated',
+        'An involved shift changed with an announcement. Review the current schedule.');
+    end loop;
+    perform realtime.send(jsonb_build_object('workspace_id', w, 'announcement_id', item.id),
+      'changed', 'shift-exchanges:' || w::text, true);
+  end if;
+  return told;
 end;
 $$;
 
 
-ALTER FUNCTION "app_private"."announcement_deliver"("item" "public"."announcements", "recipients" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "app_private"."announcement_apply"("actor" "uuid", "item" "public"."announcements", "impact" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."announcement_out_to"("state" "app_private"."actor_state", "item" "public"."announcements", "places" "uuid"[]) RETURNS boolean
+CREATE OR REPLACE FUNCTION "app_private"."announcement_audience"("w" "uuid", "location_ids" "uuid"[], "user_ids" "uuid"[], "employee_ids" "uuid"[], "author" "uuid") RETURNS "uuid"[]
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select item.status = 'published' and item.archived_at is null
-     and (item.expires_at is null or item.expires_at > now())
-     and app_private.communication_reaches(state, item.workspace_id,
-           app_private.live_locations(item.workspace_id, places), cardinality(places) = 0,
-           item.audience_roles, item.department_ids, item.job_ids)
+  select coalesce(array_agg(distinct who order by who), '{}') from (
+    select unnest(coalesce(user_ids, '{}')) who
+    union
+    select person.user_id
+    from public.locations location
+    join public.employee_location_assignments assignment on assignment.location_id = location.id and assignment.ended_at is null
+    join public.employee_profiles person on person.id = assignment.employee_id and person.archived_at is null
+    where location.workspace_id = w and location.archived_at is null and location.id = any (coalesce(location_ids, '{}'))
+      and person.workspace_id = w
+    union
+    select person.user_id from public.employee_profiles person
+    where person.workspace_id = w and person.id = any (coalesce(employee_ids, '{}'))
+  ) reached
+  where who is not null and who is distinct from author
+    and exists (select 1 from public.workspace_memberships membership
+                where membership.workspace_id = w and membership.user_id = who and membership.status = 'active')
 $$;
 
 
-ALTER FUNCTION "app_private"."announcement_out_to"("state" "app_private"."actor_state", "item" "public"."announcements", "places" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "app_private"."announcement_audience"("w" "uuid", "location_ids" "uuid"[], "user_ids" "uuid"[], "employee_ids" "uuid"[], "author" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_authorize"("state" "app_private"."actor_state", "n" "jsonb", "author" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  reason text := app_private.announcement_reason(state,
+    app_private.announcement_places_of(state.workspace_id,
+      array(select (r ->> 'location_id')::uuid from jsonb_array_elements(n -> 'locations') r),
+      array(select x::uuid from jsonb_array_elements_text(n -> 'people') x)),
+    author, (n ->> 'on_important_dates')::boolean or (n ->> 'hours')::boolean);
+begin
+  if reason is not null then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || reason, detail = 'announcement.write';
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_authorize"("state" "app_private"."actor_state", "n" "jsonb", "author" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_back_rows"("item" "public"."announcements", "first_day" "date", "last_day" "date", "day_rows" "jsonb") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  with live as (
+    select change.*, location.name location_name, location.sort_order, location.timezone,
+      coalesce(change.before -> 'published', change.before -> 'drafts' -> 0, change.before -> 'edits' -> 0) was,
+      public.shift_exchange_shift(change.workspace_id, change.source_shift_id) now_shift
+    from public.announcement_shift_changes change
+    join public.locations location on location.id = change.location_id
+    where change.announcement_id = item.id and change.brought_back_at is null
+      and change.scheduled_date >= (now() at time zone location.timezone)::date
+      and (item.status = 'unpublished' or (item.status = 'published' and item.archived_at is null and not exists (
+        select 1 from app_private.announcement_days(day_rows, first_day, last_day) day
+        where day.location_id = change.location_id and day.on_date = change.scheduled_date)))
+  ), shaped as (
+    select live.*, (live.was ->> 'start_time')::time was_start, (live.was ->> 'end_time')::time was_end,
+      app_private.shift_time_range(live.scheduled_date, (live.was ->> 'start_time')::time, (live.was ->> 'end_time')::time,
+        coalesce(live.was ->> 'time_timezone', live.timezone)) span,
+      person.user_id, person.first_name,
+      case when person.id is not null
+        then concat_ws(' ', coalesce(nullif(person.preferred_name, ''), person.first_name), person.last_name) end person_name,
+      coalesce(nullif(person.preferred_name, ''), person.first_name) short_name
+    from live
+    left join public.employee_profiles person on person.id = live.employee_id and person.workspace_id = live.workspace_id
+  ), locked as (
+    select shaped.*, case
+      when lower(shaped.span) <= now() then 'Already started'
+      when shaped.employee_id is not null and exists (
+        select 1 from public.schedule_time_off_segments segment
+        join public.schedule_time_off_requests request on request.id = segment.request_id and request.workspace_id = segment.workspace_id
+        where request.workspace_id = shaped.workspace_id and request.employee_id = shaped.employee_id and request.status = 'approved'
+          and public.time_off_effective_ranges(segment.id) && shaped.span)
+        then shaped.short_name || ' has approved time off that day'
+      when shaped.silent and not exists (
+        select 1 from public.schedule_drafts draft
+        where draft.id = (shaped.before -> 'drafts' -> 0 ->> 'draft_id')::uuid and draft.archived_at is null)
+        and not exists (
+        select 1 from public.schedule_edit_sessions session
+        where session.id = (shaped.before -> 'edits' -> 0 ->> 'session_id')::uuid and session.status = 'active')
+        then 'Its draft week changed since'
+      when shaped.outcome = 'removed' and not shaped.silent and shaped.now_shift is not null then 'Back on the Schedule already'
+      when shaped.outcome = 'removed' and not shaped.silent and not exists (
+        select 1 from public.schedule_location_publications publication
+        where publication.workspace_id = shaped.workspace_id and publication.location_id = shaped.location_id
+          and publication.status = 'current'
+          and shaped.scheduled_date between publication.week_start and publication.week_start + 6)
+        then 'Its week isn''t published anymore'
+      when shaped.outcome in ('opened', 'edited') and shaped.now_shift is null then 'Removed in the Schedule since'
+      when shaped.outcome = 'opened' and shaped.now_shift ->> 'employee_id' is not null
+        then 'Picked up by ' || coalesce(shaped.now_shift ->> 'employee_name', 'someone else')
+      when shaped.outcome = 'edited' and ((shaped.now_shift ->> 'start_time')::time, (shaped.now_shift ->> 'end_time')::time)
+          is distinct from (shaped.after_start, shaped.after_end)
+        then 'Changed in the Schedule since'
+      when shaped.outcome in ('removed', 'opened') and shaped.employee_id is not null and not shaped.silent and exists (
+        select 1 from public.schedule_published_shifts other
+        join public.schedule_location_publications publication on publication.id = other.publication_id and publication.status = 'current'
+        join public.locations place on place.id = other.location_id
+        where other.workspace_id = shaped.workspace_id and other.employee_id = shaped.employee_id
+          and other.source_shift_id <> shaped.source_shift_id
+          and other.scheduled_date between shaped.scheduled_date - 1 and shaped.scheduled_date + 1
+          and app_private.shift_time_range(other.scheduled_date, other.start_time, other.end_time,
+                coalesce(other.time_timezone, place.timezone)) && shaped.span)
+        then shaped.short_name || ' has another shift then'
+      end lock_text
+    from shaped
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', locked.id, 'source_id', locked.source_shift_id, 'outcome', locked.outcome, 'silent', locked.silent,
+    'location_id', locked.location_id, 'location_name', locked.location_name, 'scheduled_date', locked.scheduled_date,
+    'employee_id', locked.employee_id, 'employee_user_id', locked.user_id, 'employee_name', locked.person_name,
+    'job_name', coalesce((select job.name from public.jobs job where job.id = (locked.was ->> 'job_id')::uuid), 'Unassigned position'),
+    'start_time', to_char(locked.was_start, 'HH24:MI'), 'end_time', to_char(locked.was_end, 'HH24:MI'),
+    'after_start', to_char(locked.after_start, 'HH24:MI'), 'after_end', to_char(locked.after_end, 'HH24:MI'),
+    'lock', locked.lock_text)
+    order by locked.scheduled_date, locked.sort_order, locked.location_name, locked.was_start, locked.id), '[]'::jsonb)
+  from locked
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_back_rows"("item" "public"."announcements", "first_day" "date", "last_day" "date", "day_rows" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_bring_back"("actor" "uuid", "item" "public"."announcements", "ids" "uuid"[], "offered" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  w uuid := item.workspace_id;
+  pick jsonb;
+  change public.announcement_shift_changes;
+  was public.schedule_published_shifts;
+  copy jsonb;
+  publication_id uuid;
+  new_id uuid;
+  snap jsonb;
+  back jsonb := '[]'::jsonb;
+begin
+  if cardinality(coalesce(ids, '{}')) = 0 then
+    return back;
+  end if;
+  if exists (select 1 from unnest(ids) id where not exists (
+      select 1 from jsonb_array_elements(offered) row_item where (row_item ->> 'id')::uuid = id and row_item ->> 'lock' is null)) then
+    raise exception 'A shift on the bring-back list changed. Review the list again.'
+      using errcode = 'PT409', hint = 'announcement.bring_back_changed';
+  end if;
+  perform app_private.authorize(actor, w, 'schedule.edit', target_locations => array(
+    select distinct change_row.location_id from public.announcement_shift_changes change_row
+    where change_row.announcement_id = item.id and change_row.id = any (ids)));
+
+  for pick in select row_item from jsonb_array_elements(offered) row_item where (row_item ->> 'id')::uuid = any (ids) loop
+    select * into change from public.announcement_shift_changes change_row
+    where change_row.id = (pick ->> 'id')::uuid and change_row.announcement_id = item.id and change_row.brought_back_at is null
+    for update;
+    if change.id is null then
+      raise exception 'A shift on the bring-back list changed. Review the list again.'
+        using errcode = 'PT409', hint = 'announcement.bring_back_changed';
+    end if;
+
+    begin
+      if change.outcome = 'removed' and not change.silent then
+        was := jsonb_populate_record(null::public.schedule_published_shifts, change.before -> 'published');
+        select publication.id into publication_id from public.schedule_location_publications publication
+        where publication.workspace_id = w and publication.location_id = change.location_id and publication.status = 'current'
+          and change.scheduled_date between publication.week_start and publication.week_start + 6;
+        new_id := gen_random_uuid();
+        insert into public.schedule_published_shifts (id, workspace_id, location_id, publication_id, employee_id, job_id,
+          shift_type_id, scheduled_date, start_time, end_time, note, source_shift_id, unpaid_break_minutes, hide_time_on_badge,
+          label_ids, label_names, time_basis, time_snapshot, time_timezone)
+        values (new_id, w, was.location_id, publication_id, was.employee_id, was.job_id, was.shift_type_id, was.scheduled_date,
+          was.start_time, was.end_time, was.note, was.source_shift_id, was.unpaid_break_minutes, was.hide_time_on_badge,
+          was.label_ids, was.label_names, was.time_basis, was.time_snapshot, was.time_timezone);
+        -- An open edit of that week gets it too, the way a recovery adds it.
+        insert into public.schedule_edit_session_shifts (id, workspace_id, session_id, location_id, employee_id, job_id,
+          shift_type_id, scheduled_date, start_time, end_time, time_basis, time_snapshot, time_timezone, unpaid_break_minutes,
+          hide_time_on_badge, note, source_published_shift_id, label_ids, label_names)
+        select new_id, w, session.id, was.location_id, was.employee_id, was.job_id, was.shift_type_id, was.scheduled_date,
+          was.start_time, was.end_time, was.time_basis, was.time_snapshot, was.time_timezone, was.unpaid_break_minutes,
+          was.hide_time_on_badge, was.note, new_id, was.label_ids, was.label_names
+        from public.schedule_edit_sessions session
+        where session.workspace_id = w and session.status = 'active' and session.source_kind = 'published'
+          and session.week_start <= was.scheduled_date and was.scheduled_date <= session.week_start + 6
+          and was.location_id = any (session.location_ids)
+          and not exists (select 1 from public.schedule_edit_session_shifts present
+                          where present.session_id = session.id and present.id in (new_id, was.source_shift_id));
+      elsif change.outcome = 'opened' then
+        snap := public.shift_exchange_shift(w, change.source_shift_id);
+        update public.schedule_published_shifts set employee_id = change.employee_id
+        where workspace_id = w and id = (snap ->> 'id')::uuid and employee_id is null;
+        if not found then
+          raise exception 'A shift on the bring-back list changed. Review the list again.'
+            using errcode = 'PT409', hint = 'announcement.bring_back_changed';
+        end if;
+        perform public.shift_exchange_reconcile_batch(actor, w, jsonb_build_array(snap || jsonb_build_object('new_employee_id', change.employee_id)));
+      elsif change.outcome = 'edited' then
+        snap := public.shift_exchange_shift(w, change.source_shift_id);
+        was := jsonb_populate_record(null::public.schedule_published_shifts, change.before -> 'published');
+        update public.schedule_published_shifts
+        set start_time = was.start_time, end_time = was.end_time, time_basis = was.time_basis, time_snapshot = was.time_snapshot
+        where workspace_id = w and id = (snap ->> 'id')::uuid and start_time = change.after_start and end_time = change.after_end;
+        if not found then
+          raise exception 'A shift on the bring-back list changed. Review the list again.'
+            using errcode = 'PT409', hint = 'announcement.bring_back_changed';
+        end if;
+        with moved as (
+          update public.schedule_draft_shifts copy
+          set start_time = was.start_time, end_time = was.end_time, time_basis = was.time_basis, time_snapshot = was.time_snapshot,
+              revision = copy.revision + 1, updated_at = now()
+          where copy.workspace_id = w and copy.id in (change.source_shift_id, (snap ->> 'id')::uuid)
+            and public.shift_exchange_edit_matches(to_jsonb(copy), snap)
+          returning copy.draft_id)
+        update public.schedule_drafts set revision = revision + 1, updated_at = now() where id in (select draft_id from moved);
+        with moved as (
+          update public.schedule_edit_session_shifts copy
+          set start_time = was.start_time, end_time = was.end_time, time_basis = was.time_basis, time_snapshot = was.time_snapshot,
+              revision = copy.revision + 1, updated_at = now()
+          where copy.workspace_id = w and (copy.id in (change.source_shift_id, (snap ->> 'id')::uuid)
+                or copy.source_published_shift_id = (snap ->> 'id')::uuid)
+            and copy.pending_op_type is distinct from 'delete' and public.shift_exchange_edit_matches(to_jsonb(copy), snap)
+          returning copy.session_id)
+        update public.schedule_edit_sessions set revision = revision + 1 where id in (select session_id from moved);
+      end if;
+    exception when check_violation then
+      raise exception '% can''t take this shift back: it overlaps another shift or approved time off.',
+        coalesce(pick ->> 'employee_name', 'This person')
+        using errcode = 'PT409', hint = 'announcement.bring_back_conflict';
+    end;
+
+    -- The draft and edit copies as they were (a draft week's own shift has only these).
+    if change.outcome = 'removed' then
+      for copy in select x from jsonb_array_elements(change.before -> 'drafts') x loop
+        insert into public.schedule_draft_shifts (id, workspace_id, draft_id, location_id, employee_id, job_id, shift_type_id,
+          scheduled_date, start_time, end_time, note, unpaid_break_minutes, hide_time_on_badge, label_ids, label_names,
+          time_basis, time_snapshot, time_timezone)
+        select restored.id, w, restored.draft_id, restored.location_id, restored.employee_id, restored.job_id, restored.shift_type_id,
+          restored.scheduled_date, restored.start_time, restored.end_time, restored.note, restored.unpaid_break_minutes,
+          restored.hide_time_on_badge, restored.label_ids, restored.label_names, restored.time_basis, restored.time_snapshot,
+          restored.time_timezone
+        from jsonb_populate_record(null::public.schedule_draft_shifts, copy) restored
+        where exists (select 1 from public.schedule_drafts draft where draft.id = restored.draft_id and draft.archived_at is null)
+          and not exists (select 1 from public.schedule_draft_shifts present where present.id = restored.id);
+        update public.schedule_drafts set revision = revision + 1, updated_at = now() where id = (copy ->> 'draft_id')::uuid;
+      end loop;
+      if change.silent then
+        for copy in select x from jsonb_array_elements(change.before -> 'edits') x loop
+          insert into public.schedule_edit_session_shifts (id, workspace_id, session_id, location_id, employee_id, job_id,
+            shift_type_id, scheduled_date, start_time, end_time, note, unpaid_break_minutes, hide_time_on_badge, label_ids,
+            label_names, time_basis, time_snapshot, time_timezone, pending_op_type)
+          select restored.id, w, restored.session_id, restored.location_id, restored.employee_id, restored.job_id,
+            restored.shift_type_id, restored.scheduled_date, restored.start_time, restored.end_time, restored.note,
+            restored.unpaid_break_minutes, restored.hide_time_on_badge, restored.label_ids, restored.label_names,
+            restored.time_basis, restored.time_snapshot, restored.time_timezone, restored.pending_op_type
+          from jsonb_populate_record(null::public.schedule_edit_session_shifts, copy) restored
+          where exists (select 1 from public.schedule_edit_sessions session where session.id = restored.session_id and session.status = 'active')
+            and not exists (select 1 from public.schedule_edit_session_shifts present
+                            where present.session_id = restored.session_id and present.id = restored.id);
+          update public.schedule_edit_sessions set revision = revision + 1 where id = (copy ->> 'session_id')::uuid and status = 'active';
+        end loop;
+      end if;
+    end if;
+
+    update public.announcement_shift_changes set brought_back_at = now() where id = change.id;
+    back := back || jsonb_build_array(pick);
+  end loop;
+  -- DB-1c: Undo does not take these back either.
+  perform app_private.schedule_edit_undo_barrier();
+  return back;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_bring_back"("actor" "uuid", "item" "public"."announcements", "ids" "uuid"[], "offered" "jsonb") OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."announcement_shift_changes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "announcement_id" "uuid" NOT NULL,
+    "source_shift_id" "uuid" NOT NULL,
+    "published_shift_id" "uuid",
+    "location_id" "uuid" NOT NULL,
+    "scheduled_date" "date" NOT NULL,
+    "employee_id" "uuid",
+    "outcome" "text" NOT NULL,
+    "before" "jsonb" NOT NULL,
+    "after_start" time without time zone,
+    "after_end" time without time zone,
+    "silent" boolean DEFAULT false NOT NULL,
+    "actor_user_id" "uuid",
+    "changed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "brought_back_at" timestamp with time zone,
+    CONSTRAINT "announcement_shift_changes_check" CHECK ((("outcome" = 'edited'::"text") = (("after_start" IS NOT NULL) AND ("after_end" IS NOT NULL)))),
+    CONSTRAINT "announcement_shift_changes_check1" CHECK (("silent" OR ("published_shift_id" IS NOT NULL))),
+    CONSTRAINT "announcement_shift_changes_outcome_check" CHECK (("outcome" = ANY (ARRAY['removed'::"text", 'opened'::"text", 'edited'::"text"])))
+);
+
+
+ALTER TABLE "public"."announcement_shift_changes" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_change_item"("change" "public"."announcement_shift_changes") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'id', change.id, 'source_id', change.source_shift_id, 'outcome', change.outcome, 'silent', change.silent,
+    'location_id', change.location_id, 'location_name', location.name, 'scheduled_date', change.scheduled_date,
+    'employee_id', change.employee_id, 'employee_user_id', person.user_id,
+    'employee_name', case when person.id is not null
+      then concat_ws(' ', coalesce(nullif(person.preferred_name, ''), person.first_name), person.last_name) end,
+    'job_name', coalesce(job.name, 'Unassigned position'),
+    'start_time', to_char((shape.was ->> 'start_time')::time, 'HH24:MI'),
+    'end_time', to_char((shape.was ->> 'end_time')::time, 'HH24:MI'),
+    'after_start', to_char(change.after_start, 'HH24:MI'), 'after_end', to_char(change.after_end, 'HH24:MI'),
+    'changed_at', change.changed_at, 'brought_back_at', change.brought_back_at)
+  from (select coalesce(change.before -> 'published', change.before -> 'drafts' -> 0, change.before -> 'edits' -> 0) was) shape
+  join public.locations location on location.id = change.location_id
+  left join public.employee_profiles person on person.id = change.employee_id and person.workspace_id = change.workspace_id
+  left join public.jobs job on job.id = (shape.was ->> 'job_id')::uuid and job.workspace_id = change.workspace_id
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_change_item"("change" "public"."announcement_shift_changes") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_dates"("item" "public"."announcements") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select item.on_important_dates or exists (
+    select 1 from public.announcement_locations target where target.announcement_id = item.id and target.day <> 'open')
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_dates"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_day_text"("d" "date") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$ select to_char(d, 'Dy, Mon FMDD') $$;
+
+
+ALTER FUNCTION "app_private"."announcement_day_text"("d" "date") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_days"("day_rows" "jsonb", "first_day" "date", "last_day" "date") RETURNS TABLE("location_id" "uuid", "on_date" "date", "kind" "text", "opens" time without time zone, "closes" time without time zone)
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select (r ->> 'location_id')::uuid, d::date, r ->> 'day', (r ->> 'opens')::time, (r ->> 'closes')::time
+  from jsonb_array_elements(coalesce(day_rows, '[]'::jsonb)) r
+  cross join lateral generate_series(first_day, coalesce(last_day, first_day), interval '1 day') d
+  where first_day is not null and r ->> 'day' in ('closed', 'short')
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_days"("day_rows" "jsonb", "first_day" "date", "last_day" "date") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_deliver"("actor" "uuid", "item" "public"."announcements", "people" "uuid"[], "mode" "text", "back" "jsonb" DEFAULT '[]'::"jsonb") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  notice record;
+  event_id uuid;
+  told integer := 0;
+begin
+  for notice in
+    select line.title, line.body, array_agg(who order by who) recipients
+    from unnest(coalesce(people, '{}')) who
+    cross join lateral app_private.announcement_notice(item, who, mode, back) line
+    group by line.title, line.body
+  loop
+    event_id := gen_random_uuid();
+    perform public.enqueue_notification_outbox_service(
+      item.workspace_id, event_id, 'communications.announcement.available', 1, actor, 'announcement', item.id::text,
+      jsonb_build_object(
+        'correlation_id', event_id,
+        'announcement_id', item.id,
+        'announcement_revision', item.revision,
+        'content_revision', item.content_revision,
+        'location_ids', to_jsonb(app_private.announcement_places(item.id)),
+        'recipient_user_ids', to_jsonb(notice.recipients),
+        'audience_contract', 'announcement_targeted_members',
+        'category', 'announcement',
+        'title', notice.title,
+        'body', notice.body,
+        'safe_preview', case when mode = 'cancel' then 'An announcement was cancelled.' else 'A new announcement is available.' end,
+        'action_url', '/app/announcements/' || item.id::text,
+        'group_key', 'announcement:' || item.id::text,
+        'visible_at', now()),
+      now());
+    told := told + cardinality(notice.recipients);
+  end loop;
+  return told;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_deliver"("actor" "uuid", "item" "public"."announcements", "people" "uuid"[], "mode" "text", "back" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_display_status"("item" "public"."announcements") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when item.archived_at is not null then 'archived'
+    when item.status = 'scheduled' and item.release_failed_at is not null then 'publish_failed'
+    when item.status = 'published'
+      and coalesce((select moment.ends_at <= now() from app_private.announcement_moments(item) moment), false) then 'past'
+    else item.status::text end
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_display_status"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_hours_text"("starts" time without time zone, "ends" time without time zone, "fmt" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when fmt = '24h' then to_char(starts, 'HH24:MI') || '–' || to_char(ends, 'HH24:MI')
+    else to_char(starts, 'FMHH12:MI AM') || '–' || to_char(ends, 'FMHH12:MI AM') end
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_hours_text"("starts" time without time zone, "ends" time without time zone, "fmt" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_impact"("w" "uuid", "record" "uuid", "first_day" "date", "last_day" "date", "day_rows" "jsonb", "choices" "jsonb", "saved_at" timestamp with time zone) RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  with stored as (
+    select item.id, item.starts_on, item.ends_on from public.announcements item
+    where item.id = record and item.workspace_id = w and item.status = 'published' and item.archived_at is null
+  ), old_days as (
+    select day.* from stored
+    cross join lateral app_private.announcement_days(app_private.announcement_rows(stored.id), stored.starts_on, stored.ends_on) day
+  ), new_days as (
+    select day.*, location.timezone, location.name location_name, location.sort_order
+    from app_private.announcement_days(day_rows, first_day, last_day) day
+    join public.locations location on location.id = day.location_id and location.workspace_id = w and location.archived_at is null
+    where day.on_date >= (now() at time zone location.timezone)::date
+  ), done as (
+    select change.source_shift_id from public.announcement_shift_changes change
+    where change.announcement_id = record and change.brought_back_at is null
+  ), reached as (
+    select shift.id, shift.source_shift_id, shift.location_id, shift.scheduled_date, shift.employee_id, shift.job_id,
+      shift.start_time, shift.end_time, new_days.kind, new_days.opens, new_days.closes, new_days.location_name,
+      new_days.sort_order, why.reason,
+      lower(app_private.shift_time_range(shift.scheduled_date, shift.start_time, shift.end_time,
+        coalesce(shift.time_timezone, new_days.timezone))) <= now() started,
+      exists (select 1 from public.employee_offboarding_shift_actions tie where tie.shift_id = shift.id and tie.workspace_id = w)
+        or exists (select 1 from public.time_off_assignment_releases tie
+                   where tie.published_shift_id = shift.id and tie.workspace_id = w) tied,
+      coalesce(saved_at < (
+        select min(copy.created_at) from public.schedule_published_shifts copy
+        where copy.workspace_id = w and copy.source_shift_id = shift.source_shift_id
+          and (copy.location_id, copy.scheduled_date, copy.employee_id, copy.start_time, copy.end_time)
+            is not distinct from (shift.location_id, shift.scheduled_date, shift.employee_id, shift.start_time, shift.end_time)), false) changed
+    from new_days
+    join public.schedule_published_shifts shift
+      on shift.workspace_id = w and shift.location_id = new_days.location_id and shift.scheduled_date = new_days.on_date
+    join public.schedule_location_publications publication on publication.id = shift.publication_id and publication.status = 'current'
+    left join old_days on old_days.location_id = shift.location_id and old_days.on_date = shift.scheduled_date
+    cross join lateral (select
+      app_private.closure_reason(new_days.kind, new_days.opens, new_days.closes, shift.start_time, shift.end_time) reason,
+      app_private.closure_reason(old_days.kind, old_days.opens, old_days.closes, shift.start_time, shift.end_time) old_reason) why
+    where why.reason is not null and why.reason is distinct from why.old_reason
+      and not shift.source_shift_id in (select done.source_shift_id from done)
+  ), defaulted as (
+    select reached.*,
+      case when reached.started or reached.changed or reached.tied or reached.reason in ('prep', 'over') then 'keep'
+           else 'remove' end default_choice,
+      choices -> reached.source_shift_id::text picked
+    from reached
+  ), decided as (
+    select defaulted.*, case
+        when defaulted.started then 'keep'
+        when defaulted.picked ->> 'choice' = 'keep' then 'keep'
+        when defaulted.picked ->> 'choice' = 'remove' and not defaulted.tied then 'remove'
+        when defaulted.picked ->> 'choice' = 'open' and defaulted.employee_id is not null then 'open'
+        when defaulted.picked ->> 'choice' = 'edit' and defaulted.kind = 'short'
+          and (defaulted.picked ->> 'from')::time is distinct from (defaulted.picked ->> 'until')::time
+          and (defaulted.picked ->> 'from') is not null and (defaulted.picked ->> 'until') is not null then 'edit'
+        when defaulted.picked ->> 'choice' is not null and defaulted.picked ->> 'choice' not in ('keep', 'remove', 'open', 'edit') then 'keep'
+        else defaulted.default_choice end choice
+    from defaulted
+  ), listed as (
+    select decided.*,
+      case when decided.choice = 'edit' then (decided.picked ->> 'from')::time end from_time,
+      case when decided.choice = 'edit' then (decided.picked ->> 'until')::time end until_time,
+      case decided.choice when 'remove' then 'removed' when 'open' then 'opened'
+        when 'edit' then case when ((decided.picked ->> 'from')::time, (decided.picked ->> 'until')::time)
+                                    = (decided.start_time, decided.end_time) then 'kept' else 'edited' end
+        else 'kept' end outcome
+    from decided
+  ), quiet as (
+    select draft_shift.id, draft_shift.location_id, draft_shift.scheduled_date, draft_shift.employee_id
+    from new_days
+    join public.schedule_draft_shifts draft_shift
+      on draft_shift.workspace_id = w and draft_shift.location_id = new_days.location_id and draft_shift.scheduled_date = new_days.on_date
+    join public.schedule_drafts draft on draft.id = draft_shift.draft_id and draft.archived_at is null
+    left join old_days on old_days.location_id = draft_shift.location_id and old_days.on_date = draft_shift.scheduled_date
+    cross join lateral (select
+      app_private.closure_reason(new_days.kind, new_days.opens, new_days.closes, draft_shift.start_time, draft_shift.end_time) reason,
+      app_private.closure_reason(old_days.kind, old_days.opens, old_days.closes, draft_shift.start_time, draft_shift.end_time) old_reason) why
+    where why.reason in ('closed', 'after_close') and why.reason is distinct from why.old_reason
+      and (saved_at is null or draft_shift.updated_at <= saved_at)
+      and lower(app_private.shift_time_range(draft_shift.scheduled_date, draft_shift.start_time, draft_shift.end_time,
+            coalesce(draft_shift.time_timezone, new_days.timezone))) > now()
+      and not draft_shift.id in (select done.source_shift_id from done)
+      and not exists (
+        select 1 from public.schedule_published_shifts published
+        join public.schedule_location_publications publication on publication.id = published.publication_id and publication.status = 'current'
+        where published.workspace_id = w and published.source_shift_id = draft_shift.id)
+    union
+    select edit_shift.id, edit_shift.location_id, edit_shift.scheduled_date, edit_shift.employee_id
+    from new_days
+    join public.schedule_edit_session_shifts edit_shift
+      on edit_shift.workspace_id = w and edit_shift.location_id = new_days.location_id and edit_shift.scheduled_date = new_days.on_date
+     and edit_shift.source_published_shift_id is null and edit_shift.pending_op_type is distinct from 'delete'
+    join public.schedule_edit_sessions session on session.id = edit_shift.session_id and session.status = 'active'
+    left join old_days on old_days.location_id = edit_shift.location_id and old_days.on_date = edit_shift.scheduled_date
+    cross join lateral (select
+      app_private.closure_reason(new_days.kind, new_days.opens, new_days.closes, edit_shift.start_time, edit_shift.end_time) reason,
+      app_private.closure_reason(old_days.kind, old_days.opens, old_days.closes, edit_shift.start_time, edit_shift.end_time) old_reason) why
+    where why.reason in ('closed', 'after_close') and why.reason is distinct from why.old_reason
+      and (saved_at is null or edit_shift.updated_at <= saved_at)
+      and lower(app_private.shift_time_range(edit_shift.scheduled_date, edit_shift.start_time, edit_shift.end_time,
+            coalesce(edit_shift.time_timezone, new_days.timezone))) > now()
+      and not edit_shift.id in (select done.source_shift_id from done)
+      and not exists (
+        select 1 from public.schedule_published_shifts published
+        join public.schedule_location_publications publication on publication.id = published.publication_id and publication.status = 'current'
+        where published.workspace_id = w and (published.source_shift_id = edit_shift.id or published.id = edit_shift.id))
+  ), quiet_one as (
+    select quiet.id, min(quiet.location_id::text)::uuid location_id, min(quiet.scheduled_date) scheduled_date,
+      min(quiet.employee_id::text)::uuid employee_id
+    from quiet group by quiet.id
+  )
+  select jsonb_build_object(
+    'fingerprint', md5(coalesce((select string_agg(concat_ws('|', listed.source_shift_id, listed.employee_id, listed.start_time,
+        listed.end_time, listed.choice, listed.from_time, listed.until_time), ',' order by listed.source_shift_id) from listed), '')
+      || ';' || coalesce((select string_agg(quiet_one.id::text, ',' order by quiet_one.id) from quiet_one), '')),
+    'shifts', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', listed.id, 'source_id', listed.source_shift_id, 'location_id', listed.location_id,
+        'location_name', listed.location_name, 'scheduled_date', listed.scheduled_date,
+        'employee_id', listed.employee_id, 'employee_user_id', person.user_id,
+        'employee_name', case when person.id is not null
+          then concat_ws(' ', coalesce(nullif(person.preferred_name, ''), person.first_name), person.last_name) end,
+        'job_id', listed.job_id, 'job_name', coalesce(job.name, 'Unassigned position'),
+        'start_time', to_char(listed.start_time, 'HH24:MI'), 'end_time', to_char(listed.end_time, 'HH24:MI'),
+        'day', listed.kind, 'opens', to_char(listed.opens, 'HH24:MI'), 'closes', to_char(listed.closes, 'HH24:MI'),
+        'reason', listed.reason, 'started', listed.started, 'tied', listed.tied, 'changed_in_schedule', listed.changed,
+        'default', listed.default_choice, 'choice', listed.choice,
+        'from', to_char(listed.from_time, 'HH24:MI'), 'until', to_char(listed.until_time, 'HH24:MI'),
+        'outcome', listed.outcome)
+        order by listed.scheduled_date, listed.sort_order, listed.location_name, listed.start_time, listed.source_shift_id)
+      from listed
+      left join public.employee_profiles person on person.id = listed.employee_id and person.workspace_id = w
+      left join public.jobs job on job.id = listed.job_id and job.workspace_id = w), '[]'::jsonb),
+    'quiet', coalesce((
+      select jsonb_agg(jsonb_build_object('id', quiet_one.id, 'location_id', quiet_one.location_id,
+        'scheduled_date', quiet_one.scheduled_date, 'employee_id', quiet_one.employee_id) order by quiet_one.id)
+      from quiet_one), '[]'::jsonb),
+    'counts', jsonb_build_object(
+      'removed', (select count(*) from listed where listed.outcome = 'removed'),
+      'edited', (select count(*) from listed where listed.outcome = 'edited'),
+      'opened', (select count(*) from listed where listed.outcome = 'opened'),
+      'kept', (select count(*) from listed where listed.outcome = 'kept'),
+      'quiet', (select count(*) from quiet_one)))
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_impact"("w" "uuid", "record" "uuid", "first_day" "date", "last_day" "date", "day_rows" "jsonb", "choices" "jsonb", "saved_at" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_item"("state" "app_private"."actor_state", "item" "public"."announcements", "allowed" boolean) RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'id', item.id, 'title', item.title, 'body', item.body,
+    'category', item.category, 'category_other', item.category_other,
+    'status', item.status, 'display_status', shown.status,
+    'publish_error_code', case when shown.status <> 'publish_failed' then null
+      when item.release_error like '42501%' then 'not_allowed'
+      when item.release_error like '%too_late%' then 'too_late' else 'failed' end,
+    'starts_on', item.starts_on, 'ends_on', item.ends_on,
+    'event_from', to_char(item.event_from, 'HH24:MI'), 'event_until', to_char(item.event_until, 'HH24:MI'),
+    'recurrence', item.recurrence,
+    'on_important_dates', item.on_important_dates, 'on_calendar', item.on_calendar, 'on_schedule', item.on_schedule,
+    'ask_ack', item.ask_ack, 'time_zone', item.time_zone,
+    'publish_at', item.publish_at, 'published_at', item.published_at, 'unpublished_at', item.unpublished_at,
+    'archived_at', item.archived_at, 'starts_at', moment.starts_at, 'ends_at', moment.ends_at,
+    'locations', coalesce((
+      select jsonb_agg(jsonb_build_object('location_id', target.location_id, 'name', location.name,
+        'short_name', location.short_name, 'timezone', location.timezone, 'day', target.day,
+        'opens', to_char(target.opens, 'HH24:MI'), 'closes', to_char(target.closes, 'HH24:MI'),
+        'archived', location.archived_at is not null) order by location.sort_order, location.name)
+      from public.announcement_locations target
+      join public.locations location on location.id = target.location_id
+      where target.announcement_id = item.id), '[]'::jsonb),
+    'author_user_id', item.created_by,
+    'author_name', coalesce(author.display_name, 'Workspace member'),
+    'revision', item.revision, 'content_revision', item.content_revision,
+    'created_at', item.created_at, 'updated_at', item.updated_at, 'repeats_from', item.repeats_from,
+    'can_edit', allowed and item.archived_at is null and shown.status <> 'past',
+    'can_unschedule', allowed and shown.status in ('scheduled', 'publish_failed'),
+    'can_unpublish', allowed and shown.status = 'published',
+    'can_archive', allowed and shown.status in ('draft', 'unpublished', 'past'),
+    'asked_to_acknowledge', shown.status = 'published' and state.user_id = any (asked.who),
+    'acknowledged_at', mine.acknowledged_at,
+    'content_changed_since_acknowledged', mine.acknowledged_at is null and state.user_id = any (item.acknowledged_before),
+    'respondent_count', case when allowed and item.ask_ack and item.status = 'published' then cardinality(asked.who) end,
+    'acknowledged_count', case when allowed and item.ask_ack and item.status = 'published' then (
+      select count(*) from public.announcement_acknowledgements ack
+      where ack.announcement_id = item.id and ack.user_id = any (asked.who)) end,
+    'recipient_count', case when allowed and shown.status = 'published' then cardinality(item.delivered_to) end,
+    'shift_change_count', case when allowed then (
+      select count(*) from public.announcement_shift_changes change
+      where change.announcement_id = item.id and not change.silent and change.brought_back_at is null) end,
+    'my_changes', case when state.employee_id is null or item.status <> 'published' then '[]'::jsonb else coalesce((
+      select jsonb_agg(app_private.announcement_change_item(change) order by change.scheduled_date, change.changed_at, change.id)
+      from public.announcement_shift_changes change
+      where change.announcement_id = item.id and change.employee_id = state.employee_id
+        and not change.silent and change.brought_back_at is null), '[]'::jsonb) end)
+  from (select app_private.announcement_display_status(item) status) shown
+  left join lateral app_private.announcement_moments(item) moment on true
+  cross join lateral (select case when item.ask_ack and item.status = 'published'
+                                  then app_private.announcement_respondents(item) else '{}'::uuid[] end who) asked
+  left join public.user_profiles author on author.user_id = item.created_by
+  left join public.announcement_acknowledgements mine on mine.announcement_id = item.id and mine.user_id = state.user_id
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_item"("state" "app_private"."actor_state", "item" "public"."announcements", "allowed" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_moments"("item" "public"."announcements") RETURNS TABLE("starts_at" timestamp with time zone, "ends_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select span.* from app_private.announcement_span(item.workspace_id, item.starts_on, item.ends_on, item.event_from,
+    item.event_until, item.time_zone, app_private.announcement_rows(item.id)) span
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_moments"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_next_year"("d" "date", "mode" "text") RETURNS "date"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case mode
+    when 'date' then make_date(ym.y, ym.m, least(extract(day from d)::integer, extract(day from edge.last_of)::integer))
+    when 'nth' then least(edge.first_dow + 7 * (ceil(extract(day from d) / 7.0)::integer - 1), edge.last_dow)
+    when 'last' then edge.last_dow end
+  from (select extract(year from d)::integer + 1 y, extract(month from d)::integer m, extract(dow from d)::integer dow) ym
+  cross join lateral (select make_date(ym.y, ym.m, 1) first_of,
+    (make_date(ym.y, ym.m, 1) + interval '1 month' - interval '1 day')::date last_of) month_of
+  cross join lateral (select month_of.last_of,
+    month_of.first_of + (ym.dow - extract(dow from month_of.first_of)::integer + 7) % 7 first_dow,
+    month_of.last_of - (extract(dow from month_of.last_of)::integer - ym.dow + 7) % 7 last_dow) edge
+  where d is not null and mode in ('date', 'nth', 'last')
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_next_year"("d" "date", "mode" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_notice"("item" "public"."announcements", "who" "uuid", "mode" "text", "back" "jsonb") RETURNS TABLE("title" "text", "body" "text")
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  fmt text := app_private.announcement_time_format(item.workspace_id);
+  person_id uuid := (select person.id from public.employee_profiles person
+                     where person.workspace_id = item.workspace_id and person.user_id = who);
+  multi boolean := coalesce(item.ends_on, item.starts_on) > item.starts_on;
+  on_text text := app_private.announcement_on_text(item.starts_on, item.ends_on);
+  mine jsonb;
+  changes jsonb := '[]'::jsonb;
+  home uuid;
+  place_name text;
+  place_day text;
+  place_opens time;
+  place_closes time;
+  head text;
+  tail text;
+begin
+  mine := coalesce((select jsonb_agg(x order by x ->> 'scheduled_date', x ->> 'start_time')
+                    from jsonb_array_elements(coalesce(back, '[]'::jsonb)) x
+                    where (x ->> 'employee_id')::uuid = person_id and not coalesce((x ->> 'silent')::boolean, false)), '[]'::jsonb);
+  if item.starts_on is null then
+    if mode <> 'cancel' then
+      title := item.title;
+      body := coalesce(nullif(btrim(left(item.body, 2000)), ''), item.title);
+      return next;
+    end if;
+    return;
+  end if;
+  if mode <> 'cancel' then
+    changes := coalesce((
+      select jsonb_agg(app_private.announcement_change_item(change) order by change.scheduled_date, change.changed_at, change.id)
+      from public.announcement_shift_changes change
+      where change.announcement_id = item.id and change.employee_id = person_id
+        and not change.silent and change.brought_back_at is null), '[]'::jsonb);
+  end if;
+  home := coalesce(case when mode = 'cancel' then mine else changes end -> 0 ->> 'location_id',
+    (select target.location_id::text from public.announcement_locations target
+     join public.locations location on location.id = target.location_id and location.archived_at is null
+     join public.employee_location_assignments assignment
+       on assignment.location_id = target.location_id and assignment.employee_id = person_id and assignment.ended_at is null
+     where target.announcement_id = item.id
+     order by assignment.is_primary desc, location.sort_order, location.name limit 1))::uuid;
+  select location.name, target.day, target.opens, target.closes into place_name, place_day, place_opens, place_closes
+  from public.locations location
+  left join public.announcement_locations target on target.location_id = location.id and target.announcement_id = item.id
+  where location.id = home;
+
+  if mode = 'cancel' then
+    head := case place_day
+      when 'closed' then place_name || ' will be open ' || on_text || ' after all'
+      when 'short' then place_name || ' keeps its usual hours ' || on_text || ' after all'
+      else item.title || ' ' || on_text || ' is cancelled' end;
+    tail := (select string_agg(app_private.announcement_shift_sentence(x, true, multi, fmt), ' · ' order by n)
+             from jsonb_array_elements(mine) with ordinality line(x, n));
+  else
+    head := case
+      when home is null then item.title || ' ' || on_text
+        || case when item.event_from is not null
+             then ', ' || app_private.announcement_hours_text(item.event_from, item.event_until, fmt) else '' end
+      when place_day = 'closed' then place_name || ' is closed ' || on_text
+      when place_day = 'short' then place_name || ' has short hours ' || on_text || ' ('
+        || app_private.announcement_hours_text(place_opens, place_closes, fmt)
+        || case when place_closes <= place_opens then ' next day' else '' end || ')'
+      else item.title || ' ' || on_text end;
+    tail := case
+      when jsonb_array_length(changes) > 0 then (
+        select string_agg(app_private.announcement_shift_sentence(x, false, multi, fmt), ' · ' order by n)
+        from jsonb_array_elements(changes) with ordinality line(x, n))
+      when home is null then null
+      when place_day = 'open' then place_name || ' keeps its usual hours'
+      else item.title end;
+    if jsonb_array_length(mine) > 0 then
+      tail := concat_ws(' · ', tail, (
+        select string_agg(app_private.announcement_shift_sentence(x, true, multi, fmt), ' · ' order by n)
+        from jsonb_array_elements(mine) with ordinality line(x, n)));
+    end if;
+  end if;
+  title := head;
+  body := coalesce(nullif(tail, ''), nullif(btrim(left(item.body, 2000)), ''), item.title);
+  return next;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_notice"("item" "public"."announcements", "who" "uuid", "mode" "text", "back" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_on_text"("starts" "date", "ends" "date") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case when ends is null or ends = starts then 'on ' || app_private.announcement_day_text(starts)
+    else 'from ' || app_private.announcement_day_text(starts) || ' to ' || app_private.announcement_day_text(ends) end
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_on_text"("starts" "date", "ends" "date") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_person"("w" "uuid", "who" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'user_id', who, 'employee_id', person.id,
+    'name', coalesce(case when person.id is not null
+      then concat_ws(' ', coalesce(nullif(person.preferred_name, ''), person.first_name), person.last_name) end,
+      account.display_name, 'Workspace member'),
+    'job_name', (select job.name from public.employee_job_assignments assignment
+                 join public.jobs job on job.id = assignment.job_id and job.archived_at is null
+                 where assignment.employee_id = person.id and assignment.ended_at is null
+                 order by assignment.is_primary desc, lower(job.name) limit 1),
+    'job_ids', coalesce((select jsonb_agg(distinct assignment.job_id) from public.employee_job_assignments assignment
+                         join public.jobs job on job.id = assignment.job_id and job.archived_at is null
+                         where assignment.employee_id = person.id and assignment.ended_at is null), '[]'::jsonb),
+    'department_ids', coalesce((select jsonb_agg(distinct job.department_id) from public.employee_job_assignments assignment
+                                join public.jobs job on job.id = assignment.job_id and job.archived_at is null
+                                where assignment.employee_id = person.id and assignment.ended_at is null
+                                  and job.department_id is not null), '[]'::jsonb),
+    'location_ids', coalesce((select jsonb_agg(assignment.location_id order by assignment.is_primary desc, location.sort_order, location.name)
+                              from public.employee_location_assignments assignment
+                              join public.locations location on location.id = assignment.location_id and location.archived_at is null
+                              where assignment.employee_id = person.id and assignment.ended_at is null), '[]'::jsonb),
+    'location_name', (select location.name from public.employee_location_assignments assignment
+                      join public.locations location on location.id = assignment.location_id and location.archived_at is null
+                      where assignment.employee_id = person.id and assignment.ended_at is null
+                      order by assignment.is_primary desc, location.sort_order, location.name limit 1))
+  from (select who) me
+  left join public.employee_profiles person on person.workspace_id = w and person.user_id = who and person.archived_at is null
+  left join public.user_profiles account on account.user_id = who
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_person"("w" "uuid", "who" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."announcement_places"("announcement" "uuid") RETURNS "uuid"[]
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select coalesce(array_agg(target.location_id order by target.location_id), '{}')
-  from public.announcement_locations target where target.announcement_id = announcement
+  select app_private.announcement_places_of(item.workspace_id,
+    array(select target.location_id from public.announcement_locations target where target.announcement_id = item.id),
+    array(select person.user_id from public.announcement_people person where person.announcement_id = item.id))
+  from public.announcements item where item.id = announcement
 $$;
 
 
 ALTER FUNCTION "app_private"."announcement_places"("announcement" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."announcement_places_of"("w" "uuid", "location_ids" "uuid"[], "user_ids" "uuid"[]) RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(array_agg(distinct place order by place), '{}') from (
+    select unnest(coalesce(location_ids, '{}')) place
+    union
+    select assignment.location_id
+    from public.employee_profiles person
+    join public.employee_location_assignments assignment
+      on assignment.employee_id = person.id and assignment.ended_at is null
+    where person.workspace_id = w and person.user_id = any (coalesce(user_ids, '{}')) and person.archived_at is null
+      and (assignment.is_primary or not exists (
+        select 1 from public.employee_location_assignments other
+        where other.employee_id = person.id and other.ended_at is null and other.is_primary))
+  ) places
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_places_of"("w" "uuid", "location_ids" "uuid"[], "user_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_problems"("w" "uuid", "stored" "public"."announcements", "n" "jsonb", "intent" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  found jsonb := '[]'::jsonb;
+  fmt text := app_private.announcement_time_format(w);
+  zone_name text := n ->> 'time_zone';
+  today date := (now() at time zone (n ->> 'time_zone'))::date;
+  first_day date := (n ->> 'starts_on')::date;
+  final_day date := (n ->> 'ends_on')::date;
+  time_from time := (n ->> 'event_from')::time;
+  time_until time := (n ->> 'event_until')::time;
+  publish_moment timestamptz := (n ->> 'publish_at')::timestamptz;
+  started boolean := stored.id is not null and app_private.announcement_started(stored);
+  start_moment timestamptz;
+  needs_day boolean := (n ->> 'on_important_dates')::boolean or (n ->> 'on_calendar')::boolean
+    or (n ->> 'on_schedule')::boolean or (n ->> 'hours')::boolean;
+  hit record;
+  r jsonb;
+begin
+  if n ->> 'title' = '' then
+    found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'title', 'code', 'title_required',
+      'message', 'Add a title.', 'required', true));
+  end if;
+  if intent = 'draft' then
+    return found;
+  end if;
+  if n ->> 'category' = 'other' and n ->> 'category_other' is null then
+    found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'category_other',
+      'code', 'category_name_required', 'message', 'Name the category.', 'required', true));
+  end if;
+  if first_day is null then
+    if needs_day or final_day is not null or time_from is not null then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'starts_on', 'code', 'start_required',
+        'message', 'Choose the day it starts.', 'required', true));
+    end if;
+  else
+    if not started and first_day < today then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'starts_on', 'code', 'start_past',
+        'message', 'It can''t start before today (' || app_private.announcement_day_text(today) || ').', 'required', false));
+    end if;
+    if final_day < first_day then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'ends_on', 'code', 'ends_before_starts',
+        'message', 'Ends can''t be before Starts.', 'required', false));
+    end if;
+    if started and coalesce(final_day, first_day) < today then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'ends_on', 'code', 'ends_past',
+        'message', 'Ends can''t be before today.', 'required', false));
+    end if;
+  end if;
+  if time_from is not null and coalesce(final_day, first_day) is not distinct from first_day and time_until <= time_from then
+    found := found || jsonb_build_array(jsonb_build_object('tab', 'details', 'field', 'event_until', 'code', 'event_time_order',
+      'message', 'The end time must be after the start time.', 'required', false));
+  end if;
+
+  for r in
+    select row_item from jsonb_array_elements(n -> 'locations') row_item
+    join public.locations location on location.id = (row_item ->> 'location_id')::uuid and location.archived_at is null
+    where row_item ->> 'day' <> 'open'
+    order by location.sort_order, location.name
+  loop
+    if r ->> 'day' = 'short' and not ((r ->> 'closes')::time > (r ->> 'opens')::time or (r ->> 'closes')::time <= time '06:00') then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'where', 'field', 'location:' || (r ->> 'location_id'),
+        'code', 'hours_invalid', 'message', 'Closing must be after opening, at most 6:00 AM the next day.', 'required', false));
+    end if;
+    -- S4: one record sets a location's hours for a day.
+    if first_day is not null then
+      select other.title, location.name location_name, target.day, greatest(other.starts_on, first_day) on_day into hit
+      from public.announcements other
+      join public.announcement_locations target
+        on target.announcement_id = other.id and target.location_id = (r ->> 'location_id')::uuid and target.day <> 'open'
+      join public.locations location on location.id = target.location_id
+      where other.workspace_id = w and other.id is distinct from stored.id and other.archived_at is null
+        and other.status in ('scheduled', 'published') and other.starts_on is not null
+        and other.starts_on <= coalesce(final_day, first_day) and coalesce(other.ends_on, other.starts_on) >= first_day
+      order by other.starts_on, other.id limit 1;
+      if hit.title is not null then
+        found := found || jsonb_build_array(jsonb_build_object('tab', 'where', 'field', 'location:' || (r ->> 'location_id'),
+          'code', 'hours_taken', 'message', hit.location_name || ' already has '
+            || case when hit.day = 'closed' then 'Closed' else 'Short hours' end || ' on '
+            || app_private.announcement_day_text(hit.on_day) || ' (' || hit.title
+            || '). Only one post can set a location''s hours for a day.', 'required', false));
+      end if;
+    end if;
+  end loop;
+
+  if intent = 'schedule' then
+    select span.starts_at into start_moment
+    from app_private.announcement_span(w, first_day, final_day, time_from, time_until, zone_name, n -> 'locations') span;
+    if publish_moment is null then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'where', 'field', 'publish_at', 'code', 'publish_time_required',
+        'message', 'Pick when it publishes.', 'required', true));
+    elsif publish_moment <= now() then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'where', 'field', 'publish_at', 'code', 'publish_time_past',
+        'message', 'Pick a time after now (' || to_char(now() at time zone zone_name, 'Dy, Mon FMDD, ')
+          || case when fmt = '24h' then to_char(now() at time zone zone_name, 'HH24:MI')
+                  else to_char(now() at time zone zone_name, 'FMHH12:MI AM') end || ').', 'required', false));
+    elsif start_moment is not null and publish_moment >= start_moment then
+      found := found || jsonb_build_array(jsonb_build_object('tab', 'where', 'field', 'publish_at', 'code', 'publish_after_start',
+        'message', 'Publish it before it starts (' || app_private.announcement_day_text(first_day)
+          || case when time_from is not null then ', ' || case when fmt = '24h' then to_char(time_from, 'HH24:MI')
+                                                              else to_char(time_from, 'FMHH12:MI AM') end else '' end
+          || ').', 'required', false));
+    end if;
+  end if;
+
+  if jsonb_array_length(n -> 'live_location_ids') = 0 and jsonb_array_length(n -> 'people') = 0 then
+    found := found || jsonb_build_array(jsonb_build_object('tab', 'aud', 'field', 'people', 'code', 'nobody',
+      'message', 'Nobody gets it yet. Check a location on Locations & publishing, or add people here.', 'required', true));
+  end if;
+  return found;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_problems"("w" "uuid", "stored" "public"."announcements", "n" "jsonb", "intent" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_proposal"("w" "uuid", "stored" "public"."announcements", "p" "jsonb", "author" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  picked_category text := coalesce(nullif(p ->> 'category', ''), 'general');
+  picked_recurrence text := coalesce(nullif(p ->> 'recurrence', ''), 'none');
+  first_day date := nullif(p ->> 'starts_on', '')::date;
+  final_day date := nullif(p ->> 'ends_on', '')::date;
+  time_from time := nullif(p ->> 'event_from', '')::time;
+  time_until time := nullif(p ->> 'event_until', '')::time;
+  sent jsonb := coalesce(p -> 'locations', '[]'::jsonb);
+  live_rows jsonb;
+  kept_rows jsonb;
+  stored_live jsonb;
+  added uuid[];
+  zone_name text;
+  hours boolean;
+begin
+  -- The shapes first: the checks below read inside them.
+  if jsonb_typeof(sent) <> 'array' or coalesce(jsonb_typeof(p -> 'choices'), 'object') <> 'object'
+     or jsonb_typeof(coalesce(p -> 'people', '[]'::jsonb)) <> 'array' then
+    raise exception 'This post can''t be saved as sent.' using errcode = '22023', hint = 'announcement.invalid';
+  end if;
+  if picked_category not in (select unnest(enum_range(null::public.announcement_category))::text)
+     or picked_recurrence not in ('none', 'date', 'nth', 'last')
+     or char_length(btrim(coalesce(p ->> 'title', ''))) > 120
+     or char_length(btrim(coalesce(p ->> 'body', ''))) > 5000
+     or char_length(btrim(coalesce(p ->> 'category_other', ''))) > 40
+     or (time_from is null) <> (time_until is null)
+     or jsonb_typeof(sent) <> 'array' or jsonb_array_length(sent) > 100
+     or jsonb_typeof(coalesce(p -> 'people', '[]'::jsonb)) <> 'array'
+     or jsonb_array_length(coalesce(p -> 'people', '[]'::jsonb)) > 1000
+     or exists (select 1 from jsonb_array_elements(coalesce(p -> 'people', '[]'::jsonb)) x
+                where jsonb_typeof(x) <> 'string' or x #>> '{}' !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+     or exists (
+       select 1 from jsonb_array_elements(sent) r
+       where jsonb_typeof(r) <> 'object'
+          or coalesce(r ->> 'location_id', '') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          or coalesce(r ->> 'day', '') not in ('open', 'closed', 'short')
+          or (r ->> 'day' = 'short' and (coalesce(r ->> 'opens', '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+                                         or coalesce(r ->> 'closes', '') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$')))
+     or (select count(*) <> count(distinct r ->> 'location_id') from jsonb_array_elements(sent) r)
+     -- A shift's choice: Keep, Remove, Open shift, or new hours (Short hours).
+     or coalesce(jsonb_typeof(p -> 'choices'), 'object') <> 'object'
+     or exists (
+       select 1 from jsonb_each(coalesce(p -> 'choices', '{}'::jsonb)) c
+       where c.key !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          or jsonb_typeof(c.value) <> 'object'
+          or coalesce(c.value ->> 'choice', '') not in ('keep', 'remove', 'open', 'edit')
+          or (c.value ->> 'choice' = 'edit' and not (coalesce(c.value ->> 'from', '') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+                                                    and coalesce(c.value ->> 'until', '') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'))) then
+    raise exception 'This post can''t be saved as sent.' using errcode = '22023', hint = 'announcement.invalid';
+  end if;
+  -- A row at an archived location the record already has stays as it was
+  -- (kept_rows); any other location that is not a live one here is the same no
+  -- as one out of reach.
+  sent := coalesce((
+    select jsonb_agg(r) from jsonb_array_elements(sent) r
+    where not exists (select 1 from public.locations location
+                      join public.announcement_locations target
+                        on target.location_id = location.id and target.announcement_id = stored.id
+                      where location.id = (r ->> 'location_id')::uuid and location.archived_at is not null)), '[]'::jsonb);
+  if exists (select 1 from jsonb_array_elements(sent) r
+             where not exists (select 1 from public.locations location
+                               where location.id = (r ->> 'location_id')::uuid and location.workspace_id = w
+                                 and location.archived_at is null)) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.write';
+  end if;
+
+  live_rows := coalesce((
+    select jsonb_agg(jsonb_build_object('location_id', (r ->> 'location_id')::uuid, 'day', r ->> 'day',
+      'opens', case when r ->> 'day' = 'short' then to_char((r ->> 'opens')::time, 'HH24:MI') end,
+      'closes', case when r ->> 'day' = 'short' then to_char((r ->> 'closes')::time, 'HH24:MI') end)
+      order by (r ->> 'location_id')::uuid)
+    from jsonb_array_elements(sent) r), '[]'::jsonb);
+  kept_rows := coalesce((
+    select jsonb_agg(r order by (r ->> 'location_id')::uuid)
+    from jsonb_array_elements(app_private.announcement_rows(stored.id)) r
+    join public.locations location on location.id = (r ->> 'location_id')::uuid and location.archived_at is not null), '[]'::jsonb);
+  hours := exists (select 1 from jsonb_array_elements(live_rows) r where r ->> 'day' <> 'open');
+
+  added := array(select distinct x::uuid from jsonb_array_elements_text(coalesce(p -> 'people', '[]'::jsonb)) x);
+  if exists (
+    select 1 from unnest(added) who
+    where not exists (select 1 from public.workspace_memberships membership
+                      where membership.workspace_id = w and membership.user_id = who and membership.status = 'active')
+      and not exists (select 1 from public.announcement_people person
+                      where person.announcement_id = stored.id and person.user_id = who)) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.write';
+  end if;
+
+  -- Z2: a change in hours takes the whole day; the event time is for a day
+  -- whose hours stay.
+  if hours then
+    time_from := null;
+    time_until := null;
+  end if;
+  if first_day is null then
+    picked_recurrence := 'none';
+  end if;
+
+  if stored.id is not null and app_private.announcement_started(stored) then
+    stored_live := coalesce((
+      select jsonb_agg(r order by (r ->> 'location_id')::uuid)
+      from jsonb_array_elements(app_private.announcement_rows(stored.id)) r
+      join public.locations location on location.id = (r ->> 'location_id')::uuid and location.archived_at is null), '[]'::jsonb);
+    if (first_day, time_from, time_until, picked_recurrence)
+         is distinct from (stored.starts_on, stored.event_from, stored.event_until, stored.recurrence)
+       or live_rows is distinct from stored_live then
+      raise exception 'It has started: only its text, its people, the boxes and Ends change now.'
+        using errcode = '22023', hint = 'announcement.started_locked';
+    end if;
+  end if;
+
+  -- Z1: the clock of its first checked location; with none, the author's
+  -- primary location's, then the device's.
+  zone_name := (select location.timezone from jsonb_array_elements(live_rows) r
+                join public.locations location on location.id = (r ->> 'location_id')::uuid
+                order by location.sort_order, location.name limit 1);
+  if zone_name is null then
+    zone_name := (select location.timezone from public.employee_profiles person
+                  join public.employee_location_assignments assignment
+                    on assignment.employee_id = person.id and assignment.ended_at is null
+                  join public.locations location on location.id = assignment.location_id and location.archived_at is null
+                  where person.workspace_id = w and person.user_id = author and person.archived_at is null
+                  order by assignment.is_primary desc, location.sort_order, location.name limit 1);
+  end if;
+  if zone_name is null and nullif(p ->> 'time_zone', '') is not null then
+    begin
+      perform now() at time zone (p ->> 'time_zone');
+      zone_name := p ->> 'time_zone';
+    exception when others then
+      zone_name := null;
+    end;
+  end if;
+
+  return jsonb_build_object(
+    'title', btrim(coalesce(p ->> 'title', '')),
+    'body', btrim(coalesce(p ->> 'body', '')),
+    'category', picked_category,
+    'category_other', case when picked_category = 'other' then nullif(btrim(p ->> 'category_other'), '') end,
+    'starts_on', first_day,
+    'ends_on', final_day,
+    'event_from', to_char(time_from, 'HH24:MI'),
+    'event_until', to_char(time_until, 'HH24:MI'),
+    'recurrence', picked_recurrence,
+    'on_important_dates', coalesce((p ->> 'on_important_dates')::boolean, false),
+    'on_calendar', coalesce((p ->> 'on_calendar')::boolean, false),
+    'on_schedule', coalesce((p ->> 'on_schedule')::boolean, false),
+    'ask_ack', coalesce((p ->> 'ask_ack')::boolean, false),
+    'time_zone', coalesce(zone_name, stored.time_zone, 'America/Los_Angeles'),
+    'publish_at', nullif(p ->> 'publish_at', '')::timestamptz,
+    'locations', coalesce((select jsonb_agg(r order by (r ->> 'location_id')::uuid)
+                           from jsonb_array_elements(live_rows || kept_rows) r), '[]'::jsonb),
+    'live_location_ids', coalesce((select jsonb_agg(r -> 'location_id') from jsonb_array_elements(live_rows) r), '[]'::jsonb),
+    'people', to_jsonb(added),
+    'hours', hours,
+    'choices', case when jsonb_typeof(p -> 'choices') = 'object' then p -> 'choices' else '{}'::jsonb end);
+end;
+$_$;
+
+
+ALTER FUNCTION "app_private"."announcement_proposal"("w" "uuid", "stored" "public"."announcements", "p" "jsonb", "author" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_reaches"("item" "public"."announcements", "who" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select item.status = 'published' and item.archived_at is null
+    and exists (select 1 from public.workspace_memberships membership
+                where membership.workspace_id = item.workspace_id and membership.user_id = who and membership.status = 'active')
+    and (exists (select 1 from public.announcement_people person where person.announcement_id = item.id and person.user_id = who)
+      or exists (
+        select 1 from public.announcement_locations target
+        join public.locations location on location.id = target.location_id and location.archived_at is null
+        join public.employee_location_assignments assignment on assignment.location_id = target.location_id and assignment.ended_at is null
+        join public.employee_profiles person on person.id = assignment.employee_id and person.archived_at is null
+        where target.announcement_id = item.id and person.workspace_id = item.workspace_id and person.user_id = who)
+      or exists (
+        select 1 from public.announcement_shift_changes change
+        join public.employee_profiles person on person.id = change.employee_id
+        where change.announcement_id = item.id and not change.silent and change.brought_back_at is null
+          and person.user_id = who))
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_reaches"("item" "public"."announcements", "who" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_reason"("state" "app_private"."actor_state", "places" "uuid"[], "author" "uuid", "dates" boolean) RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  reason text;
+  kind text;
+  narrow app_private.authz_actions;
+begin
+  foreach kind in array case when dates then array['announcement', 'important_date'] else array['announcement'] end loop
+    reason := app_private.communication_reason(state, state.workspace_id, kind, coalesce(places, '{}'), author);
+    if reason is not null and cardinality(coalesce(places, '{}')) = 0 and author = state.user_id then
+      select * into strict narrow from app_private.authz_actions a where a.key = kind || '.write';
+      if exists (select 1 from public.locations location
+                 where location.workspace_id = state.workspace_id and location.archived_at is null
+                   and app_private.authz_check(state, narrow, array[location.id], null, author) is null) then
+        reason := null;
+      end if;
+    end if;
+    if reason is not null then
+      return reason;
+    end if;
+  end loop;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_reason"("state" "app_private"."actor_state", "places" "uuid"[], "author" "uuid", "dates" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."announcement_recipients"("item" "public"."announcements") RETURNS "uuid"[]
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select coalesce(array_agg(distinct who order by who), '{}')
-  from app_private.communication_audience(item.workspace_id,
-    app_private.announcement_places(item.id),
-    item.audience_roles, item.department_ids, item.job_ids) who
-  where who is distinct from item.created_by
+  select app_private.announcement_audience(item.workspace_id,
+    array(select target.location_id from public.announcement_locations target where target.announcement_id = item.id),
+    array(select person.user_id from public.announcement_people person where person.announcement_id = item.id),
+    array(select change.employee_id from public.announcement_shift_changes change
+          where change.announcement_id = item.id and not change.silent and change.brought_back_at is null),
+    item.created_by)
 $$;
 
 
@@ -993,52 +2291,110 @@ CREATE OR REPLACE FUNCTION "app_private"."announcement_release"("w" "uuid" DEFAU
     SET "search_path" TO ''
     AS $$
 declare
+  place uuid;
   item public.announcements;
+  publisher uuid;
+  impact jsonb;
+  reached uuid[];
+  told integer;
   released integer := 0;
+  failure text;
+  failure_hint text;
+  failure_text text;
 begin
-  for item in
-    select * from public.announcements announcement
-    where (w is null or announcement.workspace_id = w)
-      and announcement.status = 'scheduled' and announcement.archived_at is null
-      and announcement.publish_at <= now() and announcement.release_failed_at is null
-    for update skip locked
+  for place in
+    select distinct announcement.workspace_id from public.announcements announcement
+    where (w is null or announcement.workspace_id = w) and announcement.archived_at is null
+      and ((announcement.status = 'scheduled' and announcement.publish_at <= now() and announcement.release_failed_at is null)
+        or (announcement.status = 'published'
+            and coalesce(announcement.ends_on, announcement.starts_on) <= (now() at time zone 'UTC')::date + 1
+            and (cardinality(announcement.delivered_to) > 0 or (announcement.recurrence <> 'none' and not exists (
+              select 1 from public.announcements other where other.repeats_from = announcement.id)))))
+    order by 1
   loop
-    begin
-      if item.expires_at is not null and item.expires_at <= now() then
-        -- Its time ran out before it went out: it does not (P25).
-        update public.announcements set status = 'unpublished', revision = revision + 1 where id = item.id;
-      else
+    -- The order a save takes: this lock, the record, then the Schedule's.
+    perform pg_advisory_xact_lock(hashtextextended(place::text, 931));
+    for item in
+      select * from public.announcements announcement
+      where announcement.workspace_id = place and announcement.status = 'scheduled' and announcement.archived_at is null
+        and announcement.publish_at <= now() and announcement.release_failed_at is null
+      order by announcement.publish_at, announcement.id
+      for update skip locked
+    loop
+      begin
+        perform public.availability_lock_workspace(place);
+        publisher := coalesce(item.scheduled_by, item.created_by);
+        if exists (select 1 from app_private.announcement_moments(item) moment where moment.starts_at <= now()) then
+          raise exception 'too_late' using errcode = '22023', hint = 'announcement.too_late';
+        end if;
+        failure := app_private.announcement_reason(app_private.actor(publisher, place), app_private.announcement_places(item.id),
+          item.created_by, app_private.announcement_dates(item));
+        if failure is not null then
+          raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || failure, detail = 'announcement.write';
+        end if;
+        impact := app_private.announcement_impact(place, item.id, item.starts_on, item.ends_on,
+          app_private.announcement_rows(item.id), item.shift_choices, item.choices_saved_at);
         update public.announcements
-        set status = 'published', published_at = item.publish_at, revision = revision + 1,
-            delivered_to = app_private.announcement_recipients(item)
-        where id = item.id
-        returning * into item;
-        perform app_private.announcement_deliver(item, item.delivered_to);
+        set status = 'published', published_at = item.publish_at, published_by = publisher, unpublished_at = null,
+            release_error = null, revision = revision + 1
+        where id = item.id returning * into item;
+        told := app_private.announcement_apply(publisher, item, impact);
+        reached := app_private.announcement_recipients(item);
+        perform app_private.communication_withdraw(place, 'communications.announcement.available', 'announcement',
+          item.id::text, 'superseded');
+        perform app_private.announcement_deliver(publisher, item, reached, 'publish');
+        update public.announcements set delivered_to = reached where id = item.id;
+        insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
+        values (place, item.id, publisher, 'published', jsonb_strip_nulls(jsonb_build_object('auto', true,
+          'shift_changes', nullif(told, 0), 'told', cardinality(reached))));
         released := released + 1;
-      end if;
-    exception when others then
-      -- One broken row must not hold up every workspace's, nor the read that
-      -- called this (O2). The error stays with it (KK-98).
-      update public.announcements set release_failed_at = now(), release_error = left(sqlstate || ': ' || sqlerrm, 2000)
-      where id = item.id;
-    end;
-  end loop;
+      exception when others then
+        get stacked diagnostics failure = returned_sqlstate, failure_hint = pg_exception_hint, failure_text = message_text;
+        if failure = '42501' or failure_hint = 'announcement.too_late' then
+          update public.announcements
+          set release_failed_at = now(), release_error = left(failure || ': ' || failure_text, 2000), revision = revision + 1
+          where id = item.id returning * into item;
+          insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
+          values (place, item.id, null, 'publish_failed',
+            jsonb_build_object('code', case when failure = '42501' then 'not_allowed' else 'too_late' end));
+          begin
+            perform app_private.announcement_tell_failed(item, case when failure = '42501'
+              then 'Whoever scheduled it can''t publish it there anymore. Open it to publish it yourself or change it.'
+              else 'It started before it could go out. Open it to change its day or archive it.' end);
+          exception when others then
+            raise warning 'announcement % failure notice did not go out: %', item.id, sqlerrm;
+          end;
+        else
+          -- One broken row must not hold up every workspace's, nor the read
+          -- that called this (O2). It tries again the next minute (KK-98).
+          update public.announcements set release_error = left(failure || ': ' || failure_text, 2000) where id = item.id;
+        end if;
+      end;
+    end loop;
 
-  for item in
-    select * from public.announcements announcement
-    where (w is null or announcement.workspace_id = w)
-      and announcement.status = 'published' and announcement.archived_at is null
-      and announcement.expires_at <= now() and cardinality(announcement.delivered_to) > 0
-    for update skip locked
-  loop
-    begin
-      perform app_private.communication_withdraw(item.workspace_id, 'communications.announcement.available',
-        'announcement', item.id::text, 'cancelled');
-      update public.announcements set delivered_to = '{}' where id = item.id;
-    exception when others then
-      -- The next minute tries again.
-      raise warning 'announcement % did not leave the inboxes: %', item.id, sqlerrm;
-    end;
+    for item in
+      select * from public.announcements announcement
+      where announcement.workspace_id = place and announcement.status = 'published' and announcement.archived_at is null
+        and coalesce(announcement.ends_on, announcement.starts_on) <= (now() at time zone 'UTC')::date + 1
+        and (cardinality(announcement.delivered_to) > 0 or (announcement.recurrence <> 'none' and not exists (
+          select 1 from public.announcements other where other.repeats_from = announcement.id)))
+        and exists (select 1 from app_private.announcement_moments(announcement) moment where moment.ends_at <= now())
+      for update skip locked
+    loop
+      begin
+        if cardinality(item.delivered_to) > 0 then
+          perform app_private.communication_withdraw(place, 'communications.announcement.available', 'announcement',
+            item.id::text, 'cancelled');
+          update public.announcements set delivered_to = '{}' where id = item.id;
+        end if;
+        if item.recurrence <> 'none' then
+          perform app_private.announcement_repeat(item);
+        end if;
+      exception when others then
+        -- The next minute tries again.
+        raise warning 'announcement % did not close: %', item.id, sqlerrm;
+      end;
+    end loop;
   end loop;
   return released;
 end;
@@ -1048,20 +2404,213 @@ $$;
 ALTER FUNCTION "app_private"."announcement_release"("w" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."announcement_visible"("actor" "uuid", "item" "public"."announcements") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "app_private"."announcement_repeat"("item" "public"."announcements") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  with me as (
-    select app_private.actor(actor, item.workspace_id) state, app_private.announcement_places(item.id) places
-  )
-  select app_private.communication_reason(me.state, item.workspace_id, 'announcement', me.places, item.created_by) is null
-      or app_private.announcement_out_to(me.state, item, me.places)
-  from me
+declare
+  next_item public.announcements;
+  next_day date := app_private.announcement_next_year(item.starts_on, item.recurrence);
+  lead_time interval := greatest(coalesce((select moment.starts_at from app_private.announcement_moments(item) moment)
+    - coalesce(item.published_at, item.publish_at), interval '0'), interval '1 minute');
+  next_start timestamptz;
+begin
+  if next_day is null or exists (select 1 from public.announcements other where other.repeats_from = item.id) then
+    return null;
+  end if;
+  insert into public.announcements (workspace_id, title, body, category, category_other, starts_on, ends_on, event_from,
+    event_until, recurrence, on_important_dates, on_calendar, on_schedule, ask_ack, time_zone, status, publish_at,
+    scheduled_by, repeats_from, choices_saved_at, created_by, updated_by)
+  values (item.workspace_id, item.title, item.body, item.category, item.category_other, next_day,
+    next_day + (item.ends_on - item.starts_on), item.event_from, item.event_until, item.recurrence, item.on_important_dates,
+    item.on_calendar, item.on_schedule, item.ask_ack, item.time_zone, 'scheduled', now(),
+    coalesce(item.published_by, item.scheduled_by, item.created_by), item.id, now(), item.created_by, item.created_by)
+  returning * into next_item;
+  insert into public.announcement_locations (workspace_id, announcement_id, location_id, day, opens, closes)
+  select next_item.workspace_id, next_item.id, target.location_id, target.day, target.opens, target.closes
+  from public.announcement_locations target
+  join public.locations location on location.id = target.location_id and location.archived_at is null
+  where target.announcement_id = item.id;
+  insert into public.announcement_people (workspace_id, announcement_id, user_id)
+  select next_item.workspace_id, next_item.id, person.user_id
+  from public.announcement_people person where person.announcement_id = item.id;
+  next_start := (select moment.starts_at from app_private.announcement_moments(next_item) moment);
+  update public.announcements set publish_at = greatest(next_start - lead_time, now()) where id = next_item.id;
+  insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
+  values (next_item.workspace_id, next_item.id, null, 'repeated',
+    jsonb_build_object('from', item.id, 'scheduled_by', next_item.scheduled_by));
+  return next_item.id;
+end;
 $$;
 
 
-ALTER FUNCTION "app_private"."announcement_visible"("actor" "uuid", "item" "public"."announcements") OWNER TO "postgres";
+ALTER FUNCTION "app_private"."announcement_repeat"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_respondents"("item" "public"."announcements") RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(array_agg(who order by who), '{}')
+  from unnest(app_private.announcement_recipients(item)) who
+  where item.ask_ack and item.status = 'published'
+    and app_private.authz_rank(coalesce((
+      select role.access_class from public.workspace_memberships membership
+      join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+      where membership.workspace_id = item.workspace_id and membership.user_id = who), 'employee'))
+    < app_private.authz_rank(coalesce((
+      select role.access_class from public.workspace_memberships membership
+      join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+      where membership.workspace_id = item.workspace_id and membership.user_id = coalesce(item.published_by, item.created_by)),
+      'owner'))
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_respondents"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_rows"("announcement" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(jsonb_agg(jsonb_build_object('location_id', target.location_id, 'day', target.day,
+    'opens', to_char(target.opens, 'HH24:MI'), 'closes', to_char(target.closes, 'HH24:MI'))
+    order by target.location_id), '[]'::jsonb)
+  from public.announcement_locations target where target.announcement_id = announcement
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_rows"("announcement" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_shift_sentence"("change" "jsonb", "back" boolean, "multi" boolean, "fmt" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when back and change ->> 'outcome' = 'edited' then 'Your ' || part.prefix || 'shift is back to ' || part.was
+    when back then 'Your ' || part.was || ' shift' || part.suffix || ' is back'
+    when change ->> 'outcome' = 'removed' then 'Your ' || part.was || ' shift' || part.suffix || ' was removed'
+    when change ->> 'outcome' = 'opened'
+      then 'You''re off the ' || part.was || ' shift' || part.suffix || '; it''s now open for others'
+    else 'Your ' || part.prefix || 'shift is now ' || part.now end
+  from (select
+    app_private.announcement_hours_text((change ->> 'start_time')::time, (change ->> 'end_time')::time, fmt) was,
+    app_private.announcement_hours_text((change ->> 'after_start')::time, (change ->> 'after_end')::time, fmt) now,
+    case when multi then app_private.announcement_day_text((change ->> 'scheduled_date')::date) || ' ' else '' end prefix,
+    case when multi then ' on ' || app_private.announcement_day_text((change ->> 'scheduled_date')::date) else '' end suffix) part
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_shift_sentence"("change" "jsonb", "back" boolean, "multi" boolean, "fmt" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_span"("w" "uuid", "first_day" "date", "last_day" "date", "event_from" time without time zone, "event_until" time without time zone, "own_zone" "text", "day_rows" "jsonb") RETURNS TABLE("starts_at" timestamp with time zone, "ends_at" timestamp with time zone)
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  with places as (
+    select location.timezone tz, r ->> 'day' as kind, (r ->> 'opens')::time opens, (r ->> 'closes')::time closes
+    from jsonb_array_elements(coalesce(day_rows, '[]'::jsonb)) r
+    join public.locations location
+      on location.id = (r ->> 'location_id')::uuid and location.workspace_id = w and location.archived_at is null
+  ), zones as (
+    select distinct places.tz from places
+    union select own_zone where not exists (select 1 from places)
+  ), shape as (
+    select exists (select 1 from places where places.kind <> 'open') hours, coalesce(last_day, first_day) final_day
+  )
+  select
+    min((first_day + case when event_from is not null and not shape.hours then event_from
+                          else time '00:00' end) at time zone zones.tz),
+    greatest(
+      max((case when event_until is not null and not shape.hours then shape.final_day + event_until
+                else (shape.final_day + 1)::timestamp end) at time zone zones.tz),
+      (select max(((shape.final_day + 1) + places.closes) at time zone places.tz)
+       from places where places.kind = 'short' and places.closes <= places.opens))
+  from zones, shape
+  where first_day is not null
+  group by shape.hours, shape.final_day
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_span"("w" "uuid", "first_day" "date", "last_day" "date", "event_from" time without time zone, "event_until" time without time zone, "own_zone" "text", "day_rows" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_started"("item" "public"."announcements") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select item.status = 'published'
+    and coalesce((select moment.starts_at <= now() from app_private.announcement_moments(item) moment), false)
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_started"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_tell_failed"("item" "public"."announcements", "why" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  event_id uuid := gen_random_uuid();
+  who uuid := coalesce(
+    (select membership.user_id from public.workspace_memberships membership
+     where membership.workspace_id = item.workspace_id and membership.user_id = coalesce(item.scheduled_by, item.created_by)
+       and membership.status = 'active'),
+    (select membership.user_id from public.workspace_memberships membership
+     join public.workspace_roles role on role.id = membership.role_id
+     where membership.workspace_id = item.workspace_id and membership.status = 'active'
+       and app_private.authz_rank(role.access_class) = app_private.authz_rank('owner')
+     order by membership.created_at limit 1));
+begin
+  if who is null then
+    return;
+  end if;
+  perform public.enqueue_notification_outbox_service(
+    item.workspace_id, event_id, 'communications.announcement.available', 1, null, 'announcement', item.id::text,
+    jsonb_build_object(
+      'correlation_id', event_id, 'announcement_id', item.id, 'announcement_revision', item.revision,
+      'content_revision', item.content_revision, 'location_ids', to_jsonb(app_private.announcement_places(item.id)),
+      'recipient_user_ids', jsonb_build_array(who), 'audience_contract', 'announcement_targeted_members',
+      'category', 'announcement', 'title', 'Couldn''t publish "' || item.title || '"', 'body', why,
+      'safe_preview', 'An announcement couldn''t be published.',
+      'action_url', '/app/announcements/' || item.id::text, 'group_key', 'announcement:' || item.id::text,
+      'visible_at', now()),
+    now());
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_tell_failed"("item" "public"."announcements", "why" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_time_format"("w" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((select settings.time_format from public.workspace_scheduling_settings settings
+                   where settings.workspace_id = w), '12h')
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_time_format"("w" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_visible"("state" "app_private"."actor_state", "item" "public"."announcements") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case
+    when item.status = 'draft' then item.created_by = state.user_id
+    else app_private.announcement_reason(state, app_private.announcement_places(item.id), item.created_by,
+           app_private.announcement_dates(item)) is null
+      or app_private.announcement_reaches(item, state.user_id) end
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_visible"("state" "app_private"."actor_state", "item" "public"."announcements") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."apply_lifecycle_definition"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid", "expected_revision" integer, "expected_preview_token" "text", "apply_reason" "text", "target_kind" "text") RETURNS "jsonb"
@@ -1943,89 +3492,42 @@ $$;
 ALTER FUNCTION "app_private"."close_schedule_edit_session"("edit" "public"."schedule_edit_sessions") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."closure_days"("w" "uuid", "kind" "public"."important_date_type", "starts" "date", "ends" "date", "recurrence" "public"."important_date_recurrence", "location_ids" "uuid"[]) RETURNS TABLE("location_id" "uuid", "closed_date" "date")
-    LANGUAGE "sql" STABLE
+CREATE OR REPLACE FUNCTION "app_private"."closure_covers"("kind" "text", "opens" time without time zone, "closes" time without time zone, "starts" time without time zone, "ends" time without time zone) RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
     AS $$
-  select location.id, day::date
-  from public.locations location
-  cross join lateral generate_series(0, case when recurrence = 'annual'
-    then greatest(extract(year from current_date)::integer + 2 - extract(year from starts)::integer, 0) else 0 end) as years(n)
-  cross join lateral generate_series(starts + make_interval(years => years.n), ends + make_interval(years => years.n),
-    interval '1 day') as days(day)
-  where kind = 'closed_day' and location.workspace_id = w and location.archived_at is null
-    and (cardinality(location_ids) = 0 or location.id = any (location_ids))
+  select case kind
+    when 'closed' then true
+    when 'short' then coalesce(not (m.s >= m.o and m.e <= m.c), false)
+    else false end
+  from (select extract(epoch from starts) / 60 s,
+               extract(epoch from ends) / 60 + case when ends <= starts then 1440 else 0 end e,
+               extract(epoch from opens) / 60 o,
+               extract(epoch from closes) / 60 + case when closes <= opens then 1440 else 0 end c) m
 $$;
 
 
-ALTER FUNCTION "app_private"."closure_days"("w" "uuid", "kind" "public"."important_date_type", "starts" "date", "ends" "date", "recurrence" "public"."important_date_recurrence", "location_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "app_private"."closure_covers"("kind" "text", "opens" time without time zone, "closes" time without time zone, "starts" time without time zone, "ends" time without time zone) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."communication_audience"("w" "uuid", "stored" "uuid"[], "roles" "public"."workspace_role"[], "department_ids" "uuid"[], "job_ids" "uuid"[]) RETURNS SETOF "uuid"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "app_private"."closure_reason"("kind" "text", "opens" time without time zone, "closes" time without time zone, "starts" time without time zone, "ends" time without time zone) RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
     AS $$
-  with live as (
-    select app_private.live_locations(w, stored) ids, cardinality(stored) = 0 everywhere
-  )
-  select membership.user_id
-  from public.workspace_memberships membership, live
-  where membership.workspace_id = w and membership.status = 'active'
-    and app_private.communication_reaches(app_private.actor(membership.user_id, w), w, live.ids, live.everywhere,
-          roles, department_ids, job_ids)
+  select case
+    when kind = 'closed' then 'closed'
+    when kind <> 'short' or not app_private.closure_covers(kind, opens, closes, starts, ends) then null
+    when m.e <= m.o then 'prep'
+    when m.s >= m.c then 'after_close'
+    else 'over' end
+  from (select extract(epoch from starts) / 60 s,
+               extract(epoch from ends) / 60 + case when ends <= starts then 1440 else 0 end e,
+               extract(epoch from opens) / 60 o,
+               extract(epoch from closes) / 60 + case when closes <= opens then 1440 else 0 end c) m
 $$;
 
 
-ALTER FUNCTION "app_private"."communication_audience"("w" "uuid", "stored" "uuid"[], "roles" "public"."workspace_role"[], "department_ids" "uuid"[], "job_ids" "uuid"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."communication_authorize"("actor" "uuid", "w" "uuid", "kind" "text", "stored" "uuid"[], "author" "uuid", "kept" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS "void"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  reason text := app_private.communication_reason(app_private.actor(actor, w), w, kind, stored, author);
-begin
-  if reason is null and exists (
-    select 1 from unnest(stored) id
-    where not id = any (app_private.live_locations(w, stored)) and not id = any (kept)
-  ) then
-    reason := 'out_of_scope';
-  end if;
-  if reason is not null then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || reason, detail = kind || '.write';
-  end if;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."communication_authorize"("actor" "uuid", "w" "uuid", "kind" "text", "stored" "uuid"[], "author" "uuid", "kept" "uuid"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."communication_reaches"("state" "app_private"."actor_state", "w" "uuid", "live" "uuid"[], "everywhere" boolean, "roles" "public"."workspace_role"[], "department_ids" "uuid"[], "job_ids" "uuid"[]) RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  -- coalesce: somebody who is not a member (no status) gets a plain no.
-  select coalesce(state.status = 'active', false) and coalesce(
-    state.manages && live
-    or (everywhere and cardinality(state.manages) > 0)
-    or ((roles is null or state.class = any (roles))
-        and (everywhere or state.works && live)
-        and (cardinality(coalesce(department_ids, '{}')) = 0 or exists (
-          select 1 from public.employee_job_assignments assignment
-          join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
-          where assignment.workspace_id = w and assignment.employee_id = state.employee_id
-            and assignment.ended_at is null and job.archived_at is null and job.department_id = any (department_ids)))
-        and (cardinality(coalesce(job_ids, '{}')) = 0 or exists (
-          select 1 from public.employee_job_assignments assignment
-          join public.jobs job on job.id = assignment.job_id and job.workspace_id = w
-          where assignment.workspace_id = w and assignment.employee_id = state.employee_id
-            and assignment.ended_at is null and job.archived_at is null and job.id = any (job_ids)))), false)
-$$;
-
-
-ALTER FUNCTION "app_private"."communication_reaches"("state" "app_private"."actor_state", "w" "uuid", "live" "uuid"[], "everywhere" boolean, "roles" "public"."workspace_role"[], "department_ids" "uuid"[], "job_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "app_private"."closure_reason"("kind" "text", "opens" time without time zone, "closes" time without time zone, "starts" time without time zone, "ends" time without time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."communication_reason"("state" "app_private"."actor_state", "w" "uuid", "kind" "text", "stored" "uuid"[], "author" "uuid") RETURNS "text"
@@ -3495,505 +4997,6 @@ end; $$;
 
 
 ALTER FUNCTION "app_private"."guard_job_deletion_state"() OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."important_dates" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "location_id" "uuid",
-    "title" "text" NOT NULL,
-    "type" "public"."important_date_type" DEFAULT 'event'::"public"."important_date_type" NOT NULL,
-    "starts_on" "date" NOT NULL,
-    "ends_on" "date" NOT NULL,
-    "recurrence" "public"."important_date_recurrence" DEFAULT 'none'::"public"."important_date_recurrence" NOT NULL,
-    "note" "text" DEFAULT ''::"text" NOT NULL,
-    "affects_scheduling" boolean DEFAULT true NOT NULL,
-    "archived_at" timestamp with time zone,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "location_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    "status" "text" DEFAULT 'published'::"text" NOT NULL,
-    "created_by" "uuid",
-    "updated_by" "uuid",
-    "content_revision" integer DEFAULT 1 NOT NULL,
-    "delivered_to" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    "revision" integer DEFAULT 1 NOT NULL,
-    CONSTRAINT "important_dates_check" CHECK (("ends_on" >= "starts_on")),
-    CONSTRAINT "important_dates_check1" CHECK ((("type" <> 'closed_day'::"public"."important_date_type") OR "affects_scheduling")),
-    CONSTRAINT "important_dates_location_ids_limit" CHECK (("cardinality"("location_ids") <= 100)),
-    CONSTRAINT "important_dates_note_check" CHECK (("char_length"("note") <= 500)),
-    CONSTRAINT "important_dates_status_check" CHECK (("status" = ANY (ARRAY['published'::"text", 'unpublished'::"text"]))),
-    CONSTRAINT "important_dates_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 120)))
-);
-
-
-ALTER TABLE "public"."important_dates" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_close_shifts"("actor" "uuid", "item" "public"."important_dates", "impact" "jsonb", "keep" "uuid"[]) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  s jsonb;
-  opened jsonb := coalesce((select jsonb_agg(x) from jsonb_array_elements(impact -> 'shifts') x
-                            where not (x ->> 'id')::uuid = any (coalesce(keep, '{}'))), '[]'::jsonb);
-  drafts uuid[] := array(select value::uuid from jsonb_array_elements_text(impact -> 'draft_shift_ids'));
-  places uuid[];
-  other record;
-begin
-  places := array(
-    select distinct (x ->> 'location_id')::uuid from jsonb_array_elements(opened) x
-    union select draft_shift.location_id from public.schedule_draft_shifts draft_shift where draft_shift.id = any (drafts)
-    union select edit_shift.location_id from public.schedule_edit_session_shifts edit_shift
-          where edit_shift.workspace_id = item.workspace_id and edit_shift.id = any (drafts));
-  if cardinality(places) = 0 then
-    return '[]'::jsonb;
-  end if;
-  perform app_private.authorize(actor, item.workspace_id, 'schedule.edit', target_locations => places);
-
-  for s in select x from jsonb_array_elements(opened) x loop
-    insert into public.important_date_shift_releases (workspace_id, important_date_id, published_shift_id, source_shift_id,
-      before_assignment, actor_user_id)
-    values (item.workspace_id, item.id, (s ->> 'id')::uuid, (s ->> 'source_id')::uuid, s, actor);
-    update public.schedule_published_shifts set employee_id = null
-    where workspace_id = item.workspace_id and id = (s ->> 'id')::uuid and employee_id = (s ->> 'employee_id')::uuid;
-    if not found then
-      raise exception 'A shift on this closed day changed. Review the shifts again.'
-        using errcode = 'PT409', hint = 'important_date.closure_changed';
-    end if;
-  end loop;
-
-  with dropped as (
-    update public.schedule_draft_shifts draft_shift
-    set employee_id = null, revision = draft_shift.revision + 1, updated_at = now()
-    where draft_shift.id = any (drafts)
-      and (draft_shift.location_id, draft_shift.scheduled_date) in (
-        select (day ->> 'location_id')::uuid, (day ->> 'closed_date')::date from jsonb_array_elements(impact -> 'days') day)
-    returning draft_shift.draft_id
-  )
-  update public.schedule_drafts set revision = revision + 1, updated_at = now()
-  where id in (select draft_id from dropped);
-
-  -- BL-545: the same shift in an open edit drops too; the edit's revision moves
-  -- so the open screen reloads it (as shift_exchange_rebase_drafts does).
-  with dropped_edit as (
-    update public.schedule_edit_session_shifts edit_shift
-    set employee_id = null, revision = edit_shift.revision + 1, updated_at = now()
-    where edit_shift.workspace_id = item.workspace_id and edit_shift.id = any (drafts)
-      and edit_shift.employee_id is not null and edit_shift.source_published_shift_id is null
-      and edit_shift.pending_op_type is distinct from 'delete'
-      and (edit_shift.location_id, edit_shift.scheduled_date) in (
-        select (day ->> 'location_id')::uuid, (day ->> 'closed_date')::date from jsonb_array_elements(impact -> 'days') day)
-      and exists (select 1 from public.schedule_edit_sessions edit where edit.id = edit_shift.session_id and edit.status = 'active')
-    returning edit_shift.session_id
-  )
-  update public.schedule_edit_sessions set revision = revision + 1
-  where id in (select session_id from dropped_edit);
-  -- DB-1c: Undo does not take the closed day back.
-  perform app_private.schedule_edit_undo_barrier();
-
-  if jsonb_array_length(opened) > 0 then
-    perform public.shift_exchange_reconcile_batch(actor, item.workspace_id,
-      (select jsonb_agg(x || jsonb_build_object('new_employee_id', null)) from jsonb_array_elements(opened) x));
-    -- ponytail: the same steps approved time off takes (time_off_release_shifts).
-    for other in
-      select c.id from public.shift_exchange_cases c
-      where c.workspace_id = item.workspace_id and c.status = 'open'
-        and exists (select 1 from jsonb_array_elements(opened) x
-                    where (x ->> 'source_id')::uuid in (c.offered_source_id, c.requested_source_id))
-    loop
-      update public.shift_exchange_cases set status = 'invalidated', revision = revision + 1, updated_at = now() where id = other.id;
-      update public.shift_exchange_applications set status = 'invalidated', updated_at = now()
-      where case_id = other.id and status in ('invited', 'pending_manager');
-      perform public.shift_exchange_emit(actor, item.workspace_id, other.id, null, 'invalidated',
-        'An involved assignment was opened by a closed day. Review the current schedule.');
-    end loop;
-    perform realtime.send(jsonb_build_object('workspace_id', item.workspace_id, 'important_date_id', item.id),
-      'changed', 'shift-exchanges:' || item.workspace_id::text, true);
-  end if;
-  return opened;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_close_shifts"("actor" "uuid", "item" "public"."important_dates", "impact" "jsonb", "keep" "uuid"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_closure_impact"("w" "uuid", "stored" "public"."important_dates", "kind" "text", "starts" "date", "ends" "date", "recurrence" "text", "location_ids" "uuid"[]) RETURNS "jsonb"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  with newly as (
-    select day.location_id, day.closed_date
-    from app_private.closure_days(w, kind::public.important_date_type, starts, ends,
-      recurrence::public.important_date_recurrence, coalesce(location_ids, '{}')) day
-    where day.closed_date >= public.schedule_current_week_start_service(w, array[day.location_id])
-    except
-    select day.location_id, day.closed_date
-    from app_private.closure_days(w, stored.type, stored.starts_on, stored.ends_on, stored.recurrence,
-      coalesce(stored.location_ids, '{}')) day
-    where stored.id is not null and stored.status = 'published' and stored.archived_at is null
-  ), shifts as (
-    select public.shift_exchange_shift(w, shift.id) || jsonb_build_object('employee_user_id', person.user_id) as x
-    from newly
-    join public.schedule_published_shifts shift
-      on shift.workspace_id = w and shift.location_id = newly.location_id and shift.scheduled_date = newly.closed_date
-    join public.schedule_location_publications publication on publication.id = shift.publication_id and publication.status = 'current'
-    join public.locations location on location.id = shift.location_id
-    left join public.employee_profiles person on person.id = shift.employee_id and person.workspace_id = w
-    where shift.employee_id is not null
-      and lower(app_private.shift_time_range(shift.scheduled_date, shift.start_time, shift.end_time,
-            coalesce(shift.time_timezone, location.timezone))) > now()
-  )
-  select jsonb_build_object(
-    'fingerprint', md5(coalesce((select string_agg(concat_ws('|', x ->> 'id', x ->> 'employee_id', x ->> 'starts_at', x ->> 'ends_at'),
-      ',' order by x ->> 'id') from shifts), '')),
-    'shifts', coalesce((select jsonb_agg(x order by x ->> 'starts_at', x ->> 'location_name', x ->> 'id') from shifts), '[]'::jsonb),
-    'days', coalesce((select jsonb_agg(jsonb_build_object('location_id', location_id, 'closed_date', closed_date)) from newly), '[]'::jsonb),
-    -- K16: a saved draft's own shifts on those days (a copy of a published
-    -- shift follows that shift instead), and since BL-545 the unsaved ones in
-    -- an open edit. One id for a shift that is in both.
-    'draft_shift_ids', coalesce((
-      select jsonb_agg(distinct dropping.id) from (
-        select draft_shift.id
-        from newly
-        join public.schedule_draft_shifts draft_shift
-          on draft_shift.workspace_id = w and draft_shift.location_id = newly.location_id
-         and draft_shift.scheduled_date = newly.closed_date and draft_shift.employee_id is not null
-        join public.schedule_drafts draft on draft.id = draft_shift.draft_id and draft.archived_at is null
-        where not exists (
-          select 1 from public.schedule_published_shifts published
-          join public.schedule_location_publications publication
-            on publication.id = published.publication_id and publication.status = 'current'
-          where published.workspace_id = w and coalesce(published.source_shift_id, published.id) = draft_shift.id)
-        union
-        select edit_shift.id
-        from newly
-        join public.schedule_edit_session_shifts edit_shift
-          on edit_shift.workspace_id = w and edit_shift.location_id = newly.location_id
-         and edit_shift.scheduled_date = newly.closed_date and edit_shift.employee_id is not null
-         and edit_shift.source_published_shift_id is null and edit_shift.pending_op_type is distinct from 'delete'
-        join public.schedule_edit_sessions edit on edit.id = edit_shift.session_id and edit.status = 'active'
-        -- An edit opened from a draft carries the published shift's id without
-        -- the copy mark; that copy follows the published shift too (K13 keep).
-        where not exists (
-          select 1 from public.schedule_published_shifts published
-          join public.schedule_location_publications publication
-            on publication.id = published.publication_id and publication.status = 'current'
-          where published.workspace_id = w and coalesce(published.source_shift_id, published.id) = edit_shift.id)
-      ) dropping), '[]'::jsonb))
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_closure_impact"("w" "uuid", "stored" "public"."important_dates", "kind" "text", "starts" "date", "ends" "date", "recurrence" "text", "location_ids" "uuid"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_deliver"("item" "public"."important_dates", "recipients" "uuid"[]) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  event_id uuid := gen_random_uuid();
-  -- Its next time: a yearly date's coming days, in the text and the link.
-  first_day date := app_private.important_date_next_day(item);
-  last_day date := (item.ends_on + make_interval(
-    years => extract(year from first_day)::integer - extract(year from item.starts_on)::integer))::date;
-begin
-  if cardinality(recipients) = 0 then
-    return;
-  end if;
-  perform public.enqueue_notification_outbox_service(
-    item.workspace_id, event_id, 'schedule.important_date.available', 1, item.updated_by,
-    'important_date', item.id::text,
-    jsonb_build_object(
-      'correlation_id', event_id,
-      'important_date_id', item.id,
-      'content_revision', item.content_revision,
-      'location_ids', to_jsonb(item.location_ids),
-      'recipient_user_ids', to_jsonb(recipients),
-      'audience_contract', 'important_date_targeted_members',
-      'category', 'schedule',
-      'title', item.title,
-      'body', case when first_day = last_day then to_char(first_day, 'Mon FMDD, YYYY')
-                   else to_char(first_day, 'Mon FMDD') || ' - ' || to_char(last_day, 'Mon FMDD, YYYY') end,
-      'safe_preview', 'An important date was added to the schedule.',
-      'action_url', '/app/schedule?date=' || first_day::text,
-      'group_key', 'important_date:' || item.id::text,
-      'visible_at', now()),
-    now());
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_deliver"("item" "public"."important_dates", "recipients" "uuid"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_is_past"("item" "public"."important_dates", "line" "date") RETURNS boolean
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
-  select item.recurrence = 'none' and item.ends_on < line
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_is_past"("item" "public"."important_dates", "line" "date") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_keep_past"("item" "public"."important_dates", "line" "date") RETURNS "public"."important_dates"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  kept public.important_dates := item;
-  ahead integer;
-  n integer;
-begin
-  if item.recurrence = 'none' then
-    if item.starts_on >= line then
-      return item;
-    end if;
-    insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note,
-      affects_scheduling, location_ids, location_id, created_by, updated_by, status, archived_at, created_at, content_revision)
-    values (item.workspace_id, item.title, item.type, item.starts_on, line - 1, 'none', item.note,
-      item.affects_scheduling, item.location_ids, item.location_id, item.created_by, item.updated_by, item.status,
-      item.archived_at, item.created_at, item.content_revision);
-    update public.important_dates set starts_on = line where id = item.id returning * into kept;
-    return kept;
-  end if;
-  ahead := (select min(k) from generate_series(0, extract(year from line)::integer - extract(year from item.starts_on)::integer + 1) k
-            where (item.starts_on + make_interval(years => k))::date >= line);
-  if ahead = 0 then
-    return item;
-  end if;
-  for n in 0 .. ahead - 1 loop
-    insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note,
-      affects_scheduling, location_ids, location_id, created_by, updated_by, status, archived_at, created_at, content_revision)
-    values (item.workspace_id, item.title, item.type, (item.starts_on + make_interval(years => n))::date,
-      (item.ends_on + make_interval(years => n))::date, 'none', item.note,
-      item.affects_scheduling, item.location_ids, item.location_id, item.created_by, item.updated_by, item.status,
-      item.archived_at, item.created_at, item.content_revision);
-  end loop;
-  update public.important_dates
-  set starts_on = (item.starts_on + make_interval(years => ahead))::date,
-      ends_on = (item.ends_on + make_interval(years => ahead))::date
-  where id = item.id returning * into kept;
-  return kept;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_keep_past"("item" "public"."important_dates", "line" "date") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_next_day"("item" "public"."important_dates") RETURNS "date"
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO ''
-    AS $$
-  select case when item.recurrence <> 'annual' then item.starts_on else coalesce((
-    select (item.starts_on + make_interval(years => n))::date
-    from generate_series(greatest(extract(year from current_date)::integer - extract(year from item.starts_on)::integer - 1, 0),
-                         greatest(extract(year from current_date)::integer - extract(year from item.starts_on)::integer + 1, 0)) n
-    where (item.ends_on + make_interval(years => n))::date >= current_date
-    order by n limit 1), item.starts_on) end
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_next_day"("item" "public"."important_dates") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_notified"("item" "public"."important_dates") RETURNS "uuid"[]
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  places uuid[] := app_private.live_locations(item.workspace_id,
-    case when cardinality(item.location_ids) = 0
-      then array(select location.id from public.locations location where location.workspace_id = item.workspace_id)
-      else item.location_ids end);
-  open_places uuid[];
-begin
-  if item.recurrence = 'annual' then
-    return app_private.important_date_recipients(item);
-  end if;
-  open_places := array(
-    select location.id from public.locations location
-    where location.id = any (places) and item.ends_on >= (now() at time zone location.timezone)::date
-    order by location.id);
-  if cardinality(open_places) = 0 then
-    return '{}';
-  end if;
-  if cardinality(open_places) = cardinality(places) then
-    return app_private.important_date_recipients(item);
-  end if;
-  return coalesce((
-    select array_agg(distinct who order by who)
-    from app_private.communication_audience(item.workspace_id, open_places, null, null, null) who
-    where who is distinct from item.created_by), '{}');
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_notified"("item" "public"."important_dates") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_out_to"("state" "app_private"."actor_state", "item" "public"."important_dates") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select item.status = 'published' and item.archived_at is null
-     and app_private.communication_reaches(state, item.workspace_id,
-           app_private.live_locations(item.workspace_id, item.location_ids), cardinality(item.location_ids) = 0,
-           null, null, null)
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_out_to"("state" "app_private"."actor_state", "item" "public"."important_dates") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_recipients"("item" "public"."important_dates") RETURNS "uuid"[]
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select coalesce(array_agg(distinct who order by who), '{}')
-  from app_private.communication_audience(item.workspace_id, item.location_ids, null, null, null) who
-  where who is distinct from item.created_by
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_recipients"("item" "public"."important_dates") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_refuse_past"() RETURNS "void"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO ''
-    AS $$
-begin
-  raise exception 'Past important dates are read-only.' using errcode = 'P0001', hint = 'important_date.past';
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_refuse_past"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_snapshot"("item" "public"."important_dates") RETURNS "jsonb"
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO ''
-    AS $$
-  select jsonb_build_object('title', item.title, 'type', item.type, 'starts_on', item.starts_on, 'ends_on', item.ends_on,
-    'recurrence', item.recurrence, 'note', item.note, 'affects_scheduling', item.affects_scheduling,
-    'location_ids', to_jsonb(item.location_ids), 'status', item.status, 'archived_at', item.archived_at)
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_snapshot"("item" "public"."important_dates") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_stay_open"("item" "public"."important_dates") RETURNS integer
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select count(distinct shift.id)::integer
-  from public.important_date_shift_releases released
-  join public.schedule_published_shifts shift
-    on shift.workspace_id = released.workspace_id and coalesce(shift.source_shift_id, shift.id) = released.source_shift_id
-  join public.schedule_location_publications publication on publication.id = shift.publication_id and publication.status = 'current'
-  join public.locations location on location.id = shift.location_id
-  where released.important_date_id = item.id and released.workspace_id = item.workspace_id and shift.employee_id is null
-    and lower(app_private.shift_time_range(shift.scheduled_date, shift.start_time, shift.end_time,
-          coalesce(shift.time_timezone, location.timezone))) > now()
-    and not exists (
-      select 1 from app_private.closure_days(item.workspace_id, item.type, item.starts_on, item.ends_on, item.recurrence, item.location_ids) day
-      where item.status = 'published' and item.archived_at is null
-        and day.location_id = shift.location_id and day.closed_date = shift.scheduled_date)
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_stay_open"("item" "public"."important_dates") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_tell_removed"("item" "public"."important_dates", "opened" "jsonb") RETURNS "uuid"[]
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  fmt text := case when (select s.time_format from public.workspace_scheduling_settings s
-                         where s.workspace_id = item.workspace_id) = '24h' then 'HH24:MI' else 'FMHH12:MI AM' end;
-  person record;
-  event_id uuid;
-  told uuid[] := '{}';
-begin
-  for person in
-    select (x ->> 'employee_user_id')::uuid who,
-      (array_agg(x ->> 'location_name' order by x ->> 'starts_at'))[1] first_place,
-      min((x ->> 'scheduled_date')::date) first_day,
-      array_agg(to_char((x ->> 'scheduled_date')::date, 'Dy, Mon FMDD') || ', '
-        || to_char((x ->> 'start_time')::time, fmt) || '–' || to_char((x ->> 'end_time')::time, fmt)
-        || ' (' || (x ->> 'location_name') || ')' order by x ->> 'starts_at') lines
-    from jsonb_array_elements(opened) x
-    where x ->> 'employee_user_id' is not null and (x ->> 'employee_user_id')::uuid is distinct from item.created_by
-    group by 1
-  loop
-    perform app_private.communication_withdraw(item.workspace_id, 'schedule.important_date.available',
-      'important_date', item.id::text, 'superseded', array[person.who]);
-    event_id := gen_random_uuid();
-    perform public.enqueue_notification_outbox_service(
-      item.workspace_id, event_id, 'schedule.important_date.available', 1, item.updated_by,
-      'important_date', item.id::text,
-      jsonb_build_object(
-        'correlation_id', event_id,
-        'important_date_id', item.id,
-        'content_revision', item.content_revision,
-        'location_ids', to_jsonb(item.location_ids),
-        'recipient_user_ids', jsonb_build_array(person.who),
-        'audience_contract', 'important_date_targeted_members',
-        'category', 'schedule',
-        'title', left(person.first_place || ' is closed on ' || to_char(person.first_day, 'Mon FMDD') || ' — your shift was removed', 160),
-        'body', left(array_to_string(person.lines, '; '), 2000),
-        'safe_preview', 'A closed day removed your shift.',
-        'action_url', '/app/schedule?date=' || person.first_day::text,
-        'group_key', 'important_date:' || item.id::text,
-        'visible_at', now()),
-      now());
-    told := told || person.who;
-  end loop;
-  return told;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_tell_removed"("item" "public"."important_dates", "opened" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_version_seen"("reach" "uuid"[], "version" "jsonb") RETURNS "jsonb"
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
-  select case
-    when version is null then null
-    when jsonb_array_length(coalesce(version -> 'location_ids', '[]'::jsonb)) = 0 then version
-    when exists (select 1 from jsonb_array_elements_text(version -> 'location_ids') id where id::uuid = any (reach)) then version
-    else jsonb_build_object('hidden', true)
-  end
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_version_seen"("reach" "uuid"[], "version" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."important_date_visible"("actor" "uuid", "item" "public"."important_dates") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  with me as (select app_private.actor(actor, item.workspace_id) state)
-  select app_private.communication_reason(me.state, item.workspace_id, 'important_date', item.location_ids, item.created_by) is null
-      or app_private.important_date_out_to(me.state, item)
-  from me
-$$;
-
-
-ALTER FUNCTION "app_private"."important_date_visible"("actor" "uuid", "item" "public"."important_dates") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."initialize_employee_onboarding"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "uuid"
@@ -6834,15 +7837,16 @@ begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.acknowledge');
   perform app_private.announcement_release(target_workspace_id);
   select * into item from public.announcements where id = target_announcement_id and workspace_id = target_workspace_id;
-  if item.id is null or item.status <> 'published' or item.archived_at is not null
-     or not app_private.announcement_visible(actor_user_id, item) then
+  if item.id is null or not item.ask_ack or app_private.announcement_display_status(item) <> 'published'
+     or not app_private.announcement_reaches(item, actor_user_id)
+     or not actor_user_id = any (app_private.announcement_respondents(item)) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.acknowledge';
   end if;
   insert into public.announcement_acknowledgements (workspace_id, announcement_id, user_id)
   values (target_workspace_id, target_announcement_id, actor_user_id)
   on conflict (announcement_id, user_id) do nothing;
-  select a.acknowledged_at into acknowledged from public.announcement_acknowledgements a
-  where a.announcement_id = target_announcement_id and a.user_id = actor_user_id;
+  select ack.acknowledged_at into acknowledged from public.announcement_acknowledgements ack
+  where ack.announcement_id = target_announcement_id and ack.user_id = actor_user_id;
   return jsonb_build_object('status', 'saved', 'acknowledged_at', acknowledged);
 end;
 $$;
@@ -6892,7 +7896,7 @@ $$;
 ALTER FUNCTION "public"."acknowledge_document_lifecycle_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "signer_name" "text", "expected_content_digest" "text", "authenticated_timestamp" timestamp with time zone, "request_idempotency_key" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid" DEFAULT NULL::"uuid", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid" DEFAULT NULL::"uuid", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[], "resume_open_edit" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -6962,8 +7966,11 @@ begin
   -- Asking for another draft or source of the week puts the open edit aside
   -- the same way (D-O9): it is never resumed in place of what was asked for.
   -- It closes below, once nobody else's edit of the asked draft says no.
+  -- A new edit asked for from a menu sets aside an edit that was left open
+  -- (its lock ran out): it never comes back in place of a new one.
   if own_session.id is not null
     and (app_private.authz_reason(actor_user_id, target_workspace_id, 'schedule.edit', own_session.location_ids) is not null
+      or (not resume_open_edit and own_session.expires_at <= now())
       or own_session.source_kind is distinct from requested_source
       or own_session.source_draft_id is distinct from case when requested_source = 'draft' then requested_draft_id end) then
     set_aside := own_session;
@@ -7088,7 +8095,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."act_on_notification_inbox_item_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") RETURNS "jsonb"
@@ -7865,9 +8872,8 @@ begin
    end if;
   end if;
   if exists(select 1 from public.schedule_closures c where c.workspace_id=w and c.location_id=loc
-   and day between c.closed_date and coalesce(c.end_date,c.closed_date)
-   and (c.is_all_day or (shift->>'shift_type_id')::uuid=any(c.shift_type_ids))) then
-   reasons:=reasons||jsonb_build_array(jsonb_build_object('code','closed_location','message','Location or shift type is closed on this date.','definite',true));
+   and c.closed_date=day and app_private.closure_covers(c.kind,c.opens,c.closes,start_clock,end_clock)) then
+   reasons:=reasons||jsonb_build_array(jsonb_build_object('code','closed_location','message','Location is closed or has short hours at this time.','definite',true));
   end if;
  end if;
  -- The edit session replaces its week; a saved draft replaces its week. Other
@@ -10620,101 +11626,129 @@ $$;
 ALTER FUNCTION "public"."get_account_deletion_blockers_service"("actor_user_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  w uuid := target_workspace_id;
+  reader app_private.actor_state;
+  item public.announcements;
+  allowed boolean;
+  seen uuid[];
+begin
+  perform app_private.authorize(actor_user_id, w, 'announcement.read');
+  perform app_private.announcement_release(w);
+  reader := app_private.actor(actor_user_id, w);
+  select * into item from public.announcements where id = target_announcement_id and workspace_id = w;
+  if item.id is null or not app_private.announcement_visible(reader, item) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.read';
+  end if;
+  allowed := app_private.announcement_reason(reader, app_private.announcement_places(item.id), item.created_by,
+    app_private.announcement_dates(item)) is null;
+  if not allowed then
+    return app_private.announcement_item(reader, item, false);
+  end if;
+  seen := app_private.scope_set(actor_user_id, w, 'schedule.read');
+  return app_private.announcement_item(reader, item, true) || jsonb_build_object(
+    'people', coalesce((
+      select jsonb_agg(app_private.announcement_person(w, person.user_id) order by person.user_id)
+      from public.announcement_people person where person.announcement_id = item.id), '[]'::jsonb),
+    'shift_choices', item.shift_choices,
+    'choices_saved_at', item.choices_saved_at,
+    -- Whose shifts it changed, where the reader may read the Schedule (D1).
+    'changes', coalesce((
+      select jsonb_agg(app_private.announcement_change_item(change) order by change.scheduled_date, change.changed_at, change.id)
+      from public.announcement_shift_changes change
+      where change.announcement_id = item.id and change.location_id = any (seen)), '[]'::jsonb),
+    'hidden_change_count', (select count(*) from public.announcement_shift_changes change
+      where change.announcement_id = item.id and not change.location_id = any (seen)),
+    'acknowledgements', coalesce((
+      select jsonb_agg(app_private.announcement_person(w, who) || jsonb_build_object('acknowledged_at', ack.acknowledged_at)
+        order by ack.acknowledged_at is not null, ack.acknowledged_at, who)
+      from unnest(case when item.ask_ack and item.status = 'published'
+                       then app_private.announcement_respondents(item) else '{}'::uuid[] end) who
+      left join public.announcement_acknowledgements ack on ack.announcement_id = item.id and ack.user_id = who), '[]'::jsonb),
+    'history', coalesce((
+      select jsonb_agg(jsonb_build_object('id', change.id, 'action', change.action, 'detail', change.detail,
+        'changed_at', change.changed_at, 'actor_user_id', change.actor_user_id,
+        'actor_name', coalesce(account.display_name, case when change.actor_user_id is null then null else 'Workspace member' end))
+        order by change.changed_at desc, change.id)
+      from public.announcement_changes change
+      left join public.user_profiles account on account.user_id = change.actor_user_id
+      where change.announcement_id = item.id), '[]'::jsonb));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_announcements_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
-  writable uuid[];
-  wide boolean;
+  w uuid := target_workspace_id;
   reader app_private.actor_state;
+  writable uuid[];
+  dates_writable uuid[];
+  wide boolean;
+  dates_wide boolean;
+  manages boolean;
 begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
-  perform app_private.announcement_release(target_workspace_id);
-  reader := app_private.actor(actor_user_id, target_workspace_id);
-  writable := app_private.scope_set(actor_user_id, target_workspace_id, 'announcement.write');
-  wide := app_private.authz_reason(actor_user_id, target_workspace_id, 'announcement.write_wide') is null;
+  perform app_private.authorize(actor_user_id, w, 'announcement.read');
+  perform app_private.announcement_release(w);
+  reader := app_private.actor(actor_user_id, w);
+  writable := app_private.scope_set(actor_user_id, w, 'announcement.write');
+  dates_writable := app_private.scope_set(actor_user_id, w, 'important_date.write');
+  wide := app_private.authz_reason(actor_user_id, w, 'announcement.write_wide') is null;
+  dates_wide := app_private.authz_reason(actor_user_id, w, 'important_date.write_wide') is null;
+  manages := wide or cardinality(writable) > 0;
   return jsonb_build_object(
-    'workspace_id', target_workspace_id,
-    'can_manage', wide or cardinality(writable) > 0,
-    'can_target_workspace', wide,
-    'locations', coalesce((
-      select jsonb_agg(jsonb_build_object('id', location.id, 'name', location.name) order by location.sort_order, location.name)
+    'workspace_id', w,
+    'can_manage', manages,
+    'can_write_dates', manages and (dates_wide or cardinality(dates_writable) > 0),
+    'can_read_dates', app_private.authz_reason(actor_user_id, w, 'settings.important_dates.read') is null,
+    'time_format', app_private.announcement_time_format(w),
+    'locations', case when manages then coalesce((
+      select jsonb_agg(jsonb_build_object('id', location.id, 'name', location.name, 'short_name', location.short_name,
+        'timezone', location.timezone,
+        'can_change_hours', dates_wide or location.id = any (dates_writable),
+        'people_count', (select count(distinct person.user_id) from public.employee_location_assignments assignment
+                         join public.employee_profiles person on person.id = assignment.employee_id and person.archived_at is null
+                         join public.workspace_memberships membership
+                           on membership.workspace_id = w and membership.user_id = person.user_id and membership.status = 'active'
+                         where assignment.location_id = location.id and assignment.ended_at is null))
+        order by location.sort_order, location.name)
       from public.locations location
-      where location.workspace_id = target_workspace_id and app_private.location_is_live(location)
-        and location.id = any (writable)), '[]'::jsonb),
-    'departments', case when wide or cardinality(writable) > 0 then coalesce((
+      where location.workspace_id = w and location.archived_at is null and (wide or location.id = any (writable))), '[]'::jsonb)
+      else '[]'::jsonb end,
+    'people', case when manages then coalesce((
+      select jsonb_agg(app_private.announcement_person(w, membership.user_id) order by lower(coalesce(
+        nullif(person.preferred_name, ''), person.first_name, account.display_name)), lower(person.last_name), membership.user_id)
+      from public.workspace_memberships membership
+      left join public.employee_profiles person
+        on person.workspace_id = w and person.user_id = membership.user_id and person.archived_at is null
+      left join public.user_profiles account on account.user_id = membership.user_id
+      where membership.workspace_id = w and membership.status = 'active' and membership.user_id <> actor_user_id
+        and (wide or app_private.announcement_places_of(w, '{}', array[membership.user_id]) <@ writable)), '[]'::jsonb)
+      else '[]'::jsonb end,
+    'departments', case when manages then coalesce((
       select jsonb_agg(jsonb_build_object('id', d.id, 'name', d.name) order by lower(d.name), d.id)
-      from public.departments d where d.workspace_id = target_workspace_id and d.archived_at is null), '[]'::jsonb)
-      else '[]'::jsonb end,
-    'jobs', case when wide or cardinality(writable) > 0 then coalesce((
+      from public.departments d where d.workspace_id = w and d.archived_at is null), '[]'::jsonb) else '[]'::jsonb end,
+    'jobs', case when manages then coalesce((
       select jsonb_agg(jsonb_build_object('id', j.id, 'name', j.name, 'department_id', j.department_id) order by lower(j.name), j.id)
-      from public.jobs j where j.workspace_id = target_workspace_id and j.archived_at is null), '[]'::jsonb)
-      else '[]'::jsonb end,
+      from public.jobs j where j.workspace_id = w and j.archived_at is null), '[]'::jsonb) else '[]'::jsonb end,
     'announcements', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', item.id, 'workspace_id', item.workspace_id, 'title', item.title, 'body', item.body,
-        'category', item.category, 'status', item.status, 'audience_roles', item.audience_roles,
-        -- What the list shows: run out (K12), or could not go out (KK-98).
-        'display_status', case when item.status = 'published' and item.expires_at <= now() then 'expired'
-          when item.status = 'scheduled' and item.release_failed_at is not null then 'publish_failed'
-          else item.status::text end,
-        'publish_error_code', case when item.release_failed_at is null then null
-          when item.release_error like '42501%' then 'not_allowed' else 'failed' end,
-        -- Every location it is kept at, archived ones too, so an edit keeps them;
-        -- live_location_ids are where it reaches (KK-86).
-        'location_ids', coalesce(targets.ids, '{}'::uuid[]), 'location_names', coalesce(targets.names, '{}'::text[]),
-        'live_location_ids', app_private.live_locations(target_workspace_id, coalesce(targets.ids, '{}'::uuid[])),
-        'department_ids', item.department_ids, 'job_ids', item.job_ids, 'archived_at', item.archived_at,
-        'department_names', coalesce((select jsonb_agg(d.name order by lower(d.name), d.id) from public.departments d
-          where d.workspace_id = target_workspace_id and d.id = any (item.department_ids)), '[]'::jsonb),
-        'job_names', coalesce((select jsonb_agg(j.name order by lower(j.name), j.id) from public.jobs j
-          where j.workspace_id = target_workspace_id and j.id = any (item.job_ids)), '[]'::jsonb),
-        'publish_at', item.publish_at, 'published_at', item.published_at, 'expires_at', item.expires_at,
-        'action_url', item.action_url, 'author_name', coalesce(author.display_name, 'Workspace member'),
-        'author_user_id', item.created_by,
-        'revision', item.revision, 'content_revision', item.content_revision,
-        'created_at', item.created_at, 'updated_at', item.updated_at,
-        'read_at', null,
-        'acknowledged_at', acknowledgement.acknowledged_at,
-        'acknowledged_count', (select count(*) from public.announcement_acknowledgements a where a.announcement_id = item.id),
-        -- Everybody it is out to now ("18 of 24 acknowledged"), for whoever may
-        -- change it; none once it is not out.
-        'recipient_count', case when control.allowed and item.status = 'published' and item.archived_at is null
-          and (item.expires_at is null or item.expires_at > now()) then cardinality(item.delivered_to) end,
-        'publish_failed_at', item.release_failed_at,
-        -- The reader acknowledged an earlier content and not this one (K4).
-        'content_changed_since_acknowledged', acknowledgement.acknowledged_at is null
-          and actor_user_id = any (item.acknowledged_before),
-        'can_edit', control.allowed and item.archived_at is null,
-        'can_publish', control.allowed and item.archived_at is null and item.status in ('draft', 'scheduled', 'unpublished'),
-        'can_unpublish', control.allowed and item.archived_at is null and item.status in ('scheduled', 'published'),
-        'can_archive', control.allowed and item.archived_at is null,
-        'can_restore', control.allowed and item.archived_at is not null
-      ) order by coalesce(item.publish_at, item.created_at) desc, item.id)
+      select jsonb_agg(app_private.announcement_item(reader, item, control.allowed)
+        order by coalesce(item.published_at, item.publish_at, item.created_at) desc, item.id)
       from public.announcements item
-      left join public.user_profiles author on author.user_id = item.created_by
-      left join lateral (
-        select array_agg(location.id order by location.sort_order, location.name) ids,
-               array_agg(location.name order by location.sort_order, location.name) names
-        from public.announcement_locations target
-        join public.locations location on location.id = target.location_id
-        where target.announcement_id = item.id) targets on true
-      left join public.announcement_acknowledgements acknowledgement
-        on acknowledgement.announcement_id = item.id and acknowledgement.user_id = actor_user_id
-      cross join lateral (select app_private.announcement_places(item.id) places) kept
-      cross join lateral (
-        select app_private.communication_reason(reader, target_workspace_id, 'announcement',
-          kept.places, item.created_by) is null allowed) control
-      -- announcement_visible, with the reader's state read once for the list.
-      where item.workspace_id = target_workspace_id
-        and (control.allowed or app_private.announcement_out_to(reader, item, kept.places)
-          -- K12: one that ran out stays in the list of whoever manages where it was.
-          or (item.status = 'published' and item.archived_at is null and item.expires_at <= now()
-              and coalesce(reader.status = 'active', false)
-              and (reader.manages && app_private.live_locations(target_workspace_id, kept.places)
-                   or (cardinality(kept.places) = 0 and cardinality(reader.manages) > 0))))), '[]'::jsonb)
-  );
+      cross join lateral (select app_private.announcement_reason(reader, app_private.announcement_places(item.id),
+        item.created_by, app_private.announcement_dates(item)) is null allowed) control
+      where item.workspace_id = w
+        and case when item.status = 'draft' then item.created_by = actor_user_id
+                 else control.allowed or app_private.announcement_reaches(item, actor_user_id) end), '[]'::jsonb));
 end;
 $$;
 
@@ -11470,7 +12504,8 @@ begin
           case when exists (
             select 1 from public.schedule_closures closure
             where closure.location_id = shift.location_id
-              and closure.closed_date = shift.scheduled_date and closure.is_all_day
+              and closure.closed_date = shift.scheduled_date and closure.status <> 'scheduled'
+              and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
           ) then 'closed_location' end,
           -- Only a conflict with the employee's own marks, as accepted at publishing.
           case when shift.employee_id = actor.id
@@ -11493,13 +12528,45 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id', closure.id, 'location_id', closure.location_id,
         'closed_date', closure.closed_date, 'title', closure.title,
-        'is_all_day', closure.is_all_day
+        'is_all_day', closure.is_all_day, 'kind', closure.kind,
+        'opens', to_char(closure.opens, 'HH24:MI'), 'closes', to_char(closure.closes, 'HH24:MI'),
+        'announcement_id', closure.announcement_id
       ) order by closure.closed_date, closure.title)
       from public.schedule_closures closure
       join allowed_locations location on location.id = closure.location_id
       where closure.closed_date between resolved_week_start and resolved_week_start + 6
+        and closure.status <> 'scheduled'
     ), '[]'::jsonb),
-    'important_dates', '[]'::jsonb
+    -- Records on the Schedule that are out to the employee and touch the week,
+    -- one row per their checked location; a record for no location is theirs
+    -- wherever they work. A yearly record's next year is its own record.
+    'important_dates', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', item.id, 'location_id', place.location_id, 'title', item.title,
+        'category', item.category, 'category_other', item.category_other,
+        'starts_on', item.starts_on, 'ends_on', coalesce(item.ends_on, item.starts_on),
+        'status', item.status, 'publish_at', item.publish_at, 'day', place.day,
+        'opens', to_char(place.opens, 'HH24:MI'), 'closes', to_char(place.closes, 'HH24:MI'),
+        'event_from', to_char(item.event_from, 'HH24:MI'), 'event_until', to_char(item.event_until, 'HH24:MI')
+      ) order by item.starts_on, item.title, place.location_id)
+      from public.announcements item
+      cross join lateral (
+        select target.location_id, target.day, target.opens, target.closes
+        from public.announcement_locations target
+        join allowed_locations location on location.id = target.location_id
+        where target.announcement_id = item.id
+        union all
+        select null::uuid, 'open', null::time, null::time
+        where not exists (
+          select 1 from public.announcement_locations target
+          join public.locations location on location.id = target.location_id and location.archived_at is null
+          where target.announcement_id = item.id)
+      ) place
+      where item.workspace_id = target_workspace_id and item.status = 'published' and item.archived_at is null
+        and item.on_schedule and item.starts_on is not null
+        and item.starts_on <= resolved_week_start + 6 and resolved_week_start <= coalesce(item.ends_on, item.starts_on)
+        and app_private.announcement_reaches(item, actor_user_id)
+    ), '[]'::jsonb)
   ) || app_private.schedule_departments_and_jobs(target_workspace_id)
     || app_private.schedule_referenced_catalog(target_workspace_id,
       array(select shift.job_id from current_shifts shift),
@@ -11512,6 +12579,38 @@ $$;
 
 
 ALTER FUNCTION "public"."get_employee_schedule_board_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  w uuid := target_workspace_id;
+  reader app_private.actor_state;
+  writable uuid[];
+begin
+  perform app_private.authorize(actor_user_id, w, 'settings.important_dates.read');
+  perform app_private.announcement_release(w);
+  reader := app_private.actor(actor_user_id, w);
+  writable := app_private.scope_set(actor_user_id, w, 'important_date.write');
+  return jsonb_build_object(
+    'workspace_id', w,
+    'time_format', app_private.announcement_time_format(w),
+    'can_write', app_private.authz_reason(actor_user_id, w, 'important_date.write_wide') is null or cardinality(writable) > 0,
+    'dates', coalesce((
+      select jsonb_agg(app_private.announcement_item(reader, item, control.allowed) order by item.starts_on, item.event_from nulls first, item.id)
+      from public.announcements item
+      cross join lateral (select app_private.announcement_reason(reader, app_private.announcement_places(item.id),
+        item.created_by, app_private.announcement_dates(item)) is null allowed) control
+      where item.workspace_id = w and item.on_important_dates and item.starts_on is not null
+        and item.status = 'published' and item.archived_at is null
+        and (control.allowed or app_private.announcement_reaches(item, actor_user_id))), '[]'::jsonb));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_cursor_id" "uuid" DEFAULT NULL::"uuid", "target_limit" integer DEFAULT 30) RETURNS "jsonb"
@@ -12200,7 +13299,8 @@ begin
           case when exists (
             select 1 from public.schedule_closures closure
             where closure.location_id = shift.location_id
-              and closure.closed_date = shift.scheduled_date and closure.is_all_day
+              and closure.closed_date = shift.scheduled_date
+              and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
           ) then 'closed_location' end,
           -- Today's marks and approved leave, published or not (BL-186).
           case when shift.employee_id is not null and exists (select 1 from week_availability week
@@ -12538,7 +13638,8 @@ begin
           case when exists (
             select 1 from public.schedule_closures closure
             where closure.workspace_id = target_workspace_id and closure.location_id = shift.location_id
-              and closure.closed_date = shift.scheduled_date and closure.is_all_day
+              and closure.closed_date = shift.scheduled_date
+              and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
           ) then 'closed_location' end,
           -- Today's marks and approved leave: a mark made after publishing shows
           -- here too (BL-186).
@@ -12588,39 +13689,50 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id', closure.id, 'location_id', closure.location_id,
         'closed_date', closure.closed_date, 'title', closure.title,
-        'is_all_day', closure.is_all_day
+        'is_all_day', closure.is_all_day, 'kind', closure.kind,
+        'opens', to_char(closure.opens, 'HH24:MI'), 'closes', to_char(closure.closes, 'HH24:MI'),
+        'status', closure.status, 'publish_at', closure.publish_at, 'on_schedule', closure.on_schedule,
+        'announcement_id', closure.announcement_id
       ) order by closure.closed_date, closure.title)
       from public.schedule_closures closure
       join allowed_locations location on location.id = closure.location_id
       where closure.workspace_id = target_workspace_id
         and closure.closed_date between resolved_week_start and resolved_week_start + 6
     ), '[]'::jsonb),
-    -- Published dates that touch the week, one row per reachable location;
-    -- a date for no location is everyone's (B-7). An annual date repeats from
-    -- its first year to two years ahead, 29 Feb falling on 28 Feb.
+    -- Records on the Schedule that touch the week, published or scheduled (a
+    -- manager sees what is coming), one row per reachable checked location. A
+    -- record about no live location (only for people added by hand) is on the
+    -- week of whoever it is out to or may change it, never everyone's. A yearly
+    -- record's next year is its own record.
     'important_dates', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'id', d.id, 'location_id', place.id, 'title', d.title, 'type', d.type,
-        'starts_on', d.starts_on, 'ends_on', d.ends_on, 'recurrence', d.recurrence
-      ) order by d.starts_on, d.title, place.id)
-      from public.important_dates d
+        'id', item.id, 'location_id', place.location_id, 'title', item.title,
+        'category', item.category, 'category_other', item.category_other,
+        'starts_on', item.starts_on, 'ends_on', coalesce(item.ends_on, item.starts_on),
+        'status', item.status, 'publish_at', item.publish_at, 'day', place.day,
+        'opens', to_char(place.opens, 'HH24:MI'), 'closes', to_char(place.closes, 'HH24:MI'),
+        'event_from', to_char(item.event_from, 'HH24:MI'), 'event_until', to_char(item.event_until, 'HH24:MI')
+      ) order by item.starts_on, item.title, place.location_id)
+      from public.announcements item
       cross join lateral (
-        select coalesce(nullif(d.location_ids, '{}'), array_remove(array[d.location_id], null)) ids
-      ) named
-      cross join lateral (
-        select location.id from allowed_locations location where location.id = any (named.ids)
-        union all select null::uuid where cardinality(named.ids) = 0
+        select target.location_id, target.day, target.opens, target.closes
+        from public.announcement_locations target
+        join allowed_locations location on location.id = target.location_id
+        where target.announcement_id = item.id
+        union all
+        select null::uuid, 'open', null::time, null::time
+        where not exists (
+          select 1 from public.announcement_locations target
+          join public.locations location on location.id = target.location_id and location.archived_at is null
+          where target.announcement_id = item.id)
+          -- The reader is a scalar subquery: worked out once per read, not per record.
+          and (app_private.announcement_reaches(item, actor_user_id)
+            or app_private.announcement_reason((select app_private.actor(actor_user_id, target_workspace_id)),
+                 app_private.announcement_places(item.id), item.created_by, app_private.announcement_dates(item)) is null)
       ) place
-      where d.workspace_id = target_workspace_id and d.archived_at is null
-        and d.status = 'published' and d.affects_scheduling
-        and case when d.recurrence = 'annual' then exists (
-          select 1 from generate_series(resolved_week_start, resolved_week_start + 6, interval '1 day') day(at)
-          cross join lateral (values (extract(year from day.at)::integer - 1), (extract(year from day.at)::integer)) y(year)
-          cross join lateral (select y.year - extract(year from d.starts_on)::integer k) shift
-          where shift.k >= 0
-            and y.year <= greatest(extract(year from current_date)::integer + 2, extract(year from d.starts_on)::integer)
-            and day.at::date between d.starts_on + make_interval(years => shift.k) and d.ends_on + make_interval(years => shift.k))
-        else d.starts_on <= resolved_week_start + 6 and resolved_week_start <= d.ends_on end
+      where item.workspace_id = target_workspace_id and item.status in ('published', 'scheduled')
+        and item.archived_at is null and item.on_schedule and item.starts_on is not null
+        and item.starts_on <= resolved_week_start + 6 and resolved_week_start <= coalesce(item.ends_on, item.starts_on)
     ), '[]'::jsonb)
   ) || app_private.schedule_departments_and_jobs(target_workspace_id)
     || app_private.schedule_referenced_catalog(target_workspace_id,
@@ -12899,9 +14011,8 @@ begin
         and location.id = any(schedule_places)
     ),
     'announcements', coalesce((select jsonb_agg(item.value) from (select value from jsonb_array_elements((public.get_announcements_service(actor_user_id, target_workspace_id)->'announcements')) value
-      -- K28: what is live; archived, expired and couldn't-publish stay in the list only.
-      where value->>'display_status' in ('published', 'scheduled') and value->>'archived_at' is null
-        and (value->>'publish_at')::timestamptz <= now() limit 5) item), '[]'::jsonb),
+      -- K28: what is live; scheduled, past, unpublished and archived stay in the list only.
+      where value->>'display_status' = 'published' limit 5) item), '[]'::jsonb),
     'notifications', coalesce(public.get_notifications_service(actor_user_id, target_workspace_id, null, false, null, 5)->'notifications', '[]'::jsonb),
     'todos', coalesce((
       select jsonb_agg(jsonb_build_object(
@@ -14728,7 +15839,7 @@ begin
           from public.schedule_closures closure
           where closure.location_id = shift.location_id
             and closure.closed_date = shift.scheduled_date
-            and closure.is_all_day
+            and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
         ) then 'closed_location' end,
         case when shift.employee_id is not null and exists (
           select 1
@@ -14761,7 +15872,7 @@ begin
           from public.schedule_closures closure
           where closure.location_id = shift.location_id
             and closure.closed_date = shift.scheduled_date
-            and closure.is_all_day
+            and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
         ) then 'closed_location' end
       ]::text[], null))
     ) order by shift.scheduled_date, shift.start_time, shift.id), '[]'::jsonb) as payload
@@ -16541,6 +17652,95 @@ $$;
 ALTER FUNCTION "public"."prevent_owner_employee_archive"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."preview_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  w uuid := target_workspace_id;
+  me app_private.actor_state;
+  stored public.announcements;
+  shown text := 'new';
+  n jsonb;
+  author uuid;
+  reason text;
+  intent text := coalesce(nullif(target_payload ->> 'intent', ''), 'publish');
+  impact jsonb := jsonb_build_object('fingerprint', null, 'shifts', '[]'::jsonb, 'quiet', '[]'::jsonb,
+    'counts', jsonb_build_object('removed', 0, 'edited', 0, 'opened', 0, 'kept', 0, 'quiet', 0));
+  offered jsonb := '[]'::jsonb;
+  span record;
+  -- Whose shifts are named: only where the writer may read the Schedule (D1);
+  -- the rest are counted.
+  seen uuid[];
+begin
+  perform app_private.authorize(actor_user_id, w, 'announcement.read');
+  seen := app_private.scope_set(actor_user_id, w, 'schedule.read');
+  if intent not in ('draft', 'schedule', 'publish', 'save') then
+    raise exception 'valid announcement intent required' using errcode = '22023', hint = 'announcement.invalid';
+  end if;
+  perform app_private.announcement_release(w);
+  me := app_private.actor(actor_user_id, w);
+  if target_announcement_id is not null then
+    select * into stored from public.announcements where id = target_announcement_id and workspace_id = w;
+    if stored.id is null or not app_private.announcement_visible(me, stored) then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.write';
+    end if;
+    reason := app_private.announcement_reason(me, app_private.announcement_places(stored.id), stored.created_by,
+      app_private.announcement_dates(stored));
+    if reason is not null then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || reason, detail = 'announcement.write';
+    end if;
+    shown := app_private.announcement_display_status(stored);
+    if shown in ('past', 'archived') then
+      raise exception 'This post can''t change anymore.' using errcode = 'PT409', hint = 'announcement.read_only';
+    end if;
+  end if;
+  author := coalesce(stored.created_by, actor_user_id);
+  n := app_private.announcement_proposal(w, stored, coalesce(target_payload, '{}'::jsonb), author);
+  perform app_private.announcement_authorize(me, n, author);
+
+  if (n ->> 'hours')::boolean and n ->> 'starts_on' is not null then
+    impact := app_private.announcement_impact(w, stored.id, (n ->> 'starts_on')::date, (n ->> 'ends_on')::date,
+      n -> 'locations', n -> 'choices', stored.choices_saved_at);
+  end if;
+  if shown = 'published' then
+    offered := app_private.announcement_back_rows(stored, (n ->> 'starts_on')::date, (n ->> 'ends_on')::date, n -> 'locations');
+  elsif shown = 'unpublished' then
+    offered := app_private.announcement_back_rows(stored, null, null, '[]'::jsonb);
+  end if;
+  select * into span from app_private.announcement_span(w, (n ->> 'starts_on')::date, (n ->> 'ends_on')::date,
+    (n ->> 'event_from')::time, (n ->> 'event_until')::time, n ->> 'time_zone', n -> 'locations');
+
+  return jsonb_build_object(
+    'problems', app_private.announcement_problems(w, stored, n, intent),
+    'fingerprint', impact -> 'fingerprint',
+    'shifts', coalesce((select jsonb_agg(x order by place) from jsonb_array_elements(impact -> 'shifts') with ordinality s(x, place)
+                        where (x ->> 'location_id')::uuid = any (seen)), '[]'::jsonb),
+    'hidden_count', (select count(*) from jsonb_array_elements(impact -> 'shifts') x
+                     where not (x ->> 'location_id')::uuid = any (seen)),
+    'quiet_count', (impact -> 'counts' ->> 'quiet')::integer,
+    'counts', impact -> 'counts',
+    'bring_back', coalesce((select jsonb_agg(x order by place) from jsonb_array_elements(offered) with ordinality s(x, place)
+                            where (x ->> 'location_id')::uuid = any (seen)), '[]'::jsonb),
+    'time_zone', n ->> 'time_zone',
+    'starts_at', span.starts_at,
+    'ends_at', span.ends_at,
+    'recipient_count', cardinality(app_private.announcement_audience(w,
+      array(select x::uuid from jsonb_array_elements_text(n -> 'live_location_ids') x),
+      array(select x::uuid from jsonb_array_elements_text(n -> 'people') x),
+      array(select (s ->> 'employee_id')::uuid from jsonb_array_elements(impact -> 'shifts') s
+            where s ->> 'outcome' <> 'kept' and s ->> 'employee_id' is not null
+            union
+            select change.employee_id from public.announcement_shift_changes change
+            where change.announcement_id = stored.id and not change.silent and change.brought_back_at is null),
+      author)));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."preview_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_payload" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."preview_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -16682,48 +17882,6 @@ $$;
 
 
 ALTER FUNCTION "public"."preview_employee_invitation_service"("invitation_token_hash" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."preview_important_date_closure_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_location_ids" "uuid"[]) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  stored public.important_dates;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
-  target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
-  if target_important_date_id is null then
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, actor_user_id);
-  else
-    select * into stored from public.important_dates
-    where id = target_important_date_id and workspace_id = target_workspace_id;
-    if stored.id is null or not app_private.important_date_visible(actor_user_id, stored) then
-      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'important_date.write';
-    end if;
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', stored.location_ids, stored.created_by, stored.location_ids);
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, stored.created_by, stored.location_ids);
-  end if;
-  if target_type not in ('holiday', 'event', 'blackout', 'closed_day') or target_recurrence not in ('none', 'annual')
-     or target_starts_on is null or target_ends_on is null or target_ends_on < target_starts_on then
-    raise exception 'valid important date required' using errcode = '22023';
-  end if;
-  return (
-    select jsonb_build_object(
-      'fingerprint', impact ->> 'fingerprint',
-      'shifts', coalesce((select jsonb_agg(x order by ord) from jsonb_array_elements(impact -> 'shifts') with ordinality listed(x, ord)
-                          where (x ->> 'location_id')::uuid = any (reach)), '[]'::jsonb),
-      'hidden_shift_count', (select count(*) from jsonb_array_elements(impact -> 'shifts') x
-                             where not (x ->> 'location_id')::uuid = any (reach)),
-      'draft_shift_count', jsonb_array_length(impact -> 'draft_shift_ids'))
-    from app_private.important_date_closure_impact(target_workspace_id, stored, target_type, target_starts_on,
-      target_ends_on, target_recurrence, target_location_ids) impact,
-      lateral (select app_private.scope_set(actor_user_id, target_workspace_id, 'schedule.read') reach) scope);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."preview_important_date_closure_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_location_ids" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."preview_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_recipient_user_id" "uuid") RETURNS "jsonb"
@@ -17259,13 +18417,16 @@ begin
     select
       'closed_location', 'soft', true, shift.location_id, shift.employee_id,
       shift.scheduled_date, array[shift.id]::uuid[],
-      shift.location_name || ' is closed on ' || shift.scheduled_date::text || '.'
+      shift.location_name || case hit.kind when 'closed' then ' is closed on ' else ' has short hours on ' end
+        || shift.scheduled_date::text || '.'
     from next_shift shift
-    where exists (
-      select 1 from public.schedule_closures closure
+    cross join lateral (
+      select closure.kind from public.schedule_closures closure
       where closure.location_id = shift.location_id
-        and closure.closed_date = shift.scheduled_date and closure.is_all_day
-    )
+        and closure.closed_date = shift.scheduled_date
+        and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
+      order by closure.kind = 'closed' desc limit 1
+    ) hit
   ), findings as (
     select encode(extensions.digest(convert_to(
       code || '|' || coalesce(employee_id::text, '') || '|' || scheduled_date::text || '|' || array_to_string(shift_ids, ','),
@@ -17867,63 +19028,6 @@ $$;
 ALTER FUNCTION "public"."protect_published_signature_version"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."publish_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  item public.announcements;
-  reached uuid[];
-  told uuid[];
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
-  perform app_private.announcement_release(target_workspace_id);
-  select * into item from public.announcements
-  where id = target_announcement_id and workspace_id = target_workspace_id for update;
-  if item.id is null or not app_private.announcement_visible(actor_user_id, item) then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.write';
-  end if;
-  perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement',
-    app_private.announcement_places(item.id),
-    item.created_by, app_private.announcement_places(item.id));
-  if item.revision is distinct from target_expected_revision or item.archived_at is not null
-     or item.status not in ('draft', 'scheduled', 'unpublished') then
-    raise exception 'stale announcement revision' using errcode = 'PT409', hint = 'announcement.changed';
-  end if;
-
-  if item.expires_at is not null and item.expires_at <= now() then
-    raise exception 'This announcement has expired' using errcode = '22023';
-  end if;
-  if item.publish_at is not null and item.publish_at > now() then
-    update public.announcements
-    set status = 'scheduled', release_failed_at = null, published_at = null, revision = revision + 1, updated_by = actor_user_id, updated_at = now()
-    where id = item.id returning * into item;
-    told := '{}';
-  else
-    reached := app_private.announcement_recipients(item);
-    told := case when item.status = 'unpublished'
-      then array(select who from unnest(reached) who where not exists (
-        select 1 from public.announcement_acknowledgements a where a.announcement_id = item.id and a.user_id = who))
-      else reached end;
-    update public.announcements
-    set status = 'published', published_at = now(), publish_at = coalesce(publish_at, now()),
-        delivered_to = reached, revision = revision + 1, updated_by = actor_user_id, updated_at = now()
-    where id = item.id returning * into item;
-    perform app_private.announcement_deliver(item, told);
-  end if;
-
-  insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
-  values (target_workspace_id, actor_user_id, 'announcement.published', 'announcement', item.id::text,
-    jsonb_build_object('status', item.status, 'recipient_count', cardinality(told)));
-  return jsonb_build_object('status', item.status, 'announcement_id', item.id, 'revision', item.revision,
-    'recipient_count', cardinality(told), 'notification_enqueued_count', cardinality(told));
-end;
-$$;
-
-
-ALTER FUNCTION "public"."publish_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb" DEFAULT '[]'::"jsonb", "target_notify_employee_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -18346,57 +19450,6 @@ $$;
 ALTER FUNCTION "public"."read_employee_references_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."read_important_date_history_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  item public.important_dates;
-  reader app_private.actor_state;
-  reach uuid[];
-  everything boolean;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
-  reader :=app_private.actor(actor_user_id, target_workspace_id);
-  -- The mask is a manager's scope (K6); the owner and the admins see every
-  -- location, so every version, one left only at an archived location too
-  -- (coordinator decision 2026-10-02; nothing hidden from them, P09, P11).
-  everything := coalesce(reader.class in ('owner', 'admin'), false);
-  reach := reader.manages;
-  select * into item from public.important_dates where id = target_important_date_id and workspace_id = target_workspace_id;
-  if item.id is null or not app_private.important_date_visible(actor_user_id, item) then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'settings.important_dates.read';
-  end if;
-  return jsonb_build_object(
-    'important_date_id', item.id,
-    'author_user_id', item.created_by,
-    'author_name', coalesce((select profile.display_name from public.user_profiles profile where profile.user_id = item.created_by), 'Workspace member'),
-    'changes', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', change.id, 'action', change.action,
-        -- A change that shows nothing the reader may see does not say who
-        -- made it or when either (K6).
-        'changed_at', case when seen.anything then change.changed_at end,
-        'actor_user_id', case when seen.anything then change.actor_user_id end,
-        'actor_name', case when seen.anything then coalesce(actor.display_name, 'Workspace member') end,
-        'before', seen.before,
-        'after', seen.after) order by change.changed_at desc, change.id)
-      from public.important_date_changes change
-      left join public.user_profiles actor on actor.user_id = change.actor_user_id
-      cross join lateral (
-        select versions.before, versions.after,
-          coalesce(not (versions.before ? 'hidden'), false) or coalesce(not (versions.after ? 'hidden'), false) as anything
-        from (select case when everything then change.before else app_private.important_date_version_seen(reach, change.before) end as before,
-                     case when everything then change.after else app_private.important_date_version_seen(reach, change.after) end as after) versions) seen
-      where change.important_date_id = item.id and change.workspace_id = target_workspace_id), '[]'::jsonb)
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."read_important_date_history_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."read_job_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid", "search_text" "text" DEFAULT ''::"text", "location_filter" "uuid" DEFAULT NULL::"uuid", "assignment_filter" "text" DEFAULT 'all'::"text", "page_number" integer DEFAULT 0, "targets_only" boolean DEFAULT false) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -18521,66 +19574,6 @@ $$;
 
 
 ALTER FUNCTION "public"."read_role_workspace_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."read_settings_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  writable uuid[];
-  wide boolean;
-  reader app_private.actor_state;
-  -- K11: nothing before the Schedule's editable week changes.
-  line date := public.schedule_current_week_start_service(target_workspace_id);
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
-  reader := app_private.actor(actor_user_id, target_workspace_id);
-  writable := app_private.scope_set(actor_user_id, target_workspace_id, 'important_date.write');
-  wide := app_private.authz_reason(actor_user_id, target_workspace_id, 'important_date.write_wide') is null;
-  return jsonb_build_object(
-    'can_manage', wide or cardinality(writable) > 0,
-    'can_target_workspace', wide,
-    'locked_before', line,
-    'dates', (
-      select coalesce(jsonb_agg(to_jsonb(d) order by d.starts_on, d.title, d.id), '[]'::jsonb)
-      from (
-        select date_row.id, date_row.workspace_id, date_row.location_id, date_row.location_ids,
-          date_row.title, date_row.type, date_row.starts_on, date_row.ends_on, date_row.recurrence,
-          date_row.note, date_row.affects_scheduling, date_row.archived_at, date_row.status, date_row.revision,
-          date_row.created_by, coalesce(author.display_name, 'Workspace member') as author_name,
-          date_row.updated_at,
-          app_private.important_date_is_past(date_row, own.since) as is_past,
-          (select location.name from public.locations location
-           where location.id = date_row.location_id and location.workspace_id = date_row.workspace_id) as location_name,
-          (select coalesce(jsonb_agg(coalesce(location.name, 'Archived location') order by location.sort_order nulls last, location.name, listed.n), '[]'::jsonb)
-           from unnest(date_row.location_ids) with ordinality listed(id, n)
-           left join public.locations location
-             on location.id = listed.id and location.workspace_id = date_row.workspace_id
-            and location.deleted_at is null) as location_names,
-          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null as can_edit,
-          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null and date_row.status = 'published' as can_unpublish,
-          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null and date_row.status = 'unpublished' as can_republish,
-          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is null as can_archive,
-          control.allowed and not app_private.important_date_is_past(date_row, own.since) and date_row.archived_at is not null as can_restore
-        from public.important_dates date_row
-        left join public.user_profiles author on author.user_id = date_row.created_by
-        cross join lateral (
-          select app_private.communication_reason(reader, target_workspace_id, 'important_date',
-            date_row.location_ids, date_row.created_by) is null allowed) control
-        cross join lateral (
-          select public.schedule_current_week_start_service(target_workspace_id, date_row.location_ids) as since) own
-        -- important_date_visible, with the reader's state read once for the list.
-        where date_row.workspace_id = target_workspace_id
-          and (control.allowed or app_private.important_date_out_to(reader, date_row))
-      ) d),
-    'locations', app_private.settings_locations(target_workspace_id, writable)
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."read_settings_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."read_settings_jobs_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
@@ -21337,146 +22330,237 @@ $$;
 ALTER FUNCTION "public"."revoke_time_off_service"("actor" "uuid", "w" "uuid", "rid" "uuid", "expected_revision" integer, "reason" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."save_announcement_audience_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_title" "text", "target_body" "text", "target_category" "text", "target_audience_roles" "text"[], "target_location_ids" "uuid"[], "target_publish_at" timestamp with time zone, "target_expires_at" timestamp with time zone, "target_action_url" "text", "target_department_ids" "uuid"[], "target_job_ids" "uuid"[]) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."save_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_payload" "jsonb", "target_intent" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $_$
 declare
+  w uuid := target_workspace_id;
+  me app_private.actor_state;
+  stored public.announcements;
   item public.announcements;
-  before public.announcements;
-  stored uuid[];
-  content_changed boolean := false;
-  reached uuid[];
-  dropped uuid[];
+  shown text := 'new';
+  n jsonb;
+  author uuid;
+  reason text;
+  found jsonb;
+  impact jsonb;
+  offered jsonb := '[]'::jsonb;
+  back jsonb := '[]'::jsonb;
+  told integer := 0;
+  reached uuid[] := '{}';
+  content_changed boolean := true;
+  reset boolean := false;
+  acked uuid[] := '{}';
+  earlier uuid[] := '{}';
+  touched uuid[] := '{}';
+  notified uuid[] := '{}';
+  history_action text;
 begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
-  target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
-  if target_announcement_id is null then
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', target_location_ids, actor_user_id);
-  else
-    perform app_private.announcement_release(target_workspace_id);
-    select * into before from public.announcements
-    where id = target_announcement_id and workspace_id = target_workspace_id for update;
-    if before.id is null or not app_private.announcement_visible(actor_user_id, before) then
+  perform app_private.authorize(actor_user_id, w, 'announcement.read');
+  if target_intent is null or target_intent not in ('draft', 'schedule', 'publish', 'save')
+     or jsonb_typeof(coalesce(target_payload -> 'bring_back', '[]'::jsonb)) <> 'array'
+     or exists (select 1 from jsonb_array_elements(coalesce(target_payload -> 'bring_back', '[]'::jsonb)) x
+                where jsonb_typeof(x) <> 'string'
+                   or x #>> '{}' !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') then
+    raise exception 'valid announcement intent required' using errcode = '22023', hint = 'announcement.invalid';
+  end if;
+  -- S4 and the shifts: one record at a time, then the Schedule's own lock.
+  perform pg_advisory_xact_lock(hashtextextended(w::text, 931));
+  if target_intent <> 'draft' then
+    perform public.availability_lock_workspace(w);
+  end if;
+  perform app_private.announcement_release(w);
+  me := app_private.actor(actor_user_id, w);
+
+  if target_announcement_id is not null then
+    select * into stored from public.announcements where id = target_announcement_id and workspace_id = w for update;
+    if stored.id is null or not app_private.announcement_visible(me, stored) then
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.write';
     end if;
-    stored := app_private.announcement_places(before.id);
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', stored, before.created_by, stored);
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement', target_location_ids, before.created_by, stored);
-    -- A record kept at an archived location never becomes the whole workspace
-    -- by losing its locations (KK-86); the owner may still widen a live one (K1).
-    if cardinality(target_location_ids) = 0
-       and cardinality(stored) > cardinality(app_private.live_locations(target_workspace_id, stored)) then
-      raise exception 'Choose at least one location' using errcode = '22023';
+    reason := app_private.announcement_reason(me, app_private.announcement_places(stored.id), stored.created_by,
+      app_private.announcement_dates(stored));
+    if reason is not null then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || reason, detail = 'announcement.write';
+    end if;
+    if stored.revision is distinct from target_expected_revision then
+      raise exception 'This post changed since you opened it.' using errcode = 'PT409', hint = 'announcement.changed';
+    end if;
+    shown := app_private.announcement_display_status(stored);
+    if shown in ('past', 'archived') then
+      raise exception 'This post can''t change anymore.' using errcode = 'PT409', hint = 'announcement.read_only';
     end if;
   end if;
-
-  target_department_ids := coalesce(target_department_ids, '{}');
-  target_job_ids := coalesce(target_job_ids, '{}');
-  if coalesce(cardinality(target_audience_roles), 0) = 0 then
-    target_audience_roles := array['owner', 'admin', 'manager', 'employee'];
-  end if;
-  if cardinality(target_department_ids) > 100 or cardinality(target_job_ids) > 100 or cardinality(target_location_ids) > 100 then
-    raise exception 'too many audience filters' using errcode = '22023';
-  end if;
-  if exists (select 1 from unnest(target_department_ids) selected(id) where not exists (
-       select 1 from public.departments d where d.id = selected.id and d.workspace_id = target_workspace_id and d.archived_at is null))
-  or exists (select 1 from unnest(target_job_ids) selected(id) where not exists (
-       select 1 from public.jobs j where j.id = selected.id and j.workspace_id = target_workspace_id and j.archived_at is null)) then
-    raise exception 'active workspace department and job required' using errcode = '22023';
-  end if;
-  if char_length(btrim(target_title)) not between 1 and 120 or char_length(btrim(target_body)) not between 1 and 5000
-     or target_category not in ('general', 'operations', 'schedule') then
-    raise exception 'valid announcement content required' using errcode = '22023';
-  end if;
-  if cardinality(target_audience_roles) not between 1 and 4
-     or exists (select 1 from unnest(target_audience_roles) role_name where role_name not in ('owner', 'admin', 'manager', 'employee')) then
-    raise exception 'valid announcement audience required' using errcode = '22023';
-  end if;
-  if target_action_url is not null and (char_length(target_action_url) > 500 or target_action_url !~ '^/app(/|$)') then
-    raise exception 'valid app action required' using errcode = '22023';
-  end if;
-  if target_expires_at is not null and target_publish_at is not null and target_expires_at <= target_publish_at then
-    raise exception 'expiry must follow publication' using errcode = '22023';
+  if not ((target_intent = 'save' and shown = 'published')
+          or (target_intent <> 'save' and shown in ('new', 'draft', 'scheduled', 'publish_failed', 'unpublished'))) then
+    raise exception 'This post changed since you opened it.' using errcode = 'PT409', hint = 'announcement.changed';
   end if;
 
-  if target_announcement_id is null then
-    insert into public.announcements (workspace_id, title, body, category, audience_roles, publish_at, expires_at,
-      action_url, department_ids, job_ids, created_by, updated_by)
-    values (target_workspace_id, btrim(target_title), btrim(target_body), target_category::public.announcement_category,
-      array(select distinct role_name::public.workspace_role from unnest(target_audience_roles) role_name),
-      target_publish_at, target_expires_at, target_action_url,
-      array(select distinct unnest(target_department_ids)), array(select distinct unnest(target_job_ids)),
-      actor_user_id, actor_user_id)
+  author := coalesce(stored.created_by, actor_user_id);
+  n := app_private.announcement_proposal(w, stored, coalesce(target_payload, '{}'::jsonb), author);
+  perform app_private.announcement_authorize(me, n, author);
+  found := app_private.announcement_problems(w, stored, n, target_intent);
+  if jsonb_array_length(found) > 0 then
+    raise exception '%', found -> 0 ->> 'message'
+      using errcode = '22023', hint = 'announcement.' || (found -> 0 ->> 'code'), detail = found -> 0 ->> 'field';
+  end if;
+
+  if target_intent in ('publish', 'save') then
+    impact := app_private.announcement_impact(w, stored.id, (n ->> 'starts_on')::date, (n ->> 'ends_on')::date,
+      n -> 'locations', n -> 'choices', stored.choices_saved_at);
+    if (jsonb_array_length(impact -> 'shifts') > 0 or jsonb_array_length(impact -> 'quiet') > 0)
+       and (target_payload ->> 'fingerprint') is distinct from (impact ->> 'fingerprint') then
+      raise exception 'The shifts on these days changed. Review the Shifts tab again.'
+        using errcode = 'PT409', hint = 'announcement.shifts_changed';
+    end if;
+  end if;
+  if target_intent = 'save' then
+    offered := app_private.announcement_back_rows(stored, (n ->> 'starts_on')::date, (n ->> 'ends_on')::date, n -> 'locations');
+  end if;
+
+  if stored.id is null then
+    insert into public.announcements (workspace_id, title, body, time_zone, created_by, updated_by)
+    values (w, n ->> 'title', n ->> 'body', n ->> 'time_zone', actor_user_id, actor_user_id)
     returning * into item;
+    insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action)
+    values (w, item.id, actor_user_id, 'created');
   else
-    if before.revision is distinct from target_expected_revision then
-      raise exception 'stale announcement revision' using errcode = 'PT409', hint = 'announcement.changed';
-    end if;
-    if before.archived_at is not null then
-      raise exception 'announcement can no longer be edited' using errcode = 'PT409', hint = 'announcement.archived';
-    end if;
-    content_changed := (before.title, before.body, before.category::text, before.action_url)
-      is distinct from (btrim(target_title), btrim(target_body), target_category, target_action_url);
-    update public.announcements
-    set title = btrim(target_title), body = btrim(target_body), category = target_category::public.announcement_category,
-        audience_roles = array(select distinct role_name::public.workspace_role from unnest(target_audience_roles) role_name),
-        publish_at = target_publish_at, expires_at = target_expires_at, action_url = target_action_url,
-        department_ids = array(select distinct unnest(target_department_ids)),
-        job_ids = array(select distinct unnest(target_job_ids)),
-        content_revision = content_revision + case when content_changed then 1 else 0 end,
-        -- A scheduled one with its time taken away waits as a draft (P10).
-        status = case when status = 'scheduled' and target_publish_at is null then 'draft' else status end,
-        release_failed_at = null, release_error = null,
-        revision = revision + 1, updated_by = actor_user_id, updated_at = now()
-    where id = before.id
-    returning * into item;
+    item := stored;
+    -- K4: what it says (its text, its days, what a day does at a location it
+    -- already had) is content; a location or a person added or taken off is
+    -- only who gets it.
+    content_changed := (stored.title, stored.body, stored.category::text, stored.category_other, stored.starts_on,
+        stored.ends_on, stored.event_from, stored.event_until, stored.recurrence)
+      is distinct from (n ->> 'title', n ->> 'body', n ->> 'category', n ->> 'category_other', (n ->> 'starts_on')::date,
+        (n ->> 'ends_on')::date, (n ->> 'event_from')::time, (n ->> 'event_until')::time, n ->> 'recurrence')
+      or exists (
+        select 1 from jsonb_array_elements(app_private.announcement_rows(stored.id)) was
+        join jsonb_array_elements(n -> 'locations') now_row on now_row ->> 'location_id' = was ->> 'location_id'
+        where (was ->> 'day', was ->> 'opens', was ->> 'closes')
+          is distinct from (now_row ->> 'day', now_row ->> 'opens', now_row ->> 'closes'));
   end if;
+
+  update public.announcements
+  set title = n ->> 'title', body = n ->> 'body',
+      category = (n ->> 'category')::public.announcement_category, category_other = n ->> 'category_other',
+      starts_on = (n ->> 'starts_on')::date, ends_on = (n ->> 'ends_on')::date,
+      event_from = (n ->> 'event_from')::time, event_until = (n ->> 'event_until')::time,
+      recurrence = n ->> 'recurrence',
+      on_important_dates = (n ->> 'on_important_dates')::boolean, on_calendar = (n ->> 'on_calendar')::boolean,
+      on_schedule = (n ->> 'on_schedule')::boolean, ask_ack = (n ->> 'ask_ack')::boolean,
+      time_zone = n ->> 'time_zone',
+      publish_at = case target_intent when 'publish' then now() when 'save' then item.publish_at
+                                      else (n ->> 'publish_at')::timestamptz end,
+      status = case target_intent when 'draft' then 'draft' when 'schedule' then 'scheduled'
+                                  else 'published' end::public.announcement_status,
+      scheduled_by = case target_intent when 'schedule' then actor_user_id when 'draft' then null else item.scheduled_by end,
+      published_by = case when target_intent = 'publish' then actor_user_id else item.published_by end,
+      published_at = case when target_intent = 'publish' then now() else item.published_at end,
+      unpublished_at = case when target_intent = 'publish' then null else item.unpublished_at end,
+      shift_choices = n -> 'choices',
+      choices_saved_at = case when target_intent = 'draft' then null else now() end,
+      release_failed_at = null, release_error = null,
+      content_revision = item.content_revision + case when content_changed and stored.id is not null then 1 else 0 end,
+      revision = item.revision + case when stored.id is null then 0 else 1 end,
+      updated_by = actor_user_id, updated_at = now()
+  where id = item.id
+  returning * into item;
 
   delete from public.announcement_locations where announcement_id = item.id;
-  insert into public.announcement_locations (workspace_id, announcement_id, location_id)
-  select target_workspace_id, item.id, id from unnest(target_location_ids) id;
+  insert into public.announcement_locations (workspace_id, announcement_id, location_id, day, opens, closes)
+  select w, item.id, (r ->> 'location_id')::uuid, r ->> 'day', (r ->> 'opens')::time, (r ->> 'closes')::time
+  from jsonb_array_elements(n -> 'locations') r;
+  delete from public.announcement_people where announcement_id = item.id;
+  insert into public.announcement_people (workspace_id, announcement_id, user_id)
+  select w, item.id, x::uuid from jsonb_array_elements_text(n -> 'people') x;
 
-  if content_changed then
-    update public.announcements
-    set acknowledged_before = array(select distinct who from unnest(acknowledged_before || array(
-      select a.user_id from public.announcement_acknowledgements a where a.announcement_id = item.id)) who)
-    where id = item.id returning * into item;
-    delete from public.announcement_acknowledgements where announcement_id = item.id;
+  if target_intent = 'save' then
+    back := app_private.announcement_bring_back(actor_user_id, item,
+      array(select x::uuid from jsonb_array_elements_text(coalesce(target_payload -> 'bring_back', '[]'::jsonb)) x), offered);
   end if;
-  if item.status = 'published' then
-    -- Past its end it reaches nobody (K12).
-    reached := case when item.expires_at <= now() then '{}'::uuid[] else app_private.announcement_recipients(item) end;
-    if content_changed then
-      perform app_private.communication_withdraw(target_workspace_id, 'communications.announcement.available',
-        'announcement', item.id::text, 'superseded');
-      perform app_private.announcement_deliver(item, reached);
-    else
-      -- Those it no longer reaches lose it (BL-534); the new people are told.
-      dropped := array(select who from unnest(item.delivered_to) who where not who = any (reached));
-      if cardinality(dropped) > 0 then
-        perform app_private.communication_withdraw(target_workspace_id, 'communications.announcement.available',
-          'announcement', item.id::text, 'cancelled', dropped);
-      end if;
-      perform app_private.announcement_deliver(item,
-        array(select who from unnest(reached) who where not who = any (item.delivered_to)));
+  if target_intent in ('publish', 'save') then
+    earlier := array(select change.id from public.announcement_shift_changes change where change.announcement_id = item.id);
+    told := app_private.announcement_apply(actor_user_id, item, impact);
+    reached := app_private.announcement_recipients(item);
+    -- Whoever's shift this write changed hears it, whatever else holds.
+    touched := array(select distinct person.user_id from public.announcement_shift_changes change
+                     join public.employee_profiles person on person.id = change.employee_id
+                     where change.announcement_id = item.id and not change.silent and change.brought_back_at is null
+                       and not change.id = any (earlier) and person.user_id is not null);
+    -- K27: acknowledgements stay unless the writer asks for them again; then
+    -- everyone it reaches answers anew.
+    if item.ask_ack and coalesce((target_payload ->> 'reset_acknowledgements')::boolean, false)
+       and exists (select 1 from public.announcement_acknowledgements ack where ack.announcement_id = item.id) then
+      update public.announcements
+      set acknowledged_before = array(select distinct who from unnest(acknowledged_before || array(
+            select ack.user_id from public.announcement_acknowledgements ack where ack.announcement_id = item.id)) who)
+      where id = item.id returning * into item;
+      delete from public.announcement_acknowledgements where announcement_id = item.id;
+      reset := true;
     end if;
-    update public.announcements set delivered_to = reached where id = item.id returning * into item;
-  elsif content_changed then
-    update public.announcements set delivered_to = '{}' where id = item.id returning * into item;
+    acked := array(select ack.user_id from public.announcement_acknowledgements ack where ack.announcement_id = item.id);
   end if;
 
+  if target_intent = 'publish' then
+    -- K4 (3), K27: brought out again with its acknowledgements kept, it is told
+    -- to whoever hasn't acknowledged; the first time, to everyone.
+    notified := array(select who from unnest(reached) who where not who = any (acked) or who = any (touched));
+    perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text, 'superseded');
+    perform app_private.announcement_deliver(actor_user_id, item, notified, 'publish');
+  elsif target_intent = 'save' then
+    -- Those it no longer reaches lose it (BL-534).
+    if exists (select 1 from unnest(item.delivered_to) who where not who = any (reached)) then
+      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
+        'cancelled', array(select who from unnest(item.delivered_to) who where not who = any (reached)));
+    end if;
+    -- K4: new people are told; a change in what it says is told to whoever
+    -- hasn't acknowledged it (everyone, once asked again, K27); a changed or
+    -- returned shift to its person. B3: the new notice takes the old one's place.
+    notified := array(select who from unnest(reached) who
+                      where not who = any (item.delivered_to) or who = any (touched)
+                         or ((content_changed or reset) and not who = any (acked))
+                         or who = any (array(select (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
+                                             where not coalesce((x ->> 'silent')::boolean, false))));
+    if cardinality(notified) > 0 then
+      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
+        'superseded', notified);
+      perform app_private.announcement_deliver(actor_user_id, item, notified, 'publish', back);
+    end if;
+    perform app_private.announcement_deliver(actor_user_id, item, array(
+      select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
+      where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false)
+        and not (x ->> 'employee_user_id')::uuid = any (reached)), 'cancel', back);
+  end if;
+  if target_intent in ('publish', 'save') then
+    update public.announcements set delivered_to = reached where id = item.id returning * into item;
+  end if;
+
+  history_action := case
+    when target_intent = 'draft' and stored.status = 'scheduled' then 'unscheduled'
+    when target_intent = 'draft' then 'saved'
+    when target_intent = 'schedule' then 'scheduled'
+    when target_intent = 'publish' then 'published'
+    else 'updated' end;
+  insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
+  values (w, item.id, actor_user_id, history_action, jsonb_strip_nulls(jsonb_build_object(
+    'publish_at', case when target_intent = 'schedule' then item.publish_at end,
+    'rescheduled', case when target_intent = 'schedule' and stored.status = 'scheduled' then true end,
+    'shift_changes', nullif(told, 0),
+    'brought_back', nullif(jsonb_array_length(back), 0),
+    'told', case when target_intent in ('publish', 'save') then cardinality(notified) end,
+    'acknowledgements_reset', case when reset then true end)));
   insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
-  values (target_workspace_id, actor_user_id,
-    case when target_announcement_id is null then 'announcement.created' else 'announcement.updated' end,
-    'announcement', item.id::text, jsonb_build_object('content_changed', content_changed));
-  return jsonb_build_object('status', item.status, 'announcement_id', item.id, 'revision', item.revision,
-    'recipient_count', cardinality(item.delivered_to));
+  values (w, actor_user_id, 'announcement.' || history_action, 'announcement', item.id::text,
+    jsonb_build_object('content_changed', content_changed, 'shift_changes', told, 'brought_back', jsonb_array_length(back)));
+
+  return jsonb_build_object('status', item.status, 'display_status', app_private.announcement_display_status(item),
+    'announcement_id', item.id, 'revision', item.revision, 'recipient_count', cardinality(item.delivered_to),
+    'shift_changes', told, 'brought_back', jsonb_array_length(back));
 end;
 $_$;
 
 
-ALTER FUNCTION "public"."save_announcement_audience_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_title" "text", "target_body" "text", "target_category" "text", "target_audience_roles" "text"[], "target_location_ids" "uuid"[], "target_publish_at" timestamp with time zone, "target_expires_at" timestamp with time zone, "target_action_url" "text", "target_department_ids" "uuid"[], "target_job_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."save_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_payload" "jsonb", "target_intent" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_document_type_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid", "expected_revision" integer, "document_payload" "jsonb") RETURNS "uuid"
@@ -22032,184 +23116,6 @@ $_$;
 
 
 ALTER FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_first_name" "text", "employee_middle_name" "text", "employee_last_name" "text", "employee_preferred_name" "text", "employee_invitation_email" "text", "employee_start_date" "date", "employee_internal_note" "text", "location_ids" "uuid"[], "primary_location_id" "uuid", "job_ids" "uuid"[], "primary_job_id" "uuid", "employee_is_remote" boolean, "employee_is_excluded_from_schedule" boolean, "expected_revision" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."save_important_date_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_title" "text", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_note" "text", "target_affects_scheduling" boolean, "target_location_ids" "uuid"[], "target_expected_revision" integer, "target_keep_shift_ids" "uuid"[] DEFAULT '{}'::"uuid"[], "target_expected_fingerprint" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  item public.important_dates;
-  before public.important_dates;
-  line date;
-  before_line date;
-  content_changed boolean := true;
-  untouched boolean := false;
-  was public.important_dates;
-  ahead integer;
-  impact jsonb;
-  opened jsonb := '[]';
-  removed uuid[] := '{}';
-  reached uuid[];
-  told uuid[];
-  dropped uuid[];
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
-  target_location_ids := array(select distinct id from unnest(coalesce(target_location_ids, '{}')) id order by id);
-  if target_important_date_id is null then
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, actor_user_id);
-  else
-    select * into before from public.important_dates
-    where id = target_important_date_id and workspace_id = target_workspace_id for update;
-    if before.id is null or not app_private.important_date_visible(actor_user_id, before) then
-      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'important_date.write';
-    end if;
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', before.location_ids, before.created_by, before.location_ids);
-    perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', target_location_ids, before.created_by, before.location_ids);
-    if before.archived_at is not null then
-      raise exception 'Restore this date before you edit it' using errcode = 'PT409';
-    end if;
-    if before.revision is distinct from target_expected_revision then
-      raise exception 'This date changed. Reload and try again.' using errcode = 'PT409';
-    end if;
-    -- The same as an announcement's (KK-86).
-    if cardinality(target_location_ids) = 0
-       and cardinality(before.location_ids) > cardinality(app_private.live_locations(target_workspace_id, before.location_ids)) then
-      raise exception 'Choose at least one location' using errcode = '22023';
-    end if;
-  end if;
-
-  if cardinality(target_location_ids) > 100 then
-    raise exception 'too many locations' using errcode = '22023';
-  end if;
-  if char_length(btrim(coalesce(target_title, ''))) not between 1 and 120 or char_length(coalesce(target_note, '')) > 500
-     or target_type not in ('holiday', 'event', 'blackout', 'closed_day') or target_recurrence not in ('none', 'annual')
-     or target_starts_on is null or target_ends_on is null or target_ends_on < target_starts_on then
-    raise exception 'valid important date required' using errcode = '22023';
-  end if;
-  if target_type = 'closed_day' then
-    target_affects_scheduling := true;
-  end if;
-
-  -- S-01: each version by its own places; an empty list is the whole workspace.
-  line := public.schedule_current_week_start_service(target_workspace_id, target_location_ids);
-  before_line := public.schedule_current_week_start_service(target_workspace_id, before.location_ids);
-
-  -- K11. A save that changes nothing touches nothing.
-  if before.id is not null then
-    untouched := (before.title, before.type::text, before.starts_on, before.ends_on, before.recurrence::text, before.note,
-      before.affects_scheduling, before.location_ids)
-      is not distinct from (btrim(target_title), target_type, target_starts_on, target_ends_on, target_recurrence,
-      coalesce(target_note, ''), coalesce(target_affects_scheduling, true), target_location_ids);
-    if not untouched and app_private.important_date_is_past(before, before_line) then
-      perform app_private.important_date_refuse_past();
-    end if;
-  end if;
-  if not untouched then
-    if target_recurrence = 'annual' and target_starts_on < line then
-      -- A yearly date given a past year starts with its next day from the line on.
-      ahead := (select min(k) from generate_series(1, extract(year from line)::integer - extract(year from target_starts_on)::integer + 1) k
-                where (target_starts_on + make_interval(years => k))::date >= line);
-      target_ends_on := (target_ends_on + make_interval(years => ahead))::date;
-      target_starts_on := (target_starts_on + make_interval(years => ahead))::date;
-    elsif target_starts_on < line then
-      -- The past days of a date that began before the line stay its own; its
-      -- unchanged start is not a change.
-      if before.id is null or before.recurrence <> 'none' or target_starts_on <> before.starts_on or target_ends_on < line then
-        perform app_private.important_date_refuse_past();
-      end if;
-      target_starts_on := line;
-    end if;
-  end if;
-
-  -- K13: what a published closed day would newly land on.
-  if before.id is null or before.status = 'published' then
-    impact := app_private.important_date_closure_impact(target_workspace_id, before, target_type, target_starts_on,
-      target_ends_on, target_recurrence, target_location_ids);
-    if jsonb_array_length(impact -> 'shifts') > 0
-       and target_expected_fingerprint is distinct from impact ->> 'fingerprint' then
-      raise exception 'Review the shifts on this closed day again.' using errcode = 'PT409', hint = 'important_date.closure_changed';
-    end if;
-  end if;
-
-  if before.id is not null and not untouched then
-    -- The history keeps the version as it was, not the part left ahead.
-    was := before;
-    before := app_private.important_date_keep_past(before, before_line);
-  end if;
-
-  if target_important_date_id is null then
-    insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note,
-      affects_scheduling, location_ids, location_id, created_by, updated_by)
-    values (target_workspace_id, btrim(target_title), target_type::public.important_date_type, target_starts_on,
-      target_ends_on, target_recurrence::public.important_date_recurrence, coalesce(target_note, ''),
-      coalesce(target_affects_scheduling, true), target_location_ids,
-      case when cardinality(target_location_ids) = 1 then target_location_ids[1] end, actor_user_id, actor_user_id)
-    returning * into item;
-  else
-    content_changed := (before.title, before.type::text, before.starts_on, before.ends_on, before.recurrence::text,
-      before.note, before.affects_scheduling)
-      is distinct from (btrim(target_title), target_type, target_starts_on, target_ends_on, target_recurrence,
-      coalesce(target_note, ''), coalesce(target_affects_scheduling, true));
-    update public.important_dates
-    set title = btrim(target_title), type = target_type::public.important_date_type, starts_on = target_starts_on,
-        ends_on = target_ends_on, recurrence = target_recurrence::public.important_date_recurrence,
-        note = coalesce(target_note, ''), affects_scheduling = coalesce(target_affects_scheduling, true),
-        location_ids = target_location_ids,
-        location_id = case when cardinality(target_location_ids) = 1 then target_location_ids[1] end,
-        content_revision = content_revision + case when content_changed then 1 else 0 end,
-        revision = revision + 1, updated_by = actor_user_id, updated_at = now()
-    where id = before.id
-    returning * into item;
-  end if;
-
-  if impact is not null then
-    opened := app_private.important_date_close_shifts(actor_user_id, item, impact, target_keep_shift_ids);
-  end if;
-
-  if item.status = 'published' then
-    -- Everybody it is for, and those told now: not where it is already over.
-    reached := app_private.important_date_recipients(item);
-    told := app_private.important_date_notified(item);
-    if content_changed and before.id is not null then
-      perform app_private.communication_withdraw(target_workspace_id, 'schedule.important_date.available',
-        'important_date', item.id::text, 'superseded');
-    end if;
-    -- K14: who lost a shift hears it in its own notice, not in the common one.
-    removed := app_private.important_date_tell_removed(item, opened);
-    if content_changed then
-      perform app_private.important_date_deliver(item, array(select who from unnest(told) who where not who = any (removed)));
-    else
-      -- Those it no longer reaches lose it (BL-534); the new people are told.
-      dropped := array(select who from unnest(item.delivered_to) who where not who = any (reached) and not who = any (removed));
-      if cardinality(dropped) > 0 then
-        perform app_private.communication_withdraw(target_workspace_id, 'schedule.important_date.available',
-          'important_date', item.id::text, 'cancelled', dropped);
-      end if;
-      perform app_private.important_date_deliver(item,
-        array(select who from unnest(told) who where not who = any (item.delivered_to) and not who = any (removed)));
-      told := array(select distinct who from unnest(told || array(
-        select who from unnest(item.delivered_to) who where who = any (reached))) who);
-    end if;
-    update public.important_dates set delivered_to = array(select distinct who from unnest(told || removed) who)
-    where id = item.id returning * into item;
-  end if;
-
-  insert into public.important_date_changes (workspace_id, important_date_id, actor_user_id, action, before, after)
-  values (target_workspace_id, item.id, actor_user_id,
-    case when before.id is null then 'created' else 'updated' end,
-    case when before.id is null then null else app_private.important_date_snapshot(coalesce(was, before)) end,
-    app_private.important_date_snapshot(item));
-  return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
-    'recipient_count', cardinality(item.delivered_to),
-    'shifts_opened', jsonb_array_length(opened),
-    'draft_shifts_opened', coalesce(jsonb_array_length(impact -> 'draft_shift_ids'), 0),
-    'shifts_stay_open', case when before.id is null then 0 else app_private.important_date_stay_open(item) end);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."save_important_date_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_title" "text", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_note" "text", "target_affects_scheduling" boolean, "target_location_ids" "uuid"[], "target_expected_revision" integer, "target_keep_shift_ids" "uuid"[], "target_expected_fingerprint" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_scope_kind" "text", "target_scope_id" "uuid", "target_expected_version" integer, "target_enabled" boolean, "target_allowed_channels" "text"[], "target_cadence" "text", "target_reason" "text") RETURNS "jsonb"
@@ -23873,57 +24779,110 @@ $$;
 ALTER FUNCTION "public"."set_active_workspace_when_owner_onboarding_completes"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text", "target_bring_back" "uuid"[] DEFAULT '{}'::"uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
+  w uuid := target_workspace_id;
+  me app_private.actor_state;
   item public.announcements;
+  shown text;
+  reason text;
+  told integer := 0;
+  back jsonb := '[]'::jsonb;
+  people uuid[];
 begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'announcement.read');
-  perform app_private.announcement_release(target_workspace_id);
-  select * into item from public.announcements
-  where id = target_announcement_id and workspace_id = target_workspace_id for update;
-  if item.id is null or not app_private.announcement_visible(actor_user_id, item) then
+  perform app_private.authorize(actor_user_id, w, 'announcement.read');
+  if target_action is null or target_action not in ('unschedule', 'unpublish', 'archive', 'bring_back', 'remind') then
+    raise exception 'valid announcement action required' using errcode = '22023', hint = 'announcement.invalid';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(w::text, 931));
+  if target_action = 'bring_back' then
+    perform public.availability_lock_workspace(w);
+  end if;
+  perform app_private.announcement_release(w);
+  me := app_private.actor(actor_user_id, w);
+  select * into item from public.announcements where id = target_announcement_id and workspace_id = w for update;
+  if item.id is null or not app_private.announcement_visible(me, item) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'announcement.write';
   end if;
-  perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'announcement',
-    app_private.announcement_places(item.id),
-    item.created_by, app_private.announcement_places(item.id));
-  if target_action not in ('unpublish', 'archive', 'restore') then
-    raise exception 'valid announcement action required' using errcode = '22023';
+  reason := app_private.announcement_reason(me, app_private.announcement_places(item.id), item.created_by,
+    app_private.announcement_dates(item));
+  if reason is not null then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || reason, detail = 'announcement.write';
+  end if;
+  shown := app_private.announcement_display_status(item);
+  -- A past post can only be archived; an archived one is done (Mert, 2026-10-12).
+  if (shown = 'past' and target_action <> 'archive') or shown = 'archived' then
+    raise exception 'This post can''t change anymore.' using errcode = 'PT409', hint = 'announcement.read_only';
   end if;
   if item.revision is distinct from target_expected_revision
-     or (target_action = 'unpublish' and (item.archived_at is not null or item.status not in ('scheduled', 'published')))
-     or (target_action = 'archive' and item.archived_at is not null)
-     or (target_action = 'restore' and item.archived_at is null) then
-    raise exception 'stale announcement revision' using errcode = 'PT409', hint = 'announcement.changed';
+     or (target_action = 'unschedule' and shown not in ('scheduled', 'publish_failed'))
+     or (target_action = 'unpublish' and shown <> 'published')
+     or (target_action = 'archive' and shown not in ('draft', 'unpublished', 'past'))
+     or (target_action = 'bring_back' and shown <> 'unpublished')
+     or (target_action = 'remind' and (shown <> 'published' or not item.ask_ack)) then
+    raise exception 'This post changed since you opened it.' using errcode = 'PT409', hint = 'announcement.changed';
   end if;
 
-  if target_action in ('unpublish', 'archive') then
-    perform app_private.communication_withdraw(target_workspace_id, 'communications.announcement.available',
-      'announcement', item.id::text, 'cancelled');
+  if target_action = 'unschedule' then
+    update public.announcements
+    set status = 'draft', scheduled_by = null, choices_saved_at = null, release_failed_at = null, release_error = null
+    where id = item.id;
+  elsif target_action = 'unpublish' then
+    perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text, 'cancelled');
+    told := app_private.announcement_deliver(actor_user_id, item, item.delivered_to, 'cancel');
+    update public.announcements set status = 'unpublished', unpublished_at = now(), delivered_to = '{}' where id = item.id;
+  elsif target_action = 'archive' then
+    if cardinality(item.delivered_to) > 0 then
+      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text, 'cancelled');
+    end if;
+    update public.announcements set archived_at = now(), delivered_to = '{}' where id = item.id;
+  elsif target_action = 'bring_back' then
+    back := app_private.announcement_bring_back(actor_user_id, item, target_bring_back,
+      app_private.announcement_back_rows(item, null, null, '[]'::jsonb));
+    if jsonb_array_length(back) = 0 then
+      raise exception 'Pick the shifts to bring back.' using errcode = '22023', hint = 'announcement.invalid';
+    end if;
+    people := array(select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
+                    where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false));
+    if cardinality(people) > 0 then
+      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
+        'superseded', people);
+      told := app_private.announcement_deliver(actor_user_id, item, people, 'cancel', back);
+    end if;
+  else
+    people := array(select who from unnest(app_private.announcement_respondents(item)) who
+                    where not exists (select 1 from public.announcement_acknowledgements ack
+                                      where ack.announcement_id = item.id and ack.user_id = who));
+    if cardinality(people) = 0 then
+      raise exception 'Everyone acknowledged.' using errcode = 'PT409', hint = 'announcement.changed';
+    end if;
+    perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
+      'superseded', people);
+    told := app_private.announcement_deliver(actor_user_id, item, people, 'publish');
   end if;
-  update public.announcements
-  set status = case
-        when target_action = 'unpublish' then 'unpublished'
-        when target_action = 'restore' and status <> 'draft' then 'unpublished'
-        else status end,
-      archived_at = case target_action when 'archive' then now() when 'restore' then null else archived_at end,
-      revision = revision + 1, updated_by = actor_user_id, updated_at = now()
+
+  update public.announcements set revision = revision + 1, updated_by = actor_user_id, updated_at = now()
   where id = item.id returning * into item;
-
-  insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id)
-  values (target_workspace_id, actor_user_id,
-    'announcement.' || case target_action when 'unpublish' then 'unpublished' when 'archive' then 'archived' else 'restored' end,
-    'announcement', item.id::text);
-  return jsonb_build_object('status', item.status, 'announcement_id', item.id, 'revision', item.revision,
-    'archived_at', item.archived_at, 'recipient_count', 0);
+  insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
+  values (w, item.id, actor_user_id,
+    case target_action when 'unschedule' then 'unscheduled' when 'unpublish' then 'unpublished' when 'archive' then 'archived'
+                       when 'bring_back' then 'brought_back' else 'reminded' end,
+    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'bring_back', 'remind') then told end,
+      'brought_back', nullif(jsonb_array_length(back), 0))));
+  insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
+  values (w, actor_user_id, 'announcement.' || case target_action when 'unschedule' then 'unscheduled'
+      when 'unpublish' then 'unpublished' when 'archive' then 'archived' when 'bring_back' then 'brought_back' else 'reminded' end,
+    'announcement', item.id::text, jsonb_build_object('told', told, 'brought_back', jsonb_array_length(back)));
+  return jsonb_build_object('status', item.status, 'display_status', app_private.announcement_display_status(item),
+    'announcement_id', item.id, 'revision', item.revision, 'archived_at', item.archived_at, 'told', told);
 end;
 $$;
 
 
-ALTER FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text", "target_bring_back" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid", "expected_revision" integer, "expected_publication_revision" integer, "expected_preview_token" "text", "publish_reason" "text", "target_status" "text") RETURNS "jsonb"
@@ -24181,106 +25140,6 @@ $$;
 
 
 ALTER FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."set_important_date_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_action" "text", "target_keep_shift_ids" "uuid"[] DEFAULT '{}'::"uuid"[], "target_expected_fingerprint" "text" DEFAULT NULL::"text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  item public.important_dates;
-  before public.important_dates;
-  line date;
-  was public.important_dates;
-  impact jsonb;
-  opened jsonb := '[]';
-  removed uuid[] := '{}';
-  reached uuid[];
-  opened_notice uuid[];
-  told uuid[];
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.important_dates.read');
-  select * into before from public.important_dates
-  where id = target_important_date_id and workspace_id = target_workspace_id for update;
-  if before.id is null or not app_private.important_date_visible(actor_user_id, before) then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'important_date.write';
-  end if;
-  perform app_private.communication_authorize(actor_user_id, target_workspace_id, 'important_date', before.location_ids, before.created_by, before.location_ids);
-  if target_action not in ('unpublish', 'republish', 'archive', 'restore') then
-    raise exception 'valid important date action required' using errcode = '22023';
-  end if;
-  line := public.schedule_current_week_start_service(target_workspace_id, before.location_ids);
-  if app_private.important_date_is_past(before, line) then
-    perform app_private.important_date_refuse_past();
-  end if;
-  if (target_action = 'unpublish' and (before.archived_at is not null or before.status <> 'published'))
-     or (target_action = 'republish' and (before.archived_at is not null or before.status <> 'unpublished'))
-     or (target_action = 'archive' and before.archived_at is not null)
-     or (target_action = 'restore' and before.archived_at is null) then
-    raise exception 'This date changed. Reload and try again.' using errcode = 'PT409';
-  end if;
-
-  if target_action = 'republish' then
-    impact := app_private.important_date_closure_impact(target_workspace_id, before, before.type::text, before.starts_on,
-      before.ends_on, before.recurrence::text, before.location_ids);
-    if jsonb_array_length(impact -> 'shifts') > 0
-       and target_expected_fingerprint is distinct from impact ->> 'fingerprint' then
-      raise exception 'Review the shifts on this closed day again.' using errcode = 'PT409', hint = 'important_date.closure_changed';
-    end if;
-  end if;
-
-  was := before;
-  before := app_private.important_date_keep_past(before, line);
-  if target_action in ('unpublish', 'archive') then
-    perform app_private.communication_withdraw(target_workspace_id, 'schedule.important_date.available',
-      'important_date', before.id::text, 'cancelled');
-  end if;
-  update public.important_dates
-  set status = case when target_action in ('unpublish', 'restore') then 'unpublished'
-                    when target_action = 'republish' then 'published' else status end,
-      archived_at = case target_action when 'archive' then now() when 'restore' then null else archived_at end,
-      revision = revision + 1, updated_by = actor_user_id, updated_at = now()
-  where id = before.id
-  returning * into item;
-
-  if target_action = 'republish' then
-    opened := app_private.important_date_close_shifts(actor_user_id, item, impact, target_keep_shift_ids);
-    removed := app_private.important_date_tell_removed(item, opened);
-    reached := app_private.important_date_recipients(item);
-    -- Who opened the current content already is not told again (K7).
-    opened_notice := array(
-      select who from unnest(reached) who
-      where exists (
-        select 1 from public.notification_outbox outbox
-        join public.notification_recipients recipient
-          on recipient.workspace_id = outbox.workspace_id and recipient.event_id = outbox.event_id
-        join public.notification_inbox_items inbox on inbox.recipient_projection_id = recipient.id
-        where outbox.workspace_id = item.workspace_id and outbox.type_key = 'schedule.important_date.available'
-          and outbox.subject_type = 'important_date' and outbox.subject_id = item.id::text
-          and outbox.payload ->> 'content_revision' = item.content_revision::text
-          and recipient.recipient_user_id = who and inbox.read_at is not null));
-    told := array(select who from unnest(app_private.important_date_notified(item)) who
-                  where not who = any (opened_notice) and not who = any (removed));
-    perform app_private.important_date_deliver(item, told);
-    update public.important_dates set delivered_to = array(select distinct who from unnest(told || opened_notice || removed) who)
-    where id = item.id returning * into item;
-  end if;
-
-  insert into public.important_date_changes (workspace_id, important_date_id, actor_user_id, action, before, after)
-  values (target_workspace_id, item.id, actor_user_id,
-    case target_action when 'unpublish' then 'unpublished' when 'republish' then 'republished'
-      when 'archive' then 'archived' else 'restored' end,
-    app_private.important_date_snapshot(was), app_private.important_date_snapshot(item));
-  return jsonb_build_object('important_date_id', item.id, 'status', item.status, 'revision', item.revision,
-    'archived_at', item.archived_at,
-    'shifts_opened', jsonb_array_length(opened),
-    'draft_shifts_opened', coalesce(jsonb_array_length(impact -> 'draft_shift_ids'), 0),
-    'shifts_stay_open', app_private.important_date_stay_open(item));
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_important_date_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_action" "text", "target_keep_shift_ids" "uuid"[], "target_expected_fingerprint" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) RETURNS "jsonb"
@@ -28415,14 +29274,47 @@ CREATE TABLE IF NOT EXISTS "public"."announcement_acknowledgements" (
 ALTER TABLE "public"."announcement_acknowledgements" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."announcement_changes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "announcement_id" "uuid" NOT NULL,
+    "actor_user_id" "uuid",
+    "action" "text" NOT NULL,
+    "detail" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
+    "changed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "announcement_changes_action_check" CHECK (("action" = ANY (ARRAY['created'::"text", 'saved'::"text", 'scheduled'::"text", 'unscheduled'::"text", 'published'::"text", 'updated'::"text", 'unpublished'::"text", 'brought_back'::"text", 'archived'::"text", 'publish_failed'::"text", 'repeated'::"text", 'reminded'::"text"])))
+);
+
+
+ALTER TABLE "public"."announcement_changes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."announcement_locations" (
     "workspace_id" "uuid" NOT NULL,
     "announcement_id" "uuid" NOT NULL,
-    "location_id" "uuid" NOT NULL
+    "location_id" "uuid" NOT NULL,
+    "day" "text" DEFAULT 'open'::"text" NOT NULL,
+    "opens" time without time zone,
+    "closes" time without time zone,
+    CONSTRAINT "announcement_locations_day_check" CHECK ((("day" = ANY (ARRAY['open'::"text", 'closed'::"text", 'short'::"text"])) AND
+CASE
+    WHEN ("day" = 'short'::"text") THEN (("opens" IS NOT NULL) AND ("closes" IS NOT NULL))
+    ELSE (("opens" IS NULL) AND ("closes" IS NULL))
+END))
 );
 
 
 ALTER TABLE "public"."announcement_locations" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."announcement_people" (
+    "workspace_id" "uuid" NOT NULL,
+    "announcement_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."announcement_people" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."audit_events" (
@@ -28915,37 +29807,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_weekly_preferences" (
 
 
 ALTER TABLE "public"."employee_weekly_preferences" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."important_date_changes" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "important_date_id" "uuid" NOT NULL,
-    "actor_user_id" "uuid",
-    "action" "text" NOT NULL,
-    "before" "jsonb",
-    "after" "jsonb",
-    "changed_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "important_date_changes_action_check" CHECK (("action" = ANY (ARRAY['created'::"text", 'updated'::"text", 'unpublished'::"text", 'republished'::"text", 'archived'::"text", 'restored'::"text"])))
-);
-
-
-ALTER TABLE "public"."important_date_changes" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."important_date_shift_releases" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "important_date_id" "uuid" NOT NULL,
-    "published_shift_id" "uuid" NOT NULL,
-    "source_shift_id" "uuid" NOT NULL,
-    "before_assignment" "jsonb" NOT NULL,
-    "actor_user_id" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "public"."important_date_shift_releases" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."jobs" (
@@ -29453,20 +30314,26 @@ ALTER TABLE "public"."schedule_availability_overrides" OWNER TO "postgres";
 
 
 CREATE OR REPLACE VIEW "public"."schedule_closures" WITH ("security_invoker"='true') AS
- SELECT ("md5"(((((("date_row"."id")::"text" || ':'::"text") || ("day"."location_id")::"text") || ':'::"text") || ("day"."closed_date")::"text")))::"uuid" AS "id",
-    "date_row"."workspace_id",
-    "day"."location_id",
-    "day"."closed_date",
-    "date_row"."title",
-    true AS "is_all_day",
-    "date_row"."created_by",
-    "date_row"."created_at",
-    '{}'::"uuid"[] AS "shift_type_ids",
-    NULL::"date" AS "end_date",
-    "date_row"."id" AS "important_date_id"
-   FROM ("public"."important_dates" "date_row"
-     CROSS JOIN LATERAL "app_private"."closure_days"("date_row"."workspace_id", "date_row"."type", "date_row"."starts_on", "date_row"."ends_on", "date_row"."recurrence", "date_row"."location_ids") "day"("location_id", "closed_date"))
-  WHERE (("date_row"."type" = 'closed_day'::"public"."important_date_type") AND ("date_row"."status" = 'published'::"text") AND ("date_row"."archived_at" IS NULL));
+ SELECT ("md5"(((((("item"."id")::"text" || ':'::"text") || ("target"."location_id")::"text") || ':'::"text") || (("day"."on_date")::"date")::"text")))::"uuid" AS "id",
+    "item"."workspace_id",
+    "target"."location_id",
+    ("day"."on_date")::"date" AS "closed_date",
+    "item"."title",
+    ("target"."day" = 'closed'::"text") AS "is_all_day",
+    "target"."day" AS "kind",
+    "target"."opens",
+    "target"."closes",
+    ("item"."status")::"text" AS "status",
+    "item"."publish_at",
+    "item"."on_schedule",
+    "item"."created_by",
+    "item"."created_at",
+    "item"."id" AS "announcement_id"
+   FROM ((("public"."announcements" "item"
+     JOIN "public"."announcement_locations" "target" ON ((("target"."announcement_id" = "item"."id") AND ("target"."day" <> 'open'::"text"))))
+     JOIN "public"."locations" "location" ON ((("location"."id" = "target"."location_id") AND ("location"."archived_at" IS NULL))))
+     CROSS JOIN LATERAL "generate_series"(("item"."starts_on")::timestamp with time zone, (COALESCE("item"."ends_on", "item"."starts_on"))::timestamp with time zone, '1 day'::interval) "day"("on_date"))
+  WHERE (("item"."archived_at" IS NULL) AND ("item"."starts_on" IS NOT NULL) AND (("item"."status" = ANY (ARRAY['published'::"public"."announcement_status", 'scheduled'::"public"."announcement_status"])) OR (("item"."status" = 'unpublished'::"public"."announcement_status") AND (("day"."on_date")::"date" < (("item"."unpublished_at" AT TIME ZONE "location"."timezone"))::"date"))));
 
 
 ALTER VIEW "public"."schedule_closures" OWNER TO "postgres";
@@ -30448,8 +31315,23 @@ ALTER TABLE ONLY "public"."announcement_acknowledgements"
 
 
 
+ALTER TABLE ONLY "public"."announcement_changes"
+    ADD CONSTRAINT "announcement_changes_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."announcement_locations"
     ADD CONSTRAINT "announcement_locations_pkey" PRIMARY KEY ("announcement_id", "location_id");
+
+
+
+ALTER TABLE ONLY "public"."announcement_people"
+    ADD CONSTRAINT "announcement_people_pkey" PRIMARY KEY ("announcement_id", "user_id");
+
+
+
+ALTER TABLE ONLY "public"."announcement_shift_changes"
+    ADD CONSTRAINT "announcement_shift_changes_pkey" PRIMARY KEY ("id");
 
 
 
@@ -30460,6 +31342,11 @@ ALTER TABLE ONLY "public"."announcements"
 
 ALTER TABLE ONLY "public"."announcements"
     ADD CONSTRAINT "announcements_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."announcements"
+    ADD CONSTRAINT "announcements_repeats_from_key" UNIQUE ("repeats_from");
 
 
 
@@ -30710,26 +31597,6 @@ ALTER TABLE ONLY "public"."employee_terminations"
 
 ALTER TABLE ONLY "public"."employee_weekly_preferences"
     ADD CONSTRAINT "employee_weekly_preferences_pkey" PRIMARY KEY ("workspace_id", "employee_id");
-
-
-
-ALTER TABLE ONLY "public"."important_date_changes"
-    ADD CONSTRAINT "important_date_changes_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."important_date_shift_releases"
-    ADD CONSTRAINT "important_date_shift_releases_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."important_dates"
-    ADD CONSTRAINT "important_dates_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."important_dates"
-    ADD CONSTRAINT "important_dates_pkey" PRIMARY KEY ("id");
 
 
 
@@ -31471,7 +32338,31 @@ CREATE UNIQUE INDEX "acknowledgement_current_requirement" ON "public"."employee_
 
 
 
-CREATE INDEX "announcements_workspace_status_idx" ON "public"."announcements" USING "btree" ("workspace_id", "status", "publish_at" DESC, "created_at" DESC);
+CREATE INDEX "announcement_changes_announcement_idx" ON "public"."announcement_changes" USING "btree" ("announcement_id", "changed_at" DESC);
+
+
+
+CREATE INDEX "announcement_locations_changed_idx" ON "public"."announcement_locations" USING "btree" ("location_id") WHERE ("day" <> 'open'::"text");
+
+
+
+CREATE INDEX "announcement_people_user_idx" ON "public"."announcement_people" USING "btree" ("workspace_id", "user_id");
+
+
+
+CREATE INDEX "announcement_shift_changes_announcement_idx" ON "public"."announcement_shift_changes" USING "btree" ("announcement_id");
+
+
+
+CREATE INDEX "announcement_shift_changes_employee_idx" ON "public"."announcement_shift_changes" USING "btree" ("workspace_id", "employee_id") WHERE (NOT "silent");
+
+
+
+CREATE UNIQUE INDEX "announcement_shift_changes_live_key" ON "public"."announcement_shift_changes" USING "btree" ("announcement_id", "source_shift_id") WHERE ("brought_back_at" IS NULL);
+
+
+
+CREATE INDEX "announcements_workspace_status_idx" ON "public"."announcements" USING "btree" ("workspace_id", "status", "archived_at", "starts_on");
 
 
 
@@ -31556,22 +32447,6 @@ CREATE UNIQUE INDEX "employee_profiles_workspace_user_idx" ON "public"."employee
 
 
 CREATE INDEX "employee_terminations_employee_time_idx" ON "public"."employee_terminations" USING "btree" ("employee_id", "effective_at" DESC);
-
-
-
-CREATE INDEX "important_date_changes_date_idx" ON "public"."important_date_changes" USING "btree" ("important_date_id", "changed_at" DESC);
-
-
-
-CREATE INDEX "important_date_shift_releases_date_idx" ON "public"."important_date_shift_releases" USING "btree" ("important_date_id");
-
-
-
-CREATE INDEX "important_dates_location_idx" ON "public"."important_dates" USING "btree" ("workspace_id", "location_id") WHERE ("archived_at" IS NULL);
-
-
-
-CREATE INDEX "important_dates_workspace_date_idx" ON "public"."important_dates" USING "btree" ("workspace_id", "archived_at", "starts_on", "ends_on");
 
 
 
@@ -32421,6 +33296,16 @@ ALTER TABLE ONLY "public"."announcement_acknowledgements"
 
 
 
+ALTER TABLE ONLY "public"."announcement_changes"
+    ADD CONSTRAINT "announcement_changes_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."announcement_changes"
+    ADD CONSTRAINT "announcement_changes_announcement_id_workspace_id_fkey" FOREIGN KEY ("announcement_id", "workspace_id") REFERENCES "public"."announcements"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."announcement_locations"
     ADD CONSTRAINT "announcement_locations_announcement_id_workspace_id_fkey" FOREIGN KEY ("announcement_id", "workspace_id") REFERENCES "public"."announcements"("id", "workspace_id") ON DELETE CASCADE;
 
@@ -32431,8 +33316,43 @@ ALTER TABLE ONLY "public"."announcement_locations"
 
 
 
+ALTER TABLE ONLY "public"."announcement_people"
+    ADD CONSTRAINT "announcement_people_announcement_id_workspace_id_fkey" FOREIGN KEY ("announcement_id", "workspace_id") REFERENCES "public"."announcements"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."announcement_people"
+    ADD CONSTRAINT "announcement_people_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."announcement_shift_changes"
+    ADD CONSTRAINT "announcement_shift_changes_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."announcement_shift_changes"
+    ADD CONSTRAINT "announcement_shift_changes_announcement_id_workspace_id_fkey" FOREIGN KEY ("announcement_id", "workspace_id") REFERENCES "public"."announcements"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."announcements"
     ADD CONSTRAINT "announcements_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id");
+
+
+
+ALTER TABLE ONLY "public"."announcements"
+    ADD CONSTRAINT "announcements_published_by_fkey" FOREIGN KEY ("published_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."announcements"
+    ADD CONSTRAINT "announcements_repeats_from_fkey" FOREIGN KEY ("repeats_from", "workspace_id") REFERENCES "public"."announcements"("id", "workspace_id") ON DELETE SET NULL ("repeats_from");
+
+
+
+ALTER TABLE ONLY "public"."announcements"
+    ADD CONSTRAINT "announcements_scheduled_by_fkey" FOREIGN KEY ("scheduled_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
 
 
@@ -32818,56 +33738,6 @@ ALTER TABLE ONLY "public"."employee_weekly_preferences"
 
 ALTER TABLE ONLY "public"."employee_weekly_preferences"
     ADD CONSTRAINT "employee_weekly_preferences_workspace_id_employee_id_fkey" FOREIGN KEY ("workspace_id", "employee_id") REFERENCES "public"."employee_profiles"("workspace_id", "id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."important_date_changes"
-    ADD CONSTRAINT "important_date_changes_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."important_date_changes"
-    ADD CONSTRAINT "important_date_changes_important_date_id_workspace_id_fkey" FOREIGN KEY ("important_date_id", "workspace_id") REFERENCES "public"."important_dates"("id", "workspace_id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."important_date_changes"
-    ADD CONSTRAINT "important_date_changes_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."important_date_shift_releases"
-    ADD CONSTRAINT "important_date_shift_releases_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."important_date_shift_releases"
-    ADD CONSTRAINT "important_date_shift_releases_important_date_id_workspace__fkey" FOREIGN KEY ("important_date_id", "workspace_id") REFERENCES "public"."important_dates"("id", "workspace_id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."important_date_shift_releases"
-    ADD CONSTRAINT "important_date_shift_releases_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."important_dates"
-    ADD CONSTRAINT "important_dates_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."important_dates"
-    ADD CONSTRAINT "important_dates_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."important_dates"
-    ADD CONSTRAINT "important_dates_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."important_dates"
-    ADD CONSTRAINT "important_dates_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
 
 
 
@@ -33966,7 +34836,16 @@ CREATE POLICY "account_organization_history_self_read" ON "public"."account_orga
 ALTER TABLE "public"."announcement_acknowledgements" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."announcement_changes" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."announcement_locations" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."announcement_people" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."announcement_shift_changes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."announcements" ENABLE ROW LEVEL SECURITY;
@@ -34072,15 +34951,6 @@ ALTER TABLE "public"."employee_terminations" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."employee_weekly_preferences" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."important_date_changes" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."important_date_shift_releases" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."important_dates" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."jobs" ENABLE ROW LEVEL SECURITY;
@@ -34492,15 +35362,107 @@ GRANT ALL ON TABLE "public"."announcements" TO "service_role";
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."announcement_deliver"("item" "public"."announcements", "recipients" "uuid"[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."announcement_apply"("actor" "uuid", "item" "public"."announcements", "impact" "jsonb") FROM PUBLIC;
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."announcement_out_to"("state" "app_private"."actor_state", "item" "public"."announcements", "places" "uuid"[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."announcement_audience"("w" "uuid", "location_ids" "uuid"[], "user_ids" "uuid"[], "employee_ids" "uuid"[], "author" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_authorize"("state" "app_private"."actor_state", "n" "jsonb", "author" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_back_rows"("item" "public"."announcements", "first_day" "date", "last_day" "date", "day_rows" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_bring_back"("actor" "uuid", "item" "public"."announcements", "ids" "uuid"[], "offered" "jsonb") FROM PUBLIC;
+
+
+
+GRANT ALL ON TABLE "public"."announcement_shift_changes" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_change_item"("change" "public"."announcement_shift_changes") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_dates"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_day_text"("d" "date") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_days"("day_rows" "jsonb", "first_day" "date", "last_day" "date") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_deliver"("actor" "uuid", "item" "public"."announcements", "people" "uuid"[], "mode" "text", "back" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_display_status"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_hours_text"("starts" time without time zone, "ends" time without time zone, "fmt" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_impact"("w" "uuid", "record" "uuid", "first_day" "date", "last_day" "date", "day_rows" "jsonb", "choices" "jsonb", "saved_at" timestamp with time zone) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_item"("state" "app_private"."actor_state", "item" "public"."announcements", "allowed" boolean) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_moments"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_next_year"("d" "date", "mode" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_notice"("item" "public"."announcements", "who" "uuid", "mode" "text", "back" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_on_text"("starts" "date", "ends" "date") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_person"("w" "uuid", "who" "uuid") FROM PUBLIC;
 
 
 
 REVOKE ALL ON FUNCTION "app_private"."announcement_places"("announcement" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_places_of"("w" "uuid", "location_ids" "uuid"[], "user_ids" "uuid"[]) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_problems"("w" "uuid", "stored" "public"."announcements", "n" "jsonb", "intent" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_proposal"("w" "uuid", "stored" "public"."announcements", "p" "jsonb", "author" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_reaches"("item" "public"."announcements", "who" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_reason"("state" "app_private"."actor_state", "places" "uuid"[], "author" "uuid", "dates" boolean) FROM PUBLIC;
 
 
 
@@ -34512,7 +35474,39 @@ REVOKE ALL ON FUNCTION "app_private"."announcement_release"("w" "uuid") FROM PUB
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."announcement_visible"("actor" "uuid", "item" "public"."announcements") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."announcement_repeat"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_respondents"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_rows"("announcement" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_shift_sentence"("change" "jsonb", "back" boolean, "multi" boolean, "fmt" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_span"("w" "uuid", "first_day" "date", "last_day" "date", "event_from" time without time zone, "event_until" time without time zone, "own_zone" "text", "day_rows" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_started"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_tell_failed"("item" "public"."announcements", "why" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_time_format"("w" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_visible"("state" "app_private"."actor_state", "item" "public"."announcements") FROM PUBLIC;
 
 
 
@@ -34592,20 +35586,11 @@ REVOKE ALL ON FUNCTION "app_private"."close_schedule_edit_session"("edit" "publi
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."closure_days"("w" "uuid", "kind" "public"."important_date_type", "starts" "date", "ends" "date", "recurrence" "public"."important_date_recurrence", "location_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "app_private"."closure_days"("w" "uuid", "kind" "public"."important_date_type", "starts" "date", "ends" "date", "recurrence" "public"."important_date_recurrence", "location_ids" "uuid"[]) TO "service_role";
+REVOKE ALL ON FUNCTION "app_private"."closure_covers"("kind" "text", "opens" time without time zone, "closes" time without time zone, "starts" time without time zone, "ends" time without time zone) FROM PUBLIC;
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."communication_audience"("w" "uuid", "stored" "uuid"[], "roles" "public"."workspace_role"[], "department_ids" "uuid"[], "job_ids" "uuid"[]) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."communication_authorize"("actor" "uuid", "w" "uuid", "kind" "text", "stored" "uuid"[], "author" "uuid", "kept" "uuid"[]) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."communication_reaches"("state" "app_private"."actor_state", "w" "uuid", "live" "uuid"[], "everywhere" boolean, "roles" "public"."workspace_role"[], "department_ids" "uuid"[], "job_ids" "uuid"[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."closure_reason"("kind" "text", "opens" time without time zone, "closes" time without time zone, "starts" time without time zone, "ends" time without time zone) FROM PUBLIC;
 
 
 
@@ -34818,70 +35803,6 @@ REVOKE ALL ON FUNCTION "app_private"."guard_document_requirement_publication"() 
 
 
 REVOKE ALL ON FUNCTION "app_private"."guard_job_deletion_state"() FROM PUBLIC;
-
-
-
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."important_dates" TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_close_shifts"("actor" "uuid", "item" "public"."important_dates", "impact" "jsonb", "keep" "uuid"[]) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_closure_impact"("w" "uuid", "stored" "public"."important_dates", "kind" "text", "starts" "date", "ends" "date", "recurrence" "text", "location_ids" "uuid"[]) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_deliver"("item" "public"."important_dates", "recipients" "uuid"[]) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_is_past"("item" "public"."important_dates", "line" "date") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_keep_past"("item" "public"."important_dates", "line" "date") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_next_day"("item" "public"."important_dates") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_notified"("item" "public"."important_dates") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_out_to"("state" "app_private"."actor_state", "item" "public"."important_dates") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_recipients"("item" "public"."important_dates") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_refuse_past"() FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_snapshot"("item" "public"."important_dates") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_stay_open"("item" "public"."important_dates") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_tell_removed"("item" "public"."important_dates", "opened" "jsonb") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_version_seen"("reach" "uuid"[], "version" "jsonb") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."important_date_visible"("actor" "uuid", "item" "public"."important_dates") FROM PUBLIC;
 
 
 
@@ -35345,8 +36266,8 @@ GRANT ALL ON FUNCTION "public"."acknowledge_document_lifecycle_service"("actor_u
 
 
 
-REVOKE ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[]) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) TO "service_role";
 
 
 
@@ -35734,6 +36655,11 @@ GRANT ALL ON FUNCTION "public"."get_account_deletion_blockers_service"("actor_us
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."get_announcements_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_announcements_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
@@ -35786,6 +36712,11 @@ GRANT ALL ON FUNCTION "public"."get_employee_onboarding_service"("target_user_id
 
 REVOKE ALL ON FUNCTION "public"."get_employee_schedule_board_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_employee_schedule_board_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
 
 
@@ -36210,6 +37141,11 @@ REVOKE ALL ON FUNCTION "public"."prevent_owner_employee_archive"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "public"."preview_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_payload" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."preview_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_payload" "jsonb") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."preview_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."preview_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid") TO "service_role";
 
@@ -36222,11 +37158,6 @@ GRANT ALL ON FUNCTION "public"."preview_employee_document_assignments_service"("
 
 REVOKE ALL ON FUNCTION "public"."preview_employee_invitation_service"("invitation_token_hash" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."preview_employee_invitation_service"("invitation_token_hash" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."preview_important_date_closure_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_location_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."preview_important_date_closure_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_location_ids" "uuid"[]) TO "service_role";
 
 
 
@@ -36308,11 +37239,6 @@ REVOKE ALL ON FUNCTION "public"."protect_published_signature_version"() FROM PUB
 
 
 
-REVOKE ALL ON FUNCTION "public"."publish_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."publish_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer) TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "target_notify_employee_ids" "uuid"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "target_notify_employee_ids" "uuid"[]) TO "service_role";
 
@@ -36333,11 +37259,6 @@ GRANT ALL ON FUNCTION "public"."read_employee_references_service"("actor_user_id
 
 
 
-REVOKE ALL ON FUNCTION "public"."read_important_date_history_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."read_important_date_history_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."read_job_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid", "search_text" "text", "location_filter" "uuid", "assignment_filter" "text", "page_number" integer, "targets_only" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."read_job_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid", "search_text" "text", "location_filter" "uuid", "assignment_filter" "text", "page_number" integer, "targets_only" boolean) TO "service_role";
 
@@ -36350,11 +37271,6 @@ GRANT ALL ON FUNCTION "public"."read_new_job_assignments_service"("actor_user_id
 
 REVOKE ALL ON FUNCTION "public"."read_role_workspace_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."read_role_workspace_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."read_settings_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."read_settings_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
 
 
@@ -36553,8 +37469,8 @@ GRANT ALL ON FUNCTION "public"."revoke_time_off_service"("actor" "uuid", "w" "uu
 
 
 
-REVOKE ALL ON FUNCTION "public"."save_announcement_audience_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_title" "text", "target_body" "text", "target_category" "text", "target_audience_roles" "text"[], "target_location_ids" "uuid"[], "target_publish_at" timestamp with time zone, "target_expires_at" timestamp with time zone, "target_action_url" "text", "target_department_ids" "uuid"[], "target_job_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."save_announcement_audience_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_title" "text", "target_body" "text", "target_category" "text", "target_audience_roles" "text"[], "target_location_ids" "uuid"[], "target_publish_at" timestamp with time zone, "target_expires_at" timestamp with time zone, "target_action_url" "text", "target_department_ids" "uuid"[], "target_job_ids" "uuid"[]) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."save_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_payload" "jsonb", "target_intent" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."save_announcement_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_payload" "jsonb", "target_intent" "text") TO "service_role";
 
 
 
@@ -36590,11 +37506,6 @@ GRANT ALL ON FUNCTION "public"."save_employee_onboarding_profile_service"("targe
 
 REVOKE ALL ON FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_first_name" "text", "employee_middle_name" "text", "employee_last_name" "text", "employee_preferred_name" "text", "employee_invitation_email" "text", "employee_start_date" "date", "employee_internal_note" "text", "location_ids" "uuid"[], "primary_location_id" "uuid", "job_ids" "uuid"[], "primary_job_id" "uuid", "employee_is_remote" boolean, "employee_is_excluded_from_schedule" boolean, "expected_revision" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_first_name" "text", "employee_middle_name" "text", "employee_last_name" "text", "employee_preferred_name" "text", "employee_invitation_email" "text", "employee_start_date" "date", "employee_internal_note" "text", "location_ids" "uuid"[], "primary_location_id" "uuid", "job_ids" "uuid"[], "primary_job_id" "uuid", "employee_is_remote" boolean, "employee_is_excluded_from_schedule" boolean, "expected_revision" integer) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."save_important_date_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_title" "text", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_note" "text", "target_affects_scheduling" boolean, "target_location_ids" "uuid"[], "target_expected_revision" integer, "target_keep_shift_ids" "uuid"[], "target_expected_fingerprint" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."save_important_date_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_title" "text", "target_type" "text", "target_starts_on" "date", "target_ends_on" "date", "target_recurrence" "text", "target_note" "text", "target_affects_scheduling" boolean, "target_location_ids" "uuid"[], "target_expected_revision" integer, "target_keep_shift_ids" "uuid"[], "target_expected_fingerprint" "text") TO "service_role";
 
 
 
@@ -36733,8 +37644,8 @@ REVOKE ALL ON FUNCTION "public"."set_active_workspace_when_owner_onboarding_comp
 
 
 
-REVOKE ALL ON FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text", "target_bring_back" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."set_announcement_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_announcement_id" "uuid", "target_expected_revision" integer, "target_action" "text", "target_bring_back" "uuid"[]) TO "service_role";
 
 
 
@@ -36765,11 +37676,6 @@ GRANT ALL ON FUNCTION "public"."set_employee_document_timezone_service"("actor_u
 
 REVOKE ALL ON FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."set_important_date_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_action" "text", "target_keep_shift_ids" "uuid"[], "target_expected_fingerprint" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."set_important_date_state_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_important_date_id" "uuid", "target_action" "text", "target_keep_shift_ids" "uuid"[], "target_expected_fingerprint" "text") TO "service_role";
 
 
 
@@ -37189,7 +38095,15 @@ GRANT ALL ON TABLE "public"."announcement_acknowledgements" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."announcement_changes" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."announcement_locations" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."announcement_people" TO "service_role";
 
 
 
@@ -37289,14 +38203,6 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_se
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_terminations" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."important_date_changes" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."important_date_shift_releases" TO "service_role";
 
 
 

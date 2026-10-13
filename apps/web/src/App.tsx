@@ -68,6 +68,7 @@ const WorkspaceStatusPage = lazy(() => import("./shell/WorkspaceStatusPage"));
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
 const AnnouncementsPage = lazy(() => import("./views/AnnouncementsPage"));
+const ImportantDatesPage = lazy(() => import("./views/ImportantDatesPage"));
 const NotificationsPage = lazy(() => import("./views/NotificationsPage"));
 const EmployeeDocumentsPage = lazy(() => import("./documents/EmployeeDocumentsPage"));
 const EmployeesPage = lazy(() => import("./employees/EmployeesPage"));
@@ -117,9 +118,6 @@ const ConflictHandlingSettingsPage = lazy(
 );
 const ShiftCatalogSettingsPage = lazy(
   () => import("./settings/ShiftCatalogSettingsPage"),
-);
-const ImportantDatesSettingsPage = lazy(
-  () => import("./settings/ImportantDatesSettingsPage"),
 );
 const RolesSettingsPage = lazy(() => import("./settings/RolesSettingsPage"));
 
@@ -405,11 +403,7 @@ export function App() {
                 />
                 <Route
                   path="important-dates"
-                  element={
-                    <PermissionRoute anyOf={["important_dates.read"]}>
-                      <ImportantDatesSettingsPage />
-                    </PermissionRoute>
-                  }
+                  element={<Navigate to="/app/announcements/important-dates" replace />}
                 />
                 <Route
                   path="employees"
@@ -453,6 +447,23 @@ export function App() {
                     <PermissionRoute anyOf={["announcements.read"]}>
                       <AnnouncementsPage />
                     </PermissionRoute>
+                  }
+                />
+                {/* Important Dates is a page under Announcements (EKRAN-08). */}
+                <Route
+                  path="announcements/important-dates"
+                  element={
+                    <ActionRoute action="settings.important_dates.read">
+                      <ImportantDatesPage />
+                    </ActionRoute>
+                  }
+                />
+                <Route
+                  path="announcements/important-dates/:announcementId"
+                  element={
+                    <ActionRoute action="settings.important_dates.read">
+                      <ImportantDatesPage />
+                    </ActionRoute>
                   }
                 />
                 <Route path="notifications" element={<NotificationsPage />} />
@@ -537,15 +548,15 @@ export function App() {
                   />
                   <Route
                     path="important-dates"
-                    element={<Navigate to="/app/important-dates" replace />}
+                    element={<Navigate to="/app/announcements/important-dates" replace />}
                   />
                   <Route
                     path="closed-days"
-                    element={<Navigate to="/app/important-dates" replace />}
+                    element={<Navigate to="/app/announcements/important-dates" replace />}
                   />
                   <Route
                     path="important-dates/closed-days"
-                    element={<Navigate to="/app/important-dates" replace />}
+                    element={<Navigate to="/app/announcements/important-dates" replace />}
                   />
                   <Route
                     path="roles"

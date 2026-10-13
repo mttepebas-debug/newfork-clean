@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -150,10 +150,13 @@ select 'function', name, '5.5' from unnest(array[
   'get_employee_document_path_service', 'heartbeat_notification_outbox_service',
   'list_account_deletion_work_service', 'preview_document_definition_apply_service',
   'reset_employee_onboarding_service', 'resolve_notification_in_app_policy_v1_service',
-  'rotate_account_deletion_recovery_token_service', 'save_announcement_service',
+  'rotate_account_deletion_recovery_token_service',
   'save_employee_ssn_envelope_service', 'save_notification_user_preference_service', 'save_workspace_role',
   'schedule_request_shift_payload_service', 'shift_exchange_reconcile', 'update_owner_onboarding'
 ]) name;
+-- Its name came back in EKRAN-08 as the one announcement write; the old form stays gone.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.save_announcement_service(uuid, uuid, uuid, integer, text, text, text, text[], uuid[], timestamptz, timestamptz, text)', '5.5');
 insert into retired (kind, name, step) values
   ('private_table', 'bl051_membership_scope_snapshot', '5.5'), ('private_table', 'bl051_role_grant_snapshot', '5.5'),
   ('policy', 'employee_events.employee_events_select', '5.5'),
@@ -378,10 +381,51 @@ insert into retired (kind, name, step) values
   ('function', 'schedule_actor_can_manage_service', 'FB-6.4'),
   ('function', 'schedule_actor_can_publish_service', 'FB-6.4'),
   ('function', 'schedule_actor_has_capability_service', 'FB-6.4');
+-- EKRAN-08: a date's locations each have their own day; "Closed day" and
+-- "Blackout" are no longer types, and every published date is on the Schedule.
+insert into retired (kind, name, step) values
+  ('column', 'important_dates.affects_scheduling', 'EKRAN-08'),
+  ('function', 'closure_days', 'EKRAN-08'),
+  ('function_signature', 'public.save_important_date_service(uuid, uuid, uuid, text, text, date, date, text, text, boolean, uuid[], integer, uuid[], text)', 'EKRAN-08'),
+  ('function_signature', 'public.preview_important_date_closure_service(uuid, uuid, uuid, text, date, date, text, uuid[])', 'EKRAN-08'),
+  ('function_signature', 'public.set_important_date_state_service(uuid, uuid, uuid, text, uuid[], text)', 'EKRAN-08'),
+  ('function_signature', 'app_private.important_date_closure_impact(uuid, public.important_dates, text, date, date, text, uuid[])', 'EKRAN-08'),
+  ('function_signature', 'app_private.important_date_close_shifts(uuid, public.important_dates, jsonb, uuid[])', 'EKRAN-08');
+-- EKRAN-08: one announcement record. An important date is a post on Important
+-- Dates; a closed day or short hours is a location's day on it; the audience is
+-- who works at a checked location and who was added by hand (K24).
+insert into retired (kind, name, step)
+select 'table', name, 'EKRAN-08' from unnest(array['important_dates', 'important_date_changes', 'important_date_shift_releases']) name
+union all
+select 'type', name, 'EKRAN-08' from unnest(array['important_date_type', 'important_date_recurrence']) name
+union all
+select 'column', name, 'EKRAN-08' from unnest(array['announcements.audience_roles', 'announcements.department_ids',
+  'announcements.job_ids', 'announcements.expires_at', 'announcements.action_url']) name
+union all
+select 'function', name, 'EKRAN-08' from unnest(array[
+  'save_important_date_service', 'set_important_date_state_service', 'preview_important_date_closure_service',
+  'read_important_date_history_service', 'read_settings_important_dates_service', 'publish_announcement_service',
+  'save_announcement_audience_service', 'important_date_close_shifts', 'important_date_closure_impact',
+  'important_date_deliver', 'important_date_is_past', 'important_date_keep_past', 'important_date_next_day',
+  'important_date_notified', 'important_date_out_to', 'important_date_recipients', 'important_date_refuse_past',
+  'important_date_snapshot', 'important_date_stay_open', 'important_date_tell_removed', 'important_date_version_seen',
+  'important_date_visible', 'announcement_out_to', 'communication_audience', 'communication_reaches',
+  'communication_authorize']) name
+union all
+select 'notification', 'schedule.important_date.available', 'EKRAN-08'
+union all
+select 'function_signature', name, 'EKRAN-08' from unnest(array[
+  'public.set_announcement_state_service(uuid, uuid, uuid, integer, text)',
+  'app_private.announcement_deliver(public.announcements, uuid[])',
+  'app_private.announcement_visible(uuid, public.announcements)']) name;
 -- BL-238: "this week" is asked of the places it is for; the workspace-only
 -- form, which read the server's UTC date, goes.
 insert into retired (kind, name, step) values
   ('function_signature', 'public.schedule_current_week_start_service(uuid)', 'BL-238');
+-- A new edit says whether it may pick up an edit that was left open; the
+-- form without that answer goes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.acquire_schedule_edit_session_service(uuid, uuid, date, public.schedule_edit_source, uuid, uuid[])', 'EKRAN-01');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -499,6 +543,11 @@ select ok(
 select is(
   (select c.relkind::text from pg_class c where c.oid = 'public.schedule_closures'::regclass), 'v',
   'schedule_closures is the closed days, never a table of its own again (BL-530)'
+);
+select is(
+  enum_range(null::public.announcement_category)::text[],
+  array['general', 'holiday', 'event', 'busy_day', 'celebration', 'inspection', 'staff_meeting', 'other'],
+  'a post''s category is one of eight; closing is a location''s day, never a category (EKRAN-08)'
 );
 
 select * from finish();

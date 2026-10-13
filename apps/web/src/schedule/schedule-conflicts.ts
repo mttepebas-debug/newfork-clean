@@ -3,10 +3,11 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
+import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
 import { isPendingRemovalShift } from "./lib/scheduleShiftMetadata";
+import { scheduleClosureCoversDate, scheduleClosureLabel } from "./lib/scheduleClosures";
 import { formatTime, formatWeekdayDate } from "./lib/scheduleDateTime";
 
 export type ScheduleConflictReason =
@@ -242,16 +243,15 @@ export function formatScheduleConflictMessage(
   }
 
   if (reason.type === "closed_day") {
-    if (reason.scope === "all_day") {
-      const closureReason = safeCustomerText(reason.reason);
-      const base = closureReason
-        ? `Location is closed: ${closureReason}.`
-        : "Location is closed all day.";
-      return `${base}${targetEvidence(reason)}`.trim();
+    const closureReason = safeCustomerText(reason.reason);
+    const hours = safeCustomerText(reason.hours);
+    if (reason.scope === "short_hours" && hours) {
+      return `Location has short hours${closureReason ? ` for ${closureReason}` : ""}: open ${hours} only.${targetEvidence(reason)}`.trim();
     }
-    return `Location is closed for ${
-      safeCustomerText(reason.shift_type_label) || "this shift type"
-    }.${targetEvidence(reason)}`.trim();
+    const base = closureReason
+      ? `Location is closed: ${closureReason}.`
+      : "Location is closed all day.";
+    return `${base}${targetEvidence(reason)}`.trim();
   }
 
   return looseMessage ?? "Scheduling policy blocks this assignment.";
@@ -315,31 +315,21 @@ export function evaluateScheduleShiftConflicts(
   if (!model.locations.some(location => location.id === input.location_id) || !model.jobs.some(job => job.id === input.job_id) ||
     (input.shift_type_id && !model.shift_types.some(type => type.id === input.shift_type_id))) return ["The location, job or shift type is no longer available."];
 
-  const matchingClosures = model.closures.filter(
+  // EKRAN-08: a Closed day, or Short hours the shift runs past; a scheduled
+  // post's day asks too, before it goes out.
+  const closure = model.closures.find(
     (candidate) =>
       candidate.location_id === input.location_id &&
-      scheduleClosureCoversDate(candidate, input.scheduled_date),
+      scheduleClosureCoversDate(candidate, input.scheduled_date) &&
+      scheduleClosureCoversShift(candidate, input.start_time, input.end_time),
   );
-  const allDayClosure = matchingClosures.find(
-    (candidate) => candidate.is_all_day,
-  );
-  if (allDayClosure) {
+  if (closure) {
     reasons.push({
       ...context,
       type: "closed_day",
-      scope: "all_day",
-      reason: allDayClosure.title,
-    });
-  } else if (
-    input.shift_type_id &&
-    matchingClosures.some((candidate) =>
-      candidate.shift_type_ids.includes(input.shift_type_id!),
-    )
-  ) {
-    reasons.push({
-      ...context,
-      type: "closed_day",
-      scope: "shift_type",
+      scope: closure.kind === "short" ? "short_hours" : "all_day",
+      reason: closure.title,
+      hours: scheduleClosureLabel(closure).hours,
     });
   }
 
@@ -442,14 +432,6 @@ export function evaluateScheduleShiftConflicts(
     }
   }
   return applyConflictPolicy(reasons, model);
-}
-
-function scheduleClosureCoversDate(
-  closure: ScheduleReadModel["closures"][number],
-  date: string,
-): boolean {
-  const endDate = closure.end_date ?? closure.closed_date;
-  return closure.closed_date <= date && date <= endDate;
 }
 
 function absoluteIntervalsOverlap(
