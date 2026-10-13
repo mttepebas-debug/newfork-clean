@@ -21,7 +21,7 @@ test("Undo takes the last step back on the server, and a reload keeps it back", 
   await expect(page).not.toHaveURL(/\/sign-in/);
   await page.goto(`/app/schedule?date=${monday}`);
   await page.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
-  await page.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await page.getByRole("button", { name: "Blank schedule", exact: true }).click();
   await expect(page).toHaveURL(/mode=edit/);
 
   const undo = page.getByRole("button", { name: "Undo", exact: true });

@@ -78,7 +78,7 @@ async function openAddShift(page: Page, name: string, date: string, start: strin
 
 async function startBlankSchedule(page: Page) {
   await page.getByRole("button", { name: /^Draft selector: / }).click();
-  await page.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await page.getByRole("button", { name: "Blank schedule", exact: true }).click();
   await expect(page).toHaveURL(/mode=edit/);
 }
 
