@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import {
+  grabPoint,
   isPrimaryDragActivation,
   shiftDropTargetKey,
 } from "../lib/scheduleDragTargets";
@@ -38,6 +39,9 @@ export interface ShiftDragState {
   readonly pointerY: number;
   readonly previewWidth: number;
   readonly previewHeight: number;
+  /** Where on the card the press landed, from its top-left corner. */
+  readonly grabX: number;
+  readonly grabY: number;
   readonly targetKey: string | null;
   readonly targetLocationId: string | null;
   readonly targetDate: string | null;
@@ -88,6 +92,8 @@ export function useSingleShiftPointerDrag({
     readonly startY: number;
     readonly previewWidth: number;
     readonly previewHeight: number;
+    readonly grabX: number;
+    readonly grabY: number;
   } | null>(null);
   const draggingRef = useRef(false);
   const lastPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
@@ -231,6 +237,8 @@ export function useSingleShiftPointerDrag({
         pointerY: clientY,
         previewWidth: pending.previewWidth,
         previewHeight: pending.previewHeight,
+        grabX: pending.grabX,
+        grabY: pending.grabY,
         targetKey: shown?.targetKey ?? null,
         targetLocationId: shown?.locationId ?? null,
         targetDate: shown?.date ?? null,
@@ -385,14 +393,17 @@ export function useSingleShiftPointerDrag({
       const bounds =
         typeof element.getBoundingClientRect === "function"
           ? element.getBoundingClientRect()
-          : { width: 126, height: 58 };
+          : { left: 0, top: 0, width: 126, height: 58 };
+      const startX = Number.isFinite(clientX) ? clientX : 0;
+      const startY = Number.isFinite(clientY) ? clientY : 0;
       pendingRef.current = {
         shiftId,
         pointerId,
-        startX: Number.isFinite(clientX) ? clientX : 0,
-        startY: Number.isFinite(clientY) ? clientY : 0,
+        startX,
+        startY,
         previewWidth: bounds.width,
         previewHeight: bounds.height,
+        ...grabPoint(bounds, startX, startY),
       };
     },
     [],

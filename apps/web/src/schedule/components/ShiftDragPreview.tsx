@@ -13,6 +13,8 @@ interface ShiftDragPreviewState {
   readonly pointerY: number;
   readonly previewWidth: number;
   readonly previewHeight: number;
+  readonly grabX: number;
+  readonly grabY: number;
   readonly targetStatus: "allowed" | "warning" | "blocked" | null;
   readonly reason: string | null;
   readonly copy: boolean;
@@ -44,8 +46,8 @@ export function ShiftDragPreview({
       className="schedule-shift-drag-preview"
       aria-hidden="true"
       style={{
-        left: dragState.pointerX + 12,
-        top: dragState.pointerY + 12,
+        left: dragState.pointerX - dragState.grabX,
+        top: dragState.pointerY - dragState.grabY,
         width: dragState.previewWidth,
         minHeight: dragState.previewHeight,
       }}
@@ -87,8 +89,8 @@ export function ShiftTypePresetDragPreview({
       data-shift-type-preset-drag-preview="true"
       aria-hidden="true"
       style={{
-        left: dragState.pointerX + 12,
-        top: dragState.pointerY + 12,
+        left: dragState.pointerX - dragState.grabX,
+        top: dragState.pointerY - dragState.grabY,
         width: dragState.previewWidth,
         minHeight: dragState.previewHeight,
       }}
