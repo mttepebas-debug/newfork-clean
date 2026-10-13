@@ -142,6 +142,9 @@ function ManagerList({
     );
   }, [records, locationId, search]);
   const rows = filtered.filter((record) => inListTab(record, tab));
+  // Draft and Scheduled say how many wait; the other tabs carry no number.
+  const tabCount = (id: ListTab) =>
+    id === "draft" || id === "scheduled" ? records.filter((record) => inListTab(record, id)).length : 0;
   const split = tab === "all" || tab === "published";
   const active = rows.filter((record) => record.display_status !== "past");
   const past = rows.filter((record) => record.display_status === "past");
@@ -166,10 +169,7 @@ function ManagerList({
         <div className="announcement-toolbar-controls catalog-toolbar-status-row">
           <div className="catalog-status-tabs" role="tablist" aria-label="Announcement status">
             {listTabs.map((item) => {
-              const count =
-                item.id === "draft" || item.id === "scheduled"
-                  ? records.filter((record) => inListTab(record, item.id)).length
-                  : 0;
+              const count = tabCount(item.id);
               return (
                 <button
                   key={item.id}
@@ -192,6 +192,23 @@ function ManagerList({
           </div>
         </div>
         <div className="catalog-toolbar-filter-row">
+          {/* A phone has no room for the tabs: the same choice is this list (Mert 2026-10-13). */}
+          <select
+            className="toolbar-filter-select list-filter-narrow announcement-status-select"
+            aria-label="Show announcements"
+            value={tab}
+            onChange={(event) => setTab(event.target.value as ListTab)}
+          >
+            {listTabs.map((item) => {
+              const count = tabCount(item.id);
+              const label = item.id === "all" ? "All statuses" : item.label;
+              return (
+                <option key={item.id} value={item.id}>
+                  {count ? `${label} (${count})` : label}
+                </option>
+              );
+            })}
+          </select>
           {locations.length > 1 && (
             <select
               className="toolbar-filter-select list-filter-narrow"

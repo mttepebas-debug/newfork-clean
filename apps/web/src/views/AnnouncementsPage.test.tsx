@@ -241,6 +241,33 @@ describe("Announcements list (EKRAN-08)", () => {
     expect(screen.queryByRole("list", { name: "Active announcements" })).toBeNull();
   });
 
+  it("gives the phone a status list in place of the tabs, with the same counts and the same rows", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue(
+      list({
+        announcements: [
+          record({ id: "a8200000-0000-4000-8000-000000000014", title: "Live one", status: "published", display_status: "published", published_at: "2026-10-10T16:00:00.000Z" }),
+          record({ id: "a8200000-0000-4000-8000-000000000015", title: "Still a draft" }),
+          record({ id: "a8200000-0000-4000-8000-000000000016", title: "Put away", status: "published", display_status: "archived", archived_at: "2026-09-01T16:00:00.000Z" }),
+        ],
+      }),
+    );
+    renderList();
+    const status = (await screen.findByLabelText("Show announcements")) as HTMLSelectElement;
+    expect([...status.options].map((option) => option.textContent)).toEqual([
+      "All statuses",
+      "Draft (1)",
+      "Scheduled",
+      "Published",
+      "Archived",
+    ]);
+    fireEvent.change(status, { target: { value: "archived" } });
+    expect(screen.getByRole("tab", { name: "Archived" }).getAttribute("aria-selected")).toBe("true");
+    expect(within(screen.getByRole("list", { name: "Archived announcements" })).getByText("Put away")).toBeTruthy();
+    expect(screen.queryByText("Live one")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Draft (1)" }));
+    expect(status.value).toBe("draft");
+  });
+
   it("draws one shared list card per post for the phone: mark, title, status, kind and day, the text's start", async () => {
     vi.mocked(getAnnouncements).mockResolvedValue(
       list({

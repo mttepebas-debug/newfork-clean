@@ -231,6 +231,11 @@
   color: var(--theme-muted);
 }
 
+/* The status list stands in for the tabs on a phone only. */
+.announcement-status-select {
+  display: none;
+}
+
 /* Phone: one shared list card per post (list-cards.css; KARARLAR Genel
    "telefonda liste sayfaları kart satırıyla"), as on Requests. A table or list
    that has rows steps aside for its cards; an empty one stays for its line. */
@@ -248,6 +253,19 @@
   .announcements-page .announcement-toolbar-controls {
     align-items: stretch;
   }
+  /* No tab row for a manager: status and location share one row, as two
+     lists (Mert 2026-10-13, test page comment). */
+  .announcements-catalog-page[data-reader="false"] .catalog-toolbar-status-row {
+    display: none;
+  }
+  .announcements-page.list-page.list-page .catalog-toolbar-filter-row .announcement-status-select {
+    display: block;
+  }
+  .announcements-page.list-page.list-page .catalog-toolbar-filter-row .toolbar-filter-select {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 40%;
+  }
   /* Search and New share one row, so no extra row sits above the list
      (Mert 2026-10-13, test page comment). */
   .announcements-page.list-page.list-page .catalog-toolbar-filter-row {
@@ -256,7 +274,7 @@
   .announcements-page.list-page.list-page .catalog-toolbar .toolbar-search {
     width: auto;
     min-width: 0;
-    flex: 1 1 0;
+    flex: 1 1 calc(100% - 120px);
   }
   .announcements-page.list-page.list-page .catalog-toolbar .list-add-button {
     flex: 0 0 auto;
