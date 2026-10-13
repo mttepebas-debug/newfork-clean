@@ -2,6 +2,7 @@ import { Button } from "@newfork/ui";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import "./list-page.css";
+import "./list-page-frozen.css";
 
 export function CatalogPageHeader({
   eyebrow,

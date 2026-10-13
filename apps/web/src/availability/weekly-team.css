@@ -71,34 +71,6 @@
   border-radius: 6px;
   background: var(--wt-surface);
 }
-/* The heading, tabs, filters and the day headings stay put; only the people
-   scroll, inside the table frame (Mert 2026-10-13). Schedule's shape: the page
-   fills .app-main and the frame takes what is left, no taller than its rows.
-   A window too short for that scrolls the whole page as before. */
-@media (min-height: 560px) {
-  .availability-page.weekly-team-page {
-    display: flex;
-    height: 100%;
-    min-height: 0;
-    flex-direction: column;
-  }
-  .availability-page.weekly-team-page > :not(.weekly-team-scroll) {
-    flex: 0 0 auto;
-  }
-  .availability-page.weekly-team-page > .weekly-team-scroll {
-    min-height: 0;
-    flex: 0 1 auto;
-    overflow: auto;
-  }
-  .weekly-team-table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  .weekly-team-table thead tr > :first-child {
-    z-index: 3;
-  }
-}
 /* Grid rules (KARARLAR "Availability"): Employee 13%, seven equal days, every
    body cell 76 high with a line right and below, content centred. */
 .weekly-team-table {
