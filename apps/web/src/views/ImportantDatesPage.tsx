@@ -2,7 +2,7 @@ import type { AnnouncementRecord } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, Search } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { AnnouncementDrawer } from "../communications/AnnouncementDrawer";
@@ -73,11 +73,6 @@ export function ImportantDatesPage() {
       className="settings-page jobs-settings-page announcements-page important-dates-page list-page"
       aria-labelledby="important-dates-title"
     >
-      <nav className="announcement-crumb" aria-label="Breadcrumb">
-        <Link to="/app/announcements">Announcements</Link>
-        <span aria-hidden>›</span>
-        <span aria-current="page">Important Dates</span>
-      </nav>
       <CatalogPageHeader
         eyebrow="THE RIGHT UPDATE. THE RIGHT PEOPLE."
         title="Important Dates"
