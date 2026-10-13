@@ -172,7 +172,7 @@ export function useShiftTypePresetPointerDrag({
         targetStatus:
           target?.targetStatus ??
           (target ? (target.allowed ? "allowed" : "blocked") : null),
-        reason: target?.allowed === false ? (target.reason ?? null) : null,
+        reason: target?.allowed === false ? (target.shortReason ?? target.reason ?? null) : null,
       });
     },
     [resolveTargetAtPoint],

@@ -25,6 +25,8 @@ export interface ShiftDropTarget {
 export interface ShiftDropEvaluation {
   readonly allowed: boolean;
   readonly reason?: string;
+  /** One or two words for the dragged card; `reason` is the full sentence. */
+  readonly shortReason?: string;
   readonly messages?: readonly string[];
   readonly targetStatus?: "allowed" | "warning" | "blocked" | null;
 }
@@ -219,6 +221,9 @@ export function useSingleShiftPointerDrag({
         { clientX, clientY, copy },
         pending.shiftId,
       );
+      // A target with no colour (null), the shift's own cell, is not
+      // highlighted at all.
+      const shown = target?.targetStatus === null ? null : target;
       scheduleDragState({
         activeShiftId: pending.shiftId,
         label: resolveLabel(pending.shiftId),
@@ -226,13 +231,13 @@ export function useSingleShiftPointerDrag({
         pointerY: clientY,
         previewWidth: pending.previewWidth,
         previewHeight: pending.previewHeight,
-        targetKey: target?.targetKey ?? null,
-        targetLocationId: target?.locationId ?? null,
-        targetDate: target?.date ?? null,
+        targetKey: shown?.targetKey ?? null,
+        targetLocationId: shown?.locationId ?? null,
+        targetDate: shown?.date ?? null,
         targetStatus:
-          target?.targetStatus ??
-          (target ? (target.allowed ? "allowed" : "blocked") : null),
-        reason: target?.allowed === false ? (target.reason ?? null) : null,
+          shown?.targetStatus ??
+          (shown ? (shown.allowed ? "allowed" : "blocked") : null),
+        reason: target?.allowed === false ? (target.shortReason ?? target.reason ?? null) : null,
         copy,
       });
     },

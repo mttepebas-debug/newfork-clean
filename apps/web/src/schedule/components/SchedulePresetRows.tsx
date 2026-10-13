@@ -37,6 +37,8 @@ export interface PresetDropTarget extends PresetDragSource {
 export interface PresetDropEvaluation {
   readonly allowed: boolean;
   readonly reason?: string;
+  /** One or two words for the dragged preset; `reason` is the full sentence. */
+  readonly shortReason?: string;
   readonly targetStatus?: "allowed" | "warning" | "blocked" | null;
 }
 

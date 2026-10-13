@@ -435,12 +435,14 @@ export function GhostShiftCard({
     : displayedLocation
       ? `also scheduled at ${displayedLocation}`
       : "";
-  // Every ghost wears the same dead gray; the place sits behind a pin, not on a line.
+  // The real card at half strength in its own type color (Mert, 2026-10-13);
+  // the place sits behind a pin, not on a line.
   return (
     <article
       className="schedule-shift-badge"
       style={
         {
+          "--shift-color": type?.color ?? "#54736a",
           "--schedule-row-badge-height": `${badgeHeight}px`,
         } as CSSProperties
       }

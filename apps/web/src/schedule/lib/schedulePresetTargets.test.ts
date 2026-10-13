@@ -129,6 +129,7 @@ describe("schedulePresetTargets", () => {
     ).toEqual({
       allowed: false,
       reason: "Start and end time cannot be the same.",
+      shortReason: "Check hours",
     });
   });
 
@@ -159,6 +160,7 @@ describe("schedulePresetTargets", () => {
     ).toEqual({
       allowed: false,
       reason: "Alex Rivera is not assigned to Server. Requested: Dinner / Server at Main Dining.",
+      shortReason: "Not assigned",
     });
 
     expect(
@@ -186,6 +188,7 @@ describe("schedulePresetTargets", () => {
     ).toEqual({
       allowed: false,
       reason: "Alex Rivera is not eligible for this shift type. Requested: Dinner / Server at Main Dining.",
+      shortReason: "Not assigned",
     });
   });
 
