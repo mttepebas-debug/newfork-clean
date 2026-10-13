@@ -259,7 +259,7 @@ describe("AppShell notification badge", () => {
       footerItems.map(
         (item) => item.querySelector(".rail-flyout")?.textContent,
       ),
-    ).toEqual(["Settings", "Account", "Sign out"]);
+    ).toEqual(["Meyhouse", "Settings", "Account", "Sign out"]);
     footerItems.forEach((item) => {
       expect(item.className).toContain("rail-peek-item");
       expect(item.hasAttribute("data-rail-peek")).toBe(true);
@@ -353,11 +353,16 @@ describe("AppShell notification badge", () => {
     const { container } = renderShell();
 
     expect(await screen.findByText("Workspace route")).toBeTruthy();
-    // The slot used to be a placeholder marked "tbd"; it carries the switcher
-    // now, and with one workspace and nothing waiting it is the plain name.
+    // The switcher is the footer row above Settings (Mert 2026-10-13); the
+    // top row keeps only the menu button.
+    const footerRows = Array.from(
+      container.querySelectorAll(".sidebar-footer > *"),
+    );
+    expect(footerRows[0]?.classList.contains("workspace-switcher")).toBe(true);
     expect(
-      container.querySelector(".organization-context-slot")?.textContent,
+      footerRows[0]?.querySelector(".workspace-name")?.textContent,
     ).toBe("Meyhouse");
+    expect(container.querySelector(".sidebar-tools .workspace-switcher")).toBeNull();
     const labels = Array.from(
       container.querySelectorAll(".sidebar-nav .nav-item"),
     ).map((item) => item.textContent);

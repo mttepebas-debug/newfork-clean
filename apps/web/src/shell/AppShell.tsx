@@ -322,10 +322,6 @@ export function AppShell() {
               <span className="rail-flyout">Expand menu</span>
             ) : null}
           </button>
-          <WorkspaceSwitcher
-            workspaceName={context.workspace.name}
-            collapsed={collapsed}
-          />
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
@@ -429,6 +425,10 @@ export function AppShell() {
         </nav>
 
         <div className="sidebar-footer">
+          <WorkspaceSwitcher
+            workspaceName={context.workspace.name}
+            collapsed={collapsed}
+          />
           {canViewSettings ? (
             <NavLink
               className={({ isActive }) =>
