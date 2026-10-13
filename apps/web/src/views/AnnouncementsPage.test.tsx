@@ -229,12 +229,45 @@ describe("Announcements list (EKRAN-08)", () => {
       }),
     );
     renderList();
-    expect(await screen.findByText("Downtown update")).toBeTruthy();
+    const table = await screen.findByRole("table", { name: "Active announcements" });
+    expect(within(table).getByText("Downtown update")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Filter announcements by location"), { target: { value: harbor } });
     expect(screen.queryByText("Downtown update")).toBeNull();
-    expect(screen.getByText("Harbor update")).toBeTruthy();
+    expect(within(table).getByText("Harbor update")).toBeTruthy();
+    // The phone's cards follow the same filters.
+    expect(within(screen.getByRole("list", { name: "Active announcements" })).getByText("Harbor update")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search announcements"), { target: { value: "nothing" } });
     expect(screen.queryByText("Harbor update")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Active announcements" })).toBeNull();
+  });
+
+  it("draws one shared list card per post for the phone: mark, title, status, kind and day, the text's start", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue(
+      list({
+        announcements: [
+          record({
+            id: "a8200000-0000-4000-8000-000000000013",
+            title: "Thanksgiving",
+            body: "Downtown is closed all day.",
+            category: "holiday",
+            status: "published",
+            display_status: "published",
+            published_at: "2026-10-10T16:00:00.000Z",
+            on_important_dates: true,
+            starts_on: "2026-11-26",
+            ends_on: "2026-11-26",
+          }),
+        ],
+      }),
+    );
+    renderList();
+    const cards = await screen.findByRole("list", { name: "Active announcements" });
+    const card = within(cards).getByRole("button", { name: "Thanksgiving, on Important Dates, Published, Thu, Nov 26" });
+    expect(within(card).getByText("Published").className).toBe("list-chip");
+    expect(within(card).getByText("Holiday · Thu, Nov 26")).toBeTruthy();
+    expect(within(card).getByText("Downtown is closed all day.")).toBeTruthy();
+    fireEvent.click(card);
+    expect(await screen.findByRole("dialog")).toBeTruthy();
   });
 
   it("shows the no-access card when the API refuses", async () => {
@@ -487,6 +520,74 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(drawer.querySelector(".ad-band")).toBeNull();
   });
 
+  // Audience C (Mert, 2026-10-12): one list; "+ Add people" opens a search in its place, nobody is picked until
+  // checked, picks survive a new search, and "Ask people to acknowledge" stays last.
+  it("builds the audience in one list: Add people opens a search and adds only who you check", async () => {
+    const id = "a8200000-0000-4000-8000-000000000083";
+    const person = (n: number, name: string, job: string) => ({
+      user_id: `d2000000-0000-4000-8000-00000000000${n}`,
+      employee_id: null,
+      name,
+      job_name: job,
+      job_ids: [],
+      department_ids: [],
+      location_ids: [harbor],
+      location_name: "Harbor",
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue(
+      list({ people: [person(1, "Ana Diaz", "Server"), person(2, "Ben Cole", "Cook"), person(3, "Cy Park", "Server")] }),
+    );
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview());
+    vi.mocked(getAnnouncement).mockResolvedValue(
+      detail({
+        id,
+        title: "Patio menu",
+        locations: [
+          { location_id: downtown, name: "Downtown", short_name: "Downtown", timezone: "America/Los_Angeles", archived: false, day: "open", opens: null, closes: null },
+        ],
+      }),
+    );
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Patio menu" });
+    await waitFor(() => expect(previewAnnouncement).toHaveBeenCalled());
+    fireEvent.click(within(drawer).getByRole("tab", { name: /Audience/ }));
+    const who = within(drawer).getByRole("region", { name: "Who gets it" });
+    expect(within(drawer).queryByRole("region", { name: "Add people" })).toBeNull();
+    expect(within(drawer).queryByRole("combobox")).toBeNull();
+    expect(who.textContent).toContain("Downtown");
+    expect(who.textContent).toContain("Everyone there · 4 people");
+    const body = drawer.querySelector(".ad-body") as HTMLElement;
+    expect(body.lastElementChild?.textContent).toContain("Ask people to acknowledge");
+
+    fireEvent.click(within(who).getByRole("button", { name: "Add people" }));
+    const search = within(who).getByRole("searchbox", { name: "Search people" });
+    const boxes = () => within(who).getAllByRole("checkbox").filter((box) => box.getAttribute("aria-label") !== "Select all");
+    expect(boxes().map((box) => (box as HTMLInputElement).checked)).toEqual([false, false, false]);
+    expect((within(who).getByRole("button", { name: "Add" }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(search, { target: { value: "server" } });
+    expect(boxes().map((box) => box.closest("label")?.textContent)).toEqual([
+      expect.stringContaining("Ana Diaz"),
+      expect.stringContaining("Cy Park"),
+    ]);
+    fireEvent.click(within(who).getByRole("checkbox", { name: /Ana Diaz/ }));
+    fireEvent.change(search, { target: { value: "ben" } });
+    fireEvent.click(within(who).getByRole("checkbox", { name: /Ben Cole/ }));
+    expect(who.textContent).toContain("2 selected");
+    fireEvent.click(within(who).getByRole("button", { name: "Add 2 people" }));
+
+    expect(within(who).queryByRole("searchbox")).toBeNull();
+    expect(within(who).getByText("Added here · 2")).toBeTruthy();
+    expect(within(who).getByRole("button", { name: "Remove Ana Diaz" })).toBeTruthy();
+    expect(within(who).getByRole("button", { name: "Remove Ben Cole" })).toBeTruthy();
+    expect(within(who).queryByText("Cy Park")).toBeNull();
+
+    fireEvent.click(within(who).getByRole("button", { name: "Add people" }));
+    fireEvent.click(within(who).getByRole("checkbox", { name: /Cy Park/ }));
+    fireEvent.click(within(who).getByRole("button", { name: "Cancel" }));
+    expect(within(who).queryByText("Cy Park")).toBeNull();
+  });
+
   it("keeps History away from a post that never went out", async () => {
     const id = "a8200000-0000-4000-8000-000000000082";
     vi.mocked(getAnnouncements).mockResolvedValue(list());
@@ -571,7 +672,10 @@ describe("Announcement drawer (EKRAN-08)", () => {
     });
     renderList(`/app/announcements/${id}`);
     const drawer = await screen.findByRole("dialog", { name: "Fire drill" });
-    expect(within(drawer).getByText("Archive: unpublish first")).toBeTruthy();
+    // No "Archive: unpublish first" line (Mert, 2026-10-12): Unpublish and the green button only.
+    const footer = drawer.querySelector(".ad-foot") as HTMLElement;
+    expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual(["Unpublish", "Save changes"]);
+    expect(within(drawer).queryByText(/unpublish first/)).toBeNull();
     fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish" }));
     expect(setAnnouncementState).not.toHaveBeenCalled();
     fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish and tell 12 people?" }));
@@ -628,13 +732,20 @@ describe("What an employee reads (EKRAN-08)", () => {
     });
     vi.mocked(getAnnouncements).mockResolvedValue(list({ can_manage: false, announcements: [asked, plain, ended] }));
     renderList();
-    const askedRow = await screen.findByRole("button", { name: /Uniform policy/ });
+    await screen.findByRole("list", { name: "Current announcements" });
+    const desktop = within(document.querySelector<HTMLElement>(".announcement-reader-list")!);
+    const askedRow = desktop.getByRole("button", { name: /Uniform policy/ });
     expect(within(askedRow).getByText("Acknowledge")).toBeTruthy();
-    expect(within(screen.getByRole("button", { name: /New coffee/ })).queryByText("Acknowledge")).toBeNull();
+    expect(within(desktop.getByRole("button", { name: /New coffee/ })).queryByText("Acknowledge")).toBeNull();
+    // The phone's cards say the same.
+    const cards = within(screen.getByRole("list", { name: "Current announcements" }));
+    expect(within(cards.getByRole("button", { name: "Uniform policy, Acknowledge" })).getByText("Acknowledge")).toBeTruthy();
+    expect(within(cards.getByRole("button", { name: "New coffee" })).queryByText("Acknowledge")).toBeNull();
     expect(screen.queryByText("Summer hours")).toBeNull();
     expect(screen.queryByRole("button", { name: "New" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
-    expect(screen.getByText("Summer hours")).toBeTruthy();
+    expect(desktop.getByText("Summer hours")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Past announcements" })).toBeTruthy();
   });
 
   it("acknowledges from the reader drawer", async () => {
@@ -701,8 +812,17 @@ describe("Important Dates (EKRAN-08)", () => {
     expect(within(table).getByText("Downtown closed")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Announcements" }).getAttribute("href")).toBe("/app/announcements");
     expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
+    // The phone's cards: same order; the days, then the kind and what that day means.
+    const cards = () =>
+      within(screen.getByRole("list", { name: "Important dates" }))
+        .getAllByRole("button")
+        .map((card) => card.getAttribute("aria-label"));
+    expect(cards()).toEqual(["Thanksgiving, Thu, Nov 26, Published", "Christmas, Fri, Dec 25, Published"]);
+    const card = within(screen.getByRole("button", { name: "Thanksgiving, Thu, Nov 26, Published" }));
+    expect(card.getByText("Holiday · Downtown closed")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
     expect(titles()).toEqual(["Labor Day"]);
+    expect(cards()).toEqual(["Labor Day, Mon, Sep 7, Past"]);
   });
 
   it("searches by words like Announcements, with New right after the search bar", async () => {

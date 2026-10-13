@@ -32,6 +32,7 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
 import { CatalogSortButton } from "./CatalogSortButton";
+import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
@@ -144,16 +145,20 @@ function ManagerList({
   const split = tab === "all" || tab === "published";
   const active = rows.filter((record) => record.display_status !== "past");
   const past = rows.filter((record) => record.display_status === "past");
+  // The table on a desktop, one card per post on a phone (list-cards.css).
   const table = (items: AnnouncementRecord[], label: string, empty: string) => (
-    <AnnouncementTable
-      label={label}
-      rows={sortRecords(items, sort)}
-      sort={sort}
-      empty={empty}
-      timeFormat={timeFormat}
-      onSort={(key) => setSort((current) => nextSort(current, key))}
-      onOpen={onOpen}
-    />
+    <>
+      <AnnouncementTable
+        label={label}
+        rows={sortRecords(items, sort)}
+        sort={sort}
+        empty={empty}
+        timeFormat={timeFormat}
+        onSort={(key) => setSort((current) => nextSort(current, key))}
+        onOpen={onOpen}
+      />
+      <AnnouncementCards label={label} rows={sortRecords(items, sort)} timeFormat={timeFormat} onOpen={onOpen} />
+    </>
   );
   return (
     <>
@@ -340,6 +345,58 @@ function AnnouncementTable({
   );
 }
 
+/** Phone: the shared list card (KARARLAR Genel "telefonda liste sayfaları kart satırıyla"). */
+function AnnouncementCards({
+  label,
+  rows,
+  timeFormat,
+  onOpen,
+}: {
+  label: string;
+  rows: AnnouncementRecord[];
+  timeFormat: TimeFormat;
+  onOpen: (id: string) => void;
+}) {
+  if (!rows.length) return null;
+  return (
+    <ListCards label={label}>
+      {rows.map((record) => {
+        const title = record.title || "Untitled";
+        const status = statusLabels[record.display_status];
+        const when = whenText(record, timeFormat);
+        return (
+          <ListCard
+            key={record.id}
+            label={[title, record.on_important_dates ? "on Important Dates" : "", status, when].filter(Boolean).join(", ")}
+            mark={record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+            title={<span>{title}</span>}
+            status={
+              <span className="list-chip" data-tone={statusTones[record.display_status]}>
+                {status}
+              </span>
+            }
+            lines={[
+              [isUnderway(record) ? "Today" : "", announcementCategoryText(record), when].filter(Boolean).join(" · "),
+              record.body || null,
+            ]}
+            onOpen={() => onOpen(record.id)}
+          />
+        );
+      })}
+    </ListCards>
+  );
+}
+
+/** An Important Date names its days; any other post when it went out or goes out. */
+function whenText(record: AnnouncementRecord, timeFormat: TimeFormat): string {
+  if (record.on_important_dates && record.starts_on) return rangeText(record.starts_on, record.ends_on);
+  const on = publishedOn(record);
+  if (!on.at) return "";
+  if (on.planned) return `Publishes ${momentText(on.at, record.time_zone, timeFormat)}`;
+  const day = momentDay(on.at, record.time_zone);
+  return `Published ${dayText(day, Number(day.slice(0, 4)) !== new Date().getFullYear())}`;
+}
+
 function ReaderList({
   records,
   onOpen,
@@ -411,6 +468,31 @@ function ReaderList({
           </p>
         )}
       </div>
+      {rows.length > 0 && (
+        <ListCards label={tab === "past" ? "Past announcements" : "Current announcements"}>
+          {rows.map((record) => {
+            const ask = tab === "current" && record.asked_to_acknowledge && !record.acknowledged_at;
+            const when = record.starts_on ? rangeText(record.starts_on, record.ends_on) : null;
+            return (
+              <ListCard
+                key={record.id}
+                label={[record.title, when, ask ? "Acknowledge" : ""].filter(Boolean).join(", ")}
+                mark={record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+                title={<span>{record.title}</span>}
+                status={
+                  ask ? (
+                    <span className="list-chip" data-tone="blue">
+                      Acknowledge
+                    </span>
+                  ) : null
+                }
+                lines={[when, record.body || null]}
+                onOpen={() => onOpen(record.id)}
+              />
+            );
+          })}
+        </ListCards>
+      )}
     </>
   );
 }

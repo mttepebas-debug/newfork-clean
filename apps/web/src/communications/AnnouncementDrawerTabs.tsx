@@ -10,8 +10,8 @@ import type {
   AnnouncementShiftChoice,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
-import { X } from "lucide-react";
-import { Fragment, useState, type ReactNode } from "react";
+import { Check, MapPin, Plus, Search, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { AvailabilityClockInput } from "../availability/AvailabilityClockInput";
 import {
   announcementCategories,
@@ -717,6 +717,8 @@ export type Acknowledgements = {
   onRemind: () => void;
 };
 
+/** Audience is one list (Mert, 2026-10-12, variant C): who gets it, and "+ Add people" opens a search in its place.
+ * Nobody is picked until checked; picks survive a new search. "Ask people to acknowledge" stays last. */
 export function AudienceTab({
   draft,
   update,
@@ -744,26 +746,20 @@ export function AudienceTab({
   /** A published post that asks to acknowledge: who has and who hasn't (Mert, 2026-10-12). */
   acks?: Acknowledgements;
 }) {
-  const [filter, setFilter] = useState({ location: "", department: "", job: "" });
-  const [unpicked, setUnpicked] = useState<Set<string>>(new Set());
+  const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState("");
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
   const checked = new Set(checkedLocations.map((location) => location.id));
   const atChecked = (person: AnnouncementPerson) => person.location_ids.some((id) => checked.has(id));
+  const meta = (person: AnnouncementPerson) =>
+    [person.job_name, person.location_name].filter(Boolean).join(" · ");
   const pool = list.people.filter(
     (person) => person.user_id !== me && !draft.people.includes(person.user_id) && !atChecked(person),
   );
-  const byLocation = pool.filter((person) => !filter.location || person.location_ids.includes(filter.location));
-  const departments = list.departments.filter((department) =>
-    byLocation.some((person) => person.department_ids.includes(department.id)),
-  );
-  const department = departments.some((item) => item.id === filter.department) ? filter.department : "";
-  const byDepartment = byLocation.filter((person) => !department || person.department_ids.includes(department));
-  const jobs = list.jobs.filter((job) => byDepartment.some((person) => person.job_ids.includes(job.id)));
-  const job = jobs.some((item) => item.id === filter.job) ? filter.job : "";
-  const shown = byDepartment.filter((person) => !job || person.job_ids.includes(job));
-  const picked = shown.filter((person) => !unpicked.has(person.user_id));
-  const locationOptions = list.locations.filter((location) =>
-    pool.some((person) => person.location_ids.includes(location.id)),
-  );
+  const words = query.trim().toLowerCase();
+  const shown = pool.filter((person) => !words || `${person.name} ${meta(person)}`.toLowerCase().includes(words));
+  const picked = pool.filter((person) => chosen.has(person.user_id));
+  const allShownPicked = shown.length > 0 && shown.every((person) => chosen.has(person.user_id));
   const asked = acks?.people ?? [];
   const askedIds = new Set(asked.map((person) => person.user_id));
   // Someone asked to acknowledge reads under Not yet or Acknowledged instead.
@@ -776,151 +772,142 @@ export function AudienceTab({
   const unknownAdded = draft.people.filter((id) => !people.has(id) && !askedIds.has(id)).length;
   const notYet = asked.filter((person) => !person.acknowledged_at);
   const done = asked.filter((person) => person.acknowledged_at);
-  const removeButton = (person: { user_id: string; name: string }) =>
-    !locked &&
-    draft.people.includes(person.user_id) && (
-      <button
-        type="button"
-        className="ad-remove"
-        aria-label={`Remove ${person.name}`}
-        onClick={() =>
-          update((current) => ({
-            ...current,
-            people: current.people.filter((id) => id !== person.user_id),
-          }))
-        }
-      >
-        <X size={14} aria-hidden />
-      </button>
-    );
-  const meta = (person: AnnouncementPerson) =>
-    [person.job_name, person.location_name].filter(Boolean).join(" · ");
-  const reset = (next: typeof filter) => {
-    setFilter(next);
-    setUnpicked(new Set());
+  const share = asked.length ? Math.round((done.length / asked.length) * 100) : 0;
+
+  const close = () => {
+    setAdding(false);
+    setQuery("");
+    setChosen(new Set());
   };
+  const choose = (ids: string[], on: boolean) => {
+    const next = new Set(chosen);
+    for (const id of ids) {
+      if (on) next.add(id);
+      else next.delete(id);
+    }
+    setChosen(next);
+  };
+  const addPicked = () => {
+    const ids = picked.map((person) => person.user_id);
+    update((current) => ({ ...current, people: [...current.people, ...ids] }));
+    close();
+  };
+  const row = (person: { user_id: string; name: string }, sub: string, end?: ReactNode) => (
+    <div className="ad-row" key={person.user_id}>
+      <span className="ad-avatar ad-av" aria-hidden>
+        {initials(person.name)}
+      </span>
+      <span className="ad-row-text">
+        <b>{person.name}</b>
+        <small>{sub}</small>
+      </span>
+      {end}
+      {!locked && draft.people.includes(person.user_id) && (
+        <button
+          type="button"
+          className="ad-x"
+          aria-label={`Remove ${person.name}`}
+          onClick={() =>
+            update((current) => ({ ...current, people: current.people.filter((id) => id !== person.user_id) }))
+          }
+        >
+          <X size={14} aria-hidden />
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <p className="ad-desc">Everyone at a checked location gets it. Add anyone else here.</p>
-      <div className="ad-audience">
-        <section className="ad-pane" aria-label="Add people">
-          <div className="ad-pane-head">
-            <b>Add people</b>
-            <div className="ad-filters">
-              <select
-                aria-label="Location"
-                value={filter.location}
-                disabled={locked}
-                onChange={(event) => reset({ ...filter, location: event.target.value })}
-              >
-                <option value="">All locations</option>
-                {locationOptions.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Department"
-                value={department}
-                disabled={locked}
-                onChange={(event) => reset({ ...filter, department: event.target.value })}
-              >
-                <option value="">All departments</option>
-                {departments.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Job"
-                value={job}
-                disabled={locked}
-                onChange={(event) => reset({ ...filter, job: event.target.value })}
-              >
-                <option value="">All jobs</option>
-                {jobs.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="ad-people">
-            {shown.length ? (
-              <label className="ad-person ad-person-all">
-                <input
-                  type="checkbox"
-                  checked={picked.length === shown.length}
-                  disabled={locked}
-                  onChange={(event) =>
-                    setUnpicked(event.target.checked ? new Set() : new Set(shown.map((person) => person.user_id)))
-                  }
-                />
-                <span>All {shown.length} shown</span>
-              </label>
-            ) : (
-              <div className="ad-empty">{pool.length ? "Nobody matches these filters." : "Everyone already gets it."}</div>
-            )}
-            {shown.map((person) => (
-              <label className="ad-person" key={person.user_id}>
-                <input
-                  type="checkbox"
-                  checked={!unpicked.has(person.user_id)}
-                  disabled={locked}
-                  onChange={(event) => {
-                    const next = new Set(unpicked);
-                    if (event.target.checked) next.delete(person.user_id);
-                    else next.add(person.user_id);
-                    setUnpicked(next);
-                  }}
-                />
-                <span>
-                  {person.name}
-                  <span className="ad-meta">{meta(person)}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-          <div className="ad-pane-foot">
-            <Button
-              type="button"
-              disabled={locked || !picked.length}
-              onClick={() => {
-                const ids = picked.map((person) => person.user_id);
-                update((current) => ({ ...current, people: [...current.people, ...ids] }));
-                reset({ location: "", department: "", job: "" });
-              }}
-            >
-              {picked.length ? `Add ${plural(picked.length, "person", "people")}` : "Add people"}
+      <section className="ad-pane ad-who" aria-label="Who gets it">
+        <div className="ad-who-head">
+          <b>{adding ? "Add people" : "Who gets it"}</b>
+          {!adding && <span className="ad-who-pill">{plural(recipientCount, "person", "people")}</span>}
+          {!adding && !locked && (
+            <Button type="button" className="secondary-button ad-add-open" onClick={() => setAdding(true)}>
+              <Plus size={15} aria-hidden /> Add people
             </Button>
-          </div>
-        </section>
-        <section className="ad-pane" aria-label="Who gets it">
-          <div className="ad-pane-head">
-            <b>Who gets it · {recipientCount}</b>
+          )}
+        </div>
+        {adding ? (
+          <>
+            <label className="ad-search">
+              <Search size={15} aria-hidden />
+              <input
+                type="search"
+                placeholder="Search name, job or location"
+                aria-label="Search people"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <div className="ad-list">
+              {shown.length ? (
+                <label className="ad-row ad-row-all">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={allShownPicked}
+                    onChange={(event) => choose(shown.map((person) => person.user_id), event.target.checked)}
+                  />
+                  <span className="ad-row-text">
+                    <b>Select all</b>
+                  </span>
+                  <span className="ad-count">{shown.length}</span>
+                </label>
+              ) : (
+                <div className="ad-empty">{pool.length ? "Nobody matches." : "Everyone already gets it."}</div>
+              )}
+              {shown.map((person) => (
+                <label className="ad-row" key={person.user_id}>
+                  <input
+                    type="checkbox"
+                    checked={chosen.has(person.user_id)}
+                    onChange={(event) => choose([person.user_id], event.target.checked)}
+                  />
+                  <span className="ad-avatar ad-av" aria-hidden>
+                    {initials(person.name)}
+                  </span>
+                  <span className="ad-row-text">
+                    <b>{person.name}</b>
+                    <small>{meta(person)}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div className="ad-pick-foot">
+              <span className="ad-muted">{picked.length ? `${picked.length} selected` : "Pick people to add"}</span>
+              <Button type="button" className="secondary-button" onClick={close}>
+                Cancel
+              </Button>
+              <Button type="button" disabled={!picked.length} onClick={addPicked}>
+                {picked.length ? `Add ${plural(picked.length, "person", "people")}` : "Add"}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="ad-list">
             {acks && (
-              <div className="ad-ack-sum">
-                <span>
-                  <span className="ad-strong">
-                    {done.length} of {asked.length}
-                  </span>{" "}
-                  acknowledged
+              <div className="ad-ack-box">
+                <div className="ad-ack-line">
+                  <span>
+                    <b>{done.length}</b> of {asked.length} acknowledged
+                  </span>
+                  <button
+                    type="button"
+                    className="ad-mini"
+                    aria-label={notYet.length ? `Remind ${plural(notYet.length, "person", "people")}` : undefined}
+                    disabled={!notYet.length || acks.busy}
+                    onClick={acks.onRemind}
+                  >
+                    {notYet.length ? `Remind ${notYet.length}` : "Everyone acknowledged"}
+                  </button>
+                </div>
+                <span className="ad-bar" aria-hidden>
+                  <span style={{ width: `${share}%` }} />
                 </span>
-                <Button
-                  type="button"
-                  className="secondary-button"
-                  disabled={!notYet.length || acks.busy}
-                  onClick={acks.onRemind}
-                >
-                  {notYet.length ? `Remind ${plural(notYet.length, "person", "people")}` : "Everyone acknowledged"}
-                </Button>
               </div>
             )}
-          </div>
-          <div className="ad-people">
             {problem && (
               <div className="ad-pane-error">
                 <FieldError message={problem} />
@@ -928,16 +915,17 @@ export function AudienceTab({
             )}
             {checkedLocations.length > 0 && (
               <>
-                <div className="ad-group">
-                  <span>From Locations</span>
-                </div>
+                <div className="ad-group">From locations</div>
                 {checkedLocations.map((location) => (
-                  <div className="ad-person" key={location.id}>
-                    <span>
-                      Everyone at {location.name}
-                      {location.count !== null && (
-                        <span className="ad-meta">{plural(location.count, "person", "people")}</span>
-                      )}
+                  <div className="ad-row" key={location.id}>
+                    <span className="ad-ico" aria-hidden>
+                      <MapPin size={14} />
+                    </span>
+                    <span className="ad-row-text">
+                      <b>{location.name}</b>
+                      <small>
+                        Everyone there{location.count !== null ? ` · ${plural(location.count, "person", "people")}` : ""}
+                      </small>
                     </span>
                   </div>
                 ))}
@@ -946,28 +934,16 @@ export function AudienceTab({
             {(added.length > 0 || unknownAdded > 0) && (
               <>
                 <div className="ad-group">
-                  <span>Added here</span>
+                  Added here · {added.length + unknownAdded}
                   {!locked && (
-                    <button
-                      type="button"
-                      className="ad-link"
-                      onClick={() => update((current) => ({ ...current, people: [] }))}
-                    >
+                    <button type="button" className="ad-link" onClick={() => update((current) => ({ ...current, people: [] }))}>
                       Clear
                     </button>
                   )}
                 </div>
-                {added.map((person) => (
-                  <div className="ad-person" key={person.user_id}>
-                    <span>
-                      {person.name}
-                      <span className="ad-meta">{meta(person)}</span>
-                    </span>
-                    {removeButton(person)}
-                  </div>
-                ))}
+                {added.map((person) => row(person, meta(person)))}
                 {unknownAdded > 0 && (
-                  <div className="ad-person">
+                  <div className="ad-row">
                     <span className="ad-muted">{plural(unknownAdded, "other person", "other people")}</span>
                   </div>
                 )}
@@ -975,63 +951,41 @@ export function AudienceTab({
             )}
             {shiftPeople.length > 0 && (
               <>
-                <div className="ad-group">
-                  <span>Their shift changes</span>
-                </div>
-                {shiftPeople.map((person) => (
-                  <div className="ad-person" key={person.user_id}>
-                    <span>
-                      {person.name}
-                      <span className="ad-meta">{person.meta}</span>
-                    </span>
-                  </div>
-                ))}
+                <div className="ad-group">Their shift changes · {shiftPeople.length}</div>
+                {shiftPeople.map((person) => row(person, person.meta))}
               </>
             )}
-            {(
-              [
-                ["Not yet", notYet],
-                ["Acknowledged", done],
-              ] as const
-            ).map(
-              ([group, members]) =>
-                members.length > 0 && (
-                  <Fragment key={group}>
-                    <div className="ad-group">
-                      <span>
-                        {group} · {members.length}
-                      </span>
-                    </div>
-                    {members.map((person) => (
-                      <div className="ad-person" key={person.user_id}>
-                        <span>
-                          {person.name}
-                          <span className="ad-meta">{meta(person)}</span>
-                        </span>
-                        {person.acknowledged_at ? (
-                          <span className="ad-ok" title={momentText(person.acknowledged_at, acks!.zone, acks!.timeFormat)}>
-                            ✓ {momentText(person.acknowledged_at, acks!.zone, acks!.timeFormat)}
-                          </span>
-                        ) : (
-                          <span className="ad-not-yet">Not yet</span>
-                        )}
-                        {removeButton(person)}
-                      </div>
-                    ))}
-                  </Fragment>
-                ),
+            {notYet.length > 0 && (
+              <>
+                <div className="ad-group" data-tone="amber">
+                  Not yet · {notYet.length}
+                </div>
+                {notYet.map((person) => row(person, meta(person)))}
+              </>
             )}
-            {!checkedLocations.length &&
-              !added.length &&
-              !unknownAdded &&
-              !shiftPeople.length &&
-              !asked.length &&
-              !problem && (
-                <div className="ad-empty">Nobody yet. Add people on the left, or check a location on Details.</div>
-              )}
+            {done.length > 0 && (
+              <>
+                <div className="ad-group" data-tone="green">
+                  Acknowledged · {done.length}
+                </div>
+                {done.map((person) =>
+                  row(
+                    person,
+                    meta(person),
+                    <span className="ad-ack-when">
+                      <Check size={13} aria-hidden />
+                      {momentText(person.acknowledged_at!, acks!.zone, acks!.timeFormat)}
+                    </span>,
+                  ),
+                )}
+              </>
+            )}
+            {!checkedLocations.length && !added.length && !unknownAdded && !shiftPeople.length && !asked.length && !problem && (
+              <div className="ad-empty">Nobody yet. Check a location on Details or add people.</div>
+            )}
           </div>
-        </section>
-      </div>
+        )}
+      </section>
       <div className="ad-ack-flag">
         <Flag
           label="Ask people to acknowledge"

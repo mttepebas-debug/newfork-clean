@@ -607,9 +607,6 @@ function AnnouncementEditor({
         >
           Unpublish
         </ConfirmButton>,
-        <span key="archive-hint" className="ad-muted">
-          Archive: unpublish first
-        </span>,
       );
     if ((status === "draft" || status === "unpublished" || status === "past") && record.can_archive)
       left.push(

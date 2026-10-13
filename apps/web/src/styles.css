@@ -3451,7 +3451,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 8px;
   border-top: 1px solid #e2e5e3;
 }
+/* The page scrolls inside .app-main. It is the containing block for anything
+   placed absolutely in a page (an .sr-only label too); otherwise such a label
+   far down a long list lengthens the whole document, and the window scrolls
+   the sidebar and the phone's bottom bar away with it (Mert 2026-10-13). */
 .app-main {
+  position: relative;
   min-width: 0;
   overflow: auto;
   scrollbar-gutter: stable;
