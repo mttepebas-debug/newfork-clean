@@ -469,7 +469,8 @@ export function GhostShiftCard({
             content={displayedLocation}
             className="schedule-ghost-location"
           >
-            <MapPin size={12} strokeWidth={2.4} aria-hidden="true" />
+            {/* A little bigger than the other corner icons (Mert, 2026-10-13). */}
+            <MapPin size={14} strokeWidth={2.3} aria-hidden="true" />
           </Tooltip>
         </span>
       ) : null}
