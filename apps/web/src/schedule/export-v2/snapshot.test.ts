@@ -151,6 +151,21 @@ describe("Export v2 immutable preview projection", () => {
     expect(JSON.stringify(result)).not.toContain("Besiktas");
     expect(JSON.stringify(result)).not.toContain("Bartender");
   });
+  it("leaves out a shift the open edit removed: not on the paper, not in the hours (S18)", () => {
+    // Derya removes Ali's live 09:00 shift in her edit; the grid shows it struck through until she publishes.
+    const value = { ...input(), source: { kind: "edit_session" as const, id: "edit", revision: 3, draftName: null },
+      display: { ...display, showTotalHours: true } };
+    value.model.shifts = [
+      { ...shift("removed"), source_published_shift_id: "live-1", pending_op_type: "delete" } as ScheduleShift,
+      shift("kept", { start_time: "15:00", end_time: "18:00" }),
+    ];
+    const projected = createScheduleExportSnapshot(value);
+    if (projected.status !== "ready") throw new Error(projected.reason);
+    const result = projected.snapshot;
+    expect(result.shifts.map(item => item.id)).toEqual(["kept"]);
+    expect(result.rows.find(row => row.id === "person-a")?.total).toBe("3h");
+    expect(result.totals?.week).toBe("3h");
+  });
   it("projects current total comparisons, all-day/partial closures and deduplicated important dates", () => {
     const value = input();
     value.display = { ...display, showTotalHours: true };
