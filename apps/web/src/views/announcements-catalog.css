@@ -5,7 +5,7 @@
   grid-template-columns: 150px minmax(0, 1fr) 150px;
 }
 .announcements-page .important-date-row {
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) 140px 176px;
+  grid-template-columns: 140px minmax(0, 2fr) minmax(0, 1fr) 190px 190px;
 }
 .announcements-page .job-catalog-row {
   min-height: 58px;
@@ -121,9 +121,6 @@
 .announcement-dash {
   color: var(--theme-muted);
   font-size: 14px;
-}
-.announcements-page .important-date-day {
-  white-space: normal;
 }
 .announcement-list-empty {
   margin: 0;

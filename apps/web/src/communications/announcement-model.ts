@@ -300,25 +300,6 @@ export function sortRecords(rows: readonly AnnouncementRecord[], sort: ListSort)
 type DayLocation = Pick<AnnouncementRecord["locations"][number], "name" | "short_name" | "day" | "opens" | "closes">;
 const placeName = (location: DayLocation) => location.short_name || location.name;
 
-/** "Downtown closed", "Harbor 10:00 AM–3:00 PM", "Uptown usual hours". */
-export function locationDayText(location: DayLocation, timeFormat: TimeFormat): string {
-  if (location.day === "closed") return `${placeName(location)} closed`;
-  if (location.day === "short" && location.opens && location.closes)
-    return `${placeName(location)} ${hoursText(location.opens, location.closes, timeFormat)}`;
-  return `${placeName(location)} usual hours`;
-}
-
-/** What the day is at each location; or the event's time; or "All day". */
-export function dayLine(
-  record: Pick<AnnouncementRecord, "locations" | "event_from" | "event_until">,
-  timeFormat: TimeFormat,
-): string {
-  const parts = record.locations.filter((location) => !location.archived).map((location) => locationDayText(location, timeFormat));
-  if (parts.length) return parts.join(" · ");
-  if (record.event_from && record.event_until) return hoursText(record.event_from, record.event_until, timeFormat);
-  return "All day";
-}
-
 /** Closed somewhere (red), shorter hours somewhere (amber), or neither. */
 export function dayTone(record: Pick<AnnouncementRecord, "locations">): "red" | "amber" | null {
   if (record.locations.some((location) => location.day === "closed")) return "red";
