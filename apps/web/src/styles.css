@@ -5993,11 +5993,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #e3f5ec;
   box-shadow: inset 0 0 0 2px #2b7e67;
 }
+/* The cell getting a new shift, while its window is open (Mert, 2026-10-12). */
 .schedule-cell[data-shift-editor-active-cell="true"] {
-  background: #fff7e5;
-  box-shadow:
-    inset 0 0 0 2px #d99221,
-    inset 0 0 0 999px rgba(217, 146, 33, 0.08);
+  background: color-mix(in srgb, var(--theme-accent) 7%, var(--theme-surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--theme-accent) 75%, transparent);
 }
 .schedule-cell.schedule-unassigned-row-cell[data-shift-editor-active-cell="true"] {
   background: var(--schedule-unassigned-row-background);
@@ -6007,7 +6006,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   pointer-events: none;
   position: absolute;
   inset: 3px;
-  border: 1px solid rgba(217, 146, 33, 0.55);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent);
   border-radius: 5px;
 }
 .schedule-cell-add-action {
@@ -6603,152 +6602,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   top: 14px !important;
   transform: none !important;
 }
-.schedule-quick-editor {
-  position: fixed;
-  z-index: 85;
-  width: min(304px, calc(100vw - 16px));
-  max-height: min(520px, calc(100dvh - 16px));
-  overflow: auto;
-  border: 1px solid rgba(184, 197, 191, 0.92);
-  border-radius: 8px;
-  background: var(--theme-surface);
-  box-shadow:
-    0 16px 34px rgba(24, 36, 31, 0.16),
-    0 0 0 1px rgba(255, 255, 255, 0.72);
-}
-.schedule-quick-editor--floating {
-  /* max-height comes from the inline style (top position + viewport, BL-199);
-     overflow-y lets the body scroll under the sticky header and action bar. */
-  overflow-x: hidden;
-  overflow-y: auto;
-  /* Focus scrolling must clear the sticky header (40px) and action bar
-     (47px), or Tab stops on a field hidden under them (BL-199, measured). */
-  scroll-padding-top: 48px;
-  scroll-padding-bottom: 56px;
-  scrollbar-width: none;
-}
-.schedule-quick-editor--floating::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-}
-.schedule-quick-editor > header {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border-bottom: 1px solid var(--theme-border);
-  padding: 0 8px 0 12px;
-  background: linear-gradient(180deg, #fbfdfc, #f5f8f6);
-  cursor: move;
-  user-select: none;
-}
-.schedule-quick-editor > header > span {
-  display: grid;
-  min-width: 0;
-  gap: 1px;
-}
-.schedule-quick-editor > header strong {
-  overflow: hidden;
-  color: #26332e;
-  font-size: 13.5px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-quick-editor > header small {
-  overflow: hidden;
-  color: #66736e;
-  font-size: 10px;
-  font-weight: 750;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-quick-editor > header button {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: #65736d;
-  cursor: pointer;
-}
-.schedule-quick-editor > header button:hover {
-  background: #e9efec;
-  color: #26332e;
-}
-.schedule-quick-editor .schedule-shift-form {
-  grid-template-columns: 1fr;
-  gap: 6px;
-  padding: 7px 8px 0;
-}
-.schedule-quick-editor .schedule-time-fields {
-  grid-template-columns: 1fr 1fr;
-}
-.schedule-quick-editor--floating .schedule-shift-form-intro {
-  grid-template-columns: 1fr;
-  gap: 6px;
-  padding: 9px 10px;
-}
-.schedule-quick-editor--floating .schedule-shift-form-section {
-  gap: 8px;
-  border-color: transparent;
-  padding: 6px 4px;
-  background: transparent;
-}
-.schedule-quick-editor--floating .schedule-dialog-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 3;
-  margin: 2px -8px 0;
-  border-top: 1px solid var(--theme-border);
-  padding: 7px 8px 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--theme-surface));
-  box-shadow: 0 -6px 14px rgba(24, 36, 31, 0.07);
-}
-.schedule-quick-editor--floating .schedule-dialog-actions button {
-  min-height: 31px;
-}
-.schedule-quick-editor--floating .schedule-quick-editor-actions {
-  flex-wrap: nowrap;
-}
-.schedule-quick-editor--drawer {
-  position: static;
-  z-index: auto;
-  width: 100%;
-  min-height: 100%;
-  max-height: none;
-  display: flex;
-  flex-direction: column;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.schedule-quick-editor--drawer .schedule-shift-form {
-  min-height: 100%;
-  align-content: start;
-  gap: 14px;
-  padding: 16px 18px 0;
-}
-.schedule-quick-editor--drawer .schedule-dialog-actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  margin: 2px -18px 0;
-  border-top: 1px solid var(--theme-border);
-  padding: 12px 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), var(--theme-surface));
-  box-shadow: 0 -8px 18px rgba(24, 36, 31, 0.08);
-}
 .schedule-time-input {
   position: relative;
   width: 100%;
@@ -7281,143 +7134,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 13px;
   font-weight: 800;
 }
-.schedule-shift-drawer-layer {
-  position: fixed;
-  z-index: 108;
-  inset: 0;
-  display: flex;
-  justify-content: flex-end;
-}
-.schedule-shift-drawer-backdrop {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: rgba(15, 23, 42, 0.22);
-  cursor: default;
-}
-.schedule-shift-drawer {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  width: min(100vw, 448px);
-  height: 100dvh;
-  flex-direction: column;
-  overflow: hidden;
-  border-left: 1px solid #cfd8d3;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  box-shadow: -18px 0 38px rgba(24, 36, 31, 0.18);
-}
-.schedule-shift-drawer > header {
-  display: flex;
-  min-height: 74px;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--theme-border);
-  padding: 15px 16px 13px 18px;
-  background: #f8faf9;
-}
-.schedule-shift-drawer > header > div {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-.schedule-shift-drawer h2 {
-  margin: 0;
-  color: var(--theme-text);
-  font-size: 15px;
-  font-weight: 800;
-}
-.schedule-shift-drawer p {
-  margin: 0;
-  color: #64736c;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-.schedule-shift-drawer > header button {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: #65736d;
-  cursor: pointer;
-}
-.schedule-shift-drawer > header button:hover,
-.schedule-shift-drawer > header button:focus-visible {
-  background: #e9efec;
-  color: #26332e;
-  outline: none;
-}
-.schedule-shift-drawer-body {
-  min-height: 0;
-  flex: 1;
-  overflow-y: auto;
-  background: #fbfcfb;
-}
-.schedule-shift-drawer-status {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  color: #65716c;
-  font-size: 13px;
-  font-weight: 650;
-}
-.schedule-shift-drawer-status strong {
-  color: var(--theme-text);
-  font-size: 14px;
-}
-.schedule-shift-drawer-status button {
-  min-height: 34px;
-  justify-self: start;
-  border: 1px solid var(--theme-accent);
-  border-radius: 5px;
-  padding: 0 12px;
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-}
-.schedule-shift-drawer-discard {
-  display: grid;
-  gap: 10px;
-  border-top: 1px solid #e5c991;
-  padding: 13px 16px;
-  background: var(--theme-warning-soft);
-  color: #7a5415;
-  font-size: 12px;
-}
-.schedule-shift-drawer-discard strong {
-  color: #6d480c;
-  font-size: 13px;
-}
-.schedule-shift-drawer-discard > div {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.schedule-shift-drawer-discard button {
-  min-height: 30px;
-  border: 1px solid #d8bd79;
-  border-radius: 5px;
-  padding: 0 10px;
-  background: var(--theme-surface);
-  color: #6d480c;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-}
-.schedule-shift-drawer-discard button.danger {
-  border-color: #b84a3c;
-  background: #b84a3c;
-  color: #fff;
-}
 /* ConfirmDialog (shell/ConfirmDialog.tsx): the app's own confirm box. */
 .app-confirm-layer {
   position: fixed;
@@ -7623,19 +7339,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   cursor: not-allowed;
   opacity: 0.6;
 }
-.schedule-stale-editor {
-  display: grid;
-  gap: 12px;
-  padding: 18px;
-}
-.schedule-stale-editor button {
-  min-height: 36px;
-  border: 1px solid var(--theme-accent);
-  border-radius: 5px;
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-  font-weight: 750;
-}
 
 .schedule-dialog-layer {
   position: fixed;
@@ -7716,15 +7419,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-muted);
   font-size: 11px;
 }
-.schedule-shift-form,
 .schedule-save-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 13px;
   padding: 18px;
 }
-.schedule-shift-form label,
-.schedule-shift-field,
 .schedule-save-form label {
   display: grid;
   gap: 5px;
@@ -7732,170 +7432,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 11px;
   font-weight: 750;
 }
-.schedule-shift-field {
-  min-width: 0;
-}
-.schedule-shift-type-picker {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.schedule-shift-type-picker > span {
-  color: #56635d;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-align: center;
-  text-transform: uppercase;
-}
-.schedule-shift-type-picker > div {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
-}
-.schedule-shift-type-picker button {
-  min-height: 27px;
-  max-width: 100%;
-  border: 1px solid var(--theme-muted);
-  border-radius: 6px;
-  padding: 4px 10px;
-  background: transparent;
-  color: #6b756f;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1.1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition:
-    background-color 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease,
-    box-shadow 0.12s ease;
-  white-space: nowrap;
-}
-.schedule-shift-type-picker button:hover,
-.schedule-shift-type-picker button:focus-visible {
-  border-color: var(--shift-type-color, #176f59);
-  background: color-mix(in srgb, var(--shift-type-color, #176f59) 10%, var(--theme-surface));
-  color: var(--shift-type-color, #176f59);
-}
-.schedule-shift-type-picker button[aria-pressed="true"] {
-  border-color: var(--shift-type-color, #172033);
-  background: color-mix(in srgb, var(--shift-type-color, #172033) 12%, var(--theme-surface));
-  color: var(--shift-type-color, #172033);
-  box-shadow: inset 0 0 0 1px var(--shift-type-color, #172033);
-}
-.schedule-shift-type-picker small {
-  color: #7a8580;
-  font-size: 12px;
-  text-align: center;
-}
-.schedule-shift-form-intro,
-.schedule-shift-form-section {
-  display: grid;
-  grid-column: 1 / -1;
-  min-width: 0;
-}
-.schedule-shift-form-intro {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  border: 1px solid #dce5e0;
-  border-radius: 7px;
-  padding: 10px;
-  background: #f8fbf9;
-}
-.schedule-shift-form-intro > div {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-  color: #52615a;
-  font-size: 12px;
-  font-weight: 750;
-}
-.schedule-shift-form-intro svg {
-  flex: 0 0 auto;
-  color: #1f6f58;
-}
-.schedule-shift-form-intro span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-shift-form-section {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  border: 1px solid #e1e7e4;
-  border-radius: 7px;
-  padding: 13px;
-  background: var(--theme-surface);
-}
-.schedule-shift-form-section--details,
-.schedule-shift-form-section--time {
-  grid-template-columns: 1fr;
-}
-.schedule-quick-editor--floating .schedule-shift-form-section--details {
-  padding-top: 8px;
-}
-.schedule-shift-form-section--details .schedule-shift-type-picker,
-.schedule-shift-form-section--details .schedule-shift-field,
-.schedule-shift-form-section--details > label {
-  grid-column: 1 / -1;
-}
-.schedule-shift-form-section--time {
-  justify-items: center;
-  text-align: center;
-}
-.schedule-shift-form-section--time > .schedule-conflict-notice,
-.schedule-shift-form-section--time > .schedule-field-error {
-  justify-self: stretch;
-  text-align: left;
-}
-.schedule-shift-form-section-title {
-  display: flex;
-  grid-column: 1 / -1;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 0;
-}
-.schedule-shift-form-section--time .schedule-shift-form-section-title {
-  justify-content: center;
-}
-.schedule-shift-form-section-title strong {
-  color: var(--theme-text);
-  font-size: 13px;
-  font-weight: 800;
-}
-.schedule-shift-form-section-title span {
-  overflow: hidden;
-  color: #75817c;
-  font-size: 11px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-shift-field--readonly strong {
-  min-height: 38px;
-  display: flex;
-  align-items: center;
-  border: 1px solid #d9e1dd;
-  border-radius: 5px;
-  padding: 7px 9px;
-  background: #f7faf8;
-  color: #25312c;
-  font-size: 12px;
-  font-weight: 800;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-shift-form input,
-.schedule-shift-form select,
-.schedule-shift-form textarea,
 .schedule-save-form input,
 .schedule-save-form select {
   width: 100%;
@@ -7909,244 +7445,17 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 /* G2 (BL-293): fields take the app's focus ring, like the buttons beside
    them (button:focus-visible); hover never stands in for focus. */
-.schedule-quick-editor :is(input, select, textarea):focus-visible,
 .schedule-save-form :is(input, select):focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }
-.schedule-quick-select {
-  position: relative;
-  min-width: 0;
-}
-.schedule-quick-select > button[role="combobox"] {
-  display: flex;
-  width: 100%;
-  min-height: 34px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  border: 1px solid var(--theme-muted);
-  border-radius: 5px;
-  padding: 7px 9px;
-  background: var(--theme-surface);
-  color: #25312c;
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.schedule-quick-select > button[role="combobox"]:hover,
-.schedule-quick-select > button[role="combobox"]:focus-visible {
-  background: var(--theme-surface-soft);
-}
-.schedule-quick-select > button[role="combobox"]:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.schedule-quick-select > button[role="combobox"] > span:first-child,
-.schedule-quick-select [role="option"] > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-quick-select > button[role="combobox"] > svg {
-  flex: 0 0 auto;
-  color: #7a8580;
-  transition: transform 0.15s ease;
-}
-.schedule-quick-select > button[role="combobox"] > svg[data-open="true"] {
-  transform: rotate(180deg);
-}
-.schedule-quick-select [role="listbox"] {
-  position: absolute;
-  z-index: 90;
-  top: calc(100% + 4px);
-  left: 0;
-  display: grid;
-  width: 100%;
-  max-height: 192px;
-  gap: 1px;
-  overflow-y: auto;
-  border: 1px solid var(--theme-border-strong);
-  border-radius: 6px;
-  padding: 4px;
-  background: var(--theme-surface);
-  box-shadow: 0 12px 28px rgba(27, 39, 34, 0.16);
-}
-.schedule-quick-select [role="option"] {
-  display: flex;
-  width: 100%;
-  min-height: 30px;
-  align-items: center;
-  border: 0;
-  border-radius: 4px;
-  padding: 0 8px;
-  background: transparent;
-  color: #26312d;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  text-align: left;
-}
-.schedule-quick-select [role="option"]:hover,
-.schedule-quick-select [role="option"]:focus-visible {
-  background: var(--theme-surface-muted);
-  /* Inside, or the list's edge clips the ring. */
-  outline-offset: -2px;
-}
-.schedule-quick-select [role="option"][aria-selected="true"] {
-  background: #173e34;
-  color: var(--theme-on-accent);
-}
-.schedule-quick-label-option {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-}
-.schedule-quick-label-swatch {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(23, 62, 52, 0.22);
-  border-radius: 999px;
-}
-.schedule-shift-form .wide,
 .schedule-save-form label,
 .schedule-overwrite-warning,
 .schedule-dialog-actions {
   grid-column: 1 / -1;
 }
-.schedule-time-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  width: min(246px, 100%);
-  justify-self: center;
-  gap: 7px;
-}
-.schedule-time-fields label,
-.schedule-time-fields .schedule-time-input {
-  min-width: 0;
-}
-.schedule-time-fields label {
-  align-items: center;
-  text-align: center;
-}
-.schedule-shift-form .schedule-time-input--segmented input {
-  position: relative;
-  z-index: 1;
-  background: transparent;
-  color: transparent;
-  caret-color: #1f2b26;
-  text-shadow: none;
-  -webkit-text-fill-color: transparent;
-}
-.schedule-shift-form .schedule-time-input--segmented input::selection {
-  background: transparent;
-}
-.schedule-shift-form .schedule-time-input__segments {
-  z-index: 2;
-}
-.schedule-break-options {
-  display: grid;
-  grid-column: 1 / -1;
-  width: min(292px, 100%);
-  justify-self: center;
-  gap: 6px;
-  min-width: 0;
-  border: 0;
-  padding: 0;
-}
-.schedule-break-options legend {
-  color: #56635d;
-  font-size: 11px;
-  font-weight: 750;
-}
-.schedule-break-options > div {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
-}
-.schedule-break-options button {
-  min-height: 30px;
-  border: 1px solid var(--theme-muted);
-  border-radius: 5px;
-  background: var(--theme-surface);
-  color: #34413b;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease;
-}
-.schedule-break-options button:hover,
-.schedule-break-options button:focus-visible {
-  background: var(--theme-surface-muted);
-  transform: translateY(-1px);
-}
-.schedule-break-options button[aria-pressed="true"] {
-  border-color: var(--theme-accent);
-  background: #e8f4f0;
-  color: #114a3b;
-}
-.schedule-count-stepper {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 32px;
-  gap: 6px;
-}
-.schedule-checkbox-row {
-  grid-column: 1 / -1;
-  width: min(292px, 100%);
-  justify-self: center;
-  grid-template-columns: 16px minmax(0, 1fr) !important;
-  align-items: center;
-  gap: 8px !important;
-  color: #394640 !important;
-  font-size: 12px !important;
-}
-/* BL-199: the shift's note, under the time and break. */
-.schedule-shift-form-section--note {
-  grid-template-columns: 1fr;
-  gap: 5px;
-}
-.schedule-shift-note-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-.schedule-shift-note-head small {
-  color: var(--theme-muted);
-  font-size: 11px;
-  font-weight: 600;
-}
-.schedule-shift-form-section--note textarea {
-  /* BL-295: grows with the note up to max-height; rows={2} where unsupported. */
-  field-sizing: content;
-  min-height: 52px;
-  max-height: 160px;
-  resize: vertical;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-/* Disabled like the Employee picker beside it while several open shifts
-   are added at once (a note goes on one shift only). */
-.schedule-shift-form-section--note textarea:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
 /* 16px on a phone, or iOS zooms the page into the field (BL-294). */
 @media (max-width: 520px) {
-  .schedule-shift-form :is(input, select, textarea),
   .schedule-save-form :is(input, select) {
     font-size: 16px;
   }
@@ -8154,40 +7463,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .schedule-time-input .schedule-time-input__segments {
     font-size: 16px;
   }
-}
-.schedule-checkbox-row input {
-  width: 16px;
-  min-height: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--theme-accent);
-}
-.schedule-count-stepper button,
-.schedule-count-stepper input {
-  min-height: 32px;
-}
-.schedule-count-stepper button {
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--theme-muted);
-  border-radius: 5px;
-  background: #f8faf8;
-  color: #25312c;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease,
-    transform 0.15s ease;
-}
-.schedule-count-stepper button:hover,
-.schedule-count-stepper button:focus-visible {
-  background: var(--theme-surface-muted);
-  transform: translateY(-1px);
-}
-.schedule-count-stepper input {
-  text-align: center;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
 }
 .schedule-dialog-actions {
   display: flex;
@@ -8245,43 +7520,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #ffe2de;
   color: #8f2d22;
 }
-.schedule-field-error {
-  grid-column: 1 / -1;
-  margin: -2px 0 0;
-  border: 1px solid #e0aaa2;
-  border-radius: 5px;
-  padding: 7px 9px;
-  background: #fff1ef;
-  color: #923427;
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1.35;
-}
 @media (max-width: 520px) {
-  .schedule-shift-drawer {
-    width: 100vw;
-  }
-  .schedule-shift-form-intro,
-  .schedule-shift-form-section,
-  .schedule-time-fields {
-    grid-template-columns: 1fr;
-  }
-  .schedule-break-options > div {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .schedule-quick-editor--drawer .schedule-dialog-actions {
-    padding-bottom: calc(13px + env(safe-area-inset-bottom));
-  }
   .schedule-dialog-actions button {
     flex: 1 1 calc(50% - 4px);
   }
   .schedule-dialog-actions button.primary,
   .schedule-dialog-actions button.danger {
     flex-basis: 100%;
-  }
-  .schedule-shift-form-section-title {
-    display: grid;
-    gap: 3px;
   }
 }
 .schedule-overwrite-warning,
@@ -11720,7 +10965,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 500;
   text-transform: lowercase;
 }
-
 
 .onboarding-form input,
 .onboarding-form select {

@@ -3078,7 +3078,6 @@ export function SchedulePage({
           formatTime={formatTime}
           addDays={addDays}
           scheduleClosureCoversDate={scheduleClosureCoversDate}
-          presentation="floating"
           onClose={requestCloseEditor}
           onDismiss={dismissEditorFromBlankSurface}
           shouldSuppressDismissPointerDown={isScheduleSurfaceTarget}
