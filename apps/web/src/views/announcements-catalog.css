@@ -248,4 +248,17 @@
   .announcements-page .announcement-toolbar-controls {
     align-items: stretch;
   }
+  /* Search and New share one row, so no extra row sits above the list
+     (Mert 2026-10-13, test page comment). */
+  .announcements-page.list-page.list-page .catalog-toolbar-filter-row {
+    flex-wrap: wrap;
+  }
+  .announcements-page.list-page.list-page .catalog-toolbar .toolbar-search {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .announcements-page.list-page.list-page .catalog-toolbar .list-add-button {
+    flex: 0 0 auto;
+  }
 }
