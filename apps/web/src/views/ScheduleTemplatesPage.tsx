@@ -22,6 +22,7 @@ import {
 } from "../schedule/schedule-data";
 
 import { isNoAccess } from "../lib/no-access";
+import { scheduleRefusalReason } from "../schedule/lib/scheduleRefusalReason";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 function shortDate(value: string): string {
@@ -299,7 +300,8 @@ function templateMutationError(
     if (status === "name_taken") {
       return "A template with this name already exists.";
     }
-    if (error.status === 409) {
+    // BL-1044: the key, not any 409, says another tab renamed or deleted it.
+    if (scheduleRefusalReason(error) === "schedule.template_changed") {
       return "This template changed. Refresh and try again.";
     }
   }

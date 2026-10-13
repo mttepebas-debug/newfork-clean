@@ -54,6 +54,9 @@ function Harness({
           ? `${drag.dragState.label}|${drag.dragState.targetKey}|${drag.dragState.targetStatus}`
           : "idle"}
       </output>
+      <output data-testid="drag-grab">
+        {drag.dragState ? `${drag.dragState.grabX},${drag.dragState.grabY}` : ""}
+      </output>
     </div>
   );
 }
@@ -62,6 +65,22 @@ describe("useShiftTypePresetPointerDrag", () => {
   afterEach(() => {
     Reflect.deleteProperty(document, "elementFromPoint");
     vi.restoreAllMocks();
+  });
+
+  // Mert, 2026-10-13: the lifted chip stays where it was pressed, under the mouse.
+  it("remembers where on the preset the press landed", async () => {
+    render(<Harness />);
+    const dropCell = screen.getByTestId("drop-cell");
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: vi.fn(() => dropCell),
+    });
+    const chip = screen.getByRole("button", { name: "Preset" });
+    chip.getBoundingClientRect = () => ({ left: 40, top: 300, width: 126, height: 28, right: 166, bottom: 328, x: 40, y: 300, toJSON: () => ({}) });
+    fireEvent.mouseDown(chip, { button: 0, buttons: 1, clientX: 50, clientY: 314 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 80, clientY: 344 });
+    await waitFor(() => expect(screen.getByTestId("drag-grab").textContent).toBe("10,14"));
+    fireEvent.mouseUp(window, { clientX: 80, clientY: 344 });
   });
 
   it("drags preset shift badges to a resolved schedule cell", async () => {

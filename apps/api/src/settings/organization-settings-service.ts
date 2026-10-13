@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { createJobsManagementService, type JobsManagementService } from "./jobs-management-service";
-import { createImportantDatesService, type ImportantDatesService } from "./important-dates-service";
 import {
   schedulingSettingsSchema,
   type SchedulingSettings,
@@ -10,7 +9,6 @@ import { rpcFailure } from "../http-error";
 
 export interface OrganizationSettingsService {
   readonly jobs?: JobsManagementService;
-  readonly importantDates?: ImportantDatesService;
   readSchedulingSettings(input: {
     readonly workspaceId: string;
   }): Promise<SchedulingSettings>;
@@ -68,7 +66,6 @@ export function createOrganizationSettingsServiceWithClient(
 
   return {
     jobs: createJobsManagementService(client),
-    importantDates: createImportantDatesService(client),
     async readSchedulingSettings(input) {
       const { data, error } = await client
         .from("workspace_scheduling_settings")

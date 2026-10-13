@@ -7,7 +7,6 @@ import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import DocumentsSettingsPage from "./DocumentsSettingsPage";
-import ImportantDatesSettingsPage from "./ImportantDatesSettingsPage";
 import JobsSettingsPage from "./JobsSettingsPage";
 import LocationsSettingsPage from "./LocationsSettingsPage";
 import RolesSettingsPage from "./RolesSettingsPage";
@@ -23,7 +22,7 @@ const context = {
   membership: { role: "manager", status: "active", allLocations: false },
   // Enough to open every page, so only the API's answer decides.
   permissions: [
-    "settings.locations.read", "settings.jobs.read", "settings.shift_catalog.read", "important_dates.read",
+    "settings.locations.read", "settings.jobs.read", "settings.shift_catalog.read",
     "roles.read", "documents.read", "employees.read",
   ],
   // Pages gated by can() read the core's answer instead.
@@ -42,7 +41,6 @@ vi.mock("./organization-data", async (original) => ({
   loadDepartmentsAndJobs: vi.fn(async () => { throw refused(); }),
   listShiftTypes: vi.fn(async () => { throw refused(); }),
   listShiftLabels: vi.fn(async () => { throw refused(); }),
-  listImportantDates: vi.fn(async () => { throw refused(); }),
 }));
 vi.mock("./roles-data", async (original) => ({
   ...(await original<typeof import("./roles-data")>()),
@@ -62,7 +60,6 @@ const pages: Array<[string, ComponentType, string]> = [
   ["Jobs", JobsSettingsPage, "positions"],
   ["Shift types", ShiftTypesSettingsPage, "shift types"],
   ["Shift labels", ShiftLabelsSettingsPage, "shift labels"],
-  ["Important dates", ImportantDatesSettingsPage, "important dates"],
   ["Roles", RolesSettingsPage, "roles"],
   ["Documents", DocumentsSettingsPage, "document settings"],
   ["Acknowledgements", SignatureTemplatesSettingsPage, "acknowledgements"],
@@ -87,8 +84,8 @@ describe("Settings pages show the no-access card when the API refuses their read
   // The card sits in the shift catalog's tab panel: the page title and the
   // Shift types | Shift labels switch stay, so the other tab is still reachable.
   it.each([
-    ["Shift types", ShiftTypesSettingsPage, "shift types"],
-    ["Shift labels", ShiftLabelsSettingsPage, "shift labels"],
+    ["Shift catalog", ShiftTypesSettingsPage, "shift types"],
+    ["Shift catalog", ShiftLabelsSettingsPage, "shift labels"],
   ] as Array<[string, ComponentType, string]>)("%s keeps its title and tabs around the card", async (title, Page, subject) => {
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -101,6 +98,6 @@ describe("Settings pages show the no-access card when the API refuses their read
     expect(screen.getByRole("heading", { name: title })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Shift types" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Shift labels" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Add shift/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /(Add|New) shift/ })).toBeNull();
   });
 });

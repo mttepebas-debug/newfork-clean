@@ -8,17 +8,6 @@ import {
   managementAndOwnerSentence,
   organizationLogoMaxBytes,
   organizationLogoMimeTypes,
-  importantDateClosurePreviewInputSchema,
-  importantDateClosurePreviewSchema,
-  importantDateHistorySchema,
-  importantDateInputSchema,
-  importantDateSavedSchema,
-  type ImportantDateClosureChoice,
-  type ImportantDateClosurePreview,
-  type ImportantDateClosurePreviewInput,
-  type ImportantDateSaved,
-  type ImportantDateHistory,
-  type ImportantDateStateAction,
   schedulingSettingsInputSchema,
   schedulingSettingsSchema,
   shiftLabelInputSchema,
@@ -26,7 +15,6 @@ import {
   workspaceSchema,
   type Department,
   type DepartmentInput,
-  type ImportantDateInput,
   type Job,
   type JobInput,
   type Location,
@@ -56,6 +44,11 @@ const NAME_TAKEN: Readonly<Record<string, string>> = {
   shift_labels_workspace_active_name_idx: "A label with this name already exists. Choose another name.",
 };
 
+// The shape of a machine key the database raises in `hint` ("catalog.deleted"),
+// as the API reads it (apps/api/src/http-error.ts); Postgres's own hints are
+// sentences.
+const REASON_KEY = /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/;
+
 function message(error: { code?: string; message: string; hint?: string | null } | null): void {
   if (!error) return;
   if (error.code === "23505") {
@@ -65,7 +58,12 @@ function message(error: { code?: string; message: string; hint?: string | null }
   // Settings → Jobs writes straight to the tables, so the database's refusal to
   // let go of Management or the Owner job lands here, not at the API (BL-218).
   const sentence = managementAndOwnerSentence(error.hint);
-  throw sentence ? new RequestError(sentence, error.hint ?? undefined) : new Error(error.message);
+  if (sentence) throw new RequestError(sentence, error.hint ?? undefined);
+  // BL-1045: any other refusal the database keyed keeps its key, so the screen
+  // can tell "deleted meanwhile, reload" from a standing no. The sentence stays.
+  if (error.hint && REASON_KEY.test(error.hint))
+    throw new RequestError(error.message, error.hint, undefined, error.code === "PT409" ? 409 : undefined);
+  throw new Error(error.message);
 }
 
 const logoBucket = "workspace-logos";
@@ -326,7 +324,7 @@ export async function saveLocation(
 function locationMessage({
   error,
 }: {
-  error: { code?: string; message: string } | null;
+  error: { code?: string; message: string; hint?: string | null } | null;
 }): void {
   if (
     error?.code === "23505" &&
@@ -467,89 +465,6 @@ export async function saveSchedulingSettings(
     method: "PUT",
     body: JSON.stringify(values),
   });
-}
-
-/** The dates, and the locations this person may place one at (the editor's picker). */
-export async function listImportantDates(workspaceId: string) {
-  return readSettings(workspaceId, "important-dates");
-}
-
-/**
- * K13: what a closed day would land on. List these before saving a closed day
- * (or republishing one); pass the fingerprint back with the choice.
- */
-export async function previewImportantDateClosure(
-  workspaceId: string,
-  input: ImportantDateClosurePreviewInput,
-): Promise<ImportantDateClosurePreview> {
-  return importantDateClosurePreviewSchema.parse(
-    await request(workspaceId, "/settings/important-dates/closure-preview", {
-      method: "POST",
-      body: JSON.stringify(importantDateClosurePreviewInputSchema.parse(input)),
-    }),
-  );
-}
-
-/**
- * Saves a date. A closed day over published shifts needs `closure`: the
- * fingerprint the preview gave and the shifts kept (the rest drop to open,
- * K13); without it the server answers 409 important_date.closure_changed.
- * Returns shifts_opened, and shifts_stay_open when a change leaves shifts the
- * date opened on days it no longer closes (K15).
- */
-export async function saveImportantDate(
-  workspaceId: string,
-  input: ImportantDateInput,
-  id?: string,
-  expectedRevision?: number,
-  closure?: ImportantDateClosureChoice,
-): Promise<ImportantDateSaved> {
-  // Through the server (FB-6.7): the database decides who may (K1-K3), tells
-  // the people it reaches and keeps the history; the browser writes nothing.
-  const values = importantDateInputSchema.parse(input);
-  const locationIds = [
-    ...new Set(
-      values.location_ids ?? (values.location_id ? [values.location_id] : []),
-    ),
-  ].sort();
-  return importantDateSavedSchema.parse(
-    await request(workspaceId, id ? `/settings/important-dates/${id}` : "/settings/important-dates", {
-      method: id ? "PUT" : "POST",
-      body: JSON.stringify({
-        ...values,
-        location_ids: locationIds,
-        location_id: locationIds.length === 1 ? locationIds[0] : null,
-        ...(id ? { expected_revision: expectedRevision } : {}),
-        ...(closure ?? {}),
-      }),
-    }),
-  );
-}
-
-/** Unpublish, republish, archive or restore an important date (Mert, 2026-10-02). */
-export async function setImportantDateState(
-  workspaceId: string,
-  id: string,
-  action: ImportantDateStateAction,
-  closure?: ImportantDateClosureChoice,
-): Promise<ImportantDateSaved> {
-  // Republishing a closed day takes the same closure choice as saving one (K13).
-  return importantDateSavedSchema.parse(
-    await request(workspaceId, `/settings/important-dates/${id}/${action}`, {
-      method: "POST",
-      ...(closure ? { body: JSON.stringify(closure) } : {}),
-    }),
-  );
-}
-
-/** Who changed an important date, when, from what to what. */
-export async function getImportantDateHistory(
-  workspaceId: string,
-  id: string,
-): Promise<ImportantDateHistory> {
-  return importantDateHistorySchema.parse(
-    await request(workspaceId, `/settings/important-dates/${id}/history`),
-  );
 }
 
 export async function listShiftTypes(

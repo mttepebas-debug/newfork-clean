@@ -9,16 +9,18 @@ import {
 function Harness({
   enabled = true,
   warning = false,
+  ownCell = false,
   onDrop = vi.fn(),
 }: {
   readonly enabled?: boolean;
   readonly warning?: boolean;
+  readonly ownCell?: boolean;
   readonly onDrop?: (target: ShiftDropTarget) => void;
 }) {
   const drag = useSingleShiftPointerDrag({
     enabled,
     resolveLabel: () => "Dinner, 4p to 10p",
-    evaluateTarget: (target) => ({
+    evaluateTarget: (target) => ownCell ? { allowed: false, targetStatus: null } : ({
       allowed: true,
       targetStatus: warning ? "warning" : "allowed",
       reason: target.copy ? "Copy" : undefined,
@@ -50,11 +52,36 @@ function Harness({
           ? `${drag.dragState.label}|${drag.dragState.targetKey}|${drag.dragState.targetStatus}|${drag.dragState.copy}`
           : "idle"}
       </output>
+      <output data-testid="drag-grab">
+        {drag.dragState ? `${drag.dragState.grabX},${drag.dragState.grabY}` : ""}
+      </output>
     </div>
   );
 }
 
 describe("useSingleShiftPointerDrag", () => {
+  // Mert, 2026-10-13: over the shift's own cell the drag shows no colour.
+  it("keeps a plain cell plain: no drop there, and no blocked colour", async () => {
+    const onDrop = vi.fn();
+    render(<Harness ownCell onDrop={onDrop} />);
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => screen.getByTestId("drop-cell") });
+    fireEvent.mouseDown(screen.getByRole("button", { name: "Shift" }), { button: 0, buttons: 1, clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 20, clientY: 20 });
+    await waitFor(() => expect(screen.getByTestId("drag-state").textContent).toBe("Dinner, 4p to 10p|null|null|false"));
+    fireEvent.mouseUp(window, { clientX: 20, clientY: 20 });
+    expect(onDrop).not.toHaveBeenCalled();
+  });
+  // Mert, 2026-10-13: the lifted card stays where it was pressed, under the mouse.
+  it("remembers where on the card the press landed", async () => {
+    render(<Harness />);
+    Object.defineProperty(document, "elementFromPoint", { configurable: true, value: () => screen.getByTestId("drop-cell") });
+    const card = screen.getByRole("button", { name: "Shift" });
+    card.getBoundingClientRect = () => ({ left: 100, top: 200, width: 126, height: 60, right: 226, bottom: 260, x: 100, y: 200, toJSON: () => ({}) });
+    fireEvent.mouseDown(card, { button: 0, buttons: 1, clientX: 130, clientY: 215 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 150, clientY: 235 });
+    await waitFor(() => expect(screen.getByTestId("drag-grab").textContent).toBe("30,15"));
+    fireEvent.mouseUp(window, { clientX: 150, clientY: 235 });
+  });
   it.each(["Control", "Shift"])("updates stationary drag on %s down/up and uses release modifiers", async key => {
     const onDrop = vi.fn();
     render(<Harness onDrop={onDrop} />);

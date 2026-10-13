@@ -36,6 +36,10 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+// The location filter's value for people who work nowhere (K6); a location's
+// value is its id.
+const noLocation = "none";
+
 const statusFilters = [
   "all",
   "invited",
@@ -202,21 +206,16 @@ export default function EmployeesPage() {
       visible: [...defaultVisibleColumns],
     });
 
-  // Names seen in any tab, so a chosen location stays a choice on a tab with
-  // nobody there instead of falling back to "All locations" (L11).
+  // Every location somebody works at, a second one too (BL-436). Names seen
+  // in any tab, so a chosen location stays a choice on a tab with nobody there
+  // instead of falling back to "All locations" (L11).
   const seenLocations = useRef(new Map<string, string>());
   const locationOptions = useMemo(() => {
     const options = new Map<string, string>();
     for (const employee of employees.data ?? []) {
-      if (employee.primary_location_id && employee.primary_location_name) {
-        seenLocations.current.set(
-          employee.primary_location_id,
-          employee.primary_location_name,
-        );
-        options.set(
-          employee.primary_location_id,
-          employee.primary_location_name,
-        );
+      for (const location of employee.locations) {
+        seenLocations.current.set(location.id, location.name);
+        options.set(location.id, location.name);
       }
     }
     const chosen = seenLocations.current.get(locationFilter);
@@ -231,7 +230,9 @@ export default function EmployeesPage() {
         .filter(
           (employee) =>
             locationFilter === "all" ||
-            employee.primary_location_id === locationFilter,
+            (locationFilter === noLocation
+              ? employee.locations.length === 0
+              : employee.locations.some((location) => location.id === locationFilter)),
         )
         .sort(
           (left, right) =>
@@ -347,6 +348,7 @@ export default function EmployeesPage() {
                 {option.name}
               </option>
             ))}
+            <option value={noLocation}>No location</option>
           </select>
           <label className="employee-search toolbar-search">
             <Search size={17} aria-hidden />
@@ -362,6 +364,7 @@ export default function EmployeesPage() {
           {!archived && canCreate ? (
             <ListAddButton
               label="Add employee"
+              shortLabel="Add"
               onClick={() =>
                 setParams(
                   nextParams({
@@ -745,7 +748,7 @@ function employeeSortValue(
   key: EmployeeColumnKey,
 ): string {
   if (key === "status") return filterLabel(employee.display_status);
-  if (key === "location") return employee.primary_location_name ?? "Unassigned";
+  if (key === "location") return employee.locations[0]?.name ?? "Unassigned";
   if (key === "job") return employee.primary_job_name ?? "Unassigned";
   if (key === "access") return employee.role_name ?? "No app access";
   if (key === "start") return employee.start_date ?? "";

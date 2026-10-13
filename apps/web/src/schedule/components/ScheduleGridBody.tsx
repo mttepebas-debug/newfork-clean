@@ -249,6 +249,8 @@ export function ScheduleGridBody({
           onOpenEmployeeCard={onOpenEmployeeCard}
         />
       ) : null}
+      {/* Space for the rows that left above a dragged card (useKeepScrollThroughDrag). */}
+      {dragState ? <div className="schedule-drag-hold-space" aria-hidden="true" /> : null}
       {showEmployeeGroups
         ? employeeRowGroups.map((group) => (
             <Fragment key={`schedule-job-group-${group.job?.id ?? "none"}`}>

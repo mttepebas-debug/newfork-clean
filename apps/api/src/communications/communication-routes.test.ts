@@ -1,5 +1,5 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
-import { HttpError } from "../http-error";
+import { HttpError, rpcFailure } from "../http-error";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import type { CommunicationService } from "./communication-service";
@@ -52,11 +52,33 @@ const activeContext = {
   ],
 } satisfies ActiveWorkspaceContext;
 
+// The drawer as filled in (EKRAN-08).
+const draft = {
+  title: "Service briefing",
+  body: "Doors open at four.",
+  category: "staff_meeting",
+  category_other: null,
+  starts_on: null,
+  ends_on: null,
+  event_from: null,
+  event_until: null,
+  recurrence: "none",
+  on_important_dates: false,
+  on_calendar: false,
+  on_schedule: false,
+  ask_ack: false,
+  publish_at: null,
+  locations: [],
+  people: [],
+};
+
 function communicationServiceMock(): CommunicationService {
   return {
     getAnnouncements: vi.fn(),
+    getAnnouncement: vi.fn(),
+    getImportantDates: vi.fn(),
+    previewAnnouncement: vi.fn(),
     saveAnnouncement: vi.fn(),
-    publishAnnouncement: vi.fn(),
     setAnnouncementState: vi.fn(),
     acknowledgeAnnouncement: vi.fn(),
     getNotifications: vi.fn(),
@@ -98,24 +120,21 @@ describe("communication routes", () => {
         payload: {
           announcement_id: null,
           expected_revision: null,
-          announcement: {
-            title: "Service briefing",
-            body: "Doors open at four.",
-            category: "operations",
-            audience_roles: ["employee"],
-            location_ids: [],
-            publish_at: null,
-            expires_at: null,
-            action_url: null,
-          },
+          intent: "draft",
+          announcement: draft,
         },
         serviceMethod: "saveAnnouncement",
       },
       {
+        method: "GET",
+        url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}`,
+        serviceMethod: "getAnnouncement",
+      },
+      {
         method: "POST",
-        url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/publish`,
-        payload: { expected_revision: 1 },
-        serviceMethod: "publishAnnouncement",
+        url: `/v1/workspaces/${workspaceId}/communications/announcements/preview`,
+        payload: { announcement_id: null, intent: "publish", announcement: draft },
+        serviceMethod: "previewAnnouncement",
       },
       {
         method: "POST",
@@ -210,8 +229,11 @@ describe("communication routes", () => {
     vi.mocked(service.saveAnnouncement).mockResolvedValue({
       announcement_id: "a8200000-0000-4000-8000-000000000001",
       status: "draft",
+      display_status: "draft",
       revision: 1,
       recipient_count: 0,
+      shift_changes: 0,
+      brought_back: 0,
     });
     vi.mocked(service.saveWorkspaceLayout).mockResolvedValue({
       status: "saved",
@@ -260,16 +282,8 @@ describe("communication routes", () => {
         workspace_id: otherWorkspaceId,
         announcement_id: null,
         expected_revision: null,
-        announcement: {
-          title: "Service briefing",
-          body: "Doors open at four.",
-          category: "operations",
-          audience_roles: ["employee"],
-          location_ids: [],
-          publish_at: null,
-          expires_at: null,
-          action_url: null,
-        },
+        intent: "draft",
+        announcement: draft,
       },
     });
     expect(service.saveAnnouncement).toHaveBeenCalledWith(
@@ -390,17 +404,18 @@ describe("communication routes", () => {
   // .write_wide / .acknowledge); the routes keep no permission gate.
   describe("Announcements ask the core", () => {
     const announcementId = "a8200000-0000-4000-8000-000000000001";
-    const announcement = {
-      title: "Service briefing", body: "Doors open at four.", category: "operations", audience_roles: ["employee"],
-      location_ids: [], publish_at: null, expires_at: null, action_url: null,
-    };
+    const announcement = draft;
     const routes = [
       ["list", "getAnnouncements", "GET", `/v1/workspaces/${workspaceId}/communications/announcements`, undefined],
-      ["save", "saveAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements`, { announcement_id: null, expected_revision: null, announcement }],
-      ["publish", "publishAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/publish`, { expected_revision: 1 }],
+      ["drawer read", "getAnnouncement", "GET", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}`, undefined],
+      ["Important Dates read", "getImportantDates", "GET", `/v1/workspaces/${workspaceId}/communications/important-dates`, undefined],
+      ["preview", "previewAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/preview`, { announcement_id: announcementId, intent: "save", announcement }],
+      ["save", "saveAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements`, { announcement_id: null, expected_revision: null, intent: "publish", announcement }],
+      ["unschedule", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unschedule`, { expected_revision: 1 }],
       ["unpublish", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unpublish`, { expected_revision: 1 }],
       ["archive", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/archive`, { expected_revision: 1 }],
-      ["restore", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/restore`, { expected_revision: 1 }],
+      ["bring back", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/bring-back`, { expected_revision: 1, bring_back: [announcementId] }],
+      ["remind", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/remind`, { expected_revision: 1 }],
       ["acknowledgement", "acknowledgeAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/acknowledge`, undefined],
     ] as const;
     const manager = {
@@ -422,6 +437,23 @@ describe("communication routes", () => {
       await app.close();
     });
 
+    // BL-1047: a write over a newer revision says so with a key, so the editor
+    // can tell "changed meanwhile" from "archived, cannot be edited".
+    it.each(routes.filter(([name]) => ["save", "unschedule", "unpublish", "archive", "bring back", "remind"].includes(name)))(
+      "passes the database's announcement.changed key on with the %s 409",
+      async (_name, method, verb, url, payload) => {
+        const service = communicationServiceMock();
+        vi.mocked(service[method]).mockRejectedValue(
+          rpcFailure({ message: "stale announcement revision", code: "PT409", hint: "announcement.changed" }),
+        );
+        const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+        const response = await app.inject({ method: verb, url, headers: { authorization: "Bearer manager-token" }, payload });
+        expect(response.statusCode).toBe(409);
+        expect(response.json()).toMatchObject({ reason: "announcement.changed" });
+        await app.close();
+      },
+    );
+
     it.each(routes)("answers somebody who is not a member on the %s with 404 authz.not_member", async (_name, method, verb, url, payload) => {
       const service = communicationServiceMock();
       const app = buildApp({ contextResolver: { resolve: async () => null }, communicationService: service });
@@ -435,31 +467,63 @@ describe("communication routes", () => {
     it("refuses a change to an announcement that names no revision, so a second save is not lost (KK-92 c)", async () => {
       const service = communicationServiceMock();
       vi.mocked(service.saveAnnouncement).mockResolvedValue({
-        announcement_id: announcementId, status: "draft", revision: 4, recipient_count: 0,
-      } as Awaited<ReturnType<typeof service.saveAnnouncement>>);
+        announcement_id: announcementId, status: "draft", display_status: "draft", revision: 4, recipient_count: 0,
+        shift_changes: 0, brought_back: 0,
+      });
       const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
       const url = `/v1/workspaces/${workspaceId}/communications/announcements`;
       const headers = { authorization: "Bearer manager-token" };
-      const unnamed = await app.inject({ method: "POST", url, headers, payload: { announcement_id: announcementId, announcement } });
+      const unnamed = await app.inject({ method: "POST", url, headers, payload: { announcement_id: announcementId, intent: "draft", announcement } });
       expect(unnamed.statusCode).toBe(400);
       expect(service.saveAnnouncement).not.toHaveBeenCalled();
-      const named = await app.inject({ method: "POST", url, headers, payload: { announcement_id: announcementId, expected_revision: 3, announcement } });
+      const named = await app.inject({ method: "POST", url, headers, payload: { announcement_id: announcementId, expected_revision: 3, intent: "draft", announcement } });
       expect(named.statusCode).toBe(200);
-      expect(service.saveAnnouncement).toHaveBeenCalledWith(expect.objectContaining({ announcementId, expectedRevision: 3 }));
+      expect(service.saveAnnouncement).toHaveBeenCalledWith(expect.objectContaining({ announcementId, expectedRevision: 3, intent: "draft" }));
       await app.close();
     });
 
-    it("passes the state action through and refuses an unknown one", async () => {
+    it("passes the state action and the shifts to bring back through, and refuses an unknown one", async () => {
       const service = communicationServiceMock();
       vi.mocked(service.setAnnouncementState).mockResolvedValue({
-        announcement_id: announcementId, status: "unpublished", revision: 3, recipient_count: 0, archived_at: null,
+        announcement_id: announcementId, status: "unpublished", display_status: "unpublished", revision: 3,
+        archived_at: null, told: 0,
       });
       const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
-      const ok = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unpublish`, headers: { authorization: "Bearer manager-token" }, payload: { expected_revision: 2 } });
+      const headers = { authorization: "Bearer manager-token" };
+      const base = `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}`;
+      const ok = await app.inject({ method: "POST", url: `${base}/unpublish`, headers, payload: { expected_revision: 2 } });
       expect(ok.statusCode).toBe(200);
-      expect(service.setAnnouncementState).toHaveBeenCalledWith(expect.objectContaining({ action: "unpublish", expectedRevision: 2 }));
-      const unknown = await app.inject({ method: "POST", url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/cancel`, headers: { authorization: "Bearer manager-token" }, payload: { expected_revision: 2 } });
-      expect(unknown.statusCode).toBe(404);
+      expect(service.setAnnouncementState).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "unpublish", expectedRevision: 2, bringBack: [] }),
+      );
+      const back = await app.inject({ method: "POST", url: `${base}/bring-back`, headers, payload: { expected_revision: 3, bring_back: [announcementId] } });
+      expect(back.statusCode).toBe(200);
+      expect(service.setAnnouncementState).toHaveBeenLastCalledWith(
+        expect.objectContaining({ action: "bring_back", bringBack: [announcementId] }),
+      );
+      // Restore and a bare Publish are gone: Publish is a save (EKRAN-08).
+      for (const gone of ["cancel", "restore", "publish"]) {
+        const unknown = await app.inject({ method: "POST", url: `${base}/${gone}`, headers, payload: { expected_revision: 2 } });
+        expect(unknown.statusCode).toBe(404);
+      }
+      await app.close();
+    });
+
+    it("refuses a draft the database could not read: a shift choice without its hours, an unknown day", async () => {
+      const service = communicationServiceMock();
+      const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+      const url = `/v1/workspaces/${workspaceId}/communications/announcements/preview`;
+      const headers = { authorization: "Bearer manager-token" };
+      const shift = "a8200000-0000-4000-8000-000000000009";
+      for (const bad of [
+        { ...announcement, choices: { [shift]: { choice: "edit", from: "10:00" } } },
+        { ...announcement, locations: [{ location_id: shift, day: "half", opens: null, closes: null }] },
+        { ...announcement, category: "operations" },
+      ]) {
+        const response = await app.inject({ method: "POST", url, headers, payload: { announcement_id: null, intent: "publish", announcement: bad } });
+        expect(response.statusCode).toBe(400);
+      }
+      expect(service.previewAnnouncement).not.toHaveBeenCalled();
       await app.close();
     });
   });

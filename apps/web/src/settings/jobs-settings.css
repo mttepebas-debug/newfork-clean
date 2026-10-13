@@ -21,7 +21,6 @@
   flex: 0 0 auto;
   width: auto;
 }
-.shift-catalog-shell .requests-tabs button,
 .acknowledgement-page .requests-tabs button {
   font-size: 13px;
   font-weight: 700;
@@ -30,9 +29,6 @@
   width: 100%;
   margin: 0;
   padding: 0 0 60px;
-}
-.shift-catalog-panel > .shift-catalog-settings-page > .settings-page-header {
-  margin-top: 0;
 }
 .jobs-settings-page button,
 .job-assignment-drawer button {
@@ -1416,13 +1412,41 @@
   }
 }
 
-.shift-catalog-settings-page .shift-catalog-columns {
-  grid-template-columns: minmax(0, 1fr) 32px;
+.shift-catalog-settings-page .job-column-headings .job-sort-button {
+  justify-content: flex-start;
 }
-.shift-catalog-settings-page .shift-catalog-columns.has-times {
-  grid-template-columns:
-    minmax(0, 1.5fr) minmax(110px, 0.75fr) minmax(130px, 0.75fr)
-    32px;
+/* Shift catalog, design A (Mert 2026-10-12): the shared list language of
+   Settings → Locations; only columns and the phone card are its own.
+   Shift type 46 · Default start 24 · Default end 30 · menu. */
+.shift-catalog-settings-page.list-page .shift-catalog-row {
+  grid-template-columns: minmax(0, 1fr) 32px;
+  gap: 12px;
+}
+.shift-catalog-settings-page.list-page .shift-catalog-row.has-times {
+  grid-template-columns: minmax(0, 46fr) minmax(0, 24fr) minmax(0, 30fr) 32px;
+}
+.shift-catalog-settings-page.list-page .job-catalog-row {
+  min-height: 52px;
+}
+.shift-catalog-settings-page .shift-catalog-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-list-cell-text);
+  font-size: 13px;
+}
+.shift-catalog-settings-page .shift-catalog-next {
+  color: var(--theme-muted);
+}
+.shift-catalog-settings-page .shift-catalog-card-line {
+  display: none;
+}
+/* Archived entries close the list, muted, with their Archived mark. */
+.shift-catalog-settings-page.list-page
+  .job-catalog-row[data-archived="true"]
+  :is(.job-row-name, .shift-catalog-cell, .shift-catalog-card-line) {
+  color: var(--theme-muted);
 }
 @media (max-width: 720px) {
   .shift-catalog-header-actions {
@@ -1431,15 +1455,6 @@
     width: 100%;
     justify-content: space-between;
   }
-  .shift-catalog-settings-page .shift-catalog-columns.has-times {
-    grid-template-columns: minmax(0, 1fr) 44px;
-  }
-  .shift-catalog-settings-page .job-column-headings.has-times {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) 32px;
-  }
-  .shift-catalog-time {
-    display: none;
-  }
   .catalog-delete-buttons {
     width: 100%;
   }
@@ -1447,9 +1462,55 @@
     flex: 1;
     min-height: 44px;
   }
-}
-.shift-catalog-settings-page .job-column-headings .job-sort-button {
-  justify-content: flex-start;
+  /* Phone (UI-14): one card per entry, like Locations. */
+  .shift-catalog-settings-page.list-page .job-catalog {
+    display: grid;
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    background: none;
+  }
+  .shift-catalog-settings-page.list-page .job-catalog .job-column-headings,
+  .shift-catalog-settings-page .shift-catalog-cell {
+    display: none;
+  }
+  .shift-catalog-settings-page.list-page .job-catalog-row.shift-catalog-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-items: start;
+    min-height: 0;
+    padding: 14px 4px 14px 14px;
+    border: 1px solid var(--theme-list-frame);
+    border-radius: 8px;
+  }
+  .shift-catalog-settings-page.list-page .job-row-identity {
+    min-height: 0;
+    align-items: flex-start;
+  }
+  .shift-catalog-settings-page.list-page .job-color-dot {
+    margin-top: 7px;
+  }
+  .shift-catalog-settings-page.list-page .job-row-name {
+    font-size: 15px;
+    line-height: 22px;
+  }
+  .shift-catalog-settings-page .shift-catalog-card-line {
+    display: block;
+    margin-top: 2px;
+    color: var(--theme-list-cell-text);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .shift-catalog-settings-page.list-page .job-row-menu > summary {
+    width: 40px;
+    height: 40px;
+  }
+  /* An empty list keeps the card stack's look: one framed box. */
+  .shift-catalog-settings-page.list-page .job-catalog:has(> .catalog-table-empty) {
+    display: block;
+    overflow: hidden;
+    border: 1px solid var(--theme-list-frame);
+    border-radius: 8px;
+  }
 }
 .acknowledgement-page .acknowledgement-catalog-row {
   grid-template-columns:
@@ -2082,184 +2143,6 @@
   }
 }
 
-.important-dates-catalog-page .important-date-catalog-row {
-  grid-template-columns:
-    minmax(0, 28fr) minmax(125px, 18fr) minmax(80px, 16fr)
-    minmax(100px, 20fr) minmax(100px, 18fr) 32px;
-}
-.important-date-date-cell {
-  min-width: 0;
-  color: var(--job-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-.important-dates-catalog-page .job-catalog-row {
-  min-height: 60px;
-}
-.important-dates-catalog-page .important-date-fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 14px;
-  margin: 0;
-  border: 0;
-}
-.important-dates-catalog-page .important-date-fields .field-wide {
-  grid-column: 1 / -1;
-}
-.important-dates-catalog-page .job-field > span {
-  color: var(--job-text);
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 5px;
-}
-.important-date-marker {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-  place-items: center;
-  border-radius: 6px;
-  background: var(--job-soft);
-  color: var(--job-accent);
-}
-.important-date-filter {
-  min-width: 150px;
-  margin: 0;
-}
-.important-dates-catalog-page .important-date-filter {
-  order: initial;
-}
-.important-dates-catalog-page .job-archive-tabs {
-  order: initial;
-}
-.important-dates-catalog-page .job-search {
-  order: initial;
-  flex: 1 1 auto;
-  max-width: none;
-}
-.important-date-filter > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-}
-.important-date-impact-stack {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  color: var(--job-muted);
-  font-size: 11px;
-}
-.important-date-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--job-text);
-  font-size: 12px;
-  font-weight: 600;
-}
-.important-date-check input {
-  width: 15px;
-  height: 15px;
-}
-.important-dates-catalog-page .job-catalog-editor > .form-error {
-  margin: 0 16px 16px;
-  color: var(--job-error);
-  font-size: 12px;
-}
-@media (max-width: 720px) {
-  .important-dates-catalog-page .important-date-catalog-row {
-    grid-template-columns: minmax(0, 1fr) 110px 32px;
-  }
-  .important-dates-catalog-page .job-department-cell,
-  .important-date-impact-stack {
-    display: none;
-  }
-  .important-dates-catalog-page .important-date-fields {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-.important-date-location-picker {
-  min-width: 0;
-  border: 1px solid var(--job-border);
-  border-radius: 5px;
-  background: var(--job-bg);
-  font-size: 13px;
-}
-.important-date-location-picker > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 7px 10px;
-  box-sizing: border-box;
-  list-style: none;
-  cursor: pointer;
-}
-.important-date-location-picker > summary::-webkit-details-marker {
-  display: none;
-}
-.important-date-location-picker > summary > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.important-date-location-picker > summary > svg {
-  flex-shrink: 0;
-}
-.important-date-location-picker[open] > summary > svg {
-  transform: rotate(180deg);
-}
-.important-date-location-options {
-  max-height: 200px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  border-top: 1px solid var(--job-border);
-  padding: 4px;
-}
-.important-date-location-options > label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  padding: 5px 6px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-}
-.important-date-location-options > label:hover {
-  background: var(--job-hover);
-}
-.important-date-location-options input {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  margin: 0;
-  accent-color: var(--job-accent);
-}
-.important-date-location-options span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.important-date-location-options p {
-  margin: 8px;
-  color: var(--job-muted);
-  font-size: 12px;
-}
-.important-date-location-all {
-  font-weight: 600;
-  color: var(--job-accent);
-}
-.jobs-settings-page
-  .important-date-location-picker
-  > summary:is(:focus, :focus-visible) {
-  outline: none;
-  box-shadow: none;
-}
 .job-menu-popover .job-danger-text[data-confirming="true"],
 .job-menu-popover .job-danger-text[data-confirming="true"]:hover:not(:disabled) {
   background: var(--theme-danger-strong);

@@ -273,6 +273,73 @@ describe("createEmployeeInvitationService", () => {
           email: "employee@example.test",
           token: originalToken,
           expires_at: "2026-09-16T12:00:00.000Z",
+          reminder: false,
+          attempt: 1,
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({ data: null, error: null });
+    const fetch = vi.fn(async () => ({ ok: true, status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.example.test",
+      resendApiKey: "resend-key",
+      production: true,
+    });
+
+    await expect(
+      service.retry({ actorUserId, workspaceId, employeeId }),
+    ).resolves.toEqual({
+      id: invitationId,
+      expiresAt: "2026-09-16T12:00:00.000Z",
+    });
+    const [, requestInit] = fetch.mock.calls[0] as unknown as [
+      string,
+      { body: string; headers: Record<string, string> },
+    ];
+    // Its own key: the provider would drop the first email's as a duplicate.
+    expect(requestInit.headers).toMatchObject({
+      "Idempotency-Key": `employee-invite/${invitationId}/1`,
+    });
+    expect(JSON.parse(requestInit.body).html).toContain(
+      `/invite/accept?token=${originalToken}`,
+    );
+    expect(JSON.parse(requestInit.body).subject).toBe(
+      "Join your Newfork workspace",
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "load_employee_invitation_retry_service",
+      {
+        actor_user_id: actorUserId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+      },
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
+      2,
+      "mark_employee_invitation_delivery_service",
+      expect.objectContaining({ delivery_result: "sent" }),
+    );
+    expect(mocks.listUsers).not.toHaveBeenCalled();
+    expect(mocks.updateUserById).not.toHaveBeenCalled();
+  });
+  // BL-767: Send reminder on an invitation whose email went out sends the
+  // same link again, worded as a reminder, and leaves its expiry alone.
+  it("sends a reminder with the same link and the same expiry", async () => {
+    const originalToken = "b".repeat(64);
+    mocks.rpc
+      .mockResolvedValueOnce({
+        data: {
+          id: invitationId,
+          email: "employee@example.test",
+          token: originalToken,
+          expires_at: "2026-09-16T12:00:00.000Z",
+          reminder: true,
+          attempt: 3,
         },
         error: null,
       })
@@ -299,26 +366,49 @@ describe("createEmployeeInvitationService", () => {
       { body: string; headers: Record<string, string> },
     ];
     expect(requestInit.headers).toMatchObject({
-      "Idempotency-Key": `employee-invite/${invitationId}`,
+      "Idempotency-Key": `employee-invite/${invitationId}/3`,
     });
-    expect(JSON.parse(requestInit.body).html).toContain(
-      `/invite/accept?token=${originalToken}`,
-    );
-    expect(mocks.rpc).toHaveBeenNthCalledWith(
-      1,
-      "load_employee_invitation_retry_service",
-      {
-        actor_user_id: actorUserId,
-        target_workspace_id: workspaceId,
-        target_employee_id: employeeId,
-      },
-    );
+    const body = JSON.parse(requestInit.body) as {
+      subject: string;
+      html: string;
+      to: string[];
+    };
+    expect(body.to).toEqual(["employee@example.test"]);
+    expect(body.subject).toBe("Reminder: join your Newfork workspace");
+    expect(body.html).toContain(`/invite/accept?token=${originalToken}`);
+    expect(body.html).toContain("same link as before");
+    expect(body.html).not.toContain("expires in seven days");
     expect(mocks.rpc).toHaveBeenNthCalledWith(
       2,
       "mark_employee_invitation_delivery_service",
       expect.objectContaining({ delivery_result: "sent" }),
     );
-    expect(mocks.listUsers).not.toHaveBeenCalled();
-    expect(mocks.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it("refuses an answer that does not say whether it is a reminder", async () => {
+    mocks.rpc.mockResolvedValueOnce({
+      data: {
+        id: invitationId,
+        email: "employee@example.test",
+        token: "c".repeat(64),
+        expires_at: "2026-09-16T12:00:00.000Z",
+      },
+      error: null,
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+
+    const service = createEmployeeInvitationService({
+      url: "https://example.supabase.co",
+      serviceRoleKey: "service-role",
+      appUrl: "https://app.example.test",
+      resendApiKey: "resend-key",
+      production: true,
+    });
+
+    await expect(
+      service.retry({ actorUserId, workspaceId, employeeId }),
+    ).rejects.toThrow("Invitation retry state is invalid");
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

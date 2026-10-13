@@ -167,6 +167,28 @@ describe("jobs management HTTP boundary", () => {
     expect(response.statusCode).toBe(409);
     expect(response.json()).toEqual({ error: "Employee changed", requestId: expect.any(String) });
   });
+  // BL-1045: the database names the kind of 409, so the job drawer offers
+  // Reload latest only when there is something newer to load.
+  it.each([
+    ["job.changed", "Job details changed. Reload the latest job and review your draft."],
+    ["employee.revision_conflict", "Employee E-0001 changed. Reload employees and review your pending changes."],
+    ["employee.archived", "An employee was archived. Reload the employee list."],
+  ])("passes the database's %s key on with the job save's 409", async (hint, message) => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({ data: null, error: { code: "PT409", message, hint } });
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs/${jobId}`,
+      headers: { authorization: "Bearer verified" },
+      payload: {
+        job: { name: "Cook", color: "#123456", department_id: null },
+        expected_job: { name: "Old", color: "#123456", department_id: null },
+        changes,
+      },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: message, reason: hint, requestId: expect.any(String) });
+  });
   it("answers deleting the Owner job with 400, its key and a readable sentence (BL-218)", async () => {
     const { app, rpc } = setup();
     rpc.mockResolvedValue({

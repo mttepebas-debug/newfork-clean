@@ -16,8 +16,8 @@ import {
   scheduleGridEmployeeColumnWidth,
   scheduleGridFitDayWidth,
   scheduleGridFitsVisibleDays,
-  scheduleGridTotalColumnWidth,
   scheduleGridHorizontalNavHeight,
+  scheduleGridWeeklyLocationWidths,
   scheduleGridTotalRowHeight,
   type ScheduleGridLocationGroup,
 } from "../lib/scheduleGridLayout";
@@ -106,15 +106,17 @@ export function ScheduleGridShell({
   const [fitDayWidth, setFitDayWidth] = useState(0);
   // Cards do not change size mid-drag; skip re-reading them every frame.
   const dragging = Boolean(dragPointer);
-  const effectiveDayColumnMinWidth = fitWeeklyLocations
-    ? Math.max(
-        dayColumnMinWidth,
-        (viewportWidth -
-          scheduleGridEmployeeColumnWidth -
-          (showTotalHours ? scheduleGridTotalColumnWidth : 0)) /
-          7,
-      )
-    : dayColumnMinWidth;
+  // Several locations side by side: each location's week fills one screen,
+  // its cards wrapping like a fitted week's. Narrower than the cards' longest
+  // title word, the days keep the cards' full width and the week scrolls.
+  const locationWidths = fitWeeklyLocations
+    ? scheduleGridWeeklyLocationWidths({
+        width: viewportWidth,
+        showTotalHours,
+        dayWidth: fitDayWidth || undefined,
+      })
+    : null;
+  const effectiveDayColumnMinWidth = locationWidths?.day ?? dayColumnMinWidth;
   // A fitted week that would squeeze days below a readable width (a phone, a
   // tablet, a narrow window) scrolls instead (BL-205).
   const fitsColumns =
@@ -134,7 +136,11 @@ export function ScheduleGridShell({
     const scroll = scrollRef.current;
     if (!scroll) return;
     setViewportWidth(scroll.clientWidth);
-    if (fitVisibleColumns && !dragging && gridRef.current) {
+    if (
+      (fitVisibleColumns || fitWeeklyLocations) &&
+      !dragging &&
+      gridRef.current
+    ) {
       const next = measureFitDayWidth(gridRef.current);
       setFitDayWidth((current) => (current === next ? current : next));
     }
@@ -174,7 +180,13 @@ export function ScheduleGridShell({
     setFillerHeightPx((current) =>
       current === nextHeight ? current : nextHeight,
     );
-  }, [dragging, fitVisibleColumns, gridRef, totalBottomOffsetPx]);
+  }, [
+    dragging,
+    fitVisibleColumns,
+    fitWeeklyLocations,
+    gridRef,
+    totalBottomOffsetPx,
+  ]);
 
   useLayoutEffect(() => {
     const scroll = scrollRef.current;
@@ -289,10 +301,13 @@ export function ScheduleGridShell({
         style={
           {
             "--schedule-day-column-min": `${effectiveDayColumnMinWidth}px`,
-            "--schedule-employee-column-width": `${scheduleGridEmployeeColumnWidth}px`,
+            "--schedule-employee-column-width": `${
+              locationWidths?.employee ?? scheduleGridEmployeeColumnWidth
+            }px`,
             gridTemplateColumns: createScheduleGridTemplateColumns({
               columns,
               fitVisibleColumns: fitsColumns,
+              locationWidths,
               showTotalHours,
             }),
           } as CSSProperties

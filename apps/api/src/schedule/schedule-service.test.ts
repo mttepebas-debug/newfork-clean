@@ -48,7 +48,7 @@ describe("createScheduleReadService read model", () => {
   it("loads short names only within the RPC-authorized workspace and location scope", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
       locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
-      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [], closures: [],
     }, error: null });
     const locationEq = vi.fn(); const locationIn = vi.fn();
     mocks.from.mockImplementation((table: string) => {
@@ -76,7 +76,7 @@ describe("createScheduleReadService read model", () => {
     };
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday", settings,
       locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
-      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [], closures: [],
     }, error: null });
     mocks.from.mockImplementation(() => {
       const chain = {
@@ -89,66 +89,35 @@ describe("createScheduleReadService read model", () => {
     const result = await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
     expect(result.settings).toEqual(settings);
   });
-  it("reads only the week's closed days, not every closed day before it (FB-6.7)", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
+  it("takes the week's closures and important dates from the read model, reading neither table itself (BL-701)", async () => {
+    // The id public.schedule_closures gave Oct 28 on the local database (EKRAN-08 D4): an
+    // md5 made into a uuid (BL-959).
+    const closedDay = { id: "c6717f17-012c-8945-cc5c-fca50e875fae", location_id: locationId, closed_date: "2026-10-28",
+      title: "Staff training", is_all_day: false, kind: "short", opens: "10:00", closes: "15:00", status: "published",
+      publish_at: null, on_schedule: true, announcement_id: "70000000-0000-4000-8000-000000000001" };
+    const importantDate = { id: "70000000-0000-4000-8000-000000000001", location_id: locationId, title: "Staff training",
+      category: "staff_meeting", category_other: null, starts_on: "2026-10-28", ends_on: "2026-10-28", status: "published",
+      publish_at: null, day: "short", opens: "10:00", closes: "15:00", event_from: null, event_until: null };
+    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-10-26", week_start_day: "monday",
       locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
       departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
+      closures: [closedDay], important_dates: [importantDate],
     }, error: null });
-    const closureCalls: unknown[][] = [];
+    const tables: string[] = [];
     mocks.from.mockImplementation((table: string) => {
-      const record = (name: string) => (...args: unknown[]) => {
-        if (table === "schedule_closures") closureCalls.push([name, ...args]);
-        return chain;
-      };
+      tables.push(table);
       const chain = {
-        select: () => chain, eq: record("eq"), in: () => chain, is: () => chain, order: () => chain,
-        lte: record("lte"), gte: record("gte"), or: record("or"),
+        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain, or: () => chain,
         maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
         then: (resolve: (value: unknown) => unknown) => resolve({ data: [], error: null }),
       }; return chain;
     });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    await service.getReadModel(actorUserId, workspaceId, "2026-09-14");
-    // D2: one workspace's closed days only.
-    expect(closureCalls).toEqual([
-      ["eq", "workspace_id", workspaceId], ["lte", "closed_date", "2026-09-20"], ["gte", "closed_date", "2026-09-14"],
-    ]);
-  });
-  it("opens a week with a published closed day, whose id is an md5 made into a uuid (BL-959)", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-10-26", week_start_day: "monday",
-      locations: [{ id: locationId, name: "Main", timezone: "UTC", sort_order: 0, publication_status: "published", published_at: null }],
-      departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
-    }, error: null });
-    // The id public.schedule_closures gave Oct 28 on the local database (EKRAN-08 D4).
-    const closedDay = { id: "c6717f17-012c-8945-cc5c-fca50e875fae", location_id: locationId, closed_date: "2026-10-28",
-      end_date: null, title: "Staff training", is_all_day: true, shift_type_ids: [] };
-    mocks.from.mockImplementation((table: string) => {
-      const chain = {
-        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain, or: () => chain,
-        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
-        then: (resolve: (value: unknown) => unknown) => resolve({ data: table === "schedule_closures" ? [closedDay] : [], error: null }),
-      }; return chain;
-    });
-    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
     const result = await service.getReadModel(actorUserId, workspaceId, "2026-10-26");
-    expect(result.closures.map((closure) => closure.id)).toEqual([closedDay.id]);
-  });
-  it("keeps a yearly 29 February date in a week with 28 February only, as the Schedule closes that day (KK-92 d)", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2027-02-22", week_start_day: "monday",
-      locations: [], departments: [], jobs: [], shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees: [], shifts: [],
-    }, error: null });
-    const leapDay = { id: "70000000-0000-4000-8000-000000000001", location_id: null, location_ids: [], title: "Leap closure",
-      type: "closed_day", starts_on: "2024-02-29", ends_on: "2024-02-29", recurrence: "annual" };
-    mocks.from.mockImplementation((table: string) => {
-      const chain = {
-        select: () => chain, eq: () => chain, in: () => chain, is: () => chain, order: () => chain, lte: () => chain, gte: () => chain,
-        maybeSingle: () => Promise.resolve({ data: { time_format: "12h" }, error: null }),
-        then: (resolve: (value: unknown) => unknown) => resolve({ data: table === "important_dates" ? [leapDay] : [], error: null }),
-      }; return chain;
-    });
-    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    const result = await service.getReadModel(actorUserId, workspaceId, "2027-02-22");
-    expect(result.important_dates.map((date) => date.title)).toEqual(["Leap closure"]);
+    expect(tables).not.toContain("schedule_closures");
+    expect(tables).not.toContain("announcements");
+    expect(result.closures).toEqual([expect.objectContaining({ id: closedDay.id, kind: "short", opens: "10:00", closes: "15:00" })]);
+    expect(result.important_dates.map((date) => date.title)).toEqual(["Staff training"]);
   });
   it("hands the Schedule Management's and Owner's system keys and the stored primary job (BL-218)", async () => {
     // From get_schedule_read_model_service on the "r" world of
@@ -168,7 +137,7 @@ describe("createScheduleReadService read model", () => {
       { id: "4b551d02-784b-4dcb-af8b-083a2885f894", job_ids: ["49f49836-56a9-49c9-ac67-7f469cc09e82"], display_name: "Ayse Person", location_ids: ["e92f96de-3eb0-4203-a15c-aff6edfd4c39"], employee_code: "E-0002", primary_job_id: "49f49836-56a9-49c9-ac67-7f469cc09e82", is_excluded_from_schedule: false },
     ];
     mocks.rpc.mockResolvedValueOnce({ data: { workspace_id: workspaceId, week_start: "2026-09-14", week_start_day: "monday",
-      locations: [], departments, jobs, shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees, shifts: [],
+      locations: [], departments, jobs, shift_types: [], referenced_jobs: [], referenced_shift_types: [], employees, shifts: [], closures: [],
     }, error: null });
     mocks.from.mockImplementation(() => {
       const chain = {
@@ -182,57 +151,6 @@ describe("createScheduleReadService read model", () => {
     expect(result.departments).toEqual(departments);
     expect(result.jobs).toEqual(jobs);
     expect(result.employees.map((employee) => employee.primary_job_id)).toEqual([null, jobs[1]!.id]);
-  });
-  it("reads the week's important dates after the authorized read model", async () => {
-    mocks.rpc.mockResolvedValueOnce({
-      data: {
-        workspace_id: workspaceId,
-        week_start: "2026-08-17",
-        week_start_day: "monday",
-        locations: [],
-        departments: [],
-        jobs: [],
-        referenced_jobs: [],
-        referenced_shift_types: [],
-        shift_types: [],
-        shift_labels: [],
-        employees: [],
-        shifts: [],
-      },
-      error: null,
-    });
-    mocks.from.mockImplementation((table: string) => {
-      if (table === "important_dates") {
-        const chain = {
-          eq: () => chain,
-          is: () => chain,
-          order: () => chain,
-          select: () => chain,
-          then: (
-            resolve: (value: { data: never[]; error: null }) => unknown,
-          ) => resolve({ data: [], error: null }),
-        };
-        return chain;
-      }
-      throw new Error(`Unexpected table: ${table}`);
-    });
-
-    const service = createScheduleReadService({
-      url: "https://example.supabase.co",
-      serviceRoleKey: "service-role",
-    });
-
-    const result = service.getReadModel(actorUserId, workspaceId, "2026-08-19");
-    await vi.waitFor(() => expect(mocks.from).toHaveBeenCalledWith("important_dates"));
-    await expect(result).resolves.toMatchObject({
-      workspace_id: workspaceId,
-      week_start: "2026-08-17",
-    });
-    expect(mocks.rpc).toHaveBeenCalledWith("get_schedule_read_model_service", {
-      actor_user_id: actorUserId,
-      target_workspace_id: workspaceId,
-      target_date: "2026-08-19",
-    });
   });
 });
 
@@ -361,9 +279,9 @@ describe("createScheduleReadService realtime invalidation", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(2); expect(mocks.send).not.toHaveBeenCalled();
   });
   it("preserves the database stale-assessment code and does not broadcast a failed mutation", async () => {
-    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "Review the current availability assessment before saving" } });
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "Review the current availability assessment before saving", hint: "schedule.availability_review_required" } });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
-    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ statusCode: 409, pgCode: "PT409" });
+    await expect(service.mutateShift({ actorUserId, workspaceId, sessionId: draftId, shiftId: departmentId, expectedSessionRevision: 1, operation: "create" })).rejects.toMatchObject({ statusCode: 409, pgCode: "PT409", reason: "schedule.availability_review_required" });
     expect(mocks.send).not.toHaveBeenCalled();
   });
   it("carries the authorization core's refusal and hides database internals", async () => {

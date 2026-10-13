@@ -37,6 +37,8 @@ const confirmedAvailability: ShiftAvailabilityAssessment = {
   can_override: true,
 };
 beforeEach(() => {
+  // The window opens in the layout last used; each test starts on Form.
+  window.localStorage.clear();
   toast.warning.mockClear();
   toast.error.mockClear();
   vi
@@ -295,7 +297,9 @@ describe("ShiftQuickEditor", () => {
         onClose={onClose} onDismiss={onDismiss} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={vi.fn()}
       />,
     );
-    // A real browser drops focus from the button while it is disabled for the check.
+    // A real click focuses the button, and a real browser drops focus from it
+    // while it is disabled for the check.
+    act(() => screen.getByRole("button", { name: "Add shift" }).focus());
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     await screen.findByRole("dialog", { name: dialog });
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
@@ -424,7 +428,7 @@ describe("ShiftQuickEditor", () => {
     );
     expect(onSubmit).not.toHaveBeenCalled();
   });
-  it("opens immediately to the right of the pointer and moves by dragging the header", () => {
+  it("opens beside the pointer, inside the screen, and moves by dragging the header", () => {
     render(
       <ShiftQuickEditor
         model={model}
@@ -449,7 +453,8 @@ describe("ShiftQuickEditor", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Add shift" });
     expect(dialog.style.left).toBe("34px");
-    expect(dialog.style.top).toBe("32px");
+    // Its arrow points at the pointer from 72px down; the screen's edge stops it at 8px.
+    expect(dialog.style.top).toBe("8px");
 
     const header = dialog.querySelector("header");
     expect(header).not.toBeNull();
@@ -472,7 +477,7 @@ describe("ShiftQuickEditor", () => {
     });
 
     expect(dialog.style.left).toBe("54px");
-    expect(dialog.style.top).toBe("62px");
+    expect(dialog.style.top).toBe("38px");
   });
 
   it("uses a separate dismiss handler for blank clicks and Escape", () => {
@@ -673,10 +678,7 @@ describe("ShiftQuickEditor", () => {
           date.setUTCDate(date.getUTCDate() + days);
           return date.toISOString().slice(0, 10);
         }}
-        scheduleClosureCoversDate={(closure, date) =>
-          closure.closed_date <= date &&
-          date <= (closure.end_date ?? closure.closed_date)
-        }
+        scheduleClosureCoversDate={(closure, date) => date === closure.closed_date}
         onClose={vi.fn()}
         onReload={vi.fn()}
         onDelete={vi.fn()}
@@ -886,7 +888,9 @@ describe("ShiftQuickEditor", () => {
     expect(screen.getByRole("combobox", { name: "Employee" })).toBeTruthy();
     fireEvent.click(screen.getByRole("combobox", { name: "Employee" }));
     expect(screen.getByRole("option", { name: "Alex Rivera" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("option", { name: "Unassigned" }));
+    // Mert, 2026-10-12: the unassigned choice reads "Open".
+    expect(screen.queryByRole("option", { name: "Unassigned" })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: "Open" }));
     expect(screen.queryByText("Main Dining")).toBeNull();
 
     fireEvent.click(screen.getByRole("combobox", { name: "Job" }));
@@ -929,7 +933,7 @@ describe("ShiftQuickEditor", () => {
     );
   });
 
-  it("reports dirty state without rendering the floating dialog chrome in drawer mode", async () => {
+  it("reports whether the manager changed anything", async () => {
     const onDirtyChange = vi.fn();
 
     render(
@@ -947,7 +951,6 @@ describe("ShiftQuickEditor", () => {
         formatTime={(value) => value}
         addDays={(iso) => iso}
         scheduleClosureCoversDate={() => false}
-        presentation="drawer"
         onClose={vi.fn()}
         onDirtyChange={onDirtyChange}
         onReload={vi.fn()}
@@ -956,9 +959,6 @@ describe("ShiftQuickEditor", () => {
       />,
     );
 
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Close editor" })).toBeNull();
-
     await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false));
 
     fireEvent.click(screen.getByRole("button", { name: "15m" }));
@@ -966,7 +966,7 @@ describe("ShiftQuickEditor", () => {
     await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true));
   });
 
-  it("keeps selected cell context out of the compact form while preserving payload context", async () => {
+  it("names the cell in the header, not as fields, and keeps it in the payload", async () => {
     const onSubmit = vi.fn().mockResolvedValue("saved" as const);
 
     render(
@@ -996,6 +996,10 @@ describe("ShiftQuickEditor", () => {
     expect(screen.queryByText("Mon, Aug 17")).toBeNull();
     expect(screen.queryByLabelText("Shift context")).toBeNull();
     expect(screen.queryByDisplayValue(model.week_start)).toBeNull();
+    // Who, which day and where, on one line under the title (Mert, 2026-10-12).
+    expect(screen.getByText("Alex Rivera · Mon, Aug 17 · Main Dining").id).toBe(
+      screen.getByRole("dialog", { name: "Add shift" }).getAttribute("aria-describedby"),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
 
@@ -1010,34 +1014,7 @@ describe("ShiftQuickEditor", () => {
     );
   });
 
-  it("keeps unassigned drawer cells compact with count control and no employee picker", () => {
-    render(
-      <ShiftQuickEditor
-        model={model}
-        state={{
-          mode: "create",
-          locationId: model.locations[0]!.id,
-          employeeId: null,
-          date: model.week_start,
-        }}
-        timeFormat="12h"
-        formatTime={(value) => value}
-        addDays={(iso) => iso}
-        scheduleClosureCoversDate={() => false}
-        presentation="drawer"
-        onClose={vi.fn()}
-        onReload={vi.fn()}
-        onDelete={vi.fn()}
-        onSubmit={vi.fn()}
-      />,
-    );
-
-    expect(screen.queryByRole("combobox", { name: "Employee" })).toBeNull();
-    expect(screen.getByLabelText("Shift count")).toBeTruthy();
-    expect(screen.queryByText("Unassigned")).toBeNull();
-  });
-
-  it("blocks drawer submit when a time field is cleared", () => {
+  it("blocks submit when a time field is cleared", () => {
     const onSubmit = vi.fn();
 
     render(
@@ -1053,7 +1030,6 @@ describe("ShiftQuickEditor", () => {
         formatTime={(value) => value}
         addDays={(iso) => iso}
         scheduleClosureCoversDate={() => false}
-        presentation="drawer"
         onClose={vi.fn()}
         onReload={vi.fn()}
         onDelete={vi.fn()}
@@ -1104,7 +1080,6 @@ describe("ShiftQuickEditor", () => {
         formatTime={(value) => value}
         addDays={(iso) => iso}
         scheduleClosureCoversDate={() => false}
-        presentation="drawer"
         onClose={vi.fn()}
         onReload={vi.fn()}
         onDelete={vi.fn()}
@@ -1160,9 +1135,10 @@ describe("ShiftQuickEditor", () => {
           location_id: model.locations[0]!.id,
           title: "Private event",
           closed_date: model.week_start,
-          end_date: null,
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          opens: null,
+          closes: null,
         },
       ],
     };
@@ -1181,10 +1157,7 @@ describe("ShiftQuickEditor", () => {
         timeFormat="12h"
         formatTime={(value) => value}
         addDays={(iso) => iso}
-        scheduleClosureCoversDate={(closure, date) =>
-          closure.closed_date <= date &&
-          date <= (closure.end_date ?? closure.closed_date)
-        }
+        scheduleClosureCoversDate={(closure, date) => date === closure.closed_date}
         onClose={vi.fn()}
         onReload={vi.fn()}
         onDelete={vi.fn()}
@@ -1255,6 +1228,174 @@ describe("ShiftQuickEditor", () => {
       screen.getByText("Start and end time cannot be the same."),
     ).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+// Mert, 2026-10-12: one window with two layouts, Form and Timeline.
+describe("ShiftQuickEditor layouts", () => {
+  const create = { mode: "create" as const, locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start };
+  function renderWindow(
+    state: Parameters<typeof ShiftQuickEditor>[0]["state"] = create,
+    extra: Partial<Parameters<typeof ShiftQuickEditor>[0]> = {},
+  ) {
+    const onSubmit = vi.fn().mockResolvedValue("saved" as const);
+    const onClose = vi.fn();
+    const view = render(
+      <ShiftQuickEditor
+        model={model}
+        state={state}
+        timeFormat="12h"
+        formatTime={(value) => value}
+        addDays={(value) => value}
+        scheduleClosureCoversDate={() => false}
+        onClose={onClose}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={onSubmit}
+        {...extra}
+      />,
+    );
+    return { onSubmit, onClose, view };
+  }
+  const layoutRadio = (name: "Form" | "Timeline") => screen.getByRole("radio", { name });
+  const rowLabels = () =>
+    [...screen.getByRole("dialog", { name: "Add shift" }).querySelectorAll(".shift-window-label")].map((label) => label.textContent);
+
+  it("opens on Form, switches to Timeline from the header and opens there the next time", () => {
+    const first = renderWindow();
+    expect(layoutRadio("Form").getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByRole("slider", { name: /^Shift time/ })).toBeNull();
+
+    fireEvent.click(layoutRadio("Timeline"));
+    expect(layoutRadio("Timeline").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("slider", { name: /^Shift time/ })).toBeTruthy();
+    first.view.unmount();
+
+    renderWindow();
+    expect(layoutRadio("Timeline").getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("slider", { name: /^Shift time/ })).toBeTruthy();
+  });
+
+  it("switches with Alt+T and keeps the cursor in the same field", async () => {
+    renderWindow();
+    const start = screen.getByLabelText("Start time");
+    act(() => start.focus());
+    fireEvent.keyDown(start, { key: "t", code: "KeyT", altKey: true });
+    expect(layoutRadio("Timeline").getAttribute("aria-checked")).toBe("true");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Start time")));
+    fireEvent.keyDown(document.activeElement!, { key: "t", code: "KeyT", altKey: true });
+    expect(layoutRadio("Form").getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("puts Type first in both layouts (Mert, 2026-10-12)", () => {
+    renderWindow();
+    expect(rowLabels()[0]).toBe("Type");
+    fireEvent.click(layoutRadio("Timeline"));
+    expect(rowLabels()[0]).toBe("Type");
+  });
+
+  it("starts the cursor in the start time", () => {
+    renderWindow();
+    expect(document.activeElement).toBe(screen.getByLabelText("Start time"));
+  });
+
+  it("keeps the Start time and End time names for the time boxes, not the time line's ends", () => {
+    renderWindow();
+    fireEvent.click(layoutRadio("Timeline"));
+    expect(screen.getAllByLabelText("Start time")).toHaveLength(1);
+    expect(screen.getAllByLabelText("End time")).toHaveLength(1);
+    expect(screen.getByRole("slider", { name: "Shift start" })).toBeTruthy();
+    expect(screen.getByRole("slider", { name: "Shift end" })).toBeTruthy();
+  });
+
+  // The cursor starts in Start time; leaving it untouched for a type chip
+  // must not count as typing a time, or the type's hours never apply.
+  it("applies a shift type's hours when the cursor leaves an untouched start time", () => {
+    const lunch = { ...model.shift_types[0]!, id: "88888888-8888-4888-8888-888888888888", name: "Lunch", default_start_time: "11:00", default_end_time: "15:00" };
+    renderWindow(create, { model: { ...model, shift_types: [...model.shift_types, lunch] } });
+    const chip = screen.getByRole("button", { name: "Lunch" });
+    act(() => chip.focus());
+    fireEvent.click(chip);
+    expect((screen.getByLabelText("Start time") as HTMLInputElement).value).toBe("11:00 AM");
+    expect((screen.getByLabelText("End time") as HTMLInputElement).value).toBe("03:00 PM");
+  });
+
+  it("shows no Enter mark on the save button (Mert, 2026-10-12)", () => {
+    renderWindow();
+    expect(screen.getByRole("button", { name: "Add shift" }).textContent).toBe("Add shift");
+  });
+
+  it("moves the shift on the time line with the arrow keys and saves with Enter", async () => {
+    const { onSubmit } = renderWindow();
+    fireEvent.click(layoutRadio("Timeline"));
+    const bar = screen.getByRole("slider", { name: /^Shift time/ });
+    fireEvent.keyDown(bar, { key: "ArrowRight" });
+    expect(bar.getAttribute("aria-valuetext")).toBe("4:15 PM to 10:15 PM");
+    fireEvent.keyDown(bar, { key: "ArrowLeft", shiftKey: true });
+    expect(bar.getAttribute("aria-valuetext")).toBe("3:15 PM to 9:15 PM");
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Shift end" }), { key: "ArrowRight" });
+    fireEvent.keyDown(bar, { key: "Enter" });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ start_time: "15:15", end_time: "21:30" }), 1);
+  });
+
+  it("gives an open shift to the person whose row is pressed on the time line", async () => {
+    const { onSubmit } = renderWindow({ ...create, employeeId: null });
+    fireEvent.click(layoutRadio("Timeline"));
+    const people = screen.getByRole("radiogroup", { name: "Who works this shift" });
+    expect(within(people).getByRole("radio", { name: /^Open/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(within(people).getByRole("radio", { name: /^Alex Rivera/ }));
+    expect(within(people).getByRole("radio", { name: /^Alex Rivera/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]![0]).toMatchObject({ employee_id: model.employees[0]!.id });
+  });
+
+  it("closes on Enter when nothing on the shift changed", () => {
+    const shift: ScheduleEditableShift = {
+      id: "77777777-7777-4777-8777-777777777777",
+      location_id: model.locations[0]!.id,
+      employee_id: model.employees[0]!.id,
+      job_id: model.jobs[0]!.id,
+      shift_type_id: model.shift_types[0]!.id,
+      scheduled_date: model.week_start,
+      start_time: "16:00",
+      end_time: "22:00",
+      crosses_midnight: false,
+      unpaid_break_minutes: 0,
+      hide_time_on_badge: false,
+      label_ids: [],
+      label_names: [],
+      note: "",
+      warning_codes: [],
+      revision: 1,
+    };
+    const { onSubmit, onClose } = renderWindow({ mode: "edit", shift }, { model: { ...model, shifts: [shift] } });
+    const end = screen.getByLabelText("End time");
+    // Enter on End's last part (AM/PM) is the keyboard's save.
+    end.dataset.autoSelectSegment = "period";
+    act(() => end.focus());
+    fireEvent.keyDown(end, { key: "Enter" });
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("marks the shift being edited on the grid while its window is open", () => {
+    const shift = { id: "77777777-7777-4777-8777-777777777777", start_time: "16:00", end_time: "22:00" } as ScheduleEditableShift;
+    const badge = document.createElement("div");
+    badge.setAttribute("data-shift-badge", "true");
+    badge.setAttribute("data-shift-id", shift.id);
+    document.body.append(badge);
+    try {
+      const { view } = renderWindow({ mode: "edit", shift: { ...shift, location_id: model.locations[0]!.id, employee_id: model.employees[0]!.id, job_id: model.jobs[0]!.id, shift_type_id: null, scheduled_date: model.week_start, crosses_midnight: false, unpaid_break_minutes: 0, hide_time_on_badge: false, label_ids: [], label_names: [], note: "", warning_codes: [], revision: 1 } });
+      expect(badge.getAttribute("data-shift-window-target")).toBe("true");
+      view.unmount();
+      expect(badge.hasAttribute("data-shift-window-target")).toBe(false);
+    } finally {
+      badge.remove();
+    }
   });
 });
 
@@ -1350,21 +1491,7 @@ describe("ShiftQuickEditor note", () => {
     expect(screen.getByText("1 character left")).toBeTruthy();
   });
 
-  it("brings the whole field into view when it takes focus, clear of the sticky bar", () => {
-    const scrollIntoView = vi.fn();
-    const original = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = scrollIntoView;
-    try {
-      renderEditor(create);
-      fireEvent.focus(note());
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
-      expect(scrollIntoView.mock.contexts[0]).toBe(note());
-    } finally {
-      Element.prototype.scrollIntoView = original;
-    }
-  });
-
-  it("lets a keyboard user Tab from End time through the break and badge options to Note", () => {
+  it("lets a keyboard user Tab from End time through the break and Job to Note", () => {
     renderEditor({ mode: "edit", shift: noted });
     const path: string[] = [];
     act(() => screen.getByLabelText("End time").focus());
@@ -1376,7 +1503,7 @@ describe("ShiftQuickEditor note", () => {
     expect(path).toEqual([
       "End time", "End time", "End time",
       "None", "15m", "30m", "45m", "60m",
-      "checkbox",
+      "Job",
     ]);
   });
 
@@ -1444,18 +1571,19 @@ describe("ShiftQuickEditor note", () => {
     }
   });
 
-  it("brings an opened list into view so the action bar does not cover its end", () => {
-    const scrollIntoView = vi.fn();
-    const original = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = scrollIntoView;
+  // The window has no scroll area to bring a list into view (Mert, 2026-10-12):
+  // a list with no room below opens upward instead of being cut.
+  it("opens a list upward when the room below its box is too small", () => {
+    const original = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function () {
+      return new DOMRect(0, window.innerHeight - 40, 200, 32);
+    };
     try {
       renderEditor(create);
       fireEvent.click(screen.getByRole("combobox", { name: "Job" }));
-      const list = screen.getByRole("listbox", { name: "Job" });
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
-      expect(scrollIntoView.mock.contexts).toContain(list);
+      expect(screen.getByRole("listbox", { name: "Job" }).hasAttribute("data-up")).toBe(true);
     } finally {
-      Element.prototype.scrollIntoView = original;
+      Element.prototype.getBoundingClientRect = original;
     }
   });
 
@@ -1526,43 +1654,44 @@ describe("ShiftQuickEditor note", () => {
   });
 });
 
-// G2: the editor's fields and buttons, as styles.css draws them.
+// G2: the window's fields and buttons, as its stylesheet draws them.
 describe("ShiftQuickEditor styles", () => {
-  const styles = readFileSync("src/styles.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  const rules = [...styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
-    selector: match[1]!.replace(/\s+/g, " ").trim(),
-    body: match[2]!,
-  }));
-  const bodyOf = (selector: string) =>
-    rules
+  const parse = (file: string) => {
+    const text = readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    return {
+      text,
+      rules: [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({
+        selector: match[1]!.replace(/\s+/g, " ").trim(),
+        body: match[2]!,
+      })),
+    };
+  };
+  const windowCss = parse("src/schedule/components/shift-window/shift-window.css");
+  const appCss = parse("src/styles.css");
+  const bodyOf = (sheet: typeof windowCss, selector: string) =>
+    sheet.rules
       .filter((rule) => rule.selector.split(/,\s(?![^(]*\))/).includes(selector))
       .map((rule) => rule.body)
       .join("\n");
-  const phone = [...styles.matchAll(/@media \(max-width: 520px\) \{([\s\S]*?)\n\}/g)]
+  const phone = [...windowCss.text.matchAll(/@media \(max-width: 520px\) \{([\s\S]*?)\n\}/g)]
     .map((match) => match[1]!.replace(/\s+/g, " "))
     .join("\n");
 
   // BL-345 (WCAG 1.4.11): a resting chip's edge is the field-edge token, 5.1:1 on white.
   it("draws a resting shift type chip with the field edge, not a faint one", () => {
-    const chip = bodyOf(".schedule-shift-type-picker button");
-    expect(chip).toContain("border: 1px solid var(--theme-muted)");
-    expect(chip).not.toContain("#d6ded9");
+    expect(bodyOf(windowCss, ".shift-window-chips button")).toContain("border: 1px solid var(--theme-muted)");
   });
 
   // BL-293 (WCAG 2.1 2.4.7): one visible focus ring everywhere, never hover alone.
-  it("never hides the focus ring on a control of the editor", () => {
-    const editorControls = /\.schedule-(quick-select|break-options|count-stepper|dialog-actions|shift-type-picker|time-input)\b/;
-    const hidden = rules.filter(
-      (rule) =>
-        editorControls.test(rule.selector) &&
-        rule.selector.includes(":focus-visible") &&
-        /outline:\s*(none|0)/.test(rule.body),
+  it("never hides the focus ring on a control of the window", () => {
+    const hidden = windowCss.rules.filter(
+      (rule) => /:focus(-visible)?\b/.test(rule.selector) && /outline:\s*(none|0)/.test(rule.body),
     );
     expect(hidden.map((rule) => rule.selector)).toEqual([]);
-    expect(bodyOf(".schedule-quick-editor :is(input, select, textarea):focus-visible")).toContain(
+    expect(bodyOf(windowCss, '.shift-window :is(button, input, textarea, [role="slider"]):focus-visible')).toContain(
       "outline: 2px solid var(--theme-focus)",
     );
-    expect(bodyOf(".schedule-save-form :is(input, select):focus-visible")).toContain(
+    expect(bodyOf(appCss, ".schedule-save-form :is(input, select):focus-visible")).toContain(
       "outline: 2px solid var(--theme-focus)",
     );
   });
@@ -1570,26 +1699,35 @@ describe("ShiftQuickEditor styles", () => {
   // BL-290 (WCAG 2.1 1.4.11, KARARLAR UI-09): a field's edge is --theme-muted.
   it("draws every field edge in the form-field border colour", () => {
     for (const selector of [
-      ".schedule-shift-form input",
-      ".schedule-save-form input",
-      '.schedule-quick-select > button[role="combobox"]',
-      ".schedule-time-input input",
-      ".schedule-break-options button",
-      ".schedule-count-stepper button",
+      ".shift-window .shift-window-time-input input",
+      ".shift-window-note textarea",
+      ".shift-window .shift-field-select > button",
+      ".shift-window .shift-field-stepper",
+      ".shift-window-segments",
+      ".shift-window-button",
     ]) {
-      expect(bodyOf(selector), selector).toContain("border: 1px solid var(--theme-muted)");
+      expect(bodyOf(windowCss, selector), selector).toContain("border: 1px solid var(--theme-muted)");
     }
+    expect(bodyOf(appCss, ".schedule-save-form input")).toContain("border: 1px solid var(--theme-muted)");
   });
 
   // BL-294: iOS zooms into a field under 16px.
   it("sets every field to 16px on a phone", () => {
-    expect(phone).toMatch(/\.schedule-shift-form :is\(input, select, textarea\),[^{]*\{ font-size: 16px;/);
-    expect(phone).toMatch(/\.schedule-time-input input,[^{]*\.schedule-time-input \.schedule-time-input__segments \{ font-size: 16px;/);
-    expect(phone).toMatch(/\.schedule-save-form :is\(input, select\)[^{]*\{ font-size: 16px;/);
+    expect(phone).toMatch(/\.shift-window :is\(input, textarea\),[^{]*\.schedule-time-input__segments \{ font-size: 16px;/);
   });
 
   // BL-295: the note grows with what is written, up to its max height.
   it("lets the note field grow with its text", () => {
-    expect(bodyOf(".schedule-shift-form-section--note textarea")).toContain("field-sizing: content");
+    expect(bodyOf(windowCss, ".shift-window-note textarea")).toContain("field-sizing: content");
+  });
+
+  // Mert, 2026-10-12: no scroll bar ever opens in the window. Only an open
+  // list and a note past its max height may scroll their own content.
+  it("has no scroll area apart from an open list and a long note", () => {
+    const scrolling = windowCss.rules
+      .filter((rule) => /overflow(-[xy])?:\s*(auto|scroll)/.test(rule.body))
+      .map((rule) => rule.selector);
+    expect(scrolling).toEqual([".shift-window-note textarea", ".shift-window .shift-field-list"]);
+    expect(bodyOf(windowCss, ".shift-window-track")).toContain("overflow: clip");
   });
 });

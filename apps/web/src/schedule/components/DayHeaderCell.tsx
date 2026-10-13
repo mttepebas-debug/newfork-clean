@@ -1,19 +1,26 @@
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
-import { Calendar, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import type { KeyboardEvent, MouseEvent } from "react";
 
 import {
   formatDateNumber,
   formatDay,
   formatDayNumber,
+  type ScheduleTimeFormat,
 } from "../lib/scheduleDateTime";
-import { importantDateTypeLabels } from "../../lib/importantDateTypes";
+import { scheduleClosureLabel } from "../lib/scheduleClosures";
+
+type SchedulePost = ScheduleReadModel["important_dates"][number];
 
 interface DayHeaderCellProps {
   readonly date: string;
+  /** A Closed day that is out, at every location the column shows. */
   readonly closure?: ScheduleReadModel["closures"][number] | null;
-  readonly partialClosedShiftTypeIds?: readonly string[];
-  readonly importantDates?: readonly ScheduleReadModel["important_dates"][number][];
+  /** Posts with Show on the Schedule that fall on this day here (EKRAN-08). */
+  readonly posts?: readonly SchedulePost[];
+  readonly timeFormat?: ScheduleTimeFormat;
+  /** The column's clock, for a scheduled post's "announces" day. */
+  readonly timezone?: string;
   readonly isToday?: boolean;
   readonly viewed?: boolean;
   readonly locationBoundary?: boolean;
@@ -22,27 +29,49 @@ interface DayHeaderCellProps {
   readonly onClick?: (
     event: KeyboardEvent<HTMLDivElement> | MouseEvent<HTMLDivElement>,
   ) => void;
+  /** Opens the post a chip names; without it the chip is text. */
+  readonly onOpenPost?: (announcementId: string) => void;
+}
+
+/**
+ * What a chip says: "Closed · Labor Day", "Short hours 10a–3p · Deep clean",
+ * the title alone on an open day; a scheduled post says when it goes out
+ * ("Closed · announces Oct 19") and only managers get it.
+ */
+export function schedulePostChipText(
+  post: SchedulePost,
+  timeFormat: ScheduleTimeFormat = "12h",
+  timezone?: string,
+): string {
+  const day =
+    post.day === "open"
+      ? ""
+      : scheduleClosureLabel({ kind: post.day === "closed" ? "closed" : "short", opens: post.opens, closes: post.closes }, timeFormat).text;
+  if (post.status === "scheduled") {
+    const when = post.publish_at
+      ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", ...(timezone ? { timeZone: timezone } : {}) }).format(new Date(post.publish_at))
+      : null;
+    return `${day || post.title} · ${when ? `announces ${when}` : "scheduled"}`;
+  }
+  return day ? `${day} · ${post.title}` : post.title;
 }
 
 export function DayHeaderCell({
   date,
   closure = null,
-  partialClosedShiftTypeIds = [],
-  importantDates = [],
+  posts = [],
+  timeFormat = "12h",
+  timezone,
   isToday = false,
   viewed = false,
   locationBoundary = false,
   locationIds = [],
   locationName,
   onClick,
+  onOpenPost,
 }: DayHeaderCellProps) {
   const closedReason = closure?.title ?? "Closed";
-  const importantSummary = importantDates
-    .map((item) => `${importantDateTypeLabels[item.type]}: ${item.title}`)
-    .join(" · ");
-  const partialClosedCount = closure
-    ? 0
-    : new Set(partialClosedShiftTypeIds).size;
+  const chips = posts.map((post) => ({ post, text: schedulePostChipText(post, timeFormat, timezone) }));
   const interactive = Boolean(onClick);
   const label = `${formatDay(date)} ${formatDateNumber(date)}${locationName ? `, ${locationName}` : ""}`;
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -51,6 +80,8 @@ export function DayHeaderCell({
     event.stopPropagation();
     onClick(event);
   };
+  const first = chips[0];
+  const rest = chips.slice(1);
 
   return (
     <div
@@ -62,8 +93,7 @@ export function DayHeaderCell({
       data-today={isToday}
       data-viewed={viewed}
       data-closed={Boolean(closure)}
-      data-partial-closed={partialClosedCount > 0}
-      data-important={importantDates.length > 0}
+      data-posts={chips.length > 0}
       data-clickable={interactive}
       data-location-boundary={locationBoundary ? "start" : undefined}
       data-schedule-location-filter-ids={
@@ -85,31 +115,47 @@ export function DayHeaderCell({
             <Lock size={12} aria-hidden className="schedule-day-header-lock" />
           </span>
         ) : null}
-        {importantDates.length ? (
-          <span
-            className="schedule-day-header-icon"
-            aria-label={`Important: ${importantSummary}`}
-            title={importantSummary}
-          >
-            <Calendar
-              size={12}
-              aria-hidden
-              className="schedule-day-header-important"
-            />
-          </span>
-        ) : null}
         <strong>{formatDay(date)}</strong>
       </span>
       <span className="schedule-day-header-date">
         {formatDayNumber(date)}
       </span>
-      {partialClosedCount > 0 ? (
-        <span
-          className="schedule-day-header-partial-closed"
-          aria-label={`Closed for ${partialClosedCount} shift types`}
-          title={`Closed for ${partialClosedCount} shift type(s)`}
-        >
-          ⊘{partialClosedCount}
+      {first ? (
+        <span className="schedule-day-header-posts">
+          {onOpenPost ? (
+            <button
+              type="button"
+              className="schedule-day-post"
+              data-day={first.post.day}
+              data-scheduled={first.post.status === "scheduled"}
+              title={chips.map((chip) => chip.text).join("\n")}
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenPost(first.post.id);
+              }}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              {first.text}
+            </button>
+          ) : (
+            <span
+              className="schedule-day-post"
+              data-day={first.post.day}
+              data-scheduled={first.post.status === "scheduled"}
+              title={chips.map((chip) => chip.text).join("\n")}
+            >
+              {first.text}
+            </span>
+          )}
+          {rest.length ? (
+            <span
+              className="schedule-day-post-more"
+              title={rest.map((chip) => chip.text).join("\n")}
+              aria-label={`${rest.length} more: ${rest.map((chip) => chip.text).join(", ")}`}
+            >
+              +{rest.length}
+            </span>
+          ) : null}
         </span>
       ) : null}
     </div>

@@ -37,6 +37,8 @@ export interface PresetDropTarget extends PresetDragSource {
 export interface PresetDropEvaluation {
   readonly allowed: boolean;
   readonly reason?: string;
+  /** One or two words for the dragged preset; `reason` is the full sentence. */
+  readonly shortReason?: string;
   readonly targetStatus?: "allowed" | "warning" | "blocked" | null;
 }
 
@@ -45,6 +47,9 @@ export interface PresetDragState extends PresetDragSource {
   readonly pointerY: number;
   readonly previewWidth: number;
   readonly previewHeight: number;
+  /** Where on the chip the press landed, from its top-left corner. */
+  readonly grabX: number;
+  readonly grabY: number;
   readonly targetKey: string | null;
   readonly targetStatus: "allowed" | "warning" | "blocked" | null;
   readonly reason: string | null;

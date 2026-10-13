@@ -27,6 +27,7 @@ import {
   renderScheduleBadgeWidthMeasurer,
   useUniformScheduleBadgeWidth,
 } from "../hooks/useScheduleBadgeMeasurements";
+import { useKeepScrollThroughDrag } from "../hooks/useKeepScrollThroughDrag";
 import {
   buildDisplayScheduleCellState,
   useScheduleCellState,
@@ -95,6 +96,7 @@ export function ScheduleGrid({
   organizationLogoUrl,
   organizationLogoPlacement,
   onManageLogo,
+  onOpenPost,
 }: {
   readonly model: ScheduleReadModel;
   /** BL-055: the viewer's own 12h/24h choice; the workspace's when they have none. */
@@ -177,6 +179,8 @@ export function ScheduleGrid({
   readonly organizationLogoUrl: string | null;
   readonly organizationLogoPlacement: ScheduleLogoPlacement | null;
   readonly onManageLogo?: () => void;
+  /** A day header's post chip opens the post (EKRAN-08). */
+  readonly onOpenPost?: (announcementId: string) => void;
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const showAvailabilityMarks = showAvailability && Boolean(session);
@@ -281,6 +285,7 @@ export function ScheduleGrid({
     }
     return null;
   }, [filtered.locations, filtered.shifts, presetDrag.dragState, shiftDrag.dragState]);
+  const { grab: grabDragSource } = useKeepScrollThroughDrag({ active: Boolean(dragRule), gridRef });
   const { employeeRowGroups, rows } = useMemo(() => {
     if (!dragRule) return { employeeRowGroups: allEmployeeRowGroups, rows: allRows };
     const canTake = (employee: (typeof allRows)[number]) =>
@@ -327,6 +332,7 @@ export function ScheduleGrid({
     }
     const shift = filtered.shifts.find((item) => item.id === shiftId);
     setActivePointerShiftLocationId(shift?.location_id ?? null);
+    grabDragSource(event.currentTarget);
     shiftDrag.onShiftPointerDown(shiftId, event);
   };
   const handleShiftMouseDown = (
@@ -347,6 +353,7 @@ export function ScheduleGrid({
     }
     const shift = filtered.shifts.find((item) => item.id === shiftId);
     setActivePointerShiftLocationId(shift?.location_id ?? null);
+    grabDragSource(event.currentTarget);
     shiftDrag.onShiftMouseDown(shiftId, event);
   };
   const handleEdit = (
@@ -449,6 +456,7 @@ export function ScheduleGrid({
       })}
       <ScheduleGridHeaders
         closures={model.closures}
+        timeFormat={model.settings.time_format}
         days={days}
         importantDates={model.important_dates}
         locationGroups={locationGroups}
@@ -461,6 +469,7 @@ export function ScheduleGrid({
         publishWarnings={publishWarnings}
         onDayHeaderClick={onDayHeaderClick}
         onManageLogo={onManageLogo}
+        onOpenPost={onOpenPost}
         onToggleLocationFilter={toggleLocationHeaderFilter}
       />
       <ScheduleGridBody
@@ -487,8 +496,14 @@ export function ScheduleGrid({
         onOpenEmployeeCard={onOpenEmployeeCard}
         onPaste={onPaste}
         onPresetCreate={onPresetCreate}
-        onPresetMouseDown={presetDrag.onPresetMouseDown}
-        onPresetPointerDown={presetDrag.onPresetPointerDown}
+        onPresetMouseDown={(preset, event) => {
+          grabDragSource(event.currentTarget);
+          presetDrag.onPresetMouseDown(preset, event);
+        }}
+        onPresetPointerDown={(preset, event) => {
+          grabDragSource(event.currentTarget);
+          presetDrag.onPresetPointerDown(preset, event);
+        }}
         onDragOverCell={setDragOverCell}
         onSelect={onSelect}
         onShiftContextMenu={onShiftContextMenu}

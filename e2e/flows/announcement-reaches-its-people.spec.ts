@@ -6,10 +6,11 @@ import { psql } from "../global-setup";
 import { signIn, tokenOf, type Person } from "../fixtures/world";
 
 // FOUNDATION-B flow 7 (FB-6.7 "Done when" 9; KARARLAR "Duyurular ve önemli
-// tarihler" K1, K5): Ayse, the Kadikoy manager, writes a Kadikoy announcement
-// for employees and publishes it. Ali works at Kadikoy and Besiktas: he sees
-// it and acknowledges it. A second Kadikoy manager it was not aimed at sees it
-// too (K5). Ayse cannot write one for Besiktas, which she does not manage (K1).
+// tarihler" K1, K5; EKRAN-08 one announcement record): Ayse, the Kadikoy
+// manager, writes a Kadikoy announcement in the drawer, asks people to
+// acknowledge it and publishes it. Ali works at Kadikoy and Besiktas: he sees
+// it and acknowledges it. A second Kadikoy manager sees it too (K5). Ayse
+// cannot write one for Besiktas, which she does not manage (K1).
 
 const world: { readonly run: string; readonly password: string } = JSON.parse(
   readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
@@ -40,8 +41,9 @@ async function openAsEmail(browser: Browser, email: string, path: string): Promi
   return page;
 }
 
-const announcementRow = (page: Page, title: string) =>
-  page.getByRole("table", { name: "Announcements" }).getByText(title, { exact: true });
+// A manager's list shows Active and Past tables; the post sits in Active.
+const activeRow = (page: Page, title: string) =>
+  page.getByRole("table", { name: "Active announcements" }).getByText(title, { exact: true });
 
 test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should not (flow 7)", async ({ browser }) => {
   // Four people sign in one after another; the budget is three times on purpose (VAR-E2E-2).
@@ -54,42 +56,50 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   sql(`select tests.person('${run}', '${label}', 'manager', array['K'], array['cook']);`);
   const handeEmail = sql(`select tests.password('${run}:${label}', '${world.password}');`);
 
-  // Ayse writes it. Her only location is the one it starts at, and Besiktas is
-  // not on offer (K1).
+  // Ayse writes it in the drawer (EKRAN-08). Details holds the locations: her
+  // only one is checked from the start, and Besiktas is not on offer (K1).
   const ayse = await openAs(browser, "ayse", "/app/announcements");
-  await ayse.getByRole("button", { name: "New announcement" }).click();
-  const editor = ayse.getByRole("dialog", { name: "Add announcement" });
-  await editor.getByLabel("Title").fill(title);
-  await editor.getByLabel("Message").fill("Count the walk-in before close.");
-  await editor.getByText("Locations", { exact: true }).click();
-  await expect(editor.getByRole("checkbox", { name: "Kadikoy" })).toBeChecked();
-  await expect(editor.getByRole("checkbox", { name: "Besiktas" })).toHaveCount(0);
-  await editor.getByRole("button", { name: "Save draft" }).click();
-  await expect(announcementRow(ayse, title)).toBeVisible();
+  await ayse.getByRole("button", { name: "New", exact: true }).click();
+  const editor = ayse.getByRole("dialog", { name: "New announcement" });
+  await editor.getByLabel("Title", { exact: true }).fill(title);
+  await editor.getByLabel("Message", { exact: true }).fill("Count the walk-in before close.");
+  await expect(editor.getByRole("checkbox", { name: "Kadikoy", exact: true })).toBeChecked();
+  await expect(editor.getByRole("checkbox", { name: "Besiktas", exact: true })).toHaveCount(0);
+  await editor.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(activeRow(ayse, title)).toBeVisible();
 
-  await announcementRow(ayse, title).click();
-  await ayse.getByRole("button", { name: "Publish", exact: true }).click();
-  await expect(announcementRow(ayse, title)).toBeVisible();
+  // She opens the draft, walks to Audience, asks people to acknowledge and
+  // publishes it.
+  await activeRow(ayse, title).click();
+  const draft = ayse.getByRole("dialog", { name: title });
+  await expect(draft.getByRole("checkbox", { name: "Kadikoy", exact: true })).toBeChecked();
+  await draft.getByRole("button", { name: "Next", exact: true }).click();
+  await draft.getByRole("checkbox", { name: /^Ask people to acknowledge/ }).check();
+  await draft.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(draft).toHaveCount(0);
+  await expect(
+    ayse.getByRole("table", { name: "Active announcements" }).getByRole("row").filter({ hasText: title }),
+  ).toContainText("Published");
 
-  // Ali, at Kadikoy and Besiktas, sees it and acknowledges it.
+  // Ali, at Kadikoy and Besiktas, reads it from his list, where it asks him
+  // to acknowledge, and acknowledges it.
   const ali = await openAs(browser, "ali", "/app/announcements");
-  await expect(announcementRow(ali, title)).toBeVisible();
-  // Acknowledge from the row: opening the row first would put the drawer
-  // over the row's own button.
-  const aliRow = ali
-    .getByRole("table", { name: "Announcements" })
-    .getByRole("row")
-    .filter({ hasText: title });
-  await aliRow.getByRole("button", { name: "Acknowledge" }).click();
-  await expect(aliRow.getByLabel("Acknowledged")).toBeVisible();
+  const aliRow = ali.locator(".announcement-reader-list").getByRole("button", { name: title });
+  await expect(aliRow).toContainText("Acknowledge");
+  await aliRow.click();
+  const reader = ali.getByRole("dialog", { name: title });
+  await reader.getByRole("button", { name: "Acknowledge", exact: true }).click();
+  await expect(reader.getByText("Acknowledged", { exact: true })).toBeVisible();
+  await expect(reader.getByRole("button", { name: "Acknowledge", exact: true })).toHaveCount(0);
 
-  // The other Kadikoy manager was not aimed at (employees only) and sees it
-  // anyway; Mehmet, the Besiktas manager, does not (K5, K6).
+  // The other Kadikoy manager sees it too; Mehmet, the Besiktas manager,
+  // does not (K5, K6).
   const hande = await openAsEmail(browser, handeEmail, "/app/announcements");
-  await expect(announcementRow(hande, title)).toBeVisible();
+  await expect(activeRow(hande, title)).toBeVisible();
   const mehmet = await openAs(browser, "mehmet", "/app/announcements");
-  await expect(mehmet.getByRole("heading", { name: "Announcements" })).toBeVisible();
-  await expect(announcementRow(mehmet, title)).toHaveCount(0);
+  await expect(mehmet.getByRole("table", { name: "Active announcements" })).toBeVisible();
+  await expect(activeRow(mehmet, title)).toHaveCount(0);
 
   // Who it told: Ali, the other Kadikoy manager and the admin; not Ayse, who
   // wrote it (KK-89), and not Mehmet.
@@ -114,9 +124,27 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
     body: JSON.stringify({
       announcement_id: null,
       expected_revision: null,
+      intent: "draft",
       announcement: {
-        title: `Besiktas ${suffix}`, body: "Not hers.", category: "general", audience_roles: ["employee"],
-        location_ids: [ids.besiktas], publish_at: null, expires_at: null, action_url: null,
+        title: `Besiktas ${suffix}`,
+        body: "Not hers.",
+        category: "general",
+        category_other: null,
+        starts_on: null,
+        ends_on: null,
+        event_from: null,
+        event_until: null,
+        recurrence: "none",
+        on_important_dates: false,
+        on_calendar: false,
+        on_schedule: false,
+        ask_ack: false,
+        publish_at: null,
+        locations: [{ location_id: ids.besiktas, day: "open", opens: null, closes: null }],
+        people: [],
+        choices: {},
+        fingerprint: null,
+        bring_back: [],
       },
     }),
   });

@@ -5,8 +5,12 @@ import type { EmployeeHubReadModel } from "@newfork/shared";
 import { TimeOffCancellation } from "./TimeOffCancellation";
 import { TimeOffPeriods } from "./TimeOffPeriods";
 import { requestTimeOffCancellation } from "../schedule/requests-data";
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
-vi.mock("../schedule/requests-data", () => ({ requestTimeOffCancellation: vi.fn() }));
+import { requestAppNavigation } from "../shell/leave-guard";
+import { RequestError } from "../lib/request-error";
+vi.mock("../schedule/requests-data", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../schedule/requests-data")>()),
+  requestTimeOffCancellation: vi.fn(),
+}));
 const id = "af9c0000-0000-4000-8000-000000000001";
 const request: EmployeeHubReadModel["requests"][number] = {
   id, kind: "time_off", status: "approved", title: "Time off", detail: "", revision: 2, created_at: "2035-01-01T00:00:00Z", can_cancel: false,
@@ -141,11 +145,11 @@ describe("approved leave cancellation", () => {
     fireEvent.click(screen.getByRole("button",{name:"Request leave cancellation"}));
     fireEvent.change(screen.getByLabelText("Cancellation note"),{target:{value:"Keep my cancellation draft"}});
     const navigate = vi.fn();
-    act(()=>requestAvailabilityNavigation(navigate));
+    act(()=>requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button",{name:"Stay here"}));
     expect(screen.getByLabelText("Cancellation note")).toHaveProperty("value","Keep my cancellation draft");
     expect(navigate).not.toHaveBeenCalled();
-    act(()=>requestAvailabilityNavigation(navigate));
+    act(()=>requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button",{name:"Discard and leave"}));
     expect(screen.queryByLabelText("Cancellation note")).toBeNull();
     expect(navigate).toHaveBeenCalledOnce(); expect(requestTimeOffCancellation).not.toHaveBeenCalled();
@@ -174,6 +178,29 @@ describe("approved leave cancellation", () => {
     expect((screen.getByRole("button", { name: "Send cancellation request" }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("Cancellation note") as HTMLTextAreaElement).value).toBe("My draft");
     expect(requestTimeOffCancellation).not.toHaveBeenCalled();
+  });
+  // BL-1043: the database's key says the leave moved on; the form reloads it
+  // and says so in its own words, not the server's "stale approved leave".
+  it("reloads the leave when the database says it changed meanwhile, and says so once", async () => {
+    vi.mocked(requestTimeOffCancellation).mockRejectedValueOnce(
+      new RequestError("stale approved leave; refresh before requesting cancellation", "time_off.changed", undefined, 409));
+    const ui = setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
+    await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
+    // Before the reload lands and after it, never the server's sentence.
+    expect(screen.getAllByRole("alert").map(alert => alert.textContent)).toEqual([
+      "The approved leave changed. Close this form and review the current hours before continuing."]);
+    ui.rerender(ui.view({ ...request, revision: 3 }));
+    expect(screen.getAllByRole("alert").map(alert => alert.textContent)).toEqual([
+      "The approved leave changed. Close this form and review the current hours before continuing."]);
+  });
+  it("keeps a standing refusal's own sentence and reloads nothing", async () => {
+    vi.mocked(requestTimeOffCancellation).mockRejectedValueOnce(
+      new RequestError("This request key was used for a different cancellation", "time_off.request_reused", undefined, 409));
+    setup(); fireEvent.click(screen.getByRole("button", { name: "Request leave cancellation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send cancellation request" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("This request key was used for a different cancellation");
+    expect(changed).not.toHaveBeenCalled();
   });
   it("shows pending cancellation without offering another request", () => {
     setup({ ...request, cancellation: { ...request.cancellation!, pending_request_id: id, can_request: false } });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  grabPoint,
   isPrimaryDragActivation,
   shiftDropTargetKey,
 } from "./scheduleDragTargets";
@@ -22,5 +23,11 @@ describe("scheduleDragTargets", () => {
     expect(isPrimaryDragActivation(1, 1)).toBe(false);
     expect(isPrimaryDragActivation(2, 2)).toBe(false);
     expect(isPrimaryDragActivation(undefined, 2)).toBe(false);
+  });
+
+  it("remembers where on the card the press landed, inside the card", () => {
+    const card = { left: 1020, top: 540, width: 126, height: 60 };
+    expect(grabPoint(card, 1083, 570)).toEqual({ grabX: 63, grabY: 30 });
+    expect(grabPoint(card, 1000, 700)).toEqual({ grabX: 0, grabY: 60 });
   });
 });

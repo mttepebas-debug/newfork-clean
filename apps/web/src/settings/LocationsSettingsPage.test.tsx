@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import LocationsSettingsPage from "./LocationsSettingsPage";
 import { formatUsPhone, usLettersMessage } from "@newfork/shared";
 import { listLocations, saveLocation } from "./organization-data";
+import { RequestError } from "../lib/request-error";
 
 const state = vi.hoisted(() => ({ canEdit: true }));
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: {
@@ -142,6 +143,21 @@ describe("Location short name editor", () => {
     fireEvent.click(save());
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "This short name is already used in this workspace. Choose another one.");
     expect(screen.getByLabelText("Short name")).toHaveProperty("value", "MN");
+  });
+  // BL-1045: by its key, a location deleted meanwhile; the list loads again
+  // and the sentence stays with the draft. A refusal without the key reloads nothing.
+  it.each([
+    [new RequestError("This item was deleted. Reload the catalog.", "catalog.deleted", undefined, 409), 2],
+    [new Error("This short name is already used in this workspace. Choose another one."), 1],
+  ])("reloads the list only for a location deleted meanwhile (%s)", async (refusal, reads) => {
+    vi.mocked(saveLocation).mockRejectedValue(refusal);
+    page();
+    fireEvent.click(await screen.findByRole("button", { name: /^Main/ }));
+    fireEvent.change(screen.getByLabelText("Location name"), { target: { value: "Main street" } });
+    fireEvent.click(save());
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", refusal.message);
+    await waitFor(() => expect(listLocations).toHaveBeenCalledTimes(reads));
+    expect(screen.getByLabelText("Location name")).toHaveProperty("value", "Main street");
   });
   it("keeps readonly locations readonly", async () => {
     state.canEdit = false; page();

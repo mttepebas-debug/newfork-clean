@@ -7,14 +7,15 @@ import {
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock3, Info, Plus, X } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { JobColorInput } from "./JobCatalogEditor";
 import "./jobs-settings.css";
-import { errorText, SettingsHeader } from "./GeneralSettingsPage";
-import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
+import { errorText } from "./GeneralSettingsPage";
+import { isGoneMeanwhile } from "../lib/catalog-refusals";
+import { ShiftCatalogHeader, ShiftCatalogToolbar } from "./ShiftCatalogTabs";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { ShiftCatalogList } from "./ShiftCatalogList";
 import {
@@ -57,7 +58,6 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     queryFn: () => listShiftTypes(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  const [showArchived, setShowArchived] = useState(false);
   const [editing, setEditing] = useState<ShiftType | "new" | null>(null);
   const [draft, setDraft] = useState<ShiftTypeInput>(defaultDraft);
   const [formError, setFormError] = useState<string | null>(null);
@@ -94,13 +94,21 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
       closeEditor();
       setFormError(null);
     },
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: an item deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void refresh();
+    },
   });
   const archiveMutation = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
       setShiftTypeArchived(workspaceId, id, archived),
     onSuccess: refresh,
-    onError: (error) => setFormError(errorText(error)),
+    // BL-1045: an item deleted meanwhile leaves the list; its sentence stays.
+    onError: (error) => {
+      setFormError(errorText(error));
+      if (isGoneMeanwhile(error)) void refresh();
+    },
   });
   const reorderMutation = useMutation({
     mutationFn: (ids: readonly string[]) => reorderShiftTypes(workspaceId, ids),
@@ -203,19 +211,11 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   if (isNoAccess(query.error))
     return (
       <section
-        className="settings-page jobs-settings-page shift-catalog-settings-page"
+        className="settings-page jobs-settings-page shift-catalog-settings-page list-page"
         aria-labelledby="shift-types-settings-title"
       >
-        <SettingsHeader
-          icon={<Clock3 size={21} aria-hidden />}
-          title="Shift types"
-          description="Reusable service periods with default times and schedule colors."
-          action={
-            <div className="shift-catalog-header-actions">
-              <ShiftCatalogTabs />
-            </div>
-          }
-        />
+        <ShiftCatalogHeader titleId="shift-types-settings-title" />
+        <ShiftCatalogToolbar />
         <NoAccessState
           subject="shift types"
           homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-types")}
@@ -224,33 +224,13 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     );
   return (
     <section
-      className="settings-page jobs-settings-page shift-catalog-settings-page"
+      className="settings-page jobs-settings-page shift-catalog-settings-page list-page"
       aria-labelledby="shift-types-settings-title"
     >
-      <SettingsHeader
-        icon={<Clock3 size={21} aria-hidden />}
-        title="Shift types"
-        description="Reusable service periods with default times and schedule colors."
-        action={
-          <div className="shift-catalog-header-actions">
-            <ShiftCatalogTabs
-              disabled={saveMutation.isPending || deleteLocked}
-            />
-            <Button
-              className="job-primary-button"
-              type="button"
-              disabled={!canEdit || saveMutation.isPending || deleteLocked}
-              onClick={() => openEditor()}
-            >
-              <Plus size={16} aria-hidden />
-              Add shift type
-            </Button>
-          </div>
-        }
-      />
+      <ShiftCatalogHeader titleId="shift-types-settings-title" />
       {editing ? (
         <CatalogDrawer
-          label={editing === "new" ? "Add shift type" : `Edit ${editing.name}`}
+          label={editing === "new" ? "New shift type" : `Edit ${editing.name}`}
           className="shift-catalog-settings-page"
           onClose={closeEditor}
           busy={saveMutation.isPending || deleteLocked}
@@ -259,7 +239,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
             className="job-catalog-editor"
             onSubmit={submit}
             aria-label={
-              editing === "new" ? "Add shift type" : `Edit ${editing.name}`
+              editing === "new" ? "New shift type" : `Edit ${editing.name}`
             }
           >
             <div className="job-editor-title">
@@ -457,25 +437,32 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
           </form>
         </CatalogDrawer>
       ) : null}
-      {!editing && formError ? (
-        <p className="settings-state error" role="alert">
-          {formError}
-        </p>
-      ) : null}
-      {query.isLoading ? (
-        <p className="settings-state">Loading shift types...</p>
-      ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
-      ) : null}
-      {!query.isLoading && !query.error && (
+      {query.isLoading || query.error ? (
+        <>
+          <ShiftCatalogToolbar disabled={saveMutation.isPending || deleteLocked} />
+          {query.isLoading ? (
+            <p className="settings-state">Loading shift types...</p>
+          ) : (
+            <p className="settings-state error" role="alert">
+              {errorText(query.error)}
+            </p>
+          )}
+        </>
+      ) : (
         <ShiftCatalogList
           items={items}
           types
-          showArchived={showArchived}
-          onArchivedChange={setShowArchived}
+          canEdit={canEdit}
+          onAdd={() => openEditor()}
+          addDisabled={saveMutation.isPending || deleteLocked}
+          tabsDisabled={saveMutation.isPending || deleteLocked}
+          notice={
+            !editing && formError ? (
+              <p className="settings-state error" role="alert">
+                {formError}
+              </p>
+            ) : null
+          }
           onEdit={openEditor}
           onMove={move}
           onArchive={(item) =>

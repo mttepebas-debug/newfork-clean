@@ -20,6 +20,7 @@ import {
 export * from "./time-off";
 import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "./availability-assessment";
 import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
+import { announcementCategorySchema, announcementDaySchema } from "./communications";
 
 export * from "./availability";
 export * from "./availability-assessment";
@@ -473,6 +474,8 @@ export const invitationPreviewStateSchema = z.enum([
   "valid",
   "expired",
   "revoked",
+  // Revoked because a newer invitation went to the same address (K7).
+  "replaced",
   "declined",
   "accepted",
   "workspace_unavailable",
@@ -1088,174 +1091,6 @@ export type SchedulingSettingsInput = z.infer<
   typeof schedulingSettingsInputSchema
 >;
 
-export const importantDateTypeSchema = z.enum([
-  "holiday",
-  "event",
-  "blackout",
-  "closed_day",
-]);
-export type ImportantDateType = z.infer<typeof importantDateTypeSchema>;
-
-export const importantDateRecurrenceSchema = z.enum(["none", "annual"]);
-export type ImportantDateRecurrence = z.infer<
-  typeof importantDateRecurrenceSchema
->;
-
-export const importantDateSchema = z.object({
-  id: z.string().uuid(),
-  workspace_id: z.string().uuid(),
-  location_id: z.string().uuid().nullable(),
-  location_ids: z.array(z.string().uuid()).max(100).optional(),
-  location_names: z.array(z.string()).optional(),
-  location_name: z.string().trim().min(1).max(120).nullable(),
-  title: z.string().trim().min(1).max(120),
-  type: importantDateTypeSchema,
-  starts_on: z.string().date(),
-  ends_on: z.string().date(),
-  recurrence: importantDateRecurrenceSchema,
-  note: z.string().max(500),
-  affects_scheduling: z.boolean(),
-  archived_at: z.string().datetime({ offset: true }).nullable(),
-  /** Unpublished: hidden from its people and the Schedule, still editable (Mert, 2026-10-02). */
-  status: z.enum(["published", "unpublished"]).optional(),
-  revision: z.coerce.number().int().positive().optional(),
-  created_by: z.string().uuid().nullable().optional(),
-  author_name: z.string().optional(),
-  updated_at: z.string().datetime({ offset: true }).optional(),
-  /** Wholly before the Schedule's editable week: read-only to everybody (K11). */
-  is_past: z.boolean().optional(),
-  // What this person may do to it (K1-K3, from the server).
-  can_edit: z.boolean().optional(),
-  can_unpublish: z.boolean().optional(),
-  can_republish: z.boolean().optional(),
-  can_archive: z.boolean().optional(),
-  can_restore: z.boolean().optional(),
-});
-export type ImportantDate = z.infer<typeof importantDateSchema>;
-
-/** Unpublish, republish, archive, restore an important date. */
-export const importantDateStateActionSchema = z.enum(["unpublish", "republish", "archive", "restore"]);
-export type ImportantDateStateAction = z.infer<typeof importantDateStateActionSchema>;
-
-/** Who changed an important date, when, from what to what (FB-6.7). */
-export const importantDateHistorySchema = z.object({
-  important_date_id: z.string().uuid(),
-  author_user_id: z.string().uuid().nullable(),
-  author_name: z.string(),
-  changes: z.array(
-    z.object({
-      id: z.string().uuid(),
-      action: z.enum(["created", "updated", "unpublished", "republished", "archived", "restored"]),
-      // Null on a change the reader may not see: who and when are masked (K6).
-      changed_at: z.string().datetime({ offset: true }).nullable(),
-      actor_user_id: z.string().uuid().nullable(),
-      actor_name: z.string().nullable(),
-      before: z.record(z.string(), z.unknown()).nullable(),
-      after: z.record(z.string(), z.unknown()).nullable(),
-    }),
-  ),
-});
-export type ImportantDateHistory = z.infer<typeof importantDateHistorySchema>;
-
-/** A published shift a closed day would land on (K13): the screen lists them before saving. */
-export const importantDateClosureShiftSchema = z.object({
-  /** The published shift; what keep_shift_ids names. */
-  id: z.string().uuid(),
-  source_id: z.string().uuid(),
-  employee_id: z.string().uuid(),
-  employee_name: z.string().nullable(),
-  location_id: z.string().uuid(),
-  location_name: z.string(),
-  job_name: z.string(),
-  scheduled_date: z.string().date(),
-  start_time: z.string().nullable(),
-  end_time: z.string().nullable(),
-  starts_at: z.string(),
-  ends_at: z.string(),
-});
-export type ImportantDateClosureShift = z.infer<typeof importantDateClosureShiftSchema>;
-
-/** What a closed day would land on; the fingerprint goes back with the save. */
-export const importantDateClosurePreviewSchema = z.object({
-  fingerprint: z.string(),
-  /** Only shifts at locations the person reads the Schedule of. */
-  shifts: z.array(importantDateClosureShiftSchema),
-  /** Listed shifts at locations the person may not read: they drop too, and dropping needs schedule.edit there. */
-  hidden_shift_count: z.coerce.number().int().nonnegative(),
-  /** A saved draft's own shifts on the newly closed days: they drop to open without asking (K16). */
-  draft_shift_count: z.coerce.number().int().nonnegative(),
-});
-export type ImportantDateClosurePreview = z.infer<typeof importantDateClosurePreviewSchema>;
-
-/** The date as it would be saved (or republished: its own values), and which date it is. */
-export const importantDateClosurePreviewInputSchema = z
-  .object({
-    important_date_id: z.string().uuid().nullable().optional(),
-    type: importantDateTypeSchema,
-    starts_on: z.string().date(),
-    ends_on: z.string().date(),
-    recurrence: importantDateRecurrenceSchema,
-    location_ids: z.array(z.string().uuid()).max(100),
-  })
-  .refine((value) => value.ends_on >= value.starts_on, { path: ["ends_on"], message: "End date must be on or after the start date" });
-export type ImportantDateClosurePreviewInput = z.infer<typeof importantDateClosurePreviewInputSchema>;
-
-/**
- * The choice made on the list (K13): every listed shift drops to an open shift
- * but the kept ones. A save or republish over published shifts without the
- * fingerprint it was shown is refused (409 important_date.closure_changed).
- */
-export const importantDateClosureChoiceSchema = z.object({
-  keep_shift_ids: z.array(z.string().uuid()).max(500).default([]),
-  expected_fingerprint: z.string().max(64).nullable().default(null),
-});
-export type ImportantDateClosureChoice = z.infer<typeof importantDateClosureChoiceSchema>;
-
-/** What a save or a state change did. */
-export const importantDateSavedSchema = z.object({
-  important_date_id: z.string().uuid(),
-  status: z.enum(["published", "unpublished"]),
-  archived_at: z.string().datetime({ offset: true }).nullable().optional(),
-  recipient_count: z.coerce.number().int().nonnegative().optional(),
-  /** Shifts this change opened (K13). */
-  shifts_opened: z.coerce.number().int().nonnegative().optional(),
-  /** Draft shifts this change dropped to open (K16). */
-  draft_shifts_opened: z.coerce.number().int().nonnegative().optional(),
-  /** Shifts the date opened that stay open now that it no longer closes their day (K15: "3 shifts stay open"). */
-  shifts_stay_open: z.coerce.number().int().nonnegative().optional(),
-});
-export type ImportantDateSaved = z.infer<typeof importantDateSavedSchema>;
-
-export const importantDateInputSchema = importantDateSchema
-  .pick({
-    location_id: true,
-    location_ids: true,
-    title: true,
-    type: true,
-    starts_on: true,
-    ends_on: true,
-    recurrence: true,
-    note: true,
-    affects_scheduling: true,
-  })
-  .superRefine((value, issue) => {
-    if (value.ends_on < value.starts_on) {
-      issue.addIssue({
-        code: "custom",
-        message: "End date must be on or after the start date",
-        path: ["ends_on"],
-      });
-    }
-    if (value.type === "closed_day" && !value.affects_scheduling) {
-      issue.addIssue({
-        code: "custom",
-        message: "Closed days must affect scheduling",
-        path: ["affects_scheduling"],
-      });
-    }
-  });
-export type ImportantDateInput = z.infer<typeof importantDateInputSchema>;
-
 const timeOfDaySchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const scheduleUnpaidBreakMinutesSchema = z.union([
   z.literal(0),
@@ -1491,21 +1326,70 @@ export const scheduleClosureSchema = z.object({
   id: z.guid(),
   location_id: z.string().uuid(),
   closed_date: z.string().date(),
-  end_date: z.string().date().nullable().optional(),
   title: z.string().trim().min(1).max(120),
+  /** Closed the whole business day. */
   is_all_day: z.boolean(),
-  shift_type_ids: z.array(z.string().uuid()).default([]),
+  /** closed: no shift that day; short: open only from opens to closes (closes at or before opens: the next day). */
+  kind: z.enum(["closed", "short"]),
+  opens: timeOfDaySchema.nullable(),
+  closes: timeOfDaySchema.nullable(),
+  /** A scheduled post's day reaches only the manager's week (EKRAN-08). */
+  status: z.enum(["published", "scheduled", "unpublished"]).optional(),
+  publish_at: z.string().datetime({ offset: true }).nullable().optional(),
+  on_schedule: z.boolean().optional(),
+  announcement_id: z.string().uuid().optional(),
 });
+export type ScheduleClosure = z.infer<typeof scheduleClosureSchema>;
 
+const closureMinutes = (value: string) => {
+  const [hours = 0, minutes = 0] = value.slice(0, 5).split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+/**
+ * Whether a location's day reaches a shift from start to end (end at or before
+ * start: past midnight); the twin of app_private.closure_covers. Closed reaches
+ * every shift that starts that day; Short hours a shift with any part outside
+ * them.
+ */
+export function scheduleClosureCoversShift(
+  closure: Pick<ScheduleClosure, "kind" | "opens" | "closes">,
+  start: string | null | undefined,
+  end: string | null | undefined,
+): boolean {
+  if (closure.kind === "closed") return true;
+  if (!start || !end || !closure.opens || !closure.closes) return false;
+  const from = closureMinutes(start);
+  let to = closureMinutes(end);
+  if (to <= from) to += 1440;
+  const opens = closureMinutes(closure.opens);
+  let closes = closureMinutes(closure.closes);
+  if (closes <= opens) closes += 1440;
+  return from < opens || to > closes;
+}
+
+/**
+ * A post on the Schedule that touches the week, once per checked location the
+ * reader reaches (null: a post for no location, everyone's). Its day at that
+ * location comes with it.
+ */
 export const scheduleImportantDateSchema = z.object({
   id: z.string().uuid(),
   location_id: z.string().uuid().nullable(),
   title: z.string().trim().min(1).max(120),
-  type: importantDateTypeSchema,
+  category: announcementCategorySchema,
+  category_other: z.string().nullable(),
   starts_on: z.string().date(),
   ends_on: z.string().date(),
-  recurrence: importantDateRecurrenceSchema.default("none"),
+  status: z.enum(["published", "scheduled"]),
+  publish_at: z.string().datetime({ offset: true }).nullable(),
+  day: announcementDaySchema,
+  opens: timeOfDaySchema.nullable(),
+  closes: timeOfDaySchema.nullable(),
+  event_from: timeOfDaySchema.nullable(),
+  event_until: timeOfDaySchema.nullable(),
 });
+export type ScheduleImportantDate = z.infer<typeof scheduleImportantDateSchema>;
 
 // A published shift of someone on the grid at a location the reader does not
 // reach: what the shift card says (names travel with it), never its note, never
@@ -2517,6 +2401,14 @@ export const employeeDisplayStatusSchema = z.enum([
 ]);
 export type EmployeeDisplayStatus = z.infer<typeof employeeDisplayStatusSchema>;
 
+export const employeeAssignmentSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  primary: z.boolean(),
+  archived: z.boolean(),
+});
+export type EmployeeAssignment = z.infer<typeof employeeAssignmentSchema>;
+
 export const employeeSummarySchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -2529,9 +2421,11 @@ export const employeeSummarySchema = z.object({
   display_name: z.string().trim().min(1).max(161),
   invitation_email: z.string().email().nullable(),
   start_date: z.string().date().nullable(),
-  primary_location_id: z.string().uuid().nullable(),
-  primary_location_name: z.string().nullable(),
-  location_count: z.coerce.number().int().nonnegative(),
+  /**
+   * Every location they work at, the primary first, then A to Z (BL-436): the
+   * list filters on "works here" and names the first one (BL-428).
+   */
+  locations: z.array(employeeAssignmentSchema.pick({ id: true, name: true, primary: true })),
   primary_job_id: z.string().uuid().nullable(),
   primary_job_name: z.string().nullable(),
   job_count: z.coerce.number().int().nonnegative(),
@@ -2541,14 +2435,6 @@ export const employeeSummarySchema = z.object({
   revision: z.coerce.number().int().positive(),
 });
 export type EmployeeSummary = z.infer<typeof employeeSummarySchema>;
-
-export const employeeAssignmentSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().trim().min(1).max(120),
-  primary: z.boolean(),
-  archived: z.boolean(),
-});
-export type EmployeeAssignment = z.infer<typeof employeeAssignmentSchema>;
 
 /**
  * What the Employees drawer picks from (BL-231): the locations the person may
@@ -2577,6 +2463,9 @@ export const employeeEventSchema = z.object({
 export type EmployeeEvent = z.infer<typeof employeeEventSchema>;
 
 export const employeeDetailSchema = employeeSummarySchema.extend({
+  primary_location_id: z.string().uuid().nullable(),
+  primary_location_name: z.string().nullable(),
+  location_count: z.coerce.number().int().nonnegative(),
   user_id: z.string().uuid().nullable(),
   account_email: z.string().email().nullable().optional(),
   internal_note: z.string().max(1000),
@@ -3183,16 +3072,6 @@ export const settingsReadSchemas = {
   jobs: z.object({ departments: z.array(departmentSchema), jobs: z.array(jobSchema) }),
   "shift-types": z.array(shiftTypeSchema),
   "shift-labels": z.array(shiftLabelSchema),
-  // `locations`: where this person may place an important date.
-  "important-dates": z.object({
-    dates: z.array(importantDateSchema),
-    locations: z.array(locationSchema),
-    // May add a date at one location / several or the whole workspace (K1).
-    can_manage: z.boolean().optional(),
-    can_target_workspace: z.boolean().optional(),
-    /** K11: no day before this one may be written (the Schedule's editable week). */
-    locked_before: z.string().date().optional(),
-  }),
   roles: z.object({ permissions: z.array(permissionDefinitionSchema), roles: z.array(workspaceRoleRecordSchema) }),
   "document-types": z.array(documentTypeSchema),
   acknowledgements: z.object({

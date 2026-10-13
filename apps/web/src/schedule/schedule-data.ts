@@ -67,6 +67,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { UNREACHABLE, UNREADABLE, ScreenError } from "../lib/request-error";
+import { scheduleRefusalReason } from "./lib/scheduleRefusalReason";
 import { scheduleExportV2AuthorizationSchema, scheduleExportV2ScopeSchema, type ScheduleExportV2Scope } from "@newfork/shared";
 
 export async function authorizeScheduleExportV2(workspaceId: string, scope: ScheduleExportV2Scope, signal?: AbortSignal): Promise<void> {
@@ -89,9 +90,7 @@ export class ScheduleRequestError extends Error {
 }
 
 function requestReason(error: unknown): unknown {
-  return error instanceof ScheduleRequestError && typeof error.body === "object" && error.body
-    ? (error.body as { reason?: unknown }).reason
-    : undefined;
+  return error instanceof ScheduleRequestError ? scheduleRefusalReason(error) : undefined;
 }
 
 function editConflictCode(error: unknown): unknown {
@@ -257,6 +256,9 @@ export async function acquireScheduleEditSession(
   sourceDraftId: string | null = null,
   // The locations to edit; null asks for every location the person may edit.
   locationIds: readonly string[] | null = null,
+  // False for a new edit asked for from a menu: an edit of the person's that
+  // was left open is set aside as an "Auto-save" draft, never brought back.
+  resume = true,
 ): Promise<ScheduleEditAcquireResult> {
   return scheduleEditAcquireResultSchema.parse(
     await activeScheduleRequest("/schedule/edit-lock/acquire", {
@@ -266,6 +268,7 @@ export async function acquireScheduleEditSession(
         source_kind: sourceKind,
         source_draft_id: sourceDraftId,
         location_ids: locationIds?.length ? locationIds : null,
+        resume,
       }),
     }),
   );

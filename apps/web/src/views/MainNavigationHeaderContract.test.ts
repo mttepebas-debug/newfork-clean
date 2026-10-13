@@ -14,7 +14,7 @@ const topLevelPages = [
   },
   {
     label: "Important Dates",
-    path: "src/settings/ImportantDatesSettingsPage.tsx",
+    path: "src/views/ImportantDatesPage.tsx",
     catalogTitle: "Important Dates",
   },
   {

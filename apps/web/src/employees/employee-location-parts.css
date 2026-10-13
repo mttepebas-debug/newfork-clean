@@ -50,14 +50,22 @@
   margin-top: 1px;
 }
 
-/* The list's location cell and the phone's chips under the name. */
+/* The list's location cell and the phone's chips under the name. The pin,
+   the name and "+1" keep one line; a long name ends in "…" instead of
+   dropping under the pin (Mert 2026-10-13). */
 .employee-location-cell {
-  flex-wrap: wrap;
-  row-gap: 4px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.employee-location-cell > svg,
+.employee-location-cell > small {
+  flex: none;
 }
 .employee-location-name {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .employee-chip {
   display: inline-flex;

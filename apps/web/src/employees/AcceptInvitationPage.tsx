@@ -188,6 +188,12 @@ function closedInvitation(
         title: "This invitation was withdrawn",
         description: `${workspaceName} cancelled it. Ask your manager for a new one.`,
       };
+    case "replaced":
+      // Resend took this one back; the person is wanted (K7, BL-922).
+      return {
+        title: "A newer invitation was sent to you",
+        description: "Open the latest email.",
+      };
     case "declined":
       return {
         title: "You declined this invitation",

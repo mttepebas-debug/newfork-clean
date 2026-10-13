@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -55,13 +55,18 @@ from jsonb_array_elements(public.get_notification_settings_service(
 select ok(
   (select array_agg(type_key) from listed_types) @> array[
     'schedule.published', 'requests.time_off.submitted',
-    'communications.announcement.available', 'schedule.important_date.available'],
-  'the workspace''s notices are listed, the important date one too'
+    'communications.announcement.available'],
+  'the workspace''s notices are listed'
 );
 select is(
   (select count(*)::integer from listed_types where type_key like 'security.account.%'),
   0,
   'a person''s own account notices are not workspace policy'
+);
+select is(
+  (select count(*)::integer from listed_types where type_key = 'schedule.important_date.available'),
+  0,
+  'an important date is an announcement: it has no notice of its own (EKRAN-08)'
 );
 select is(
   (select count(*)::integer from listed_types where type_key = 'test.retired_notice'),
@@ -71,7 +76,7 @@ select is(
 select throws_ok(
   $$select public.get_notification_settings_service('e2100000-0000-4000-8000-000000000002', 'e2110000-0000-4000-8000-000000000001')$$,
   '42501',
-  'notification settings read access required',
+  'Not allowed',
   'an employee without settings permission cannot read organization policy'
 );
 

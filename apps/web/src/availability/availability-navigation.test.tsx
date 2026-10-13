@@ -13,8 +13,8 @@ import {
   useAvailabilityNavigationGuard,
   type AvailabilityNavigationRef,
   AvailabilityDraftScope,
-  requestAvailabilityNavigation,
 } from "./availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { registerEmployeeHistoryGuard } from "../employees/employee-history-guard";
 
 function ScopedDraft({name,busy = false}:{name:string;busy?:boolean}) {
@@ -25,7 +25,7 @@ function ScopedDraft({name,busy = false}:{name:string;busy?:boolean}) {
 function MultipleDrafts({navigate,busy = false}:{navigate:()=>void;busy?:boolean}) {
   return <AvailabilityDraftScope>
     <ScopedDraft name="Weekly draft" /><ScopedDraft name="Leave draft" busy={busy} /><ScopedDraft name="Cancellation draft" />
-    <button onClick={()=>requestAvailabilityNavigation(navigate)}>Sign out</button>
+    <button onClick={()=>requestAppNavigation(navigate)}>Sign out</button>
   </AvailabilityDraftScope>;
 }
 

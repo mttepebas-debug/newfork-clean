@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import {
   addDays,
   formatTime,
@@ -35,6 +36,7 @@ import {
   NotificationBell,
   RecentChanges,
   Announcements,
+  ComingUpDates,
 } from "./DashboardCommunications";
 import { PersonalTasks } from "./PersonalReminders";
 import { ShiftSheet, ShiftUnavailable } from "./ShiftSheet";
@@ -55,6 +57,7 @@ export function EmployeeDashboard({
   onRefresh: () => void;
 }) {
   const { context } = useAuth();
+  const readsPosts = can(context, "announcement.read");
   const online = useHubOnline();
   const [search, setSearch] = useSearchParams();
   const shift = nextShift(model, now);
@@ -412,6 +415,13 @@ export function EmployeeDashboard({
               Your next published shifts will appear here.
             </p>
           )}
+          {readsPosts && (
+            <ComingUpDates
+              workspaceId={model.workspace_id}
+              myLocationIds={model.locations.map((location) => location.id)}
+              timeFormat={model.settings.time_format}
+            />
+          )}
         </section>
         <PersonalTasks
           key={`${model.workspace_id}:${model.employee.id}`}
@@ -422,9 +432,7 @@ export function EmployeeDashboard({
         {context?.permissions.includes("notifications.read") && (
           <RecentChanges workspaceId={model.workspace_id} />
         )}
-        {context?.permissions.includes("announcements.read") && (
-          <Announcements workspaceId={model.workspace_id} now={now} />
-        )}
+        {readsPosts && <Announcements workspaceId={model.workspace_id} />}
         <section className="eh-card eh-team">
           <CardHeading icon={<Users size={18} />} title="Your team" />
           <p className="eh-section-description">

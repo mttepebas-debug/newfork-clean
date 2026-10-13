@@ -32,12 +32,21 @@ function parseClock(text: string, format: "12h" | "24h") {
 
 // Invalid visible input must invalidate the parent immediately. Keeping the last
 // valid canonical value would let a submit silently ignore unfinished typing.
-export function AvailabilityClockInput({ value, timeFormat, label, onChange, disabled = false }: {
+export function AvailabilityClockInput({
+  value, timeFormat, label, onChange, disabled = false, className, placeholder, invalid = false, describedBy, field,
+}: {
   value: string;
   timeFormat: "12h" | "24h";
   label: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  className?: string;
+  placeholder?: string;
+  /** The form already found a problem here; the box says so too. */
+  invalid?: boolean;
+  describedBy?: string;
+  /** `data-field`, for a form that moves focus to its first problem. */
+  field?: string;
 }) {
   const [text, setText] = useState(() => formatAvailabilityClock(value, timeFormat));
   const emitted = useRef(value);
@@ -49,9 +58,10 @@ export function AvailabilityClockInput({ value, timeFormat, label, onChange, dis
       previousFormat.current = timeFormat;
     }
   }, [value, timeFormat]);
-  return <input type="text" inputMode="text" aria-label={label} disabled={disabled}
-    placeholder={timeFormat === "12h" ? "9:00 AM" : "09:00"}
-    aria-invalid={Boolean(text && !parseClock(text, timeFormat))} value={text}
+  return <input type="text" inputMode="text" aria-label={label} disabled={disabled} className={className}
+    placeholder={placeholder ?? (timeFormat === "12h" ? "9:00 AM" : "09:00")}
+    aria-invalid={invalid || Boolean(text && !parseClock(text, timeFormat))} aria-describedby={describedBy}
+    data-field={field} value={text}
     onChange={(event) => {
       setText(event.target.value);
       emitted.current = parseClock(event.target.value, timeFormat);

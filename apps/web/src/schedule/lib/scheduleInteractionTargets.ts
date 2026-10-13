@@ -67,6 +67,7 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest("[data-schedule-employee-card-trigger='true']") ||
     target.closest("[data-schedule-top-bar]") ||
     target.closest("[data-schedule-filter-command-strip]") ||
+    target.closest("[data-schedule-horizontal-nav]") ||
     target.closest(".schedule-topbar-dismiss-layer") ||
     target.closest("[data-topbar-filter-content]") ||
     target.closest("[data-shift-quick-editor-content]") ||
@@ -77,7 +78,6 @@ export function isScheduleInteractionSurface(target: Element): boolean {
     target.closest(SCHEDULE_WINDOW_SELECTOR) ||
     target.closest(".schedule-topbar") ||
     target.closest(".schedule-edit-banner") ||
-    target.closest(".schedule-quick-editor") ||
     target.closest(".schedule-action-menu") ||
     target.closest(".schedule-published-menu") ||
     target.closest(".schedule-export-panel") ||
@@ -95,6 +95,8 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
     [
       "[data-schedule-top-bar]",
       "[data-schedule-filter-command-strip]",
+      // Mert, 2026-10-12: the bottom navigation bar only scrolls the grid.
+      "[data-schedule-horizontal-nav]",
       ".schedule-topbar-dismiss-layer",
       "[data-topbar-filter-content]",
       "[data-shift-quick-editor-content]",
@@ -115,7 +117,6 @@ export function isBlankScheduleDismissTarget(target: Element): boolean {
       ".schedule-cell-paste",
       ".schedule-topbar",
       ".schedule-edit-banner",
-      ".schedule-quick-editor",
       ".schedule-action-menu",
       ".schedule-published-menu",
       ".schedule-export-panel",
@@ -207,12 +208,12 @@ export function isSchedulePreviewFocusedShiftBlankDismissTarget(
       "[data-schedule-day-header-content='true']",
       "[data-schedule-top-bar]",
       "[data-schedule-filter-command-strip]",
+      "[data-schedule-horizontal-nav]",
       "[role='menu']",
       "[role='toolbar']",
       SCHEDULE_WINDOW_SELECTOR,
       ".schedule-topbar",
       ".schedule-edit-banner",
-      ".schedule-quick-editor",
       ".schedule-action-menu",
       ".schedule-published-menu",
       ".schedule-export-panel",

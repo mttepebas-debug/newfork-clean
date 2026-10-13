@@ -15,7 +15,7 @@ import {
   type WeeklyPreferenceSave,
 } from "@newfork/shared";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
-import { requestAvailabilityNavigation } from "./availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { RequestError } from "../lib/request-error";
 
 afterEach(cleanup);
@@ -503,7 +503,7 @@ describe("unsaved changes", () => {
     render(<WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
     const navigate = vi.fn();
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     const dialog = await screen.findByRole("alertdialog", { name: "Discard availability changes?" });
     expect(dialog.textContent).toContain("Your unsaved hours will be lost.");
     expect(navigate).not.toHaveBeenCalled();
@@ -513,7 +513,7 @@ describe("unsaved changes", () => {
   it("lets an employee leave a saved week without asking", () => {
     render(<WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />);
     const navigate = vi.fn();
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     expect(navigate).toHaveBeenCalledOnce();
   });
   it("never asks in the manager's drawer", () => {
@@ -521,7 +521,7 @@ describe("unsaved changes", () => {
     fireEvent.click(screen.getByRole("tab", { name: /reminder|note/i }));
     fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
     const navigate = vi.fn();
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     expect(navigate).toHaveBeenCalledOnce();
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });

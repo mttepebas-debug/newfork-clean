@@ -248,7 +248,7 @@ describe("useScheduleEditSession", () => {
     await act(() => vi.advanceTimersByTimeAsync(60_000));
 
     expect(acquireScheduleEditSession).toHaveBeenLastCalledWith(
-      WORKSPACE_ID, session.week_start, "draft", session.source_draft_id, session.location_ids,
+      WORKSPACE_ID, session.week_start, "draft", session.source_draft_id, session.location_ids, true,
     );
     expect(hook.result.current.session).toEqual(resumed);
     expect(hook.onError).not.toHaveBeenCalled();
@@ -296,5 +296,88 @@ describe("useScheduleEditSession", () => {
     await act(async () => { recovered = await hook.result.current.recoverLease(); });
 
     expect(recovered).toEqual(session);
+  });
+  // Mert 2026-10-12: leaving and starting another edit never leave an edit behind.
+  it("lets go of the edit when the page goes away, keeping any unsaved work", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    hook.unmount();
+
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+  });
+
+  // The same edit open in another tab: this page has not heard of its new
+  // shift yet (the heartbeat brings it), so the server decides what to keep.
+  it("never throws away an edit this page thinks is clean when the page goes away", async () => {
+    const hook = renderEditSession();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session: { ...session, dirty: false } });
+    await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+
+    hook.unmount();
+
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+  });
+
+  it("throws the edit away on Discard and leave and opens the next one only after it is closed", async () => {
+    let closed!: () => void;
+    vi.mocked(discardScheduleEditSession).mockImplementationOnce(() => new Promise((resolve) => { closed = () => resolve(undefined); }));
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    act(() => hook.result.current.discardOnLeave());
+    expect(hook.result.current.session).toBeNull();
+    expect(discardScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session });
+    let opening!: Promise<unknown>;
+    act(() => { opening = hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null, false); });
+    await act(() => Promise.resolve());
+    expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
+    closed();
+    await act(() => opening);
+    expect(acquireScheduleEditSession).toHaveBeenLastCalledWith(
+      WORKSPACE_ID, session.week_start, "draft", session.source_draft_id, null, false,
+    );
+  });
+
+  it("keeps unsaved work as an Auto-save draft when another edit is started, and says so", async () => {
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(() => hook.result.current.setAside());
+
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(hook.result.current.session).toBeNull();
+    expect(hook.onAutoSaved).toHaveBeenCalledWith("Auto-save · Ayse Yilmaz · Aug 17, 12:15 PM");
+    expect(hook.onEnded).not.toHaveBeenCalled();
+  });
+
+  it("lets the server keep or close an edit this page thinks is clean when another edit is started", async () => {
+    const hook = renderEditSession();
+    vi.mocked(acquireScheduleEditSession).mockResolvedValueOnce({ status: "acquired", session: { ...session, dirty: false } });
+    await act(() => hook.result.current.acquire(session.week_start, "draft", session.source_draft_id, null));
+    vi.mocked(autosaveScheduleEditSession).mockResolvedValueOnce({ status: "nothing_to_save", draft_id: null, draft_name: null });
+
+    await act(() => hook.result.current.setAside());
+
+    expect(autosaveScheduleEditSession).toHaveBeenCalledWith(WORKSPACE_ID, session.id);
+    expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    expect(hook.onAutoSaved).not.toHaveBeenCalled();
+    expect(hook.result.current.session).toBeNull();
+  });
+
+  it("keeps the edit when its work could not be kept as a draft", async () => {
+    vi.mocked(autosaveScheduleEditSession).mockRejectedValueOnce(new Error("Network down"));
+    const hook = renderEditSession();
+    await startEditing(hook);
+
+    await act(async () => {
+      await expect(hook.result.current.setAside()).rejects.toThrow("Network down");
+    });
+
+    expect(hook.result.current.session).toEqual(session);
   });
 });

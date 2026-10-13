@@ -7,6 +7,8 @@ import type {
 import { addDays } from "./scheduleDateTime";
 
 export const scheduleGridEmployeeColumnWidth = 200;
+// The narrowest the employee column gets when it gives days room.
+export const scheduleGridMinEmployeeColumnWidth = 144;
 export const scheduleGridTotalColumnWidth = 120;
 export const scheduleGridMinDayColumnWidth = 112;
 // Floor for a fitted week's day when there are no cards to measure.
@@ -150,17 +152,60 @@ export function scheduleGridFitsVisibleDays({
   return width >= fixed + columns * dayWidth;
 }
 
+export type ScheduleGridWeeklyLocationWidths = {
+  readonly day: number;
+  readonly employee: number;
+};
+
+/**
+ * Widths that put one location's whole week on screen when several locations
+ * stand side by side: seven days share the box less the employee and totals
+ * columns. When the days need more than that share (the cards' longest title
+ * word plus the cell around it), the employee column gives up room down to
+ * the fitted week's 144px. null when even that is too narrow: the days keep
+ * the cards' full width and the week scrolls.
+ */
+export function scheduleGridWeeklyLocationWidths({
+  width,
+  showTotalHours,
+  dayWidth = scheduleGridFitMinDayColumnWidth,
+}: {
+  readonly width: number;
+  readonly showTotalHours: boolean;
+  readonly dayWidth?: number;
+}): ScheduleGridWeeklyLocationWidths | null {
+  if (width <= 0) return null;
+  const room = width - (showTotalHours ? scheduleGridTotalColumnWidth : 0);
+  const share = (room - scheduleGridEmployeeColumnWidth) / 7;
+  if (share >= dayWidth) {
+    return { day: share, employee: scheduleGridEmployeeColumnWidth };
+  }
+  const employee = room - 7 * dayWidth;
+  return employee >= scheduleGridMinEmployeeColumnWidth
+    ? { day: dayWidth, employee }
+    : null;
+}
+
 export function createScheduleGridTemplateColumns({
   columns,
   fitVisibleColumns = false,
+  locationWidths = null,
   showTotalHours,
 }: {
   readonly columns: number;
   readonly fitVisibleColumns?: boolean;
+  /** Fixed widths that keep each location's week on one screen. */
+  readonly locationWidths?: ScheduleGridWeeklyLocationWidths | null;
   readonly showTotalHours: boolean;
 }): string {
+  if (locationWidths) {
+    return `${locationWidths.employee}px repeat(${columns}, ${locationWidths.day}px)${
+      showTotalHours ? ` ${scheduleGridTotalColumnWidth}px` : ""
+    }`;
+  }
+
   if (fitVisibleColumns) {
-    return `minmax(144px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(0, 1fr))${
+    return `minmax(${scheduleGridMinEmployeeColumnWidth}px, ${scheduleGridEmployeeColumnWidth}px) repeat(${columns}, minmax(0, 1fr))${
       showTotalHours ? ` minmax(72px, ${scheduleGridTotalColumnWidth}px)` : ""
     }`;
   }

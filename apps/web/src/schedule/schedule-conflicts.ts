@@ -3,9 +3,11 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
+import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
+import { isPendingRemovalShift } from "./lib/scheduleShiftMetadata";
+import { scheduleClosureCoversDate, scheduleClosureLabel } from "./lib/scheduleClosures";
 import { formatTime, formatWeekdayDate } from "./lib/scheduleDateTime";
 
 export type ScheduleConflictReason =
@@ -241,19 +243,46 @@ export function formatScheduleConflictMessage(
   }
 
   if (reason.type === "closed_day") {
-    if (reason.scope === "all_day") {
-      const closureReason = safeCustomerText(reason.reason);
-      const base = closureReason
-        ? `Location is closed: ${closureReason}.`
-        : "Location is closed all day.";
-      return `${base}${targetEvidence(reason)}`.trim();
+    const closureReason = safeCustomerText(reason.reason);
+    const hours = safeCustomerText(reason.hours);
+    if (reason.scope === "short_hours" && hours) {
+      return `Location has short hours${closureReason ? ` for ${closureReason}` : ""}: open ${hours} only.${targetEvidence(reason)}`.trim();
     }
-    return `Location is closed for ${
-      safeCustomerText(reason.shift_type_label) || "this shift type"
-    }.${targetEvidence(reason)}`.trim();
+    const base = closureReason
+      ? `Location is closed: ${closureReason}.`
+      : "Location is closed all day.";
+    return `${base}${targetEvidence(reason)}`.trim();
   }
 
   return looseMessage ?? "Scheduling policy blocks this assignment.";
+}
+
+const SHORT_LABELS: Record<string, string> = {
+  time_overlap: "Overlaps",
+  reference_time_overlap: "Overlaps",
+  time_off: "Time off",
+  location_assignment: "Not assigned",
+  job_assignment: "Not assigned",
+  shift_type_assignment: "Not assigned",
+  employee_excluded: "Excluded",
+  named_duplicate: "Duplicate",
+  named_shift_duplicate: "Duplicate",
+  minimum_rest: "Rest time",
+  minimum_travel: "Travel time",
+  availability: "Unavailable",
+  note: "Note",
+  assessment_unknown: "Check",
+};
+
+/**
+ * One or two words for a blocked cell under a dragged card; the full
+ * sentence stays in the message after the drop (Mert, 2026-10-13).
+ */
+export function scheduleConflictShortLabel(reason: ScheduleConflictReason): string {
+  if (typeof reason === "string")
+    return formatValidationConflictMessage(reason) === SAME_START_END_TIME_MESSAGE ? "Check hours" : "Not allowed";
+  if (reason.type === "closed_day") return reason.scope === "short_hours" ? "Short hours" : "Closed";
+  return SHORT_LABELS[String(reason.type)] ?? "Not allowed";
 }
 
 export function formatScheduleConflictMessages(
@@ -314,31 +343,21 @@ export function evaluateScheduleShiftConflicts(
   if (!model.locations.some(location => location.id === input.location_id) || !model.jobs.some(job => job.id === input.job_id) ||
     (input.shift_type_id && !model.shift_types.some(type => type.id === input.shift_type_id))) return ["The location, job or shift type is no longer available."];
 
-  const matchingClosures = model.closures.filter(
+  // EKRAN-08: a Closed day, or Short hours the shift runs past; a scheduled
+  // post's day asks too, before it goes out.
+  const closure = model.closures.find(
     (candidate) =>
       candidate.location_id === input.location_id &&
-      scheduleClosureCoversDate(candidate, input.scheduled_date),
+      scheduleClosureCoversDate(candidate, input.scheduled_date) &&
+      scheduleClosureCoversShift(candidate, input.start_time, input.end_time),
   );
-  const allDayClosure = matchingClosures.find(
-    (candidate) => candidate.is_all_day,
-  );
-  if (allDayClosure) {
+  if (closure) {
     reasons.push({
       ...context,
       type: "closed_day",
-      scope: "all_day",
-      reason: allDayClosure.title,
-    });
-  } else if (
-    input.shift_type_id &&
-    matchingClosures.some((candidate) =>
-      candidate.shift_type_ids.includes(input.shift_type_id!),
-    )
-  ) {
-    reasons.push({
-      ...context,
-      type: "closed_day",
-      scope: "shift_type",
+      scope: closure.kind === "short" ? "short_hours" : "all_day",
+      reason: closure.title,
+      hours: scheduleClosureLabel(closure).hours,
     });
   }
 
@@ -403,28 +422,49 @@ export function evaluateScheduleShiftConflicts(
   const overlapping = shifts.filter(
     (shift) =>
       shift.id !== excludeShiftId &&
+      !isPendingRemovalShift(shift) &&
       shift.employee_id === input.employee_id &&
       hasAssessmentHours &&
       intervalsOverlap(shift),
   );
-  if (overlapping.length > 0) {
+  // A ghost is the person's own live shift at a location this grid does not
+  // reach: any hours it shares are a hard overlap, as the server finds them
+  // (Mert, 2026-10-13). Its zone is not sent, so the clocks on its card count.
+  const overlappingGhosts = (model.ghost_shifts ?? []).filter(
+    (ghost) =>
+      ghost.employee_id === input.employee_id &&
+      hasAssessmentHours &&
+      !model.locations.some((location) => location.id === ghost.location_id) &&
+      absoluteIntervalsOverlap(ghost, input),
+  );
+  if (overlapping.length > 0 || overlappingGhosts.length > 0) {
     reasons.push({
       ...context,
-      type: timeBasis === "explicit" && overlapping.some((shift) => getShiftTimeBasis(shift) === "explicit")
+      type: overlappingGhosts.length > 0 ||
+        (timeBasis === "explicit" && overlapping.some((shift) => getShiftTimeBasis(shift) === "explicit"))
         ? "time_overlap" : "reference_time_overlap",
-      conflicting_shifts: overlapping.map((shift) => ({
-        id: shift.id,
-        start_time: shift.start_time,
-        end_time: shift.end_time,
-        shift_type_label: scheduleShiftTypeOf(model, shift.shift_type_id)?.name ?? null,
-        location_name:
-          model.locations.find((location) => location.id === shift.location_id)
-            ?.name ?? "Unknown location",
-      })),
+      conflicting_shifts: [
+        ...overlapping.map((shift) => ({
+          id: shift.id,
+          start_time: shift.start_time,
+          end_time: shift.end_time,
+          shift_type_label: scheduleShiftTypeOf(model, shift.shift_type_id)?.name ?? null,
+          location_name:
+            model.locations.find((location) => location.id === shift.location_id)
+              ?.name ?? "Unknown location",
+        })),
+        ...overlappingGhosts.map((ghost) => ({
+          id: ghost.id,
+          start_time: ghost.start_time,
+          end_time: ghost.end_time,
+          shift_type_label: ghost.shift_type_name,
+          location_name: ghost.location_name,
+        })),
+      ],
     });
   }
 
-  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && shift.employee_id === input.employee_id)) {
+  for (const neighbor of shifts.filter(shift => shift.id !== excludeShiftId && !isPendingRemovalShift(shift) && shift.employee_id === input.employee_id)) {
     const other = weeklyTargetInterval(employee, neighbor);
     if (!targetInterval || !other) {
       reasons.push({ type: "assessment_unknown", severity: "confirm", message: "Other assignment hours need checking." });
@@ -442,16 +482,8 @@ export function evaluateScheduleShiftConflicts(
   return applyConflictPolicy(reasons, model);
 }
 
-function scheduleClosureCoversDate(
-  closure: ScheduleReadModel["closures"][number],
-  date: string,
-): boolean {
-  const endDate = closure.end_date ?? closure.closed_date;
-  return closure.closed_date <= date && date <= endDate;
-}
-
 function absoluteIntervalsOverlap(
-  shift: ScheduleShift,
+  shift: Pick<ScheduleShift, "scheduled_date" | "start_time" | "end_time">,
   input: ScheduleShiftMutationInput,
 ): boolean {
   const first = datedInterval(

@@ -14,6 +14,7 @@ import type {
   PresetDropTarget,
 } from "../components/SchedulePresetRows";
 import {
+  grabPoint,
   isPrimaryDragActivation,
   shiftDropTargetKey,
 } from "../lib/scheduleDragTargets";
@@ -58,6 +59,8 @@ export function useShiftTypePresetPointerDrag({
         readonly startY: number;
         readonly previewWidth: number;
         readonly previewHeight: number;
+        readonly grabX: number;
+        readonly grabY: number;
       })
     | null
   >(null);
@@ -168,11 +171,13 @@ export function useShiftTypePresetPointerDrag({
         pointerY: clientY,
         previewWidth: pending.previewWidth,
         previewHeight: pending.previewHeight,
+        grabX: pending.grabX,
+        grabY: pending.grabY,
         targetKey: target?.targetKey ?? null,
         targetStatus:
           target?.targetStatus ??
           (target ? (target.allowed ? "allowed" : "blocked") : null),
-        reason: target?.allowed === false ? (target.reason ?? null) : null,
+        reason: target?.allowed === false ? (target.shortReason ?? target.reason ?? null) : null,
       });
     },
     [resolveTargetAtPoint],
@@ -281,14 +286,17 @@ export function useShiftTypePresetPointerDrag({
       const bounds =
         typeof element.getBoundingClientRect === "function"
           ? element.getBoundingClientRect()
-          : { width: 126, height: 28 };
+          : { left: 0, top: 0, width: 126, height: 28 };
+      const startX = Number.isFinite(clientX) ? clientX : 0;
+      const startY = Number.isFinite(clientY) ? clientY : 0;
       pendingRef.current = {
         ...preset,
         pointerId,
-        startX: Number.isFinite(clientX) ? clientX : 0,
-        startY: Number.isFinite(clientY) ? clientY : 0,
+        startX,
+        startY,
         previewWidth: bounds.width,
         previewHeight: bounds.height,
+        ...grabPoint(bounds, startX, startY),
       };
     },
     [],

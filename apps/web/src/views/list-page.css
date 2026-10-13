@@ -182,8 +182,20 @@
   border-radius: 7px;
   background: var(--theme-surface-soft);
 }
-.list-page.list-page :is(.job-catalog, .weekly-team-scroll) {
+.list-page.list-page .weekly-team-scroll {
   overflow: hidden;
+}
+/* A row's "⋯" menu opens past the table's edge, so the table frame does not
+   clip; its first and last rows round with the frame instead. */
+@media (min-width: 721px) {
+  .list-page.list-page .job-catalog > :first-child {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+  }
+  .list-page.list-page .job-catalog > :last-child {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
 }
 .list-page.list-page :is(.employee-table, .weekly-team-table) {
   background: var(--theme-surface);
@@ -236,9 +248,7 @@
   .job-catalog-row
   :is(
     .job-department-cell,
-    .announcement-audience-cell,
-    .announcement-date-cell,
-    .important-date-date-cell
+    .announcement-date-cell
   ) {
   color: var(--theme-list-cell-text);
   font-size: 13px;
@@ -257,14 +267,6 @@
   border-radius: 4px;
   outline: 2px solid var(--theme-focus);
   outline-offset: -2px;
-}
-/* Important Dates → Archived: the tab already says archived; rows keep full
-   ink instead of the disabled-button fade. */
-.important-dates-catalog-page.list-page
-  .job-catalog-row[data-archived="true"]
-  .job-row-identity:disabled {
-  color: var(--theme-text);
-  opacity: 1;
 }
 
 /* Status chip. */
@@ -297,6 +299,14 @@
   background: var(--theme-danger-soft);
   color: var(--theme-danger-strong);
 }
+.list-chip[data-tone="blue"] {
+  background: var(--theme-info-soft);
+  color: var(--theme-info-text);
+}
+.list-chip[data-tone="past"] {
+  background: var(--theme-border-subtle);
+  color: var(--theme-list-head-text);
+}
 
 /* Empty table: heading row stays, soft ground below. */
 .list-page.list-page .catalog-table-empty {
@@ -312,7 +322,34 @@
   color: var(--theme-text-secondary);
 }
 
+/* A shorter add label ("Add") shows on a phone only. */
+.list-add-button .list-add-short {
+  display: none;
+}
+
 @media (max-width: 720px) {
+  .list-add-button .list-add-long {
+    display: none;
+  }
+  .list-add-button .list-add-short {
+    display: inline;
+  }
+  /* Employees runs to both edges with the 16 px gutter; search and "+ Add"
+     share one row, Add at the right edge (Mert 2026-10-13). */
+  .employees-page.list-page.list-page {
+    width: auto;
+    box-sizing: border-box;
+    margin-inline: 0;
+    padding-inline: 16px;
+  }
+  .employees-page.list-page.list-page .catalog-toolbar .toolbar-search {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 calc(100% - 120px);
+  }
+  .employees-page.list-page.list-page .catalog-toolbar .list-add-button {
+    flex: 0 0 auto;
+  }
   .list-page.list-page > .catalog-page-header {
     height: auto;
     min-height: 0;
@@ -329,9 +366,15 @@
   .list-page.list-page > .catalog-page-header p {
     white-space: normal;
   }
+  /* Tabs that do not fit scroll sideways without a bar under them (Mert
+     2026-10-13, Employees). */
   .list-page.list-page .catalog-toolbar-status-row {
     overflow-x: auto;
     overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .list-page.list-page .catalog-toolbar-status-row::-webkit-scrollbar {
+    display: none;
   }
   .list-page.list-page .catalog-status-tabs {
     width: auto;

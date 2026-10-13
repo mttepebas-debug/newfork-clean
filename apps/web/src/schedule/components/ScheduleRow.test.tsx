@@ -147,6 +147,48 @@ describe("ScheduleRow shift card names (K8)", () => {
   });
 });
 
+describe("ScheduleRow removed shifts while editing", () => {
+  const removed = {
+    ...shift,
+    id: "shift-removed",
+    start_time: "11:00",
+    end_time: "16:00",
+    source_published_shift_id: "live-1",
+    pending_op_type: "delete" as const,
+  } as ScheduleShift;
+
+  it("hides a removed shift behind the shift written in its place (Mert, 2026-10-12)", () => {
+    const { container } = renderRow({ shifts: [removed, shift], totalShifts: [shift], selectedIds: [] });
+    const ids = [...container.querySelectorAll("[data-shift-id]")].map((node) => node.getAttribute("data-shift-id"));
+    expect(ids).toContain("shift-1");
+    expect(ids).not.toContain("shift-removed");
+  });
+
+  it("still shows a removed shift that nothing replaced", () => {
+    const { container } = renderRow({ shifts: [removed], totalShifts: [], selectedIds: [] });
+    expect(container.querySelector('[data-shift-id="shift-removed"]')).not.toBeNull();
+  });
+
+  it("keeps an open shift's removal beside untouched live open shifts, and hides it behind a new one", () => {
+    const removedOpen = { ...removed, employee_id: null } as ScheduleShift;
+    const liveOpen = { ...shift, id: "open-live", employee_id: null, source_published_shift_id: "live-2", locked: true } as ScheduleShift;
+    const { container, unmount } = renderRow({ employee: null, shifts: [removedOpen, liveOpen], totalShifts: [liveOpen], selectedIds: [] });
+    expect(container.querySelector('[data-shift-id="shift-removed"]')).not.toBeNull();
+    unmount();
+    const newOpen = { ...shift, id: "open-new", employee_id: null } as ScheduleShift;
+    const next = renderRow({ employee: null, shifts: [removedOpen, liveOpen, newOpen], totalShifts: [liveOpen, newOpen], selectedIds: [] });
+    expect(next.container.querySelector('[data-shift-id="shift-removed"]')).toBeNull();
+  });
+
+  it("never names a conflict the editing grid does not find", () => {
+    const flagged = { ...shift, warning_codes: ["overlap"] } as ScheduleShift;
+    const { container } = renderRow({ shifts: [removed, flagged], totalShifts: [flagged], selectedIds: [] });
+    const label = container.querySelector('[data-shift-id="shift-1"]')?.getAttribute("aria-label") ?? "";
+    expect(label).toContain("Dinner");
+    expect(label).not.toContain("conflict");
+  });
+});
+
 describe("ScheduleRow blank-cell interactions", () => {
   it("keeps an open shift with a note out of the stack of matching ones, so its note shows (BL-199)", () => {
     const openShift = { ...shift, id: "open-1", employee_id: null, note: "" };
@@ -262,6 +304,8 @@ describe("ScheduleRow blank-cell interactions", () => {
             pointerY: 32,
             previewWidth: 126,
             previewHeight: 58,
+            grabX: 0,
+            grabY: 0,
             targetKey: null,
             targetLocationId: null,
             targetDate: null,
@@ -551,6 +595,8 @@ describe("ScheduleRow drop status (DRAG)", () => {
     pointerY: 32,
     previewWidth: 126,
     previewHeight: 58,
+    grabX: 0,
+    grabY: 0,
     targetKey: shiftDropTargetKey("emp-1", "loc-1", "2026-08-18"),
     targetLocationId: "loc-1",
     targetDate: "2026-08-18",

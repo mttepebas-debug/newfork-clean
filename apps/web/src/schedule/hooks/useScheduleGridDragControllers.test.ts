@@ -139,7 +139,9 @@ describe("useScheduleGridDragControllers helpers", () => {
     expect(formatScheduleDragShiftLabel({ ...archived, referenced_jobs: [] }, shift)).toBe("Shift, 9:00 AM - 5:30 PM");
   });
 
-  it("blocks dropping a moved shift on its current cell", () => {
+  // Mert, 2026-10-13: a drag starts over the shift's own cell; letting go
+  // there puts it back, so the cell stays plain, with no colour and no words.
+  it("leaves the shift's own cell plain: no move, no colour, no words", () => {
     expect(
       evaluateScheduleShiftDropTarget({
         model,
@@ -152,11 +154,26 @@ describe("useScheduleGridDragControllers helpers", () => {
           copy: false,
         },
       }),
-    ).toEqual({
-      allowed: false,
-      reason: "Drop on a different cell to move the shift.",
-      targetStatus: "blocked",
+    ).toEqual({ allowed: false, targetStatus: null });
+  });
+
+  // Mert, 2026-10-13: the person's shift at a location this grid does not
+  // reach blocks any drop over its hours, and the card says so in a word.
+  it("blocks a drop over the person's shift at another location, in a word", () => {
+    const withGhost: ScheduleReadModel = {
+      ...model,
+      ghost_shifts: [{
+        id: "88888888-8888-4888-8888-888888888888", employee_id: employeeId,
+        location_id: "99999999-9999-4999-8999-999999999999", location_name: "Harbor",
+        scheduled_date: "2026-08-18", start_time: "12:00", end_time: "20:00", crosses_midnight: false,
+        job_id: jobId, job_name: "Server", shift_type_id: null, shift_type_name: "Dinner", label_ids: [], label_names: [],
+      }],
+    };
+    const evaluation = evaluateScheduleShiftDropTarget({
+      model: withGhost, shift, target: { shiftId, locationId, employeeId, date: "2026-08-18", copy: false },
     });
+    expect(evaluation).toMatchObject({ allowed: false, targetStatus: "blocked", shortReason: "Overlaps" });
+    expect(evaluation.messages).toEqual(expect.arrayContaining([expect.stringContaining("at Harbor")]));
   });
 
   it("allows moving the shift to a different date", () => {
@@ -226,10 +243,11 @@ describe("useScheduleGridDragControllers helpers", () => {
           id: "77777777-7777-4777-8777-777777777777",
           location_id: locationId,
           closed_date: "2026-08-19",
-          end_date: null,
           title: "Closed",
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          opens: null,
+          closes: null,
         },
       ],
     };
@@ -313,10 +331,11 @@ describe("useScheduleGridDragControllers helpers", () => {
               id: "77777777-7777-4777-8777-777777777777",
               location_id: locationId,
               closed_date: "2026-08-19",
-              end_date: null,
               title: "Closed",
               is_all_day: true,
-              shift_type_ids: [],
+              kind: "closed",
+              opens: null,
+              closes: null,
             },
           ],
         },
@@ -336,6 +355,7 @@ describe("useScheduleGridDragControllers helpers", () => {
     ).toEqual({
       allowed: false,
       reason: "Location is closed: Closed. Requested: Dinner / Server at Main Dining.",
+      shortReason: "Closed",
       targetStatus: "blocked",
     });
   });

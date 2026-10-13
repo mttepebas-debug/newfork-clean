@@ -116,18 +116,32 @@ describe("buildScheduleCellState", () => {
     expect(buildScheduleCellState(changed, true).get(scheduleCellStateKey(patioLocationId, "2026-08-19", employeeId))?.availabilityMark).toEqual(patioMark);
   });
 
-  it("marks every cell in a multi-day all-day closure range", () => {
+  it("marks every cell of a closed day", () => {
     const closedModel = {
       ...model([]),
       closures: [
         {
           id: "99999999-9999-4999-8999-999999999991",
           location_id: mainLocationId,
-          closed_date: "2026-08-17",
-          end_date: "2026-08-19",
+          closed_date: "2026-08-18",
           title: "Renovation",
           is_all_day: true,
-          shift_type_ids: [],
+          kind: "closed",
+          opens: null,
+          closes: null,
+          status: "published",
+        },
+        {
+          id: "99999999-9999-4999-8999-999999999993",
+          location_id: patioLocationId,
+          closed_date: "2026-08-18",
+          title: "Inventory",
+          is_all_day: true,
+          kind: "closed",
+          opens: null,
+          closes: null,
+          // Scheduled: the cell stays open until the post goes out (EKRAN-08).
+          status: "scheduled",
         },
       ],
     } satisfies ScheduleReadModel;
@@ -142,32 +156,32 @@ describe("buildScheduleCellState", () => {
         ?.closedTitle,
     ).toBe("Renovation");
     expect(
-      state.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId)),
-    ).toBeUndefined();
+      state.get(scheduleCellStateKey(patioLocationId, "2026-08-18", employeeId))
+        ?.isClosedAllDay ?? false,
+    ).toBe(false);
   });
 
-  it("marks partial closed shift type ids without closing the whole cell", () => {
-    const partialClosedModel = {
+  it("leaves the cell open on short hours; the day header and the editor say them (EKRAN-08)", () => {
+    const shortModel = {
       ...model([]),
       closures: [
         {
           id: "99999999-9999-4999-8999-999999999992",
           location_id: mainLocationId,
           closed_date: "2026-08-17",
-          end_date: null,
-          title: "No dinner service",
+          title: "Christmas Eve",
           is_all_day: false,
-          shift_type_ids: ["44444444-4444-4444-8444-444444444444"],
+          kind: "short",
+          opens: "10:00",
+          closes: "15:00",
+          status: "published",
         },
       ],
     } satisfies ScheduleReadModel;
-    const state = buildScheduleCellState(partialClosedModel);
-    const cell = state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
+    const cell = buildScheduleCellState(shortModel).get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
 
-    expect(cell?.isClosedAllDay).toBe(false);
-    expect(cell?.closedShiftTypeIds).toEqual([
-      "44444444-4444-4444-8444-444444444444",
-    ]);
+    expect(cell?.isClosedAllDay ?? false).toBe(false);
+    expect(cell?.closedTitle ?? null).toBeNull();
   });
 
   it("adds same-day other-location employee shifts as ghost badges", () => {
@@ -276,6 +290,27 @@ describe("buildScheduleCellState", () => {
     expect(patioCell?.hasOverlap).toBe(true);
     expect(mainCell?.conflictingShiftIds.has("shift-main")).toBe(true);
     expect(patioCell?.conflictingShiftIds.has("shift-patio")).toBe(true);
+  });
+
+  // Mert, 2026-10-12: a shift removed while editing makes no overlap and no
+  // ghost; it is on its way out.
+  it("leaves a shift removed while editing out of overlaps and ghosts", () => {
+    const removed = {
+      ...shift({ id: "shift-removed", location_id: mainLocationId, start_time: "09:00", end_time: "13:00" }),
+      source_published_shift_id: "live-1",
+      pending_op_type: "delete",
+    } as ScheduleShift;
+    const state = buildScheduleCellState(
+      model([
+        removed,
+        shift({ id: "shift-new", location_id: mainLocationId, start_time: "10:00", end_time: "14:00" }),
+      ]),
+    );
+
+    const mainCell = state.get(scheduleCellStateKey(mainLocationId, "2026-08-17", employeeId));
+    const patioCell = state.get(scheduleCellStateKey(patioLocationId, "2026-08-17", employeeId));
+    expect(mainCell?.hasOverlap ?? false).toBe(false);
+    expect(patioCell?.ghostShifts.map((ghost) => ghost.id)).toEqual(["shift-new"]);
   });
 
   it("merges source location cell state into unified display cells", () => {

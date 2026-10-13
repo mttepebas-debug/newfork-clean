@@ -9,6 +9,7 @@ import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ActionRoute } from "./auth/ActionRoute";
 import { DesktopOnlyRoute } from "./auth/DesktopOnlyRoute";
 import { PermissionRoute } from "./auth/PermissionRoute";
+import { SettingsPageRoute } from "./settings/SettingsPageRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
 import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
@@ -67,6 +68,7 @@ const WorkspaceStatusPage = lazy(() => import("./shell/WorkspaceStatusPage"));
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
 const AnnouncementsPage = lazy(() => import("./views/AnnouncementsPage"));
+const ImportantDatesPage = lazy(() => import("./views/ImportantDatesPage"));
 const NotificationsPage = lazy(() => import("./views/NotificationsPage"));
 const EmployeeDocumentsPage = lazy(() => import("./documents/EmployeeDocumentsPage"));
 const EmployeesPage = lazy(() => import("./employees/EmployeesPage"));
@@ -116,9 +118,6 @@ const ConflictHandlingSettingsPage = lazy(
 );
 const ShiftCatalogSettingsPage = lazy(
   () => import("./settings/ShiftCatalogSettingsPage"),
-);
-const ImportantDatesSettingsPage = lazy(
-  () => import("./settings/ImportantDatesSettingsPage"),
 );
 const RolesSettingsPage = lazy(() => import("./settings/RolesSettingsPage"));
 
@@ -404,11 +403,7 @@ export function App() {
                 />
                 <Route
                   path="important-dates"
-                  element={
-                    <PermissionRoute anyOf={["important_dates.read"]}>
-                      <ImportantDatesSettingsPage />
-                    </PermissionRoute>
-                  }
+                  element={<Navigate to="/app/announcements/important-dates" replace />}
                 />
                 <Route
                   path="employees"
@@ -454,6 +449,23 @@ export function App() {
                     </PermissionRoute>
                   }
                 />
+                {/* Important Dates is a page under Announcements (EKRAN-08). */}
+                <Route
+                  path="announcements/important-dates"
+                  element={
+                    <ActionRoute action="settings.important_dates.read">
+                      <ImportantDatesPage />
+                    </ActionRoute>
+                  }
+                />
+                <Route
+                  path="announcements/important-dates/:announcementId"
+                  element={
+                    <ActionRoute action="settings.important_dates.read">
+                      <ImportantDatesPage />
+                    </ActionRoute>
+                  }
+                />
                 <Route path="notifications" element={<NotificationsPage />} />
                 <Route
                   path="account/security"
@@ -464,72 +476,65 @@ export function App() {
                   <Route
                     path="general"
                     element={
-                      <PermissionRoute anyOf={["settings.general.read"]}>
+                      <SettingsPageRoute page="general">
                         <GeneralSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="locations"
                     element={
-                      <PermissionRoute anyOf={["settings.locations.read"]}>
+                      <SettingsPageRoute page="locations">
                         <LocationsSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="jobs"
                     element={
-                      <PermissionRoute anyOf={["settings.jobs.read"]}>
+                      <SettingsPageRoute page="jobs">
                         <JobsSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="notifications"
                     element={
-                      <PermissionRoute
-                        anyOf={[
-                          "notifications.settings.read",
-                          "notifications.settings.write",
-                        ]}
-                      >
+                      <SettingsPageRoute page="notifications">
                         <NotificationSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling"
                     element={
-                      <PermissionRoute anyOf={["settings.schedule_rules.read"]}>
+                      <SettingsPageRoute page="scheduling">
                         <SchedulingSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling/conflicts"
                     element={
-                      <PermissionRoute
-                        anyOf={["schedule.conflict_rules.manage"]}
-                      >
+                      <SettingsPageRoute page="conflicts">
                         <ConflictHandlingSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling/shift-types"
                     element={
-                      <PermissionRoute anyOf={["settings.shift_catalog.read"]}>
+                      <SettingsPageRoute page="shiftCatalog">
                         <ShiftCatalogSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="scheduling/shift-labels"
                     element={
-                      <PermissionRoute anyOf={["settings.shift_catalog.read"]}>
+                      <SettingsPageRoute page="shiftCatalog">
                         <ShiftCatalogSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
@@ -543,30 +548,30 @@ export function App() {
                   />
                   <Route
                     path="important-dates"
-                    element={<Navigate to="/app/important-dates" replace />}
+                    element={<Navigate to="/app/announcements/important-dates" replace />}
                   />
                   <Route
                     path="closed-days"
-                    element={<Navigate to="/app/important-dates" replace />}
+                    element={<Navigate to="/app/announcements/important-dates" replace />}
                   />
                   <Route
                     path="important-dates/closed-days"
-                    element={<Navigate to="/app/important-dates" replace />}
+                    element={<Navigate to="/app/announcements/important-dates" replace />}
                   />
                   <Route
                     path="roles"
                     element={
-                      <PermissionRoute anyOf={["roles.read"]}>
+                      <SettingsPageRoute page="roles">
                         <RolesSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
                     path="roles/:roleId"
                     element={
-                      <PermissionRoute anyOf={["roles.read"]}>
+                      <SettingsPageRoute page="roles">
                         <RolesSettingsPage />
-                      </PermissionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route
@@ -576,9 +581,9 @@ export function App() {
                   <Route
                     path="acknowledgements"
                     element={
-                      <ActionRoute action="settings.signature_templates.read">
+                      <SettingsPageRoute page="acknowledgements">
                         <SignatureTemplatesSettingsPage />
-                      </ActionRoute>
+                      </SettingsPageRoute>
                     }
                   />
                   <Route

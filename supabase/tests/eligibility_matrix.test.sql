@@ -99,10 +99,9 @@ update public.workspace_memberships set status='active' where workspace_id=(sele
 update public.employee_profiles set is_excluded_from_schedule=true where workspace_id=(select w from ws);
 select is(pg_temp.candidate()->>'status','ineligible','excluded employee remains ineligible');
 update public.employee_profiles set is_excluded_from_schedule=false where workspace_id=(select w from ws);
-insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, created_by)
- select 'ad426000-0000-4000-8000-000000000015', w, loc, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, 'Closed', 'closed_day', owner_id from ws;
+select tests.closed_day(w, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, owner_id, 'ad426000-0000-4000-8000-000000000015'::uuid) from ws;
 select is(pg_temp.candidate()->>'status','ineligible','location closure is not an availability override');
-delete from public.important_dates where id='ad426000-0000-4000-8000-000000000015';
+delete from public.announcements where id='ad426000-0000-4000-8000-000000000015';
 select is(pg_temp.candidate('{"date":"2035-03-11","start_time":"02:30","end_time":"04:00"}')->>'status','ineligible','nonexistent DST clock time remains blocked');
 select is((pg_temp.candidate('{"date":"2035-11-04","start_time":"00:30","end_time":"02:30"}')->'assessment'->>'assessment_minutes')::numeric,180::numeric,'fall-back interval keeps its real elapsed duration');
 select throws_ok($$select pg_temp.candidate('{"time_basis":"type_default","time_snapshot":{"start_time":"17:00","end_time":"22:00"}}')$$,'22023',null,'inconsistent time snapshot is a technical error');

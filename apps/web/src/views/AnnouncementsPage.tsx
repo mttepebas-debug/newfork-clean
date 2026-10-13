@@ -1,243 +1,229 @@
-import {
-  announcementInputSchema,
-  type AnnouncementInput,
-  type AnnouncementList,
-  type AnnouncementRecord,
-} from "@newfork/shared";
-import { Button, useConfirmClick } from "@newfork/ui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Archive,
-  CheckCircle2,
-  ChevronDown,
-  Megaphone,
-  Search,
-  Send,
-  X,
-} from "lucide-react";
+import type { AnnouncementRecord } from "@newfork/shared";
+import { useQuery } from "@tanstack/react-query";
+import { CalendarDays, ChevronRight, Megaphone, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { safeAppActionUrl } from "../communications/action-url";
+import { noAccessHomePath } from "../auth/resolveLanding";
+import { AnnouncementDrawer } from "../communications/AnnouncementDrawer";
+import { AnnouncementReader } from "../communications/AnnouncementReader";
 import {
-  acknowledgeAnnouncement,
-  getAnnouncements,
-  saveAnnouncement,
-  transitionAnnouncement,
-} from "../communications/communications-data";
-import { CatalogDrawer } from "../settings/CatalogDrawer";
-import { CatalogRowMenu } from "../settings/CatalogRowMenu";
-import { CatalogSortButton } from "./CatalogSortButton";
+  announcementCategoryText,
+  defaultSort,
+  inListTab,
+  isUnderway,
+  listTabs,
+  momentDay,
+  momentText,
+  nextSort,
+  publishedOn,
+  rangeText,
+  sortRecords,
+  statusLabels,
+  statusTones,
+  dayText,
+  type ListSort,
+  type ListTab,
+  type SortKey,
+  type TimeFormat,
+} from "../communications/announcement-model";
+import { getAnnouncements } from "../communications/communications-data";
+import { isNoAccess } from "../lib/no-access";
+import { NoAccessState } from "../shell/NoAccessState";
 import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
+import { CatalogSortButton } from "./CatalogSortButton";
+import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
 
-import { isNoAccess } from "../lib/no-access";
-import { NoAccessState } from "../shell/NoAccessState";
-import { noAccessHomePath } from "../auth/resolveLanding";
-type StatusFilter = "all" | "draft" | "scheduled" | "published";
-type SortKey = "title" | "audience" | "author" | "status" | "date";
-type Option = { id: string; name: string };
-const roles = ["owner", "admin", "manager", "employee"] as const;
-const roleOptions = roles.map((id) => ({ id, name: capitalize(id) }));
-
+/**
+ * Announcements (EKRAN-08): one list of posts, Important Dates among them.
+ * Whoever may write sees every status in Active and Past tables; everyone
+ * else reads the ones sent to them.
+ */
 export function AnnouncementsPage() {
   const { context } = useAuth();
   const { announcementId } = useParams();
   const navigate = useNavigate();
-  const [adding, setAdding] = useState(false);
-  const [filter, setFilter] = useState<StatusFilter>("all");
-  const [locationId, setLocationId] = useState("");
-  const [search, setSearch] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({
-    key: "date",
-    descending: true,
-  });
-  const [message, setMessage] = useState("");
   const workspaceId = context?.workspace.id ?? "";
   const query = useQuery({
     queryKey: ["announcements", workspaceId],
     queryFn: () => getAnnouncements(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  // Employees only follow published updates addressed to them (read-only).
-  const reader = query.data ? !query.data.can_manage : false;
-  const selected = query.data?.announcements.find(
-    (item) => item.id === announcementId,
-  );
-  const visible = useMemo(() => {
-    const value = (item: AnnouncementRecord) =>
-      sort.key === "date"
-        ? (item.publish_at ?? item.created_at)
-        : sort.key === "audience"
-          ? audienceLabel(item)
-          : sort.key === "author"
-            ? item.author_name
-            : sort.key === "status" && reader
-              ? (item.acknowledged_at ?? "")
-              : item[sort.key];
-    return (query.data?.announcements ?? [])
-      .filter(
-        (item) =>
-          (showArchived ? isArchived(item) : !isArchived(item)) &&
-          (showArchived || filter === "all" || item.status === filter) &&
-          (!locationId || item.location_ids.includes(locationId)) &&
-          `${item.title} ${item.body} ${audienceLabel(item)}`
-            .toLowerCase()
-            .includes(search.trim().toLowerCase()),
-      )
-      .sort(
-        (a, b) =>
-          (String(value(a)).localeCompare(String(value(b)), undefined, {
-            numeric: true,
-            sensitivity: "base",
-          }) || a.id.localeCompare(b.id)) * (sort.descending ? -1 : 1),
-      );
-  }, [query.data, filter, locationId, search, showArchived, sort, reader]);
-  const locationOptions = reader
-    ? [
-        ...new Map(
-          (query.data?.announcements ?? []).flatMap((item) =>
-            item.location_ids.map(
-              (id, index) =>
-                [id, { id, name: item.location_names[index] ?? id }] as const,
-            ),
-          ),
-        ).values(),
-      ]
-    : (query.data?.locations ?? []);
-  const activeStatusCounts = useMemo(
-    () =>
-      (query.data?.announcements ?? []).reduce(
-        (counts, item) => {
-          if (!isArchived(item) && item.status in counts) {
-            counts[item.status as keyof typeof counts] += 1;
-          }
-          return counts;
-        },
-        { draft: 0, scheduled: 0 },
-      ),
-    [query.data?.announcements],
-  );
+  const [adding, setAdding] = useState(false);
   const close = () => {
     setAdding(false);
-    if (announcementId)
-      navigate("/app/announcements", {
-        replace: true,
-        preventScrollReset: true,
-      });
+    if (announcementId) navigate("/app/announcements", { replace: true, preventScrollReset: true });
   };
-  const open = (item: AnnouncementRecord) =>
-    navigate(`/app/announcements/${item.id}`, { preventScrollReset: true });
+  const open = (id: string) => navigate(`/app/announcements/${id}`, { preventScrollReset: true });
 
-  // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))
-    return (
-      <NoAccessState
-        subject="announcements"
-        homeHref={noAccessHomePath(context, "/app/announcements")}
-      />
-    );
+    return <NoAccessState subject="announcements" homeHref={noAccessHomePath(context, "/app/announcements")} />;
+  const list = query.data;
+  const reader = list ? !list.can_manage : false;
   return (
     <section
       className="settings-page jobs-settings-page announcements-page announcements-catalog-page list-page"
       aria-labelledby="announcements-title"
+      data-reader={reader}
     >
       <CatalogPageHeader
         eyebrow="THE RIGHT UPDATE. THE RIGHT PEOPLE."
         title="Announcements"
         titleId="announcements-title"
         description={
-          query.data?.can_manage
-            ? "Create, schedule, and publish updates for the right teams."
-            : "Updates your managers have shared with your team."
+          reader
+            ? "Updates your managers have shared with your team."
+            : "Create, schedule, and publish updates for the right teams. Posts added to Important Dates show a calendar icon."
         }
       />
+      {query.isLoading && <p className="settings-state">Loading announcements...</p>}
+      {query.error && (
+        <p className="settings-state error" role="alert">
+          Announcements couldn&apos;t load. Refresh the page to try again.
+        </p>
+      )}
+      {list && !reader && (
+        <ManagerList
+          records={list.announcements}
+          locations={list.locations}
+          timeFormat={list.time_format}
+          onOpen={open}
+          onNew={() => setAdding(true)}
+        />
+      )}
+      {list && reader && <ReaderList records={list.announcements} onOpen={open} />}
+      {list && !reader && (adding || announcementId) && (
+        <AnnouncementDrawer
+          key={adding ? "new" : announcementId}
+          workspaceId={workspaceId}
+          list={list}
+          announcementId={adding ? null : (announcementId ?? null)}
+          onClose={close}
+        />
+      )}
+      {list && reader && announcementId && (
+        <AnnouncementReader
+          workspaceId={workspaceId}
+          record={list.announcements.find((item) => item.id === announcementId) ?? null}
+          myLocationIds={context?.locationScope.locationIds ?? []}
+          timeFormat={list.time_format}
+          onClose={close}
+        />
+      )}
+    </section>
+  );
+}
+
+function ManagerList({
+  records,
+  locations,
+  timeFormat,
+  onOpen,
+  onNew,
+}: {
+  records: AnnouncementRecord[];
+  locations: { id: string; name: string }[];
+  timeFormat: TimeFormat;
+  onOpen: (id: string) => void;
+  onNew: () => void;
+}) {
+  const [tab, setTab] = useState<ListTab>("all");
+  const [sort, setSort] = useState<ListSort>(defaultSort);
+  const [locationId, setLocationId] = useState("");
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return records.filter(
+      (record) =>
+        (!locationId || record.locations.some((location) => location.location_id === locationId)) &&
+        (!needle || `${record.title} ${record.body}`.toLowerCase().includes(needle)),
+    );
+  }, [records, locationId, search]);
+  const rows = filtered.filter((record) => inListTab(record, tab));
+  // Draft and Scheduled say how many wait; the other tabs carry no number.
+  const tabCount = (id: ListTab) =>
+    id === "draft" || id === "scheduled" ? records.filter((record) => inListTab(record, id)).length : 0;
+  const split = tab === "all" || tab === "published";
+  const active = rows.filter((record) => record.display_status !== "past");
+  const past = rows.filter((record) => record.display_status === "past");
+  // The table on a desktop, one card per post on a phone (list-cards.css).
+  const table = (items: AnnouncementRecord[], label: string, empty: string) => (
+    <>
+      <AnnouncementTable
+        label={label}
+        rows={sortRecords(items, sort)}
+        sort={sort}
+        empty={empty}
+        timeFormat={timeFormat}
+        onSort={(key) => setSort((current) => nextSort(current, key))}
+        onOpen={onOpen}
+      />
+      <AnnouncementCards label={label} rows={sortRecords(items, sort)} timeFormat={timeFormat} onOpen={onOpen} />
+    </>
+  );
+  return (
+    <>
       <div className="job-catalog-toolbar catalog-toolbar">
-        {/* A reader has no tabs, but the row keeps its 40 px so the filter
-            and table sit where they do on every list page (KK-136). */}
-        {reader ? (
-          <div className="catalog-toolbar-status-row" aria-hidden />
-        ) : (
-          <div className="announcement-toolbar-controls catalog-toolbar-status-row">
-            <div
-              className="catalog-status-tabs"
-              role="tablist"
-              aria-label="Announcement status"
-            >
-              {(["all", "draft", "scheduled", "published"] as const)
-                .filter(
-                  (value) =>
-                    query.data?.can_manage ||
-                    value === "all" ||
-                    value === "published",
-                )
-                .map((value) => {
-                  const count =
-                    value === "draft" || value === "scheduled"
-                      ? activeStatusCounts[value]
-                      : 0;
-                  return (
-                    <button
-                      type="button"
-                      key={value}
-                      role="tab"
-                      aria-selected={!showArchived && filter === value}
-                      aria-label={
-                        count
-                          ? `${capitalize(value)} (${count})`
-                          : capitalize(value)
-                      }
-                      className={
-                        !showArchived && filter === value ? "active" : ""
-                      }
-                      onClick={() => {
-                        setShowArchived(false);
-                        setFilter(value);
-                      }}
-                    >
-                      <span>{capitalize(value)}</span>
-                      {count ? (
-                        <span
-                          className="announcement-status-tab-count"
-                          aria-hidden="true"
-                        >
-                          {count}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              {query.data?.can_manage && (
+        <div className="announcement-toolbar-controls catalog-toolbar-status-row">
+          <div className="catalog-status-tabs" role="tablist" aria-label="Announcement status">
+            {listTabs.map((item) => {
+              const count = tabCount(item.id);
+              return (
                 <button
+                  key={item.id}
                   type="button"
                   role="tab"
-                  className={showArchived ? "active" : ""}
-                  aria-selected={showArchived}
-                  onClick={() => setShowArchived(true)}
+                  aria-selected={tab === item.id}
+                  aria-label={count ? `${item.label} (${count})` : item.label}
+                  className={tab === item.id ? "active" : ""}
+                  onClick={() => setTab(item.id)}
                 >
-                  <Archive size={14} aria-hidden />
-                  Archived
+                  <span>{item.label}</span>
+                  {count ? (
+                    <span className="announcement-status-tab-count" aria-hidden="true">
+                      {count}
+                    </span>
+                  ) : null}
                 </button>
-              )}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
         <div className="catalog-toolbar-filter-row">
+          {/* A phone has no room for the tabs: the same choice is this list (Mert 2026-10-13). */}
           <select
-            className="toolbar-filter-select list-filter-narrow"
-            aria-label="Filter announcements by location"
-            value={locationId}
-            onChange={(event) => setLocationId(event.target.value)}
+            className="toolbar-filter-select list-filter-narrow announcement-status-select"
+            aria-label="Show announcements"
+            value={tab}
+            onChange={(event) => setTab(event.target.value as ListTab)}
           >
-            <option value="">All locations</option>
-            {locationOptions.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
+            {listTabs.map((item) => {
+              const count = tabCount(item.id);
+              const label = item.id === "all" ? "All statuses" : item.label;
+              return (
+                <option key={item.id} value={item.id}>
+                  {count ? `${label} (${count})` : label}
+                </option>
+              );
+            })}
           </select>
+          {locations.length > 1 && (
+            <select
+              className="toolbar-filter-select list-filter-narrow"
+              aria-label="Filter announcements by location"
+              value={locationId}
+              onChange={(event) => setLocationId(event.target.value)}
+            >
+              <option value="">All locations</option>
+              {locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </select>
+          )}
           <label className="job-search toolbar-search">
             <Search size={16} aria-hidden />
             <input
@@ -247,835 +233,285 @@ export function AnnouncementsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {query.data?.can_manage ? (
-            <ListAddButton
-              label="New announcement"
-              onClick={() => setAdding(true)}
-            />
-          ) : null}
+          <ListAddButton label="New" onClick={onNew} />
         </div>
       </div>
-      {message && (
-        <p className="announcement-catalog-message" role="status">
-          {message}
-        </p>
-      )}
-      {query.isLoading && (
-        <p className="settings-state">Loading announcements...</p>
-      )}
-      {query.error && (
-        <p className="settings-state error" role="alert">
-          {query.error.message}
-        </p>
-      )}
-      {!query.isLoading && !query.error && (
+      {split ? (
         <>
-          <div className="job-catalog" role="table" aria-label="Announcements">
-            <div
-              className="job-column-headings catalog-column-headings announcement-catalog-row"
-              data-reader={reader}
-              role="row"
-            >
-              {(reader
-                ? ([
-                    ["title", "Announcement"],
-                    ["date", "Published date"],
-                    ["author", "Published by"],
-                    ["status", "Status"],
-                  ] as const)
-                : ([
-                    ["title", "Announcement"],
-                    ["audience", "Audience"],
-                    ["status", "Status"],
-                    ["date", "Publish date"],
-                  ] as const)
-              ).map(([key, label]) => (
-                <div
-                  key={key}
-                  role="columnheader"
-                  aria-sort={
-                    sort.key === key
-                      ? sort.descending
-                        ? "descending"
-                        : "ascending"
-                      : "none"
-                  }
-                >
-                  <CatalogSortButton
-                    label={label}
-                    active={sort.key === key}
-                    onClick={() =>
-                      setSort({
-                        key,
-                        descending: sort.key === key ? !sort.descending : false,
-                      })
-                    }
-                  />
-                </div>
-              ))}
-              <span role="columnheader" aria-label="Actions" />
-            </div>
-            {visible.length ? (
-              visible.map((item) => (
-                <div
-                  className="job-catalog-row announcement-catalog-row"
-                  role="row"
-                  key={item.id}
-                  data-archived={isArchived(item)}
-                  data-reader={reader}
-                  onClick={(event) => {
-                    if (
-                      !(event.target as HTMLElement).closest("button,details,a")
-                    ) {
-                      event.currentTarget
-                        .querySelector<HTMLButtonElement>(".job-row-identity")
-                        ?.focus({ preventScroll: true });
-                      open(item);
-                    }
-                  }}
-                >
-                  <div role="cell">
-                    <button
-                      className="job-row-identity"
-                      type="button"
-                      onClick={() => open(item)}
-                    >
-                      <Megaphone
-                        size={17}
-                        className="announcement-catalog-marker"
-                        aria-hidden
-                      />
-                      <span className="job-name-stack">
-                        <span className="job-row-name" title={item.title}>
-                          {item.title}
-                        </span>
-                        <span
-                          className="announcement-row-preview"
-                          title={item.body}
-                        >
-                          {item.body}
-                        </span>
-                        <span className="job-mobile-meta">
-                          {reader ? item.author_name : statusLabel(item)} ·{" "}
-                          {formatDate(item.publish_at ?? item.created_at)}
-                        </span>
-                      </span>
-                    </button>
-                  </div>
-                  {reader ? (
-                    <>
-                      <span role="cell" className="announcement-date-cell">
-                        {formatDate(
-                          item.published_at ??
-                            item.publish_at ??
-                            item.created_at,
-                        )}
-                      </span>
-                      <span
-                        role="cell"
-                        className="announcement-audience-cell"
-                        title={item.author_name}
-                      >
-                        {item.author_name}
-                      </span>
-                      <span role="cell" className="announcement-status-cell">
-                        <AcknowledgeControl
-                          item={item}
-                          workspaceId={workspaceId}
-                        />
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span
-                        role="cell"
-                        className="announcement-audience-cell"
-                        title={audienceLabel(item)}
-                      >
-                        {audienceLabel(item)}
-                      </span>
-                      <span role="cell" className="announcement-status-cell">
-                        <span
-                          className="list-chip"
-                          data-tone={
-                            isArchived(item)
-                              ? "gray"
-                              : item.status === "published"
-                                ? "green"
-                                : item.status === "scheduled"
-                                  ? "amber"
-                                  : "gray"
-                          }
-                        >
-                          {statusLabel(item)}
-                        </span>
-                      </span>
-                      <span role="cell" className="announcement-date-cell">
-                        {item.publish_at
-                          ? formatDate(item.publish_at)
-                          : "Not published"}
-                      </span>
-                    </>
-                  )}
-                  <div role="cell">
-                    <CatalogRowMenu name={item.title}>
-                      <button type="button" onClick={() => open(item)}>
-                        {item.can_edit
-                          ? "Edit announcement"
-                          : "View announcement"}
-                      </button>
-                      {item.can_archive && !isArchived(item) && (
-                        <button
-                          type="button"
-                          className="job-danger-text"
-                          onClick={() =>
-                            navigate(`/app/announcements/${item.id}?archive=1`, {
-                              preventScrollReset: true,
-                            })
-                          }
-                        >
-                          Archive
-                        </button>
-                      )}
-                    </CatalogRowMenu>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="settings-empty">
-                <Megaphone size={22} aria-hidden />
-                <strong>
-                  {search || filter !== "all" || locationId || showArchived
-                    ? "No matching announcements"
-                    : "No announcements yet"}
-                </strong>
-                <p>
-                  {search || filter !== "all" || locationId || showArchived
-                    ? "Try another search or status."
-                    : reader
-                      ? "Updates your managers share with your locations will appear here."
-                      : "Create an announcement to share an update with your team."}
-                </p>
-              </div>
-            )}
-          </div>
+          <h2 className="announcement-list-heading">
+            Active <span>{active.length}</span>
+          </h2>
+          {table(active, "Active announcements", "Nothing active.")}
+          <h2 className="announcement-list-heading">
+            Past <span>{past.length}</span>
+          </h2>
+          {table(past, "Past announcements", "Nothing has ended yet.")}
         </>
+      ) : (
+        table(
+          rows,
+          `${listTabs.find((item) => item.id === tab)!.label} announcements`,
+          tab === "archived" ? "Nothing archived." : "Nothing here.",
+        )
       )}
-      {announcementId && !selected && !query.isLoading && !query.error && (
-        <p className="settings-state">
-          This announcement is no longer available.
-        </p>
-      )}
-      {query.data && (adding || selected) && (
-        <AnnouncementEditor
-          key={adding ? "new" : selected!.id}
-          item={adding ? null : selected!}
-          model={query.data}
-          workspaceId={workspaceId}
-          onClose={close}
-          onDone={setMessage}
-        />
-      )}
-    </section>
+    </>
   );
 }
 
-function draftFrom(item: AnnouncementRecord | null, model: AnnouncementList): AnnouncementInput {
-  return {
-    title: item?.title ?? "",
-    body: item?.body ?? "",
-    category: item?.category ?? "general",
-    audience_roles:
-      item?.audience_roles.length === 4
-        ? []
-        : [...(item?.audience_roles ?? [])],
-    // A manager writes for one location (K1): a new one starts at theirs.
-    location_ids: item
-      ? [...item.location_ids]
-      : !model.can_target_workspace && model.locations.length === 1
-        ? [model.locations[0]!.id]
-        : [],
-    department_ids: [...(item?.department_ids ?? [])],
-    job_ids: [...(item?.job_ids ?? [])],
-    publish_at: item?.publish_at ?? null,
-    expires_at: item?.expires_at ?? null,
-    action_url: item?.action_url ?? null,
-  };
-}
-function comparable(draft: AnnouncementInput) {
-  return JSON.stringify({
-    ...draft,
-    title: draft.title.trim(),
-    body: draft.body.trim(),
-    action_url: draft.action_url?.trim() || null,
-    audience_roles:
-      draft.audience_roles.length === 4 ? [] : [...draft.audience_roles].sort(),
-    location_ids: [...draft.location_ids].sort(),
-    department_ids: [...(draft.department_ids ?? [])].sort(),
-    job_ids: [...(draft.job_ids ?? [])].sort(),
-  });
-}
-function AnnouncementEditor({
-  item,
-  model,
-  workspaceId,
-  onClose,
-  onDone,
-}: {
-  item: AnnouncementRecord | null;
-  model: AnnouncementList;
-  workspaceId: string;
-  onClose: () => void;
-  onDone: (message: string) => void;
-}) {
-  const client = useQueryClient();
-  const navigate = useNavigate();
-  const [initialItem] = useState(item);
-  const [baseline] = useState(() => draftFrom(item, model));
-  const [draft, setDraft] = useState(baseline);
-  const editable = item ? item.can_edit : model.can_manage;
-  const changed = comparable(draft) !== comparable(baseline);
-  const parsed = announcementInputSchema.safeParse(draft);
-  const refresh = async () => {
-    await Promise.all(
-      ["announcements", "notifications", "workspace-dashboard"].map((key) =>
-        client.invalidateQueries({ queryKey: [key] }),
-      ),
-    );
-  };
-  const save = useMutation({
-    mutationFn: () =>
-      saveAnnouncement(workspaceId, {
-        announcement_id: item?.id ?? null,
-        expected_revision: initialItem?.revision ?? null,
-        announcement: announcementInputSchema.parse(draft),
-      }),
-    onSuccess: async () => {
-      await refresh();
-      onDone(
-        item?.status === "scheduled"
-          ? "Scheduled announcement updated."
-          : "Announcement saved as a draft.",
-      );
-      onClose();
-    },
-  });
-  const transition = useMutation({
-    mutationFn: (action: "publish" | "archive") =>
-      transitionAnnouncement(
-        workspaceId,
-        item!.id,
-        action,
-        initialItem!.revision,
-      ),
-    onSuccess: async (result, action) => {
-      await refresh();
-      onDone(
-        action === "archive"
-          ? "Announcement archived."
-          : `${capitalize(result.status)} for ${result.recipient_count} recipients.`,
-      );
-      onClose();
-    },
-  });
-  const busy = save.isPending || transition.isPending;
-  // The row menu's Archive opens this editor with its archive already armed.
-  // It archives, so it says Archive, not Delete (Mert, 2026-10-03, BL-543).
-  const archiveConfirm = useConfirmClick(
-    () => transition.mutate("archive"),
-    new URLSearchParams(window.location.search).has("archive"),
-  );
-  const confirmArchive = archiveConfirm.armed;
-  const canSave = editable && parsed.success && (!item || changed) && !busy;
-  const canArchive = item && item.can_archive && !isArchived(item);
-  const actionUrl = safeAppActionUrl(item?.action_url ?? null);
-  const reacknowledge =
-    item && !editable && !item.acknowledged_at && item.content_changed_since_acknowledged;
-  const update = <K extends keyof AnnouncementInput>(
-    key: K,
-    value: AnnouncementInput[K],
-  ) => setDraft((current) => ({ ...current, [key]: value }));
-  return (
-    <CatalogDrawer
-      label={
-        item
-          ? editable
-            ? "Edit announcement"
-            : "Announcement"
-          : "Add announcement"
-      }
-      className="announcements-catalog-page"
-      onClose={onClose}
-      busy={busy}
-    >
-      <form
-        className="job-catalog-editor"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (canSave && !confirmArchive) save.mutate();
-        }}
-      >
-        <div className="job-editor-title">
-          <div>
-            <h2>
-              {item
-                ? editable
-                  ? "Edit announcement"
-                  : "Announcement"
-                : "New announcement"}
-            </h2>
-            <p>
-              {item
-                ? `${statusLabel(item)} · ${item.author_name}`
-                : "Write your update and choose who receives it."}
-            </p>
-          </div>
-          <button
-            className="job-icon-button"
-            type="button"
-            aria-label="Close announcement"
-            disabled={busy}
-            onClick={onClose}
-          >
-            <X size={17} aria-hidden />
-          </button>
-        </div>
-        <div className="catalog-drawer-body">
-          {reacknowledge && (
-            <p className="announcement-update-notice">
-              Updated. Please acknowledge the new version.
-            </p>
-          )}
-          <fieldset
-            className="announcement-catalog-fields"
-            disabled={busy || !editable}
-          >
-            <label className="job-field announcement-field-wide">
-              <span>Title</span>
-              <input
-                required
-                maxLength={120}
-                value={draft.title}
-                placeholder="What is the update about?"
-                onChange={(event) => update("title", event.target.value)}
-              />
-            </label>
-            <label className="job-field announcement-field-wide">
-              <span>Message</span>
-              <textarea
-                required
-                rows={3}
-                maxLength={5000}
-                value={draft.body}
-                placeholder="Share the details your team needs."
-                onChange={(event) => {
-                  update("body", event.target.value);
-                  event.target.style.height = "auto";
-                  event.target.style.height = `${event.target.scrollHeight}px`;
-                }}
-                ref={(element) => {
-                  if (element) {
-                    element.style.height = "auto";
-                    element.style.height = `${element.scrollHeight}px`;
-                  }
-                }}
-              />
-            </label>
-            <label className="job-field">
-              <span>Category</span>
-              <select
-                value={draft.category}
-                onChange={(event) =>
-                  update(
-                    "category",
-                    event.target.value as AnnouncementInput["category"],
-                  )
-                }
-              >
-                <option value="general">General</option>
-                <option value="operations">Operations</option>
-                <option value="schedule">Schedule</option>
-              </select>
-            </label>
-            <label className="job-field">
-              <span>
-                Publish at <small>Optional</small>
-              </span>
-              <input
-                type="datetime-local"
-                value={toLocalInput(draft.publish_at)}
-                onChange={(event) =>
-                  update("publish_at", toIso(event.target.value))
-                }
-              />
-            </label>
-            <label className="job-field">
-              <span>
-                Expires at <small>Optional</small>
-              </span>
-              <input
-                type="datetime-local"
-                value={toLocalInput(draft.expires_at)}
-                onChange={(event) =>
-                  update("expires_at", toIso(event.target.value))
-                }
-              />
-            </label>
-          </fieldset>
-          <section
-            className="announcement-audience-section"
-            aria-label="Audience"
-          >
-            <div className="announcement-audience-heading">
-              <h3>Audience</h3>
-              <span className="announcement-all-badge">
-                {!draft.audience_roles.length &&
-                !draft.location_ids.length &&
-                !draft.department_ids?.length &&
-                !draft.job_ids?.length
-                  ? "Everyone"
-                  : "Filtered audience"}
-              </span>
-            </div>
-            <p>
-              Leave a filter on All to include everyone in that group. Selected
-              filters apply together.
-            </p>
-            <div className="announcement-audience-grid">
-              <AudiencePicker
-                label="Roles"
-                options={roleOptions}
-                selected={draft.audience_roles}
-                disabled={busy || !editable}
-                onChange={(ids) =>
-                  update(
-                    "audience_roles",
-                    ids as AnnouncementInput["audience_roles"],
-                  )
-                }
-              />
-              <AudiencePicker
-                label="Locations"
-                options={withExisting(
-                  model.locations,
-                  item?.location_ids,
-                  item?.location_names,
-                )}
-                selected={draft.location_ids}
-                disabled={busy || !editable}
-                onChange={(ids) => update("location_ids", ids)}
-              />
-              <AudiencePicker
-                label="Departments"
-                options={withExisting(
-                  model.departments ?? [],
-                  item?.department_ids,
-                  item?.department_names,
-                )}
-                selected={draft.department_ids ?? []}
-                disabled={busy || !editable}
-                onChange={(ids) => update("department_ids", ids)}
-              />
-              <AudiencePicker
-                label="Jobs"
-                options={withExisting(
-                  model.jobs ?? [],
-                  item?.job_ids,
-                  item?.job_names,
-                )}
-                selected={draft.job_ids ?? []}
-                disabled={busy || !editable}
-                onChange={(ids) => update("job_ids", ids)}
-              />
-            </div>
-          </section>
-          {!editable && actionUrl && (
-            <button
-              className="job-text-button"
-              type="button"
-              onClick={() => navigate(actionUrl)}
-            >
-              Open related page
-            </button>
-          )}
-          {changed && item?.can_publish && (
-            <p className="announcement-catalog-hint">
-              Save your changes before publishing.
-            </p>
-          )}
-          {(save.error || transition.error) && (
-            <p className="form-error" role="alert">
-              {save.error?.message ?? transition.error?.message}
-            </p>
-          )}
-        </div>
-        <div className="job-editor-footer">
-          {canArchive ? (
-            <div className="catalog-delete-action">
-              <button
-                className="catalog-delete-trigger"
-                type="button"
-                data-confirming={confirmArchive}
-                disabled={busy}
-                {...archiveConfirm.confirmProps}
-              >
-                {transition.isPending ? (
-                  "Archiving..."
-                ) : confirmArchive ? (
-                  <>
-                    <CheckCircle2 size={14} aria-hidden />
-                    Confirm archive
-                  </>
-                ) : (
-                  <>
-                    <Archive size={14} aria-hidden />
-                    Archive
-                  </>
-                )}
-              </button>
-            </div>
-          ) : null}
-          <div className="job-editor-actions">
-            <Button
-              className="job-secondary-button"
-              type="button"
-              disabled={busy}
-              onClick={onClose}
-            >
-              {editable ? "Cancel" : "Close"}
-            </Button>
-            {item && !editable && item.status !== "draft" && (
-              <AcknowledgeControl item={item} workspaceId={workspaceId} />
-            )}
-            {item?.can_publish && !confirmArchive && (
-              <Button
-                className="job-secondary-button"
-                type="button"
-                disabled={busy || changed}
-                onClick={() => transition.mutate("publish")}
-              >
-                <Send size={14} aria-hidden />
-                {item.publish_at && Date.parse(item.publish_at) > Date.now()
-                  ? "Schedule"
-                  : "Publish"}
-              </Button>
-            )}
-            {editable && (
-              <Button
-                className="job-primary-button"
-                type="submit"
-                disabled={!canSave || confirmArchive}
-              >
-                {save.isPending
-                  ? "Saving..."
-                  : item
-                    ? "Save changes"
-                    : "Save draft"}
-              </Button>
-            )}
-          </div>
-        </div>
-      </form>
-    </CatalogDrawer>
-  );
-}
+const columns: { key: SortKey; label: string }[] = [
+  { key: "status", label: "Status" },
+  { key: "title", label: "Announcement" },
+  { key: "published_on", label: "Published on" },
+];
 
-function AcknowledgeControl({
-  item,
-  workspaceId,
-}: {
-  item: AnnouncementRecord;
-  workspaceId: string;
-}) {
-  const client = useQueryClient();
-  const acknowledge = useMutation({
-    mutationFn: () => acknowledgeAnnouncement(workspaceId, item.id),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: ["announcements", workspaceId] }),
-  });
-  if (item.acknowledged_at)
-    return (
-      <span
-        className="announcement-acknowledged"
-        role="img"
-        aria-label="Acknowledged"
-        title={`Acknowledged ${formatDate(item.acknowledged_at)}`}
-      >
-        <CheckCircle2 size={18} aria-hidden />
-      </span>
-    );
-  // The text changed since this person acknowledged it: ask again, in amber
-  // (Mert, 2026-10-03, FB-6.7 B2-A).
-  const again = Boolean(item.content_changed_since_acknowledged);
-  return (
-    <button
-      type="button"
-      className="announcement-acknowledge-button"
-      data-again={again || undefined}
-      disabled={acknowledge.isPending}
-      title={acknowledge.error?.message}
-      onClick={() => acknowledge.mutate()}
-    >
-      {acknowledge.isPending
-        ? "Saving..."
-        : again
-          ? "Acknowledge again"
-          : "Acknowledge"}
-    </button>
-  );
-}
-
-function AudiencePicker({
+function AnnouncementTable({
   label,
-  options,
-  selected,
-  disabled,
-  onChange,
+  rows,
+  sort,
+  empty,
+  timeFormat,
+  onSort,
+  onOpen,
 }: {
   label: string;
-  options: readonly Option[];
-  selected: readonly string[];
-  disabled: boolean;
-  onChange: (ids: string[]) => void;
+  rows: AnnouncementRecord[];
+  sort: ListSort;
+  empty: string;
+  timeFormat: TimeFormat;
+  onSort: (key: SortKey) => void;
+  onOpen: (id: string) => void;
 }) {
-  const [search, setSearch] = useState("");
-  const visible = options.filter((option) =>
-    option.name.toLowerCase().includes(search.trim().toLowerCase()),
-  );
-  const selectedNames = options
-    .filter((option) => selected.includes(option.id))
-    .map((option) => option.name)
-    .join(", ");
+  const thisYear = new Date().getFullYear();
   return (
-    <details
-      className="announcement-audience-picker"
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && event.currentTarget.open) {
-          event.preventDefault();
-          event.stopPropagation();
-          event.currentTarget.open = false;
-          event.currentTarget.querySelector("summary")?.focus();
-        }
-      }}
-    >
-      <summary>
-        <span>
-          <strong>{label}</strong>
-          <span className="announcement-picker-value" title={selectedNames}>
-            {selected.length
-              ? selectedNames || `${selected.length} selected`
-              : `All ${label.toLowerCase()}`}
-          </span>
-        </span>
-        <span className="announcement-all-badge">
-          {selected.length || "All"}
-        </span>
-        <ChevronDown size={14} aria-hidden />
-      </summary>
-      <div className="announcement-picker-content">
-        {options.length > 6 && (
-          <label className="announcement-picker-search">
-            <Search size={14} aria-hidden />
-            <input
-              aria-label={`Search ${label.toLowerCase()}`}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search"
-              onKeyDown={(event) => {
-                if (event.key === "Enter") event.preventDefault();
+    <div className="job-catalog announcement-table" role="table" aria-label={label}>
+      <div className="job-column-headings catalog-column-headings announcement-catalog-row" role="row">
+        {columns.map((column) => (
+          <div
+            key={column.key}
+            role="columnheader"
+            aria-sort={
+              sort.key === column.key ? (sort.direction === 1 ? "ascending" : "descending") : "none"
+            }
+          >
+            <CatalogSortButton
+              label={column.label}
+              active={sort.key === column.key}
+              onClick={() => onSort(column.key)}
+            />
+          </div>
+        ))}
+      </div>
+      {rows.length ? (
+        rows.map((record) => {
+          const on = publishedOn(record);
+          const day = on.at ? momentDay(on.at, record.time_zone) : null;
+          return (
+            <div
+              className="job-catalog-row announcement-catalog-row"
+              role="row"
+              key={record.id}
+              onClick={(event) => {
+                if (!(event.target as HTMLElement).closest("button")) onOpen(record.id);
               }}
-            />
-          </label>
-        )}
-        <div className="announcement-picker-options">
-          <label className="announcement-all-option">
-            <input
-              type="checkbox"
-              checked={!selected.length}
-              disabled={disabled}
-              onChange={() => onChange([])}
-            />
-            <span>All {label.toLowerCase()}</span>
-          </label>
-          {visible.map((option) => (
-            <label key={option.id}>
-              <input
-                type="checkbox"
-                checked={selected.includes(option.id)}
-                disabled={disabled}
-                onChange={() =>
-                  onChange(
-                    selected.includes(option.id)
-                      ? selected.filter((id) => id !== option.id)
-                      : [...selected, option.id],
-                  )
-                }
-              />
-              <span title={option.name}>{option.name}</span>
-            </label>
-          ))}
-          {!visible.length && (
-            <p>{options.length ? "No matches" : "No options available"}</p>
-          )}
+            >
+              <div role="cell" className="announcement-status-cell">
+                <span className="announcement-status">
+                  <span className="list-chip" data-tone={statusTones[record.display_status]}>
+                    {statusLabels[record.display_status]}
+                  </span>
+                  {isUnderway(record) && <small>Today</small>}
+                </span>
+              </div>
+              <div role="cell">
+                <button className="job-row-identity" type="button" onClick={() => onOpen(record.id)}>
+                  <span className="announcement-row-icon" aria-hidden>
+                    {record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+                  </span>
+                  <span className="job-name-stack">
+                    <span className="job-row-name">
+                      {record.title || "Untitled"}
+                      {record.on_important_dates && <span className="sr-only"> (on Important Dates)</span>}
+                    </span>
+                    <span className="announcement-row-preview">
+                      {[announcementCategoryText(record), record.body].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                </button>
+              </div>
+              <div role="cell" className="announcement-date-cell">
+                {day && on.at ? (
+                  <span
+                    data-planned={on.planned || undefined}
+                    title={on.planned ? `Publishes ${momentText(on.at, record.time_zone, timeFormat)}` : undefined}
+                  >
+                    {dayText(day, Number(day.slice(0, 4)) !== thisYear)}
+                  </span>
+                ) : (
+                  <span className="announcement-dash" aria-label="Not published">
+                    —
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="announcement-list-empty">{empty}</div>
+      )}
+    </div>
+  );
+}
+
+/** Phone: the shared list card (KARARLAR Genel "telefonda liste sayfaları kart satırıyla"). */
+function AnnouncementCards({
+  label,
+  rows,
+  timeFormat,
+  onOpen,
+}: {
+  label: string;
+  rows: AnnouncementRecord[];
+  timeFormat: TimeFormat;
+  onOpen: (id: string) => void;
+}) {
+  if (!rows.length) return null;
+  return (
+    <ListCards label={label}>
+      {rows.map((record) => {
+        const title = record.title || "Untitled";
+        const status = statusLabels[record.display_status];
+        const when = whenText(record, timeFormat);
+        return (
+          <ListCard
+            key={record.id}
+            label={[title, record.on_important_dates ? "on Important Dates" : "", status, when].filter(Boolean).join(", ")}
+            mark={record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+            title={<span>{title}</span>}
+            status={
+              <span className="list-chip" data-tone={statusTones[record.display_status]}>
+                {status}
+              </span>
+            }
+            lines={[
+              [isUnderway(record) ? "Today" : "", announcementCategoryText(record), when].filter(Boolean).join(" · "),
+              record.body || null,
+            ]}
+            onOpen={() => onOpen(record.id)}
+          />
+        );
+      })}
+    </ListCards>
+  );
+}
+
+/** An Important Date names its days; any other post when it went out or goes out. */
+function whenText(record: AnnouncementRecord, timeFormat: TimeFormat): string {
+  if (record.on_important_dates && record.starts_on) return rangeText(record.starts_on, record.ends_on);
+  const on = publishedOn(record);
+  if (!on.at) return "";
+  if (on.planned) return `Publishes ${momentText(on.at, record.time_zone, timeFormat)}`;
+  const day = momentDay(on.at, record.time_zone);
+  return `Published ${dayText(day, Number(day.slice(0, 4)) !== new Date().getFullYear())}`;
+}
+
+function ReaderList({
+  records,
+  onOpen,
+}: {
+  records: AnnouncementRecord[];
+  onOpen: (id: string) => void;
+}) {
+  const [tab, setTab] = useState<"current" | "past">("current");
+  const rows = records
+    .filter((record) =>
+      tab === "past" ? record.display_status === "past" : record.display_status === "published",
+    )
+    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+  return (
+    <>
+      <div className="job-catalog-toolbar catalog-toolbar">
+        <div className="announcement-toolbar-controls catalog-toolbar-status-row">
+          <div className="catalog-status-tabs" role="tablist" aria-label="Announcements">
+            {(
+              [
+                ["current", "Current"],
+                ["past", "Past"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                className={tab === id ? "active" : ""}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-    </details>
+      <div className="announcement-reader-list">
+        {rows.length ? (
+          rows.map((record) => {
+            const ask = tab === "current" && record.asked_to_acknowledge && !record.acknowledged_at;
+            return (
+              <button key={record.id} type="button" className="announcement-reader-row" onClick={() => onOpen(record.id)}>
+                <span className="announcement-row-icon" aria-hidden>
+                  {record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+                </span>
+                <span className="announcement-reader-text">
+                  <strong>{record.title}</strong>
+                  <small>
+                    {[record.starts_on ? rangeText(record.starts_on, record.ends_on) : "", record.body]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                </span>
+                {ask ? (
+                  <span className="list-chip" data-tone="blue">
+                    Acknowledge
+                  </span>
+                ) : (
+                  <ChevronRight size={16} aria-hidden className="announcement-reader-go" />
+                )}
+              </button>
+            );
+          })
+        ) : (
+          <p className="announcement-list-empty">
+            {tab === "past" ? "Nothing has ended yet." : "No announcements for you right now."}
+          </p>
+        )}
+      </div>
+      {rows.length > 0 && (
+        <ListCards label={tab === "past" ? "Past announcements" : "Current announcements"}>
+          {rows.map((record) => {
+            const ask = tab === "current" && record.asked_to_acknowledge && !record.acknowledged_at;
+            const when = record.starts_on ? rangeText(record.starts_on, record.ends_on) : null;
+            return (
+              <ListCard
+                key={record.id}
+                label={[record.title, when, ask ? "Acknowledge" : ""].filter(Boolean).join(", ")}
+                mark={record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+                title={<span>{record.title}</span>}
+                status={
+                  ask ? (
+                    <span className="list-chip" data-tone="blue">
+                      Acknowledge
+                    </span>
+                  ) : null
+                }
+                lines={[when, record.body || null]}
+                onOpen={() => onOpen(record.id)}
+              />
+            );
+          })}
+        </ListCards>
+      )}
+    </>
   );
 }
-function withExisting(
-  options: readonly Option[],
-  ids: readonly string[] = [],
-  names: readonly string[] = [],
-): Option[] {
-  return [
-    ...options,
-    ...ids
-      .filter((id) => !options.some((option) => option.id === id))
-      .map((id) => ({
-        id,
-        name: names[ids.indexOf(id)] ?? "Archived selection",
-      })),
-  ];
-}
-function audienceLabel(item: AnnouncementRecord) {
-  const labels = [
-    item.audience_roles.length && item.audience_roles.length < 4
-      ? item.audience_roles.map(capitalize).join(", ")
-      : "All roles",
-    item.location_names.length
-      ? item.location_names.join(", ")
-      : "All locations",
-    item.department_names?.length
-      ? item.department_names.join(", ")
-      : "All departments",
-    item.job_names?.length ? item.job_names.join(", ") : "All jobs",
-  ];
-  return labels.join(" · ");
-}
-function isArchived(item: AnnouncementRecord) {
-  return Boolean(item.archived_at);
-}
-function statusLabel(item: AnnouncementRecord) {
-  return isArchived(item) ? "Archived" : capitalize(item.status);
-}
-function capitalize(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(iso));
-}
-function toLocalInput(iso: string | null) {
-  if (!iso) return "";
-  const date = new Date(iso);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 16);
-}
-function toIso(value: string) {
-  return value ? new Date(value).toISOString() : null;
-}
+
 export default AnnouncementsPage;

@@ -205,6 +205,20 @@ export const notificationTypeDisplay = {
     preferenceDescription:
       "Get notified when a new schedule containing your shifts is published.",
   },
+  "schedule.termination.shifts_unassigned": {
+    label: "Shifts left open by a termination",
+    shortLabel: "Termination open shifts",
+    description:
+      "Alerts location managers when ending someone's employment leaves published shifts open.",
+    categoryLabel: notificationCategoryDisplay.schedule.label,
+    categoryDescription: notificationCategoryDisplay.schedule.description,
+    audienceLabel: "Managers of the location where the shifts opened",
+    actionLabel: "View schedule",
+    adminDescription:
+      "Controls alerts sent to location managers when terminating an employee leaves published shifts open.",
+    preferenceDescription:
+      "Get notified when a termination leaves shifts at your location open.",
+  },
 } as const satisfies Record<DisplayedNotificationTypeKey, NotificationTypeDisplay>;
 
 export const notificationChannelDisplay = {

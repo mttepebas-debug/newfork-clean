@@ -30,6 +30,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -126,6 +127,7 @@ import {
   EDIT_IDLE_WARNING_MS,
 } from "../schedule/hooks/useEditIdleTimer";
 import { EDIT_ENDED_AWAY, EDIT_NOT_RECONNECTED, useScheduleEditSession } from "../schedule/hooks/useScheduleEditSession";
+import { useScheduleLeaveGuard } from "../schedule/hooks/useScheduleLeaveGuard";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
@@ -181,6 +183,8 @@ import {
   usePersistentScheduleEmployeeSortMode,
   usePersistentScheduleUiBoolean,
 } from "../schedule/store/scheduleUiStore";
+import { can } from "../auth/can";
+import { useScheduleCalendarPosts } from "../schedule/hooks/useScheduleCalendarPosts";
 import {
   createLocationPublicationChipStatuses,
   createScheduleCalendarMarkers,
@@ -208,7 +212,7 @@ import {
 import { resolveScheduleDeleteShiftIds } from "../schedule/lib/scheduleDeleteSelection";
 import { scheduleClosureCoversDate } from "../schedule/lib/scheduleClosures";
 import { parseRetroactiveEditError } from "../schedule/lib/retroactiveEditRecovery";
-import { publicationStateForShift } from "../schedule/lib/scheduleShiftMetadata";
+import { publicationStateForShift, withoutReplacedRemovedShifts } from "../schedule/lib/scheduleShiftMetadata";
 import { toScheduleShiftMutation } from "../schedule/lib/scheduleShiftMutation";
 import {
   SCHEDULE_WINDOW_SELECTOR,
@@ -227,6 +231,8 @@ import {
 import {
   clearFocusedShiftSearchFilters,
   dismissNextScheduleSearchLayer,
+  newestScheduleFilterKey,
+  withScheduleSearchValue,
 } from "../schedule/lib/scheduleDismissal";
 import { useConfirmDialog } from "../shell/ConfirmDialog";
 
@@ -283,6 +289,10 @@ export function SchedulePage({
     view,
   );
   const gates = scheduleGates(context);
+  const calendarPosts = useScheduleCalendarPosts(
+    context?.workspace.id ?? null,
+    can(context, "announcement.read"),
+  );
   const canExportSchedules = gates.export;
   const {
     session,
@@ -295,6 +305,8 @@ export function SchedulePage({
     recoverLease,
     runWithLease,
     endClosedEdit,
+    discardOnLeave: discardEditOnLeave,
+    setAside: setAsideEditSession,
     idleSeconds,
     keepEditing,
   } = useScheduleEditSession({
@@ -668,7 +680,8 @@ export function SchedulePage({
       { ...query.data, shifts: effectiveShifts },
       search,
     );
-    return filtered.shifts
+    // A removal hidden behind its replacement is not on screen to select.
+    return withoutReplacedRemovedShifts(filtered.shifts)
       .filter(
         (shift) => view === "week" || shift.scheduled_date === selectedDate,
       )
@@ -753,12 +766,18 @@ export function SchedulePage({
     }
   }, [editor]);
 
+  // Leaving the page with unsaved work asks first; closing the tab keeps the
+  // browser's own warning (useScheduleLeaveGuard).
+  const leaveGuard = useScheduleLeaveGuard(hasUnsavedChanges);
+  // The page the person chose, held while the Save draft window is open.
+  const leaveAfterSaveRef = useRef<(() => void) | null>(null);
+  const [departureAfterSave, setDepartureAfterSave] = useState<(() => void) | null>(null);
+  // Runs once the window has closed: a link clicked under an open window is not followed.
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [hasUnsavedChanges]);
+    if (!departureAfterSave || saveOpen) return;
+    setDepartureAfterSave(null);
+    departureAfterSave();
+  }, [departureAfterSave, saveOpen]);
 
   const changePeriod = (days: number) => {
     const next = new URLSearchParams(search);
@@ -782,11 +801,13 @@ export function SchedulePage({
       setQueryIds("locations", locationIds);
       return;
     }
-    const next = new URLSearchParams(search);
+    const next = withScheduleSearchValue(
+      search,
+      "locations",
+      locationIds.join(",") || null,
+    );
     next.set("date", date);
     next.set("view", "day");
-    if (locationIds.length) next.set("locations", locationIds.join(","));
-    else next.delete("locations");
     setSearch(next);
   };
   const setLayout = (value: "separate" | "unified") => {
@@ -796,22 +817,24 @@ export function SchedulePage({
     setSearch(next);
   };
   const toggleHideUnscheduled = () => {
-    const next = new URLSearchParams(search);
-    if (hideUnscheduled) next.delete("hideUnscheduled");
-    else next.set("hideUnscheduled", "true");
-    setSearch(next);
+    setSearch(
+      withScheduleSearchValue(
+        search,
+        "hideUnscheduled",
+        hideUnscheduled ? null : "true",
+      ),
+    );
   };
   const setQueryIds = (param: string, ids: readonly string[]) => {
-    const next = new URLSearchParams(search);
-    if (ids.length) next.set(param, ids.join(","));
-    else next.delete(param);
-    setSearch(next);
+    setSearch(withScheduleSearchValue(search, param, ids.join(",") || null));
   };
   const focusShiftBadge = (shift: ScheduleShift) => {
-    const next = new URLSearchParams(search);
-    if (shift.shift_type_id) next.set("shiftTypes", shift.shift_type_id);
-    else next.delete("shiftTypes");
-    next.set("jobs", shift.job_id);
+    // The focus is the newest filter, so Esc takes it off first.
+    const next = withScheduleSearchValue(
+      withScheduleSearchValue(search, "shiftTypes", shift.shift_type_id),
+      "jobs",
+      shift.job_id,
+    );
     next.delete("employees");
     setSearch(next);
     setFocusedShiftId(shift.id);
@@ -1130,12 +1153,25 @@ export function SchedulePage({
     [setScheduleMode, setSearch, updateSelectedIds],
   );
 
+  // resume: picking an edit back up (a reload in edit mode). Anything else is a
+  // new edit asked for from a menu, which never brings back one that was left.
   const acquire = async (
     source: "blank" | "published" | "draft",
     draftId: string | null = null,
     preserveFilters = false,
+    resume = false,
   ) => {
     if (!context || !query.data || pastWeek) return;
+    // A new edit of another week closes the one held for its own week (KK-164):
+    // its unsaved work is kept as an "Auto-save" draft, as on idle (S1).
+    if (!resume && session && session.week_start !== query.data.week_start) {
+      try {
+        await setAsideEditSession();
+      } catch (error) {
+        setOperationError(requestErrorText(error));
+        return;
+      }
+    }
     const allLocationIds = query.data.locations.map((item) => item.id);
     const filteredLocationIds = validIds(search.get("locations"), allLocationIds);
     // The filtered locations, or every location the person may edit.
@@ -1148,6 +1184,7 @@ export function SchedulePage({
       source,
       draftId,
       editLocationIds,
+      resume,
     );
     if (!result) return;
     if (result.status === "conflict") return;
@@ -1175,7 +1212,7 @@ export function SchedulePage({
       setScheduleMode("preview", activeDraftId);
       return;
     }
-    void acquire(activeDraftId ? "draft" : "published", activeDraftId, true).then((resumed) => {
+    void acquire(activeDraftId ? "draft" : "published", activeDraftId, true, true).then((resumed) => {
       if (!resumed) setScheduleMode("preview", activeDraftId);
     });
   });
@@ -1234,6 +1271,30 @@ export function SchedulePage({
     setDiscardConfirmOpen(true);
   };
 
+  // Leaving the page: the work goes, the edit closes, the chosen page opens.
+  const leaveWithoutSaving = () => {
+    const departure = leaveGuard.take();
+    const leftDraftId = session?.source_draft_id ?? null;
+    discardEditOnLeave();
+    invalidateScheduleCaches(leftDraftId);
+    departure?.();
+  };
+  // Leaving the page: the Save draft window opens on the edit's own week; once
+  // the draft is saved the chosen page opens. Closing the window stays here.
+  const saveBeforeLeaving = () => {
+    if (!session) return;
+    leaveAfterSaveRef.current = leaveGuard.take();
+    if (query.data?.week_start !== session.week_start) {
+      setSearch((current) => {
+        const next = new URLSearchParams(current);
+        next.set("date", session.week_start);
+        return next;
+      }, { replace: true });
+    }
+    setExportAfterSave(false);
+    setSaveOpen(true);
+  };
+
   const saveDraftFromMenu = async (
     name: string,
     force: boolean,
@@ -1287,6 +1348,19 @@ export function SchedulePage({
         setOperationError(
           `"${name}" is owned by ${nameConflict.ownerName}. Choose another name or overwrite the draft from the saved drafts list.`,
         );
+        return null;
+      }
+      // BL-1052: another tab moved the edit on; a retry would send the same old
+      // revision, so the page is reloaded instead (the reload picks the edit up).
+      // The Save draft window and a retry sheet left by an earlier failure close
+      // too, so the banner's Reload is in reach.
+      if (isEditSessionStale(error)) {
+        setSaveRecovery(null);
+        setOperationError(scheduleEditErrorText(error));
+        setPublishMenuDismissSignal((value) => value + 1);
+        setSaveOpen(false);
+        setExportAfterSave(false);
+        leaveScheduleDeepLink();
         return null;
       }
       // BL-395: the save's own sentences for a refusal; a plain one for anything else.
@@ -2065,8 +2139,10 @@ export function SchedulePage({
     (item) => item.status === "published" && item.published_at,
   );
   const calendarMarkers = createScheduleCalendarMarkers(
-    model.closures,
-    model.important_dates,
+    calendarPosts,
+    selectedLocationIds.length
+      ? selectedLocationIds
+      : model.locations.map((item) => item.id),
   );
   const toggleCurrentViewPeriod = () => {
     if (!isCurrentViewPeriod) {
@@ -2095,7 +2171,9 @@ export function SchedulePage({
       closeTopActionSurfaces();
       return true;
     }
-    const liveSearch = new URLSearchParams(window.location.search);
+    // Read from the router, not window.location: this function is reassigned
+    // every render, so these params are always the current ones.
+    const liveSearch = new URLSearchParams(search);
     if (conflict) {
       setConflict(null);
       return true;
@@ -2148,13 +2226,11 @@ export function SchedulePage({
       updateSelectedIds([]);
       return true;
     }
-    if (preserveMatchingLocationHeader && liveSearch.has("locations")) {
-      const higherPrioritySearchLayer =
-        liveSearch.get("hideUnscheduled") === "true" ||
-        liveSearch.has("shiftTypes") ||
-        liveSearch.has("jobs") ||
-        liveSearch.has("employees");
-      if (!higherPrioritySearchLayer) return false;
+    if (
+      preserveMatchingLocationHeader &&
+      newestScheduleFilterKey(liveSearch) === "locations"
+    ) {
+      return false;
     }
     if (preserveSearchFilters) return false;
     const dismissal = dismissNextScheduleSearchLayer({
@@ -2162,6 +2238,7 @@ export function SchedulePage({
       modelWeekStart: model.week_start,
       currentWeekStart: currentWeek,
       today,
+      focusedShift: Boolean(focusedShiftId),
     });
     if (!dismissal) return false;
     setSearch(dismissal.search);
@@ -2753,6 +2830,9 @@ export function SchedulePage({
             ? () => setLogoOpen(true)
             : undefined
         }
+        onOpenPost={(announcementId) =>
+          navigate(`/app/announcements/${announcementId}`)
+        }
         onOpenEmployeeCard={(employeeId) => {
           if (!gates.openEmployee) return;
           if (dismissOpenSurfaceBeforeGridActivation()) return;
@@ -2998,7 +3078,6 @@ export function SchedulePage({
           formatTime={formatTime}
           addDays={addDays}
           scheduleClosureCoversDate={scheduleClosureCoversDate}
-          presentation="floating"
           onClose={requestCloseEditor}
           onDismiss={dismissEditorFromBlankSurface}
           shouldSuppressDismissPointerDown={isScheduleSurfaceTarget}
@@ -3153,11 +3232,19 @@ export function SchedulePage({
         onConfirm={() => void removeSelected()}
       />
       {confirmDialog}
-      <ScheduleDiscardEditDialog
+      <ScheduleEditExitDialog
         open={discardConfirmOpen && Boolean(session)}
-        isDiscarding={isDiscardingEditSession}
+        busy={isDiscardingEditSession}
         onCancel={() => setDiscardConfirmOpen(false)}
-        onConfirm={discardEditSession}
+        onDiscard={discardEditSession}
+      />
+      <ScheduleEditExitDialog
+        open={leaveGuard.open && Boolean(session)}
+        leaving
+        busy={leaveGuard.restoringHistory}
+        onCancel={leaveGuard.stay}
+        onDiscard={leaveWithoutSaving}
+        onSave={saveBeforeLeaving}
       />
       <RetroactiveEditDialog
         open={retroactiveEditState.open}
@@ -3177,7 +3264,7 @@ export function SchedulePage({
           }
           busy={saveBusy}
           description={exportAfterSave ? "Export is available in preview mode. Save this working copy as a draft to continue." : undefined}
-          onClose={() => { if (!saveBusy) { setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
+          onClose={() => { if (!saveBusy) { leaveAfterSaveRef.current = null; setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
           onSave={(name, draft) => {
             if (saveBusy) return;
             const savingContext = currentMutationContext.current;
@@ -3188,6 +3275,9 @@ export function SchedulePage({
                 setSaveOpen(false);
                 if (exportAfterSave) setExportOpen(true);
                 setExportAfterSave(false);
+                const departure = leaveAfterSaveRef.current;
+                leaveAfterSaveRef.current = null;
+                if (departure) setDepartureAfterSave(() => departure);
               }).finally(() => {
                 if (currentMutationContext.current === savingContext) setSaveBusy(false);
               });
@@ -3532,17 +3622,26 @@ function scheduleShiftFromPasteInput(
   };
 }
 
-function ScheduleDiscardEditDialog({
+// The Schedule edit's way out: Discard on the edit strip, and leaving the page
+// with unsaved work (Mert 2026-10-12), which also offers Save draft.
+function ScheduleEditExitDialog({
   open,
-  isDiscarding,
+  leaving = false,
+  busy,
   onCancel,
-  onConfirm,
+  onDiscard,
+  onSave,
 }: {
   readonly open: boolean;
-  readonly isDiscarding: boolean;
+  /** Asked on the way to another page: the question names the departure and offers Save draft. */
+  readonly leaving?: boolean;
+  readonly busy: boolean;
   readonly onCancel: () => void;
-  readonly onConfirm: () => void;
+  readonly onDiscard: () => void;
+  readonly onSave?: () => void;
 }) {
+  const titleId = useId();
+  const descriptionId = useId();
   return open ? (
     <div className="schedule-discard-layer" role="presentation">
       <button
@@ -3553,37 +3652,47 @@ function ScheduleDiscardEditDialog({
       />
       <section
         className="schedule-discard-dialog"
-        data-schedule-discard-edit-dialog="true"
+        data-schedule-discard-edit-dialog={leaving ? undefined : "true"}
+        data-schedule-leave-edit-dialog={leaving ? "true" : undefined}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="schedule-discard-edit-title"
-        aria-describedby="schedule-discard-edit-description"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
       >
         <header>
           <span aria-hidden>
             <AlertTriangle size={18} />
           </span>
           <div>
-            <h2 id="schedule-discard-edit-title">Discard unsaved changes?</h2>
-            <p id="schedule-discard-edit-description">
-              This closes the edit session and returns to the live weekly
-              schedule. Unsaved schedule changes will be removed.
+            <h2 id={titleId}>
+              {leaving ? "Save changes before leaving?" : "Discard unsaved changes?"}
+            </h2>
+            <p id={descriptionId}>
+              {leaving
+                ? "You have unsaved schedule changes. Save them as a draft, or discard them and leave."
+                : "This closes the edit session and returns to the live weekly schedule. Unsaved schedule changes will be removed."}
             </p>
           </div>
         </header>
         <footer>
-          <button type="button" onClick={onCancel} disabled={isDiscarding}>
+          <button type="button" onClick={onCancel} disabled={busy && !leaving}>
             Keep editing
           </button>
           <button
             type="button"
             className="danger"
-            onClick={onConfirm}
-            disabled={isDiscarding}
+            onClick={onDiscard}
+            disabled={busy}
           >
             <X size={15} aria-hidden />
-            {isDiscarding ? "Discarding..." : "Discard"}
+            {leaving ? "Discard and leave" : busy ? "Discarding..." : "Discard"}
           </button>
+          {leaving && onSave ? (
+            <button type="button" className="save" onClick={onSave} disabled={busy}>
+              <Save size={15} aria-hidden />
+              Save draft
+            </button>
+          ) : null}
         </footer>
       </section>
     </div>

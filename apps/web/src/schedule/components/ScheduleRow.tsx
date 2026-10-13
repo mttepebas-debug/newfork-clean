@@ -39,6 +39,7 @@ import {
   formatHourTotalValue,
 } from "../lib/scheduleHourTotals";
 import {
+  hideReplacedRemovedShifts,
   isGhostScheduleShift,
   publicationStateForShift,
   shiftWithDerivedWarnings,
@@ -250,10 +251,12 @@ export function ScheduleRow({
       />
       {locations.flatMap((location, locationIndex) =>
         days.map((day, dayIndex) => {
-          const cellShifts = employeeShifts.filter(
-            (shift) =>
-              location.sourceIds.includes(shift.location_id) &&
-              shift.scheduled_date === day,
+          const cellShifts = hideReplacedRemovedShifts(
+            employeeShifts.filter(
+              (shift) =>
+                location.sourceIds.includes(shift.location_id) &&
+                shift.scheduled_date === day,
+            ),
           );
           const derivedCellState = cellStateByKey.get(
             scheduleCellStateKey(location.id, day, employee?.id ?? null),
@@ -441,7 +444,7 @@ export function ScheduleRow({
                 ) : (
                   <ShiftCard
                     key={shift.id}
-                    shift={shiftWithDerivedWarnings(shift, derivedCellState)}
+                    shift={shiftWithDerivedWarnings(shift, derivedCellState, { editing })}
                     availabilityMark={availabilityMark}
                     job={scheduleJobName(catalog, shift.job_id) ?? "Shift"}
                     type={scheduleShiftTypeOf(catalog, shift.shift_type_id)}

@@ -69,6 +69,26 @@ describe("scheduleInteractionTargets", () => {
     expect(blank("dialog-button")).toBe(false);
   });
 
+  // Mert, 2026-10-12: a press on the bottom navigation bar only scrolls the
+  // grid; it never clears filters, focus or the selection.
+  it("treats the bottom navigation bar as a control, not blank schedule", () => {
+    document.body.innerHTML = `
+      <section class="schedule-page">
+        <div data-schedule-horizontal-nav role="navigation">
+          <div data-schedule-horizontal-nav-track role="scrollbar" id="track">
+            <div class="schedule-horizontal-nav-rail" id="rail"></div>
+            <div data-schedule-horizontal-nav-thumb id="thumb"></div>
+          </div>
+        </div>
+      </section>`;
+    for (const id of ["track", "rail", "thumb"]) {
+      const target = document.getElementById(id)!;
+      expect(isBlankScheduleDismissTarget(target)).toBe(false);
+      expect(isSchedulePreviewFocusedShiftBlankDismissTarget(target)).toBe(false);
+      expect(isScheduleEditFocusedShiftBlankDismissTarget(target)).toBe(false);
+      expect(isScheduleInteractionSurface(target)).toBe(true);
+    }
+  });
   it("escapes attribute values used by badge measurement selectors", () => {
     expect(escapeAttributeValue('role"server')).toBe('role\\"server');
     expect(escapeAttributeValue("role\\server")).toBe("role\\\\server");

@@ -4,6 +4,7 @@ import { scheduleDefaultHoursInputSchema, type ScheduleDefaultHoursPreview, type
 import { applyScheduleDefaultHours, previewScheduleDefaultHours } from "../schedule-data";
 import "./default-hours-review.css";
 import { requestErrorText } from "../../lib/request-error";
+import { scheduleRefusalReason } from "../lib/scheduleRefusalReason";
 
 export function DefaultHoursReviewDialog({ workspaceId, session, model, initialSelectedIds = [], onClose, onApplied }: {
   workspaceId: string; session: ScheduleEditSession; model: ScheduleReadModel; initialSelectedIds?: readonly string[];
@@ -58,7 +59,13 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
     try {
       const result = await applyScheduleDefaultHours(workspaceId, session.id, { ...values, idempotency_key: retry.current.key });
       if (mounted.current) { onApplied(result); onClose(); }
-    } catch (caught) { if (mounted.current) setError(requestErrorText(caught, "Unable to apply defaults")); }
+    } catch (caught) {
+      if (!mounted.current) return;
+      // BL-1044: defaults, shifts or conflicts moved on since the review; the
+      // review goes out of date (its own line says so) instead of a raw sentence.
+      if (scheduleRefusalReason(caught) === "schedule.default_hours_stale") setReviewedSignature("");
+      else setError(requestErrorText(caught, "Unable to apply defaults"));
+    }
     finally { if (mounted.current) setPending(null); }
   };
   const hours = (s: ScheduleDefaultHoursPreview["shifts"][number]["before"]) => {

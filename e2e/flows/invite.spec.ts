@@ -57,7 +57,7 @@ test("a manager invites somebody at her own location, they accept, and the list 
 }) => {
   const firstName = `Inv${tag()}`;
   const name = `${firstName} Invitee`;
-  uninvitedRecord(firstName, "K");
+  const employeeId = uninvitedRecord(firstName, "K");
   const inviteeEmail = accountWithoutWorkspace(`invitee-${firstName}`);
 
   const ayse = await (await browser.newContext()).newPage();
@@ -80,6 +80,16 @@ test("a manager invites somebody at her own location, they accept, and the list 
   const link = await drawer.getByRole("link", { name: "Open acceptance link" }).getAttribute("href");
   expect(link).toContain("/invite/accept?token=");
   await expect(row.getByText("Invited", { exact: true })).toBeVisible();
+
+  // BL-1069: Access shows Ayse the invitation she sent and its buttons, though
+  // her role does not read access; it no longer offers a second Invite that
+  // would take the first link back.
+  await ayse.goto(`/app/employees?employeeId=${employeeId}&section=access`);
+  const access = ayse.getByRole("dialog", { name });
+  // The state card's title (the summary list below repeats it).
+  await expect(access.getByRole("strong").filter({ hasText: /^Invitation sent$/ })).toBeVisible();
+  await expect(access.getByRole("button", { name: "Send reminder", exact: true })).toBeVisible();
+  await expect(access.getByText("Ready to invite", { exact: true })).toHaveCount(0);
 
   // The invited person opens the link signed out. It offers a new account
   // first; this one already has theirs, so they sign in and accept.
@@ -121,4 +131,61 @@ test("a manager's invitation for somebody at another location is refused with 40
   // refused Ayse, not the request.
   expect((await invite("zeynep")).status).toBe(200);
   expect(invitationsOf(employeeId)).toBe("1");
+});
+
+// BL-767 + BL-922 (KARARLAR Employees S2, S-86 K7): Send reminder on an
+// invitation that went out sends the same link again and keeps its expiry
+// (it was refused on every press); Resend opens a new link, and the old
+// email's link then points to the newer email instead of "withdrawn".
+test("a reminder sends the same link again, and Resend's old link points to the newer email", async ({
+  browser,
+}) => {
+  const firstName = `Rem${tag()}`;
+  const name = `${firstName} Invitee`;
+  const employeeId = uninvitedRecord(firstName, "K");
+  const inviteeEmail = accountWithoutWorkspace(`reminded-${firstName}`);
+  const pending = (): string =>
+    sql(`select token_hash || '|' || expires_at || '|' || resend_count from public.employee_invitations
+         where employee_id = '${employeeId}' and status = 'pending';`);
+
+  // An admin: the invitation's state and its Send reminder are on Access.
+  const zeynep = await (await browser.newContext()).newPage();
+  await signIn(zeynep, "zeynep");
+  await expect(zeynep).not.toHaveURL(/\/sign-in/);
+  await zeynep.goto("/app/employees");
+  const row = zeynep.getByRole("row", { name: new RegExp(name) });
+  await row.getByText(name, { exact: true }).click();
+  let drawer = zeynep.getByRole("dialog", { name });
+  // Exact: an admin also reads the Emergency e-mail field.
+  await drawer.getByLabel("E-mail", { exact: true }).fill(inviteeEmail);
+  await drawer.getByLabel("Invite role").selectOption({ label: "Employee" });
+  await drawer.getByRole("button", { name: "Invite", exact: true }).click();
+  const firstLink = await drawer.getByRole("link", { name: "Open acceptance link" }).getAttribute("href");
+  expect(firstLink).toContain("/invite/accept?token=");
+  const [hash, expires, sent] = pending().split("|");
+  expect(sent).toBe("0");
+
+  await zeynep.goto(`/app/employees?employeeId=${employeeId}&section=access`);
+  drawer = zeynep.getByRole("dialog", { name });
+  await drawer.getByRole("button", { name: "Send reminder", exact: true }).click();
+  // The drawer hands the reminder's link over, as the email would carry it.
+  await expect(drawer.getByRole("link", { name: "Open acceptance link" })).toHaveAttribute("href", firstLink!);
+  await expect(drawer.getByRole("alert")).toHaveCount(0);
+  expect(pending()).toBe(`${hash}|${expires}|1`);
+
+  // Resend replaces the link; the first email's link sends the person on.
+  await drawer.getByRole("button", { name: "Resend", exact: true }).click();
+  await expect(drawer.getByRole("link", { name: "Open acceptance link" })).not.toHaveAttribute("href", firstLink!);
+  expect(pending().split("|")[0]).not.toBe(hash);
+
+  // The invitation page is for a signed-in account: signed out, the link
+  // goes through sign-in and back.
+  const invitee = await (await browser.newContext()).newPage();
+  await invitee.goto(firstLink!);
+  await invitee.getByRole("button", { name: "I already have an account", exact: true }).click();
+  await invitee.getByLabel("Email").fill(inviteeEmail);
+  await invitee.getByLabel("Password").fill(world.password);
+  await invitee.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(invitee.getByRole("heading", { name: "A newer invitation was sent to you" })).toBeVisible();
+  await expect(invitee.getByText("Open the latest email.")).toBeVisible();
 });

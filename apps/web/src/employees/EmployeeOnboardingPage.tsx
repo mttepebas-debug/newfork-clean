@@ -25,7 +25,7 @@ import {
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
@@ -60,7 +60,7 @@ export default function EmployeeOnboardingPage() {
   const pathname = `/welcome${location.pathname.slice(`/welcome/${workspaceId}`.length)}`;
   // Moving between steps asks first while the availability step holds unsaved hours (P26).
   const navigateRequirement = (path: string) =>
-    requestAvailabilityNavigation(() => navigate(at(path)));
+    requestAppNavigation(() => navigate(at(path)));
   const queryClient = useQueryClient();
   const { refresh } = useAuth();
   const onboarding = useQuery({
@@ -199,7 +199,7 @@ export default function EmployeeOnboardingPage() {
       steps={steps}
       pathname={pathname}
       onOpen={navigateRequirement}
-      onExit={() => requestAvailabilityNavigation(() => navigate(hubPath))}
+      onExit={() => requestAppNavigation(() => navigate(hubPath))}
     >
       {stage}
     </OnboardingShell>
@@ -611,6 +611,9 @@ function ProfileStep({
     onError: (error) => {
       if (error instanceof RequestError && error.reason === "onboarding.phone_in_use")
         void queryClient.invalidateQueries({ queryKey: ["my-onboarding-phone"] });
+      // What was typed stays; the next Save goes on the latest revision.
+      if (onboardingChanged(error))
+        void queryClient.invalidateQueries({ queryKey: ["my-employee-onboarding", workspaceId] });
     },
   });
   const submit = (event: FormEvent) => {
@@ -912,7 +915,7 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
           <button
             type="button"
             className={completed ? "weekly-primary" : undefined}
-            onClick={() => requestAvailabilityNavigation(() => void onSaved())}
+            onClick={() => requestAppNavigation(() => void onSaved())}
           >
             {completed ? "Continue" : "Skip for now"}
             <ArrowRight size={14} aria-hidden />
@@ -933,9 +936,14 @@ function ReviewStep({
   readonly onOpen: (path: string) => void;
 }) {
   const { workspaceId = "" } = useParams();
+  const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: () => submitMyOnboarding(workspaceId, model.revision),
     onSuccess: onSaved,
+    onError: (error) => {
+      if (onboardingChanged(error))
+        void queryClient.invalidateQueries({ queryKey: ["my-employee-onboarding", workspaceId] });
+    },
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -1237,7 +1245,23 @@ function requirementPath(requirement: EmployeeOnboardingRequirement): string {
   return `/welcome/acknowledgements/${requirement.id}`;
 }
 
+/**
+ * The onboarding moved on since this page read it, in another tab or by the
+ * manager's review (BL-1046): reload it, and the next try goes on the latest.
+ */
+function onboardingChanged(error: unknown): boolean {
+  return (
+    error instanceof RequestError &&
+    error.status === 409 &&
+    error.reason === "onboarding.changed"
+  );
+}
+
+const onboardingChangedMessage =
+  "Your onboarding changed meanwhile. You're seeing the latest version; check it and try again.";
+
 function errorMessage(error: unknown): string {
+  if (onboardingChanged(error)) return onboardingChangedMessage;
   if (error instanceof RequestError && error.reason === "onboarding.phone_in_use")
     return phoneInUseMessage;
   if (error instanceof RequestError && error.reason === "onboarding.emergency_is_own_phone")

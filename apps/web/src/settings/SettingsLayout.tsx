@@ -12,9 +12,11 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { NavLink, Navigate, Outlet, useLocation } from "react-router";
-import type { Permission } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
-import { canEnterSettings } from "../auth/PermissionRoute";
+import {
+  canEnterSettings,
+  canOpenSettingsPage,
+} from "./settings-access";
 
 const groups = [
   {
@@ -24,28 +26,25 @@ const groups = [
         to: "/app/settings/general",
         label: "General",
         icon: Settings,
-        permissions: ["settings.general.read"],
+        page: "general",
       },
       {
         to: "/app/settings/locations",
         label: "Locations",
         icon: MapPin,
-        permissions: ["settings.locations.read"],
+        page: "locations",
       },
       {
         to: "/app/settings/jobs",
         label: "Jobs",
         icon: BriefcaseBusiness,
-        permissions: ["settings.jobs.read"],
+        page: "jobs",
       },
       {
         to: "/app/settings/notifications",
         label: "Notifications",
         icon: Bell,
-        permissions: [
-          "notifications.settings.read",
-          "notifications.settings.write",
-        ],
+        page: "notifications",
       },
     ],
   },
@@ -57,19 +56,19 @@ const groups = [
         label: "Schedule rules",
         icon: CalendarClock,
         end: true,
-        permissions: ["settings.schedule_rules.read"],
+        page: "scheduling",
       },
       {
         to: "/app/settings/scheduling/conflicts",
         label: "Conflict handling",
         icon: ShieldAlert,
-        permissions: ["schedule.conflict_rules.manage"],
+        page: "conflicts",
       },
       {
         to: "/app/settings/scheduling/shift-types",
         label: "Shift catalog",
         icon: CalendarClock,
-        permissions: ["settings.shift_catalog.read"],
+        page: "shiftCatalog",
       },
     ],
   },
@@ -80,19 +79,19 @@ const groups = [
         to: "/app/settings/roles",
         label: "Roles & permissions",
         icon: ShieldCheck,
-        permissions: ["roles.read"],
+        page: "roles",
       },
       {
         to: "/app/settings/documents",
         label: "Documents",
         icon: FileText,
-        permissions: ["documents.read"],
+        page: "documents",
       },
       {
         to: "/app/settings/acknowledgements",
         label: "Acknowledgements",
         icon: ScrollText,
-        permissions: ["documents.read"],
+        page: "acknowledgements",
       },
     ],
   },
@@ -103,7 +102,6 @@ const groups = [
         to: "/app/settings/support",
         label: "Support",
         icon: LifeBuoy,
-        permissions: [],
       },
     ],
   },
@@ -116,14 +114,15 @@ export default function SettingsLayout() {
     return <Navigate to="/app" replace />;
   }
 
-  const permissions = new Set<Permission>(context.permissions);
   const visibleGroups = groups
     .map((group) => ({
       ...group,
+      // A link shows exactly when its page opens (SettingsPageRoute); Support
+      // is open to whoever may enter Settings.
       items: group.items.filter(
         (item) =>
-          item.permissions.length === 0 ||
-          item.permissions.some((permission) => permissions.has(permission)),
+          !("page" in item) ||
+          canOpenSettingsPage(context, item.page),
       ),
     }))
     .filter((group) => group.items.length > 0);

@@ -26,6 +26,7 @@ import {
   createScheduleShifts,
   deleteScheduleExportSchedule,
   deleteScheduleShift,
+  autosaveScheduleEditSession,
   discardScheduleEditSession,
   undoScheduleEditSessionStep,
   fetchPendingOps,
@@ -2246,6 +2247,75 @@ describe("App", () => {
     await waitFor(() => expect(window.location.search).not.toContain("mode=edit"));
   });
 
+  // BL-1052: another tab saved or changed this edit first; Save from the menu says
+  // so plainly and offers a reload, never the raw "session revision stale". A
+  // retry would send the same old revision, so no retry sheet opens.
+  it("asks for a reload when Save finds the edit moved on in another tab", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("session revision stale", 409, { error: "session revision stale", code: "edit_session_stale" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Moved on elsewhere" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+    // The edit is not ended here: the reload picks it back up (D-Y4).
+    expect(window.location.search).toContain("mode=edit");
+  });
+
+  // BL-1052: the first save lost the network, and by the time of Retry another tab
+  // moved the edit on; the retry sheet closes so the banner's Reload is in reach.
+  it("closes the retry sheet when Retry finds the edit moved on in another tab", async () => {
+    const saveMock = vi.mocked(saveScheduleDraft);
+    saveMock.mockRejectedValueOnce(new Error("Network dropped"));
+    saveMock.mockRejectedValueOnce(
+      new ScheduleRequestError("session revision stale", 409, { error: "session revision stale", code: "edit_session_stale" }),
+    );
+
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+    render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor();
+    fireEvent.click(
+      await screen.findByRole("button", { name: /^(?:Save draft|Publish)$/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Draft name"), {
+      target: { value: "Retried after another tab" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save As" }));
+    expect(await screen.findByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull(),
+    );
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
+  });
+
   it("picks the edit back up after a page reload instead of showing an empty draft (D-Y4)", async () => {
     const draftId = "99999999-9999-4999-8999-999999999993";
     const acquired = makeDefaultEditAcquireResult();
@@ -2260,7 +2330,8 @@ describe("App", () => {
 
     await waitFor(() =>
       expect(acquireScheduleEditSession).toHaveBeenCalledWith(
-        scheduleFixture.workspace_id, scheduleFixture.week_start, "draft", draftId, null,
+        // A reload picks the edit back up (resume).
+        scheduleFixture.workspace_id, scheduleFixture.week_start, "draft", draftId, null, true,
       ),
     );
     expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
@@ -2291,6 +2362,95 @@ describe("App", () => {
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(1);
     expect(discardScheduleEditSession).not.toHaveBeenCalled();
   }, 20000);
+
+  // Mert 2026-10-12: leaving Schedule with unsaved edit work asks first.
+  describe("leaving an edit for another page", () => {
+    const dirtyEdit = () => {
+      const acquired = makeDefaultEditAcquireResult();
+      return { ...acquired, session: { ...acquired.session, dirty: true } };
+    };
+    const lazyRoute = { timeout: 15000 };
+
+    it("asks before the sidebar leaves; Keep editing stays, Discard and leave closes the edit and goes", async () => {
+      vi.mocked(discardScheduleEditSession).mockClear();
+      vi.mocked(acquireScheduleEditSession).mockResolvedValue(dirtyEdit());
+      window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+      render(<App />);
+      await signInAs("owner");
+      await openPublishedScheduleEditor();
+      expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      const question = await screen.findByRole("alertdialog", { name: "Save changes before leaving?" });
+      expect(window.location.pathname).toBe("/app/schedule");
+      fireEvent.click(within(question).getByRole("button", { name: "Keep editing" }));
+      expect(screen.queryByRole("alertdialog", { name: "Save changes before leaving?" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+      expect(discardScheduleEditSession).not.toHaveBeenCalled();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      fireEvent.click(within(
+        await screen.findByRole("alertdialog", { name: "Save changes before leaving?" }),
+      ).getByRole("button", { name: "Discard and leave" }));
+      expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
+      expect(discardScheduleEditSession).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id, dirtyEdit().session.id,
+      );
+    }, 30000);
+
+    it("saves the work as a draft, then opens the chosen page", async () => {
+      const savedDraft = {
+        id: "99999999-9999-4999-8999-999999999981",
+        workspace_id: scheduleFixture.workspace_id,
+        week_start: scheduleFixture.week_start,
+        name: "Before leaving",
+        revision: 1,
+        created_by: "88888888-8888-4888-8888-888888888888",
+        updated_by: "88888888-8888-4888-8888-888888888888",
+        created_at: "2026-08-17T12:00:00Z",
+        updated_at: "2026-08-17T12:09:00Z",
+      };
+      vi.mocked(saveScheduleDraft).mockResolvedValueOnce(savedDraft);
+      vi.mocked(acquireScheduleEditSession).mockResolvedValue(dirtyEdit());
+      window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+      render(<App />);
+      await signInAs("owner");
+      await openPublishedScheduleEditor();
+      expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      fireEvent.click(within(
+        await screen.findByRole("alertdialog", { name: "Save changes before leaving?" }),
+      ).getByRole("button", { name: "Save draft" }));
+      const saveWindow = screen.getByRole("dialog", { name: "Save draft" });
+      expect(window.location.pathname).toBe("/app/schedule");
+      fireEvent.change(within(saveWindow).getByLabelText("Draft name"), { target: { value: savedDraft.name } });
+      fireEvent.click(within(saveWindow).getByRole("button", { name: "Save draft" }));
+
+      expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
+      expect(saveScheduleDraft).toHaveBeenCalledTimes(1);
+    }, 30000);
+
+    it("lets go of an edit with nothing unsaved without asking", async () => {
+      vi.mocked(discardScheduleEditSession).mockClear();
+      vi.mocked(autosaveScheduleEditSession).mockClear();
+      window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
+      render(<App />);
+      await signInAs("owner");
+      await openPublishedScheduleEditor();
+      expect(await screen.findByRole("button", { name: "Discard" })).toBeTruthy();
+
+      fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+      expect(await screen.findByRole("heading", { name: "Employees" }, lazyRoute)).toBeTruthy();
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      // Its lock no longer keeps the week from other managers; work in another
+      // tab of the same edit, if any, is kept, never thrown away.
+      await waitFor(() => expect(autosaveScheduleEditSession).toHaveBeenCalledWith(
+        scheduleFixture.workspace_id, makeDefaultEditAcquireResult().session.id,
+      ));
+      expect(discardScheduleEditSession).not.toHaveBeenCalled();
+    }, 30000);
+  });
 
   it("leaves edit mode for good on Discard; the reload resume does not take the lock again", async () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-26");
@@ -2925,7 +3085,7 @@ describe("App", () => {
     }
   });
 
-  it("blocks preset shift badges when a partial closure covers that shift type", async () => {
+  it("blocks preset shift badges when the location's short hours leave out the preset's hours", async () => {
     const partialClosedFixture = {
       ...scheduleFixture,
       settings: {
@@ -2942,10 +3102,11 @@ describe("App", () => {
           id: "aaaaaaaa-0000-4000-8000-000000000001",
           location_id: scheduleFixture.locations[0]!.id,
           closed_date: "2026-08-17",
-          end_date: null,
-          title: "No dinner service",
+          title: "Inventory day",
           is_all_day: false,
-          shift_type_ids: [scheduleFixture.shift_types[0]!.id],
+          kind: "short",
+          opens: "10:00",
+          closes: "15:00",
         },
       ],
     } satisfies ScheduleReadModel;
@@ -2978,7 +3139,7 @@ describe("App", () => {
     // The toast lives in its own layer under <body>, outside the app container (BL-515).
     expect(await screen.findByText("Preset shift is unavailable")).toBeTruthy();
     expect(
-      screen.getByText(/Location is closed for Dinner\./),
+      screen.getByText(/Location has short hours for Inventory day: open 10a–3p only\./),
     ).toBeTruthy();
     expect(createScheduleShift).not.toHaveBeenCalled();
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();
@@ -3138,6 +3299,8 @@ describe("App", () => {
         "draft",
         kitchenPlan.id,
         null,
+        // A new edit from the menu never brings back one that was left.
+        false,
       ),
     );
     expect(
@@ -3652,6 +3815,8 @@ describe("App", () => {
         name: "Show times on badge",
       }) as HTMLInputElement;
 
+      // A real click moves the cursor out of Start time, where the window put it.
+      act(() => within(dialog).getByRole("button", { name: "Brunch" }).focus());
       fireEvent.click(within(dialog).getByRole("button", { name: "Brunch" }));
 
       await waitFor(() => expect(startTimeInput.value).toBe("10:00 AM"));
@@ -3964,7 +4129,7 @@ describe("App", () => {
     expect(app.getByRole("dialog", { name: "Edit shift" })).toBeTruthy();
   });
 
-  it("dismisses schedule topbar menus and active filters one blank click at a time", async () => {
+  it("dismisses schedule topbar menus and active filters one blank click at a time, newest first", async () => {
     window.history.pushState(
       {},
       "",
@@ -3989,25 +4154,22 @@ describe("App", () => {
     );
     expect(window.location.search).toContain("hideUnscheduled=true");
 
-    fireEvent.pointerDown(page!);
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("hideUnscheduled=true"),
-    );
-    expect(window.location.search).toContain("shiftTypes=");
-
-    fireEvent.pointerDown(page!);
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("shiftTypes="),
-    );
-    expect(window.location.search).not.toContain("jobs=");
-    expect(window.location.search).not.toContain("employees=");
-    expect(window.location.search).toContain("locations=");
-
-    fireEvent.pointerDown(page!);
-    await waitFor(() =>
-      expect(window.location.search).not.toContain("locations="),
-    );
-    expect(window.location.search).toContain("view=day");
+    // Mert, 2026-10-12: one filter per press, the newest first.
+    const filters = () =>
+      ["hideUnscheduled", "locations", "shiftTypes", "jobs", "employees"].filter(
+        (key) => new URLSearchParams(window.location.search).has(key),
+      );
+    for (const expected of [
+      ["hideUnscheduled", "locations", "shiftTypes", "jobs"],
+      ["hideUnscheduled", "locations", "shiftTypes"],
+      ["hideUnscheduled", "locations"],
+      ["hideUnscheduled"],
+      [],
+    ]) {
+      fireEvent.pointerDown(page!);
+      await waitFor(() => expect(filters()).toEqual(expected));
+      expect(window.location.search).toContain("view=day");
+    }
 
     fireEvent.pointerDown(page!);
     await waitFor(() => expect(window.location.search).toContain("view=week"));
@@ -4273,13 +4435,14 @@ describe("App", () => {
     });
     expect(employeeSelect).toHaveProperty(
       "textContent",
-      expect.stringContaining("Unassigned"),
+      expect.stringContaining("Open"),
     );
     fireEvent.click(employeeSelect);
     expect(
       within(dialog).queryByRole("option", { name: "Alex Rivera" }),
     ).toBeNull();
-    fireEvent.click(within(dialog).getByRole("option", { name: "Unassigned" }));
+    // Mert, 2026-10-12: the unassigned choice reads "Open".
+    fireEvent.click(within(dialog).getByRole("option", { name: "Open" }));
     fireEvent.click(within(dialog).getByRole("combobox", { name: "Job" }));
     fireEvent.click(within(dialog).getByRole("option", { name: "Host" }));
     await waitFor(() =>
@@ -4289,7 +4452,7 @@ describe("App", () => {
     );
     expect(
       within(dialog).getByRole("combobox", { name: "Employee" }),
-    ).toHaveProperty("textContent", expect.stringContaining("Unassigned"));
+    ).toHaveProperty("textContent", expect.stringContaining("Open"));
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Increase count" }),
     );
@@ -6344,6 +6507,28 @@ describe("App", () => {
     expect(renderExportFiles).not.toHaveBeenCalled(); expect(window.location.search).toContain("mode=edit");
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
+  });
+
+  // BL-1052: the Save draft window closes on a stale edit, so the banner's Reload is in reach.
+  it("closes the Save draft window and asks for a reload when another tab moved the edit on", async () => {
+    vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
+      error: "session revision stale", code: "edit_session_stale",
+    }));
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
+    await signInAs("owner");
+    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Stale draft" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert.textContent).toContain(
+      "This schedule changed in another tab or window. Reload the page, then make the change again.",
+    ));
+    expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
+    expect(screen.queryByText(/session revision stale/i)).toBeNull();
   });
 
   it.each(["network", "retroactive"] as const)("ignores a late %s Save-for-Export error after the edit session expires", async kind => {

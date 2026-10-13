@@ -11,7 +11,8 @@ import {
 } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
-import { AvailabilityDraftScope, requestAvailabilityNavigation, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { AvailabilityDraftScope, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { loadWeeklyPreferences } from "../availability/availability-data";
 import { TimeOffHourFields, defaultTimeOffHours, type TimeOffHours } from "../employee-hub/TimeOffHourFields";
 import { TimeOffDateFields, type TimeOffDateDraft, type TimeOffDateDrafts } from "../employee-hub/TimeOffDateFields";
@@ -20,7 +21,7 @@ import { TimeOffCancellation } from "../employee-hub/TimeOffCancellation";
 import { TimeOffReleasedAssignments } from "../employee-hub/TimeOffReleasedAssignments";
 import "../employee-hub/time-off.css";
 import { formatTimeOffDeadline, timeOffWallParts, timeOffZoneName } from "../employee-hub/time-off-split";
-import { useSubmitTimeOff } from "../schedule/requests-data";
+import { isStaleTimeOff, useSubmitTimeOff } from "../schedule/requests-data";
 import { useAuth } from "../auth/AuthContext";
 import {
   actOnEmployeeRequest,
@@ -207,7 +208,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
   const active = timeOff ? "time-off" : "availability";
   function select(id: typeof active) {
     if (id === active) return;
-    requestAvailabilityNavigation(() => {
+    requestAppNavigation(() => {
       const search = new URLSearchParams(location.search);
       search.delete("tab");
       search.set("section", id);
@@ -306,6 +307,8 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
     mutationFn: (action: Parameters<typeof actOnEmployeeRequest>[1]) =>
       actOnEmployeeRequest(model.workspace_id, action),
     onSuccess: refresh,
+    // BL-1043: the request changed meanwhile (the database's key): reload it.
+    onError: (error) => { if (isStaleTimeOff(error)) refresh(); },
   });
   const currentTimeOffRequests = model.requests;
   const timeOffRequests = [...currentTimeOffRequests, ...[...cancellationDrafts.values()]
@@ -445,7 +448,7 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
           <Empty text="No time off requests submitted yet." />
         ) : null}
         {actionMutation.error ? (
-          <InlineError error={actionMutation.error} />
+          <InlineError error={isStaleTimeOff(actionMutation.error) ? new Error("This request changed. Review it again.") : actionMutation.error} />
         ) : null}
       </HubSection>
     </div>

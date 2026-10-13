@@ -16,7 +16,7 @@ export type ToastEntry = {
 
 const schedule = "src/views/SchedulePage.tsx";
 const templates = "src/views/ScheduleTemplatesPage.tsx";
-const editor = "src/schedule/components/ShiftQuickEditor.tsx";
+const editor = "src/schedule/components/shift-window/useShiftEditor.tsx";
 const dropReview = "src/schedule/hooks/useScheduleDropReview.ts";
 const drag = "src/schedule/hooks/useScheduleGridDragControllers.ts";
 const publish = "src/schedule/components/PublishScheduleDialog.tsx";

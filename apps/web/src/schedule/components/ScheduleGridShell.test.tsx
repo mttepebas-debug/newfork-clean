@@ -147,7 +147,7 @@ describe("ScheduleGridShell", () => {
     );
   });
 
-  it("sizes each separate week to the viewport and expands for wide badges", async () => {
+  it("sizes each separate week to the viewport and scrolls only below the cards' words", async () => {
     const gridRef = createRef<HTMLDivElement>();
     const renderShell = (minimum: number, showTotalHours = true) => (
       <ScheduleGridShell
@@ -176,10 +176,21 @@ describe("ScheduleGridShell", () => {
     fireEvent(window, new Event("resize"));
     await waitFor(() => expect(dayWidth()).toBe(170));
 
+    // Wide one-line cards wrap instead of pushing the week off screen.
     rerender(renderShell(303));
-    expect(dayWidth()).toBe(303);
+    expect(dayWidth()).toBe(170);
+    expect(grid.style.gridTemplateColumns).toBe("200px repeat(14, 170px) 120px");
     rerender(renderShell(0, false));
     expect(dayWidth()).toBeCloseTo((1510 - 200) / 7);
+
+    // Too narrow for even the shortest readable day: full-width cards scroll.
+    rerender(renderShell(303));
+    defineScrollBox(scroll, { clientWidth: 800 });
+    fireEvent(window, new Event("resize"));
+    await waitFor(() => expect(dayWidth()).toBe(303));
+    expect(grid.style.gridTemplateColumns).toBe(
+      "200px repeat(14, minmax(var(--schedule-day-column-min), 1fr)) 120px",
+    );
   });
 
   it("autoscrolls both grid axes while a shift drag reaches the bottom-right edge", () => {

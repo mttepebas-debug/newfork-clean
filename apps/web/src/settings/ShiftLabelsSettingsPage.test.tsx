@@ -92,12 +92,12 @@ describe("ShiftLabelsSettingsPage", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("heading", { name: "Shift labels" }),
+      await screen.findByRole("heading", { name: "Shift catalog" }),
     ).toBeTruthy();
     expect(await screen.findByText("Training")).toBeTruthy();
     expect(screen.getByText("Close")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Add shift label" }));
+    fireEvent.click(screen.getByRole("button", { name: "New shift label" }));
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Expo" },
     });
