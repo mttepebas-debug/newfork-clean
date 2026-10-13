@@ -35,6 +35,15 @@ describe("list pages on a phone", () => {
     expect(body(".list-page.list-page .catalog-toolbar-status-row::-webkit-scrollbar")).toMatch(/display\s*:\s*none/);
   });
 
+  // The table scrolled sideways and up and down at once (Mert 2026-10-13).
+  it("swaps the Employees table for its cards, scrolling only up and down (G2)", () => {
+    const wrap = ".employees-page.list-page.list-page .employee-people-wrap";
+    expect(body(wrap)).toMatch(/overflow-x\s*:\s*hidden/);
+    expect(body(wrap)).toMatch(/overflow-y\s*:\s*auto/);
+    // Empty too: the table's wide header would scroll sideways.
+    expect(body(`${wrap} > .employee-table`)).toMatch(/display\s*:\s*none/);
+  });
+
   it("runs Employees to both edges and swaps in the short add label", () => {
     expect(body(".employees-page.list-page.list-page")).toMatch(/padding-inline\s*:\s*16px/);
     expect(body(".employees-page.list-page.list-page")).toMatch(/margin-inline\s*:\s*0/);
