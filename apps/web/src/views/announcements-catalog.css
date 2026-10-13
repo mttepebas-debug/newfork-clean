@@ -231,32 +231,19 @@
   color: var(--theme-muted);
 }
 
-/* Phone: three classes, because jobs-settings.css gives every catalog row its
-   own grid at this width. */
+/* Phone: one shared list card per post (list-cards.css; KARARLAR Genel
+   "telefonda liste sayfaları kart satırıyla"), as on Requests. A table or list
+   that has rows steps aside for its cards; an empty one stays for its line. */
 @media (max-width: 720px) {
-  /* As in the prototype: no heading row; status and title, the date hides. */
   .announcements-page .job-catalog .job-column-headings {
     display: none;
   }
-  .announcements-page .job-catalog-row.announcement-catalog-row {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 8px;
-    padding-inline: 12px;
-  }
-  .announcements-page .job-catalog-row.announcement-catalog-row > :nth-child(3) {
+  .announcements-page .job-catalog:has(> .job-catalog-row),
+  .announcements-page .announcement-reader-list:has(> .announcement-reader-row) {
     display: none;
   }
-  .announcements-page .job-catalog-row.important-date-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-    padding-inline: 12px;
-  }
-  .announcements-page .job-catalog-row.important-date-row > :nth-child(2),
-  .announcements-page .job-catalog-row.important-date-row > :nth-child(4) {
-    display: none;
-  }
-  .announcements-page .job-catalog-row .announcement-status small {
-    display: none;
+  .announcements-page .list-cards {
+    margin-bottom: 8px;
   }
   .announcements-page .announcement-toolbar-controls {
     align-items: stretch;
