@@ -665,8 +665,26 @@ describe("GhostShiftCard", () => {
     expect(badge.getAttribute("aria-label")).toContain(
       "also scheduled at Patio",
     );
-    // Every ghost wears the same gray: no type color rides along.
-    expect(badge.style.getPropertyValue("--shift-color")).toBe("");
+    // Mert, 2026-10-13 (ghost look I): the real card at half strength, in
+    // its own type color.
+    expect(badge.style.getPropertyValue("--shift-color")).toBe(shiftType.color);
+  });
+
+  it("falls back to the real card's color when the type has none", () => {
+    render(
+      <GhostShiftCard
+        shift={{ ...shift, ghost: true } as ScheduleShift}
+        job="Server"
+        type={undefined}
+        showShiftType
+        showShiftLabels
+        showClockTimes
+        showJobColorDot
+        rowKey="row-1"
+        badgeHeight={52}
+      />,
+    );
+    expect(screen.getByTestId("ghost-shift-badge").style.getPropertyValue("--shift-color")).toBe("#54736a");
   });
 
   it("names the place in a tooltip on keyboard focus and hides it on Escape", async () => {

@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import {
+  grabPoint,
   isPrimaryDragActivation,
   shiftDropTargetKey,
 } from "../lib/scheduleDragTargets";
@@ -25,6 +26,8 @@ export interface ShiftDropTarget {
 export interface ShiftDropEvaluation {
   readonly allowed: boolean;
   readonly reason?: string;
+  /** One or two words for the dragged card; `reason` is the full sentence. */
+  readonly shortReason?: string;
   readonly messages?: readonly string[];
   readonly targetStatus?: "allowed" | "warning" | "blocked" | null;
 }
@@ -36,6 +39,9 @@ export interface ShiftDragState {
   readonly pointerY: number;
   readonly previewWidth: number;
   readonly previewHeight: number;
+  /** Where on the card the press landed, from its top-left corner. */
+  readonly grabX: number;
+  readonly grabY: number;
   readonly targetKey: string | null;
   readonly targetLocationId: string | null;
   readonly targetDate: string | null;
@@ -86,6 +92,8 @@ export function useSingleShiftPointerDrag({
     readonly startY: number;
     readonly previewWidth: number;
     readonly previewHeight: number;
+    readonly grabX: number;
+    readonly grabY: number;
   } | null>(null);
   const draggingRef = useRef(false);
   const lastPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
@@ -219,6 +227,9 @@ export function useSingleShiftPointerDrag({
         { clientX, clientY, copy },
         pending.shiftId,
       );
+      // A target with no colour (null), the shift's own cell, is not
+      // highlighted at all.
+      const shown = target?.targetStatus === null ? null : target;
       scheduleDragState({
         activeShiftId: pending.shiftId,
         label: resolveLabel(pending.shiftId),
@@ -226,13 +237,15 @@ export function useSingleShiftPointerDrag({
         pointerY: clientY,
         previewWidth: pending.previewWidth,
         previewHeight: pending.previewHeight,
-        targetKey: target?.targetKey ?? null,
-        targetLocationId: target?.locationId ?? null,
-        targetDate: target?.date ?? null,
+        grabX: pending.grabX,
+        grabY: pending.grabY,
+        targetKey: shown?.targetKey ?? null,
+        targetLocationId: shown?.locationId ?? null,
+        targetDate: shown?.date ?? null,
         targetStatus:
-          target?.targetStatus ??
-          (target ? (target.allowed ? "allowed" : "blocked") : null),
-        reason: target?.allowed === false ? (target.reason ?? null) : null,
+          shown?.targetStatus ??
+          (shown ? (shown.allowed ? "allowed" : "blocked") : null),
+        reason: target?.allowed === false ? (target.shortReason ?? target.reason ?? null) : null,
         copy,
       });
     },
@@ -380,14 +393,17 @@ export function useSingleShiftPointerDrag({
       const bounds =
         typeof element.getBoundingClientRect === "function"
           ? element.getBoundingClientRect()
-          : { width: 126, height: 58 };
+          : { left: 0, top: 0, width: 126, height: 58 };
+      const startX = Number.isFinite(clientX) ? clientX : 0;
+      const startY = Number.isFinite(clientY) ? clientY : 0;
       pendingRef.current = {
         shiftId,
         pointerId,
-        startX: Number.isFinite(clientX) ? clientX : 0,
-        startY: Number.isFinite(clientY) ? clientY : 0,
+        startX,
+        startY,
         previewWidth: bounds.width,
         previewHeight: bounds.height,
+        ...grabPoint(bounds, startX, startY),
       };
     },
     [],

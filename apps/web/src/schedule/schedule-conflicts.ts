@@ -257,6 +257,34 @@ export function formatScheduleConflictMessage(
   return looseMessage ?? "Scheduling policy blocks this assignment.";
 }
 
+const SHORT_LABELS: Record<string, string> = {
+  time_overlap: "Overlaps",
+  reference_time_overlap: "Overlaps",
+  time_off: "Time off",
+  location_assignment: "Not assigned",
+  job_assignment: "Not assigned",
+  shift_type_assignment: "Not assigned",
+  employee_excluded: "Excluded",
+  named_duplicate: "Duplicate",
+  named_shift_duplicate: "Duplicate",
+  minimum_rest: "Rest time",
+  minimum_travel: "Travel time",
+  availability: "Unavailable",
+  note: "Note",
+  assessment_unknown: "Check",
+};
+
+/**
+ * One or two words for a blocked cell under a dragged card; the full
+ * sentence stays in the message after the drop (Mert, 2026-10-13).
+ */
+export function scheduleConflictShortLabel(reason: ScheduleConflictReason): string {
+  if (typeof reason === "string")
+    return formatValidationConflictMessage(reason) === SAME_START_END_TIME_MESSAGE ? "Check hours" : "Not allowed";
+  if (reason.type === "closed_day") return reason.scope === "short_hours" ? "Short hours" : "Closed";
+  return SHORT_LABELS[String(reason.type)] ?? "Not allowed";
+}
+
 export function formatScheduleConflictMessages(
   reasons: readonly ScheduleConflictReason[],
 ): string[] {
@@ -399,20 +427,40 @@ export function evaluateScheduleShiftConflicts(
       hasAssessmentHours &&
       intervalsOverlap(shift),
   );
-  if (overlapping.length > 0) {
+  // A ghost is the person's own live shift at a location this grid does not
+  // reach: any hours it shares are a hard overlap, as the server finds them
+  // (Mert, 2026-10-13). Its zone is not sent, so the clocks on its card count.
+  const overlappingGhosts = (model.ghost_shifts ?? []).filter(
+    (ghost) =>
+      ghost.employee_id === input.employee_id &&
+      hasAssessmentHours &&
+      !model.locations.some((location) => location.id === ghost.location_id) &&
+      absoluteIntervalsOverlap(ghost, input),
+  );
+  if (overlapping.length > 0 || overlappingGhosts.length > 0) {
     reasons.push({
       ...context,
-      type: timeBasis === "explicit" && overlapping.some((shift) => getShiftTimeBasis(shift) === "explicit")
+      type: overlappingGhosts.length > 0 ||
+        (timeBasis === "explicit" && overlapping.some((shift) => getShiftTimeBasis(shift) === "explicit"))
         ? "time_overlap" : "reference_time_overlap",
-      conflicting_shifts: overlapping.map((shift) => ({
-        id: shift.id,
-        start_time: shift.start_time,
-        end_time: shift.end_time,
-        shift_type_label: scheduleShiftTypeOf(model, shift.shift_type_id)?.name ?? null,
-        location_name:
-          model.locations.find((location) => location.id === shift.location_id)
-            ?.name ?? "Unknown location",
-      })),
+      conflicting_shifts: [
+        ...overlapping.map((shift) => ({
+          id: shift.id,
+          start_time: shift.start_time,
+          end_time: shift.end_time,
+          shift_type_label: scheduleShiftTypeOf(model, shift.shift_type_id)?.name ?? null,
+          location_name:
+            model.locations.find((location) => location.id === shift.location_id)
+              ?.name ?? "Unknown location",
+        })),
+        ...overlappingGhosts.map((ghost) => ({
+          id: ghost.id,
+          start_time: ghost.start_time,
+          end_time: ghost.end_time,
+          shift_type_label: ghost.shift_type_name,
+          location_name: ghost.location_name,
+        })),
+      ],
     });
   }
 
@@ -435,7 +483,7 @@ export function evaluateScheduleShiftConflicts(
 }
 
 function absoluteIntervalsOverlap(
-  shift: ScheduleShift,
+  shift: Pick<ScheduleShift, "scheduled_date" | "start_time" | "end_time">,
   input: ScheduleShiftMutationInput,
 ): boolean {
   const first = datedInterval(

@@ -44,6 +44,8 @@ describe("ShiftDragPreview", () => {
           pointerY: 120,
           previewWidth: 140,
           previewHeight: 58,
+          grabX: 70,
+          grabY: 29,
           targetStatus: "blocked",
           reason: "Drop on a different cell.",
           copy: true,
@@ -66,6 +68,36 @@ describe("ShiftDragPreview", () => {
     expect(screen.getByText("Drop on a different cell.")).toBeTruthy();
     expect(screen.getByText("Dinner-Server")).toBeTruthy();
   });
+
+  it("keeps the card where it was pressed, under the mouse, not beside it", () => {
+    render(
+      <ShiftDragPreview
+        dragState={{
+          pointerX: 1083,
+          pointerY: 570,
+          previewWidth: 126,
+          previewHeight: 60,
+          grabX: 63,
+          grabY: 30,
+          targetStatus: null,
+          reason: null,
+          copy: false,
+        }}
+        shift={shift}
+        job="Server"
+        type={shiftType}
+        showShiftType
+        showShiftLabels
+        showClockTimes
+        timeFormat="12h"
+        showJobColorDot
+      />,
+    );
+
+    const preview = document.querySelector<HTMLElement>(".schedule-shift-drag-preview");
+    expect(preview?.style.left).toBe("1020px");
+    expect(preview?.style.top).toBe("540px");
+  });
 });
 
 describe("ShiftTypePresetDragPreview", () => {
@@ -83,6 +115,8 @@ describe("ShiftTypePresetDragPreview", () => {
           pointerY: 64,
           previewWidth: 126,
           previewHeight: 28,
+          grabX: 10,
+          grabY: 14,
           targetKey: "employee|location|date",
           targetStatus: "allowed",
           reason: "Ready",
@@ -102,5 +136,6 @@ describe("ShiftTypePresetDragPreview", () => {
       "color-mix(in srgb, #7c3aed 52%, #000)",
     );
     expect(screen.getByText("Ready")).toBeTruthy();
+    expect(preview?.getAttribute("style")).toContain("left: 30px; top: 50px;");
   });
 });

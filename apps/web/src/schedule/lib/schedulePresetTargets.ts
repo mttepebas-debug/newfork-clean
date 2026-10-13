@@ -10,6 +10,7 @@ import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessages,
   scheduleConflictSeverity,
+  scheduleConflictShortLabel,
 } from "../schedule-conflicts";
 
 
@@ -53,7 +54,7 @@ export function validatePresetCreateTarget(
   model: ScheduleReadModel,
   target: PresetCreateTarget,
   useDefaultTimesForScheduling: boolean,
-): { readonly allowed: true; readonly warning?: string } | { readonly allowed: false; readonly reason: string } {
+): { readonly allowed: true; readonly warning?: string } | { readonly allowed: false; readonly reason: string; readonly shortReason: string } {
   const hasHours = Boolean(target.preset.startTime && target.preset.endTime);
   const conflicts = evaluateScheduleShiftConflicts(model, model.shifts, {
     location_id: target.locationId, employee_id: target.employeeId, job_id: target.preset.jobId,
@@ -63,7 +64,7 @@ export function validatePresetCreateTarget(
     time_basis: hasHours ? "type_default" : "explicit", label_ids: [], note: "",
   });
   const blockers = conflicts.filter(reason => scheduleConflictSeverity(reason) === "block");
-  if (blockers.length) return { allowed: false, reason: formatScheduleConflictMessages(blockers).join(" ") };
+  if (blockers.length) return { allowed: false, reason: formatScheduleConflictMessages(blockers).join(" "), shortReason: scheduleConflictShortLabel(blockers[0]!) };
   return conflicts.length ? { allowed: true, warning: formatScheduleConflictMessages(conflicts).join(" ") } : { allowed: true };
 }
 

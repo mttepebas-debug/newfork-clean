@@ -122,9 +122,8 @@
   --schedule-add-shift-lane-height: 28px;
   --schedule-focus-ring-color: var(--theme-focus);
   --schedule-current-ring-color: var(--theme-current);
-  /* Ghost shift card: switched-off gray, shared by every ghost. */
-  --schedule-ghost-edge: #d3d9d6;
-  --schedule-ghost-text: #56615c;
+  /* Ghost shift card text: a quiet grey that keeps AA on the faded card. */
+  --schedule-ghost-text: #5f6965;
   --schedule-motion-fast: 120ms;
   --schedule-motion-state: 150ms;
   color: var(--theme-text-body);
@@ -5019,7 +5018,20 @@ button.workspace-switcher-item:hover:not(:disabled) {
   display: grid;
   width: max-content;
   min-width: 100%;
+  /* Room below the rows while a card is dragged (useKeepScrollThroughDrag). */
+  padding-bottom: var(--schedule-drag-hold-bottom, 0px);
   align-items: stretch;
+}
+/* While a card is dragged and rows leave, the days keep the widths they had
+   when it was picked up, and empty space over the rows keeps it under the
+   mouse (Mert, 2026-10-13). */
+.schedule-grid-exact[data-schedule-drag-hold="true"] {
+  grid-template-columns: var(--schedule-drag-hold-columns) !important;
+}
+.schedule-grid-exact > .schedule-drag-hold-space {
+  grid-column: 1 / -1;
+  height: var(--schedule-drag-hold-top, 0px);
+  border: 0;
 }
 .schedule-grid-exact[data-schedule-fit-visible-columns="true"] {
   width: 100%;
@@ -6091,25 +6103,33 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-cell[data-availability-kind="time_off"] {
   background-color: var(--theme-time-off-soft);
 }
+/* The thin red edge is always there (Mert, 2026-10-13). It is an outline
+   inside :where(), so any drop colour a dragged shift brings replaces it. */
+.schedule-cell:where([data-availability-kind="time_off"]) {
+  outline: 1px solid color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+  outline-offset: -1px;
+}
 .schedule-cell[data-availability-kind="time_off"]:not(:has(.schedule-shift-badge))::before {
   content: "Time off";
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
-  color: var(--theme-danger-text);
+  color: var(--theme-text);
   font-size: 11px;
   font-weight: 750;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   pointer-events: none;
 }
-/* Hover and drag over time off (Mert, 2026-10-09, item 16 A "calm"): a darker
-   edge and darker words on hover; while a shift is dragged over it, the red
-   frame stays and one line under the words says why it will not land. The
-   part-day "Add shift" layer covers the words instead of printing over them. */
-.schedule-cell[data-availability-kind="time_off"]:hover {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+/* Hover and drag over time off: the black words turn red under the mouse
+   (Mert, 2026-10-13); while a shift is dragged over it, the red frame stays
+   and one line under the words says why it will not land (Mert, 2026-10-09,
+   item 16). The part-day "Add shift" layer covers the words instead of
+   printing over them. */
+/* Editing gives an empty cell a cream hover; time off keeps its own colour. */
+.schedule-cell[data-editing="true"][data-availability-kind="time_off"]:hover {
+  background-color: var(--theme-time-off-soft);
 }
 .schedule-cell[data-availability-kind="time_off"]:hover::before {
   color: var(--theme-danger-strong);
@@ -6244,22 +6264,30 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-badge[data-mouse-focus="true"]:focus-visible {
   outline: none;
 }
-/* A ghost is the real card switched off: same frame and layout, one dead gray
-   with a fine sparse hatch whatever its type, job or place. No opacity, so the
-   text keeps AA (5.11:1 on the hatch line). */
+/* A ghost is the person's real card at half strength, in its own type color
+   (Mert, 2026-10-13, ghost look I): the frame and the fill fade as at 45%
+   opacity, so the cell shows through. The text is not faded with them; it
+   stays a solid quiet grey in normal weight that keeps AA (4.5:1). */
 .schedule-shift-badge[data-ghost="true"] {
   pointer-events: none;
-  border-color: var(--schedule-ghost-edge);
-  background: repeating-linear-gradient(
-    135deg,
-    var(--theme-border-subtle) 0 1px,
-    var(--theme-surface-muted) 1px 5px
+  border-color: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--shift-color) 65%, #26332e) 45%,
+    transparent
+  );
+  background: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--shift-color) 13%, var(--theme-surface)) 45%,
+    transparent
   );
   box-shadow: none;
 }
 .schedule-shift-badge[data-ghost="true"]
   :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
   color: var(--schedule-ghost-text);
+}
+.schedule-shift-badge[data-ghost="true"] strong {
+  font-weight: 500;
 }
 .schedule-shift-badge[data-ghost="true"] .schedule-ghost-location {
   pointer-events: auto;
@@ -6354,10 +6382,19 @@ button.workspace-switcher-item:hover:not(:disabled) {
   top: -7px;
   background: #2f80c5;
 }
+/* One or two words, never a sentence (Mert, 2026-10-13): white on the
+   danger red is 5.4:1 at a readable size; the full reason is in the toast. */
 .schedule-drag-blocked-reason {
-  bottom: -10px;
-  max-width: 180px;
-  background: #b94f38;
+  bottom: -11px;
+  max-width: calc(100% + 6px);
+  overflow: hidden;
+  padding: 2px 7px;
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .schedule-shift-badge[data-selected="true"],
