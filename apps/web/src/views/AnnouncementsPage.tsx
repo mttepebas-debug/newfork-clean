@@ -238,24 +238,27 @@ function ManagerList({
           <ListAddButton label="New" onClick={onNew} />
         </div>
       </div>
-      {split ? (
-        <>
-          <h2 className="announcement-list-heading">
-            Active <span>{active.length}</span>
-          </h2>
-          {table(active, "Active announcements", "Nothing active.")}
-          <h2 className="announcement-list-heading">
-            Past <span>{past.length}</span>
-          </h2>
-          {table(past, "Past announcements", "Nothing has ended yet.")}
-        </>
-      ) : (
-        table(
-          rows,
-          `${listTabs.find((item) => item.id === tab)!.label} announcements`,
-          tab === "archived" ? "Nothing archived." : "Nothing here.",
-        )
-      )}
+      {/* The list scrolls here while the toolbar stays (list-page-frozen.css). */}
+      <div className="list-frozen-body">
+        {split ? (
+          <>
+            <h2 className="announcement-list-heading">
+              Active <span>{active.length}</span>
+            </h2>
+            {table(active, "Active announcements", "Nothing active.")}
+            <h2 className="announcement-list-heading">
+              Past <span>{past.length}</span>
+            </h2>
+            {table(past, "Past announcements", "Nothing has ended yet.")}
+          </>
+        ) : (
+          table(
+            rows,
+            `${listTabs.find((item) => item.id === tab)!.label} announcements`,
+            tab === "archived" ? "Nothing archived." : "Nothing here.",
+          )
+        )}
+      </div>
     </>
   );
 }
