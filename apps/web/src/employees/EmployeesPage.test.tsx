@@ -88,6 +88,9 @@ vi.mock("./EmployeeDrawer", () => ({
   EmployeeDrawer: () => <div role="dialog">Employee drawer</div>,
 }));
 
+// The table's rows; a phone's cards (G2) name the same people again.
+const inTable = () => within(screen.getByRole("table"));
+
 function renderPage(initialEntry = "/app/employees", data: EmployeeSummary[] = employees) {
   window.localStorage.clear();
   currentContext = context;
@@ -108,7 +111,7 @@ describe("EmployeesPage", () => {
   it("lets managers personalize table columns without losing the directory row", async () => {
     renderPage();
 
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     const table = screen.getByRole("table");
     expect(screen.getByRole("columnheader", { name: "Access" })).toBeTruthy();
     expect(
@@ -126,7 +129,7 @@ describe("EmployeesPage", () => {
     await waitFor(() =>
       expect(screen.queryByRole("columnheader", { name: "Access" })).toBeNull(),
     );
-    expect(screen.getByText("Alex Kim")).toBeTruthy();
+    expect(inTable().getByText("Alex Kim")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Show all" }));
     expect(
@@ -144,7 +147,7 @@ describe("EmployeesPage", () => {
   it("places view tabs above search with an icon-only column settings control", async () => {
     const { container } = renderPage();
 
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     const toolbar = container.querySelector(".employees-toolbar");
     expect(toolbar).toBeTruthy();
     expect(
@@ -214,7 +217,7 @@ describe("EmployeesPage add employee", () => {
   it("offers Add employee when the core lets the reader create somebody", async () => {
     renderPage();
     currentContext = { ...context, permissions: ["employees.read"] };
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add employee" })).toBeTruthy();
   });
 
@@ -224,7 +227,7 @@ describe("EmployeesPage add employee", () => {
       ...context,
       actions: context.actions.filter((action) => action !== "employee.create"),
     };
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add employee" })).toBeNull();
   });
 });
@@ -233,7 +236,7 @@ describe("EmployeesPage add employee", () => {
 describe("EmployeesPage list (EKRAN-03 C1a)", () => {
   it("puts a green Add employee at the right end of the filter row, not in the header (G1)", async () => {
     const { container } = renderPage();
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     const add = screen.getByRole("button", { name: "Add employee" });
     expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
     expect(add.className).toContain("list-add-action");
@@ -243,7 +246,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
 
   it("says just Add on a phone, keeping Add employee as the button's name (Mert 2026-10-13)", async () => {
     renderPage();
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     const add = screen.getByRole("button", { name: "Add employee" });
     expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
     expect(add.querySelector(".list-add-long")?.textContent).toBe("Add employee");
@@ -251,7 +254,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
 
   it("marks the chosen status tab with aria-pressed (L3)", async () => {
     renderPage("/app/employees?status=invited");
-    expect(await screen.findByText("Blair Patel")).toBeTruthy();
+    expect(await inTable().findByText("Blair Patel")).toBeTruthy();
     const group = screen.getByRole("group", { name: "Employee status" });
     expect(within(group).getByRole("button", { name: "Invited" }).getAttribute("aria-pressed")).toBe("true");
     expect(within(group).getByRole("button", { name: "All" }).getAttribute("aria-pressed")).toBe("false");
@@ -259,7 +262,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
 
   it("closes the column picker with Escape and gives focus back to its button (L7)", async () => {
     renderPage();
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     const trigger = screen.getByRole("button", { name: "Table column settings" });
     fireEvent.click(trigger);
     expect(screen.getByRole("dialog", { name: "Employee table columns" })).toBeTruthy();
@@ -270,7 +273,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
 
   it("keeps the chosen location in the list when the tab has nobody there (L11)", async () => {
     renderPage(`/app/employees?location=${employees[0]!.locations[0]!.id}`);
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     vi.mocked(listEmployees).mockResolvedValue([employees[1]!]);
     fireEvent.click(screen.getByRole("button", { name: "Invited" }));
     await waitFor(() => expect(listEmployees).toHaveBeenLastCalledWith(workspaceId, false, "", "invited"));
@@ -312,17 +315,17 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
     locations: [],
   };
   const team = [...employees, casey, drew, remote];
-  const names = () => team.map((person) => person.display_name).filter((name) => screen.queryByText(name));
+  const names = () => team.map((person) => person.display_name).filter((name) => inTable().queryByText(name));
 
   it("lists everybody who works at the chosen location, the owner and a second location included (BL-436)", async () => {
     renderPage(`/app/employees?location=${patio.id}`, team);
-    expect(await screen.findByText("Blair Patel")).toBeTruthy();
+    expect(await inTable().findByText("Blair Patel")).toBeTruthy();
     expect(names()).toEqual(["Blair Patel", "Casey Owner", "Drew Lee"]);
   });
 
   it("offers a location somebody works at only as a second one (BL-436)", async () => {
     renderPage("/app/employees", team);
-    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     const select = screen.getByRole("combobox", { name: "Filter employees by location" }) as HTMLSelectElement;
     expect([...select.options].map((option) => option.text)).toEqual([
       "All locations",
@@ -337,7 +340,7 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
 
   it("lists who works nowhere under No location (K6)", async () => {
     renderPage("/app/employees?location=none", team);
-    expect(await screen.findByText("Remy Stone")).toBeTruthy();
+    expect(await inTable().findByText("Remy Stone")).toBeTruthy();
     expect(names()).toEqual(["Remy Stone"]);
   });
 
@@ -349,9 +352,37 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
 
   it("opens a row with Space as well as Enter (E3-17)", async () => {
     renderPage();
-    const row = (await screen.findByText("Alex Kim")).closest("tr")!;
+    const row = (await inTable().findByText("Alex Kim")).closest("tr")!;
     fireEvent.keyDown(row, { key: " " });
     expect(await screen.findByText("Employee drawer")).toBeTruthy();
+  });
+
+  it("draws one card per person for a phone: name, where · job, status (G2, Mert 2026-10-13)", async () => {
+    const twoPlaces = {
+      ...employees[0]!,
+      locations: [
+        { id: "11000000-0000-4000-8000-000000000001", name: "Main Dining", primary: true },
+        { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false },
+      ],
+      job_count: 2,
+    };
+    const nowhere = { ...employees[1]!, locations: [] };
+    renderPage("/app/employees", [twoPlaces, nowhere]);
+    const cards = await screen.findByRole("list", { name: "Employees" });
+    const alex = within(cards).getByRole("button", { name: "Alex Kim, Active, Main Dining +1, Server +1" });
+    expect(alex.querySelector(".list-card-line")?.textContent).toBe("Main Dining +1 · Server +1");
+    expect(alex.querySelector(".list-chip")?.getAttribute("data-tone")).toBe("green");
+    const blair = within(cards).getByRole("button", { name: /^Blair Patel, Invited/ });
+    expect(blair.querySelector(".list-card-line")?.textContent).toBe("No location · Host");
+    expect(blair.querySelector(".list-chip")?.getAttribute("data-tone")).toBe("amber");
+    fireEvent.click(alex);
+    expect(await screen.findByText("Employee drawer")).toBeTruthy();
+  });
+
+  it("draws no cards for an empty list, so its empty line shows (G2)", async () => {
+    renderPage("/app/employees?status=onboarding", []);
+    expect(await screen.findByText("No matching employees")).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Employees" })).toBeNull();
   });
 
   it("shows 50 people a page and the page numbers under a long list (K-S9)", async () => {
@@ -362,13 +393,13 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
       display_name: `Person ${String(index + 1).padStart(3, "0")}`,
     }));
     renderPage("/app/employees", many);
-    expect(await screen.findByText("Person 001")).toBeTruthy();
+    expect(await inTable().findByText("Person 001")).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "Pages" });
     expect(within(nav).getByText("1–50 of 120")).toBeTruthy();
     expect(within(nav).getAllByRole("button", { name: /^Page \d$/ }).map((b) => b.textContent)).toEqual(["1", "2", "3"]);
     expect(screen.getByRole("table").querySelectorAll("tbody tr")).toHaveLength(50);
     fireEvent.click(within(nav).getByRole("button", { name: "Page 3" }));
     expect(screen.getByRole("table").querySelectorAll("tbody tr")).toHaveLength(20);
-    expect(screen.getByText("Person 120")).toBeTruthy();
+    expect(inTable().getByText("Person 120")).toBeTruthy();
   });
 });
