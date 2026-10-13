@@ -14220,6 +14220,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   }
 }
 @media (max-width: 720px) {
+  /* On a phone these pages reach both edges with the 16 px gutter, as
+     Employees and Announcements did first (Mert 2026-10-13: "sağa sola
+     dayansın", then "evet tabiki" for Workspace, Availability, Notifications
+     and Requests). */
   .workspace-page,
   .availability-page,
   .important-dates-page,
@@ -14227,7 +14231,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .announcements-page,
   .notifications-page,
   .requests-page {
-    padding: 16px 14px 34px;
+    width: auto;
+    margin-inline: 0;
+    padding: 16px 16px 34px;
   }
   .workspace-header-actions {
     width: 100%;
