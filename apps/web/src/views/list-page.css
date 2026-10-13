@@ -350,6 +350,23 @@
   .employees-page.list-page.list-page .catalog-toolbar .list-add-button {
     flex: 0 0 auto;
   }
+  /* Employees (not Employees → Documents): people are cards on a phone (G2),
+     so the list scrolls only up and down, never sideways too (Mert
+     2026-10-13). The table stays out on a phone even when the list is empty:
+     its 780 px header would scroll sideways under the empty line. The frame
+     is kept only around the empty or loading line. */
+  .employees-page.list-page.list-page .employee-people-wrap {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .employees-page.list-page.list-page .employee-people-wrap > .employee-table {
+    display: none;
+  }
+  .employees-page.list-page.list-page .employee-people-wrap:has(> .list-cards) {
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
   .list-page.list-page > .catalog-page-header {
     height: auto;
     min-height: 0;
