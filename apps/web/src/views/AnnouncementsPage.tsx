@@ -22,6 +22,8 @@ import {
   statusLabels,
   statusTones,
   dayText,
+  dayTone,
+  momentLabel,
   type ListSort,
   type ListTab,
   type SortKey,
@@ -261,6 +263,9 @@ function ManagerList({
 const columns: { key: SortKey; label: string }[] = [
   { key: "status", label: "Status" },
   { key: "title", label: "Announcement" },
+  { key: "category", label: "Category" },
+  { key: "starts", label: "Starts" },
+  { key: "ends", label: "Ends" },
   { key: "published_on", label: "Published on" },
 ];
 
@@ -305,6 +310,11 @@ function AnnouncementTable({
         rows.map((record) => {
           const on = publishedOn(record);
           const day = on.at ? momentDay(on.at, record.time_zone) : null;
+          const tone = dayTone(record);
+          const starts = record.starts_on ? momentLabel(record.starts_on, record.event_from, timeFormat) : null;
+          const ends = record.starts_on
+            ? momentLabel(record.ends_on ?? record.starts_on, record.event_until, timeFormat)
+            : null;
           return (
             <div
               className="job-catalog-row announcement-catalog-row"
@@ -332,12 +342,26 @@ function AnnouncementTable({
                       {record.title || "Untitled"}
                       {record.on_important_dates && <span className="sr-only"> (on Important Dates)</span>}
                     </span>
-                    <span className="announcement-row-preview">
-                      {[announcementCategoryText(record), record.body].filter(Boolean).join(" · ")}
-                    </span>
+                    {record.body && <span className="announcement-row-preview">{record.body}</span>}
                   </span>
                 </button>
               </div>
+              <div role="cell" className="announcement-date-cell">
+                {announcementCategoryText(record)}
+              </div>
+              {[starts, ends].map((moment, index) => (
+                <div role="cell" className="announcement-date-cell" key={index ? "ends" : "starts"}>
+                  {moment ? (
+                    <span className="announcement-day-chip" data-tone={tone ?? undefined}>
+                      {moment}
+                    </span>
+                  ) : (
+                    <span className="announcement-dash" aria-label="No date">
+                      —
+                    </span>
+                  )}
+                </div>
+              ))}
               <div role="cell" className="announcement-date-cell">
                 {day && on.at ? (
                   <span
