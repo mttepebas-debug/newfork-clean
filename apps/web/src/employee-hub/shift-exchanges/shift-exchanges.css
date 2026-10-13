@@ -1,3 +1,11 @@
+/* Mert 2026-10-13: no page scroll bar while Shift Hub is open; the page still
+   scrolls by wheel, touch and keyboard. */
+main.app-main:has(.sx-root) {
+  scrollbar-width: none;
+}
+main.app-main:has(.sx-root)::-webkit-scrollbar {
+  display: none;
+}
 /* The Shift Hub reads the app's own theme tokens (R2-47); light theme only. */
 .sx-root {
   --sx-bg: var(--theme-page);
