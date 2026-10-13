@@ -19,10 +19,8 @@ import { RequestError } from "../lib/request-error";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import {
-  AvailabilityDraftScope,
-  requestAvailabilityNavigation,
-} from "../availability/availability-navigation";
+import { AvailabilityDraftScope } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import {
   isStaleTimeOff,
   useRevokeTimeOff,
@@ -181,7 +179,7 @@ function ScheduleRequestsPageContent() {
   const selected = timeOffById.get(selectedId) ?? null;
 
   function setView(values: Record<string, string | null>) {
-    requestAvailabilityNavigation(() => {
+    requestAppNavigation(() => {
       setParams(
         (previous) => {
           const next = new URLSearchParams(previous);
@@ -242,7 +240,7 @@ function ScheduleRequestsPageContent() {
     // undoes, so it is pushed.
     if (row.source === "exchange" && row.type === "swap") setOpenSwap(row.request);
     else if (row.source === "exchange")
-      requestAvailabilityNavigation(() => {
+      requestAppNavigation(() => {
         caseStep.current = true;
         setParams((previous) => {
           const next = new URLSearchParams(previous);

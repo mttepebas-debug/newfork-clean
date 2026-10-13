@@ -41,7 +41,7 @@ import {
 } from "../communications/communications-data";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { requestAppNavigation } from "./leave-guard";
 
 interface NavItem {
   readonly to: string;
@@ -282,7 +282,7 @@ export function AppShell() {
       context.membership.role === "admin" ||
       settingsNavItem.anyOf.some((permission) => permissions.has(permission)));
   const signOutAfterAvailabilityCheck = () =>
-    requestAvailabilityNavigation(() => {
+    requestAppNavigation(() => {
       void signOut();
     });
   return (

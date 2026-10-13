@@ -7576,6 +7576,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-color: #96372d;
   background: #96372d;
 }
+.schedule-discard-dialog > footer button.save {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.schedule-discard-dialog > footer button.save:hover:not(:disabled) {
+  border-color: var(--theme-accent-strong);
+  background: var(--theme-accent-strong);
+}
 .schedule-discard-dialog > footer button:disabled {
   cursor: not-allowed;
   opacity: 0.6;

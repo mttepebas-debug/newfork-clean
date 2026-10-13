@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 482, last: 20261012050000_one_announcement_record.sql
--- fingerprint: sha256:6acb0f1affdfcb28eb2c6921d626bbcdee147ef132e54d14eab300df58d6c30c
+-- migrations: 484, last: 20261012224500_announcement_hours_name_both_halves.sql
+-- fingerprint: sha256:66b6a8033d317e6a495428e0aaf983e0b9609ca14c31bfb611625e32949f7e60
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1501,7 +1501,6 @@ CREATE OR REPLACE FUNCTION "app_private"."announcement_hours_text"("starts" time
     AS $$
   select case
     when fmt = '24h' then to_char(starts, 'HH24:MI') || '–' || to_char(ends, 'HH24:MI')
-    when (starts < time '12:00') = (ends < time '12:00') then to_char(starts, 'FMHH12:MI') || '–' || to_char(ends, 'FMHH12:MI AM')
     else to_char(starts, 'FMHH12:MI AM') || '–' || to_char(ends, 'FMHH12:MI AM') end
 $$;
 
@@ -7897,7 +7896,7 @@ $$;
 ALTER FUNCTION "public"."acknowledge_document_lifecycle_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "signer_name" "text", "expected_content_digest" "text", "authenticated_timestamp" timestamp with time zone, "request_idempotency_key" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid" DEFAULT NULL::"uuid", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid" DEFAULT NULL::"uuid", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[], "resume_open_edit" boolean DEFAULT true) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -7967,8 +7966,11 @@ begin
   -- Asking for another draft or source of the week puts the open edit aside
   -- the same way (D-O9): it is never resumed in place of what was asked for.
   -- It closes below, once nobody else's edit of the asked draft says no.
+  -- A new edit asked for from a menu sets aside an edit that was left open
+  -- (its lock ran out): it never comes back in place of a new one.
   if own_session.id is not null
     and (app_private.authz_reason(actor_user_id, target_workspace_id, 'schedule.edit', own_session.location_ids) is not null
+      or (not resume_open_edit and own_session.expires_at <= now())
       or own_session.source_kind is distinct from requested_source
       or own_session.source_draft_id is distinct from case when requested_source = 'draft' then requested_draft_id end) then
     set_aside := own_session;
@@ -8093,7 +8095,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."act_on_notification_inbox_item_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") RETURNS "jsonb"
@@ -36264,8 +36266,8 @@ GRANT ALL ON FUNCTION "public"."acknowledge_document_lifecycle_service"("actor_u
 
 
 
-REVOKE ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[]) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) TO "service_role";
 
 
 

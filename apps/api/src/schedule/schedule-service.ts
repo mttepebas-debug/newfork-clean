@@ -148,6 +148,7 @@ export interface ScheduleReadService {
     sourceKind: ScheduleEditSource;
     sourceDraftId: string | null;
     locationIds?: readonly string[] | null;
+    resume?: boolean;
   }): Promise<ScheduleEditAcquireResult>;
   heartbeat(
     actorUserId: string,
@@ -515,6 +516,7 @@ export function createScheduleReadService(options: {
           requested_source: input.sourceKind,
           requested_draft_id: input.sourceDraftId,
           target_location_ids: input.locationIds ?? null,
+          resume_open_edit: input.resume ?? true,
         },
       );
       if (error) throw rpcFailure(error);

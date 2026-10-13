@@ -256,6 +256,9 @@ export async function acquireScheduleEditSession(
   sourceDraftId: string | null = null,
   // The locations to edit; null asks for every location the person may edit.
   locationIds: readonly string[] | null = null,
+  // False for a new edit asked for from a menu: an edit of the person's that
+  // was left open is set aside as an "Auto-save" draft, never brought back.
+  resume = true,
 ): Promise<ScheduleEditAcquireResult> {
   return scheduleEditAcquireResultSchema.parse(
     await activeScheduleRequest("/schedule/edit-lock/acquire", {
@@ -265,6 +268,7 @@ export async function acquireScheduleEditSession(
         source_kind: sourceKind,
         source_draft_id: sourceDraftId,
         location_ids: locationIds?.length ? locationIds : null,
+        resume,
       }),
     }),
   );

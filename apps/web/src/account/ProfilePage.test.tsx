@@ -12,7 +12,7 @@ import {
 } from "../lib/supabase";
 import { emergencyIsOwnPhoneMessage, usLettersMessage } from "@newfork/shared";
 import { RequestError } from "../lib/request-error";
-import { requestAvailabilityNavigation } from "../availability/availability-navigation";
+import { requestAppNavigation } from "../shell/leave-guard";
 import { uploadAccountAvatar, removeAccountAvatar } from "../lib/supabase";
 import { cropAvatar } from "./avatar-crop";
 import {
@@ -98,11 +98,11 @@ describe("ProfilePage", () => {
     renderProfile();
     fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Unsaved name" } });
     const navigate = vi.fn();
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
     expect(screen.getByLabelText("Preferred name")).toHaveProperty("value", "Unsaved name");
     expect(navigate).not.toHaveBeenCalled();
-    act(() => requestAvailabilityNavigation(navigate));
+    act(() => requestAppNavigation(navigate));
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
     await waitFor(() => expect(screen.getByLabelText("Preferred name")).toHaveProperty("value", "Owner User"));
     expect(navigate).toHaveBeenCalledOnce();
