@@ -6,6 +6,7 @@ import { render, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  CORNER_MARK_GAP_PX,
   measureBadgeIntrinsicHeight,
   measureRowBadgeStackHeight,
   readMeasuredHeight,
@@ -442,6 +443,42 @@ describe("row badge height measurement", () => {
     badge.append(content);
 
     expect(measureBadgeIntrinsicHeight(badge)).toBe(47);
+  });
+
+  // Mert, 2026-10-13: on a short card the "!" on top and NEW below touched.
+  it("keeps room between the top corner mark and NEW on a short card", () => {
+    const shortCard = ({ border = 0, withNew = true } = {}) => {
+      const badge = document.createElement("button");
+      badge.style.padding = "0";
+      badge.style.borderTopWidth = `${border}px`;
+      badge.style.borderBottomWidth = `${border}px`;
+      badge.style.borderStyle = "solid";
+      const content = document.createElement("span");
+      content.dataset.shiftBadgeContent = "true";
+      Object.defineProperty(content, "scrollHeight", { configurable: true, value: 34 });
+      content.getBoundingClientRect = () => ({ height: 34 }) as DOMRect;
+      const markers = document.createElement("span");
+      markers.className = "schedule-shift-badge-markers";
+      markers.style.top = "6px";
+      Object.defineProperty(markers, "offsetHeight", { configurable: true, value: 18 });
+      // Under the mouse the "!" grows; its scaled size must not move the row.
+      markers.getBoundingClientRect = () => ({ height: 22 }) as DOMRect;
+      badge.append(content, markers);
+      if (withNew) {
+        const newMark = document.createElement("span");
+        newMark.className = "schedule-shift-new-mark";
+        newMark.style.bottom = "4px";
+        Object.defineProperty(newMark, "offsetHeight", { configurable: true, value: 15 });
+        badge.append(newMark);
+      }
+      return badge;
+    };
+
+    expect(measureBadgeIntrinsicHeight(shortCard())).toBe(6 + 18 + CORNER_MARK_GAP_PX + 15 + 4);
+    // The marks sit inside the card's border, so the border adds to it.
+    expect(measureBadgeIntrinsicHeight(shortCard({ border: 1 }))).toBe(1 + 6 + 18 + CORNER_MARK_GAP_PX + 15 + 4 + 1);
+    // Without NEW the card is as tall as its words and border.
+    expect(measureBadgeIntrinsicHeight(shortCard({ border: 1, withNew: false }))).toBe(36);
   });
 
   it("measures the tallest per-cell badge stack for dynamic row height", () => {
