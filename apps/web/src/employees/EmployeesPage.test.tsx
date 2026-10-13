@@ -241,6 +241,14 @@ describe("EmployeesPage list (EKRAN-03 C1a)", () => {
     expect(container.querySelector(".employees-page")?.classList.contains("list-page")).toBe(true);
   });
 
+  it("says just Add on a phone, keeping Add employee as the button's name (Mert 2026-10-13)", async () => {
+    renderPage();
+    expect(await screen.findByText("Alex Kim")).toBeTruthy();
+    const add = screen.getByRole("button", { name: "Add employee" });
+    expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
+    expect(add.querySelector(".list-add-long")?.textContent).toBe("Add employee");
+  });
+
   it("marks the chosen status tab with aria-pressed (L3)", async () => {
     renderPage("/app/employees?status=invited");
     expect(await screen.findByText("Blair Patel")).toBeTruthy();
