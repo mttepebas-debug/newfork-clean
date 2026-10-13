@@ -130,6 +130,28 @@
   outline: 2px solid var(--theme-focus);
   outline-offset: -2px;
 }
+/* The count of requests waiting for my answer: a small red badge at the
+   tab's top right, like the menu's unread count. */
+.sx-root .sx-tabs button.sx-tab-counted {
+  position: relative;
+  padding-right: 24px;
+}
+.sx-tab-count {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--theme-danger-strong);
+  color: var(--theme-on-accent);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
 .sx-filters {
   display: flex;
   gap: 12px;

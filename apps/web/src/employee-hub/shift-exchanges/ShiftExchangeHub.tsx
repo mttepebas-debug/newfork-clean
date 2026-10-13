@@ -427,6 +427,15 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
     ["requests", "My requests"],
     ["history", "History"],
   ];
+  // Like an unread count: the open requests that wait for my answer,
+  // whatever the filters show.
+  const awaitingMe = model.cases.filter(
+    (c) =>
+      c.status === "open" &&
+      c.applications.some(
+        (a) => a.employee_id === model.employee_id && a.status === "invited",
+      ),
+  ).length;
   const canWrite = online && !mutation.isPending;
   const matches = (shift: ExchangeShift) =>
     shift.scheduled_date >= from &&
@@ -506,15 +515,29 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
         className="sx-tabs"
         aria-label="Shift Hub views"
       >
-        {tabs.map(([key, label]) => (
-          <button
-            key={key}
-            aria-current={view === key ? "page" : undefined}
-            onClick={() => navigate({ hub_view: key, case: null })}
-          >
-            {label}
-          </button>
-        ))}
+        {tabs.map(([key, label]) => {
+          const count = key === "requests" ? awaitingMe : 0;
+          return (
+            <button
+              key={key}
+              className={count ? "sx-tab-counted" : undefined}
+              aria-label={
+                count
+                  ? `${label}, ${count} ${count === 1 ? "needs" : "need"} your answer`
+                  : undefined
+              }
+              aria-current={view === key ? "page" : undefined}
+              onClick={() => navigate({ hub_view: key, case: null })}
+            >
+              {label}
+              {count ? (
+                <span className="sx-tab-count" aria-hidden="true">
+                  {count > 99 ? "99+" : count}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
       </nav>
       <div className="sx-filters">
         <label className="sx-filter-location">
