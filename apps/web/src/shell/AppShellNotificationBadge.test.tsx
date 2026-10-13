@@ -366,6 +366,7 @@ describe("AppShell notification badge", () => {
       "Workspace",
       "Schedule",
       "Requests",
+      "Lineup",
       "Employees",
       "Availability",
       "Announcements",

@@ -99,6 +99,7 @@ const AvailabilityPage = lazy(() =>
   })),
 );
 const ScheduleRequestsPage = lazy(() => import("./views/ScheduleRequestsPage"));
+const LineupPage = lazy(() => import("./views/LineupPage"));
 const SettingsLayout = lazy(() => import("./settings/SettingsLayout"));
 const GeneralSettingsPage = lazy(
   () => import("./settings/GeneralSettingsPage"),
@@ -389,6 +390,16 @@ export function App() {
                 <Route
                   path="schedule/requests"
                   element={<ScheduleRequestsPage />}
+                />
+                <Route
+                  path="schedule/lineup"
+                  element={
+                    <ActionRoute action="schedule.read">
+                      <DesktopOnlyRoute message="Lineup is available on a computer.">
+                        <LineupPage />
+                      </DesktopOnlyRoute>
+                    </ActionRoute>
+                  }
                 />
                 <Route
                   path="availability"

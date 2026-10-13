@@ -1,0 +1,359 @@
+/* Lineup (Mert 2026-10-13): the Gösterge study, List view. Each location is one
+   frame; each shift has its colour as a left channel; departments are ruled
+   labels; the table uses the list-page head and lines. */
+
+/* Same width and padding as the other list pages (.availability-page). */
+.lineup-page {
+  display: grid;
+  box-sizing: border-box;
+  width: min(100% - 64px, 1320px);
+  gap: 14px;
+  margin: 0 auto;
+  padding: 30px 0 54px;
+}
+
+.lineup-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lineup-date {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.lineup-step,
+.lineup-date-label {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lineup-step {
+  width: 34px;
+  padding: 0;
+}
+
+.lineup-date-label {
+  min-width: 118px;
+  padding: 0 12px;
+}
+
+/* A day other than today: the date lights amber and takes you back (Mert 2026-10-13). */
+.lineup-date-label[data-other-day="true"] {
+  border-color: var(--theme-warning-border);
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+
+.lineup-step:hover,
+.lineup-date-label:hover {
+  border-color: var(--theme-border-hover);
+}
+
+.lineup-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+
+.lineup-days button {
+  position: relative;
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--theme-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lineup-days button span {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lineup-days button strong {
+  font-weight: 650;
+  color: var(--theme-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.lineup-days button:hover {
+  color: var(--theme-text);
+}
+
+.lineup-days button[aria-pressed="true"] {
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-accent-deep);
+}
+
+.lineup-days button[data-today="true"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 2px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--theme-current, var(--theme-warning-border));
+  transform: translateX(-50%);
+}
+
+.lineup-state {
+  margin: 0;
+  padding: 24px;
+  color: var(--theme-muted);
+}
+
+.lineup-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--theme-danger-text);
+}
+
+.lineup-locations {
+  display: grid;
+  gap: 18px;
+}
+
+.lineup-location {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 8px;
+  padding: 0 14px 14px;
+  background: var(--theme-surface);
+}
+
+.lineup-location-head {
+  margin: 0 -14px;
+  padding: 14px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  text-align: center;
+}
+
+.lineup-location-head h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.lineup-location-head p {
+  margin: 2px 0 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lineup-closed,
+.lineup-empty-shift {
+  margin: 0;
+  padding: 12px;
+  color: var(--theme-muted);
+}
+
+.lineup-short {
+  margin: 0;
+  border: 1px solid var(--theme-warning-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--theme-warning-surface, var(--theme-warning-soft));
+  color: var(--theme-warning-text);
+  font-size: 13px;
+}
+
+.lineup-shift {
+  border: 1px solid var(--theme-border-subtle);
+  border-left: 4px solid var(--lineup-shift);
+  border-radius: 6px;
+  background: var(--theme-surface);
+}
+
+.lineup-shift.empty {
+  background: var(--theme-surface-soft);
+}
+
+.lineup-shift-head {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  padding: 0 14px;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  text-align: left;
+}
+
+button.lineup-shift-head {
+  cursor: pointer;
+}
+
+.lineup-shift-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.lineup-shift-meta {
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+
+.lineup-shift-chevron {
+  margin-left: auto;
+  color: var(--theme-muted);
+  transition: transform 0.15s;
+}
+
+.lineup-shift-head[aria-expanded="false"] .lineup-shift-chevron {
+  transform: rotate(-90deg);
+}
+
+.lineup-departments {
+  display: grid;
+  gap: 14px;
+  padding: 0 14px 14px;
+}
+
+.lineup-department {
+  display: grid;
+  gap: 8px;
+}
+
+/* Ruled department label. */
+.lineup-department h4 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lineup-department h4::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--theme-border-subtle);
+}
+
+.lineup-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 6px;
+}
+
+.lineup-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+
+.lineup-table thead th {
+  height: 32px;
+  border-bottom: 1px solid var(--theme-list-head-border, var(--theme-border));
+  padding: 0 10px;
+  background: var(--theme-list-head, var(--theme-surface-soft));
+  color: var(--theme-list-head-text, var(--theme-muted));
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.lineup-table thead th + th {
+  border-left: 1px solid var(--theme-list-col-line, var(--theme-border-subtle));
+}
+
+.lineup-table thead th:first-child {
+  width: 26%;
+  text-align: left;
+}
+
+.lineup-table thead th:nth-child(4) {
+  width: 24%;
+}
+
+.lineup-table td {
+  height: 44px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 0 10px;
+  color: var(--theme-list-cell-text, var(--theme-text));
+  text-align: center;
+}
+
+.lineup-table td.lineup-name {
+  padding-left: 30px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.lineup-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lineup-none {
+  color: var(--theme-text-faint);
+}
+
+.lineup-job-row th {
+  height: 28px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding: 0 10px;
+  color: var(--theme-text);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.lineup-job-row i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+
+.lineup-step:focus-visible,
+.lineup-date-label:focus-visible,
+.lineup-days button:focus-visible,
+.lineup-shift-head:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
