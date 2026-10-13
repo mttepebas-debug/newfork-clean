@@ -42,6 +42,37 @@ export function writeStoredScheduleEmployeeSortMode(
   writeStoredScheduleUiState({ employeeSortMode: mode });
 }
 
+export type ShiftWindowLayout = "form" | "timeline";
+
+/** The Add / Edit shift window opens in the layout the manager last switched to. */
+export function usePersistentShiftWindowLayout(): [
+  ShiftWindowLayout,
+  (layout: ShiftWindowLayout) => void,
+] {
+  const [layout, setLayout] = useState<ShiftWindowLayout>(() =>
+    readStoredShiftWindowLayout(),
+  );
+
+  const updateLayout = useCallback((nextLayout: ShiftWindowLayout) => {
+    setLayout(nextLayout);
+    writeStoredScheduleUiState({ shiftWindowLayout: nextLayout });
+  }, []);
+
+  return [layout, updateLayout];
+}
+
+export function readStoredShiftWindowLayout(): ShiftWindowLayout {
+  if (typeof window === "undefined") return "form";
+  try {
+    const raw = window.localStorage.getItem(scheduleUiStorageKey);
+    if (!raw) return "form";
+    const parsed = JSON.parse(raw) as { state?: { shiftWindowLayout?: unknown } };
+    return parsed.state?.shiftWindowLayout === "timeline" ? "timeline" : "form";
+  } catch {
+    return "form";
+  }
+}
+
 export function usePersistentScheduleUiBoolean(
   key: string,
   fallback: boolean,
