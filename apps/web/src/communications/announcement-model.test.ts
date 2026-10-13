@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { record } from "./announcement-fixtures.test-util";
 import {
   comingUp,
-  dayLine,
   dayText,
   draftFromRecord,
   draftKey,
@@ -137,7 +136,6 @@ describe("the list", () => {
       ends_on: "2026-11-26",
       locations: [at(downtown, "Downtown", "closed"), at(harbor, "Harbor", "short", "10:00", "15:00")],
     });
-    expect(dayLine(thanksgiving, "12h")).toBe("Downtown closed · Harbor 10:00 AM–3:00 PM");
     expect(comingUp(thanksgiving, [downtown], "12h")).toEqual({
       line: "Downtown closed · Thu, Nov 26",
       sub: "Thanksgiving",

@@ -836,19 +836,37 @@ describe("Important Dates (EKRAN-08)", () => {
         .slice(1)
         .map((row) => row.querySelector(".important-date-title")?.firstChild?.textContent);
     expect(titles()).toEqual(["Thanksgiving", "Christmas"]);
-    expect(within(table).getByText("Downtown closed")).toBeTruthy();
+    // Status · Important date · Category · Starts · Ends; no "That day" (Mert 2026-10-13).
+    expect(within(table).getAllByRole("columnheader").map((heading) => heading.textContent)).toEqual([
+      "Status",
+      "Important date",
+      "Category",
+      "Starts",
+      "Ends",
+    ]);
+    expect(within(table).queryByText("That day")).toBeNull();
+    expect(within(table).queryByText("Downtown closed")).toBeNull();
+    const thanksgiving = within(table).getAllByRole("row")[1]!;
+    expect(within(thanksgiving).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "Published",
+      "Thanksgiving",
+      "Holiday",
+      "Thu, Nov 26",
+      "Thu, Nov 26",
+    ]);
     // No "Announcements › Important Dates" line on top (Mert 2026-10-13).
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Announcements" })).toBeNull();
     expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
-    // The phone's cards: same order; the days, then the kind and what that day means.
+    // The phone's cards: same order; the days, then the kind.
     const cards = () =>
       within(screen.getByRole("list", { name: "Important dates" }))
         .getAllByRole("button")
         .map((card) => card.getAttribute("aria-label"));
     expect(cards()).toEqual(["Thanksgiving, Thu, Nov 26, Published", "Christmas, Fri, Dec 25, Published"]);
     const card = within(screen.getByRole("button", { name: "Thanksgiving, Thu, Nov 26, Published" }));
-    expect(card.getByText("Holiday · Downtown closed")).toBeTruthy();
+    expect(card.getByText("Holiday")).toBeTruthy();
+    expect(card.queryByText(/Downtown closed/)).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Past" }));
     expect(titles()).toEqual(["Labor Day"]);
     expect(cards()).toEqual(["Labor Day, Mon, Sep 7, Past"]);
