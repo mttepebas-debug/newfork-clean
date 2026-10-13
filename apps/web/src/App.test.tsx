@@ -6458,6 +6458,15 @@ describe("App", () => {
 
   // Mert 2026-10-12: Export never asks for a save; while editing it exports the grid as it is now.
   it("opens Export straight from an open edit, exports it unsaved and keeps editing", async () => {
+    // The unsaved change is on the server as the edit's own pending step, as in the browser:
+    // Export takes it as part of the grid, it does not wait for it to be saved.
+    const changed = makeDefaultEditAcquireResult().session.shifts[0]!;
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
+    vi.mocked(fetchPendingOps).mockResolvedValue({ pending_ops: [{
+      id: changed.id, location_id: changed.location_id, week_start: scheduleFixture.week_start, op_type: "update",
+      target_shift_id: changed.id, target_draft_id: null, payload: { note: "Not saved yet" },
+      created_by: "88888888-8888-4888-8888-888888888888", created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:01:00Z",
+    }] });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
     await signInAs("owner");

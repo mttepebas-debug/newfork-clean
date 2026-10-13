@@ -1916,15 +1916,16 @@ export function SchedulePage({
     if (!exportOpen) return { status: "blocked", reason: "source" };
     if (!query.data || !context) return { status: "blocked", reason: "loading" };
     return createScheduleExportSnapshot({
-      // An edit still saving a step is not what the server has yet; Export waits for it.
-      loading: previewSource.loading || displayedPendingOps.length > 0,
+      // The edit's saved-but-unpublished steps (pending ops) are part of the grid and go into the export.
+      // Only a step still on its way to the server (a drop being saved) is not there yet; Export waits for that.
+      loading: previewSource.loading || dropReview.optimisticOps.length > 0,
       requestedSourceKey: previewSource.requestedKey, resolvedSourceKey: previewSource.resolvedKey,
       source: previewSource.source, model: { ...query.data, shifts: effectiveShifts },
       workspaceName: context.workspace.name, selectedDate, view, search, focusedShiftId,
       display: { layout, employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
         showUnassignedShifts, showRoleSeparators, showTotalHours },
     });
-  }, [exportOpen, query.data, context, previewSource.loading, previewSource.source, displayedPendingOps.length, previewSource.requestedKey,
+  }, [exportOpen, query.data, context, previewSource.loading, previewSource.source, dropReview.optimisticOps.length, previewSource.requestedKey,
     previewSource.resolvedKey, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
     employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
     showUnassignedShifts, showRoleSeparators, showTotalHours]);
