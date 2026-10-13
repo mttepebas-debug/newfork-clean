@@ -1,8 +1,9 @@
 /* Announcements and Important Dates lists (EKRAN-08, prototype v11, Mert
-   2026-10-12): Status · Announcement · Published on, sortable headings,
-   Active and Past tables. Light theme only; colours from --theme-*. */
+   2026-10-12; columns Mert 2026-10-13): Status · Announcement · Category ·
+   Starts · Ends · Published on, sortable headings, Active and Past tables.
+   Light theme only; colours from --theme-*. */
 .announcements-page .announcement-catalog-row {
-  grid-template-columns: 150px minmax(0, 1fr) 150px;
+  grid-template-columns: 130px minmax(0, 2fr) minmax(0, 1fr) 160px 160px 120px;
 }
 .announcements-page .important-date-row {
   grid-template-columns: 140px minmax(0, 2fr) minmax(0, 1fr) 190px 190px;

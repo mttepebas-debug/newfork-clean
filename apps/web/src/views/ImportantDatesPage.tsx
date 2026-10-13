@@ -9,10 +9,9 @@ import { AnnouncementDrawer } from "../communications/AnnouncementDrawer";
 import { AnnouncementReader } from "../communications/AnnouncementReader";
 import {
   announcementCategoryText,
-  clockText,
-  dayText,
   dayTone,
   isUnderway,
+  momentLabel,
   rangeText,
   statusLabels,
   statusTones,
@@ -241,11 +240,6 @@ function DateRow({
       </div>
     </div>
   );
-}
-
-/** "Thu, Nov 26" for an all-day date, "Thu, Nov 26 · 3:00 PM" when it has a time. */
-function momentLabel(day: string, clock: string | null, timeFormat: "12h" | "24h"): string {
-  return clock ? `${dayText(day)} · ${clockText(clock, timeFormat)}` : dayText(day);
 }
 
 /** Phone: the shared list card; the days first, then the kind. */

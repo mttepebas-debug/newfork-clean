@@ -153,9 +153,12 @@ describe("Announcements list (EKRAN-08)", () => {
     record({
       id: "a8200000-0000-4000-8000-000000000003",
       title: "Fire drill",
+      category: "inspection",
       status: "published",
       display_status: "published",
       published_at: "2026-10-05T16:00:00.000Z",
+      starts_on: "2026-10-20",
+      ends_on: "2026-10-21",
     }),
     record({
       id: "a8200000-0000-4000-8000-000000000004",
@@ -172,7 +175,7 @@ describe("Announcements list (EKRAN-08)", () => {
     }),
   ];
 
-  it("shows Status, Announcement and Published on, with Active over Past and Archived on its own tab", async () => {
+  it("shows Status, Announcement, Category, Starts, Ends and Published on, with Active over Past and Archived on its own tab", async () => {
     vi.mocked(getAnnouncements).mockResolvedValue(list({ announcements: posts }));
     renderList();
     const active = await screen.findByRole("table", { name: "Active announcements" });
@@ -180,8 +183,22 @@ describe("Announcements list (EKRAN-08)", () => {
     expect(within(active).getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual([
       "Status",
       "Announcement",
+      "Category",
+      "Starts",
+      "Ends",
       "Published on",
     ]);
+    // The same column order as Important Dates (Mert 2026-10-13); a post with no days shows dashes.
+    const drill = within(active).getAllByRole("row")[2]!;
+    expect(within(drill).getAllByRole("cell").map((cell) => cell.textContent)).toEqual([
+      "Published",
+      "Fire drill",
+      "Inspection",
+      "Tue, Oct 20",
+      "Wed, Oct 21",
+      "Mon, Oct 5",
+    ]);
+    expect(within(within(active).getAllByRole("row")[3]!).getAllByLabelText("No date")).toHaveLength(2);
     // Newest first; a draft's empty date stays at the bottom.
     expect(rowTitles(active)).toEqual(["Wine night", "Fire drill", "Patio menu"]);
     expect(rowTitles(past)).toEqual(["Summer hours"]);
@@ -207,6 +224,13 @@ describe("Announcements list (EKRAN-08)", () => {
       "Wine night",
       "Patio menu",
       "Fire drill",
+    ]);
+
+    fireEvent.click(within(active).getByRole("button", { name: "Starts" }));
+    expect(rowTitles(screen.getByRole("table", { name: "Active announcements" }))).toEqual([
+      "Fire drill",
+      "Wine night",
+      "Patio menu",
     ]);
 
     fireEvent.click(screen.getByRole("tab", { name: "Archived" }));
