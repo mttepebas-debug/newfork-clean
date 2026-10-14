@@ -69,7 +69,9 @@ const locationGroups = [
   },
 ];
 
-it("bounds long badge content without reducing an explicit minimum width", () => {
+// A card's line never wraps (Mert, 2026-10-12), so a scrolling week takes the
+// widest line in full.
+it("takes the widest line in full without reducing an explicit minimum width", () => {
   const container = document.createElement("div");
   const badge = document.createElement("span");
   badge.dataset.scheduleBadgeWidthMeasure = "true";
@@ -91,9 +93,9 @@ it("bounds long badge content without reducing an explicit minimum width", () =>
         }),
       { initialProps: { minimumWidth: 126 } },
     );
-    expect(result.current).toBe(220);
-    rerender({ minimumWidth: 240 });
-    expect(result.current).toBe(240);
+    expect(result.current).toBe(1000);
+    rerender({ minimumWidth: 1200 });
+    expect(result.current).toBe(1200);
     unmount();
   } finally {
     frame.mockRestore();
@@ -112,6 +114,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
             referenced_jobs: [{ id: job.id, name: "Line Cook" }],
             referenced_shift_types: [{ id: shiftType.id, name: "Brunch" }],
           },
+          editing: false,
           locationGroups,
           showShiftType: true,
           showShiftLabels: false,
@@ -135,6 +138,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
         {renderScheduleBadgeWidthMeasurer({
           shifts: [shift],
           catalog: { ...catalog, jobs: [], shift_types: [] },
+          editing: false,
           locationGroups,
           showShiftType: true,
           showShiftLabels: false,
@@ -159,6 +163,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
         {renderScheduleBadgeWidthMeasurer({
           shifts: [shift],
           catalog,
+          editing: false,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -185,8 +190,8 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       "Dinner-Server Patio 4:00 PM - 10:00 PM",
     );
     expect(items[0]!.getAttribute("data-job-color-dot")).toBe("true");
-    expect(items[0]!.getAttribute("data-has-markers")).toBe("false");
-    expect(items[0]!.getAttribute("data-has-stack")).toBe("false");
+    // Reading, a card with no note and no "x2" keeps 2px a side.
+    expect(items[0]!.style.getPropertyValue("--shift-card-side")).toBe("2px");
     expect(items[1]!.getAttribute("data-measure-label")).toBe("Dinner-Server");
     expect(
       Array.from(items[0]!.children).map((line) => line.textContent),
@@ -199,6 +204,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
         {renderScheduleBadgeWidthMeasurer({
           shifts: [shift],
           catalog,
+          editing: false,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -218,7 +224,9 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
     ).toBe("Dinner-Server Main Dining Patio 4:00 PM - 10:00 PM");
   });
 
-  it("reserves measured width for unassigned stacks, and none for a live shift's missing mark (Mert, 2026-10-09, item 3)", () => {
+  // Mert, 2026-10-12: the words keep the room of the widest mark on both
+  // sides. The sides in px are the card's (shiftCardRoom.ts).
+  it("keeps the same side room the card keeps for its marks, reading and editing", () => {
     const openShift = {
       ...shift,
       id: "open-1",
@@ -234,37 +242,51 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       warning_codes: [],
       source_published_shift_id: "published-1",
     } as ScheduleShift;
+    const warnedShift = {
+      ...shift,
+      id: "warned-1",
+      employee_id: "employee-1",
+      scheduled_date: "2026-08-17",
+      warning_codes: ["availability"],
+    } as ScheduleShift;
+    const notedShift = {
+      ...shift,
+      id: "noted-1",
+      employee_id: "employee-1",
+      scheduled_date: "2026-08-17",
+      note: "Bring the keys",
+    } as ScheduleShift;
+    const sides = (editing: boolean) => {
+      const { unmount } = render(
+        <>
+          {renderScheduleBadgeWidthMeasurer({
+            shifts: [openShift, { ...openShift, id: "open-2" }, liveShift, warnedShift, notedShift],
+            catalog,
+            editing,
+            locationGroups,
+            showShiftType: true,
+            showShiftLabels: true,
+            showClockTimes: true,
+            timeFormat: "12h",
+            showJobColorDot: true,
+            showLocationInBadge: false,
+            showShiftTypePresets: false,
+          })}
+        </>,
+      );
+      const values = Array.from(
+        document.querySelectorAll<HTMLElement>(".schedule-badge-width-measure"),
+      ).map((item) => item.style.getPropertyValue("--shift-card-side"));
+      unmount();
+      return values;
+    };
 
-    render(
-      <>
-        {renderScheduleBadgeWidthMeasurer({
-          shifts: [openShift, { ...openShift, id: "open-2" }, liveShift],
-          catalog,
-          locationGroups,
-          showShiftType: true,
-          showShiftLabels: true,
-          showClockTimes: true,
-          timeFormat: "12h",
-          showJobColorDot: true,
-          showLocationInBadge: false,
-          showShiftTypePresets: false,
-        })}
-      </>,
-    );
-
-    const items = Array.from(
-      document.querySelectorAll<HTMLElement>(".schedule-badge-width-measure"),
-    );
-    expect(items.map((item) => item.dataset.hasStack)).toEqual([
-      "true",
-      "true",
-      "false",
-    ]);
-    expect(items.map((item) => item.dataset.hasMarkers)).toEqual([
-      "false",
-      "false",
-      "false",
-    ]);
+    // Reading: "x2" (5 + 26 + 4 - 8) and the paperclip (21 + 4 - 8); a live
+    // or warned card shows no mark.
+    expect(sides(false)).toEqual(["27px", "27px", "2px", "2px", "17px"]);
+    // Editing: "x2" still; LIVE (6 + 30 + 4 - 8); the "!" or the spinner
+    // with NEW below (4 + 22 + 4 - 8).
+    expect(sides(true)).toEqual(["27px", "27px", "32px", "22px", "22px"]);
   });
 
   it("counts a noted open shift apart from its twin, as the Unassigned row draws them (BL-199)", () => {
@@ -282,6 +304,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
           {renderScheduleBadgeWidthMeasurer({
             shifts,
             catalog,
+            editing: false,
             locationGroups,
             showShiftType: true,
             showShiftLabels: true,
@@ -295,49 +318,19 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       );
       const stacks = Array.from(
         document.querySelectorAll<HTMLElement>(".schedule-badge-width-measure"),
-      ).map((item) => item.dataset.hasStack);
+      ).map((item) => item.style.getPropertyValue("--shift-card-side"));
       unmount();
       return stacks;
     };
 
+    // No "x2": the plain card keeps 2px, the noted one its paperclip's room.
     expect(
       measure([openShift, { ...openShift, id: "open-2", note: "The new oven arrives at 10" }]),
-    ).toEqual(["false", "false"]);
-    expect(measure([openShift, { ...openShift, id: "open-2" }])).toEqual(["true", "true"]);
+    ).toEqual(["2px", "17px"]);
+    expect(measure([openShift, { ...openShift, id: "open-2" }])).toEqual(["27px", "27px"]);
   });
 
-  it("reserves marker space for a real shift's availability warning without a publication marker", () => {
-    const warnedShift = {
-      ...shift,
-      id: "warned-1",
-      employee_id: "employee-1",
-      warning_codes: ["availability"],
-    } as ScheduleShift;
-
-    render(
-      <>
-        {renderScheduleBadgeWidthMeasurer({
-          shifts: [warnedShift],
-          catalog,
-          locationGroups,
-          showShiftType: true,
-          showShiftLabels: true,
-          showClockTimes: true,
-          timeFormat: "12h",
-          showJobColorDot: true,
-          showLocationInBadge: false,
-          showShiftTypePresets: false,
-        })}
-      </>,
-    );
-
-    expect(
-      document.querySelector<HTMLElement>(".schedule-badge-width-measure")
-        ?.dataset.hasMarkers,
-    ).toBe("true");
-  });
-
-  it("reserves marker space for a ghost shift's location pin", () => {
+  it("keeps room for a ghost shift's location pin", () => {
     const ghostShift = {
       ...shift,
       id: "ghost-1",
@@ -353,6 +346,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
         {renderScheduleBadgeWidthMeasurer({
           shifts: [ghostShift],
           catalog,
+          editing: false,
           locationGroups,
           showShiftType: true,
           showShiftLabels: true,
@@ -365,10 +359,12 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
       </>,
     );
 
+    // The pin (17) keeps 6 + 17 + 4 - 8 a side.
     expect(
-      document.querySelector<HTMLElement>(".schedule-badge-width-measure")
-        ?.dataset.hasMarkers,
-    ).toBe("true");
+      document
+        .querySelector<HTMLElement>(".schedule-badge-width-measure")
+        ?.style.getPropertyValue("--shift-card-side"),
+    ).toBe("19px");
   });
 
   it("does not render when there is nothing to measure", () => {
@@ -377,6 +373,7 @@ describe("renderScheduleBadgeWidthMeasurer", () => {
         {renderScheduleBadgeWidthMeasurer({
           shifts: [],
           catalog: { ...catalog, jobs: [], shift_types: [] },
+          editing: false,
           locationGroups: [],
           showShiftType: true,
           showShiftLabels: true,
@@ -459,7 +456,9 @@ describe("row badge height measurement", () => {
       content.getBoundingClientRect = () => ({ height: 34 }) as DOMRect;
       const markers = document.createElement("span");
       markers.className = "schedule-shift-badge-markers";
-      markers.style.top = "6px";
+      // The top marks sit centred on the first line (useFirstLineMid): their
+      // layout top is the line's middle, 13.5px down.
+      Object.defineProperty(markers, "offsetTop", { configurable: true, value: 13.5 });
       Object.defineProperty(markers, "offsetHeight", { configurable: true, value: 18 });
       // Under the mouse the "!" grows; its scaled size must not move the row.
       markers.getBoundingClientRect = () => ({ height: 22 }) as DOMRect;
@@ -474,9 +473,14 @@ describe("row badge height measurement", () => {
       return badge;
     };
 
-    expect(measureBadgeIntrinsicHeight(shortCard())).toBe(6 + 18 + CORNER_MARK_GAP_PX + 15 + 4);
+    // The "!" ends half its height below the line's middle.
+    expect(measureBadgeIntrinsicHeight(shortCard())).toBe(
+      Math.ceil(13.5 + 18 / 2 + CORNER_MARK_GAP_PX + 15 + 4),
+    );
     // The marks sit inside the card's border, so the border adds to it.
-    expect(measureBadgeIntrinsicHeight(shortCard({ border: 1 }))).toBe(1 + 6 + 18 + CORNER_MARK_GAP_PX + 15 + 4 + 1);
+    expect(measureBadgeIntrinsicHeight(shortCard({ border: 1 }))).toBe(
+      Math.ceil(1 + 13.5 + 18 / 2 + CORNER_MARK_GAP_PX + 15 + 4 + 1),
+    );
     // Without NEW the card is as tall as its words and border.
     expect(measureBadgeIntrinsicHeight(shortCard({ border: 1, withNew: false }))).toBe(36);
   });

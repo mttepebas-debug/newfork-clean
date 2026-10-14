@@ -1,17 +1,23 @@
-.schedule-shift-badge .schedule-shift-save-status {
-  position: absolute;
-  z-index: 2;
-  inset: auto 2px 2px;
-  padding: 1px 3px;
-  border-radius: 3px;
-  background: var(--surface, #fff);
-  color: var(--text, #263b32);
-  font-size: 10px;
-  line-height: 1.2;
-  text-align: center;
+/* Saving: a spinner in the card's top-right row, amber when it takes long
+   (Mert, 2026-10-12). */
+.schedule-shift-badge .schedule-shift-save-spinner {
+  display: inline-grid;
+  place-items: center;
+  color: var(--theme-text-secondary);
 }
-
-.schedule-shift-badge[data-save-state="delayed"] .schedule-shift-save-status {
-  background: #fff1ce;
-  color: #704800;
+.schedule-shift-badge .schedule-shift-save-spinner[data-delayed] {
+  color: var(--theme-warning);
+}
+.schedule-shift-badge .schedule-shift-save-spinner svg {
+  animation: schedule-shift-save-spin 0.9s linear infinite;
+}
+@keyframes schedule-shift-save-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-shift-badge .schedule-shift-save-spinner svg {
+    animation-duration: 2.4s;
+  }
 }

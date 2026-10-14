@@ -287,7 +287,9 @@ describe("schedule sticky layout styles", () => {
     expect(selectionRingRule).toContain("box-shadow: inset 0 0 0 2px");
   });
 
-  it("keeps measured badge content intrinsic and centers it inside the synchronized height", () => {
+  // Mert, 2026-10-14: every card's first line starts at the top, so first
+  // lines line up along a row.
+  it("keeps measured badge content intrinsic and starts it at the top of the synchronized height", () => {
     const badgeRule = cssRuleByPattern(
       /^\.schedule-shift-badge\s*\{([^}]*)\}/m,
     );
@@ -309,7 +311,7 @@ describe("schedule sticky layout styles", () => {
       "height: var(--schedule-row-badge-height, 58px)",
     );
     expect(badgeRule).toContain("flex-direction: column");
-    expect(badgeRule).toContain("justify-content: center");
+    expect(badgeRule).toContain("justify-content: flex-start");
     expect(contentRule).toContain("height: auto");
     expect(contentRule).toContain("flex: 0 0 auto");
     expect(addActionRule).toContain("box-sizing: border-box");
@@ -355,16 +357,19 @@ describe("schedule sticky layout styles", () => {
     );
   });
 
-  it("keeps badge text hierarchy readable and reserves marker and stack space", () => {
+  // Mert, 2026-10-12: the words centred with the same room both sides, each
+  // line on one row with "..." when it does not fit; Mert, 2026-10-14: the
+  // top marks sit level with the first line.
+  it("keeps badge text hierarchy readable, one row a line, with the marks' room both sides", () => {
     const contentRule = cssRuleByPattern(
       /^\.schedule-shift-badge \.schedule-shift-badge-content\s*\{([^}]*)\}/m,
+    );
+    const lineRule = cssRuleByPattern(
+      /^\.schedule-shift-badge \.schedule-shift-badge-content > \*\s*\{([^}]*)\}/m,
     );
     const titleRule = cssRule(".schedule-shift-badge strong");
     const metadataRule = cssRuleByPattern(
       /^\.schedule-shift-badge \.schedule-shift-badge-content > span,\s*\.schedule-shift-badge \.schedule-shift-badge-content > em\s*\{([^}]*)\}/m,
-    );
-    const stackAndMarkerRule = cssRuleByPattern(
-      /^\.schedule-shift-badge\[data-stack-count\]\[data-has-markers="true"\]\s*\.schedule-shift-badge-content\s*\{([^}]*)\}/m,
     );
     const markerRule = cssRule(
       ".schedule-shift-badge .schedule-shift-badge-markers",
@@ -376,15 +381,20 @@ describe("schedule sticky layout styles", () => {
     expect(titleRule).toContain("font-weight: 750");
     expect(metadataRule).toContain("font-size: 10px");
     expect(metadataRule).toContain("line-height: 1.3");
-    expect(contentRule).toContain("align-items: stretch");
+    expect(contentRule).toContain("align-items: center");
     expect(contentRule).toContain("text-align: center");
+    expect(contentRule).toContain("padding-right: var(--shift-card-side, 2px)");
+    expect(contentRule).toContain("padding-left: var(--shift-card-side, 2px)");
+    expect(lineRule).toContain("white-space: nowrap");
+    expect(lineRule).toContain("text-overflow: ellipsis");
+    expect(lineRule).toContain("overflow: hidden");
+    expect(lineRule).toContain("max-width: 100%");
     for (const rule of [titleRule, metadataRule]) {
-      expect(rule).toContain("white-space: normal");
-      expect(rule).toContain("overflow-wrap: anywhere");
-      expect(rule).not.toContain("ellipsis");
-      expect(rule).not.toContain("overflow: hidden");
+      expect(rule).not.toContain("white-space");
+      expect(rule).not.toContain("overflow");
     }
-    expect(stackAndMarkerRule).toContain("padding-right: 70px");
+    expect(markerRule).toContain("top: var(--shift-card-line1-mid, 13.5px)");
+    expect(markerRule).toContain("transform: translateY(-50%)");
     expect(markerRule).toContain("z-index: 2");
   });
 

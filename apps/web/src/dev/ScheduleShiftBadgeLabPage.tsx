@@ -1345,7 +1345,7 @@ function mirroredStateAttribute(
     clickable: { name: "data-clickable", value: "true" },
     comparison: { name: "data-has-comparison", value: "true" },
     stacked: { name: "data-stack-count", value: "2" },
-    hasMarkers: { name: "data-has-markers", value: "true" },
+    markRow: { name: "data-mark-row", value: "true" },
   };
   return attributes[state] ?? null;
 }

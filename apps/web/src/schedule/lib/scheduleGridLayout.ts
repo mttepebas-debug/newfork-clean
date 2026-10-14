@@ -114,21 +114,6 @@ export function countScheduleGridColumns({
 }
 
 /**
- * The narrowest day that shows every card title without splitting a word:
- * each card's longest word plus what the card and its cell take around the
- * title (padding, markers such as the availability flag). Neither depends on
- * the column width, so the answer is the same fitted or scrolling.
- */
-export function scheduleGridFitDayWidth(
-  cards: readonly { readonly longestWord: number; readonly chrome: number }[],
-): number {
-  return cards.reduce(
-    (widest, card) => Math.max(widest, Math.ceil(card.longestWord + card.chrome)),
-    scheduleGridFitMinDayColumnWidth,
-  );
-}
-
-/**
  * Whether a fitted week still gives every day that width. In a fitted week the
  * employee and totals columns grow to their full 200px / 120px before the days
  * share the rest, so those are the widths to subtract. An unmeasured box
@@ -138,18 +123,16 @@ export function scheduleGridFitsVisibleDays({
   width,
   columns,
   showTotalHours,
-  dayWidth = scheduleGridFitMinDayColumnWidth,
 }: {
   readonly width: number;
   readonly columns: number;
   readonly showTotalHours: boolean;
-  readonly dayWidth?: number;
 }): boolean {
   if (width <= 0) return true;
   const fixed =
     scheduleGridEmployeeColumnWidth +
     (showTotalHours ? scheduleGridTotalColumnWidth : 0);
-  return width >= fixed + columns * dayWidth;
+  return width >= fixed + columns * scheduleGridFitMinDayColumnWidth;
 }
 
 export type ScheduleGridWeeklyLocationWidths = {
@@ -160,30 +143,83 @@ export type ScheduleGridWeeklyLocationWidths = {
 /**
  * Widths that put one location's whole week on screen when several locations
  * stand side by side: seven days share the box less the employee and totals
- * columns. When the days need more than that share (the cards' longest title
- * word plus the cell around it), the employee column gives up room down to
- * the fitted week's 144px. null when even that is too narrow: the days keep
- * the cards' full width and the week scrolls.
+ * columns. When the days need more than that share (what their cards need),
+ * the employee column gives up room down to the fitted week's 144px. null
+ * when even that is too narrow: the days keep the cards' full width and the
+ * week scrolls.
  */
 export function scheduleGridWeeklyLocationWidths({
   width,
   showTotalHours,
   dayWidth = scheduleGridFitMinDayColumnWidth,
+  columns = 7,
 }: {
   readonly width: number;
   readonly showTotalHours: boolean;
   readonly dayWidth?: number;
+  readonly columns?: number;
 }): ScheduleGridWeeklyLocationWidths | null {
   if (width <= 0) return null;
   const room = width - (showTotalHours ? scheduleGridTotalColumnWidth : 0);
-  const share = (room - scheduleGridEmployeeColumnWidth) / 7;
+  const share = (room - scheduleGridEmployeeColumnWidth) / columns;
   if (share >= dayWidth) {
     return { day: share, employee: scheduleGridEmployeeColumnWidth };
   }
-  const employee = room - 7 * dayWidth;
+  const employee = room - columns * dayWidth;
   return employee >= scheduleGridMinEmployeeColumnWidth
     ? { day: dayWidth, employee }
     : null;
+}
+
+// A card's line never wraps, and with the left menu open one location's seven
+// days still fit (Mert, 2026-10-12). A day needs its widest card line plus the
+// corner room on both sides ("side"); when that is too wide, the line plus
+// 2px, with the marks beside the first line or on rows of their own
+// ("tight"); narrower, the name a point smaller ("compact"). "time" is the
+// day width that still shows every card's hours in full: below it the week
+// scrolls rather than cut a time. ScheduleGridShell measures them.
+export type ScheduleCardNeeds = {
+  readonly side: number;
+  readonly tight: number;
+  readonly compact: number;
+  readonly time: number;
+};
+export type ScheduleCardBand = "side" | "tight" | "compact" | "clip";
+export type ScheduleCardFit = {
+  readonly band: ScheduleCardBand;
+  readonly widths: ScheduleGridWeeklyLocationWidths | null;
+  readonly fits: boolean;
+};
+
+/** The first band whose day width leaves the employee column at least 144px. */
+export function scheduleGridFitCards({
+  width,
+  columns,
+  showTotalHours,
+  needs,
+}: {
+  readonly width: number;
+  readonly columns: number;
+  readonly showTotalHours: boolean;
+  readonly needs: ScheduleCardNeeds;
+}): ScheduleCardFit {
+  const bands = [
+    ["side", needs.side],
+    ["tight", needs.tight],
+    ["compact", needs.compact],
+  ] as const;
+  for (const [band, dayWidth] of bands) {
+    const widths = scheduleGridWeeklyLocationWidths({ width, showTotalHours, dayWidth, columns });
+    if (widths) return { band, widths, fits: true };
+  }
+  // Narrower still: the days stay on screen and a name too long ends in "…";
+  // the hours are never cut, so below their width the week scrolls.
+  const room = width - (showTotalHours ? scheduleGridTotalColumnWidth : 0);
+  const share = (room - scheduleGridMinEmployeeColumnWidth) / columns;
+  if (share >= Math.max(scheduleGridFitMinDayColumnWidth, needs.time)) {
+    return { band: "clip", widths: { day: share, employee: scheduleGridMinEmployeeColumnWidth }, fits: true };
+  }
+  return { band: "side", widths: null, fits: false };
 }
 
 export function createScheduleGridTemplateColumns({

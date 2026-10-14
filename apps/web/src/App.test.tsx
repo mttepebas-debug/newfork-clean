@@ -4124,10 +4124,10 @@ describe("App", () => {
       expect(badge.getAttribute("data-publication-state")).toBe("locked");
       return badge;
     });
-    // A live shift carries no mark while editing (Mert, 2026-10-09, item 3).
+    // While editing, a live shift says LIVE top right (Mert, 2026-10-12).
     expect(
-      within(liveBadge).queryByLabelText("Live - published to employees"),
-    ).toBeNull();
+      liveBadge.querySelector(".schedule-shift-live-mark")?.textContent,
+    ).toBe("Live");
     expect(liveBadge.querySelector(".schedule-shift-new-mark")).toBeNull();
     fireEvent.contextMenu(liveBadge, { clientX: 44, clientY: 48 });
     expect(screen.queryByRole("menuitem", { name: "Delete shift" })).toBeNull();
@@ -4144,9 +4144,10 @@ describe("App", () => {
       );
       return badge;
     });
-    expect(
-      within(stagedBadge).getByLabelText("Staged for removal"),
-    ).toBeTruthy();
+    // A shift staged for removal carries no mark (Mert, 2026-10-12): it is
+    // faded and struck through.
+    expect(stagedBadge.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    expect(stagedBadge.querySelector(".schedule-shift-new-mark")).toBeNull();
     fireEvent.contextMenu(stagedBadge, { clientX: 54, clientY: 58 });
     expect(screen.queryByRole("menuitem", { name: "Edit shift" })).toBeNull();
     fireEvent.click(screen.getByRole("menuitem", { name: "Restore shift" }));

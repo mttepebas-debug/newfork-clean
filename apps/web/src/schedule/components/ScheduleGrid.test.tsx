@@ -256,6 +256,23 @@ describe("ScheduleGrid", () => {
     expect(container.querySelector(".schedule-availability-mark-name") !== null).toBe(nameMark);
   });
 
+  // Mert, 2026-10-12: while editing, a live shift's card says LIVE, so its
+  // "!" moves to the name cell; a shift not live yet keeps it on its card.
+  it.each([
+    ["a live shift", true, 0, true],
+    ["a shift not live yet", false, 1, false],
+  ] as const)("while editing, %s that runs into an unavailable day: LIVE = %s, card \"!\" marks = %s, name \"!\" = %s", (_case, live, cardMarks, nameMark) => {
+    const marked = availabilityModel([0], true);
+    const model = { ...marked, shifts: marked.shifts.map((shift) => ({
+      ...shift,
+      ...(live ? { source_published_shift_id: "99999999-9999-4999-8999-999999999999" } : {}),
+    })) };
+    const { container } = renderGrid({ model, session: editSession(model) });
+    expect(container.querySelectorAll(".schedule-availability-mark-card")).toHaveLength(cardMarks);
+    expect(container.querySelector(".schedule-shift-live-mark") !== null).toBe(live);
+    expect(container.querySelector(".schedule-availability-mark-name") !== null).toBe(nameMark);
+  });
+
   it("puts the \"!\" in an empty cell's corner, and by the name only once two days are marked (KARARLAR Schedule, 2026-10-06)", () => {
     const one = availabilityModel([4], false);
     const first = renderGrid({ model: one, session: editSession(one) });

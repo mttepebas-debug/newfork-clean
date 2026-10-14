@@ -14,63 +14,101 @@ import {
   calculateScheduleGridFillerHeight,
   createScheduleGridTemplateColumns,
   scheduleGridEmployeeColumnWidth,
-  scheduleGridFitDayWidth,
+  scheduleGridFitCards,
   scheduleGridFitsVisibleDays,
   scheduleGridHorizontalNavHeight,
   scheduleGridWeeklyLocationWidths,
   scheduleGridTotalRowHeight,
+  type ScheduleCardBand,
+  type ScheduleCardNeeds,
   type ScheduleGridLocationGroup,
 } from "../lib/scheduleGridLayout";
+import {
+  SHIFT_CARD_TIGHT_SIDE,
+  shiftCardFirstLineInset,
+} from "../lib/shiftCardRoom";
 
 const horizontalNavMinThumbWidthPx = 34;
 const horizontalNavFallbackTrackWidthPx = 240;
 const dragAutoscrollEdgePx = 56;
 const dragAutoscrollMaxStepPx = 24;
 
-let titleCanvas: CanvasRenderingContext2D | null | undefined;
-// Word widths by `font|word`; the grid re-measures on every render.
-const titleWordWidths = new Map<string, number>();
+// Each card gives its widest line (every line is nowrap, so the range is the
+// whole line) and the cell around its words (scheduleGridFitCards).
+const TITLE_PX = 12;
+const COMPACT_TITLE_PX = 11;
+// The card's own side padding: 8px, 5px in the compact band (styles.css).
+const BADGE_PAD_X = 8;
+const COMPACT_PAD_X = 5;
+// Half a pixel to spare, kept to a tenth so the numbers settle.
+const fit = (width: number) => Math.ceil((width + 0.5) * 10) / 10;
 
-// Reads each card on the grid: its title's longest word (a line may break
-// after a space or a hyphen) and the room its day cell leaves around the
-// title. 0 when nothing can be measured (no cards, no canvas in a test DOM).
-function measureFitDayWidth(grid: HTMLElement): number {
-  if (titleCanvas === undefined) {
-    titleCanvas = document.createElement("canvas").getContext("2d");
-  }
-  const canvas = titleCanvas;
-  if (!canvas) return 0;
-  const cards: { longestWord: number; chrome: number }[] = [];
+function measureCardNeeds(grid: HTMLElement): ScheduleCardNeeds | null {
+  let side = 0;
+  let tight = 0;
+  let compact = 0;
+  let time = 0;
   grid
-    .querySelectorAll<HTMLElement>(".schedule-shift-badge strong")
-    .forEach((title) => {
-      let cell: HTMLElement | null = title;
+    .querySelectorAll<HTMLElement>(".schedule-shift-badge .schedule-shift-badge-content")
+    .forEach((content) => {
+      let cell: HTMLElement | null = content;
       while (cell && cell.parentElement !== grid) cell = cell.parentElement;
-      const text = title.textContent?.trim();
-      if (!cell || !text) return;
-      const font = getComputedStyle(title).font;
-      // No lookbehind: Safari 16.0-16.3 rejects it at parse time.
-      const words = text.replace(/-/g, "- ").split(/\s+/).filter(Boolean);
-      const longestWord = Math.max(
-        ...words.map((word) => {
-          const key = `${font}|${word}`;
-          let width = titleWordWidths.get(key);
-          if (width === undefined) {
-            canvas.font = font;
-            width = canvas.measureText(word).width;
-            titleWordWidths.set(key, width);
-          }
-          return width;
-        }),
-      );
-      cards.push({
-        longestWord,
-        chrome:
-          cell.getBoundingClientRect().width -
-          title.getBoundingClientRect().width,
+      if (!cell) return;
+      // Each line's whole text, to the fraction of a pixel (scrollWidth
+      // rounds); the name at its full 12px, whatever size it is drawn at now.
+      const widths = Array.from(content.children, (child) => {
+        const range = document.createRange();
+        range.selectNodeContents(child);
+        // Without layout (jsdom) a range has no box: nothing is measured.
+        const width = typeof range.getBoundingClientRect === "function"
+          ? range.getBoundingClientRect().width
+          : 0;
+        return child.tagName === "STRONG"
+          ? (width * TITLE_PX) / (Number.parseFloat(getComputedStyle(child).fontSize) || TITLE_PX)
+          : width;
       });
+      const line = Math.max(0, ...widths);
+      if (!line) return;
+      const compactLine = Math.max(
+        0,
+        ...widths.map((width, index) =>
+          content.children[index]!.tagName === "STRONG" ? (width * COMPACT_TITLE_PX) / TITLE_PX : width,
+        ),
+      );
+      const badge = content.closest<HTMLElement>(".schedule-shift-badge");
+      const px = (name: string) => Number.parseFloat(badge?.style.getPropertyValue(name) ?? "") || 0;
+      const room = px("--shift-card-side") || SHIFT_CARD_TIGHT_SIDE;
+      // The cell less the content box and the card's side padding: the parts
+      // the bands change are added back below, so a band never moves its own
+      // numbers.
+      const badgeStyle = badge ? getComputedStyle(badge) : null;
+      const chrome =
+        cell.getBoundingClientRect().width -
+        content.getBoundingClientRect().width -
+        (Number.parseFloat(badgeStyle?.paddingLeft ?? "") || 0) -
+        (Number.parseFloat(badgeStyle?.paddingRight ?? "") || 0);
+      // Reading, the first line keeps clear of the marks beside it: each
+      // side's reach less the card's padding and the words' own 2px. While
+      // editing, the marks have a row of their own.
+      const reading = content.closest(".schedule-cell")?.getAttribute("data-editing") !== "true";
+      const clear = (pad: number) =>
+        shiftCardFirstLineInset(px("--shift-card-line1-left"), pad) +
+        shiftCardFirstLineInset(px("--shift-card-line1-right"), pad);
+      const first = reading && content.children[0]?.tagName === "STRONG";
+      const tightLine = first ? Math.max(line, widths[0]! + clear(BADGE_PAD_X)) : line;
+      const compactFirst = first
+        ? Math.max(compactLine, (widths[0]! * COMPACT_TITLE_PX) / TITLE_PX + clear(COMPACT_PAD_X))
+        : compactLine;
+      side = Math.max(side, fit(line + 2 * (room + BADGE_PAD_X) + chrome));
+      tight = Math.max(tight, fit(tightLine + 2 * (SHIFT_CARD_TIGHT_SIDE + BADGE_PAD_X) + chrome));
+      compact = Math.max(compact, fit(compactFirst + 2 * (SHIFT_CARD_TIGHT_SIDE + COMPACT_PAD_X) + chrome));
+      const hoursIndex = Array.from(content.children).findIndex((child) =>
+        child.classList.contains("schedule-shift-time"),
+      );
+      const hours = hoursIndex < 0 ? 0 : widths[hoursIndex]!;
+      time = Math.max(time, fit(hours + 2 * (SHIFT_CARD_TIGHT_SIDE + COMPACT_PAD_X) + chrome));
     });
-  return cards.length ? scheduleGridFitDayWidth(cards) : 0;
+  return side ? { side, tight, compact, time } : null;
 }
 
 export function ScheduleGridShell({
@@ -103,30 +141,35 @@ export function ScheduleGridShell({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [fillerHeightPx, setFillerHeightPx] = useState(0);
   const [viewportWidth, setViewportWidth] = useState(0);
-  const [fitDayWidth, setFitDayWidth] = useState(0);
+  const [cardNeeds, setCardNeeds] = useState<ScheduleCardNeeds | null>(null);
   // Cards do not change size mid-drag; skip re-reading them every frame.
   const dragging = Boolean(dragPointer);
-  // Several locations side by side: each location's week fills one screen,
-  // its cards wrapping like a fitted week's. Narrower than the cards' longest
-  // title word, the days keep the cards' full width and the week scrolls.
+  // A fitted week (one location's, or several side by side, each filling one
+  // screen) takes the first band its cards fit in. Narrower than the cards'
+  // hours, the days keep the cards' full width and the week scrolls.
+  const cardFit =
+    cardNeeds && viewportWidth > 0 && (fitWeeklyLocations || fitVisibleColumns)
+      ? scheduleGridFitCards({
+          width: viewportWidth,
+          columns: fitWeeklyLocations ? 7 : columns,
+          showTotalHours,
+          needs: cardNeeds,
+        })
+      : null;
   const locationWidths = fitWeeklyLocations
-    ? scheduleGridWeeklyLocationWidths({
-        width: viewportWidth,
-        showTotalHours,
-        dayWidth: fitDayWidth || undefined,
-      })
+    ? cardFit
+      ? cardFit.widths
+      : scheduleGridWeeklyLocationWidths({ width: viewportWidth, showTotalHours })
     : null;
   const effectiveDayColumnMinWidth = locationWidths?.day ?? dayColumnMinWidth;
   // A fitted week that would squeeze days below a readable width (a phone, a
   // tablet, a narrow window) scrolls instead (BL-205).
   const fitsColumns =
     fitVisibleColumns &&
-    scheduleGridFitsVisibleDays({
-      width: viewportWidth,
-      columns,
-      showTotalHours,
-      dayWidth: fitDayWidth || undefined,
-    });
+    (cardFit
+      ? cardFit.fits
+      : scheduleGridFitsVisibleDays({ width: viewportWidth, columns, showTotalHours }));
+  const cardBand: ScheduleCardBand = cardFit?.band ?? "side";
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const totalBottomOffsetPx = hasHorizontalOverflow
     ? scheduleGridHorizontalNavHeight
@@ -141,8 +184,15 @@ export function ScheduleGridShell({
       !dragging &&
       gridRef.current
     ) {
-      const next = measureFitDayWidth(gridRef.current);
-      setFitDayWidth((current) => (current === next ? current : next));
+      const needs = measureCardNeeds(gridRef.current);
+      setCardNeeds((current) =>
+        current?.side === needs?.side &&
+        current?.tight === needs?.tight &&
+        current?.compact === needs?.compact &&
+        current?.time === needs?.time
+          ? current
+          : needs,
+      );
     }
 
     const filler = scroll.querySelector<HTMLElement>(
@@ -294,6 +344,7 @@ export function ScheduleGridShell({
         data-testid="schedule-grid"
         data-schedule-grid-track="true"
         data-schedule-fit-visible-columns={fitsColumns || undefined}
+        data-card-band={cardBand}
         data-schedule-column-count={columns}
         aria-label={`${view === "day" ? "Daily" : "Weekly"} ${
           editing ? "editable" : "published"

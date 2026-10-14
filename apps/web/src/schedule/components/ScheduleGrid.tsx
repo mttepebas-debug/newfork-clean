@@ -445,6 +445,7 @@ export function ScheduleGrid({
       {renderScheduleBadgeWidthMeasurer({
         shifts: filtered.shifts,
         catalog: model,
+        editing: Boolean(session),
         locationGroups,
         showShiftType,
         showShiftLabels,

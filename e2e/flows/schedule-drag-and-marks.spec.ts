@@ -5,11 +5,10 @@ import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { roundLabel, roundWeek, signIn } from "../fixtures/world";
 
-// EKRAN-01, Mert's 2026-10-09 grid picks (KARARLAR 1.5 Schedule):
-// - item 3 (variant 6): while editing, a live shift carries no mark (the old
-//   "Live - published to employees" check is gone); a shift not published yet
-//   says "New".
-// - item 4 B: while a shift is dragged, people who cannot take it at its own
+// EKRAN-01, Mert's grid picks (KARARLAR 1.5 Schedule):
+// - the card marks (2026-10-12, replacing 2026-10-09 item 3): while editing, a
+//   live shift says LIVE top right; a shift not published yet says "New".
+// - 2026-10-09 item 4 B: while a shift is dragged, people who cannot take it at its own
 //   location leave the grid until the drop.
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
@@ -26,7 +25,7 @@ const card = (page: Page, employeeId: string, date: string) =>
   cell(page, employeeId, date).locator('[data-shift-badge]:not([data-ghost="true"])');
 const personRow = (page: Page, name: string) => page.getByRole("rowheader").filter({ hasText: name });
 
-test("while editing, a live shift has no mark and a new one says New; a dragged shift hides who cannot take it", async ({
+test("while editing, a live shift says LIVE and a new one says New; a dragged shift hides who cannot take it", async ({
   browser,
 }) => {
   const week = roundWeek(WEEK);
@@ -48,12 +47,12 @@ test("while editing, a live shift has no mark and a new one says New; a dragged 
   await zeynep.getByRole("button", { name: "Edit live schedule", exact: true }).click();
   await expect(zeynep).toHaveURL(/mode=edit/);
 
-  // Item 3: the live shift carries no mark at all.
+  // The live shift says LIVE, and no New.
   const live = card(zeynep, emreId, tuesday);
   await expect(live).toHaveCount(1);
   await expect(live).toHaveAttribute("data-publication-state", "locked");
+  await expect(live.locator(".schedule-shift-live-mark")).toHaveText("Live");
   await expect(live.locator(".schedule-shift-new-mark")).toHaveCount(0);
-  await expect(zeynep.getByLabel("Live - published to employees")).toHaveCount(0);
 
   // A shift added now, not published yet, says "New".
   const add = zeynep.getByRole("button", { name: `Add shift for Emre Person at Kadikoy on ${wednesday}`, exact: true });

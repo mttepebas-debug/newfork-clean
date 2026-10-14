@@ -3,7 +3,7 @@ import type {
   ScheduleReadModel,
   ScheduleShift,
 } from "@newfork/shared/schedule";
-import { CloudOff, Edit3, MapPin } from "lucide-react";
+import { LoaderCircle, MapPin } from "lucide-react";
 import type {
   CSSProperties,
   MouseEvent,
@@ -29,6 +29,13 @@ import type { ShiftPublicationState } from "./ScheduleContextMenu";
 import type { EffectiveScheduleShift } from "../hooks/useEffectiveShifts";
 import "./schedule-shift-save.css";
 import { useShiftNoteCorner } from "./ShiftNoteCorner";
+import { useFirstLineMid } from "../hooks/useFirstLineMid";
+import {
+  SHIFT_CARD_MARK,
+  SHIFT_CARD_STACK_REACH,
+  shiftCardFirstLineEdges,
+  shiftCardSideRoom,
+} from "../lib/shiftCardRoom";
 
 const SINGLE_CLICK_FOCUS_DELAY_MS = 250;
 
@@ -122,12 +129,37 @@ export function ShiftCard({
   const availabilityWarning = shift.warning_codes.includes("availability")
     ? formatAvailabilityWarning(employeeName)
     : null;
-  const showAvailabilityCorner = Boolean(availabilityWarning);
-  // Publication marks while editing (Mert, 2026-10-09, item 3 variant 6): a live
-  // shift carries no mark; a shift not yet published says "New". The edited and
-  // staged-for-removal marks stay.
-  const showPublicationMarker = Boolean(publicationState) && publicationState !== "locked";
-  const showNewMark = editing && !publicationState && !shift.optimistic;
+  // Publication marks while editing (Mert, 2026-10-12): a live shift says
+  // LIVE top right, and its "!" moves to the row's name cell (ScheduleRow); an
+  // edited live shift says NEW like a new one, with no stripe or pencil; a
+  // shift staged for removal carries no icon. Saving is a spinner top right.
+  const showLiveMark = editing && publicationState === "locked";
+  const showAvailabilityCorner = Boolean(availabilityWarning) && !showLiveMark;
+  const showNewMark = editing && !shift.optimistic &&
+    (!publicationState || publicationState === "unlocked-modified");
+  const showSpinner = Boolean(shift.saving_state);
+  const note = shift.note.trim();
+  const noteReach = note ? SHIFT_CARD_MARK.note : 0;
+  const topMarks = [
+    ...(showAvailabilityCorner ? [SHIFT_CARD_MARK.availability] : []),
+    ...(showLiveMark ? [SHIFT_CARD_MARK.live] : []),
+    ...(showSpinner ? [SHIFT_CARD_MARK.spinner] : []),
+  ];
+  const sideRoom = shiftCardSideRoom({
+    // While editing, every card keeps room for the saving spinner.
+    top: topMarks.length ? topMarks : editing ? [SHIFT_CARD_MARK.spinner] : [],
+    bottom: showNewMark ? SHIFT_CARD_MARK.newLabel : 0,
+    stack: stackCount > 1,
+    note: noteReach,
+  });
+  // The marks beside the first line: the note and "x2" on the left, the
+  // top-right row on the right.
+  const firstLine = shiftCardFirstLineEdges({
+    left: [noteReach, stackCount > 1 ? SHIFT_CARD_STACK_REACH : 0],
+    right: topMarks,
+  });
+  const badgeRef = useRef<HTMLButtonElement>(null);
+  useFirstLineMid(badgeRef);
   const availabilityDescriptionId = useId();
   // The card's "!" window says the hours this shift runs into (KARARLAR Schedule, 2026-10-06).
   const availabilityLines = availabilityWarning && availabilityMark?.kind === "unavailable"
@@ -136,9 +168,8 @@ export function ShiftCard({
         // M11: a mark that came after the first publish says so.
         .concat(shift.availability_changed_after_publish ? ["Changed after publishing"] : [])
     : [];
-  // The manager's note (BL-199): an ink corner, the note on a mouse hover of
-  // that corner, and the text as the card's description for screen readers.
-  const note = shift.note.trim();
+  // The manager's note (BL-199): a paperclip in the top left, the note on a
+  // mouse hover of it, and the text as the card's description for screen readers.
   const noteDescriptionId = useId();
   const noteCorner = useShiftNoteCorner(note, Boolean(dragging));
   const modifierSelectionHandledRef = useRef(false);
@@ -175,12 +206,16 @@ export function ShiftCard({
   return (
     <>
     <button
+      ref={badgeRef}
       type="button"
       className="schedule-shift-badge"
       style={
         {
           "--shift-color": type?.color ?? "#54736a",
           "--schedule-row-badge-height": `${badgeHeight}px`,
+          "--shift-card-side": `${sideRoom}px`,
+          "--shift-card-line1-left": `${firstLine.left}px`,
+          "--shift-card-line1-right": `${firstLine.right}px`,
         } as CSSProperties
       }
       aria-label={formatScheduleBadgeAriaLabel({
@@ -205,9 +240,13 @@ export function ShiftCard({
       data-selected={selected}
       data-dragging={dragging}
       data-job-color-dot={false}
-      data-has-markers={showPublicationMarker || showAvailabilityCorner}
       data-shift-labels-visible={showShiftLabels}
       data-publication-state={publicationState ?? undefined}
+      // A narrow week while editing: the top marks keep a row of their own
+      // above the words on every card (LIVE does not fit beside a name), NEW
+      // one below (styles.css, data-card-band).
+      data-mark-row={editing ? "true" : undefined}
+      data-new-row={showNewMark ? "true" : undefined}
       data-availability-warning={availabilityWarning ? "true" : undefined}
       data-focused={focused}
       data-current={focused}
@@ -293,12 +332,6 @@ export function ShiftCard({
         onContextMenu?.(shift as ScheduleEditableShift, event);
       }}
     >
-      {shift.saving_state ? (
-        <span className="schedule-shift-save-status" role="status"
-          title={shift.saving_state === "delayed" ? "Still saving. Wait for the result before trying again." : undefined}>
-          {shift.saving_state === "delayed" ? "Still saving — please wait" : "Saving"}
-        </span>
-      ) : null}
       {selected || focused ? (
         <span
           className="schedule-shift-selection-ring"
@@ -320,11 +353,18 @@ export function ShiftCard({
       ) : null}
       {noteCorner.corner}
       {showNewMark ? (
-        <span className="schedule-shift-new-mark" title="Not published yet - goes live on next publish">
+        <span
+          className="schedule-shift-new-mark"
+          title={
+            publicationState === "unlocked-modified"
+              ? "Edited - updates the live shift on next publish"
+              : "Not published yet - goes live on next publish"
+          }
+        >
           New
         </span>
       ) : null}
-      {showPublicationMarker || showAvailabilityCorner ? (
+      {topMarks.length ? (
         <span className="schedule-shift-badge-markers">
           {showAvailabilityCorner ? (
             <AvailabilityMarkButton
@@ -334,18 +374,23 @@ export function ShiftCard({
               lines={availabilityLines.length ? availabilityLines : [availabilityWarning ?? ""]}
             />
           ) : null}
-          {publicationState === "staged-removed" ? (
-            <CloudOff size={12} aria-label="Staged for removal">
-              <title>Staged for removal</title>
-            </CloudOff>
+          {showLiveMark ? (
+            <span className="schedule-shift-live-mark" title="Live - published to employees">
+              Live
+            </span>
           ) : null}
-          {publicationState === "unlocked-modified" ? (
-            <Edit3
-              size={12}
-              aria-label="Edited - updates the live shift on next publish"
+          {showSpinner ? (
+            <span
+              className="schedule-shift-save-spinner"
+              role="status"
+              data-delayed={shift.saving_state === "delayed" || undefined}
+              title={shift.saving_state === "delayed" ? "Still saving. Wait for the result before trying again." : "Saving"}
             >
-              <title>Edited - updates the live shift on next publish</title>
-            </Edit3>
+              <LoaderCircle size={12} strokeWidth={2.6} aria-hidden="true" />
+              <span className="sr-only">
+                {shift.saving_state === "delayed" ? "Still saving, please wait" : "Saving"}
+              </span>
+            </span>
           ) : null}
         </span>
       ) : null}
@@ -436,14 +481,22 @@ export function GhostShiftCard({
       ? `also scheduled at ${displayedLocation}`
       : "";
   // The real card at half strength in its own type color (Mert, 2026-10-13);
-  // the place sits behind a pin, not on a line.
+  // the place sits behind a pin, not on a line, and the words keep clear of it.
+  const pin = displayedLocation ? [SHIFT_CARD_MARK.pin] : [];
+  const firstLine = shiftCardFirstLineEdges({ right: pin });
+  const badgeRef = useRef<HTMLElement>(null);
+  useFirstLineMid(badgeRef);
   return (
     <article
+      ref={badgeRef}
       className="schedule-shift-badge"
       style={
         {
           "--shift-color": type?.color ?? "#54736a",
           "--schedule-row-badge-height": `${badgeHeight}px`,
+          "--shift-card-side": `${shiftCardSideRoom({ top: pin })}px`,
+          "--shift-card-line1-left": "0px",
+          "--shift-card-line1-right": `${firstLine.right}px`,
         } as CSSProperties
       }
       aria-label={formatScheduleBadgeAriaLabel({
@@ -459,8 +512,9 @@ export function GhostShiftCard({
       data-schedule-row-key={rowKey}
       data-ghost="true"
       data-job-color-dot={false}
-      data-has-markers={Boolean(displayedLocation)}
       data-shift-labels-visible={showShiftLabels}
+      // The pin's own row only in a narrow week while editing (styles.css).
+      data-mark-row={displayedLocation ? "true" : undefined}
     >
       {displayedLocation ? (
         <span className="schedule-shift-badge-markers">
@@ -469,8 +523,8 @@ export function GhostShiftCard({
             content={displayedLocation}
             className="schedule-ghost-location"
           >
-            {/* A little bigger than the other corner icons (Mert, 2026-10-13). */}
-            <MapPin size={14} strokeWidth={2.3} aria-hidden="true" />
+            {/* Bigger than the other corner icons (Mert, 2026-10-12 and 2026-10-13). */}
+            <MapPin size={SHIFT_CARD_MARK.pin} strokeWidth={2.2} aria-hidden="true" />
           </Tooltip>
         </span>
       ) : null}
