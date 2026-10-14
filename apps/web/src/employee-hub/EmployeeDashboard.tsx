@@ -50,11 +50,14 @@ export function EmployeeDashboard({
   model,
   now,
   stale,
+  refreshing = false,
   onRefresh,
 }: {
   model: EmployeeHubReadModel;
   now: Date;
   stale: boolean;
+  /** True while a refresh is on its way. */
+  refreshing?: boolean;
   onRefresh: () => void;
 }) {
   const { context } = useAuth();
@@ -163,6 +166,7 @@ export function EmployeeDashboard({
       ) : stale ? (
         <RefreshError
           message="Your day didn't refresh. This is the last schedule that loaded."
+          retrying={refreshing}
           onRetry={onRefresh}
         />
       ) : null}
