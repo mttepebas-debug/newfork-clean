@@ -416,17 +416,24 @@ describe("job assignment drawer", () => {
     });
     drawer();
     await screen.findByLabelText("Assign Employee 15");
-    expect(screen.queryByRole("button", { name: "Next employee page" })).toBeNull();
+    fireEvent.scroll(screen.getByRole("region", { name: "Employee list" }));
+    expect(api.loadJobEmployees).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("1–16 of 16")).toBeNull();
   });
-  it("has no bulk dropdown and still pages beyond 100 employees", async () => {
+  it("has no bulk dropdown or pager and loads beyond 100 employees on scroll", async () => {
     drawer();
     await screen.findByLabelText("Assign Employee 0");
     expect(screen.queryByLabelText("Bulk assignment actions")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Next employee page" }));
+    expect(screen.queryByRole("button", { name: /employee page/ })).toBeNull();
+    expect(screen.queryByLabelText("Assign Employee 50")).toBeNull();
+    const list = screen.getByRole("region", { name: "Employee list" });
+    fireEvent.scroll(list);
     await screen.findByLabelText("Assign Employee 50");
-    fireEvent.click(screen.getByRole("button", { name: "Next employee page" }));
+    expect(screen.getByLabelText("Assign Employee 0")).toBeTruthy();
+    fireEvent.scroll(list);
     expect(await screen.findByLabelText("Assign Employee 124")).toBeTruthy();
+    fireEvent.scroll(list);
+    expect(api.loadJobEmployees).toHaveBeenCalledTimes(3);
   });
   it("deletes an assigned job through one confirmed command and closes the drawer", async () => {
     vi.mocked(api.deleteJob).mockResolvedValue({ removed_count: 1 });
@@ -448,18 +455,14 @@ describe("job assignment drawer", () => {
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(api.saveJobAssignments).not.toHaveBeenCalled();
   });
-  it("preserves mixed changes across pages and saves only the target job deltas", async () => {
+  it("preserves mixed changes across loaded pages and saves only the target job deltas", async () => {
     drawer();
     fireEvent.click(await screen.findByLabelText("Assign Employee 0"));
     fireEvent.click(screen.getByLabelText("Assign Employee 1"));
-    fireEvent.click(screen.getByRole("button", { name: "Next employee page" }));
+    fireEvent.scroll(screen.getByRole("region", { name: "Employee list" }));
     fireEvent.click(await screen.findByLabelText("Assign Employee 50"));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Previous employee page" }),
-    );
     expect(
-      ((await screen.findByLabelText("Assign Employee 0")) as HTMLInputElement)
-        .checked,
+      (screen.getByLabelText("Assign Employee 0") as HTMLInputElement).checked,
     ).toBe(false);
     expect(
       (screen.getByLabelText("Assign Employee 1") as HTMLInputElement).checked,
