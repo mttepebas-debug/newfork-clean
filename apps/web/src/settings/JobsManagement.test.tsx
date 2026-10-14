@@ -390,6 +390,32 @@ describe("job assignment drawer", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
+  // Mert's comments on the Jobs page, 2026-10-14.
+  it("puts the assignment tabs above the search, says nothing when nothing is pending, and shows no Primary tag", async () => {
+    drawer();
+    await screen.findByLabelText("Assign Employee 0");
+    const tabs = screen.getByRole("button", { name: "Not assigned" });
+    const search = screen.getByLabelText("Search employees");
+    expect(tabs.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText("Primary")).toBeNull();
+    expect(screen.queryByText("No pending changes")).toBeNull();
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText("Assign Employee 1"));
+    expect(screen.getByText("1 to assign · 0 to remove")).toBeTruthy();
+  });
+  it("shows no pager when every employee fits on one page", async () => {
+    vi.mocked(api.loadJobEmployees).mockResolvedValue({
+      employees: Array.from({ length: 16 }, (_, index) => employee(index)),
+      total: 16,
+      manageable_total: 16,
+      assigned_count: 0,
+      locations: [],
+    });
+    drawer();
+    await screen.findByLabelText("Assign Employee 15");
+    expect(screen.queryByRole("button", { name: "Next employee page" })).toBeNull();
+    expect(screen.queryByText("1–16 of 16")).toBeNull();
+  });
   it("has no bulk dropdown and still pages beyond 100 employees", async () => {
     drawer();
     await screen.findByLabelText("Assign Employee 0");
@@ -569,7 +595,10 @@ describe("catalog navigation", () => {
     await screen.findByText("4 employees", { exact: false });
     fireEvent.click(screen.getByRole("button", { name: "Employees" }));
     expect(names(group("Service"))).toEqual(["Server", "Bartender"]);
-    fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+    // No separate clear button: the same heading goes descending, then back to A→Z.
+    expect(screen.queryByRole("button", { name: "Clear column sorting" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Employees" }));
+    fireEvent.click(screen.getByRole("button", { name: "Employees" }));
     expect(names(group("Service"))).toEqual(["Bartender", "Server"]);
   });
 
@@ -643,6 +672,25 @@ describe("catalog navigation", () => {
       expect(organization.setJobArchived).toHaveBeenCalledExactlyOnceWith("workspace", jobId, false),
     );
     expect(organization.saveJob).not.toHaveBeenCalled();
+  });
+
+  // Departments and jobs share the Archived rows: no Name or Department column.
+  it("titles no Name or Department column in Archived", async () => {
+    vi.mocked(organization.listJobs).mockResolvedValue([{ ...job, archived_at: "2026-10-01T12:00:00Z" } as Job]);
+    page("/app/settings/jobs?tab=archived");
+    await screen.findByRole("button", { name: "Restore Server" });
+    const headings = document.querySelector(".jobs-archived-row[role='row']") as HTMLElement;
+    expect(headings.textContent).not.toMatch(/Name|Department/);
+    expect(within(headings).getByRole("button", { name: "Archived" })).toBeTruthy();
+  });
+
+  it("leaves counts at — with no message when they don't load", async () => {
+    vi.mocked(api.loadJobCounts).mockRejectedValue(new Error("offline"));
+    page();
+    const service = await screen.findByRole("rowgroup", { name: "Service" });
+    await waitFor(() => expect(within(service).getByText("—")).toBeTruthy());
+    expect(screen.queryByText("Employee counts didn't load.")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("says a restored job goes back under its department while that department is active", async () => {

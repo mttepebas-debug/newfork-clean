@@ -48,7 +48,7 @@ describe("inline catalog deletion", () => {
       expect(organizationRequest).not.toHaveBeenCalled();
       expect(deleteJob).not.toHaveBeenCalled();
       expect(screen.queryByRole("alertdialog")).toBeNull();
-      expect(document.activeElement?.textContent).toMatch(/^Keep/);
+      expect(document.activeElement?.textContent).toBe("Cancel");
       fireEvent.click(screen.getByRole("button", { name: /^Delete/ }));
       await waitFor(() => expect(onDeleted).toHaveBeenCalledOnce());
       if (kind === "jobs")
@@ -105,7 +105,7 @@ describe("inline catalog deletion", () => {
       "Employee access denied",
     );
     expect(onDeleted).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Keep location" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
   });
 });
 describe("trigger-only confirmation", () => {

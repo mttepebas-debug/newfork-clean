@@ -12,7 +12,7 @@ import { JobCatalogEditor, type CatalogEditor } from "./JobCatalogEditor";
 import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
 import { CatalogArchiveButton, CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
 import { CatalogPageHeader, ListAddButton, TabRowAdd } from "../views/CatalogPageHeader";
-import { CatalogSortButton } from "../views/CatalogSortButton";
+import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
@@ -176,19 +176,12 @@ export default function JobsSettingsPage() {
           <CatalogSortButton
             active={selected}
             label={label}
-            onClick={() => setSort({ key, descending: selected ? !sort.descending : false })}
+            onClick={() => setSort(nextCatalogSort(sort, key))}
           />
         )}
       </span>
     );
   }
-  const clearSort = sort ? (
-    <button type="button" className="job-icon-button" aria-label="Clear column sorting" onClick={() => setSort(null)}>
-      <X size={14} />
-    </button>
-  ) : (
-    <span />
-  );
 
   function jobMenu(job: Job) {
     if (!canEdit) return <span />;
@@ -259,7 +252,7 @@ export default function JobsSettingsPage() {
         <div className="job-column-headings catalog-column-headings jobs-job-row" role="row">
           {sortColumn("name", "Job")}
           {sortColumn("employees", "Employees", !readEmployees)}
-          {clearSort}
+          <span />
         </div>
         {groups.length === 0
           ? empty(
@@ -332,7 +325,7 @@ export default function JobsSettingsPage() {
           {sortColumn("name", "Department")}
           {sortColumn("jobs", "Jobs")}
           {sortColumn("employees", "Employees", !readEmployees)}
-          {clearSort}
+          <span />
         </div>
         {rows.length === 0
           ? empty(
@@ -411,12 +404,11 @@ export default function JobsSettingsPage() {
     return (
       <div className="job-catalog" aria-label="Archived departments and jobs">
         <div className="job-column-headings catalog-column-headings jobs-archived-row" role="row">
-          {sortColumn("name", "Name")}
-          <span role="columnheader">
-            <span className="catalog-sort-label">Department</span>
-          </span>
+          {/* Departments and jobs share these rows, so the first column has no
+              title of its own; each group's heading names it (Mert 2026-10-14). */}
+          <span role="columnheader" aria-label="Name" />
           {sortColumn("archived", "Archived")}
-          {clearSort}
+          <span />
         </div>
         {archivedDepartments.length + archivedJobs.length === 0 ? (
           empty(
@@ -441,7 +433,6 @@ export default function JobsSettingsPage() {
                         {dep.name}
                       </span>
                     </button>
-                    <span className="jobs-cell jobs-faint jobs-archived-detail">—</span>
                     <span className="jobs-cell jobs-archived-detail">{archivedOn(dep.archived_at)}</span>
                     {restore(dep.name, "Comes back with no jobs", () => archive.mutate({ type: "departments", item: dep }))}
                   </div>
@@ -461,11 +452,11 @@ export default function JobsSettingsPage() {
                         <span className="job-row-name" title={job.name}>
                           {job.name}
                         </span>
+                        <span className="jobs-faint jobs-archived-home">
+                          {was ? was.name : "No department"}
+                          {was?.archived_at ? " · archived" : ""}
+                        </span>
                       </button>
-                      <span className="jobs-cell">
-                        {was ? was.name : <span className="jobs-faint">No department</span>}
-                        {was?.archived_at && <span className="jobs-faint"> · archived</span>}
-                      </span>
                       <span className="jobs-cell jobs-archived-detail">{archivedOn(job.archived_at)}</span>
                       {restore(job.name, home ? `Comes back under ${home.name}` : "Comes back under No department", () =>
                         archive.mutate({ type: "jobs", item: job }),
@@ -586,13 +577,8 @@ export default function JobsSettingsPage() {
           {formError}
         </p>
       )}
-      {counts.isError && (
-        <RefreshError
-          message="Employee counts didn't load."
-          retrying={counts.isFetching}
-          onRetry={() => void counts.refetch()}
-        />
-      )}
+      {/* Employee counts that don't load stay "—" with no message (Mert
+          2026-10-14): the list itself is all there. */}
       {data.error && data.data ? (
         <RefreshError
           message="Jobs and departments didn't refresh. This is the last list that loaded."

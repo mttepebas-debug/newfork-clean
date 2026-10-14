@@ -316,11 +316,6 @@ export function JobAssignmentsDrawer({
           </span>
           {row.disabled_reason && <small>{row.disabled_reason}</small>}
         </span>
-        <span className="job-employee-meta">
-          {row.is_primary && assigned && (
-            <span className="job-primary-tag">Primary</span>
-          )}
-        </span>
       </label>
     );
   }
@@ -475,6 +470,33 @@ export function JobAssignmentsDrawer({
                     This job is archived. Restore it to change assignments.
                   </p>
                 )}
+                <div className="job-drawer-filter-row">
+                  <div
+                    className="job-view-control"
+                    aria-label="Assignment filter"
+                  >
+                    {(["all", "assigned", "unassigned"] as const).map(
+                      (value) => (
+                        <button
+                          type="button"
+                          key={value}
+                          aria-pressed={filter === value}
+                          disabled={busy}
+                          onClick={() => {
+                            setFilter(value);
+                            setPage(0);
+                          }}
+                        >
+                          {value === "all"
+                            ? "All"
+                            : value === "assigned"
+                              ? "Assigned"
+                              : "Not assigned"}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
                 <div className="job-drawer-search-row">
                   <label className="job-search">
                     <Search size={16} />
@@ -510,33 +532,6 @@ export function JobAssignmentsDrawer({
                     ))}
                   </select>
                 </div>
-                <div className="job-drawer-filter-row">
-                  <div
-                    className="job-view-control"
-                    aria-label="Assignment filter"
-                  >
-                    {(["all", "assigned", "unassigned"] as const).map(
-                      (value) => (
-                        <button
-                          type="button"
-                          key={value}
-                          aria-pressed={filter === value}
-                          disabled={busy}
-                          onClick={() => {
-                            setFilter(value);
-                            setPage(0);
-                          }}
-                        >
-                          {value === "all"
-                            ? "All"
-                            : value === "assigned"
-                              ? "Assigned"
-                              : "Not assigned"}
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </div>
               </div>
               <div
                 ref={employeeList}
@@ -567,50 +562,56 @@ export function JobAssignmentsDrawer({
                   </div>
                 )}
               </div>
-              <div className="job-drawer-pagination">
-                <span>
-                  {data.data?.total
-                    ? `${page * 50 + 1}–${Math.min((page + 1) * 50, data.data.total)} of ${data.data.total}`
-                    : "0 employees"}
-                </span>
-                <div>
-                  <button
-                    className="job-icon-button"
-                    type="button"
-                    aria-label="Previous employee page"
-                    disabled={page === 0 || busy || data.isFetching}
-                    onClick={() => setPage((current) => current - 1)}
-                  >
-                    <ChevronLeft size={17} />
-                  </button>
-                  <button
-                    className="job-icon-button"
-                    type="button"
-                    aria-label="Next employee page"
-                    disabled={
-                      (page + 1) * 50 >= (data.data?.total ?? 0) ||
-                      busy ||
-                      data.isFetching
-                    }
-                    onClick={() => setPage((current) => current + 1)}
-                  >
-                    <ChevronRight size={17} />
-                  </button>
+              {/* One page needs no pager: the list runs to the footer (Mert 2026-10-14). */}
+              {(data.data?.total ?? 0) > 50 && (
+                <div className="job-drawer-pagination">
+                  <span>
+                    {data.data?.total
+                      ? `${page * 50 + 1}–${Math.min((page + 1) * 50, data.data.total)} of ${data.data.total}`
+                      : "0 employees"}
+                  </span>
+                  <div>
+                    <button
+                      className="job-icon-button"
+                      type="button"
+                      aria-label="Previous employee page"
+                      disabled={page === 0 || busy || data.isFetching}
+                      onClick={() => setPage((current) => current - 1)}
+                    >
+                      <ChevronLeft size={17} />
+                    </button>
+                    <button
+                      className="job-icon-button"
+                      type="button"
+                      aria-label="Next employee page"
+                      disabled={
+                        (page + 1) * 50 >= (data.data?.total ?? 0) ||
+                        busy ||
+                        data.isFetching
+                      }
+                      onClick={() => setPage((current) => current + 1)}
+                    >
+                      <ChevronRight size={17} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </section>
           )}
         </div>
-        <p className="job-change-summary" aria-live="polite">
-          {[
-            detailsDirty ? "Job details changed" : "",
-            pending.size
-              ? `${additions} to assign · ${removals} to remove`
-              : "",
-          ]
-            .filter(Boolean)
-            .join(" · ") || "No pending changes"}
-        </p>
+        {/* Nothing to save says nothing: Save stays disabled (Mert 2026-10-14). */}
+        {(detailsDirty || pending.size > 0) && (
+          <p className="job-change-summary" aria-live="polite">
+            {[
+              detailsDirty ? "Job details changed" : "",
+              pending.size
+                ? `${additions} to assign · ${removals} to remove`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        )}
         <footer className="job-editor-footer">
           {context?.permissions.includes("settings.jobs.manage") &&
             !createMode &&

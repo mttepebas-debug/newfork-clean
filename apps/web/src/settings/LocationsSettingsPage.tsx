@@ -16,7 +16,7 @@ import {
   TabRowAdd,
 } from "../views/CatalogPageHeader";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
-import { CatalogSortButton } from "../views/CatalogSortButton";
+import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
@@ -197,7 +197,7 @@ export default function LocationsSettingsPage() {
           active={selected}
           label={label}
           onClick={() =>
-            setSort({ key, descending: selected ? !sort.descending : false })
+            setSort(nextCatalogSort(sort, key))
           }
         />
       </span>
@@ -452,18 +452,7 @@ export default function LocationsSettingsPage() {
             {sortColumn("address", "Address")}
             {sortColumn("phone", "Phone number")}
             {sortColumn("timezone", "Time zone")}
-            {sort ? (
-              <button
-                type="button"
-                className="job-icon-button"
-                aria-label="Clear column sorting"
-                onClick={() => setSort(null)}
-              >
-                <X size={14} />
-              </button>
-            ) : (
-              <span />
-            )}
+            <span />
           </div>
           {visible.length === 0 ? (
             <div className="catalog-table-empty">

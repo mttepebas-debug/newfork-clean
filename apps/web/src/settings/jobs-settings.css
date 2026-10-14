@@ -268,30 +268,37 @@
   background: var(--job-bg);
   color: var(--job-text);
 }
+/* The job drawer's All / Assigned / Not assigned: underlined tabs on a 1 px
+   line, as the list pages' tabs (Mert 2026-10-14). */
 .job-view-control {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--job-border);
-  border-radius: 7px;
-  background: var(--job-subtle);
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  gap: 6px;
+  border-bottom: 1px solid var(--theme-border);
 }
 .job-view-control button {
-  padding: 7px 12px;
+  height: 40px;
+  margin-bottom: -1px;
+  padding: 8px 12px;
   border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--job-muted);
-  font-size: 12px;
-  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--theme-muted);
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
 }
 .job-view-control button[aria-selected="true"],
 .job-view-control button[aria-pressed="true"] {
-  background: var(--job-bg);
-  color: var(--job-text);
-  box-shadow: 0 1px 3px #10251a16;
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.job-view-control button:focus-visible {
+  outline-offset: -2px;
 }
 .job-search {
   display: flex;
@@ -886,6 +893,7 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 12px;
 }
 .job-drawer-filter-row > select {
   width: 125px;
@@ -953,20 +961,6 @@
 }
 .job-employee-identity small {
   font-size: 10px;
-  color: var(--job-muted);
-}
-.job-employee-meta {
-  display: flex;
-  align-items: flex-end;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
-}
-.job-primary-tag {
-  font-size: 9px;
-  border: 1px solid var(--job-border);
-  border-radius: 4px;
-  padding: 2px 5px;
   color: var(--job-muted);
 }
 .job-drawer-pagination {
@@ -1043,7 +1037,7 @@
     gap: 10px;
   }
   .job-view-control button {
-    padding: 7px 10px;
+    padding: 8px 10px;
   }
   .job-archive-filter {
     font-size: 11px;
@@ -1108,8 +1102,8 @@
     gap: 8px;
   }
   .job-drawer-filter-row .job-view-control button {
-    padding: 6px 8px;
-    font-size: 11px;
+    height: 44px;
+    padding: 8px 10px;
   }
   .job-drawer-filter-row > select {
     width: 110px;
@@ -1121,9 +1115,6 @@
   }
   .job-employee-avatar {
     display: none;
-  }
-  .job-employee-meta {
-    max-width: 82px;
   }
   .job-drawer-pagination {
     padding: 6px 16px;
@@ -1818,13 +1809,18 @@
   max-height: 50dvh;
   overflow-y: auto;
 }
-.catalog-drawer .job-editor-footer:has(.catalog-delete-confirm) {
-  flex-wrap: wrap;
-}
-.catalog-drawer
-  .job-editor-footer
-  .catalog-delete-action:has(.catalog-delete-confirm) {
-  flex-basis: 100%;
+/* The delete warning takes the Delete button's place in the footer row, from
+   the drawer's left edge to Cancel (Mert 2026-10-14). A phone has no room
+   beside Cancel and Save: there it takes its own row above them. */
+@media (max-width: 720px) {
+  .catalog-drawer .job-editor-footer:has(.catalog-delete-confirm) {
+    flex-wrap: wrap;
+  }
+  .catalog-drawer
+    .job-editor-footer
+    .catalog-delete-action:has(.catalog-delete-confirm) {
+    flex-basis: 100%;
+  }
 }
 .catalog-drawer
   .catalog-drawer-body
@@ -1916,10 +1912,6 @@
 .catalog-drawer .job-employee-identity > span {
   font-size: 11px;
   line-height: 1.4;
-}
-.catalog-drawer .job-employee-meta {
-  max-width: 64px;
-  text-align: right;
 }
 .catalog-drawer.job-assignment-drawer .catalog-drawer-body:has(> .job-error) {
   overflow-y: auto;
@@ -2061,8 +2053,17 @@
   gap: 12px;
 }
 .jobs-catalog-page .jobs-archived-row {
-  grid-template-columns: minmax(0, 1fr) 200px 140px 96px;
+  grid-template-columns: minmax(0, 1fr) 140px 96px;
   gap: 12px;
+}
+/* An archived job names the department it comes back to, beside its name. */
+.jobs-catalog-page .jobs-archived-home {
+  flex: none;
+  font-size: 12px;
+  font-weight: 400;
+}
+.jobs-catalog-page .jobs-archived-home::before {
+  content: "· ";
 }
 .jobs-catalog-page .job-catalog-row {
   min-height: 48px;
@@ -2077,6 +2078,18 @@
 }
 .jobs-catalog-page .jobs-number {
   font-variant-numeric: tabular-nums;
+}
+/* Counts sit in the middle of their column, under a centred heading (Mert
+   2026-10-14). On a phone the cards keep them at the row's end. */
+@media (min-width: 721px) {
+  .jobs-catalog-page :is(.jobs-job-row, .jobs-department-row) > .jobs-number {
+    text-align: center;
+  }
+  .jobs-catalog-page .jobs-job-row > [role="columnheader"]:nth-child(2),
+  .jobs-catalog-page .jobs-department-row > [role="columnheader"]:is(:nth-child(2), :nth-child(3)) {
+    display: flex;
+    justify-content: center;
+  }
 }
 .jobs-catalog-page .jobs-faint {
   color: var(--theme-muted);

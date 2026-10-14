@@ -253,7 +253,8 @@ it("sorts rows from the heading and clears back to the saved order", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Document name" }));
   expect(names()).toEqual(["Beta", "Alpha"]);
   expect(header.getAttribute("aria-sort")).toBe("descending");
-  fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+  expect(screen.queryByRole("button", { name: "Clear column sorting" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Document name" }));
   expect(header.getAttribute("aria-sort")).toBe("none");
 });
 it("does not read definitions the core does not open", () => {

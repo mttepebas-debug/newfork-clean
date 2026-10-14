@@ -6,11 +6,11 @@ import {
   type DocumentTypeInput,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Search, X } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { CatalogSortButton } from "../views/CatalogSortButton";
+import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import {
@@ -209,7 +209,7 @@ export default function DocumentsSettingsPage() {
           active={selected}
           label={label}
           onClick={() =>
-            setSort({ key, descending: selected ? !sort.descending : false })
+            setSort(nextCatalogSort(sort, key))
           }
         />
       </span>
@@ -384,18 +384,7 @@ export default function DocumentsSettingsPage() {
                   "Published",
                   "document-catalog-optional",
                 )}
-                {sort ? (
-                  <button
-                    type="button"
-                    className="job-icon-button"
-                    aria-label="Clear column sorting"
-                    onClick={() => setSort(null)}
-                  >
-                    <X size={14} />
-                  </button>
-                ) : (
-                  <span />
-                )}
+                <span />
               </div>
               {visible.length === 0 ? (
                 <div className="catalog-table-empty">

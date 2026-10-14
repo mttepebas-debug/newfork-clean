@@ -86,7 +86,7 @@ describe("Locations list", () => {
     expect(screen.getByText("No archived locations")).toBeTruthy();
     expect(screen.getByText("Archived locations will appear here.")).toBeTruthy();
   });
-  it("sorts by a column heading and clears the sorting", async () => {
+  it("sorts by a column heading; a third click goes back to the list's order", async () => {
     page();
     await screen.findByRole("button", { name: /^Main/ });
     const names = () => [...document.querySelectorAll(".job-row-name")].map((node) => node.textContent);
@@ -95,8 +95,12 @@ describe("Locations list", () => {
     expect(names()).toEqual(["Deniz", "Main"]);
     fireEvent.click(screen.getByRole("button", { name: "Location" }));
     expect(names()).toEqual(["Main", "Deniz"]);
-    fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+    expect(screen.queryByRole("button", { name: "Clear column sorting" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Location" }));
     expect(names()).toEqual(["Main", "Deniz"]);
+    expect(
+      screen.getByRole("button", { name: "Location" }).closest("[role='columnheader']")?.getAttribute("aria-sort"),
+    ).toBe("none");
   });
   it("hides New location from a reader", async () => {
     state.canEdit = false; page();

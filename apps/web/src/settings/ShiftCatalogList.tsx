@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Clock3, Search, Tags, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Clock3, Search, Tags } from "lucide-react";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { ListAddButton } from "../views/CatalogPageHeader";
 import { ShiftCatalogToolbar } from "./ShiftCatalogTabs";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
+import { nextCatalogSort } from "../views/CatalogSortButton";
 
 type Entry = {
   id: string;
@@ -102,7 +103,7 @@ export function ShiftCatalogList<T extends Entry>({
         aria-label={`Sort by ${label}`}
         aria-pressed={selected}
         onClick={() =>
-          setSort({ key, descending: selected ? !sort.descending : false })
+          setSort(nextCatalogSort(sort, key))
         }
       >
         {label}
@@ -141,18 +142,7 @@ export function ShiftCatalogList<T extends Entry>({
           {column("name", types ? "Shift type" : "Shift label")}
           {types && column("default_start_time", "Default start")}
           {types && column("default_end_time", "Default end")}
-          {sort ? (
-            <button
-              type="button"
-              className="job-icon-button"
-              aria-label="Clear column sorting"
-              onClick={() => setSort(null)}
-            >
-              <X size={14} />
-            </button>
-          ) : (
-            <span />
-          )}
+          <span />
         </div>
         {visible.length === 0 ? (
           <div className="catalog-table-empty">
