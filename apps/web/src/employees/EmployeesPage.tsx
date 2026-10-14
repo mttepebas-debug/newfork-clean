@@ -481,9 +481,7 @@ export default function EmployeesPage() {
             onRetry={() => void employees.refetch()}
           />
         ) : null}
-        {!employees.isLoading &&
-        !employees.error &&
-        visibleEmployees.length === 0 ? (
+        {employees.data && visibleEmployees.length === 0 ? (
           // A status tab with nobody in it is a filter too (L26).
           <div className="catalog-table-empty">
             <span className="catalog-table-empty-icon" aria-hidden>

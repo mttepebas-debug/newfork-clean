@@ -114,12 +114,12 @@ export function LoadError({
    * so it is not also a live alert (it would be read twice, button and all).
    */
   readonly headingRef?: RefObject<HTMLHeadingElement | null>;
-  /** 3 inside a drawer or panel whose own title is an h2. */
-  readonly level?: 2 | 3;
+  /** 3 inside a drawer or panel whose own title is an h2; 4 under an h3. */
+  readonly level?: 2 | 3 | 4;
   readonly className?: string;
 }) {
   const titleId = useId();
-  const Heading = level === 3 ? "h3" : "h2";
+  const Heading = level === 4 ? "h4" : level === 3 ? "h3" : "h2";
   const classes = ["load-error", inset ? "inset" : "", className ?? ""].filter(Boolean).join(" ");
   return (
     <section className={classes} role={headingRef ? undefined : "alert"} aria-labelledby={titleId}>

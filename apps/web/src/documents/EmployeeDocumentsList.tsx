@@ -296,14 +296,14 @@ export function EmployeeDocumentsList(props: {
         {query.error && !query.data && !isNoAccess(query.error) && (
           <LoadError
             inset
-            level={props.employeeId ? 3 : 2}
+            level={props.employeeId || personal ? 3 : 2}
             title="We couldn't load documents"
             detail="Documents didn't load. Nothing was changed."
             retrying={query.isFetching}
             onRetry={() => void query.refetch()}
           />
         )}
-        {!query.isLoading && !query.error && !visible.length && (
+        {query.data && !isNoAccess(query.error) && !visible.length && (
           noneYet ? (
             <div className="catalog-table-empty">
               <span className="catalog-table-empty-icon" aria-hidden>
