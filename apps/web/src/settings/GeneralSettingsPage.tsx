@@ -25,6 +25,7 @@ import {
 import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { isNoAccess } from "../lib/no-access";
 import { LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 
 export default function GeneralSettingsPage() {
@@ -239,7 +240,11 @@ export default function GeneralSettingsPage() {
           </div>
         </div>
         {/* A failed read is not a failed save (Mert 2026-10-14, "B"). */}
-        {checklistQuery.error ? (
+        {isNoAccess(checklistQuery.error) ? (
+          <p className="form-error" role="alert">
+            You don't have access to this setting.
+          </p>
+        ) : checklistQuery.error ? (
           <RefreshError
             message={
               checklistQuery.data !== undefined
@@ -301,7 +306,11 @@ export default function GeneralSettingsPage() {
             </Button>
           </div>
         </div>
-        {preferredQuery.error ? (
+        {isNoAccess(preferredQuery.error) ? (
+          <p className="form-error" role="alert">
+            You don't have access to this setting.
+          </p>
+        ) : preferredQuery.error ? (
           <RefreshError
             message={
               preferredQuery.data !== undefined

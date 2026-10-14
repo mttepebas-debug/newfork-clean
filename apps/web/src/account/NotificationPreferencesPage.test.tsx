@@ -373,4 +373,19 @@ describe("loading and errors (B look)", () => {
     expect(screen.getByRole("checkbox", { name: "Schedule In-app" })).toBeTruthy();
     expect(screen.queryByText("Gateway timeout")).toBeNull();
   });
+
+  it("drops the old choices when a refresh says the person no longer has access", async () => {
+    vi.mocked(getNotificationPreferences).mockReset().mockResolvedValueOnce(preferencesFixture());
+    const { client } = renderPage();
+    expect(await screen.findByRole("checkbox", { name: "Schedule In-app" })).toBeTruthy();
+    vi.mocked(getNotificationPreferences).mockRejectedValueOnce(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect(await screen.findByRole("heading", { name: "You don't have access to this workspace's notifications" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Schedule In-app" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+  });
 });

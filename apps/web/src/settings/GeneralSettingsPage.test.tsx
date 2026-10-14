@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { usLettersMessage } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import {
   setOwnerSetupChecklistClosed,
 } from "../communications/communications-data";
 import GeneralSettingsPage from "./GeneralSettingsPage";
+import { RequestError } from "../lib/request-error";
 import { loadPreferredNameApproval } from "../employees/employee-data";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 
@@ -92,12 +93,43 @@ describe("GeneralSettingsPage setup checklist controls", () => {
         mutations: { retry: false },
       },
     });
-    return render(
+    const view = render(
       <QueryClientProvider client={client}>
         <GeneralSettingsPage />
       </QueryClientProvider>,
     );
+    return { ...view, client };
   }
+
+  it("keeps the last values and says so when both settings fail to refresh", async () => {
+    const { client } = renderPage();
+    expect(await screen.findByText("Visible on Workspace")).toBeTruthy();
+    expect(await screen.findByText("Used as soon as it is entered")).toBeTruthy();
+    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValueOnce(new Error("checklist service down"));
+    vi.mocked(loadPreferredNameApproval).mockRejectedValueOnce(new Error("names service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    await waitFor(() =>
+      expect(screen.getAllByText("This setting didn't refresh. This is the last value that loaded.").length).toBe(2),
+    );
+    expect(screen.getByText("Visible on Workspace")).toBeTruthy();
+    expect(screen.getByText("Used as soon as it is entered")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /hide checklist/i })).toHaveProperty("disabled", false);
+    expect(screen.queryByText(/service down/)).toBeNull();
+    expect(screen.queryByText(/could not be saved/)).toBeNull();
+  });
+
+  it("says plainly when the person may not read a setting, with no Try again", async () => {
+    vi.mocked(loadPreferredNameApproval).mockRejectedValueOnce(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    renderPage();
+    expect(await screen.findByText("You don't have access to this setting.")).toBeTruthy();
+    expect(screen.queryByText("This setting didn't load. Nothing was changed.")).toBeNull();
+    expect(screen.queryByText("Forbidden")).toBeNull();
+    expect(screen.getByRole("button", { name: /answer them here|let them through/i })).toHaveProperty("disabled", true);
+  });
 
   // BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
   it("says under Workspace name that Turkish-only letters are not taken, and holds Save", async () => {
