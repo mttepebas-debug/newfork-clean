@@ -87,16 +87,13 @@ select throws_ok(
   null,
   'job cannot reference a department from another tenant'
 );
-select throws_ok(
-  $$update public.departments set archived_at = now() where id = '51000000-0000-4000-8000-000000000001'$$,
-  '23514',
-  'archive active jobs before archiving their department',
-  'department with active jobs cannot be archived'
-);
 select lives_ok(
-  $$update public.jobs set archived_at = now() where id = '61000000-0000-4000-8000-000000000001';
-    update public.departments set archived_at = now() where id = '51000000-0000-4000-8000-000000000001'$$,
-  'department can be archived after its jobs'
+  $$update public.departments set archived_at = now() where id = '51000000-0000-4000-8000-000000000001'$$,
+  'a department with active jobs can be archived'
+);
+select ok(
+  (select archived_at is not null from public.jobs where id = '61000000-0000-4000-8000-000000000001'),
+  'its active job goes to the archive with it'
 );
 
 -- A catalog row stays in its workspace (GUVENLIK-A GA-1): even the owner of
