@@ -200,7 +200,7 @@ export function AvailabilityPage() {
       {query.error && model && (
         <div className="weekly-team-error" role="alert">
           <span>Team availability didn't refresh. This is the last view that loaded.</span>
-          <button type="button" onClick={() => void query.refetch()}>
+          <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>
             <RotateCcw size={15} aria-hidden />
             Try again
           </button>

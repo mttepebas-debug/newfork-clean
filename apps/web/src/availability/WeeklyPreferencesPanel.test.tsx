@@ -167,6 +167,14 @@ describe("weekly preferences API panel", () => {
     });
     await screen.findByText("Availability didn't refresh. This is the last version that loaded.");
     expect(screen.queryByText("Refresh unavailable")).toBeNull();
+    vi.mocked(loadWeeklyPreferences).mockResolvedValueOnce(model());
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByText("Availability didn't refresh. This is the last version that loaded.")).toBeNull());
+    vi.mocked(loadWeeklyPreferences).mockRejectedValueOnce(new TypeError("Refresh unavailable"));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["weekly-preferences", w] });
+    });
+    await screen.findByText("Availability didn't refresh. This is the last version that loaded.");
     expect(
       (
         screen.getByRole("switch", {
