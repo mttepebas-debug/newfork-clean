@@ -6217,6 +6217,90 @@ describe("App", () => {
     consoleError.mockRestore();
   }, 15_000);
 
+  it("keeps a drafts read that fails after the week changed off the new week", async () => {
+    const weekStart = "2026-11-16";
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspaceId, date) =>
+      scheduleFixtureForWeek(String(date) >= "2026-11-23" ? "2026-11-23" : weekStart),
+    );
+    let failDraftList = false;
+    let rejectHeld: ((error: Error) => void) | null = null;
+    let holdNext = false;
+    vi.mocked(listScheduleDrafts).mockImplementation(async () => {
+      if (holdNext) {
+        holdNext = false;
+        return new Promise((_resolve, reject) => {
+          rejectHeld = reject;
+        });
+      }
+      if (failDraftList) throw new Error("drafts unavailable");
+      return draftList([]);
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    const trigger = await screen.findByRole(
+      "button",
+      { name: "Draft selector: New Schedule" },
+      { timeout: 5000 },
+    );
+    failDraftList = true;
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: "Blank schedule" }));
+    const notice = "The drafts didn't load, so editing didn't start. Nothing was changed.";
+    expect(await screen.findByText(notice)).toBeTruthy();
+
+    holdNext = true;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(rejectHeld).not.toBeNull());
+    failDraftList = false;
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    await waitFor(() => expect(screen.queryByText(notice)).toBeNull());
+    await act(async () => {
+      rejectHeld!(new Error("drafts unavailable"));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByText(notice)).toBeNull();
+    consoleError.mockRestore();
+  }, 15_000);
+
+  it("says it plainly, with no Try again, when the drafts read is refused", async () => {
+    const weekStart = "2026-11-16";
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek(weekStart));
+    let refuse = false;
+    vi.mocked(listScheduleDrafts).mockImplementation(async () => {
+      if (refuse) {
+        throw new ScheduleRequestError("permission denied", 403, {
+          error: "permission denied",
+          reason: "authz.denied",
+        });
+      }
+      return draftList([]);
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    const trigger = await screen.findByRole(
+      "button",
+      { name: "Draft selector: New Schedule" },
+      { timeout: 5000 },
+    );
+    refuse = true;
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: "Blank schedule" }));
+    expect(
+      await screen.findByText("You don't have access to edit this schedule."),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText("The drafts didn't load, so editing didn't start. Nothing was changed."),
+    ).toBeNull();
+    expect(screen.queryByText(/permission denied/)).toBeNull();
+    consoleError.mockRestore();
+  }, 15_000);
+
   it("says plainly when the page cannot refresh after an unpublish, never the raw error", async () => {
     const weekStart = "2026-11-16";
     const draft = {

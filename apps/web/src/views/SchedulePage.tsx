@@ -265,6 +265,12 @@ const SCHEDULE_FILTER_QUERY_PARAMS = [
   "layout",
 ] as const;
 
+type DraftsAsk = {
+  readonly source: "blank" | "edit";
+  readonly draftId: string | null;
+  readonly weekStart: string;
+};
+
 export function SchedulePage({
   scheduleBasePath = "/app/schedule",
 }: {
@@ -346,15 +352,10 @@ export function SchedulePage({
   const [operationError, setOperationError] = useState<string | null>(null);
   // An edit asked for while the drafts list could not be read: "Try again"
   // repeats that ask (blank, or the published or draft schedule it named).
-  const [draftsUnread, setDraftsUnread] = useState<
-    { readonly source: "blank" | "edit"; readonly draftId: string | null } | null
-  >(null);
+  // The ask keeps its week, so a read that fails after the week changed never
+  // shows on, or edits, the new week.
+  const [draftsUnread, setDraftsUnread] = useState<DraftsAsk | null>(null);
   const [draftsRetrying, setDraftsRetrying] = useState(false);
-  const loadedWeek = query.data?.week_start;
-  useEffect(() => {
-    // The ask belonged to the week it was made in.
-    setDraftsUnread(null);
-  }, [loadedWeek]);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
@@ -904,15 +905,22 @@ export function SchedulePage({
   // BL-394: editing starts from a fresh drafts list; if it cannot load, say so
   // plainly and stop, with the reason in the console.
   const refreshDraftsBeforeEdit = async (
-    ask: { readonly source: "blank" | "edit"; readonly draftId: string | null },
+    ask: Omit<DraftsAsk, "weekStart">,
   ): Promise<boolean> => {
+    if (!query.data) return false;
+    const weekStart = query.data.week_start;
     try {
       await refreshDrafts();
       setDraftsUnread(null);
       return true;
     } catch (error) {
       console.error(error);
-      setDraftsUnread(ask);
+      if (isNoAccess(error)) {
+        setDraftsUnread(null);
+        setOperationError("You don't have access to edit this schedule.");
+      } else {
+        setDraftsUnread({ ...ask, weekStart });
+      }
       return false;
     }
   };
@@ -935,13 +943,16 @@ export function SchedulePage({
     return acquire(draftId ? "draft" : "published", draftId);
   };
 
+  const draftsUnreadHere =
+    draftsUnread && draftsUnread.weekStart === query.data?.week_start ? draftsUnread : null;
+
   const retryDraftsUnread = async () => {
-    if (!draftsUnread) return;
+    if (!draftsUnreadHere) return;
     setDraftsRetrying(true);
     try {
-      await (draftsUnread.source === "blank"
+      await (draftsUnreadHere.source === "blank"
         ? startBlankDraftFromMenu()
-        : editDraftFromMenu(draftsUnread.draftId));
+        : editDraftFromMenu(draftsUnreadHere.draftId));
     } finally {
       setDraftsRetrying(false);
     }
@@ -2731,7 +2742,7 @@ export function SchedulePage({
         />
       ) : null}
       {/* Once an edit of this week is open, "editing didn't start" no longer holds. */}
-      {draftsUnread && !gridEditSession ? (
+      {draftsUnreadHere && !gridEditSession ? (
         <RefreshError
           message="The drafts didn't load, so editing didn't start. Nothing was changed."
           retrying={draftsRetrying}
