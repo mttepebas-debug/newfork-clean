@@ -66,7 +66,7 @@ Ama beş konu, bir koşul gerçekleşmeden yeni hesapta başlatılırsa iki hesa
 | Ne | Nerede kalıyor | Neden dışarıda |
 |---|---|---|
 | Thread konuşma geçmişleri | eski hesapta | Taşınamaz; her thread'in özeti ve kararları kendi raporunda |
-| 130 Artifact'ın canlı hâli | eski hesapta | Yeni hesap göremez; kaynakları ve gereken kopyaları devirde |
+| 128 Artifact'ın canlı hâli | eski hesapta | Yeni hesap göremez; kaynakları ve gereken kopyaları devirde |
 | `newfork-clean\artifacts\` (765 MB) ve canlı DB yedekleri | Mert'in diski | Büyük ve canlı veri içerebilir; GitHub'a gitmez, disk aynı |
 | Eski PC hafızası (34 dosya) | Mert'in diski | Konu 1'deki küçük karar |
 | "Devir testi" oturumları | eski hesapta | Kural gereği okunmadı, kopyalanmadı |

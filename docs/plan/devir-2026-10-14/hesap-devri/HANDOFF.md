@@ -12,7 +12,7 @@ Kurulum adımları ayrı dosyada: `NASIL-DEVAM.md` (bu klasörde). Devri bekleti
 - **Kod tarafında hiçbir şey kaybolmuyor.** Bütün thread'lerin kodu ya main'de ya kendi GitHub dalında. Push'lanmamış kod yalnız Mert'in bilgisayarında, eski yerel dallarda var; onlar da GitHub'a `yedek/2026-10-14/...` adıyla yedeklendi (28 yeni ref, bölüm 1.3).
 - **Main:** `9b871a97` (14 Ekim sabah 5:30). Tren kuyruğu boş. Canlı veritabanında yarım adım yok.
 - **Kaybolabilecek tek şey proje dosyalarıydı** (`/mnt/project-files`, 418 MB, 2.162 dosya: planlar, notlar, mockup'lar, PAGES kaynakları, thread raporları). Yeni hesapta bu klasör olmayacak. Üç yere kopyalandı (bölüm 1).
-- **Bütün Artifact'lar (130 sayfa) bu hesaba ait.** Yeni hesap onları göremez, güncelleyemez. Her birinin kaynak dosyası eşleştirildi; kaynağı olmayanların yayındaki hâli indirildi. Liste: `artifactler/ARTIFACTLER.md`.
+- **Bütün Artifact'lar (128 sayfa) bu hesaba ait.** Yeni hesap onları göremez, güncelleyemez. Her birinin kaynak dosyası eşleştirildi; kaynağı olmayanların yayındaki hâli indirildi. Liste: `artifactler/ARTIFACTLER.md`.
 - **Mert'ten 30'a yakın karar bekleniyor.** Hepsi tek listede, bölüm 2'de. Hiçbiri devri durdurmuyor.
 - **"Devredilmesi güvenli değil" diyen thread yok.** Ama beş konu bir koşul gerçekleşene kadar bekletilmeli (Remote Control tren thread'i, canlı veritabanı bağlantısı, eski hesaptaki zamanlanmış görevler, eski sayfadaki süresi dolmuş anahtarlar, Meyhouse demo verisi). Ayrıntı `GUVENLI-OLMAYANLAR.md`.
 
@@ -26,7 +26,7 @@ Klasör: `docs/plan/devir-2026-10-14/hesap-devri/`
 - `HANDOFF.md` (bu dosya), `NASIL-DEVAM.md`, `GUVENLI-OLMAYANLAR.md`, `PC-ISTEGI.md`
 - `threadler/`: 16 thread'in kendi devir raporu (her biri: amaç, bitenler, yarım iş, Mert'ten beklenen, dal, dosyalar, bulgular, yeni thread brief'i)
 - `koordinator-hafiza/`: koordinatörün kalıcı hafızası (19 dosya + `MEMORY.md` dizini)
-- `artifactler/`: 130 Artifact'ın kaynak eşlemesi (`ARTIFACTLER.md`, `artifactler.tsv`)
+- `artifactler/`: 128 Artifact'ın kaynak eşlemesi (`ARTIFACTLER.md`) ve kaynağı olmayan 32 sayfanın kopyası (`yedek/`)
 - `ENVANTER-PROJE-DOSYALARI.md`: proje dosyalarının klasör klasör ne olduğu
 - `proje-dosyalari/`: `/mnt/project-files`'ın **metin kısmı** (md, ts, tsx, py, mjs, json, css, svg ve 1 MB'tan küçük html), klasör yapısı aynen. Büyük derlenmiş html'ler (8–10 MB'lık uygulama kopyaları), png ve zip burada yok; onlar 1.2'de.
 
@@ -40,6 +40,7 @@ Bu daldan önce iki thread kendi yedeğini ayrı dala koydu:
 `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\`
 - `proje-dosyalari\`: `/mnt/project-files`'ın **tamamı** (büyük html, png, zip dahil), açılmış hâlde.
 - `arsiv\proje-dosyalari.tar.xz.partNN`: aynı içeriğin sıkıştırılmış parçaları. Yeni hesabın bulut thread'i bunları alıp `/mnt/project-files`'ı birebir geri kurar (`NASIL-DEVAM.md` adım 4). Böylece raporlardaki bütün `/mnt/project-files/...` yolları yeni hesapta da çalışır.
+- Not: Windows klasör adlarında büyük-küçük harf ayırmaz. Bu yüzden açılmış kopyada `PAGES\` ve `pages\` tek klasörde birleşmiş görünür; dosya kaybı yok (aynı adlı dosya yok). Asıl yedek `arsiv\` parçalarıdır; yeni hesap onları Linux'ta açtığı için iki klasör ayrı kalır.
 - `pc-envanter.md`: bilgisayarda yalnız yerelde duranların listesi (PC tren thread'i yazdı).
 
 Kopyadan çıkarılanlar (bilerek): `*.session.json` dosyaları; içinde süresi dolmuş test oturum anahtarı bulunan iki eski "Today" sayfasında anahtarlar "REDACTED" yapıldı; yerel test dünyasının demo parolası 40 dosyada `[GIZLI-CIKARILDI]` yapıldı (bölüm 7).
