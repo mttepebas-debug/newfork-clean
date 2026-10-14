@@ -168,7 +168,7 @@ export function AvailabilityMarkButton({ lines, label, className = "", insideBut
               aria-label={label}
               style={{ top: rect.bottom + 6, left: Math.max(8, Math.min(rect.left - 8, window.innerWidth - 400)) }}
             >
-              {lines.map((line) => <p key={line}>{line}</p>)}
+              {lines.map((line, index) => <p key={`${index}:${line}`}>{line}</p>)}
             </div>,
             document.body,
           )

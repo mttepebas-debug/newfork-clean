@@ -273,6 +273,27 @@ describe("ScheduleGrid", () => {
     expect(container.querySelector(".schedule-availability-mark-name") !== null).toBe(nameMark);
   });
 
+  // K18, M11: the window the "!" opens says "Changed after publishing", so
+  // the name's window says it under that day once the "!" moves there.
+  it.each([
+    ["came after the first publish", true],
+    ["was there before it", false],
+  ] as const)("while editing, a live shift whose mark %s: the name window says so = %s", (_case, changed) => {
+    const marked = availabilityModel([0, 4], true);
+    const model = { ...marked, shifts: marked.shifts.map((shift) => ({
+      ...shift,
+      source_published_shift_id: "99999999-9999-4999-8999-999999999999",
+      availability_changed_after_publish: changed,
+    })) };
+    renderGrid({ model, session: editSession(model) });
+    fireEvent.click(screen.getByRole("button", { name: /unavailable days this week/ }));
+    const lines = [...screen.getByRole("dialog").querySelectorAll("p")].map((line) => line.textContent);
+    const day = lines.indexOf("Changed after publishing");
+    expect(day > 0).toBe(changed);
+    expect(lines.filter((line) => line === "Changed after publishing")).toHaveLength(changed ? 1 : 0);
+    if (changed) expect(lines[day - 1]).toMatch(/^Marked unavailable /);
+  });
+
   it("puts the \"!\" in an empty cell's corner, and by the name only once two days are marked (KARARLAR Schedule, 2026-10-06)", () => {
     const one = availabilityModel([4], false);
     const first = renderGrid({ model: one, session: editSession(one) });

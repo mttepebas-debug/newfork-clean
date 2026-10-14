@@ -208,10 +208,17 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
   const thursdayCard = cell(ayse, aliId, thursday).locator("[data-shift-badge]");
   await expect(thursdayCard).toHaveAttribute("data-availability-warning", "true");
   await expect(thursdayCard).toHaveAccessibleDescription(/Changed after publishing/);
-  // The "!" window says it too, under the day and hours.
-  await thursdayCard.getByRole("button", { name: "Ali Person: unavailable during this shift", exact: true }).click();
-  await expect(ayse.getByRole("dialog", { name: "Ali Person: unavailable during this shift", exact: true }))
-    .toContainText("Changed after publishing");
+  // While editing, the live card says LIVE and its "!" moves to Ali's name
+  // (Mert, 2026-10-12); that window says it too, under Thursday's hours.
+  await expect(thursdayCard.locator(".schedule-availability-mark")).toHaveCount(0);
+  await ayse.getByRole("rowheader").filter({ hasText: "Ali Person" })
+    .getByRole("button", { name: "Ali Person: unavailable days this week", exact: true }).click();
+  const nameWindow = ayse.getByRole("dialog", { name: "Ali Person: unavailable days this week", exact: true });
+  await expect(nameWindow.locator("p")).toHaveText([
+    /^Marked unavailable Tue, /,
+    /^Marked unavailable Thu, /,
+    "Changed after publishing",
+  ]);
   await ayse.keyboard.press("Escape");
 
   await expect(cell(ayse, aliId, friday)).toHaveAttribute("data-availability-kind", "time_off");
