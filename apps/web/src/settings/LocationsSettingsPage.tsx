@@ -10,7 +10,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Search, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import {
+  CatalogPageHeader,
+  ListAddButton,
+  TabRowAdd,
+} from "../views/CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
@@ -67,6 +72,7 @@ export default function LocationsSettingsPage() {
   const canEdit =
     context?.permissions.includes("settings.locations.manage") ?? false;
   const queryClient = useQueryClient();
+  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const queryKey = ["organization-locations", workspaceId];
   const locations = useQuery({
@@ -197,6 +203,15 @@ export default function LocationsSettingsPage() {
     );
   };
 
+  const addButton = canEdit ? (
+    <ListAddButton
+      label="New location"
+      shortLabel="Add"
+      disabled={saveMutation.isPending || deleteLocked}
+      onClick={() => openEditor()}
+    />
+  ) : null;
+
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(locations.error))
     return (
@@ -243,6 +258,7 @@ export default function LocationsSettingsPage() {
               </button>
             ))}
           </div>
+          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
         </div>
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
@@ -254,13 +270,7 @@ export default function LocationsSettingsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {canEdit ? (
-            <ListAddButton
-              label="New location"
-              disabled={saveMutation.isPending || deleteLocked}
-              onClick={() => openEditor()}
-            />
-          ) : null}
+          {phone ? null : addButton}
         </div>
       </div>
       {editing ? (

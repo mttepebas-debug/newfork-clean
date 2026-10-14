@@ -9,11 +9,12 @@ import {
 import type { ActiveWorkspaceContext, EmployeeSummary } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import EmployeesPage from "./EmployeesPage";
 import { listEmployees } from "./employee-data";
 
 import { RequestError } from "../lib/request-error";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 
 const context = {
@@ -303,6 +304,27 @@ describe("EmployeesPage add employee", () => {
     };
     expect(await inTable().findByText("Alex Kim")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add employee" })).toBeNull();
+  });
+
+  // Mert 2026-10-14: a phone puts "+ Add" beside the location list, the search under both.
+  describe("on a phone", () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it("keeps Add employee after the search on a computer", async () => {
+      renderPage();
+      expect(await inTable().findByText("Alex Kim")).toBeTruthy();
+      const add = screen.getByRole("button", { name: "Add employee" });
+      expect(add.previousElementSibling?.classList.contains("toolbar-search")).toBe(true);
+    });
+    it("puts Add employee right after the location list", async () => {
+      stubPhoneWidth();
+      renderPage();
+      await screen.findAllByText("Alex Kim");
+      const add = screen.getByRole("button", { name: "Add employee" });
+      expect(add.previousElementSibling).toBe(
+        screen.getByRole("combobox", { name: "Filter employees by location" }),
+      );
+      expect(add.nextElementSibling?.classList.contains("toolbar-search")).toBe(true);
+    });
   });
 });
 

@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Clock3, Search, Tags, X } from "lucide
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { ListAddButton } from "../views/CatalogPageHeader";
 import { ShiftCatalogToolbar } from "./ShiftCatalogTabs";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 
 type Entry = {
   id: string;
@@ -48,6 +49,7 @@ export function ShiftCatalogList<T extends Entry>({
   reorderPending: boolean;
   archivePending: boolean;
 }) {
+  const phone = useListPhoneWidth();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{
     key: SortKey;
@@ -77,6 +79,14 @@ export function ShiftCatalogList<T extends Entry>({
     ...matching.filter((item) => !item.archived_at),
     ...matching.filter((item) => item.archived_at),
   ];
+  const addButton = canEdit ? (
+    <ListAddButton
+      label={`New ${noun}`}
+      shortLabel="Add"
+      disabled={addDisabled}
+      onClick={onAdd}
+    />
+  ) : null;
   const rowClass = `shift-catalog-row ${types ? "has-times" : ""}`;
   function column(key: SortKey, label: string) {
     const selected = sort?.key === key;
@@ -102,7 +112,10 @@ export function ShiftCatalogList<T extends Entry>({
   }
   return (
     <>
-      <ShiftCatalogToolbar disabled={tabsDisabled}>
+      <ShiftCatalogToolbar
+        disabled={tabsDisabled}
+        add={phone ? addButton : null}
+      >
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
             <Search size={16} aria-hidden />
@@ -113,13 +126,7 @@ export function ShiftCatalogList<T extends Entry>({
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-          {canEdit ? (
-            <ListAddButton
-              label={`New ${noun}`}
-              disabled={addDisabled}
-              onClick={onAdd}
-            />
-          ) : null}
+          {phone ? null : addButton}
         </div>
       </ShiftCatalogToolbar>
       {notice}
