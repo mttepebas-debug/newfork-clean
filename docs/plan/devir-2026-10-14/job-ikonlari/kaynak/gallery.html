@@ -1,0 +1,325 @@
+<title>Job ikon paketi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a working sheet. Header with counts, real-size strip, card grid, Lineup before/after. Colors are newfork-clean's own theme tokens. */
+:root {
+  --bg: #f4f5f3; --surface: #ffffff; --soft: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #5f6b66; --line: #dce3df; --line-strong: #cbd4d0; --accent: #176954; --accent-soft: #dbece5;
+  --keep: #176b4e; --keep-soft: #e7f1ed; --del: #b84234; --del-soft: #fff0ee; --wait: #8a5a00; --wait-soft: #fff7e2;
+  --night: #17221e; --night-fg: #e8efec; --focus: #177a64;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1513; --surface: #161e1b; --soft: #1d2723; --text: #e6ece9; --body: #d9e1dd;
+  --muted: #9aa8a2; --line: #2a3531; --line-strong: #3a4742; --accent: #5cc19f; --accent-soft: #1f3a31;
+  --keep: #6fd0a5; --keep-soft: #193429; --del: #ff8a7a; --del-soft: #3a1f1b; --wait: #e7b75a; --wait-soft: #352a14;
+  --night: #050807; --night-fg: #e8efec; --focus: #5cc19f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1513; --surface: #161e1b; --soft: #1d2723; --text: #e6ece9; --body: #d9e1dd;
+  --muted: #9aa8a2; --line: #2a3531; --line-strong: #3a4742; --accent: #5cc19f; --accent-soft: #1f3a31;
+  --keep: #6fd0a5; --keep-soft: #193429; --del: #ff8a7a; --del-soft: #3a1f1b; --wait: #e7b75a; --wait-soft: #352a14;
+  --night: #050807; --night-fg: #e8efec; --focus: #5cc19f; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--body); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+h1 { margin: 0; font-size: 26px; line-height: 1.2; color: var(--text); letter-spacing: -0.01em; text-wrap: balance; }
+h2 { margin: 0; font-size: 16px; color: var(--text); }
+.lead { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
+.head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; }
+.counts { display: flex; gap: 8px; flex-wrap: wrap; }
+.count { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+.count[data-k="bekliyor"], .pill[data-k="bekliyor"] { background: var(--wait-soft); color: var(--wait); }
+.count[data-k="keep"], .pill[data-k="keep"] { background: var(--keep-soft); color: var(--keep); }
+.count[data-k="sil"], .pill[data-k="sil"] { background: var(--del-soft); color: var(--del); }
+.howto { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+.howto b { color: var(--text); }
+.howto code { font: 600 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--soft); padding: 1px 6px; border-radius: 5px; color: var(--text); }
+.bar { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+.group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.group > span { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-right: 2px; }
+.chip { font: 500 13px var(--font); border: 1px solid var(--line-strong); background: var(--surface); color: var(--body); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+.chip:focus-visible, .card:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dot { width: 22px; height: 22px; border-radius: 50%; padding: 0; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--line-strong); cursor: pointer; }
+.dot[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--text); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.strip { display: flex; flex-wrap: wrap; gap: 6px 4px; padding: 12px; border-radius: 8px; }
+.strip.light { background: #ffffff; color: #1d2525; border: 1px solid var(--line); }
+.strip.dark { background: var(--night); color: var(--night-fg); }
+.strip figure { margin: 0; width: 34px; display: grid; justify-items: center; gap: 3px; }
+.strip figure.off { opacity: .28; }
+.strip figcaption { font-size: 10px; line-height: 1; opacity: .6; font-variant-numeric: tabular-nums; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; align-content: start; }
+.card[data-k="sil"] { opacity: .55; }
+.card[data-k="keep"] { border-color: var(--keep); }
+.card-top { display: flex; justify-content: space-between; align-items: center; }
+.num { font: 700 13px var(--font); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.big { display: grid; place-items: center; height: 84px; border-radius: 8px; background: var(--soft); }
+.sizes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sw { display: flex; align-items: center; justify-content: center; gap: 10px; height: 38px; border-radius: 8px; }
+.sw.light { background: #ffffff; color: #1d2525; border: 1px solid var(--line); }
+.sw.dark { background: var(--night); color: var(--night-fg); }
+.card h3 { margin: 0; font-size: 15px; line-height: 1.3; color: var(--text); }
+.card p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.tint .big, .tint .sw.light { color: var(--tint); }
+.lineup { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.phone { background: #ffffff; color: #1d2525; border: 1px solid #dce3df; border-radius: 18px; padding: 14px 14px 6px; max-width: 390px; width: 100%; justify-self: center; }
+.phone-title { font: 600 12px var(--font); color: #66716c; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
+.phone-sub { font: 700 17px var(--font); color: #17221e; margin: 0 0 8px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #e2e6e4; }
+.av { width: 36px; height: 36px; flex: none; border-radius: 50%; background: #f0f3f1; color: #1d2525; display: inline-flex; align-items: center; justify-content: center; font: 700 12px var(--font); }
+.who { flex: 1; min-width: 0; }
+.who b { display: block; font: 600 15px/1.3 var(--font); color: #17221e; }
+.who span { font-size: 13px; color: #66716c; }
+.job { font: 600 12px var(--font); padding: 3px 8px; border-radius: 6px; background: #f0f3f1; color: #26352f; white-space: nowrap; }
+.cap { text-align: center; font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+footer { color: var(--muted); font-size: 12.5px; display: grid; gap: 4px; }
+footer code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.ill * { stroke-linecap: round; stroke-linejoin: round; }
+.cz .ill [class] { fill: var(--paper, #fff); stroke: currentColor; stroke-width: 1.6; }
+.cz .ill :is(.ln, .ln2, .ln3) { fill: none; }
+.cz .ill .ln2, .rk .ill .ln2 { stroke-width: 2; }
+.rk .ill [class] { stroke: #1d2528; stroke-width: 1.6; }
+.rk .ill :is(.ln, .ln2) { fill: none; }
+.rk .ill .ln3 { fill: none; stroke: #c3ccd2; stroke-width: 1.4; }
+/*RKCSS*/
+.rk .ill .sk { fill: var(--sk); } .rk .ill .hr { fill: var(--hr); }
+.rk .ill .lg { fill: none; stroke: #e0b04a; stroke-width: 1.4; } .rk .ill .lw { fill: none; stroke: #7a2e3a; stroke-width: 1.6; }
+.rk .ill .ao { fill: none; stroke: #1d2528; stroke-width: 6.4; } .rk .ill .aw { fill: none; stroke: var(--arm); stroke-width: 3.2; }
+.ill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.ill-one { display: grid; place-items: center; background: #f7f9f8; border-radius: 10px; padding: 8px 0; }
+.ill-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ill-pair figure { margin: 0; border-radius: 10px; display: grid; justify-items: center; gap: 2px; padding: 8px 4px 6px; }
+.ill-pair figure.cz { background: var(--soft); color: var(--text); --paper: var(--soft); }
+.ill-pair figure.rk { background: #f7f9f8; }
+.ill-pair figcaption { font-size: 12px; color: var(--muted); }
+.ill-pair figure.rk figcaption { color: #5f6b66; }
+.ill-sizes { display: flex; align-items: center; justify-content: space-around; gap: 6px; flex-wrap: wrap; padding: 4px 0; }
+.avc { border-radius: 50%; display: inline-grid; place-items: center; overflow: hidden; flex: none; }
+.row .avc { width: 44px; height: 44px; }
+@media (max-width: 520px) { h1 { font-size: 22px; } .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sw { gap: 6px; } }
+@media (prefers-reduced-motion: no-preference) { .chip, .dot { transition: background .15s, box-shadow .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div>
+      <h1>Job ikon paketi</h1>
+      <p class="lead">Restoran pozisyonları, o işi yapan insanlar, kullandıkları aletler ve genel görevler için ikonlar. Tur 1 ve 2 uygulamadaki küçük ikonların kuralıyla çizildi. Tur 3 senin gönderdiğin örneklere göre: daha büyük, insanlı, hikâyeli çizimler. Tek renk olanlar job'un rengini alır.</p>
+    </div>
+    <div class="counts" id="counts"></div>
+  </header>
+
+  <div class="howto">
+    <b>Nasıl karar verilir</b>
+    <span>Her kartın sol üstünde numarası var. Thread'e numarayla yaz: <code>keep 1 4 9</code> · <code>sil 7 12</code> · <code>devam</code> (yeni tur) · <code>bu kadar yeter</code>.</span>
+    <span>Kararsız kalan ikonlar “Bekliyor” olarak durur; istersen bir ikon için “daha kalın”, “başka şekil” gibi not da yazabilirsin.</span>
+  </div>
+
+  <section class="panel" aria-labelledby="h-ill">
+    <div class="panel-head"><h2 id="h-ill">İnsan çizimleri · renkli stil</h2><span class="note" id="ill-count"></span></div>
+    <p class="note">Senin örneklerindeki gibi: yüzsüz insan, net saç ve kıyafet, önde o rolün aleti. Seçtiğin renkli stilde. 53–58 beğendiğin ilk seri, 59'dan sonrası 100'lük yeni serinin turları. Tur 9 senin kuralınla çizildi (Lineup'ta ismin solunda duracağı için): sadece o işi yapan kişi ya da en çok kullandığı alet. Alakasız 25 çizimin yerine aynı numaralarla geldi, 159–173 yeni. Kartın altındaki daireler Lineup avatar boyutları (52, 44 ve 32 px).</p>
+    <div class="ill-grid" id="ill-grid"></div>
+    <div class="lineup">
+      <div><div class="phone" id="ph-ill-rk"></div><p class="cap">Salon ve bar, 44 px avatar</p></div>
+      <div><div class="phone" id="ph-ill-rk2"></div><p class="cap">Mutfak ve diğerleri, 44 px avatar</p></div>
+    </div>
+  </section>
+
+  <div class="bar">
+    <div class="group" id="f-status"><span>Göster</span></div>
+    <div class="group" id="f-round"><span>Tur</span></div>
+    <div class="group" id="f-cat"><span>Grup</span></div>
+    <div class="group" id="f-tint"><span>Renk</span></div>
+  </div>
+
+  <section class="panel" aria-labelledby="h-real">
+    <div class="panel-head">
+      <h2 id="h-real">Gerçek boyut</h2>
+      <div class="group" id="f-size"><span>Boyut</span></div>
+    </div>
+    <p class="note">Lineup'ta telefonda yaklaşık 18–20 px, sıkı listelerde 16 px görünecek. Önce bu satırlara bak: küçükken ne olduğu anlaşılmayan ikonu silmek iyi bir ölçü.</p>
+    <div class="strip light" id="strip-light"></div>
+    <div class="strip dark" id="strip-dark"></div>
+  </section>
+
+  <section aria-labelledby="h-all" style="display:grid;gap:12px">
+    <div class="panel-head"><h2 id="h-all">İkonlar</h2><p class="note" id="shown"></p></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-lineup">
+    <div class="panel-head"><h2 id="h-lineup">Lineup'ta nasıl görünür</h2></div>
+    <p class="note">Telefon Lineup satırı, bugünkü ölçülerle (36 px daire). Solda bugün, ortada nesne ikonları, sağda insan ikonları. İkon job'un rengini alır. Örnek kişiler uydurmadır.</p>
+    <div class="lineup">
+      <div><div class="phone" id="ph-before"></div><p class="cap">Bugün: baş harfler</p></div>
+      <div><div class="phone" id="ph-after"></div><p class="cap">Nesne ikonlarıyla (tur 1)</p></div>
+      <div><div class="phone" id="ph-people"></div><p class="cap">İnsan ikonlarıyla (tur 2)</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Dosyalar: <code>/mnt/project-files/pages/gorsel-kararlar/gelen/job-ikonlari/svg/</code> (her ikon ayrı .svg) ve aynı klasörde README.md (ad, önerilen job, durum).</span>
+    <span>Bu bir tasarım taslağı; uygulama koduna henüz dokunulmadı.</span>
+  </footer>
+</div>
+
+<script>
+const ICONS = /*DATA*/[];
+const NS = 'http://www.w3.org/2000/svg';
+const LABEL = { bekliyor: 'Bekliyor', keep: 'Keep', sil: 'Sil' };
+const TINTS = [['Metin', ''], ['Siyah', '#000000'], ['Mavi', '#4478A8'], ['Yeşil', '#3C7A68'], ['Koyu yeşil', '#176954'], ['Amber', '#B7791F'], ['Kırmızı', '#B84234'], ['Mor', '#6E56A8']];
+const state = { status: 'hepsi', cat: 'hepsi', round: 'hepsi', tint: '', size: 16 };
+try { const s = JSON.parse(localStorage.getItem('job-icons-view') || '{}'); Object.assign(state, s); } catch (e) {}
+const save = () => { try { localStorage.setItem('job-icons-view', JSON.stringify(state)); } catch (e) {} };
+
+function svg(body, px) {
+  const el = document.createElementNS(NS, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: px, height: px, fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' })) el.setAttribute(k, v);
+  el.innerHTML = body;
+  return el;
+}
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === 'class' ? el.className = v : el.setAttribute(k, v);
+  for (const k of kids) el.append(k);
+  return el;
+}
+const pad = n => String(n).padStart(2, '0');
+const visible = i => (state.status === 'hepsi' || i.st === state.status) && (state.cat === 'hepsi' || i.cat === state.cat) && (state.round === 'hepsi' || i.round === state.round);
+
+function chips(id, items, key, onPick) {
+  const box = document.getElementById(id);
+  box.querySelectorAll('button').forEach(b => b.remove());
+  for (const [label, value] of items) {
+    const b = h('button', { class: 'chip', type: 'button', 'aria-pressed': String(state[key] === value) }, label);
+    b.addEventListener('click', () => { state[key] = value; save(); onPick(); });
+    box.append(b);
+  }
+}
+function renderControls() {
+  const cats = [...new Set(ICONS.map(i => i.cat))];
+  chips('f-status', [['Hepsi', 'hepsi'], ['Bekliyor', 'bekliyor'], ['Keep', 'keep'], ['Sil', 'sil']], 'status', renderAll);
+  chips('f-cat', [['Hepsi', 'hepsi'], ...cats.map(c => [c, c])], 'cat', renderAll);
+  const rounds = [...new Set(ICONS.map(i => i.round))];
+  chips('f-round', [['Hepsi', 'hepsi'], ...rounds.map(r => ['Tur ' + r, r])], 'round', renderAll);
+  chips('f-size', [['16 px', 16], ['20 px', 20], ['24 px', 24]], 'size', renderAll);
+  const t = document.getElementById('f-tint');
+  t.querySelectorAll('button').forEach(b => b.remove());
+  for (const [label, value] of TINTS) {
+    const b = h('button', { class: 'dot', type: 'button', title: label, 'aria-label': 'Renk: ' + label, 'aria-pressed': String(state.tint === value) });
+    b.style.background = value || 'var(--text)';
+    b.addEventListener('click', () => { state.tint = value; save(); renderAll(); });
+    t.append(b);
+  }
+}
+function renderCounts() {
+  const c = { bekliyor: 0, keep: 0, sil: 0 };
+  ICONS.forEach(i => c[i.st]++);
+  ILL.forEach(i => c[i.st]++);
+  const box = document.getElementById('counts');
+  box.replaceChildren(h('span', { class: 'count', 'data-k': 'all', style: 'background:var(--soft);color:var(--text)' }, (ICONS.length + ILL.length) + ' ikon'),
+    ...Object.keys(c).map(k => h('span', { class: 'count', 'data-k': k }, LABEL[k] + ' ' + c[k])));
+}
+function renderStrips() {
+  for (const id of ['strip-light', 'strip-dark']) {
+    const box = document.getElementById(id);
+    box.replaceChildren(...ICONS.map(i => {
+      const f = h('figure', { class: visible(i) ? '' : 'off', title: pad(i.n) + ' ' + i.role }, svg(i.svg, state.size), h('figcaption', {}, pad(i.n)));
+      if (state.tint && id === 'strip-light') f.style.color = state.tint;
+      return f;
+    }));
+  }
+}
+function renderGrid() {
+  const list = ICONS.filter(visible);
+  document.getElementById('shown').textContent = list.length + ' / ' + ICONS.length + ' gösteriliyor';
+  const grid = document.getElementById('grid');
+  grid.replaceChildren(...list.map(i => {
+    const card = h('article', { class: 'card' + (state.tint ? ' tint' : ''), 'data-k': i.st, tabindex: '0', 'aria-label': pad(i.n) + ' ' + i.role + ', ' + LABEL[i.st] },
+      h('div', { class: 'card-top' }, h('span', { class: 'num' }, pad(i.n)), h('span', { class: 'pill', 'data-k': i.st }, LABEL[i.st])),
+      h('div', { class: 'big' }, svg(i.svg, 56)),
+      h('div', { class: 'sizes' },
+        h('span', { class: 'sw light' }, svg(i.svg, 24), svg(i.svg, 16)),
+        h('span', { class: 'sw dark' }, svg(i.svg, 24), svg(i.svg, 16))),
+      h('h3', {}, i.role),
+      h('p', {}, i.name + ' · ' + i.cat + ' · Tur ' + i.round));
+    if (state.tint) card.style.setProperty('--tint', state.tint);
+    return card;
+  }));
+}
+const PEOPLE = [
+  ['Maria Lopez', 'server', 'server-notepad', 'Server', '11:00 AM – 3:00 PM', '#4478A8'],
+  ['James Carter', 'line-cook', 'cook-tossing', 'Line cook', '10:00 AM – 4:00 PM', '#B84234'],
+  ['Aisha Khan', 'hostess', 'hostess-menu', 'Hostess', '11:00 AM – 2:30 PM', '#6E56A8'],
+  ['Tom Nguyen', 'bartender', 'bartender-shaking', 'Bartender', '12:00 PM – 6:00 PM', '#B7791F'],
+  ['Emily Brooks', 'busser', 'busser-person', 'Busser', '11:30 AM – 3:30 PM', '#3C7A68'],
+  ['Daniel Ortiz', 'expo', 'expo-bell', 'Expo', '11:00 AM – 3:00 PM', '#176954'],
+  ['Robert Hayes', 'gm', 'gm-suit', 'General manager', '9:00 AM – 5:00 PM', '#111827'],
+];
+function renderLineup() {
+  const by = Object.fromEntries(ICONS.map(i => [i.slug, i]));
+  const rows = mode => PEOPLE.map(([name, obj, person, job, time, color]) => {
+    const av = h('span', { class: 'av' });
+    const slug = mode === 'obj' ? obj : person;
+    if (mode && by[slug]) { av.style.color = color; av.append(svg(by[slug].svg, 20)); }
+    else av.textContent = name.split(' ').map(w => w[0]).join('');
+    return h('div', { class: 'row' }, av, h('div', { class: 'who' }, h('b', {}, name), h('span', {}, time)), h('span', { class: 'job' }, job));
+  });
+  for (const [id, mode] of [['ph-before', ''], ['ph-after', 'obj'], ['ph-people', 'person']])
+    document.getElementById(id).replaceChildren(h('p', { class: 'phone-title' }, 'Lineup · Lunch'), h('p', { class: 'phone-sub' }, 'Downtown · Thu, Oct 16'), ...rows(mode));
+}
+const ILL = /*ILL*/[];
+function illSvg(i, px) {
+  const el = document.createElementNS(NS, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 48 48', width: px, height: px, class: 'ill', 'aria-hidden': 'true' })) el.setAttribute(k, v);
+  el.style.setProperty('--hr', i.hr); el.style.setProperty('--sk', i.sk); el.style.setProperty('--arm', i.arm);
+  el.innerHTML = i.svg;
+  return el;
+}
+function avc(i, mode, px) {
+  const soft = 'color-mix(in srgb, ' + i.job + ' 14%, #fff)';
+  const a = h('span', { class: 'avc ' + mode });
+  a.style.cssText = 'width:' + px + 'px;height:' + px + 'px;background:' + soft + ';color:' + i.job + ';--paper:' + soft;
+  a.append(illSvg(i, Math.round(px * 0.92)));
+  return a;
+}
+const ILL_PEOPLE = [[
+  ['Daniel Ortiz', 'server-tray-ill', 'Server', '11:00 AM – 3:00 PM'],
+  ['Marco Rossi', 'server-mustache-ill', 'Server', '11:00 AM – 3:00 PM'],
+  ['Grace Kim', 'hostess-menus-ill', 'Hostess', '10:30 AM – 2:30 PM'],
+  ['Luis Romero', 'busser-tub-ill', 'Busser', '11:00 AM – 3:00 PM'],
+  ['Hannah Lee', 'runner-plates-ill', 'Food runner', '11:30 AM – 3:30 PM'],
+  ['Tom Nguyen', 'bartender-shaking-ill', 'Bartender', '12:00 PM – 6:00 PM'],
+  ['Olivia Grant', 'bartender-tap-ill', 'Bartender', '4:00 PM – 11:00 PM'],
+  ['Robert Hayes', 'gm-suit-ill', 'General manager', '9:00 AM – 5:00 PM'],
+], [
+  ['James Carter', 'chef-pot-ill', 'Chef', '10:00 AM – 4:00 PM'],
+  ['Nina Patel', 'sous-chef-ill', 'Sous chef', '10:00 AM – 6:00 PM'],
+  ['Andre Wilson', 'line-cook-flame-ill', 'Line cook', '11:00 AM – 7:00 PM'],
+  ['Sofia Reyes', 'prep-cook-ill', 'Prep cook', '7:00 AM – 1:00 PM'],
+  ['Kevin Brown', 'dishwasher-ill', 'Dishwasher', '11:00 AM – 7:00 PM'],
+  ['Jordan Price', 'expo-ticket-ill', 'Expo', '11:00 AM – 3:00 PM'],
+  ['Sam Ortega', 'driver-box-ill', 'Delivery driver', '5:00 PM – 10:00 PM'],
+  ['Maya Brooks', 'shift-lead-ill', 'Shift lead', '3:00 PM – 11:00 PM'],
+]];
+function renderIll() {
+  document.getElementById('ill-count').textContent = ILL.length + ' çizim · ' + pad(ILL[0].n) + '–' + pad(ILL[ILL.length - 1].n);
+  document.getElementById('ill-grid').replaceChildren(...ILL.map(i => h('article', { class: 'card', 'data-k': i.st, tabindex: '0', 'aria-label': pad(i.n) + ' ' + i.name + ', ' + LABEL[i.st] },
+    h('div', { class: 'card-top' }, h('span', { class: 'num' }, pad(i.n)), h('span', { class: 'pill', 'data-k': i.st }, LABEL[i.st])),
+    h('div', { class: 'ill-one rk' }, illSvg(i, 132)),
+    h('div', { class: 'ill-sizes' }, avc(i, 'rk', 52), avc(i, 'rk', 44), avc(i, 'rk', 32)),
+    h('h3', {}, i.name), h('p', {}, 'Önerilen: ' + i.role + ' · Tur ' + i.round))));
+  const by = Object.fromEntries(ILL.map(i => [i.slug, i]));
+  ['ph-ill-rk', 'ph-ill-rk2'].forEach((id, k) =>
+    document.getElementById(id).replaceChildren(h('p', { class: 'phone-title' }, 'Lineup · Lunch'), h('p', { class: 'phone-sub' }, 'Downtown · Thu, Oct 16'),
+      ...ILL_PEOPLE[k].filter(p => by[p[1]]).map(([name, slug, job, time]) => h('div', { class: 'row' }, avc(by[slug], 'rk', 44), h('div', { class: 'who' }, h('b', {}, name), h('span', {}, time)), h('span', { class: 'job' }, job)))));
+}
+function renderAll() { renderIll(); renderControls(); renderCounts(); renderStrips(); renderGrid(); renderLineup(); }
+renderAll();
+</script>
