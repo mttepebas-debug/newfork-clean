@@ -55,19 +55,46 @@
 /* A page's card sits in the middle of the page area, the space the menus
    leave, on any screen size (Mert 2026-10-14). The area becomes a column, so
    the card's auto margins split the free height; a card taller than the area
-   starts at the top and scrolls. A card inside a drawer keeps its place. */
+   starts at the top and scrolls. A card inside a drawer keeps its place.
+   Page areas: .app-main; Settings' content beside its own menu; there the
+   Shift catalog's tab panel; Account's content column. */
 :is(.app-main, .settings-content):has(> .no-access) {
   display: flex;
   flex-direction: column;
   padding: 24px;
 }
-:is(.app-main, .settings-content) > .no-access {
+/* Shift catalog and Account wrap the page in frames of their own: the area
+   and each frame stretch down as one column. */
+.settings-content:has(> .shift-catalog-shell > .shift-catalog-panel > .no-access),
+.account-content-scroll:has(> .account-main > .no-access) {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+.settings-content > .shift-catalog-shell:has(> .shift-catalog-panel > .no-access),
+.shift-catalog-shell > .shift-catalog-panel:has(> .no-access),
+.account-content-scroll > .account-main:has(> .no-access) {
+  display: flex;
+  max-width: none;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+.settings-content > .shift-catalog-shell:has(> .shift-catalog-panel > .no-access),
+.account-content-scroll > .account-main:has(> .no-access) {
+  padding-block: 24px;
+}
+:is(.app-main, .settings-content, .shift-catalog-panel, .account-main) > .no-access {
   margin: auto;
 }
 /* The scroll area keeps no empty stripe for a scrollbar here, or the card
    would sit off-center by its width. */
-.app-main:has(> .no-access, .settings-content > .no-access),
-.settings-content:has(> .no-access) {
+.app-main:has(
+    > .no-access,
+    .settings-content > .no-access,
+    .settings-content > .shift-catalog-shell > .shift-catalog-panel > .no-access
+  ),
+.settings-content:has(> .no-access, > .shift-catalog-shell > .shift-catalog-panel > .no-access),
+.account-content-scroll:has(> .account-main > .no-access) {
   scrollbar-gutter: auto;
 }
 
@@ -80,8 +107,19 @@
   :is(.app-main, .settings-content):has(> .no-access) {
     padding: 24px 12px;
   }
-  :is(.app-main, .settings-content) > .no-access {
+  :is(.app-main, .settings-content, .shift-catalog-panel, .account-main) > .no-access {
     width: 100%;
     margin: auto 0;
+  }
+  /* Account on a phone scrolls as one page under its menu: the menu and the
+     content column fill the screen together. */
+  .account-layout-grid:has(> .account-content-scroll > .account-main > .no-access) {
+    display: flex;
+    min-height: 100dvh;
+    box-sizing: border-box;
+    flex-direction: column;
+  }
+  .account-layout-grid > .account-content-scroll:has(> .account-main > .no-access) {
+    flex: 1 0 auto;
   }
 }

@@ -37,7 +37,7 @@ import { CatalogSortButton } from "./CatalogSortButton";
 import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
-import { ListOutline, LoadError } from "../shell/LoadState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 
 /**
  * Announcements (EKRAN-08): one list of posts, Important Dates among them.
@@ -82,7 +82,14 @@ export function AnnouncementsPage() {
         }
       />
       {query.isLoading && <ListOutline label="Loading announcements" rows={5} columns={4} />}
-      {query.error && (
+      {query.error && query.data ? (
+        <RefreshError
+          message="Announcements didn't refresh. This is the last list that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.error && !query.data && (
         <LoadError
           title="We couldn't load announcements"
           detail="Announcements didn't load. Nothing was changed."

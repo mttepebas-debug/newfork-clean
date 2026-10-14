@@ -7,7 +7,7 @@ import type {
   AnnouncementProblem,
   AnnouncementRecord,
 } from "@newfork/shared";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -110,8 +110,12 @@ function detail(override: Partial<AnnouncementDetail> & Pick<AnnouncementRecord,
   return { ...record(override), people: [], history: [], changes: [], ...override };
 }
 
-function renderAt(path: string, page: React.ReactNode, routePaths: string[]) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderAt(
+  path: string,
+  page: React.ReactNode,
+  routePaths: string[],
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
@@ -982,6 +986,39 @@ describe("loading and error", () => {
     expect(within(card).getByRole("heading", { name: "We couldn't load Important Dates" })).toBeTruthy();
     fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("table", { name: "Important dates" })).toBeTruthy();
+  });
+
+  // A refresh that fails over a list on screen keeps the list and says so in
+  // one line; the full card is for a page with nothing to show (Mert
+  // 2026-10-14: that card sits in the middle of the page, so it would push the
+  // list to the bottom).
+  it("Announcements: a failed refresh keeps the list with the refresh line, not the full card", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(getAnnouncements)
+      .mockResolvedValueOnce(list({ announcements: [record({ id: "a8200000-0000-4000-8000-000000000095", title: "Patio menu" })] }))
+      .mockRejectedValueOnce(new Error("Failed to fetch"));
+    renderAt("/app/announcements", <AnnouncementsPage />, ["/app/announcements"], client);
+    await screen.findAllByText("Patio menu");
+    await act(() => client.refetchQueries());
+    const line = await screen.findByRole("alert");
+    expect(line.className).toContain("load-refresh");
+    expect(screen.queryByRole("heading", { name: "We couldn't load announcements" })).toBeNull();
+    expect(screen.getAllByText("Patio menu").length).toBeGreaterThan(0);
+  });
+
+  it("Important Dates: a failed refresh keeps the table with the refresh line, not the full card", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(getImportantDates)
+      .mockResolvedValueOnce({ workspace_id: workspaceId, time_format: "12h", can_write: true, dates: [] })
+      .mockRejectedValueOnce(new Error("Failed to fetch"));
+    const path = "/app/announcements/important-dates";
+    renderAt(path, <ImportantDatesPage />, [path], client);
+    await screen.findByRole("table", { name: "Important dates" });
+    await act(() => client.refetchQueries());
+    const line = await screen.findByRole("alert");
+    expect(line.className).toContain("load-refresh");
+    expect(screen.queryByRole("heading", { name: "We couldn't load Important Dates" })).toBeNull();
+    expect(screen.getByRole("table", { name: "Important dates" })).toBeTruthy();
   });
 
   it("an announcement that did not load gives the inset card in its drawer", async () => {
