@@ -471,8 +471,12 @@ export function useSynchronizedRowBadgeHeight({
     if (!grid) return undefined;
     const observer = new ResizeObserver(() => measure());
     for (const badge of getRowBadges(grid, rowKey)) {
+      // The border box: a card that starts saying NEW while editing grows
+      // only its padding (its own row below the words), and the row must
+      // grow with it so NEW never sits on the words.
       observer.observe(
         badge.querySelector<HTMLElement>("[data-shift-badge-content]") ?? badge,
+        { box: "border-box" },
       );
     }
     return () => observer.disconnect();

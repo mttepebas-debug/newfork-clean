@@ -11,6 +11,7 @@ import {
   measureRowBadgeStackHeight,
   readMeasuredHeight,
   renderScheduleBadgeWidthMeasurer,
+  useSynchronizedRowBadgeHeight,
   useUniformScheduleBadgeWidth,
 } from "./useScheduleBadgeMeasurements";
 
@@ -567,4 +568,38 @@ describe("row badge height measurement", () => {
 
     expect(measureRowBadgeStackHeight(root, "employee-1", 44)).toBe(116);
   });
+});
+
+// A live card edited while editing starts saying NEW in a row of its own below
+// the words: only its padding grows. The row watches each card's border box,
+// so it grows too and NEW never sits on the time (Mert, 2026-10-12).
+it("watches each card's border box, so a card's new NEW row grows the row", () => {
+  const observed: { target: Element; options?: ResizeObserverOptions }[] = [];
+  class FakeResizeObserver {
+    observe(target: Element, options?: ResizeObserverOptions) {
+      observed.push({ target, options });
+    }
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+  function Row() {
+    const { anchorRef } = useSynchronizedRowBadgeHeight({ rowKey: "row-1", version: "1", enabled: true });
+    return (
+      <div>
+        <div ref={anchorRef} />
+        <span data-shift-badge="true" data-schedule-row-key="row-1">
+          <span data-shift-badge-content="true">Line Cook</span>
+        </span>
+      </div>
+    );
+  }
+  try {
+    const { container } = render(<Row />);
+    const content = container.querySelector("[data-shift-badge-content]");
+    expect(observed.filter(({ target }) => target === content).map(({ options }) => options?.box))
+      .toEqual(["border-box"]);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
