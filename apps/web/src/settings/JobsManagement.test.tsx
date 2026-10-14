@@ -17,6 +17,7 @@ import JobsSettingsPage from "./JobsSettingsPage";
 import * as api from "./jobs-management-data";
 import * as organization from "./organization-data";
 import { RequestError } from "../lib/request-error";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 
 vi.mock("./jobs-management-data", () => ({
   createDepartmentWithJobs: vi.fn(),
@@ -510,109 +511,172 @@ describe("job assignment drawer", () => {
   });
 });
 
+// Settings → Jobs & departments in the shared list language (Mert's Jobs V1
+// and his ten Jobs decisions, 2026-10-13/14).
 describe("catalog navigation", () => {
-  it("sorts job names and employee counts both ways", async () => {
-    const { container } = wrap(
-      <>
-        <JobsSettingsPage />
-        <Url />
-      </>,
-      "/app/settings/jobs?view=jobs",
-    );
-    await waitFor(() =>
-      expect(container.querySelectorAll(".job-catalog-row").length).toBe(2),
-    );
-    await screen.findByRole("button", { name: "Sort by Job" });
-    const names = () =>
-      [...container.querySelectorAll(".job-catalog-row .job-row-name")].map(
-        (node) => node.textContent,
-      );
-    fireEvent.click(screen.getByRole("button", { name: "Sort by Job" }));
-    expect(names()).toEqual(["Runner", "Server"]);
-    fireEvent.click(screen.getByRole("button", { name: "Sort by Job" }));
-    expect(names()).toEqual(["Server", "Runner"]);
-    fireEvent.click(screen.getByRole("button", { name: "Sort by Employees" }));
-    expect(names()).toEqual(["Runner", "Server"]);
-    fireEvent.click(screen.getByRole("button", { name: "Sort by Employees" }));
-    expect(names()).toEqual(["Server", "Runner"]);
-  });
-
-  // BL-475: departments and jobs come A to Z from the server and nobody moves
-  // them by hand; the row menus keep Edit, Manage employees and Archive.
-  it("offers no Move up or Move down and lists jobs in the server's order", async () => {
-    vi.mocked(organization.listJobs).mockResolvedValue([
-      { ...job, id: "bartender", name: "Bartender" },
-      job,
-      { ...job, id: "other", name: "Runner", department_id: null },
-    ]);
-    wrap(<JobsSettingsPage />);
-    const service = await screen.findByRole("region", { name: "Service" });
-    expect(
-      within(service)
-        .getAllByRole("button", { name: /^(Bartender|Server)$/ })
-        .map((button) => button.textContent),
-    ).toEqual(["Bartender", "Server"]);
-    expect(screen.getByRole("button", { name: "Edit department" })).toBeTruthy();
-    expect(screen.queryByText("Move up")).toBeNull();
-    expect(screen.queryByText("Move down")).toBeNull();
-  });
-
-  it("says 1 job, not 1 jobs, for a department with one job", async () => {
-    wrap(<JobsSettingsPage />);
-    const service = await screen.findByRole("region", { name: "Service" });
-    expect(within(service).getByText("1 job")).toBeTruthy();
-    expect(screen.queryByText(/1 jobs/)).toBeNull();
-  });
+  const bartender = { ...job, id: "bartender", name: "Bartender" } as Job;
+  const runner = { ...job, id: "other", name: "Runner", department_id: null } as Job;
   function Url() {
     return <output data-testid="url">{useLocation().search}</output>;
   }
-  it("offers one Add menu in All and closes the editor when switching views", async () => {
-    wrap(<JobsSettingsPage />);
-    await screen.findByRole("region", { name: "Service" });
-    const add = screen.getByRole("button", { name: "Add" });
-    expect(screen.queryByRole("button", { name: "Add department" })).toBeNull();
-    fireEvent.click(add);
-    fireEvent.click(screen.getByRole("button", { name: "Department" }));
-    expect(screen.getByRole("form", { name: "Add department" })).toBeTruthy();
-    expect(document.activeElement).toBe(
-      screen.getByLabelText("Department name"),
-    );
-    fireEvent.click(screen.getByRole("tab", { name: "Jobs" }));
-    expect(screen.queryByRole("form", { name: "Add department" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Add job" }));
-    expect(screen.getByRole("dialog", { name: "Add job" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Departments" }));
-    expect(screen.queryByRole("dialog", { name: "Add job" })).toBeNull();
-  });
-  it("defaults to All, searches children with parent context and persists view in URL", async () => {
-    wrap(
+  function page(entry?: string) {
+    return wrap(
       <>
         <JobsSettingsPage />
         <Url />
       </>,
+      entry,
     );
-    expect(
-      (await screen.findByRole("tab", { name: "All" })).getAttribute(
-        "aria-selected",
-      ),
-    ).toBe("true");
-    await screen.findByRole("region", { name: "No department" });
-    fireEvent.change(screen.getByLabelText("Search jobs and departments"), {
-      target: { value: "Server" },
+  }
+  const group = (name: string) => screen.getByRole("rowgroup", { name });
+  const names = (scope: HTMLElement) =>
+    [...scope.querySelectorAll(".job-catalog-row .job-row-name")].map((node) => node.textContent);
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("has Jobs, Departments and Archived tabs and one table with a sub-heading per department", async () => {
+    page();
+    await screen.findByRole("rowgroup", { name: "Service" });
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Jobs", "Departments", "Archived"]);
+    expect(screen.getByRole("tab", { name: "Jobs" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByText("Show archived")).toBeNull();
+    expect(screen.queryByText("Collapse all")).toBeNull();
+    expect(names(group("Service"))).toEqual(["Server"]);
+    expect(names(group("No department"))).toEqual(["Runner"]);
+    // "1 job", not "1 jobs".
+    expect(within(group("Service")).getByText("1 job · 2 employees")).toBeTruthy();
+    const add = screen.getByRole("button", { name: "New job" });
+    expect(add.closest(".catalog-toolbar-filter-row")?.lastElementChild).toBe(add);
+  });
+
+  // Decision 3: a column sorts inside each department; A to Z by default.
+  it("sorts inside each department, A to Z until a column is chosen", async () => {
+    vi.mocked(organization.listJobs).mockResolvedValue([job, bartender, runner]);
+    vi.mocked(api.loadJobCounts).mockResolvedValue({
+      jobs: [
+        { id: job.id, employee_count: 1 },
+        { id: bartender.id, employee_count: 3 },
+      ],
+      departments: [{ id: department.id, employee_count: 4 }],
     });
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("region", { name: "No department" }),
-      ).toBeNull(),
-    );
-    expect(
-      within(screen.getByRole("region", { name: "Service" })).getByRole(
-        "button",
-        { name: "Server" },
-      ),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Jobs" }));
-    expect(screen.getByTestId("url").textContent).toContain("view=jobs");
+    page();
+    await screen.findByRole("rowgroup", { name: "Service" });
+    expect(names(group("Service"))).toEqual(["Bartender", "Server"]);
+    fireEvent.click(screen.getByRole("button", { name: "Job" }));
+    expect(names(group("Service"))).toEqual(["Bartender", "Server"]);
+    fireEvent.click(screen.getByRole("button", { name: "Job" }));
+    expect(names(group("Service"))).toEqual(["Server", "Bartender"]);
+    expect(names(group("No department"))).toEqual(["Runner"]);
+    await screen.findByText("4 employees", { exact: false });
+    fireEvent.click(screen.getByRole("button", { name: "Employees" }));
+    expect(names(group("Service"))).toEqual(["Server", "Bartender"]);
+    fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+    expect(names(group("Service"))).toEqual(["Bartender", "Server"]);
+  });
+
+  it("filters to one department, and a new job starts in it", async () => {
+    page();
+    await screen.findByRole("rowgroup", { name: "Service" });
+    fireEvent.change(screen.getByLabelText("Filter by department"), { target: { value: departmentId } });
+    expect(screen.queryByRole("rowgroup", { name: "No department" })).toBeNull();
+    expect(screen.getByTestId("url").textContent).toContain(`department=${departmentId}`);
+    fireEvent.click(screen.getByRole("button", { name: "New job" }));
+    const created = await screen.findByRole("dialog");
+    expect((within(created).getByLabelText("Department") as HTMLSelectElement).value).toBe(departmentId);
+  });
+
+  it("searches jobs within their department and keeps the search in the URL", async () => {
+    page();
+    await screen.findByRole("rowgroup", { name: "No department" });
+    fireEvent.change(screen.getByLabelText("Search jobs or departments"), { target: { value: "Server" } });
+    await waitFor(() => expect(screen.queryByRole("rowgroup", { name: "No department" })).toBeNull());
+    expect(names(group("Service"))).toEqual(["Server"]);
     expect(screen.getByTestId("url").textContent).toContain("q=Server");
+  });
+
+  // Decision 8: Department · Jobs · Employees; the jobs count opens the Jobs tab
+  // filtered to the department.
+  it("lists departments with a jobs count that opens the Jobs tab filtered to them", async () => {
+    page("/app/settings/jobs?tab=departments");
+    const show = await screen.findByRole("button", { name: "Show the 1 job in Service" });
+    expect(screen.getByRole("tab", { name: "Departments" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("button", { name: "New department" })).toBeTruthy();
+    fireEvent.click(show);
+    expect(screen.getByRole("tab", { name: "Jobs" }).getAttribute("aria-selected")).toBe("true");
+    expect((screen.getByLabelText("Filter by department") as HTMLSelectElement).value).toBe(departmentId);
+    expect(screen.queryByRole("rowgroup", { name: "No department" })).toBeNull();
+  });
+
+  // Decision 6: archiving a department takes its active jobs with it; the
+  // database does it, so the page writes the department alone.
+  it("archives a department in one write and says its jobs go with it", async () => {
+    vi.mocked(organization.setDepartmentArchived).mockResolvedValue(undefined);
+    page();
+    await screen.findByRole("rowgroup", { name: "Service" });
+    const menu = within(group("Service"));
+    expect(menu.getByText("Its 1 job will be archived too.")).toBeTruthy();
+    fireEvent.click(menu.getByRole("button", { name: "Archive Service" }));
+    expect(organization.setDepartmentArchived).not.toHaveBeenCalled();
+    fireEvent.click(menu.getByRole("button", { name: "Confirm archive Service" }));
+    await waitFor(() =>
+      expect(organization.setDepartmentArchived).toHaveBeenCalledExactlyOnceWith("workspace", departmentId, true),
+    );
+    expect(organization.setJobArchived).not.toHaveBeenCalled();
+  });
+
+  it("shows archived departments and jobs in two groups and restores each with one click", async () => {
+    const archivedDepartment = { ...department, archived_at: "2026-10-01T12:00:00Z" } as Department;
+    const archivedJob = { ...job, archived_at: "2026-10-01T12:00:00Z" } as Job;
+    vi.mocked(organization.listDepartments).mockResolvedValue([archivedDepartment]);
+    vi.mocked(organization.listJobs).mockResolvedValue([archivedJob, runner]);
+    vi.mocked(organization.setJobArchived).mockResolvedValue(undefined);
+    page("/app/settings/jobs?tab=archived");
+    const departments = await screen.findByRole("rowgroup", { name: "Archived departments" });
+    expect(names(departments)).toEqual(["Service"]);
+    expect(within(departments).getByRole("button", { name: "Restore Service" }).title).toBe("Comes back with no jobs");
+    const jobs = group("Archived jobs");
+    expect(names(jobs)).toEqual(["Server"]);
+    expect(jobs.textContent).toContain("Service · archived");
+    const restore = within(jobs).getByRole("button", { name: "Restore Server" });
+    expect(restore.title).toBe("Comes back under No department");
+    fireEvent.click(restore);
+    await waitFor(() =>
+      expect(organization.setJobArchived).toHaveBeenCalledExactlyOnceWith("workspace", jobId, false),
+    );
+    expect(organization.saveJob).not.toHaveBeenCalled();
+  });
+
+  it("says a restored job goes back under its department while that department is active", async () => {
+    vi.mocked(organization.listJobs).mockResolvedValue([{ ...job, archived_at: "2026-10-01T12:00:00Z" } as Job]);
+    page("/app/settings/jobs?tab=archived");
+    const restore = await screen.findByRole("button", { name: "Restore Server" });
+    expect(restore.title).toBe("Comes back under Service");
+    expect(screen.queryByRole("rowgroup", { name: "Archived departments" })).toBeNull();
+  });
+
+  it("opens a job's drawer from its row and keeps it in the URL", async () => {
+    page();
+    fireEvent.click(await screen.findByRole("button", { name: "Server" }));
+    expect(await screen.findByRole("dialog", { name: "Edit job: Server" })).toBeTruthy();
+    expect(screen.getByTestId("url").textContent).toContain(`jobId=${jobId}`);
+  });
+
+  // Decision 10: on a phone the add button sits in the tab row, right of Archived.
+  it("puts New job in the tab row on a phone", async () => {
+    stubPhoneWidth();
+    page();
+    await screen.findByRole("rowgroup", { name: "Service" });
+    const add = screen.getByRole("button", { name: "New job" });
+    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+  });
+
+  it("outlines the list while loading and offers Try again when it fails", async () => {
+    vi.mocked(organization.listDepartments).mockRejectedValue(new Error("offline"));
+    page();
+    expect(screen.getByText("Loading jobs and departments")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "We couldn't load jobs and departments" })).toBeTruthy();
+    vi.mocked(organization.listDepartments).mockResolvedValue([department]);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("rowgroup", { name: "Service" })).toBeTruthy();
   });
 });
