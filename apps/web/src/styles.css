@@ -12508,14 +12508,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: var(--theme-muted);
   text-align: center;
 }
-.workspace-state,
-.communication-state {
-  min-height: 100%;
-  display: grid;
-  place-items: center;
-  background: #f4f6f4;
-  color: #627069;
-}
 .workspace-error,
 .communication-error {
   margin: 12px 0 0;
